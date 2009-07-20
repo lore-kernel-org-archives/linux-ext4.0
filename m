@@ -1,70 +1,52 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: ext3 default journal mode
-Date: Sun, 19 Jul 2009 22:50:49 -0400
-Message-ID: <4A63DB89.2060306@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Valerie Aurora <vaurora@redhat.com>,
-	"Stephen C. Tweedie" <sct@redhat.com>,
-	Eric Sandeen <esa
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/3] libext2fs: Fix regression in ext2fs_extent_set_bmap()
+Date: Sun, 19 Jul 2009 23:57:03 -0400
+Message-ID: <1248062225-710-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:53602 "EHLO mx2.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:59387 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750778AbZGTCvB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 19 Jul 2009 22:51:01 -0400
+	id S1751007AbZGTD5P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Jul 2009 23:57:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Commit 0dc291611 introduced a regression when unmapping the first
+block in an extent.  This caused e2fsck -fD to corrupt large
+directories if the directory has to shrink by more than one block.
+The problem was set_bmap should only go to a next leaf when setting a
+first block in an extent, and not when it is unmapping the first block
+in an extent.
 
-Now that we have put some some distance between us and the mega-thread, I think 
-that it is time to put some sanity back into the ext3 journal mode options.
+Addresses-Debian-Bug: #537510
 
-My preference is to revert the default back to ordered mode or (if Chris is 
-ready) back to guarded mode.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/ext2fs/extent.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-As I mentioned in an earlier email, I think *every* distribution undid this 
-default back to ordered mode.
-
-Do any of us who deal in file systems really think that writeback is a 
-reasonable default for unsophisticated users or non-FS experts (like those in 
-the embedded space) who rely on KCONFIG to get a sense of a debate that they missed?
-
-Failing that, I would like to at very least put sane text in the KCONFIG option.
-
-Something like the following:
-
-diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
-index fb3c1a2..4057730 100644
---- a/fs/ext3/Kconfig
-+++ b/fs/ext3/Kconfig
-@@ -36,16 +36,19 @@ config EXT3_DEFAULTS_TO_ORDERED
-           mode, and the journal capability allowed it, ext3 used to
-           historically default to 'data=ordered'.
-
--         That was a rather unfortunate choice, because it leads to all
--         kinds of latency problems, and the 'data=writeback' mode is more
--         appropriate these days.
-+         Data ordered mode is the mode used by most distributions, but can
-+         introduce latency problems in some workloads, especially if you have
-+         a very low latency device.
-
--         You should probably always answer 'n' here, and if you really
--         want to use 'data=ordered' mode, set it in the filesystem itself
--         with 'tune2fs -o journal_data_ordered'.
-+         The current default mode is data writeback mode which favors latency but
-+         is more prone to corruption after crashes and power failures and will
-+         expose deleted data after a crash to newly allocated files.
-
--         But if you really want to enable the legacy default, you can do
--         so by answering 'y' to this question.
-+         If you have been historically happy with ext3's performance, data ordered
-+         mode will be a safe choice and you should answer "y" here.
-+
-+         If you understand the reliability and data privacy issues of data 
-writeback
-+         mode and are willing to make that trade off, answer "n".
-
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 7fcc2cf..9d7b7de 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1296,11 +1296,12 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 			}
+ 			if (retval)
+ 				goto done;
++			retval = ext2fs_extent_get(handle,
++						   EXT2_EXTENT_NEXT_LEAF,
++						   &extent);
++			if (retval)
++				goto done;
+ 		}
+-		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT_LEAF,
+-					   &extent);
+-		if (retval)
+-			goto done;
+ 		extent.e_pblk++;
+ 		extent.e_lblk++;
+ 		extent.e_len--;
+-- 
+1.6.3.2.1.gb9f7d.dirty
 
