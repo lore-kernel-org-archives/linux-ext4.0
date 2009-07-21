@@ -1,74 +1,73 @@
-From: Xiang Wang <xiangw@google.com>
-Subject: Using O_DIRECT in ext4
-Date: Mon, 20 Jul 2009 18:41:03 -0700
-Message-ID: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext3 default journal mode
+Date: Mon, 20 Jul 2009 22:00:50 -0400
+Message-ID: <20090721020050.GK2416@mit.edu>
+References: <4A63DB89.2060306@redhat.com> <20090720212904.GI2416@mit.edu> <20090720230402.GB26687@shell>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Stephen C. Tweedie" <sct@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>
+To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:9726 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751415AbZGUBlI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jul 2009 21:41:08 -0400
-Received: from wpaz33.hot.corp.google.com (wpaz33.hot.corp.google.com [172.24.198.97])
-	by smtp-out.google.com with ESMTP id n6L1f6Uc006938
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 02:41:06 +0100
-Received: from ewy28 (ewy28.prod.google.com [10.241.103.28])
-	by wpaz33.hot.corp.google.com with ESMTP id n6L1f3EM015087
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2009 18:41:04 -0700
-Received: by ewy28 with SMTP id 28so2807780ewy.23
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2009 18:41:03 -0700 (PDT)
+Received: from THUNK.ORG ([69.25.196.29]:37234 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751601AbZGUCA4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jul 2009 22:00:56 -0400
+Content-Disposition: inline
+In-Reply-To: <20090720230402.GB26687@shell>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon, Jul 20, 2009 at 07:04:03PM -0400, Valerie Aurora wrote:
+> On Mon, Jul 20, 2009 at 05:29:04PM -0400, Theodore Tso wrote:
+> > Here's a revised proposal for the KCONFIG text.  
+> > 
+> > Hopefully this is balanced about the two sides of the issue, without
+> > explicitly advocating for one choice versus another.
+> > 
+> > What do people think?
+> 
+> I think it's extremely accurate and detailed, but too long - people's
+> brains turn off after about the 15th line or so.  Here's an attempt to
+> distill your description down and refer out to another document (which
+> one?) for people who want to learn more.
 
-Recently I've been experimenting with O_DIRECT in ext4 to get a
-feeling of how much file fragmentation will be generated.
+Fair enough;  I've created an external document here:
 
-On a newly formatted ext4 partition(no-journal), I created a top-level
-directory and under this top-level directory I ran a test program to
-generate some files.
+http://ext4.wiki.kernel.org/index.php/Ext3_Data%3DOrdered_vs_Data%3DWriteback_mode
 
-The test program does the following:
--- create multiple threads(in my test case: 16 threads)
--- each thread creates a file with the O_DIRECT flag and keeps
-extending the file to 1MB
-Since these threads run concurrently, they compete in block allocation.
+Comments?
 
-After the program ran to a completion, I ran filefrag on each file and
-measure how many extents there are in the file.
-And here is a sample result:
-file0: 6 extents found
-file1: 20 extents found
-file2: 7 extents found
-file3: 6 extents found
-file4: 6 extents found
-file5: 5 extents found
-file6: 6 extents found
-file7: 20 extents found
-file8: 20 extents found
-file9: 20 extents found
-file10: 20 extents found
-file11: 20 extents found
-file12: 20 extents found
-file13: 19 extents found
-file14: 19 extents found
-file15: 19 extents found
+>  config EXT3_DEFAULTS_TO_ORDERED
+>  	bool "Default to 'data=ordered' in ext3"
+>  	depends on EXT3_FS
+>  	help
+> 
+>           If the mount options for an ext3 filesystem do not
+>           include a journal mode, mount it in "data=ordered" mode.
 
-Looks like these files are quite heavily fragmented.
-For comparison, I did the same experiment on an ext2 partition,
-resulting in each file having only 1 extent.
-I also did the experiments of using buffered writes(by removing the
-O_DIRECT flag) on ext2 and ext4, both resulting in each file having
-only 1 extent.
+Let me give a try at this:
 
-I am wondering whether this kind of file fragmentation is already a
-known issue in ext4 when O_DIRECT is used? Is it something by design?
-Since it seems like ext2 does not have this issue under my test case,
-is it necessary that we make the behavior of ext4 similar to ext2
-under situations like this?
+           The journal mode options for ext3 have different tradeoffs
+           between when data is guaranteed to be on disk and
+           performance.  The use of "data=writeback" can cause
+           unwritten data to appear in files after an system crash or
+           power failure, which can be a security issue.  However,
+           "data=ordered" mode can also result in major performance
+           problems, including seconds-long delays before an fsync()
+           call returns.  For details, see:
 
-Thanks,
-Xiang
+	   http://ext4.wiki.kernel.org/index.php/Ext3_Data%3DOrdered_vs_Data%3DWriteback_mode
+
+          If you have been historically happy with ext3's performance,
+          data=ordered mode will be a safe choice and you should
+          answer "y" here.  If you understand the reliability and data
+          privacy issues of data=writeback and are willing to make
+          that trade off, answer "n".
+	   
+						- Ted
