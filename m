@@ -1,103 +1,118 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: Using O_DIRECT in ext4
-Date: Tue, 21 Jul 2009 07:45:58 -0700
-Message-ID: <6601abe90907210745k3730f74dq62f1fe6539722b4d@mail.gmail.com>
-References: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com>
-	 <4A6538DB.5050202@redhat.com>
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: [PATCH] fix softlockups in ext2/3 when trying to allocate
+	blocks
+Date: Tue, 21 Jul 2009 11:15:52 -0400
+Message-ID: <20090721151550.GA2451@localhost.localdomain>
+References: <20090706194739.GB19798@dhcp231-156.rdu.redhat.com> <20090720233735.e3c711d1.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Xiang Wang <xiangw@google.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	emcnabb@redhat.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	Jan Kara <jack@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:27766 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751000AbZGUOqD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 10:46:03 -0400
-Received: from wpaz17.hot.corp.google.com (wpaz17.hot.corp.google.com [172.24.198.81])
-	by smtp-out.google.com with ESMTP id n6LEk12W031105
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 15:46:01 +0100
-Received: from pzk27 (pzk27.prod.google.com [10.243.19.155])
-	by wpaz17.hot.corp.google.com with ESMTP id n6LEjRfB010203
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 07:45:58 -0700
-Received: by pzk27 with SMTP id 27so2090959pzk.2
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 07:45:58 -0700 (PDT)
-In-Reply-To: <4A6538DB.5050202@redhat.com>
+Received: from mx2.redhat.com ([66.187.237.31]:50921 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754272AbZGUPQI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jul 2009 11:16:08 -0400
+Content-Disposition: inline
+In-Reply-To: <20090720233735.e3c711d1.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 20, 2009 at 8:41 PM, Eric Sandeen<sandeen@redhat.com> wrote:
-> Xiang Wang wrote:
->> Hi,
->>
->> Recently I've been experimenting with O_DIRECT in ext4 to get a
->> feeling of how much file fragmentation will be generated.
->>
->> On a newly formatted ext4 partition(no-journal), I created a top-level
->> directory and under this top-level directory I ran a test program to
->> generate some files.
->>
->> The test program does the following:
->> -- create multiple threads(in my test case: 16 threads)
->> -- each thread creates a file with the O_DIRECT flag and keeps
->> extending the file to 1MB
->> Since these threads run concurrently, they compete in block allocation.
->>
->> After the program ran to a completion, I ran filefrag on each file and
->> measure how many extents there are in the file.
->> And here is a sample result:
->> file0: 6 extents found
->> file1: 20 extents found
->> file2: 7 extents found
->> file3: 6 extents found
->> file4: 6 extents found
->> file5: 5 extents found
->> file6: 6 extents found
->> file7: 20 extents found
->> file8: 20 extents found
->> file9: 20 extents found
->> file10: 20 extents found
->> file11: 20 extents found
->> file12: 20 extents found
->> file13: 19 extents found
->> file14: 19 extents found
->> file15: 19 extents found
->>
->> Looks like these files are quite heavily fragmented.
+On Mon, Jul 20, 2009 at 11:37:35PM -0700, Andrew Morton wrote:
+> On Mon, 6 Jul 2009 15:47:39 -0400 Josef Bacik <josef@redhat.com> wrote:
+> 
+> > This isn't a huge deal, but using a big beefy box with more CPUs than what is
+> > sane, you can get a nice flood of softlockup messages when running heavy
+> > multi-threaded io tests on ext2/3.  The processors compete for blocks from the
+> > allocator, so they will loop quite a bit trying to get their allocation.  This
+> > patch simply makes sure that we reschedule if need be.  This made the softlockup
+> > messages disappear whereas before they happened almost immediately.  Thanks,
+> 
+> The softlockup threshold is 60 seconds.  For the kernel to spend 60
+> seconds continuous CPU time in the filesystem is very bad behaviour, and
+> adding a rescheduling point doesn't fix that!
 >
-> Multiple parallel extending DIOs in a single dir is a tough case for a
-> filesystem - it has no hints about what to do, and can't use delalloc to
-> wait to see what's happening; it just has to allocate things as they
-> come, more or less.
->
->> For comparison, I did the same experiment on an ext2 partition,
->> resulting in each file having only 1 extent.
->
-> Interestinng, not sure I would have expected that.
 
-Same with us; we're looking into more variables to understand it.
+In RHEL its set to 10 seconds, so its not totally unreasonable.
+ 
+> > Tested-by: Evan McNabb <emcnabb@redhat.com>
+> > Signed-off-by: Josef Bacik <josef@redhat.com>
+> > ---
+> >  fs/ext2/balloc.c |    1 +
+> >  fs/ext3/balloc.c |    2 ++
+> >  2 files changed, 3 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> > index 7f8d2e5..17dd55f 100644
+> > --- a/fs/ext2/balloc.c
+> > +++ b/fs/ext2/balloc.c
+> > @@ -1176,6 +1176,7 @@ ext2_try_to_allocate_with_rsv(struct super_block *sb, unsigned int group,
+> >  			break;				/* succeed */
+> >  		}
+> >  		num = *count;
+> > +		cond_resched();
+> >  	}
+> >  	return ret;
+> >  }
+> > diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> > index 27967f9..cffc8cd 100644
+> > --- a/fs/ext3/balloc.c
+> > +++ b/fs/ext3/balloc.c
+> > @@ -735,6 +735,7 @@ bitmap_search_next_usable_block(ext3_grpblk_t start, struct buffer_head *bh,
+> >  	struct journal_head *jh = bh2jh(bh);
+> >  
+> >  	while (start < maxblocks) {
+> > +		cond_resched();
+> >  		next = ext3_find_next_zero_bit(bh->b_data, maxblocks, start);
+> >  		if (next >= maxblocks)
+> >  			return -1;
+> > @@ -1391,6 +1392,7 @@ ext3_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
+> >  			break;				/* succeed */
+> >  		}
+> >  		num = *count;
+> > +		cond_resched();
+> >  	}
+> >  out:
+> >  	if (ret >= 0) {
+> 
+> I worry that something has gone wrong with the reservations code.  The
+> filesystem _should_ be able to find a free block without any contention
+> from other CPUs, because there's a range of blocks reserved for this
+> inode's allocation attempts.
+> 
 
->> I also did the experiments of using buffered writes(by removing the
->> O_DIRECT flag) on ext2 and ext4, both resulting in each file having
->> only 1 extent.
+Sure, the problem is if we run out of blocks in that reservation window, or
+somebody else runs out of blocks in their reservation window, we start trying to
+steal blocks from other inodes reservation windows.
+
+> Unless the workload has a lot of threads writing to the _same_ file. 
+> If it does that then yes, we'll have lots of CPUs contenting for blocks
+> within that inode's reservation window.  Tell us about the workload please.
 >
-> delayed allocation at work I suppose.
->
->> I am wondering whether this kind of file fragmentation is already a
->> known issue in ext4 when O_DIRECT is used? Is it something by design?
->> Since it seems like ext2 does not have this issue under my test case,
->> is it necessary that we make the behavior of ext4 similar to ext2
->> under situations like this?
->
-> Is this representative of a real workload?
 
-Not exactly perhaps, but we do have apps that are showing
-significantly more fragmentation in their files on ext4 than with
-ext2, while using O_DIRECT (e.g., 8 extents on ext4 vs 1 on ext2, as
-reported by filefrag).  The experiment above is synthetic, but fairly
-representative.
+The workload is on a box with 32 CPUs and 32GB of ram.  Its running some sort of
+kernel compiling stress test, which from what I understand is running a kernel
+compile per CPU.  Then on top of that there is a dd running at the same time.
+ 
+> But that shouldn't be happening either because all those write()ing
+> threads will be serialised by i_mutex.
+> 
+> So I don't know what's happening here.  Possibly a better fix would be
+> to add a lock rather than leaving the contention in place and hiding
+> it.  Even better would be to understand why the contention is happening
+> and prevent that.
+> 
 
-(Hence the related questions about fallocate, since this is one
-possible, though ugly, workaround.)
+I could probably add some locking in here to help the problem, but I'm worried
+about the performance impact that would have.  This is just a crap situation,
+since we are quickly exhausting our reservation windows and devovling to just
+schlepping through the block bitmaps for free space, and thats where we start to
+suck hard.  I can look into it some more and possibly come up with something
+else, this just seemed to be the quickest way to fix the problem with affecting
+as little people as possible, especially since it's only reproducing on a box
+with 32 CPUs and 32GB of RAM.  Thanks,
 
-Curt
+Josef
