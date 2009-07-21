@@ -1,55 +1,59 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 1/5] jbd: Fail to load a journal if it is too short
-Date: Tue, 21 Jul 2009 09:19:46 -0700
-Message-ID: <20090721091946.06bcdef8.akpm@linux-foundation.org>
-References: <1248170659-11771-1-git-send-email-jack@suse.cz>
-	<1248170659-11771-2-git-send-email-jack@suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Using O_DIRECT in ext4
+Date: Tue, 21 Jul 2009 11:38:11 -0500
+Message-ID: <4A65EEF3.9090507@redhat.com>
+References: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com>	 <4A6538DB.5050202@redhat.com> <6601abe90907210745k3730f74dq62f1fe6539722b4d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Xiang Wang <xiangw@google.com>, linux-ext4@vger.kernel.org
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:44032 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752679AbZGUQUT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jul 2009 12:20:19 -0400
-In-Reply-To: <1248170659-11771-2-git-send-email-jack@suse.cz>
+Received: from mx2.redhat.com ([66.187.237.31]:52549 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752387AbZGUQiQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jul 2009 12:38:16 -0400
+In-Reply-To: <6601abe90907210745k3730f74dq62f1fe6539722b4d@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 21 Jul 2009 12:04:15 +0200 Jan Kara <jack@suse.cz> wrote:
+Curt Wohlgemuth wrote:
+> On Mon, Jul 20, 2009 at 8:41 PM, Eric Sandeen<sandeen@redhat.com> wrote:
+>> Xiang Wang wrote:
 
-> Due to on disk corruption, it can happen that journal is too short. Fail
-> to load it in such case so that we don't oops somewhere later.
+>>> For comparison, I did the same experiment on an ext2 partition,
+>>> resulting in each file having only 1 extent.
+>> Interestinng, not sure I would have expected that.
 > 
-> Reported-by: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/jbd/journal.c |    6 ++++++
->  1 files changed, 6 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 737f724..94a64a1 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -848,6 +848,12 @@ static int journal_reset(journal_t *journal)
->  
->  	first = be32_to_cpu(sb->s_first);
->  	last = be32_to_cpu(sb->s_maxlen);
-> +	if (first + JFS_MIN_JOURNAL_BLOCKS > last + 1) {
-> +		printk(KERN_ERR "JBD: Journal too short (blocks %lu-%lu).\n",
-> +		       first, last);
-> +		journal_fail_superblock(journal);
-> +		return -EINVAL;
-> +	}
->  
->  	journal->j_first = first;
->  	journal->j_last = last;
+> Same with us; we're looking into more variables to understand it.
 
-It's odd that sb->s_first/s_maxlen are 32-bit and
-journal->j_first/j_last are unsigned long.
+To be more clear, I would not have expected ext2 to deal well with it
+either, is more what I meant ;)  I'm not terribly surprised that ext4
+gets fragmented.
 
-These things will only ever be 32-bit unless we change the journal
-superblock.
+For the numbers posted, how big were the files (how many 1m chunks were
+written?)
+
+Just FWIW; I did something like:
+
+# for I in `seq 1 16`; do dd if=/dev/zero of=testfile$I bs=1M count=16
+oflag=direct & done
+
+on a rhel5.4 beta kernel and got:
+
+~5 extents per file on ext4 (per filefrag output)
+between 41 and 234 extents on ext2.
+~6 extents per file on ext3.
+~16 extents per file on xfs
+
+if I created a subdir for each file:
+
+# for I in `seq 1 16`; do mkdir dir$I; dd if=/dev/zero
+of=dir$I/testfile$I bs=1M count=16 oflag=direct & done
+
+~5 extents per file on ext4
+1 or 2 extents per file on ext2
+1 or 2 extents per file on ext3
+~16 extents per file on xfs.
+
+-Eric
