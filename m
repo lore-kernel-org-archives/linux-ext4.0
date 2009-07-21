@@ -1,64 +1,227 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: >16TB issues
-Date: Tue, 21 Jul 2009 13:21:23 -0600
-Message-ID: <20090721192123.GK4231@webber.adilger.int>
-References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
- <20090703143729.GJ20343@webber.adilger.int>
- <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
- <20090721161018.GH4231@webber.adilger.int>
- <150c16850907211152y3136aadx6ce42a8535a6ed61@mail.gmail.com>
+From: Xiang Wang <xiangw@google.com>
+Subject: Re: Using O_DIRECT in ext4
+Date: Tue, 21 Jul 2009 13:46:24 -0700
+Message-ID: <d5ca277e0907211346u65282484ye6ee5da38c1b9d71@mail.gmail.com>
+References: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com>
+	 <4A6538DB.5050202@redhat.com>
+	 <6601abe90907210745k3730f74dq62f1fe6539722b4d@mail.gmail.com>
+	 <4A65EEF3.9090507@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Justin Maggard <jmaggard10@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:58666 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755835AbZGUTVy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 15:21:54 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n6LJLoHI000259
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 12:21:50 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KN500800CBP9G00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 21 Jul 2009 12:21:50 -0700 (PDT)
-In-reply-to: <150c16850907211152y3136aadx6ce42a8535a6ed61@mail.gmail.com>
+Received: from smtp-out.google.com ([216.239.45.13]:47797 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755104AbZGUUq3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 16:46:29 -0400
+Received: from zps38.corp.google.com (zps38.corp.google.com [172.25.146.38])
+	by smtp-out.google.com with ESMTP id n6LKkSsK014963
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 13:46:28 -0700
+Received: from ewy23 (ewy23.prod.google.com [10.241.103.23])
+	by zps38.corp.google.com with ESMTP id n6LKkPCO005580
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 13:46:26 -0700
+Received: by ewy23 with SMTP id 23so3429970ewy.19
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 13:46:25 -0700 (PDT)
+In-Reply-To: <4A65EEF3.9090507@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 21, 2009  11:52 -0700, Justin Maggard wrote:
-> No, no error messages from the kernel.  But your llverdev utility
-> ended up showing problems on the device.  After asking around on the
-> MD mailing list, that was apparently because of the page cache index
-> limit (at the time I was using a 32-bit kernel).
-> 
-> Switching to a 64-bit kernel allowed me to pass the llverdev test and
-> get much further with a very large filesystem, but I'm running into
-> other issues now.  I wrote up a very simple script to write 2TB files
-> onto the filesystem until the device fills up.  It was able to write
-> ~16TB, but after that it ran into some problems.  My kernel log now
-> has lots of messages like these:
+On Tue, Jul 21, 2009 at 9:38 AM, Eric Sandeen<sandeen@redhat.com> wrote=
+:
+> Curt Wohlgemuth wrote:
+>> On Mon, Jul 20, 2009 at 8:41 PM, Eric Sandeen<sandeen@redhat.com> wr=
+ote:
+>>> Xiang Wang wrote:
+>
+>>>> For comparison, I did the same experiment on an ext2 partition,
+>>>> resulting in each file having only 1 extent.
+>>> Interestinng, not sure I would have expected that.
+>>
+>> Same with us; we're looking into more variables to understand it.
+>
+> To be more clear, I would not have expected ext2 to deal well with it
+> either, is more what I meant ;) =A0I'm not terribly surprised that ex=
+t4
+> gets fragmented.
+>
+> For the numbers posted, how big were the files (how many 1m chunks we=
+re
+> written?)
+>
+> Just FWIW; I did something like:
+>
+> # for I in `seq 1 16`; do dd if=3D/dev/zero of=3Dtestfile$I bs=3D1M c=
+ount=3D16
+> oflag=3Ddirect & done
+>
+> on a rhel5.4 beta kernel and got:
+>
+> ~5 extents per file on ext4 (per filefrag output)
+> between 41 and 234 extents on ext2.
+> ~6 extents per file on ext3.
+> ~16 extents per file on xfs
+>
 
-There is a matching "llverfs" tool that does essentially this, with
-data verification also.
+I repeated this test(bs=3D1M count=3D16) by tuning some parameters in m=
+y
+test program. And I got the following results(per filefrag output):
+ext4:
+5 extents per file
 
-> EXT4-fs error (device md2): ext4_mb_generate_buddy: EXT4-fs: group
-> 163548: 32744 blocks in bitmap, 32768 in gd
-> - and -
-> EXT4-fs error (device md2): ext4_mb_mark_diskspace_used: Allocating
-> block 4294967391 in system zone of 131072 group
-> 
-> I shouldn't need e2fsprogs to be compiled 64-bit as well, right?
-> Currently I've got a 64-bit kernel with 32-bit userspace.
+ext2:
+file0: 5 extents found, perfection would be 1 extent
+file1: 5 extents found, perfection would be 1 extent
+file2: 6 extents found, perfection would be 1 extent
+file3: 4 extents found, perfection would be 1 extent
+file4: 4 extents found, perfection would be 1 extent
+file5: 6 extents found, perfection would be 1 extent
+file6: 4 extents found, perfection would be 1 extent
+file7: 5 extents found, perfection would be 1 extent
+file8: 6 extents found, perfection would be 1 extent
+file9: 4 extents found, perfection would be 1 extent
+file10: 5 extents found, perfection would be 1 extent
+file11: 6 extents found, perfection would be 1 extent
+file12: 6 extents found, perfection would be 1 extent
+file13: 8 extents found, perfection would be 1 extent
+file14: 4 extents found, perfection would be 1 extent
+file15: 7 extents found, perfection would be 1 extent
 
-Yes, that is a potential problem.
+The results on ext4 look comparable to yours while the results on ext2
+look very different.
+I am attaching the test program I use in case you want to try it. It
+is at the end of the message.
+I invoked it like: ./mt_writes 16 1 to have 16 threads writing using O_=
+DIRECT.
 
-Cheers, Andreas
+> if I created a subdir for each file:
+>
+> # for I in `seq 1 16`; do mkdir dir$I; dd if=3D/dev/zero
+> of=3Ddir$I/testfile$I bs=3D1M count=3D16 oflag=3Ddirect & done
+>
+> ~5 extents per file on ext4
+> 1 or 2 extents per file on ext2
+> 1 or 2 extents per file on ext3
+> ~16 extents per file on xfs.
+>
+> -Eric
+>
+
+=3D=3D=3D=3D=3D=3D
+/*
+ * mt_write.c -- multiple threads extending files concurrently.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pthread.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define _XOPEN_SOURCE 600
+#define O_DIRECT        00040000        /* direct disk access hint */
+
+#define MAX_THREAD 1000
+#define BUFSIZE 1048576
+#define COUNT 16
+
+typedef struct {
+        int id;
+        int odirect;
+} parm;
+
+void *expand(void *arg)
+{
+        char *buf;
+        char fname[16];
+        int fd;
+        int i, count;
+        parm *p =3D (parm *)arg;
+
+        // O_DIRECT needs to work with aligned memory
+        if (posix_memalign((void *) &buf, 512, BUFSIZE) !=3D 0) {
+                fprintf(stderr, "cannot allocate aligned mem!\n");
+                return NULL;
+        }
+
+        sprintf(fname, "file%d", p->id);
+        if (p->odirect)
+                fd =3D open(fname, O_RDWR|O_CREAT|O_APPEND|O_DIRECT);
+        else
+                fd =3D open(fname, O_RDWR|O_CREAT|O_APPEND);
+
+        if (fd =3D=3D -1) {
+                fprintf(stderr, "Open %s failed!\n", fname);
+                return NULL;
+        }
+
+        for(i =3D 0; i < COUNT; i++) {
+                count =3D write(fd, buf, BUFSIZE);
+                if (count =3D=3D -1) {
+                        fprintf(stderr, "Only able to finish %d blocks
+of data\n", i);
+                        return NULL;
+                }
+        }
+
+        if (!p->odirect) {
+                fsync(fd);
+        }
+        printf("Done with writing %d blocks of data\n", COUNT);
+        close(fd);
+        free(buf);
+        return NULL;
+}
+
+int main(int argc, char* argv[]) {
+        int n,i, odirect;
+        pthread_t *threads;
+        pthread_attr_t pthread_custom_attr;
+        parm *p;
+
+        if (argc !=3D 3)
+        {
+                printf ("Usage: %s <# of threads> <O_DIRECT? 1:0>\n",ar=
+gv[0]);
+                exit(1);
+        }
+
+        n=3Datoi(argv[1]);
+        odirect =3D atoi(argv[2]);
+
+        if ((n < 1) || (n > MAX_THREAD))
+        {
+                printf ("The # of thread should between 1 and
+%d.\n",MAX_THREAD);
+                exit(1);
+        }
+
+        threads=3D(pthread_t *)malloc(n*sizeof(*threads));
+        pthread_attr_init(&pthread_custom_attr);
+
+        p=3D(parm *)malloc(sizeof(parm)*n);
+        /* Start up thread */
+        for (i =3D 0; i < n; i++)
+        {
+                p[i].id =3D i;
+                p[i].odirect =3D odirect;
+                pthread_create(&threads[i], &pthread_custom_attr,
+expand, (void *)(p+i));
+        }
+
+        /* Synchronize the completion of each thread. */
+
+        for (i=3D0; i<n; i++)
+        {
+                pthread_join(threads[i],NULL);
+        }
+        free(p);
+        return 0;
+}
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
