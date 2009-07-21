@@ -1,87 +1,68 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Using O_DIRECT in ext4
-Date: Mon, 20 Jul 2009 22:41:15 -0500
-Message-ID: <4A6538DB.5050202@redhat.com>
-References: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: Re: A tree to pull into linux-next
+Date: Tue, 21 Jul 2009 16:08:52 +1000
+Message-ID: <20090721160852.65038f6c.sfr@canb.auug.org.au>
+References: <20090715193742.GA18583@duck.suse.cz>
+	<20090716164826.f4edbd42.sfr@canb.auug.org.au>
+	<20090716114751.GE21267@mit.edu>
+	<20090716115221.GA24875@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Xiang Wang <xiangw@google.com>
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA1";
+ boundary="Signature=_Tue__21_Jul_2009_16_08_52_+1000_6RLpPKsWj/mxvhZy"
+Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Stephen Tweedie <sct@redhat.com>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger@sun.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:47333 "EHLO mx2.redhat.com"
+Received: from chilli.pcug.org.au ([203.10.76.44]:34997 "EHLO smtps.tip.net.au"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754801AbZGUDlV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Jul 2009 23:41:21 -0400
-In-Reply-To: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com>
+	id S1754891AbZGUGJH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jul 2009 02:09:07 -0400
+In-Reply-To: <20090716115221.GA24875@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Xiang Wang wrote:
-> Hi,
-> 
-> Recently I've been experimenting with O_DIRECT in ext4 to get a
-> feeling of how much file fragmentation will be generated.
-> 
-> On a newly formatted ext4 partition(no-journal), I created a top-level
-> directory and under this top-level directory I ran a test program to
-> generate some files.
-> 
-> The test program does the following:
-> -- create multiple threads(in my test case: 16 threads)
-> -- each thread creates a file with the O_DIRECT flag and keeps
-> extending the file to 1MB
-> Since these threads run concurrently, they compete in block allocation.
-> 
-> After the program ran to a completion, I ran filefrag on each file and
-> measure how many extents there are in the file.
-> And here is a sample result:
-> file0: 6 extents found
-> file1: 20 extents found
-> file2: 7 extents found
-> file3: 6 extents found
-> file4: 6 extents found
-> file5: 5 extents found
-> file6: 6 extents found
-> file7: 20 extents found
-> file8: 20 extents found
-> file9: 20 extents found
-> file10: 20 extents found
-> file11: 20 extents found
-> file12: 20 extents found
-> file13: 19 extents found
-> file14: 19 extents found
-> file15: 19 extents found
-> 
-> Looks like these files are quite heavily fragmented.
+--Signature=_Tue__21_Jul_2009_16_08_52_+1000_6RLpPKsWj/mxvhZy
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Multiple parallel extending DIOs in a single dir is a tough case for a
-filesystem - it has no hints about what to do, and can't use delalloc to
-wait to see what's happening; it just has to allocate things as they
-come, more or less.
+Hi Andrew,
 
-> For comparison, I did the same experiment on an ext2 partition,
-> resulting in each file having only 1 extent.
+On Thu, 16 Jul 2009 13:52:21 +0200 Jan Kara <jack@suse.cz> wrote:
+>
+> > On Thu, Jul 16, 2009 at 04:48:26PM +1000, Stephen Rothwell wrote:
+> > >=20
+> > > I am happy to include this, but (no offense) I would like to hear from
+> > > the ext3 and jbd maintainers (cc'd) about it.
+> > >=20
+> >=20
+> > The main isssue would be that akpm often has ext3 changes stashed in
+> > -mm.  Having a separate ext3 tree makes sense, and if Jan wants to
+> > maintain it, that makes good sense to me, but we should get Andrew's
+> > sign off, and Jan should make sure he has any ext3/jbd patches that
+> > might be in -mm, to avoid any potential patch conflicts.
+>   Yeah. It's upto Andrew. I think he pulls linux-next so he should notice
+> conflicts. Anyway, I don't mind pushing the changes through him if he
+> likes it more that way but I've felt that he's rather busy and this
+> hopefully helps him a bit...
 
-Interestinng, not sure I would have expected that.
+Any comments?
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+http://www.canb.auug.org.au/~sfr/
 
-> I also did the experiments of using buffered writes(by removing the
-> O_DIRECT flag) on ext2 and ext4, both resulting in each file having
-> only 1 extent.
+--Signature=_Tue__21_Jul_2009_16_08_52_+1000_6RLpPKsWj/mxvhZy
+Content-Type: application/pgp-signature
 
-delayed allocation at work I suppose.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
 
-> I am wondering whether this kind of file fragmentation is already a
-> known issue in ext4 when O_DIRECT is used? Is it something by design?
-> Since it seems like ext2 does not have this issue under my test case,
-> is it necessary that we make the behavior of ext4 similar to ext2
-> under situations like this?
+iEYEARECAAYFAkplW3QACgkQjjKRsyhoI8xb8wCgmSobJkeDAWqWFwN56YcmNbfJ
+Yn8AoL21M9x7rpNcgOp7b/AZ2c0sco7J
+=+J+J
+-----END PGP SIGNATURE-----
 
-Is this representative of a real workload?
-
--Eric
-
-> Thanks,
-> Xiang
-
-
+--Signature=_Tue__21_Jul_2009_16_08_52_+1000_6RLpPKsWj/mxvhZy--
