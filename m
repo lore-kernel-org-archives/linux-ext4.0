@@ -1,41 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ioctl32 (was Re: filefrag abort)
-Date: Tue, 21 Jul 2009 19:57:55 -0500
-Message-ID: <4A666413.5030301@redhat.com>
-References: <4A64E650.6020603@cox.net> <20090721020312.GL2416@mit.edu> <4A665E3F.7000109@cox.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 1/5] jbd: Fail to load a journal if it is too short
+Date: Tue, 21 Jul 2009 17:35:48 -0400
+Message-ID: <20090721213548.GA6748@mit.edu>
+References: <1248170659-11771-1-git-send-email-jack@suse.cz> <1248170659-11771-2-git-send-email-jack@suse.cz> <20090721091946.06bcdef8.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Ron Johnson <ron.l.johnson@cox.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:54374 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:41996 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752977AbZGVA6T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jul 2009 20:58:19 -0400
-In-Reply-To: <4A665E3F.7000109@cox.net>
+	id S1751618AbZGVBI5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jul 2009 21:08:57 -0400
+Content-Disposition: inline
+In-Reply-To: <20090721091946.06bcdef8.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ron Johnson wrote:
-> On 2009-07-20 21:03, Theodore Tso wrote:
->> On Mon, Jul 20, 2009 at 04:49:04PM -0500, Ron Johnson wrote:
->>> Hi,
->>>
->>> (Is this OT?  http://sourceforge.net/forum/forum.php?forum_id=7052  
->>> doesn't show much activity...)
->>>
->>> Debian Sid, e2fsprogs 1.41.8-1
->>> Home-rolled 64-bit 2.6.30 with 32-bit userland
->> Should be fixed in e2fsprogs 1.41.8-2
+On Tue, Jul 21, 2009 at 09:19:46AM -0700, Andrew Morton wrote:
 > 
-> ff seems to work now, but I still get this in dmesg:
+> It's odd that sb->s_first/s_maxlen are 32-bit and
+> journal->j_first/j_last are unsigned long.
 > 
-> [188883.274547] ioctl32(filefrag:7086): Unknown cmd fd(3) 
-> cmd(c020660b){t:'f';sz:32} arg(ffacb808) on /some/large/file
-> 
+> These things will only ever be 32-bit unless we change the journal
+> superblock.
 
-Huh, did we miss a compat ioctl for fiemap.... looks like so.  I'll look
-into that tomorrow, thanks.
+In general, if there is any use of "unsigned long" in fs/ext[34], it's
+probably a bug.  This is because ulong is 32-bits on x86, and 64-bits
+on x86_64, so it just wastes memory space on 64-bit platforms.  The
+one exception to this is if the field in question is used by the
+standard bitops functions, which only functions correctly on "unsigned
+long".
 
--Eric
+						- Ted
