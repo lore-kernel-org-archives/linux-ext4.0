@@ -1,74 +1,68 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: ext3 default journal mode
-Date: Tue, 21 Jul 2009 13:44:52 -0400
-Message-ID: <20090721174452.GB28383@shell>
-References: <4A63DB89.2060306@redhat.com> <20090720212904.GI2416@mit.edu> <20090720230402.GB26687@shell> <20090720233620.GC4231@webber.adilger.int>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: Re: >16TB issues
+Date: Tue, 21 Jul 2009 11:52:36 -0700
+Message-ID: <150c16850907211152y3136aadx6ce42a8535a6ed61@mail.gmail.com>
+References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
+	 <20090703143729.GJ20343@webber.adilger.int>
+	 <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
+	 <20090721161018.GH4231@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Stephen C. Tweedie" <sct@redhat.com>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37668 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751134AbZGURpD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Jul 2009 13:45:03 -0400
-Content-Disposition: inline
-In-Reply-To: <20090720233620.GC4231@webber.adilger.int>
+Received: from mail-pz0-f204.google.com ([209.85.222.204]:48680 "EHLO
+	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753974AbZGUSwg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 14:52:36 -0400
+Received: by pzk42 with SMTP id 42so635043pzk.33
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 11:52:36 -0700 (PDT)
+In-Reply-To: <20090721161018.GH4231@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 20, 2009 at 05:36:20PM -0600, Andreas Dilger wrote:
-> On Jul 20, 2009  19:04 -0400, Valerie Aurora wrote:
-> > I think it's extremely accurate and detailed, but too long - people's
-> > brains turn off after about the 15th line or so.  Here's an attempt to
-> > distill your description down and refer out to another document (which
-> > one?) for people who want to learn more.
-> > 
-> > (Sorry for the whitespace damage.)
-> > 
-> > -VAL
-> > 
-> >  config EXT3_DEFAULTS_TO_ORDERED
-> >  	bool "Default to 'data=ordered' in ext3"
-> >  	depends on EXT3_FS
-> >  	help
-> > 
-> >           If the mount options for an ext3 filesystem do not
-> >           include a journal mode, mount it in "data=ordered" mode.
-> 
-> I would make this a bit more clear:
-> 
->             This option sets the default journal mode for ext3 filesystems
-> 	    which do not explicitly specify it in /etc/fstab or at mount
-> 	    time.  It is always possible to set the journal mode for each
-> 	    filesystem independently with "data=writeback", "data=ordered",
-> 	    or "data=journal" mount options.
-> 
-> >           The journal mode options for ext3 have different tradeoffs
-> >           between when data is guaranteed to be on disk and
-> >           performance.  Many applications assume "data=ordered"
-> >           semantics and may lose, destroy, or reveal other user's data
-> >           in other journal modes.  However, "data=ordered" mode can
-> >           also result in major performance problems, including long
-> >           delays before an fsync() call returns.  For details, see:
-> 
-> I think the "... lose, destroy, ..." part is confusing, as it mentions
-> "data=ordered" first and it isn't until the end of the sentence that
-> it is clear that "lose, destroy, ..." does not apply to data=ordered.
-> Also "data=journal" also does not apply in this case, only "data=writeback"
-> so we may as well call that out explicitly.
-> 
->             ...  Many applications do not explicitly sync data and assume
-> 	    "data=ordered" mode.  Saying 'N' here will use "data=writeback"
-> 	    as the default for all ext3 filesystems, and may result in
-> 	    files with no data, or garbage data from deleted files,
-> 	    which is a security risk on a multi-user system.  However, ...
+On Tue, Jul 21, 2009 at 9:10 AM, Andreas Dilger<adilger@sun.com> wrote:
+>> Error reading block 576192512 (Attempt to read block from filesystem
+>> resulted in short read) while reading inode and block bitmaps. =A0Ig=
+nore
+>> error? no
+>>
+>> e2fsck: Can't read an block bitmap while retrying to read bitmaps fo=
+r /dev/md2
+>> e2fsck: aborted
+>
+> What is very strange here is that the block numbers being reported as
+> having read errors are not even beyond the 16TB limit. =A0Assuming 4k=
+B blocks:
+>
+> 576192512 * 4kB =3D 2304770048kB =3D 2198GB
+>
+> Are there error messages in syslog/dmesg when this happens?
 
-Good points.  I think Ted's rewrite addresses most of them, what do you think?
+No, no error messages from the kernel.  But your llverdev utility
+ended up showing problems on the device.  After asking around on the
+MD mailing list, that was apparently because of the page cache index
+limit (at the time I was using a 32-bit kernel).
 
--VAL
+Switching to a 64-bit kernel allowed me to pass the llverdev test and
+get much further with a very large filesystem, but I'm running into
+other issues now.  I wrote up a very simple script to write 2TB files
+onto the filesystem until the device fills up.  It was able to write
+~16TB, but after that it ran into some problems.  My kernel log now
+has lots of messages like these:
+EXT4-fs error (device md2): ext4_mb_generate_buddy: EXT4-fs: group
+163548: 32744 blocks in bitmap, 32768 in gd
+- and -
+EXT4-fs error (device md2): ext4_mb_mark_diskspace_used: Allocating
+block 4294967391 in system zone of 131072 group
+
+I shouldn't need e2fsprogs to be compiled 64-bit as well, right?
+Currently I've got a 64-bit kernel with 32-bit userspace.
+
+-Justin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
