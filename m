@@ -1,69 +1,55 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: >16TB issues
-Date: Tue, 21 Jul 2009 10:10:18 -0600
-Message-ID: <20090721161018.GH4231@webber.adilger.int>
-References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
- <20090703143729.GJ20343@webber.adilger.int>
- <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 1/5] jbd: Fail to load a journal if it is too short
+Date: Tue, 21 Jul 2009 09:19:46 -0700
+Message-ID: <20090721091946.06bcdef8.akpm@linux-foundation.org>
+References: <1248170659-11771-1-git-send-email-jack@suse.cz>
+	<1248170659-11771-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Justin Maggard <jmaggard10@gmail.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:47501 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752624AbZGUQK7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 12:10:59 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n6LGAq3A002003
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 09:10:52 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KN500B00379HB00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 21 Jul 2009 09:10:52 -0700 (PDT)
-In-reply-to: <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:44032 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752679AbZGUQUT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jul 2009 12:20:19 -0400
+In-Reply-To: <1248170659-11771-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 16, 2009  11:04 -0700, Justin Maggard wrote:
-> On Fri, Jul 3, 2009 at 7:38 AM, Andreas Dilger<adilger@sun.com> wrote=
-:
-> >> - =A0Immediately running e2fsck on the volume before ever mounting=
- it
-> >> will not complete, and results in the following:
-> >> # e2fsck -n /dev/md2
-> >> e2fsck 1.41.7 (29-June-2009)
-> >> Error reading block 2435874816 (Attempt to read block from filesys=
-tem
-> >> resulted in short read). =A0Ignore error? no
->=20
-> Error reading block 576192512 (Attempt to read block from filesystem
-> resulted in short read) while reading inode and block bitmaps.  Ignor=
-e
-> error? no
->=20
-> e2fsck: Can't read an block bitmap while retrying to read bitmaps for=
- /dev/md2
-> e2fsck: aborted
+On Tue, 21 Jul 2009 12:04:15 +0200 Jan Kara <jack@suse.cz> wrote:
 
-What is very strange here is that the block numbers being reported as
-having read errors are not even beyond the 16TB limit.  Assuming 4kB bl=
-ocks:
+> Due to on disk corruption, it can happen that journal is too short. Fail
+> to load it in such case so that we don't oops somewhere later.
+> 
+> Reported-by: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/jbd/journal.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 737f724..94a64a1 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -848,6 +848,12 @@ static int journal_reset(journal_t *journal)
+>  
+>  	first = be32_to_cpu(sb->s_first);
+>  	last = be32_to_cpu(sb->s_maxlen);
+> +	if (first + JFS_MIN_JOURNAL_BLOCKS > last + 1) {
+> +		printk(KERN_ERR "JBD: Journal too short (blocks %lu-%lu).\n",
+> +		       first, last);
+> +		journal_fail_superblock(journal);
+> +		return -EINVAL;
+> +	}
+>  
+>  	journal->j_first = first;
+>  	journal->j_last = last;
 
-576192512 * 4kB =3D 2304770048kB =3D 2198GB
+It's odd that sb->s_first/s_maxlen are 32-bit and
+journal->j_first/j_last are unsigned long.
 
-Are there error messages in syslog/dmesg when this happens?
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+These things will only ever be 32-bit unless we change the journal
+superblock.
