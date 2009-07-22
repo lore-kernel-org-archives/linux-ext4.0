@@ -1,63 +1,43 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Using O_DIRECT in ext4
-Date: Tue, 21 Jul 2009 16:46:16 -0700
-Message-ID: <4A665348.7000802@us.ibm.com>
-References: <d5ca277e0907201841i18b83bb6uea757e83d177bc9b@mail.gmail.com> <4A6538DB.5050202@redhat.com> <6601abe90907210745k3730f74dq62f1fe6539722b4d@mail.gmail.com> <4A65EEF3.9090507@redhat.com> <1248210485.18500.2.camel@bobble.smo.corp.google.com>
+From: Ron Johnson <ron.l.johnson@cox.net>
+Subject: ioctl32 (was Re: filefrag abort)
+Date: Tue, 21 Jul 2009 19:33:03 -0500
+Message-ID: <4A665E3F.7000109@cox.net>
+References: <4A64E650.6020603@cox.net> <20090721020312.GL2416@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	Xiang Wang <xiangw@google.com>, linux-ext4@vger.kernel.org
-To: Frank Mayhar <fmayhar@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:57295 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751344AbZGUXvb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 19:51:31 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e39.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n6LNfgiE003347
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 17:41:42 -0600
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n6LNkIhT111642
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 17:46:18 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n6LNkIQN014758
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 17:46:18 -0600
-In-Reply-To: <1248210485.18500.2.camel@bobble.smo.corp.google.com>
+Received: from eastrmmtao107.cox.net ([68.230.240.59]:63055 "EHLO
+	eastrmmtao107.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750779AbZGVAdF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2009 20:33:05 -0400
+Received: from eastrmimpo01.cox.net ([68.1.16.119])
+          by eastrmmtao107.cox.net
+          (InterMail vM.7.08.02.01 201-2186-121-102-20070209) with ESMTP
+          id <20090722003304.QVU4885.eastrmmtao107.cox.net@eastrmimpo01.cox.net>
+          for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2009 20:33:04 -0400
+In-Reply-To: <20090721020312.GL2416@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Frank Mayhar wrote:
-> On Tue, 2009-07-21 at 11:38 -0500, Eric Sandeen wrote:
->   
->> Curt Wohlgemuth wrote:
->>     
->>> On Mon, Jul 20, 2009 at 8:41 PM, Eric Sandeen<sandeen@redhat.com> wrote:
->>>       
->>>> Xiang Wang wrote:
->>>>         
->>>>> For comparison, I did the same experiment on an ext2 partition,
->>>>> resulting in each file having only 1 extent.
->>>>>           
->>>> Interestinng, not sure I would have expected that.
->>>>         
->>> Same with us; we're looking into more variables to understand it.
->>>       
->> To be more clear, I would not have expected ext2 to deal well with it
->> either, is more what I meant ;)  I'm not terribly surprised that ext4
->> gets fragmented.
->>     
->
-> Ext2 deals with it via the block reservation code added some time ago.
-> It turns out it works pretty well for this case.  Ext4, of course,
-> doesn't use the block reservation code.
->   
-ext4 mballoc code use per cpu preallocation, so all threads running on 
-the same cpu which needs new blocks will be assign blocks next to each 
-other. This will makes files created by those threads interleave each 
-other as a result, causing fragmentation. Preallocation will help, but 
-that a persistant preallocation.
+On 2009-07-20 21:03, Theodore Tso wrote:
+> On Mon, Jul 20, 2009 at 04:49:04PM -0500, Ron Johnson wrote:
+>> Hi,
+>>
+>> (Is this OT?  http://sourceforge.net/forum/forum.php?forum_id=7052  
+>> doesn't show much activity...)
+>>
+>> Debian Sid, e2fsprogs 1.41.8-1
+>> Home-rolled 64-bit 2.6.30 with 32-bit userland
+> 
+> Should be fixed in e2fsprogs 1.41.8-2
 
-Mingming
+ff seems to work now, but I still get this in dmesg:
 
+[188883.274547] ioctl32(filefrag:7086): Unknown cmd fd(3) 
+cmd(c020660b){t:'f';sz:32} arg(ffacb808) on /some/large/file
+
+-- 
+Scooty Puff, Sr
+The Doom-Bringer
