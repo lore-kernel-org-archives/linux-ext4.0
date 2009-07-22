@@ -1,63 +1,65 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: Re: mmotm 2009-07-16-14-32 - lockdep whinge in ext3/quota code
-Date: Wed, 22 Jul 2009 14:25:32 -0400
-Message-ID: <3025.1248287132@turing-police.cc.vt.edu>
-References: <200907162134.n6GLY2kt019816@imap1.linux-foundation.org> <15072.1248268669@turing-police.cc.vt.edu>
-            <20090722161923.GD19072@duck.suse.cz>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: Re: >16TB issues
+Date: Wed, 22 Jul 2009 15:27:24 -0700
+Message-ID: <150c16850907221527l3060aa85h883656bcc7d7e1c4@mail.gmail.com>
+References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
+	 <20090703143729.GJ20343@webber.adilger.int>
+	 <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
+	 <20090721161018.GH4231@webber.adilger.int>
+	 <150c16850907211152y3136aadx6ce42a8535a6ed61@mail.gmail.com>
+	 <20090721192123.GK4231@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1248287132_2718P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Stephen Tweedie <sct@redhat.com>,
-	Andreas Dilger <adilger@sun.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from turing-police.cc.vt.edu ([128.173.14.107]:35880 "EHLO
-	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751159AbZGVS0W (ORCPT
-	<RFC822;linux-ext4@vger.kernel.org>); Wed, 22 Jul 2009 14:26:22 -0400
-In-Reply-To: Your message of "Wed, 22 Jul 2009 18:19:23 +0200."
-             <20090722161923.GD19072@duck.suse.cz>
+Received: from mail-pz0-f192.google.com ([209.85.222.192]:36646 "EHLO
+	mail-pz0-f192.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752366AbZGVW1Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jul 2009 18:27:24 -0400
+Received: by pzk30 with SMTP id 30so129398pzk.33
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2009 15:27:24 -0700 (PDT)
+In-Reply-To: <20090721192123.GK4231@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---==_Exmh_1248287132_2718P
-Content-Type: text/plain; charset=us-ascii
+On Tue, Jul 21, 2009 at 12:21 PM, Andreas Dilger<adilger@sun.com> wrote:
+>> I shouldn't need e2fsprogs to be compiled 64-bit as well, right?
+>> Currently I've got a 64-bit kernel with 32-bit userspace.
+>
+> Yes, that is a potential problem.
 
-On Wed, 22 Jul 2009 18:19:23 +0200, Jan Kara said:
+It looks like it certainly is a problem with current e2fsprogs "pu"
+branch.  My latest findings from basic testing (just mkfs.ext4, then
+e2fsck -fy, and -- if e2fsck modified the filesystem -- another e2fsck
+-fy) are as follows:
 
-> From df60fe9a9d554070e6135087e154bd5aad2cc1b5 Mon Sep 17 00:00:00 2001
-> From: Jan Kara <jack@suse.cz>
-> Date: Wed, 22 Jul 2009 18:12:17 +0200
-> Subject: [PATCH] quota: Silence lockdep on quota_on
-> 
-> Commit d01730d74d2b0155da50d44555001706294014f7 didn't completely fix
-> the problem since we still take dqio_mutex and i_mutex in the wrong
-> order. Move taking of i_mutex further down (luckily it's needed only
-> for updating inode flags) below where dqio_mutex is taken.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+1)  64-bit mke2fs + 64-bit e2fsck
+Appears to work fine.  No errors reported anywhere.
 
-Applied that fix to the -mmotm I was testing, and the kernel booted quietly.
-Feel free to attach a:
+2)  64-bit mke2fs + 32-bit e2fsck
+Also appears to work fine.  llverfs --partial looked okay, and e2fsck
+reported no errors.
 
-Tested-by: Valdis Kletnieks <valdis.kletnieks@vt.edu>
+3)  32-bit mke2fs + 64-bit e2fsck
+Mkfs.ext4 must have done something wrong, but e2fsck was able to fix
+it up, and future e2fsck (32 or 64-bit) runs reported no issues.
+e2fsck output was:
+Block bitmap differences:  +(1063780365--1063780367)
++(1063780381--1063780383) +(1063782048--1063782431)
+-(5359140864--5359173631)
+Running mkfs through valgrind doesn't show any obvious errors.
 
-as it goes upstream.  Thanks for the fast patch.
+4) 32-bit mke2fs + 32-bit e2fsck
+Same as (3), for the mkfs and the first e2fsck again reported fixing
+the same block bitmap differences.  But after the first e2fsck was
+complete, the second e2fsck run reported:
+e2fsck: Superblock invalid, trying backup blocks...
+Group descriptor 0 checksum is invalid.  Fix? yes
+Group descriptor 1 checksum is invalid.  Fix? yes
+...
+Group descriptor 81774 checksum is invalid.  Fix? yes
+followed by tons of block bitmap differences.
 
-
---==_Exmh_1248287132_2718P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFKZ1mccC3lWbTT17ARAm9rAJ0V9pKovSzDaDo1lMIBGAt45bAIHQCgqPfv
-9VuvYtaXm2HWgEFVnLCga8k=
-=nEkn
------END PGP SIGNATURE-----
-
---==_Exmh_1248287132_2718P--
+-Justin
