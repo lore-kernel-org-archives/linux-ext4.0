@@ -1,45 +1,49 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: How to fix up mballoc
-Date: Thu, 23 Jul 2009 09:45:38 -0400
-Message-ID: <20090723134538.GC8040@mit.edu>
-References: <20090721001750.GD4231@webber.adilger.int> <20090722074352.GA21869@mit.edu> <4A67EE3F.4090909@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] ext3 and jbd fixes for 2.6.31-rc4
+Date: Thu, 23 Jul 2009 15:53:02 +0200
+Message-ID: <20090723135302.GA23618@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34030 "EHLO thunker.thunk.org"
+Received: from cantor2.suse.de ([195.135.220.15]:54274 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751725AbZGWNqI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Jul 2009 09:46:08 -0400
+	id S1751597AbZGWNxE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Jul 2009 09:53:04 -0400
 Content-Disposition: inline
-In-Reply-To: <4A67EE3F.4090909@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-So I started looking to see how we might be able to improve mballoc to
-avoid freespace fragmentation, and I came up with the following high
-level design.  Does this look sane?   Have I overlooked anything?
+  Hello Linus,
 
-1) In ext4_mb_normalize_request(), if the inode that we are allocating
-does not have any open file descriptors for write (i.e., it's already
-closed and we're allocating via delalloc) _and_ the inode was
-previously opened with O_CREAT and without O_APPEND (checked via a
-flag in EXT4_I(inode)), then do not normalize the size to a power of
-two, but rather to the filesystem blocksize.
+  could you please pull from
 
-The idea here is that we should be trying to find an exact fit, since
-most of the time (except for log files, which get appended; hence the
-O_CREAT && !O_APPEND test) once a file is written, that is probably
-the final size for the file.  So normalizing the size for the
-preallocation area to a power of two will be counterproductive for
-most files.
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
 
-2) If the there has been less than X files opened in Y jiffies the
-parent directory (using the dentry path used to open the file), then
-do not set EXT4_MB_HINT_GROUP_ALLOC in ext4_mb_group_or_file().  We
-can simulate this for without creating this patch to test #1 by
-setting mb_stream_request to 0 (which should completely disable group
-preallocation).
+  to get:
 
-						- Ted
+Jan Kara (4):
+      jbd: Fail to load a journal if it is too short
+      ext3: Fix truncation of symlinks after failed write
+      jbd: Fix a race between checkpointing code and journal_get_write_access()
+      ext3: Get rid of extenddisksize parameter of ext3_get_blocks_handle()
+
+dingdinghua (1):
+      jbd: fix race between write_metadata_buffer and get_write_access
+
+The diffstat is
+
+ fs/ext3/dir.c           |    3 +-
+ fs/ext3/inode.c         |   32 +++++++++-------------
+ fs/jbd/journal.c        |   26 +++++++++++------
+ fs/jbd/transaction.c    |   68 ++++++++++++++++++++++++----------------------
+ include/linux/ext3_fs.h |    2 +-
+ 5 files changed, 67 insertions(+), 64 deletions(-)
+
+							Thanks
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
