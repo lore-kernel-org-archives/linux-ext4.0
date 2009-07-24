@@ -1,42 +1,43 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Report of data corruption on ext4
-Date: Fri, 24 Jul 2009 10:24:17 -0500
-Message-ID: <4A69D221.3000609@redhat.com>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: Re: ioctl32
+Date: Fri, 24 Jul 2009 18:26:56 +0200
+Message-ID: <87k51y11yn.fsf@basil.nowhere.org>
+References: <4A64E650.6020603@cox.net> <20090721020312.GL2416@mit.edu>
+	<4A665E3F.7000109@cox.net> <4A666413.5030301@redhat.com>
+	<20090722170152.GN4231@webber.adilger.int>
+	<4A67EC3B.9060503@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	Ron Johnson <ron.l.johnson@cox.net>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:54081 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752554AbZGXPYS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Jul 2009 11:24:18 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n6OFOJeW010763
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2009 11:24:19 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n6OFOI1o020971
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2009 11:24:18 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n6OFOHa4027347
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2009 11:24:17 -0400
+Received: from one.firstfloor.org ([213.235.205.2]:43025 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751530AbZGXQ1A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jul 2009 12:27:00 -0400
+In-Reply-To: <4A67EC3B.9060503@redhat.com> (Eric Sandeen's message of "Wed, 22 Jul 2009 23:51:07 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-FYI:
+Eric Sandeen <sandeen@redhat.com> writes:
+>
+> /* pointer to compatible structure or no argument */
+> #define COMPATIBLE_IOCTL(cmd) \
+>         { (cmd), do_ioctl32_pointer },
 
-Bug 513221 -  ext4 filesystem corruption and data loss
-https://bugzilla.redhat.com/show_bug.cgi?id=513221
 
-is a bit troubling.
+The modern way to do this is to use the ->compat_ioctl VFS
+method. COMPATIBLE_IOCTL etc are all obsolete.
 
-Unfortunately it has a lot of false-starts in the bug comments so it
-looks a little convoluted and hard to follow.
+> I think adding COMPATIBLE_IOCTL(FS_IOC_FIEMAP); to fs/compat_ioctl.c
+> should be enough, I'll try to get it tested tomorrow.
 
-But the upshot is, he seems to swaths of null bytes in his mail files,
-on 4k boundaries, not correlated with extent boundaries necessarily.
-And he's not had crashes or power losses, he says.
+Nope, add a ->compat_ioctl 
 
-Not a lot to go on yet, but something to keep an eye on.
+When your ioctl is already a unlocked_ioctl you can just use
+the same function. If not convert to unlocked_ioctl first.
 
--Eric
+-Andi
+-- 
+ak@linux.intel.com -- Speaking for myself only.
