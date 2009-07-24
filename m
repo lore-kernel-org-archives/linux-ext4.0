@@ -1,65 +1,62 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: Question on fallocate/ftruncate sequence (and flags)
-Date: Thu, 23 Jul 2009 19:33:04 -0400
-Message-ID: <87f94c370907231633w75054378s5c49f20927fd61b0@mail.gmail.com>
-References: <6601abe90907200936w61ebda92reae368a2b9efac66@mail.gmail.com>
-	 <4A64F37D.7020803@redhat.com>
-	 <1248211771.20743.2.camel@bobble.smo.corp.google.com>
-	 <20090721215421.GM4231@webber.adilger.int>
-	 <1248378517.8421.4.camel@bobble.smo.corp.google.com>
-	 <4A68C9EC.4050301@redhat.com>
-	 <20090723215357.GE4231@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: How to fix up mballoc
+Date: Thu, 23 Jul 2009 20:23:17 -0400
+Message-ID: <20090724002317.GA14052@mit.edu>
+References: <20090721001750.GD4231@webber.adilger.int> <20090722074352.GA21869@mit.edu> <4A67EE3F.4090909@redhat.com> <20090723134538.GC8040@mit.edu> <4A68A153.8030804@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Frank Mayhar <fmayhar@google.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.241]:34330 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753990AbZGWXdF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jul 2009 19:33:05 -0400
-Received: by an-out-0708.google.com with SMTP id d40so1582113and.1
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2009 16:33:04 -0700 (PDT)
-In-Reply-To: <20090723215357.GE4231@webber.adilger.int>
+Received: from thunk.org ([69.25.196.29]:53057 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751004AbZGXAX2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Jul 2009 20:23:28 -0400
+Content-Disposition: inline
+In-Reply-To: <4A68A153.8030804@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>
->> I'm confused (again?) :). =A0I don't see FS_FALLOC_FL in the latest =
-kernel
->> source, and ext2 (well, my ext2 anyway) can't do fallocate(). =A0Goo=
-gle
->> (well, my google search) can't find it either. =A0Is this something =
-in
->> your tree?
->
-> I think I recall Google working on a patch for fallocate on ext2, but
-> it was vetoed from upstream inclusion because we don't want to flog
-> a dead horse.
+On Thu, Jul 23, 2009 at 12:43:47PM -0500, Eric Sandeen wrote:
+> > 1) In ext4_mb_normalize_request(), if the inode that we are allocating
+> > does not have any open file descriptors for write (i.e., it's already
+> > closed and we're allocating via delalloc) _and_ the inode was
+> > previously opened with O_CREAT and without O_APPEND (checked via a
+> > flag in EXT4_I(inode)), then do not normalize the size to a power of
+> > two, but rather to the filesystem blocksize.
+> 
+> I'm sort of woefully ignorant of a lot of the mballoc stuff.
+> 
+> When you say once a file is written that's probably the final size... do
+> you mean when writes are done and it's closed, or when the first write
+> to the file is complete?
+> 
+> I think an awful lot of normal cases write to a file in sub-file-sized
+> chunks (think mp3 or flac encoding, file downloading, etc).
 
-Is that ext2 patch still around?  I'm doing some r&d via ext2 and it
-might handy to have fallocate() for it.
+I meant when the writes are done and the files are closed; hence my
+proposal that we do this do #1 above only if there are no open file
+descriptors for write.  That is, if the file can be written and closed
+by the userspace process before any delayed allocation blocks are
+attempted to be written by the filesystem, we can probably safely
+assume that the file won't grown in size later on.
 
-Greg
---=20
-Greg Freemyer
-Head of EDD Tape Extraction and Processing team
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-Preservation and Forensic processing of Exchange Repositories White Pap=
-er -
-<http://www.norcrossgroup.com/forms/whitepapers/tng_whitepaper_fpe.html=
->
+> Also, I get the !O_APPEND test, but is O_CREAT necessary?  I wonder how
+> much of a hint that really gives us.
 
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Well, it probably should be O_CREAT || O_TRUNC.  The basic idea here is
+to distinguish between a file which gets appended to via syslog, or
+via a mail delivery program that writes 4k of data to the end of a
+mail spool file.  In some cases, such as the mail delivery program, it
+might not use O_APPEND, but instead it might lock the file, seek to
+end of the file, and then right the 4k worth of e-mail.  So if the
+file wasn't freshly created (or truncated) at the last open, maybe we
+should use a more aggressive preallocation --- and in the case of
+/var/mail spool delivery, perhaps the preallocation should persist
+beyond the file getting closed.  (In the future we might want to have
+some hueristics where if we notice that the pattern of file writes is
+a repeated open, write-causing-block-allocation, close, maybe we
+should do some kind of block reservation style scheme while the
+filesystem is mounted and the inode stays in the inode cache.)
+
+	      	      	      	    	     - Ted
