@@ -1,21 +1,46 @@
-From: Vivian Weng <vivian_weng@mba.berkeley.edu>
-Subject: Your Qualification Numbers(G-999-747, UZ-900-77)
-Date: Fri, 24 Jul 2009 18:29:55 -0700
-Message-ID: <D3DB288D69812B448FC1AE332B7F1EC61B76DAF1E9@EXMAIL7.haas.uc.berkeley.edu>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: ioctl32
+Date: Sat, 25 Jul 2009 10:46:10 -0400
+Message-ID: <20090725144610.GA9609@infradead.org>
+References: <4A64E650.6020603@cox.net> <20090721020312.GL2416@mit.edu> <4A665E3F.7000109@cox.net> <4A666413.5030301@redhat.com> <20090722170152.GN4231@webber.adilger.int> <4A67EC3B.9060503@redhat.com> <87k51y11yn.fsf@basil.nowhere.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Ron Johnson <ron.l.johnson@cox.net>, linux-ext4@vger.kernel.org
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gateway-b.Haas.Berkeley.EDU ([128.32.222.6]:22094 "EHLO
-	gateway-b.haas.berkeley.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752215AbZGYBjl convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Jul 2009 21:39:41 -0400
-Content-Language: en-US
+Received: from bombadil.infradead.org ([18.85.46.34]:48225 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751484AbZGYOqb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Jul 2009 10:46:31 -0400
+Content-Disposition: inline
+In-Reply-To: <87k51y11yn.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-You have been choosen by the U.N Foundation to receive a Grant Donation of $1,000,000.00 USD.Your Qualification Numbers(G-999-747, UZ-900-77),Contact David Bricks with your Name,address,country for claim: E-mail: davidbricks@live.co.uk
-United Nations Foundation.
-http://www.unfoundation.org/
+On Fri, Jul 24, 2009 at 06:26:56PM +0200, Andi Kleen wrote:
+> > /* pointer to compatible structure or no argument */
+> > #define COMPATIBLE_IOCTL(cmd) \
+> >         { (cmd), do_ioctl32_pointer },
+> 
+> 
+> The modern way to do this is to use the ->compat_ioctl VFS
+> method. COMPATIBLE_IOCTL etc are all obsolete.
+> 
+> > I think adding COMPATIBLE_IOCTL(FS_IOC_FIEMAP); to fs/compat_ioctl.c
+> > should be enough, I'll try to get it tested tomorrow.
+> 
+> Nope, add a ->compat_ioctl 
+> 
+> When your ioctl is already a unlocked_ioctl you can just use
+> the same function. If not convert to unlocked_ioctl first.
+
+fiemap is handled in generic code and never enters ->whatever_ioctl.
+Because of that there are only two ways to handle it:
+
+  (1) add it to the static translation table in fs/compat_ioctl.c
+  (2) add a special case to compat_sys_ioctl
+
+Number one is the much simpler solution for a fully compatible ioctl.
+
