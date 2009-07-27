@@ -1,29 +1,40 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: e2fsck results on a 96TB fs.
-Date: Mon, 27 Jul 2009 14:37:57 -0400
-Message-ID: <20090727183756.GR27582@shell>
-References: <8735.1248711127@gamaville.dokosmarshall.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] hook up compat handler for FIEMAP ioctl
+Date: Mon, 27 Jul 2009 15:09:22 -0500
+Message-ID: <4A6E0972.5010803@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Nick Dokos <nicholas.dokos@hp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42450 "EHLO mx1.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:50525 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753842AbZG0Sh5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Jul 2009 14:37:57 -0400
-Content-Disposition: inline
-In-Reply-To: <8735.1248711127@gamaville.dokosmarshall.org>
+	id S1754561AbZG0UJY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Jul 2009 16:09:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 27, 2009 at 12:12:07PM -0400, Nick Dokos wrote:
-> This is with 2.6.31-rc4 (and some necessary DM fixes - I got those
-> from agk's tree last Friday - they *may* be in mainline
-> by now). e2fsprogs was current as of late last week.
+The FIEMAP_IOC_FIEMAP mapping ioctl was missing a 32-bit
+compat handler; the structure is nicely aligned, padded,
+and sized, so it should be just this simple.
 
-Nice!  We still have some bugs, but it's nice to see that 64-bit
-e2fsprogs is getting to the point where we are finding bugs in other
-pieces of software more often than in e2fsprogs. :)
+Tested w/ 32-bit ioctl tester (from Josef) on a 64-bit
+kernel on ext4.
 
--VAL
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/compat_ioctl.c b/fs/compat_ioctl.c
+index f28f070..f91fd51 100644
+--- a/fs/compat_ioctl.c
++++ b/fs/compat_ioctl.c
+@@ -1905,6 +1905,7 @@ COMPATIBLE_IOCTL(FIONCLEX)
+ COMPATIBLE_IOCTL(FIOASYNC)
+ COMPATIBLE_IOCTL(FIONBIO)
+ COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
++COMPATIBLE_IOCTL(FS_IOC_FIEMAP)
+ /* 0x00 */
+ COMPATIBLE_IOCTL(FIBMAP)
+ COMPATIBLE_IOCTL(FIGETBSZ)
+
