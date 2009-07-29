@@ -1,40 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] [RFC] mkjournal: zero journal blocks only when
-	necessary
-Date: Wed, 29 Jul 2009 13:16:49 -0400
-Message-ID: <20090729171649.GB14105@mit.edu>
-References: <71a0d6ff0905120549h628146d8p3def31b09b79199a@mail.gmail.com> <1248883096-2294-1-git-send-email-alexander.shishckin@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH RFC] Insure direct IO writes do not use the page cache
+Date: Wed, 29 Jul 2009 12:18:09 -0500
+Message-ID: <4A708451.4060908@redhat.com>
+References: <6601abe90907281728h22be79fenc68a16b578e28a91@mail.gmail.com> <6601abe90907290910x7cf1122cwac689d1f106326d3@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Alexander Shishkin <alexander.shishckin@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46121 "EHLO thunker.thunk.org"
+Received: from mx2.redhat.com ([66.187.237.31]:35196 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780AbZG2RRE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Jul 2009 13:17:04 -0400
-Content-Disposition: inline
-In-Reply-To: <1248883096-2294-1-git-send-email-alexander.shishckin@gmail.com>
+	id S1750776AbZG2RST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jul 2009 13:18:19 -0400
+In-Reply-To: <6601abe90907290910x7cf1122cwac689d1f106326d3@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 29, 2009 at 06:58:16PM +0300, Alexander Shishkin wrote:
-> Will something like this do?
+Curt Wohlgemuth wrote:
+> Although replying to self is somewhat bad etiquette...
+
+nah :)
+
+> I've found at least one issue with this patch:  Although the semantics
+> seem correct, since the late-converted-to-init extents are not merged
+> with neighbors, you can easily end up with thousands of extents :-( .
+> Each write to fallocate'd space results in its own initialized extent.
 > 
-> The only blocks that might theoretically (although very unlikely) be
-> dangerous for newly-created filesystem's integrity are those that
-> still contain valid signatures, others can be safely skipped.
+> I'm not sure how expensive it would be to merge the extents when they
+> are converted to initialized after the DIO write goes through.
 > 
-> Since reads are generally faster (or at least, not slower), this
-> gives some performance increase during mkfs run.
+> Curt
+> 
 
-Did you bother benchmarking what this would do on normal disk drives?
-Previously we were writing out the blocks to be zeroed in large chunks
-at a time for speed reasons.  This patch reduces it to reading the
-journal one block at a time, and if it contains a valid signature it
-writes a zero block.
+hm I think I've seen other cases where things don't get merged as well
+as I'd expect.
 
-The patch also doesn't check for commit blocks, which are just as much
-a problem (if not more so) than revoke blocks.
+I haven't replied to the first mail yet because I have a lot of
+remembering to do about xfs first, but I'm fairly certain that at least
+your use of blockdev_direct_IO_own_locking() is not correct.  See for
+example all the comments around __blockdev_direct_IO about i_mutex, and
+all the xfs_ilock/xfs_iolock calls in xfs_read/xfs_write.
 
-						- Ted
+There is a lot of locking for the fs to handle if you want to go that route.
+
+Also, IIRC xfs does the conversion to written (vs. unwritten) extents in
+an IO completion handler, just FWIW.
+
+-Eric
