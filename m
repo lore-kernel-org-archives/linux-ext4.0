@@ -1,108 +1,55 @@
-From: Alexander Shishkin <alexander.shishckin@gmail.com>
-Subject: [PATCH] [RFC] mkjournal: zero journal blocks only when necessary
-Date: Wed, 29 Jul 2009 18:58:16 +0300
-Message-ID: <1248883096-2294-1-git-send-email-alexander.shishckin@gmail.com>
-References: <71a0d6ff0905120549h628146d8p3def31b09b79199a@mail.gmail.com>
-Cc: linux-ext4@vger.kernel.org,
-	Alexander Shishkin <alexander.shishckin@gmail.com>
-To: Theodore Tso <tytso@mit.edu>
+From: Frank Mayhar <fmayhar@google.com>
+Subject: Re: Question on fallocate/ftruncate sequence (and flags)
+Date: Wed, 29 Jul 2009 08:59:22 -0700
+Message-ID: <1248883162.16458.0.camel@bobble.smo.corp.google.com>
+References: <6601abe90907200936w61ebda92reae368a2b9efac66@mail.gmail.com>
+	 <4A64F37D.7020803@redhat.com>
+	 <1248211771.20743.2.camel@bobble.smo.corp.google.com>
+	 <20090721215421.GM4231@webber.adilger.int>
+	 <1248378517.8421.4.camel@bobble.smo.corp.google.com>
+	 <4A68C9EC.4050301@redhat.com>
+	 <1248382893.14764.8.camel@bobble.smo.corp.google.com>
+	 <20090729152923.GA25919@atrey.karlin.mff.cuni.cz>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Curt Wohlgemuth <curtw@google.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.nokia.com ([192.100.122.230]:19843 "EHLO
-	mgw-mx03.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750977AbZG2P7U (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jul 2009 11:59:20 -0400
-In-Reply-To: <71a0d6ff0905120549h628146d8p3def31b09b79199a@mail.gmail.com>
+Received: from smtp-out.google.com ([216.239.33.17]:21322 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753091AbZG2QA7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jul 2009 12:00:59 -0400
+In-Reply-To: <20090729152923.GA25919@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Will something like this do?
+On Wed, 2009-07-29 at 17:29 +0200, Jan Kara wrote:
+> > On Thu, 2009-07-23 at 15:37 -0500, Eric Sandeen wrote:
+> > > As for:
+> > > 
+> > > #define EXT4_EXT_MIGRATE                0x00100000 /* Inode is migrating */
+> > > 
+> > > this is not in the mask that FS_IOC_GETFLAGS can see ... and I don't
+> > > think anyone else uses FS_DIRECTIO_FL.
+> > > 
+> > > I'm not sure if the flags not in FS_FL_USER_VISIBLE are supposed to be
+> > > fs-unique.
+> > 
+> > The flag will need to be generic in any case, since inode_setattr() has
+> > to look at it when it's deciding whether or not to call vmtruncate().
+> > Other filesystems that properly implement fallocate() may want to use it
+> > for this purpose as well.
+>   Actually, Nick Piggin is changing the truncate path (the patches may
+> already be in Al Viro's tree) so that filesystem can come in earlier in
+> the truncate path and can make the decision when to truncate and when
+> not on its own. I guess this would help you...
 
-The only blocks that might theoretically (although very unlikely) be
-dangerous for newly-created filesystem's integrity are those that
-still contain valid signatures, others can be safely skipped.
-
-Since reads are generally faster (or at least, not slower), this
-gives some performance increase during mkfs run.
-
-Signed-off-by: Alexander Shishkin <alexander.shishckin@gmail.com>
----
- lib/ext2fs/mkjournal.c |   49 ++++++++++++++++++++++++++++++++++++++++++-----
- 1 files changed, 43 insertions(+), 6 deletions(-)
-
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index f5a9dba..bb6e748 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -144,6 +144,44 @@ errout:
-  * attempt to free the static zeroizing buffer.  (This is to keep
-  * programs that check for memory leaks happy.)
-  */
-+static errcode_t jzero_blocks(io_channel channel, unsigned long long block,
-+		int count)
-+{
-+	errcode_t retval;
-+	unsigned long long n;
-+	static void *__buf = NULL;
-+	struct unix_private_data *data;
-+
-+	data = channel->private_data;
-+	if (!__buf)
-+		__buf = malloc(channel->block_size);
-+	if (!__buf)
-+		return -1;
-+
-+	for (n = block; n < block + count; n++) {
-+		journal_header_t *jr;
-+
-+		retval = io_channel_read_blk(channel, n, 1, __buf);
-+		if (retval)
-+			goto out_err;
-+		continue;
-+
-+		jr = __buf;
-+		if (jr->h_magic == htonl(JFS_MAGIC_NUMBER) &&
-+		    jr->h_blocktype == htonl(JFS_REVOKE_BLOCK)) {
-+			memset(__buf, 0, channel->block_size);
-+			retval = io_channel_write_blk(channel, n, 1, __buf);
-+		}
-+
-+		if (retval)
-+			goto out_err;
-+	}
-+
-+	return 0;
-+out_err:
-+	return -1;
-+}
-+
- #define STRIDE_LENGTH 8
- errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_t blk, int num,
- 			     blk_t *ret_blk, int *ret_count)
-@@ -238,10 +276,9 @@ static int mkjournal_proc(ext2_filsys	fs,
- 			    (es->zero_count < 1024))
- 				es->zero_count++;
- 			else {
--				retval = ext2fs_zero_blocks(fs,
--							    es->blk_to_zero,
--							    es->zero_count,
--							    0, 0);
-+				retval = jzero_blocks(fs->io,
-+						es->blk_to_zero,
-+						es->zero_count);
- 				es->zero_count = 0;
- 			}
- 		}
-@@ -339,8 +376,8 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 		goto errout;
- 	}
- 	if (es.zero_count) {
--		retval = ext2fs_zero_blocks(fs, es.blk_to_zero,
--					    es.zero_count, 0, 0);
-+		retval = jzero_blocks(fs->io, es.blk_to_zero,
-+					    es.zero_count);
- 		if (retval)
- 			goto errout;
- 	}
+Yes, immensely, but it looks like that's a bit in the future...
 -- 
-1.6.3.3
+Frank Mayhar <fmayhar@google.com>
+Google, Inc.
 
