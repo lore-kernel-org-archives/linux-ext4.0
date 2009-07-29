@@ -1,260 +1,124 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: [PATCH RFC] Insure direct IO writes do not use the page cache
-Date: Tue, 28 Jul 2009 17:28:05 -0700
-Message-ID: <6601abe90907281728h22be79fenc68a16b578e28a91@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
+Date: Wed, 29 Jul 2009 14:58:12 +0200
+Message-ID: <20090729125812.GL19209@duck.suse.cz>
+References: <20090420162017.GA28079@gradator.net> <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Sylvain Rochet <gradator@gradator.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:45451 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752349AbZG2A2K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jul 2009 20:28:10 -0400
-Received: from spaceape12.eur.corp.google.com (spaceape12.eur.corp.google.com [172.28.16.146])
-	by smtp-out.google.com with ESMTP id n6T0S9AC025247
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Jul 2009 01:28:09 +0100
-Received: from wf-out-1314.google.com (wfc28.prod.google.com [10.142.3.28])
-	by spaceape12.eur.corp.google.com with ESMTP id n6T0S6xB007148
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2009 17:28:06 -0700
-Received: by wf-out-1314.google.com with SMTP id 28so116523wfc.10
-        for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2009 17:28:05 -0700 (PDT)
+Received: from cantor.suse.de ([195.135.220.2]:40521 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755041AbZG2M6N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jul 2009 08:58:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20090728164142.GA13662@gradator.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This insures that direct IO writes to fallocate'd file space do not use the
-page cache.
+On Tue 28-07-09 18:41:42, Sylvain Rochet wrote:
+> Hi,
+> 
+> 
+> On Tue, Jul 28, 2009 at 03:52:26PM +0200, Jan Kara wrote:
+> > On Tue 28-07-09 13:27:15, Sylvain Rochet wrote:
+> > > On Mon, Jul 27, 2009 at 05:42:53PM +0200, Jan Kara wrote:
+> > > > On Sat 25-07-09 17:17:52, Sylvain Rochet wrote:
+> > > > > > 
+> > > > > > Can you still see the corruption with 2.6.30 kernel?
+> > > > > 
+> > > > > Not upgraded yet, we'll give a try.
+> > > 
+> > > Done, now featuring 2.6.30.3 ;)
+> > 
+> > OK, drop me an email if you will see corruption also with this kernel.
+> 
+> Lets move out the corrupted directory ;)
+> 
+> root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache/e# rm -- * .ok 
+> rm: cannot remove `spip%3Farticle19.f8740dca': Input/output error
+> root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache/e# cd ..
+> root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache# mv e/ /data/lost+found/wooops
+  Actually, leaving that file in the filesystem can potentially lead to
+strange effects because eventually the inode "spip%3Farticle19.f8740dca"
+points to gets reallocated and then you can get e.g. a hardlinked
+directory. On the other hand having it lost+found should be safe enough.
 
+> > > > This is probably the misleading output from ext3_iget(). It should give
+> > > > you EIO in the latest kernel.
+> > > 
+> > > root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache/e# cat spip%3Farticle19.f8740dca 
+> > > cat: spip%3Farticle19.f8740dca: Input/output error
+> > > 
+> > > It has much more sense now. We thought the problem was around NFS due 
+> > > the the previous error message, actually this is probably not the best 
+> > > looking path.
+> > 
+> > Yes, EIO makes more sence. I think the problem is NFS connected anyway
+> > though :). But I don't have a clue how it can happen yet. Maybe I can try
+> > adding some low-cost debugging checks if you'd be willing to run such
+> > kernel...
+> 
+> Without any problem, we have 24/7/365 physical access and we don't need 
+> to provide high-availability services.
+  Cool, I'll try to cook up something then.
 
-      Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+> Anyway, the data hosted aren't that important, there is little or even 
+> no need for strict confidentiality, so we will be happy to provide ssh 
+> access to whom would like to look deeper into this issue.
+  I don't need to go that far (at least for now) but thanks for the offer.
 
----
+> > I'm adding to CC linux-nfs just in case someone has an idea.
+> > 
+> > > >   Ah, OK, here's the problem. The directory points to a file which is
+> > > > obviously deleted (note the "Links: 0"). All the content of the inode seems
+> > > > to indicate that the file was correctly deleted (you might check that the
+> > > > corresponding bit in the bitmap is cleared via: "icheck 88541562").
+> > > 
+> > > root@bazooka:~# debugfs /dev/md10
+> > > debugfs 1.40-WIP (14-Nov-2006)
+> > > debugfs:  icheck 88541562
+> > > Block   Inode number
+> > > 88541562        <block not found>
+> > 
+> > Ah, wrong debugfs command. I should have written:
+> > testi <88541562>
+> 
+> debugfs:  testi <88541562>
+> Inode 88541562 is not in use
+  Yes, again this confirms that the inode was just correctly deleted. But
+somehow a pointer to it remained in the directory.
 
-I implemented Aneesh's ideas for this solution, but have some questions.
+> > > >   The question is how it could happen the directory still points to the
+> > > > inode. Really strange. It looks as if we've lost a write to the directory
+> > > > but I don't see how. Are there any suspitious kernel messages in this case?
+> > > 
+> > > There were nothing for a while, but since the reboot there are some 
+> > > about this inode: 
+> > > 
+> > > EXT3-fs error (device md10): ext3_lookup: deleted inode referenced: 88541562
+> > 
+> > Yes, that's to be expected given the corruption any NFS error messages?
+> 
+> There are some error messages on NFS clients, however they are quite old.
+> 
+> Apr 19 15:38:21 gin kernel: NFS: Buggy server - nlink == 0!
+> May  3 20:00:52 gin kernel: NFS: Buggy server - nlink == 0!
+> May  3 23:24:03 gin kernel: NFS: Buggy server - nlink == 0!
+> May  7 11:40:57 gin kernel: NFS: Buggy server - nlink == 0!
+> May  7 14:41:02 gin kernel: NFS: Buggy server - nlink == 0!
+> May 26 11:10:42 cognac kernel: NFS: Buggy server - nlink == 0!
+> May 26 11:13:28 cognac kernel: NFS: Buggy server - nlink == 0!
+> May 26 12:34:39 cognac kernel: NFS: Buggy server - nlink == 0!
+> May 26 12:39:43 cognac kernel: NFS: Buggy server - nlink == 0!
+> 
+> This is obviously related to the corruption.
+  Yes, this is a consequence of the bug - somebody deleted an inode because
+i_nlink dropped down to 0 but the inode was in fact still referenced.
 
-I've verified that the page cache isn't  used, regardless of whether
-FALLOC_FL_KEEP_SIZE is used in the fallocate() call or not.
-
-The changes:
-   - New inode state flag to indicate that a DIO write is ongoing
-
-   - ext4_ext_convert_to_initialized() will mark any new extent it creates
-     as uninitialized, if this new EXT4_STATE_DIO_WRITE flag is set.
-
-   - ext4_direct_IO() will set this flag for any write.
-
-     It now calls blockdev_direct_IO_own_locking() to do the I/O.
-
-     After return from blockdev_direct_IO_own_locking() it clears the flag
-     and calls a new routine to mark all extents containing the returned
-     blocks as initialized.
-
-I'm a bit uncertain about the use of DIO_OWN_LOCKING; I looked at the XFS
-code to see if it acquired any other locks while using this flag, but didn't
-see any.  Suggestions/corrections welcome.
-
-
-diff -Naur orig/fs/ext4/ext4.h new/fs/ext4/ext4.h
---- orig/fs/ext4/ext4.h	2009-07-28 17:02:25.000000000 -0700
-+++ new/fs/ext4/ext4.h	2009-07-28 17:02:19.000000000 -0700
-@@ -272,6 +272,7 @@
- #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
- #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
- #define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
-+#define EXT4_STATE_DIO_WRITE		0x00000020 /* This is a DIO write */
-
- /* Used to pass group descriptor data when online resize is done */
- struct ext4_new_group_input {
-diff -Naur orig/fs/ext4/ext4_extents.h new/fs/ext4/ext4_extents.h
---- orig/fs/ext4/ext4_extents.h	2009-07-28 17:02:40.000000000 -0700
-+++ new/fs/ext4/ext4_extents.h	2009-07-28 17:02:34.000000000 -0700
-@@ -242,5 +242,7 @@
- 						ext4_lblk_t *, ext4_fsblk_t *);
- extern void ext4_ext_drop_refs(struct ext4_ext_path *);
- extern int ext4_ext_check_inode(struct inode *inode);
-+extern int ext4_ext_mark_extents_init(struct inode *inode, loff_t offset,
-+							int nr_bytes);
- #endif /* _EXT4_EXTENTS */
-
-diff -Naur orig/fs/ext4/extents.c new/fs/ext4/extents.c
---- orig/fs/ext4/extents.c	2009-07-28 17:02:54.000000000 -0700
-+++ new/fs/ext4/extents.c	2009-07-28 17:02:49.000000000 -0700
-@@ -2563,6 +2563,13 @@
- 			ex3->ee_block = cpu_to_le32(iblock);
- 			ext4_ext_store_pblock(ex3, newblock);
- 			ex3->ee_len = cpu_to_le16(allocated);
-+
-+			/* For direct I/O, we mark this as uninitialized, and
-+			 * set it as initialized when we finish the direct
-+			 * IO. */
-+			if (EXT4_I(inode)->i_state & EXT4_STATE_DIO_WRITE)
-+				ext4_ext_mark_uninitialized(ex3);
-+
- 			err = ext4_ext_insert_extent(handle, inode, path, ex3);
- 			if (err == -ENOSPC) {
- 				err =  ext4_ext_zeroout(inode, &orig_ex);
-@@ -2698,6 +2705,13 @@
- 	ex2->ee_block = cpu_to_le32(iblock);
- 	ext4_ext_store_pblock(ex2, newblock);
- 	ex2->ee_len = cpu_to_le16(allocated);
-+
-+	/* For direct I/O, we mark this as uninitialized, and
-+	 * set it as initialized when we finish the direct
-+	 * IO. */
-+	if (EXT4_I(inode)->i_state & EXT4_STATE_DIO_WRITE)
-+		ext4_ext_mark_uninitialized(ex2);
-+
- 	if (ex2 != ex)
- 		goto insert;
- 	/*
-@@ -2763,6 +2777,109 @@
- 	return err;
- }
-
-+
-+static int handle_uninit_extent(struct ext4_ext_path *path,
-+				struct inode *inode,
-+				struct ext4_extent *ex)
-+{
-+	handle_t *handle;
-+	int credits;
-+	int started;
-+	int depth = ext_depth(inode);
-+	int ret = 0;
-+
-+	if (ext4_ext_is_uninitialized(ex)) {
-+		handle = ext4_journal_current_handle();
-+		started = 0;
-+
-+		if (!handle) {
-+			credits =
-+			     ext4_chunk_trans_blocks(inode, 1);
-+			handle = ext4_journal_start(inode,
-+						    credits);
-+			if (IS_ERR(handle)) {
-+				ret = PTR_ERR(handle);
-+				goto out;
-+			}
-+			started = 1;
-+		}
-+		/* Mark as initialized */
-+		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex));
-+
-+		ret = ext4_ext_dirty(handle, inode, path + depth);
-+
-+		if (started)
-+			ext4_journal_stop(handle);
-+	}
-+out:
-+	return ret;
-+}
-+
-+/* Called after direct I/O writes, to make sure that all extents are marked
-+ * as initialized. */
-+int ext4_ext_mark_extents_init(struct inode *inode,
-+				loff_t offset,
-+				int nr_bytes)
-+{
-+	struct ext4_ext_path *path = NULL;
-+	struct ext4_extent *ex;
-+	int depth;
-+	int nr_blocks = nr_bytes >> inode->i_blkbits;
-+	ext4_lblk_t first_block = offset >> inode->i_blkbits;
-+	ext4_lblk_t block;
-+	int ret;
-+
-+	/* Handle the extent for the first block */
-+	path  = ext4_ext_find_extent(inode, first_block, NULL);
-+	if (IS_ERR(path)) {
-+		ret = PTR_ERR(path);
-+		path = NULL;
-+		goto out;
-+	}
-+	depth = ext_depth(inode);
-+	ex    = path[depth].p_ext;
-+
-+	ret = handle_uninit_extent(path, inode, ex);
-+	if (ret != 0) {
-+		goto out;
-+	}
-+
-+	/* Check the rest of the blocks; if they're in different
-+	 * extents, handle those as well. */
-+	for (block = first_block + 1;
-+	     block < first_block + nr_blocks;
-+	     block++) {
-+
-+		/* Only look for new extents now */
-+		if (block >= ex->ee_block &&
-+				block < (ex->ee_block + ex->ee_len))
-+			continue;
-+
-+		ext4_ext_drop_refs(path);
-+		path  = ext4_ext_find_extent(inode, first_block, path);
-+		if (IS_ERR(path)) {
-+			ret = PTR_ERR(path);
-+			path = NULL;
-+			goto out;
-+		}
-+		depth = ext_depth(inode);
-+		ex    = path[depth].p_ext;
-+
-+		ret = handle_uninit_extent(path, inode, ex);
-+		if (ret != 0) {
-+			goto out;
-+		}
-+	}
-+out:
-+	if (path) {
-+		ext4_ext_drop_refs(path);
-+		kfree(path);
-+	}
-+
-+	return ret;
-+}
-+
-+
- /*
-  * Block allocation/map/preallocation routine for extents based files
-  *
-diff -Naur orig/fs/ext4/inode.c new/fs/ext4/inode.c
---- orig/fs/ext4/inode.c	2009-07-28 17:02:04.000000000 -0700
-+++ new/fs/ext4/inode.c	2009-07-28 17:23:59.000000000 -0700
-@@ -3318,11 +3318,33 @@
- 			ei->i_disksize = inode->i_size;
- 			ext4_journal_stop(handle);
- 		}
--	}
-+		/* This prevents initializing extents too early */
-+		if (ei->i_flags & EXT4_EXTENTS_FL)
-+			ei->i_state |= EXT4_STATE_DIO_WRITE;
-+	}
-+
-+	ret = blockdev_direct_IO_own_locking(rw, iocb, inode,
-+						inode->i_sb->s_bdev, iov,
-+						offset, nr_segs,
-+						ext4_get_block, NULL);
-+
-+	/* We now need to look at all extents for the blocks that were
-+	 * written out, and mark them as initialized.  Note that they've
-+	 * already been converted, simply not yet marked as init. */
-+	if (rw == WRITE && ei->i_flags & EXT4_EXTENTS_FL) {
-+		BUG_ON((ei->i_state & EXT4_STATE_DIO_WRITE) == 0);
-+		ei->i_state |= ~EXT4_STATE_DIO_WRITE;
-+
-+		if (ret > 0) {
-+			int ret2;
-
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				 offset, nr_segs,
--				 ext4_get_block, NULL);
-+			ret2 = ext4_ext_mark_extents_init(inode, offset, ret);
-+			if (ret2 != 0) {
-+				ret = ret2;
-+				goto out;
-+			}
-+		}
-+	}
-
- 	if (orphan) {
- 		int err;
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
