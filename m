@@ -1,72 +1,59 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH RFC] Insure direct IO writes do not use the page cache
-Date: Thu, 30 Jul 2009 16:36:11 +0530
-Message-ID: <20090730110611.GA27453@skywalker>
-References: <6601abe90907281728h22be79fenc68a16b578e28a91@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] JBD2: round commit timer up to avoid uncommitted	transaction
+Date: Thu, 30 Jul 2009 19:47:10 +0200
+Message-ID: <20090730174710.GB9223@atrey.karlin.mff.cuni.cz>
+References: <20090727202209.GU4231@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alex Zhuravlev <Alex.Zhuravlev@sun.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:37051 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750961AbZG3LGY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jul 2009 07:06:24 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp08.au.ibm.com (8.14.3/8.13.1) with ESMTP id n6VGtCaW003097
-	for <linux-ext4@vger.kernel.org>; Sat, 1 Aug 2009 02:55:12 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n6UB6Njv512222
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Jul 2009 21:06:23 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n6UB6NdT027470
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Jul 2009 21:06:23 +1000
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:54830 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751912AbZG3RrK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jul 2009 13:47:10 -0400
 Content-Disposition: inline
-In-Reply-To: <6601abe90907281728h22be79fenc68a16b578e28a91@mail.gmail.com>
+In-Reply-To: <20090727202209.GU4231@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 28, 2009 at 05:28:05PM -0700, Curt Wohlgemuth wrote:
-> This insures that direct IO writes to fallocate'd file space do not use the
-> page cache.
+> jbd and jbd2 fixes: fix jiffie rounding in jbd commit timer setup code.
+> Rounding down could cause the timer to be fired before the corresponding
+> transaction has expired.  That transaction can stay not committed forever if
+> no new transaction is created or expicit sync/umount happens.
 > 
-> 
->       Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-> 
-> ---
-> 
-> I implemented Aneesh's ideas for this solution, but have some questions.
-> 
-> I've verified that the page cache isn't  used, regardless of whether
-> FALLOC_FL_KEEP_SIZE is used in the fallocate() call or not.
-> 
-> The changes:
->    - New inode state flag to indicate that a DIO write is ongoing
-> 
->    - ext4_ext_convert_to_initialized() will mark any new extent it creates
->      as uninitialized, if this new EXT4_STATE_DIO_WRITE flag is set.
+> Signed-off-by: Alex Zhuravlev (Tomas) <alex.zhuravlev@sun.com>
+> Signed-off-by: Andreas Dilger <adilger@sun.com>
+  Looks fine. You can add:
+Acked-by: Jan Kara <jack@suse.cz>
+  How about a similar JBD fix?
 
-That will have issues with a parallel get_block due to writepages. ext4_da_writepages
-will end up calling get_block on uninit extent without holding inode->i_mutex. So
-you can have a direct_IO -> get_block and a writepages -> get_block going together
-now if we mark extent as uninit based on a inode flag we will have to fix the
-writepages call path also. Instead of inode flag you may want to track the extent
-(you can look at the patch from Chris Mason implementing data=guarded for ext3. Chris
-Mason's patch track buffer_head what you want is to track extent. And convert the
-extent to init using end_io call back. 
-
-
+									Honza
+> Index: linux-2.6.27.21-0.1/fs/jbd2/transaction.c
+> ===================================================================
+> --- linux-2.6.27.21-0.1.orig/fs/jbd2/transaction.c	2009-06-10 11:11:41.000000000 -0600
+> +++ linux-2.6.27.21-0.1/fs/jbd2/transaction.c	2009-06-10 11:12:32.000000000 -0600
+> @@ -54,7 +54,7 @@
+>  	INIT_LIST_HEAD(&transaction->t_inode_list);
+>  
+>  	/* Set up the commit timer for the new transaction. */
+> -	journal->j_commit_timer.expires = round_jiffies(transaction->t_expires);
+> +	journal->j_commit_timer.expires = round_jiffies_up(transaction->t_expires);
+>  	add_timer(&journal->j_commit_timer);
+>  
+>  	J_ASSERT(journal->j_running_transaction == NULL);
 > 
->    - ext4_direct_IO() will set this flag for any write.
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
 > 
->      It now calls blockdev_direct_IO_own_locking() to do the I/O.
-> 
->      After return from blockdev_direct_IO_own_locking() it clears the flag
->      and calls a new routine to mark all extents containing the returned
->      blocks as initialized.
-> 
-> I'm a bit uncertain about the use of DIO_OWN_LOCKING; I looked at the XFS
-> code to see if it acquired any other locks while using this flag, but didn't
-> see any.  Suggestions/corrections welcome.
-
--aneesh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
