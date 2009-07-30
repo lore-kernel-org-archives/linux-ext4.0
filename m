@@ -1,40 +1,52 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: BUG? a suspected deadlock bug at ext4_fill_super()
-Date: Thu, 30 Jul 2009 20:02:41 +0200
-Message-ID: <20090730180241.GC9223@atrey.karlin.mff.cuni.cz>
-References: <2014bcab0907292009y425f746aub389c406ab2dda8@mail.gmail.com>
+Subject: Re: [PATCH] JBD2: round commit timer up to avoid uncommitted transaction
+Date: Thu, 30 Jul 2009 20:11:21 +0200
+Message-ID: <20090730181121.GD9223@atrey.karlin.mff.cuni.cz>
+References: <20090727202209.GU4231@webber.adilger.int> <20090730174710.GB9223@atrey.karlin.mff.cuni.cz> <20090730180035.GC4231@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: =?utf-8?B?7ZmN7Iug?= shin hong <hongshin@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alex Zhuravlev <Alex.Zhuravlev@sun.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:50689 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34395 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751548AbZG3SCl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jul 2009 14:02:41 -0400
+	with ESMTP id S1751363AbZG3SLV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jul 2009 14:11:21 -0400
 Content-Disposition: inline
-In-Reply-To: <2014bcab0907292009y425f746aub389c406ab2dda8@mail.gmail.com>
+In-Reply-To: <20090730180035.GC4231@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
-
-> Hi. I found a suspected deadlock bug from ext4.
+> On Jul 30, 2009  19:47 +0200, Jan Kara wrote:
+> > > jbd and jbd2 fixes: fix jiffie rounding in jbd commit timer setup code.
+> > > Rounding down could cause the timer to be fired before the corresponding
+> > > transaction has expired.  That transaction can stay not committed forever if
+> > > no new transaction is created or expicit sync/umount happens.
+> > > 
+> > > Signed-off-by: Alex Zhuravlev (Tomas) <alex.zhuravlev@sun.com>
+> > > Signed-off-by: Andreas Dilger <adilger@sun.com>
+> >
+> >   Looks fine. You can add:
+> > Acked-by: Jan Kara <jack@suse.cz>
+> >   How about a similar JBD fix?
 > 
-> ext4_fill_super() releases and re-takes BKL while s_umount is held.
-> Lock ordering at the point where BKL is re-taken is s_umount-> BKL.
-> 
-> However, at do_remount(), locking ordering is BKL->s_umount.
-> Therefore, concurrent execution of do_remount() and ext4_fill_super()
-> may result deadlock.
-  Hmm, I don't see how this could deadlock since we seem to take kernel
-lock only in do_new_mount() before calling do_kern_mount(). But you are
-right that taking the kernel lock with s_umount_sem looks fishy...
-
-> p.s. I found this suspected bug by the motivation from
->        commit 5f22ca9b13551debea77a407a8d06cd9c6f15238.
-  From a quick look, this looks like a different matter - they have used
-lock_super() instead of lock_kernel() and that's used in more places.
+> Index: linux-2.6.27.21-0.1/fs/jbd/transaction.c
+> ===================================================================
+> --- linux-2.6.27.21-0.1.orig/fs/jbd/transaction.c	2009-06-10 11:11:41.000000000 -0600
+> +++ linux-2.6.27.21-0.1/fs/jbd/transaction.c	2009-06-10 11:12:32.000000000 -0600
+> @@ -54,7 +54,7 @@
+>  	spin_lock_init(&transaction->t_inode_list);
+>  
+>  	/* Set up the commit timer for the new transaction. */
+> -	journal->j_commit_timer.expires = round_jiffies(transaction->t_expires);
+> +	journal->j_commit_timer.expires = round_jiffies_up(transaction->t_expires);
+>  	add_timer(&journal->j_commit_timer);
+>  
+>  	J_ASSERT(journal->j_running_transaction == NULL);
+  Thanks. Copied over the changelog, added your Signed-off-by and merged
+into my tree...
 
 									Honza
 -- 
