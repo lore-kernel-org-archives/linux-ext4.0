@@ -1,133 +1,49 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 2/2] ext4: fix null pointer bug in move_extent.c
-Date: Mon, 03 Aug 2009 17:30:59 +0900
-Message-ID: <4A76A043.20105@rs.jp.nec.com>
-References: <1249213404-6277-1-git-send-email-bergwolf@gmail.com> <1249213404-6277-2-git-send-email-bergwolf@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH RFC] Insure direct IO writes do not use the page cache
+Date: Mon, 3 Aug 2009 11:36:28 +0200
+Message-ID: <20090803093628.GA21712@duck.suse.cz>
+References: <6601abe90907281728h22be79fenc68a16b578e28a91@mail.gmail.com> <20090729181007.GC14105@mit.edu> <20090730183053.GE9223@atrey.karlin.mff.cuni.cz> <20090730203351.GB6833@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Peng Tao <bergwolf@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Curt Wohlgemuth <curtw@google.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:54214 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754190AbZHCIbV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Aug 2009 04:31:21 -0400
-In-Reply-To: <1249213404-6277-2-git-send-email-bergwolf@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:48204 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753035AbZHCJgb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Aug 2009 05:36:31 -0400
+Content-Disposition: inline
+In-Reply-To: <20090730203351.GB6833@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-Peng Tao wrote:
-> In mext_replace_branches(), the oext and dext virable might be NULL if the
-> orig extent and donor extent are empty. Later calling *oext and *dext will
-> trigger a kernel null pointer bug like this:
+On Thu 30-07-09 16:33:51, Theodore Tso wrote:
+> On Thu, Jul 30, 2009 at 08:30:53PM +0200, Jan Kara wrote:
+> >   I have to say I'm a bit worried about modify-in-place tricks - it's
+> > not trivial to make sure buffer is not part of any transaction in the
+> > journal, since the buffer head could have been evicted from memory, but
+> > the transaction still is not fully checkpointed. Hence in memory, you
+> > don't have any evidence of the fact that if the machine crashes, your
+> > modify-in-place gets overwritten by journal-replay.
 > 
-> BUG: unable to handle kernel NULL pointer dereference at (null)
-> IP: [<ffffffffa0636563>] mext_replace_branches+0x10c/0x2f3 [ext4]
-> PGD 37dba067 PUD cd8ac067 PMD 0
-> Oops: 0000 [#1] SMP
-> 
-> The patch checks the two virables and returns EOPNOTSUPP if either of them
-> is NULL.
-> 
-> Signed-off-by: Peng Tao <bergwolf@gmail.com>
-> ---
->  fs/ext4/move_extent.c |   12 ++++++++++++
->  1 files changed, 12 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index 5821e0b..4923f70 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -641,10 +641,22 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
->  		goto out;
->  	depth = ext_depth(orig_inode);
->  	oext = orig_path[depth].p_ext;
-> +	if (oext == NULL) {
-> +		ext4_debug("ext4 move extent: "
-> +					"orig extents should not be empty\n");
-> +		err = -EOPNOTSUPP;
-> +		goto out;
-> +	}
->  	tmp_oext = *oext;
->  
->  	depth = ext_depth(donor_inode);
->  	dext = donor_path[depth].p_ext;
-> +	if (dext == NULL) {
-> +		ext4_debug("ext4 move extent: "
-> +					"donor extents should not be empty\n");
-> +		err = -EOPNOTSUPP;
-> +		goto out;
-> +	}
->  	tmp_dext = *dext;
->  
->  	mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+> Yeah, good point; tracking which blocks might get overwritten on a
+> journal replay is tough.  What we *could* do that would make this easier
+> is to insert a revoke record for all extent tree blocks after the
+> blocks have been written to disk (since at that point there's no need
+> for that block to be replayed).
+  Hmm, but will this help you? You'd have to wait for revoke records to
+commit before you can be sure that journal replay won't overwrite your
+in-place changes.
+  Looking at the O_DIRECT semantics, I don't think nobody really requires
+the data being on disk after the write() returns and we crash - in
+particular if we extend the file, the write will be just an ordinary
+buffered write so in practice, it behaves like this already. Given the fact
+that only a bit special applications use O_DIRECT, I think we can afford to
+make a reservation that O_DIRECT writes even to a preallocated space do not
+have any special data-consistency guarantees.
 
-Yes, this problem occurs if extent which ext4_ext_path indicates is NULL,
-but this check should be done in ext4_move_extents()
-which is called before mext_replace_branches().
-And in this case, ENOENT is better for error value, I think.
-How about this patch?
-
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-
----
- move_extent.c |   19 +++++++++++++++----
- 1 file changed, 15 insertions(+), 4 deletions(-)
---- ../../LATEST/fs/ext4/move_extent.c	2009-08-03 14:53:43.000000000 +0900
-+++ fs/ext4/move_extent.c	2009-08-03 15:03:33.000000000 +0900
-@@ -1145,19 +1145,23 @@ ext4_move_extents(struct file *o_filp, s
- 	if (file_end < block_end)
- 		len -= block_end - file_end;
-
-+	depth = ext_depth(orig_inode);
- 	get_ext_path(orig_path, orig_inode, block_start, ret);
- 	if (orig_path == NULL)
- 		goto out2;
-+	else if (orig_path[depth].p_ext == NULL) {
-+		ret = -ENOENT;
-+		goto out;
-+	}
-
- 	/* Get path structure to check the hole */
- 	get_ext_path(holecheck_path, orig_inode, block_start, ret);
- 	if (holecheck_path == NULL)
- 		goto out;
-
--	depth = ext_depth(orig_inode);
- 	ext_cur = holecheck_path[depth].p_ext;
- 	if (ext_cur == NULL) {
--		ret = -EINVAL;
-+		ret = -ENOENT;
- 		goto out;
- 	}
-
-@@ -1280,11 +1284,14 @@ ext4_move_extents(struct file *o_filp, s
- 		/* Decrease buffer counter */
- 		if (holecheck_path)
- 			ext4_ext_drop_refs(holecheck_path);
--		get_ext_path(holecheck_path, orig_inode,
--				      seq_start, ret);
-+		get_ext_path(holecheck_path, orig_inode, seq_start, ret);
- 		if (holecheck_path == NULL)
- 			break;
- 		depth = holecheck_path->p_depth;
-+		if (holecheck_path[depth].p_ext == NULL) {
-+			ret = -ENOENT;
-+			break;
-+		}
-
- 		/* Decrease buffer counter */
- 		if (orig_path)
-@@ -1292,6 +1299,10 @@ ext4_move_extents(struct file *o_filp, s
- 		get_ext_path(orig_path, orig_inode, seq_start, ret);
- 		if (orig_path == NULL)
- 			break;
-+		else if (orig_path[depth].p_ext == NULL) {
-+			ret = -ENOENT;
-+			break;
-+		}
-
- 		ext_cur = holecheck_path[depth].p_ext;
- 		add_blocks = ext4_ext_get_actual_len(ext_cur);
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
