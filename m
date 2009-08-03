@@ -1,56 +1,24 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: spatch for 64-bit e2fsprogs (was Re: Fix device too big bug in mainline?)
-Date: Mon, 3 Aug 2009 16:27:40 -0400
-Message-ID: <20090803202740.GE10853@shell>
-References: <20090730215302.GA31141@shell> <20090802002833.GB8680@mit.edu> <20090802022209.GC8680@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>
-To: Theodore Tso <tytso@mit.edu>, Julia Lawall <julia@diku.dk>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/2] Two JBD cleanups
+Date: Mon,  3 Aug 2009 23:06:54 +0200
+Message-ID: <1249333616-23442-1-git-send-email-jack@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42194 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:42453 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752171AbZHCU1o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Aug 2009 16:27:44 -0400
-Content-Disposition: inline
-In-Reply-To: <20090802022209.GC8680@mit.edu>
+	id S932116AbZHCVG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Aug 2009 17:06:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 01, 2009 at 10:22:09PM -0400, Theodore Tso wrote:
-> 
-> I also would greatly prefer it if people who submit patches to me obey
-> basic patch and code formatting guidelines.  Things like this are
-> really uncool:
-> 
-> -				fs->group_desc[i].bg_free_blocks_count =
-> -					free_array[i];
-> +				ext2fs_bg_free_blocks_count_set(fs, i, free_array[i])
-> +					;
+  Hi,
 
-Ah, that's left over from an spatch bug that Julia Lawall (cc'd)
-kindly fixed immediately after I reported it.  It won't happen if you
-use the current spatch.  My apologies for missing this one during
-review!
+  below come two cleanups to ext3/JBD. The first patch removes Stephen Tweedie
+from Maintainers entry of JBD and ext3. The second patch makes JBD use unsigned
+int to store block numbers instead of unsigned long and thus saves a few bytes
+on stack / in memory on 64-bit archs as Andrew and Ted suggested.
+  I'll push these changes to linux-next if nobody objects. I'd welcome review
+especially on the second patch.
 
-I think spatch could probably also wrap lines automatically when
-making semantic patches - Julia?
-
-I'm curious what you think of this proposal: Redo all the foo() ->
-foo2() patches in the entire 64-bit series as a semantic patches.
-This would also fix this kind of cut and paste bug:
-
-+                               ext2fs_bg_flag_clear (fs, i, EXT2_BG_BLOCK_UNINIT);
-+                               ext2fs_bg_flag_clear (fs, i, EXT2_BG_INODE_UNINIT);
-
-I fixed several of these in the existing 64-bit code when I took it
-over, so I assume more lurk undiscovered and would be revealed if we
-redid them with spatch.
-
-Julia, would you and/or your students be interested in helping?  I
-think you're running out of bugs in the kernel and e2fsprogs would be
-another excellent showcase for spatch/Coccinelle. :)
-
--VAL
-
+									Honza
