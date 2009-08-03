@@ -1,62 +1,36 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] fs/compat_ioctl.c: add missing FS_IOC_FIEMAP support
-Date: Mon, 3 Aug 2009 16:22:55 -0700
-Message-ID: <20090803162255.c6d12eda.akpm@linux-foundation.org>
-References: <4A74584D.2010300@rtr.ca>
-	<4A7722DF.80704@rtr.ca>
-	<4A7725AF.6090106@redhat.com>
-	<4A775FB9.80600@rtr.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: sandeen@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, sandeen@sandeen.net,
-	Arnd Bergmann <arnd@arndb.de>
-To: Mark Lord <lkml@rtr.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57144 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932267AbZHCXXY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Aug 2009 19:23:24 -0400
-In-Reply-To: <4A775FB9.80600@rtr.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On Mon, 03 Aug 2009 18:07:53 -0400
-Mark Lord <lkml@rtr.ca> wrote:
-
-> Eric Sandeen wrote:
-> > Mark Lord wrote:
-> >> (resending, no ack from anyone first time around).
-> > 
-> > I had previously sent a fix for this to the ext4 list as well, although
-> > w/o the added case for compat_ioctl or the extra #include.
-> > 
-> > Because this ioctl should be 100% compat everywhere, I don't -think-
-> > it's needed, and
-> > 
-> > http://marc.info/?l=linux-ext4&m=124872536713005&w=2
-
-mutter. I don't read linux-fsdevel much.
-
-> > suffices....
-> ..
-> 
-> Well, whichever of the two works best for the maintainers.
-> 
-> We need *something* for it upstream, and probably back in -stable too.
-> Otherwise this prevents using 64-bit kernels on 32-bit userland,
-> as Linus likes to recommend so often.  ;)
-
-OK, here's what I have, with a somewhat reworked changelog.
-
-I assumed that "Josef" == josef@redhat.com.
-
-Arnd, could you please check that it still looks OK?
-
-Thanks.
+From: akpm@linux-foundation.org
+Subject: + compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch added to -mm tree
+Date: Mon, 03 Aug 2009 16:22:59 -0700
+Message-ID: <200908032322.n73NMx7P016438@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: sandeen@redhat.com, arnd@arndb.de, jack@suse.cz, josef@redhat.com,
+	linux-ext4@vger.kernel.org, lkml@rtr.ca, stable@kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
+The patch titled
+     compat_ioctl: hook up compat handler for FIEMAP ioctl
+has been added to the -mm tree.  Its filename is
+     compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch
+
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
+
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: compat_ioctl: hook up compat handler for FIEMAP ioctl
 From: Eric Sandeen <sandeen@redhat.com>
 
 The FIEMAP_IOC_FIEMAP mapping ioctl was missing a 32-bit compat handler,
@@ -93,4 +67,9 @@ diff -puN fs/compat_ioctl.c~compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl
  COMPATIBLE_IOCTL(FIBMAP)
  COMPATIBLE_IOCTL(FIGETBSZ)
 _
+
+Patches currently in -mm which might be from sandeen@redhat.com are
+
+vfs-allow-file-truncations-when-both-suid-and-write-permissions-set.patch
+compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch
 
