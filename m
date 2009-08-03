@@ -1,43 +1,46 @@
-From: Mark Lord <lkml@rtr.ca>
+From: Eric Sandeen <sandeen@sandeen.net>
 Subject: Re: [PATCH] fs/compat_ioctl.c: add missing FS_IOC_FIEMAP support
-Date: Mon, 03 Aug 2009 18:07:53 -0400
-Message-ID: <4A775FB9.80600@rtr.ca>
-References: <4A74584D.2010300@rtr.ca> <4A7722DF.80704@rtr.ca> <4A7725AF.6090106@redhat.com>
+Date: Mon, 03 Aug 2009 17:21:30 -0500
+Message-ID: <4A7762EA.5070701@sandeen.net>
+References: <4A74584D.2010300@rtr.ca> <4A7722DF.80704@rtr.ca> <4A7725AF.6090106@redhat.com> <4A775FB9.80600@rtr.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@sandeen.net>,
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rtr.ca ([76.10.145.34]:44833 "EHLO mail.rtr.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754804AbZHCWHz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Aug 2009 18:07:55 -0400
-In-Reply-To: <4A7725AF.6090106@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Mark Lord <lkml@rtr.ca>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755012AbZHCWVb@vger.kernel.org>
+In-Reply-To: <4A775FB9.80600@rtr.ca>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> Mark Lord wrote:
->> (resending, no ack from anyone first time around).
+Mark Lord wrote:
+> Eric Sandeen wrote:
+>> Mark Lord wrote:
+>>> (resending, no ack from anyone first time around).
+>> I had previously sent a fix for this to the ext4 list as well, although
+>> w/o the added case for compat_ioctl or the extra #include.
+>>
+>> Because this ioctl should be 100% compat everywhere, I don't -think-
+>> it's needed, and
+>>
+>> http://marc.info/?l=linux-ext4&m=124872536713005&w=2
+>>
+>> suffices....
+> ..
 > 
-> I had previously sent a fix for this to the ext4 list as well, although
-> w/o the added case for compat_ioctl or the extra #include.
+> Well, whichever of the two works best for the maintainers.
 > 
-> Because this ioctl should be 100% compat everywhere, I don't -think-
-> it's needed, and
+> We need *something* for it upstream, and probably back in -stable too.
+> Otherwise this prevents using 64-bit kernels on 32-bit userland,
+> as Linus likes to recommend so often.  ;)
 > 
-> http://marc.info/?l=linux-ext4&m=124872536713005&w=2
+> Cheers
 > 
-> suffices....
-..
 
-Well, whichever of the two works best for the maintainers.
+Heh, it's probably far from the only ioctl missing a compat handler, but
+yeah.  :)
 
-We need *something* for it upstream, and probably back in -stable too.
-Otherwise this prevents using 64-bit kernels on 32-bit userland,
-as Linus likes to recommend so often.  ;)
-
-Cheers
+-Eric
