@@ -1,38 +1,43 @@
-From: Stephan Kulow <coolo@suse.de>
-Subject: Re: ok to stop e4defrag?
-Date: Tue, 4 Aug 2009 11:41:47 +0200
-Message-ID: <200908041141.47771.coolo@suse.de>
-References: <7284e2210908031239q1177490bk41bb0bca63af30da@mail.gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH] fs/compat_ioctl.c: add missing FS_IOC_FIEMAP support
+Date: Tue, 4 Aug 2009 12:39:17 +0200
+Message-ID: <200908041239.18238.arnd@arndb.de>
+References: <4A74584D.2010300@rtr.ca> <4A775FB9.80600@rtr.ca> <20090803162255.c6d12eda.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: Text/Plain;
   charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Doug Hunley <doug@hunley.homeip.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47291 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755324AbZHDJls (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Aug 2009 05:41:48 -0400
-In-Reply-To: <7284e2210908031239q1177490bk41bb0bca63af30da@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Mark Lord <lkml@rtr.ca>, sandeen@redhat.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sandeen@sandeen.net
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932817AbZHDKjc@vger.kernel.org>
+In-Reply-To: <20090803162255.c6d12eda.akpm@linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Montag 03 August 2009 sent Doug Hunley:
-> I started e4defrag against /dev/md3 on Jul 31 in a screen session, and
-> it's still running. I've got a few things coming up shortly that are
-> gonna require me to reboot this machine, but I'm not sure if its 'ok'
-> to CTRL-C the e4defrag window or not. Advice? Also, how can I tell
-> what it's currently working on? I passed the '-v' switch but I've not
-> seen any progress indicators in the screen session.
+On Tuesday 04 August 2009, Andrew Morton wrote:
+> > Well, whichever of the two works best for the maintainers.
+> > 
+> > We need something for it upstream, and probably back in -stable too.
+> > Otherwise this prevents using 64-bit kernels on 32-bit userland,
+> > as Linus likes to recommend so often.  ;)
+> 
+> OK, here's what I have, with a somewhat reworked changelog.
+> 
+> I assumed that "Josef" == josef@redhat.com.
+> 
+> Arnd, could you please check that it still looks OK?
 
-It works fine here and it even outputs progress when not started with -v :)
+Yes, it looks ok as well. The #include is not needed here,
+and the difference in compat_sys_ioctl() is that with Eric's
+patch, a file system or device driver could in theory implement
+its own compat handler for FS_IOC_FIEMAP while it cannot do
+that for the native ioctl.
 
-I _think_ it's still reading the informations of your file system in when
-it's not showing any progress.
+I would like to keep the logic in compat_sys_ioctl in sync with
+do_vfs_ioctl, but they have diverged already. I have an experimental
+patch set to rework compat_ioctl handling that will also take care
+of this.
 
-And yes, there is little chance that you will break something in Ctrl-C
-as all dangerous operations are atomic to user space. But don't sue me if I'm 
-wrong :)
-
-Greetings, Stephan
+	Arnd <><
