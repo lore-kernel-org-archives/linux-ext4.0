@@ -1,73 +1,68 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: 31-rc4-mmotm0730 - ext4 whinge at shutdown
-Date: Mon, 03 Aug 2009 20:58:16 -0400
-Message-ID: <24577.1249347496@turing-police.cc.vt.edu>
+From: Julia Lawall <julia@diku.dk>
+Subject: Re: spatch for 64-bit e2fsprogs (was Re: Fix device too big bug in
+ mainline?)
+Date: Tue, 4 Aug 2009 08:40:47 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0908040837260.29989@ask.diku.dk>
+References: <20090730215302.GA31141@shell> <20090802002833.GB8680@mit.edu>
+ <20090802022209.GC8680@mit.edu> <20090803202740.GE10853@shell>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1249347496_4761P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <sandeen@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Jesper Andersen <jespera@diku.dk>
+To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from turing-police.cc.vt.edu ([128.173.14.107]:47813 "EHLO
-	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751382AbZHDA6t (ORCPT
-	<RFC822;linux-ext4@vger.kernel.org>); Mon, 3 Aug 2009 20:58:49 -0400
+Received: from mgw2.diku.dk ([130.225.96.92]:53278 "EHLO mgw2.diku.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755029AbZHDGku (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Aug 2009 02:40:50 -0400
+In-Reply-To: <20090803202740.GE10853@shell>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---==_Exmh_1249347496_4761P
-Content-Type: text/plain; charset=us-ascii
+On Mon, 3 Aug 2009, Valerie Aurora wrote:
 
-Got this at system shutdown, while trying to unmount one of three ext4 file
-system (note - the filesystems were all originally ext3, mounted as ext4, if
-that matters).
+> On Sat, Aug 01, 2009 at 10:22:09PM -0400, Theodore Tso wrote:
+> > 
+> > I also would greatly prefer it if people who submit patches to me obey
+> > basic patch and code formatting guidelines.  Things like this are
+> > really uncool:
+> > 
+> > -				fs->group_desc[i].bg_free_blocks_count =
+> > -					free_array[i];
+> > +				ext2fs_bg_free_blocks_count_set(fs, i, free_array[i])
+> > +					;
+> 
+> Ah, that's left over from an spatch bug that Julia Lawall (cc'd)
+> kindly fixed immediately after I reported it.  It won't happen if you
+> use the current spatch.  My apologies for missing this one during
+> review!
+> 
+> I think spatch could probably also wrap lines automatically when
+> making semantic patches - Julia?
 
-RFE - if it's going to print the mballoc stats, it should at least dump
-a major/minor pair so that I can tell which of my 3 ext4 filesystems each
-one is talking about. :)
+It doesn't now, but it is a good point that it probably could.  The pretty 
+printing works at the token level, and thus one knows the size of 
+everything.  I will look into it.
 
-[  297.865667] EXT4-fs: mballoc: 0 blocks 0 reqs (0 success)
-[  297.868397] EXT4-fs: mballoc: 0 extents scanned, 0 goal hits, 0 2^N hits, 0 breaks, 0 lost
-[  297.871459] EXT4-fs: mballoc: 0 generated and it took 0
-[  297.874532] EXT4-fs: mballoc: 0 preallocated, 0 discarded
-[  297.900378] ------------[ cut here ]------------
-[  297.903618] WARNING: at fs/namespace.c:611 mntput_no_expire+0xd8/0x145()
-[  297.906962] Hardware name: Latitude D820
-[  297.910231] Modules linked in: ext4 jbd2 crc16 [last unloaded: scsi_wait_scan]
-[  297.913357] Pid: 1783, comm: umount Not tainted 2.6.31-rc4-mmotm0730 #6
-[  297.916352] Call Trace:
-[  297.918164]  [<ffffffff8103fb1d>] warn_slowpath_common+0x77/0x8f
-[  297.919706]  [<ffffffff8103fb44>] warn_slowpath_null+0xf/0x11
-[  297.921172]  [<ffffffff810e80bf>] mntput_no_expire+0xd8/0x145
-[  297.922797]  [<ffffffff810e86d0>] sys_umount+0x2de/0x30d
-[  297.924312]  [<ffffffff810669d6>] ? trace_hardirqs_on_caller+0x121/0x145
-[  297.925776]  [<ffffffff8100b2ab>] system_call_fastpath+0x16/0x1b
-[  297.927343] ---[ end trace 6987d23c89c53046 ]---
-[  297.982931] EXT4-fs: mballoc: 0 blocks 0 reqs (0 success)
-[  297.984651] EXT4-fs: mballoc: 0 extents scanned, 0 goal hits, 0 2^N hits, 0 breaks, 0 lost
-[  297.986141] EXT4-fs: mballoc: 0 generated and it took 0
-[  297.987772] EXT4-fs: mballoc: 0 preallocated, 0 discarded
-[  297.993872] EXT4-fs: mballoc: 0 blocks 0 reqs (0 success)
-[  297.995383] EXT4-fs: mballoc: 0 extents scanned, 0 goal hits, 0 2^N hits, 0 breaks, 0 lost
-[  297.996974] EXT4-fs: mballoc: 0 generated and it took 0
-[  297.998595] EXT4-fs: mballoc: 0 preallocated, 0 discarded
-[  301.239272] sd 0:0:0:0: [sda] Synchronizing SCSI cache
-[  301.244884] Restarting system.
-[  301.247821] machine restart
+> I'm curious what you think of this proposal: Redo all the foo() ->
+> foo2() patches in the entire 64-bit series as a semantic patches.
+> This would also fix this kind of cut and paste bug:
+> 
+> +                               ext2fs_bg_flag_clear (fs, i, EXT2_BG_BLOCK_UNINIT);
+> +                               ext2fs_bg_flag_clear (fs, i, EXT2_BG_INODE_UNINIT);
+> 
+> I fixed several of these in the existing 64-bit code when I took it
+> over, so I assume more lurk undiscovered and would be revealed if we
+> redid them with spatch.
+> 
+> Julia, would you and/or your students be interested in helping?  I
+> think you're running out of bugs in the kernel and e2fsprogs would be
+> another excellent showcase for spatch/Coccinelle. :)
 
+Actually, my PhD student Jesper (added to CC list) could generate semantic 
+patches for such things automatically.  Where can he find the normal 
+patches?
 
---==_Exmh_1249347496_4761P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFKd4eocC3lWbTT17ARAgObAKDh4GjHJuEwwPUeMfDN0/fzqjdfYQCgj7PS
-P40E1fJmSU+bNgbgagMi0yM=
-=skUW
------END PGP SIGNATURE-----
-
---==_Exmh_1249347496_4761P--
+julia
