@@ -1,70 +1,55 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: spatch for 64-bit e2fsprogs (was Re: Fix device too big bug in
-	mainline?)
-Date: Tue, 4 Aug 2009 16:32:12 -0400
-Message-ID: <20090804203212.GK28678@mit.edu>
-References: <20090730215302.GA31141@shell> <20090802002833.GB8680@mit.edu> <20090802022209.GC8680@mit.edu> <20090803202740.GE10853@shell> <20090804144846.GE28678@mit.edu> <20090804181850.GF9324@shell>
+Subject: Re: Fix device too big bug in mainline?
+Date: Tue, 4 Aug 2009 16:41:22 -0400
+Message-ID: <20090804204122.GL28678@mit.edu>
+References: <20090730215302.GA31141@shell> <20090802002833.GB8680@mit.edu> <20090802022209.GC8680@mit.edu> <20090804182811.GG9324@shell>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Julia Lawall <julia@diku.dk>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <sandeen@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Jesper Andersen <jespera@diku.dk>
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>
 To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:55107 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:54913 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755145AbZHDUca (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Aug 2009 16:32:30 -0400
+	id S932722AbZHDUlb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Aug 2009 16:41:31 -0400
 Content-Disposition: inline
-In-Reply-To: <20090804181850.GF9324@shell>
+In-Reply-To: <20090804182811.GG9324@shell>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 04, 2009 at 02:18:51PM -0400, Valerie Aurora wrote:
-> On Tue, Aug 04, 2009 at 10:48:46AM -0400, Theodore Tso wrote:
-> > 
-> > If you want to start preparing for the semantic patches by preparing
-> > and testing the receipes, and then helping to flag those patches that
-> > contain some changes that contain some changes that can't be applied
-> > via spatch, that would be helpful.
-> > 
-> > Does that sound like a plan?
+On Tue, Aug 04, 2009 at 02:28:11PM -0400, Valerie Aurora wrote:
+> On Sat, Aug 01, 2009 at 10:22:09PM -0400, Theodore Tso wrote:
+> > In case people are wondering why it's taking so long to merge the
+> > 64-bit patch series, let me show one patch as exhibit 'A' about how
+> > not to submit patches to me (or Linus, or any other upstream
+> > maintainer):
 > 
-> That sounds great.  We won't be able to automate everything, but after
-> this exercise, I bet spatch will be able to automate most of it.
+> Oh, geez, those are an old patch set!  I did go back and fix the
+> temporary commits and dangly semi-colons, plus reimplemented progress
+> meters the way you wanted:
 > 
-> Jesper, the patches you'll be interested in can be found in the
-> shared-64bit branch of:
-> 
-> git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
+> http://osdir.com/ml/linux-ext4/2009-02/msg00591.html
 
-This is actually *very* out of date.  It's based off of e2fsprogs
-1.41.4, and doesn't have the latest bug fixes or my efforts to clean
-up the patches.
+Oh, I see what happened.  It looks like you fixed some of that up in
+the "shared-64bit-handover" branch, but I didn't see that one, since
+you checked in the bug fixes and patches which Nick Dokus submitted
+into the "shared-64bit" branch.  Hence, the shared-64bit branch had
+commits in it dating from May, 2009, while the shared-64bit-handover
+branch had commits dating from February, 2009.  Hence, I started work
+using the shared-64bit branch instead of the shared-64bit-handover
+branch.
 
-Please use either the pu branch of e2fsprogs:
+This is, by the way, why I believe using a patch queue is a
+****much**** better way of working, instead of using multiple git
+branches.  I'm guessing that when Nick started submitting patches, you
+got confused and applied his patches onto the wrong branch, and so of
+course I used the latest, new version of the 64-bit branch --- which
+meant that I got Nick's fixes, but not your cleanups.   Argh....
 
-   git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-   http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-
-or, the e2fsprogs 64-bit patch queue, which can be found here:
-
-   http://github.com/tytso/e2fsprogs-64bit/tree/master
-   git://github.com/tytso/e2fsprogs-64bit.git
-
-Val, I had offered you write access into this patch queue back when I
-first rebased the e2fsprogs patches to 1.41.4, and you declined,
-saying you preferred not to work that way.  The offer is still open; I
-find that patch queue to be a **far** better way of working,
-especially if the goal is to refactor and clean up the patches.
-Simply using a git branch doesn't work at all; I provide the pu branch
-as a convenience, but it is constantly getting rewound as I clean up,
-refactor, reorder, and gradually merge patches into mainline.
-
-Currently I have merged around third of the changes into the e2fsprogs
-master branch, and the patches have been significantly improved.  The
-new bitmap code has been cleaned up significantly, and is almost ready
-for mainline.
+I wish I had figured this out much earlier, since at this point, I've
+done so much work using the non-cleaned-up patches, including merging
+around a third of the patches into e2fsprogs mainline, that it's
+probably not worth it to go back.
 
 						- Ted
