@@ -1,43 +1,46 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH] fs/compat_ioctl.c: add missing FS_IOC_FIEMAP support
-Date: Tue, 4 Aug 2009 12:39:17 +0200
-Message-ID: <200908041239.18238.arnd@arndb.de>
-References: <4A74584D.2010300@rtr.ca> <4A775FB9.80600@rtr.ca> <20090803162255.c6d12eda.akpm@linux-foundation.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13909] New: md5sum on 3GB file is constantly hanging
+Date: Tue, 4 Aug 2009 10:44:46 GMT
+Message-ID: <bug-13909-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Mark Lord <lkml@rtr.ca>, sandeen@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	sandeen@sandeen.net
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932817AbZHDKjc@vger.kernel.org>
-In-Reply-To: <20090803162255.c6d12eda.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:53234 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932693AbZHDKop (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Aug 2009 06:44:45 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n74AikQR023732
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Aug 2009 10:44:46 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 04 August 2009, Andrew Morton wrote:
-> > Well, whichever of the two works best for the maintainers.
-> > 
-> > We need something for it upstream, and probably back in -stable too.
-> > Otherwise this prevents using 64-bit kernels on 32-bit userland,
-> > as Linus likes to recommend so often.  ;)
-> 
-> OK, here's what I have, with a somewhat reworked changelog.
-> 
-> I assumed that "Josef" == josef@redhat.com.
-> 
-> Arnd, could you please check that it still looks OK?
+http://bugzilla.kernel.org/show_bug.cgi?id=13909
 
-Yes, it looks ok as well. The #include is not needed here,
-and the difference in compat_sys_ioctl() is that with Eric's
-patch, a file system or device driver could in theory implement
-its own compat handler for FS_IOC_FIEMAP while it cannot do
-that for the native ioctl.
+           Summary: md5sum on 3GB file is constantly hanging
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.30.4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: blocking
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: harbour@sfinx.od.ua
+        Regression: Yes
 
-I would like to keep the logic in compat_sys_ioctl in sync with
-do_vfs_ioctl, but they have diverged already. I have an experimental
-patch set to rework compat_ioctl handling that will also take care
-of this.
 
-	Arnd <><
+Hi,
+
+Simply pickup any 3GB file and try to md5sum it. Process is not killable. Plain
+Linus kernel, latest gcc and binutils. Laptop AMD X2 Acer Ferrari 1100 on
+SB600. Can supply any additional info.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
