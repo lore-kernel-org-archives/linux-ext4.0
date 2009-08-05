@@ -1,38 +1,259 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13874] kenal panic on addition of xfx nvidia gts250 512mb on
- 946giz motherboard
-Date: Wed, 5 Aug 2009 14:34:20 GMT
-Message-ID: <200908051434.n75EYKc2013034@demeter.kernel.org>
-References: <bug-13874-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 1/3] tune2fs: Make e2fsprogs handle ENOSPC better with inode resize
+Date: Wed,  5 Aug 2009 20:04:13 +0530
+Message-ID: <1249482855-22634-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:42071 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934430AbZHEOeU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Aug 2009 10:34:20 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n75EYKkO013035
-	for <linux-ext4@vger.kernel.org>; Wed, 5 Aug 2009 14:34:20 GMT
-In-Reply-To: <bug-13874-13602@http.bugzilla.kernel.org/>
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:35249 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934476AbZHEOeb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Aug 2009 10:34:31 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp08.au.ibm.com (8.14.3/8.13.1) with ESMTP id n75EYBep011900
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 00:34:11 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n75EYV441323036
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 00:34:31 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n75EYVA7024560
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 00:34:31 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13874
+This removes the metadata block bitmap and makes the error handling
+simpler. It also check for the enospc with the correct number needed
+blocks. Also added specific error messages. We need to run e2undo
+only if we start modyfing inode, group desc and inode table.
 
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ misc/tune2fs.c |  120 ++++++++++++++-----------------------------------------
+ 1 files changed, 31 insertions(+), 89 deletions(-)
 
-
-
-
---- Comment #6 from ankurbajaj9@gmail.com  2009-08-05 14:34:18 ---
-have uploaded two more videos hope they help
-
-http://www.youtube.com/watch?v=vPkaOtm7crk
-
-http://www.youtube.com/watch?v=EvFQlk957vs
-
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 2ad3436..08fff29 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -962,34 +962,23 @@ static void parse_extended_opts(ext2_filsys fs, const char *opts)
+ }
+ 
+ /*
+- * Fill in two bitmaps that we need to to control the inode resizing
+- * process.  The first is the set of blocks that must be moved, and
+- * the second is the set of blocks which are allocation bitmap blocks
+- * and must be treated specially.
++ * Fill in the block bitmap bmap with the information regarding the
++ * blocks to be moved
+  */
+ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+-			    ext2fs_block_bitmap bmap,
+-			    ext2fs_block_bitmap metadata_bmap)
++			ext2fs_block_bitmap bmap)
+ {
+ 	dgrp_t i;
+ 	blk_t j, needed_blocks = 0;
+-	blk_t i_bmap, b_bmap;
+ 	blk_t start_blk, end_blk;
+-	int num, k;
+ 
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+-		b_bmap = fs->group_desc[i].bg_block_bitmap;
+-		ext2fs_mark_block_bitmap(metadata_bmap, b_bmap);
+-		i_bmap = fs->group_desc[i].bg_inode_bitmap;
+-		ext2fs_mark_block_bitmap(metadata_bmap, i_bmap);
+-
+ 		start_blk = fs->group_desc[i].bg_inode_table +
+ 					fs->inode_blocks_per_group;
+ 
+ 		end_blk = fs->group_desc[i].bg_inode_table +
+ 					new_ino_blks_per_grp;
+ 
+-		num=0;
+ 		for (j = start_blk; j < end_blk; j++) {
+ 			if (ext2fs_test_block_bitmap(fs->block_map, j)) {
+ 				/* FIXME!!
+@@ -997,7 +986,6 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 				 * as a bad block
+ 				 */
+ 				ext2fs_mark_block_bitmap(bmap, j);
+-				needed_blocks++;
+ 			} else {
+ 				/*
+ 				 * We are going to use this block for
+@@ -1005,11 +993,8 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 				 */
+ 				ext2fs_mark_block_bitmap(fs->block_map, j);
+ 			}
+-			if ((j == i_bmap) || (j == b_bmap))
+-				num++;
+ 		}
+-		if (num <= fs->group_desc[i].bg_free_blocks_count) 
+-			continue;
++		needed_blocks += end_blk - start_blk;
+ 	}
+ 
+ 	if (needed_blocks > fs->super->s_free_blocks_count)
+@@ -1018,14 +1003,12 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 	return 0;
+ }
+ 
+-static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap,
+-		      ext2fs_block_bitmap metadata_bmap)
++static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
+ {
+ 	char *buf;
+ 	errcode_t retval;
+ 	blk_t blk, new_blk, goal;
+ 	struct blk_move *bmv;
+-	dgrp_t		group;
+ 
+ 	retval = ext2fs_get_mem(fs->blocksize, &buf);
+ 	if (retval)
+@@ -1036,16 +1019,7 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap,
+ 		if (!ext2fs_test_block_bitmap(bmap, blk))
+ 			continue;
+ 
+-		/*
+-		 * If the block is a bitmap block, find a new block in
+-		 * the same block group.
+-		 */
+-		if (ext2fs_test_block_bitmap(metadata_bmap, blk)) {
+-			group = ext2fs_group_of_blk(fs, blk);
+-			goal = ext2fs_group_first_block(fs, group);
+-		} else
+-			goal = new_blk;
+-
++		goal = new_blk;
+ 		retval = ext2fs_new_block(fs, goal, NULL, &new_blk);
+ 		if (retval)
+ 			goto err_out;
+@@ -1184,37 +1158,6 @@ err_out:
+ 	return retval;
+ }
+ 
+-/*
+- * We need to scan for inode and block bitmaps that may need to be
+- * moved.  This can take place if the filesystem was formatted for
+- * RAID arrays using the mke2fs's extended option "stride".
+- */
+-static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
+-{
+-	dgrp_t i;
+-	blk_t blk, new_blk;
+-
+-	for (i = 0; i < fs->group_desc_count; i++) {
+-		blk = fs->group_desc[i].bg_block_bitmap;
+-		if (ext2fs_test_block_bitmap(bmap, blk)) {
+-			new_blk = translate_block(blk);
+-			if (!new_blk)
+-				continue;
+-			fs->group_desc[i].bg_block_bitmap = new_blk;
+-		}
+-
+-		blk = fs->group_desc[i].bg_inode_bitmap;
+-		if (ext2fs_test_block_bitmap(bmap, blk)) {
+-			new_blk = translate_block(blk);
+-			if (!new_blk)
+-				continue;
+-			fs->group_desc[i].bg_inode_bitmap = new_blk;
+-		}
+-	}
+-	return 0;
+-}
+-
+-
+ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
+ {
+ 	dgrp_t i;
+@@ -1367,7 +1310,7 @@ static int resize_inode(ext2_filsys fs, unsigned long new_size)
+ {
+ 	errcode_t retval;
+ 	int new_ino_blks_per_grp;
+-	ext2fs_block_bitmap bmap, metadata_bmap;
++	ext2fs_block_bitmap bmap;
+ 
+ 	ext2fs_read_inode_bitmap(fs);
+ 	ext2fs_read_block_bitmap(fs);
+@@ -1387,34 +1330,28 @@ static int resize_inode(ext2_filsys fs, unsigned long new_size)
+ 
+ 	retval = ext2fs_allocate_block_bitmap(fs, _("blocks to be moved"),
+ 						&bmap);
+-	if (retval)
+-		return retval;
+-
+-	retval = ext2fs_allocate_block_bitmap(fs, _("blocks to be moved"),
+-						&metadata_bmap);
+-	if (retval)
++	if (retval) {
++		fputs(_("Failed to allocate block bitmap when "
++				"increasing inode size\n"), stderr);
+ 		return retval;
+-
+-	retval = get_move_bitmaps(fs, new_ino_blks_per_grp, bmap,
+-				  metadata_bmap);
+-	if (retval)
++	}
++	retval = get_move_bitmaps(fs, new_ino_blks_per_grp, bmap);
++	if (retval) {
++		fputs(_("Not enough space to increase inode size \n"), stderr);
+ 		goto err_out;
+-
+-	retval = move_block(fs, bmap, metadata_bmap);
+-	if (retval)
++	}
++	retval = move_block(fs, bmap);
++	if (retval) {
++		fputs(_("Failed to relocate blocks during inode resize \n"), stderr);
+ 		goto err_out;
+-
++	}
+ 	retval = inode_scan_and_fix(fs, bmap);
+ 	if (retval)
+-		goto err_out;
+-
+-	retval = group_desc_scan_and_fix(fs, bmap);
+-	if (retval)
+-		goto err_out;
++		goto err_out_undo;
+ 
+ 	retval = expand_inode_table(fs, new_size);
+ 	if (retval)
+-		goto err_out;
++		goto err_out_undo;
+ 
+ 	ext2fs_calculate_summary_stats(fs);
+ 
+@@ -1428,6 +1365,15 @@ err_out:
+ 	ext2fs_free_block_bitmap(bmap);
+ 
+ 	return retval;
++
++err_out_undo:
++	free_blk_move_list();
++	ext2fs_free_block_bitmap(bmap);
++	fputs(_("Error in resizing the inode size.\n"
++			"Run e2undo to undo the "
++			"file system changes. \n"), stderr);
++
++	return retval;
+ }
+ 
+ static int tune2fs_setup_tdb(const char *name, io_manager *io_ptr)
+@@ -1744,11 +1690,7 @@ retry_open:
+ 		 * with the new free inode count
+ 		 */
+ 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+-		if (resize_inode(fs, new_inode_size)) {
+-			fputs(_("Error in resizing the inode size.\n"
+-				"Run e2undo to undo the "
+-				"file system changes. \n"), stderr);
+-		} else {
++		if (resize_inode(fs, new_inode_size) == 0) {
+ 			printf(_("Setting inode size %lu\n"),
+ 							new_inode_size);
+ 		}
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.6.4.13.ge6580
+
