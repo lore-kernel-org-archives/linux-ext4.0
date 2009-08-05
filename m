@@ -1,38 +1,35 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Fix device too big bug in mainline?
-Date: Tue, 4 Aug 2009 19:56:03 -0400
-Message-ID: <20090804235603.GQ28678@mit.edu>
-References: <20090730215302.GA31141@shell> <20090802002833.GB8680@mit.edu> <20090802022209.GC8680@mit.edu> <20090804182811.GG9324@shell>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13909] md5sum on 3GB file is constantly hanging
+Date: Wed, 5 Aug 2009 04:27:50 GMT
+Message-ID: <200908050427.n754Ronn017300@demeter.kernel.org>
+References: <bug-13909-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>
-To: Valerie Aurora <vaurora@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:58827 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932480AbZHDX4R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Aug 2009 19:56:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20090804182811.GG9324@shell>
+Received: from demeter.kernel.org ([140.211.167.39]:32866 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750899AbZHEE1u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Aug 2009 00:27:50 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n754RoIP017301
+	for <linux-ext4@vger.kernel.org>; Wed, 5 Aug 2009 04:27:50 GMT
+In-Reply-To: <bug-13909-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 04, 2009 at 02:28:11PM -0400, Valerie Aurora wrote:
-> Oh, geez, those are an old patch set!  I did go back and fix the
-> temporary commits and dangly semi-colons, plus reimplemented progress
-> meters the way you wanted:
+http://bugzilla.kernel.org/show_bug.cgi?id=13909
 
-I just pulled in the reimplemented progress meter from the
-shared-64bits-handover patches and merged it into e2fsprogs patch
-queue.
 
-While I was testing it, I noticed that it was buggy; it was printing
-progress reports of the form:
 
-Allocating group tables:  3/ 0
 
-This was because the printf format being used was %d/%d, but the
-arguments being printed were unsigned long long's.  Now fixed.
 
-						- Ted
+--- Comment #2 from Michael B. Trausch <mike@trausch.us>  2009-08-05 04:27:49 ---
+Arrgh.  I seem to have borked my access to my other system... I may be able to
+figure out what I did to not be able to boot it tomorrow, but until then, I
+can't yet confirm...
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
