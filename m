@@ -1,108 +1,52 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: ll_ver_fs data verification failure - 96TB fs
-Date: Thu, 06 Aug 2009 18:01:04 -0400
-Message-ID: <18945.1249596064@alphaville.usa.hp.com>
-References: <28623.1249307676@gamaville.dokosmarshall.org> <20090806200400.GC1800@shell> <18249.1249591034@alphaville.usa.hp.com> <20090806205002.GH3340@webber.adilger.int> <18690.1249594088@alphaville.usa.hp.com>  <18822.1249594980@alphaville.usa.hp.com>
-Reply-To: nicholas.dokos@hp.com
-Cc: Valerie Aurora <vaurora@redhat.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+From: akpm@linux-foundation.org
+Subject: [patch 07/15] compat_ioctl: hook up compat handler for FIEMAP ioctl
+Date: Thu, 06 Aug 2009 15:07:37 -0700
+Message-ID: <200908062207.n76M7b3d004529@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, sandeen@redhat.com, arnd@arndb.de,
+	jack@suse.cz, josef@redhat.com, linux-ext4@vger.kernel.org,
+	lkml@rtr.ca, stable@kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g1t0027.austin.hp.com ([15.216.28.34]:26181 "EHLO
-	g1t0027.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751677AbZHFWBC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2009 18:01:02 -0400
-Cc: nicholas.dokos@hp.com
-In-Reply-To: Message from Nick Dokos <nicholas.dokos@hp.com>
-   of "Thu, 06 Aug 2009 17:43:00 EDT." <18822.1249594980@alphaville.usa.hp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:44970 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751760AbZHFWJK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2009 18:09:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Nick Dokos <nicholas.dokos@hp.com> wrote:
+From: Eric Sandeen <sandeen@redhat.com>
 
-> Nick Dokos <nicholas.dokos@hp.com> wrote:
-> 
-> > > On Aug 06, 2009  16:37 -0400, Nick Dokos wrote:
-> > > > I did that to begin with but the problem turns out to be much more
-> > > > mundane: there was an IO error on one of the volumes. It wasn't quite
-> > > > obvious (no red lights going off) but there *was* a message in
-> > > > /var/log/messages - unfortunately I missed it. I eventually recreated
-> > > > the error by trying to read the file with ``od -c'' and then went back
-> > > > and found the original error. I don't know why/how ll_ver_fs managed to
-> > > > read the offset and come up with a 1M difference[1] -- ``od -c'' failed with
-> > > > a big thud.
-> > > 
-> > > Can you have a look at the error handling in ll_ver_fs at that point?
-> > > It seems that it might just have re-used the previous 1MB buffer, but
-> > > didn't detect/report the error from the read, which would itself be bad.
-> > > 
-> > 
-> > It looks right to me:
-> > 
-> > ,----
-> > |               ...
-> > | 		if (read(fd, chunk_buf, chunksize) < 0) {
-> > | 			fprintf(stderr, "\n%s: read %s+%llu failed: %s\n",
-> > | 				progname, file, offset, strerror(errno));
-> > | 			return 1;
-> > | 		}
-> > | 		if (verify_chunk(chunk_buf, chunksize, offset, time_st,
-> > | 				 inode_st, file) != 0)
-> > | 			return 1;
-> > |               ...
-> > `----
-> > 
-> > The read() should have failed (and I should have gotten a different error
-> > message) but somehow it didn't - instead, verify_chunk() was called and
-> > *that* detected the mismatch.
-> > 
-> 
-> The offset starts at 0 and is marched along at a 1MB stride, so it's
-> conceivable that the read() returned 0 (avoiding the error return) and
-> did not touch chunk_buf (thereby leading to the verify_chunk() failure).
-> 
-> That would be consistent with what I got, but if so, it would be a kernel
-> bug somewhere in the read() calling sequence, right?
-> 
-> Thanks,
-> Nick
-> 
-> PS. For the record, this is the error from /var/log/messages:
-> 
-> ,----
-> | ...
-> | Aug  5 18:14:11 shifter kernel: sd 10:0:7:3: [sdn] Unhandled sense code
-> | Aug  5 18:14:11 shifter kernel: sd 10:0:7:3: [sdn] Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
-> | Aug  5 18:14:11 shifter kernel: sd 10:0:7:3: [sdn] Sense Key : Medium Error [current] 
-> | Aug  5 18:14:11 shifter kernel: sd 10:0:7:3: [sdn] Add. Sense: No additional sense information
-> | Aug  5 18:14:11 shifter kernel: end_request: I/O error, dev sdn, sector 2238819328
-> | Aug  5 18:16:03 shifter kernel: sd 10:0:7:3: [sdn] Unhandled sense code
-> | Aug  5 18:16:03 shifter kernel: sd 10:0:7:3: [sdn] Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
-> | Aug  5 18:16:03 shifter kernel: sd 10:0:7:3: [sdn] Sense Key : Medium Error [current] 
-> | Aug  5 18:16:03 shifter kernel: sd 10:0:7:3: [sdn] Add. Sense: No additional sense information
-> | Aug  5 18:16:03 shifter kernel: end_request: I/O error, dev sdn, sector 2238819592
-> `----
-> 
+The FIEMAP_IOC_FIEMAP mapping ioctl was missing a 32-bit compat handler,
+which means that 32-bit suerspace on 64-bit kernels cannot use this ioctl
+command.
 
-Jim Owens pointed out to me that the code doesn't deal correctly with
-short reads.  The verification information is at the beginning of every
-4kB block, so the sector error causes a short read with exactly the
-symptoms I see.  The next read() would get the error.
+The structure is nicely aligned, padded, and sized, so it is just this
+simple.
 
-The code should  perhaps read something like this:
+Tested w/ 32-bit ioctl tester (from Josef) on a 64-bit kernel on ext4.
 
- 		if ((nread = read(fd, chunk_buf, chunksize)) < 0) {
- 			fprintf(stderr, "\n%s: read %s+%llu failed: %s\n",
- 				progname, file, offset, strerror(errno));
- 			return 1;
- 		}
-                if (nread < chunksize) {
-                        fprintf(stderr, "short read etc");
-                        /* or force the next read() to check for errors? */
-                        return 1;
-                }
- 		if (verify_chunk(chunk_buf, chunksize, offset, time_st,
- 				 inode_st, file) != 0)
- 			return 1;
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Mark Lord <lkml@rtr.ca>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Josef Bacik <josef@redhat.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Thanks,
-Nick
+ fs/compat_ioctl.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff -puN fs/compat_ioctl.c~compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl fs/compat_ioctl.c
+--- a/fs/compat_ioctl.c~compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl
++++ a/fs/compat_ioctl.c
+@@ -1905,6 +1905,7 @@ COMPATIBLE_IOCTL(FIONCLEX)
+ COMPATIBLE_IOCTL(FIOASYNC)
+ COMPATIBLE_IOCTL(FIONBIO)
+ COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
++COMPATIBLE_IOCTL(FS_IOC_FIEMAP)
+ /* 0x00 */
+ COMPATIBLE_IOCTL(FIBMAP)
+ COMPATIBLE_IOCTL(FIGETBSZ)
+_
