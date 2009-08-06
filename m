@@ -1,43 +1,74 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V3 1/3] tune2fs: Make e2fsprogs handle ENOSPC better
-	with inode resize
-Date: Thu, 6 Aug 2009 11:48:58 +0530
-Message-ID: <20090806061858.GA3344@skywalker>
-References: <1249539151-3191-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
+Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
+Date: Thu, 6 Aug 2009 15:15:56 +0200
+Message-ID: <20090806131555.GA23359@gradator.net>
+References: <20090420162017.GA28079@gradator.net> <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:48406 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751595AbZHFGTP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2009 02:19:15 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp06.au.ibm.com (8.14.3/8.13.1) with ESMTP id n766J84G004926
-	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 16:19:08 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n766JDVB454716
-	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 16:19:13 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n766JCTU000615
-	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 16:19:13 +1000
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="J/dobhs11T7y2rNN"
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1249539151-3191-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20090804225619.GB11097-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+
+--J/dobhs11T7y2rNN
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
 Hi,
 
-I tested this series with the following usecase:
 
-  a) using mkfs create a badblock map and see if the inode resize fail if
-     it find a mapping blocks as bad block.
-  b) On resizing inode if we find the mapping block having block bitmap
-    or inode bitmap we make sure we find a block in the same group. Used
-    debugfs set_bg to force a block bitmap after inode table.
-  c) If not we fail the inode resize
-  d) If we don't have enough space left we fail inode resize.
+On Wed, Aug 05, 2009 at 12:56:19AM +0200, Jan Kara wrote:
+>=20
+> Thanks for testing. So you seem to be really stressting the path where
+> creation of new files / directories fails (probably due to group quota).
+
+Yes, there are 29 groups over quota on a total of 4499. Those are mainly=20
+spammed websites and therefore quite stressed due to the amount of tries=20
+to add new "data".
 
 
--aneesh
+> I have one idea what could cause your filesystem corruption, although=20
+> it's a wild guess... Please try attached oneliner.
+
+Running since yesterday.
+
+
+> Also your corruption reminded me that Al Viro has been fixing problems
+> where we could cache one inode twice when a filesystem was mounted over N=
+FS
+> and that could also lead to a filesystem corruption. So I'm adding him to
+> CC just in case he has some idea. BTW Al, what do you think about the
+> problem I describe in the attached patch? I'm not sure if it can cause so=
+me
+> real problems but in theory it could...
+
+Should we upgrade NFS clients as well ?  (now running 2.6.28.9)
+
+
+Sylvain
+
+--J/dobhs11T7y2rNN
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQFKeteLDFub3qtEsS8RAkblAKCDyCR00ocoDY1Qxjp1bk6YWlPfkACgvdg9
+qcCk43m4BmrsCFyT9U7VTwE=
+=Dhxc
+-----END PGP SIGNATURE-----
+
+--J/dobhs11T7y2rNN--
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
