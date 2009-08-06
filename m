@@ -1,274 +1,259 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: [PATCH V2] xfstests 218: very basic defragmentation testing for xfs
- & ext4
-Date: Wed, 05 Aug 2009 23:31:36 -0500
-Message-ID: <4A7A5CA8.8040702@sandeen.net>
-References: <4A5E3A37.5050306@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: xfs mailing list <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V3 1/3] tune2fs: Make e2fsprogs handle ENOSPC better with inode resize
+Date: Thu,  6 Aug 2009 11:42:29 +0530
+Message-ID: <1249539151-3191-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([209.173.210.139]:21423 "EHLO mail.sandeen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750785AbZHFEbg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Aug 2009 00:31:36 -0400
-In-Reply-To: <4A5E3A37.5050306@redhat.com>
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:60740 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750706AbZHFGMm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2009 02:12:42 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp04.au.ibm.com (8.14.3/8.13.1) with ESMTP id n766A2R1024735
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 16:10:02 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n766CfuN446556
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 16:12:41 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n766CeF3007031
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 16:12:41 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Test a few very basic defragmentation scenarios.
+This removes the metadata block bitmap and makes the error handling
+simpler. It also check for the enospc with the correct number needed
+blocks. Also added specific error messages. We need to run e2undo
+only if we start modyfing inode, group desc and inode table.
 
-This test creates some files, runs defrag on them,
-and compares the before/after fragmentation as well
-as file md5sums and timestamps.
-
-The test currently expects to find e4defrag in
-/usr/bin
-
-It should be relatively easy to add more interestingly
-fragmented files to the tests, as well as to test
-that memory-mapped files aren't touched, etc - 
-but this gives us a framework.
-
-V2: remount before checking file contents, and create
-common.defrag.
-
-Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ misc/tune2fs.c |  120 ++++++++++++++-----------------------------------------
+ 1 files changed, 31 insertions(+), 89 deletions(-)
 
-diff --git a/218 b/218
-new file mode 100755
-index 0000000..8c8afe7
---- /dev/null
-+++ b/218
-@@ -0,0 +1,96 @@
-+#! /bin/sh
-+# FS QA Test No. 218
-+#
-+# Basic defragmentation sanity tests
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2009 Eric Sandeen.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=sandeen@sandeen.net
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -f $tmp.*
-+    _cleanup_testdir
-+}
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+. ./common.defrag
-+
-+# real QA test starts here
-+_supported_fs xfs ext4
-+_supported_os Linux
-+
-+_setup_testdir
-+# We require scratch so that we'll have free contiguous space
-+_require_scratch
-+_scratch_mkfs >/dev/null 2>&1
-+_scratch_mount
-+
-+_require_defrag
-+
-+fragfile=$SCRATCH_MNT/fragfile.$$
-+
-+rm -f $fragfile
-+
-+# Craft some fragmented files, defrag them, check the result.
-+
-+echo "zero-length file:" | tee -a $seq.full
-+touch $fragfile
-+_defrag $fragfile
-+
-+echo "Sparse file (no blocks):" | tee -a $seq.full
-+xfs_io -F -f -c "truncate 1m" $fragfile
-+_defrag $fragfile
-+
-+echo "Contiguous file:" | tee -a $seq.full
-+dd if=/dev/zero of=$fragfile bs=4k count=4 &>/dev/null
-+_defrag $fragfile
-+
-+echo "Write backwards sync, but contiguous - should defrag to 1 extent" | tee -a $seq.full
-+for I in `seq 9 -1 0`; do
-+	dd if=/dev/zero of=$fragfile bs=4k count=1 conv=notrunc seek=$I oflag=sync &>/dev/null
-+done
-+_defrag $fragfile
-+
-+echo "Write backwards sync leaving holes - defrag should do nothing" | tee -a $seq.full
-+for I in `seq 31 -2 0`; do
-+	dd if=/dev/zero of=$fragfile bs=4k count=1 conv=notrunc seek=$I oflag=sync &>/dev/null
-+done
-+_defrag $fragfile
-+
-+echo "Write forwards sync leaving holes - defrag should do nothing" | tee -a $seq.full
-+for I in `seq 0 2 31`; do
-+	dd if=/dev/zero of=$fragfile bs=4k count=1 conv=notrunc seek=$I oflag=sync &>/dev/null
-+done
-+_defrag $fragfile
-+
-+rm -f $seq.full
-+status=0
-+exit
-diff --git a/218.out b/218.out
-new file mode 100644
-index 0000000..7559cdd
---- /dev/null
-+++ b/218.out
-@@ -0,0 +1,19 @@
-+QA output created by 218
-+zero-length file:
-+Before: 0
-+After: 0
-+Sparse file (no blocks):
-+Before: 0
-+After: 0
-+Contiguous file:
-+Before: 1
-+After: 1
-+Write backwards sync, but contiguous - should defrag to 1 extent
-+Before: 10
-+After: 1
-+Write backwards sync leaving holes - defrag should do nothing
-+Before: 16
-+After: 16
-+Write forwards sync leaving holes - defrag should do nothing
-+Before: 16
-+After: 16
-diff --git a/common.defrag b/common.defrag
-new file mode 100644
-index 0000000..a0716de
---- /dev/null
-+++ b/common.defrag
-@@ -0,0 +1,68 @@
-+##/bin/sh
-+#
-+# Copyright (c) 2009 Eric Sandeen
-+# All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#
-+# Functions useful for defragmentation tests
-+#
-+
-+_require_defrag()
-+{
-+    case "$FSTYP" in
-+    xfs)
-+        DEFRAG_PROG=/usr/sbin/xfs_fsr
-+	;;
-+    ext4)
-+        DEFRAG_PROG=/usr/bin/e4defrag
-+	;;
-+    *)
-+        _notrun "defragmentation not supported for fstype \"$FSTYP\""
-+	;;
-+    esac
-+
-+    _require_command $DEFRAG_PROG
-+    _require_command /usr/sbin/filefrag
-+}
-+
-+_extent_count()
-+{
-+	filefrag $1 | awk '{print $2}'
-+	filefrag -v $1  >> $seq.full 2>&1
-+}
-+
-+# Defrag file, check it, and remove it.
-+_defrag()
-+{
-+	echo -n "Before: "
-+	_extent_count $1
-+	CSUM_BEFORE=`md5sum $1`
-+	STAT_BEFORE=`stat -c "a: %x m: %y c: %z" $1`
-+	$DEFRAG_PROG -v $1 >> $seq.full 2>&1
-+	_scratch_remount
-+	STAT_AFTER=`stat -c "a: %x m: %y c: %z" $1`
-+	CSUM_AFTER=`md5sum $1`
-+	echo -n "After: "
-+	_extent_count $1
-+	if [ "$CSUM_BEFORE" != "$CSUM_AFTER" ]; then
-+		_fail "file checksum changed post-defrag ($CSUM_BEFORE/$CSUM_AFTER)"
-+	fi
-+	if [ "$STAT_BEFORE" != "$STAT_AFTER" ]; then
-+		_fail "file timestamps changed post-defrag:\n$STAT_BEFORE\n$STAT_AFTER"
-+	fi
-+	rm -f $1
-+}
-+
-diff --git a/common.rc b/common.rc
-index 0d655ca..82b0d51 100644
---- a/common.rc
-+++ b/common.rc
-@@ -198,6 +198,17 @@ _scratch_mount()
-     _mount -t $FSTYP `_scratch_mount_options $*`
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 2ad3436..08fff29 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -962,34 +962,23 @@ static void parse_extended_opts(ext2_filsys fs, const char *opts)
  }
  
-+_scratch_unmount()
-+{
-+    $UMOUNT_PROG $SCRATCH_DEV
-+}
-+
-+_scratch_remount()
-+{
-+    _scratch_unmount
-+    _scratch_mount
-+}
-+
- _test_mount()
+ /*
+- * Fill in two bitmaps that we need to to control the inode resizing
+- * process.  The first is the set of blocks that must be moved, and
+- * the second is the set of blocks which are allocation bitmap blocks
+- * and must be treated specially.
++ * Fill in the block bitmap bmap with the information regarding the
++ * blocks to be moved
+  */
+ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+-			    ext2fs_block_bitmap bmap,
+-			    ext2fs_block_bitmap metadata_bmap)
++			ext2fs_block_bitmap bmap)
  {
-     _test_options mount
-diff --git a/group b/group
-index 7a67ce7..b11f6a1 100644
---- a/group
-+++ b/group
-@@ -327,3 +327,4 @@ prealloc
- 215 auto metadata quick
- 216 log metadata auto quick
- 217 log metadata auto
-+218 auto fsr quick
+ 	dgrp_t i;
+ 	blk_t j, needed_blocks = 0;
+-	blk_t i_bmap, b_bmap;
+ 	blk_t start_blk, end_blk;
+-	int num, k;
+ 
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+-		b_bmap = fs->group_desc[i].bg_block_bitmap;
+-		ext2fs_mark_block_bitmap(metadata_bmap, b_bmap);
+-		i_bmap = fs->group_desc[i].bg_inode_bitmap;
+-		ext2fs_mark_block_bitmap(metadata_bmap, i_bmap);
+-
+ 		start_blk = fs->group_desc[i].bg_inode_table +
+ 					fs->inode_blocks_per_group;
+ 
+ 		end_blk = fs->group_desc[i].bg_inode_table +
+ 					new_ino_blks_per_grp;
+ 
+-		num=0;
+ 		for (j = start_blk; j < end_blk; j++) {
+ 			if (ext2fs_test_block_bitmap(fs->block_map, j)) {
+ 				/* FIXME!!
+@@ -997,7 +986,6 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 				 * as a bad block
+ 				 */
+ 				ext2fs_mark_block_bitmap(bmap, j);
+-				needed_blocks++;
+ 			} else {
+ 				/*
+ 				 * We are going to use this block for
+@@ -1005,11 +993,8 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 				 */
+ 				ext2fs_mark_block_bitmap(fs->block_map, j);
+ 			}
+-			if ((j == i_bmap) || (j == b_bmap))
+-				num++;
+ 		}
+-		if (num <= fs->group_desc[i].bg_free_blocks_count) 
+-			continue;
++		needed_blocks += end_blk - start_blk;
+ 	}
+ 
+ 	if (needed_blocks > fs->super->s_free_blocks_count)
+@@ -1018,14 +1003,12 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 	return 0;
+ }
+ 
+-static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap,
+-		      ext2fs_block_bitmap metadata_bmap)
++static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
+ {
+ 	char *buf;
+ 	errcode_t retval;
+ 	blk_t blk, new_blk, goal;
+ 	struct blk_move *bmv;
+-	dgrp_t		group;
+ 
+ 	retval = ext2fs_get_mem(fs->blocksize, &buf);
+ 	if (retval)
+@@ -1036,16 +1019,7 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap,
+ 		if (!ext2fs_test_block_bitmap(bmap, blk))
+ 			continue;
+ 
+-		/*
+-		 * If the block is a bitmap block, find a new block in
+-		 * the same block group.
+-		 */
+-		if (ext2fs_test_block_bitmap(metadata_bmap, blk)) {
+-			group = ext2fs_group_of_blk(fs, blk);
+-			goal = ext2fs_group_first_block(fs, group);
+-		} else
+-			goal = new_blk;
+-
++		goal = new_blk;
+ 		retval = ext2fs_new_block(fs, goal, NULL, &new_blk);
+ 		if (retval)
+ 			goto err_out;
+@@ -1184,37 +1158,6 @@ err_out:
+ 	return retval;
+ }
+ 
+-/*
+- * We need to scan for inode and block bitmaps that may need to be
+- * moved.  This can take place if the filesystem was formatted for
+- * RAID arrays using the mke2fs's extended option "stride".
+- */
+-static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
+-{
+-	dgrp_t i;
+-	blk_t blk, new_blk;
+-
+-	for (i = 0; i < fs->group_desc_count; i++) {
+-		blk = fs->group_desc[i].bg_block_bitmap;
+-		if (ext2fs_test_block_bitmap(bmap, blk)) {
+-			new_blk = translate_block(blk);
+-			if (!new_blk)
+-				continue;
+-			fs->group_desc[i].bg_block_bitmap = new_blk;
+-		}
+-
+-		blk = fs->group_desc[i].bg_inode_bitmap;
+-		if (ext2fs_test_block_bitmap(bmap, blk)) {
+-			new_blk = translate_block(blk);
+-			if (!new_blk)
+-				continue;
+-			fs->group_desc[i].bg_inode_bitmap = new_blk;
+-		}
+-	}
+-	return 0;
+-}
+-
+-
+ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
+ {
+ 	dgrp_t i;
+@@ -1367,7 +1310,7 @@ static int resize_inode(ext2_filsys fs, unsigned long new_size)
+ {
+ 	errcode_t retval;
+ 	int new_ino_blks_per_grp;
+-	ext2fs_block_bitmap bmap, metadata_bmap;
++	ext2fs_block_bitmap bmap;
+ 
+ 	ext2fs_read_inode_bitmap(fs);
+ 	ext2fs_read_block_bitmap(fs);
+@@ -1387,34 +1330,28 @@ static int resize_inode(ext2_filsys fs, unsigned long new_size)
+ 
+ 	retval = ext2fs_allocate_block_bitmap(fs, _("blocks to be moved"),
+ 						&bmap);
+-	if (retval)
+-		return retval;
+-
+-	retval = ext2fs_allocate_block_bitmap(fs, _("blocks to be moved"),
+-						&metadata_bmap);
+-	if (retval)
++	if (retval) {
++		fputs(_("Failed to allocate block bitmap when "
++				"increasing inode size\n"), stderr);
+ 		return retval;
+-
+-	retval = get_move_bitmaps(fs, new_ino_blks_per_grp, bmap,
+-				  metadata_bmap);
+-	if (retval)
++	}
++	retval = get_move_bitmaps(fs, new_ino_blks_per_grp, bmap);
++	if (retval) {
++		fputs(_("Not enough space to increase inode size \n"), stderr);
+ 		goto err_out;
+-
+-	retval = move_block(fs, bmap, metadata_bmap);
+-	if (retval)
++	}
++	retval = move_block(fs, bmap);
++	if (retval) {
++		fputs(_("Failed to relocate blocks during inode resize \n"), stderr);
+ 		goto err_out;
+-
++	}
+ 	retval = inode_scan_and_fix(fs, bmap);
+ 	if (retval)
+-		goto err_out;
+-
+-	retval = group_desc_scan_and_fix(fs, bmap);
+-	if (retval)
+-		goto err_out;
++		goto err_out_undo;
+ 
+ 	retval = expand_inode_table(fs, new_size);
+ 	if (retval)
+-		goto err_out;
++		goto err_out_undo;
+ 
+ 	ext2fs_calculate_summary_stats(fs);
+ 
+@@ -1428,6 +1365,15 @@ err_out:
+ 	ext2fs_free_block_bitmap(bmap);
+ 
+ 	return retval;
++
++err_out_undo:
++	free_blk_move_list();
++	ext2fs_free_block_bitmap(bmap);
++	fputs(_("Error in resizing the inode size.\n"
++			"Run e2undo to undo the "
++			"file system changes. \n"), stderr);
++
++	return retval;
+ }
+ 
+ static int tune2fs_setup_tdb(const char *name, io_manager *io_ptr)
+@@ -1744,11 +1690,7 @@ retry_open:
+ 		 * with the new free inode count
+ 		 */
+ 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+-		if (resize_inode(fs, new_inode_size)) {
+-			fputs(_("Error in resizing the inode size.\n"
+-				"Run e2undo to undo the "
+-				"file system changes. \n"), stderr);
+-		} else {
++		if (resize_inode(fs, new_inode_size) == 0) {
+ 			printf(_("Setting inode size %lu\n"),
+ 							new_inode_size);
+ 		}
+-- 
+1.6.4.13.ge6580
 
