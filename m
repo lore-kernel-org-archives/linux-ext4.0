@@ -1,39 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13874] kenal panic on addition of xfx nvidia gts250 512mb on
- 946giz motherboard
-Date: Wed, 5 Aug 2009 17:06:47 GMT
-Message-ID: <200908051706.n75H6lAa006838@demeter.kernel.org>
-References: <bug-13874-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] filefrag: fix frag count in bmap case
+Date: Wed, 05 Aug 2009 21:43:23 -0500
+Message-ID: <4A7A434B.9090007@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:50663 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934247AbZHERGq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Aug 2009 13:06:46 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n75H6lhi006839
-	for <linux-ext4@vger.kernel.org>; Wed, 5 Aug 2009 17:06:47 GMT
-In-Reply-To: <bug-13874-13602@http.bugzilla.kernel.org/>
+Received: from mx2.redhat.com ([66.187.237.31]:46428 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750825AbZHFCn1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Aug 2009 22:43:27 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n762hPmD031426
+	for <linux-ext4@vger.kernel.org>; Wed, 5 Aug 2009 22:43:25 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n762hOMZ031874
+	for <linux-ext4@vger.kernel.org>; Wed, 5 Aug 2009 22:43:25 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n762hNUI032763
+	for <linux-ext4@vger.kernel.org>; Wed, 5 Aug 2009 22:43:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13874
+The fragmentation count in the bmap case seems to be
+off by one:
+
+# echo foo > /mnt/test/bar
+# filefrag /mnt/test/bar
+/mnt/test/bar: 0 extents found
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index eed2b86..128a391 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -342,6 +342,8 @@ static void frag_report(const char *filename)
+ 			rc = get_bmap(fd, i, &block);
+ 			if (block == 0)
+ 				continue;
++			if (!num_extents)
++				num_extents++;
+ 			count++;
+ 			if (last_block && (block != last_block+1) ) {
+ 				if (verbose)
 
 
-
-
-
---- Comment #7 from Jan Kara <jack@suse.cz>  2009-08-05 17:06:45 ---
-Hmm, I've looked at those videos. The first just confirms its some really
-lowlevel problem - we oopsed quite early while trying to get a free page. I
-didn't find any suspicious message in the second one... There's just something
-about "stolen memory". Probably someone with lowlevel HW/BIOS knowledge should
-look into this memory corruption. It's definitely not fs related... Andrew,
-could you please reassign? I don't seem to have enough rights.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
