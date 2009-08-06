@@ -1,41 +1,48 @@
-From: akpm@linux-foundation.org
-Subject: [patch 1/1] ext4: remove redundant test on unsigned
-Date: Thu, 06 Aug 2009 16:07:21 -0700
-Message-ID: <200908062307.n76N7LQw008071@imap1.linux-foundation.org>
-Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	roel.kluin@gmail.com
-To: tytso@mit.edu
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13874] kenal panic on addition of xfx nvidia gts250 512mb on
+ 946giz motherboard
+Date: Thu, 6 Aug 2009 23:25:37 GMT
+Message-ID: <200908062325.n76NPbAp005496@demeter.kernel.org>
+References: <bug-13874-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:60284 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756869AbZHFXHy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2009 19:07:54 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:59356 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751893AbZHFXZg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2009 19:25:36 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n76NPbeV005497
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Aug 2009 23:25:37 GMT
+In-Reply-To: <bug-13874-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Roel Kluin <roel.kluin@gmail.com>
+http://bugzilla.kernel.org/show_bug.cgi?id=13874
 
-unsigned i_block cannot be less than 0.
 
-Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Andrew Morton <akpm@linux-foundation.org> changed:
 
- fs/ext4/inode.c |    4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+          Component|ext3                        |x86-64
+         AssignedTo|fs_ext3@kernel-bugs.osdl.or |platform_x86_64@kernel-bugs
+                   |g                           |.osdl.org
+            Product|File System                 |Platform Specific/Hardware
 
-diff -puN fs/ext4/inode.c~ext4-remove-redundant-test-on-unsigned fs/ext4/inode.c
---- a/fs/ext4/inode.c~ext4-remove-redundant-test-on-unsigned
-+++ a/fs/ext4/inode.c
-@@ -343,9 +343,7 @@ static int ext4_block_to_path(struct ino
- 	int n = 0;
- 	int final = 0;
- 
--	if (i_block < 0) {
--		ext4_warning(inode->i_sb, "ext4_block_to_path", "block < 0");
--	} else if (i_block < direct_blocks) {
-+	if (i_block < direct_blocks) {
- 		offsets[n++] = i_block;
- 		final = direct_blocks;
- 	} else if ((i_block -= direct_blocks) < indirect_blocks) {
-_
+
+
+
+--- Comment #8 from Andrew Morton <akpm@linux-foundation.org>  2009-08-06 23:25:35 ---
+I don't know where to reassign it, really.  Where's the bug?
+
+A can randomly punt it in the x86_64 direction, but I suspect the hardware is
+broken.
+
+Does _any_ version of the linux kernel run properly on that particular machine?
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
