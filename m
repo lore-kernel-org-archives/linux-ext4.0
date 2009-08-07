@@ -1,87 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13930] New: non-contiguous files (64.9%) on a ext4 fs
-Date: Fri, 7 Aug 2009 09:58:47 GMT
-Message-ID: <bug-13930-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Questions about mballoc's stream allocation
+Date: Fri, 07 Aug 2009 09:07:53 -0400
+Message-ID: <E1MZPAn-0001Y0-TQ@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:44856 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755985AbZHGJ6r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2009 05:58:47 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n779wlAd032014
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Aug 2009 09:58:47 GMT
+Received: from thunk.org ([69.25.196.29]:60824 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756055AbZHGNH5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Aug 2009 09:07:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=3D13930
 
-           Summary: non-contiguous files (64.9%) on a ext4 fs
-           Product: File System
-           Version: 2.5
-    Kernel Version: Linux version 2.6.31-rc5 (logik@LogikPC) (gcc versi=
-on
-                    4.3.3 (Debian 4.3.3-15) ) #1 SMP PREEMPT Sat Aug 1
-                    19:52:55 CEST 2009
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: zelogik+bugzilla@gmail.com
-        Regression: No
+I've got two questions about mballoc's stream allocation.
 
+First of all, in ext4_mb_regular_allocator(), I'm 99% sure this is a
+bug:
 
-Normally ext4 is a perfect non-contifuous FS ... so why when I make an:
+	/* if stream allocation is enabled, use global goal */
+	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
+	isize = i_size_read(ac->ac_inode) >> bsbits;
+	if (size < isize)
+		size = isize;
 
-sudo e2fsck -v -f -p /dev/sdc1
+	if (size < sbi->s_mb_stream_request &&
+	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
+		/* TBD: may be hot point */
+		spin_lock(&sbi->s_md_lock);
+		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
+		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
+		spin_unlock(&sbi->s_md_lock);
+	}
 
-   15953 inodes used (0.03%)
-   10361 non-contiguous files (64.9%)
-       7 non-contiguous directories (0.0%)
-         nombre d'i-noeuds avec des blocs ind/dind/tind=C2=A0: 0/0/0
-         Histogramme des profondeurs d'extents=C2=A0: 14555/1388
-234324740 blocks used (95.96%)
-       0 bad blocks
-       1 large file
-
-   14728 regular files
-    1216 directories
-       0 character device files
-       0 block device files
-       0 fifos
-       0 links
-       0 symbolic links (0 fast symbolic links)
-       0 sockets
---------
-   15944 files
+Shouldn't that be ">=", not "<".  We want to use the values saved in
+sbi->s_mb_last_{group,start} only if we are doing a stream allocation,
+which would be true only if the file is *larger* than
+s_mb_stream_request, no?
 
 
+The second question I have is with regards to ext4_mb_use_best_found(),
+we set sbi->s_mb_last_{group,start} on any data allocation; shouldn't we
+only be setting those values only if we were doing a stream allocation
+in the first place?
 
-We have 64.9% of non-contiguous files on a ext4 fs,=20
+Otherwise, any kind of allocation will end up moving the global goal
+block for stream allocations; even if it is a small allocation in the
+middle of some block group caused by the flag EXT4_MB_HINT_NO_PREALLOC
+being set.
 
-=46iles have been transfered from a cifs mount (useful ?) and files siz=
-e are
-[2-10]|[600-800]MB
+Am I missing anything?
 
-
-Some references:
-Lacie 1To on usb with usb-Hitachi_HDS721010KLA330
-
-Want more info ... just ask because I don't know what send now for help=
- you :)
-
---=20
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     	   	      	       		     - Ted
