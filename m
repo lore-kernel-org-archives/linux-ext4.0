@@ -1,416 +1,115 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfstests: 220 - generic quota sanity
-Date: Fri, 07 Aug 2009 14:10:20 -0500
-Message-ID: <4A7C7C1C.2010202@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13930] non-contiguous files (64.9%) on a ext4 fs
+Date: Fri, 7 Aug 2009 22:20:53 GMT
+Message-ID: <200908072220.n77MKrYv025705@demeter.kernel.org>
+References: <bug-13930-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59970 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933031AbZHGTKb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Aug 2009 15:10:31 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:33945 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753191AbZHGWUy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2009 18:20:54 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n77MKrA4025706
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Aug 2009 22:20:53 GMT
+In-Reply-To: <bug-13930-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add some very basic quota sanity tests for generic filesystems.
-
-This is based on test 108, but uses the generic quota tools,
-not xfs_quota, and therefore cannot test project quota.
-
-Also, the IOs are much smaller (48k) so that ext3 won't get into
-indirect blocks and throw off the accounting.  This does
-assume 4k blocks though.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/220 b/220
-new file mode 100755
-index 0000000..3b828cb
---- /dev/null
-+++ b/220
-@@ -0,0 +1,123 @@
-+#! /bin/sh
-+# FS QA Test No. 220
-+#
-+# Simple quota accounting test for direct/buffered/mmap IO.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2009 Eric Sandeen.  All Rights Reserved.
-+#
-+# Based on test 108,
-+# Copyright (c) 2005 Silicon Graphics, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=sandeen@sandeen.net
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+. ./common.quota
-+
-+filter_scratch()
-+{
-+	perl -ne "
-+s,$SCRATCH_MNT,[SCR_MNT],;
-+s,$SCRATCH_DEV,[SCR_DEV],;
-+	print;"
-+}
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux #IRIX
-+_require_scratch
-+_require_quota
-+
-+test_files()
-+{
-+	echo; echo "### create files, setting up ownership (type=$type)"
-+	rm -f $SCRATCH_MNT/{buffer,direct,mmap}
-+	touch $SCRATCH_MNT/{buffer,direct,mmap}
-+	chown $uid $SCRATCH_MNT/{buffer,direct,mmap}
-+	chgrp $gid $SCRATCH_MNT/{buffer,direct,mmap}
-+	for file in $SCRATCH_MNT/{buffer,direct,mmap}; do
-+		$here/src/lstat64 $file | head -3 | filter_scratch
-+	done
-+}
-+
-+test_accounting()
-+{
-+	echo "### some controlled buffered, direct and mmapd IO (type=$type)"
-+	echo "--- initiating parallel IO..." >>$seq.full
-+	# Small ios here because ext3 will account for indirect blocks too ...   :( 
-+	# 48k will fit w/o indirect for 4k blocks (default blocksize)
-+	$XFS_IO_PROG -F -c 'pwrite 0 48k' -c 'fsync' \
-+					$SCRATCH_MNT/buffer >>$seq.full 2>&1 &
-+	$XFS_IO_PROG -F -c 'pwrite 0 48k' -d \
-+					$SCRATCH_MNT/direct >>$seq.full 2>&1 &
-+	$XFS_IO_PROG -F -c 't 48k' -c 'mm -rw 0 48k' -c 'mw 0 48k' -c 'ms -s' \
-+					$SCRATCH_MNT/mmap   >>$seq.full 2>&1 &
-+	wait
-+	echo "--- completed parallel IO ($type)" >>$seq.full
-+
-+	for file in $SCRATCH_MNT/{buffer,direct,mmap}; do
-+		$here/src/lstat64 $file | head -3 | filter_scratch
-+	done
-+
-+	repquota -$type -s -n $SCRATCH_MNT  | grep -v "^#0" | filter_scratch
-+}
-+
-+# real QA test starts here
-+rm -f $seq.full
-+
-+uid=1
-+gid=2
-+
-+umount $SCRATCH_DEV 2>/dev/null
-+_scratch_mkfs >> $seq.full 2>&1
-+_scratch_mount "-o usrquota,grpquota"
-+quotacheck -u -g $SCRATCH_MNT 2>/dev/null
-+quotaon $SCRATCH_MNT 2>/dev/null
-+umount $SCRATCH_DEV
-+
-+echo; echo "### test user accounting"
-+export MOUNT_OPTIONS="-o usrquota"
-+_qmount
-+quotaon $SCRATCH_MNT 2>/dev/null
-+type=u
-+test_files
-+test_accounting
-+umount $SCRATCH_DEV 2>/dev/null
-+
-+echo; echo "### test group accounting"
-+export MOUNT_OPTIONS="-o grpquota"
-+_qmount
-+quotaon $SCRATCH_MNT 2>/dev/null
-+type=g
-+test_files
-+test_accounting
-+umount $SCRATCH_DEV 2>/dev/null
-+
-+status=0
-+exit
-diff --git a/220.out b/220.out
-new file mode 100644
-index 0000000..57db113
---- /dev/null
-+++ b/220.out
-@@ -0,0 +1,63 @@
-+QA output created by 220
-+
-+### test user accounting
-+
-+### create files, setting up ownership (type=u)
-+  File: "[SCR_MNT]/buffer"
-+  Size: 0            Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/direct"
-+  Size: 0            Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/mmap"
-+  Size: 0            Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+### some controlled buffered, direct and mmapd IO (type=u)
-+  File: "[SCR_MNT]/buffer"
-+  Size: 53248        Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/direct"
-+  Size: 53248        Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/mmap"
-+  Size: 53248        Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+*** Report for user quotas on device [SCR_DEV]
-+Block grace time: 7days; Inode grace time: 7days
-+                        Block limits                File limits
-+User            used    soft    hard  grace    used  soft  hard  grace
-+----------------------------------------------------------------------
-+#1        --     168       0       0              3     0     0       
-+
-+
-+
-+### test group accounting
-+
-+### create files, setting up ownership (type=g)
-+  File: "[SCR_MNT]/buffer"
-+  Size: 0            Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/direct"
-+  Size: 0            Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/mmap"
-+  Size: 0            Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+### some controlled buffered, direct and mmapd IO (type=g)
-+  File: "[SCR_MNT]/buffer"
-+  Size: 53248        Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/direct"
-+  Size: 53248        Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+  File: "[SCR_MNT]/mmap"
-+  Size: 53248        Filetype: Regular File
-+  Mode: (0644/-rw-r--r--)         Uid: (1)  Gid: (2)
-+*** Report for group quotas on device [SCR_DEV]
-+Block grace time: 7days; Inode grace time: 7days
-+                        Block limits                File limits
-+Group           used    soft    hard  grace    used  soft  hard  grace
-+----------------------------------------------------------------------
-+#2        --     168       0       0              3     0     0       
-+
-+
-diff --git a/common.quota b/common.quota
-index a9dfb42..e2a7872 100644
---- a/common.quota
-+++ b/common.quota
-@@ -21,14 +21,27 @@
- #
- 
- #
--# checks that the XFS quota support in the kernel is enabled
-+# checks that the generic quota support in the kernel is enabled
- # and that we have valid quota user tools installed.
- #
- _require_quota()
- {
-+    [ -x /usr/bin/quota ] || _notrun "Quota user tools not installed"
-+    _scratch_mount "-o usrquota,grpquota"
-+    ret=$?
-+    umount $SCRATCH_MNT
-+    [ $ret -ne 0 ] && _notrun "Installed kernel does not support quota"
-+}
-+
-+#
-+# checks that the XFS quota support in the kernel is enabled
-+# and that we have valid quota user tools installed.
-+#
-+_require_xfs_quota()
-+{
-     src/feature -q $TEST_DEV
-     [ $? -ne 0 ] && _notrun "Installed kernel does not support XFS quota"
--    [ -x /usr/sbin/xfs_quota ] || _notrun "Quota user tools not installed"
-+    [ -x /usr/sbin/xfs_quota ] || _notrun "XFS quota user tools not installed"
- }
- 
- #
-diff --git a/group b/group
-index e068e92..1fc280f 100644
---- a/group
-+++ b/group
-@@ -328,3 +328,4 @@ prealloc
- 217 log metadata auto
- 218 auto fsr quick
- 219 auto
-+220 auto quota
-
-diff --git a/050 b/050
-index abb806a..306a7b5 100755
---- a/050
-+++ b/050
-@@ -55,7 +55,7 @@ cp /dev/null $seq.full
- chmod a+rwx $seq.full	# arbitrary users will write here
- 
- _require_scratch
--_require_quota
-+_require_xfs_quota
- 
- bsoft=100
- bhard=500
-diff --git a/052 b/052
-index 16c78de..3d8bb9e 100755
---- a/052
-+++ b/052
-@@ -54,7 +54,7 @@ _supported_os IRIX Linux
- rm -f $seq.full
- 
- _require_scratch
--_require_quota
-+_require_xfs_quota
- _require_nobody
- 
- # setup a default run
-diff --git a/054 b/054
-index b495e51..b38efab 100755
---- a/054
-+++ b/054
-@@ -52,7 +52,7 @@ cp /dev/null $seq.full
- chmod ugo+rwx $seq.full
- 
- _require_scratch
--_require_quota
-+_require_xfs_quota
- 
- _filter_stat()
- {
-diff --git a/081 b/081
-index 3036484..c8eba80 100755
---- a/081
-+++ b/081
-@@ -54,7 +54,7 @@ trap "_cleanup; exit \$status" 0 1 2 3 15
- # prelim
- rm -f $seq.full $tmp.*
- _require_scratch
--_require_quota
-+_require_xfs_quota
- _require_v2log
-  
- echo "*** init FS"
-diff --git a/106 b/106
-index 7154979..30f740b 100755
---- a/106
-+++ b/106
-@@ -42,7 +42,7 @@ trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
- _supported_fs xfs
- _supported_os Linux #IRIX
- _require_scratch
--_require_quota
-+_require_xfs_quota
- _require_prjquota
- 
- # real QA test starts here
-diff --git a/107 b/107
-index cfa8213..f36dc21 100755
---- a/107
-+++ b/107
-@@ -54,7 +54,7 @@ s/Inode: \#\d+ \(\d+ blocks, \d+ extents\)/Inode: #[INO] (X blocks, Y extents)/;
- _supported_fs xfs
- _supported_os Linux #IRIX
- _require_scratch
--_require_quota
-+_require_xfs_quota
- _require_prjquota
- 
- # real QA test starts here
-diff --git a/108 b/108
-index 3f3e1fb..3a1fee9 100755
---- a/108
-+++ b/108
-@@ -49,7 +49,7 @@ s,$SCRATCH_DEV,[SCR_DEV],;
- _supported_fs xfs
- _supported_os Linux #IRIX
- _require_scratch
--_require_quota
-+_require_xfs_quota
- _require_prjquota
- 
- test_files()
-diff --git a/116 b/116
-index 8394054..e902ce9 100755
---- a/116
-+++ b/116
-@@ -51,7 +51,7 @@ _supported_fs xfs
- _supported_os IRIX Linux
- 
- _require_scratch
--_require_quota
-+_require_xfs_quota
- 
- mkfs.xfs -f $SCRATCH_DEV >/dev/null 2>&1
- mount -o uquota $SCRATCH_DEV $SCRATCH_MNT
-diff --git a/118 b/118
-index 6b28055..cb0e5ee 100755
---- a/118
-+++ b/118
-@@ -52,7 +52,7 @@ _supported_fs xfs
- _supported_os IRIX Linux
- 
- _require_scratch
--_require_quota
-+_require_xfs_quota
- 
- _chowning_file()
- {
-diff --git a/134 b/134
-index fc2ab74..f00e1f0 100755
---- a/134
-+++ b/134
-@@ -50,7 +50,7 @@ _cleanup()
- _supported_fs xfs
- _supported_os Linux IRIX
- 
--_require_quota
-+_require_xfs_quota
- 
- dir=$SCRATCH_MNT/project
- 
-diff --git a/196 b/196
-index 7768618..5da3659 100755
---- a/196
-+++ b/196
-@@ -51,7 +51,7 @@ _supported_fs xfs
- _supported_os Linux
- 
- _require_scratch
--_require_quota
-+_require_xfs_quota
- 
- #
- # Setup temporary replacements for /etc/projects and /etc/projid
+http://bugzilla.kernel.org/show_bug.cgi?id=13930
 
 
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+
+
+
+--- Comment #2 from Theodore Tso <tytso@mit.edu>  2009-08-07 22:20:51 ---
+I'm pretty sure what's going on here is the problem I've reported before where
+if you have a large number of large files being written at the same time, the
+Linux page cleaner round-robins between the different dirty inodes to avoid
+starving some inode from ever getting its dirty pages written out.  This then
+combines with ext4's multi-block allocator limiting its search for 8MB of free
+extent chunks, so we only expand a dirty page writeback request into 2048
+blocks.   See the discussion here:
+
+    http://thread.gmane.org/gmane.comp.file-systems.ext4/13107
+
+The reason why you're seeing this so much is that this filesystem has
+relatively few inodes (just under 16,000) and a very large average inode size
+(about 54 megabytes), and so a very large number of the files are
+"non-contiguous".    But, if you look at this statistic from e2fsck:
+
+         Histogramme des profondeurs d'extents : 14555/1388
+
+14,555, or 91% of the files, have fewer than 4 extents, so that all of the
+extents fit in the inode.  (Note that an extent addresses at most 128 meg, so
+by definition a 512meg file will have at least 4 extents.)   That means it's
+highly likely that if you look at a particularly large file using "filefrag
+-v", you will see something like this:
+
+ ext logical physical expected length flags
+   0       0  2165248             512 
+   1     512  2214400  2165759   1536 
+   2    2048  2244608  2215935   2048 
+   3    4096  2250752  2246655   2048 
+   4    6144  2254848  2252799  32768 
+   5   38912  2287616            8192 
+   6   47104  2299904  2295807   2048 
+   7   49152  2306048  2301951   2048 eof
+
+Note that extent #5 is really located contiguously after extent #4; the reason
+why a new extent was created is because the maximum length that can be encoded
+in the on-disk extent data structure is 32,768 blocks.  (Which if you are using
+4k blocks, means a maximum extent size of 128 megs.)
+
+So this kind of "non-contiguous" file is non-optimal, and we really should fix
+the block allocator to better.  On the other hand, it's not as disastrously
+fragmented as say, the following file from an ext3 filesystem:
+
+ ext logical physical length
+   0       0  5228587    12 
+   1      12  5228600   110 
+   2     122  5228768   145
+   3     267  5228915     1
+   4     268  5228918     9
+   5     277  5228936    69
+   6     346  5229392   165
+   7     511  5230282   124
+   8     635  5230496    42
+   9     677  5231614    10
+  10     687  5231856    20
+  11     707  5231877    46
+  12     753  5231975     1
+  13     754  5232033    14
+  14     768  5232205     2
+  15     770  5233913     4
+  16     774  5233992   262
+  17    1036  5234256   191
+
+Part of the problem is that "non-contiguous" or "fragmented" doesn't really
+describe whether the file is like the first ext4 file (which is indeed
+non-contiguous, and while it could be better allocated on disk, the time to
+read the file sequentially won't be _that_ much worse than a file that 100%
+contiguous), than say, a file like this second ext3 file, where the performance
+degradation are much worse.
+
+I suppose we could do something where we define "fragmented" as a file where
+has no extents which are smaller than N blocks, or where the average extent
+size is greater than M blocks.   My original way of dealing with this number
+was to simply use the phrase "non-contiguous" instead of "fragmented", which is
+technically accurate, but it causes people to get overly concerned when they
+see something like "64.9% non-contiguous files".   Unfortunately, at moment
+what this means is something like "approximately 65% of your files are greater
+than 8 megabytes".
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
