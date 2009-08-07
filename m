@@ -1,55 +1,50 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Questions about mballoc's stream allocation
-Date: Fri, 07 Aug 2009 09:07:53 -0400
-Message-ID: <E1MZPAn-0001Y0-TQ@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13930] non-contiguous files (64.9%) on a ext4 fs
+Date: Fri, 7 Aug 2009 14:40:12 GMT
+Message-ID: <200908071440.n77EeCVu015148@demeter.kernel.org>
+References: <bug-13930-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60824 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756055AbZHGNH5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Aug 2009 09:07:57 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:33852 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932558AbZHGOkL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2009 10:40:11 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n77EeCaH015149
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Aug 2009 14:40:12 GMT
+In-Reply-To: <bug-13930-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-I've got two questions about mballoc's stream allocation.
-
-First of all, in ext4_mb_regular_allocator(), I'm 99% sure this is a
-bug:
-
-	/* if stream allocation is enabled, use global goal */
-	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
-	isize = i_size_read(ac->ac_inode) >> bsbits;
-	if (size < isize)
-		size = isize;
-
-	if (size < sbi->s_mb_stream_request &&
-	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
-		/* TBD: may be hot point */
-		spin_lock(&sbi->s_md_lock);
-		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
-		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
-		spin_unlock(&sbi->s_md_lock);
-	}
-
-Shouldn't that be ">=", not "<".  We want to use the values saved in
-sbi->s_mb_last_{group,start} only if we are doing a stream allocation,
-which would be true only if the file is *larger* than
-s_mb_stream_request, no?
+http://bugzilla.kernel.org/show_bug.cgi?id=13930
 
 
-The second question I have is with regards to ext4_mb_use_best_found(),
-we set sbi->s_mb_last_{group,start} on any data allocation; shouldn't we
-only be setting those values only if we were doing a stream allocation
-in the first place?
+Eric Sandeen <sandeen@redhat.com> changed:
 
-Otherwise, any kind of allocation will end up moving the global goal
-block for stream allocations; even if it is a small allocation in the
-middle of some block group caused by the flag EXT4_MB_HINT_NO_PREALLOC
-being set.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
 
-Am I missing anything?
 
-     	   	      	       		     - Ted
+
+
+--- Comment #1 from Eric Sandeen <sandeen@redhat.com>  2009-08-07 14:40:11 ---
+It might be interesting to poke around with filefrag and see which files are
+fragmented, and compare that to how big they are.  Summary stats like this can
+sometimes be misleading.
+
+Or to put it another way, if half your files are < 100M and contiguous, and the
+other half are > 100M and all of those have 2 50M extents each, I think e2fsck
+would say "50.0% non-contiguous" - but this isn't really indicative of a
+problem.
+
+If you can demonstrate that simply copying a large file (or files) from cifs
+leads to bad fragmentation of that file (or files), then we probably have
+something to work on.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
