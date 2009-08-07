@@ -1,26 +1,51 @@
-From: Roel Kluin <roel.kluin@gmail.com>
-Subject: Re: ext4: buffer underrun in ext4_ext_split()?
-Date: Fri, 07 Aug 2009 20:50:39 +0200
-Message-ID: <4A7C777F.3030803@gmail.com>
-References: <4A7C7045.7040704@gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [Bug 13930] New: non-contiguous files (64.9%) on a ext4 fs
+Date: Fri, 07 Aug 2009 12:58:53 -0600
+Message-ID: <20090807185853.GK3340@webber.adilger.int>
+References: <bug-13930-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Roel Kluin <roel.kluin@gmail.com>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: zelogik+bugzilla@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f214.google.com ([209.85.219.214]:48425 "EHLO
-	mail-ew0-f214.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932740AbZHGSrE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2009 14:47:04 -0400
-Received: by ewy10 with SMTP id 10so1741209ewy.37
-        for <linux-ext4@vger.kernel.org>; Fri, 07 Aug 2009 11:47:03 -0700 (PDT)
-In-Reply-To: <4A7C7045.7040704@gmail.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:59043 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932871AbZHGS7E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2009 14:59:04 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n77Ix4WH012017
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Aug 2009 11:59:04 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KO000300SNOWR00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 07 Aug 2009 11:59:04 -0700 (PDT)
+In-reply-to: <bug-13930-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Op 07-08-09 20:19, Roel Kluin schreef:
-> If `depth' is less or equal to `at', a buffer underrun occurs
+On Aug 07, 2009  09:58 +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+> Normally ext4 is a perfect non-contifuous FS ... so why when I make an:
+> 
+> sudo e2fsck -v -f -p /dev/sdc1
+> 
+>    15953 inodes used (0.03%)
+>    10361 non-contiguous files (64.9%)
+> 
+> We have 64.9% of non-contiguous files on a ext4 fs, 
+> 
+> Files have been transfered from a cifs mount (useful ?) and files size are
+> [2-10]|[600-800]MB
 
-s/underrun/overflow/g
+Note that the largest single extent in ext4 is 128MB, so it is perfectly
+normal to have fragmented files if they are 600MB in size.  Maybe we should
+change the e2fsck stats to not consider a file fragmented if it fills the
+whole block group (less any metadata therein)?
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
