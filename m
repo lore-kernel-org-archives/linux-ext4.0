@@ -1,104 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13930] non-contiguous files (64.9%) on a ext4 fs
-Date: Fri, 7 Aug 2009 22:38:00 GMT
-Message-ID: <200908072238.n77Mc0b4028521@demeter.kernel.org>
-References: <bug-13930-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 13930] New: non-contiguous files (64.9%) on a ext4 fs
+Date: Fri, 7 Aug 2009 20:16:16 -0400
+Message-ID: <20090808001616.GB13642@mit.edu>
+References: <bug-13930-13602@http.bugzilla.kernel.org/> <20090807185853.GK3340@webber.adilger.int> <4A7C7BB8.2060904@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, zelogik+bugzilla@gmail.com,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:41111 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750867AbZHGWiB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2009 18:38:01 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n77Mc0WG028522
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Aug 2009 22:38:00 GMT
-In-Reply-To: <bug-13930-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:53732 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757321AbZHHAQl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Aug 2009 20:16:41 -0400
+Content-Disposition: inline
+In-Reply-To: <4A7C7BB8.2060904@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=3D13930
+On Fri, Aug 07, 2009 at 02:08:40PM -0500, Eric Sandeen wrote:
+> 
+> Ah that crossed my mind, but since so many other e2fsprogs tools
+> coalesce adjacent extents and report "1" I figured e2fsck was too
+> (though I didn't look...)
 
+No, actually e2fsck counts non-contiguous only when the extent is
+non-adjacent to the previous extent.
 
+What we may want to do though is to create some other statistic which
+is something like "file has more than one contiguous run of blocks and
+one or more contiguous runs of blocks is smaller than 512 blocks".
+This will take into account that for very large files small amounts of
+non-contiguousness is acceptable, although certainly not ideal.  But
+if we report both number of non-contiguous files, and number of
+fragmented files, it might be a good way of reflecting this.
 
+We really do need to improve the ext4's block allocator, though.  What
+we have here is definitely that needs improving.  Personally, I think
+free space fragmentation problem caused by small files should be
+higher priority, since although it isn't as blindly obvious by people
+running e2fsprogs, in the long run the free space fragmentation will
+cause files to get fragmented very badly when the filesystem ages and
+as it gets full.
 
-
---- Comment #3 from C=C3=A9dric M <zelogik+bugzilla@gmail.com>  2009-08=
--07 22:37:59 ---
-I have make some try on a 242MB file:
-
-du -h file
-242M
-
-And after an:
-=46ilesystem type is: ef53
-=46ile size of ****** is 253480960 (61885 blocks, blocksize 4096)
- ext logical physical expected length flags
-   0       0 215814144            2048=20
-   1    2048 215820288 215816191   2048=20
-   2    4096 215824384 215822335   2048=20
-   3    6144 215828480 215826431   2048=20
-   4    8192 215832576 215830527   2048=20
-   5   10240 215836672 215834623   2048=20
-   6   12288 215840768 215838719   2048=20
-   7   14336 215844864 215842815   2048=20
-   8   16384 215848960 215846911   2048=20
-   9   18432 215853056 215851007  26624=20
-  10   45056 215881728 215879679   2048=20
-  11   47104 215885824 215883775   2048=20
-  12   49152 215891968 215887871   2048=20
-  13   51200 215896064 215894015   2048=20
-  14   53248 215900160 215898111   2048=20
-  15   55296 215904256 215902207   2048=20
-  16   57344 215908352 215906303   2048=20
-  17   59392 215912448 215910399   2048=20
-  18   61440 215918592 215914495    445 eof
-
-
-So why so much extend ?
-
-(ie: ALL files have been write one to one on the whole disk (like a "cp=
- -R
-/cifs /ext4) (not torrent/crappy_speed_download_tools/etc ... things))
-
-
-
-
-With a full dir: (for / du -h / filefrag / sed )
-180M   =20
-: 12 extents found
-181M   =20
-: 20 extents found
-281M   =20
-: 22 extents found
-275M   =20
-: 22 extents found
-275M   =20
-: 22 extents found
-181M   =20
-: 20 extents found
-281M   =20
-: 22 extents found
-281M   =20
-: 21 extents found
-277M   =20
-: 21 extents found
-280M   =20
-: 21 extents found
-180M   =20
-: 21 extents found
-285M   =20
-: 13 extents found
-180M   =20
-: 6 extents found
-
---=20
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	   	     	      	     	    	       - Ted
