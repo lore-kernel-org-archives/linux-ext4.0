@@ -1,94 +1,115 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC -V2 2/4] ext4: Display the mballoc flags in mb_history in hex instead of decimal
-Date: Sun,  9 Aug 2009 23:23:53 -0400
-Message-ID: <1249874635-24250-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC -V2 4/4] ext4: Avoid group preallocation for closed files
+Date: Sun,  9 Aug 2009 23:23:55 -0400
+Message-ID: <1249874635-24250-5-git-send-email-tytso@mit.edu>
 References: <1249874635-24250-1-git-send-email-tytso@mit.edu>
 Cc: Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>,
 	Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42149 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42156 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754615AbZHJDYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754595AbZHJDYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 9 Aug 2009 23:24:01 -0400
 In-Reply-To: <1249874635-24250-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Displaying the flags in base 16 makes it easier to see which flags
-have been set.
+Currently the group preallocation code tries to find a large (512)
+free block from which to do per-cpu group allocation for small files.
+The problem with this scheme is that it leaves the filesystem horribly
+fragmented.  In the worst case, if the filesystem is unmounted and
+remounted (after a system shutdown, for example) we forget the fact
+that wee were using a particular (now-partially filled) 512 block
+extent.  So the next time we try to allocate space for a small file,
+we will find *another* completely free 512 block chunk to allocate
+small files.  Given that there are 32,768 blocks in a block group,
+after 64 iterations of "mount, write one 4k file in a directory,
+unmount", the block group will have 64 files, each separated by 511
+blocks, and the block group will no longer have any free 512
+completely free chunks of blocks for group preallocation space.
+
+So if we try to allocate blocks for a file that has been closed, such
+that we know the final size of the file, and the filesystem is not
+busy, avoid using group preallocation.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |   22 +++++++++++-----------
- fs/ext4/mballoc.c |    4 ++--
- 2 files changed, 13 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h    |   22 +++++++++++++++++++++-
+ fs/ext4/mballoc.c |   10 +++++++++-
+ 2 files changed, 30 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9714db3..e267727 100644
+index 70aa951..a09ea10 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -67,27 +67,27 @@ typedef unsigned int ext4_group_t;
+@@ -952,6 +952,7 @@ struct ext4_sb_info {
+ 	atomic_t s_mb_lost_chunks;
+ 	atomic_t s_mb_preallocated;
+ 	atomic_t s_mb_discarded;
++	atomic_t s_lock_busy;
  
+ 	/* locality groups */
+ 	struct ext4_locality_group *s_locality_groups;
+@@ -1593,15 +1594,34 @@ struct ext4_group_info {
+ #define EXT4_MB_GRP_NEED_INIT(grp)	\
+ 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
  
- /* prefer goal again. length */
--#define EXT4_MB_HINT_MERGE		1
-+#define EXT4_MB_HINT_MERGE		0x0001
- /* blocks already reserved */
--#define EXT4_MB_HINT_RESERVED		2
-+#define EXT4_MB_HINT_RESERVED		0x0002
- /* metadata is being allocated */
--#define EXT4_MB_HINT_METADATA		4
-+#define EXT4_MB_HINT_METADATA		0x0004
- /* first blocks in the file */
--#define EXT4_MB_HINT_FIRST		8
-+#define EXT4_MB_HINT_FIRST		0x0008
- /* search for the best chunk */
--#define EXT4_MB_HINT_BEST		16
-+#define EXT4_MB_HINT_BEST		0x0010
- /* data is being allocated */
--#define EXT4_MB_HINT_DATA		32
-+#define EXT4_MB_HINT_DATA		0x0020
- /* don't preallocate (for tails) */
--#define EXT4_MB_HINT_NOPREALLOC		64
-+#define EXT4_MB_HINT_NOPREALLOC		0x0040
- /* allocate for locality group */
--#define EXT4_MB_HINT_GROUP_ALLOC	128
-+#define EXT4_MB_HINT_GROUP_ALLOC	0x0080
- /* allocate goal blocks or none */
--#define EXT4_MB_HINT_GOAL_ONLY		256
-+#define EXT4_MB_HINT_GOAL_ONLY		0x0100
- /* goal is meaningful */
--#define EXT4_MB_HINT_TRY_GOAL		512
-+#define EXT4_MB_HINT_TRY_GOAL		0x0200
- /* blocks already pre-reserved by delayed allocation */
--#define EXT4_MB_DELALLOC_RESERVED      1024
-+#define EXT4_MB_DELALLOC_RESERVED	0x0400
++#define EXT4_MAX_CONTENTION		8
++#define EXT4_CONTENTION_THRESHOLD	2
++
+ static inline spinlock_t *ext4_group_lock_ptr(struct super_block *sb,
+ 					      ext4_group_t group)
+ {
+ 	return bgl_lock_ptr(EXT4_SB(sb)->s_blockgroup_lock, group);
+ }
  
++/*
++ * Returns true if the filesystem is busy enough that attempts to
++ * access the block group locks has run into contention.
++ */
++static inline int ext4_fs_is_busy(struct ext4_sb_info *sbi)
++{
++	return (atomic_read(&sbi->s_lock_busy) > EXT4_CONTENTION_THRESHOLD);
++}
++
+ static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
+ {
+-	spin_lock(ext4_group_lock_ptr(sb, group));
++	spinlock_t *lock = ext4_group_lock_ptr(sb, group);
++	if (spin_trylock(lock))
++		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, 1,
++				  EXT4_MAX_CONTENTION);
++	else {
++		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
++		spin_lock(lock);
++	}
+ }
  
- struct ext4_allocation_request {
+ static inline void ext4_unlock_group(struct super_block *sb,
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2c81240..f510a58 100644
+index a103cb0..6c7be0d 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2157,7 +2157,7 @@ static int ext4_mb_seq_history_show(struct seq_file *seq, void *v)
+@@ -4191,9 +4191,17 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ 		return;
  
- 	if (v == SEQ_START_TOKEN) {
- 		seq_printf(seq, "%-5s %-8s %-23s %-23s %-23s %-5s "
--				"%-5s %-2s %-5s %-5s %-5s %-6s\n",
-+				"%-5s %-2s %-6s %-5s %-5s %-6s\n",
- 			  "pid", "inode", "original", "goal", "result", "found",
- 			   "grps", "cr", "flags", "merge", "tail", "broken");
- 		return 0;
-@@ -2165,7 +2165,7 @@ static int ext4_mb_seq_history_show(struct seq_file *seq, void *v)
+ 	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
+-	isize = i_size_read(ac->ac_inode) >> bsbits;
++	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
++		>> bsbits;
+ 	size = max(size, isize);
  
- 	if (hs->op == EXT4_MB_HISTORY_ALLOC) {
- 		fmt = "%-5u %-8u %-23s %-23s %-23s %-5u %-5u %-2u "
--			"%-5u %-5s %-5u %-6u\n";
-+			"0x%04x %-5s %-5u %-6u\n";
- 		sprintf(buf2, "%u/%d/%u@%u", hs->result.fe_group,
- 			hs->result.fe_start, hs->result.fe_len,
- 			hs->result.fe_logical);
++	if ((size == isize) &&
++	    ext4_fs_is_busy(sbi) &&
++	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
++		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
++		return;
++	}
++
+ 	/* don't use group allocation for large files */
+ 	if (size >= sbi->s_mb_stream_request) {
+ 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
 -- 
 1.6.3.2.1.gb9f7d.dirty
 
