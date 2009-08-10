@@ -1,62 +1,34 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH V2] xfstests 218: very basic defragmentation testing
-	for xfs & ext4
-Date: Mon, 10 Aug 2009 10:09:30 -0400
-Message-ID: <20090810140930.GA24174@infradead.org>
-References: <4A5E3A37.5050306@redhat.com> <4A7A5CA8.8040702@sandeen.net>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13909] md5sum on 3GB file is constantly hanging
+Date: Mon, 10 Aug 2009 14:11:21 GMT
+Message-ID: <200908101411.n7AEBLtq028678@demeter.kernel.org>
+References: <bug-13909-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	xfs mailing list <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@sandeen.net>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:42495 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755053AbZHJOJd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2009 10:09:33 -0400
-Content-Disposition: inline
-In-Reply-To: <4A7A5CA8.8040702@sandeen.net>
+Received: from demeter.kernel.org ([140.211.167.39]:39067 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754629AbZHJOLU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2009 10:11:20 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7AEBLRx028679
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 14:11:21 GMT
+In-Reply-To: <bug-13909-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 05, 2009 at 11:31:36PM -0500, Eric Sandeen wrote:
-> Test a few very basic defragmentation scenarios.
-> 
-> This test creates some files, runs defrag on them,
-> and compares the before/after fragmentation as well
-> as file md5sums and timestamps.
-> 
-> The test currently expects to find e4defrag in
-> /usr/bin
-> 
-> It should be relatively easy to add more interestingly
-> fragmented files to the tests, as well as to test
-> that memory-mapped files aren't touched, etc - 
-> but this gives us a framework.
-> 
-> V2: remount before checking file contents, and create
-> common.defrag.
-
-The patch loks good to me,
+http://bugzilla.kernel.org/show_bug.cgi?id=13909
 
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Unfortunately it still fails on my Debian testing system with:
 
- QA output created by 218
- zero-length file:
--Before: 0
--After: 0
-+Before: 1
-+After: 1
- Sparse file (no blocks):
--Before: 0
--After: 0
-+Before: 1
-+After: 1
 
-But that's due to a bug in filefrag that I have already reported to the
-Debian BTS.
+--- Comment #13 from Rus <harbour@sfinx.od.ua>  2009-08-10 14:11:20 ---
+When I said "hang" - its mean "hang", not "computing". Your program sais "0
+bytes" in 2.6.30.4 and "114 Mb/s" in 2.6.29.x.
 
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
