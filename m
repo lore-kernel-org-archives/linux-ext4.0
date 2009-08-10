@@ -1,94 +1,64 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH, RFC] ext3: Update Kconfig description of EXT3_DEFAULTS_TO_ORDERED
-Date: Mon, 10 Aug 2009 16:55:38 -0400
-Message-ID: <4A80894A.7050506@redhat.com>
-References: <1249934623-15939-1-git-send-email-tytso@mit.edu>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: Data loss/corruption when using fallocate/ftruncate.
+Date: Mon, 10 Aug 2009 14:10:39 -0700
+Message-ID: <1249938639.4136.6.camel@mingming-laptop>
+References: <1249930770.22656.14.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:60995 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753646AbZHJUzo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Aug 2009 16:55:44 -0400
-In-Reply-To: <1249934623-15939-1-git-send-email-tytso@mit.edu>
+Received: from e37.co.us.ibm.com ([32.97.110.158]:48863 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753128AbZHJVKo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2009 17:10:44 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e37.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n7AL9q12023659
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 15:09:52 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7ALAgn6118474
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 15:10:42 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7ALAgw7015782
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 15:10:42 -0600
+In-Reply-To: <1249930770.22656.14.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/10/2009 04:03 PM, Theodore Ts'o wrote:
-> The old description for this configuration option was perhaps not
-> completely balanced in terms of describing the tradeoffs of using a
-> default of data=writeback vs. data=ordered.  Despite the fact that old
-> description very strongly recomended disabling this feature, all of
-> the major distributions have elected to preserve the existing 'legacy'
-> default, which is a strong hint that it perhaps wasn't telling the
-> whole story.
->
-> This revised description has been vetted by a number of ext3
-> developers as being better at informing the user about the tradeoffs
-> of enabling or disabling this configuration feature.
->
-> Signed-off-by: "Theodore Ts'o"<tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
->    
+On Mon, 2009-08-10 at 11:59 -0700, Frank Mayhar wrote:
+> Hello again, folks.  We've got an app that needs to use O_DIRECT for
+> performance and is using fallocate() to make sure the files are all in
+> one extent.  Unfortunately the end size isn't always the fallocated size
+> so it has to do a truncate when it's done; the sequence is generally:
+> 
+> 	create(file)
+> 	fallocate(file, KEEP_SIZE, 0, maxlen)
+> 	write/write/write/write...
+> 	fallocate(file, 0, 0. maxlen-minus a bit)
+> 	ftruncate(file, actual-len)
+> 
+> We've been seeing some of these files end up all or partly zero after
+> (but not before) the truncate.  After further analysis, it's clear that
+> the last extent (possibly the only extent) is being marked uninit for
+> some reason.  The actual blocks on disk are nonzero but due to the
+> extent being marked uninit they are being read as zero.
+> 
+> Note that this isn't easy to reproduce; lots of other stuff is going on
+> when this happens.  Our feeling is that there's a race somewhere, quite
+> possibly between fallocate and ftruncate, but it's not clear.  Certainly
+> a single-threaded application doesn't see this, nor does an application
+> that uses mutexes to serialize access to the file.
+> 
+> This is a heads-up to point out a real problem.  We're still analyzing
+> and trying to track down the bug but it may take a little while.
 
-Thanks Ted - this is much more informative and will allow for a more 
-informed trade off to be made,
 
-Ric
+Which kernel you are running? Two month ago a similar data "lose" issue
+caused by mismark an previously-preallocated-but-later-filled trunk as
+uninitialized after truncate. The following patch has been in 2.6.31-rc1
+http://lists.openwall.net/linux-ext4/2009/06/10/30
 
-> ---
->   fs/ext3/Kconfig |   32 +++++++++++++++++---------------
->   1 files changed, 17 insertions(+), 15 deletions(-)
->
-> diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
-> index fb3c1a2..522b154 100644
-> --- a/fs/ext3/Kconfig
-> +++ b/fs/ext3/Kconfig
-> @@ -29,23 +29,25 @@ config EXT3_FS
->   	  module will be called ext3.
->
->   config EXT3_DEFAULTS_TO_ORDERED
-> -	bool "Default to 'data=ordered' in ext3 (legacy option)"
-> +	bool "Default to 'data=ordered' in ext3"
->   	depends on EXT3_FS
->   	help
-> -	  If a filesystem does not explicitly specify a data ordering
-> -	  mode, and the journal capability allowed it, ext3 used to
-> -	  historically default to 'data=ordered'.
-> -
-> -	  That was a rather unfortunate choice, because it leads to all
-> -	  kinds of latency problems, and the 'data=writeback' mode is more
-> -	  appropriate these days.
-> -
-> -	  You should probably always answer 'n' here, and if you really
-> -	  want to use 'data=ordered' mode, set it in the filesystem itself
-> -	  with 'tune2fs -o journal_data_ordered'.
-> -
-> -	  But if you really want to enable the legacy default, you can do
-> -	  so by answering 'y' to this question.
-> +	  The journal mode options for ext3 have different tradeoffs
-> +	  between when data is guaranteed to be on disk and
-> +	  performance.	The use of "data=writeback" can cause
-> +	  unwritten data to appear in files after an system crash or
-> +	  power failure, which can be a security issue.	 However,
-> +	  "data=ordered" mode can also result in major performance
-> +	  problems, including seconds-long delays before an fsync()
-> +	  call returns.	 For details, see:
-> +
-> +	  http://ext4.wiki.kernel.org/index.php/Ext3_data_mode_tradeoffs
-> +
-> +	  If you have been historically happy with ext3's performance,
-> +	  data=ordered mode will be a safe choice and you should
-> +	  answer 'y' here.  If you understand the reliability and data
-> +	  privacy issues of data=writeback and are willing to make
-> +	  that trade off, answer 'n'.
->
->   config EXT3_FS_XATTR
->   	bool "Ext3 extended attributes"
->    
+Mingming
+
 
