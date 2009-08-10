@@ -1,26 +1,25 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH, RFC] ext3: Update Kconfig description of
-	EXT3_DEFAULTS_TO_ORDERED
-Date: Mon, 10 Aug 2009 22:28:22 +0200
-Message-ID: <20090810202822.GA11979@duck.suse.cz>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH, RFC] ext3: Update Kconfig description of EXT3_DEFAULTS_TO_ORDERED
+Date: Mon, 10 Aug 2009 16:55:38 -0400
+Message-ID: <4A80894A.7050506@redhat.com>
 References: <1249934623-15939-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: Jan Kara <jack@suse.cz>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:43485 "EHLO mx1.suse.de"
+Received: from mx2.redhat.com ([66.187.237.31]:60995 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752482AbZHJU2X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Aug 2009 16:28:23 -0400
-Content-Disposition: inline
+	id S1753646AbZHJUzo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Aug 2009 16:55:44 -0400
 In-Reply-To: <1249934623-15939-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 10-08-09 16:03:43, Theodore Ts'o wrote:
+On 08/10/2009 04:03 PM, Theodore Ts'o wrote:
 > The old description for this configuration option was perhaps not
 > completely balanced in terms of describing the tradeoffs of using a
 > default of data=writeback vs. data=ordered.  Despite the fact that old
@@ -28,32 +27,36 @@ On Mon 10-08-09 16:03:43, Theodore Ts'o wrote:
 > the major distributions have elected to preserve the existing 'legacy'
 > default, which is a strong hint that it perhaps wasn't telling the
 > whole story.
-> 
+>
 > This revised description has been vetted by a number of ext3
 > developers as being better at informing the user about the tradeoffs
 > of enabling or disabling this configuration feature.
-  Thanks. Merged to my tree. I plan to push it to Linus in the next merge
-window.
-
-								Honza
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>
+> Signed-off-by: "Theodore Ts'o"<tytso@mit.edu>
 > Cc: linux-ext4@vger.kernel.org
+>    
+
+Thanks Ted - this is much more informative and will allow for a more 
+informed trade off to be made,
+
+Ric
+
 > ---
->  fs/ext3/Kconfig |   32 +++++++++++++++++---------------
->  1 files changed, 17 insertions(+), 15 deletions(-)
-> 
+>   fs/ext3/Kconfig |   32 +++++++++++++++++---------------
+>   1 files changed, 17 insertions(+), 15 deletions(-)
+>
 > diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
 > index fb3c1a2..522b154 100644
 > --- a/fs/ext3/Kconfig
 > +++ b/fs/ext3/Kconfig
 > @@ -29,23 +29,25 @@ config EXT3_FS
->  	  module will be called ext3.
->  
->  config EXT3_DEFAULTS_TO_ORDERED
+>   	  module will be called ext3.
+>
+>   config EXT3_DEFAULTS_TO_ORDERED
 > -	bool "Default to 'data=ordered' in ext3 (legacy option)"
 > +	bool "Default to 'data=ordered' in ext3"
->  	depends on EXT3_FS
->  	help
+>   	depends on EXT3_FS
+>   	help
 > -	  If a filesystem does not explicitly specify a data ordering
 > -	  mode, and the journal capability allowed it, ext3 used to
 > -	  historically default to 'data=ordered'.
@@ -84,12 +87,8 @@ window.
 > +	  answer 'y' here.  If you understand the reliability and data
 > +	  privacy issues of data=writeback and are willing to make
 > +	  that trade off, answer 'n'.
->  
->  config EXT3_FS_XATTR
->  	bool "Ext3 extended attributes"
-> -- 
-> 1.6.3.2.1.gb9f7d.dirty
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+>
+>   config EXT3_FS_XATTR
+>   	bool "Ext3 extended attributes"
+>    
+
