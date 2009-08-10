@@ -1,64 +1,52 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: Data loss/corruption when using fallocate/ftruncate.
-Date: Mon, 10 Aug 2009 14:10:39 -0700
-Message-ID: <1249938639.4136.6.camel@mingming-laptop>
-References: <1249930770.22656.14.camel@bobble.smo.corp.google.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13909] md5sum on 3GB file is constantly hanging
+Date: Mon, 10 Aug 2009 21:13:40 GMT
+Message-ID: <200908102113.n7ALDeXo010686@demeter.kernel.org>
+References: <bug-13909-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Frank Mayhar <fmayhar@google.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e37.co.us.ibm.com ([32.97.110.158]:48863 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753128AbZHJVKo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2009 17:10:44 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e37.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n7AL9q12023659
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 15:09:52 -0600
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7ALAgn6118474
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 15:10:42 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7ALAgw7015782
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 15:10:42 -0600
-In-Reply-To: <1249930770.22656.14.camel@bobble.smo.corp.google.com>
+Received: from demeter.kernel.org ([140.211.167.39]:41105 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753187AbZHJVNj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Aug 2009 17:13:39 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7ALDeKS010687
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2009 21:13:40 GMT
+In-Reply-To: <bug-13909-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2009-08-10 at 11:59 -0700, Frank Mayhar wrote:
-> Hello again, folks.  We've got an app that needs to use O_DIRECT for
-> performance and is using fallocate() to make sure the files are all in
-> one extent.  Unfortunately the end size isn't always the fallocated size
-> so it has to do a truncate when it's done; the sequence is generally:
-> 
-> 	create(file)
-> 	fallocate(file, KEEP_SIZE, 0, maxlen)
-> 	write/write/write/write...
-> 	fallocate(file, 0, 0. maxlen-minus a bit)
-> 	ftruncate(file, actual-len)
-> 
-> We've been seeing some of these files end up all or partly zero after
-> (but not before) the truncate.  After further analysis, it's clear that
-> the last extent (possibly the only extent) is being marked uninit for
-> some reason.  The actual blocks on disk are nonzero but due to the
-> extent being marked uninit they are being read as zero.
-> 
-> Note that this isn't easy to reproduce; lots of other stuff is going on
-> when this happens.  Our feeling is that there's a race somewhere, quite
-> possibly between fallocate and ftruncate, but it's not clear.  Certainly
-> a single-threaded application doesn't see this, nor does an application
-> that uses mutexes to serialize access to the file.
-> 
-> This is a heads-up to point out a real problem.  We're still analyzing
-> and trying to track down the bug but it may take a little while.
+http://bugzilla.kernel.org/show_bug.cgi?id=13909
 
 
-Which kernel you are running? Two month ago a similar data "lose" issue
-caused by mismark an previously-preallocated-but-later-filled trunk as
-uninitialized after truncate. The following patch has been in 2.6.31-rc1
-http://lists.openwall.net/linux-ext4/2009/06/10/30
-
-Mingming
 
 
+
+--- Comment #23 from Roland Kletzing <devzero@web.de>  2009-08-10 21:13:39 ---
+on 2009-02-05 there was a commit of IMA - see
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=3323eec921efd815178a23107ab63588c605c0b2
+
+that seems in your codepath and is also enabled in .config:
+
+CONFIG_IMA=y
+CONFIG_IMA_MEASURE_PCR_IDX=10
+CONFIG_IMA_AUDIT=y
+
+as it is not in defconfig, it looks a little bit suspicious to me and i`m
+wondering why it is active on your system.
+
+i don`t really have a clue if this really is the culprit, but if this but was
+on my system, i would give it at try and disable ima to see if it makes a
+difference. don`t know how this can be enabled at runtime/boot. if a runtime
+switch doesn`t exist, you may bug the developer for providing one.
+
+ah, and there is
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=1a62e958fa4aaeeb752311b4f5e16b2a86737b23
+that also looks suspicious
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
