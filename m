@@ -1,337 +1,123 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC -V2 1/4] ext4: Add configurable run-time mballoc debugging
-Date: Sun,  9 Aug 2009 23:23:52 -0400
-Message-ID: <1249874635-24250-2-git-send-email-tytso@mit.edu>
-References: <1249874635-24250-1-git-send-email-tytso@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Subject: [PATCH 2/6] e2freefrag: Do not print chunk-related information by default
+Date: Sun,  9 Aug 2009 23:31:54 -0400
+Message-ID: <1249875118-26291-3-git-send-email-tytso@mit.edu>
+References: <20090727183636.GN4231@webber.adilger.int>
+Cc: Andreas Dilger <adilger@sun.com>, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42153 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:46041 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753740AbZHJDYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 9 Aug 2009 23:24:01 -0400
-In-Reply-To: <1249874635-24250-1-git-send-email-tytso@mit.edu>
+	id S1754080AbZHJDcB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 9 Aug 2009 23:32:01 -0400
+In-Reply-To: <20090727183636.GN4231@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow mballoc debugging to be enabled at run-time instead of just at
-compile time.
+Only print information related to chunk sizes if a chunksize is
+printed.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/Kconfig   |    9 ++++++
- fs/ext4/mballoc.c |   81 ++++++++++++++++++++++++++++++++++++++--------------
- fs/ext4/mballoc.h |   16 ++++++++--
- 3 files changed, 80 insertions(+), 26 deletions(-)
+ misc/e2freefrag.8.in |   13 +++++--------
+ misc/e2freefrag.c    |   30 +++++++++++++++++++-----------
+ 2 files changed, 24 insertions(+), 19 deletions(-)
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 1523046..d5c0ea2 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -77,3 +77,12 @@ config EXT4_FS_SECURITY
+diff --git a/misc/e2freefrag.8.in b/misc/e2freefrag.8.in
+index 77fadd7..56fdbff 100644
+--- a/misc/e2freefrag.8.in
++++ b/misc/e2freefrag.8.in
+@@ -30,9 +30,12 @@ can be used to gauge the level of free space fragmentation in the filesystem.
+ .SH OPTIONS
+ .TP
+ .BI \-c " chunk_kb"
+-Desired size of chunk. It is specified in units of kilobytes (KB). If no
++If a chunk size is specified, then
++.B e2freefrag
++will print how many free chunks of size
+ .I chunk_kb
+-is specified on the command line, then the default value is 1024KB.
++are available in units of kilobytes (Kb).  The chunk size must be a
++power of two and be larger than filesystem block size.
+ .TP
+ .BI \-h
+ Print the usage of the program.
+@@ -47,12 +50,6 @@ Total blocks: 1504085
+ .br
+ Free blocks: 292995 (19.5%)
+ .br
+-Chunk size: 1048576 bytes (256 blocks)
+-.br
+-Total chunks: 5876
+-.br
+-Free chunks: 463 (7.9%)
+-.br
  
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
-+
-+config EXT4_DEBUG
-+	bool "EXT4 debugging support"
-+	depends on EXT4_FS
-+	help
-+	  Enables run-time debugging support for the ext4 filesystem.
-+
-+	  If you select Y here, then you will be able to turn on debugging
-+	  with a command such as "echo 1 > /sys/kernel/debug/ext4/mballoc-debug"
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 68cde59..2c81240 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -22,6 +22,7 @@
-  */
- 
- #include "mballoc.h"
-+#include <linux/debugfs.h>
- #include <trace/events/ext4.h>
- 
- /*
-@@ -743,7 +744,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 	char *data;
- 	char *bitmap;
- 
--	mb_debug("init page %lu\n", page->index);
-+	mb_debug(1, "init page %lu\n", page->index);
- 
- 	inode = page->mapping->host;
- 	sb = inode->i_sb;
-@@ -822,7 +823,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		set_bitmap_uptodate(bh[i]);
- 		bh[i]->b_end_io = end_buffer_read_sync;
- 		submit_bh(READ, bh[i]);
--		mb_debug("read bitmap for group %u\n", first_group + i);
-+		mb_debug(1, "read bitmap for group %u\n", first_group + i);
- 	}
- 
- 	/* wait for I/O completion */
-@@ -862,7 +863,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		if ((first_block + i) & 1) {
- 			/* this is block of buddy */
- 			BUG_ON(incore == NULL);
--			mb_debug("put buddy for group %u in page %lu/%x\n",
-+			mb_debug(1, "put buddy for group %u in page %lu/%x\n",
- 				group, page->index, i * blocksize);
- 			grinfo = ext4_get_group_info(sb, group);
- 			grinfo->bb_fragments = 0;
-@@ -878,7 +879,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		} else {
- 			/* this is block of bitmap */
- 			BUG_ON(incore != NULL);
--			mb_debug("put bitmap for group %u in page %lu/%x\n",
-+			mb_debug(1, "put bitmap for group %u in page %lu/%x\n",
- 				group, page->index, i * blocksize);
- 
- 			/* see comments in ext4_mb_put_pa() */
-@@ -922,7 +923,7 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct inode *inode = sbi->s_buddy_cache;
- 
--	mb_debug("load group %u\n", group);
-+	mb_debug(1, "load group %u\n", group);
- 
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
- 	grp = ext4_get_group_info(sb, group);
-@@ -1851,7 +1852,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- 	struct inode *inode = sbi->s_buddy_cache;
- 	struct page *page = NULL, *bitmap_page = NULL;
- 
--	mb_debug("init group %u\n", group);
-+	mb_debug(1, "init group %u\n", group);
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
- 	this_grp = ext4_get_group_info(sb, group);
- 	/*
-@@ -2739,7 +2740,7 @@ static void ext4_mb_cleanup_pa(struct ext4_group_info *grp)
- 		kmem_cache_free(ext4_pspace_cachep, pa);
- 	}
- 	if (count)
--		mb_debug("mballoc: %u PAs left\n", count);
-+		mb_debug(1, "mballoc: %u PAs left\n", count);
- 
- }
- 
-@@ -2820,7 +2821,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 	list_for_each_safe(l, ltmp, &txn->t_private_list) {
- 		entry = list_entry(l, struct ext4_free_data, list);
- 
--		mb_debug("gonna free %u blocks in group %u (0x%p):",
-+		mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
- 			 entry->count, entry->group, entry);
- 
- 		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
-@@ -2855,9 +2856,43 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 		ext4_mb_release_desc(&e4b);
- 	}
- 
--	mb_debug("freed %u blocks in %u structures\n", count, count2);
-+	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
- }
- 
-+#ifdef CONFIG_EXT4_DEBUG
-+u8 mb_enable_debug __read_mostly;
-+
-+static struct dentry *debugfs_dir;
-+static struct dentry *debugfs_debug;
-+
-+static void __init ext4_create_debugfs_entry(void)
-+{
-+	debugfs_dir = debugfs_create_dir("ext4", NULL);
-+	if (debugfs_dir)
-+		debugfs_debug = debugfs_create_u8("mballoc-debug",
-+						  S_IRUGO | S_IWUSR,
-+						  debugfs_dir,
-+						  &mb_enable_debug);
-+}
-+
-+static void __exit ext4_remove_debugfs_entry(void)
-+{
-+	debugfs_remove(debugfs_debug);
-+	debugfs_remove(debugfs_dir);
-+}
-+
-+#else
-+
-+static void __init ext4_create_debugfs_entry(void)
-+{
-+}
-+
-+static void __exit ext4_remove_debugfs_entry(void)
-+{
-+}
-+
-+#endif
-+
- int __init init_ext4_mballoc(void)
+ Min. free extent: 4 KB
+ .br
+diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
+index 9e7b617..274bf55 100644
+--- a/misc/e2freefrag.c
++++ b/misc/e2freefrag.c
+@@ -52,9 +52,14 @@ void init_chunk_info(ext2_filsys fs, struct chunk_info *info)
  {
- 	ext4_pspace_cachep =
-@@ -2885,6 +2920,7 @@ int __init init_ext4_mballoc(void)
- 		kmem_cache_destroy(ext4_ac_cachep);
- 		return -ENOMEM;
- 	}
-+	ext4_create_debugfs_entry();
- 	return 0;
- }
+ 	int i;
  
-@@ -2898,6 +2934,7 @@ void exit_ext4_mballoc(void)
- 	kmem_cache_destroy(ext4_pspace_cachep);
- 	kmem_cache_destroy(ext4_ac_cachep);
- 	kmem_cache_destroy(ext4_free_ext_cachep);
-+	ext4_remove_debugfs_entry();
- }
+-	info->chunkbits = ul_log2(info->chunkbytes);
+ 	info->blocksize_bits = ul_log2((unsigned long)fs->blocksize);
+-	info->blks_in_chunk = info->chunkbytes >> info->blocksize_bits;
++	if (info->chunkbytes) {
++		info->chunkbits = ul_log2(info->chunkbytes);
++		info->blks_in_chunk = info->chunkbytes >> info->blocksize_bits;
++	} else {
++		info->chunkbits = ul_log2(DEFAULT_CHUNKSIZE);
++		info->blks_in_chunk = DEFAULT_CHUNKSIZE >> info->blocksize_bits;
++	}
  
+ 	info->min = ~0UL;
+ 	info->max = info->avg = 0;
+@@ -138,13 +143,16 @@ errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info)
+ 	       (double)fs->super->s_free_blocks_count * 100 /
+ 						fs->super->s_blocks_count);
  
-@@ -3042,7 +3079,7 @@ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
- 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
- 	else
- 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
--	mb_debug("#%u: goal %u blocks for locality group\n",
-+	mb_debug(1, "#%u: goal %u blocks for locality group\n",
- 		current->pid, ac->ac_g_ex.fe_len);
- }
+-	printf("\nChunksize: %lu bytes (%u blocks)\n",
+-	       info->chunkbytes, info->blks_in_chunk);
+-	total_chunks = (fs->super->s_blocks_count + info->blks_in_chunk) >>
+-				(info->chunkbits - info->blocksize_bits);
+-	printf("Total chunks: %lu\nFree chunks: %lu (%0.1f%%)\n",
+-	       total_chunks, info->free_chunks,
+-	       (double)info->free_chunks * 100 / total_chunks);
++	if (info->chunkbytes) {
++		printf("\nChunksize: %lu bytes (%u blocks)\n",
++		       info->chunkbytes, info->blks_in_chunk);
++		total_chunks = (fs->super->s_blocks_count +
++				info->blks_in_chunk) >>
++			(info->chunkbits - info->blocksize_bits);
++		printf("Total chunks: %lu\nFree chunks: %lu (%0.1f%%)\n",
++		       total_chunks, info->free_chunks,
++		       (double)info->free_chunks * 100 / total_chunks);
++	}
  
-@@ -3232,7 +3269,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
- 	}
+ 	/* Display chunk information in KB */
+ 	if (info->real_free_chunks) {
+@@ -228,7 +236,7 @@ void open_device(char *device_name, ext2_filsys *fs)
  
--	mb_debug("goal: %u(was %u) blocks at %u\n", (unsigned) size,
-+	mb_debug(1, "goal: %u(was %u) blocks at %u\n", (unsigned) size,
- 		(unsigned) orig_size, (unsigned) start);
- }
- 
-@@ -3281,7 +3318,7 @@ static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
- 	BUG_ON(pa->pa_free < len);
- 	pa->pa_free -= len;
- 
--	mb_debug("use %llu/%u from inode pa %p\n", start, len, pa);
-+	mb_debug(1, "use %llu/%u from inode pa %p\n", start, len, pa);
- }
- 
- /*
-@@ -3305,7 +3342,7 @@ static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
- 	 * in on-disk bitmap -- see ext4_mb_release_context()
- 	 * Other CPUs are prevented from allocating from this pa by lg_mutex
- 	 */
--	mb_debug("use %u/%u from group pa %p\n", pa->pa_lstart-len, len, pa);
-+	mb_debug(1, "use %u/%u from group pa %p\n", pa->pa_lstart-len, len, pa);
- }
- 
- /*
-@@ -3484,7 +3521,7 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- 		preallocated += len;
- 		count++;
- 	}
--	mb_debug("prellocated %u for group %u\n", preallocated, group);
-+	mb_debug(1, "prellocated %u for group %u\n", preallocated, group);
- }
- 
- static void ext4_mb_pa_callback(struct rcu_head *head)
-@@ -3619,7 +3656,7 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 	pa->pa_deleted = 0;
- 	pa->pa_type = MB_INODE_PA;
- 
--	mb_debug("new inode pa %p: %llu/%u for %u\n", pa,
-+	mb_debug(1, "new inode pa %p: %llu/%u for %u\n", pa,
- 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
- 	trace_ext4_mb_new_inode_pa(ac, pa);
- 
-@@ -3679,7 +3716,7 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
- 	pa->pa_deleted = 0;
- 	pa->pa_type = MB_GROUP_PA;
- 
--	mb_debug("new group pa %p: %llu/%u for %u\n", pa,
-+	mb_debug(1, "new group pa %p: %llu/%u for %u\n", pa,
- 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
- 	trace_ext4_mb_new_group_pa(ac, pa);
- 
-@@ -3758,7 +3795,7 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
- 		next = mb_find_next_bit(bitmap_bh->b_data, end, bit);
- 		start = group * EXT4_BLOCKS_PER_GROUP(sb) + bit +
- 				le32_to_cpu(sbi->s_es->s_first_data_block);
--		mb_debug("    free preallocated %u/%u in group %u\n",
-+		mb_debug(1, "    free preallocated %u/%u in group %u\n",
- 				(unsigned) start, (unsigned) next - bit,
- 				(unsigned) group);
- 		free += next - bit;
-@@ -3849,7 +3886,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 	int busy = 0;
- 	int free = 0;
- 
--	mb_debug("discard preallocation for group %u\n", group);
-+	mb_debug(1, "discard preallocation for group %u\n", group);
- 
- 	if (list_empty(&grp->bb_prealloc_list))
- 		return 0;
-@@ -3973,7 +4010,7 @@ void ext4_discard_preallocations(struct inode *inode)
- 		return;
- 	}
- 
--	mb_debug("discard preallocation for inode %lu\n", inode->i_ino);
-+	mb_debug(1, "discard preallocation for inode %lu\n", inode->i_ino);
- 	trace_ext4_discard_preallocations(inode);
- 
- 	INIT_LIST_HEAD(&list);
-@@ -4078,7 +4115,7 @@ static void ext4_mb_return_to_preallocation(struct inode *inode,
+ int main(int argc, char *argv[])
  {
- 	BUG_ON(!list_empty(&EXT4_I(inode)->i_prealloc_list));
- }
--#ifdef MB_DEBUG
-+#ifdef CONFIG_EXT4_DEBUG
- static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- {
- 	struct super_block *sb = ac->ac_sb;
-@@ -4227,7 +4264,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	 * locality group. this is a policy, actually */
- 	ext4_mb_group_or_file(ac);
+-	struct chunk_info chunk_info = { .chunkbytes = DEFAULT_CHUNKSIZE };
++	struct chunk_info chunk_info = { };
+ 	errcode_t retval = 0;
+ 	ext2_filsys fs = NULL;
+ 	char *device_name;
+@@ -273,7 +281,7 @@ int main(int argc, char *argv[])
  
--	mb_debug("init ac: %u blocks @ %u, goal %u, flags %x, 2^%d, "
-+	mb_debug(1, "init ac: %u blocks @ %u, goal %u, flags %x, 2^%d, "
- 			"left: %u/%u, right %u/%u to %swritable\n",
- 			(unsigned) ar->len, (unsigned) ar->logical,
- 			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
-@@ -4249,7 +4286,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 	struct ext4_prealloc_space *pa, *tmp;
- 	struct ext4_allocation_context *ac;
+ 	open_device(device_name, &fs);
  
--	mb_debug("discard locality group preallocation\n");
-+	mb_debug(1, "discard locality group preallocation\n");
- 
- 	INIT_LIST_HEAD(&discard_list);
- 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index c96bb19..28abb02 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -37,11 +37,19 @@
- 
- /*
-  */
--#define MB_DEBUG__
--#ifdef MB_DEBUG
--#define mb_debug(fmt, a...)	printk(fmt, ##a)
-+#ifdef CONFIG_EXT4_DEBUG
-+extern u8 mb_enable_debug;
-+
-+#define mb_debug(n, fmt, a...)	                                        \
-+	do {								\
-+		if ((n) <= mb_enable_debug) {		        	\
-+			printk (KERN_DEBUG "(%s, %d): %s: ",		\
-+				__FILE__, __LINE__, __func__);		\
-+			printk (fmt, ## a);				\
-+		}							\
-+	} while (0)
- #else
--#define mb_debug(fmt, a...)
-+#define mb_debug(n, fmt, a...)
- #endif
- 
- /*
+-	if (chunk_info.chunkbytes < fs->blocksize) {
++	if (chunk_info.chunkbytes && (chunk_info.chunkbytes < fs->blocksize)) {
+ 		fprintf(stderr, "%s: chunksize must be greater than or equal "
+ 			"to filesystem blocksize.\n", progname);
+ 		exit(1);
 -- 
 1.6.3.2.1.gb9f7d.dirty
 
