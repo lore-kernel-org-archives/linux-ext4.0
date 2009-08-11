@@ -1,53 +1,67 @@
-From: Al Boldi <a1426z@gawab.com>
-Subject: Re: [PATCH, RFC] ext3: Update Kconfig description of EXT3_DEFAULTS_TO_ORDERED
-Date: Tue, 11 Aug 2009 14:41:01 +0300
-Message-ID: <200908111441.01832.a1426z@gawab.com>
-References: <1249934623-15939-1-git-send-email-tytso@mit.edu> <200908110649.20277.a1426z@gawab.com> <20090811093316.GA23898@duck.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13604] cascade of "mpage_da_map_blocks block allocation failed"
+ errors
+Date: Tue, 11 Aug 2009 11:00:32 GMT
+Message-ID: <200908111100.n7BB0WTG018576@demeter.kernel.org>
+References: <bug-13604-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753440AbZHKMHa@vger.kernel.org>
-In-Reply-To: <20090811093316.GA23898@duck.suse.cz>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:42442 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752035AbZHKMgb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Aug 2009 08:36:31 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7BB0WgY018577
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2009 11:00:32 GMT
+In-Reply-To: <bug-13604-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
-> On Tue 11-08-09 06:49:20, Al Boldi wrote:
-> > Theodore Ts'o wrote:
-> > > +	  "data=ordered" mode can also result in major performance
-> > > +	  problems, including seconds-long delays before an fsync()
-> > > +	  call returns.	 For details, see:
-> > > +
-> > > +	  http://ext4.wiki.kernel.org/index.php/Ext3_data_mode_tradeoffs
-> >
-> > Why isn't the fsync problem fixable?
->
->   Because it's quite deep in the design of JBD: All the modifications done
-> to a filesystem go to one transactions. When the transaction grows big
-> enough or old enough, we commit the transaction, which means we write all
-> the metadata to the journal and all the ordered data to their final
-> location on disk. If you do fsync(), you have to wait for a transaction
-> commit with your data to finish, so that you are guaranteed a consistent
-> state of metadata is on disk. But when there is heavy background writing,
-> it means there's a lot of data you have to write out and wait for... It's
-> not easy to work around this - naively, you might want to separate out just
-> the writes you care about for fsync() but that's not easily possible
-> because bitmaps and group descriptors are modified by other writes as well.
-
-Ok, I remember now, that was the konqueror deadlocks problem.  I think making 
-the fsync soft in that case would yield a better result than turning 
-ordered-mode off completely.
-
-BTW: did you get around fixing the ordered-mode redundant write out problem?
+http://bugzilla.kernel.org/show_bug.cgi?id=13604
 
 
-Thanks!
+Cyber <MadLoisae@gmx.net> changed:
 
---
-Al
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |MadLoisae@gmx.net
+
+
+
+
+--- Comment #1 from Cyber <MadLoisae@gmx.net>  2009-08-11 11:00:31 ---
+Hello! (:
+
+same problem here with kernel 2.6.30.4.
+
+my partition was filled completly.
+my partition table is correct, all partitions were never resized, they were
+created new with ext4 (not migrated from ext3).
+
+[941998.471199] mpage_da_map_blocks block allocation failed for inode 36 at
+logical offset 3544 with max blocks 1 with error -28
+[941998.471345] This should not happen.!! Data will be lost
+[941998.471444] Total free blocks count 0
+[941998.471524] Free/Dirty block details
+[941998.471603] free_blocks=0
+[941998.471680] dirty_blocks=0
+[941998.471757] Block reservation details
+[941998.471838] i_reserved_data_blocks=2
+[941998.471918] i_reserved_meta_blocks=2
+[941998.472638] mpage_da_map_blocks block allocation failed for inode 36 at
+logical offset 3865 with max blocks 1 with error -28
+[941998.472799] This should not happen.!! Data will be lost
+[941998.472898] Total free blocks count 0
+[941998.472978] Free/Dirty block details
+[941998.473058] free_blocks=0
+[941998.473135] dirty_blocks=0
+[941998.473213] Block reservation details
+[941998.473294] i_reserved_data_blocks=2
+[941998.473374] i_reserved_meta_blocks=2
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
