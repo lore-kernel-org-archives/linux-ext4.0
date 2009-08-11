@@ -1,50 +1,74 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 12793] ext4 gives wrong errno with too long extended attribute
- values
-Date: Tue, 11 Aug 2009 02:58:19 GMT
-Message-ID: <200908110258.n7B2wJUM022315@demeter.kernel.org>
-References: <bug-12793-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Nasty race found in ext4 extents truncate logic
+Date: Tue, 11 Aug 2009 08:48:36 -0400
+Message-ID: <E1MaqmK-0003vi-6F@closure.thunk.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:42442 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753092AbZHKMgc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Aug 2009 08:36:32 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7B2wJB5022316
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2009 02:58:19 GMT
-In-Reply-To: <bug-12793-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:54174 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754279AbZHKMsi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2009 08:48:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12793
+This is a heads up that I've found up a really nasty race condition in
+the ext4 extents code's truncate logic.  The problem is more likely to
+turn up after you apply my recent set of mballoc patches, but they
+didn't cause the problem.  What seems to be going on is that allocating
+small numbers of blocks takes more CPU time, and this widens the race
+window where it's detectable --- and even with the patches applied, it
+still takes 3 or 4 runs of the XFSQA test suites to turn up the problem.
+Still, people who try testing my patches may run into this soft lockup,
+so here's an explanation of what's goign on.
+
+The core problem is that the extents truncate code doesn't know in
+advance how much journal "credits" (i.e., space in the journal) it
+requires while it is running.  So it calls ext4_ext_journal_restart()
+which tries reserve extra space for the truncate operation; but if there
+isn't enough space in the transaction, what happens is that
+jbd2_journal_restart() gets called, which closes the current transaction
+and starts a new one.
+
+(n.b., ext4_ext_journal_restart() is misnamed; it really should be
+something like request_extra_credits_or_start_new_txn(), since it
+doesn't always call jbd2_journal_restart.)
+
+The race condition happens because the truncate code calls
+jbd2_journal_restart() while holding an inode's i_data_sem for writing,
+and before jbd2_journal_restart() can start a new transaction, it needs
+to wait for all handles open against the current transaction to be
+completed.  If there is some other operation, such as ext4_get_blocks(),
+whose caller had already called ext4_start_handle() earlier (for
+example, in ext4_da_writepages() in the pdflush thread) and so is
+holding an open handle, tries grab the already-locked-for-writing
+i_data_sem, we have a deadlock.
+
+This problem exists for both extent-mapped and indirect-block-mapped
+inode; both truncate paths take i_data_sem, and both can potentially
+call jbd2_journal_restart().  The fsstress program is needed to turn up
+the race, since it requires a truncate racing against a block allocation
+happening in the same file.  So it's very unlikely to turn up in
+real-life usage, thus making it *exactly* the sort of problem that
+causes level 3 support personnel to tear out their hair when it shows up
+2-3 years later in some customer's enterprise data center.  :-)
 
 
-Theodore Tso <tytso@mit.edu> changed:
+The solution is relatively simple; we need to release i_data_sem before
+calling jbd2_journal_restart().  However, before we do this, we need to
+make sure we don't introduce a harder to find bug --- since the moment
+we release i_data_sem, it will allow a waiting ext4_get_blocks()
+function to start reading and/or modifying the inode.  Worse yet, we
+might allow *another* truncate operation to start, with predictable
+hilarty ensuing.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-         Regression|---                         |No
+So before we do this, we need to make sure that (a) before dropping
+i_data_sem, data structures, both in memory and on disk, are in a
+consistent state to allow another reader or writing to enter, and (b)
+after retaking i_data_sem, we need to check to see if some other process
+may have changed the state of the extent (or indirect block) tree out
+from under us.
 
+Does anybody have time to drill into this?  It would be great if I could
+hand this off to someone, as my plate is pretty full these days....
 
-
-
---- Comment #2 from Theodore Tso <tytso@mit.edu>  2009-08-11 02:58:18 ---
-I'm not convinced this change to use E2BIG instead of ENOSPC is always the
-right thing.   Consider the wording of E2BIG: "The value of the given attribute
-is too large, IT EXCEEDS THE MAXIMUM ALLOWABLE SIZE OF AN ATTRIBUTE VALUE".  In
-other words E2BIG implies that a request was made to create an attribute where
-the size exceeded some static value.
-
-So if we pass in a request to create an attribute which is 2MB, E2BIG makes
-sense.  On the other hand, if the EA block is almost full, a request to create
-an attribute value which is 2 bytes long could result in an error --- and in
-that case, ENOSPC makes a lot more sense that E2BIG.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+							- Ted
