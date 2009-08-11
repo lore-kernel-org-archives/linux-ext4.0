@@ -1,26 +1,32 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] compile fix for debuging delalloc patch
-Date: Mon, 10 Aug 2009 23:13:50 -0400
-Message-ID: <20090811031350.GL1756@mit.edu>
-References: <1249923090.27687.4.camel@mingming-laptop>
+From: Frans Pop <elendil@planet.nl>
+Subject: What happened to data=guarded? (was: ext3: Update Kconfig description of EXT3_DEFAULTS_TO_ORDERED)
+Date: Tue, 11 Aug 2009 15:35:36 +0200
+Message-ID: <200908111535.37927.elendil@planet.nl>
+References: <1249934623-15939-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mingming <cmm@us.ibm.com>
+Content-Type: text/plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Chris Mason <chris.mason@oracle.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49839 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754663AbZHKNCp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Aug 2009 09:02:45 -0400
+Received: from cpsmtpm-eml104.kpnxchange.com ([195.121.3.8]:63142 "EHLO
+	CPSMTPM-EML104.kpnxchange.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752145AbZHKNfj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2009 09:35:39 -0400
+In-reply-To: <1249934623-15939-1-git-send-email-tytso@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <1249923090.27687.4.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 10, 2009 at 09:51:30AM -0700, Mingming wrote:
-> Fix compile errors when compiling ext4 patch queue unstable series..
-> Need to include smp_lock.h to able to add lock_kernel() call in ioctl.c
+> The old description for this configuration option was perhaps not
+> completely balanced in terms of describing the tradeoffs of using a
+> default of data=writeback vs. data=ordered.
 
-Thanks, I've fixed up the delalloc-debug-ioctl patch.
+Somewhat unrelated, but what happened to the data=guarded patches Chris 
+Mason proposed back in April?
 
-						- Ted
+Cheers,
+FJP
