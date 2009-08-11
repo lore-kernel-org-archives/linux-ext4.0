@@ -1,91 +1,56 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Questions about mballoc's stream allocation
-Date: Tue, 11 Aug 2009 23:07:03 +0530
-Message-ID: <20090811173703.GA5756@skywalker>
-References: <E1MZPAn-0001Y0-TQ@closure.thunk.org> <20090811153905.GA2914@skywalker>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: What happened to data=guarded?
+Date: Tue, 11 Aug 2009 13:04:50 -0500
+Message-ID: <4A81B2C2.3040301@redhat.com>
+References: <1249934623-15939-1-git-send-email-tytso@mit.edu> <200908111535.37927.elendil@planet.nl> <20090811133721.GD29224@think> <200908111654.38217.elendil@planet.nl> <878whqgyid.fsf@basil.nowhere.org> <20090811153425.GB26070@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>,
+Content-Transfer-Encoding: 7bit
+Cc: Andi Kleen <andi@firstfloor.org>, Frans Pop <elendil@planet.nl>,
+	Chris Mason <chris.mason@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:55342 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752394AbZHKRhN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Aug 2009 13:37:13 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp04.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7BHYWjf021994
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 03:34:32 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7BHbCEg528576
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 03:37:12 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7BHbCqq009542
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 03:37:12 +1000
-Content-Disposition: inline
-In-Reply-To: <20090811153905.GA2914@skywalker>
+Received: from mx2.redhat.com ([66.187.237.31]:34489 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752350AbZHKSFJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2009 14:05:09 -0400
+In-Reply-To: <20090811153425.GB26070@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 11, 2009 at 09:09:05PM +0530, Aneesh Kumar K.V wrote:
-> On Fri, Aug 07, 2009 at 09:07:53AM -0400, Theodore Ts'o wrote:
-> > 
-> > I've got two questions about mballoc's stream allocation.
-> > 
-> > First of all, in ext4_mb_regular_allocator(), I'm 99% sure this is a
-> > bug:
-> > 
-> > 	/* if stream allocation is enabled, use global goal */
-> > 	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
-> > 	isize = i_size_read(ac->ac_inode) >> bsbits;
-> > 	if (size < isize)
-> > 		size = isize;
-> > 
-> > 	if (size < sbi->s_mb_stream_request &&
-> > 	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> > 			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
-> > 		/* TBD: may be hot point */
-> > 		spin_lock(&sbi->s_md_lock);
-> > 		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
-> > 		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
-> > 		spin_unlock(&sbi->s_md_lock);
-> > 	}
-> > 
-> > Shouldn't that be ">=", not "<".  We want to use the values saved in
-> > sbi->s_mb_last_{group,start} only if we are doing a stream allocation,
-> > which would be true only if the file is *larger* than
-> > s_mb_stream_request, no?
-> > 
-> > 
-> > The second question I have is with regards to ext4_mb_use_best_found(),
-> > we set sbi->s_mb_last_{group,start} on any data allocation; shouldn't we
-> > only be setting those values only if we were doing a stream allocation
-> > in the first place?
-> > 
-> > Otherwise, any kind of allocation will end up moving the global goal
-> > block for stream allocations; even if it is a small allocation in the
-> > middle of some block group caused by the flag EXT4_MB_HINT_NO_PREALLOC
-> > being set.
-> > 
-> > Am I missing anything?
-> > 
-> 
-> I guess we should be setting the sbi->s_mb_last_{group,start} only when doing
-> small file allocation. We want to make sure small file allocation always
-> use the goal block near to the previous small file allocation request. So
-> (size <  sbi->s_mb_stream_request) is correct. But we should not be doing
-> 
->          sbi->s_mb_last_group = ac->ac_f_ex.fe_group;  
-> always.
-> 
-> For large file allocation we wanted the new blocks to closer to that files previous
-> allocated block which ext4_ext_find_goal return as the goal value. So for
-> large files the goal value passed should represent the correct value.
-> 
+Jan Kara wrote:
+>> Frans Pop <elendil@planet.nl> writes:
+>>
+>>> On Tuesday 11 August 2009, Chris Mason wrote:
+>>>> On Tue, Aug 11, 2009 at 03:35:36PM +0200, Frans Pop wrote:
+>>>>> Somewhat unrelated, but what happened to the data=guarded patches
+>>>>> Chris Mason proposed back in April?
+>>>> I missed 2.6.31 but plan on sending for 2.6.32.  I promised to send
+>>>> along a forward port of the patches a while back, but I finally have
+>>>> one in testing here.  It should go out shortly.
+>>> Good to hear. I've so far stayed with data=ordered as I think I'd prefer 
+>>> data=guarded over data=writeback. I'll certainly give it a try when it's 
+>>> available.
+>> Same here. data=writeback already cost me a few files after crashes here :/
+>   In this regard, data=guarded need not be better than data=writeback.
+> We push out the data in guarded mode as late as in writeback mode
+> (that's where the performance benefit comes from ;). The difference is
+> that we increase i_size only after data are safely on disk so we cannot
+> expose old data.
+>   So security-wise, guarded mode is as safe as ordered mode but in other
+> aspects its more like data=writeback.
 
-Or may be the current code is fine. I guess what the aim was to make sure we spread
-small file allocation near to the context. We use the ac_g_ex only when we don't find
-blocks in prealloc space. The goal could be that, if we create lot of small files it would be that
-the new small files created may be related to the process that did last block allocation.
+Yes, I think the people anxiously waiting for data=guarded may be sadly
+surprised at their 0-length files.
 
--aneesh
+For those who understand the data=writeback tradeoffs it'll be very
+useful in terms of more consistent results (easily-detectable 0-size or
+short files, vs. randomly corrupted data sprinkled around) but it's not
+going to be "data=ordered, but faster!"
+
+-Eric
+
+> 								Honza
+
