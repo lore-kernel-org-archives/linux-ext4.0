@@ -1,40 +1,78 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: What happened to data=guarded?
-Date: Mon, 10 Aug 2009 18:42:05 +0200
-Message-ID: <20090810164205.GC1505@ucw.cz>
-References: <1249934623-15939-1-git-send-email-tytso@mit.edu> <200908111535.37927.elendil@planet.nl> <20090811133721.GD29224@think> <200908111654.38217.elendil@planet.nl> <878whqgyid.fsf@basil.nowhere.org> <20090811185703.GQ1756@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
-	Frans Pop <elendil@planet.nl>,
-	Chris Mason <chris.mason@oracle.com>, jack@suse.cz,
-	linux-kernel@vger.kernel.org, linux-
+From: <gregkh@suse.de>
+Subject: patch compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch added to 2.6.30-stable tree
+Date: Tue, 11 Aug 2009 14:19:59 -0700
+Message-ID: <20090811212116.D2EC548BCE@coco.kroah.org>
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: sandeen@redhat.com, akpm@linux-foundation.org, arnd@arndb.de,
+	gregkh@suse.de, jack@suse.cz, josef@redhat.com,
+	linux-ext4@vger.kernel.org, lkml@rtr.ca,
+	torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:41643 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754450AbZHKVCQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Aug 2009 17:02:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20090811185703.GQ1756@mit.edu>
+Received: from kroah.org ([198.145.64.141]:51204 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753491AbZHKVVQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2009 17:21:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 2009-08-11 14:57:03, Theodore Tso wrote:
-> On Tue, Aug 11, 2009 at 05:29:14PM +0200, Andi Kleen wrote:
-> > > Good to hear. I've so far stayed with data=ordered as I think I'd prefer 
-> > > data=guarded over data=writeback. I'll certainly give it a try when it's 
-> > > available.
-> > 
-> > Same here. data=writeback already cost me a few files after crashes here :/
-> 
-> What sort of files were you losing?  I don't know if we can improve
-> the implied flush hueristics, but we should at least try to see if we
-> do something about it.
 
-IIRC... the flush heuristics invoke async flush, so you can still lose
-data if you are unlucky, no?
-								Pavel
+This is a note to let you know that we have just queued up the patch titled
 
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+    Subject: compat_ioctl: hook up compat handler for FIEMAP ioctl
+
+to the 2.6.30-stable tree.  Its filename is
+
+    compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch
+
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+
+
+>From 69130c7cf96ea853dc5be599dd6a4b98907d39cc Mon Sep 17 00:00:00 2001
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Thu, 6 Aug 2009 15:07:37 -0700
+Subject: compat_ioctl: hook up compat handler for FIEMAP ioctl
+
+From: Eric Sandeen <sandeen@redhat.com>
+
+commit 69130c7cf96ea853dc5be599dd6a4b98907d39cc upstream.
+
+The FIEMAP_IOC_FIEMAP mapping ioctl was missing a 32-bit compat handler,
+which means that 32-bit suerspace on 64-bit kernels cannot use this ioctl
+command.
+
+The structure is nicely aligned, padded, and sized, so it is just this
+simple.
+
+Tested w/ 32-bit ioctl tester (from Josef) on a 64-bit kernel on ext4.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Mark Lord <lkml@rtr.ca>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Josef Bacik <josef@redhat.com>
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/compat_ioctl.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/fs/compat_ioctl.c
++++ b/fs/compat_ioctl.c
+@@ -1915,6 +1915,7 @@ COMPATIBLE_IOCTL(FIONCLEX)
+ COMPATIBLE_IOCTL(FIOASYNC)
+ COMPATIBLE_IOCTL(FIONBIO)
+ COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
++COMPATIBLE_IOCTL(FS_IOC_FIEMAP)
+ /* 0x00 */
+ COMPATIBLE_IOCTL(FIBMAP)
+ COMPATIBLE_IOCTL(FIGETBSZ)
+
+
+Patches currently in stable-queue which might be from sandeen@redhat.com are
+
+queue-2.6.30/hugetlbfs-fix-i_blocks-accounting.patch
+queue-2.6.30/compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch
