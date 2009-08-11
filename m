@@ -1,41 +1,33 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH, RFC -V2 1/4] ext4: Add configurable run-time mballoc
-	debugging
-Date: Tue, 11 Aug 2009 14:53:57 -0400
-Message-ID: <20090811185357.GP1756@mit.edu>
-References: <1249874635-24250-1-git-send-email-tytso@mit.edu> <1249874635-24250-2-git-send-email-tytso@mit.edu> <d5ca277e0908111115g4274b419g490bc453eaf6e1bd@mail.gmail.com>
+Subject: Re: What happened to data=guarded?
+Date: Tue, 11 Aug 2009 14:57:03 -0400
+Message-ID: <20090811185703.GQ1756@mit.edu>
+References: <1249934623-15939-1-git-send-email-tytso@mit.edu> <200908111535.37927.elendil@planet.nl> <20090811133721.GD29224@think> <200908111654.38217.elendil@planet.nl> <878whqgyid.fsf@basil.nowhere.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
-	Alex Tomas <bzzz@sun.com>, Curt Wohlgemuth <curtw@google.com>
-To: Xiang Wang <xiangw@google.com>
+Cc: Frans Pop <elendil@planet.nl>,
+	Chris Mason <chris.mason@oracle.com>, jack@suse.cz,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44555 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44596 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753144AbZHKSx6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Aug 2009 14:53:58 -0400
+	id S1751227AbZHKS5N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Aug 2009 14:57:13 -0400
 Content-Disposition: inline
-In-Reply-To: <d5ca277e0908111115g4274b419g490bc453eaf6e1bd@mail.gmail.com>
+In-Reply-To: <878whqgyid.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 11, 2009 at 11:15:53AM -0700, Xiang Wang wrote:
-> Hi Ted,
+On Tue, Aug 11, 2009 at 05:29:14PM +0200, Andi Kleen wrote:
+> > Good to hear. I've so far stayed with data=ordered as I think I'd prefer 
+> > data=guarded over data=writeback. I'll certainly give it a try when it's 
+> > available.
 > 
-> I tried to apply this patch to our kernel, but I encountered some
-> problems in building the kernel:
-> 
-> FATAL: fs/ext4/ext4.o(.text+0x24f2d): Section mismatch in reference
-> from the function exit_ext4_mballoc() to the function
-> .exit.text:ext4_remove_debugfs_entry()
-> 
-> Looking at the code, the problem seems to be that, exit_ext4_mballoc
-> calls ext4_remove_debugfs_entry. And ext4_remove_debugfs_entry has the
-> "__exit" annotation while exit_ext4_mballoc does not. I tried removing
-> the "__exit" annotation from ext4_remove_debugfs_entry and it builds
-> well.
+> Same here. data=writeback already cost me a few files after crashes here :/
 
-Good catch; I didn't notice because I wasn't compiling with
-CONFIG_DEBUG_SECTION_MISMATCH=y.  Your fix is the right one.
+What sort of files were you losing?  I don't know if we can improve
+the implied flush hueristics, but we should at least try to see if we
+do something about it.
 
-				       	      	  - Ted
+						- Ted
