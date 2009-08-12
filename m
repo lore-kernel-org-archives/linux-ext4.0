@@ -1,31 +1,33 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] reject too-large filesystems on 32-bit kernels
-Date: Wed, 12 Aug 2009 17:06:37 -0500
-Message-ID: <4A833CED.2010708@redhat.com>
+Subject: [PATCH V2] reject too-large filesystems on 32-bit kernels
+Date: Wed, 12 Aug 2009 17:30:23 -0500
+Message-ID: <4A83427F.60106@redhat.com>
+References: <4A833CED.2010708@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59252 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:33966 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751937AbZHLWGp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Aug 2009 18:06:45 -0400
+	id S1752141AbZHLWaY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Aug 2009 18:30:24 -0400
 Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7CM6kPV031162
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 18:06:46 -0400
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7CMUPo7005524
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 18:30:25 -0400
 Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n7CM6kwA001019
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 18:06:46 -0400
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n7CMUO4r006357
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 18:30:24 -0400
 Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7CM6cD2029635
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 18:06:42 -0400
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7CMUNkt000613
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2009 18:30:24 -0400
+In-Reply-To: <4A833CED.2010708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 ext4 will happily mount a > 16T filesystem on a 32-bit box, but
 this is not safe; writes to the block device will wrap past 16T
-and the page cache can't index past 16T (2^32 index * 4k pages).
+and the page cache can't index past 16T (232 index * 4k pages).
 
 Adding another test to the existing "too many sectors" test
 should do the trick.
@@ -35,6 +37,8 @@ to the CONFIG_LBD(AF) option as well.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
+
+V2: Get error sign right, too much userspace today :)
 
 Index: linux-2.6.29.noarch/fs/ext4/super.c
 ===================================================================
@@ -60,8 +64,13 @@ Index: linux-2.6.29.noarch/fs/ext4/super.c
 -			printk(KERN_WARNING "EXT4-fs: CONFIG_LBD not "
 +			printk(KERN_WARNING "EXT4-fs: CONFIG_LBDAF not "
  					"enabled\n");
-+		ret = EFBIG;
++		ret = -EFBIG;
  		goto failed_mount;
  	}
  
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
