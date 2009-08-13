@@ -1,8 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 16/28] compat_ioctl: hook up compat handler for FIEMAP ioctl
-Date: Thu, 13 Aug 2009 12:40:37 -0700
-Message-ID: <20090813194338.094383349@mini.kroah.org>
-References: <20090813194021.446758568@mini.kroah.org>
+Subject: [patch 57/74] compat_ioctl: hook up compat handler for FIEMAP ioctl
+Date: Thu, 13 Aug 2009 12:50:32 -0700
+Message-ID: <20090813195133.025035073@mini.kroah.org>
+References: <20090813194935.985368088@mini.kroah.org>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
 	Eric Sandeen <sandeen@redhat.com>,
@@ -10,13 +10,13 @@ Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	Arnd Bergmann <arnd@arndb.de>, Josef Bacik <josef@redhat.com>,
 	Jan Kara <jack@suse.cz>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755812AbZHMTvv@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932306AbZHMUAJ@vger.kernel.org>
 Content-Disposition: inline; filename=compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch
-In-Reply-To: <20090813194554.GA13947@kroah.com>
+In-Reply-To: <20090813195705.GA22393@kroah.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-2.6.27-stable review patch.  If anyone has any objections, please let us know.
+2.6.30-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
@@ -49,7 +49,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 --- a/fs/compat_ioctl.c
 +++ b/fs/compat_ioctl.c
-@@ -1910,6 +1910,7 @@ COMPATIBLE_IOCTL(FIONCLEX)
+@@ -1915,6 +1915,7 @@ COMPATIBLE_IOCTL(FIONCLEX)
  COMPATIBLE_IOCTL(FIOASYNC)
  COMPATIBLE_IOCTL(FIONBIO)
  COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
