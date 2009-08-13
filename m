@@ -1,34 +1,59 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Thu, 13 Aug 2009 00:34:53 +0200
-Message-ID: <20090812223453.GC10729@duck.suse.cz>
-References: <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz> <20090806131555.GA23359@gradator.net>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Questions on ext4 and writeback
+Date: Thu, 13 Aug 2009 09:09:58 -0700
+Message-ID: <6601abe90908130909v582df37aq773e95f49f4a1248@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
-To: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20090806131555.GA23359-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([216.239.33.17]:5317 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751043AbZHMQKC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Aug 2009 12:10:02 -0400
+Received: from spaceape8.eur.corp.google.com (spaceape8.eur.corp.google.com [172.28.16.142])
+	by smtp-out.google.com with ESMTP id n7DGA1NO032688
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Aug 2009 17:10:02 +0100
+Received: from bwz9 (bwz9.prod.google.com [10.188.26.9])
+	by spaceape8.eur.corp.google.com with ESMTP id n7DG9wcX022657
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Aug 2009 09:09:59 -0700
+Received: by bwz9 with SMTP id 9so771807bwz.41
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Aug 2009 09:09:58 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+I've got a question about how ext4 handles the writeback control fields in
+ext4_da_writepages().
 
-On Thu 06-08-09 15:15:56, Sylvain Rochet wrote:
-> > I have one idea what could cause your filesystem corruption, although 
-> > it's a wild guess... Please try attached oneliner.
-> 
-> Running since yesterday.
-  Any news after a week of running? How often did the corruption happen
-previously?
+I understand how the big picture works:  since we're doing delayed
+allocation, when we're asked to write out a range of dirty pages, we need to
+do allocation *now*, and we want to do allocation on the largest contiguous
+range of pages possible.
 
-								Honza
--- 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So when __mpage_da_writepage() finds a page discontinuity, we submit the
+page extent we have so far for I/O, and call redirty_page_for_writepage() on
+the current page, skip the rest of the pages in the pagevec, and wait for a
+new transaction.
+
+On return from write_cache_pages(), ext4_da_writepages() will check the
+return value from __mpage_da_writepage(), and if it's MPAGE_DA_EXTENT_TAIL,
+will bump the number of pages written, and possibly cause another loop to
+handle the rest of the pages (after the discontinuity).
+
+What I don't understand is why wbc->pages_skipped is reset in this case.
+
+I *think* that ext4_da_writepages() is trying to undo the effect of
+redirty_page_for_writepage() to increment pages_skipped -- since we didn't
+really skip this page, we only postponed its handling to the next pagevec.
+
+But the actual submittal of I/O for the previous extent might cause
+pages_skipped to be bumped, right?  Removing these increments might cause
+the accounting to be incorrect, it seems to me.
+
+I think it would be safer to explicitly decrement wbc->pages_skipped after a
+call to redirty_page_for_writepage(), rather than reset this value to what
+it was when ext4_da_writepages() was called.  Can somebody help me
+understand where I might be mistaken?
+
+Thanks,
+Curt
