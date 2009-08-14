@@ -1,59 +1,44 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 57/74] compat_ioctl: hook up compat handler for FIEMAP ioctl
-Date: Thu, 13 Aug 2009 12:50:32 -0700
-Message-ID: <20090813195133.025035073@mini.kroah.org>
-References: <20090813194935.985368088@mini.kroah.org>
-Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	Eric Sandeen <sandeen@redhat.com>,
-	<linux-ext4@vger.kernel.org>, Mark Lord <lkml@rtr.ca>,
-	Arnd Bergmann <arnd@arndb.de>, Josef Bacik <josef@redhat.com>,
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 3/4] jbd2: Annotate transaction start also for jbd2_journal_restart()
+Date: Fri, 14 Aug 2009 14:26:11 +0200
+Message-ID: <1250252772-13302-4-git-send-email-jack@suse.cz>
+References: <1250252772-13302-1-git-send-email-jack@suse.cz>
+Cc: tytso@mit.edu, Andrew Morton <akpm@linux-foundation.org>,
 	Jan Kara <jack@suse.cz>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932306AbZHMUAJ@vger.kernel.org>
-Content-Disposition: inline; filename=compat_ioctl-hook-up-compat-handler-for-fiemap-ioctl.patch
-In-Reply-To: <20090813195705.GA22393@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:49026 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756662AbZHNM0O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Aug 2009 08:26:14 -0400
+In-Reply-To: <1250252772-13302-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.30-stable review patch.  If anyone has any objections, please let us know.
+lockdep annotation for a transaction start has been at the end of
+jbd2_journal_start(). But a transaction is also started from
+jbd2_journal_restart(). Move the lockdep annotation to start_this_handle()
+which covers both cases.
 
-------------------
-
-From: Eric Sandeen <sandeen@redhat.com>
-
-commit 69130c7cf96ea853dc5be599dd6a4b98907d39cc upstream.
-
-The FIEMAP_IOC_FIEMAP mapping ioctl was missing a 32-bit compat handler,
-which means that 32-bit suerspace on 64-bit kernels cannot use this ioctl
-command.
-
-The structure is nicely aligned, padded, and sized, so it is just this
-simple.
-
-Tested w/ 32-bit ioctl tester (from Josef) on a 64-bit kernel on ext4.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Mark Lord <lkml@rtr.ca>
-Cc: Arnd Bergmann <arnd@arndb.de>
-Cc: Josef Bacik <josef@redhat.com>
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/compat_ioctl.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/jbd2/transaction.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
---- a/fs/compat_ioctl.c
-+++ b/fs/compat_ioctl.c
-@@ -1915,6 +1915,7 @@ COMPATIBLE_IOCTL(FIONCLEX)
- COMPATIBLE_IOCTL(FIOASYNC)
- COMPATIBLE_IOCTL(FIONBIO)
- COMPATIBLE_IOCTL(FIONREAD)  /* This is also TIOCINQ */
-+COMPATIBLE_IOCTL(FS_IOC_FIEMAP)
- /* 0x00 */
- COMPATIBLE_IOCTL(FIBMAP)
- COMPATIBLE_IOCTL(FIGETBSZ)
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 6213ac7..8b6a692 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -238,6 +238,8 @@ repeat_locked:
+ 		  __jbd2_log_space_left(journal));
+ 	spin_unlock(&transaction->t_handle_lock);
+ 	spin_unlock(&journal->j_state_lock);
++
++	lock_map_acquire(&handle->h_lockdep_map);
+ out:
+ 	if (unlikely(new_transaction))		/* It's usually NULL */
+ 		kfree(new_transaction);
+@@ -303,8 +305,6 @@ handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+ 		handle = ERR_PTR(err);
+ 		goto out;
+ 	}
