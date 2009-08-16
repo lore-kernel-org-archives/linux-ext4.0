@@ -1,72 +1,63 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: simplify some logic in ext4_mb_normalize_request
-Date: Sun, 16 Aug 2009 14:24:32 -0500
-Message-ID: <4A885CF0.60901@redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [patch 5/5] ext2: convert to use the new truncate convention.
+Date: Sun, 16 Aug 2009 16:16:26 -0400
+Message-ID: <20090816201626.GA23048@infradead.org>
+References: <20090816102533.329473921@suse.de> <20090816102856.846088617@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:38775 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751836AbZHPTYc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 16 Aug 2009 15:24:32 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7GJOXbn014533
-	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2009 15:24:33 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n7GJOXNT031184
-	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2009 15:24:33 -0400
-Received: from Liberator.lan (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7GJOWqI006557
-	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2009 15:24:32 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>
+To: npiggin@suse.de
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20090816102856.846088617@suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-While reading through some of the mballoc code it seems that a couple
-spots in the size normalization function could be streamlined.
+On Sun, Aug 16, 2009 at 08:25:38PM +1000, npiggin@suse.de wrote:
+> @@ -66,9 +68,10 @@ void ext2_delete_inode (struct inode * i
+>  	mark_inode_dirty(inode);
+>  	ext2_write_inode(inode, inode_needs_sync(inode));
+>  
+> +	/* XXX: where is truncate_inode_pages? */
+>  	inode->i_size = 0;
+>  	if (inode->i_blocks)
+> -		ext2_truncate (inode);
+> +		ext2_truncate_blocks(inode, 0);
+>  	ext2_free_inode (inode);
 
-The test for non-overlapping PAs can be or'd for the start & end
-conditions, and the tests for adjacent PAs can be else-if'd - 
-it's essentially independently testing:
+At the beginning of the function, just before the diff window.  Because
+this is ->delete_inode we truncate away all pages, down to offset 0.
 
-	if (A + B <= C)
-		...
-	if (A > C)
-		...
+> +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+> +{
+> +	/*
+> +	 * XXX: it seems like a bug here that we don't allow
+> +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
+> +	 * review and fix this.
+> +	 */
+> +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+> +	    S_ISLNK(inode->i_mode)))
+> +		return -EINVAL;
+> +	if (ext2_inode_is_fast_symlink(inode))
+> +		return -EINVAL;
+> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> +		return -EPERM;
+> +	__ext2_truncate_blocks(inode, offset);
 
-These cannot both be true so it seems like the else-if might
-be slightly more efficient and/or informative.
+Yes, I think the IS_APPEND(inode) || IS_IMMUTABLE(inode) checks should move
+into ext2_setsize.  But let's leave that for a separate patch.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Btw, the above code gives me warnings like this:
 
- mballoc.c |   13 ++++---------
- 1 file changed, 4 insertions(+), 9 deletions(-)
+/home/hch/work/linux-2.6/fs/ext2/inode.c: In function
+'ext2_truncate_blocks':
+/home/hch/work/linux-2.6/fs/ext2/inode.c:1158: warning: 'return' with a
+value, in function returning void
+/home/hch/work/linux-2.6/fs/ext2/inode.c:1160: warning: 'return' with a
+value, in function returning void
+/home/hch/work/linux-2.6/fs/ext2/inode.c:1162: warning: 'return' with a
+value, in function returning void
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2741b11..992ec20 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3171,23 +3171,18 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 		BUG_ON(!(ac->ac_o_ex.fe_logical >= pa_end ||
- 			ac->ac_o_ex.fe_logical < pa->pa_lstart));
- 
--		/* skip PA normalized request doesn't overlap with */
--		if (pa->pa_lstart >= end) {
--			spin_unlock(&pa->pa_lock);
--			continue;
--		}
--		if (pa_end <= start) {
-+		/* skip PAs this normalized request doesn't overlap with */
-+		if (pa->pa_lstart >= end || pa_end <= start) {
- 			spin_unlock(&pa->pa_lock);
- 			continue;
- 		}
- 		BUG_ON(pa->pa_lstart <= start && pa_end >= end);
- 
-+		/* adjust start or end to be adjacent to this pa */
- 		if (pa_end <= ac->ac_o_ex.fe_logical) {
- 			BUG_ON(pa_end < start);
- 			start = pa_end;
--		}
+because you try to return errors from a function delcared as void.
