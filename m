@@ -1,63 +1,179 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [patch 5/5] ext2: convert to use the new truncate convention.
-Date: Sun, 16 Aug 2009 16:16:26 -0400
-Message-ID: <20090816201626.GA23048@infradead.org>
-References: <20090816102533.329473921@suse.de> <20090816102856.846088617@suse.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4:  feature set check helper for mount & remount paths
+Date: Sun, 16 Aug 2009 15:22:36 -0500
+Message-ID: <4A886A8C.9090909@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>
-To: npiggin@suse.de
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20090816102856.846088617@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:52733 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755884AbZHPUWg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Aug 2009 16:22:36 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7GKMbqb027891
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2009 16:22:37 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n7GKMbCj009323
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2009 16:22:37 -0400
+Received: from Liberator.lan (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7GKMaEC013352
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2009 16:22:36 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 16, 2009 at 08:25:38PM +1000, npiggin@suse.de wrote:
-> @@ -66,9 +68,10 @@ void ext2_delete_inode (struct inode * i
->  	mark_inode_dirty(inode);
->  	ext2_write_inode(inode, inode_needs_sync(inode));
->  
-> +	/* XXX: where is truncate_inode_pages? */
->  	inode->i_size = 0;
->  	if (inode->i_blocks)
-> -		ext2_truncate (inode);
-> +		ext2_truncate_blocks(inode, 0);
->  	ext2_free_inode (inode);
+A user reported that although his root ext4 filesystem was mounting
+fine, other filesystems would not mount, with the:
 
-At the beginning of the function, just before the diff window.  Because
-this is ->delete_inode we truncate away all pages, down to offset 0.
+"Filesystem with huge files cannot be mounted RDWR without CONFIG_LBDAF"
 
-> +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
-> +{
-> +	/*
-> +	 * XXX: it seems like a bug here that we don't allow
-> +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
-> +	 * review and fix this.
-> +	 */
-> +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-> +	    S_ISLNK(inode->i_mode)))
-> +		return -EINVAL;
-> +	if (ext2_inode_is_fast_symlink(inode))
-> +		return -EINVAL;
-> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-> +		return -EPERM;
-> +	__ext2_truncate_blocks(inode, offset);
+error on his 32-bit box built without CONFIG_LBDAF.  This is because
+the test at mount time for this situation was not being re-checked
+on remount, and the normal boot process makes an ro->rw transition,
+so this was being missed.
 
-Yes, I think the IS_APPEND(inode) || IS_IMMUTABLE(inode) checks should move
-into ext2_setsize.  But let's leave that for a separate patch.
+Refactor to make a common helper function to test the filesystem
+features against the type of mount request (RO vs. RW) so that we 
+stay consistent.
 
-Btw, the above code gives me warnings like this:
+Addresses Red Hat bugzilla 517650.
 
-/home/hch/work/linux-2.6/fs/ext2/inode.c: In function
-'ext2_truncate_blocks':
-/home/hch/work/linux-2.6/fs/ext2/inode.c:1158: warning: 'return' with a
-value, in function returning void
-/home/hch/work/linux-2.6/fs/ext2/inode.c:1160: warning: 'return' with a
-value, in function returning void
-/home/hch/work/linux-2.6/fs/ext2/inode.c:1162: warning: 'return' with a
-value, in function returning void
+Compile-tested only.
 
-because you try to return errors from a function delcared as void.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+ super.c |   91 ++++++++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 49 insertions(+), 42 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 59b80b1..4f4714e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2253,6 +2253,49 @@ static struct kobj_type ext4_ktype = {
+ 	.release	= ext4_sb_release,
+ };
+ 
++/*
++ * Check whether this filesystem can be mounted based on
++ * the features present and the RDONLY/RDWR mount requested.
++ * Returns 1 if this filesystem can be mounted as requested,
++ * 0 if it cannot be.
++ */
++static int ext4_feature_set_ok(struct super_block *sb, int readonly)
++{
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT4_FEATURE_INCOMPAT_SUPP)) {
++		ext4_msg(sb, KERN_ERR,
++			"Couldn't mount because of "
++			"unsupported optional features (%x)",
++			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) &
++			~EXT4_FEATURE_INCOMPAT_SUPP));
++		return 0;
++	}
++
++	if (readonly)
++		return 1;
++
++	/* Check that feature set is OK for a read-write mount */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP)) {
++		ext4_msg(sb, KERN_ERR, "couldn't mount RDWR because of "
++			 "unsupported optional features (%x)",
++			 (le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) &
++				~EXT4_FEATURE_RO_COMPAT_SUPP));
++		return 0;
++	}
++	/*
++	 * Large file size enabled file system can only be mounted
++	 * read-write on 32-bit systems if kernel is built with CONFIG_LBDAF
++	 */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
++		if (sizeof(blkcnt_t) < sizeof(u64)) {
++			ext4_msg(sb, KERN_ERR, "Filesystem with huge files "
++				 "cannot be mounted RDWR without "
++				 "CONFIG_LBDAF");
++			return 0;
++		}
++	}
++	return 1;
++}
++
+ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				__releases(kernel_lock)
+ 				__acquires(kernel_lock)
+@@ -2274,7 +2317,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	unsigned int db_count;
+ 	unsigned int i;
+ 	int needs_recovery, has_huge_files;
+-	int features;
+ 	__u64 blocks_count;
+ 	int err;
+ 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
+@@ -2401,39 +2443,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 * previously didn't change the revision level when setting the flags,
+ 	 * so there is a chance incompat flags are set on a rev 0 filesystem.
+ 	 */
+-	features = EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT4_FEATURE_INCOMPAT_SUPP);
+-	if (features) {
+-		ext4_msg(sb, KERN_ERR,
+-			"Couldn't mount because of "
+-			"unsupported optional features (%x)",
+-			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) &
+-			~EXT4_FEATURE_INCOMPAT_SUPP));
+-		goto failed_mount;
+-	}
+-	features = EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP);
+-	if (!(sb->s_flags & MS_RDONLY) && features) {
+-		ext4_msg(sb, KERN_ERR,
+-			"Couldn't mount RDWR because of "
+-			"unsupported optional features (%x)",
+-			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) &
+-			~EXT4_FEATURE_RO_COMPAT_SUPP));
++	if (!ext4_feature_set_ok(sb, (sb->s_flags & MS_RDONLY)))
+ 		goto failed_mount;
+-	}
+-	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				    EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
+-	if (has_huge_files) {
+-		/*
+-		 * Large file size enabled file system can only be
+-		 * mount if kernel is build with CONFIG_LBDAF
+-		 */
+-		if (sizeof(root->i_blocks) < sizeof(u64) &&
+-				!(sb->s_flags & MS_RDONLY)) {
+-			ext4_msg(sb, KERN_ERR, "Filesystem with huge "
+-					"files cannot be mounted read-write "
+-					"without CONFIG_LBDAF");
+-			goto failed_mount;
+-		}
+-	}
++
+ 	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
+ 
+ 	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
+@@ -2469,6 +2481,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 	}
+ 
++	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
+ 	sbi->s_bitmap_maxbytes = ext4_max_bitmap_size(sb->s_blocksize_bits,
+ 						      has_huge_files);
+ 	sb->s_maxbytes = ext4_max_size(sb->s_blocksize_bits, has_huge_files);
+@@ -3474,18 +3488,11 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			if (sbi->s_journal)
+ 				ext4_mark_recovery_complete(sb, es);
+ 		} else {
+-			int ret;
+-			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-					~EXT4_FEATURE_RO_COMPAT_SUPP))) {
+-				ext4_msg(sb, KERN_WARNING, "couldn't "
+-				       "remount RDWR because of unsupported "
+-				       "optional features (%x)",
+-				(le32_to_cpu(sbi->s_es->s_feature_ro_compat) &
+-					~EXT4_FEATURE_RO_COMPAT_SUPP));
++			/* Make sure we can mount this feature set readwrite */
++			if (!ext4_feature_set_ok(sb, 0)) {
+ 				err = -EROFS;
+ 				goto restore_opts;
+ 			}
