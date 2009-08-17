@@ -1,102 +1,109 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: [patch 5/5] ext2: convert to use the new truncate convention.
-Date: Mon, 17 Aug 2009 18:44:12 +0200
-Message-ID: <20090817164412.GK9962@wotan.suse.de>
-References: <20090816102533.329473921@suse.de> <20090816102856.846088617@suse.de> <20090816201626.GA23048@infradead.org> <20090817064216.GC9962@wotan.suse.de> <4A893A82.6030801@panasas.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC,PATCH 1/2] Direct IO for holes and fallocate
+Date: Mon, 17 Aug 2009 19:33:14 -0400
+Message-ID: <20090817233314.GA1215@mit.edu>
+References: <1249916427.4337.32.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	Jan Kara <jack@suse.cz>, Curt Wohlgemuth <curtw@google.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57335 "EHLO mx2.suse.de"
+Received: from thunk.org ([69.25.196.29]:37600 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751632AbZHQQoP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Aug 2009 12:44:15 -0400
+	id S1758203AbZHQXdT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Aug 2009 19:33:19 -0400
 Content-Disposition: inline
-In-Reply-To: <4A893A82.6030801@panasas.com>
+In-Reply-To: <1249916427.4337.32.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 17, 2009 at 02:09:54PM +0300, Boaz Harrosh wrote:
-> On 08/17/2009 09:42 AM, Nick Piggin wrote:
-> > On Sun, Aug 16, 2009 at 04:16:26PM -0400, Christoph Hellwig wrote:
-> >> On Sun, Aug 16, 2009 at 08:25:38PM +1000, npiggin@suse.de wrote:
-> >>> @@ -66,9 +68,10 @@ void ext2_delete_inode (struct inode * i
-> >>>  	mark_inode_dirty(inode);
-> >>>  	ext2_write_inode(inode, inode_needs_sync(inode));
-> >>>  
-> >>> +	/* XXX: where is truncate_inode_pages? */
-> >>>  	inode->i_size = 0;
-> >>>  	if (inode->i_blocks)
-> >>> -		ext2_truncate (inode);
-> >>> +		ext2_truncate_blocks(inode, 0);
-> >>>  	ext2_free_inode (inode);
-> >>
-> >> At the beginning of the function, just before the diff window.  Because
-> >> this is ->delete_inode we truncate away all pages, down to offset 0.
-> > 
-> > OK, weird. I thought I couldn't see it when I wrote that :) maybe my
-> > tree was corrupted or I'm stupid.
-> > 
-> > 
-> >>> +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
-> >>> +{
-> >>> +	/*
-> >>> +	 * XXX: it seems like a bug here that we don't allow
-> >>> +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
-> >>> +	 * review and fix this.
-> >>> +	 */
-> >>> +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-> >>> +	    S_ISLNK(inode->i_mode)))
-> >>> +		return -EINVAL;
-> >>> +	if (ext2_inode_is_fast_symlink(inode))
-> >>> +		return -EINVAL;
-> >>> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-> >>> +		return -EPERM;
-> >>> +	__ext2_truncate_blocks(inode, offset);
-> >>
-> >> Yes, I think the IS_APPEND(inode) || IS_IMMUTABLE(inode) checks should move
-> >> into ext2_setsize.  But let's leave that for a separate patch.
-> > 
-> > Yeah agreed.
-> > 
-> >  
-> >> Btw, the above code gives me warnings like this:
-> >>
-> >> /home/hch/work/linux-2.6/fs/ext2/inode.c: In function
-> >> 'ext2_truncate_blocks':
-> >> /home/hch/work/linux-2.6/fs/ext2/inode.c:1158: warning: 'return' with a
-> >> value, in function returning void
-> >> /home/hch/work/linux-2.6/fs/ext2/inode.c:1160: warning: 'return' with a
-> >> value, in function returning void
-> >> /home/hch/work/linux-2.6/fs/ext2/inode.c:1162: warning: 'return' with a
-> >> value, in function returning void
-> >>
-> >> because you try to return errors from a function delcared as void.
-> > 
-> > Hm, sorry. I thought it was in good shape... I'll recheck that I sent
-> > out the correct versions and resend according to feedback from you
-> > and Hugh.
-> > 
-> > Thanks,
-> > Nick
-> > 
-> 
-> Nick do you have a public tree with these latest patches? I would like to
-> try out an exofs conversion and testing.
+OK, here are some comments on the patch; apologies for not getting to
+it sooner.
 
-Hi Boaz,
+First of all, I suggest the following replacement for the patch
+description.  I've rewritten it to make it clearer and more succint.
+Do you think I've left anything out?
 
-I don't have a public tree. I can send you a rollup if you ping me or
-just take the patches from the list. I will send out a new set shortly
-(with very minor differences -- a couple of new helper functions to
-use).
+---------------
 
-That will be great if you can convert your fs. I will really appreciate
-it.
+ext4: Use end_io call back to avoid direct I/O fallback to buffered I/O
 
-Thanks,
-Nick
+From: Mingming <cmm@us.ibm.com>
+
+Currently the DIO VFS code passes create = 0 when writing to the
+middle of file.  It does this to avoid block allocation for holes, so
+as not to expose stale data out when there is a parallel buffered read
+(which does not hold the i_mutex lock).  Direct I/O writes into holes
+falls back to buffered IO for this reason.
+
+Since preallocated extents are treated as holes when doing a
+get_block() look up (buffer is not mapped), direct IO over fallocate
+also falls back to buffered IO.  Thus ext4 actually silently falls
+back to buffered IO in above two cases, which is undesirable.
+
+To fix this, this patch creates unitialized extents when a direct I/O
+write needs to allocate blocks for writes that extend a file or writes
+into holes in sparse files, and registering an end_io callback which
+converts the uninitialized extent to an initialized extent after the
+I/O is completed.
+
+Singed-Off-By: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+-------------------
+
+Secondly, the patch doesn't compile after applying just the first
+patch.  The reason for it is that first patch references
+ext4_convert_unwritten_extents(), but it is only defined in the 2nd
+patch.
+
+Other issues:
+
+> +typedef struct ext4_io_end{
+                            ^^^ add a space
+> +	struct inode		*inode;		/* file being written to */
+> +	unsigned int		type;		/* unwritten or written */
+> +	int			error;		/* I/O error code */
+> +	ext4_lblk_t		offset;		/* offset in the file */
+> +	size_t			size;		/* size of the extent */
+> +	struct work_struct	work;		/* data work queue */
+> +}ext4_io_end_t;
+  ^^^ add a space
+
+> -
+> -
+> +#define EXT4_GET_BLOCKS_DIO_CREATE_EXT		0x0011
+> +#define EXT4_GET_BLOCKS_DIO_CONVERT_EXT		0x0021
+>  /*
+>   * ioctl commands
+
+Could you add a comment for EXT4_GET_BLOCKS_DIO_CREATE_EXT and
+EXT4_GET_BLOCKS_DIO_CONVERT_EXT, like the other EXT4_GET_BLOCKS
+#define's?  And a empty line before the "ioctl commands" comment would
+be much appreciated.
+
+>  /*
+> + * O_DIRECT for ext3 (or indirect map) based files
+> + *
+
+Probably better just to say "O_DIRECT for direct/indirect block mapped files"
+
+>  
+> +struct workqueue_struct *ext4_unwritten_queue;
+
+This doesn't appear to be used; it looks like you started with a
+single global workqueue, and then moved to having a separate workqueue
+for each filesystem.
+
+> +static ext4_io_end_t *ext4_init_io_end (struct inode *inode, unsigned int type)
+                                         ^^^ remove space
+
+
+ext4_init_io_end() is only called in one place; so maybe it would be
+better if it were inlined into ext4_ext_direct_IO?  It also appears
+that the type field is never used, and so it can be removed from the
+ext4_io_end structure.
+
+						- Ted
