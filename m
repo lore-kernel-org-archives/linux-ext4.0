@@ -1,51 +1,35 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: fsck infinite loop on corrupt ext4 file system
-Date: Tue, 18 Aug 2009 13:03:01 -0600
-Message-ID: <20090818190301.GL5931@webber.adilger.int>
-References: <1250294105.6221.24.camel@bobble.smo.corp.google.com>
- <1250557822.23227.9.camel@bobble.smo.corp.google.com>
- <20090818160155.GC28560@mit.edu>
- <1250613069.10195.12.camel@bobble.smo.corp.google.com>
- <20090818170331.GE28560@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Rare xfsqa test failure
+Date: Tue, 18 Aug 2009 17:42:18 -0400
+Message-ID: <20090818214218.GK28560@mit.edu>
+References: <E1MdNJu-0006uc-GX@closure.thunk.org> <20090818170705.GI5931@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Frank Mayhar <fmayhar@google.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:40801 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751261AbZHRTDE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Aug 2009 15:03:04 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7IJ35Cm008857
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2009 12:03:06 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KOL0010066IUL00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 18 Aug 2009 12:03:05 -0700 (PDT)
-In-reply-to: <20090818170331.GE28560@mit.edu>
+Received: from thunk.org ([69.25.196.29]:56698 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751214AbZHRVmV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Aug 2009 17:42:21 -0400
+Content-Disposition: inline
+In-Reply-To: <20090818170705.GI5931@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 18, 2009  13:03 -0400, Theodore Ts'o wrote:
-> Something we *could* do to further reduce the chances would be to
-> compare the primary and backup group descriptors, either at
-> mount-time, or in e2fsck.  This would add an extra level of paranoia,
-> although the people who are trying to do 5 second boots with HDD's
-> would probably complain about the extra seeks that we'd be introducing
-> as a result.
+On Tue, Aug 18, 2009 at 11:07:05AM -0600, Andreas Dilger wrote:
+> > EXTENTS:
+> > (65-80): 60720-60735, (81-222 [uninit]): 1181574-1181715, (223-229): 1181716-118
+> > 1722
+> > debugfs:  
+> > 
+> > So it looks like there's a race which can cause ext4 to somehow miss an
+> > i_size update.
+> 
+> Are you sure it is a failure to update i_size, or is it possibly an
+> fallocate that extends the block count beyond i_size?
 
-I've thought about this recently as well.  Since the GDT blocks are
-allocated contiguously (at least until we get META_BG filesystems) it
-would only be a single extra seek and read at mount time.  For a 16TB
-filesystem there are 8MB of GDT blocks, so that isn't a huge amount of
-extra IO as log as we do it with a single read instead of many seeks.
+Look at the EXTENTS report from debugfs; blocks 81-222 are
+uninitialized from an fallocate, but block 223-229 are initialized.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+	      	      		     	   - Ted
