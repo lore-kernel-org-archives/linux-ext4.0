@@ -1,40 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13369] kernel BUG at fs/ext4/inode.c:3123
-Date: Tue, 18 Aug 2009 17:38:25 GMT
-Message-ID: <200908181738.n7IHcPRC002624@demeter.kernel.org>
-References: <bug-13369-13602@http.bugzilla.kernel.org/>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: fsck infinite loop on corrupt ext4 file system
+Date: Tue, 18 Aug 2009 13:03:01 -0600
+Message-ID: <20090818190301.GL5931@webber.adilger.int>
+References: <1250294105.6221.24.camel@bobble.smo.corp.google.com>
+ <1250557822.23227.9.camel@bobble.smo.corp.google.com>
+ <20090818160155.GC28560@mit.edu>
+ <1250613069.10195.12.camel@bobble.smo.corp.google.com>
+ <20090818170331.GE28560@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Frank Mayhar <fmayhar@google.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55585 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755079AbZHRRiX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Aug 2009 13:38:23 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7IHcPMU002625
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2009 17:38:25 GMT
-In-Reply-To: <bug-13369-13602@http.bugzilla.kernel.org/>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:40801 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261AbZHRTDE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Aug 2009 15:03:04 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7IJ35Cm008857
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2009 12:03:06 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KOL0010066IUL00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 18 Aug 2009 12:03:05 -0700 (PDT)
+In-reply-to: <20090818170331.GE28560@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13369
+On Aug 18, 2009  13:03 -0400, Theodore Ts'o wrote:
+> Something we *could* do to further reduce the chances would be to
+> compare the primary and backup group descriptors, either at
+> mount-time, or in e2fsck.  This would add an extra level of paranoia,
+> although the people who are trying to do 5 second boots with HDD's
+> would probably complain about the extra seeks that we'd be introducing
+> as a result.
 
+I've thought about this recently as well.  Since the GDT blocks are
+allocated contiguously (at least until we get META_BG filesystems) it
+would only be a single extra seek and read at mount time.  For a 16TB
+filesystem there are 8MB of GDT blocks, so that isn't a huge amount of
+extra IO as log as we do it with a single read instead of many seeks.
 
-Eric Sandeen <sandeen@redhat.com> changed:
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |sandeen@redhat.com
-                   |g                           |
-
-
-
-
---- Comment #17 from Eric Sandeen <sandeen@redhat.com>  2009-08-18 17:38:22 ---
-Assigning to myself just so I can close.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
