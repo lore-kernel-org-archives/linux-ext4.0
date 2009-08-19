@@ -1,26 +1,28 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 07/17] vfs: Introduce new helpers for syncing after
-	writing to O_SYNC file or IS_SYNC inode
-Date: Wed, 19 Aug 2009 12:26:38 -0400
-Message-ID: <20090819162638.GE6150@infradead.org>
-References: <1250697884-22288-1-git-send-email-jack@suse.cz> <1250697884-22288-8-git-send-email-jack@suse.cz>
+Subject: Re: Rare xfsqa test failure
+Date: Wed, 19 Aug 2009 12:40:15 -0400
+Message-ID: <20090819164014.GA17665@infradead.org>
+References: <E1MdNJu-0006uc-GX@closure.thunk.org> <20090818170705.GI5931@webber.adilger.int> <20090818214218.GK28560@mit.edu> <4A8C1A04.1090501@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, hch@infradead.org,
-	Evgeniy Polyakov <zbr@ioremap.net>, ocfs2-devel@oss.oracle.com,
-	Joel Becker <joel.becker@oracle.com>,
-	Felix Blyakher <felixb@sgi.com>, xfs@oss.sgi.com,
-	Anton Altaparmakov <aia21@cantab.net>,
-	linux-ntfs-dev@lists.sourceforge.net,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753128AbZHSQ0j@vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:42272 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751435AbZHSQk1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Aug 2009 12:40:27 -0400
 Content-Disposition: inline
-In-Reply-To: <1250697884-22288-8-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4A8C1A04.1090501@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Looks good to me.  Eventually we should use those SYNC_ flags also all
-through the fsync codepath, but I'll see if I can incorporate that in my
-planned fsync rewrite.
+On Wed, Aug 19, 2009 at 10:28:04AM -0500, Eric Sandeen wrote:
+> If so, that calls ltp's fsstress, which does not call fallocate nor
+> posix_fallocate.  It only does preallocation on xfs via the old
+> xfs-specific ioctl (though I suppose we should add it...)
+
+Which in modern kernels is implemented in common code and gets routed to
+->falllocate.
+
