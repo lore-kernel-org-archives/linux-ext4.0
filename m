@@ -1,67 +1,138 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/2] ext4: use variables not types in sizeofs() for allocations
-Date: Wed, 19 Aug 2009 15:16:36 -0500
-Message-ID: <4A8C5DA4.3050002@redhat.com>
+Subject: [PATCH 2/2]  ext4: use ext4_grpblk_t more extensively
+Date: Wed, 19 Aug 2009 15:19:42 -0500
+Message-ID: <4A8C5E5E.70006@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19558 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60342 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751765AbZHSUqA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Aug 2009 16:46:00 -0400
-Received: from int-mx07.intmail.prod.int.phx2.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.20])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKGcKe009820
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:16:38 -0400
+	id S1751850AbZHSUuo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Aug 2009 16:50:44 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKJicE027762
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:19:44 -0400
 Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx07.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKGbgT026017
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:16:38 -0400
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKJhRn028553
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:19:44 -0400
 Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKGaZf015876
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:16:37 -0400
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKJg3h016783
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:19:43 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Precursor to changing some types; to keep things in sync, it 
-seems better to allocate/memset based on the size of the 
-variables we are using rather than on some disconnected 
-basic type like "unsigned short"
+unsigned  short is potentially too small to track blocks within
+a group; today it is safe due to restrictions in e2fsprogs but
+we have _lo / _hi bits for group blocks with the intent to go
+up to 32 bits, so clean this up now.
+
+There are many more places where we use unsigned/int/unsigned int
+to contain a group block but this should at least fix all the
+short types.
+
+I added a few comments to the struct ext4_group_info definition
+as well.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-p.s. feel free to be sure I've *'d all my ptrs correctly.  :)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 80cd0f7..0dbfc2f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1573,15 +1573,18 @@ static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
+ struct ext4_group_info {
+ 	unsigned long   bb_state;
+ 	struct rb_root  bb_free_root;
+-	unsigned short  bb_first_free;
+-	unsigned short  bb_free;
+-	unsigned short  bb_fragments;
++	ext4_grpblk_t	bb_first_free;	/* first free block */
++	ext4_grpblk_t	bb_free;	/* total free blocks */
++	ext4_grpblk_t	bb_fragments;	/* nr of freespace fragments */
+ 	struct          list_head bb_prealloc_list;
+ #ifdef DOUBLE_CHECK
+ 	void            *bb_bitmap;
+ #endif
+ 	struct rw_semaphore alloc_sem;
+-	unsigned short  bb_counters[];
++	ext4_grpblk_t	bb_counters[];	/* Nr of free power-of-two-block
++					 * regions, index is order.
++					 * bb_counters[3] = 5 means
++					 * 5 free 8-block regions. */
+ };
+ 
+ #define EXT4_GROUP_INFO_NEED_INIT_BIT	0
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 992ec20..1b99c03 100644
+index 1b99c03..36eafab 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -867,7 +867,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 			grinfo = ext4_get_group_info(sb, group);
- 			grinfo->bb_fragments = 0;
- 			memset(grinfo->bb_counters, 0,
--			       sizeof(unsigned short)*(sb->s_blocksize_bits+2));
-+			       sizeof(*grinfo->bb_counters) *
-+				(sb->s_blocksize_bits+2));
- 			/*
- 			 * incore got set to the group block bitmap below
- 			 */
-@@ -2663,14 +2664,14 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	unsigned max;
- 	int ret;
+@@ -622,13 +622,13 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
  
--	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned short);
-+	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_offsets);
+ /* FIXME!! need more doc */
+ static void ext4_mb_mark_free_simple(struct super_block *sb,
+-				void *buddy, unsigned first, int len,
++				void *buddy, ext4_grpblk_t first, ext4_grpblk_t len,
+ 					struct ext4_group_info *grp)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	unsigned short min;
+-	unsigned short max;
+-	unsigned short chunk;
++	ext4_grpblk_t min;
++	ext4_grpblk_t max;
++	ext4_grpblk_t chunk;
+ 	unsigned short border;
  
- 	sbi->s_mb_offsets = kmalloc(i, GFP_KERNEL);
- 	if (sbi->s_mb_offsets == NULL) {
- 		return -ENOMEM;
- 	}
+ 	BUG_ON(len > EXT4_BLOCKS_PER_GROUP(sb));
+@@ -662,10 +662,10 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 				void *buddy, void *bitmap, ext4_group_t group)
+ {
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+-	unsigned short max = EXT4_BLOCKS_PER_GROUP(sb);
+-	unsigned short i = 0;
+-	unsigned short first;
+-	unsigned short len;
++	ext4_grpblk_t max = EXT4_BLOCKS_PER_GROUP(sb);
++	ext4_grpblk_t i = 0;
++	ext4_grpblk_t first;
++	ext4_grpblk_t len;
+ 	unsigned free = 0;
+ 	unsigned fragments = 0;
+ 	unsigned long long period = get_cycles();
+@@ -2329,7 +2329,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	struct ext4_buddy e4b;
+ 	struct sg {
+ 		struct ext4_group_info info;
+-		unsigned short counters[16];
++		ext4_grpblk_t counters[16];
+ 	} sg;
  
--	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned int);
-+	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_maxs);
- 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
- 	if (sbi->s_mb_maxs == NULL) {
- 		kfree(sbi->s_mb_offsets);
+ 	group--;
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index c96bb19..02a5079 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -128,8 +128,8 @@ struct ext4_prealloc_space {
+ 	unsigned		pa_deleted;
+ 	ext4_fsblk_t		pa_pstart;	/* phys. block */
+ 	ext4_lblk_t		pa_lstart;	/* log. block */
+-	unsigned short		pa_len;		/* len of preallocated chunk */
+-	unsigned short		pa_free;	/* how many blocks are free */
++	ext4_grpblk_t		pa_len;		/* len of preallocated chunk */
++	ext4_grpblk_t		pa_free;	/* how many blocks are free */
+ 	unsigned short		pa_type;	/* pa type. inode or group */
+ 	spinlock_t		*pa_obj_lock;
+ 	struct inode		*pa_inode;	/* hack, for history only */
+@@ -144,7 +144,7 @@ struct ext4_free_extent {
+ 	ext4_lblk_t fe_logical;
+ 	ext4_grpblk_t fe_start;
+ 	ext4_group_t fe_group;
+-	int fe_len;
++	ext4_grpblk_t fe_len;
+ };
+ 
+ /*
 
