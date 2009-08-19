@@ -1,52 +1,67 @@
-From: james micheal <james@hotmail.com>
-Subject: (unknown)
-Date: Wed, 19 Aug 2009 07:47:31 -0500
-Message-ID: <20090819074731.kascjo3ha8w0s4kk__36201.6876847067$1250703537$gmane$org@201.219.3.37>
-Reply-To: red_dot_001serviceunit@9.cn
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 1/2] ext4: use variables not types in sizeofs() for allocations
+Date: Wed, 19 Aug 2009 15:16:36 -0500
+Message-ID: <4A8C5DA4.3050002@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=ISO-8859-15;
-	DelSp="Yes";
-	format="flowed"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from miduvi.gov.ec ([201.219.3.37]:47601 "EHLO miduvi.gov.ec"
+Received: from mx1.redhat.com ([209.132.183.28]:19558 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751066AbZHSRil (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Aug 2009 13:38:41 -0400
-Subject: 
-Content-Disposition: inline
+	id S1751765AbZHSUqA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Aug 2009 16:46:00 -0400
+Received: from int-mx07.intmail.prod.int.phx2.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.20])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKGcKe009820
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:16:38 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx07.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKGbgT026017
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:16:38 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7JKGaZf015876
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 16:16:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Precursor to changing some types; to keep things in sync, it 
+seems better to allocate/memset based on the size of the 
+variables we are using rather than on some disconnected 
+basic type like "unsigned short"
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-We are happy to notify you that your e-mail address
-was selected which won you three hundred thousand dollars
-in our on-going 2009 award presentation.
-Your email was selected from the database of your
-email account provider which was pick-out after a
-random sampling. You were chosen by the Red Dot Company
-Board Committee as one of the recipients of this
-year award to celebrate the success of the Monetary
-and Fiscal year.
-To file for the claim of this award money you are
-therefore advice to reply back with your
-Name....
-Address....
-Occupation....
-phone number.......
-Country......
+p.s. feel free to be sure I've *'d all my ptrs correctly.  :)
 
-Upon your response we will give you more details
-on how you are to claim this award.
-Contact email: red_dot_001serviceunit@9.cn
-Regards
-Dr. James Micheal
-http://en.red-dot.org/
-
-
-
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 992ec20..1b99c03 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -867,7 +867,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 			grinfo = ext4_get_group_info(sb, group);
+ 			grinfo->bb_fragments = 0;
+ 			memset(grinfo->bb_counters, 0,
+-			       sizeof(unsigned short)*(sb->s_blocksize_bits+2));
++			       sizeof(*grinfo->bb_counters) *
++				(sb->s_blocksize_bits+2));
+ 			/*
+ 			 * incore got set to the group block bitmap below
+ 			 */
+@@ -2663,14 +2664,14 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	unsigned max;
+ 	int ret;
+ 
+-	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned short);
++	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_offsets);
+ 
+ 	sbi->s_mb_offsets = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_offsets == NULL) {
+ 		return -ENOMEM;
+ 	}
+ 
+-	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned int);
++	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_maxs);
+ 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_maxs == NULL) {
+ 		kfree(sbi->s_mb_offsets);
 
