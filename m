@@ -1,51 +1,44 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/17] ext4: Remove syncing logic from ext4_file_write
-Date: Wed, 19 Aug 2009 18:04:37 +0200
-Message-ID: <1250697884-22288-11-git-send-email-jack@suse.cz>
+Subject: [PATCH 09/17] ext3: Remove syncing logic from ext3_file_write
+Date: Wed, 19 Aug 2009 18:04:36 +0200
+Message-ID: <1250697884-22288-10-git-send-email-jack@suse.cz>
 References: <1250697884-22288-1-git-send-email-jack@suse.cz>
 Cc: hch@infradead.org, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
+	linux-ext4@vger.kernel.org
 To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:55950 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751803AbZHSQEr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Aug 2009 12:04:47 -0400
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752871AbZHSQHr@vger.kernel.org>
 In-Reply-To: <1250697884-22288-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The syncing is now properly handled by generic_file_aio_write() so
-no special ext4 code is needed.
+Syncing is now properly done by generic_file_aio_write() so no special logic is
+needed in ext3.
 
 CC: linux-ext4@vger.kernel.org
-CC: tytso@mit.edu
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c |   53 ++---------------------------------------------------
- 1 files changed, 2 insertions(+), 51 deletions(-)
+ fs/ext3/file.c |   61 +-------------------------------------------------------
+ 1 files changed, 1 insertions(+), 60 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 3f1873f..aafe432 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -58,10 +58,7 @@ static ssize_t
- ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 		unsigned long nr_segs, loff_t pos)
- {
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index 5b49704..51fee5f 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -51,71 +51,12 @@ static int ext3_release_file (struct inode * inode, struct file * filp)
+ 	return 0;
+ }
+ 
+-static ssize_t
+-ext3_file_write(struct kiocb *iocb, const struct iovec *iov,
+-		unsigned long nr_segs, loff_t pos)
+-{
 -	struct file *file = iocb->ki_filp;
 -	struct inode *inode = file->f_path.dentry->d_inode;
 -	ssize_t ret;
 -	int err;
-+	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
- 
- 	/*
- 	 * If we have encountered a bitmap-format file, the size limit
-@@ -81,53 +78,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 		}
- 	}
- 
+-
 -	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
+-
 -	/*
 -	 * Skip flushing if there was an error, or if nothing was written.
 -	 */
@@ -67,7 +60,7 @@ index 3f1873f..aafe432 100644
 -		 * Open question --- do we care about flushing timestamps too
 -		 * if the inode is IS_SYNC?
 -		 */
--		if (!ext4_should_journal_data(inode))
+-		if (!ext3_should_journal_data(inode))
 -			return ret;
 -
 -		goto force_commit;
@@ -86,3 +79,23 @@ index 3f1873f..aafe432 100644
 -	 * flush data to disk automatically on IS_SYNC, only metadata (but
 -	 * historically, that is what ext2 has done.)
 -	 */
+-
+-force_commit:
+-	err = ext3_force_commit(inode->i_sb);
+-	if (err)
+-		return err;
+-	return ret;
+-}
+-
+ const struct file_operations ext3_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+-	.aio_write	= ext3_file_write,
++	.aio_write	= generic_file_aio_write,
+ 	.unlocked_ioctl	= ext3_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+-- 
+1.6.0.2
