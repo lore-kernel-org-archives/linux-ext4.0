@@ -1,101 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/17] ext3: Remove syncing logic from ext3_file_write
-Date: Wed, 19 Aug 2009 18:04:36 +0200
-Message-ID: <1250697884-22288-10-git-send-email-jack@suse.cz>
-References: <1250697884-22288-1-git-send-email-jack@suse.cz>
-Cc: hch@infradead.org, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
-To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752871AbZHSQHr@vger.kernel.org>
-In-Reply-To: <1250697884-22288-1-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Block allocation failed
+Date: Wed, 19 Aug 2009 12:20:54 -0400
+Message-ID: <20090819162054.GG17488@mit.edu>
+References: <87iqgk8jal.fsf@newton.gmurray.org.uk> <20090819135006.GB17488@mit.edu> <87zl9vhnfa.fsf@newton.gmurray.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Graham Murray <graham@gmurray.org.uk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:50051 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752671AbZHSQU5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Aug 2009 12:20:57 -0400
+Content-Disposition: inline
+In-Reply-To: <87zl9vhnfa.fsf@newton.gmurray.org.uk>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Syncing is now properly done by generic_file_aio_write() so no special logic is
-needed in ext3.
+On Wed, Aug 19, 2009 at 03:46:01PM +0100, Graham Murray wrote:
+> Sorry, but I do not remember all the errors, it was late at night. The
+> first were some sort of block error with lots of block numbers in ()
+> which I responded 'y' to fix. Then there were a number of files with
+> multiply-claimed blocks which I responded 'y' to clone. There were files
+> containing unallocated or deleted inodes. A number of files were
+> recovered to Lost+Found. A number of inode reference counts were
+> wrong. There may have been other errors, but I do not remember what they
+> were. 
 
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/file.c |   61 +-------------------------------------------------------
- 1 files changed, 1 insertions(+), 60 deletions(-)
+Hmm... if I had to guess, a portion of the inode table was written to
+the wrong location on disk -- on top of another part of the inode
+table.  That is the most common cause of a large number of multiply
+cliamed blocks.  Was there more than half-dozen or so such inodes?
+And were they numerically contiguous?
 
-diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-index 5b49704..51fee5f 100644
---- a/fs/ext3/file.c
-+++ b/fs/ext3/file.c
-@@ -51,71 +51,12 @@ static int ext3_release_file (struct inode * inode, struct file * filp)
- 	return 0;
- }
- 
--static ssize_t
--ext3_file_write(struct kiocb *iocb, const struct iovec *iov,
--		unsigned long nr_segs, loff_t pos)
--{
--	struct file *file = iocb->ki_filp;
--	struct inode *inode = file->f_path.dentry->d_inode;
--	ssize_t ret;
--	int err;
--
--	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
--
--	/*
--	 * Skip flushing if there was an error, or if nothing was written.
--	 */
--	if (ret <= 0)
--		return ret;
--
--	/*
--	 * If the inode is IS_SYNC, or is O_SYNC and we are doing data
--	 * journalling then we need to make sure that we force the transaction
--	 * to disk to keep all metadata uptodate synchronously.
--	 */
--	if (file->f_flags & O_SYNC) {
--		/*
--		 * If we are non-data-journaled, then the dirty data has
--		 * already been flushed to backing store by generic_osync_inode,
--		 * and the inode has been flushed too if there have been any
--		 * modifications other than mere timestamp updates.
--		 *
--		 * Open question --- do we care about flushing timestamps too
--		 * if the inode is IS_SYNC?
--		 */
--		if (!ext3_should_journal_data(inode))
--			return ret;
--
--		goto force_commit;
--	}
--
--	/*
--	 * So we know that there has been no forced data flush.  If the inode
--	 * is marked IS_SYNC, we need to force one ourselves.
--	 */
--	if (!IS_SYNC(inode))
--		return ret;
--
--	/*
--	 * Open question #2 --- should we force data to disk here too?  If we
--	 * don't, the only impact is that data=writeback filesystems won't
--	 * flush data to disk automatically on IS_SYNC, only metadata (but
--	 * historically, that is what ext2 has done.)
--	 */
--
--force_commit:
--	err = ext3_force_commit(inode->i_sb);
--	if (err)
--		return err;
--	return ret;
--}
--
- const struct file_operations ext3_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
--	.aio_write	= ext3_file_write,
-+	.aio_write	= generic_file_aio_write,
- 	.unlocked_ioctl	= ext3_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext3_compat_ioctl,
--- 
-1.6.0.2
+> >> Aug 18 23:50:07 newton EXT4-fs error (device sdb3): ext4_mb_generate_buddy: EXT4-fs: group 35: 3499 blocks in bitmap, 3243 in gd
+> >> Aug 18 23:50:07 newton Aborting journal on device sdb3:8.
+> >
+> > Was this right after you mounted the filesystem, or did some time
+> > take place before these errors started showing up?
+> 
+> It was about 90s after the message showing the filesystem mounted
+
+Hmm, the most likely cause for that would be if the block group
+descriptors had an incorrect number of free blocks.  But you had just
+run e2fsck -f.
+
+You might want to try running e2fsck -f twice, back to back, saving
+the output of buth e2fsck runs.  If the second e2fsck finds problems,
+then we either have an e2fsck bug, or there is some kind of hardware
+problem.  Was this filesystme on some kind of RAID system by any chance?
+
+	      	   	      	      	   - Ted
