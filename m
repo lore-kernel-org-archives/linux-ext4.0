@@ -1,49 +1,46 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH, RFC -V2 3/4] ext4: Fix bugs in mballoc's stream
-	allocation mode
-Date: Thu, 20 Aug 2009 14:20:05 -0400
-Message-ID: <20090820182005.GG7076@mit.edu>
-References: <1249874635-24250-1-git-send-email-tytso@mit.edu> <1249874635-24250-4-git-send-email-tytso@mit.edu> <20090820072238.GA26977@skywalker.linux.vnet.ibm.com>
+From: Marcin Miroslaw <spam_trap@kolekcja.mejor.pl>
+Subject: Re: fsck.ext4 -D corrupts fs?
+Date: Thu, 20 Aug 2009 21:49:45 +0200
+Message-ID: <h6k9cp$pe5$1@ger.gmane.org>
+References: <h6hmcr$hqi$1@ger.gmane.org> <20090820024419.GA7076@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
-	Alex Tomas <bzzz@sun.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57679 "EHLO thunker.thunk.org"
+Received: from lo.gmane.org ([80.91.229.12]:56443 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755102AbZHTSUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Aug 2009 14:20:10 -0400
-Content-Disposition: inline
-In-Reply-To: <20090820072238.GA26977@skywalker.linux.vnet.ibm.com>
+	id S1752313AbZHTTuH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Aug 2009 15:50:07 -0400
+Received: from list by lo.gmane.org with local (Exim 4.50)
+	id 1MeDeB-0002cg-SH
+	for linux-ext4@vger.kernel.org; Thu, 20 Aug 2009 21:50:07 +0200
+Received: from cust-194-54-191-238.flashnet.pl ([194.54.191.238])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2009 21:50:07 +0200
+Received: from spam_trap by cust-194-54-191-238.flashnet.pl with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2009 21:50:07 +0200
+In-Reply-To: <20090820024419.GA7076@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 20, 2009 at 12:52:38PM +0530, Aneesh Kumar K.V wrote:
-> 
-> This would give bad allocation pattern for large files. We should be
-> using global goal only for small files not for large files. 
+Theodore Tso pisze:
+> On Wed, Aug 19, 2009 at 10:13:14PM +0200, Marcin Miroslaw wrote:
+>> Hello,
+>> I've noticed fs curruption after using fsck.ext4 -D
+>=20
+> Yeah, I really should get a new release of e2fsprogs out.  It's fixed
+> in the maint branch.
 
-Huh?  Small files should be allocated within their flex_bg close to
-their parent directories, right?  Large files are supposed to
-allocated globally, potentially outside of the flex_bg so they won't
-chew up all of the space in the local flex_bg.  
+Thank you for quick reply.
+I'm waitnig impatient for new release :)
+With regards,
+Marcin Miros=B3aw
 
-Also, the comments ext4.h for s_mb_last_group and s_mb_last_start
-indicate: "where last allocation was done - for stream allocation".
-If your interpretation was correct, the comment would be wrong.
-
-> Large files should be using neighbour allocated extent block as the
-> goal, so that we get contiguous blocks.
-
-We do use the neighbour allocated extent block as the goal.  The code
-in question here is used only when the ext4_mb_find_by_goal() has
-failed.
-
-This brings up the larger problem which is the mballoc code is
-extremely hard to understand, and not sufficiently documented, where
-the algorithm is broken up so many pieces that unless you spend a long
-time mind-melding with the code, it's sometimes very hard to get a
-mental map of the forest versus the trees.
-
-					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
