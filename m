@@ -1,138 +1,27 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH, RFC -V2 3/4] ext4: Fix bugs in mballoc's stream
-	allocation mode
-Date: Thu, 20 Aug 2009 12:52:38 +0530
-Message-ID: <20090820072238.GA26977@skywalker.linux.vnet.ibm.com>
-References: <1249874635-24250-1-git-send-email-tytso@mit.edu> <1249874635-24250-4-git-send-email-tytso@mit.edu>
+From: Thierry Vignaud <tvignaud@mandriva.com>
+Subject: Re: fsck.ext4 -D corrupts fs?
+Date: Thu, 20 Aug 2009 10:54:30 +0200
+Message-ID: <m27hwykgqh.fsf@vador.mandriva.com>
+References: <h6hmcr$hqi$1@ger.gmane.org> <20090820024419.GA7076@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
-	Alex Tomas <bzzz@sun.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:38762 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753417AbZHTHWu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2009 03:22:50 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp07.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7K7Mpbp003442
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2009 17:22:51 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7K7Mpn1422252
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2009 17:22:51 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7K7MoNi017097
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2009 17:22:50 +1000
-Content-Disposition: inline
-In-Reply-To: <1249874635-24250-4-git-send-email-tytso@mit.edu>
+Received: from mx1.moondrake.net ([212.85.150.166]:33207 "EHLO
+	mx1.mandriva.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752139AbZHTIyo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2009 04:54:44 -0400
+In-Reply-To: <20090820024419.GA7076@mit.edu> (Theodore Tso's message of "Wed,
+	19 Aug 2009 22:44:19 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 09, 2009 at 11:23:54PM -0400, Theodore Ts'o wrote:
-> The logic around sbi->s_mb_last_group and sbi->s_mb_last_start was all
-> screwed up.  These fields were getting unconditionally all the time,
-> set even when stream allocation had not taken place, and if they were
-> being used when the file was smaller than s_mb_stream_request, which
-> is when the allocation should _not_ be doing stream allocation.
-> 
-> Fix this by determining whether or not we stream allocation should
-> take place once, in ext4_mb_group_or_file(), and setting a flag which
-> gets used in ext4_mb_regular_allocator() and ext4_mb_use_best_found().
-> This simplifies the code and assures that we are consistently using
-> (or not using) the stream allocation logic.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h    |    2 ++
->  fs/ext4/mballoc.c |   23 ++++++++++-------------
->  2 files changed, 12 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index e267727..70aa951 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -88,6 +88,8 @@ typedef unsigned int ext4_group_t;
->  #define EXT4_MB_HINT_TRY_GOAL		0x0200
->  /* blocks already pre-reserved by delayed allocation */
->  #define EXT4_MB_DELALLOC_RESERVED	0x0400
-> +/* We are doing stream allocation */
-> +#define EXT4_MB_STREAM_ALLOC		0x0800
-> 
-> 
->  struct ext4_allocation_request {
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index f510a58..a103cb0 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -1361,7 +1361,7 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
->  	ac->alloc_semp =  e4b->alloc_semp;
->  	e4b->alloc_semp = NULL;
->  	/* store last allocated for subsequent stream allocation */
-> -	if ((ac->ac_flags & EXT4_MB_HINT_DATA)) {
-> +	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
->  		spin_lock(&sbi->s_md_lock);
->  		sbi->s_mb_last_group = ac->ac_f_ex.fe_group;
->  		sbi->s_mb_last_start = ac->ac_f_ex.fe_start;
-> @@ -1939,7 +1939,6 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
->  	struct ext4_sb_info *sbi;
->  	struct super_block *sb;
->  	struct ext4_buddy e4b;
-> -	loff_t size, isize;
-> 
->  	sb = ac->ac_sb;
->  	sbi = EXT4_SB(sb);
-> @@ -1975,20 +1974,16 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
->  	}
-> 
->  	bsbits = ac->ac_sb->s_blocksize_bits;
-> -	/* if stream allocation is enabled, use global goal */
-> -	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
-> -	isize = i_size_read(ac->ac_inode) >> bsbits;
-> -	if (size < isize)
-> -		size = isize;
-> 
-> -	if (size < sbi->s_mb_stream_request &&
-> -			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
-> +	/* if stream allocation is enabled, use global goal */
-> +	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
->  		/* TBD: may be hot point */
->  		spin_lock(&sbi->s_md_lock);
->  		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
->  		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
->  		spin_unlock(&sbi->s_md_lock);
->  	}
-> +
->  	/* Let's just scan groups to find more-less suitable blocks */
->  	cr = ac->ac_2order ? 0 : 1;
->  	/*
-> @@ -4192,16 +4187,18 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
->  	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
->  		return;
-> 
-> +	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
-> +		return;
-> +
->  	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
->  	isize = i_size_read(ac->ac_inode) >> bsbits;
->  	size = max(size, isize);
-> 
->  	/* don't use group allocation for large files */
-> -	if (size >= sbi->s_mb_stream_request)
-> -		return;
-> -
-> -	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
-> +	if (size >= sbi->s_mb_stream_request) {
-> +		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
->  		return;
-> +	}
-> 
->  	BUG_ON(ac->ac_lg != NULL);
->  	/*
+Theodore Tso <tytso@mit.edu> writes:
 
-NAK.
+> > I've noticed fs curruption after using fsck.ext4 -D
+>
+> Yeah, I really should get a new release of e2fsprogs out.  It's fixed
+> in the maint branch.
 
-This would give bad allocation pattern for large files. We should be using global goal only for small files
-not for large files. Large files should be using neighbour allocated extent block as the goal, so that
-we get contiguous blocks.
-
--aneesh
+/me wait for your announce :-)
