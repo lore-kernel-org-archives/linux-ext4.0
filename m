@@ -1,66 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: fsck.ext4 -D corrupts fs?
-Date: Wed, 19 Aug 2009 22:44:19 -0400
-Message-ID: <20090820024419.GA7076@mit.edu>
-References: <h6hmcr$hqi$1@ger.gmane.org>
+From: =?UTF-8?B?7ZmN7IugIHNoaW4gaG9uZw==?= <hongshin@gmail.com>
+Subject: jbd: a question on __log_wait_for_space()
+Date: Thu, 20 Aug 2009 13:31:06 +0900
+Message-ID: <2014bcab0908192131y71e02806u685273732d6a293a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Marcin Miroslaw <spam_trap@kolekcja.mejor.pl>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60900 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752873AbZHTCoW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Aug 2009 22:44:22 -0400
-Content-Disposition: inline
-In-Reply-To: <h6hmcr$hqi$1@ger.gmane.org>
+Received: from mail-px0-f196.google.com ([209.85.216.196]:52161 "EHLO
+	mail-px0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403AbZHTEbE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2009 00:31:04 -0400
+Received: by pxi34 with SMTP id 34so2980169pxi.4
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 21:31:06 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 19, 2009 at 10:13:14PM +0200, Marcin Miroslaw wrote:
-> Hello,
-> I've noticed fs curruption after using fsck.ext4 -D
+Hi. I have a question on __log_wait_for_space() in jbd/checkpoint.c
+while I read jbd code of Linux 2.6.30.4
 
-Yeah, I really should get a new release of e2fsprogs out.  It's fixed
-in the maint branch.
+In __log_wait_for_space(), it releases and re-takes journal->j_state_lock
+in while loop (at line 139).
 
-					- Ted
+After the retaking the lock, it checks 'space_left < nblocks'. It seems that
+it considers that the journal might be written during the lock
+releasing and re-taking.
 
-commit 16e470e65010ba3f0516cf9cdf1bd6c98f064e3f
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Jul 19 22:43:33 2009 -0400
+Then, is it necessary to check 'journal->j_flags & JFS_ABORT' again too?
+I found that journal_t's j_flags is synchronized via j_state_lock. So, is there
+any possiblity that j_flags value can be changed during the lock
+releasing and re-taking?
 
-    libext2fs: Fix regression in ext2fs_extent_set_bmap()
-    
-    Commit 0dc291611 introduced a regression when unmapping the first
-    block in an extent.  This caused e2fsck -fD to corrupt large
-    directories if the directory has to shrink by more than one block.
-    The problem was set_bmap should only go to a next leaf when setting a
-    first block in an extent, and not when it is unmapping the first block
-    in an extent.
-    
-    Addresses-Debian-Bug: #537510
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Thank you
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 7fcc2cf..9d7b7de 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1296,11 +1296,12 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 			}
- 			if (retval)
- 				goto done;
-+			retval = ext2fs_extent_get(handle,
-+						   EXT2_EXTENT_NEXT_LEAF,
-+						   &extent);
-+			if (retval)
-+				goto done;
- 		}
--		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT_LEAF,
--					   &extent);
--		if (retval)
--			goto done;
- 		extent.e_pblk++;
- 		extent.e_lblk++;
- 		extent.e_len--;
+Sincerely
+Shin Hong
