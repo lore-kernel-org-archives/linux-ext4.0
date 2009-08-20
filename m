@@ -1,58 +1,66 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC] new INCOMPAT flag for extended directory data
-Date: Wed, 19 Aug 2009 19:40:58 -0600
-Message-ID: <20090820014058.GY5931@webber.adilger.int>
-References: <20090505202524.GL3209@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: fsck.ext4 -D corrupts fs?
+Date: Wed, 19 Aug 2009 22:44:19 -0400
+Message-ID: <20090820024419.GA7076@mit.edu>
+References: <h6hmcr$hqi$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, Pravin Shelar <Pravin.Shelar@sun.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Marcin Miroslaw <spam_trap@kolekcja.mejor.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:60606 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752911AbZHTBk5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Aug 2009 21:40:57 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7K1ev7a012526
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2009 18:40:59 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KON00G00JBXCZ00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 19 Aug 2009 18:40:57 -0700 (PDT)
-In-reply-to: <20090505202524.GL3209@webber.adilger.int>
+Received: from thunk.org ([69.25.196.29]:60900 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752873AbZHTCoW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Aug 2009 22:44:22 -0400
+Content-Disposition: inline
+In-Reply-To: <h6hmcr$hqi$1@ger.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 05, 2009  14:25 -0600, Andreas Dilger wrote:
-> we're looking to store some extended data in each directory entry
-> for Lustre, to hold a 128-bit filesystem-unique file identifier
-> in the dirent.  If we ever wanted to look at 64-bit or larger
-> inode numbers we would need to do the same.
-> 
-> In order to detect the presence of this extra data in the dirent, we
-> would want to use the high bits in d_type (say bits 0xf0).  This part
-> of d_type could be a flag for the presence of 4 different types of
-> data (which limits the number of different kinds of data).  The d_type
-> would mask off the high bits in get_dtype() so as not to confuse filldir.
+On Wed, Aug 19, 2009 at 10:13:14PM +0200, Marcin Miroslaw wrote:
+> Hello,
+> I've noticed fs curruption after using fsck.ext4 -D
 
-Ted,
-could we at least reserve the INCOMPAT_DIRDATA flag to avoid conflicts:
+Yeah, I really should get a new release of e2fsprogs out.  It's fixed
+in the maint branch.
 
-#define EXT4_FEATURE_INCOMPAT_DIRDATA 0x1000
+					- Ted
 
-reserve the high 4 bits of d_type:
+commit 16e470e65010ba3f0516cf9cdf1bd6c98f064e3f
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Jul 19 22:43:33 2009 -0400
 
-#define EXT4_DIRENT_LUFID 0x10	/* Lustre 128-bit unique file identifier */
+    libext2fs: Fix regression in ext2fs_extent_set_bmap()
+    
+    Commit 0dc291611 introduced a regression when unmapping the first
+    block in an extent.  This caused e2fsck -fD to corrupt large
+    directories if the directory has to shrink by more than one block.
+    The problem was set_bmap should only go to a next leaf when setting a
+    first block in an extent, and not when it is unmapping the first block
+    in an extent.
+    
+    Addresses-Debian-Bug: #537510
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-0x20, 0x40, and 0x80 would be available for future expansion (e.g. high
-32 bits of inode number).  If needed, type 0x80 can be extended by adding
-a 1-byte subtype after the length byte, though I doubt this would be needed.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 7fcc2cf..9d7b7de 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1296,11 +1296,12 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 			}
+ 			if (retval)
+ 				goto done;
++			retval = ext2fs_extent_get(handle,
++						   EXT2_EXTENT_NEXT_LEAF,
++						   &extent);
++			if (retval)
++				goto done;
+ 		}
+-		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT_LEAF,
+-					   &extent);
+-		if (retval)
+-			goto done;
+ 		extent.e_pblk++;
+ 		extent.e_lblk++;
+ 		extent.e_len--;
