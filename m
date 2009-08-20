@@ -1,47 +1,68 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: Large volume ll_ver_fs results (w/ short read/write patch).
-Date: Thu, 20 Aug 2009 12:54:30 -0400
-Message-ID: <9504.1250787270@alphaville.usa.hp.com>
-References: <20654.1250520912@gamaville.dokosmarshall.org>  <20090820010414.GA649@webber.adilger.int>
-Reply-To: nicholas.dokos@hp.com
-Cc: Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g1t0028.austin.hp.com ([15.216.28.35]:26037 "EHLO
-	g1t0028.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754871AbZHTQy2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2009 12:54:28 -0400
-In-Reply-To: Message from Andreas Dilger <adilger@sun.com>
-   of "Wed, 19 Aug 2009 19:04:14 MDT." <20090820010414.GA649@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
+Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
+Date: Thu, 20 Aug 2009 19:19:53 +0200
+Message-ID: <20090820171952.GA15133@gradator.net>
+References: <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz> <20090806131555.GA23359@gradator.net> <20090812223453.GC10729@duck.suse.cz>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="IJpNTDwzlM2Ie8A6"
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20090812223453.GC10729-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-> Nick, thanks for the patch.  I'm incorporating the fixes upstream,
-> but one question that was raised is that (in essence) this allows
-> IO errors to be hit, yet and the return code from llverfs is 0.
-> The llverdev/llverfs tools are used not only for finding software
-> data corruption bugs, but also to verify the underlying media.
-> 
-> It was definitely a bug in the original code that there was no
-> error reported during the write phase if there was a short write,
-> but this was at least caught during the read phase because the
-> data would be incorrect.
-> 
-> What I've done is to count errors hit during read and write, and
-> then exit with a non-zero value if there were any IO errors hit
-> (as happened in your case), even if the rest of the data was
-> verified correctly.  This allows scanning the whole disk in a
-> single pass (if there are not too many underlying errors) but
-> still ensuring there is no false sense of security because the
-> program exited with 0.
-> 
-> The current patch can be gotten at:
-> 
-> https://bugzilla.lustre.org/attachment.cgi?id=25407&action=edit
-> 
+--IJpNTDwzlM2Ie8A6
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Thanks! It looks good at first glance: I'll be trying it out before
-long and will let you know if I come up against any problems.
+Hi!,
 
-Nick
+On Thu, Aug 13, 2009 at 12:34:53AM +0200, Jan Kara wrote:
+>   Hello,
+>=20
+> On Thu 06-08-09 15:15:56, Sylvain Rochet wrote:
+> > > I have one idea what could cause your filesystem corruption, although=
+=20
+> > > it's a wild guess... Please try attached oneliner.
+> >=20
+> > Running since yesterday.
+>=20
+> Any news after a week of running? How often did the corruption happen
+> previously?
+
+Sorry for the late answer, I was lurking at HAR ;-)
+
+So, everything is fine, but the problem happened only one time on this=20
+server, so we cannot conclude anything after a few weeks. However,=20
+I now have physical access back, so we will switch back to the former=20
+server where the problem happened quite frequently, then we will see!
+
+By the way, syslogd is happy, eating about 350 MiB of kernel logs a day ;)
+
+Sylvain
+
+--IJpNTDwzlM2Ie8A6
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQFKjYW4DFub3qtEsS8RArIwAJ0bvebcBG9Yh4bqUGU/+jXb/zZojACeIfPM
+y+UiPvD92jzujLIGcU+qsw8=
+=FrVB
+-----END PGP SIGNATURE-----
+
+--IJpNTDwzlM2Ie8A6--
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
