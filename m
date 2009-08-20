@@ -1,68 +1,49 @@
-From: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Thu, 20 Aug 2009 19:19:53 +0200
-Message-ID: <20090820171952.GA15133@gradator.net>
-References: <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz> <20090806131555.GA23359@gradator.net> <20090812223453.GC10729@duck.suse.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC -V2 3/4] ext4: Fix bugs in mballoc's stream
+	allocation mode
+Date: Thu, 20 Aug 2009 14:20:05 -0400
+Message-ID: <20090820182005.GG7076@mit.edu>
+References: <1249874635-24250-1-git-send-email-tytso@mit.edu> <1249874635-24250-4-git-send-email-tytso@mit.edu> <20090820072238.GA26977@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="IJpNTDwzlM2Ie8A6"
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
+	Alex Tomas <bzzz@sun.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:57679 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755102AbZHTSUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Aug 2009 14:20:10 -0400
 Content-Disposition: inline
-In-Reply-To: <20090812223453.GC10729-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090820072238.GA26977@skywalker.linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Aug 20, 2009 at 12:52:38PM +0530, Aneesh Kumar K.V wrote:
+> 
+> This would give bad allocation pattern for large files. We should be
+> using global goal only for small files not for large files. 
 
---IJpNTDwzlM2Ie8A6
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Huh?  Small files should be allocated within their flex_bg close to
+their parent directories, right?  Large files are supposed to
+allocated globally, potentially outside of the flex_bg so they won't
+chew up all of the space in the local flex_bg.  
 
-Hi!,
+Also, the comments ext4.h for s_mb_last_group and s_mb_last_start
+indicate: "where last allocation was done - for stream allocation".
+If your interpretation was correct, the comment would be wrong.
 
-On Thu, Aug 13, 2009 at 12:34:53AM +0200, Jan Kara wrote:
->   Hello,
->=20
-> On Thu 06-08-09 15:15:56, Sylvain Rochet wrote:
-> > > I have one idea what could cause your filesystem corruption, although=
-=20
-> > > it's a wild guess... Please try attached oneliner.
-> >=20
-> > Running since yesterday.
->=20
-> Any news after a week of running? How often did the corruption happen
-> previously?
+> Large files should be using neighbour allocated extent block as the
+> goal, so that we get contiguous blocks.
 
-Sorry for the late answer, I was lurking at HAR ;-)
+We do use the neighbour allocated extent block as the goal.  The code
+in question here is used only when the ext4_mb_find_by_goal() has
+failed.
 
-So, everything is fine, but the problem happened only one time on this=20
-server, so we cannot conclude anything after a few weeks. However,=20
-I now have physical access back, so we will switch back to the former=20
-server where the problem happened quite frequently, then we will see!
+This brings up the larger problem which is the mballoc code is
+extremely hard to understand, and not sufficiently documented, where
+the algorithm is broken up so many pieces that unless you spend a long
+time mind-melding with the code, it's sometimes very hard to get a
+mental map of the forest versus the trees.
 
-By the way, syslogd is happy, eating about 350 MiB of kernel logs a day ;)
-
-Sylvain
-
---IJpNTDwzlM2Ie8A6
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFKjYW4DFub3qtEsS8RArIwAJ0bvebcBG9Yh4bqUGU/+jXb/zZojACeIfPM
-y+UiPvD92jzujLIGcU+qsw8=
-=FrVB
------END PGP SIGNATURE-----
-
---IJpNTDwzlM2Ie8A6--
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
