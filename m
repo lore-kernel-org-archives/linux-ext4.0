@@ -1,46 +1,75 @@
-From: Simon Kirby <sim-hrtb9jm4Du+w5LPnMra/2Q@public.gmane.org>
-Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Thu, 20 Aug 2009 17:00:35 -0700
-Message-ID: <20090821000035.GB13221@hostway.ca>
-References: <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz> <20090806131555.GA23359@gradator.net> <20090812223453.GC10729@duck.suse.cz> <20090820171952.GA15133@gradator.net>
+From: Bob Copeland <me@bobcopeland.com>
+Subject: Re: 2.6.32-rc6 BUG at mm/slab.c:2869!
+Date: Thu, 20 Aug 2009 22:06:33 -0400
+Message-ID: <20090821020633.GA25571@hash.localnet>
+References: <20090820015624.GE524@hash.localnet> <84144f020908192208x453ebbd4gecf52eb47903653d@mail.gmail.com> <20090820111937.GF524@hash.localnet> <19f34abd0908200502n6ff53e71ld5bc18aa581d5625@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
-To: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Pekka Enberg <penberg@cs.helsinki.fi>,
+	linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Vegard Nossum <vegard.nossum@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.deathmatch.net ([72.66.92.28]:2294 "EHLO
+	mail.deathmatch.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754468AbZHUCHN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2009 22:07:13 -0400
 Content-Disposition: inline
-In-Reply-To: <20090820171952.GA15133-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <19f34abd0908200502n6ff53e71ld5bc18aa581d5625@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 20, 2009 at 07:19:53PM +0200, Sylvain Rochet wrote:
+On Thu, Aug 20, 2009 at 02:02:49PM +0200, Vegard Nossum wrote:
+> > I'll try that and kmemcheck next.
+> 
+> Hm, I'm afraid kmemcheck gives some known false positives related to
+> bitfields in ext4 code, so in the case that something turned up, it
+> might be hard to distinguish it from those false positives.
 
-> So, everything is fine, but the problem happened only one time on this 
-> server, so we cannot conclude anything after a few weeks. However, 
-> I now have physical access back, so we will switch back to the former 
-> server where the problem happened quite frequently, then we will see!
+Well I didn't get anything from ext4 so far.  I did hit one with
+fsnotify:
 
-Not to derail the thread, but you were definitely seeing the same issues
-with stock 2.6.30.4, right?  We had all sorts of corruption happening for
-files served via NFS with 2.6.28 and 2.6.29, but everything was magically
-fixed on 2.6.30 (though we needed a lot of fscking).  I never did track
-down what change fixed it, since it took a while to reproduce.
+WARNING: kmemcheck: Caught 32-bit read from freed memory (f34a443c)
+eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee008a06f700011000
+ a a a a a a a a a a a a a a a a a a a a a a a a f f f f f f f f
+                                                         ^
 
-Hmm.  I just noticed what seems to be a new occurrence of "deleted inode
-referenced" on a box with 2.6.30.  We saw many when we first upgraded to
-2.6.30 due to the corruption caused by 2.6.29, but those all occurred
-within a day or so and were fsck'd.  I would have thought the backup
-sweeps would have tripped over that inode way before now...
+Pid: 2745, comm: fsck.ext4 Not tainted (2.6.31-rc6 #2) MacBook1,1
+EIP: 0060:[<c10f3656>] EFLAGS: 00010217 CPU: 0
+EIP is at inotify_handle_event+0x76/0xc0
+EAX: f34a443c EBX: f34a4438 ECX: 00000000 EDX: f6732000
+ESI: f6559764 EDI: 00000000 EBP: f6733f0c ESP: c1527450
+ DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+CR0: 8005003b CR2: f6c046d4 CR3: 367fb000 CR4: 000026d0
+DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
+DR6: ffff4ff0 DR7: 00000400
+ [<c10f0d78>] fsnotify+0xa8/0x130
+ [<c10c5e11>] __fput+0xb1/0x1e0
+ [<c10c5f55>] fput+0x15/0x20
+ [<c10c2ca7>] filp_close+0x47/0x80
+ [<c10c2d54>] sys_close+0x74/0xc0
+ [<c1002ec8>] sysenter_do_call+0x12/0x36
+ [<ffffffff>] 0xffffffff
 
-Just wondering if you can confirm that the errors you saw with 2.6.30.4
-were not leftover from older kernels.
+I think that is list_empty() here where %eax is list_head
+and event_list->next is the read location... which definitely
+doesn't look like a pointer, if I'm reading it correctly.
 
-Cheers,
+inotify_fsnotify.o:
 
-Simon-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+        /* did event_priv get attached? */
+        if (list_empty(&fsn_event_priv->event_list))
+ 143:   8d 43 04                lea    0x4(%ebx),%eax
+
+        event_priv = kmem_cache_alloc(event_priv_cachep, GFP_KERNEL);
+        if (unlikely(!event_priv))
+                return -ENOMEM;
+
+        fsn_event_priv = &event_priv->fsnotify_event_priv_data;
+ 146:   39 43 04                cmp    %eax,0x4(%ebx)     <=== read here
+ 149:   74 1d                   je     168 <inotify_handle_event+0x98>
+
+-- 
+Bob Copeland %% www.bobcopeland.com
+
