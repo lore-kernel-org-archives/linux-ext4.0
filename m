@@ -1,51 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch 06/11] ext2: convert to use the new truncate convention.
-Date: Fri, 21 Aug 2009 16:06:59 +0200
-Message-ID: <20090821140659.GC20935@atrey.karlin.mff.cuni.cz>
-References: <20090820163504.131529718@suse.de> <20090820164051.246741046@suse.de> <20090821134207.GA20935@atrey.karlin.mff.cuni.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: RFC: guard against more "dangerous" userspace options
+Date: Fri, 21 Aug 2009 09:40:44 -0500
+Message-ID: <4A8EB1EC.5080608@redhat.com>
+References: <4A81D7EC.2060706@redhat.com> <20090820062730.GA23232@skywalker.linux.vnet.ibm.com> <4A8D6228.1070006@redhat.com> <20090821070252.GA17871@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-	linux-ext4@vger.kernel.org
-To: npiggin@suse.de
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34189 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755488AbZHUOG6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Aug 2009 10:06:58 -0400
-Content-Disposition: inline
-In-Reply-To: <20090821134207.GA20935@atrey.karlin.mff.cuni.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:53214 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932182AbZHUOlB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Aug 2009 10:41:01 -0400
+In-Reply-To: <20090821070252.GA17871@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->   Hi,
-> 
-> > I also have commented a possible bug in existing ext2 code, marked with XXX.
->   Looks good, except:
-> 
-> > +int ext2_setsize(struct inode *inode, loff_t newsize)
->   This could be static.
-> 
-> > @@ -1459,8 +1540,15 @@ int ext2_setattr(struct dentry *dentry,
-> >  		if (error)
-> >  			return error;
-> >  	}
-> > -	error = inode_setattr(inode, iattr);
-> > +	if (iattr->ia_valid & ATTR_SIZE) {
-> > +		error = ext2_setsize(inode, iattr->ia_size);
-> > +		if (error)
-> > +			return error;
-> > +	}
-> > +	generic_setattr(inode, iattr);
->   Here, we should store the error code I suppose...
-  Ah, I was confused. generic_setattr() returns void. But then remove
-the check !error from:
-  if (!error && (iattr->ia_valid & ATTR_MODE))
-which just follows the generic_setattr(). That's what made me think
-generic_setattr() returns something :)
+Aneesh Kumar K.V wrote:
+> On Thu, Aug 20, 2009 at 09:48:08AM -0500, Eric Sandeen wrote:
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+...
+
+>>>> I'm thinking of, so far:
+>>> ......
+>>>> tune2fs -I <bigger>
+>>> I have sent patches which should make this better. Any chance to get that reviwed and
+>>> applied
+>>>
+>>> -aneesh
+>> Better, or _safe_?  :)
+>>
+>> No offense and I certainly appreciate that work.  If you feel it's
+>> robust enough now to safely unleash on users, I'll drop it from my list.  :)
+> 
+> I am interested in the test results. Getting more users to test would always
+> be nice. 
+
+yep it's a tricky spot, asking users to test potentially dangerous code
+in real life.
+
+> But it still would help to get a through review.
+
+Agree, sorry I haven't yet done that.
+
+-Eric
+
+> 
+> -aneesh
+
