@@ -1,75 +1,42 @@
-From: Bob Copeland <me@bobcopeland.com>
-Subject: Re: 2.6.32-rc6 BUG at mm/slab.c:2869!
-Date: Thu, 20 Aug 2009 22:06:33 -0400
-Message-ID: <20090821020633.GA25571@hash.localnet>
-References: <20090820015624.GE524@hash.localnet> <84144f020908192208x453ebbd4gecf52eb47903653d@mail.gmail.com> <20090820111937.GF524@hash.localnet> <19f34abd0908200502n6ff53e71ld5bc18aa581d5625@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC -V2 4/4] ext4: Avoid group preallocation for
+	closed files
+Date: Thu, 20 Aug 2009 22:45:45 -0400
+Message-ID: <20090821024545.GA9529@mit.edu>
+References: <1249874635-24250-1-git-send-email-tytso@mit.edu> <1249874635-24250-5-git-send-email-tytso@mit.edu> <20090820064035.GB23232@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Pekka Enberg <penberg@cs.helsinki.fi>,
-	linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Vegard Nossum <vegard.nossum@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
+	Alex Tomas <bzzz@sun.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.deathmatch.net ([72.66.92.28]:2294 "EHLO
-	mail.deathmatch.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754468AbZHUCHN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Aug 2009 22:07:13 -0400
+Received: from THUNK.ORG ([69.25.196.29]:54910 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752672AbZHUCpq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Aug 2009 22:45:46 -0400
 Content-Disposition: inline
-In-Reply-To: <19f34abd0908200502n6ff53e71ld5bc18aa581d5625@mail.gmail.com>
+In-Reply-To: <20090820064035.GB23232@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 20, 2009 at 02:02:49PM +0200, Vegard Nossum wrote:
-> > I'll try that and kmemcheck next.
+On Thu, Aug 20, 2009 at 12:10:35PM +0530, Aneesh Kumar K.V wrote:
+> > +	if ((size == isize) &&
 > 
-> Hm, I'm afraid kmemcheck gives some known false positives related to
-> bitfields in ext4 code, so in the case that something turned up, it
-> might be hard to distinguish it from those false positives.
+> What is this check supposed to help us ?. This would also imply we
+> disable prealloc only if we are allocating the last chunk in the
+> file.
 
-Well I didn't get anything from ext4 so far.  I did hit one with
-fsnotify:
+That was the idea, yes; the idea was to disable preallocation if the
+file is small enough that it could be written in a single call to
+ext4_da_writepages, or if we are allocating/writing the last chunk in
+a file.  Otherwise, preallocation would be a good thing.
 
-WARNING: kmemcheck: Caught 32-bit read from freed memory (f34a443c)
-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee008a06f700011000
- a a a a a a a a a a a a a a a a a a a a a a a a f f f f f f f f
-                                                         ^
+> shouldn't it be !ext4_fs_is_busy(sbi) ?. Can you also write function
+> documentation for ext4_fs_is_busy. I found in confusing that you are
+> decrementing s_lock_busy if we are going to spin on spin_lock.
 
-Pid: 2745, comm: fsck.ext4 Not tainted (2.6.31-rc6 #2) MacBook1,1
-EIP: 0060:[<c10f3656>] EFLAGS: 00010217 CPU: 0
-EIP is at inotify_handle_event+0x76/0xc0
-EAX: f34a443c EBX: f34a4438 ECX: 00000000 EDX: f6732000
-ESI: f6559764 EDI: 00000000 EBP: f6733f0c ESP: c1527450
- DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-CR0: 8005003b CR2: f6c046d4 CR3: 367fb000 CR4: 000026d0
-DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-DR6: ffff4ff0 DR7: 00000400
- [<c10f0d78>] fsnotify+0xa8/0x130
- [<c10c5e11>] __fput+0xb1/0x1e0
- [<c10c5f55>] fput+0x15/0x20
- [<c10c2ca7>] filp_close+0x47/0x80
- [<c10c2d54>] sys_close+0x74/0xc0
- [<c1002ec8>] sysenter_do_call+0x12/0x36
- [<ffffffff>] 0xffffffff
+Um, oops.  Yeah, good point.  It should be !ext4_fs_is_busy().  I also
+have the logic backwards in ext4_lock_group as well, so the two errors
+mostly cancel each other out.  I'll fix that in the patch.
 
-I think that is list_empty() here where %eax is list_head
-and event_list->next is the read location... which definitely
-doesn't look like a pointer, if I'm reading it correctly.
-
-inotify_fsnotify.o:
-
-        /* did event_priv get attached? */
-        if (list_empty(&fsn_event_priv->event_list))
- 143:   8d 43 04                lea    0x4(%ebx),%eax
-
-        event_priv = kmem_cache_alloc(event_priv_cachep, GFP_KERNEL);
-        if (unlikely(!event_priv))
-                return -ENOMEM;
-
-        fsn_event_priv = &event_priv->fsnotify_event_priv_data;
- 146:   39 43 04                cmp    %eax,0x4(%ebx)     <=== read here
- 149:   74 1d                   je     168 <inotify_handle_event+0x98>
-
--- 
-Bob Copeland %% www.bobcopeland.com
-
+       	      	   	       	    	- Ted
