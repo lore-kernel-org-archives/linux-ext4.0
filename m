@@ -1,130 +1,29 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH, RFC -V2 4/4] ext4: Avoid group preallocation for
-	closed files
-Date: Fri, 21 Aug 2009 08:23:13 -0400
-Message-ID: <20090821122313.GB9529@mit.edu>
-References: <1249874635-24250-1-git-send-email-tytso@mit.edu> <1249874635-24250-5-git-send-email-tytso@mit.edu> <20090820064035.GB23232@skywalker.linux.vnet.ibm.com> <20090821024545.GA9529@mit.edu>
+Subject: Re: [PATCH -V3 1/3] tune2fs: Make e2fsprogs handle ENOSPC better
+	with inode resize
+Date: Fri, 21 Aug 2009 08:25:02 -0400
+Message-ID: <20090821122502.GC9529@mit.edu>
+References: <1249539151-3191-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090820070636.GB26492@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
-	Alex Tomas <bzzz@sun.com>
+Cc: linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49747 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:49763 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755069AbZHUMXP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Aug 2009 08:23:15 -0400
+	id S1754396AbZHUMZD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Aug 2009 08:25:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20090821024545.GA9529@mit.edu>
+In-Reply-To: <20090820070636.GB26492@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 20, 2009 at 10:45:45PM -0400, Theodore Tso wrote:
-> Um, oops.  Yeah, good point.  It should be !ext4_fs_is_busy().  I also
-> have the logic backwards in ext4_lock_group as well, so the two errors
-> mostly cancel each other out.  I'll fix that in the patch.
+On Thu, Aug 20, 2009 at 12:36:36PM +0530, Aneesh Kumar K.V wrote:
+> Hi Ted,
+> 
+> Any chance on getting this patch series merged ?
 
-... and here's the revised patch.
+Thanks for the reminder/prod; I've merged them into into the maint
+branch of e2fsprogs, with some minor whitespace and spelling fixups.
 
-						- Ted
-
-ext4: Avoid group preallocation for closed files
-
-Currently the group preallocation code tries to find a large (512)
-free block from which to do per-cpu group allocation for small files.
-The problem with this scheme is that it leaves the filesystem horribly
-fragmented.  In the worst case, if the filesystem is unmounted and
-remounted (after a system shutdown, for example) we forget the fact
-that wee were using a particular (now-partially filled) 512 block
-extent.  So the next time we try to allocate space for a small file,
-we will find *another* completely free 512 block chunk to allocate
-small files.  Given that there are 32,768 blocks in a block group,
-after 64 iterations of "mount, write one 4k file in a directory,
-unmount", the block group will have 64 files, each separated by 511
-blocks, and the block group will no longer have any free 512
-completely free chunks of blocks for group preallocation space.
-
-So if we try to allocate blocks for a file that has been closed, such
-that we know the final size of the file, and the filesystem is not
-busy, avoid using group preallocation.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 70aa951..b989920 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -952,6 +952,7 @@ struct ext4_sb_info {
- 	atomic_t s_mb_lost_chunks;
- 	atomic_t s_mb_preallocated;
- 	atomic_t s_mb_discarded;
-+	atomic_t s_lock_busy;
- 
- 	/* locality groups */
- 	struct ext4_locality_group *s_locality_groups;
-@@ -1593,15 +1594,42 @@ struct ext4_group_info {
- #define EXT4_MB_GRP_NEED_INIT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
- 
-+#define EXT4_MAX_CONTENTION		8
-+#define EXT4_CONTENTION_THRESHOLD	2
-+
- static inline spinlock_t *ext4_group_lock_ptr(struct super_block *sb,
- 					      ext4_group_t group)
- {
- 	return bgl_lock_ptr(EXT4_SB(sb)->s_blockgroup_lock, group);
- }
- 
-+/*
-+ * Returns true if the filesystem is busy enough that attempts to
-+ * access the block group locks has run into contention.
-+ */
-+static inline int ext4_fs_is_busy(struct ext4_sb_info *sbi)
-+{
-+	return (atomic_read(&sbi->s_lock_busy) > EXT4_CONTENTION_THRESHOLD);
-+}
-+
- static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
- {
--	spin_lock(ext4_group_lock_ptr(sb, group));
-+	spinlock_t *lock = ext4_group_lock_ptr(sb, group);
-+	if (spin_trylock(lock))
-+		/* 
-+		 * We're able to grab the lock right away, so drop the
-+		 * lock contention counter.
-+		 */
-+		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
-+	else {
-+		/*
-+		 * The lock is busy, so bump the contention counter,
-+		 * and then wait on the spin lock.
-+		 */
-+		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, 1,
-+				  EXT4_MAX_CONTENTION);
-+		spin_lock(lock);
-+	}
- }
- 
- static inline void ext4_unlock_group(struct super_block *sb,
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index a103cb0..ee563e2 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4191,9 +4191,17 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- 		return;
- 
- 	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
--	isize = i_size_read(ac->ac_inode) >> bsbits;
-+	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
-+		>> bsbits;
- 	size = max(size, isize);
- 
-+	if ((size == isize) &&
-+	    !ext4_fs_is_busy(sbi) &&
-+	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
-+		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
-+		return;
-+	}
-+
- 	/* don't use group allocation for large files */
- 	if (size >= sbi->s_mb_stream_request) {
- 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
+       	  	     	       	     - Ted
