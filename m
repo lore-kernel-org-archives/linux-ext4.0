@@ -1,124 +1,222 @@
-From: Lawrence Greenfield <leg@google.com>
-Subject: Re: RFC: Clarifying Direct I/O Semantics
-Date: Sat, 22 Aug 2009 09:25:20 -0400
-Message-ID: <5956ddbe0908220625h6a6eeba2w679602d3a1f6336c@mail.gmail.com>
-References: <E1Mec4O-0005ka-NN@closure.thunk.org> <4A8F1FA5.5080501@hp.com>
-	 <20090822000745.GP9529@mit.edu>
+From: Andreas Schlick <schlick@lavabit.com>
+Subject: [PATCH 1/1] dir shrink (was Re: ext3/ext4 directories don't shrink after deleting lots of files)
+Date: Sat, 22 Aug 2009 16:20:49 +0200
+Message-ID: <200908221620.50103.schlick@lavabit.com>
+References: <1242338523.6933.664.camel@timo-desktop> <605A8D56-81CD-4775-8FCD-58CDB12CBA36@iki.fi> <20090517213335.GB32019@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:37592 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754288AbZHVNZX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Aug 2009 09:25:23 -0400
-Received: from wpaz29.hot.corp.google.com (wpaz29.hot.corp.google.com [172.24.198.93])
-	by smtp-out.google.com with ESMTP id n7MDPNHg002234
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 14:25:23 +0100
-Received: from qw-out-1920.google.com (qwk4.prod.google.com [10.241.195.132])
-	by wpaz29.hot.corp.google.com with ESMTP id n7MDPKja015169
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 06:25:20 -0700
-Received: by qw-out-1920.google.com with SMTP id 4so890406qwk.10
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 06:25:20 -0700 (PDT)
-In-Reply-To: <20090822000745.GP9529@mit.edu>
+Received: from karen.lavabit.com ([72.249.41.33]:57731 "EHLO karen.lavabit.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932520AbZHVO0n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Aug 2009 10:26:43 -0400
+In-Reply-To: <20090517213335.GB32019@mit.edu>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 21, 2009 at 8:07 PM, Theodore Tso<tytso@mit.edu> wrote:
-> On Fri, Aug 21, 2009 at 06:28:53PM -0400, jim owens wrote:
->>> The Linux man page does not state what happens if the alignment
->>> restrictions are not met; does the kernel start running rogue or
->>> nethack; does it send a signal such as SIGSEGV or SIGABORT, and kil=
-l the
->>> running process; or does it fall back to buffered I/O? Today, the a=
-nswer
->>> is the latter; but it's not specified anywhere.
->>
->> retval =3D -EINVAL; is what __blockdev_direct_IO does in that case
->> and what I was making btrfs directIO do. =C2=A0but fall back is OK t=
-oo
->> if we really want. what existing code fixes up the EINVAL?
->
-> You're right; I thought it did the fallback in all cases, but it only
-> does it when writing into holes. =C2=A0Oops. =C2=A0I should have test=
-ed this
-> before saying it.
->
-> I'll fix up the wiki page.
+Hello,
 
-I think failing when O_DIRECT can't be honored is the right thing.
-Applications can't verify O_DIRECT behavior, so it's important to tell
-an application that the kernel can't do what they're asking for.
+> Anyway, if there's someone interested in trying to implement this,
+> give me a holler; I'd be happy to give more details as necessary.
 
->
->>> This is relatively well understood by most implementors and users o=
-f
->>> O_DIRECT as part of the "oral lore", so simply updating the Linux m=
-an
->>> page should not be controversial.
->>>
->>
->> The following section includes "sparse" AKA "allocating" writes but
->> just says "extending". =C2=A0Either sparse-filling write needs cover=
-ed
->> separately or we should say "allocating" instead of "extending.
->
-> Yup, good point.
->
->> Possibly it should just be stated that directIO write data integrity
->> is based on the setting of posix O_SYNC and O_DSYNC. =C2=A0Then it i=
-s their
->> choice to run slow-and-safe or fast. =C2=A0O_SYNC requires metadata =
-on disk.
->
-> The question in my mind is whether we should guarantee that the data
-> block is written synchronously for allocating writes when the file
-> metadata is not written synchronously; what's the point? =C2=A0After =
-all,
-> the application can't distinguish between the data block not making i=
-t
-> out to disk, versus the metadata that will allow the data block to be
-> accessed after a crash, why should one by synchronous but not the
-> other?
+I'd like to try it. It looks like a nice starting project. 
+Following your outline the first version of the patch tries to remove an empty 
+block at the end of a non-htree directory. I'd appreciate it if you checked it 
+and gave me suggestions for improving it. 
+At the moment I am looking at the dir_index code, so I can extend it to htree 
+directories. Please let me know if you want me to port it to ext3, although 
+personally I think it is better to do so at later point.
 
-O_DIRECT is about avoiding polluting the buffer cache, not only about
-data integrity. If an application wants allocating writes to have a
-data integrity guarantee, they can open the file O_DIRECT|O_DSYNC, at
-the cost that writes they think might be one disk seek end up being 2
-(or more). But please don't fall back to putting the data into the
-buffer cache!
+Greetings Andreas
 
-I think it would be useful to be explicit to applications what they
-need to do for O_DIRECT writes to be guaranteed to be visible after a
-crash. As a naive application writer, I would have thought using
-posix_fallocate would have been "good enough". If I understand
-correctly, an application that wants to know that O_DIRECT writes will
-both avoid the buffer cache and be visible after a crash must
-guarantee that it's previously written to those blocks either O_DSYNC
-or has used fdatasync() on the file after such writes. All subsequent
-writes can be done with only O_DIRECT.
 
-That means that a database must explicitly initialize its files by
-writing 0s: it can't rely on posix_fallocate. (Amusingly, it would
-have worked before fallocate() was introduced into the kernel!)
+[PATCH] ext4: Add a function to shrink directories by removing last empty block.
 
-Larry
+Current limitations: It only works on directories that don't use htree and will
+only remove the last block (if it is not used).
 
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Andreas Schlick <schlick@lavabit.com>
+---
+ fs/ext4/namei.c |   70 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 files changed, 65 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 1855060..04ac43d 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -79,6 +79,13 @@ static struct buffer_head *ext4_append(handle_t *handle,
+ #define dxtrace(command)
+ #endif
+ 
++// ext4_dir_cleanup holds information for ext4_shrink_directory(..).
++// At the moment it is only a pointer to the directory's inode but this
++// will change in later versions of the patch.
++struct ext4_dir_cleanup {
++	struct inode *dir;
++};
++
+ struct fake_dirent
+ {
+ 	__le32 inode;
+@@ -1684,7 +1691,8 @@ cleanup:
+ static int ext4_delete_entry(handle_t *handle,
+ 			     struct inode *dir,
+ 			     struct ext4_dir_entry_2 *de_del,
+-			     struct buffer_head *bh)
++			     struct buffer_head *bh,
++			     struct ext4_dir_cleanup *dc)
+ {
+ 	struct ext4_dir_entry_2 *de, *pde;
+ 	unsigned int blocksize = dir->i_sb->s_blocksize;
+@@ -1711,6 +1719,9 @@ static int ext4_delete_entry(handle_t *handle,
+ 			dir->i_version++;
+ 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+ 			ext4_handle_dirty_metadata(handle, dir, bh);
++			if (dc) {
++				dc->dir = dir;
++			}
+ 			return 0;
+ 		}
+ 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
+@@ -1989,6 +2000,49 @@ static int empty_dir(struct inode *inode)
+ 	return 1;
+ }
+ 
++/*
++ * This function tries to shrink the size of a directory.
++ *
++ * The current limitations are that it checks only the last block
++ * and only works on non-indexed directories.
++ */
++static void ext4_shrink_directory(struct ext4_dir_cleanup *dc) {
++	struct inode *dir = dc->dir;
++	struct buffer_head *bh;
++	struct ext4_dir_entry_2 * de;
++	char * dlimit;
++	ext4_lblk_t lblock;
++	int err=0;
++
++	lblock = dir->i_size >> EXT4_BLOCK_SIZE_BITS(dir->i_sb);
++
++	// We don't handle indexed dirs at the moment and need at least two blocks
++	if (is_dx(dir) || lblock <= 1) {
++		return;
++	}
++
++	bh = ext4_bread(NULL, dir, (lblock-1), 0, &err);
++
++	if (!bh) {
++		return;
++	}
++
++	de = (struct ext4_dir_entry_2 *) bh->b_data;
++	dlimit = bh->b_data + dir->i_sb->s_blocksize;
++	while ((char *) de < dlimit) {
++		if (de->inode) {
++			brelse(bh);
++			return;
++		}
++		de = ext4_next_entry(de, EXT4_BLOCK_SIZE(dir->i_sb));
++	}
++
++	brelse(bh);
++
++	dir->i_size -= EXT4_BLOCK_SIZE(dir->i_sb);
++	ext4_truncate(dir);
++}
++
+ /* ext4_orphan_add() links an unlinked or truncated inode into a list of
+  * such inodes, starting at the superblock, in case we crash before the
+  * file is closed/deleted, or in case the inode truncate spans multiple
+@@ -2145,6 +2199,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	struct inode *inode;
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de;
++	struct ext4_dir_cleanup dc;
+ 	handle_t *handle;
+ 
+ 	/* Initialize quotas before so that eventual writes go in
+@@ -2172,7 +2227,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	if (!empty_dir(inode))
+ 		goto end_rmdir;
+ 
+-	retval = ext4_delete_entry(handle, dir, de, bh);
++	retval = ext4_delete_entry(handle, dir, de, bh, &dc);
+ 	if (retval)
+ 		goto end_rmdir;
+ 	if (!EXT4_DIR_LINK_EMPTY(inode))
+@@ -2195,6 +2250,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ end_rmdir:
+ 	ext4_journal_stop(handle);
+ 	brelse(bh);
++	ext4_shrink_directory(&dc);
+ 	return retval;
+ }
+ 
+@@ -2204,6 +2260,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	struct inode *inode;
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de;
++	struct ext4_dir_cleanup dc;
+ 	handle_t *handle;
+ 
+ 	/* Initialize quotas before so that eventual writes go
+@@ -2233,7 +2290,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 			     inode->i_ino, inode->i_nlink);
+ 		inode->i_nlink = 1;
+ 	}
+-	retval = ext4_delete_entry(handle, dir, de, bh);
++	retval = ext4_delete_entry(handle, dir, de, bh, &dc);
+ 	if (retval)
+ 		goto end_unlink;
+ 	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
+@@ -2249,6 +2306,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ end_unlink:
+ 	ext4_journal_stop(handle);
+ 	brelse(bh);
++	ext4_shrink_directory(&dc);
+ 	return retval;
+ }
+ 
+@@ -2369,6 +2427,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	struct inode *old_inode, *new_inode;
+ 	struct buffer_head *old_bh, *new_bh, *dir_bh;
+ 	struct ext4_dir_entry_2 *old_de, *new_de;
++	struct ext4_dir_cleanup dc;
+ 	int retval, force_da_alloc = 0;
+ 
+ 	old_bh = new_bh = dir_bh = NULL;
+@@ -2459,7 +2518,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	    old_de->name_len != old_dentry->d_name.len ||
+ 	    strncmp(old_de->name, old_dentry->d_name.name, old_de->name_len) ||
+ 	    (retval = ext4_delete_entry(handle, old_dir,
+-					old_de, old_bh)) == -ENOENT) {
++					old_de, old_bh, &dc)) == -ENOENT) {
+ 		/* old_de could have moved from under us during htree split, so
+ 		 * make sure that we are deleting the right entry.  We might
+ 		 * also be pointing to a stale entry in the unused part of
+@@ -2470,7 +2529,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		old_bh2 = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de2);
+ 		if (old_bh2) {
+ 			retval = ext4_delete_entry(handle, old_dir,
+-						   old_de2, old_bh2);
++						   old_de2, old_bh2, &dc);
+ 			brelse(old_bh2);
+ 		}
+ 	}
+@@ -2519,6 +2578,7 @@ end_rename:
+ 	brelse(old_bh);
+ 	brelse(new_bh);
+ 	ext4_journal_stop(handle);
++	ext4_shrink_directory(&dc);
+ 	if (retval == 0 && force_da_alloc)
+ 		ext4_alloc_da_blocks(old_inode);
+ 	return retval;
+-- 
+1.6.4
+
+
