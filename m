@@ -1,84 +1,71 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: RFC: Clarifying Direct I/O Semantics
-Date: Sat, 22 Aug 2009 16:40:11 -0400
-Message-ID: <20090822204011.GC4800@mit.edu>
-References: <E1Mec4O-0005ka-NN@closure.thunk.org> <4A8F1FA5.5080501@hp.com> <20090822000745.GP9529@mit.edu> <5956ddbe0908220625h6a6eeba2w679602d3a1f6336c@mail.gmail.com>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Odd "leak" of extent info into data blocks?
+Date: Sat, 22 Aug 2009 16:10:56 -0700
+Message-ID: <6601abe90908221610p60629809qcde6848308b8affe@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Lawrence Greenfield <leg@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38753 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933098AbZHVUkP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Aug 2009 16:40:15 -0400
-Content-Disposition: inline
-In-Reply-To: <5956ddbe0908220625h6a6eeba2w679602d3a1f6336c@mail.gmail.com>
+Received: from smtp-out.google.com ([216.239.45.13]:38344 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933218AbZHVXK5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Aug 2009 19:10:57 -0400
+Received: from wpaz37.hot.corp.google.com (wpaz37.hot.corp.google.com [172.24.198.101])
+	by smtp-out.google.com with ESMTP id n7MNAxMj018453
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 16:10:59 -0700
+Received: from pxi29 (pxi29.prod.google.com [10.243.27.29])
+	by wpaz37.hot.corp.google.com with ESMTP id n7MNAukv000481
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 16:10:57 -0700
+Received: by pxi29 with SMTP id 29so4634973pxi.30
+        for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 16:10:56 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 22, 2009 at 09:25:20AM -0400, Lawrence Greenfield wrote:
-> > The question in my mind is whether we should guarantee that the dat=
-a
-> > block is written synchronously for allocating writes when the file
-> > metadata is not written synchronously; what's the point? =A0After a=
-ll,
-> > the application can't distinguish between the data block not making=
- it
-> > out to disk, versus the metadata that will allow the data block to =
-be
-> > accessed after a crash, why should one by synchronous but not the
-> > other?
->=20
-> O_DIRECT is about avoiding polluting the buffer cache, not only about
-> data integrity. If an application wants allocating writes to have a
-> data integrity guarantee, they can open the file O_DIRECT|O_DSYNC, at
-> the cost that writes they think might be one disk seek end up being 2
-> (or more). But please don't fall back to putting the data into the
-> buffer cache!
+On the off chance that this sounds familiar to anyone out there...
 
-Well, it really depends on who you talk to.  This goes back to the
-problem that O_DIRECT's goals and semantics aren't well defined. =20
+I've got a situation in which data files written by an application are
+showing very occasional checksum errors sometimes.  The data files are
+all around 8MB long, written using O_DIRECT into fallocated space.
+(The entire fallocated space for the example file below is written to
+with valid data; i.e., no holes, no truncation, no uninitialized
+extents.)
 
-I find it really hard to believe that the main point is to avoid
-polluting the page/buffer cache.  If that were true, then fadvise's
-=46ADV_NOREUSE would be sufficient, and much simpler semantics to
-implement than O_DIRECT's rather baroque restrictions and
-requirements.
+When these occasional checksum failures show up, the data in the files
+is rather odd.  I've seen 4 cases of this so far, and the "bad" data
+always starts on a block boundary, and always has the first 12 bytes
+that are identical to what an extent header would look like (for a
+header at the start of a block of extents or extent indexes):
 
-=46or the enterprise database folks (who were the ones who originally
-asked the Solaris, AIX, and Irix OS's of the world for this feature)
-it was always about performance/speed; they wanted to avoid copying
-data in and out of the buffer/page cache for speed reasons.  But if
-you need to take time out to maniulate allocation data structures, the
-disk reads/writes are in the noise compared to the memory copy in and
-out of the buffer cache.
+Here's the "od -Ad -x" output from one such file:
 
-> I think it would be useful to be explicit to applications what they
-> need to do for O_DIRECT writes to be guaranteed to be visible after a
-> crash. As a naive application writer, I would have thought using
-> posix_fallocate would have been "good enough". If I understand
-> correctly, an application that wants to know that O_DIRECT writes wil=
-l
-> both avoid the buffer cache and be visible after a crash must
-> guarantee that it's previously written to those blocks either O_DSYNC
-> or has used fdatasync() on the file after such writes. All subsequent
-> writes can be done with only O_DIRECT.
->=20
-> That means that a database must explicitly initialize its files by
-> writing 0s: it can't rely on posix_fallocate. (Amusingly, it would
-> have worked before fallocate() was introduced into the kernel!)
+             8388608 f30a 0000 0154 0000 0000 0000 0000 0000
 
-Well, all a database needs to do is use fdatasync() after an
-application-level commit.  If there hasn't been any metadata changes,
-the fdatasync() is cheap.  If the application is keeping track of when
-it might be doing an allocating write() and when it isn't, it can try
-to work out when it can omit the fdatasync() call.
+(I.e., the first 2 bytes are EXT4_EXT_MAGIC, and bytes 4-5 are 0x154,
+or what eh_max would be for a block size of 4096 bytes.)
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In this case, the "bad" data starts at block 2048.  Two cases have
+this pattern at block 2048; two at block 2050.  A syscall trace of one
+such corrupted file shows that this block was written with a single
+write encompassing many adjacent blocks:
+
+         write(fd=10, size=192512, offset=8204288)
+
+The file in question above has only two (in-inode) extents, which I
+verified look valid.  The block in question (2048) above is covered by
+the second extent:  logical blocks 2037-2050.
+
+I've seen the amount of "bad" data (including the "extent header"
+above) to be pretty variable: between 70 and 800 bytes; I haven't been
+able to correlate the rest of the bad data to any particular ext4 data
+structures.
+
+My guess is that a block of extents from a truncated or removed file
+was reused for data for this file, and somehow was not written
+correctly.  This seems (slightly) more plausible to me than the extent
+metadata of an existing file was "leaked" into this one.
+
+Does any of this ring a bell to anybody?
+
+Thanks,
+Curt
