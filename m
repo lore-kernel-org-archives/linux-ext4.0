@@ -1,94 +1,84 @@
-From: Christian Fischer <Christian.Fischer@easterngraphics.com>
-Subject: Re: ext4 state user question
-Date: Sat, 22 Aug 2009 21:59:34 +0200
-Message-ID: <200908222159.34737.Christian.Fischer@easterngraphics.com>
-References: <200908221921.15949.Christian.Fischer@easterngraphics.com> <4A9039B7.9040908@sandeen.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: RFC: Clarifying Direct I/O Semantics
+Date: Sat, 22 Aug 2009 16:40:11 -0400
+Message-ID: <20090822204011.GC4800@mit.edu>
+References: <E1Mec4O-0005ka-NN@closure.thunk.org> <4A8F1FA5.5080501@hp.com> <20090822000745.GP9529@mit.edu> <5956ddbe0908220625h6a6eeba2w679602d3a1f6336c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@sandeen.net>
+To: Lawrence Greenfield <leg@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from intranet.easterngraphics.com ([62.80.28.49]:42905 "EHLO
-	intranet.easterngraphics.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933318AbZHVUAP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Aug 2009 16:00:15 -0400
-In-Reply-To: <4A9039B7.9040908@sandeen.net>
+Received: from thunk.org ([69.25.196.29]:38753 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933098AbZHVUkP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Aug 2009 16:40:15 -0400
 Content-Disposition: inline
+In-Reply-To: <5956ddbe0908220625h6a6eeba2w679602d3a1f6336c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Saturday 22 August 2009, Eric Sandeen wrote:
-> Christian Fischer wrote:
-> > Hello,
-> >
-> > I have not found a ext4-user list or something similar, that's why my
-> > user question goes to this development list.
->
-> I think user questions are fine here, but thanks for asking.  :)
->
-> > I had a lot of file system crashes with xfs the last time, Eric knows
-> > that, if he remembers.
-> >
-> > I look for an alternate file system for our new production servers, and I
-> > need to use 2.6.29.4 for the moment due to all systems running on xen,
-> > and as far as I know 2.6.29.4 xen patched ist the best solution at the
-> > moment.
-> >
-> > I've updated all xen kernels from 2.6.18 (which is the latest official
-> > xen kernel) to 2.6.29.4 because xfs tried to write to the superblock to
-> > run into the next bug, a radix_tree problem with xfs over nfs. I've
-> > backported 2.6.30 patches to avoid the problem, that runs at the moment.
-> >
-> > But I don't feel like waiting for the next crash.
-> >
-> > I was never before as unshure as now which file system is to choose, IMO
-> > I have the choice between zfs on solaris, xfs or ext4.
-> > Zfs is not really ported to linux, the stable time of xfs seems gone, and
-> > ext4 is relatively young.
+On Sat, Aug 22, 2009 at 09:25:20AM -0400, Lawrence Greenfield wrote:
+> > The question in my mind is whether we should guarantee that the dat=
+a
+> > block is written synchronously for allocating writes when the file
+> > metadata is not written synchronously; what's the point? =A0After a=
+ll,
+> > the application can't distinguish between the data block not making=
+ it
+> > out to disk, versus the metadata that will allow the data block to =
+be
+> > accessed after a crash, why should one by synchronous but not the
+> > other?
+>=20
+> O_DIRECT is about avoiding polluting the buffer cache, not only about
+> data integrity. If an application wants allocating writes to have a
+> data integrity guarantee, they can open the file O_DIRECT|O_DSYNC, at
+> the cost that writes they think might be one disk seek end up being 2
+> (or more). But please don't fall back to putting the data into the
+> buffer cache!
 
-Thanks Eric for the fast reply.
+Well, it really depends on who you talk to.  This goes back to the
+problem that O_DIRECT's goals and semantics aren't well defined. =20
 
->
-> I think the xfs problems are sorted; you hit a bad spot, but Christoph
-> got it worked out.
+I find it really hard to believe that the main point is to avoid
+polluting the page/buffer cache.  If that were true, then fadvise's
+=46ADV_NOREUSE would be sufficient, and much simpler semantics to
+implement than O_DIRECT's rather baroque restrictions and
+requirements.
 
-Hmm, bad spot, I use xfs for years on a lot of servers, never any other, and 
-that because of its stability, and its robustness in case of harware 
-failures. Never had any problems. I got gray hairs last time.
+=46or the enterprise database folks (who were the ones who originally
+asked the Solaris, AIX, and Irix OS's of the world for this feature)
+it was always about performance/speed; they wanted to avoid copying
+data in and out of the buffer/page cache for speed reasons.  But if
+you need to take time out to maniulate allocation data structures, the
+disk reads/writes are in the noise compared to the memory copy in and
+out of the buffer cache.
 
->
-> > What do you think, is ext4 with 2.6.29.4 ready for productive work and to
-> > prefer over xfs at the moment?
->
-> As for ext4, I don't know of any current problems that would stop you
-> from using it for this purpose.  But had you asked about xfs a month ago
-> I would have said the same thing.  :)  I can say that ext4 is the
-> default for F11, and I have had very few bug reports from users.
+> I think it would be useful to be explicit to applications what they
+> need to do for O_DIRECT writes to be guaranteed to be visible after a
+> crash. As a naive application writer, I would have thought using
+> posix_fallocate would have been "good enough". If I understand
+> correctly, an application that wants to know that O_DIRECT writes wil=
+l
+> both avoid the buffer cache and be visible after a crash must
+> guarantee that it's previously written to those blocks either O_DSYNC
+> or has used fdatasync() on the file after such writes. All subsequent
+> writes can be done with only O_DIRECT.
+>=20
+> That means that a database must explicitly initialize its files by
+> writing 0s: it can't rely on posix_fallocate. (Amusingly, it would
+> have worked before fallocate() was introduced into the kernel!)
 
-I use ext4dev since it came up on my thinkpad, it runs. Good to hear your 
-statement.
+Well, all a database needs to do is use fdatasync() after an
+application-level commit.  If there hasn't been any metadata changes,
+the fdatasync() is cheap.  If the application is keeping track of when
+it might be doing an allocating write() and when it isn't, it can try
+to work out when it can omit the fdatasync() call.
 
-What do you think about 2.6.29?
-Is it okay or should I wait until I can use a xen patched 2.6.31?
-
->
-> All software has bugs, unfortunately, though we do our best.  In the
-> end, testing in your environment is the only way to know for sure what
-> best suits your needs, I think.
-
-I know, we are in the business. But please not on my main servers ;-)
-
-Christian
->
-> -Eric
->
-> > Best Regards
-> > Christian
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
