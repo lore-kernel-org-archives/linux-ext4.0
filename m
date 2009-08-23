@@ -1,34 +1,72 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 state user question
-Date: Sun, 23 Aug 2009 11:07:30 -0700
-Message-ID: <4A918562.4030304@redhat.com>
-References: <200908221921.15949.Christian.Fischer@easterngraphics.com> <4A9039B7.9040908@sandeen.net> <200908222159.34737.Christian.Fischer@easterngraphics.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org
-To: Christian Fischer <Christian.Fischer@easterngraphics.com>
+From: Karel Zak <kzak@redhat.com>
+Subject: [PATCH] blkid: support .ko.gz in modules.dep parser
+Date: Sun, 23 Aug 2009 21:13:56 +0200
+Message-ID: <1251054836-5708-1-git-send-email-kzak@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Karel Zak <kzak@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([209.173.210.139]:24017 "EHLO mail.sandeen.net"
+Received: from mx1.redhat.com ([209.132.183.28]:49288 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933572AbZHWSb5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Aug 2009 14:31:57 -0400
-In-Reply-To: <200908222159.34737.Christian.Fischer@easterngraphics.com>
+	id S933621AbZHWTN6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 23 Aug 2009 15:13:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Christian Fischer wrote:
+The Linux kernel modules could be compressed, it means modules.dep
+parser in libblid has to support .ko.gz extension too.
 
-...
+(Note, I've talked about this problem with Jon Masters and his
+suggestion is to exec(/sbin/modinfo) rather than directly parse
+modules.dep. BTW, the modules.dep file is deprecated.)
 
-> I use ext4dev since it came up on my thinkpad, it runs. Good to hear your 
-> statement.
-> 
-> What do you think about 2.6.29?
-> Is it okay or should I wait until I can use a xen patched 2.6.31?
+Address-Red-Hat-Bug: #518572
+Signed-off-by: Karel Zak <kzak@redhat.com>
+---
+ lib/blkid/probe.c |   17 ++++++++---------
+ 1 files changed, 8 insertions(+), 9 deletions(-)
 
-F11 released with .29, and so far so good.  :)  You could look at 
-changelogs after that to see if anything got fixed or added that you may 
-care about.
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index 8f6cfa6..6b75732 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -208,8 +208,8 @@ static int check_for_modules(const char *fs_name)
+ #ifdef __linux__
+ 	struct utsname	uts;
+ 	FILE		*f;
+-	char		buf[1024], *cp, *t;
+-	int		i;
++	char		buf[1024], *cp;
++	int		namesz;
+ 
+ 	if (uname(&uts))
+ 		return (0);
+@@ -218,6 +218,9 @@ static int check_for_modules(const char *fs_name)
+ 	f = fopen(buf, "r");
+ 	if (!f)
+ 		return (0);
++
++	namesz = strlen(fs_name);
++
+ 	while (!feof(f)) {
+ 		if (!fgets(buf, sizeof(buf), f))
+ 			break;
+@@ -229,13 +232,9 @@ static int check_for_modules(const char *fs_name)
+ 			cp++;
+ 		else
+ 			cp = buf;
+-		i = strlen(cp);
+-		if (i > 3) {
+-			t = cp + i - 3;
+-			if (!strcmp(t, ".ko"))
+-				*t = 0;
+-		}
+-		if (!strcmp(cp, fs_name)) {
++		if (!strncmp(cp, fs_name, namesz) &&
++		    (!strcmp(cp + namesz, ".ko") ||
++		     !strcmp(cp + namesz, ".ko.gz"))) {
+ 			fclose(f);
+ 			return (1);
+ 		}
+-- 
+1.6.2.5
 
--Eric
