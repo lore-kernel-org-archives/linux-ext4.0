@@ -1,71 +1,77 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Odd "leak" of extent info into data blocks?
-Date: Sat, 22 Aug 2009 16:10:56 -0700
-Message-ID: <6601abe90908221610p60629809qcde6848308b8affe@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 1/1] dir shrink (was Re: ext3/ext4 directories don't	shrink
+ after deleting lots of files)
+Date: Sat, 22 Aug 2009 21:10:39 -0600
+Message-ID: <20090823031039.GF5931@webber.adilger.int>
+References: <1242338523.6933.664.camel@timo-desktop>
+ <605A8D56-81CD-4775-8FCD-58CDB12CBA36@iki.fi> <20090517213335.GB32019@mit.edu>
+ <200908221620.50103.schlick@lavabit.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Andreas Schlick <schlick@lavabit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:38344 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933218AbZHVXK5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Aug 2009 19:10:57 -0400
-Received: from wpaz37.hot.corp.google.com (wpaz37.hot.corp.google.com [172.24.198.101])
-	by smtp-out.google.com with ESMTP id n7MNAxMj018453
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 16:10:59 -0700
-Received: from pxi29 (pxi29.prod.google.com [10.243.27.29])
-	by wpaz37.hot.corp.google.com with ESMTP id n7MNAukv000481
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 16:10:57 -0700
-Received: by pxi29 with SMTP id 29so4634973pxi.30
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 16:10:56 -0700 (PDT)
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:37929 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933437AbZHWDKi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Aug 2009 23:10:38 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7N3Aagp023494
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2009 20:10:38 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KOT00G0075TMJ00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Sat,
+ 22 Aug 2009 20:10:36 -0700 (PDT)
+In-reply-to: <200908221620.50103.schlick@lavabit.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On the off chance that this sounds familiar to anyone out there...
+On Aug 22, 2009  16:20 +0200, Andreas Schlick wrote:
+> I'd like to try it. It looks like a nice starting project. 
+> Following your outline the first version of the patch tries to remove an
+> empty  block at the end of a non-htree directory.
+> I'd appreciate it if you checked it and gave me suggestions for improving it. 
 
-I've got a situation in which data files written by an application are
-showing very occasional checksum errors sometimes.  The data files are
-all around 8MB long, written using O_DIRECT into fallocated space.
-(The entire fallocated space for the example file below is written to
-with valid data; i.e., no holes, no truncation, no uninitialized
-extents.)
+Adding the extra "dc" to each of the functions probably isn't necessary,
+as this makes the API messier.  Probably a better approach would be to
+just do this within ext4_delete_entry(), analogous to how ext4_add_entry()
+might add a new block at any time.
 
-When these occasional checksum failures show up, the data in the files
-is rather odd.  I've seen 4 cases of this so far, and the "bad" data
-always starts on a block boundary, and always has the first 12 bytes
-that are identical to what an extent header would look like (for a
-header at the start of a block of extents or extent indexes):
+It would be even better if this could be done repeatedly if there are
+more empty blocks at the end (i.e. they were not previously at the end
+of the file), but that gets into trouble with the transactions.  It isn't
+easy to remove an intermediate block, because this will result in a hole
+in the directory (a no-no), and there is no safe way to reorder the
+blocks in the directory.
 
-Here's the "od -Ad -x" output from one such file:
+> At the moment I am looking at the dir_index code, so I can extend it to htree 
+> directories. Please let me know if you want me to port it to ext3, although 
+> personally I think it is better to do so at later point.
 
-             8388608 f30a 0000 0154 0000 0000 0000 0000 0000
+For dir_index what is important is that you don't have any holes in the
+hash space, nor in the logical directory blocks.  One possibility is in
+the case where the direntry being removed is the last one[*] to remove
+the block it resides in, move the last block to the current logical
+offset, and update the htree index to reflect this.
 
-(I.e., the first 2 bytes are EXT4_EXT_MAGIC, and bytes 4-5 are 0x154,
-or what eh_max would be for a block size of 4096 bytes.)
+Note that the htree index only records the starting hash value for each
+block, so all that would need to be done to remove any mention of the
+deleted block is to memmove() the entries to cover the deleted block and
+the hash buckets will still be correct.  Also, the logical block number
+of the last entry would need to be changed to reflect its new position.
 
-In this case, the "bad" data starts at block 2048.  Two cases have
-this pattern at block 2048; two at block 2050.  A syscall trace of one
-such corrupted file shows that this block was written with a single
-write encompassing many adjacent blocks:
+[*] This is easily determined in ext4_delete_entry() because it always
+    walks the block until it finds the entry, and if there are valid
+    entries before the one being deleted the block is not empty.  Tracking
+    this takes basically no extra effort.  If no valid entries are before
+    the one being deleted, and if the length of the entry after it fills
+    the rest of the space in the block then the block is empty.
 
-         write(fd=10, size=192512, offset=8204288)
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-The file in question above has only two (in-inode) extents, which I
-verified look valid.  The block in question (2048) above is covered by
-the second extent:  logical blocks 2037-2050.
-
-I've seen the amount of "bad" data (including the "extent header"
-above) to be pretty variable: between 70 and 800 bytes; I haven't been
-able to correlate the rest of the bad data to any particular ext4 data
-structures.
-
-My guess is that a block of extents from a truncated or removed file
-was reused for data for this file, and somehow was not written
-correctly.  This seems (slightly) more plausible to me than the extent
-metadata of an existing file was "leaked" into this one.
-
-Does any of this ring a bell to anybody?
-
-Thanks,
-Curt
