@@ -1,63 +1,110 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Tue, 25 Aug 2009 00:44:27 +0200
-Message-ID: <20090824224427.GI29763@elf.ucw.cz>
-References: <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <4A930EB9.8030903@redhat.com> <4A93129E.6080704@acm.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Enable asynchronous commits by default patch revoked?
+Date: Mon, 24 Aug 2009 16:46:16 -0600
+Message-ID: <20090824224616.GR5931@webber.adilger.int>
+References: <200908241033.10527.Christian.Fischer@easterngraphics.com>
+ <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int>
+ <20090824201027.GC17684@mit.edu> <4A92F7E0.9010001@redhat.com>
+ <20090824220738.GG17684@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Christian Fischer <Christian.Fischer@easterngraphics.com>,
 	linux-ext4@vger.kernel.org
-To: Zan Lynx <zlynx@acm.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:48541 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753885AbZHXWoc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 18:44:32 -0400
-Content-Disposition: inline
-In-Reply-To: <4A93129E.6080704@acm.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:60596 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753724AbZHXWqQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 18:46:16 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7OMkC0f014578
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2009 15:46:14 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KOW00J00KJBKQ00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 24 Aug 2009 15:46:12 -0700 (PDT)
+In-reply-to: <20090824220738.GG17684@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 2009-08-24 16:22:22, Zan Lynx wrote:
-> Ric Wheeler wrote:
->> Pavel Machek wrote:
->>> Degraded MD RAID5 does not work by design; whole stripe will be
->>> damaged on powerfail or reset or kernel bug, and ext3 can not cope
->>> with that kind of damage. [I don't see why statistics should be
->>> neccessary for that; the same way we don't need statistics to see that
->>> ext2 needs fsck after powerfail.]
->>>                                     Pavel
->>>   
->> What you are describing is a double failure and RAID5 is not double  
->> failure tolerant regardless of the file system type....
+On Aug 24, 2009  18:07 -0400, Theodore Ts'o wrote:
+> What ext3 and ext4 does by default is this:
+> 
+> 1)  Write data blocks required by data=ordered mode (if any)
+> 
+> 2)  Write the journal blocks
+> 
+> 3)  Wait for the journal blocks to be sent to disk.  (We don't actually
+>     do a barrier operation), so this just means the blocks have been
+>     sent to the disk, not necessarily that they are forced to a platter.
+
+Hmm, I think you are missing a step here.  In both jbd and jbd2 there is
+a wait for these buffers to hit the disk.  In the jbd case it is at
+"commit phase 2", and in jbd2 it is at "wait_for_iobuf".
+
+> 4)  Write the commit block, with the barrier flag set.
 >
-> Are you sure he isn't talking about how RAID must write all the data  
-> chunks to make a complete stripe and if there is a power-loss, some of  
-> the chunks may be written and some may not?
->
-> As I read Pavel's point he is saying that the incomplete write can be  
-> detected by the incorrect parity chunk, but degraded RAID-5 has no  
-> working parity chunk so the incomplete write would go undetected.
+> 5)  Wait for the commit block.
+> 
+> -----
+> 
+> What the current async commit code does is this:
+> 
+> 1)  Write data blocks required by data=ordered mode (if any)
+> 
+> 2)  Write the journal blocks
+> 
+> 3)  Write the commit block, without a barrier.
+> 
+> 4)  Wait for the journal blocks to be sent to disk.
+> 
+> 5)  Wait for the commit block (since a barrier is requested, this is
+> just when it was sent to the disk, not when it is actually committed
+> to stable store).
 
-Yep.
+Similarly, in the async case, all of the data blocks and the commit
+block are waited on, AFAICS.  It's just that with async_commit the
+commit block is submitted with the data blocks, and in case of a
+crash the transaction checksum is needed to determine if the commit
+block is valid or not.
 
-> I know this is a RAID failure mode. However, I actually thought this was  
-> a problem even for a intact RAID-5. AFAIK, RAID-5 does not generally  
-> read the complete stripe and perform verification unless that is  
-> requested, because doing so would hurt performance and lose the entire  
-> point of the RAID-5 rotating parity blocks.
+> What I think we can do safely in ext4 is this:
+> 
+> 1)  Write data blocks required by data=ordered mode (if any)
+> 
+> 2)  Write the journal blocks
+> 
+> 3)  Write the commit block, WITH a barrier requested.
+> 
+> 4)  Wait for the commit block to be completed.
+> 
+> 5)  Wait for the journal blocks to be sent to disk.  #4 implies that
+> all of the journal block I/O will have been completed, so this is just
+> to collect the commit completion status; we should actually block
+> during step #5, assuming the block layer's barrier operation was
+> implemented correctly.
 
-Not sure; is not RAID expected to verify the array after unclean
-shutdown?
+Since a barrier is a painful operation, it is better to just wait
+explicitly on the completion of the various blocks as needed (i.e.
+journal data + commit block).  That avoids the huge wait on many
+other blocks that may have been sent to disk unrelated to the journal
+itself, if the journal is on the same device as the filesystem.
 
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+> This should save us a little bit, since it implies the commit record
+> will be sent to disk in the same I/O request to the storage device as
+> the the other journal blocks, which is _not_ currently the case today.
+
+Are you _really_ sure that isn't what is done today?  My reading of the
+code is different, but it's of course possible that I'm seeing what I
+want to see (which is how it was originally designed) and not what is
+really there.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
