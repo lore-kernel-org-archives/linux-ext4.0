@@ -1,81 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Update Kconfig description of EXT3_DEFAULTS_TO_ORDERED
-Date: Mon, 24 Aug 2009 16:58:29 +0200
-Message-ID: <1251125910-2457-2-git-send-email-jack@suse.cz>
-References: <1251125910-2457-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>
-To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752772AbZHXO6h@vger.kernel.org>
-In-Reply-To: <1251125910-2457-1-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+ possible
+Date: Mon, 24 Aug 2009 17:55:53 +0300
+Message-ID: <4A92A9F9.10706@gmail.com>
+References: <20090312092114.GC6949@elf.ucw.cz> <200903121413.04434.rob@landley.net> <20090316122847.GI2405@elf.ucw.cz> <200903161426.24904.rob@landley.net> <20090323104525.GA17969@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Florian Weimer <fweimer@bfk.de>, Pavel Machek <pavel@ucw.cz>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <20090824130125.GG23677@mit.edu>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+Hi Theodore,
 
-The old description for this configuration option was perhaps not
-completely balanced in terms of describing the tradeoffs of using a
-default of data=writeback vs. data=ordered.  Despite the fact that old
-description very strongly recomended disabling this feature, all of
-the major distributions have elected to preserve the existing 'legacy'
-default, which is a strong hint that it perhaps wasn't telling the
-whole story.
+thanks for the insightful writing.
 
-This revised description has been vetted by a number of ext3
-developers as being better at informing the user about the tradeoffs
-of enabling or disabling this configuration feature.
+On 08/24/2009 04:01 PM, Theodore Tso wrote:
 
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/Kconfig |   32 +++++++++++++++++---------------
- 1 files changed, 17 insertions(+), 15 deletions(-)
+=2E..snip ...
 
-diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
-index fb3c1a2..522b154 100644
---- a/fs/ext3/Kconfig
-+++ b/fs/ext3/Kconfig
-@@ -29,23 +29,25 @@ config EXT3_FS
- 	  module will be called ext3.
- 
- config EXT3_DEFAULTS_TO_ORDERED
--	bool "Default to 'data=ordered' in ext3 (legacy option)"
-+	bool "Default to 'data=ordered' in ext3"
- 	depends on EXT3_FS
- 	help
--	  If a filesystem does not explicitly specify a data ordering
--	  mode, and the journal capability allowed it, ext3 used to
--	  historically default to 'data=ordered'.
--
--	  That was a rather unfortunate choice, because it leads to all
--	  kinds of latency problems, and the 'data=writeback' mode is more
--	  appropriate these days.
--
--	  You should probably always answer 'n' here, and if you really
--	  want to use 'data=ordered' mode, set it in the filesystem itself
--	  with 'tune2fs -o journal_data_ordered'.
--
--	  But if you really want to enable the legacy default, you can do
--	  so by answering 'y' to this question.
-+	  The journal mode options for ext3 have different tradeoffs
-+	  between when data is guaranteed to be on disk and
-+	  performance.	The use of "data=writeback" can cause
-+	  unwritten data to appear in files after an system crash or
-+	  power failure, which can be a security issue.	 However,
-+	  "data=ordered" mode can also result in major performance
-+	  problems, including seconds-long delays before an fsync()
-+	  call returns.	 For details, see:
-+
-+	  http://ext4.wiki.kernel.org/index.php/Ext3_data_mode_tradeoffs
-+
-+	  If you have been historically happy with ext3's performance,
-+	  data=ordered mode will be a safe choice and you should
-+	  answer 'y' here.  If you understand the reliability and data
-+	  privacy issues of data=writeback and are willing to make
-+	  that trade off, answer 'n'.
- 
- config EXT3_FS_XATTR
- 	bool "Ext3 extended attributes"
--- 
-1.6.0.2
+> It's for this reason that I've never been completely sure how useful
+> Pavel's proposed treatise about file systems expectations really are
+> --- because all storage subsystems *usually* provide these guarantees=
+,
+> but it is the very rare storage system that *always* provides these
+> guarantees.
+
+There is a thing called eMMC (embedded MMC) in the embedded world. You
+may consider it as a non-removable MMC. This thing is a block device fr=
+om
+the Linux POW, and you may mount ext3 on top of it. And people do this.
+
+The device seems to have a decent FTL, and does not look bad.
+
+However, there are subtle things which mortals never think about. In
+case of eMMC - power cuts may make some sectors unreadable - eMMC retur=
+ns
+ECC errors on reads. Namely, the sectors which were being written at
+the very moment when the power cut happened may become unreadable.
+And this makes ext3 refuse mounting the file-system, this makes
+chkfs.ext3 refuse the file-system. Although this should be fixable in
+SW, but we did not find time to do this so far.
+
+Anyway, my point is that documenting subtle things like this is a very
+good thing to do, just because nowadays we are trying to use existing
+software with flash-based storage devices, which may violate these
+subtle assumptions, or introduce other ones.
+
+Probably, Pavel did too good job in generalizing things, and it could b=
+e
+better to make a doc about HDD vs SSD or HDD vs Flash-based-storage.
+Not sure. But the idea to document subtle FS assumption is good, IMO.
+
+--=20
+Best Regards,
+Artem Bityutskiy (=D0=90=D1=80=D1=82=D1=91=D0=BC =D0=91=D0=B8=D1=82=D1=8E=
+=D1=86=D0=BA=D0=B8=D0=B9)
