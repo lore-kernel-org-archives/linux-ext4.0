@@ -1,67 +1,76 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Enable asynchronous commits by default patch revoked?
-Date: Mon, 24 Aug 2009 15:28:40 -0600
-Message-ID: <20090824212840.GN5931@webber.adilger.int>
-References: <200908241033.10527.Christian.Fischer@easterngraphics.com>
- <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int>
- <20090824201027.GC17684@mit.edu>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+	possible
+Date: Mon, 24 Aug 2009 23:33:12 +0200
+Message-ID: <20090824213312.GG29763@elf.ucw.cz>
+References: <20090312092114.GC6949@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <200908241611.10400.rob@landley.net>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Christian Fischer <Christian.Fischer@easterngraphics.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:41152 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751080AbZHXV2f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 17:28:35 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7OLSaAT008755
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2009 14:28:36 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KOW00500GU2M500@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 24 Aug 2009 14:28:36 -0700 (PDT)
-In-reply-to: <20090824201027.GC17684@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Rob Landley <rob@landley.net>, jack@suse.cz
+Return-path: <linux-doc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <200908241611.10400.rob@landley.net>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Aug 24, 2009  16:10 -0400, Theodore Ts'o wrote:
-> However, even if we add even if we add per-block checksums, there is
-> still the problem that there is logic in the jbd layer where we avoid
-> reusing certain blocks until we are sure the transaction has
-> committed.  With asynchronous commits, there is no way of knowing when
-> it is safe to reuse those blocks.  
+On Mon 2009-08-24 16:11:08, Rob Landley wrote:
+> On Monday 24 August 2009 04:31:43 Pavel Machek wrote:
+> > Running journaling filesystem such as ext3 over flashdisk or degraded
+> > RAID array is a bad idea: journaling guarantees no longer apply and
+> > you will get data corruption on powerfail.
+> >
+> > We can't solve it easily, but we should certainly warn the users. I
+> > actually lost data because I did not understand these limitations...
+> >
+> > Signed-off-by: Pavel Machek <pavel@ucw.cz>
+> 
+> Acked-by: Rob Landley <rob@landley.net>
+> 
+> With a couple comments:
+> 
+> > +* write caching is disabled. ext2 does not know how to issue barriers
+> > +  as of 2.6.28. hdparm -W0 disables it on SATA disks.
+> 
+> It's coming up on 2.6.31, has it learned anything since or should that version 
+> number be bumped?
 
-AFAIK, "async commits" are not wholly async.  There is still a wait
-for the transaction commit block to hit the disk before calling the
-transaction committed.  The main improvement with "async commits" is
-that JBD only waits ONCE for both the transaction data blocks and the
-commit block (which are submitted at the same time).  In particular
-note that there is an unconditional wait on the commit block for
-every transaction commit.
+Jan, did those "barrier for ext2" patches get merged? 
 
-JBD currently submits the transaction data and waits once for them
-to complete, and then submits the commit block and waits a second time
-for it to complete, which is 2x latency for every transaction.
+> > +	(Thrash may get written into sectors during powerfail.  And
+> > +	ext3 handles this surprisingly well at least in the
+> > +	catastrophic case of garbage getting written into the inode
+> > +	table, since the journal replay often will "repair" the
+> > +	garbage that was written into the filesystem metadata blocks.
+> > +	It won't do a bit of good for the data blocks, of course
+> > +	(unless you are using data=journal mode).  But this means that
+> > +	in fact, ext3 is more resistant to suriving failures to the
+> > +	first problem (powerfail while writing can damage old data on
+> > +	a failed write) but fortunately, hard drives generally don't
+> > +	cause collateral damage on a failed write.
+> 
+> Possible rewording of this paragraph:
+> 
+>   Ext3 handles trash getting written into sectors during powerfail
+>   surprisingly well.  It's not foolproof, but it is resilient.  Incomplete
+>   journal entries are ignored, and journal replay of complete entries will
+>   often "repair" garbage written into the inode table.  The data=journal
+>   option extends this behavior to file and directory data blocks as well
+>   (without which your dentries can still be badly corrupted by a power fail
+>   during a write).
+> 
+> (I'm not entirely sure about that last bit, but clarifying it one way or the 
+> other would be nice because I can't tell from reading it which it is.  My 
+> _guess_ is that directories are just treated as files with an attitude and an 
+> extra cacheing layer...?)
 
-
-> Looking at the code, the best we can do in the short-term is to write
-> the commit record where we do, but do so with a barrier requested, and
-> then wait for the commit block where we do.  This will provide some
-> performance improvement, since we won't wait for all of the journal
-> blocks to be sent to disk before writing the commit record.
-
-The big problem with Linux "barriers" is that they are actually cache
-flushes, so are worse than just having the original code that waits
-for completion of the actual journal blocks, because the "barrier"
-will force all kids of unrelated blocks to disk as well.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+Thanks, applied, it looks better than what I wrote. I removed the ()
+part, as I'm not sure about it...
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
