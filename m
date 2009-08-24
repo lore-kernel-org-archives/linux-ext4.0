@@ -1,81 +1,86 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Enable asynchronous commits by default patch revoked?
-Date: Mon, 24 Aug 2009 17:43:36 -0600
-Message-ID: <20090824234336.GU5931@webber.adilger.int>
-References: <200908241033.10527.Christian.Fischer@easterngraphics.com>
- <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int>
- <20090824201027.GC17684@mit.edu> <4A92F7E0.9010001@redhat.com>
- <20090824220738.GG17684@mit.edu> <4A93103B.2000909@redhat.com>
- <20090824232804.GJ17684@mit.edu>
+Date: Mon, 24 Aug 2009 19:52:40 -0400
+Message-ID: <20090824235240.GL17684@mit.edu>
+References: <200908241033.10527.Christian.Fischer@easterngraphics.com> <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int> <20090824201027.GC17684@mit.edu> <4A92F7E0.9010001@redhat.com> <20090824220738.GG17684@mit.edu> <20090824224616.GR5931@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=us-ascii
 Cc: Ric Wheeler <rwheeler@redhat.com>,
 	Christian Fischer <Christian.Fischer@easterngraphics.com>,
 	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62698 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753829AbZHXXng (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 19:43:36 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7ONhW5b019769
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2009 16:43:33 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KOW00F00N80UG00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 24 Aug 2009 16:43:32 -0700 (PDT)
-In-reply-to: <20090824232804.GJ17684@mit.edu>
+Received: from thunk.org ([69.25.196.29]:39058 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753858AbZHXXw7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2009 19:52:59 -0400
+Content-Disposition: inline
+In-Reply-To: <20090824224616.GR5931@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 24, 2009  19:28 -0400, Theodore Ts'o wrote:
-> @@ -132,9 +132,7 @@ static int journal_submit_commit_record(journal_t *journal,
->  	set_buffer_uptodate(bh);
->  	bh->b_end_io = journal_end_buffer_io_sync;
->  
-> -	if (journal->j_flags & JBD2_BARRIER &&
-> -		!JBD2_HAS_INCOMPAT_FEATURE(journal,
-> -					 JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-> +	if (journal->j_flags & JBD2_BARRIER) {
->  		set_buffer_ordered(bh);
->  		barrier_done = 1;
->  	}
+On Mon, Aug 24, 2009 at 04:46:16PM -0600, Andreas Dilger wrote:
+> On Aug 24, 2009  18:07 -0400, Theodore Ts'o wrote:
+> > What ext3 and ext4 does by default is this:
+> > 
+> > 1)  Write data blocks required by data=ordered mode (if any)
+> > 
+> > 2)  Write the journal blocks
+> > 
+> > 3)  Wait for the journal blocks to be sent to disk.  (We don't actually
+> >     do a barrier operation), so this just means the blocks have been
+> >     sent to the disk, not necessarily that they are forced to a platter.
 > 
+> Hmm, I think you are missing a step here.  In both jbd and jbd2 there is
+> a wait for these buffers to hit the disk.  In the jbd case it is at
+> "commit phase 2", and in jbd2 it is at "wait_for_iobuf".
+
+That's what I meant by step 3.  We wait for the blocks to be *sent* to
+disk, but since there is no barrier operation, the disks have not
+necessarily been committed to iron oxide (or whatever alloy is used on
+HDD platters these days  :-).
+
+Without a barrier, Chris Mason has demonstrated that with a very heavy
+workload, while the system is under memory pressure, and with lots of
+fsync()'s thrown in for good measure, simply waiting for the block
+device to signal completion is **not** enough.  He has demonstrated
+filesystem corruption bad enough that fsck -p was not able to recover
+the filesystem; it required manual intervention to clear the
+filesystem corruption.  The bottom line is that modern disks *do* do
+significant reordering in their 8-32MB internal buffer, and they
+*don't* have sufficient power storage to guarantee that everything
+accepted and stored in the cache will actually be written out in the
+event of a power failure.
+
+So waiting for the block device layer to say, "OK the write is done",
+is not sufficient.
+
+> > 5)  Wait for the commit block (since a barrier is requested, this is
+> > just when it was sent to the disk, not when it is actually committed
+> > to stable store).
 > 
-> Ok, to be fair, most of the complexity was already in the code
-> already; but it the main complexity was simply separating
-> journal_write_commit_record() into journal_submit_commit_record() and
-> journal_wait_on_commit_record().    
-> 
-> We can clean up the patch by recombining these two functions, since
-> there was never any point in separate submitting the commit record
-> from where we waited for it.  I think who ever implemented thought we
-> could add a bit more paralisms, but in reality all of the code between
-> line 709 of commit.c and 834 of commit.c (i.e., commit phases 3-5) is
-> waiting for the various journal data blocks to be written.  So we
-> might as well wait for the commit block, which will save a bit of
-> scheduling overhead, using the same rationale listed in the commit
-> found in line 740 of commit.c:
-> 
->       /*
->          Wait for the buffers in reverse order.  That way we are
-> 	 less likely to be woken up until all IOs have completed, and
-> 	 so we incur less scheduling load.
->        */
+> Similarly, in the async case, all of the data blocks and the commit
+> block are waited on, AFAICS.  It's just that with async_commit the
+> commit block is submitted with the data blocks, and in case of a
+> crash the transaction checksum is needed to determine if the commit
+> block is valid or not.
 
-Without transaction checksums waiting on all of the blocks together
-is NOT safe.  If the commit record is on disk, but the rest of the
-transaction's blocks are not then during replay it may cause garbage
-to be written from the journal into the filesystem metadata.
+The key here is what is meant by "waited on".  We don't have a way for
+the HDD to tell us, "this block has hit stable store"; all we know
+that the DMA operation has completed, and the data has been posted to
+the device.
 
-Have you seen any of my other emails on this topic?  It would seem not...
+The real problem is that the cache flush operation is the only thing
+which modern disks give us to guarantee that blocks sent to the disk
+are on stable storage.  Some SCSI disks have FUA, but its semantics
+are incredibly sucky (force just this specific sector to disk,
+ignoring all hard drive optimizations or elevator optimizations), and
+very few hard drives have FUA in any case.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+What we *really* want is something where we can say, "please write
+these disk blocks tagged with tag <Foo>, in whatever order you like
+that is most optimal, and let the OS know when all blocks tagged with
+<Foo> are safely written to stable store".  Unfortunately, that's not
+a facility that HDD manufacturers are willing to give us....
 
+  	   	    		      	      	 - Ted
