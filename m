@@ -1,68 +1,62 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Mon, 24 Aug 2009 17:55:53 +0300
-Message-ID: <4A92A9F9.10706@gmail.com>
-References: <20090312092114.GC6949@elf.ucw.cz> <200903121413.04434.rob@landley.net> <20090316122847.GI2405@elf.ucw.cz> <200903161426.24904.rob@landley.net> <20090323104525.GA17969@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Enable asynchronous commits by default patch revoked?
+Date: Mon, 24 Aug 2009 12:31:19 -0600
+Message-ID: <20090824183119.GI5931@webber.adilger.int>
+References: <200908241033.10527.Christian.Fischer@easterngraphics.com>
+ <20090824133447.GH23677@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Florian Weimer <fweimer@bfk.de>, Pavel Machek <pavel@ucw.cz>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Christian Fischer <Christian.Fischer@easterngraphics.com>,
 	linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090824130125.GG23677@mit.edu>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:64936 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752463AbZHXSbc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 14:31:32 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7OIVFeO018163
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2009 11:31:29 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KOW00L008R34B00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 24 Aug 2009 11:31:15 -0700 (PDT)
+In-reply-to: <20090824133447.GH23677@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Theodore,
+On Aug 24, 2009  09:34 -0400, Theodore Ts'o wrote:
+> On Mon, Aug 24, 2009 at 10:33:10AM +0200, Christian Fischer wrote:
+> > I try to figure out reasonable mount options for ext4.
+> > 
+> > I've seen a "Enable asynchronous commits by default" patch from Sun, 21 Sep 
+> > 2008.
+> > 
+> > Why is it revoked?
+> 
+> It patch was never merged because the ayschronous commits feature
+> disabled all write barriers, so under heavy workloads a power failure
+> could cause data loss.
+> 
+> No one has gotten around to looking at this closely; I think adding a
+> strategically placed blkdev_issue_flush() will allow us to safely
+> enable this feature, but it needs careful study.
 
-thanks for the insightful writing.
+I don't think that was the issue, but rather that we wanted to have
+per-block checksums in order to handle the case were some block in
+transaction A is causing a transaction checksum failure, yet transaction
+B has already committed and begun checkpointing.
 
-On 08/24/2009 04:01 PM, Theodore Tso wrote:
+One option discussed was to add a lightweight 16-bit checksum (e.g. TCP
+checksum) to the high bits of the t_flags of the block tag.  The checksum
+doesn't have to be very strong since the whole-transaction checksum will
+be the primary point of validation.
 
-=2E..snip ...
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-> It's for this reason that I've never been completely sure how useful
-> Pavel's proposed treatise about file systems expectations really are
-> --- because all storage subsystems *usually* provide these guarantees=
-,
-> but it is the very rare storage system that *always* provides these
-> guarantees.
-
-There is a thing called eMMC (embedded MMC) in the embedded world. You
-may consider it as a non-removable MMC. This thing is a block device fr=
-om
-the Linux POW, and you may mount ext3 on top of it. And people do this.
-
-The device seems to have a decent FTL, and does not look bad.
-
-However, there are subtle things which mortals never think about. In
-case of eMMC - power cuts may make some sectors unreadable - eMMC retur=
-ns
-ECC errors on reads. Namely, the sectors which were being written at
-the very moment when the power cut happened may become unreadable.
-And this makes ext3 refuse mounting the file-system, this makes
-chkfs.ext3 refuse the file-system. Although this should be fixable in
-SW, but we did not find time to do this so far.
-
-Anyway, my point is that documenting subtle things like this is a very
-good thing to do, just because nowadays we are trying to use existing
-software with flash-based storage devices, which may violate these
-subtle assumptions, or introduce other ones.
-
-Probably, Pavel did too good job in generalizing things, and it could b=
-e
-better to make a doc about HDD vs SSD or HDD vs Flash-based-storage.
-Not sure. But the idea to document subtle FS assumption is good, IMO.
-
---=20
-Best Regards,
-Artem Bityutskiy (=D0=90=D1=80=D1=82=D1=91=D0=BC =D0=91=D0=B8=D1=82=D1=8E=
-=D1=86=D0=BA=D0=B8=D0=B9)
