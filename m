@@ -1,50 +1,48 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 V2] Direct IO for holes and fallocate: add end_io
-	callback
-Date: Mon, 24 Aug 2009 15:11:38 -0400
-Message-ID: <20090824191137.GA19624@mit.edu>
-References: <1250092470.18329.27.camel@mingming-laptop> <20090819141557.GA4705@atrey.karlin.mff.cuni.cz>
+Subject: Re: [PATCH] e4defrag: fix ppc build
+Date: Mon, 24 Aug 2009 15:38:02 -0400
+Message-ID: <20090824193802.GA17684@mit.edu>
+References: <4A9220A6.7020000@redhat.com> <87f94c370908240640n75bef581k5abe45d4f18c2f68@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <sandeen@redhat.com>
-To: Jan Kara <jack@suse.cz>
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	Kyle McMartin <kyle@mcmartin.ca>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:58044 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48399 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753204AbZHXTLn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Aug 2009 15:11:43 -0400
+	id S1753313AbZHXTiO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2009 15:38:14 -0400
 Content-Disposition: inline
-In-Reply-To: <20090819141557.GA4705@atrey.karlin.mff.cuni.cz>
+In-Reply-To: <87f94c370908240640n75bef581k5abe45d4f18c2f68@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 19, 2009 at 04:15:57PM +0200, Jan Kara wrote:
-> > +static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
-> > +			    ssize_t size, void *private)
-> > +{
-> > +        ext4_io_end_t *io_end = iocb->private;
-> > +	struct workqueue_struct *wq;
-> > +
-> > +	/* if not hole or unwritten extents, just simple return */
-> > +	if (!io_end || !size)
-> > +		return;
-> > +	io_end->offset = offset;
-> > +	io_end->size = size;
-> > +	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
-> > +
-> > +	/* We need to convert unwritten extents to written */
-> > +	queue_work(wq, &io_end->work);
-> > +
-> > +        if (is_sync_kiocb(iocb))
-> > +		flush_workqueue(wq);
->   I don't think you can flush_workqueue here. end_io is called from
-> interrupt context and flush_workqueue blocks for a long time...
-> The wait should be done in ext4_direct_IO IMHO...
+On Mon, Aug 24, 2009 at 09:40:51AM -0400, Greg Freemyer wrote:
+> On Mon, Aug 24, 2009 at 1:09 AM, Eric Sandeen<sandeen@redhat.com> wrote:
+> > From: Kyle McMartin <kyle@mcmartin.ca>
+> >
+> > ppc glibc seems to be missing sync_file_range, so we fell back
+> > to the local define, and there ppc differs as well, so the
+> > build was failing.
+> >
+> > Thanks to Kyle for the patch w/ the tidy solution.
+> >
+> > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> > ---
+> >
+> > diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+> 
+> Eric,
+> 
+> Which git repository holds e4defrag.c?  I assume it is public.
+> 
 
-I don't see a problem here?  This is a direct_io end_io callback, not
-a bio callback; so it's only called from an interrupt context in the
-async I/O case, and we only call flush_workqueue() when the kiocb is
-synchronous.
+e4defrag can be found in the 'master', 'next', and 'pu' branches of
+the e2fsprogs repository.  It's not in the 'maint' branch, so it's not
+in any of the e2fsprogs 1.41.x releases.  The 'master' branch contains
+the in-development work that will be showing up in e2fsprogs 1.42; so
+far the big things that there is the on-going merge 64-bit block
+number support, and e4defrag.
 
 							- Ted
