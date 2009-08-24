@@ -1,56 +1,67 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e4defrag: fix ppc build
-Date: Sun, 23 Aug 2009 22:09:58 -0700
-Message-ID: <4A9220A6.7020000@redhat.com>
+From: Nick Piggin <npiggin@suse.de>
+Subject: [patch] ext2: convert to use the new truncate convention fix
+Date: Mon, 24 Aug 2009 07:30:06 +0200
+Message-ID: <20090824053006.GP25721@wotan.suse.de>
+References: <20090820163504.131529718@suse.de> <20090820164051.246741046@suse.de> <20090821134207.GA20935@atrey.karlin.mff.cuni.cz> <20090821140659.GC20935@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Kyle McMartin <kyle@mcmartin.ca>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([209.173.210.139]:12679 "EHLO mail.sandeen.net"
+Received: from cantor.suse.de ([195.135.220.2]:37872 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249AbZHXFJ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Aug 2009 01:09:59 -0400
+	id S1751422AbZHXFaF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2009 01:30:05 -0400
+Content-Disposition: inline
+In-Reply-To: <20090821140659.GC20935@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Kyle McMartin <kyle@mcmartin.ca>
+On Fri, Aug 21, 2009 at 04:06:59PM +0200, Jan Kara wrote:
+> >   Hi,
+> > 
+> > > I also have commented a possible bug in existing ext2 code, marked with XXX.
+> >   Looks good, except:
+> > 
+> > > +int ext2_setsize(struct inode *inode, loff_t newsize)
+> >   This could be static.
+> > 
+> > > @@ -1459,8 +1540,15 @@ int ext2_setattr(struct dentry *dentry,
+> > >  		if (error)
+> > >  			return error;
+> > >  	}
+> > > -	error = inode_setattr(inode, iattr);
+> > > +	if (iattr->ia_valid & ATTR_SIZE) {
+> > > +		error = ext2_setsize(inode, iattr->ia_size);
+> > > +		if (error)
+> > > +			return error;
+> > > +	}
+> > > +	generic_setattr(inode, iattr);
+> >   Here, we should store the error code I suppose...
+>   Ah, I was confused. generic_setattr() returns void. But then remove
+> the check !error from:
+>   if (!error && (iattr->ia_valid & ATTR_MODE))
+> which just follows the generic_setattr(). That's what made me think
+> generic_setattr() returns something :)
 
-ppc glibc seems to be missing sync_file_range, so we fell back
-to the local define, and there ppc differs as well, so the
-build was failing.
+Yep, good suggestion. Andrew please add this incremental patch
 
-Thanks to Kyle for the patch w/ the tidy solution.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
+ fs/ext2/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 4c83fa3..23f01b8 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -305,8 +305,10 @@ static int posix_fadvise(int fd, loff_t offset, size_t len, int advise)
- #warning Using locally defined sync_file_range interface.
+Index: linux-2.6/fs/ext2/inode.c
+===================================================================
+--- linux-2.6.orig/fs/ext2/inode.c
++++ linux-2.6/fs/ext2/inode.c
+@@ -1546,7 +1546,7 @@ int ext2_setattr(struct dentry *dentry,
+ 			return error;
+ 	}
+ 	generic_setattr(inode, iattr);
+-	if (!error && (iattr->ia_valid & ATTR_MODE))
++	if (iattr->ia_valid & ATTR_MODE)
+ 		error = ext2_acl_chmod(inode);
+ 	mark_inode_dirty(inode);
  
- #ifndef __NR_sync_file_range
-+#ifndef __NR_sync_file_range2 /* ppc */
- #error Your kernel headers dont define __NR_sync_file_range
- #endif
-+#endif
- 
- /*
-  * sync_file_range() -	Sync file region.
-@@ -318,7 +320,11 @@ static int posix_fadvise(int fd, loff_t offset, size_t len, int advise)
-  */
- int sync_file_range(int fd, loff_t offset, loff_t length, unsigned int flag)
- {
-+#ifdef __NR_sync_file_range
- 	return syscall(__NR_sync_file_range, fd, offset, length, flag);
-+#else
-+	return syscall(__NR_sync_file_range2, fd, flag, offset, length);
-+#endif
- }
- #endif /* ! HAVE_SYNC_FILE_RANGE */
- 
-
