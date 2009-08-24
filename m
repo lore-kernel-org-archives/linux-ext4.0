@@ -1,72 +1,56 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: [PATCH] blkid: support .ko.gz in modules.dep parser
-Date: Sun, 23 Aug 2009 21:13:56 +0200
-Message-ID: <1251054836-5708-1-git-send-email-kzak@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Karel Zak <kzak@redhat.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e4defrag: fix ppc build
+Date: Sun, 23 Aug 2009 22:09:58 -0700
+Message-ID: <4A9220A6.7020000@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Kyle McMartin <kyle@mcmartin.ca>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49288 "EHLO mx1.redhat.com"
+Received: from sandeen.net ([209.173.210.139]:12679 "EHLO mail.sandeen.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933621AbZHWTN6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Aug 2009 15:13:58 -0400
+	id S1751249AbZHXFJ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2009 01:09:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The Linux kernel modules could be compressed, it means modules.dep
-parser in libblid has to support .ko.gz extension too.
+From: Kyle McMartin <kyle@mcmartin.ca>
 
-(Note, I've talked about this problem with Jon Masters and his
-suggestion is to exec(/sbin/modinfo) rather than directly parse
-modules.dep. BTW, the modules.dep file is deprecated.)
+ppc glibc seems to be missing sync_file_range, so we fell back
+to the local define, and there ppc differs as well, so the
+build was failing.
 
-Address-Red-Hat-Bug: #518572
-Signed-off-by: Karel Zak <kzak@redhat.com>
+Thanks to Kyle for the patch w/ the tidy solution.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- lib/blkid/probe.c |   17 ++++++++---------
- 1 files changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
-index 8f6cfa6..6b75732 100644
---- a/lib/blkid/probe.c
-+++ b/lib/blkid/probe.c
-@@ -208,8 +208,8 @@ static int check_for_modules(const char *fs_name)
- #ifdef __linux__
- 	struct utsname	uts;
- 	FILE		*f;
--	char		buf[1024], *cp, *t;
--	int		i;
-+	char		buf[1024], *cp;
-+	int		namesz;
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 4c83fa3..23f01b8 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -305,8 +305,10 @@ static int posix_fadvise(int fd, loff_t offset, size_t len, int advise)
+ #warning Using locally defined sync_file_range interface.
  
- 	if (uname(&uts))
- 		return (0);
-@@ -218,6 +218,9 @@ static int check_for_modules(const char *fs_name)
- 	f = fopen(buf, "r");
- 	if (!f)
- 		return (0);
-+
-+	namesz = strlen(fs_name);
-+
- 	while (!feof(f)) {
- 		if (!fgets(buf, sizeof(buf), f))
- 			break;
-@@ -229,13 +232,9 @@ static int check_for_modules(const char *fs_name)
- 			cp++;
- 		else
- 			cp = buf;
--		i = strlen(cp);
--		if (i > 3) {
--			t = cp + i - 3;
--			if (!strcmp(t, ".ko"))
--				*t = 0;
--		}
--		if (!strcmp(cp, fs_name)) {
-+		if (!strncmp(cp, fs_name, namesz) &&
-+		    (!strcmp(cp + namesz, ".ko") ||
-+		     !strcmp(cp + namesz, ".ko.gz"))) {
- 			fclose(f);
- 			return (1);
- 		}
--- 
-1.6.2.5
+ #ifndef __NR_sync_file_range
++#ifndef __NR_sync_file_range2 /* ppc */
+ #error Your kernel headers dont define __NR_sync_file_range
+ #endif
++#endif
+ 
+ /*
+  * sync_file_range() -	Sync file region.
+@@ -318,7 +320,11 @@ static int posix_fadvise(int fd, loff_t offset, size_t len, int advise)
+  */
+ int sync_file_range(int fd, loff_t offset, loff_t length, unsigned int flag)
+ {
++#ifdef __NR_sync_file_range
+ 	return syscall(__NR_sync_file_range, fd, offset, length, flag);
++#else
++	return syscall(__NR_sync_file_range2, fd, flag, offset, length);
++#endif
+ }
+ #endif /* ! HAVE_SYNC_FILE_RANGE */
+ 
 
