@@ -1,67 +1,52 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: [patch] ext2: convert to use the new truncate convention fix
-Date: Mon, 24 Aug 2009 07:30:06 +0200
-Message-ID: <20090824053006.GP25721@wotan.suse.de>
-References: <20090820163504.131529718@suse.de> <20090820164051.246741046@suse.de> <20090821134207.GA20935@atrey.karlin.mff.cuni.cz> <20090821140659.GC20935@atrey.karlin.mff.cuni.cz>
+From: Florian Weimer <fweimer@bfk.de>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
+Date: Mon, 24 Aug 2009 11:19:01 +0000
+Message-ID: <82k50tjw7u.fsf@mid.bfk.de>
+References: <20090312092114.GC6949@elf.ucw.cz>
+	<200903121413.04434.rob@landley.net>
+	<20090316122847.GI2405@elf.ucw.cz>
+	<200903161426.24904.rob@landley.net>
+	<20090323104525.GA17969@elf.ucw.cz>
+	<87ljqn82zc.fsf@frosties.localdomain>
+	<20090824093143.GD25591@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:37872 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751422AbZHXFaF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Aug 2009 01:30:05 -0400
-Content-Disposition: inline
-In-Reply-To: <20090821140659.GC20935@atrey.karlin.mff.cuni.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <20090824093143.GD25591@elf.ucw.cz> (Pavel Machek's message of "Mon\, 24 Aug 2009 11\:31\:43 +0200")
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 21, 2009 at 04:06:59PM +0200, Jan Kara wrote:
-> >   Hi,
-> > 
-> > > I also have commented a possible bug in existing ext2 code, marked with XXX.
-> >   Looks good, except:
-> > 
-> > > +int ext2_setsize(struct inode *inode, loff_t newsize)
-> >   This could be static.
-> > 
-> > > @@ -1459,8 +1540,15 @@ int ext2_setattr(struct dentry *dentry,
-> > >  		if (error)
-> > >  			return error;
-> > >  	}
-> > > -	error = inode_setattr(inode, iattr);
-> > > +	if (iattr->ia_valid & ATTR_SIZE) {
-> > > +		error = ext2_setsize(inode, iattr->ia_size);
-> > > +		if (error)
-> > > +			return error;
-> > > +	}
-> > > +	generic_setattr(inode, iattr);
-> >   Here, we should store the error code I suppose...
->   Ah, I was confused. generic_setattr() returns void. But then remove
-> the check !error from:
->   if (!error && (iattr->ia_valid & ATTR_MODE))
-> which just follows the generic_setattr(). That's what made me think
-> generic_setattr() returns something :)
+* Pavel Machek:
 
-Yep, good suggestion. Andrew please add this incremental patch
+> +Linux block-backed filesystems can only work correctly when several
+> +conditions are met in the block layer and below (disks, flash
+> +cards). Some of them are obvious ("data on media should not change
+> +randomly"), some are less so.
 
----
- fs/ext2/inode.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+You should make clear that the file lists per-file-system rules and
+that some file sytems can recover from some of the error conditions.
 
-Index: linux-2.6/fs/ext2/inode.c
-===================================================================
---- linux-2.6.orig/fs/ext2/inode.c
-+++ linux-2.6/fs/ext2/inode.c
-@@ -1546,7 +1546,7 @@ int ext2_setattr(struct dentry *dentry,
- 			return error;
- 	}
- 	generic_setattr(inode, iattr);
--	if (!error && (iattr->ia_valid & ATTR_MODE))
-+	if (iattr->ia_valid & ATTR_MODE)
- 		error = ext2_acl_chmod(inode);
- 	mark_inode_dirty(inode);
- 
+> +* don't damage the old data on a failed write (ATOMIC-WRITES)
+> +
+> +	(Thrash may get written into sectors during powerfail.  And
+> +	ext3 handles this surprisingly well at least in the
+> +	catastrophic case of garbage getting written into the inode
+> +	table, since the journal replay often will "repair" the
+> +	garbage that was written into the filesystem metadata blocks.
+
+Isn't this by design?  In other words, if the metadata doesn't survive
+non-atomic writes, wouldn't it be an ext3 bug?
+
+--=20
+=46lorian Weimer                <fweimer@bfk.de>
+BFK edv-consulting GmbH       http://www.bfk.de/
+Kriegsstra=DFe 100              tel: +49-721-96201-1
+D-76133 Karlsruhe             fax: +49-721-96201-99
