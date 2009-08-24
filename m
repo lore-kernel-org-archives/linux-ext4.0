@@ -1,143 +1,104 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Mon, 24 Aug 2009 18:05:45 -0400
-Message-ID: <4A930EB9.8030903@redhat.com>
-References: <200903161426.24904.rob@landley.net> <20090323104525.GA17969@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Enable asynchronous commits by default patch revoked?
+Date: Mon, 24 Aug 2009 18:07:39 -0400
+Message-ID: <20090824220738.GG17684@mit.edu>
+References: <200908241033.10527.Christian.Fischer@easterngraphics.com> <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int> <20090824201027.GC17684@mit.edu> <4A92F7E0.9010001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	Christian Fischer <Christian.Fischer@easterngraphics.com>,
 	linux-ext4@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753809AbZHXWGj@vger.kernel.org>
-In-Reply-To: <20090824212518.GF29763@elf.ucw.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:55512 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753526AbZHXWH6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Aug 2009 18:07:58 -0400
+Content-Disposition: inline
+In-Reply-To: <4A92F7E0.9010001@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Pavel Machek wrote:
-> Hi!
+On Mon, Aug 24, 2009 at 04:28:16PM -0400, Ric Wheeler wrote:
 >
->   
->>> I can reproduce data loss with ext3 on flashcard in about 40
->>> seconds. I'd not call that "odd event". It would be nice to handle
->>> that, but that is hard. So ... can we at least get that documented
->>> please?
->>>   
->>>       
->> Part of documenting best practices is to put down very specific things  
->> that do/don't work. What I worry about is producing too much detail to  
->> be of use for real end users.
->>     
+> My issue with the async commit is that it is basically a detection  
+> mechanism.
 >
-> Well, I was trying to write for kernel audience. Someone can turn that
-> into nice end-user manual.
->   
+> Drives will (almost always) write to platter sequential writes in order.  
+> Async commit lets us send down things out of order which means that we  
+> have a wider window of "bad state" for any given transaction...
 
-Kernel people who don't do storage or file systems will still need a 
-summary - making very specific proposals based on real data and analysis 
-is useful.
->   
->> I have to admit that I have not paid enough attention to this specifics  
->> of your ext3 + flash card issue - is it the ftl stuff doing out of order  
->> IO's? 
->>     
->
-> The problem is that flash cards destroy whole erase block on unplug,
-> and ext3 can't cope with that.
->
->   
+Sure, agreed.  But let's look a bit closer at what "async commit"
+really means.
 
-Even if you unmount the file system? Why isn't this an issue with ext2?
+What ext3 and ext4 does by default is this:
 
-Sounds like you want to suggest very specifically that journalled file 
-systems are not appropriate for low end flash cards (which seems quite 
-reasonable).
->>> _All_ flash cards (MMC, USB, SD) had the problems. You don't need to
->>> get clear grasp on trends. Those cards just don't meet ext3
->>> expectations, and if you pull them, you get data loss.
->>>   
->>>       
->> Pull them even after an unmount, or pull them hot?
->>     
->
-> Pull them hot.
->
-> [Some people try -osync to avoid data loss on flash cards... that will
-> not do the trick. Flashcard will still kill the eraseblock.]
->   
+1)  Write data blocks required by data=ordered mode (if any)
 
-Pulling hot any device will cause data loss for recent data loss, even 
-with ext2 you will have data in the page cache, right?
->   
->>>> Nothing is perfect. It is still a trade off between storage 
->>>> utilization  (how much storage we give users for say 5 2TB drives), 
->>>> performance and  costs (throw away any disks over 2 years old?).
->>>>     
->>>>         
->>> "Nothing is perfect"?! That's design decision/problem in raid5/ext3. I
->>> believe that should be at least documented. (And understand why ZFS is
->>> interesting thing).
->>>   
->>>       
->> Your statement is overly broad - ext3 on a commercial RAID array that  
->> does RAID5 or RAID6, etc has no issues that I know of.
->>     
->
-> If your commercial RAID array is battery backed, maybe. But I was
-> talking Linux MD here.
->   
+2)  Write the journal blocks
 
-Many people in the real world who use RAID5 (for better or worse) use 
-external raid cards or raid arrays, so you need to be very specific.
->   
->>> And I still use my zaurus with crappy DRAM.
->>>
->>> I would not trust raid5 array with my data, for multiple
->>> reasons. The fact that degraded raid5 breaks ext3 assumptions should
->>> really be documented.
->>>       
->> Again, you say RAID5 without enough specifics.  Are you pointing just at  
->> MD RAID5 on S-ATA? Hardware RAID cards? A specific commercial RAID5 
->> vendor?
->>     
->
-> Degraded MD RAID5 on anything, including SATA, and including
-> hypothetical "perfect disk".
->   
+3)  Wait for the journal blocks to be sent to disk.  (We don't actually
+do a barrier operation), so this just means the blocks have been sent
+to the disk, not necessarily that they are forced to a platter.
 
-Degraded is one faulted drive while MD is doing a rebuild? And then you 
-hot unplug it or power cycle? I think that would certainly cause failure 
-for ext2 as well (again, you would lose any data in the page cache).
->   
->>> The papers show failures in "once a year" range. I have "twice a
->>> minute" failure scenario with flashdisks.
->>>
->>> Not sure how often "degraded raid5 breaks ext3 atomicity" would bite,
->>> but I bet it would be on "once a day" scale.
->>>
->>> We should document those.
->>>       
->> Documentation is fine with sufficient, hard data....
->>     
->
-> Degraded MD RAID5 does not work by design; whole stripe will be
-> damaged on powerfail or reset or kernel bug, and ext3 can not cope
-> with that kind of damage. [I don't see why statistics should be
-> neccessary for that; the same way we don't need statistics to see that
-> ext2 needs fsck after powerfail.]
-> 									Pavel
->   
-What you are describing is a double failure and RAID5 is not double 
-failure tolerant regardless of the file system type....
+4)  Write the commit block, with the barrier flag set.
 
-I don't want to be overly negative since getting good documentation is 
-certainly very useful. We just need to be document things correctly 
-based on real data.
+5)  Wait for the commit block.
 
-Ric
+-----
+
+What the current async commit code does is this:
+
+1)  Write data blocks required by data=ordered mode (if any)
+
+2)  Write the journal blocks
+
+3)  Write the commit block, without a barrier.
+
+4)  Wait for the journal blocks to be sent to disk.
+
+5)  Wait for the commit block (since a barrier is requested, this is
+just when it was sent to the disk, not when it is actually committed
+to stable store).
+
+Since there are no barriers at all, the async mount option basically
+works the same as barriers=0, and is subject to exactly the same
+problems as barrier=0 --- problems which I've actually demonstrated
+exist in practice.
+
+----
+
+What I think we can do safely in ext4 is this:
+
+1)  Write data blocks required by data=ordered mode (if any)
+
+2)  Write the journal blocks
+
+3)  Write the commit block, WITH a barrier requested.
+
+4)  Wait for the commit block to be completed.
+
+5)  Wait for the journal blocks to be sent to disk.  #4 implies that
+all of the journal block I/O will have been completed, so this is just
+to collect the commit completion status; we should actually block
+during step #5, assuming the block layer's barrier operation was
+implemented correctly.
+
+
+This should save us a little bit, since it implies the commit record
+will be sent to disk in the same I/O request to the storage device as
+the the other journal blocks, which is _not_ currently the case today.
+
+
+Technically, what ext3 does today could result in problems, since
+without the barrier between the journal blocks and the commit block,
+the two could theoretically get reordered by the disk such that the
+commit block is written before the journal blocks are completely
+written --- and since ext3 doesn't have journal checksumming, this
+would never be noticed.  Fortunately in practice this generally won't
+happen since the commit block is adjacent to the rest of the journal
+blocks, so a sane disk drive will likely coalesce the two write
+requests together.
+
+						- Ted
+
