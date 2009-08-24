@@ -1,102 +1,67 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Mon, 24 Aug 2009 23:25:19 +0200
-Message-ID: <20090824212518.GF29763@elf.ucw.cz>
-References: <200903161426.24904.rob@landley.net> <20090323104525.GA17969@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Enable asynchronous commits by default patch revoked?
+Date: Mon, 24 Aug 2009 15:28:40 -0600
+Message-ID: <20090824212840.GN5931@webber.adilger.int>
+References: <200908241033.10527.Christian.Fischer@easterngraphics.com>
+ <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int>
+ <20090824201027.GC17684@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Christian Fischer <Christian.Fischer@easterngraphics.com>,
 	linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4A930160.8060508@redhat.com>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:41152 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751080AbZHXV2f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 17:28:35 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7OLSaAT008755
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2009 14:28:36 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KOW00500GU2M500@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 24 Aug 2009 14:28:36 -0700 (PDT)
+In-reply-to: <20090824201027.GC17684@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+On Aug 24, 2009  16:10 -0400, Theodore Ts'o wrote:
+> However, even if we add even if we add per-block checksums, there is
+> still the problem that there is logic in the jbd layer where we avoid
+> reusing certain blocks until we are sure the transaction has
+> committed.  With asynchronous commits, there is no way of knowing when
+> it is safe to reuse those blocks.  
 
->> I can reproduce data loss with ext3 on flashcard in about 40
->> seconds. I'd not call that "odd event". It would be nice to handle
->> that, but that is hard. So ... can we at least get that documented
->> please?
->>   
->
-> Part of documenting best practices is to put down very specific things  
-> that do/don't work. What I worry about is producing too much detail to  
-> be of use for real end users.
+AFAIK, "async commits" are not wholly async.  There is still a wait
+for the transaction commit block to hit the disk before calling the
+transaction committed.  The main improvement with "async commits" is
+that JBD only waits ONCE for both the transaction data blocks and the
+commit block (which are submitted at the same time).  In particular
+note that there is an unconditional wait on the commit block for
+every transaction commit.
 
-Well, I was trying to write for kernel audience. Someone can turn that
-into nice end-user manual.
+JBD currently submits the transaction data and waits once for them
+to complete, and then submits the commit block and waits a second time
+for it to complete, which is 2x latency for every transaction.
 
-> I have to admit that I have not paid enough attention to this specifics  
-> of your ext3 + flash card issue - is it the ftl stuff doing out of order  
-> IO's? 
 
-The problem is that flash cards destroy whole erase block on unplug,
-and ext3 can't cope with that.
+> Looking at the code, the best we can do in the short-term is to write
+> the commit record where we do, but do so with a barrier requested, and
+> then wait for the commit block where we do.  This will provide some
+> performance improvement, since we won't wait for all of the journal
+> blocks to be sent to disk before writing the commit record.
 
->> _All_ flash cards (MMC, USB, SD) had the problems. You don't need to
->> get clear grasp on trends. Those cards just don't meet ext3
->> expectations, and if you pull them, you get data loss.
->>   
-> Pull them even after an unmount, or pull them hot?
+The big problem with Linux "barriers" is that they are actually cache
+flushes, so are worse than just having the original code that waits
+for completion of the actual journal blocks, because the "barrier"
+will force all kids of unrelated blocks to disk as well.
 
-Pull them hot.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-[Some people try -osync to avoid data loss on flash cards... that will
-not do the trick. Flashcard will still kill the eraseblock.]
-
->>> Nothing is perfect. It is still a trade off between storage 
->>> utilization  (how much storage we give users for say 5 2TB drives), 
->>> performance and  costs (throw away any disks over 2 years old?).
->>>     
->>
->> "Nothing is perfect"?! That's design decision/problem in raid5/ext3. I
->> believe that should be at least documented. (And understand why ZFS is
->> interesting thing).
->>   
-> Your statement is overly broad - ext3 on a commercial RAID array that  
-> does RAID5 or RAID6, etc has no issues that I know of.
-
-If your commercial RAID array is battery backed, maybe. But I was
-talking Linux MD here.
-
->> And I still use my zaurus with crappy DRAM.
->>
->> I would not trust raid5 array with my data, for multiple
->> reasons. The fact that degraded raid5 breaks ext3 assumptions should
->> really be documented.
->
-> Again, you say RAID5 without enough specifics.  Are you pointing just at  
-> MD RAID5 on S-ATA? Hardware RAID cards? A specific commercial RAID5 
-> vendor?
-
-Degraded MD RAID5 on anything, including SATA, and including
-hypothetical "perfect disk".
-
->> The papers show failures in "once a year" range. I have "twice a
->> minute" failure scenario with flashdisks.
->>
->> Not sure how often "degraded raid5 breaks ext3 atomicity" would bite,
->> but I bet it would be on "once a day" scale.
->>
->> We should document those.
->
-> Documentation is fine with sufficient, hard data....
-
-Degraded MD RAID5 does not work by design; whole stripe will be
-damaged on powerfail or reset or kernel bug, and ext3 can not cope
-with that kind of damage. [I don't see why statistics should be
-neccessary for that; the same way we don't need statistics to see that
-ext2 needs fsck after powerfail.]
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
