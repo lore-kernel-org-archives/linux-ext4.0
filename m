@@ -1,61 +1,89 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Pavel Machek <pavel@ucw.cz>
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
 	possible
-Date: Mon, 24 Aug 2009 18:39:15 -0400
-Message-ID: <20090824223915.GI17684@mit.edu>
-References: <20090323104525.GA17969@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz>
+Date: Tue, 25 Aug 2009 00:41:54 +0200
+Message-ID: <20090824224154.GH29763@elf.ucw.cz>
+References: <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <4A930EB9.8030903@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Florian Weimer <fweimer@bfk.de>,
+Cc: Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:58480 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753617AbZHXWmB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Aug 2009 18:42:01 -0400
 Content-Disposition: inline
-In-Reply-To: <20090824212518.GF29763@elf.ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4A930EB9.8030903@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 24, 2009 at 11:25:19PM +0200, Pavel Machek wrote:
-> > I have to admit that I have not paid enough attention to this specifics  
-> > of your ext3 + flash card issue - is it the ftl stuff doing out of order  
-> > IO's? 
-> 
-> The problem is that flash cards destroy whole erase block on unplug,
-> and ext3 can't cope with that.
+>>> I have to admit that I have not paid enough attention to this 
+>>> specifics  of your ext3 + flash card issue - is it the ftl stuff 
+>>> doing out of order  IO's?     
+>>
+>> The problem is that flash cards destroy whole erase block on unplug,
+>> and ext3 can't cope with that.
+>
+> Even if you unmount the file system? Why isn't this an issue with
+> ext2?
 
-Sure --- but name **any** filesystem that can deal with the fact that
-128k or 256k worth of data might disappear when you pull out the flash
-card while it is writing a single sector? 
+No, I'm talking hot unplug here. It is the issue with ext2, but ext2
+will run fsck on next mount, making it less severe.
 
-> > Your statement is overly broad - ext3 on a commercial RAID array that  
-> > does RAID5 or RAID6, etc has no issues that I know of.
-> 
-> If your commercial RAID array is battery backed, maybe. But I was
-> talking Linux MD here.
 
-It's not just high end RAID arrays that have battery backups; I happen
-to use a mid-range hardware RAID card that comes with a battery
-backup.   It's just a matter of choosing your hardware carefully.
+>>> Pull them even after an unmount, or pull them hot?
+>>>     
+>>
+>> Pull them hot.
+>>
+>> [Some people try -osync to avoid data loss on flash cards... that will
+>> not do the trick. Flashcard will still kill the eraseblock.]
+>
+> Pulling hot any device will cause data loss for recent data loss, even  
+> with ext2 you will have data in the page cache, right?
 
-If your concern is that with Linux MD, you could potentially lose an
-entire stripe in RAID 5 mode, then you should say that explicitly; but
-again, this isn't a filesystem specific cliam; it's true for all
-filesystems.  I don't know of any file system that can survive having
-a RAID stripe-shaped-hole blown into the middle of it due to a power
-failure.
+Right. But in ext3 case you basically loose whole filesystem, because
+fs is inconsistent and you did not run fsck.
 
-I'll note, BTW, that AIX uses a journal to protect against these sorts
-of problems with software raid; this also means that with AIX, you
-also don't have to rebuild a RAID 1 device after an unclean shutdown,
-like you have do with Linux MD.  This was on the EVMS's team
-development list to implement for Linux, but it got canned after LVM
-won out, lo those many years ago.  Ce la vie; but it's a problem which
-is solvable at the RAID layer, and which is traditionally and
-historically solved in competent RAID implementations.
+>>> Again, you say RAID5 without enough specifics.  Are you pointing just 
+>>> at  MD RAID5 on S-ATA? Hardware RAID cards? A specific commercial 
+>>> RAID5 vendor?
+>>>     
+>>
+>> Degraded MD RAID5 on anything, including SATA, and including
+>> hypothetical "perfect disk".
+>
+> Degraded is one faulted drive while MD is doing a rebuild? And then you  
+> hot unplug it or power cycle? I think that would certainly cause failure  
+> for ext2 as well (again, you would lose any data in the page cache).
 
-							- Ted
+Losing data in page cache is expected. Losing fs consistency is not.
+
+>> Degraded MD RAID5 does not work by design; whole stripe will be
+>> damaged on powerfail or reset or kernel bug, and ext3 can not cope
+>> with that kind of damage. [I don't see why statistics should be
+>> neccessary for that; the same way we don't need statistics to see that
+>> ext2 needs fsck after powerfail.]
+
+> What you are describing is a double failure and RAID5 is not double  
+> failure tolerant regardless of the file system type....
+
+You get single disk failure then powerfail (or reset or kernel
+panic). I would not call that double failure. I agree that it will
+mean problems for most filesystems.
+
+Anyway, even if that can be called a double failure, this limitation
+should be clearly documented somewhere.
+
+...and that's exactly what I'm trying to fix.
+								Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
