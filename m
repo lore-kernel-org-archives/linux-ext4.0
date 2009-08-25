@@ -1,13 +1,12 @@
-From: david@lang.hm
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Tue, 25 Aug 2009 16:46:15 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.0908251629250.28411@asgard.lang.hm>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz>
- <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [patch] document flash/RAID dangers
+Date: Tue, 25 Aug 2009 19:48:09 -0400
+Message-ID: <4A947839.4010601@redhat.com>
+References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
@@ -17,83 +16,59 @@ Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
 To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090825232601.GF4300@elf.ucw.cz>
+In-Reply-To: <20090825233701.GH4300@elf.ucw.cz>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 26 Aug 2009, Pavel Machek wrote:
 
->>>> Basically, any file system (Linux, windows, OSX, etc) that writes into
->>>> the page cache will lose data when you hot unplug its storage. End of
->>>> story, don't do it!
->>>
->>> No, not ext3 on SATA disk with barriers on and proper use of
->>> fsync(). I actually tested that.
->>>
->>> Yes, I should be able to hotunplug SATA drives and expect the data
->>> that was fsync-ed to be there.
->>
->> You can and will lose data (even after fsync) with any type of storage at
->> some rate. What you are missing here is that data loss needs to be
->> measured in hard numbers - say percentage of installed boxes that have
->> config X that lose data.
->
-> I'm talking "by design" here.
->
-> I will lose data even on SATA drive that is properly powered on if I
-> wait 5 years.
->
->> I can promise you that hot unplugging and replugging a S-ATA drive will
->> also lose you data if you are actively writing to it (ext2, 3, whatever).
->
-> I can promise you that running S-ATA drive will also lose you data,
-> even if you are not actively writing to it. Just wait 10 years; so
-> what is your point?
->
-> But ext3 is _designed_ to preserve fsynced data on SATA drive, while
-> it is _not_ designed to preserve fsynced data on MD RAID5.
+> ---
+> There are storage devices that high highly undesirable properties
+> when they are disconnected or suffer power failures while writes are
+> in progress; such devices include flash devices and MD RAID 4/5/6
+> arrays.  These devices have the property of potentially
+> corrupting blocks being written at the time of the power failure, and
+> worse yet, amplifying the region where blocks are corrupted such that
+> additional sectors are also damaged during the power failure.
 
-substatute 'degraded MD RAID 5' for 'MD RAID 5' and you have a point here. 
-although the language you are using is pretty harsh. you make it sound 
-like this is a problem with ext3 when the filesystem has nothing to do 
-with it. the problem is that a degraded raid 5 array can be corrupted by 
-an additional failure.
+I would strike the entire mention of MD devices since it is your assertion, not 
+a proven fact. You will cause more data loss from common events (single sector 
+errors, complete drive failure) by steering people away from more reliable 
+storage configurations because of a really rare edge case (power failure during 
+split write to two raid members while doing a RAID rebuild).
 
-> Do you really think that's not a difference?
 >
->>>>>> I don't object to making that general statement - "Don't hot unplug a
->>>>>> device with an active file system or actively used raw device" - but
->>>>>> would object to the overly general statement about ext3 not working on
->>>>>> flash, RAID5 not working, etc...
->>>>>
->>>>> You can object any way you want, but running ext3 on flash or MD RAID5
->>>>> is stupid:
->>>>>
->>>>> * ext2 would be faster
->>>>>
->>>>> * ext2 would provide better protection against powerfail.
->>>>
->>>> Not true in the slightest, you continue to ignore the ext2/3/4 developers
->>>> telling you that it will lose data.
->>>
->>> I know I will lose data. Both ext2 and ext3 will lose data on
->>> flashdisk. (That's what I'm trying to document). But... what is the
->>> benefit of ext3 journaling on MD RAID5? (On flash, ext3 at least
->>> protects you against kernel panic. MD RAID5 is in software, so... that
->>> additional protection is just not there).
->>
->> Faster recovery time on any normal kernel crash or power outage.  Data
->> loss would be equivalent with or without the journal.
+> Users who use such storage devices are well advised take
+> countermeasures, such as the use of Uninterruptible Power Supplies,
+> and making sure the flash device is not hot-unplugged while the device
+> is being used.  Regular backups when using these devices is also a
+> Very Good Idea.
+
+All users who care about data integrity - including those who do not use MD5 but 
+just regular single S-ATA disks - will get better reliability from a UPS.
+
+
 >
-> No, because you'll actually repair the ext2 with fsck after the kernel
-> crash or power outage. Data loss will not be equivalent; in particular
-> you'll not lose data writen _after_ power outage to ext2.
+> Otherwise, file systems placed on these devices can suffer silent data
+> and file system corruption.  An forced use of fsck may detect metadata
+> corruption resulting in file system corruption, but will not suffice
+> to detect data corruption.
+>
 
-by the way, while you are thinking about failures that can happen from a 
-failed write corrupting additional blocks, think about the nightmare that 
-can happen if those blocks are in the journal.
+This is very misleading. All storage "can" have silent data loss, you are making 
+a statement without specifics about frequency.
 
-the 'repair' of ext2 by a fsck is actually much less than you are thinking 
-that it is.
+FSCK can repair the file system metadata, but will not detect any data loss or 
+corruption in the data blocks allocated to user files. To detect data loss 
+properly, you need to checksum (or digitally sign) all objects stored in a file 
+system and verify them on a regular basis.
 
-David Lang
+Also helps to keep a separate list of those objects on another device so that 
+when the metadata does take a hit, you can enumerate your objects and verify 
+that you have not lost anything.
+
+ric
+
+
+ric
+
+
