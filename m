@@ -1,59 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Tue, 25 Aug 2009 20:45:20 +0200
-Message-ID: <20090825184520.GA24729@duck.novell.com>
-References: <20090312092114.GC6949@elf.ucw.cz> <87ljqn82zc.fsf@frosties.localdomain> <20090824093143.GD25591@elf.ucw.cz> <200908241611.10400.rob@landley.net> <20090824213312.GG29763@elf.ucw.cz>
+From: Rob Landley <rob@landley.net>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
+Date: Tue, 25 Aug 2009 13:52:09 -0500
+Message-ID: <200908251352.11959.rob@landley.net>
+References: <20090312092114.GC6949@elf.ucw.cz> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Rob Landley <rob@landley.net>, jack@suse.cz,
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
+	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755551AbZHYSpX@vger.kernel.org>
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4A92F6FC.4060907@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20090824213312.GG29763@elf.ucw.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 24-08-09 23:33:12, Pavel Machek wrote:
-> On Mon 2009-08-24 16:11:08, Rob Landley wrote:
-> > On Monday 24 August 2009 04:31:43 Pavel Machek wrote:
-> > > Running journaling filesystem such as ext3 over flashdisk or degraded
-> > > RAID array is a bad idea: journaling guarantees no longer apply and
-> > > you will get data corruption on powerfail.
-> > >
-> > > We can't solve it easily, but we should certainly warn the users. I
-> > > actually lost data because I did not understand these limitations...
-> > >
-> > > Signed-off-by: Pavel Machek <pavel@ucw.cz>
-> > 
-> > Acked-by: Rob Landley <rob@landley.net>
-> > 
-> > With a couple comments:
-> > 
-> > > +* write caching is disabled. ext2 does not know how to issue barriers
-> > > +  as of 2.6.28. hdparm -W0 disables it on SATA disks.
-> > 
-> > It's coming up on 2.6.31, has it learned anything since or should that version 
-> > number be bumped?
-> 
-> Jan, did those "barrier for ext2" patches get merged? 
-  No, they did not. We were discussing how to be able to enable / disable
-sending barriers, someone told he'd implement it but it somehow never got
-beyond an initial attempt.
-  Actually, after recent sync cleanups (and when my O_SYNC cleanups get
-merged) it should be pretty easy because every filesystem now has ->fsync()
-and ->sync_fs() callback so we just have to add sending barriers to these
-two functions and implement possibility to set via sysfs that barriers on the
-block device should be ignored.
-  I've put it to my todo list but if someone else has time for this, I
-certainly would not mind :). It would be a nice beginner project...
+On Monday 24 August 2009 15:24:28 Ric Wheeler wrote:
+> Pavel Machek wrote:
 
-									Honza
+> > Actually, ext2 should be able to survive that, no? Error writing ->
+> > remount ro -> fsck on next boot -> drive relocates the sectors.
+>
+> I think that the example and the response are both off base. If your
+> head ever touches the platter, you won't be reading from a huge part of
+> your drive ever again
+
+It's not quite that simple anymore.
+
+These days, most modern drives add an "overcoat", which is a vapor deposition 
+layer of carbon (I.E. diamond) on top of the magnetic media, and then add a 
+nanolayer of some kind of nonmagnetic lubricant on top of that.  That protects 
+the magnetic layer from physical contact with the head; it takes a pretty 
+solid whack to chip through diamond and actually gouge your disk:
+
+  http://www.datarecoverylink.com/understanding_magnetic_media.html
+
+You can also do fun things with various nitridies (carbon nitride, silicon 
+nitride, titanium nitride) which are pretty darn tough too, although I dunno 
+about their suitability to hard drives:
+
+  http://www.physical-vapor-deposition.com/
+
+So while it _is_ possible to whack your drive and scratch the platter, merely 
+"touching" won't do it.  (Laptops wouldn't be feasible if they couldn't cope 
+with a little jostling while running.)  In the case of repeated small whacks, 
+your heads may actually go first.  (I vaguely recall the little aerofoil wing 
+thingy holding up the disk touches first, and can get ground down by repeated 
+contact with the diamond layer (despite the lubricant, that just buys time) so 
+it gets shorter and shorter and can't reliably keep the head above the disk 
+rather than in contact with it.  But I'm kind of stale myself here, not sure 
+that's still current.)
+
+Here's a nice youtube video of a 2007 defcon talk from a hard drive recovery 
+professional, "What's that Clicking Noise", series starts here:
+  http://www.youtube.com/watch?v=vCapEFNZAJ0
+
+And here's that guy's web page:
+  http://www.myharddrivedied.com/presentations/index.html
+
+Rob
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Latency is more important than throughput. It's that simple. - Linus Torvalds
