@@ -1,114 +1,68 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Enable asynchronous commits by default patch revoked?
-Date: Tue, 25 Aug 2009 14:21:35 -0400
-Message-ID: <4A942BAF.9020904@redhat.com>
-References: <200908241033.10527.Christian.Fischer@easterngraphics.com> <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int> <20090824201027.GC17684@mit.edu> <4A92F7E0.9010001@redhat.com> <20090824220738.GG17684@mit.edu> <4A93103B.2000909@redhat.com> <20090824232804.GJ17684@mit.edu> <20090824234336.GU5931@webber.adilger.int> <20090825001554.GN17684@mit.edu> <20090825175247.GX5931@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+	possible
+Date: Tue, 25 Aug 2009 12:11:10 -0400
+Message-ID: <20090825161110.GP17684@mit.edu>
+References: <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	Christian Fischer <Christian.Fischer@easterngraphics.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:16714 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:36169 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755503AbZHYSWD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Aug 2009 14:22:03 -0400
-In-Reply-To: <20090825175247.GX5931@webber.adilger.int>
+	id S1755562AbZHYSiq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Aug 2009 14:38:46 -0400
+Content-Disposition: inline
+In-Reply-To: <20090825094244.GC15563@elf.ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/25/2009 01:52 PM, Andreas Dilger wrote:
-> On Aug 24, 2009  20:15 -0400, Theodore Ts'o wrote:
->> On Mon, Aug 24, 2009 at 05:43:36PM -0600, Andreas Dilger wrote:
->>> Without transaction checksums waiting on all of the blocks together
->>> is NOT safe.  If the commit record is on disk, but the rest of the
->>> transaction's blocks are not then during replay it may cause garbage
->>> to be written from the journal into the filesystem metadata.
->>
->> That's the one optimization we using journal checksums buys us.
->> Unfortunately it does not allow us to omit the barrier
->> operation.... and have real-world testing experience that without the
->> barrier, a power drop can cause significant filesystem corruption and
->> potential data loss.
->>
->> Try using Chris Mason's torture-test workload with async-checksums
->> without this patch; you will get data corruption if you try dropping
->> power while his torture-test is running.  I know you really don't like
->> the barrier, but I'm afraid it's not safe to run without it, even with
->> journal checksums.
->
-> In our performance testing of barriers (not with Chris' program), it
-> was FAR better to disable the disk cache and wait for IO completion
-> (i.e. barriers disabled) on just the journal blocks than to enable the
-> cache and cause a cache flush for each "barrier".  The problem is that at
-> high IO rates there is much more data in the cache vs. the actual journal
-> blocks, and forcing the whole cache to be flushed each transaction commit
-> hurt our performance noticably.
->
-> Cheers, Andreas
+It seems that you are really hung up on whether or not the filesystem
+metadata is consistent after a power failure, when I'd argue that the
+problem with using storage devices that don't have good powerfail
+properties have much bigger problems (such as the potential for silent
+data corruption, or even if fsck will fix a trashed inode table with
+ext2, massive data loss).  So instead of your suggested patch, it
+might be better simply to have a file in Documentation/filesystems
+that states something along the lines of:
 
+"There are storage devices that high highly undesirable properties
+when they are disconnected or suffer power failures while writes are
+in progress; such devices include flash devices and software RAID 5/6
+arrays without journals, as well as hardware RAID 5/6 devices without
+battery backups.  These devices have the property of potentially
+corrupting blocks being written at the time of the power failure, and
+worse yet, amplifying the region where blocks are corrupted such that
+adjacent sectors are also damaged during the power failure.
 
-Just for completeness, I ran a quick test on ext3 which was marginally better 
-with barriers and xfs which was much better with barriers...
+Users who use such storage devices are well advised take
+countermeasures, such as the use of Uninterruptible Power Supplies,
+and making sure the flash device is not hot-unplugged while the device
+is being used.  Regular backups when using these devices is also a
+Very Good Idea.
 
-EXT3:
+Otherwise, file systems placed on these devices can suffer silent data
+and file system corruption.  An forced use of fsck may detect metadata
+corruption resulting in file system corruption, but will not suffice
+to detect data corruption."
 
-[root@ricdesktop ~]# mkfs.ext3 /dev/sdb
-<snip>
-[root@ricdesktop ~]# hdparm -W0 /dev/sdb
+My big complaint is that you seem to think that ext3 some how let you
+down, but I'd argue that the real issue is that the storage device let
+you down.  Any journaling filesystem will have the properties that you
+seem to be complaining about, so the fact that your patch only
+documents this as assumptions made by ext2 and ext3 is unfair; it also
+applies to xfs, jfs, reiserfs, reiser4, etc.  Further more, most users
+are even more concerned about possibility of massive data loss and/or
+silent data corruption.  So if your complaint that we don't have
+documentation warning users about the potential pitfalls of using
+storage devices with undesirable power fail properties, let's document
+that as a shortcoming in those storage devices.
 
-/dev/sdb:
-  setting drive write-caching to 0 (off)
-  write-caching =  0 (off)
-[root@ricdesktop ~]# mount -o barrier=0 /dev/sdb /mnt/
-[root@ricdesktop ~]# rm -f /mnt/bigfile
-[root@ricdesktop ~]# dd if=/dev/zero of=/mnt/bigfile bs=10M count=100
-100+0 records in
-100+0 records out
-1048576000 bytes (1.0 GB) copied, 9.26707 s, 113 MB/s
-[root@ricdesktop ~]# umount /mnt
-[root@ricdesktop ~]# hdparm -W1 /dev/sdb
-
-/dev/sdb:
-  setting drive write-caching to 1 (on)
-  write-caching =  1 (on)
-[root@ricdesktop ~]# mount -o barrier=1 /dev/sdb /mnt/
-[root@ricdesktop ~]# rm -f /mnt/bigfile
-[root@ricdesktop ~]# dd if=/dev/zero of=/mnt/bigfile bs=10M count=100
-100+0 records in
-100+0 records out
-1048576000 bytes (1.0 GB) copied, 8.90897 s, 118 MB/s
-[root@ricdesktop ~]# umount /mnt
-
-XFS:
-
-[root@ricdesktop ~]# umount /mnt
-[root@ricdesktop ~]# mkfs.xfs -f /dev/sdb
-<snip>
-[root@ricdesktop ~]# hdparm -W0 /dev/sdb
-
-/dev/sdb:
-  setting drive write-caching to 0 (off)
-  write-caching =  0 (off)
-[root@ricdesktop ~]# mount -o nobarrier /dev/sdb /mnt
-[root@ricdesktop ~]# rm -f /mnt/bigfile
-[root@ricdesktop ~]# dd if=/dev/zero of=/mnt/bigfile bs=10M count=100
-100+0 records in
-100+0 records out
-1048576000 bytes (1.0 GB) copied, 4.04406 s, 259 MB/s
-[root@ricdesktop ~]# umount /mnt
-[root@ricdesktop ~]# hdparm -W1 /dev/sdb
-
-/dev/sdb:
-  setting drive write-caching to 1 (on)
-  write-caching =  1 (on)
-[root@ricdesktop ~]# mount -o barrier /dev/sdb /mnt
-[root@ricdesktop ~]# rm -f /mnt/bigfile
-[root@ricdesktop ~]# dd if=/dev/zero of=/mnt/bigfile bs=10M count=100
-100+0 records in
-100+0 records out
-1048576000 bytes (1.0 GB) copied, 3.03633 s, 345 MB/s
-
-
+						- Ted
