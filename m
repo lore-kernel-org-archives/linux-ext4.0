@@ -1,69 +1,87 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Tue, 25 Aug 2009 11:42:44 +0200
-Message-ID: <20090825094244.GC15563__18287.8058556982$1251193407$gmane$org@elf.ucw.cz>
-References: <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: e4defrag and chattr +e warnings
+Date: Tue, 25 Aug 2009 15:18:32 +0530
+Message-ID: <20090825094832.GA16400@skywalker.linux.vnet.ibm.com>
+References: <4A93169C.7070106@xyzw.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list
+Cc: linux-ext4@vger.kernel.org
+To: Brian Rogers <brian@xyzw.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:56402 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754819AbZHYJmv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 05:42:51 -0400
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:55672 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751308AbZHYJsz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 05:48:55 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp06.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7P9mtw4007395
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 19:48:55 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7P9muPe1339634
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 19:48:56 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7P9mtqK011943
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 19:48:55 +1000
 Content-Disposition: inline
-In-Reply-To: <20090825000842.GM17684@mit.edu>
+In-Reply-To: <4A93169C.7070106@xyzw.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 2009-08-24 20:08:42, Theodore Tso wrote:
-> On Tue, Aug 25, 2009 at 01:00:36AM +0200, Pavel Machek wrote:
-> > Then to answer your question... ext2. You expect to run fsck after
-> > unclean shutdown, and you expect to have to solve some problems with
-> > it. So the way ext2 deals with the flash media actually matches what
-> > the user expects. (*)
-> 
-> But if the 256k hole is in data blocks, fsck won't find a problem,
-> even with ext2.
+On Mon, Aug 24, 2009 at 03:39:24PM -0700, Brian Rogers wrote:
+> Hi all.
+>
+> The first time since boot that I run e4defrag on a directory of  
+> significant size, I get this warning in dmesg:
+>
+>
+> This might be happening when it hits files that don't use extents, but I  
+> haven't tried e4defrag on a single non-extents file to verify that  
+> theory. I've just so far only seen this happen when I defrag a directory  
+> where I get the "operation not supported" message.
+>
+> If I use chattr +e to migrate a file to use extents, I get this:
+>
+> [  470.400044] ------------[ cut here ]------------
+> [  470.400065] WARNING: at fs/inode.c:1210 generic_delete_inode+0x65/0x16a()
 
-True.
 
-> And if the 256k hole is the inode table, you will *still* suffer
-> massive data loss.  Fsck will tell you how badly screwed you are, but
-> it doesn't "fix" the disk; most users don't consider questions of the
-> form "directory entry <precious-thesis-data> points to trashed inode,
-> may I delete directory entry?" as being terribly helpful.  :-/
+Can you try this patch
 
-Well it will fix the disk in the end. And no, "directory entry
-<precious-thesis-data> points to trashed inode, may I delete directory
-entry?" is not _terribly_ helpful, but it is slightly helpful and
-people actually expect that from ext2.
+commit 832ecbfe5f3cf16916552759fbeff085992a66c4
+Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date:   Tue Aug 25 15:14:11 2009 +0530
 
-> Maybe this came as a surprise to you, but anyone who has used a
-> compact flash in a digital camera knows that you ***have*** to wait
-> until the led has gone out before trying to eject the flash card.  I
-> remember seeing all sorts of horror stories from professional
-> photographers about how they lost an important wedding's day worth of
-> pictures with the attendant commercial loss, on various digital
-> photography forums.  It tends to be the sort of mistake that digital
-> photographers only make once.
+    ext4: unlock the new inode before iput
+    
+    We need to unlock the new inode before iput. This patch fix the below warning.
+    
+    [  470.400044] ------------[ cut here ]------------
+    [  470.400065] WARNING: at fs/inode.c:1210 generic_delete_inode+0x65/0x16a()
+    [  470.400072] Hardware name: N/A
+    .....
+    ...
+    [  470.400353] Pid: 4451, comm: chattr Not tainted 2.6.31-rc7-red-debug #4
+    [  470.400359] Call Trace:
+    [  470.400372]  [<ffffffff81037771>] warn_slowpath_common+0x77/0x8f
+    [  470.400385]  [<ffffffff81037798>] warn_slowpath_null+0xf/0x11
+    [  470.400395]  [<ffffffff810b7f28>] generic_delete_inode+0x65/0x16a
+    [  470.400405]  [<ffffffff810b8044>] generic_drop_inode+0x17/0x1bd
+    [  470.400413]  [<ffffffff810b7083>] iput+0x61/0x65
+    [  470.400455]  [<ffffffffa003b229>] ext4_ext_migrate+0x5eb/0x66a [ext4]
+    [  470.400492]  [<ffffffffa002b1f8>] ext4_ioctl+0x340/0x756 [ext4]
+    [  470.400507]  [<ffffffff810b1a91>] vfs_ioctl+0x1d/0x82
+    [  470.400517]  [<ffffffff810b1ff0>] do_vfs_ioctl+0x483/0x4c9
+    [  470.400527]  [<ffffffff81059c30>] ? trace_hardirqs_on+0xd/0xf
+    [  470.400537]  [<ffffffff810b2087>] sys_ioctl+0x51/0x74
+    [  470.400549]  [<ffffffff8100ba6b>] system_call_fastpath+0x16/0x1b
+    [  470.400557] ---[ end trace ab85723542352dac ]---
+    
+    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-It actually comes as surprise to me. Actually yes and no. I know that
-digital cameras use VFAT, so pulling CF card out of it may do bad
-thing, unless I run fsck.vfat afterwards. If digital camera was using
-ext3, I'd expect it to be safely pullable at any time.
-
-Will IBM microdrive do any difference there?
-
-Anyway, it was not known to me. Rather than claiming "everyone knows"
-(when clearly very few people really understand all the details), can
-we simply document that?
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 313a50b..05361ad 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -618,7 +618,7 @@ err_out:
+ 	tmp_inode->i_nlink = 0;
+ 
+ 	ext4_journal_stop(handle);
