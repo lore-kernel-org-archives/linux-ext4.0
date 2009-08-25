@@ -1,75 +1,86 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] document flash/RAID dangers
-Date: Wed, 26 Aug 2009 00:40:05 +0200
-Message-ID: <20090825224004.GD4300@elf.ucw.cz>
-References: <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+ possible
+Date: Tue, 25 Aug 2009 18:42:48 -0400
+Message-ID: <4A9468E8.607@redhat.com>
+References: <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
-	Florian Weimer <fweimer@bfk.de>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: david@lang.hm
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm>
+In-Reply-To: <20090825211515.GA3688@elf.ucw.cz>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 2009-08-25 15:33:08, david@lang.hm wrote:
-> On Wed, 26 Aug 2009, Pavel Machek wrote:
+On 08/25/2009 05:15 PM, Pavel Machek wrote:
 >
->>> It seems that you are really hung up on whether or not the filesystem
->>> metadata is consistent after a power failure, when I'd argue that the
->>> problem with using storage devices that don't have good powerfail
->>> properties have much bigger problems (such as the potential for silent
->>> data corruption, or even if fsck will fix a trashed inode table with
->>> ext2, massive data loss).  So instead of your suggested patch, it
->>> might be better simply to have a file in Documentation/filesystems
->>> that states something along the lines of:
+>>>> Maybe this came as a surprise to you, but anyone who has used a
+>>>> compact flash in a digital camera knows that you ***have*** to wait
+>>>> until the led has gone out before trying to eject the flash card.  I
+>>>> remember seeing all sorts of horror stories from professional
+>>>> photographers about how they lost an important wedding's day worth of
+>>>> pictures with the attendant commercial loss, on various digital
+>>>> photography forums.  It tends to be the sort of mistake that digital
+>>>> photographers only make once.
 >>>
->>> "There are storage devices that high highly undesirable properties
->>> when they are disconnected or suffer power failures while writes are
->>> in progress; such devices include flash devices and software RAID 5/6
->>> arrays without journals,
+>>> It actually comes as surprise to me. Actually yes and no. I know that
+>>> digital cameras use VFAT, so pulling CF card out of it may do bad
+>>> thing, unless I run fsck.vfat afterwards. If digital camera was using
+>>> ext3, I'd expect it to be safely pullable at any time.
+>>>
+>>> Will IBM microdrive do any difference there?
+>>>
+>>> Anyway, it was not known to me. Rather than claiming "everyone knows"
+>>> (when clearly very few people really understand all the details), can
+>>> we simply document that?
+>>
+>> I really think that the expectation that all OS's (windows, mac, even
+>> your ipod) all teach you not to hot unplug a device with any file system.
+>> Users have an "eject" or "safe unload" in windows, your iPod tells you
+>> not to power off or disconnect, etc.
 >
-> is it under all conditions, or only when you have already lost redundancy?
+> That was before journaling filesystems...
 
-I'd prefer not to specify.
+Not true - that is true today with or without journals as we have discussed in 
+great detail. Including specifically ext2.
 
-> prior discussions make me think this was only if the redundancy is 
-> already lost.
+Basically, any file system (Linux, windows, OSX, etc) that writes into the page 
+cache will lose data when you hot unplug its storage. End of story, don't do it!
 
-I'm not so sure now.
 
-Lets say you are writing to the (healthy) RAID5 and have a powerfail.
+>
+>> I don't object to making that general statement - "Don't hot unplug a
+>> device with an active file system or actively used raw device" - but
+>> would object to the overly general statement about ext3 not working on
+>> flash, RAID5 not working, etc...
+>
+> You can object any way you want, but running ext3 on flash or MD RAID5
+> is stupid:
+>
+> * ext2 would be faster
+>
+> * ext2 would provide better protection against powerfail.
 
-So now data blocks do not correspond to the parity block. You don't
-yet have the corruption, but you already have a problem.
+Not true in the slightest, you continue to ignore the ext2/3/4 developers 
+telling you that it will lose data.
 
-If you get a disk failing at this point, you'll get corruption.
+>
+> "ext3 works on flash and MD RAID5, as long as you do not have
+> powerfail" seems to be the accurate statement, and if you don't need
+> to protect against powerfails, you can just use ext2.
+> 								Pavel
 
-> also, the talk about software RAID 5/6 arrays without journals will be  
-> confusing (after all, if you are using ext3/XFS/etc you are using a  
-> journal, aren't you?)
+Strange how your personal preference is totally out of sync with the entire 
+enterprise class user base.
 
-Slightly confusing, yes. Should I just say "MD RAID 5" and avoid
-talking about hardware RAID arrays, where that's really
-manufacturer-specific?
+ric
 
-> in addition, even with a single drive you will loose some data on power  
-> loss (unless you do sync mounts with disabled write caches), full data  
-> journaling can help protect you from this, but the default journaling 
-> just protects the metadata.
 
-"Data loss" here means "damaging data that were already fsynced". That
-will not happen on single disk (with barriers on etc), but will happen
-on RAID5 and flash.
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
