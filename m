@@ -1,60 +1,42 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: unlock the new inode before iput
-Date: Tue, 25 Aug 2009 15:33:15 +0530
-Message-ID: <1251194595-457-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] ext3 improvements for 2.6.31-rc8
+Date: Tue, 25 Aug 2009 14:45:44 +0200
+Message-ID: <20090825124544.GD405@duck.novell.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:33819 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754156AbZHYKDV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 06:03:21 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
-	by e23smtp01.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7PA2BI7002140
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 20:02:11 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7PA3MuD1101992
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 20:03:22 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n7PA1ucV002704
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 20:01:56 +1000
+Received: from cantor.suse.de ([195.135.220.2]:44177 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750737AbZHYMpn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Aug 2009 08:45:43 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to unlock the new inode before iput. This patch fix the below warning.
+  Hello Linus,
 
-[  470.400044] ------------[ cut here ]------------
-[  470.400065] WARNING: at fs/inode.c:1210 generic_delete_inode+0x65/0x16a()
-[  470.400072] Hardware name: N/A
-.....
-...
-[  470.400353] Pid: 4451, comm: chattr Not tainted 2.6.31-rc7-red-debug #4
-[  470.400359] Call Trace:
-[  470.400372]  [<ffffffff81037771>] warn_slowpath_common+0x77/0x8f
-[  470.400385]  [<ffffffff81037798>] warn_slowpath_null+0xf/0x11
-[  470.400395]  [<ffffffff810b7f28>] generic_delete_inode+0x65/0x16a
-[  470.400405]  [<ffffffff810b8044>] generic_drop_inode+0x17/0x1bd
-[  470.400413]  [<ffffffff810b7083>] iput+0x61/0x65
-[  470.400455]  [<ffffffffa003b229>] ext4_ext_migrate+0x5eb/0x66a [ext4]
-[  470.400492]  [<ffffffffa002b1f8>] ext4_ioctl+0x340/0x756 [ext4]
-[  470.400507]  [<ffffffff810b1a91>] vfs_ioctl+0x1d/0x82
-[  470.400517]  [<ffffffff810b1ff0>] do_vfs_ioctl+0x483/0x4c9
-[  470.400527]  [<ffffffff81059c30>] ? trace_hardirqs_on+0xd/0xf
-[  470.400537]  [<ffffffff810b2087>] sys_ioctl+0x51/0x74
-[  470.400549]  [<ffffffff8100ba6b>] system_call_fastpath+0x16/0x1b
-[  470.400557] ---[ end trace ab85723542352dac ]---
+  could you please pull from
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/migrate.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 313a50b..05361ad 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -618,7 +618,7 @@ err_out:
- 	tmp_inode->i_nlink = 0;
- 
- 	ext4_journal_stop(handle);
+  to get:
+
+Jan Kara (1):
+      ext3: Improve error message that changing journaling mode on remount is not possible
+
+Theodore Ts'o (1):
+      ext3: Update Kconfig description of EXT3_DEFAULTS_TO_ORDERED
+
+The diffstat is
+
+ fs/ext3/Kconfig |   32 +++++++++++++++++---------------
+ fs/ext3/super.c |   40 +++++++++++++++++++++++++++-------------
+ 2 files changed, 44 insertions(+), 28 deletions(-)
+
+                                                        Thanks
+                                                                Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
