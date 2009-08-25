@@ -1,73 +1,124 @@
 From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Tue, 25 Aug 2009 23:15:15 +0200
-Message-ID: <20090825211515.GA3688@elf.ucw.cz>
-References: <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com>
+Subject: [patch] document flash/RAID dangers
+Date: Wed, 26 Aug 2009 00:21:12 +0200
+Message-ID: <20090825222112.GB4300@elf.ucw.cz>
+References: <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
+	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Ric Wheeler <rwheeler@redhat.com>
+	kernel list
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:58247 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:60419 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753920AbZHYVP1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 17:15:27 -0400
+	with ESMTP id S1756206AbZHYWVW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 18:21:22 -0400
 Content-Disposition: inline
-In-Reply-To: <4A93E908.6050908@redhat.com>
+In-Reply-To: <20090825161110.GP17684@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi!
 
->>> Maybe this came as a surprise to you, but anyone who has used a
->>> compact flash in a digital camera knows that you ***have*** to wait
->>> until the led has gone out before trying to eject the flash card.  I
->>> remember seeing all sorts of horror stories from professional
->>> photographers about how they lost an important wedding's day worth of
->>> pictures with the attendant commercial loss, on various digital
->>> photography forums.  It tends to be the sort of mistake that digital
->>> photographers only make once.
->>
->> It actually comes as surprise to me. Actually yes and no. I know that
->> digital cameras use VFAT, so pulling CF card out of it may do bad
->> thing, unless I run fsck.vfat afterwards. If digital camera was using
->> ext3, I'd expect it to be safely pullable at any time.
->>
->> Will IBM microdrive do any difference there?
->>
->> Anyway, it was not known to me. Rather than claiming "everyone knows"
->> (when clearly very few people really understand all the details), can
->> we simply document that?
->
-> I really think that the expectation that all OS's (windows, mac, even 
-> your ipod) all teach you not to hot unplug a device with any file system. 
-> Users have an "eject" or "safe unload" in windows, your iPod tells you 
-> not to power off or disconnect, etc.
+> It seems that you are really hung up on whether or not the filesystem
+> metadata is consistent after a power failure, when I'd argue that the
+> problem with using storage devices that don't have good powerfail
+> properties have much bigger problems (such as the potential for silent
+> data corruption, or even if fsck will fix a trashed inode table with
+> ext2, massive data loss).  So instead of your suggested patch, it
+> might be better simply to have a file in Documentation/filesystems
+> that states something along the lines of:
+> 
+> "There are storage devices that high highly undesirable properties
+> when they are disconnected or suffer power failures while writes are
+> in progress; such devices include flash devices and software RAID 5/6
+> arrays without journals, as well as hardware RAID 5/6 devices without
+> battery backups.  These devices have the property of potentially
+> corrupting blocks being written at the time of the power failure, and
+> worse yet, amplifying the region where blocks are corrupted such that
+> adjacent sectors are also damaged during the power failure.
 
-That was before journaling filesystems...
+In FTL case, damaged sectors are not neccessarily adjacent. Otherwise
+this looks okay and fair to me.
 
-> I don't object to making that general statement - "Don't hot unplug a 
-> device with an active file system or actively used raw device" - but 
-> would object to the overly general statement about ext3 not working on 
-> flash, RAID5 not working, etc...
+> Users who use such storage devices are well advised take
+> countermeasures, such as the use of Uninterruptible Power Supplies,
+> and making sure the flash device is not hot-unplugged while the device
+> is being used.  Regular backups when using these devices is also a
+> Very Good Idea.
+> 
+> Otherwise, file systems placed on these devices can suffer silent data
+> and file system corruption.  An forced use of fsck may detect metadata
+> corruption resulting in file system corruption, but will not suffice
+> to detect data corruption."
 
-You can object any way you want, but running ext3 on flash or MD RAID5
-is stupid:
+Ok, would you be against adding:
 
-* ext2 would be faster
+"Running non-journalled filesystem on these may be desirable, as
+journalling can not provide meaningful protection, anyway."
 
-* ext2 would provide better protection against powerfail.
+> My big complaint is that you seem to think that ext3 some how let you
+> down, but I'd argue that the real issue is that the storage device let
+> you down.  Any journaling filesystem will have the properties that you
+> seem to be complaining about, so the fact that your patch only
+> documents this as assumptions made by ext2 and ext3 is unfair; it also
+> applies to xfs, jfs, reiserfs, reiser4, etc.  Further more, most
+> users
 
-"ext3 works on flash and MD RAID5, as long as you do not have
-powerfail" seems to be the accurate statement, and if you don't need
-to protect against powerfails, you can just use ext2.
-								Pavel
+Yes, it applies to all journalling filesystems; it is just that I was 
+clever/paranoid enough to avoid anything non-ext3.
+
+ext3 docs still says:
+# The journal supports the transactions start and stop, and in case of a
+# crash, the journal can replay the transactions to quickly put the
+# partition back into a consistent state.
+
+> are even more concerned about possibility of massive data loss and/or
+> silent data corruption.  So if your complaint that we don't have
+> documentation warning users about the potential pitfalls of using
+> storage devices with undesirable power fail properties, let's document
+> that as a shortcoming in those storage devices.
+
+Ok, works for me.
+
+---
+
+From: Theodore Tso <tytso@mit.edu>
+
+Document that many devices are too broken for filesystems to protect
+data in case of powerfail.
+
+Signed-of-by: Pavel Machek <pavel@ucw.cz> 
+
+diff --git a/Documentation/filesystems/dangers.txt b/Documentation/filesystems/dangers.txt
+new file mode 100644
+index 0000000..e1a46dd
+--- /dev/null
++++ b/Documentation/filesystems/dangers.txt
+@@ -0,0 +1,19 @@
++There are storage devices that high highly undesirable properties
++when they are disconnected or suffer power failures while writes are
++in progress; such devices include flash devices and software RAID 5/6
++arrays without journals, as well as hardware RAID 5/6 devices without
++battery backups.  These devices have the property of potentially
++corrupting blocks being written at the time of the power failure, and
++worse yet, amplifying the region where blocks are corrupted such that
++additional sectors are also damaged during the power failure.
++        
++Users who use such storage devices are well advised take
++countermeasures, such as the use of Uninterruptible Power Supplies,
++and making sure the flash device is not hot-unplugged while the device
++is being used.  Regular backups when using these devices is also a
++Very Good Idea.
++        
++Otherwise, file systems placed on these devices can suffer silent data
++and file system corruption.  An forced use of fsck may detect metadata
++corruption resulting in file system corruption, but will not suffice
++to detect data corruption.
+\ No newline at end of file
+
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
