@@ -1,11 +1,12 @@
-From: Pavel Machek <pavel@ucw.cz>
+From: david@lang.hm
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Wed, 26 Aug 2009 01:44:55 +0200
-Message-ID: <20090825234454.GI4300@elf.ucw.cz>
-References: <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz> <19092.28371.793339.764701@notabene.brown>
+ possible
+Date: Tue, 25 Aug 2009 16:46:15 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.0908251629250.28411@asgard.lang.hm>
+References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz>
+ <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
@@ -14,45 +15,85 @@ Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Neil Brown <neilb@suse.de>
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <19092.28371.793339.764701@notabene.brown>
+In-Reply-To: <20090825232601.GF4300@elf.ucw.cz>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Wed, 26 Aug 2009, Pavel Machek wrote:
 
-> While I think it is, in principle, worth documenting this sort of
-> thing, there are an awful lot of fine details and distinctions that
-> would need to be considered.
+>>>> Basically, any file system (Linux, windows, OSX, etc) that writes into
+>>>> the page cache will lose data when you hot unplug its storage. End of
+>>>> story, don't do it!
+>>>
+>>> No, not ext3 on SATA disk with barriers on and proper use of
+>>> fsync(). I actually tested that.
+>>>
+>>> Yes, I should be able to hotunplug SATA drives and expect the data
+>>> that was fsync-ed to be there.
+>>
+>> You can and will lose data (even after fsync) with any type of storage at
+>> some rate. What you are missing here is that data loss needs to be
+>> measured in hard numbers - say percentage of installed boxes that have
+>> config X that lose data.
+>
+> I'm talking "by design" here.
+>
+> I will lose data even on SATA drive that is properly powered on if I
+> wait 5 years.
+>
+>> I can promise you that hot unplugging and replugging a S-ATA drive will
+>> also lose you data if you are actively writing to it (ext2, 3, whatever).
+>
+> I can promise you that running S-ATA drive will also lose you data,
+> even if you are not actively writing to it. Just wait 10 years; so
+> what is your point?
+>
+> But ext3 is _designed_ to preserve fsynced data on SATA drive, while
+> it is _not_ designed to preserve fsynced data on MD RAID5.
 
-Ok, can you help? Having a piece of MD documentation explaining the
-"powerfail nukes entire stripe" and how current filesystems do not
-deal with that would be nice, along with description when exactly that
-happens.
+substatute 'degraded MD RAID 5' for 'MD RAID 5' and you have a point here. 
+although the language you are using is pretty harsh. you make it sound 
+like this is a problem with ext3 when the filesystem has nothing to do 
+with it. the problem is that a degraded raid 5 array can be corrupted by 
+an additional failure.
 
-It seems to need two events -- one failed disk and one powerfail. I
-knew that raid5 only protects against one failure, but I never
-realized that simple powerfail (or kernel crash) counts as a failure
-here, too.
+> Do you really think that's not a difference?
+>
+>>>>>> I don't object to making that general statement - "Don't hot unplug a
+>>>>>> device with an active file system or actively used raw device" - but
+>>>>>> would object to the overly general statement about ext3 not working on
+>>>>>> flash, RAID5 not working, etc...
+>>>>>
+>>>>> You can object any way you want, but running ext3 on flash or MD RAID5
+>>>>> is stupid:
+>>>>>
+>>>>> * ext2 would be faster
+>>>>>
+>>>>> * ext2 would provide better protection against powerfail.
+>>>>
+>>>> Not true in the slightest, you continue to ignore the ext2/3/4 developers
+>>>> telling you that it will lose data.
+>>>
+>>> I know I will lose data. Both ext2 and ext3 will lose data on
+>>> flashdisk. (That's what I'm trying to document). But... what is the
+>>> benefit of ext3 journaling on MD RAID5? (On flash, ext3 at least
+>>> protects you against kernel panic. MD RAID5 is in software, so... that
+>>> additional protection is just not there).
+>>
+>> Faster recovery time on any normal kernel crash or power outage.  Data
+>> loss would be equivalent with or without the journal.
+>
+> No, because you'll actually repair the ext2 with fsck after the kernel
+> crash or power outage. Data loss will not be equivalent; in particular
+> you'll not lose data writen _after_ power outage to ext2.
 
-I guess it should go at the end of md.txt.... aha, it actually already
-talks about the issue a bit, in:
+by the way, while you are thinking about failures that can happen from a 
+failed write corrupting additional blocks, think about the nightmare that 
+can happen if those blocks are in the journal.
 
-#Boot time assembly of degraded/dirty arrays
-#-------------------------------------------
-#
-#If a raid5 or raid6 array is both dirty and degraded, it could have
-#undetectable data corruption.  This is because the fact that it is
-#'dirty' means that the parity cannot be trusted, and the fact that it
-#is degraded means that some datablocks are missing and cannot reliably
-#be reconstructed (due to no parity).
+the 'repair' of ext2 by a fsck is actually much less than you are thinking 
+that it is.
 
-(Actually... that's possibly what happened to friend of mine. One of
-disks in raid5 stopped responding and whole system just hanged
-up. Oops, two failures in one...)
-									Pavel
-
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+David Lang
