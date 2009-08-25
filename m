@@ -1,66 +1,47 @@
-From: david@lang.hm
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Tue, 25 Aug 2009 08:34:46 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.0908250829490.28411@asgard.lang.hm>
-References: <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz>
- <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz>
+From: Frank Mayhar <fmayhar@google.com>
+Subject: Problem with ext4_sync_file in no-journal mode.
+Date: Tue, 25 Aug 2009 10:44:05 -0700
+Message-ID: <1251222245.20219.25.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090825093414.GB15563@elf.ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([216.239.33.17]:62601 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755056AbZHYRoJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 13:44:09 -0400
+Received: from zps35.corp.google.com (zps35.corp.google.com [172.25.146.35])
+	by smtp-out.google.com with ESMTP id n7PHi8tX006727
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 18:44:09 +0100
+Received: from [172.29.60.126] (bobble.smo.corp.google.com [172.29.60.126])
+	(authenticated bits=0)
+	by zps35.corp.google.com with ESMTP id n7PHi6wo009326
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 10:44:06 -0700
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 25 Aug 2009, Pavel Machek wrote:
+Our powerfail testing turned up an odd regression when using fsync() in
+no-journal mode to force data to the device.  We saw loss rates (both
+file and data) that were much higher than the same test using ext2 (60+%
+loss versus <10%).  We've done some investigation and one thing that
+stood out was that in the no-journal case, ext4_sync_file() was just
+calling sync_inode() (and nothing else), while ext2_sync_file(), for
+comparison, was also calling sync_mapping_buffers() to actually push the
+data out.
 
-> Hi!
->
->>>> If your concern is that with Linux MD, you could potentially lose an
->>>> entire stripe in RAID 5 mode, then you should say that explicitly; but
->>>> again, this isn't a filesystem specific cliam; it's true for all
->>>> filesystems.  I don't know of any file system that can survive having
->>>> a RAID stripe-shaped-hole blown into the middle of it due to a power
->>>> failure.
->>>>
->>>
->>> Again, ext2 handles that in a way user expects it.
->>>
->>> At least I was teached "ext2 needs fsck after powerfail; ext3 can
->>> handle powerfails just ok".
->>
->> So, would you be happy if ext3 fsck was always run on reboot (at least
->> for flash devices)?
->
-> For flash devices, MD Raid 5 and anything else that needs it; yes that
-> would make me happy ;-).
+I therefore hacked ext4_sync_file() to call sync_mapping_buffers() in
+the no-journal case; when we reran the test we saw that the loss rate
+dropped from 60+% to around 50%.  While it's clear that we have more
+work to do in this area, this is a significant improvement.  It appears
+that this was just missed when we did the no-journal work.  Do you guys
+concur?
 
-the thing is that fsck would not fix the problem.
+The other interesting bit of this is that ext4 no-journal without using
+fsync() has, apparently, basically the same loss rate as ext2 with
+fsync().
+-- 
+Frank Mayhar <fmayhar@google.com>
+Google, Inc.
 
-it may (if the data lost was metadata) detect the problem and tell you how 
-many files you have lost, but if the data lost was all in a data file you 
-would not detect it with a fsck
-
-the only way you would detect the missing data is to read all the files on 
-the filesystem and detect that the data you are reading is wrong.
-
-but how can you tell if the data you are reading is wrong?
-
-on a flash drive, your read can return garbage, but how do you know that 
-garbage isn't the contents of the file?
-
-on a degraded raid5 array you have no way to test data integrity, so when 
-the missing drive is replaced, the rebuild algorithm will calculate the 
-appropriate data to make the parity calculations work out and write 
-garbage to that drive.
-
-David Lang
