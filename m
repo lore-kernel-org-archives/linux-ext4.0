@@ -1,90 +1,54 @@
-From: Neil Brown <neilb@suse.de>
+From: Pavel Machek <pavel@ucw.cz>
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
 	possible
-Date: Wed, 26 Aug 2009 09:28:50 +1000
-Message-ID: <19092.29618.98997.854784@notabene.brown>
-References: <20090312092114.GC6949@elf.ucw.cz>
-	<200903121413.04434.rob@landley.net>
-	<20090316122847.GI2405@elf.ucw.cz>
-	<200903161426.24904.rob@landley.net>
-	<20090323104525.GA17969@elf.ucw.cz>
-	<87ljqn82zc.fsf@frosties.localdomain>
-	<20090824093143.GD25591@elf.ucw.cz>
-	<87f94c370908240621n32ea310sd24196084c42107a@mail.gmail.com>
+Date: Wed, 26 Aug 2009 01:29:35 +0200
+Message-ID: <20090825232934.GG4300@elf.ucw.cz>
+References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz> <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <alpine.DEB.2.00.0908251600280.28411@asgard.lang.hm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Pavel Machek <pavel@ucw.cz>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: message from Greg Freemyer on Monday August 24
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: david@lang.hm
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:40996 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932288AbZHYX3m (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 19:29:42 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.2.00.0908251600280.28411@asgard.lang.hm>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday August 24, greg.freemyer@gmail.com wrote:
-> > +Don't damage the old data on a failed write (ATOMIC-WRITES)
-> > +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> > +
-> > +Either whole sector is correctly written or nothing is written dur=
-ing
-> > +powerfail.
-> > +
-> > + =A0 =A0 =A0 Because RAM tends to fail faster than rest of system =
-during
-> > + =A0 =A0 =A0 powerfail, special hw killing DMA transfers may be ne=
-cessary;
-> > + =A0 =A0 =A0 otherwise, disks may write garbage during powerfail.
-> > + =A0 =A0 =A0 This may be quite common on generic PC machines.
-> > +
-> > + =A0 =A0 =A0 Note that atomic write is very hard to guarantee for =
-RAID-4/5/6,
-> > + =A0 =A0 =A0 because it needs to write both changed data, and pari=
-ty, to
-> > + =A0 =A0 =A0 different disks. (But it will only really show up in =
-degraded mode).
-> > + =A0 =A0 =A0 UPS for RAID array should help.
->=20
-> Can someone clarify if this is true in raid-6 with just a single disk
-> failure?  I don't see why it would be.
 
-It does affect raid6 with a single drive missing.
+>>>> "ext3 works on flash and MD RAID5, as long as you do not have
+>>>> powerfail" seems to be the accurate statement, and if you don't need
+>>>> to protect against powerfails, you can just use ext2.
+>>>
+>>> Strange how your personal preference is totally out of sync with the
+>>> entire enterprise class user base.
+>>
+>> Perhaps noone told them MD RAID5 is dangerous? You see, that's exactly
+>> what I'm trying to document here.
+>
+> a MD raid array that's degraded to the point where there is no redundancy 
+> is dangerous, but I don't think that any of the enterprise users would be 
+> surprised.
+>
+> I think they will be surprised that it's possible that a prior failed  
+> write that hasn't been scrubbed can cause data loss when the array later  
+> degrades.
 
-After an unclean shutdown you cannot trust any Parity block as it
-is possible that some of the blocks in the stripe have been updated,
-but others have not.  So you must assume that all parity blocks are
-wrong and update them.  If you have a missing disk you cannot do that.
+Cool, so Ted's "raid5 has highly undesirable properties" is actually
+pretty accurate. Some raid person should write more detailed README,
+I'd say...
+									Pavel
 
-To take a more concrete example, imagine a 5 device RAID6 with
-3 data blocks D0 D1 D2 as well a P and Q on some stripe.
-Suppose that we crashed while updating D0, which would have involved
-writing out D0, P and Q.
-On restart, suppose D2 is missing. It is possible that 0, 1, 2, or 3
-of D0, P and Q have been updated and the others not.
-We can try to recompute D2 from D0 D1 and P, from
-D0 P and Q or from D1, P and Q.
-
-We could conceivably try each of those and if they all produce the
-same result we might be confident of it.
-If two produced the same result and the other was different we could
-use a voting process to choose the 'best'.  And in this particular
-case I think that would work.  If 0 or 3 had been updates, all would
-be the same.  If only 1 was updated, then the combinations that
-exclude it will match.  If 2 were updated, then the combinations that
-exclude the non-updated block will match.
-
-But if both D0 and D1 were being updated I think there would be too
-many combinations and it would be very possibly that all three
-computed values for D2 would be different.
-
-So yes: a singly degraded RAID6 cannot promise no data corruption
-after an unclean shutdown.  That is why "mdadm" will not assemble such
-an array unless you use "--force" to acknowledge that there has been a
-problem.=20
-
-NeilBrown
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
