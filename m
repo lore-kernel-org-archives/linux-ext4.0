@@ -1,79 +1,104 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Mon, 24 Aug 2009 20:34:50 -0400
-Message-ID: <4A9331AA.1090905@redhat.com>
-References: <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <4A930EB9.8030903@redhat.com> <4A93129E.6080704@acm.org> <20090824224427.GI29763@elf.ucw.cz>
+From: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+Subject: [OOPs] ext4: fixpoint divide exception at ext4_fill_super+0x141c/0x2908
+Date: Tue, 25 Aug 2009 11:09:56 +0530
+Message-ID: <4A93792C.2000705@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Zan Lynx <zlynx@acm.org>, Ric Wheeler <rwheeler@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090824224427.GI29763@elf.ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
+	sachin p sant <sachinp@linux.vnet.ibm.com>,
+	Ramon <rcvalle@linux.vnet.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:36468 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754511AbZHYFjy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 01:39:54 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp07.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7P5dtVQ007028
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 15:39:55 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7P5dtf11290250
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 15:39:55 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7P5dsZg030553
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2009 15:39:55 +1000
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Pavel Machek wrote:
-> On Mon 2009-08-24 16:22:22, Zan Lynx wrote:
->   
->> Ric Wheeler wrote:
->>     
->>> Pavel Machek wrote:
->>>       
->>>> Degraded MD RAID5 does not work by design; whole stripe will be
->>>> damaged on powerfail or reset or kernel bug, and ext3 can not cope
->>>> with that kind of damage. [I don't see why statistics should be
->>>> neccessary for that; the same way we don't need statistics to see that
->>>> ext2 needs fsck after powerfail.]
->>>>                                     Pavel
->>>>   
->>>>         
->>> What you are describing is a double failure and RAID5 is not double  
->>> failure tolerant regardless of the file system type....
->>>       
->> Are you sure he isn't talking about how RAID must write all the data  
->> chunks to make a complete stripe and if there is a power-loss, some of  
->> the chunks may be written and some may not?
->>
->> As I read Pavel's point he is saying that the incomplete write can be  
->> detected by the incorrect parity chunk, but degraded RAID-5 has no  
->> working parity chunk so the incomplete write would go undetected.
->>     
->
-> Yep.
->
->   
->> I know this is a RAID failure mode. However, I actually thought this was  
->> a problem even for a intact RAID-5. AFAIK, RAID-5 does not generally  
->> read the complete stripe and perform verification unless that is  
->> requested, because doing so would hurt performance and lose the entire  
->> point of the RAID-5 rotating parity blocks.
->>     
->
-> Not sure; is not RAID expected to verify the array after unclean
-> shutdown?
->
-> 									Pavel
->   
- Not usually - that would take multiple hours of verification, roughly 
-equivalent to doing a RAID rebuild since you have to read each sector of 
-every drive (although you would do this at full speed if the array was 
-offline, not throttled like we do with rebuilds).
+Hi,
 
-That is part of the thing that scrubbing can do.
+Found kernel bug - fixpoint divide exception
+While working with fsfuzzer
 
-Note that once you find a bad bit of data, it is really useful to be 
-able to map that back into a humanly understandable object/repair 
-action. For example, map the bad data range back to metadata which would 
-translate into a fsck run or a list of impacted files or directories....
+Environment: 2.6.31-rc7
+Architecture: s390 and ppc64
 
-Ric
+------------[ cut here ]------------ 
+
+Kernel BUG at 000003e00429d934 [verbose debug info unavailable] 
+
+fixpoint divide exception: 0009 [#1] SMP 
+
+Modules linked in: ext4 jbd2 crc16 loop autofs4 lockd sunrpc ipv6 
+qeth_l2 qeth
+q
+dio vmur ccwgroup dm_round_robin dm_multipath scsi_dh sd_mod scsi_mod 
+multipath
+dm_snapshot dm_zero dm_mirror dm_region_hash dm_log dm_mod dasd_fba_mod
+dasd_eck
+d_mod dasd_mod ext3 jbd 
+
+CPU: 2 Not tainted 2.6.31-rc6 #1 
+
+Process mount (pid: 2675, task: 000000003ed06038, ksp: 0000000036217920) 
+
+Krnl PSW : 0704200180000000 000003e00429d934 (ext4_fill_super+0x1478/0x2908
+[ext
+4]) 
+
+            R:0 T:1 IO:1 EX:1 Key:0 M:1 W:0 P:0 AS:0 CC:2 PM:0 EA:3 
+
+Krnl GPRS: 0000000000000100 0000000000000100 0000000000000006 
+000000002fc61800
+            0000000000000000 0000000000000100 000000002fc61800 
+000000002fc61800
+            000000003143a800 00000000000000e0 0000000000000000 
+000000003eb0d800
+            000003e00427c000 000003e0042b8958 000003e00429d87c 
+0000000036217b10
+Krnl Code: 000003e00429d928: b9160050           llgfr   %r5,%r0 
+
+            000003e00429d92c: a7490000           lghi    %r4,0 
+
+            000003e00429d930: b987004a           dlgr    %r4,%r10 
+
+           >000003e00429d934: b91600a5           llgfr   %r10,%r5 
+
+            000003e00429d938: a53f80d0           llill   %r3,32976 
+
+            000003e00429d93c: a7ad000c           mghi    %r10,12 
+
+            000003e00429d940: b904002a           lgr     %r2,%r10
+            000003e00429d944: 1895               lr      %r9,%r5
+Call Trace:
+([<000003e00429d87c>] ext4_fill_super+0x13c0/0x2908 [ext4])
+  [<00000000000f46f2>] get_sb_bdev+0x13e/0x19c
+  [<000003e00429230e>] ext4_get_sb+0x2e/0x40 [ext4]
+  [<00000000000f3f98>] vfs_kern_mount+0xc0/0x168
+  [<00000000000f40ac>] do_kern_mount+0x58/0x114
+  [<000000000010e558>] do_mount+0x798/0x830
+  [<000000000010e6a0>] SyS_mount+0xb0/0x100
+  [<00000000000266be>] sysc_noemu+0x10/0x16
+  [<0000004e53f234e2>] 0x4e53f234e2
+Last Breaking-Event-Address:
+  [<000003e00429d8d8>] ext4_fill_super+0x141c/0x2908 [ext4]
+
+---[ end trace b5563edf9c0c9b52 ]---
+
+*P.S. If you need any information please let me know. Please cc me as I 
+am not subscribed to the list.
+
+Thanks and Regards
+R.Nageswara Sastry
 
