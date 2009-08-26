@@ -1,12 +1,11 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Wed, 26 Aug 2009 08:28:13 -0400
-Message-ID: <20090826122813.GI32712@mit.edu>
-References: <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz> <4A94ACDF.30405@redhat.com> <20090826111751.GC26595@elf.ucw.cz>
+Subject: Re: [patch] document flash/RAID dangers
+Date: Wed, 26 Aug 2009 08:37:09 -0400
+Message-ID: <20090826123709.GJ32712@mit.edu>
+References: <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <alpine.DEB.2.00.0908251651140.28411@asgard.lang.hm> <20090826001206.GL4300@elf.ucw.cz> <4A94812C.5010803@redhat.com> <20090826004430.GR4300@elf.ucw.cz> <alpine.DEB.2.00.0908251817390.30426@asgard.lang.hm> <20090826112535.GF26595@elf.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Rik van Riel <riel@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
+Cc: david@lang.hm, Ric Wheeler <rwheeler@redhat.com>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
@@ -17,38 +16,50 @@ Cc: Rik van Riel <riel@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
 To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090826111751.GC26595@elf.ucw.cz>
+In-Reply-To: <20090826112535.GF26595@elf.ucw.cz>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 26, 2009 at 01:17:52PM +0200, Pavel Machek wrote:
-> > Metadata takes up such a small part of the disk that fscking
-> > it and finding it to be OK is absolutely no guarantee that
-> > the data on the filesystem has not been horribly mangled.
-> >
-> > Personally, what I care about is my data.
-> >
-> > The metadata is just a way to get to my data, while the data
-> > is actually important.
+On Wed, Aug 26, 2009 at 01:25:36PM +0200, Pavel Machek wrote:
+> > you just plain cannot count on writes that are in flight when a powerfail 
+> > happens to do predictable things, let alone what you consider sane or  
+> > proper.
 > 
-> Personally, I care about metadata consistency, and ext3 documentation
-> suggests that journal protects its integrity. Except that it does not
-> on broken storage devices, and you still need to run fsck there.
+> From what I see, this kind of failure is rather harder to reproduce
+> than the software problems. And at least SGI machines were designed to
+> avoid this...
+> 
+> Anyway, I'd like to hear from ext3 people... what happens on read
+> errors in journal? That's what you'd expect to see in situation above.
 
-Caring about metadata consistency and not data is just weird, I'm
-sorry.  I can't imagine anyone who actually *cares* about what they
-have stored, whether it's digital photographs of child taking a first
-step, or their thesis research, caring about more about the metadata
-than the data.  Giving advice that pretends that most users have that
-priority is Just Wrong.
+On a power failure, what normally happens is that the random garbage
+gets written into the disk drive's last dying gasp, since the memory
+starts going insane and sends garbage to the disk.  So the disk
+successfully completes the write, but the sector contains garbage.
+Since HDD's tend to be last thing to die, being less sensitive to
+voltage drops than the memory or DMA controller, my experience is that
+you don't get a read error after the system comes up, you just get
+garbage written into the journal.
 
-That's why what we should document is that people should avoid broken
-storage devices, and advice on how to use RAID properly.  At the end
-of the day, getting people to switch from ext2 to ext3 on some
-misguided notion that this way, they'll know when their metadata is
-safe (at least in the power failure case; but not the system hangs and
-you have to reboot case), and getting them to ignore the question of
-why are they using a broken storage device in the first place, is
-Documentation malpractice.
+The ext3 journalling code waits until all of the journal code is
+written, and only then writes the commit block.  On restart, we look
+for the last valid commit block.  So if the power failure is before we
+write the commit block, we replay the journal up until the previous
+commit block.  If the power failure is while we are writing the commit
+block, garbage will be written out instead of the commit block, and so
+it falls back to the previous case.
 
-						- Ted
+We do not allow any updates to the filesystem metadata to take place
+until the commit block has been written; therefore the filesystem
+stays consistent.
+
+If there the journal *does* develop read errors, then fsck will
+require a manual fsck, and so the boot operation will get stopped so a
+system administrator can provide manual intervention.  The best bet
+for the sysadmin is to replay as much of the journal she can, and then
+let fsck fix any resulting filesystem inconsistencies.  In practice,
+though, I've not experienced or seen any reports of this happening
+from a power failure; usually it happens if the laptop gets dropped or
+the hard drive suffers or suffers some other kind of hardware failure.
+
+    	       	       	  	       - Ted
