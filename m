@@ -1,46 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Rik van Riel <riel@redhat.com>
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Tue, 25 Aug 2009 22:58:49 -0400
-Message-ID: <20090826025849.GF32712@mit.edu>
-References: <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <4A948C94.7040103@redhat.com>
+ possible
+Date: Tue, 25 Aug 2009 23:32:47 -0400
+Message-ID: <4A94ACDF.30405@redhat.com>
+References: <82k50tjw7u.fsf@mid.bfk.de> <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pavel Machek <pavel@ucw.cz>, Florian Weimer <fweimer@bfk.de>,
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56502 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751697AbZHZC7C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Aug 2009 22:59:02 -0400
-Content-Disposition: inline
-In-Reply-To: <4A948C94.7040103@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756612AbZHZDdK@vger.kernel.org>
+In-Reply-To: <20090825093414.GB15563@elf.ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 25, 2009 at 09:15:00PM -0400, Ric Wheeler wrote:
->
-> I agree with the whole write up outside of the above - degraded RAID  
-> does meet this requirement unless you have a second (or third, counting  
-> the split write) failure during the rebuild.
+Pavel Machek wrote:
 
-The argument is that if the degraded RAID array is running in this
-state for a long time, and the power fails while the software RAID is
-in the middle of writing out a stripe, such that the stripe isn't
-completely written out, we could lose all of the data in that stripe.
+>> So, would you be happy if ext3 fsck was always run on reboot (at least  
+>> for flash devices)?
+> 
+> For flash devices, MD Raid 5 and anything else that needs it; yes that
+> would make me happy ;-).
 
-In other words, a power failure in the middle of writing out a stripe
-in a degraded RAID array counts as a second failure.
+Sorry, but that just shows your naivete.
 
-To me, this isn't a particularly interesting or newsworthy point,
-since a competent system administrator who cares about his data and/or
-his hardware will (a) have a UPS, and (b) be running with a hot spare
-and/or will imediately replace a failed drive in a RAID array.
+Metadata takes up such a small part of the disk that fscking
+it and finding it to be OK is absolutely no guarantee that
+the data on the filesystem has not been horribly mangled.
 
-       	    	       	       	 	      - Ted
+Personally, what I care about is my data.
+
+The metadata is just a way to get to my data, while the data
+is actually important.
+
+-- 
+All rights reversed.
