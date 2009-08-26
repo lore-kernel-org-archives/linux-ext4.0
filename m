@@ -1,41 +1,49 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13201] kernel BUG at fs/ext4/extents.c:2737
-Date: Wed, 26 Aug 2009 18:11:10 GMT
-Message-ID: <200908261811.n7QIBAiR006413@demeter.kernel.org>
-References: <bug-13201-13602@http.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 07/17] vfs: Introduce new helpers for syncing after
+	writing to O_SYNC file or IS_SYNC inode
+Date: Wed, 26 Aug 2009 14:22:36 -0400
+Message-ID: <20090826182236.GA1290@infradead.org>
+References: <1250697884-22288-1-git-send-email-jack@suse.cz> <1250697884-22288-8-git-send-email-jack@suse.cz> <20090819162638.GE6150@infradead.org> <20090820121531.GC16486@duck.novell.com> <20090820162729.GA24659@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Evgeniy Polyakov <zbr@ioremap.net>, ocfs2-devel@oss.oracle.com,
+	Joel Becker <joel.becker@oracle.com>,
+	Felix Blyakher <felixb@sgi.com>, xfs@oss.sgi.com,
+	Anton Altaparmakov <aia21@cantab.net>,
+	linux-ntfs-dev@lists.sourceforge.net,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39607 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752204AbZHZSLI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 14:11:08 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7QIBAeE006414
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Aug 2009 18:11:10 GMT
-In-Reply-To: <bug-13201-13602@http.bugzilla.kernel.org/>
+Received: from bombadil.infradead.org ([18.85.46.34]:52953 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750802AbZHZSWh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 14:22:37 -0400
+Content-Disposition: inline
+In-Reply-To: <20090820162729.GA24659@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13201
+On Thu, Aug 20, 2009 at 12:27:29PM -0400, Christoph Hellwig wrote:
+> Maybe you can help brain storming, but I still can't see any way in that
+> the
+> 
+>   - write data
+>   - write inode
+>   - wait for data
+> 
+> actually is a benefit in terms of semantics (I agree that it could be
+> faster in theory, but even that is debatable with todays seek latencies
+> in disks)
 
+Btw, another reason why our current default is actively harmful:
 
-Valerie Aurora <vaurora@redhat.com> changed:
+	barriers
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |vaurora@redhat.com
-
-
-
-
---- Comment #11 from Valerie Aurora <vaurora@redhat.com>  2009-08-26 18:11:07 ---
-Given that the bug appears to be fixed, and we can't reproduce the original
-conditions or get more data on this bug, it seems like we should close this
-bug.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+With volatile write caches we do have to flush the disk write cache in
+->fsync, either implicitly by a metadata operation, or explicitly if
+only data changed.  Unless the filesystems waits itself for the data
+to hit the disk like XFS or btrfs will be issue the cache flush
+potentially before the data write has actually reached the disk cache.
