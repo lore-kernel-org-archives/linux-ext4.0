@@ -1,13 +1,13 @@
 From: Pavel Machek <pavel@ucw.cz>
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
 	possible
-Date: Wed, 26 Aug 2009 13:15:37 +0200
-Message-ID: <20090826111537.GB26595@elf.ucw.cz>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz> <19092.28371.793339.764701@notabene.brown> <20090825234454.GI4300@elf.ucw.cz> <4A94B529.1080308@redhat.com>
+Date: Wed, 26 Aug 2009 13:17:52 +0200
+Message-ID: <20090826111751.GC26595@elf.ucw.cz>
+References: <20090824195159.GD29763@elf.ucw.cz> <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz> <4A930160.8060508@redhat.com> <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz> <4A94ACDF.30405@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
@@ -15,28 +15,40 @@ Cc: Neil Brown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
 To: Rik van Riel <riel@redhat.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932498AbZHZLSC@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4A94B529.1080308@redhat.com>
-Sender: linux-doc-owner@vger.kernel.org
+In-Reply-To: <4A94ACDF.30405@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi!
-
->> Ok, can you help? Having a piece of MD documentation explaining the
->> "powerfail nukes entire stripe" and how current filesystems do not
->> deal with that would be nice, along with description when exactly that
->> happens.
+On Tue 2009-08-25 23:32:47, Rik van Riel wrote:
+> Pavel Machek wrote:
 >
-> Except of course for the inconvenient detail that a power
-> failure on a degraded RAID 5 array does *NOT* nuke the
-> entire stripe.
+>>> So, would you be happy if ext3 fsck was always run on reboot (at 
+>>> least  for flash devices)?
+>>
+>> For flash devices, MD Raid 5 and anything else that needs it; yes that
+>> would make me happy ;-).
+>
+> Sorry, but that just shows your naivete.
+>
+> Metadata takes up such a small part of the disk that fscking
+> it and finding it to be OK is absolutely no guarantee that
+> the data on the filesystem has not been horribly mangled.
+>
+> Personally, what I care about is my data.
+>
+> The metadata is just a way to get to my data, while the data
+> is actually important.
 
-Ok, you are right. It will nuke unrelated sector somewhere on the
-stripe (one that is "old" and was not recently written) -- which is
-still something ext3 can not reliably handle.
+Personally, I care about metadata consistency, and ext3 documentation
+suggests that journal protects its integrity. Except that it does not
+on broken storage devices, and you still need to run fsck there.
+
+How do you protect your data is another question, but ext3
+documentation does not claim journal to protect them, so that's up to
+the user I guess.
 									Pavel
-
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
