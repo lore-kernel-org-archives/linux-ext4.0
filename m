@@ -1,12 +1,12 @@
-From: david@lang.hm
+From: Ric Wheeler <rwheeler@redhat.com>
 Subject: Re: [patch] document flash/RAID dangers
-Date: Tue, 25 Aug 2009 17:26:11 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.0908251721170.28411@asgard.lang.hm>
-References: <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm>
- <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz>
+Date: Tue, 25 Aug 2009 20:28:46 -0400
+Message-ID: <4A9481BE.1030308@redhat.com>
+References: <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
@@ -20,8 +20,7 @@ In-Reply-To: <20090826002045.GO4300@elf.ucw.cz>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 26 Aug 2009, Pavel Machek wrote:
-
+On 08/25/2009 08:20 PM, Pavel Machek wrote:
 >>>>> ---
 >>>>> There are storage devices that high highly undesirable properties
 >>>>> when they are disconnected or suffer power failures while writes are
@@ -65,11 +64,14 @@ On Wed, 26 Aug 2009, Pavel Machek wrote:
 >
 > Given that all events are under my control, statistics make little
 > sense here.
+> 								Pavel
+>
 
-if you are intentionally causing several low-probability things to happen 
-at once you increase the risk of corruption
+You are deliberately causing a double failure - pressing the power button after 
+pulling a drive is exactly that scenario.
 
-note that you also need a write to take place, and be interrupted in just 
-the right way.
+Pull your single (non-MD5) disk out while writing (hot unplug from the S-ATA 
+side, leaving power on) and run some tests to verify your assertions...
 
-David Lang
+ric
+
