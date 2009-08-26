@@ -1,11 +1,11 @@
 From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [patch] document flash/RAID dangers
-Date: Wed, 26 Aug 2009 08:37:09 -0400
-Message-ID: <20090826123709.GJ32712@mit.edu>
-References: <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <alpine.DEB.2.00.0908251651140.28411@asgard.lang.hm> <20090826001206.GL4300@elf.ucw.cz> <4A94812C.5010803@redhat.com> <20090826004430.GR4300@elf.ucw.cz> <alpine.DEB.2.00.0908251817390.30426@asgard.lang.hm> <20090826112535.GF26595@elf.ucw.cz>
+Date: Wed, 26 Aug 2009 08:40:58 -0400
+Message-ID: <20090826124058.GK32712@mit.edu>
+References: <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz> <4A9481BE.1030308@redhat.com> <20090826003803.GP4300@elf.ucw.cz> <4A9485A6.1010803@redhat.com> <20090826112121.GD26595@elf.ucw.cz> <4A952370.50603@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: david@lang.hm, Ric Wheeler <rwheeler@redhat.com>,
+Cc: Pavel Machek <pavel@ucw.cz>, david@lang.hm,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
@@ -13,53 +13,46 @@ Cc: david@lang.hm, Ric Wheeler <rwheeler@redhat.com>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:35753 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932850AbZHZMlL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Aug 2009 08:41:11 -0400
 Content-Disposition: inline
-In-Reply-To: <20090826112535.GF26595@elf.ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4A952370.50603@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 26, 2009 at 01:25:36PM +0200, Pavel Machek wrote:
-> > you just plain cannot count on writes that are in flight when a powerfail 
-> > happens to do predictable things, let alone what you consider sane or  
-> > proper.
-> 
-> From what I see, this kind of failure is rather harder to reproduce
-> than the software problems. And at least SGI machines were designed to
-> avoid this...
-> 
-> Anyway, I'd like to hear from ext3 people... what happens on read
-> errors in journal? That's what you'd expect to see in situation above.
+On Wed, Aug 26, 2009 at 07:58:40AM -0400, Ric Wheeler wrote:
+>> Drive in raid 5 failed; hot spare was available (no idea about
+>> UPS). System apparently locked up trying to talk to the failed drive,
+>> or maybe admin just was not patient enough, so he just powercycled the
+>> array. He lost the array.
+>>
+>> So while most people will not agressively powercycle the RAID array,
+>> drive failure still provokes little tested error paths, and getting
+>> unclean shutdown is quite easy in such case.
+>
+> Then what we need to document is do not power cycle an array during a  
+> rebuild, right?
 
-On a power failure, what normally happens is that the random garbage
-gets written into the disk drive's last dying gasp, since the memory
-starts going insane and sends garbage to the disk.  So the disk
-successfully completes the write, but the sector contains garbage.
-Since HDD's tend to be last thing to die, being less sensitive to
-voltage drops than the memory or DMA controller, my experience is that
-you don't get a read error after the system comes up, you just get
-garbage written into the journal.
+Well, the softwar raid layer could be improved so that it implements
+scrubbing by default (i.e., have the md package install a cron job to
+implement a periodict scrub pass automatically).  The MD code could
+also regularly check to make sure the hot spare is OK; the other
+possibility is that hot spare, which hadn't been used in a long time,
+had silently failed.
 
-The ext3 journalling code waits until all of the journal code is
-written, and only then writes the commit block.  On restart, we look
-for the last valid commit block.  So if the power failure is before we
-write the commit block, we replay the journal up until the previous
-commit block.  If the power failure is while we are writing the commit
-block, garbage will be written out instead of the commit block, and so
-it falls back to the previous case.
+> In the end, there are cascading failures that will defeat any data  
+> protection scheme, but that does not mean that the value of that scheme  
+> is zero. We need to be get more people to use RAID (including MD5) and  
+> try to enhance it as we go. Just using a single disk is not a good 
+> thing...
 
-We do not allow any updates to the filesystem metadata to take place
-until the commit block has been written; therefore the filesystem
-stays consistent.
+Yep; the solution is to improve the storage devices.  It is *not* to
+encourage people to think RAID is not worth it, or that somehow ext2
+is better than ext3 because it runs fsck's all the time at boot up.
+That's just crazy talk.
 
-If there the journal *does* develop read errors, then fsck will
-require a manual fsck, and so the boot operation will get stopped so a
-system administrator can provide manual intervention.  The best bet
-for the sysadmin is to replay as much of the journal she can, and then
-let fsck fix any resulting filesystem inconsistencies.  In practice,
-though, I've not experienced or seen any reports of this happening
-from a power failure; usually it happens if the laptop gets dropped or
-the hard drive suffers or suffers some other kind of hardware failure.
-
-    	       	       	  	       - Ted
+						- Ted
