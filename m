@@ -1,41 +1,65 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Wed, 26 Aug 2009 03:16:06 +0200
-Message-ID: <20090826011605.GS4300__30893.3613742285$1251249445$gmane$org@elf.ucw.cz>
-References: <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu>
+From: david@lang.hm
+Subject: Re: [patch] document flash/RAID dangers
+Date: Tue, 25 Aug 2009 18:17:02 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.0908251816300.30426@asgard.lang.hm>
+References: <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm>
+ <20090825233701.GH4300@elf.ucw.cz> <alpine.DEB.2.00.0908251651140.28411@asgard.lang.hm> <20090826001206.GL4300@elf.ucw.cz> <alpine.DEB.2.00.0908251718141.28411@asgard.lang.hm> <20090826003926.GQ4300@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
-	kernel list
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:47360 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932352AbZHZBQN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Aug 2009 21:16:13 -0400
-Content-Disposition: inline
-In-Reply-To: <20090826010018.GA17684@mit.edu>
+Received: from mail.lang.hm ([64.81.33.126]:33138 "EHLO bifrost.lang.hm"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932650AbZHZBSB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Aug 2009 21:18:01 -0400
+In-Reply-To: <20090826003926.GQ4300@elf.ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+On Wed, 26 Aug 2009, Pavel Machek wrote:
 
-> 3) Does that mean that you shouldn't use ext3 on RAID drives?  Of
-> course not!  First of all, Ext3 still saves you against kernel panics
-> and hangs caused by device driver bugs or other kernel hangs.  You
-> will lose less data, and avoid needing to run a long and painful fsck
-> after a forced reboot, compared to if you used ext2.  You are making
+> On Tue 2009-08-25 17:20:13, david@lang.hm wrote:
+>> On Wed, 26 Aug 2009, Pavel Machek wrote:
+>>
+>>> On Tue 2009-08-25 16:56:40, david@lang.hm wrote:
+>>>> On Wed, 26 Aug 2009, Pavel Machek wrote:
+>>>>
+>>>>> There are storage devices that high highly undesirable properties
+>>>>> when they are disconnected or suffer power failures while writes are
+>>>>> in progress; such devices include flash devices and MD RAID 4/5/6
+>>>>> arrays.
+>>>>
+>>>> change this to say 'degraded MD RAID 4/5/6 arrays'
+>>>>
+>>>> also find out if DM RAID 4/5/6 arrays suffer the same problem (I strongly
+>>>> suspect that they do)
+>>>
+>>> I changed it to say MD/DM.
+>>>
+>>>> then you need to add a note that if the array becomes degraded before a
+>>>> scrub cycle happens previously hidden damage (that would have been
+>>>> repaired by the scrub) can surface.
+>>>
+>>> I'd prefer not to talk about scrubing and such details here. Better
+>>> leave warning here and point to MD documentation.
+>>
+>> I disagree with that, the way you are wording this makes it sound as if
+>> raid isn't worth it. if you are going to say that raid is risky you need
+>> to properly specify when it is risky
+>
+> Ok, would this help? I don't really want to go to scrubbing details.
+>
+> (*) Degraded array or single disk failure "near" the powerfail is
+> neccessary for this property of RAID arrays to bite.
 
-Actually... ext3 + MD RAID5 will still have a problem on kernel
-panic. MD RAID5 is implemented in software, so if kernel panics, you
-can still get inconsistent data in your array.
+that sounds reasonable
 
-I mostly agree with the rest.
-								Pavel
-
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+David Lang
