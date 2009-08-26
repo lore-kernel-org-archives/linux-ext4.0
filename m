@@ -1,64 +1,119 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [patch] document flash/RAID dangers
-Date: Tue, 25 Aug 2009 20:50:03 -0400
-Message-ID: <4A9486BB.4020301@redhat.com>
-References: <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <alpine.DEB.2.00.0908251651140.28411@asgard.lang.hm> <20090826001206.GL4300@elf.ucw.cz> <4A94812C.5010803@redhat.com> <20090826004430.GR4300@elf.ucw.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+	possible
+Date: Tue, 25 Aug 2009 21:00:18 -0400
+Message-ID: <20090826010018.GA17684@mit.edu>
+References: <20090825211515.GA3688@elf.ucw.cz> <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Pavel Machek <pavel@ucw.cz>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090826004430.GR4300@elf.ucw.cz>
+Content-Disposition: inline
+In-Reply-To: <4A948259.40007@redhat.com>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/25/2009 08:44 PM, Pavel Machek wrote:
->
->>>>> THESE devices have the property of potentially corrupting blocks being
->>>>> written at the time of the power failure,
->>>>
->>>> this is true of all devices
->>>
->>> Actually I don't think so. I believe SATA disks do not corrupt even
->>> the sector they are writing to -- they just have big enough
->>> capacitors. And yes I believe ext3 depends on that.
+On Tue, Aug 25, 2009 at 08:31:21PM -0400, Ric Wheeler wrote:
+>>> You are simply incorrect, Ted did not say that ext3 does not work
+>>> with MD raid5.
 >>
->> Pavel, no S-ATA drive has capacitors to hold up during a power failure
->> (or even enough power to destage their write cache). I know this from
->> direct, personal knowledge having built RAID boxes at EMC for years. In
->> fact, almost all RAID boxes require that the write cache be hardwired to
->> off when used in their arrays.
+>> http://lkml.org/lkml/2009/8/25/312
+>> 									Pavel
 >
-> I never claimed they have enough power to flush entire cache -- read
-> the paragraph again. I do believe the disks have enough capacitors to
-> finish writing single sector, and I do believe ext3 depends on that.
+> I will let Ted clarify his text on his own, but the quoted text says "... 
+> have potential...".
 >
-> 									Pavel
+> Why not ask Neil if he designed MD to not work properly with ext3?
 
-Some scary terms that drive people mention (and measure):
+So let me clarify by saying the following things.   
 
-"high fly writes"
-"over powered seeks"
-"adjacent tack erasure"
+1) Filesystems are designed to expect that storage devices have
+certain properties.  These include returning the same data that you
+wrote, and that an error when writing a sector, or a power failure
+when writing sector, should not be amplified to cause collateral
+damage with previously succfessfully written sectors.
 
-If you do get a partial track written, the data integrity bits that the data is 
-embedded in will flag it as invalid and give you and IO error on the next read. 
-Note that the damage is not persistent, it will get repaired (in place) on the 
-next write to that sector.
+2) Degraded RAID 5/6 filesystems do not meet these properties.
+Neither to cheap flash drives.  This increases the chances you can
+lose, bigtime.  
 
-Also it is worth noting that ext2/3/4 write file system "blocks" not single 
-sectors. Each ext3 IO is 8 distinct disk sector writes and those can span tracks 
-on a drive which require a seek which all consume power.
+3) Does that mean that you shouldn't use ext3 on RAID drives?  Of
+course not!  First of all, Ext3 still saves you against kernel panics
+and hangs caused by device driver bugs or other kernel hangs.  You
+will lose less data, and avoid needing to run a long and painful fsck
+after a forced reboot, compared to if you used ext2.  You are making
+an assumption that the only time running the journal takes place is
+after a power failure.  But if the system hangs, and you need to hit
+the Big Red Switch, or if you using the system in a Linux High
+Availability setup and the ethernet card fails, so the STONITH ("shoot
+the other node in the head") system forces a hard reset of the system,
+or you get a kernel panic which forces a reboot, in all of these cases
+ext3 will save you from a long fsck, and it will do so safely.
 
-On power loss, a disk will immediately park the heads...
+Secondly, what's the probability of a failure causes the RAID array to
+become degraded, followed by a power failure, versus a power failure
+while the RAID array is not running in degraded mode?  Hopefully you
+are running with the RAID array in full, proper running order a much
+larger percentage of the time than running with the RAID array in
+degraded mode.  If not, the bug is with the system administrator!
 
-ric
+If you are someone who tends to run for long periods of time in
+degraded mode --- then better get a UPS.  And certainly if you want to
+avoid the chances of failure, periodically scrubbing the disks so you
+detect hard drive failures early, instead of waiting until a disk
+fails before letting the rebuild find the dreaded "second failure"
+which causes data loss, is a d*mned good idea.
 
+Maybe a random OS engineer doesn't know these things --- but trust me
+when I say a competent system administrator had better be familiar
+with these concepts.  And someone who wants their data to be reliably
+stored needs to do some basic storage engineering if they want to have
+long-term data reliability.  (That, or maybe they should outsource
+their long-term reliable storage some service such as Amazon S3 ---
+see Jeremy Zawodny's analysis about how it can be cheaper, here: 
+http://jeremy.zawodny.com/blog/archives/007624.html)
+
+But we *do* need to be careful that we don't write documentation which
+is ends up giving users the wrong impression.  The bottom line is that
+you're better off using ext3 over ext2, even on a RAID array, for the
+reasons listed above.
+
+Are you better off using ext3 over ext2 on a crappy flash drive?
+Maybe --- if you are also using crappy proprietary video drivers, such
+as Ubuntu ships, where every single time you exit a 3d game the system
+crashes (and Ubuntu users accept this as normal?!?), then ext3 might
+be a better choice since you'll reduce the chance of data loss when
+the system locks up or crashes thanks to the aforemention crappy
+proprietary video drivers from Nvidia.  On the other hand, crappy
+flash drives *do* have really bad write amplification effects, where a
+4K write can cause 128k or more worth of flash to be rewritten, such
+that using ext3 could seriously degrade the lifetime of said crappy
+flash drive; furthermore, the crappy flash drives have such terribly
+write performance that using ext3 can be a performance nightmare.
+This of course, doesn't apply to well-implemented SSD's, such as the
+Intel's X25-M and X18-M.  So here your mileage may vary.  Still, if
+you are using crappy proprietary drivers which cause system hangs and
+crashes at a far greater rate than power fail-induced unclean
+shutdowns, ext3 *still* might be the better choice, even with crappy
+flash drives.
+
+The best thing to do, of course, is to improve your storage stack; use
+competently implemented SSD's instead of crap flash cards.  If your
+hardware RAID card supports a battery option, *get* the battery.  Add
+a UPS to your system.  Provision your RAID array with hot spares, and
+regularly scrub (read-test) your array so that failed drives can be
+detected early.  Make sure you configure your MD setup so that you get
+e-mail when a hard drive fails and the array starts running in
+degraded mode, so you can replace the failed drive ASAP.
+
+At the end of the day, filesystems are not magic.  They can't
+compensate for crap hardware, or incompetently administered machines.
+
+							- Ted
