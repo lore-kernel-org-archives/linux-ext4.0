@@ -1,107 +1,41 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Wed, 26 Aug 2009 14:02:48 -0400
-Message-ID: <20090826180248.GB6997@mit.edu>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz> <4A94ACDF.30405@redhat.com> <20090826111751.GC26595@elf.ucw.cz> <alpine.DEB.2.00.0908260428310.30426@asgard.lang.hm> <20090826131028.GB1370@ucw.cz> <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12815] JBD: barrier-based sync failed on dm-1:8 - disabling
+ barriers  -- and then hang
+Date: Wed, 26 Aug 2009 18:08:56 GMT
+Message-ID: <200908261808.n7QI8uur006147@demeter.kernel.org>
+References: <bug-12815-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pavel Machek <pavel@ucw.cz>, Rik van Riel <riel@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net, jack@suse.cz
-To: david@lang.hm
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:34985 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752306AbZHZSIy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 14:08:54 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7QI8uaT006148
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Aug 2009 18:08:56 GMT
+In-Reply-To: <bug-12815-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 26, 2009 at 06:43:24AM -0700, david@lang.hm wrote:
->>>
->>> as the ext3 authors have stated many times over the years, you still need
->>> to run fsck periodicly anyway.
->>
->> Where is that documented?
->
-> linux-kernel mailing list archives.
+http://bugzilla.kernel.org/show_bug.cgi?id=12815
 
-Probably from some 6-8 years ago, in e-mail postings that I made.  My
-argument has always been that PC-class hardware is crap, and it's a
-Really Good Idea to periodically check the metadata because corruption
-there can end up causing massive data loss.  The main problem is that
-doing it at reboot time really hurt system availability, and "after 20
-reboots (plus or minus)" resulted in fsck checks at wildly varying
-intervals depending on how often people reboot.
 
-What I've been recommending for some time is that people use LVM, and
-run fsck on a snapshot every week or two, at some convenient time when
-the system load is at a minimum.  There is an e2croncheck script in
-the e2fsprogs sources, in the contrib directory; it's short enough
-that I'll attach here here.
+Valerie Aurora <vaurora@redhat.com> changed:
 
-Is it *necessary*?  In a world where hardware is perfect, no.  In a
-world where people don't bother buying ECC memory because it's 10%
-more expensive, and PC builders use the cheapest possible parts --- I
-think it's a really good idea.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |vaurora@redhat.com
 
-						- Ted
 
-P.S.  Patches so that this shell script takes a config file, and/or
-parses /etc/fstab to automatically figure out which filesystems should
-be checked, are greatly appreciated.  Getting distro's to start
-including this in their e2fsprogs packaging scripts would also be
-greatly appreciated.
 
-#!/bin/sh
-#
-# e2croncheck -- run e2fsck automatically out of /etc/cron.weekly
-#
-# This script is intended to be run by the system administrator 
-# periodically from the command line, or to be run once a week
-# or so by the cron daemon to check a mounted filesystem (normally
-# the root filesystem, but it could be used to check other filesystems
-# that are always mounted when the system is booted).
-#
-# Make sure you customize "VG" so it is your LVM volume group name, 
-# "VOLUME" so it is the name of the filesystem's logical volume, 
-# and "EMAIL" to be your e-mail address
-#
-# Written by Theodore Ts'o, Copyright 2007, 2008, 2009.
-#
-# This file may be redistributed under the terms of the 
-# GNU Public License, version 2.
-#
 
-VG=ssd
-VOLUME=root
-SNAPSIZE=100m
-EMAIL=sysadmin@example.com
+--- Comment #9 from Valerie Aurora <vaurora@redhat.com>  2009-08-26 18:08:54 ---
+Can this bug be closed?  No response from the submitter for 5 months, and it
+does kind of smell like a hardware problem.
 
-TMPFILE=`mktemp -t e2fsck.log.XXXXXXXXXX`
-
-OPTS="-Fttv -C0"
-#OPTS="-Fttv -E fragcheck"
-
-set -e
-START="$(date +'%Y%m%d%H%M%S')"
-lvcreate -s -L ${SNAPSIZE} -n "${VOLUME}-snap" "${VG}/${VOLUME}"
-if nice logsave -as $TMPFILE e2fsck -p $OPTS "/dev/${VG}/${VOLUME}-snap" && \
-   nice logsave -as $TMPFILE e2fsck -fy $OPTS "/dev/${VG}/${VOLUME}-snap" ; then
-  echo 'Background scrubbing succeeded!'
-  tune2fs -C 0 -T "${START}" "/dev/${VG}/${VOLUME}"
-else
-  echo 'Background scrubbing failed! Reboot to fsck soon!'
-  tune2fs -C 16000 -T "19000101" "/dev/${VG}/${VOLUME}"
-  if test -n "$RPT-EMAIL"; then 
-    mail -s "E2fsck of /dev/${VG}/${VOLUME} failed!" $EMAIL < $TMPFILE
-  fi
-fi
-lvremove -f "${VG}/${VOLUME}-snap"
-rm $TMPFILE
-
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
