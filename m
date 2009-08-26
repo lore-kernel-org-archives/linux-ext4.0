@@ -1,13 +1,13 @@
 From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [patch] document flash/RAID dangers
-Date: Tue, 25 Aug 2009 20:28:46 -0400
-Message-ID: <4A9481BE.1030308@redhat.com>
-References: <20090825094244.GC15563@elf.ucw.cz> <20090825161110.GP17684@mit.edu> <20090825222112.GB4300@elf.ucw.cz> <alpine.DEB.2.00.0908251526290.28411@asgard.lang.hm> <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+ possible
+Date: Tue, 25 Aug 2009 20:31:21 -0400
+Message-ID: <4A948259.40007@redhat.com>
+References: <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz> <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
+Cc: Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
@@ -16,62 +16,37 @@ Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
 To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090826002045.GO4300@elf.ucw.cz>
+In-Reply-To: <20090826001645.GN4300@elf.ucw.cz>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/25/2009 08:20 PM, Pavel Machek wrote:
->>>>> ---
->>>>> There are storage devices that high highly undesirable properties
->>>>> when they are disconnected or suffer power failures while writes are
->>>>> in progress; such devices include flash devices and MD RAID 4/5/6
->>>>> arrays.  These devices have the property of potentially
->>>>> corrupting blocks being written at the time of the power failure, and
->>>>> worse yet, amplifying the region where blocks are corrupted such that
->>>>> additional sectors are also damaged during the power failure.
+On 08/25/2009 08:16 PM, Pavel Machek wrote:
+> On Tue 2009-08-25 20:11:21, Ric Wheeler wrote:
+>> On 08/25/2009 07:53 PM, Pavel Machek wrote:
+>>>> Why don't you hold all of your most precious data on that single S-ATA
+>>>> drive for five year on one box and put a second copy on a small RAID5
+>>>> with ext3 for the same period?
 >>>>
->>>> I would strike the entire mention of MD devices since it is your
->>>> assertion, not a proven fact. You will cause more data loss from common
+>>>> Repeat experiment until you get up to something like google scale or the
+>>>> other papers on failures in national labs in the US and then we can have
+>>>> an informed discussion.
 >>>
->>> That actually is a fact. That's how MD RAID 5 is designed. And btw
->>> those are originaly Ted's words.
->>
->> Ted did not design MD RAID5.
->
-> So what? He clearly knows how it works.
->
-> Instead of arguing he's wrong, will you simply label everything as
-> unproven?
->
->>>> events (single sector errors, complete drive failure) by steering people
->>>> away from more reliable storage configurations because of a really rare
->>>> edge case (power failure during split write to two raid members while
->>>> doing a RAID rebuild).
+>>> I'm not interested in discussing statistics with you. I'd rather discuss
+>>> fsync() and storage design issues.
 >>>
->>> I'm not sure what's rare about power failures. Unlike single sector
->>> errors, my machine actually has a button that produces exactly that
->>> event. Running degraded raid5 arrays for extended periods may be
->>> slightly unusual configuration, but I suspect people should just do
->>> that for testing. (And from the discussion, people seem to think that
->>> degraded raid5 is equivalent to raid0).
+>>> ext3 is designed to work on single SATA disks, and it is not designed
+>>> to work on flash cards/degraded MD RAID5s, as Ted acknowledged.
 >>
->> Power failures after a full drive failure with a split write during a rebuild?
+>> You are simply incorrect, Ted did not say that ext3 does not work
+>> with MD raid5.
 >
-> Look, I don't need full drive failure for this to happen. I can just
-> remove one disk from array. I don't need power failure, I can just
-> press the power button. I don't even need to rebuild anything, I can
-> just write to degraded array.
->
-> Given that all events are under my control, statistics make little
-> sense here.
-> 								Pavel
->
+> http://lkml.org/lkml/2009/8/25/312
+> 									Pavel
 
-You are deliberately causing a double failure - pressing the power button after 
-pulling a drive is exactly that scenario.
+I will let Ted clarify his text on his own, but the quoted text says "... have 
+potential...".
 
-Pull your single (non-MD5) disk out while writing (hot unplug from the S-ATA 
-side, leaving power on) and run some tests to verify your assertions...
+Why not ask Neil if he designed MD to not work properly with ext3?
 
-ric
+Ric
 
