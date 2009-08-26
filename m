@@ -1,75 +1,107 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: Re: Problem with ext4_sync_file in no-journal mode.
-Date: Wed, 26 Aug 2009 09:41:26 -0700
-Message-ID: <1251304886.23722.6.camel@bobble.smo.corp.google.com>
-References: <1251222245.20219.25.camel@bobble.smo.corp.google.com>
-	 <20090826162737.GB28867@atrey.karlin.mff.cuni.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+	possible
+Date: Wed, 26 Aug 2009 14:02:48 -0400
+Message-ID: <20090826180248.GB6997@mit.edu>
+References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz> <4A94ACDF.30405@redhat.com> <20090826111751.GC26595@elf.ucw.cz> <alpine.DEB.2.00.0908260428310.30426@asgard.lang.hm> <20090826131028.GB1370@ucw.cz> <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:57264 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751601AbZHZQle (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 12:41:34 -0400
-In-Reply-To: <20090826162737.GB28867@atrey.karlin.mff.cuni.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Pavel Machek <pavel@ucw.cz>, Rik van Riel <riel@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net, jack@suse.cz
+To: david@lang.hm
+Return-path: <linux-doc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2009-08-26 at 18:27 +0200, Jan Kara wrote:
-> > Our powerfail testing turned up an odd regression when using fsync() in
-> > no-journal mode to force data to the device.  We saw loss rates (both
-> > file and data) that were much higher than the same test using ext2 (60+%
-> > loss versus <10%).  We've done some investigation and one thing that
-> > stood out was that in the no-journal case, ext4_sync_file() was just
-> > calling sync_inode() (and nothing else), while ext2_sync_file(), for
-> > comparison, was also calling sync_mapping_buffers() to actually push the
-> > data out.
-> > 
-> > I therefore hacked ext4_sync_file() to call sync_mapping_buffers() in
-> > the no-journal case; when we reran the test we saw that the loss rate
-> > dropped from 60+% to around 50%.  While it's clear that we have more
-> > work to do in this area, this is a significant improvement.  It appears
-> > that this was just missed when we did the no-journal work.  Do you guys
-> > concur?
->   Well, I'm surprised sync_mapping_buffers() did anything - I believe
-> it's rather an error in testing. The thing is: sync_mapping_buffers()
-> writes buffers on private_list of mapping. In ext2, it contains all the
-> buffers used for indirect blocks. In ext4, there are no buffers there -
-> you have to call mark_buffer_dirty_inode() to put a buffer to this list
-> and ext4 does not do that with any buffer. So to make fsync work, you
-> have to call mark_buffer_dirty_inode() in __ext4_handle_dirty_metadata
-> if an inode is provided. Then sync_mapping_buffers() will actually do
-> something.
+On Wed, Aug 26, 2009 at 06:43:24AM -0700, david@lang.hm wrote:
+>>>
+>>> as the ext3 authors have stated many times over the years, you still need
+>>> to run fsck periodicly anyway.
+>>
+>> Where is that documented?
+>
+> linux-kernel mailing list archives.
 
-Yeah, after digging further I realized that, but be that as it may, it
-did indeed make a 10% improvement overall.  Why?  No idea.  In any event
-I'll keep digging as the basic problem is still there.
+Probably from some 6-8 years ago, in e-mail postings that I made.  My
+argument has always been that PC-class hardware is crap, and it's a
+Really Good Idea to periodically check the metadata because corruption
+there can end up causing massive data loss.  The main problem is that
+doing it at reboot time really hurt system availability, and "after 20
+reboots (plus or minus)" resulted in fsck checks at wildly varying
+intervals depending on how often people reboot.
 
->   BTW: the syncing code in ext4_handle_dirty_metadata() looks
-> suboptimal. Why do you sync each an every metadata buffer? It might be
-> the easiest way for directories but for regular files this is really
-> superfluous. There you should need anything since VFS does the syncing
-> for you.
+What I've been recommending for some time is that people use LVM, and
+run fsck on a snapshot every week or two, at some convenient time when
+the system load is at a minimum.  There is an e2croncheck script in
+the e2fsprogs sources, in the contrib directory; it's short enough
+that I'll attach here here.
 
-Ah, you say "VFS" but what you really mean is "generic_file_xxx_write,"
-correct?  Basically, at the moment it's just doing in this case what
-ext2 does; it does sound like there's optimization that could be done
-here, however.
+Is it *necessary*?  In a world where hardware is perfect, no.  In a
+world where people don't bother buying ECC memory because it's 10%
+more expensive, and PC builders use the cheapest possible parts --- I
+think it's a really good idea.
 
-> > The other interesting bit of this is that ext4 no-journal without using
-> > fsync() has, apparently, basically the same loss rate as ext2 with
-> > fsync().
->   Isn't this the other way around? I suppose ext4 without fsync isn't
-> better than ext4 with fsync ;).
+						- Ted
 
-That's what you would think, isn't it?  However, you (and we) would be
-wrong.  In our testing, ext4+fsync was significantly worse than ext4
-without fsync.  Like, six times worse.  Yes, this is a nonintuitive
-result and no, I can't yet explain it.
--- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
+P.S.  Patches so that this shell script takes a config file, and/or
+parses /etc/fstab to automatically figure out which filesystems should
+be checked, are greatly appreciated.  Getting distro's to start
+including this in their e2fsprogs packaging scripts would also be
+greatly appreciated.
+
+#!/bin/sh
+#
+# e2croncheck -- run e2fsck automatically out of /etc/cron.weekly
+#
+# This script is intended to be run by the system administrator 
+# periodically from the command line, or to be run once a week
+# or so by the cron daemon to check a mounted filesystem (normally
+# the root filesystem, but it could be used to check other filesystems
+# that are always mounted when the system is booted).
+#
+# Make sure you customize "VG" so it is your LVM volume group name, 
+# "VOLUME" so it is the name of the filesystem's logical volume, 
+# and "EMAIL" to be your e-mail address
+#
+# Written by Theodore Ts'o, Copyright 2007, 2008, 2009.
+#
+# This file may be redistributed under the terms of the 
+# GNU Public License, version 2.
+#
+
+VG=ssd
+VOLUME=root
+SNAPSIZE=100m
+EMAIL=sysadmin@example.com
+
+TMPFILE=`mktemp -t e2fsck.log.XXXXXXXXXX`
+
+OPTS="-Fttv -C0"
+#OPTS="-Fttv -E fragcheck"
+
+set -e
+START="$(date +'%Y%m%d%H%M%S')"
+lvcreate -s -L ${SNAPSIZE} -n "${VOLUME}-snap" "${VG}/${VOLUME}"
+if nice logsave -as $TMPFILE e2fsck -p $OPTS "/dev/${VG}/${VOLUME}-snap" && \
+   nice logsave -as $TMPFILE e2fsck -fy $OPTS "/dev/${VG}/${VOLUME}-snap" ; then
+  echo 'Background scrubbing succeeded!'
+  tune2fs -C 0 -T "${START}" "/dev/${VG}/${VOLUME}"
+else
+  echo 'Background scrubbing failed! Reboot to fsck soon!'
+  tune2fs -C 16000 -T "19000101" "/dev/${VG}/${VOLUME}"
+  if test -n "$RPT-EMAIL"; then 
+    mail -s "E2fsck of /dev/${VG}/${VOLUME} failed!" $EMAIL < $TMPFILE
+  fi
+fi
+lvremove -f "${VG}/${VOLUME}-snap"
+rm $TMPFILE
 
