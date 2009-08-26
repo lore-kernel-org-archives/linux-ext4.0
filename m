@@ -1,81 +1,97 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Wed, 26 Aug 2009 09:37:49 -0400
-Message-ID: <4A953AAD.2000707__20144.031282007$1251293870$gmane$org@redhat.com>
-References: <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <20090826011605.GS4300@elf.ucw.cz> <20090826025514.GE32712@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2 V2] Direct IO for holes and fallocate: add end_io
+	callback
+Date: Wed, 26 Aug 2009 15:39:32 +0200
+Message-ID: <20090826133932.GA14534@duck.novell.com>
+References: <1250092470.18329.27.camel@mingming-laptop> <20090819141557.GA4705@atrey.karlin.mff.cuni.cz> <1250717176.3924.116.camel@mingming-laptop> <20090820115212.GA16486@duck.novell.com> <1251149893.4280.69.camel@mingming-laptop> <20090825140113.GG405@duck.novell.com> <1251229270.3930.17.camel@mingming-laptop> <1251247748.3930.23.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linu
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	Theodore Tso <tytso@mit.edu>
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22590 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:32955 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756496AbZHZNhU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Aug 2009 09:37:20 -0400
-In-Reply-To: <20090826025514.GE32712@mit.edu>
+	id S1757286AbZHZNje (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Aug 2009 09:39:34 -0400
+Content-Disposition: inline
+In-Reply-To: <1251247748.3930.23.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/25/2009 10:55 PM, Theodore Tso wrote:
-> On Wed, Aug 26, 2009 at 03:16:06AM +0200, Pavel Machek wrote:
->> Hi!
->>
->>> 3) Does that mean that you shouldn't use ext3 on RAID drives?  Of
->>> course not!  First of all, Ext3 still saves you against kernel panics
->>> and hangs caused by device driver bugs or other kernel hangs.  You
->>> will lose less data, and avoid needing to run a long and painful fsck
->>> after a forced reboot, compared to if you used ext2.  You are making
->>
->> Actually... ext3 + MD RAID5 will still have a problem on kernel
->> panic. MD RAID5 is implemented in software, so if kernel panics, you
->> can still get inconsistent data in your array.
->
-> Only if the MD RAID array is running in degraded mode (and again, if
-> the system is in this state for a long time, the bug is in the system
-> administrator).  And even then, it depends on how the kernel dies.  If
-> the system hangs due to some deadlock, or we get an OOPS that kills a
-> process while still holding some locks, and that leads to a deadlock,
-> it's likely the low-level MD driver can still complete the stripe
-> write, and no data will be lost.  If the kernel ties itself in knots
-> due to running out of memory, and the OOM handler is invoked, someone
-> hitting the reset button to force a reboot will also be fine.
->
-> If the RAID array is degraded, and we get an oops in interrupt
-> handler, such that the system is immediately halted --- then yes, data
-> could get lost.  But there are many system crashes where the software
-> RAID's ability to complete a stripe write would not be compromised.
->
->         	       	  	     	    	  	- Ted
+On Tue 25-08-09 17:49:08, Mingming wrote:
+> On Tue, 2009-08-25 at 12:41 -0700, Mingming wrote:
+> > On Tue, 2009-08-25 at 16:01 +0200, Jan Kara wrote:
+> > > On Mon 24-08-09 14:38:13, Mingming wrote:
+> > > > On Thu, 2009-08-20 at 13:52 +0200, Jan Kara wrote:
+> > > > > On Wed 19-08-09 14:26:16, Mingming wrote:
+> > > > > > On Wed, 2009-08-19 at 16:15 +0200, Jan Kara wrote:
+> > > > > > > > For direct IO write to the end of file, we now also could get rid of
+> > > > > > > > using orphan list to protect expose stale data out after crash, when
+> > > > > > > > direct write to end of file isn't complete. We now fallocate blocks for
+> > > > > > > > the direct IO write to the end of file as well, and convert those
+> > > > > > > > fallocated blocks at the end of file to written when IO is complete. If
+> > > > > > > > fs crashed before the IO complete, it will only seen the file tail has
+> > > > > > > > been fallocated but won't get the stale data out.
+> > > > > > >   But you still probably need orphan list to truncate blocks allocated
+> > > > > > > beyond file end during extending direct write. So I'd just remove this
+> > > > > > > paragraph...
+> > > > > > > 
+> > > > > > 
+> > > > > > Do we still need to truncate blocks allocated at the end of file? Those
+> > > > > > blocks are marked as uninitialized extents (as any block allocation from
+> > > > > > DIO are flagged as uninitialized extents, before IO is complete), so
+> > > > > > that after recover from crash, the stale data won't get exposed. 
+> > > > > > 
+> > > > > > I guess I missed the cases you concerned that we need the orphan list to
+> > > > > > protect, could you plain a little more?
+> > > > >   Well, you are right it's not a security problem since no data gets
+> > > > > exposed. It's just that after a crash, there will be blocks allocated to
+> > > > > a file and it's not trivial to it find out unless you specifically stat the
+> > > > > file. So it's just *not nice* kind of thing. If it brings us some
+> > > > > advantage to not put the inode on the orphan list, then sure it might be
+> > > > > a tradeoff we are willing to make. But otherwise I see no point.
+> > > > > 
+> > > > 
+> > > > Hmm... I see what you concerned now...user probably don't like allocated
+> > > > blocks at the end...
+> > >   Yes, it's kind of counterintuitive that blocks can get allocated but
+> > > don't really "show up" in the file (because they are unwritten and beyond
+> > > i_size).
+> > > 
+> > > > I am trying to think of the ext3 case. In ext3 case, inode will be
+> > > > removed from orphan list once the IO is complete, but that is before the
+> > > > i_disksize get updated and journal handle being closed. What if the
+> > > > system crash after inode removed from orphan list but before the
+> > > > i_disksize get updated?
+> > >   As you write below, until we stop the handle, the transaction cannot be
+> > > committed and so no change actually gets written to disk.
+> > > 
+> > 
+> > Then in case this, if no change actually gets written to disk, then
+> > i_disksize hasn't get updated on disk, why we need the orphan list?
+> > 
+> 
+> Never mind, I missed the fact that i_size was updated in ext3_direct_IO
+> before submit the IO, so orphan list is there to truncate i_size to
+> i_disksize in case of crash.
+  I think we still don't understand ourselves. We don't care to much about
+i_size being updated because we never write it to disk. We write only
+i_disksize and that gets updated in the end. The problem is:
+  create(f)
+  direct_write(f, buf, 65536)
+    -> allocates 32 KB beyond EOF and then crash happens
 
-Just to add some real world data, Bianca Schroeder published a really good paper 
-that looks at failures in national labs which has actual measured disk failures:
+  If 'f' was not on the orphan list you'd see:
+ls -l
+  -rw-r--r--  1 jack users      0 2008-06-26 11:01 f
+  but the file has actually those 32 KB allocated and user has no way of
+knowing about that.
+  Because 'f' *is* on orphan list, we free those 32 KB beyond EOF and
+everything is happy.
+  That's the whole point I was trying to make.
 
-http://www.cs.cmu.edu/~bianca/fast07.pdf
-
-Her numbers showed various rates of failures, but depending on the box, drive 
-type, etc, they lost between 1-6% of the install drives each year.
-
-There is also a good paper from Google:
-
-http://labs.google.com/papers/disk_failures.html
-
-Both of the above are largely linux boxes.
-
-And several other FAST papers on failures in commercial RAID boxes, most notably 
-by NetApp.
-
-If reading papers is not at the top of your list of things to do, just skim 
-through and look for the tables on disk failures, etc. which have great 
-measurements of what really failed in these systems...
-
-Ric
-
-
-
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
