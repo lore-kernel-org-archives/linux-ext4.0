@@ -1,40 +1,57 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Enable asynchronous commits by default patch revoked?
-Date: Wed, 26 Aug 2009 18:02:31 +0200
-Message-ID: <20090826160231.GA28867@atrey.karlin.mff.cuni.cz>
-References: <200908241033.10527.Christian.Fischer@easterngraphics.com> <20090824133447.GH23677@mit.edu> <20090824183119.GI5931@webber.adilger.int> <20090824201027.GC17684@mit.edu> <4A92F7E0.9010001@redhat.com> <20090824220738.GG17684@mit.edu> <4A93103B.2000909@redhat.com> <20090824232804.GJ17684@mit.edu> <20090824234336.GU5931@webber.adilger.int> <20090825001554.GN17684@mit.edu>
+Subject: Re: Problem with ext4_sync_file in no-journal mode.
+Date: Wed, 26 Aug 2009 18:27:37 +0200
+Message-ID: <20090826162737.GB28867@atrey.karlin.mff.cuni.cz>
+References: <1251222245.20219.25.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Christian Fischer <Christian.Fischer@easterngraphics.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:48719 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:38670 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751008AbZHZQCa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 12:02:30 -0400
+	with ESMTP id S1751966AbZHZQ1g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 12:27:36 -0400
 Content-Disposition: inline
-In-Reply-To: <20090825001554.GN17684@mit.edu>
+In-Reply-To: <1251222245.20219.25.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Mon, Aug 24, 2009 at 05:43:36PM -0600, Andreas Dilger wrote:
-> > Without transaction checksums waiting on all of the blocks together
-> > is NOT safe.  If the commit record is on disk, but the rest of the
-> > transaction's blocks are not then during replay it may cause garbage
-> > to be written from the journal into the filesystem metadata.
+> Our powerfail testing turned up an odd regression when using fsync() in
+> no-journal mode to force data to the device.  We saw loss rates (both
+> file and data) that were much higher than the same test using ext2 (60+%
+> loss versus <10%).  We've done some investigation and one thing that
+> stood out was that in the no-journal case, ext4_sync_file() was just
+> calling sync_inode() (and nothing else), while ext2_sync_file(), for
+> comparison, was also calling sync_mapping_buffers() to actually push the
+> data out.
 > 
-> Yes, I *said* that we can only wait on all of the blocks together with
-> the commit record when doing journal checksums.  Sorry if I didn't
-> make that clear enough.
-  I suppose we talk about the case when write caches are turned off and
-we use barrier=0 (because case barrier=1 does not really care about when
-we wait for the blocks from the correctness POV - at least according to
-Documentation/block/barrier.txt). In that case, you have to wait for
-*data* blocks before writing the commit block because you have no
-checksumming of those...
+> I therefore hacked ext4_sync_file() to call sync_mapping_buffers() in
+> the no-journal case; when we reran the test we saw that the loss rate
+> dropped from 60+% to around 50%.  While it's clear that we have more
+> work to do in this area, this is a significant improvement.  It appears
+> that this was just missed when we did the no-journal work.  Do you guys
+> concur?
+  Well, I'm surprised sync_mapping_buffers() did anything - I believe
+it's rather an error in testing. The thing is: sync_mapping_buffers()
+writes buffers on private_list of mapping. In ext2, it contains all the
+buffers used for indirect blocks. In ext4, there are no buffers there -
+you have to call mark_buffer_dirty_inode() to put a buffer to this list
+and ext4 does not do that with any buffer. So to make fsync work, you
+have to call mark_buffer_dirty_inode() in __ext4_handle_dirty_metadata
+if an inode is provided. Then sync_mapping_buffers() will actually do
+something.
+  BTW: the syncing code in ext4_handle_dirty_metadata() looks
+suboptimal. Why do you sync each an every metadata buffer? It might be
+the easiest way for directories but for regular files this is really
+superfluous. There you should need anything since VFS does the syncing
+for you.
+
+> The other interesting bit of this is that ext4 no-journal without using
+> fsync() has, apparently, basically the same loss rate as ext2 with
+> fsync().
+  Isn't this the other way around? I suppose ext4 without fsync isn't
+better than ext4 with fsync ;).
 
 									Honza
 -- 
