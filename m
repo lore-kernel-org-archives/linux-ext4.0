@@ -1,51 +1,58 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 07/17] vfs: Introduce new helpers for syncing after
-	writing to O_SYNC file or IS_SYNC inode
-Date: Wed, 26 Aug 2009 20:04:23 -0400
-Message-ID: <20090827000423.GA30076@infradead.org>
-References: <1250697884-22288-1-git-send-email-jack@suse.cz> <1250697884-22288-8-git-send-email-jack@suse.cz> <20090819162638.GE6150@infradead.org> <20090820121531.GC16486@duck.novell.com> <20090820162729.GA24659@infradead.org> <20090826182236.GA1290@infradead.org>
+From: Rob Landley <rob@landley.net>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
+Date: Wed, 26 Aug 2009 22:16:17 -0500
+Message-ID: <200908262216.19203.rob@landley.net>
+References: <82k50tjw7u.fsf@mid.bfk.de> <4A93E908.6050908@redhat.com> <20090825144210.7c77c083@lxorguk.ukuu.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Evgeniy Polyakov <zbr@ioremap.net>, ocfs2-devel@oss.oracle.com,
-	Joel Becker <joel.becker@oracle.com>,
-	Felix Blyakher <felixb@sgi.com>, xfs@oss.sgi.com,
-	Anton Altaparmakov <aia21@cantab.net>,
-	linux-ntfs-dev@lists.sourceforge.net,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754330AbZH0AE2@vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Ric Wheeler <rwheeler@redhat.com>, Pavel Machek <pavel@ucw.cz>,
+	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:59298
+	"EHLO grelber.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751123AbZH0DQk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 23:16:40 -0400
+In-Reply-To: <20090825144210.7c77c083@lxorguk.ukuu.org.uk>
 Content-Disposition: inline
-In-Reply-To: <20090826182236.GA1290@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 26, 2009 at 02:22:36PM -0400, Christoph Hellwig wrote:
-> On Thu, Aug 20, 2009 at 12:27:29PM -0400, Christoph Hellwig wrote:
-> > Maybe you can help brain storming, but I still can't see any way in that
-> > the
-> > 
-> >   - write data
-> >   - write inode
-> >   - wait for data
-> > 
-> > actually is a benefit in terms of semantics (I agree that it could be
-> > faster in theory, but even that is debatable with todays seek latencies
-> > in disks)
-> 
-> Btw, another reason why our current default is actively harmful:
-> 
-> 	barriers
-> 
-> With volatile write caches we do have to flush the disk write cache in
-> ->fsync, either implicitly by a metadata operation, or explicitly if
-> only data changed.  Unless the filesystems waits itself for the data
-> to hit the disk like XFS or btrfs will be issue the cache flush
-> potentially before the data write has actually reached the disk cache.
+On Tuesday 25 August 2009 08:42:10 Alan Cox wrote:
+> On Tue, 25 Aug 2009 09:37:12 -0400
+>
+> Ric Wheeler <rwheeler@redhat.com> wrote:
+> > I really think that the expectation that all OS's (windows, mac, even
+> > your ipod) all teach you not to hot unplug a device with any file system.
+> > Users have an "eject" or "safe unload" in windows, your iPod tells you
+> > not to power off or disconnect, etc.
+>
+> Agreed
 
-Ok, this one failed the reality check - no matter how hard I tried
-I could not reproduce that case in my test harness.  It turns out
-cache flush request are quite sensibly treated as barriers by the block
-layer and thus we drain the queue before issueing the cache flush.
+Ok, I'll bite: What are journaling filesystems _for_?
+
+> > I don't object to making that general statement - "Don't hot unplug a
+> > device with an active file system or actively used raw device" - but
+> > would object to the overly general statement about ext3 not working on
+> > flash, RAID5 not working, etc...
+>
+> The overall general statement for all media and all OS's should be
+>
+> "Do you have a backup, have you tested it recently"
+
+It might be nice to know when you _needed_ said backup, and when you shouldn't 
+re-backup bad data over it, because your data corruption actually got detected 
+before then.
+
+And maybe a pony.
+
+Rob
+-- 
+Latency is more important than throughput. It's that simple. - Linus Torvalds
