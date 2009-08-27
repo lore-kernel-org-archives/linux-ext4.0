@@ -1,46 +1,67 @@
-From: Rik van Riel <riel@redhat.com>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Wed, 26 Aug 2009 23:29:56 -0400
-Message-ID: <4A95FDB4.3050904@redhat.com>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz> <19092.28371.793339.764701@notabene.brown> <20090825234454.GI4300@elf.ucw.cz> <4A94B529.1080308@redhat.com> <20090826111537.GB26595@elf.ucw.cz>
+From: Rob Landley <rob@landley.net>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
+Date: Wed, 26 Aug 2009 22:34:52 -0500
+Message-ID: <200908262234.54586.rob@landley.net>
+References: <20090824093143.GD25591@elf.ucw.cz> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: Neil Brown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+Cc: Pavel Machek <pavel@ucw.cz>, Ric Wheeler <rwheeler@redhat.com>,
+	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752515AbZH0Da6@vger.kernel.org>
-In-Reply-To: <20090826111537.GB26595@elf.ucw.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:44841
+	"EHLO grelber.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753115AbZH0DfM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 23:35:12 -0400
+In-Reply-To: <20090825000842.GM17684@mit.edu>
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Pavel Machek wrote:
-> Hi!
-> 
->>> Ok, can you help? Having a piece of MD documentation explaining the
->>> "powerfail nukes entire stripe" and how current filesystems do not
->>> deal with that would be nice, along with description when exactly that
->>> happens.
->> Except of course for the inconvenient detail that a power
->> failure on a degraded RAID 5 array does *NOT* nuke the
->> entire stripe.
-> 
-> Ok, you are right. It will nuke unrelated sector somewhere on the
-> stripe (one that is "old" and was not recently written) -- which is
-> still something ext3 can not reliably handle.
+On Monday 24 August 2009 19:08:42 Theodore Tso wrote:
+> And if your
+> claim is that several hundred lines of fsck output detailing the
+> filesystem's destruction somehow makes things all better, I suspect
+> most users would disagree with you.
 
-Not quite unrelated.  The "nuked" sector will be the one
-that used to live on the disk that is broken and no longer
-a part of the RAID 5 array.
+Suppose a small office makes nightly backups to an offsite server via rsync.  If 
+a thunderstorm goes by causing their system to reboot twice in a 15 minute 
+period, would they rather notice the filesystem corruption immediately upon 
+reboot, or notice after the next rsync?
 
-I wouldn't qualify a missing hard disk as a software issue...
+> In any case, depending on where the flash was writing at the time of
+> the unplug, the data corruption could be silent anyway.
 
+Yup.  Hopefully btrfs will cope less badly?  They keep talking about 
+checksumming extents...
+
+> Maybe this came as a surprise to you, but anyone who has used a
+> compact flash in a digital camera knows that you ***have*** to wait
+> until the led has gone out before trying to eject the flash card.
+
+I doubt the cupholder crowd is going to stop treating USB sticks as magical 
+any time soon, but I also wonder how many of them even remember Linux _exists_ 
+anymore.
+
+> I
+> remember seeing all sorts of horror stories from professional
+> photographers about how they lost an important wedding's day worth of
+> pictures with the attendant commercial loss, on various digital
+> photography forums.  It tends to be the sort of mistake that digital
+> photographers only make once.
+
+Professionals have horror stories about this issue, therefore documenting it 
+is _less_ important?
+
+Ok...
+
+Rob
 -- 
-All rights reversed.
+Latency is more important than throughput. It's that simple. - Linus Torvalds
