@@ -1,36 +1,73 @@
-From: Alasdair G Kergon <agk@redhat.com>
-Subject: Re: MD/DM and barriers (was Re: [patch] ext2/3: document
-	conditions when reliable operation is possible)
-Date: Thu, 27 Aug 2009 19:09:42 +0100
-Message-ID: <20090827180942.GA8140@agk-dp.fab.redhat.com>
-References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net> <20090827122423.GO6997@mit.edu> <4A9685D4.2070906@redhat.com> <4A96BA2D.60804@garzik.org>
+From: Rob Landley <rob@landley.net>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
+Date: Thu, 27 Aug 2009 15:51:42 -0500
+Message-ID: <200908271551.43840.rob@landley.net>
+References: <20090824212518.GF29763@elf.ucw.cz> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Rob Landley <rob@landley.net>, Pavel Machek <pavel@ucw.cz>,
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net,
-	Mikulas Patocka <mpatocka@redhat.com>
-To: Jeff Garzik <jeff@garzik.org>
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4A967175.5070700@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <4A96BA2D.60804@garzik.org>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 27, 2009 at 12:54:05PM -0400, Jeff Garzik wrote:
-> DM has some barrier code...  but the above code was pasted from DM's  
-> make_request function, so I am guessing that DM's barrier stuff is  
-> incomplete and disabled at present.
+On Thursday 27 August 2009 06:43:49 Ric Wheeler wrote:
+> On 08/26/2009 11:53 PM, Rob Landley wrote:
+> > On Tuesday 25 August 2009 18:40:50 Ric Wheeler wrote:
+> >> Repeat experiment until you get up to something like google scale or the
+> >> other papers on failures in national labs in the US and then we can have
+> >> an informed discussion.
+> >
+> > On google scale anvil lightning can fry your machine out of a clear sky.
+> >
+> > However, there are still a few non-enterprise users out there, and
+> > knowing that specific usage patterns don't behave like they expect might
+> > be useful to them.
+>
+> You are missing the broader point of both papers.
 
-That code is from the new request-based multipath implementation in 2.6.31
-which doesn't yet.
+No, I'm dismissing the papers (some of which I read when they first came out 
+and got slashdotted) as irrelevant to the topic at hand.
 
-But bio-based dm does support barriers now.  (Just missing some patches to
-complete the dm-raid1 support that are still under review IIRC.)
+Pavel has two failure modes which he can trivially reproduce.  The USB stick 
+one is reproducible on a laptop by jostling said stick.  I myself used to have 
+a literal USB keychain, and the weight of keys dangling from it pulled it out 
+of the USB socket fairly easily if I wasn't careful.  At the time nobody had 
+told me a journaling filesystem was not a reasonable safeguard here.
 
-Alasdair
+Presumably the degraded raid one can be reproduced under an emulator, with no 
+hardware directly involved at all, so talking about hardware failure rates 
+ignores the fact that he's actually discussing a _software_ problem.  It may 
+happen in _response_ to hardware failures, but the damage he's attempting to 
+document happens entirely in software.
+
+These failure modes can cause data loss which journaling can't help, but which 
+journaling might (or might not) conceivably hide so you don't immediately 
+notice it.  They share a common underlying assumption that the storage 
+device's update granularity is less than or equal to the filesystem's block 
+size, which is not actually true of all modern storage devices.  The fact he's 
+only _found_ two instances where this assumption bites doesn't mean there 
+aren't more waiting to be found, especially as more new storage media types 
+get introduced.
+
+Pavel's response was to attempt to document this.  Not that journaling is 
+_bad_, but that it doesn't protect against this class of problem.
+
+Your response is to talk about google clusters, cloud storage, and cite 
+academic papers of statistical hardware failure rates.  As I understand the 
+discussion, that's not actually the issue Pavel's talking about, merely one 
+potential trigger for it.
+
+Rob
+-- 
+Latency is more important than throughput. It's that simple. - Linus Torvalds
