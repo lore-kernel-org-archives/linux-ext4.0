@@ -1,58 +1,46 @@
-From: Rob Landley <rob@landley.net>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
-Date: Wed, 26 Aug 2009 22:16:17 -0500
-Message-ID: <200908262216.19203.rob@landley.net>
-References: <82k50tjw7u.fsf@mid.bfk.de> <4A93E908.6050908@redhat.com> <20090825144210.7c77c083@lxorguk.ukuu.org.uk>
+From: Rik van Riel <riel@redhat.com>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+ possible
+Date: Wed, 26 Aug 2009 23:29:56 -0400
+Message-ID: <4A95FDB4.3050904@redhat.com>
+References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <20090825000842.GM17684@mit.edu> <20090825094244.GC15563@elf.ucw.cz> <4A93E908.6050908@redhat.com> <20090825211515.GA3688@elf.ucw.cz> <19092.28371.793339.764701@notabene.brown> <20090825234454.GI4300@elf.ucw.cz> <4A94B529.1080308@redhat.com> <20090826111537.GB26595@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, Pavel Machek <pavel@ucw.cz>,
+Cc: Neil Brown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
 	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:59298
-	"EHLO grelber.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751123AbZH0DQk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Aug 2009 23:16:40 -0400
-In-Reply-To: <20090825144210.7c77c083@lxorguk.ukuu.org.uk>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752515AbZH0Da6@vger.kernel.org>
+In-Reply-To: <20090826111537.GB26595@elf.ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tuesday 25 August 2009 08:42:10 Alan Cox wrote:
-> On Tue, 25 Aug 2009 09:37:12 -0400
->
-> Ric Wheeler <rwheeler@redhat.com> wrote:
-> > I really think that the expectation that all OS's (windows, mac, even
-> > your ipod) all teach you not to hot unplug a device with any file system.
-> > Users have an "eject" or "safe unload" in windows, your iPod tells you
-> > not to power off or disconnect, etc.
->
-> Agreed
+Pavel Machek wrote:
+> Hi!
+> 
+>>> Ok, can you help? Having a piece of MD documentation explaining the
+>>> "powerfail nukes entire stripe" and how current filesystems do not
+>>> deal with that would be nice, along with description when exactly that
+>>> happens.
+>> Except of course for the inconvenient detail that a power
+>> failure on a degraded RAID 5 array does *NOT* nuke the
+>> entire stripe.
+> 
+> Ok, you are right. It will nuke unrelated sector somewhere on the
+> stripe (one that is "old" and was not recently written) -- which is
+> still something ext3 can not reliably handle.
 
-Ok, I'll bite: What are journaling filesystems _for_?
+Not quite unrelated.  The "nuked" sector will be the one
+that used to live on the disk that is broken and no longer
+a part of the RAID 5 array.
 
-> > I don't object to making that general statement - "Don't hot unplug a
-> > device with an active file system or actively used raw device" - but
-> > would object to the overly general statement about ext3 not working on
-> > flash, RAID5 not working, etc...
->
-> The overall general statement for all media and all OS's should be
->
-> "Do you have a backup, have you tested it recently"
+I wouldn't qualify a missing hard disk as a software issue...
 
-It might be nice to know when you _needed_ said backup, and when you shouldn't 
-re-backup bad data over it, because your data corruption actually got detected 
-before then.
-
-And maybe a pony.
-
-Rob
 -- 
-Latency is more important than throughput. It's that simple. - Linus Torvalds
+All rights reversed.
