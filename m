@@ -1,51 +1,57 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Buffer state bits
-Date: Thu, 27 Aug 2009 16:32:15 +0200
-Message-ID: <20090827143215.GD14240@duck.novell.com>
-References: <20090826200021.GA5716@duck.novell.com> <20090827123318.GA19422@skywalker.linux.vnet.ibm.com>
+From: Jeff Garzik <jeff@garzik.org>
+Subject: MD/DM and barriers (was Re: [patch] ext2/3: document conditions when
+ reliable operation is possible)
+Date: Thu, 27 Aug 2009 12:54:05 -0400
+Message-ID: <4A96BA2D.60804@garzik.org>
+References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net> <20090827122423.GO6997@mit.edu> <4A9685D4.2070906@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Rob Landley <rob@landley.net>,
+	Pavel Machek <pavel@ucw.cz>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:49131 "EHLO mx1.suse.de"
+Received: from srv5.dvmed.net ([207.36.208.214]:41810 "EHLO mail.dvmed.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752676AbZH0OcP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Aug 2009 10:32:15 -0400
-Content-Disposition: inline
-In-Reply-To: <20090827123318.GA19422@skywalker.linux.vnet.ibm.com>
+	id S1753043AbZH0Qyo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Aug 2009 12:54:44 -0400
+In-Reply-To: <4A9685D4.2070906@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 27-08-09 18:03:18, Aneesh Kumar K.V wrote:
-> > 
-> > BH_Mapped
-> > - Buffer has a physical block backing it stored in b_bdev + b_blocknr. This bit
-> >   is set by filesystem's get_block() function (or by VFS itself for block device
-> >   mappings).
-> > 
-> >   XXX: Some filesystems set BH_Mapped even for buffers that do no really
-> >   have the backing block (like buffers for delayed allocation). I think
-> >   we should get rid of it...
-> > 
-> 
-> Also we don't want get_block to be called multiple times for the same file offset.
-> __block_prepare_write does get_block looking at the BH_Mapped flag. ie one of reason
-> delay and unwritten buffer_heads are also marked mapped.
-  Unwritten buffers should be mapped as they really have the backing block.
-So that's fine.
-  Delayed buffers should not be mapped. We could change the check in
-__block_prepare_write to "!buffer_mapped(bh) && !buffer_delay(bh)". But I'd
-rather avoid it because what I'd like to do in ext3 is to delay-allocate
-mmapped blocks and allocate normally blocks written via write(2). So I want
-ext3_get_block() to be called in block_prepare_write() even for delay
-buffers.
-   If ext4 doesn't want to do anything for delay buffers in get_block() called
-from block_prepare_write(), it can just return from the beginning of
-ext4_get_block() when it finds the buffer is delay...
+On 08/27/2009 09:10 AM, Ric Wheeler wrote:
+> One thing that does need fixing for some MD configurations is to stress
+> again that we need to make sure that barrier operations are properly
+> supported or users will need to disable the write cache on devices with
+> volatile write caches.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Agreed; chime in on Christoph's linux-vfs thread if people have input.
+
+I quickly glanced at MD and DM.  Currently, upstream, we see a lot of
+
+         if (unlikely(bio_barrier(bio))) {
+                 bio_endio(bio, -EOPNOTSUPP);
+                 return 0;
+         }
+
+in DM and MD make_request functions.
+
+Only md/raid1 supports barriers at present, it seems.  None of the other 
+MD drivers support barriers.
+
+DM has some barrier code...  but the above code was pasted from DM's 
+make_request function, so I am guessing that DM's barrier stuff is 
+incomplete and disabled at present.
+
+I've been mentioning this issue for years... glad some people finally 
+noticed :)
+
+	Jeff
+
+
+
