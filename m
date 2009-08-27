@@ -1,68 +1,45 @@
-From: Rob Landley <rob@landley.net>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is possible
-Date: Wed, 26 Aug 2009 22:53:16 -0500
-Message-ID: <200908262253.17886.rob@landley.net>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [PATCH]ext4: Enable mount ext4 with AGGRESSIVE_TEST
+Date: Thu, 27 Aug 2009 13:54:39 +0900
+Message-ID: <4A96118F.5040707@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752968AbZH0Dxl@vger.kernel.org>
-In-Reply-To: <4A947682.2010204@redhat.com>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: "tytso@mit.edu >> Theodore Tso" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:34119 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751499AbZH0EzD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Aug 2009 00:55:03 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 25 August 2009 18:40:50 Ric Wheeler wrote:
-> Repeat experiment until you get up to something like google scale or the
-> other papers on failures in national labs in the US and then we can have an
-> informed discussion.
+When the AGGRESSIVE_TEST is enabled,
+the maximum extent count of inode becomes '3' in ext4_ext_space_root(),
+but __ext4_ext_check() which is called via ext4_fill_super()
+checks eh_max is larger '4', therefore we always get -EIO and can not mount ext4.
+The patch fix this issue.
 
-On google scale anvil lightning can fry your machine out of a clear sky.
+Aug 26 15:43:50 bsd086 kernel: [   96.070277] EXT4-fs error (device sda8): ext4_ext_check_inode: bad header/extent in inode #8: too large eh_max - magic f30a, entries 1, max 4(3), depth 0(0)
+Aug 26 15:43:50 bsd086 kernel: [   96.070526] EXT4-fs (sda8): no journal found
 
-However, there are still a few non-enterprise users out there, and knowing 
-that specific usage patterns don't behave like they expect might be useful to 
-them.
 
-> >> I can promise you that hot unplugging and replugging a S-ATA drive will
-> >> also lose you data if you are actively writing to it (ext2, 3,
-> >> whatever).
-> >
-> > I can promise you that running S-ATA drive will also lose you data,
-> > even if you are not actively writing to it. Just wait 10 years; so
-> > what is your point?
->
-> I lost a s-ata drive 24 hours after installing it in a new box. If I had
-> MD5 RAID5, I would not have lost any.
->
-> My point is that you fail to take into account the rate of failures of a
-> given configuration and the probability of data loss given those rates.
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ extents.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+--- linux-2.6.31-rc4-A/fs/ext4/extents.c        2009-08-26 14:59:47.000000000 +0900
++++ linux-2.6.31-rc4-B/fs/ext4/extents.c        2009-08-26 15:45:31.000000000 +0900
+@@ -263,8 +263,8 @@ static int ext4_ext_space_root(struct in
+        size -= sizeof(struct ext4_extent_header);
+        size /= sizeof(struct ext4_extent);
+ #ifdef AGGRESSIVE_TEST
+-       if (size > 3)
+-               size = 3;
++       if (size > 4)
++               size = 4;
+ #endif
+        return size;
+ }
 
-Actually, that's _exactly_ what he's talking about.
-
-When writing to a degraded raid or a flash disk, journaling is essentially 
-useless.  If you get a power failure, kernel panic, somebody tripping over a 
-USB cable, and so on, your filesystem will not be protected by journaling.  
-Your data won't be trashed _every_ time, but the likelihood is much greater 
-than experience with journaling in other contexts would suggest.
-
-Worse, the journaling may be counterproductive by _hiding_ many errors that 
-fsck would promptly detect, so when the error is detected it may not be 
-associated with the event that caused it.  It also may not be noticed until 
-good backups of the data have been overwritten or otherwise cycled out.
-
-You seem to be arguing that Linux is no longer used anywhere but the 
-enterprise, so issues affecting USB flash keys or cheap software-only RAID 
-aren't worth documenting?
-
-Rob
--- 
-Latency is more important than throughput. It's that simple. - Linus Torvalds
