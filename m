@@ -1,13 +1,12 @@
-From: Ric Wheeler <rwheeler@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
- possible
-Date: Thu, 27 Aug 2009 07:43:49 -0400
-Message-ID: <4A967175.5070700@redhat.com>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net>
+	possible
+Date: Thu, 27 Aug 2009 08:24:23 -0400
+Message-ID: <20090827122423.GO6997@mit.edu>
+References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>, Pavel Machek <pavel@ucw.cz>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	kernel list <linux-kernel@vger.kernel.org>,
@@ -15,90 +14,112 @@ Cc: Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
 To: Rob Landley <rob@landley.net>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751829AbZH0LoU@vger.kernel.org>
-In-Reply-To: <200908262253.17886.rob@landley.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <linux-doc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <200908270019.04231.rob@landley.net>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/26/2009 11:53 PM, Rob Landley wrote:
-> On Tuesday 25 August 2009 18:40:50 Ric Wheeler wrote:
->    
->> Repeat experiment until you get up to something like google scale or the
->> other papers on failures in national labs in the US and then we can have an
->> informed discussion.
->>      
-> On google scale anvil lightning can fry your machine out of a clear sky.
->
-> However, there are still a few non-enterprise users out there, and knowing
-> that specific usage patterns don't behave like they expect might be useful to
-> them.
->
->    
+On Thu, Aug 27, 2009 at 12:19:02AM -0500, Rob Landley wrote:
+> > To me, this isn't a particularly interesting or newsworthy point,
+> > since a competent system administrator
+> 
+> I'm a bit concerned by the argument that we don't need to document
+> serious pitfalls because every Linux system has a sufficiently
+> competent administrator they already know stuff that didn't even
+> come up until the second or third day it was discussed on lkml.
 
-You are missing the broader point of both papers. They (and people like 
-me when back at EMC) look at large numbers of machines and try to fix 
-what actually breaks when run in the real world and causes data loss. 
-The motherboards, S-ATA controllers, disk types are the same class of 
-parts that I have in my desktop box today.
+I'm not convinced that information which needs to be known by System
+Administrators is best documented in the kernel Documentation
+directory.  Should there be a HOWTO document on stuff like that?
+Sure, if someone wants to put something like that together, having
+free documentation about ways to set up your storage stack in a sane
+way is not a bad thing.  
 
-The advantage of google, national labs, etc is that they have large 
-numbers of systems and can draw conclusions that are meaningful to our 
-broad user base.
+It should be noted that these sorts of issues are discussed in various
+books targetted at System Administrators, and in Usenix's System
+Administration tutorials.  The computer industry is highly
+specialized, and so just because an OS kernel hacker might not be
+familiar with these issues, doesn't mean that professionals whose job
+it is to run data centers don't know about these things!  Similarly,
+you could be a whiz at Linux's networking stack, but you might not
+know about certain pitfalls in configuring a Cisco router using IOS;
+does that mean we should have an IOS tutorial in the kernel
+documentation directory?  I'm not so sure about that!
 
-Specifically, in using S-ATA drives (just like ours, maybe slightly more 
-reliable) they see up to 7% of those drives fail each year.  All users 
-have "soft" drive failures like single remapped sectors.
+> "You're documenting it wrong" != "you shouldn't document it".
 
-These errors happen extremely commonly and are what RAID deals with well.
+Sure, but the fact that we don't currently say much about storage
+stacks doesn't mean we should accept a patch that might actively
+mislead people.   I'm NACK'ing the patch on that basis.
 
-What does not happen commonly is that during the RAID rebuild (kicked 
-off only after a drive is kicked out), you push the power button or have 
-a second failure (power outage).
+> > who cares about his data and/or
+> > his hardware will (a) have a UPS,
+> 
+> I worked at a company that retested their UPSes a year after
+> installing them and found that _none_ of them supplied more than 15
+> seconds charge, and when they dismantled them the batteries had
+> physically bloated inside their little plastic cases.  (Same company
+> as the dead air conditioner, possibly overheating was involved but
+> the little _lights_ said everything was ok.)
+> 
+> That was by no means the first UPS I'd seen die, the suckers have a
+> higher failure rate than hard drives in my experience.  This is a
+> device where the batteries get constantly charged and almost never
+> tested because if it _does_ fail you just rebooted your production
+> server, so a lot of smaller companies think they have one but
+> actually don't.
 
-We will have more users loose data if they decide to use ext2 instead of 
-ext3 and use only single disk storage.
+Sounds like they were using really cheap UPS's; certainly not the kind
+I would expect to find in a data center.  And if company's system
+administrator is using the cheapest possible consumer-grade UPS's,
+then yes, they might have a problem.  Even an educational institution
+like MIT, where I was an network administrator some 15 years ago, had
+proper UPS's, *and* we had a diesel generator which kicked in after 15
+seconds --- and we tested the diesel generator every Friday morning,
+to make sure it worked properly.
 
-We have real numbers that show that is true. Injecting double faults 
-into a system that handles single faults is frankly not that interesting.
+> > , and (b) be running with a hot spare
+> > and/or will imediately replace a failed drive in a RAID array.
+> 
+> Here's hoping they shut the system down properly to install the new
+> drive in the raid then, eh?  Not accidentally pull the plug before
+> it's finished running the ~7 minutes of shutdown scripts in the last
+> Red Hat Enterprise I messed with...
 
-You can get better protection from these double faults if you move to 
-"cloud" like storage configs where each box is fault tolerant, but you 
-also spread your data over multiple boxes in multiple locations.
+Even my home RAID array uses hot-plug SATA disks, so I can replace a
+failed disk without shutting down my system.  (And yes, I have a
+backup battery for the hardware RAID, and the firmware runs periodic
+tests on it; the hardware RAID card also will send me e-mail if a RAID
+array drive fails and it needs to use my hot-spare.  At that point, I
+order a new hard drive, secure in the knowledge that the system can
+still suffer another drive failure before falling into degraded mode.
+And no, this isn't some expensive enterprise RAID setup; this is just
+a mid-range Areca RAID card.)
 
-Regards,
+> If "degraded array" just means "don't have a replacement disk yet",
+> then it sounds like what Pavel wants to document is "don't write to
+> a degraded array at all, because power failures can cost you data
+> due to write granularity being larger than filesystem block size".
+> (Which still comes as news to some of us, and you need a way to
+> remount mount the degraded array read only until the sysadmin can
+> fix it.)
 
-Ric
+If you want to document that as a property of RAID arrays, sure.  But
+it's not something that should live in Documentation/filesystems/ext2.txt
+and Documentation/filesystems/ext3.txt.  The MD RAID howto might be a
+better place, since it's far more likely more users will read it.  How
+many system administrators read what's in the kernel's Documentation
+directory, after all, and this is basic information about how RAID
+works; it's not necessarily something that someone would *expect* to
+be in kernel documentation, nor would necessarily go looking for it
+there.  And the reality is that it's not like most people go reading
+Documentation/* for pleasure.  :-)
 
->>>> I can promise you that hot unplugging and replugging a S-ATA drive will
->>>> also lose you data if you are actively writing to it (ext2, 3,
->>>> whatever).
->>>>          
->>> I can promise you that running S-ATA drive will also lose you data,
->>> even if you are not actively writing to it. Just wait 10 years; so
->>> what is your point?
->>>        
->> I lost a s-ata drive 24 hours after installing it in a new box. If I had
->> MD5 RAID5, I would not have lost any.
->>
->> My point is that you fail to take into account the rate of failures of a
->> given configuration and the probability of data loss given those rates.
->>      
-> Actually, that's _exactly_ what he's talking about.
->
-> When writing to a degraded raid or a flash disk, journaling is essentially
-> useless.  If you get a power failure, kernel panic, somebody tripping over a
-> USB cable, and so on, your filesystem will not be protected by journaling.
-> Your data won't be trashed _every_ time, but the likelihood is much greater
-> than experience with journaling in other contexts would suggest.
->
-> Worse, the journaling may be counterproductive by _hiding_ many errors that
-> fsck would promptly detect, so when the error is detected it may not be
-> associated with the event that caused it.  It also may not be noticed until
-> good backups of the data have been overwritten or otherwise cycled out.
->
-> You seem to be arguing that Linux is no longer used anywhere but the
-> enterprise, so issues affecting USB flash keys or cheap software-only RAID
-> aren't worth documenting?
->
-> Rob
->    
+BTW, the RAID write atomicity issue and the possibility of failures
+cause data loss *is* documented in the Wikipedia article on RAID.
+It's not as written as direct practical advice to a system
+administrator (you'd have to go to a book that is really targetted at
+system administrators to find that sort of thing).
+
+       		      	      	   	   - Ted
