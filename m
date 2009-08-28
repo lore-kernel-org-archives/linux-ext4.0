@@ -1,98 +1,113 @@
-From: "NeilBrown" <neilb@suse.de>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-     document conditions when reliable operation is possible)
-Date: Fri, 28 Aug 2009 17:31:36 +1000 (EST)
-Message-ID: <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name>
-References: <20090824212518.GF29763@elf.ucw.cz>
-    <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com>
-    <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com>
-    <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com>
-    <20090828064449.GA27528@elf.ucw.cz>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] Updated fsx.c program
+Date: Fri, 28 Aug 2009 03:29:47 -0600
+Message-ID: <20090828092947.GF4197@webber.adilger.int>
+References: <20090827101646.12497.73776.sendpatchset@subratamodak.linux.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; CHARSET=US-ASCII
 Content-Transfer-Encoding: 7BIT
-Cc: "Ric Wheeler" <rwheeler@redhat.com>,
-	"Rob Landley" <rob@landley.net>, "Theodore Tso" <tytso@mit.edu>,
-	"Florian Weimer" <fweimer@bfk.de>,
-	"Goswin von Brederlow" <goswin-v-b@web.de>,
-	"kernel list" <linux-kernel@vger.kernel.org>,
-	"Andrew Morton" <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: "Pavel Machek" <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090828064449.GA27528@elf.ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Dave Jones <davej@redhat.com>,
+	LTP List <ltp-list@lists.sourceforge.net>
+To: Subrata Modak <subrata@linux.vnet.ibm.com>,
+	Eric Sandeen <esandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:54806 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751613AbZH1J3z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Aug 2009 05:29:55 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n7S9TgMl011934
+	for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2009 02:29:54 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KP200J00YCJZK00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 28 Aug 2009 02:29:41 -0700 (PDT)
+In-reply-to: <20090827101646.12497.73776.sendpatchset@subratamodak.linux.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, August 28, 2009 4:44 pm, Pavel Machek wrote:
-> On Thu 2009-08-27 21:32:49, Ric Wheeler wrote:
->>>
->> If you have a specific bug in MD code, please propose a patch.
->
-> Interesting. So, what's technically wrong with the patch below?
->
+On Aug 27, 2009  15:46 +0530, Subrata Modak wrote:
+> >On Tue, 2009-08-25 at 23:25 -0600, Andreas Dilger wrote:
+> >I've done some work to merge some of the existing fsx.c mods into a
+> > single version.  Over & above the version that is in the LTP, I've
+> > included AKPM's O_DIRECT fixes (with a twist), the BSD mmap page and
+> > segfault handling, and per-write fsync.
+> > 
+> > The twist for the O_DIRECT feature is that it will randomly open file
+> > descriptors with O_DIRECT, and if you use the Lustre-inspired multi-fd
+> > support fsx will be testing concurrent buffered and O_DIRECT and mmap
+> > IO on the same file.
+> 
+> The following patch will integrate your new fsx.c program in LTP, by replacing
+> (http://ltp.cvs.sourceforge.net/viewvc/ltp/ltp/testcases/kernel/fs/fsx-linux/fsx-linux.c)
+> the existing one. Would you mind providing a Sign-off for the below Patch ?
+> 
+> Patch-prepared-for-ltp-by: Subrata Modak <subrata@linux.vnet.ibm.com>
 
-You mean apart from ".... that high highly undesirable ...." ??
-                               ^^^^^^^^^^^
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-And the phrase "Regular backups when using these devices ...." should
-be "Regular backups when using any devices .....".
-                               ^^^
-If you have a device failure near a power fail on a raid5 you might
-lose some blocks of data.  If you have a device failure near (or not
-near) a power failure on raid0 or jbod etc you will certainly lose lots
-of blocks of data.
+> @@ -1,5 +1,4 @@
+>  /*
+> - * Copyright (C) 1991, NeXT Computer, Inc.  All Rights Reserverd.
+>   * Copyright (c) 1998-2001 Apple Computer, Inc. All rights reserved.
+>   *
+>   * @APPLE_LICENSE_HEADER_START@
 
-I think it would be better to say:
+This hunk should be removed from this patch.  This copyright was recently
+re-added into LTP from the very original fsx implementation, from looking
+at the commit logs.
 
-   ".... and degraded DM/MD RAID 4/5/6(*) arrays..."
-             ^^^^^^^^
-with
-(*) If device failure causes the array to become degraded during or
-immediately after the power failure, the same problem can result.
-
-And "necessary" only have the one 'c' :-)
-
-NeilBrown
-
-> 									Pavel
-> ---
->
-> From: Theodore Tso <tytso@mit.edu>
->
-> Document that many devices are too broken for filesystems to protect
-> data in case of powerfail.
->
-> Signed-of-by: Pavel Machek <pavel@ucw.cz>
->
-> diff --git a/Documentation/filesystems/dangers.txt
-> b/Documentation/filesystems/dangers.txt
-> new file mode 100644
-> index 0000000..2f3eec1
-> --- /dev/null
-> +++ b/Documentation/filesystems/dangers.txt
-> @@ -0,0 +1,21 @@
-> +There are storage devices that high highly undesirable properties when
-> +they are disconnected or suffer power failures while writes are in
-> +progress; such devices include flash devices and DM/MD RAID 4/5/6 (*)
-> +arrays.  These devices have the property of potentially corrupting
-> +blocks being written at the time of the power failure, and worse yet,
-> +amplifying the region where blocks are corrupted such that additional
-> +sectors are also damaged during the power failure.
+> +static const char *my_basename(const char *path)
+> +{
+> +	char *c = strrchr(path, '/');
 > +
-> +Users who use such storage devices are well advised take
-> +countermeasures, such as the use of Uninterruptible Power Supplies,
-> +and making sure the flash device is not hot-unplugged while the device
-> +is being used.  Regular backups when using these devices is also a
-> +Very Good Idea.
-> +
-> +Otherwise, file systems placed on these devices can suffer silent data
-> +and file system corruption.  An forced use of fsck may detect metadata
-> +corruption resulting in file system corruption, but will not suffice
-> +to detect data corruption.
-> +
-> +(*) Degraded array or single disk failure "near" the powerfail is
-> +neccessary for this property of RAID arrays to bite.
->
->
+> +	return c ? c++ : path;
+> +}
+
+I think you can also remove this function for the LTP version.  We need
+to be able to run fsx on very old distros that our customers still use,
+where basename() isn't declared properly, but this was recently removed
+in the LTP version (presumably because it is used only on modern distros).
+
+> +int do_fallocate(int fd, int flags, loff_t offset, loff_t maxlen)
+> +{
+> +#ifdef FALLOC_FL_KEEP_SIZE
+> +	return fallocate(fd, flags, offset, maxlen);
+> +#else
+> +#define FALLOC_FL_KEEP_SIZE 0x01
+> +#ifdef __i386__
+> +#define __NR_fallocate		324
+> +	return syscall(__NR_fallocate, fd, flags, offset, maxlen);
+> +#elif defined (__powerpc__)
+> +#define __NR_fallocate          309
+> +	return syscall(__NR_fallocate, fd, flags, offset >> 32,
+> +		       offset & 0xffffffff, maxlen >> 32, maxlen & 0xffffffff);
+> +#else  /* !__i386__ && !__powerpc__ */
+> +	errno = ENOSYS;
+> +	return -1;
+> +#endif /* __i386__ */
+> +#endif /* FALLOC_FL_KEEP_SIZE */
+> +}
+
+As an FYI (largely to Eric Sandeen) the fallocate support is only
+for the initial file data.  I was thinking of adding the ability
+to add OP_FALLOC operations (both keep size and extend size) to
+give better stress testing of falloc.  Sadly, I ran out of time
+for implementing that.  Did you ever do something similar?
+
+> +void
+> +segv(int sig)
+> +{
+> +	if (jmpbuf_good) {
+> +	    jmpbuf_good = 0;
+> +	    longjmp(jmpbuf, 1);
+
+Can you please fix the indenting here to use tabs...
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
