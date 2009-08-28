@@ -1,88 +1,52 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Fri, 28 Aug 2009 08:08:54 -0400
-Message-ID: <20090828120854.GA8153@mit.edu>
-References: <20090828064449.GA27528@elf.ucw.cz> <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name> <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz>
+Subject: Re: >16TB issues
+Date: Fri, 28 Aug 2009 08:40:13 -0400
+Message-ID: <20090828124013.GB16732@mit.edu>
+References: <20090721192123.GK4231@webber.adilger.int> <150c16850907221527l3060aa85h883656bcc7d7e1c4@mail.gmail.com> <20090730222349.GC31141@shell> <150c16850907311824n71e36f66i86b508bc25d0c4bb@mail.gmail.com> <20090811213947.GA11100@shell> <20090811220511.GC31342@mit.edu> <20090812012538.GD11100@shell> <20090812020439.GE31342@mit.edu> <20090812175916.GE11100@shell> <150c16850908271930x277daa95sdea8c34868f2ce36@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Rob Landley <rob@landley.net>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>, NeilBrown <neilb@suse.de>
-Return-path: <linux-doc-owner@vger.kernel.org>
+Cc: Valerie Aurora <vaurora@redhat.com>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Nick Dokos <nicholas.dokos@hp.com>,
+	Julia Lawall <julia@diku.dk>
+To: Justin Maggard <jmaggard10@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:37708 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752382AbZH1MkX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Aug 2009 08:40:23 -0400
 Content-Disposition: inline
-In-Reply-To: <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name> <20090828064449.GA27528@elf.ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <150c16850908271930x277daa95sdea8c34868f2ce36@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 28, 2009 at 08:44:49AM +0200, Pavel Machek wrote:
-> From: Theodore Tso <tytso@mit.edu>
-> 
-> Document that many devices are too broken for filesystems to protect
-> data in case of powerfail.
-> 
-> Signed-of-by: Pavel Machek <pavel@ucw.cz> 
+On Thu, Aug 27, 2009 at 07:30:47PM -0700, Justin Maggard wrote:
+> I've been testing the latest 64-bit e2fsprogs from the git pu branch
+> (kernel.org 2.6.30.5/x86_64) on a 64-bit (~22TB) filesystem for a
+> couple days, since it seems like 32-bit e2fsprogs on a 64-bit
+> filesystem is going to take a while longer.  I'm able to create and
+> check a filesystem without any problem.  I've also run Andreas'
+> llverfs utility for a few hours and not had any complaints.  But, I'm
+> running into another strange issue.  Here's what I'm doing:
+> # mkfs.ext4 /dev/md0
+> # mount /dev/md0 /mnt
+> # mkdir /mnt/1 /mnt/2 /mnt/3 /mnt/4 /mnt/5
+> # umount /mnt
+> # fsck.ext4 -C0 -fy /dev/md0
+> ** No errors at all at this point.  fsck returns 0. **
+> # mount /dev/md0 /mnt
+> The last mount command fails, and the kernel log contains:
+> EXT4-fs: ext4_check_descriptors: Checksum for group 0 failed (3412!=9428)
+> EXT4-fs: group descriptors corrupted!
 
-NACK.  I didn't write this patch, and it's disingenuous for you to try
-to claim that I authored it.
+Um, that's interesting.  What happens if run fsck.ext4 twice?  i.e:
 
-You took text I wrote from the *middle* of an e-mail discussion and
-you ignored multiple corrections to typo's that I made --- typo's that
-I would have corrected if I had ultimately decided to post this as a
-patch, which I did NOT.
+# mkfs.ext4 /dev/md0
+# mount /dev/md0 /mnt
+# mkdir /mnt/1 /mnt/2 /mnt/3 /mnt/4 /mnt/5
+# umount /mnt
+# fsck.ext4 -C0 -fy /dev/md0
+# fsck.ext4 -C0 -fy /dev/md0
 
-While Neil Brown's corrections are minimally necessary so the text is
-at least technically *correct*, it's still not the right advice to
-give system administrators.  It's better than the fear-mongering
-patches you had proposed earlier, but what would be better *still* is
-telling people why running with degraded RAID arrays is bad, and to
-give them further tips about how to use RAID arrays safely.
+						- Ted
 
-To use your ABS brakes analogy, just becase it's not safe to rely on
-ABS brakes if the "check brakes" light is on, that doesn't justify
-writing something alarmist which claims that ABS brakes don't work
-100% of the time, don't use ABS brakes, they're broken!!!!
-
-The first part of it is true, since ABS brakes can suffer mechnical
-failure.  But what we should be telling drivers is, "if the 'check
-brakes' light comes on, don't keep driving with it, go to a garage and
-get it fixed!!!".  Similarly, if you get a notice that your RAID is
-running in degraded mode, you've already suffered one failure; you
-won't survive another failure, so fix that issue ASAP!
-
-If you're really paranoid, you could decide to "pull over to the side
-of the road"; that is, you could stop writing to the RAID array as
-soon as possible, and then get the the RAID array rebuilt before
-proceeding.  That can reduce the chances of a second failure.  But in
-the real world, there are costs associated with taking a production
-server off-line, and the prudent system administrator has to do a
-risk-reward tradeoff.  A better approach might to have the array
-configured with a hot spare, and to regularly scrub the array, and
-configure the RAID array with either a battery backup or a UPS.  And
-hot-swap drives might not be a bad idea, too.
-
-But in any case, just because ABS brakes and RAID arrays can suffer
-failures, that doesn't mean you should run around telling people not
-to use RAID arrays or RAID arrays are broken.  People are better off
-using RAID than not using single disk storage solutions, just as
-people are better off using ABS brakes than not.
-
-Your argument basically boils down to, "if you drive like a maniac
-when the roads are wet and slippery, ABS brakes might not save your
-life.  Since ABS brake might cause you to have a false sense of
-security, it's better to tell users that ABS brakes are broken."
-
-That's just silly.  What we should be telling people instead is (a)
-pay attention to the check brakes light (just as you should pay
-attention to the RAID array is degraded warning), and (b) while ABS
-brakes will get you out of some situations with life and limb intact,
-they do not repeal that laws of physics (do regular full and
-incremental backups; practice disk scrubbing; use UPS's or battery
-backups).
-
-							- Ted
