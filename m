@@ -1,141 +1,88 @@
-From: Ric Wheeler <rwheeler@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Fri, 28 Aug 2009 07:16:46 -0400
-Message-ID: <4A97BC9E.5070801@redhat.com>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz>
+	document conditions when reliable operation is possible)
+Date: Fri, 28 Aug 2009 08:08:54 -0400
+Message-ID: <20090828120854.GA8153@mit.edu>
+References: <20090828064449.GA27528@elf.ucw.cz> <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name> <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Rob Landley <rob@landley.net>, Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>, Rob Landley <rob@landley.net>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752195AbZH1LRL@vger.kernel.org>
-In-Reply-To: <20090828064449.GA27528@elf.ucw.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>, NeilBrown <neilb@suse.de>
+Return-path: <linux-doc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name> <20090828064449.GA27528@elf.ucw.cz>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/28/2009 02:44 AM, Pavel Machek wrote:
-> On Thu 2009-08-27 21:32:49, Ric Wheeler wrote:
->> On 08/27/2009 06:13 PM, Pavel Machek wrote:
->>>
->>>>>> Repeat experiment until you get up to something like google scale or the
->>>>>> other papers on failures in national labs in the US and then we can have an
->>>>>> informed discussion.
->>>>>>
->>>>> On google scale anvil lightning can fry your machine out of a clear sky.
->>>>>
->>>>> However, there are still a few non-enterprise users out there, and knowing
->>>>> that specific usage patterns don't behave like they expect might be useful to
->>>>> them.
->>>>
->>>> You are missing the broader point of both papers. They (and people like
->>>> me when back at EMC) look at large numbers of machines and try to fix
->>>> what actually breaks when run in the real world and causes data loss.
->>>> The motherboards, S-ATA controllers, disk types are the same class of
->>>> parts that I have in my desktop box today.
->>> ...
->>>> These errors happen extremely commonly and are what RAID deals with well.
->>>>
->>>> What does not happen commonly is that during the RAID rebuild (kicked
->>>> off only after a drive is kicked out), you push the power button or have
->>>> a second failure (power outage).
->>>>
->>>> We will have more users loose data if they decide to use ext2 instead of
->>>> ext3 and use only single disk storage.
->>>
->>> So your argument basically is
->>>
->>> 'our abs brakes are broken, but lets not tell anyone; our car is still
->>> safer than a horse'.
->>>
->>> and
->>>
->>> 'while we know our abs brakes are broken, they are not major factor in
->>> accidents, so lets not tell anyone'.
->>>
->>> Sorry, but I'd expect slightly higher moral standards. If we can
->>> document it in a way that's non-scary, and does not push people to
->>> single disks (horses), please go ahead; but you have to mention that
->>> md raid breaks journalling assumptions (our abs brakes really are
->>> broken).
->>
->> You continue to ignore the technical facts that everyone (both MD and
->> ext3) people put in front of you.
->>
->> If you have a specific bug in MD code, please propose a patch.
->
-> Interesting. So, what's technically wrong with the patch below?
->
-> 									Pavel
-
-
-My suggestion was that you stop trying to document your assertion of an issue 
-and actually suggest fixes in code or implementation. I really don't think that 
-you have properly diagnosed your specific failure or done sufficient. However, 
-if you put a full analysis and suggested code out to the MD devel lists, we can 
-debate technical implementation as we normally do.
-
-As Ted quite clearly stated, documentation on how RAID works, how to configure 
-it, etc, is best put in RAID documentation.  What you claim as a key issue is an 
-issue for all file systems (including ext2).
-
-The only note that I would put in ext3/4 etc documentation would be:
-
-"Reliable storage is important for any file system. Single disks (or FLASH or 
-SSD) do fail on a regular basis.
-
-To reduce your risk of data loss, it is advisable to use RAID which can overcome 
-these common issues. If using MD software RAID, see the RAID documentation on 
-how best to configure your storage.
-
-With or without RAID, it is always important to back up your data to an external 
-device and keep copies of that backup off site."
-
-ric
-
-
-
-> ---
->
-> From: Theodore Tso<tytso@mit.edu>
->
+On Fri, Aug 28, 2009 at 08:44:49AM +0200, Pavel Machek wrote:
+> From: Theodore Tso <tytso@mit.edu>
+> 
 > Document that many devices are too broken for filesystems to protect
 > data in case of powerfail.
->
-> Signed-of-by: Pavel Machek<pavel@ucw.cz>
->
-> diff --git a/Documentation/filesystems/dangers.txt b/Documentation/filesystems/dangers.txt
-> new file mode 100644
-> index 0000000..2f3eec1
-> --- /dev/null
-> +++ b/Documentation/filesystems/dangers.txt
-> @@ -0,0 +1,21 @@
-> +There are storage devices that high highly undesirable properties when
-> +they are disconnected or suffer power failures while writes are in
-> +progress; such devices include flash devices and DM/MD RAID 4/5/6 (*)
-> +arrays.  These devices have the property of potentially corrupting
-> +blocks being written at the time of the power failure, and worse yet,
-> +amplifying the region where blocks are corrupted such that additional
-> +sectors are also damaged during the power failure.
-> +
-> +Users who use such storage devices are well advised take
-> +countermeasures, such as the use of Uninterruptible Power Supplies,
-> +and making sure the flash device is not hot-unplugged while the device
-> +is being used.  Regular backups when using these devices is also a
-> +Very Good Idea.
-> +
-> +Otherwise, file systems placed on these devices can suffer silent data
-> +and file system corruption.  An forced use of fsck may detect metadata
-> +corruption resulting in file system corruption, but will not suffice
-> +to detect data corruption.
-> +
-> +(*) Degraded array or single disk failure "near" the powerfail is
-> +neccessary for this property of RAID arrays to bite.
->
->
+> 
+> Signed-of-by: Pavel Machek <pavel@ucw.cz> 
+
+NACK.  I didn't write this patch, and it's disingenuous for you to try
+to claim that I authored it.
+
+You took text I wrote from the *middle* of an e-mail discussion and
+you ignored multiple corrections to typo's that I made --- typo's that
+I would have corrected if I had ultimately decided to post this as a
+patch, which I did NOT.
+
+While Neil Brown's corrections are minimally necessary so the text is
+at least technically *correct*, it's still not the right advice to
+give system administrators.  It's better than the fear-mongering
+patches you had proposed earlier, but what would be better *still* is
+telling people why running with degraded RAID arrays is bad, and to
+give them further tips about how to use RAID arrays safely.
+
+To use your ABS brakes analogy, just becase it's not safe to rely on
+ABS brakes if the "check brakes" light is on, that doesn't justify
+writing something alarmist which claims that ABS brakes don't work
+100% of the time, don't use ABS brakes, they're broken!!!!
+
+The first part of it is true, since ABS brakes can suffer mechnical
+failure.  But what we should be telling drivers is, "if the 'check
+brakes' light comes on, don't keep driving with it, go to a garage and
+get it fixed!!!".  Similarly, if you get a notice that your RAID is
+running in degraded mode, you've already suffered one failure; you
+won't survive another failure, so fix that issue ASAP!
+
+If you're really paranoid, you could decide to "pull over to the side
+of the road"; that is, you could stop writing to the RAID array as
+soon as possible, and then get the the RAID array rebuilt before
+proceeding.  That can reduce the chances of a second failure.  But in
+the real world, there are costs associated with taking a production
+server off-line, and the prudent system administrator has to do a
+risk-reward tradeoff.  A better approach might to have the array
+configured with a hot spare, and to regularly scrub the array, and
+configure the RAID array with either a battery backup or a UPS.  And
+hot-swap drives might not be a bad idea, too.
+
+But in any case, just because ABS brakes and RAID arrays can suffer
+failures, that doesn't mean you should run around telling people not
+to use RAID arrays or RAID arrays are broken.  People are better off
+using RAID than not using single disk storage solutions, just as
+people are better off using ABS brakes than not.
+
+Your argument basically boils down to, "if you drive like a maniac
+when the roads are wet and slippery, ABS brakes might not save your
+life.  Since ABS brake might cause you to have a false sense of
+security, it's better to tell users that ABS brakes are broken."
+
+That's just silly.  What we should be telling people instead is (a)
+pay attention to the check brakes light (just as you should pay
+attention to the RAID array is degraded warning), and (b) while ABS
+brakes will get you out of some situations with life and limb intact,
+they do not repeal that laws of physics (do regular full and
+incremental backups; practice disk scrubbing; use UPS's or battery
+backups).
+
+							- Ted
