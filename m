@@ -1,246 +1,83 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH]ext4: Enable mount ext4 with AGGRESSIVE_TEST
-Date: Fri, 28 Aug 2009 10:40:45 -0400
-Message-ID: <20090828144045.GH16732@mit.edu>
-References: <4A96118F.5040707@rs.jp.nec.com>
+From: david@lang.hm
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+ possible
+Date: Fri, 28 Aug 2009 07:46:42 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.0908280738140.6822@asgard.lang.hm>
+References: <20090824093143.GD25591@elf.ucw.cz> <82k50tjw7u.fsf@mid.bfk.de>  <20090824130125.GG23677@mit.edu> <20090824195159.GD29763@elf.ucw.cz>  <4A92F6FC.4060907@redhat.com> <20090824205209.GE29763@elf.ucw.cz>  <4A930160.8060508@redhat.com>
+ <20090824212518.GF29763@elf.ucw.cz>  <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz>  <20090825000842.GM17684@mit.edu> <1251362787.4354.373.camel@macbook.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36163 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751255AbZH1Okq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Aug 2009 10:40:46 -0400
-Content-Disposition: inline
-In-Reply-To: <4A96118F.5040707@rs.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: David Woodhouse <dwmw2@infradead.org>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <1251362787.4354.373.camel@macbook.infradead.org>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 27, 2009 at 01:54:39PM +0900, Akira Fujita wrote:
-> When the AGGRESSIVE_TEST is enabled,
-> the maximum extent count of inode becomes '3' in ext4_ext_space_root(),
-> but __ext4_ext_check() which is called via ext4_fill_super()
-> checks eh_max is larger '4', therefore we always get -EIO and can not mount ext4.
-> The patch fix this issue.
+On Thu, 27 Aug 2009, David Woodhouse wrote:
 
-This isn't really the right fix for the problem.
+> On Mon, 2009-08-24 at 20:08 -0400, Theodore Tso wrote:
+>>
+>> (It's worse with people using Digital SLR's shooting in raw mode,
+>> since it can take upwards of 30 seconds or more to write out a 12-30MB
+>> raw image, and if you eject at the wrong time, you can trash the
+>> contents of the entire CF card; in the worst case, the Flash
+>> Translation Layer data can get corrupted, and the card is completely
+>> ruined; you can't even reformat it at the filesystem level, but have
+>> to get a special Windows program from the CF manufacturer to --maybe--
+>> reset the FTL layer.
+>
+> This just goes to show why having this "translation layer" done in
+> firmware on the device itself is a _bad_ idea. We're much better off
+> when we have full access to the underlying flash and the OS can actually
+> see what's going on. That way, we can actually debug, fix and recover
+> from such problems.
+>
+>>   Early CF cards were especially vulnerable to
+>> this; more recent CF cards are better, but it's a known failure mode
+>> of CF cards.)
+>
+> It's a known failure mode of _everything_ that uses flash to pretend to
+> be a block device. As I see it, there are no SSD devices which don't
+> lose data; there are only SSD devices which haven't lost your data
+> _yet_.
+>
+> There's no fundamental reason why it should be this way; it just is.
+>
+> (I'm kind of hoping that the shiny new expensive ones that everyone's
+> talking about right now, that I shouldn't really be slagging off, are
+> actually OK. But they're still new, and I'm certainly not trusting them
+> with my own data _quite_ yet.)
 
-What's actually going on here is that the patch which added which
-sanity checks for extents, which added (among other functions)
-__ext4_ext_check() and ext4_ext_max_entries() doesn't quite work right
-in the presence of AGGRESSIVE_TEST.
+so what sort of test would be needed to identify if a device has this 
+problem?
 
-The goal of AGGRESSIVE_TEST is to stress test the extent tree insert
-and deletion code by forcing the size of eh_max to be a smaller value
-than it otherwise would be.  It did this by dropping in limits to the
-values returned by ext4_ext_space_root(), ext4_ext_space_idx(),
-ext4_ext_space_block(), and ext4_ext_block_idx().  This worked all
-very well and coded when these functions were only used to initialize
-the eh_max field.
+people can do ad-hoc tests by pulling the devices in use and then checking 
+the entire device, but something better should be available.
 
-The problem is that the extent checking code also used these functions
-to check whether or not the extent tree was sane, and if
-AGGRESSIVE_TEST was enabled, it caused the journal to be considered
-invalid.
+it seems to me that there are two things needed to define the tests.
 
-Your patch patches over the problem by changing ext4_ext_space_root to
-fix the one case where a problem arises, which patches over the
-problem for a freshly created filesystem, but it doesn't fix problems
-that will arise for a populated filesystem.  It also decreases the
-effectiveness of AGGRESSIVE_TEST.
+1. a predictable write load so that it's easy to detect data getting lose
 
-The following patch is a better way of fixing the problem.
+2. some statistical analysis to decide how many device pulls are needed 
+(under the write load defined in #1) to make the odds high that the 
+problem will be revealed.
 
-    	      	       	 	       - Ted
+with this we could have people test various devices and report if the test 
+detects unrelated data being lost (or businesses, and I think the tech 
+hardware sites would jump into this given some sort of accepted test)
 
-commit e07fa129e97b33b3f7772d98c184813ea7604a35
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Fri Aug 28 10:40:33 2009 -0400
+for USB devices there may be a way to use the power management functions 
+to cut power to the device without requiring it to physically be pulled, 
+if this is the case (even if this only works on some specific chipsets), 
+it would drasticly speed up the testing
 
-    ext4: fix extent sanity checking code with AGGRESSIVE_TEST
-    
-    The extents sanity-checking code depends on the ext4_ext_space_*()
-    functions returning the maximum alloable size for eh_max; however,
-    when the debugging #ifdef AGGRESSIVE_TEST is enabled to test the
-    extent tree handling code, this prevents a normally created ext4
-    filesystem from being mounted with the errors:
-    
-    Aug 26 15:43:50 bsd086 kernel: [   96.070277] EXT4-fs error (device sda8): ext4_ext_check_inode: bad header/extent in inode #8: too large eh_max - magic f30a, entries 1, max 4(3), depth 0(0)
-    Aug 26 15:43:50 bsd086 kernel: [   96.070526] EXT4-fs (sda8): no journal found
-    
-    Bug reported by Akira Fujita.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 94f40b1..f7bdd55 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -229,57 +229,65 @@ ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
- 	return newblock;
- }
- 
--static int ext4_ext_space_block(struct inode *inode)
-+static inline int ext4_ext_space_block(struct inode *inode, int check)
- {
- 	int size;
- 
- 	size = (inode->i_sb->s_blocksize - sizeof(struct ext4_extent_header))
- 			/ sizeof(struct ext4_extent);
-+	if (!check) {
- #ifdef AGGRESSIVE_TEST
--	if (size > 6)
--		size = 6;
-+		if (size > 6)
-+			size = 6;
- #endif
-+	}
- 	return size;
- }
- 
--static int ext4_ext_space_block_idx(struct inode *inode)
-+static inline int ext4_ext_space_block_idx(struct inode *inode, int check)
- {
- 	int size;
- 
- 	size = (inode->i_sb->s_blocksize - sizeof(struct ext4_extent_header))
- 			/ sizeof(struct ext4_extent_idx);
-+	if (!check) {
- #ifdef AGGRESSIVE_TEST
--	if (size > 5)
--		size = 5;
-+		if (size > 5)
-+			size = 5;
- #endif
-+	}
- 	return size;
- }
- 
--static int ext4_ext_space_root(struct inode *inode)
-+static inline int ext4_ext_space_root(struct inode *inode, int check)
- {
- 	int size;
- 
- 	size = sizeof(EXT4_I(inode)->i_data);
- 	size -= sizeof(struct ext4_extent_header);
- 	size /= sizeof(struct ext4_extent);
-+	if (!check) {
- #ifdef AGGRESSIVE_TEST
--	if (size > 3)
--		size = 3;
-+		if (size > 3)
-+			size = 3;
- #endif
-+	}
- 	return size;
- }
- 
--static int ext4_ext_space_root_idx(struct inode *inode)
-+static inline int ext4_ext_space_root_idx(struct inode *inode, int check)
- {
- 	int size;
- 
- 	size = sizeof(EXT4_I(inode)->i_data);
- 	size -= sizeof(struct ext4_extent_header);
- 	size /= sizeof(struct ext4_extent_idx);
-+	if (!check) {
- #ifdef AGGRESSIVE_TEST
--	if (size > 4)
--		size = 4;
-+		if (size > 4)
-+			size = 4;
- #endif
-+	}
- 	return size;
- }
- 
-@@ -293,9 +301,9 @@ int ext4_ext_calc_metadata_amount(struct inode *inode, int blocks)
- 	int lcap, icap, rcap, leafs, idxs, num;
- 	int newextents = blocks;
- 
--	rcap = ext4_ext_space_root_idx(inode);
--	lcap = ext4_ext_space_block(inode);
--	icap = ext4_ext_space_block_idx(inode);
-+	rcap = ext4_ext_space_root_idx(inode, 0);
-+	lcap = ext4_ext_space_block(inode, 0);
-+	icap = ext4_ext_space_block_idx(inode, 0);
- 
- 	/* number of new leaf blocks needed */
- 	num = leafs = (newextents + lcap - 1) / lcap;
-@@ -320,14 +328,14 @@ ext4_ext_max_entries(struct inode *inode, int depth)
- 
- 	if (depth == ext_depth(inode)) {
- 		if (depth == 0)
--			max = ext4_ext_space_root(inode);
-+			max = ext4_ext_space_root(inode, 1);
- 		else
--			max = ext4_ext_space_root_idx(inode);
-+			max = ext4_ext_space_root_idx(inode, 1);
- 	} else {
- 		if (depth == 0)
--			max = ext4_ext_space_block(inode);
-+			max = ext4_ext_space_block(inode, 1);
- 		else
--			max = ext4_ext_space_block_idx(inode);
-+			max = ext4_ext_space_block_idx(inode, 1);
- 	}
- 
- 	return max;
-@@ -626,7 +634,7 @@ int ext4_ext_tree_init(handle_t *handle, struct inode *inode)
- 	eh->eh_depth = 0;
- 	eh->eh_entries = 0;
- 	eh->eh_magic = EXT4_EXT_MAGIC;
--	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode));
-+	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode, 0));
- 	ext4_mark_inode_dirty(handle, inode);
- 	ext4_ext_invalidate_cache(inode);
- 	return 0;
-@@ -851,7 +859,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 
- 	neh = ext_block_hdr(bh);
- 	neh->eh_entries = 0;
--	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode));
-+	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
- 	neh->eh_depth = 0;
- 	ex = EXT_FIRST_EXTENT(neh);
-@@ -927,7 +935,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		neh = ext_block_hdr(bh);
- 		neh->eh_entries = cpu_to_le16(1);
- 		neh->eh_magic = EXT4_EXT_MAGIC;
--		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode));
-+		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode, 0));
- 		neh->eh_depth = cpu_to_le16(depth - i);
- 		fidx = EXT_FIRST_INDEX(neh);
- 		fidx->ei_block = border;
-@@ -1052,9 +1060,9 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 	/* old root could have indexes or leaves
- 	 * so calculate e_max right way */
- 	if (ext_depth(inode))
--	  neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode));
-+		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode, 0));
- 	else
--	  neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode));
-+		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
-@@ -1069,7 +1077,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 		goto out;
- 
- 	curp->p_hdr->eh_magic = EXT4_EXT_MAGIC;
--	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
-+	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode, 0));
- 	curp->p_hdr->eh_entries = cpu_to_le16(1);
- 	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
- 
-@@ -2348,7 +2356,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- 		if (err == 0) {
- 			ext_inode_hdr(inode)->eh_depth = 0;
- 			ext_inode_hdr(inode)->eh_max =
--				cpu_to_le16(ext4_ext_space_root(inode));
-+				cpu_to_le16(ext4_ext_space_root(inode, 0));
- 			err = ext4_ext_dirty(handle, inode, path);
- 		}
- 	}
+David Lang
