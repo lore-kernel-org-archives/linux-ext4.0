@@ -1,69 +1,43 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [testcase] test your fs/storage stack (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Sat, 29 Aug 2009 07:28:21 -0400
-Message-ID: <4A9910D5.4060208@redhat.com>
-References: <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <4A9510D2.1090704@redhat.com> <20090826111208.GA26595@elf.ucw.cz> <alpine.DEB.2.00.0908260416270.30426@asgard.lang.hm> <20090829094919.GF1634@ucw.cz>
+From: Ron Johnson <ron.l.johnson@cox.net>
+Subject: Re: [patch] document flash/RAID dangers
+Date: Sat, 29 Aug 2009 06:47:24 -0500
+Message-ID: <4A99154C.7050503@cox.net>
+References: <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz> <4A94B8FE.8050307@redhat.com> <20090826112219.GE26595@elf.ucw.cz> <4A954A98.5070808@redhat.com> <20090829093947.GE1634@ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090829094919.GF1634@ucw.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Rik van Riel <riel@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, corbet@lwn.net
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from eastrmmtao102.cox.net ([68.230.240.8]:33581 "EHLO
+	eastrmmtao102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751314AbZH2LrX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Aug 2009 07:47:23 -0400
+In-Reply-To: <20090829093947.GE1634@ucw.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/29/2009 05:49 AM, Pavel Machek wrote:
->    
->>> So instead of fixing or at least documenting known software deficiency
->>> in Linux MD stack, you'll try to surpress that information so that
->>> people use more of raid5 setups?
->>>
->>> Perhaps the better documentation will push them to RAID1, or maybe
->>> make them buy an UPS?
->>>        
->> people aren't objecting to better documentation, they are objecting to
->> misleading documentation.
->>      
-> Actually Ric is. He's trying hard to make RAID5 look better than it
-> really is.
->
->    
->
+On 2009-08-29 04:39, Pavel Machek wrote:
+> On Wed 2009-08-26 10:45:44, Rik van Riel wrote:
+>> Pavel Machek wrote:
+>>
+>>> Sledgehammer is hardware problem, and I'm demonstrating
+>>> software/documentation problem we have here.
+>> So your argument is that a sledgehammer is a hardware
+>> problem, while a broken hard disk and a power failure
+>> are software/documentation issues?
+>>
+>> I'd argue that the broken hard disk and power failure
+>> are hardware issues, too.
+> 
+> Noone told me that degraded md raid5 is dangerous. Thats documentation
+> issue #1. Maybe I just pulled the disk for fun.
 
-I object to misleading and dangerous documentation that you have 
-proposed. I spend a lot of time working in data integrity, talking and 
-writing about it so I care deeply that we don't misinform people.
+You're kidding, right?
 
-In this thread, I put out a draft that is accurate several times and you 
-have failed to respond to it.
+Or are you being too effectively sarcastic?
 
-The big picture that you don't agree with is:
-
-(1) RAID (specifically MD RAID) will dramatically improve data integrity 
-for real users. This is not a statement of opinion, this is a statement 
-of fact that has been shown to be true in large scale deployments with 
-commodity hardware.
-
-(2) RAID5 protects you against a single failure and your test case 
-purposely injects a double failure.
-
-(3) How to configure MD reliably should be documented in MD 
-documentation, not in each possible FS or raw device application
-
-(4) Data loss occurs in non-journalling file systems and journalling 
-file systems when you suffer double failures or hot unplug storage, 
-especially inexpensive FLASH parts.
-
-ric
-
-
-
+-- 
+Obsession with "preserving cultural heritage" is a racist impediment
+to moral, physical and intellectual progress.
