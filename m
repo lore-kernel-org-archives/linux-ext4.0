@@ -1,39 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
-	page_mkwrite
-Date: Fri, 28 Aug 2009 22:26:56 -0400
-Message-ID: <20090829022656.GK16732@mit.edu>
-References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13964] ext4: panic causes lost data in git
+Date: Sat, 29 Aug 2009 02:47:24 GMT
+Message-ID: <200908290247.n7T2lO7t030695@demeter.kernel.org>
+References: <bug-13964-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48150 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751154AbZH2C07 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Aug 2009 22:26:59 -0400
-Content-Disposition: inline
-In-Reply-To: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from demeter.kernel.org ([140.211.167.39]:52393 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750799AbZH2CrW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Aug 2009 22:47:22 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7T2lOgi030696
+	for <linux-ext4@vger.kernel.org>; Sat, 29 Aug 2009 02:47:24 GMT
+In-Reply-To: <bug-13964-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 26, 2009 at 10:53:16AM +0530, Aneesh Kumar K.V wrote:
-> Inorder to check whether the buffer_heads are mapped we need
-> to hold page lock. Otherwise a reclaim can cleanup the attached
-> buffer_heads. Instead of taking page lock and check whether
-> buffer_heads are mapped we let the write_begin/write_end callback
-> does the equivalent. It does have a performance impact in that we
-> are doing more work if we the buffer_heads are already mapped.
+http://bugzilla.kernel.org/show_bug.cgi?id=13964
 
-So I started looking at all of the work that we need to do in
-write_begin/write_end; did you check both write paths depending on
-whether we are using delayed allocation or not?  It would seem to me
-that it might be better to use lock_page() and unlock_page() around
-the check, since in many work loads the buffer heads will already be
-mapped often, and it appears to me that write_begin() will end up
-locking the page anyway.
 
-Am I missing something?
+Theodore Tso <tytso@mit.edu> changed:
 
-						- Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+
+
+
+--- Comment #3 from Theodore Tso <tytso@mit.edu>  2009-08-29 02:47:23 ---
+The alloc_on_commit patch had a number of deadlock problems, and I've never had
+time to try to work them out.
+
+For now, the recommended solution for git is to put the following in your
+.gitconfig file:
+
+[core]
+         fsyncobjectfiles = yes
+
+This will cause git to force an fsync() when writing object files, which is the
+only portable way of guaranteeing the object files will be written after a
+crash.  This is needed for safety reasons for ext4, xfs, and btrfs filesystems.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
