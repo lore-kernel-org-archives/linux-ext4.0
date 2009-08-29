@@ -1,43 +1,33 @@
-From: Ron Johnson <ron.l.johnson@cox.net>
-Subject: Re: [patch] document flash/RAID dangers
-Date: Sat, 29 Aug 2009 06:47:24 -0500
-Message-ID: <4A99154C.7050503@cox.net>
-References: <20090825224004.GD4300@elf.ucw.cz> <alpine.DEB.2.00.0908251547520.28411@asgard.lang.hm> <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz> <4A94B8FE.8050307@redhat.com> <20090826112219.GE26595@elf.ucw.cz> <4A954A98.5070808@redhat.com> <20090829093947.GE1634@ucw.cz>
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Subject: Re: ext2/3: document conditions when reliable operation is possible
+Date: Sat, 29 Aug 2009 14:04:28 +0100
+Message-ID: <20090829140428.282c27a4@lxorguk.ukuu.org.uk>
+References: <20090312092114.GC6949@elf.ucw.cz>
+	<200903121413.04434.rob@landley.net>
+	<4A98854E.9020302@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Rik van Riel <riel@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, corbet@lwn.net
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eastrmmtao102.cox.net ([68.230.240.8]:33581 "EHLO
-	eastrmmtao102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314AbZH2LrX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Aug 2009 07:47:23 -0400
-In-Reply-To: <20090829093947.GE1634@ucw.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Rob Landley <rob@landley.net>, Pavel Machek <pavel@ucw.cz>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Robert Hancock <hancockrwd@gmail.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4A98854E.9020302@gmail.com>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2009-08-29 04:39, Pavel Machek wrote:
-> On Wed 2009-08-26 10:45:44, Rik van Riel wrote:
->> Pavel Machek wrote:
->>
->>> Sledgehammer is hardware problem, and I'm demonstrating
->>> software/documentation problem we have here.
->> So your argument is that a sledgehammer is a hardware
->> problem, while a broken hard disk and a power failure
->> are software/documentation issues?
->>
->> I'd argue that the broken hard disk and power failure
->> are hardware issues, too.
-> 
-> Noone told me that degraded md raid5 is dangerous. Thats documentation
-> issue #1. Maybe I just pulled the disk for fun.
+> I've heard rumors of disks that claim to support cache flushes but 
+> really just ignore them, but have never heard any specifics of model 
+> numbers, etc. which are known to do this, so it may just be legend. If 
+> we do have such knowledge then we should really be blacklisting those 
+> drives and warning the user that we can't ensure data integrity. (Even 
+> powering down the system would be unsafe in this case.)
 
-You're kidding, right?
+This should not be the case for any vaguely modern drive. The standard
+requires the drive flushes the cache if sent the command and the size of
+caches on modern drives rather require it.
 
-Or are you being too effectively sarcastic?
-
--- 
-Obsession with "preserving cultural heritage" is a racist impediment
-to moral, physical and intellectual progress.
+Alan
