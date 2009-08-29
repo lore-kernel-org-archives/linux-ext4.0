@@ -1,36 +1,29 @@
-From: Robert Hancock <hancockrwd@gmail.com>
-Subject: Re: ext2/3: document conditions when reliable operation is possible
-Date: Fri, 28 Aug 2009 19:33:02 -0600
-Message-ID: <4A98854E.9020302@gmail.com>
-References: <20090312092114.GC6949@elf.ucw.cz> <200903121413.04434.rob@landley.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Allow rename even if link count is greater than
+	EXT4_LINK_MAX for index directories
+Date: Fri, 28 Aug 2009 21:51:28 -0400
+Message-ID: <20090829015128.GJ16732@mit.edu>
+References: <1251286645-14439-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Pavel Machek <pavel@ucw.cz>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Alan Cox <alan@lxorguk.ukuu.org.uk>
-To: Rob Landley <rob@landley.net>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751475AbZH2BdG@vger.kernel.org>
-In-Reply-To: <200903121413.04434.rob@landley.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, sandeen@redhat.com, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:54017 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750799AbZH2Bvf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Aug 2009 21:51:35 -0400
+Content-Disposition: inline
+In-Reply-To: <1251286645-14439-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/12/2009 01:13 PM, Rob Landley wrote:
->> +* write caching is disabled. ext2 does not know how to issue barriers
->> +  as of 2.6.28. hdparm -W0 disables it on SATA disks.
->
-> And here we're talking about ext2.  Does neither one know about write
-> barriers, or does this just apply to ext2?  (What about ext4?)
->
-> Also I remember a historical problem that not all disks honor write barriers,
-> because actual data integrity makes for horrible benchmark numbers.  Dunno how
-> current that is with SATA, Alan Cox would probably know.
+On Wed, Aug 26, 2009 at 05:07:25PM +0530, Aneesh Kumar K.V wrote:
+> With EXT4_FEATURE_RO_COMPAT_DIR_NLINK we enable more than EXT4_LINK_MAX
+> sub directories. So we should not fail rename with too many links error
+> if EXT4_FEATURE_RO_COMPAT_DIR_NLINK feature is set.
 
-I've heard rumors of disks that claim to support cache flushes but 
-really just ignore them, but have never heard any specifics of model 
-numbers, etc. which are known to do this, so it may just be legend. If 
-we do have such knowledge then we should really be blacklisting those 
-drives and warning the user that we can't ensure data integrity. (Even 
-powering down the system would be unsafe in this case.)
+Thanks, added to the ext4 patch queue.
+
+						- Ted
