@@ -1,150 +1,73 @@
 From: Pavel Machek <pavel@ucw.cz>
-Subject: [testcase] test your fs/storage stack (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Sat, 29 Aug 2009 11:49:20 +0200
-Message-ID: <20090829094919.GF1634@ucw.cz>
-References: <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <4A9510D2.1090704@redhat.com> <20090826111208.GA26595@elf.ucw.cz> <alpine.DEB.2.00.0908260416270.30426@asgard.lang.hm>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+	possible
+Date: Sat, 29 Aug 2009 12:02:02 +0200
+Message-ID: <20090829100202.GG1634__23351.4108964757$1251542610$gmane$org@ucw.cz>
+References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net> <20090827122423.GO6997@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="qMm9M+Fa2AknHoGS"
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, Rob Landley <rob@landley.net>,
+	Ric Wheeler <rwheeler@redhat.com>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: david@lang.hm
-Return-path: <linux-doc-owner@vger.kernel.org>
+	kernel list
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:57105 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752049AbZH2KnC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Aug 2009 06:43:02 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.0908260416270.30426@asgard.lang.hm>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090827122423.GO6997@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+On Thu 2009-08-27 08:24:23, Theodore Tso wrote:
+> On Thu, Aug 27, 2009 at 12:19:02AM -0500, Rob Landley wrote:
+> > > To me, this isn't a particularly interesting or newsworthy point,
+> > > since a competent system administrator
+> > 
+> > I'm a bit concerned by the argument that we don't need to document
+> > serious pitfalls because every Linux system has a sufficiently
+> > competent administrator they already know stuff that didn't even
+> > come up until the second or third day it was discussed on lkml.
+> 
+> I'm not convinced that information which needs to be known by System
+> Administrators is best documented in the kernel Documentation
+> directory.  Should there be a HOWTO document on stuff like that?
+
+It is not only for system administrators; I was trying to find out if
+kernel is buggy, and that should be in kernel tree.
 
 
---qMm9M+Fa2AknHoGS
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+> > If "degraded array" just means "don't have a replacement disk yet",
+> > then it sounds like what Pavel wants to document is "don't write to
+> > a degraded array at all, because power failures can cost you data
+> > due to write granularity being larger than filesystem block size".
+> > (Which still comes as news to some of us, and you need a way to
+> > remount mount the degraded array read only until the sysadmin can
+> > fix it.)
+> 
+> If you want to document that as a property of RAID arrays, sure.  But
+> it's not something that should live in Documentation/filesystems/ext2.txt
+> and Documentation/filesystems/ext3.txt.  The MD RAID howto might be a
 
+ext3 documentation states that journal protects fs integrity on
+powerfail. If you don't want to talk about storage stacks, perhaps
+that should be removed?
 
->> So instead of fixing or at least documenting known software deficiency
->> in Linux MD stack, you'll try to surpress that information so that
->> people use more of raid5 setups?
->>
->> Perhaps the better documentation will push them to RAID1, or maybe
->> make them buy an UPS?
->
-> people aren't objecting to better documentation, they are objecting to  
-> misleading documentation.
+Now... You mocked me up for 'ext3 expects disks to behave like disks
+(alarmist)'. I actually believe that should be written somewhere. ext3
+depends on fairly subtle storage disk characteristics, and many common
+configs just do not meet the expectations (missing barriers is most
+common, followed by collateral damage).
 
-Actually Ric is. He's trying hard to make RAID5 look better than it
-really is.
+Maybe not documenting that was okay 10 years ago, but with all the USB
+sticks and raid arrays around, its just sloppy. Because those
+characteristics are not documented, storage stack authors do not know
+what they have to guarantee, and the result is bad. See for example
+nbd -- it does not propagate barriers and is therefore unsafe.
 
-> for flash drives the danger is very straightforward (although even then  
-> you have to note that it depends heavily on the firmware of the device,  
-> some will loose lots of data, some won't loose any)
-
-I have not seen one that works :-(.
-
-> you are generalizing that since you have lost data on flash drives, all  
-> flash drives are dangerous.
-
-Do the flash manufacturers claim they do not cause collateral damage
-during powerfail? If not, they probably are dangerous.
-
-Anyway, you wanted a test, and one is attached. It normally takes like
-4 unplugs to uncover problems.
-
-> but the super simplified statement you keep trying to make is  
-> significantly overstating and oversimplifying the problem.
-
-Offer better docs? You are right that it does not lose whole stripe,
-it merely loses random block on same stripe, but result for journaling
-filesystem is similar.
-									Pavel
-
-
+								Pavel
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
-
---qMm9M+Fa2AknHoGS
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=fstest
-
-#!/bin/bash
-#
-# Copyright 2008 Pavel Machek <pavel@suse.cz>, GPLv2
-#
-# vfat is broken with filesize=0
-#
-#
-
-if [ .$MOUNTOPTS = . ]; then
-# ext3 is needed, or you need to disable caches using hdparm.
-# odirsync is needed, else modify fstest.worker to fsync the directory.
-    MOUNTOPTS="-o dirsync"
-fi
-if [ .$BDEV = . ]; then
-#    BDEV=/dev/sdb3
-    BDEV=/dev/nd0
-fi
-
-export FILESIZE=4000
-export NUMFILES=4000
-
-waitforcard() {
-    umount /mnt
-    echo Waiting for card:
-    while ! mount $BDEV $MOUNTOPTS /mnt 2> /dev/null; do
-	echo -n .
-	sleep 1
-    done
-#   hdparm -W0 $BDEV
-    echo
-}
-
-mkdir delme.fstest
-cd delme.fstest
-
-waitforcard
-rm tmp.* final.* /mnt/tmp.* /mnt/final.*
-
-while true; do
-    ../fstest.work
-    echo
-    waitforcard
-    echo Testing: fsck....
-    umount /mnt
-    fsck -fy $BDEV
-    echo Testing....
-    waitforcard
-    for A in final.*; do
-	echo -n $A " "
-	cmp $A /mnt/$A || exit
-    done
-    echo
-done
-
---qMm9M+Fa2AknHoGS
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="fstest.work"
-
-#!/bin/bash
-#
-# Copyright 2008 Pavel Machek <pavel@suse.cz>, GPLv2
-#
-
-echo "Writing test files: "
-for A in `seq $NUMFILES`; do
-    echo -n $A " "
-    rm final.$A
-    cat /dev/urandom | head -c $FILESIZE > tmp.$A
-    dd conv=fsync if=tmp.$A of=/mnt/final.$A 2> /dev/zero || exit
-#    cat /mnt/final.$A > /dev/null || exit
-# sync should not be needed, as dd asks for fsync
-#    sync
-    mv tmp.$A final.$A
-done
-
---qMm9M+Fa2AknHoGS--
