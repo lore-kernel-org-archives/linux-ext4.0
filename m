@@ -1,50 +1,52 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13964] ext4: panic causes lost data in git
-Date: Sat, 29 Aug 2009 02:47:24 GMT
-Message-ID: <200908290247.n7T2lO7t030695@demeter.kernel.org>
-References: <bug-13964-13602@http.bugzilla.kernel.org/>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [patch] document flash/RAID dangers
+Date: Sat, 29 Aug 2009 11:38:04 +0200
+Message-ID: <20090829093804.GD1634@ucw.cz>
+References: <20090825233701.GH4300@elf.ucw.cz> <4A947839.4010601@redhat.com> <20090826000657.GK4300@elf.ucw.cz> <4A947E05.8070406@redhat.com> <20090826002045.GO4300@elf.ucw.cz> <4A9481BE.1030308@redhat.com> <20090826003803.GP4300@elf.ucw.cz> <4A9485A6.1010803@redhat.com> <20090826112121.GD26595@elf.ucw.cz> <4A952370.50603@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52393 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750799AbZH2CrW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Aug 2009 22:47:22 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7T2lOgi030696
-	for <linux-ext4@vger.kernel.org>; Sat, 29 Aug 2009 02:47:24 GMT
-In-Reply-To: <bug-13964-13602@http.bugzilla.kernel.org/>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:54298 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751369AbZH2KTD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Aug 2009 06:19:03 -0400
+Content-Disposition: inline
+In-Reply-To: <4A952370.50603@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13964
+>> Example I seen went like this:
+>>
+>> Drive in raid 5 failed; hot spare was available (no idea about
+>> UPS). System apparently locked up trying to talk to the failed drive,
+>> or maybe admin just was not patient enough, so he just powercycled the
+>> array. He lost the array.
+>>
+>> So while most people will not agressively powercycle the RAID array,
+>> drive failure still provokes little tested error paths, and getting
+>> unclean shutdown is quite easy in such case.
+>
+> Then what we need to document is do not power cycle an array during a  
+> rebuild, right?
 
+Yep, that and the fact that you should fsck if you do.
 
-Theodore Tso <tytso@mit.edu> changed:
+> If it wasn't the admin that timed out and the box really was hung (no  
+> drive activity lights, etc), you will need to power cycle/reboot but  
+> then you should not have this active rebuild issuing writes either...
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
-
-
-
---- Comment #3 from Theodore Tso <tytso@mit.edu>  2009-08-29 02:47:23 ---
-The alloc_on_commit patch had a number of deadlock problems, and I've never had
-time to try to work them out.
-
-For now, the recommended solution for git is to put the following in your
-.gitconfig file:
-
-[core]
-         fsyncobjectfiles = yes
-
-This will cause git to force an fsync() when writing object files, which is the
-only portable way of guaranteeing the object files will be written after a
-crash.  This is needed for safety reasons for ext4, xfs, and btrfs filesystems.
+Ok, I guess you are right here.
+									Pavel
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
