@@ -1,107 +1,78 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
-Date: Sun, 30 Aug 2009 18:27:10 -0400
-Message-ID: <20090830222710.GA9938@infradead.org>
-References: <1251600858-21294-1-git-send-email-tytso@mit.edu> <20090830165229.GA5189@infradead.org> <20090830181731.GA20822@mit.edu>
+From: Ed Tomlinson <edt@aei.ca>
+Subject: Re: Ext4 corruption that will not go away
+Date: Sun, 30 Aug 2009 19:19:55 -0400
+Message-ID: <200908301919.56608.edt@aei.ca>
+References: <E1LOG9D-0006h4-7R@closure.thunk.org> <200908300025.48034.edt@aei.ca> <28421.1251642296@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com,
-	jens.axboe@oracle.com
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: Text/Plain;
+  charset="iso-8859-15"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: nicholas.dokos@hp.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:53609 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754191AbZH3W1I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Aug 2009 18:27:08 -0400
+Received: from mail001.aei.ca ([206.123.6.130]:36770 "EHLO mail001.aei.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751421AbZH3XT5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 Aug 2009 19:19:57 -0400
+In-Reply-To: <28421.1251642296@gamaville.dokosmarshall.org>
 Content-Disposition: inline
-In-Reply-To: <20090830181731.GA20822@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 30, 2009 at 02:17:31PM -0400, Theodore Tso wrote:
+On Sunday 30 August 2009 10:24:56 Nick Dokos wrote:
+> > Hi,
 > > 
-> > The current writeback sizes are defintively too small, we shoved in
-> > a hack into XFS to bump up nr_to_write to four times the value the
-> > VM sends us to be able to saturate medium sized RAID arrays in XFS.
+> > I am running 2.6.31-rc8+ and have ext4 corruption that will not go away.
+> > 
+> > My root fs is ext4 on sdb3.  I have moved the directory with corruption into lost+found and booted to a rescuse
+> > system (arch linux) and run fsck.ext4 on the filesystem, which then reports its clean...  Booting back into my
+> > gentoo system and attempting to remove the xx directory from lost+found gives:
+> > 
+> > [  172.408799] EXT4-fs error (device sdb3): ext4_ext_check_inode: bad header/extent in inode #706801: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)                                                                                                
+> > [  172.429410] EXT4-fs error (device sdb3): ext4_ext_check_inode: bad header/extent in inode #706801: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)                                                                                                
+> > [  172.449920] EXT4-fs error (device sdb3): ext4_ext_check_inode: bad header/extent in inode #706801: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
+> > 
+> > The above is repeatable.
+> > 
+> > How can I _really_ clean this fs?  What info is needed to help the process?
+> > 
 > 
-> Hmm, should we make it be a per-superblock tunable so that it can
-> either be tuned on a per-block device basis or the filesystem code can
-> adjust it to their liking?  I thought about it, but decided maybe it
-> was better to keeping it simple.
-
-I'm don't think tuning it on a per-filesystem basis is a good idea,
-we had to resort to this for 2.6.30 as a quick hack, and we will ged
-rid of it again in 2.6.31 one way or another.  I personally think we
-should fight this cancer of per-filesystem hacks in the writeback code
-as much as we can.  Right now people keep adding tuning hacks for
-specific workloads there, and at least all the modern filesystems (ext4,
-btrfs and XFS) have very similar requirements to the writeback code,
-that is give the filesystem as much as possible to write at the same
-time to do intelligent decisions based on that.  The VM writeback code
-fails horribly at that right now.
-
-> > Turns out this was not enough and at least for Chris Masons array
-> > we only started seaturating at * 16.  I suspect you patch will give
-> > a similar effect.
+> The first two pieces of information needed would be the version of e2fsprogs
+> that you are running (e2fsck -V) and the stat of inode 706801:
 > 
-> So you think 16384 would be a better default?  The reason why I picked
-> 32768 was because that was the size of the ext4 block group, but it
-> was otherwise it was totally arbitrary.  I haven't done any
-> benchmarking yet, which is one of the reasons why I thought about
-> making it a tunable.
-
-It was just another arbitrary number.  My suspicion is that the exact
-number does not matter, it just needs to be much much larger than the
-current one.  And the latency concerns are also over-rated as the block
-layer will tell us that we are congested if we push too much into a
-queue.
-
-> > And the other big question is how this interacts with Jens' new per-bdi
-> > flushing code that we still hope to merge in 2.6.32.
+>   debugfs -R 'stat <706801>' /dev/sdb3
 > 
-> Jens?  What do you think?  Fixing MAX_WRITEBACK_PAGES was something I
-> really wanted to merge in 2.6.32 since it makes a huge difference for
-> the block allocation layout for a "rsync -avH /old-fs /new-fs" when we
-> are copying bunch of large files (say, 800 meg iso images) and so the
-> fact that the writeback routine is writing out 4 megs at a time, means
-> that our files get horribly interleaved and thus get fragmented.
-> 
-> I initially thought about adding some massive workarounds in the
-> filesystem layer (which is I guess what XFS did),
 
-XFS is relatively good at doing the disk block layout even with smaller
-writeouts, so we do not have that fragmentation hack.  And the
-for-2.6.30 big hack is one liner:
+e2fsck 1.41.9 (22-Aug-2009)
+        Using EXT2FS Library version 1.41.9, 22-Aug-2009
 
---- a/fs/xfs/linux-2.6/xfs_aops.c
-+++ b/fs/xfs/linux-2.6/xfs_aops.c
-@@ -1268,6 +1268,14 @@ xfs_vm_writepage(
- 	if (!page_has_buffers(page))
- 		create_empty_buffers(page, 1 << inode->i_blkbits, 0);
- 
-+
-+	/*
-+	 *  VM calculation for nr_to_write seems off.  Bump it way
-+	 *  up, this gets simple streaming writes zippy again.
-+	 *  To be reviewed again after Jens' writeback changes.
-+	 */
-+	wbc->nr_to_write *= 4;
-+
- 	/*
- 	 * Convert delayed allocate, unwritten or unmapped space
- 	 * to real space and flush out to disk.
+Inode: 706801   Type: regular    Mode:  0644   Flags: 0x80000
+Generation: 28075061    Version: 0x00000000:00000001
+User:     0   Group:     0   Size: 1442
+File ACL: 0    Directory ACL: 0
+Links: 1   Blockcount: 0
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x4a8beb6a:a8c2e6e4 -- Wed Aug 19 08:09:14 2009
+ atime: 0x4a8beb6a:00000000 -- Wed Aug 19 08:09:14 2009
+ mtime: 0x4a8b17d9:00000000 -- Tue Aug 18 17:06:33 2009
+crtime: 0x4a8beb6a:9e456724 -- Wed Aug 19 08:09:14 2009
+Size of extra inode fields: 28
+EXTENTS:
 
-This also went past -fsdevel, but I didn' manage to get the flames for
-adding these hacks that I hoped to get ;-)
+and of 76804 which also has a problem
 
-My stance is to wait for this until about -rc2 at which points Jens'
-code is hopefully in and we can start doing all the fine-tuning,
-including lots of benchmarking.
+Inode: 706804   Type: regular    Mode:  0644   Flags: 0x80000
+Generation: 4140131203    Version: 0x00000000:00000001
+User:  1000   Group:   100   Size: 523
+File ACL: 0    Directory ACL: 0
+Links: 1   Blockcount: 0
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x4a95c957:348db0b8 -- Wed Aug 26 19:46:31 2009
+ atime: 0x4a991f2b:cf3a606c -- Sat Aug 29 08:29:31 2009
+ mtime: 0x4a95c957:348db0b8 -- Wed Aug 26 19:46:31 2009
+crtime: 0x4a95c957:348db0b8 -- Wed Aug 26 19:46:31 2009
+Size of extra inode fields: 28
+EXTENTS:
 
-Btw, one thing I would really see from one of the big companies or
-the LF is doing benchmarks like yours above or just a simple one or
-two stream dd on some big machines weekly so we can immediately see
-regressions once someones starts to tweak the VM again.  Preferably
-including seekwatcher data.
+Hope this helps
+Ed
