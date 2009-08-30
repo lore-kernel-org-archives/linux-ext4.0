@@ -1,116 +1,93 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
-Date: Sun, 30 Aug 2009 12:52:29 -0400
-Message-ID: <20090830165229.GA5189@infradead.org>
-References: <1251600858-21294-1-git-send-email-tytso@mit.edu>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH 07/17] vfs: Introduce new helpers for syncing after writing to O_SYNC file or IS_SYNC inode
+Date: Sun, 30 Aug 2009 18:29:59 +0100
+Message-ID: <20090830172959.GD7129@shareable.org>
+References: <1250875447-15622-1-git-send-email-jack@suse.cz> <1250875447-15622-8-git-send-email-jack@suse.cz> <20090827173540.GA19115@infradead.org> <20090830163551.GA7129@shareable.org> <20090830163917.GA23955@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com,
-	jens.axboe@oracle.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:44124 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752935AbZH3Qw2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Aug 2009 12:52:28 -0400
+Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, Evgeniy Polyakov <zbr@ioremap.net>,
+	ocfs2-devel@oss.oracle.com, Joel Becker <joel.becker@oracle.com>,
+	Felix Blyakher <felixb@sgi.com>, xfs@oss.sgi.com,
+	Anton Altaparmakov <aia21@cantab.net>,
+	linux-ntfs-dev@lists.sourceforge.net,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1251600858-21294-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20090830163917.GA23955@lst.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Aug 29, 2009 at 10:54:18PM -0400, Theodore Ts'o wrote:
-> MAX_WRITEBACK_PAGES was hard-coded to 1024 because of a concern of not
-> holding I_SYNC for too long.  But this shouldn't be a concern since
-> I_LOCK and I_SYNC have been separated.  So make it be a tunable and
-> change the default to be 32768.
-> 
-> This change is helpful for ext4 since it means we write out large file
-> in bigger chunks than just 4 megabytes at a time, so that when we have
-> multiple large files in the page cache waiting for writeback, the
-> files don't end up getting interleaved.  There shouldn't be any downside.
-> 
-> http://bugzilla.kernel.org/show_bug.cgi?id=13930
+Christoph Hellwig wrote:
+> Linux has sync_file_range which currently is a perfect way to lose your
+> synced' data, but with two more flags and calls to ->fsync we could
+> turn it into range-fsync/fdatasync.
 
-The current writeback sizes are defintively too small, we shoved in
-a hack into XFS to bump up nr_to_write to four times the value the
-VM sends us to be able to saturate medium sized RAID arrays in XFS.
+Apart from the way it loses your data, the man page for
+sync_file_range never manages to explain quite why you should use the
+existing flags in various combinations.  It's only obvious if you've
+worked on a kernel yourself.
 
-Turns out this was not enough and at least for Chris Masons array
-we only started seaturating at * 16.  I suspect you patch will give
-a similar effect.
+Having asked this before, it appears one of the reasons for
+sync_file_range working as it does is to give the application more
+control over writeback order and to some extent, reduce the amount of
+blocking.
 
->  /*
-> + * The maximum number of pages to writeout in a single bdflush/kupdate
-> + * operation.  We used to limit this to 1024 pages to avoid holding
-> + * I_SYNC against an inode for a long period of times, but since
-> + * I_SYNC has been separated out from I_LOCK, the only time a process
-> + * waits for I_SYNC is when it is calling fsync() or otherwise forcing
-> + * out the inode.
-> + */
-> +unsigned int max_writeback_pages = 32768;
+But it's really difficult to manage the amount of blocking with it.
+You need to know the request queue size among other things, and even
+if you do it's dynamic.  Writeback order would be as easy with
+fdatasync_range, and if you want to reduce blocking, a good
+implementation of aio_fsync would be more useful.  Or, you have to use
+application writeback threads anyway, so fdatasync_range again.
 
-Now while I'm sure this a a much much better default than the brain dead
-previous one I suspect we really need to scale it based on the amount of
-available or dirty RAM to keep larger systems busy.  Also that I_SYNC
-comment doesn't make too much sense to me - if we do a sync/fsync we
-do need to write out all data anyway, so waiting for bdflush/kupdate
-is not a problem.  The only thing where it could matter is for Jan's
-new O_SYNC implementation.
+The one thing sync_file_range can do is let you submit multiple ranges
+which the elevators can sort for the hardware.  You can't do that with
+sequential calls to fdatasync_range, and it's not clear that aio_fsync
+is implemented well enough (but it's a fairly good API for it).
 
-And btw, I think referring to the historic code in the comment is not
-a good idea, it's just going to ocnfuse the heck out of everyone looking
-at it in the future.  The information above makes sense for the commit
-message.
+Nick Piggin's idea to let fdatasync_range take multiple ranges might
+help with that, but it's not clear how much.
 
-And the other big question is how this interacts with Jens' new per-bdi
-flushing code that we still hope to merge in 2.6.32.
+> I'm not sure if that's a good
+> idea or if we should just add a sys_fdatasync_rage systems call.
 
-Maybe we'll actually get some sane writeback code for the first time.
+fdatasync_range has the advantage of being comprehensible.  People
+will use it because it makes sense.
 
-> +
-> +/*
->   * Start background writeback (via pdflush) at this percentage
->   */
->  int dirty_background_ratio = 10;
-> @@ -708,10 +709,10 @@ static void background_writeout(unsigned long _min_pages)
->  			break;
->  		wbc.more_io = 0;
->  		wbc.encountered_congestion = 0;
-> -		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
-> +		wbc.nr_to_write = max_writeback_pages;
->  		wbc.pages_skipped = 0;
->  		writeback_inodes(&wbc);
-> -		min_pages -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
-> +		min_pages -= max_writeback_pages - wbc.nr_to_write;
->  		if (wbc.nr_to_write > 0 || wbc.pages_skipped > 0) {
->  			/* Wrote less than expected */
->  			if (wbc.encountered_congestion || wbc.more_io)
-> @@ -783,7 +784,7 @@ static void wb_kupdate(unsigned long arg)
->  	while (nr_to_write > 0) {
->  		wbc.more_io = 0;
->  		wbc.encountered_congestion = 0;
-> -		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
-> +		wbc.nr_to_write = max_writeback_pages;
->  		writeback_inodes(&wbc);
->  		if (wbc.nr_to_write > 0) {
->  			if (wbc.encountered_congestion || wbc.more_io)
-> @@ -791,7 +792,7 @@ static void wb_kupdate(unsigned long arg)
->  			else
->  				break;	/* All the old data is written */
->  		}
-> -		nr_to_write -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
-> +		nr_to_write -= max_writeback_pages - wbc.nr_to_write;
->  	}
->  	if (time_before(next_jif, jiffies + HZ))
->  		next_jif = jiffies + HZ;
-> -- 
-> 1.6.3.2.1.gb9f7d.dirty
-> 
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org.  For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
----end quoted text---
+sync_file_range could be hijacked with new flags to implement
+fdatasync_range.  If that's done, I'd rename the system call, but keep
+it compatible with sync_file_range's flags, which would never be set
+when userspace uses the new functionality.
+
+> I don't quite see the point of a range-fsync, but it could be easily
+> implemented as a flag.
+
+A flags argument would be good anyway: to indicate if we want an
+ordinary fdatasync, or something which flushes the relevant bit of
+volatile hardware caches too.  With that as a capability, it is useful
+to offer fsync, because that'd be the only way to get a volatile
+hardware cache flush (or maybe the only way not to?).
+
+For that reason, it should be permitted to give an infinitely large range.
+
+I don't see the point of range-fsync either, but I'm not sure if I see
+any harm in it.  If permitted, range-fsync with a zero-byte range
+would flush just the inode state and none of the data.  If that's
+technically available, maybe O_ISYNC and "#define O_SYNC
+(O_DATASYNC|O_ISYNC)" isn't such as daft idea.
+
+I'd call it fsync_range for consistency with aio_fsync (POSIX), which
+takes flags O_DSYNC or O_SYNC to indicate the type of sync.  But I'd
+use new flag names, to keep the space clear for other flags.  Just
+sketching some ideas:
+
+/* One of FSYNC_RANGE_SYNC or FSYNC_RANGE_DATASYNC must be set. */
+
+#define FSYNC_RANGE_SYNC	(1 << 0)	/* Like fsync, O_SYNC. */
+#define FSYNC_RANGE_DATASYNC	(1 << 1)	/* Like fdatasync, O_DSYNC. */
+#define FSYNC_RANGE_NO_HWCACHE	(1 << 2)	/* Not hardware caches. */
+
+-- Jamie
