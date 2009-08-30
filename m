@@ -1,15 +1,16 @@
 From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [testcase] test your fs/storage stack (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Sun, 30 Aug 2009 09:07:49 +0200
-Message-ID: <20090830070749.GA1576@ucw.cz>
-References: <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <4A9510D2.1090704@redhat.com> <20090826111208.GA26595@elf.ucw.cz> <alpine.DEB.2.00.0908260416270.30426@asgard.lang.hm> <20090829094919.GF1634@ucw.cz> <alpine.DEB.2.00.0908290931260.6822@asgard.lang.hm>
+Subject: Re: [patch] ext2/3: document conditions when reliable operation is
+	possible
+Date: Sun, 30 Aug 2009 09:19:57 +0200
+Message-ID: <20090830071957.GA1656@ucw.cz>
+References: <4A92F6FC.4060907@redhat.com> <20090826111751.GC26595@elf.ucw.cz> <20090826122813.GI32712@mit.edu> <200908270106.15032.rob@landley.net> <alpine.DEB.2.00.0908262342120.6822@asgard.lang.hm>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+Cc: Rob Landley <rob@landley.net>, Theodore Tso <tytso@mit.edu>,
+	Rik van Riel <riel@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
 	Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
@@ -17,43 +18,52 @@ Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
 To: david@lang.hm
 Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.0908290931260.6822@asgard.lang.hm>
+In-Reply-To: <alpine.DEB.2.00.0908262342120.6822@asgard.lang.hm>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 Hi!
 
->>> for flash drives the danger is very straightforward (although even then
->>> you have to note that it depends heavily on the firmware of the device,
->>> some will loose lots of data, some won't loose any)
+>> I thought the reason for that was that if your metadata is horked, further
+>> writes to the disk can trash unrelated existing data because it's lost track
+>> of what's allocated and what isn't.  So back when the assumption was "what's
+>> written stays written", then keeping the metadata sane was still darn
+>> important to prevent normal operation from overwriting unrelated existing
+>> data.
 >>
->> I have not seen one that works :-(.
+>> Then Pavel notified us of a situation where interrupted writes to the disk can
+>> trash unrelated existing data _anyway_, because the flash block size on the 16
+>> gig flash key I bought retail at Fry's is 2 megabytes, and the filesystem thinks
+>> it's 4k or smaller.  It seems like what _broke_ was the assumption that the
+>> filesystem block size >= the disk block size, and nobody noticed for a while.
+>> (Except the people making jffs2 and friends, anyway.)
+>>
+>> Today we have cheap plentiful USB keys that act like hard drives, except that
+>> their write block size isn't remotely the same as hard drives', but they
+>> pretend it is, and then the block wear levelling algorithms fuzz things
+>> further.  (Gee, a drive controller lying about drive geometry, the scsi crowd
+>> should feel right at home.)
 >
-> so let's get broader testing (including testing the SSDs as well as the  
-> thumb drives)
-
-If someone can do ssd test -- yes that would be interesting.
-
->> Anyway, you wanted a test, and one is attached. It normally takes like
->> 4 unplugs to uncover problems.
+> actually, you don't know if your USB key works that way or not. Pavel has 
+> ssome that do, that doesn't mean that all flash drives do
 >
-> Ok, help me understand this.
+> when you do a write to a flash drive you have to do the following items
 >
-> I copy these two files to a system, change them to point at the correct  
-> device, run them and unplug the drive while it's running.
+> 1. allocate an empty eraseblock to put the data on
+>
+> 2. read the old eraseblock
+>
+> 3. merge the incoming write to the eraseblock
+>
+> 4. write the updated data to the flash
+>
+> 5. update the flash trnslation layer to point reads at the new location  
+> instead of the old location.
 
-Yep.
 
-> when I plug the device back in, how do I tell if it lost something  
-> unexpected? since you are writing from urandom I have no idea what data  
-> _should_ be on the drive, so how can I detect that a data block has been  
-> corrupted?
-
-I have mirror on disk you are not unplugging. See cmp || exit lines.
-
-The test continues until it detects corruption.
-								Pavel
-
+That would need two erases per single sector writen, no? Erase is in
+milisecond range, so the performance would be just way too bad :-(.
+	   	     	 	     	      	       	       Pavel
 
 -- 
 (english) http://www.livejournal.com/~pavelmachek
