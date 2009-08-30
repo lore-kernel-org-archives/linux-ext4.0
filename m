@@ -1,55 +1,49 @@
 From: Pavel Machek <pavel@ucw.cz>
 Subject: Re: [patch] ext2/3: document conditions when reliable operation is
 	possible
-Date: Sun, 30 Aug 2009 09:01:09 +0200
-Message-ID: <20090830070109.GC1417__7007.41726109317$1251615690$gmane$org@ucw.cz>
-References: <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <4A9510D2.1090704@redhat.com> <20090826111208.GA26595@elf.ucw.cz> <20090826122311.GH32712@mit.edu>
+Date: Sun, 30 Aug 2009 09:03:37 +0200
+Message-ID: <20090830070336.GA1554@ucw.cz>
+References: <20090824212518.GF29763@elf.ucw.cz> <20090824223915.GI17684@mit.edu> <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz> <4A94ACDF.30405@redhat.com> <20090826111751.GC26595@elf.ucw.cz> <alpine.DEB.2.00.0908260428310.30426@asgard.lang.hm> <20090826131028.GB1370@ucw.cz> <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
-	Florian Weimer <fweimer@bfk.de>,
+Cc: Rik van Riel <riel@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	Rob Landley <rob@landley.net>,
-	kernel list
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net, jack@suse.cz
+To: david@lang.hm
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:48900 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:49020 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751799AbZH3HBP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Aug 2009 03:01:15 -0400
+	with ESMTP id S1751879AbZH3HDl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Aug 2009 03:03:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20090826122311.GH32712@mit.edu>
+In-Reply-To: <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 2009-08-26 08:23:11, Theodore Tso wrote:
-> On Wed, Aug 26, 2009 at 01:12:08PM +0200, Pavel Machek wrote:
-> > > I agree that this is not an interesting (or likely) scenario, certainly  
-> > > when compared to the much more frequent failures that RAID will protect  
-> > > against which is why I object to the document as Pavel suggested. It  
-> > > will steer people away from using RAID and directly increase their  
-> > > chances of losing their data if they use just a single disk.
-> > 
-> > So instead of fixing or at least documenting known software deficiency
-> > in Linux MD stack, you'll try to surpress that information so that
-> > people use more of raid5 setups?
-> 
-> First of all, it's not a "known software deficiency"; you can't do
-> anything about a degraded RAID array, other than to replace the failed
-> disk. 
+On Wed 2009-08-26 06:43:24, david@lang.hm wrote:
+> On Wed, 26 Aug 2009, Pavel Machek wrote:
+>
+>>>>> The metadata is just a way to get to my data, while the data
+>>>>> is actually important.
+>>>>
+>>>> Personally, I care about metadata consistency, and ext3 documentation
+>>>> suggests that journal protects its integrity. Except that it does not
+>>>> on broken storage devices, and you still need to run fsck there.
+>>>
+>>> as the ext3 authors have stated many times over the years, you still need
+>>> to run fsck periodicly anyway.
+>>
+>> Where is that documented?
+>
+> linux-kernel mailing list archives.
 
-You could add journal to raid5.
-
-> "ext2 and ext3 have this surprising dependency that disks act like
-> disks".  (alarmist)
-
-AFAICT, you mount block device, not disk. Many block devices fail the
-test. And since users (and block device developers) do not  know in
-detail how disks behave, it is hard to blame them... ("you may corrupt
-sector you are writing to and ext3 handles that ok" was surprise for
-me, for example).
-
-					
-								Pavel
+That's not where fs documentation belongs :-(.
+									Pavel
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
