@@ -1,55 +1,33 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Sun, 30 Aug 2009 11:20:23 -0400
-Message-ID: <20090830152023.GB23828@mit.edu>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>
+Subject: Re: Ext4 corruption that will not go away
+Date: Sun, 30 Aug 2009 11:41:44 -0400
+Message-ID: <20090830154144.GC23828@mit.edu>
+References: <E1LOG9D-0006h4-7R@closure.thunk.org> <20090119113300.GC9482@skywalker> <200908300025.48034.edt@aei.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753797AbZH3PVB@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Ed Tomlinson <edt@aei.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:43268 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753410AbZH3Plp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 Aug 2009 11:41:45 -0400
 Content-Disposition: inline
-In-Reply-To: <20090830075135.GA1874@ucw.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <200908300025.48034.edt@aei.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 30, 2009 at 09:51:35AM +0200, Pavel Machek wrote:
+On Sun, Aug 30, 2009 at 12:25:47AM -0400, Ed Tomlinson wrote:
+> Hi,
 > 
-> If it only was this simple. We don't have 'check brakes' (aka
-> 'journalling ineffective') warning light. If we had that, I would not
-> have problem.
+> I am running 2.6.31-rc8+ and have ext4 corruption that will not go away.
+> 
+> My root fs is ext4 on sdb3.  I have moved the directory with corruption into lost+found and booted to a rescuse
+> system (arch linux) and run fsck.ext4 on the filesystem, which then reports its clean...  Booting back into my
+> gentoo system and attempting to remove the xx directory from lost+found gives:
+> 
+> [  172.408799] EXT4-fs error (device sdb3): ext4_ext_check_inode: bad header/extent in inode #706801: invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
 
-But we do; comptently designed (and in the cast of software RAID,
-competently packaged) RAID subsystems send notifications to the system
-administrator when there is a hard drive failure.  Some hardware RAID
-systems will send a page to the system administrator.  A mid-range
-Areca card has a separate ethernet port so it can send e-mail to the
-administrator, even if the OS is hosed for some reason.
+Can you send in the output of running fsck.ext4 on the filesystem, please?
 
-And it's not a matter of journalling ineffective; the much bigger deal
-is, "your data is at risk"; perhaps because the file system metadata
-may become subject to corruption, but more critically, because the
-file data may become subject to corruption.  Metadata becoming subject
-to corruption is important primarily because it leads to data becoming
-corruption; metadata is the tail; the user's data is the dog.
-
-So we *do* have the warning light; the problem is that just as some
-people may not realize that "check brakes" means, "YOU COULD DIE",
-some people may not realize that "hard drive failure; RAID array
-degraded" could mean, "YOU COULD LOSE DATA".
-
-Fortunately, for software RAID, this is easily solved; if you are so
-concerned, why don't you submit a patch to mdadm adjusting the e-mail
-sent to the system administrator when the array is in a degraded
-state, such that it states, "YOU COULD LOSE DATA".  I would gently
-suggest to you this would be ***far*** more effective that a patch to
-kernel documentation.
-
-						- Ted
+    	     	    	      	      - Ted
