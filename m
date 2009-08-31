@@ -1,78 +1,49 @@
-From: martin f krafft <madduck@debian.org>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Mon, 31 Aug 2009 20:07:46 +0200
-Message-ID: <20090831180746.GA32110@piper.oerlikon.madduck.net>
-References: <4A947682.2010204@redhat.com>
- <200908262253.17886.rob@landley.net>
- <4A967175.5070700@redhat.com>
- <20090827221319.GA1601@ucw.cz>
- <4A9733C1.2070904@redhat.com>
- <20090828064449.GA27528@elf.ucw.cz>
- <20090828120854.GA8153@mit.edu>
- <20090830075135.GA1874@ucw.cz>
- <20090830152023.GB23828@mit.edu>
- <4807377b0908311049id9a2167r937bc8447c2b3546@mail.gmail.com>
+	document conditions when reliable operation is possible)
+Date: Mon, 31 Aug 2009 14:31:54 -0400
+Message-ID: <20090831183154.GB3620@infradead.org>
+References: <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz> <alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm> <4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru> <20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com> <20090831131626.GA17325@infradead.org> <4A9BCEA8.9080206@redhat.com> <alpine.DEB.2.00.0908310847530.6822@asgard.lang.hm>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-ripemd160;
-	protocol="application/pgp-signature"; boundary="h31gzZEtNLTqOjlF"
-Cc: Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
-	NeilBrown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Michael Tokarev <mjt@tls.msk.ru>, Pavel Machek <pavel@ucw.cz>,
+	Theodore Tso <tytso@mit.edu>, NeilBrown <neilb@suse.de>,
 	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Jesse Brandeburg <jesse.brandeburg@gmail.com>
+To: david@lang.hm
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from clegg.madduck.net ([193.242.105.96]:52350 "EHLO
-	clegg.madduck.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751365AbZHaSQg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 14:16:36 -0400
+Received: from bombadil.infradead.org ([18.85.46.34]:41296 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751901AbZHaScE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 14:32:04 -0400
 Content-Disposition: inline
-In-Reply-To: <4807377b0908311049id9a2167r937bc8447c2b3546@mail.gmail.com>
+In-Reply-To: <alpine.DEB.2.00.0908310847530.6822@asgard.lang.hm>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Aug 31, 2009 at 08:50:53AM -0700, david@lang.hm wrote:
+>> It would also be very useful to have all of our top tier file systems 
+>> enable barriers by default, provide consistent barrier on/off mount 
+>> options and log a nice warning when not enabled....
+>
+> most people are not willing to live with unbuffered write performance.  
 
---h31gzZEtNLTqOjlF
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I'm not sure what you mean with unbuffered write support, the only
+common use of that term is for userspace I/O using the read/write
+sysctem calls directly in comparism to buffered I/O which uses
+the stdio library.
 
-also sprach Jesse Brandeburg <jesse.brandeburg@gmail.com> [2009.08.31.1949 =
-+0200]:
-> In the case of a degraded array, could the kernel be more
-> proactive (or maybe even mdadm) and have the filesystem remount
-> itself withOUT journalling enabled? =A0This seems on the surface to
-> be possible, but I don't know the internal particulars that might
-> prevent/allow it.
+But be ensure that the use of barriers and cache flushes in fsync does not
+completely disable caching (or "buffering"), it just does flush flushes
+the disk write cache in case we either commit a log buffer than need to
+be on disk, or performan an fsync where we really do want to have data
+on disk instead of lying to the application about the status of the
+I/O completion.  Which btw could be interpreted as a violation of the
+Posix rules.
 
-Why would I want to disable the filesystem journal in that case?
-
---=20
- .''`.   martin f. krafft <madduck@d.o>      Related projects:
-: :'  :  proud Debian developer               http://debiansystem.info
-`. `'`   http://people.debian.org/~madduck    http://vcs-pkg.org
-  `-  Debian - when you have better things to do than fixing systems
-=20
-"i can stand brute force, but brute reason is quite unbearable. there
- is something unfair about its use. it is hitting below the
- intellect."
-                                                        -- oscar wilde
-
---h31gzZEtNLTqOjlF
-Content-Type: application/pgp-signature; name="digital_signature_gpg.asc"
-Content-Description: Digital signature (see http://martin-krafft.net/gpg/)
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEAREDAAYFAkqcEXEACgkQIgvIgzMMSnWmoQCggF5B5eXZnpgB+Gl3BwXUtEaU
-DJEAoL8ml704eMQojLX4Pepo6IajlrUV
-=VeIZ
------END PGP SIGNATURE-----
-
---h31gzZEtNLTqOjlF--
