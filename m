@@ -1,78 +1,93 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14094] New: Ext4 NULL pointer reference in mb_cache function
-Date: Mon, 31 Aug 2009 09:24:39 GMT
-Message-ID: <bug-14094-13602@http.bugzilla.kernel.org/>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
+Date: Mon, 31 Aug 2009 12:29:09 +0200
+Message-ID: <20090831102909.GS12579@kernel.dk>
+References: <1251600858-21294-1-git-send-email-tytso@mit.edu> <20090830165229.GA5189@infradead.org> <20090830181731.GA20822@mit.edu> <20090830222710.GA9938@infradead.org> <20090831030815.GD20822@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:53515 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753449AbZHaJYh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 05:24:37 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7V9Od7R008494
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2009 09:24:40 GMT
+Received: from brick.kernel.dk ([93.163.65.50]:41492 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751427AbZHaK3H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Aug 2009 06:29:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20090831030815.GD20822@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14094
+On Sun, Aug 30 2009, Theodore Tso wrote:
+> On Sun, Aug 30, 2009 at 06:27:10PM -0400, Christoph Hellwig wrote:
+> > I'm don't think tuning it on a per-filesystem basis is a good idea,
+> > we had to resort to this for 2.6.30 as a quick hack, and we will ged
+> > rid of it again in 2.6.31 one way or another.  I personally think we
+> > should fight this cancer of per-filesystem hacks in the writeback code
+> > as much as we can.  Right now people keep adding tuning hacks for
+> > specific workloads there, and at least all the modern filesystems (ext4,
+> > btrfs and XFS) have very similar requirements to the writeback code,
+> > that is give the filesystem as much as possible to write at the same
+> > time to do intelligent decisions based on that.  The VM writeback code
+> > fails horribly at that right now.
+> 
+> Yep; and Jens' patch doesn't change that.  It is still sending writes
+> out to the filesystem a piddling 1024 pages at a time.
 
-           Summary: Ext4 NULL pointer reference in mb_cache function
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.31-rc8
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: blocking
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: suokkos@gmail.com
-        Regression: No
+Right, I didn't want to change too much of the logic, tuning is better
+left as follow up patches. There is one change, though - where the
+current logic splits ->nr_to_write between devices, with the writeback
+patches each get the "full" MAX_WRITEBACK_PAGES.
 
+> > My stance is to wait for this until about -rc2 at which points Jens'
+> > code is hopefully in and we can start doing all the fine-tuning,
+> > including lots of benchmarking.
+> 
+> Well, I've ported my patch so it applies on top of Jens' per-bdi
+> patch.  It seems to be clearly needed; Jens, would you agree to add it
+> to your per-bdi patch series?  We can choose a different default if
+> you like, but making MAX_WRITEBACK_PAGES tunable seems to be clearly
+> necessary.
 
-Created an attachment (id=22922)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=22922)
-lspci for hardware details.
+I don't mind adding it, but do we really want to export the value? If we
+plan on making this dynamically adaptable soon, then we'll be stuck with
+some proc file that doesn't really do much. I guess by then we can leave
+it as a 'maximum ever' type control, which at least would do
+something...
 
-How bug was caused?
+> By the way, while I was testing my patch on top of v13 of the per-bdi
+> patches, I found something *very* curious.  I did a test where ran the
+> following commands on a freshly mkfs'ed ext4 filesystem:
+> 
+> 	dd if=/dev/zero of=test1 bs=1024k count=128
+> 	dd if=/dev/zero of=test2 bs=1024k count=128
+> 	sync
+> 
+> I traced the calls to ext4_da_writepages() using ftrace, and found this:
+> 
+>       flush-8:16-1829  [001]    23.416351: ext4_da_writepages: dev sdb ino 12 nr_t_write 32759 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
+>       flush-8:16-1829  [000]    25.939354: ext4_da_writepages: dev sdb ino 12 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
+>       flush-8:16-1829  [000]    25.939486: ext4_da_writepages: dev sdb ino 13 nr_t_write 32759 pages_skipped 0 range_start 134180864 range_end 9223372036854775807 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
+>       flush-8:16-1829  [000]    27.055687: ext4_da_writepages: dev sdb ino 12 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
+>       flush-8:16-1829  [000]    27.055691: ext4_da_writepages: dev sdb ino 13 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
+>       flush-8:16-1829  [000]    27.878708: ext4_da_writepages: dev sdb ino 13 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
+> 
+> The *first* time the per-bdi code called writepages on the second file
+> (test2, inode #13), range_start was 134180864 (which, curiously
+> enough, is 4096*32759, which was the value of nr_to_write passed to
+> ext4_da_writepages).  Given that the inode only had 32768 pages, the
+> fact that apparently *some* codepath called ext4_da_writepages
+> starting at logical block 32759, with nr_to_write set to 32759, seems
+> very curious indeed.  That doesn't seem right at all.  It's late, so I
+> won't try to trace it down now; plus which it's your code so I figure
+> you can probably figure it out faster....
 
-I did run apt-get upgrade in background while starting up firefox and pidgin.
-Now there went something wrong in ext4. So I don't know exactly how to
-reproduce this.
-
-Reproducing?
-
-Only once just a few minutes ago.
-
-Version where this was seen?
-
-Vanilla kernel v2.6.31-rc7 just a commit before tagging rc8 with a via agp
-driver bug patch.
-
-User land is Ubuntu Karmic.
-
-Disk file system was upgraded from ext3 partition.
-
-Debug info?
-
-Sorry. all was lost because file system crashed so I could write it locally or
-upload anywhere. I did try to upload it using ssh but that killed my last
-working console so I have to do forced shutdown.
-
-So all you have now left is my bad memory that remembers back trace in ext4
-mb_*cache*. Which then caused a lot of warnings about scheduling while atomic.
-
-If I can reproduce this I will next time take a photo before trying anything
-else.
-
-I'm just about to upgrade to the latest code even tough list of changes don't
-look like affecting this.
+Interesting, needs checking up on. I've prepared a v14 patchset today,
+perhaps (if you have time), you can see if it reproduces there? I'm
+running some performance tests today, but will make a note to look into
+this after that.
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jens Axboe
+
