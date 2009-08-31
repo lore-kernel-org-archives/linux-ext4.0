@@ -1,42 +1,51 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: large file system & high object count testing
-Date: Mon, 31 Aug 2009 18:20:46 -0400
-Message-ID: <4A9C4CBE.7040701@redhat.com>
-References: <4A9BFB88.5030409@redhat.com> <4A9C0220.1040503@redhat.com>	 <20090831205608.GE4197@webber.adilger.int>	 <4A9C3A7B.3050302@redhat.com> <150c16850908311425vbc1c0a1if2a7d8ed56f650f5@mail.gmail.com>
+From: Jesse Brandeburg <jesse.brandeburg@gmail.com>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+	document conditions when reliable operation is possible)
+Date: Mon, 31 Aug 2009 15:26:42 -0700
+Message-ID: <4807377b0908311526r3b42f581j27b9c26166b7ac96@mail.gmail.com>
+References: <4A947682.2010204@redhat.com> <4A967175.5070700@redhat.com>
+	 <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com>
+	 <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu>
+	 <20090830075135.GA1874@ucw.cz> <20090830152023.GB23828@mit.edu>
+	 <4807377b0908311049id9a2167r937bc8447c2b3546@mail.gmail.com>
+	 <20090831180746.GA32110@piper.oerlikon.madduck.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	"Ted Ts'o" <tytso@thunk.org>
-To: Justin Maggard <jmaggard10@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Jesse Brandeburg <jesse.brandeburg@gmail.com>,
+	Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
+	NeilBrown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
+	Rob Landley <ro
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15169 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751598AbZHaWUs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Aug 2009 18:20:48 -0400
-In-Reply-To: <150c16850908311425vbc1c0a1if2a7d8ed56f650f5@mail.gmail.com>
+Received: from mail-gx0-f205.google.com ([209.85.217.205]:44686 "EHLO
+	mail-gx0-f205.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750929AbZHaW0l convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 18:26:41 -0400
+In-Reply-To: <20090831180746.GA32110@piper.oerlikon.madduck.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/31/2009 05:25 PM, Justin Maggard wrote:
-> On Aug 31, 2009  13:02 -0400, Ric Wheeler wrote:
->    
->> Mount after fsck:
->> Aug 31 12:27:12 megadeth kernel: EXT4-fs (dm-75):
->> ext4_check_descriptors: Checksum for group 487 failed (59799!=46827)
->> Aug 31 12:27:12 megadeth kernel: EXT4-fs (dm-75): group descriptors
->> corrupted!
->>      
-> Ah, so it's not just me.  It looks like you're seeing the exact same
-> thing I reported a few days ago in the ">16TB issues" thread.  You
-> don't even have to do anything fancy to make this happen.  My test
-> case involves simply creating 5 directories on the newly-created
-> 64-bit filesystem, and running e2fsck on it immediately after
-> unmounting to get the same results.
+On Mon, Aug 31, 2009 at 11:07 AM, martin f krafft<madduck@debian.org> w=
+rote:
+> also sprach Jesse Brandeburg <jesse.brandeburg@gmail.com> [2009.08.31=
+=2E1949 +0200]:
+>> In the case of a degraded array, could the kernel be more
+>> proactive (or maybe even mdadm) and have the filesystem remount
+>> itself withOUT journalling enabled? =A0This seems on the surface to
+>> be possible, but I don't know the internal particulars that might
+>> prevent/allow it.
 >
-> -Justin
->    
-Much faster than my fill it over the week end test :-)
+> Why would I want to disable the filesystem journal in that case?
 
-ric
-
+I misspoke w.r.t journalling, the idea I was trying to get across was
+to remount with -o sync while running on a degraded array, but given
+some of the other comments in this thread I'm not even sure that would
+help.  the idea was to make writes as safe as possible (at the cost of
+speed) when running on a degraded array, and to have the transition be
+as hands-free as possible, just have the kernel (or mdadm) by default
+remount.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
