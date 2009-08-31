@@ -1,67 +1,74 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: large file system & high object count testing
-Date: Mon, 31 Aug 2009 17:02:51 -0400
-Message-ID: <4A9C3A7B.3050302@redhat.com>
-References: <4A9BFB88.5030409@redhat.com> <4A9C0220.1040503@redhat.com> <20090831205608.GE4197@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
+Date: Mon, 31 Aug 2009 17:03:37 -0400
+Message-ID: <20090831210337.GG23535@mit.edu>
+References: <1251600858-21294-1-git-send-email-tytso@mit.edu> <20090830165229.GA5189@infradead.org> <20090830181731.GA20822@mit.edu> <20090830222710.GA9938@infradead.org> <20090831030815.GD20822@mit.edu> <20090831102909.GS12579@kernel.dk> <20090831104748.GT12579@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@thunk.org>
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4636 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751605AbZHaVB2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Aug 2009 17:01:28 -0400
-In-Reply-To: <20090831205608.GE4197@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com
+To: Jens Axboe <jens.axboe@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20090831104748.GT12579@kernel.dk>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 08/31/2009 04:56 PM, Andreas Dilger wrote:
-> On Aug 31, 2009  13:02 -0400, Ric Wheeler wrote:
->> One more note - this file system was filled using fs_mark, but without
->> doing any fsync() calls.
->>
->> umount:
->>
->> Aug 31 10:19:27 megadeth kernel: EXT4-fs: mballoc: 2580708130 blocks
->> 516141626 reqs (511081408 success)
->> Aug 31 10:19:27 megadeth kernel: EXT4-fs: mballoc: 5060218 extents
->> scanned, 0 goal hits, 5060218 2^N hits, 0 breaks, 0 lost
->> Aug 31 10:19:27 megadeth kernel: EXT4-fs: mballoc: 85164 generated and
->> it took 471527376
->> Aug 31 10:19:27 megadeth kernel: EXT4-fs: mballoc: 2590831616
->> preallocated, 10120312 discarded
->>
->> Mount after fsck:
->> Aug 31 12:27:12 megadeth kernel: EXT4-fs (dm-75):
->> ext4_check_descriptors: Checksum for group 487 failed (59799!=46827)
->> Aug 31 12:27:12 megadeth kernel: EXT4-fs (dm-75): group descriptors
->> corrupted!
->>
->> The MBALLOC messages are a bit worrying - what exactly gets discarded
->> during an unmount?
->
-> The in-memory preallocation areas are discarded.  This is reporting
-> that of the 2590M preallocation areas it reserved, only 10M of them
-> were discarded during the lifetime of the filesystem.
->
-> Of the other stats:
-> - 471 seconds were spent in total generating the 85k buddy bitmaps
->    (this is done incrementally at runtime)
-> - 516M calls to mballoc to find a chunk of blocks, 511M calls were able
->    to find the requested chunk (not surprising given it is a new filesystem,
->    probably the 5M calls that failed were when the fs was nearly full)
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->
+On Mon, Aug 31, 2009 at 12:47:49PM +0200, Jens Axboe wrote:
+> It's because ext4 writepages sets ->range_start and wb_writeback() is
+> range cyclic, then the next iteration will have the previous end point
+> as the starting point. Looks like we need to clear ->range_start in
+> wb_writeback(), the better place is probably to do that in
+> fs/fs-writeback.c:generic_sync_wb_inodes() right after the
+> writeback_single_inode() call. This, btw, should be no different than
+> the current code, weird/correct or not :-)
 
-This file system was never more than 7% full - the 511M calls were for each of 
-the 20KB files more or less I guess.
+Thanks for pointing it out.  After staring at the code, I now believe
+this is the best fix for now.  What do other folks think?
 
-ric
+     	    	     	       	       - Ted
 
+commit 39cac8147479b48cd45b768d184aa6a80f23a2f7
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Mon Aug 31 17:00:59 2009 -0400
+
+    ext4: Restore wbc->range_start in ext4_da_writepages()
+    
+    To solve a lock inversion problem, we implement part of the
+    range_cyclic algorithm in ext4_da_writepages().  (See commit 2acf2c26
+    for more details.)
+    
+    As part of that change wbc->range_start was modified by ext4's
+    writepages function, which causes its callers to get confused since
+    they aren't expecting the filesystem to modify it.  The simplest fix
+    is to save and restore wbc->range_start in ext4_da_writepages.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d61fb52..ff659e7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2749,6 +2749,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	long pages_skipped;
+ 	int range_cyclic, cycled = 1, io_done = 0;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
++	loff_t range_start = wbc->range_start;
+ 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+ 
+ 	trace_ext4_da_writepages(inode, wbc);
+@@ -2917,6 +2918,7 @@ out_writepages:
+ 	if (!no_nrwrite_index_update)
+ 		wbc->no_nrwrite_index_update = 0;
+ 	wbc->nr_to_write -= nr_to_writebump;
++	wbc->range_start = range_start;
+ 	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
+ 	return ret;
+ }
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
