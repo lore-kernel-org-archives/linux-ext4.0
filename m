@@ -1,74 +1,47 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
-	page_mkwrite
-Date: Mon, 31 Aug 2009 22:36:01 +0530
-Message-ID: <20090831170601.GA26003@skywalker.linux.vnet.ibm.com>
-References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090829022656.GK16732@mit.edu> <20090831063006.GA7711@skywalker.linux.vnet.ibm.com> <20090831122448.GG20822@mit.edu> <20090831123313.GA21973@skywalker.linux.vnet.ibm.com> <20090831125025.GI20822@mit.edu>
+From: Jesse Brandeburg <jesse.brandeburg@gmail.com>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+	document conditions when reliable operation is possible)
+Date: Mon, 31 Aug 2009 10:49:28 -0700
+Message-ID: <4807377b0908311049id9a2167r937bc8447c2b3546__45697.3500353799$1251741511$gmane$org@mail.gmail.com>
+References: <20090824212518.GF29763@elf.ucw.cz> <4A947682.2010204@redhat.com>
+	 <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com>
+	 <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com>
+	 <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu>
+	 <20090830075135.GA1874@ucw.cz> <20090830152023.GB23828@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
+	NeilBrown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
+	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp02.au.ibm.com ([202.81.31.144]:39570 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751154AbZHaRGT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 13:06:19 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp02.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7VH4Aqh007078
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 03:04:10 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7VH6KY9434490
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 03:06:20 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n7VH6JqO008481
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 03:06:20 +1000
-Content-Disposition: inline
-In-Reply-To: <20090831125025.GI20822@mit.edu>
+Received: from mail-yw0-f188.google.com ([209.85.211.188]:52281 "EHLO
+	mail-yw0-f188.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753854AbZHaR4x convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 13:56:53 -0400
+In-Reply-To: <20090830152023.GB23828@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 31, 2009 at 08:50:25AM -0400, Theodore Tso wrote:
-> On Mon, Aug 31, 2009 at 06:03:14PM +0530, Aneesh Kumar K.V wrote:
-> > If the database is not being updated via a write(2), then even though
-> > the blocks are already allocated, we won't find buffer_heads attached to the page.
-> > 
-> > ie, page_buffers(page) will be NULL
-> > 
-> > The page_mkwrite -> write_begin  path would be allocating the buffer_heads
-> > and attaching them to the page. So even in the above case we will be
-> > doing write_begin -> write_end. That is, it is similar to the (a) i wrote
-> > above.
-> 
-> What about the case where they are being updated via llseek(2) and
-> write(2)?  I'll grant that isn't as common these days (dbm used to do
-> it, but these days most people use berk_db, which does use mmap), but
-> it's not a totally unknown thing to do.  Certainly any of the
-> e2fsprogs tools operating on a filesystem-image-in-a-file (which isn't
-> that uncommon if you are using KVM or some other virtualization
-> situation) uses llseek(2) and write(2).  I'd have to check to see
-> whether KVM/qemu is using mmap(2) or write(2).
-> 
-> If we think when we update-in-place already allocated blocks, it's
-> much more common to use mmap(2) than lseek(2)/write(2), then I can see
-> how avoiding taking a page_lock in ext4_page_mkwrite() might be the
-> right choice.  On the other hand, if write(2) is more common, we'll be
-> starting and stopping a transaction handle, and going through a *much*
-> more complicated code path.
-> 
-> The other question I have then is that there are multiple
-> write_begin/write_end functions that could be used, if we are going to
-> be dropping this check in ext4_page_mkwrite() and depending in
-> write_begin/write_end to do the right thing.  (ext4_write_begin,
-> ext4_da_write_begin, ext4_ordered_write_end,
-> ext4_journalled_write_end, ext4_writeback_write_end).  You did check
-> all of the possible code path combinations, to make sure they will do
-> the right thing?
+On Sun, Aug 30, 2009 at 8:20 AM, Theodore Tso<tytso@mit.edu> wrote:
+> So we *do* have the warning light; the problem is that just as some
+> people may not realize that "check brakes" means, "YOU COULD DIE",
+> some people may not realize that "hard drive failure; RAID array
+> degraded" could mean, "YOU COULD LOSE DATA".
+>
+> Fortunately, for software RAID, this is easily solved; if you are so
+> concerned, why don't you submit a patch to mdadm adjusting the e-mail
+> sent to the system administrator when the array is in a degraded
+> state, such that it states, "YOU COULD LOSE DATA". =A0I would gently
+> suggest to you this would be ***far*** more effective that a patch to
+> kernel documentation.
 
-Both ext4_write_begin and ext4_da_write_begin use block_write_begin
-which calls __block_prepare_write which looks at the mapped flag of the
-buffer_head and call get_block if not mapped. Delayed alloc get_block
-does block reservation and returns a mapped buffer_head and non delayed
-alloc get_block does block allocation and returns a mapped buffer_head.
-So in both the case i guess we are ok
-
--aneesh
+In the case of a degraded array, could the kernel be more proactive
+(or maybe even mdadm) and have the filesystem remount itself withOUT
+journalling enabled? =A0This seems on the surface to be possible, but I
+don't know the internal particulars that might prevent/allow it.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
