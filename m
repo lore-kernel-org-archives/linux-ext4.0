@@ -1,57 +1,43 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
-Date: Mon, 31 Aug 2009 12:47:49 +0200
-Message-ID: <20090831104748.GT12579@kernel.dk>
-References: <1251600858-21294-1-git-send-email-tytso@mit.edu> <20090830165229.GA5189@infradead.org> <20090830181731.GA20822@mit.edu> <20090830222710.GA9938@infradead.org> <20090831030815.GD20822@mit.edu> <20090831102909.GS12579@kernel.dk>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+Date: Mon, 31 Aug 2009 13:04:48 +0200
+Message-ID: <20090831105645.GD1353@ucw.cz>
+References: <20090831005426.13607.qmail@science.horizon.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([93.163.65.50]:45216 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039AbZHaKrr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Aug 2009 06:47:47 -0400
+Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: George Spelvin <linux@horizon.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751898AbZHaLE6@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090831102909.GS12579@kernel.dk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20090831005426.13607.qmail@science.horizon.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 31 2009, Jens Axboe wrote:
-> > I traced the calls to ext4_da_writepages() using ftrace, and found this:
-> > 
-> >       flush-8:16-1829  [001]    23.416351: ext4_da_writepages: dev sdb ino 12 nr_t_write 32759 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
-> >       flush-8:16-1829  [000]    25.939354: ext4_da_writepages: dev sdb ino 12 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
-> >       flush-8:16-1829  [000]    25.939486: ext4_da_writepages: dev sdb ino 13 nr_t_write 32759 pages_skipped 0 range_start 134180864 range_end 9223372036854775807 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
-> >       flush-8:16-1829  [000]    27.055687: ext4_da_writepages: dev sdb ino 12 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
-> >       flush-8:16-1829  [000]    27.055691: ext4_da_writepages: dev sdb ino 13 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
-> >       flush-8:16-1829  [000]    27.878708: ext4_da_writepages: dev sdb ino 13 nr_t_write 32768 pages_skipped 0 range_start 0 range_end 0 nonblocking 0 for_kupdate 0 for_reclaim 0 for_writepages 1 range_cyclic 1
-> > 
-> > The *first* time the per-bdi code called writepages on the second file
-> > (test2, inode #13), range_start was 134180864 (which, curiously
-> > enough, is 4096*32759, which was the value of nr_to_write passed to
-> > ext4_da_writepages).  Given that the inode only had 32768 pages, the
-> > fact that apparently *some* codepath called ext4_da_writepages
-> > starting at logical block 32759, with nr_to_write set to 32759, seems
-> > very curious indeed.  That doesn't seem right at all.  It's late, so I
-> > won't try to trace it down now; plus which it's your code so I figure
-> > you can probably figure it out faster....
+Hi!
+
+> Actually, there is something the file system can do to make journaling
+> safe on degraded RAIDs: make the (checksummed) journal blocks equal to
+> the RAID stripe size.  Or, equivalently, pad out to the RAID stripe
+> size each commit.
 > 
-> Interesting, needs checking up on. I've prepared a v14 patchset today,
-> perhaps (if you have time), you can see if it reproduces there? I'm
-> running some performance tests today, but will make a note to look into
-> this after that.
+> This sometimes leads to awkward block sizes, but while writing
+> to any *one* stripe on a degraded RAID-5 endangers the others, you
+> can write to *all* of them with the usual semantics.
 
-It's because ext4 writepages sets ->range_start and wb_writeback() is
-range cyclic, then the next iteration will have the previous end point
-as the starting point. Looks like we need to clear ->range_start in
-wb_writeback(), the better place is probably to do that in
-fs/fs-writeback.c:generic_sync_wb_inodes() right after the
-writeback_single_inode() call. This, btw, should be no different than
-the current code, weird/correct or not :-)
+Well, that would work... but you'd also have to journal data, with the
+same block size. Not exactly fast, but at least safe...
+
+> That's one thing I really like about ZFS: its policy of "don't trust
+> the disks."  If nothing else, simply telling you "your disks f*ed up,
+> and I caught them doing it", instead of the usual mysterious corruption
+> detectec three months later, is tremendoudly useful information.
+
+The more I learn about storage, the more I like idea of zfs. Given the
+subtle issues between filesystem and raid layer, integrating them just
+makes sense.
+								Pavel
 
 -- 
-Jens Axboe
-
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
