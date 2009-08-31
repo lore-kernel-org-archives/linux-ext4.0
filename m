@@ -1,66 +1,78 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
-	page_mkwrite
-Date: Mon, 31 Aug 2009 12:00:06 +0530
-Message-ID: <20090831063006.GA7711@skywalker.linux.vnet.ibm.com>
-References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090829022656.GK16732@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14094] New: Ext4 NULL pointer reference in mb_cache function
+Date: Mon, 31 Aug 2009 09:24:39 GMT
+Message-ID: <bug-14094-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:58084 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754445AbZHaGaP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 02:30:15 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
-	by e23smtp01.au.ibm.com (8.14.3/8.13.1) with ESMTP id n7V6T4BL030796
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2009 16:29:04 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n7V6UGjT1446114
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2009 16:30:16 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n7V6UF9r027597
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2009 16:30:16 +1000
-Content-Disposition: inline
-In-Reply-To: <20090829022656.GK16732@mit.edu>
+Received: from demeter.kernel.org ([140.211.167.39]:53515 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753449AbZHaJYh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 05:24:37 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n7V9Od7R008494
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2009 09:24:40 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 28, 2009 at 10:26:56PM -0400, Theodore Tso wrote:
-> On Wed, Aug 26, 2009 at 10:53:16AM +0530, Aneesh Kumar K.V wrote:
-> > Inorder to check whether the buffer_heads are mapped we need
-> > to hold page lock. Otherwise a reclaim can cleanup the attached
-> > buffer_heads. Instead of taking page lock and check whether
-> > buffer_heads are mapped we let the write_begin/write_end callback
-> > does the equivalent. It does have a performance impact in that we
-> > are doing more work if we the buffer_heads are already mapped.
-> 
-> So I started looking at all of the work that we need to do in
-> write_begin/write_end; did you check both write paths depending on
-> whether we are using delayed allocation or not?  It would seem to me
-> that it might be better to use lock_page() and unlock_page() around
-> the check, since in many work loads the buffer heads will already be
-> mapped often, and it appears to me that write_begin() will end up
-> locking the page anyway.
-> 
-> Am I missing something?
-> 
+http://bugzilla.kernel.org/show_bug.cgi?id=14094
 
-Below are the possibilities i looked at
+           Summary: Ext4 NULL pointer reference in mb_cache function
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.31-rc8
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: blocking
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: suokkos@gmail.com
+        Regression: No
 
-a) mmap with no parallel write to the same offset. That would mean
-we don't have attached buffer heads because nobody attach buffer
-heads to the page.
 
-b) mmap happening to the hole. The buffer heads are not mapped.
+Created an attachment (id=22922)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=22922)
+lspci for hardware details.
 
-c) mmap with parallel write to the same offset. The parallel write
-did attach mapped buffer heads to the same page. So we should find
-all buffer heads mapped in the above case. 
+How bug was caused?
 
-if we will find buffer heads already be mapped in many workloads then
-i guess it make sense to add page lock. It will also avoid the
-journal_start that we do in write_begin. I will redo the patch
+I did run apt-get upgrade in background while starting up firefox and pidgin.
+Now there went something wrong in ext4. So I don't know exactly how to
+reproduce this.
 
--aneesh
+Reproducing?
+
+Only once just a few minutes ago.
+
+Version where this was seen?
+
+Vanilla kernel v2.6.31-rc7 just a commit before tagging rc8 with a via agp
+driver bug patch.
+
+User land is Ubuntu Karmic.
+
+Disk file system was upgraded from ext3 partition.
+
+Debug info?
+
+Sorry. all was lost because file system crashed so I could write it locally or
+upload anywhere. I did try to upload it using ssh but that killed my last
+working console so I have to do forced shutdown.
+
+So all you have now left is my bad memory that remembers back trace in ext4
+mb_*cache*. Which then caused a lot of warnings about scheduling while atomic.
+
+If I can reproduce this I will next time take a photo before trying anything
+else.
+
+I'm just about to upgrade to the latest code even tough list of changes don't
+look like affecting this.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
