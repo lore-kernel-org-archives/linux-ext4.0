@@ -1,58 +1,43 @@
-From: jim owens <jowens@hp.com>
+From: david@lang.hm
 Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Mon, 31 Aug 2009 11:14:06 -0400
-Message-ID: <4A9BE8BE.4040108@hp.com>
-References: <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz> <alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm> <4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru> <20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com> <20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca> <20090831132139.GA5425@infradead.org>
+Date: Mon, 31 Aug 2009 08:45:38 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.0908310844230.6822@asgard.lang.hm>
+References: <20090831005426.13607.qmail@science.horizon.com> <20090831105645.GD1353@ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Mark Lord <lkml@rtr.ca>, Ric Wheeler <rwheeler@redhat.com>,
-	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
-	Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
-	NeilBrown <neilb@suse.de>, Rob Landley <rob@landley.net>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090831132139.GA5425@infradead.org>
-Sender: linux-doc-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: George Spelvin <linux@horizon.com>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752979AbZHaPqW@vger.kernel.org>
+In-Reply-To: <20090831105645.GD1353@ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig wrote:
-> On Mon, Aug 31, 2009 at 09:19:58AM -0400, Mark Lord wrote:
->>> In my opinion even that is too weak.  We know how to control the cache
->>> settings on all common disks (that is scsi and ata), so we should always
->>> disable the write cache unless we know that the whole stack (filesystem,
->>> raid, volume managers) supports barriers.  And even then we should make
->>> sure the filesystems does actually use barriers everywhere that's needed
->>> which failed at for years.
->> ..
+On Mon, 31 Aug 2009, Pavel Machek wrote:
+
+>> Actually, there is something the file system can do to make journaling
+>> safe on degraded RAIDs: make the (checksummed) journal blocks equal to
+>> the RAID stripe size.  Or, equivalently, pad out to the RAID stripe
+>> size each commit.
 >>
->> That stack does not know that my MD device has full battery backup,
->> so it bloody well better NOT prevent me from enabling the write caches.
-> 
-> No one is going to prevent you from doing it.  That question is one of
-> sane defaults.  And always safe, but slower if you have advanced
-> equipment is a much better default than usafe by default on most of
-> the install base.
+>> This sometimes leads to awkward block sizes, but while writing
+>> to any *one* stripe on a degraded RAID-5 endangers the others, you
+>> can write to *all* of them with the usual semantics.
+>
+> Well, that would work... but you'd also have to journal data, with the
+> same block size. Not exactly fast, but at least safe...
+>
+>> That's one thing I really like about ZFS: its policy of "don't trust
+>> the disks."  If nothing else, simply telling you "your disks f*ed up,
+>> and I caught them doing it", instead of the usual mysterious corruption
+>> detectec three months later, is tremendoudly useful information.
+>
+> The more I learn about storage, the more I like idea of zfs. Given the
+> subtle issues between filesystem and raid layer, integrating them just
+> makes sense.
 
-I've always agreed with "be safe first" and have worked where
-we always shut write cache off unless we knew it had battery.
+note that all that zfs does is tell you that you already lost data (and 
+then only if the checksumming algorithm would be invalid on a blank block 
+being returned), it doesn't protect your data.
 
-But before we make disabling cache the default, this is the impact:
-
-- users will see it as a performance regression
-
-- trashy OS vendors who never disable cache will benchmark
-   better than "out of the box" linux.
-
-Because as we all know, users don't read release notes.
-
-Been there, done that, felt the pain.
-
-jim
+David Lang
