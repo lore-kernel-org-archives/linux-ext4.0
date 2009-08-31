@@ -1,57 +1,66 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
-	page_mkwrite
-Date: Mon, 31 Aug 2009 08:50:25 -0400
-Message-ID: <20090831125025.GI20822@mit.edu>
-References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090829022656.GK16732@mit.edu> <20090831063006.GA7711@skywalker.linux.vnet.ibm.com> <20090831122448.GG20822@mit.edu> <20090831123313.GA21973@skywalker.linux.vnet.ibm.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+ document conditions when reliable operation is possible)
+Date: Mon, 31 Aug 2009 09:15:27 -0400
+Message-ID: <4A9BCCEF.7010402@redhat.com>
+References: <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz> <alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm> <4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru> <20090830163513.GA25899@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
+	Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
+	NeilBrown <neilb@suse.de>, Rob Landley <rob@landley.net>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:46941 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:47516 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750718AbZHaMu0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Aug 2009 08:50:26 -0400
-Content-Disposition: inline
-In-Reply-To: <20090831123313.GA21973@skywalker.linux.vnet.ibm.com>
+	id S1752342AbZHaNOc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Aug 2009 09:14:32 -0400
+In-Reply-To: <20090830163513.GA25899@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 31, 2009 at 06:03:14PM +0530, Aneesh Kumar K.V wrote:
-> If the database is not being updated via a write(2), then even though
-> the blocks are already allocated, we won't find buffer_heads attached to the page.
-> 
-> ie, page_buffers(page) will be NULL
-> 
-> The page_mkwrite -> write_begin  path would be allocating the buffer_heads
-> and attaching them to the page. So even in the above case we will be
-> doing write_begin -> write_end. That is, it is similar to the (a) i wrote
-> above.
+On 08/30/2009 12:35 PM, Christoph Hellwig wrote:
+> On Sun, Aug 30, 2009 at 06:44:04PM +0400, Michael Tokarev wrote:
+>>> If you lose power with the write caches enabled on that same 5 drive
+>>> RAID set, you could lose as much as 5 * 32MB of freshly written data on
+>>>   a power loss (16-32MB write caches are common on s-ata disks these
+>>> days).
+>>
+>> This is fundamentally wrong.  Many filesystems today use either barriers
+>> or flushes (if barriers are not supported), and the times when disk drives
+>> were lying to the OS that the cache got flushed are long gone.
+>
+> While most common filesystem do have barrier support it is:
+>
+>   - not actually enabled for the two most common filesystems
+>   - the support for write barriers an cache flushing tends to be buggy
+>     all over our software stack,
+>
 
-What about the case where they are being updated via llseek(2) and
-write(2)?  I'll grant that isn't as common these days (dbm used to do
-it, but these days most people use berk_db, which does use mmap), but
-it's not a totally unknown thing to do.  Certainly any of the
-e2fsprogs tools operating on a filesystem-image-in-a-file (which isn't
-that uncommon if you are using KVM or some other virtualization
-situation) uses llseek(2) and write(2).  I'd have to check to see
-whether KVM/qemu is using mmap(2) or write(2).
+Or just missing - I think that MD5/6 simply drop the requests at present.
 
-If we think when we update-in-place already allocated blocks, it's
-much more common to use mmap(2) than lseek(2)/write(2), then I can see
-how avoiding taking a page_lock in ext4_page_mkwrite() might be the
-right choice.  On the other hand, if write(2) is more common, we'll be
-starting and stopping a transaction handle, and going through a *much*
-more complicated code path.
+I wonder if it would be worth having MD probe for write cache enabled & warn if 
+barriers are not supported?
 
-The other question I have then is that there are multiple
-write_begin/write_end functions that could be used, if we are going to
-be dropping this check in ext4_page_mkwrite() and depending in
-write_begin/write_end to do the right thing.  (ext4_write_begin,
-ext4_da_write_begin, ext4_ordered_write_end,
-ext4_journalled_write_end, ext4_writeback_write_end).  You did check
-all of the possible code path combinations, to make sure they will do
-the right thing?
+>>> For MD5 (and MD6), you really must run with the write cache disabled
+>>> until we get barriers to work for those configurations.
+>>
+>> I highly doubt barriers will ever be supported on anything but simple
+>> raid1, because it's impossible to guarantee ordering across multiple
+>> drives.  Well, it *is* possible to have write barriers with journalled
+>> (and/or with battery-backed-cache) raid[456].
+>>
+>> Note that even if raid[456] does not support barriers, write cache
+>> flushes still works.
+>
+> All currently working barrier implementations on Linux are built upon
+> queue drains and cache flushes, plus sometimes setting the FUA bit.
+>
 
-						- Ted
