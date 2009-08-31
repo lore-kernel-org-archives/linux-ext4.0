@@ -1,43 +1,48 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-Date: Mon, 31 Aug 2009 13:04:48 +0200
-Message-ID: <20090831105645.GD1353@ucw.cz>
-References: <20090831005426.13607.qmail@science.horizon.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
+	page_mkwrite
+Date: Mon, 31 Aug 2009 08:24:48 -0400
+Message-ID: <20090831122448.GG20822@mit.edu>
+References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090829022656.GK16732@mit.edu> <20090831063006.GA7711@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751898AbZHaLE6@vger.kernel.org>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:40348 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752287AbZHaMYu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Aug 2009 08:24:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20090831005426.13607.qmail@science.horizon.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090831063006.GA7711@skywalker.linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
-
-> Actually, there is something the file system can do to make journaling
-> safe on degraded RAIDs: make the (checksummed) journal blocks equal to
-> the RAID stripe size.  Or, equivalently, pad out to the RAID stripe
-> size each commit.
+On Mon, Aug 31, 2009 at 12:00:06PM +0530, Aneesh Kumar K.V wrote:
+> Below are the possibilities i looked at
 > 
-> This sometimes leads to awkward block sizes, but while writing
-> to any *one* stripe on a degraded RAID-5 endangers the others, you
-> can write to *all* of them with the usual semantics.
+> a) mmap with no parallel write to the same offset. That would mean
+> we don't have attached buffer heads because nobody attach buffer
+> heads to the page.
+> 
+> b) mmap happening to the hole. The buffer heads are not mapped.
+> 
+> c) mmap with parallel write to the same offset. The parallel write
+> did attach mapped buffer heads to the same page. So we should find
+> all buffer heads mapped in the above case. 
+> 
+> if we will find buffer heads already be mapped in many workloads then
+> i guess it make sense to add page lock. It will also avoid the
+> journal_start that we do in write_begin. I will redo the patch
 
-Well, that would work... but you'd also have to journal data, with the
-same block size. Not exactly fast, but at least safe...
+The usage case I was worried about is the one where we are mmap'ing an
+existing file (say, like an Oracle or DB2 table space, or a berkdb
+database file), and we are writing into already allocated blocks.  In
+that case (which does use these code paths, right?) the second time we
+write a particular page, the buffer heads will already be mapped.
 
-> That's one thing I really like about ZFS: its policy of "don't trust
-> the disks."  If nothing else, simply telling you "your disks f*ed up,
-> and I caught them doing it", instead of the usual mysterious corruption
-> detectec three months later, is tremendoudly useful information.
+For database applications where we aren't loading a table, but just
+making changes to an already instantiated table, the buffer heads
+would be mapped most of the time, would they not?
 
-The more I learn about storage, the more I like idea of zfs. Given the
-subtle issues between filesystem and raid layer, integrating them just
-makes sense.
-								Pavel
-
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+					- Ted
