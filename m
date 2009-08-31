@@ -1,58 +1,49 @@
-From: david@lang.hm
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Mon, 31 Aug 2009 12:11:46 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.0908311209500.6822@asgard.lang.hm>
-References: <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz> <alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm> <4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru> <20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>
- <20090831131626.GA17325@infradead.org> <4A9BCEA8.9080206@redhat.com> <alpine.DEB.2.00.0908310847530.6822@asgard.lang.hm> <20090831183154.GB3620@infradead.org>
+From: Christoph Hellwig <hch@lst.de>
+Subject: [PATCH] ext4: fix cache flish in ext4_sync_file
+Date: Mon, 31 Aug 2009 21:35:53 +0200
+Message-ID: <20090831193553.GA2672@lst.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Michael Tokarev <mjt@tls.msk.ru>, Pavel Machek <pavel@ucw.cz>,
-	Theodore Tso <tytso@mit.edu>, NeilBrown <neilb@suse.de>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.lang.hm ([64.81.33.126]:43703 "EHLO bifrost.lang.hm"
+Received: from verein.lst.de ([213.95.11.210]:44702 "EHLO verein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751510AbZHaTMi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Aug 2009 15:12:38 -0400
-In-Reply-To: <20090831183154.GB3620@infradead.org>
+	id S1754198AbZHaTfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Aug 2009 15:35:51 -0400
+Received: from verein.lst.de (localhost [127.0.0.1])
+	by verein.lst.de (8.12.3/8.12.3/Debian-7.1) with ESMTP id n7VJZrVL002778
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2009 21:35:53 +0200
+Received: (from hch@localhost)
+	by verein.lst.de (8.12.3/8.12.3/Debian-7.2) id n7VJZrct002775
+	for linux-ext4@vger.kernel.org; Mon, 31 Aug 2009 21:35:53 +0200
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 31 Aug 2009, Christoph Hellwig wrote:
+We need to flush the write cache unconditionally in ->fsync, otherwise
+writes into already allocated blocks can get lost.  Writes into fully
+allocated files are very common when using disk images for
+virtualization, and without this fix can easily lose data after
+an fdatasync, which is the typical implementation for a cache flush on
+the virtual drive.
 
-> On Mon, Aug 31, 2009 at 08:50:53AM -0700, david@lang.hm wrote:
->>> It would also be very useful to have all of our top tier file systems
->>> enable barriers by default, provide consistent barrier on/off mount
->>> options and log a nice warning when not enabled....
->>
->> most people are not willing to live with unbuffered write performance.
->
-> I'm not sure what you mean with unbuffered write support, the only
-> common use of that term is for userspace I/O using the read/write
-> sysctem calls directly in comparism to buffered I/O which uses
-> the stdio library.
->
-> But be ensure that the use of barriers and cache flushes in fsync does not
-> completely disable caching (or "buffering"), it just does flush flushes
-> the disk write cache in case we either commit a log buffer than need to
-> be on disk, or performan an fsync where we really do want to have data
-> on disk instead of lying to the application about the status of the
-> I/O completion.  Which btw could be interpreted as a violation of the
-> Posix rules.
 
-as I understood it, the proposal that I responded to was to change the 
-kernel to detect if barriers are enabled for the entire stack or not, and 
-if not disable the write caches on the drives.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-there are definantly times when that is the correct thing to do, but I 
-am not sure that it is the correct thing to do by default.
-
-David Lang
+Index: linux-2.6/fs/ext4/fsync.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/fsync.c
++++ linux-2.6/fs/ext4/fsync.c
+@@ -92,9 +92,9 @@ int ext4_sync_file(struct file *file, st
+ 			.nr_to_write = 0, /* sys_fsync did this */
+ 		};
+ 		ret = sync_inode(inode, &wbc);
+-		if (journal && (journal->j_flags & JBD2_BARRIER))
+-			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ 	}
+ out:
++	if (journal && (journal->j_flags & JBD2_BARRIER))
++		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ 	return ret;
+ }
