@@ -1,68 +1,67 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 0/7] Per-bdi writeback flusher threads v15
-Date: Tue, 1 Sep 2009 00:01:14 -0400
-Message-ID: <20090901040114.GI23535@mit.edu>
-References: <1251747693-32354-1-git-send-email-jens.axboe@oracle.com>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: Data integrity built into the storage stack
+Date: Tue, 01 Sep 2009 01:19:49 -0400
+Message-ID: <yq1hbvntf62.fsf@sermon.lab.mkp.net>
+References: <87f94c370908291423ub92922ft2cceab9e34ac6207@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	chris.mason@oracle.com, david@fromorbit.com, hch@infradead.org,
-	akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
-To: Jens Axboe <jens.axboe@oracle.com>
+Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49717 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750732AbZIAEBg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Sep 2009 00:01:36 -0400
-Content-Disposition: inline
-In-Reply-To: <1251747693-32354-1-git-send-email-jens.axboe@oracle.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:59381 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750732AbZIAFTx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Sep 2009 01:19:53 -0400
+In-Reply-To: <87f94c370908291423ub92922ft2cceab9e34ac6207@mail.gmail.com>
+	(Greg Freemyer's message of "Sat, 29 Aug 2009 17:23:50 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 31, 2009 at 09:41:26PM +0200, Jens Axboe wrote:
-> 
-> Here's the 15th version of the writeback patches.
+>>>>> "Greg" == Greg Freemyer <greg.freemyer@gmail.com> writes:
 
-The test-bdi branch of ext4.git tree is a combination of the patches I
-plan to push once the merge window opens, plus v15 per-bdi patches.
-On the ext4 call I've recruited some ext4 developers to do some
-testing and benchmarking *before* the merge window opens.
+Greg> We already have the scsi data integrity patches that went in last
+Greg> winter and I believe fit into the storage stack below the
+Greg> filesystem layer.
 
-I've found something potentially wrong with the writeback.  It was
-careful to sync the disk before shutting down the system, and I got
-the following error.   
+The filesystems can actually use it.  It's exposed at the bio level.
 
-[  660.499155] ext4_da_writepages: jbd2_start: 32768 pages, ino 41; err -30
-[  660.505664] Pid: 1848, comm: flush-8:0 Not tainted 2.6.31-rc8-01474-geef6bd0 #362
-[  660.512402] Call Trace:
-[  660.514982]  [<c064412f>] ? printk+0x14/0x16
-[  660.518851]  [<c023ac4a>] ext4_da_writepages+0x213/0x40e
-[  660.523356]  [<c023aa37>] ? ext4_da_writepages+0x0/0x40e
-[  660.528383]  [<c01b65a8>] do_writepages+0x28/0x39
-[  660.533534]  [<c01f1e07>] writeback_single_inode+0x15c/0x346
-[  660.538401]  [<c0165b23>] ? down_read_trylock+0x3e/0x48
-[  660.542921]  [<c01f2892>] generic_sync_wb_inodes+0x2ab/0x37b
-[  660.547805]  [<c01f2a2a>] wb_writeback+0xc8/0xfa
-[  660.551975]  [<c01f2abb>] wb_do_writeback+0x5f/0x118
-[  660.556333]  [<c01f2b95>] bdi_writeback_task+0x21/0x92
-[  660.560838]  [<c01c0f5d>] bdi_start_fn+0x63/0xb2
-[  660.565647]  [<c01c0efa>] ? bdi_start_fn+0x0/0xb2
-[  660.569710]  [<c0162363>] kthread+0x73/0x78
-[  660.573528]  [<c01622f0>] ? kthread+0x0/0x78
-[  660.577355]  [<c011e6f3>] kernel_thread_helper+0x7/0x10
 
-... and a very similar failure for inode 354
+Greg> I do believe there is a patch floating around for device mapper to
+Greg> add some integrity capability.
 
-[  660.582215] ext4_da_writepages: jbd2_start: 32768 pages, ino 354; err -30
+The patch is in mainline.  It allows passthrough so the filesystems can
+access the integrity features.  But DM itself doesn't use any of them,
+it merely acts as a conduit.
 
-Inode 41 is /var/lib/urandom/random-seed, and inode 354 is
-/var/run/syslogd.pid.
+DIF is inherently tied to storage device's logical blocks.  These are
+likely to be smaller than the blocks we're interested in protecting.
+However, you could conceivably use the application tag space to add a
+checksum with filesystem or MD/DM blocking size granularity.  All the
+hooks are there.
 
-The failure occurs if I build w/o the ext4 "next" patches, and the
-failure does not happen if I take build v2.6.31-rc8 without per-bdi
-patches (with or without the ext4 patches).  At a guess it looks like
-the bdi threads are trying to write out the dirty files that were
-written in the shutdown scripts, *after* the file system has been made
-read-only in preparation for unmounting the file system in question.
+The application tag space is pretty much only available on disk
+drives--array vendors use it for internal purposes.  But in the MD/DM
+case we're likely to run on raw disk so that's probably ok.
 
-	     		     		    	 - Ted
+That said, I really think btrfs is the right answer to many of the
+concerns raised in this thread.  Everything is properly checksummed and
+can be verified at read time.
+
+The strength of DIX/DIF is that we can detect corruption at write time
+while we still have the buffer we care about write sitting in memory.
+
+So btrfs and DIX/DIF go hand in hand as far as I'm concerned.  They
+solve different problems but both are squarely aimed at preventing
+silent data corruption.
+
+I do agree that we do have to be more prepared for collateral damage
+scenarios.  As we discussed at LS we have 4KB drives coming out that can
+invalidate previously acknowledged I/Os if it gets a subsequent write
+failure on a sector.  And there's also the issue of fractured writes
+when talking to disk arrays.  That's really what my I/O topology changes
+were all about: Correctness.  The fact that they may increase
+performance is nice but that was not the main motivator.
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
