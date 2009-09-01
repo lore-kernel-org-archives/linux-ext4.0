@@ -1,82 +1,42 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
-Date: Tue, 1 Sep 2009 11:17:08 +0200
-Message-ID: <20090901091708.GW12579@kernel.dk>
-References: <1251600858-21294-1-git-send-email-tytso@mit.edu> <20090830165229.GA5189@infradead.org> <20090830181731.GA20822@mit.edu> <20090830222710.GA9938@infradead.org> <20090831030815.GD20822@mit.edu> <20090831102909.GS12579@kernel.dk> <20090831104748.GT12579@kernel.dk> <20090831210337.GG23535@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20090831210337.GG23535@mit.edu>
-Sender: owner-linux-mm@kvack.org
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+Date: 1 Sep 2009 07:18:03 -0400
+Message-ID: <20090901111803.11027.qmail@science.horizon.com>
+References: <4a2c5faeb04cab59af9ba6ab512c9916.squirrel@neil.brown.name>
+Cc: david@lang.hm, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	pavel@ucw.cz
+To: linux@horizon.com, neilb@suse.de
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4a2c5faeb04cab59af9ba6ab512c9916.squirrel@neil.brown.name>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 31 2009, Theodore Tso wrote:
-> On Mon, Aug 31, 2009 at 12:47:49PM +0200, Jens Axboe wrote:
-> > It's because ext4 writepages sets ->range_start and wb_writeback() is
-> > range cyclic, then the next iteration will have the previous end point
-> > as the starting point. Looks like we need to clear ->range_start in
-> > wb_writeback(), the better place is probably to do that in
-> > fs/fs-writeback.c:generic_sync_wb_inodes() right after the
-> > writeback_single_inode() call. This, btw, should be no different than
-> > the current code, weird/correct or not :-)
-> 
-> Thanks for pointing it out.  After staring at the code, I now believe
-> this is the best fix for now.  What do other folks think?
-> 
->      	    	     	       	       - Ted
-> 
-> commit 39cac8147479b48cd45b768d184aa6a80f23a2f7
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Mon Aug 31 17:00:59 2009 -0400
-> 
->     ext4: Restore wbc->range_start in ext4_da_writepages()
->     
->     To solve a lock inversion problem, we implement part of the
->     range_cyclic algorithm in ext4_da_writepages().  (See commit 2acf2c26
->     for more details.)
->     
->     As part of that change wbc->range_start was modified by ext4's
->     writepages function, which causes its callers to get confused since
->     they aren't expecting the filesystem to modify it.  The simplest fix
->     is to save and restore wbc->range_start in ext4_da_writepages.
->     
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d61fb52..ff659e7 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2749,6 +2749,7 @@ static int ext4_da_writepages(struct address_space *mapping,
->  	long pages_skipped;
->  	int range_cyclic, cycled = 1, io_done = 0;
->  	int needed_blocks, ret = 0, nr_to_writebump = 0;
-> +	loff_t range_start = wbc->range_start;
->  	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
->  
->  	trace_ext4_da_writepages(inode, wbc);
-> @@ -2917,6 +2918,7 @@ out_writepages:
->  	if (!no_nrwrite_index_update)
->  		wbc->no_nrwrite_index_update = 0;
->  	wbc->nr_to_write -= nr_to_writebump;
-> +	wbc->range_start = range_start;
->  	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
->  	return ret;
->  }
+>> An embedded checksum, no matter how good, can't tell you if
+>> the data is stale; you need a way to distinguish versions in the pointer.
 
-I was going to suggest using range_start locally and not touching
-->range_start, but I see you pass the wbc further down. So this looks
-fine to me.
+> I would disagree with that.
+> If the embedded checksum is a function of both the data and the address
+> of the data (in whatever address space seems most appropriate) then it can
+> still verify that the data found with the checksum is the data that was
+> expected.
+> And storing the checksum with the data (where it is practical) means
+> index blocks can be more dense so on average fewer accesses to storage
+> are needed.
 
--- 
-Jens Axboe
+I must not have been clear.  Originally, block 100 has contents version 1.
+This includes a correctly computed checksum.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Then you write version 2 of the data there.  But there's a bit error in
+the address and the write goes to block 256+100 = 356.  So block
+100 still has the version 1 contents, complete with valid checksum.
+(Yes, block 356 is now corrupted, but perhaps it's not even allocated.)
+
+Then we go to read block 100, find a valid checksum, and return incorrect
+data.  Namely, version 1 data, when we expact and want version 2.
+
+Basically, the pointer has to say which *version* of the data it points to,
+not just the block address.  Otherwise, it can't detect a missing write.
+
+If density is a big issue, then including a small version field is a
+possibility.
