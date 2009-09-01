@@ -1,61 +1,68 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: enable cache flush in ext3_sync_file
-Date: Tue, 01 Sep 2009 13:24:05 -0500
-Message-ID: <4A9D66C5.4060806@redhat.com>
-References: <20090831193712.GB2672@lst.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [patch 5/5] ext2: convert to use the new truncate convention.
+Date: Tue, 1 Sep 2009 20:29:29 +0200
+Message-ID: <20090901182929.GG8242@duck.novell.com>
+References: <20090710073028.782561541@suse.de> <20090710073231.195528273@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34608 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752410AbZIASYF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Sep 2009 14:24:05 -0400
-In-Reply-To: <20090831193712.GB2672@lst.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	viro@zeniv.linux.org.uk, jack@suse.cz, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: npiggin@suse.de
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20090710073231.195528273@suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig wrote:
-> We need to flush the write cache unconditionally in ->fsync, otherwise
-> writes into already allocated blocks can get lost.  Writes into fully
-> allocated files are very common when using disk images for
-> virtualization, and without this fix can easily lose data after
-> an fdatasync, which is the typical implementation for a cache flush on
-> the virtual drive.
+  Hi Nick,
+
+On Fri 10-07-09 17:30:33, npiggin@suse.de wrote:
+> I have some questions, marked with XXX.
 > 
+> Cc: linux-ext4@vger.kernel.org
+> Signed-off-by: Nick Piggin <npiggin@suse.de>
+> ---
+>  fs/ext2/ext2.h  |    1 
+>  fs/ext2/file.c  |    2 
+>  fs/ext2/inode.c |  138 +++++++++++++++++++++++++++++++++++++++++++++-----------
+>  3 files changed, 113 insertions(+), 28 deletions(-)
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-
-Given that I tried to do the same thing 1.5 years ago (though not quite
-correctly) ...
-
-Acked-by: Eric Sandeen <sandeen@redhat.com>
-
-> 
-> Index: linux-2.6/fs/ext3/fsync.c
+> Index: linux-2.6/fs/ext2/inode.c
 > ===================================================================
-> --- linux-2.6.orig/fs/ext3/fsync.c
-> +++ linux-2.6/fs/ext3/fsync.c
-> @@ -23,6 +23,7 @@
->   */
->  
->  #include <linux/time.h>
-> +#include <linux/blkdev.h>
->  #include <linux/fs.h>
->  #include <linux/sched.h>
->  #include <linux/writeback.h>
-> @@ -87,5 +88,7 @@ int ext3_sync_file(struct file * file, s
->  		ret = sync_inode(inode, &wbc);
->  	}
->  out:
-> +	if (test_opt(inode->i_sb, BARRIER))
-> +		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
->  	return ret;
->  }
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --- linux-2.6.orig/fs/ext2/inode.c
+> +++ linux-2.6/fs/ext2/inode.c
+...
+> +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+> +{
+> +	/*
+> +	 * XXX: it seems like a bug here that we don't allow
+> +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
+> +	 * review and fix this.
+> +	 */
+> +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+> +	    S_ISLNK(inode->i_mode)))
+> +		return -EINVAL;
+> +	if (ext2_inode_is_fast_symlink(inode))
+> +		return -EINVAL;
+> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> +		return -EPERM;
+> +	__ext2_truncate_blocks(inode, offset);
+> +}
+  Actually, looking again into this, I think you've introduced a subtle bug
+into the code. When a write fails for some reason, we did vmtruncate()
+previously which called block_truncate_page() which zeroed a tail of the
+last block. Now, ext2_truncate_blocks() does not do this and I think it
+could be a problem because at least in direct IO case, we could have written
+some data into that block on disk.
+  We really rely on the tail of the block being zeroed because otherwise
+extending truncate will show those old data in the block. I plan to change
+that in my mkwrite fixes but until then, we should preserve the old
+assumptions.
+  So I think that ext2_truncate_blocks() should do all that tail page magic
+as well (although it's not needed in all cases).
 
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
