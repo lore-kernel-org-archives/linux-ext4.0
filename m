@@ -1,51 +1,49 @@
 From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Tue, 1 Sep 2009 15:58:47 +0200
-Message-ID: <20090901135846.GC2028@ucw.cz>
-References: <20090824212518.GF29763@elf.ucw.cz> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz> <4A97BC9E.5070801@redhat.com>
+Subject: Re: MD/DM and barriers (was Re: [patch] ext2/3: document
+	conditions when reliable operation is possible)
+Date: Tue, 1 Sep 2009 16:01:21 +0200
+Message-ID: <20090901140120.GD2028@ucw.cz>
+References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net> <20090827122423.GO6997@mit.edu> <4A9685D4.2070906@redhat.com> <4A96BA2D.60804@garzik.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Rob Landley <rob@landley.net>, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
+Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
 	Goswin von Brederlow <goswin-v-b@web.de>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755027AbZIAU0X@vger.kernel.org>
+To: Jeff Garzik <jeff@garzik.org>
+Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4A97BC9E.5070801@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <4A96BA2D.60804@garzik.org>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
->> Interesting. So, what's technically wrong with the patch below?
+On Thu 2009-08-27 12:54:05, Jeff Garzik wrote:
+> On 08/27/2009 09:10 AM, Ric Wheeler wrote:
+>> One thing that does need fixing for some MD configurations is to stress
+>> again that we need to make sure that barrier operations are properly
+>> supported or users will need to disable the write cache on devices with
+>> volatile write caches.
 >
-> My suggestion was that you stop trying to document your assertion of an 
-> issue and actually suggest fixes in code or implementation. I really 
-> don't think that you have properly diagnosed your specific failure or 
-> done sufficient. However, if you put a full analysis and suggested code 
-> out to the MD devel lists, we can debate technical implementation as we 
-> normally do.
-
-I don't think I should be required to rewrite linux md layer in order
-to fix documentation. 
-
-> The only note that I would put in ext3/4 etc documentation would be:
+> Agreed; chime in on Christoph's linux-vfs thread if people have input.
 >
-> "Reliable storage is important for any file system. Single disks (or 
-> FLASH or SSD) do fail on a regular basis.
+> I quickly glanced at MD and DM.  Currently, upstream, we see a lot of
+>
+>         if (unlikely(bio_barrier(bio))) {
+>                 bio_endio(bio, -EOPNOTSUPP);
+>                 return 0;
+>         }
+>
+> in DM and MD make_request functions.
+>
+> Only md/raid1 supports barriers at present, it seems.  None of the other  
+> MD drivers support barriers.
 
-Uh, how clever, instead of documenting that our md raid code does not
-always work as expected, you document that components fail. Newspeak
-101?
+Not even md/raid0? Ouch :-(.
 
-You even failed to mention little design problem with flash and
-eraseblock size... and the fact that you don't need flash to fail to
-get data loss.
-
+									Pavel
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
