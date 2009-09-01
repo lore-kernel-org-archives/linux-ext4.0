@@ -1,63 +1,68 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH]ext4: Enable mount ext4 with AGGRESSIVE_TEST
-Date: Tue, 01 Sep 2009 10:35:40 +0900
-Message-ID: <4A9C7A6C.5030708@rs.jp.nec.com>
-References: <4A96118F.5040707@rs.jp.nec.com> <20090828144045.GH16732@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 0/7] Per-bdi writeback flusher threads v15
+Date: Tue, 1 Sep 2009 00:01:14 -0400
+Message-ID: <20090901040114.GI23535@mit.edu>
+References: <1251747693-32354-1-git-send-email-jens.axboe@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	chris.mason@oracle.com, david@fromorbit.com, hch@infradead.org,
+	akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:39041 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752034AbZIABf4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Aug 2009 21:35:56 -0400
-In-Reply-To: <20090828144045.GH16732@mit.edu>
+Received: from thunk.org ([69.25.196.29]:49717 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750732AbZIAEBg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Sep 2009 00:01:36 -0400
+Content-Disposition: inline
+In-Reply-To: <1251747693-32354-1-git-send-email-jens.axboe@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Aug 31, 2009 at 09:41:26PM +0200, Jens Axboe wrote:
+> 
+> Here's the 15th version of the writeback patches.
 
-Hi,
-Theodore Tso wrote:
-> On Thu, Aug 27, 2009 at 01:54:39PM +0900, Akira Fujita wrote:
->> When the AGGRESSIVE_TEST is enabled,
->> the maximum extent count of inode becomes '3' in ext4_ext_space_root(),
->> but __ext4_ext_check() which is called via ext4_fill_super()
->> checks eh_max is larger '4', therefore we always get -EIO and can not mount ext4.
->> The patch fix this issue.
-> 
-> This isn't really the right fix for the problem.
-> 
-> What's actually going on here is that the patch which added which
-> sanity checks for extents, which added (among other functions)
-> __ext4_ext_check() and ext4_ext_max_entries() doesn't quite work right
-> in the presence of AGGRESSIVE_TEST.
-> 
-> The goal of AGGRESSIVE_TEST is to stress test the extent tree insert
-> and deletion code by forcing the size of eh_max to be a smaller value
-> than it otherwise would be.  It did this by dropping in limits to the
-> values returned by ext4_ext_space_root(), ext4_ext_space_idx(),
-> ext4_ext_space_block(), and ext4_ext_block_idx().  This worked all
-> very well and coded when these functions were only used to initialize
-> the eh_max field.
-> 
-> The problem is that the extent checking code also used these functions
-> to check whether or not the extent tree was sane, and if
-> AGGRESSIVE_TEST was enabled, it caused the journal to be considered
-> invalid.
-> 
-> Your patch patches over the problem by changing ext4_ext_space_root to
-> fix the one case where a problem arises, which patches over the
-> problem for a freshly created filesystem, but it doesn't fix problems
-> that will arise for a populated filesystem.  It also decreases the
-> effectiveness of AGGRESSIVE_TEST.
-> 
+The test-bdi branch of ext4.git tree is a combination of the patches I
+plan to push once the merge window opens, plus v15 per-bdi patches.
+On the ext4 call I've recruited some ext4 developers to do some
+testing and benchmarking *before* the merge window opens.
 
-Thank you for careful explanation. :-)
-I confirmed that the problem was fixed with your patch.
+I've found something potentially wrong with the writeback.  It was
+careful to sync the disk before shutting down the system, and I got
+the following error.   
 
-Tested-by: Akira Fujita <a-fujita@rs.jp.ne.com>
+[  660.499155] ext4_da_writepages: jbd2_start: 32768 pages, ino 41; err -30
+[  660.505664] Pid: 1848, comm: flush-8:0 Not tainted 2.6.31-rc8-01474-geef6bd0 #362
+[  660.512402] Call Trace:
+[  660.514982]  [<c064412f>] ? printk+0x14/0x16
+[  660.518851]  [<c023ac4a>] ext4_da_writepages+0x213/0x40e
+[  660.523356]  [<c023aa37>] ? ext4_da_writepages+0x0/0x40e
+[  660.528383]  [<c01b65a8>] do_writepages+0x28/0x39
+[  660.533534]  [<c01f1e07>] writeback_single_inode+0x15c/0x346
+[  660.538401]  [<c0165b23>] ? down_read_trylock+0x3e/0x48
+[  660.542921]  [<c01f2892>] generic_sync_wb_inodes+0x2ab/0x37b
+[  660.547805]  [<c01f2a2a>] wb_writeback+0xc8/0xfa
+[  660.551975]  [<c01f2abb>] wb_do_writeback+0x5f/0x118
+[  660.556333]  [<c01f2b95>] bdi_writeback_task+0x21/0x92
+[  660.560838]  [<c01c0f5d>] bdi_start_fn+0x63/0xb2
+[  660.565647]  [<c01c0efa>] ? bdi_start_fn+0x0/0xb2
+[  660.569710]  [<c0162363>] kthread+0x73/0x78
+[  660.573528]  [<c01622f0>] ? kthread+0x0/0x78
+[  660.577355]  [<c011e6f3>] kernel_thread_helper+0x7/0x10
 
-Regards,
-Akira Fujita
+... and a very similar failure for inode 354
+
+[  660.582215] ext4_da_writepages: jbd2_start: 32768 pages, ino 354; err -30
+
+Inode 41 is /var/lib/urandom/random-seed, and inode 354 is
+/var/run/syslogd.pid.
+
+The failure occurs if I build w/o the ext4 "next" patches, and the
+failure does not happen if I take build v2.6.31-rc8 without per-bdi
+patches (with or without the ext4 patches).  At a guess it looks like
+the bdi threads are trying to write out the dirty files that were
+written in the shutdown scripts, *after* the file system has been made
+read-only in preparation for unmounting the file system in question.
+
+	     		     		    	 - Ted
