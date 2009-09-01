@@ -1,67 +1,79 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: Data integrity built into the storage stack
-Date: Tue, 01 Sep 2009 01:19:49 -0400
-Message-ID: <yq1hbvntf62.fsf@sermon.lab.mkp.net>
-References: <87f94c370908291423ub92922ft2cceab9e34ac6207@mail.gmail.com>
+From: martin f krafft <madduck@debian.org>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+ document conditions when reliable operation is possible)
+Date: Tue, 1 Sep 2009 07:45:07 +0200
+Message-ID: <20090901054506.GA3323@piper.oerlikon.madduck.net>
+References: <4A967175.5070700@redhat.com>
+ <20090827221319.GA1601@ucw.cz>
+ <4A9733C1.2070904@redhat.com>
+ <20090828064449.GA27528@elf.ucw.cz>
+ <20090828120854.GA8153@mit.edu>
+ <20090830075135.GA1874@ucw.cz>
+ <20090830152023.GB23828@mit.edu>
+ <4807377b0908311049id9a2167r937bc8447c2b3546@mail.gmail.com>
+ <20090831180746.GA32110@piper.oerlikon.madduck.net>
+ <4807377b0908311526r3b42f581j27b9c26166b7ac96@mail.gmail.com>
 Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-ripemd160;
+	protocol="application/pgp-signature"; boundary="YiEDa0DAkWCtVeE4"
+Cc: Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
+	NeilBrown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
+	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Jesse Brandeburg <jesse.brandeburg@gmail.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751453AbZIAFp5@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4807377b0908311526r3b42f581j27b9c26166b7ac96@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+
+--YiEDa0DAkWCtVeE4
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:59381 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750732AbZIAFTx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Sep 2009 01:19:53 -0400
-In-Reply-To: <87f94c370908291423ub92922ft2cceab9e34ac6207@mail.gmail.com>
-	(Greg Freemyer's message of "Sat, 29 Aug 2009 17:23:50 -0400")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
->>>>> "Greg" == Greg Freemyer <greg.freemyer@gmail.com> writes:
+also sprach Jesse Brandeburg <jesse.brandeburg@gmail.com> [2009.09.01.0026 =
++0200]:
+> I misspoke w.r.t journalling, the idea I was trying to get across
+> was to remount with -o sync while running on a degraded array, but
+> given some of the other comments in this thread I'm not even sure
+> that would help.  the idea was to make writes as safe as possible
+> (at the cost of speed) when running on a degraded array, and to
+> have the transition be as hands-free as possible, just have the
+> kernel (or mdadm) by default remount.
 
-Greg> We already have the scsi data integrity patches that went in last
-Greg> winter and I believe fit into the storage stack below the
-Greg> filesystem layer.
+I don't see how that is any more necessary with a degraded array
+than it is when you have a fully working array. Sync just ensures
+that the data are written and not cached, but that has absolutely
+nothing to do with the underlying storage. Or am I failing to see
+the link?
 
-The filesystems can actually use it.  It's exposed at the bio level.
+--=20
+ .''`.   martin f. krafft <madduck@d.o>      Related projects:
+: :'  :  proud Debian developer               http://debiansystem.info
+`. `'`   http://people.debian.org/~madduck    http://vcs-pkg.org
+  `-  Debian - when you have better things to do than fixing systems
+=20
+"how do you feel about women's rights?"
+"i like either side of them."
+                                                       -- groucho marx
 
+--YiEDa0DAkWCtVeE4
+Content-Type: application/pgp-signature; name="digital_signature_gpg.asc"
+Content-Description: Digital signature (see http://martin-krafft.net/gpg/)
+Content-Disposition: inline
 
-Greg> I do believe there is a patch floating around for device mapper to
-Greg> add some integrity capability.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
 
-The patch is in mainline.  It allows passthrough so the filesystems can
-access the integrity features.  But DM itself doesn't use any of them,
-it merely acts as a conduit.
+iEYEAREDAAYFAkqctN8ACgkQIgvIgzMMSnX5JQCgquXMQpxCm/TTvmzoM5doIyPD
+W5sAoNqXHt5sVywFP975Ka6hSBFXYHoS
+=FJOm
+-----END PGP SIGNATURE-----
 
-DIF is inherently tied to storage device's logical blocks.  These are
-likely to be smaller than the blocks we're interested in protecting.
-However, you could conceivably use the application tag space to add a
-checksum with filesystem or MD/DM blocking size granularity.  All the
-hooks are there.
-
-The application tag space is pretty much only available on disk
-drives--array vendors use it for internal purposes.  But in the MD/DM
-case we're likely to run on raw disk so that's probably ok.
-
-That said, I really think btrfs is the right answer to many of the
-concerns raised in this thread.  Everything is properly checksummed and
-can be verified at read time.
-
-The strength of DIX/DIF is that we can detect corruption at write time
-while we still have the buffer we care about write sitting in memory.
-
-So btrfs and DIX/DIF go hand in hand as far as I'm concerned.  They
-solve different problems but both are squarely aimed at preventing
-silent data corruption.
-
-I do agree that we do have to be more prepared for collateral damage
-scenarios.  As we discussed at LS we have 4KB drives coming out that can
-invalidate previously acknowledged I/Os if it gets a subsequent write
-failure on a sector.  And there's also the issue of fractured writes
-when talking to disk arrays.  That's really what my I/O topology changes
-were all about: Correctness.  The fact that they may increase
-performance is nice but that was not the main motivator.
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
+--YiEDa0DAkWCtVeE4--
