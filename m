@@ -1,79 +1,76 @@
-From: martin f krafft <madduck@debian.org>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Tue, 1 Sep 2009 07:45:07 +0200
-Message-ID: <20090901054506.GA3323@piper.oerlikon.madduck.net>
-References: <4A967175.5070700@redhat.com>
- <20090827221319.GA1601@ucw.cz>
- <4A9733C1.2070904@redhat.com>
- <20090828064449.GA27528@elf.ucw.cz>
- <20090828120854.GA8153@mit.edu>
- <20090830075135.GA1874@ucw.cz>
- <20090830152023.GB23828@mit.edu>
- <4807377b0908311049id9a2167r937bc8447c2b3546@mail.gmail.com>
- <20090831180746.GA32110@piper.oerlikon.madduck.net>
- <4807377b0908311526r3b42f581j27b9c26166b7ac96@mail.gmail.com>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH 0/7] Per-bdi writeback flusher threads v15
+Date: Tue, 1 Sep 2009 08:29:43 +0200
+Message-ID: <20090901062943.GL12579@kernel.dk>
+References: <1251747693-32354-1-git-send-email-jens.axboe@oracle.com> <20090901040114.GI23535@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-ripemd160;
-	protocol="application/pgp-signature"; boundary="YiEDa0DAkWCtVeE4"
-Cc: Theodore Tso <tytso@mit.edu>, Pavel Machek <pavel@ucw.cz>,
-	NeilBrown <neilb@suse.de>, Ric Wheeler <rwheeler@redhat.com>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Jesse Brandeburg <jesse.brandeburg@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751453AbZIAFp5@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4807377b0908311526r3b42f581j27b9c26166b7ac96@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-
---YiEDa0DAkWCtVeE4
 Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	chris.mason@oracle.com, david@fromorbit.com, hch@infradead.org,
+	akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from brick.kernel.dk ([93.163.65.50]:41953 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751105AbZIAG3l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Sep 2009 02:29:41 -0400
 Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+In-Reply-To: <20090901040114.GI23535@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-also sprach Jesse Brandeburg <jesse.brandeburg@gmail.com> [2009.09.01.0026 =
-+0200]:
-> I misspoke w.r.t journalling, the idea I was trying to get across
-> was to remount with -o sync while running on a degraded array, but
-> given some of the other comments in this thread I'm not even sure
-> that would help.  the idea was to make writes as safe as possible
-> (at the cost of speed) when running on a degraded array, and to
-> have the transition be as hands-free as possible, just have the
-> kernel (or mdadm) by default remount.
+On Tue, Sep 01 2009, Theodore Tso wrote:
+> On Mon, Aug 31, 2009 at 09:41:26PM +0200, Jens Axboe wrote:
+> > 
+> > Here's the 15th version of the writeback patches.
+> 
+> The test-bdi branch of ext4.git tree is a combination of the patches I
+> plan to push once the merge window opens, plus v15 per-bdi patches.
+> On the ext4 call I've recruited some ext4 developers to do some
+> testing and benchmarking *before* the merge window opens.
 
-I don't see how that is any more necessary with a degraded array
-than it is when you have a fully working array. Sync just ensures
-that the data are written and not cached, but that has absolutely
-nothing to do with the underlying storage. Or am I failing to see
-the link?
+Great, thanks a lot for that!
 
---=20
- .''`.   martin f. krafft <madduck@d.o>      Related projects:
-: :'  :  proud Debian developer               http://debiansystem.info
-`. `'`   http://people.debian.org/~madduck    http://vcs-pkg.org
-  `-  Debian - when you have better things to do than fixing systems
-=20
-"how do you feel about women's rights?"
-"i like either side of them."
-                                                       -- groucho marx
+> I've found something potentially wrong with the writeback.  It was
+> careful to sync the disk before shutting down the system, and I got
+> the following error.   
+> 
+> [  660.499155] ext4_da_writepages: jbd2_start: 32768 pages, ino 41; err -30
+> [  660.505664] Pid: 1848, comm: flush-8:0 Not tainted 2.6.31-rc8-01474-geef6bd0 #362
+> [  660.512402] Call Trace:
+> [  660.514982]  [<c064412f>] ? printk+0x14/0x16
+> [  660.518851]  [<c023ac4a>] ext4_da_writepages+0x213/0x40e
+> [  660.523356]  [<c023aa37>] ? ext4_da_writepages+0x0/0x40e
+> [  660.528383]  [<c01b65a8>] do_writepages+0x28/0x39
+> [  660.533534]  [<c01f1e07>] writeback_single_inode+0x15c/0x346
+> [  660.538401]  [<c0165b23>] ? down_read_trylock+0x3e/0x48
+> [  660.542921]  [<c01f2892>] generic_sync_wb_inodes+0x2ab/0x37b
+> [  660.547805]  [<c01f2a2a>] wb_writeback+0xc8/0xfa
+> [  660.551975]  [<c01f2abb>] wb_do_writeback+0x5f/0x118
+> [  660.556333]  [<c01f2b95>] bdi_writeback_task+0x21/0x92
+> [  660.560838]  [<c01c0f5d>] bdi_start_fn+0x63/0xb2
+> [  660.565647]  [<c01c0efa>] ? bdi_start_fn+0x0/0xb2
+> [  660.569710]  [<c0162363>] kthread+0x73/0x78
+> [  660.573528]  [<c01622f0>] ? kthread+0x0/0x78
+> [  660.577355]  [<c011e6f3>] kernel_thread_helper+0x7/0x10
+> 
+> ... and a very similar failure for inode 354
+> 
+> [  660.582215] ext4_da_writepages: jbd2_start: 32768 pages, ino 354; err -30
+> 
+> Inode 41 is /var/lib/urandom/random-seed, and inode 354 is
+> /var/run/syslogd.pid.
+> 
+> The failure occurs if I build w/o the ext4 "next" patches, and the
+> failure does not happen if I take build v2.6.31-rc8 without per-bdi
+> patches (with or without the ext4 patches).  At a guess it looks like
+> the bdi threads are trying to write out the dirty files that were
+> written in the shutdown scripts, *after* the file system has been made
+> read-only in preparation for unmounting the file system in question.
 
---YiEDa0DAkWCtVeE4
-Content-Type: application/pgp-signature; name="digital_signature_gpg.asc"
-Content-Description: Digital signature (see http://martin-krafft.net/gpg/)
-Content-Disposition: inline
+OK, that's definitely something that I will look into today. It isn't
+necessarily a writeback bug, but it does rather smell like it.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+-- 
+Jens Axboe
 
-iEYEAREDAAYFAkqctN8ACgkQIgvIgzMMSnX5JQCgquXMQpxCm/TTvmzoM5doIyPD
-W5sAoNqXHt5sVywFP975Ka6hSBFXYHoS
-=FJOm
------END PGP SIGNATURE-----
-
---YiEDa0DAkWCtVeE4--
