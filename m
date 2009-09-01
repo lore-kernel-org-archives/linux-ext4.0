@@ -1,48 +1,77 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] libext2fs: use ext2fs_blocks_count() in ext2fs_open2()
-Date: Tue, 01 Sep 2009 16:43:16 -0500
-Message-ID: <4A9D9574.3010606@redhat.com>
+Subject: [PATCH] e2fsck: avoid overflow in pass5 check_block_end()
+Date: Tue, 01 Sep 2009 17:40:28 -0500
+Message-ID: <4A9DA2DC.10001@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33909 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52922 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755220AbZIAVnQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Sep 2009 17:43:16 -0400
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n81LhInn016156
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 17:43:18 -0400
+	id S1752499AbZIAWk1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Sep 2009 18:40:27 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n81MeTZl031851
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 18:40:29 -0400
 Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n81LhGxC025992
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 17:43:17 -0400
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n81MeSub000422
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Sep 2009 18:40:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2fs_open2() was only looking at s_blocks_count, and
-when it wrapped to a low number, it was failing the test of:
+When making a filesystem as in:
 
-  fs->super->s_first_data_block >= fs->super->s_blocks_count
+mke2fs -E lazy_itable_init=1 -O uninit_bg -b 4096 bigfile 4294967298
 
-which made the superblock look corrupt.
+a subsequent fsck would result in:
+
+Pass 5: Checking group summary information
+Internal error: fudging end of bitmap (3)
+e2fsck: aborted
+
+This is because check_block_end() was overflowing in the calculation
+for "end", and giving it a value of -1 (0xFFFF....) which eventually
+ended up tripping up a test in ext2fs_fudge_generic_bmap_end,
+
+        if (end > bitmap->real_end)
+                return neq;
+
+Fix another such error in read_bitmaps() as well.
+
+lib/ext2fs/imager.c likely has similar problems but it looks like
+it has no 64-bit treatment at all yet.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-Patch is against the pu branch
+Applies to pu branch.
 
-Index: e2fsprogs/lib/ext2fs/openfs.c
+Index: e2fsprogs/e2fsck/pass5.c
 ===================================================================
---- e2fsprogs.orig/lib/ext2fs/openfs.c
-+++ e2fsprogs/lib/ext2fs/openfs.c
-@@ -288,7 +288,7 @@ errcode_t ext2fs_open2(const char *name,
- 	    blocks_per_group > EXT2_MAX_BLOCKS_PER_GROUP(fs->super) ||
- 	    fs->inode_blocks_per_group > EXT2_MAX_INODES_PER_GROUP(fs->super) ||
-            EXT2_DESC_PER_BLOCK(fs->super) == 0 ||
--           fs->super->s_first_data_block >= fs->super->s_blocks_count) {
-+           fs->super->s_first_data_block >= ext2fs_blocks_count(fs->super)) {
- 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
- 		goto cleanup;
- 	}
+--- e2fsprogs.orig/e2fsck/pass5.c
++++ e2fsprogs/e2fsck/pass5.c
+@@ -662,7 +662,7 @@ static void check_block_end(e2fsck_t ctx
+ 	clear_problem_context(&pctx);
+ 
+ 	end = ext2fs_get_block_bitmap_start2(fs->block_map) +
+-		(EXT2_BLOCKS_PER_GROUP(fs->super) * fs->group_desc_count) - 1;
++		((blk64_t)EXT2_BLOCKS_PER_GROUP(fs->super) * fs->group_desc_count) - 1;
+ 	pctx.errcode = ext2fs_fudge_block_bitmap_end2(fs->block_map, end,
+ 						     &save_blocks_count);
+ 	if (pctx.errcode) {
+Index: e2fsprogs/lib/ext2fs/rw_bitmaps.c
+===================================================================
+--- e2fsprogs.orig/lib/ext2fs/rw_bitmaps.c
++++ e2fsprogs/lib/ext2fs/rw_bitmaps.c
+@@ -212,7 +212,7 @@ static errcode_t read_bitmaps(ext2_filsy
+ 		}
+ 		blk = (fs->image_header->offset_blockmap /
+ 		       fs->blocksize);
+-		blk_cnt = EXT2_BLOCKS_PER_GROUP(fs->super) *
++		blk_cnt = (blk64_t)EXT2_BLOCKS_PER_GROUP(fs->super) *
+ 			fs->group_desc_count;
+ 		while (block_nbytes > 0) {
+ 			retval = io_channel_read_blk64(fs->image_io, blk++,
+
 
