@@ -1,49 +1,63 @@
-From: jim owens <jowens@hp.com>
-Subject: Re: Data integrity built into the storage stack
-Date: Tue, 01 Sep 2009 09:18:07 -0400
-Message-ID: <4A9D1F0F.9050802@hp.com>
-References: <87f94c370908291423ub92922ft2cceab9e34ac6207@mail.gmail.com> <yq1hbvntf62.fsf@sermon.lab.mkp.net> <20090901124403.GC1371@ucw.cz>
+From: david@lang.hm
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+Date: Tue, 1 Sep 2009 08:25:55 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.0909010825000.6822@asgard.lang.hm>
+References: <20090901111803.11027.qmail@science.horizon.com> <e57f474f060bf2a16437b16aac23fabd.squirrel@neil.brown.name>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t0017.houston.hp.com ([15.201.24.20]:21691 "EHLO
-	g4t0017.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754531AbZIANSH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Sep 2009 09:18:07 -0400
-In-Reply-To: <20090901124403.GC1371@ucw.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: George Spelvin <linux@horizon.com>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	pavel@ucw.cz
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <e57f474f060bf2a16437b16aac23fabd.squirrel@neil.brown.name>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Pavel Machek wrote:
-> Hi!
-> 
->> I do agree that we do have to be more prepared for collateral damage
->> scenarios.  As we discussed at LS we have 4KB drives coming out that can
->> invalidate previously acknowledged I/Os if it gets a subsequent write
->> failure on a sector.  And there's also the issue of fractured writes
-> 
-> Hmmm, future will be interesting.
-> 
-> 'ext3 expects disks to behave like disks from 1995' (alarming).
+On Tue, 1 Sep 2009, NeilBrown wrote:
 
-NO... stop saying "ext3".  All file systems expect that
-what the disk tell us is the "sector size" (now know by
-disk vendors as "block size") is "atomic".
+> On Tue, September 1, 2009 9:18 pm, George Spelvin wrote:
+>>>> An embedded checksum, no matter how good, can't tell you if
+>>>> the data is stale; you need a way to distinguish versions in the
+>>>> pointer.
+>>
+>>> I would disagree with that.
+>>> If the embedded checksum is a function of both the data and the address
+>>> of the data (in whatever address space seems most appropriate) then it
+>>> can
+>>> still verify that the data found with the checksum is the data that was
+>>> expected.
+>>> And storing the checksum with the data (where it is practical) means
+>>> index blocks can be more dense so on average fewer accesses to storage
+>>> are needed.
+>>
+>> I must not have been clear.  Originally, block 100 has contents version 1.
+>> This includes a correctly computed checksum.
+>>
+>> Then you write version 2 of the data there.  But there's a bit error in
+>> the address and the write goes to block 256+100 = 356.  So block
+>> 100 still has the version 1 contents, complete with valid checksum.
+>> (Yes, block 356 is now corrupted, but perhaps it's not even allocated.)
+>>
+>> Then we go to read block 100, find a valid checksum, and return incorrect
+>> data.  Namely, version 1 data, when we expact and want version 2.
+>>
+>> Basically, the pointer has to say which *version* of the data it points
+>> to,
+>> not just the block address.  Otherwise, it can't detect a missing write.
+>
+> Agreed.  I think the minimum is that the index block must be changed in
+> some way whenever data that it points to is changed.  Exactly how
+> depends very much of other details of the filesystem layout.
+> For a copy-on-write filesystem where changed data is always written
+> to a new location, this is very easy to achieve as the 'physical'
+> address can probably be used as a version identifier in some way.
+> For write-in-place you would need the version information
+> to be more explicit as you say, whether a small version number
+> or a larger hash of the data.
 
-The problem is not when they say 4096 bytes is my block.
+but then don't you have to update the version on the index (and therefor 
+the pointer to that directory), on up to the point where you update the 
+root?
 
-The problem Martin is talking about is that since most
-filesystems expect and work with legacy 512-byte-sectors,
-the disk vendors report "512 is my block" and do the
-merge themselves to their real 4096 byte physical sector.
-
-This is not "bad drive vendor" either, it is the price
-of progress while supporting legacy expectations.
-
-jim
+David Lang
