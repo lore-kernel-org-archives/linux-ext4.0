@@ -1,49 +1,36 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: MD/DM and barriers (was Re: [patch] ext2/3: document
-	conditions when reliable operation is possible)
-Date: Tue, 1 Sep 2009 16:01:21 +0200
-Message-ID: <20090901140120.GD2028@ucw.cz>
-References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net> <20090827122423.GO6997@mit.edu> <4A9685D4.2070906@redhat.com> <4A96BA2D.60804@garzik.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] vm: Add an tuning knob for vm.max_writeback_pages
+Date: Tue, 1 Sep 2009 16:30:22 -0400
+Message-ID: <20090901203022.GD6996@mit.edu>
+References: <1251600858-21294-1-git-send-email-tytso@mit.edu> <20090830165229.GA5189@infradead.org> <20090830181731.GA20822@mit.edu> <20090901180052.GA7885@think>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Jeff Garzik <jeff@garzik.org>
-Return-path: <linux-doc-owner@vger.kernel.org>
+To: Chris Mason <chris.mason@oracle.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, jens
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:59114 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752055AbZIAUaW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Sep 2009 16:30:22 -0400
 Content-Disposition: inline
-In-Reply-To: <4A96BA2D.60804@garzik.org>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090901180052.GA7885@think>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 2009-08-27 12:54:05, Jeff Garzik wrote:
-> On 08/27/2009 09:10 AM, Ric Wheeler wrote:
->> One thing that does need fixing for some MD configurations is to stress
->> again that we need to make sure that barrier operations are properly
->> supported or users will need to disable the write cache on devices with
->> volatile write caches.
->
-> Agreed; chime in on Christoph's linux-vfs thread if people have input.
->
-> I quickly glanced at MD and DM.  Currently, upstream, we see a lot of
->
->         if (unlikely(bio_barrier(bio))) {
->                 bio_endio(bio, -EOPNOTSUPP);
->                 return 0;
->         }
->
-> in DM and MD make_request functions.
->
-> Only md/raid1 supports barriers at present, it seems.  None of the other  
-> MD drivers support barriers.
+On Tue, Sep 01, 2009 at 02:00:52PM -0400, Chris Mason wrote:
+> 
+> I haven't yet tried this without the max_writeback_pages patch, but the
+> graphs clearly show a speed improvement, and that the mainline code is
+> smearing writes across the drive while Jens' work is writing
+> sequentially.
 
-Not even md/raid0? Ouch :-(.
+FYI, you don't need to revert the max_writebacks_pages patch; the
+whole point of making it a tunable was to make it easier to run
+benchmarks.  If you want to get the effects of the original setting of
+MAX_WRITEBACK_PAGES before the patch, just run as root: 
 
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+    sysctl vm.max_writeback_pages=1024
+
+						- Ted
