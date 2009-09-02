@@ -1,105 +1,80 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Question on fallocate/ftruncate sequence
-Date: Wed, 02 Sep 2009 02:41:34 -0600
-Message-ID: <20090902084134.GO4197@webber.adilger.int>
-References: <1248389165.17459.3.camel@bobble.smo.corp.google.com>
- <5df78e1d0908281142r683b902ube65288df858695d@mail.gmail.com>
- <20090828194051.GM4197@webber.adilger.int>
- <5df78e1d0908281444x556a7c2ey763dc6233820abc6@mail.gmail.com>
- <20090828221432.GS4197@webber.adilger.int>
- <5df78e1d0908281740w7bc0f283x5004ca5b231b3af5@mail.gmail.com>
- <20090830025250.GA25768@mit.edu>
- <5df78e1d0908311240s3205b4bcrb65b2552b4ed579c@mail.gmail.com>
- <20090831215612.GG4197@webber.adilger.int>
- <5df78e1d0908311633k1f16a096t701e0cdab54b174c@mail.gmail.com>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: [patch 5/5] ext2: convert to use the new truncate convention.
+Date: Wed, 2 Sep 2009 11:14:26 +0200
+Message-ID: <20090902091426.GC32632@wotan.suse.de>
+References: <20090710073028.782561541@suse.de> <20090710073231.195528273@suse.de> <20090901182929.GG8242@duck.novell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, Frank Mayhar <fmayhar@google.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jiaying Zhang <jiayingz@google.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62797 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751987AbZIBIlY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 04:41:24 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n828fQ2J018608
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 01:41:26 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KPC008005BO0Q00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 02 Sep 2009 01:41:26 -0700 (PDT)
-In-reply-to: <5df78e1d0908311633k1f16a096t701e0cdab54b174c@mail.gmail.com>
+Received: from cantor.suse.de ([195.135.220.2]:41105 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753090AbZIBJOZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Sep 2009 05:14:25 -0400
+Content-Disposition: inline
+In-Reply-To: <20090901182929.GG8242@duck.novell.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 31, 2009  16:33 -0700, Jiaying Zhang wrote:
-> > EXT4_KEEPSIZE_FL should only be cleared if there were writes to
-> > the end of the fallocated space. =A0In that regard, I think the nam=
-e
-> > of this flag should be changed to something like "EXT4_EOFBLOCKS_FL=
-"
-> > to indicate that blocks are allocated beyond the end of file (i_siz=
-e).
->=20
-> Thanks for catching this! I changed the patch to only clear the flag
-> when the new_size is larger than i_size and changed the flag name
-> as you suggested. It would be nice if we only clear the flag when we
-> write beyond the fallocated space, but this seems hard to detect
-> because we no longer have the allocated size once that keepsize
-> fallocate call returns.
+On Tue, Sep 01, 2009 at 08:29:29PM +0200, Jan Kara wrote:
+>   Hi Nick,
+> 
+> On Fri 10-07-09 17:30:33, npiggin@suse.de wrote:
+> > I have some questions, marked with XXX.
+> > 
+> > Cc: linux-ext4@vger.kernel.org
+> > Signed-off-by: Nick Piggin <npiggin@suse.de>
+> > ---
+> >  fs/ext2/ext2.h  |    1 
+> >  fs/ext2/file.c  |    2 
+> >  fs/ext2/inode.c |  138 +++++++++++++++++++++++++++++++++++++++++++++-----------
+> >  3 files changed, 113 insertions(+), 28 deletions(-)
+> > 
+> > Index: linux-2.6/fs/ext2/inode.c
+> > ===================================================================
+> > --- linux-2.6.orig/fs/ext2/inode.c
+> > +++ linux-2.6/fs/ext2/inode.c
+> ...
+> > +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+> > +{
+> > +	/*
+> > +	 * XXX: it seems like a bug here that we don't allow
+> > +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
+> > +	 * review and fix this.
+> > +	 */
+> > +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+> > +	    S_ISLNK(inode->i_mode)))
+> > +		return -EINVAL;
+> > +	if (ext2_inode_is_fast_symlink(inode))
+> > +		return -EINVAL;
+> > +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> > +		return -EPERM;
+> > +	__ext2_truncate_blocks(inode, offset);
+> > +}
+>   Actually, looking again into this, I think you've introduced a subtle bug
+> into the code. When a write fails for some reason, we did vmtruncate()
+> previously which called block_truncate_page() which zeroed a tail of the
+> last block. Now, ext2_truncate_blocks() does not do this and I think it
+> could be a problem because at least in direct IO case, we could have written
+> some data into that block on disk.
+>   We really rely on the tail of the block being zeroed because otherwise
+> extending truncate will show those old data in the block. I plan to change
+> that in my mkwrite fixes but until then, we should preserve the old
+> assumptions.
+>   So I think that ext2_truncate_blocks() should do all that tail page magic
+> as well (although it's not needed in all cases).
 
-The problem is that if e2fsck depends on the EXT4_EOFBLOCKS_FL set
-for fallocate-beyond-EOF then it is worse to clear it than to leave
-it set.  At worst, leaving the flag set results in too many truncates
-on the file.  Clearing the flag when not correct may result in user
-visible data corruption if the file size is extended...
+Hi Jan,
 
-> Here is the new patch:
->=20
-> --- .pc/fallocate_keepsizse.patch/fs/ext4/extents.c	2009-08-31
-> 12:08:10.000000000 -0700
-> +++ fs/ext4/extents.c	2009-08-31 15:51:13.000000000 -0700
-> @@ -3091,11 +3091,19 @@ static void ext4_falloc_update_inode(str
->  	 * the file size.
->  	 */
->  	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
-> +		if (new_size > i_size_read(inode)) {
->  			i_size_write(inode, new_size);
-> +			inode->i_flags &=3D ~EXT4_EOFBLOCKS_FL;
+Yeah I did think about this and yes we usually do need to zero out
+the page but for these error cases with normal writes we shouldn't
+write anything in there.  For direct IO... I don't see the problem
+because we're not coherent with pagecache anyway...
 
-This again isn't quite correct, since the EOFBLOCKS_FL shouldn't
-be cleared unless new_size is beyond the allocated size.  The
-allocation code itself might be a better place to clear this,
-since it knows whether there were new blocks being added beyond
-the current max allocated block.
+Hmm, but possiby it is a good idea just to keep the same block_truncate_page
+calls for this patchset and we can look at it again with your truncate
+patches. I'll work on fixing these up.
 
-> +#define FS_EOFBLOCKS_FL			0x00200000 /* Blocks allocated beyond EOF =
-*/
->  #define FS_RESERVED_FL			0x80000000 /* reserved for ext2 lib */
->=20
->  #define FS_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
-
-It probably isn't a bad idea to make this flag user-visible, since it
-would allow scanning for files that have excess space reserved (e.g.
-if the filesystem is getting full).  Making it user-settable (i.e.
-clearable) would essentially mean truncating the file to i_size without
-updating the timestamps so that the reserved space is discarded.  I
-don't think there is any value in allowing a user to turn this flag on
-for a file.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
