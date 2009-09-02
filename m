@@ -1,54 +1,86 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-Date: 1 Sep 2009 21:10:20 -0400
-Message-ID: <20090902011020.32110.qmail@science.horizon.com>
-References: <20090901161828.GN4197@webber.adilger.int>
-Cc: david@lang.hm, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	pavel@ucw.cz
-To: adilger@sun.com, linux@horizon.com
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090901161828.GN4197@webber.adilger.int>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [PATCH 1/4]ext4: Fix wrong comparisons in mext_check_arguments()
+Date: Wed, 02 Sep 2009 12:17:50 +0900
+Message-ID: <4A9DE3DE.2010509@rs.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:39887 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755662AbZIBDSa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Sep 2009 23:18:30 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
->> - I seem to recall that ZFS does replicate metadata.
-> 
-> ZFS definitely does replicate data.  At the lowest level it has RAID-1,
-> and RAID-Z/Z2, which are pretty close to RAID-5/6 respectively, but with
-> the important difference that every write is a full-stripe-width write,
-> so that it is not possible for RAID-Z/Z2 to cause corruption due to a
-> partially-written RAID parity stripe.
-> 
-> In addition, for internal metadata blocks there are 1 or 2 duplicate
-> copies written to different devices, so that in case of a fatal device
-> corruption (e.g. double failure of a RAID-Z device) the metadata tree
-> is still intact.
+ext4: Fix wrong comparisons in mext_check_arguments()
 
-Forgive me for implying by omission that ZFS did not replicate data.
-What I was trying to point out is that it replicates metadata *more*,
-and you can choose among the redundant backups.
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-> What else is interesting is that in the case of 1-4-bit errors the
-> default checksum function can also be used as ECC to recover the correct
-> data even if there is no replicated copy of the data.
+mext_check_arguments() in move_extents.c has wrong comparisons.
+orig_start which is passed from user-space is block unit,
+but i_size of inode is byte unit, therefore the checks do not work fine.
+This mis-check leads to the overflow of 'len' and then hits BUG_ON()
+in ext4_move_extens().   The patch fixes this issue.
 
-Interesting.  Do you actually see suhc low-bit-weight errors in
-practice?  I had assumed that modern disks were complicated enough
-that errors would be high-bit-weight miscorrections.
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ fs/ext4/move_extent.c |   39 ++++++++++++++++++++++++---------------
+ 1 files changed, 24 insertions(+), 15 deletions(-)
 
->> One of ZFS's big performance problems is that currently it only checksums
->> the entire RAID stripe, so it always has to read every drive, and doesn't
->> get RAID's IOPS advantage.
-> 
-> Or this is a drawback of the Linux software RAID because it doesn't detect
-> the case when the parity is bad before there is a second drive failure and
-> the bad parity is used to reconstruct the data block incorrectly (which
-> will also go undetected because there is no checksum).
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 5821e0b..60ed567 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -972,43 +972,52 @@ mext_check_arguments(struct inode *orig_inode,
+ 	}
 
-Well, all conventional RAID systems lack block checksums (or, more to
-the point, rely on the drive's checksumming), and have this problem.
-
-I was pointing out that ZFS currently doesn't support partial-stripe
-*reads*, thus limiting IOPS in random-read applications.  But that's
-an "implementation detail", not a major architectural issue.
+ 	if (orig_inode->i_size > donor_inode->i_size) {
+-		if (orig_start >= donor_inode->i_size) {
++		if (orig_start << orig_inode->i_blkbits >=
++						donor_inode->i_size) {
+ 			ext4_debug("ext4 move extent: orig start offset "
+ 			"[%llu] should be less than donor file size "
+ 			"[%lld] [ino:orig %lu, donor_inode %lu]\n",
+-			orig_start, donor_inode->i_size,
+-			orig_inode->i_ino, donor_inode->i_ino);
++			orig_start << orig_inode->i_blkbits,
++			donor_inode->i_size, orig_inode->i_ino,
++			donor_inode->i_ino);
+ 			return -EINVAL;
+ 		}
+-
+-		if (orig_start + *len > donor_inode->i_size) {
++		if ((orig_start + *len) << orig_inode->i_blkbits >
++						donor_inode->i_size) {
+ 			ext4_debug("ext4 move extent: End offset [%llu] should "
+ 				"be less than donor file size [%lld]."
+ 				"So adjust length from %llu to %lld "
+ 				"[ino:orig %lu, donor %lu]\n",
+-				orig_start + *len, donor_inode->i_size,
+-				*len, donor_inode->i_size - orig_start,
++				(orig_start + *len) << orig_inode->i_blkbits,
++				donor_inode->i_size,
++				*len, (donor_inode->i_size >>
++				orig_inode->i_blkbits) - orig_start,
+ 				orig_inode->i_ino, donor_inode->i_ino);
+-			*len = donor_inode->i_size - orig_start;
++			*len = (donor_inode->i_size >> orig_inode->i_blkbits) -
++				orig_start;
+ 		}
+ 	} else {
+-		if (orig_start >= orig_inode->i_size) {
++		if (orig_start << orig_inode->i_blkbits >=
++						orig_inode->i_size) {
+ 			ext4_debug("ext4 move extent: start offset [%llu] "
+ 				"should be less than original file size "
+ 				"[%lld] [inode:orig %lu, donor %lu]\n",
+-				 orig_start, orig_inode->i_size,
+-				orig_inode->i_ino, donor_inode->i_ino);
++				orig_start << orig_inode->i_blkbits,
++				orig_inode->i_size, orig_inode->i_ino,
++				donor_inode->i_ino);
+ 			return -EINVAL;
+ 		}
