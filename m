@@ -1,70 +1,58 @@
-From: Rob Landley <rob@landley.net>
-Subject: [PATCH] Update Documentation/md.txt to mention journaling won't help dirty+degraded case.
-Date: Wed, 2 Sep 2009 17:49:46 -0500
-Message-ID: <200909021749.47695.rob@landley.net>
-References: <20090826001645.GN4300@elf.ucw.cz> <4A9910D5.4060208@redhat.com> <20090902201210.GC1840@ucw.cz>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] libext2fs: use ext2fs_blocks_count() in ext2fs_open2()
+Date: Wed, 02 Sep 2009 16:55:31 -0600
+Message-ID: <20090902225531.GD4197@webber.adilger.int>
+References: <20090902055953.GF4197@webber.adilger.int>
+ <150c16850909012305y2481c54fra671b123780caa80@mail.gmail.com>
+ <sandeen@redhat.com> <4A9EA09E.10509@redhat.com>
+ <13135.1251925342@alphaville.usa.hp.com>
+ <150c16850909021428v5e001691r8a5e28b5c1be9326@mail.gmail.com>
+ <13808.1251927450@alphaville.usa.hp.com> <4A9EE6FF.4000901@redhat.com>
+ <150c16850909021445se2ebc6ahc896dc6c5aa56f8b@mail.gmail.com>
+ <4A9EF2AB.3090602@redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, david@lang.hm,
-	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Pavel Machek <pavel@ucw.cz>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Justin Maggard <jmaggard10@gmail.com>, nicholas.dokos@hp.com,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:38479
-	"EHLO grelber.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751266AbZIBWts (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 18:49:48 -0400
-In-Reply-To: <20090902201210.GC1840@ucw.cz>
-Content-Disposition: inline
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58646 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752156AbZIBWzU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 18:55:20 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n82MtMa5028169
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 15:55:22 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KPD00M008XXS400@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 02 Sep 2009 15:55:22 -0700 (PDT)
+In-reply-to: <4A9EF2AB.3090602@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Rob Landley <rob@landley.net>
+On Sep 02, 2009  17:33 -0500, Eric Sandeen wrote:
+> Justin Maggard wrote:
+> > On Wed, Sep 2, 2009 at 2:43 PM, Eric Sandeen<sandeen@redhat.com> wrote:
+> >> You guys are still getting bad checksums?
+> > 
+> > Yeah, I am.
+> 
+> Oh, sorry, all the other bugs gave me a head-fake, and I forgot the
+> original problem of -fsck- corrupting the checksums.  :)  I had a simple
+> mkdir giving me the corruptions.  Ok, on to that.
 
-Add more warnings to the "Boot time assembly of degraded/dirty arrays" section,
-explaining that using a journaling filesystem can't overcome this problem.
+I found the source of the checksum error last night - the reserved bytes
+in the 64-bit group descriptor are not zero after the e2fsck is run.
+It should be pretty easy to run e2fsck under gdb and put a hardware watch
+on those bytes to see who twiddles them.
 
-Signed-off-by: Rob Landley <rob@landley.net>
----
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
- Documentation/md.txt |   17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
-
-diff --git a/Documentation/md.txt b/Documentation/md.txt
-index 4edd39e..52b8450 100644
---- a/Documentation/md.txt
-+++ b/Documentation/md.txt
-@@ -75,6 +75,23 @@ So, to boot with a root filesystem of a dirty degraded raid[56], use
- 
-    md-mod.start_dirty_degraded=1
- 
-+Note that Journaling filesystems do not effectively protect data in this
-+case, because the update granularity of the RAID is larger than the journal
-+was designed to expect.  Reconstructing data via partity information involes
-+matching together corresponding stripes, and updating only some of these
-+stripes renders the corresponding data in all the unmatched stripes
-+meaningless.  Thus seemingly unrelated data in other parts of the filesystem
-+(stored in the unmatched stripes) can become unreadable after a partial
-+update, but the journal is only aware of the parts it modified, not the
-+"collateral damage" elsewhere in the filesystem which was affected by those
-+changes.
-+
-+Thus successful journal replay proves nothing in this context, and even a
-+full fsck only shows whether or not the filesystem's metadata was affected.
-+(A proper solution to this problem would involve adding journaling to the RAID
-+itself, at least during degraded writes.  In the meantime, try not to allow
-+a system to shut down uncleanly with its RAID both dirty and degraded, it
-+can handle one but not both.)
- 
- Superblock formats
- ------------------
-
-
--- 
-Latency is more important than throughput. It's that simple. - Linus Torvalds
