@@ -1,37 +1,44 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: [PATCH] libext2fs: use ext2fs_blocks_count() in ext2fs_open2()
-Date: Wed, 02 Sep 2009 19:12:22 -0400
-Message-ID: <15413.1251933142@alphaville.usa.hp.com>
-References: <4A9D9574.3010606@redhat.com> <20090902055953.GF4197@webber.adilger.int> <150c16850909012305y2481c54fra671b123780caa80@mail.gmail.com> <4A9EA09E.10509@redhat.com> <13135.1251925342@alphaville.usa.hp.com>  <20090902222804.GB5270@mit.edu>
-Reply-To: nicholas.dokos@hp.com
-Cc: Nick Dokos <nicholas.dokos@hp.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Justin Maggard <jmaggard10@gmail.com>,
-	Andreas Dilger <adilger@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] e2fsprogs: remove misleading argument from
+	ext2fs_bg_flags_clear
+Date: Wed, 02 Sep 2009 17:28:11 -0600
+Message-ID: <20090902232811.GG4197@webber.adilger.int>
+References: <4A9EE6E4.2000307@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t0016.houston.hp.com ([15.201.24.19]:45167 "EHLO
-	g4t0016.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752156AbZIBXMT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 19:12:19 -0400
-In-Reply-To: Message from Theodore Tso <tytso@mit.edu>
-   of "Wed, 02 Sep 2009 18:28:04 EDT." <20090902222804.GB5270@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:59844 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753800AbZIBX2A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 19:28:00 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n82NS2Gt001214
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 16:28:02 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KPD00900AFCYN00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 02 Sep 2009 16:28:02 -0700 (PDT)
+In-reply-to: <4A9EE6E4.2000307@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Wed, Sep 02, 2009 at 05:02:22PM -0400, Nick Dokos wrote:
-> > The following patch fixes a problem I think, but I'm not sure whether it
-> > resolves Justin's problem. I'm running a test, but I thought I'd send it
-> > out for people to try and/or comment on. Let me know of any problems.
-> 
-> Ouch.  Thanks for sending this; I'm surprised people hadn't run into
-> massive problems due to this patch earlier.
-> 
+On Sep 02, 2009  16:43 -0500, Eric Sandeen wrote:
+> ext2fs_bg_flags_clear shouldn't take an unused bg_flags argument
+> if its purpose is to clear -all- flags.  That just makes people
+> like me call it for the wrong purpose ;)
 
-Most of the time those counts fit in 16 bits (they are per block group,
-is that right?) - at least with default values: you'd have to make a
-file system with larger block groups to see the problem, I think.  So
-it's not as painful as it first sounds.
+I'd pointed this out when the code was originally submitted.
+That said, I'd prefer a function which allows clearing
+individual flags, rather than all of them.  It is possible to
+call it with ~0 to clear all of the flags.
 
-Nick
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
