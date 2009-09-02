@@ -1,91 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] libext2fs: use proper functions to set/clear block group
- flags
-Date: Wed, 02 Sep 2009 15:36:42 -0500
-Message-ID: <4A9ED75A.7030406@redhat.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [testcase] test your fs/storage stack (was Re: [patch] ext2/3:
+ document conditions when reliable operation is possible)
+Date: Wed, 02 Sep 2009 16:42:19 -0400
+Message-ID: <4A9ED8AB.5080003@redhat.com>
+References: <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <4A9510D2.1090704@redhat.com> <20090826111208.GA26595@elf.ucw.cz> <alpine.DEB.2.00.0908260416270.30426@asgard.lang.hm> <20090829094919.GF1634@ucw.cz> <4A9910D5.4060208@redhat.com> <20090902201210.GC1840@ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Justin Maggard <jmaggard10@gmail.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42416 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751130AbZIBUgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Sep 2009 16:36:43 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: david@lang.hm, Theodore Tso <tytso@mit.edu>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <20090902201210.GC1840@ucw.cz>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-As Justin & Ric reported, something like this on a
-22T (sparse) bigfile:
+On 09/02/2009 04:12 PM, Pavel Machek wrote:
+>
+>>>> people aren't objecting to better documentation, they are objecting to
+>>>> misleading documentation.
+>>>>
+>>> Actually Ric is. He's trying hard to make RAID5 look better than it
+>>> really is.
+>>
+>> I object to misleading and dangerous documentation that you have
+>> proposed. I spend a lot of time working in data integrity, talking and
+>> writing about it so I care deeply that we don't misinform people.
+>
+> Yes, truth is dangerous. To vendors selling crap products.
 
-	e2fsprogs/misc/mke2fs -E lazy_itable_init=1 \
-			      -O uninit_bg -b 4096 bigfile
-	mount -o loop bigfile mnt/
-	for I in `seq 1 5`; do mkdir mnt/$I; done
-	umount mnt/
-	e2fsprogs/e2fsck/e2fsck -f bigfile
+Pavel, you have no information and an attitude of not wanting to listen to 
+anyone who has real experience or facts. Not just me, but also Ted and others.
 
-would give us corrupted block group checksums:
+Totally pointless to reply to you further.
 
-	<other problems related to uninit snipped>
-	One or more block group descriptor checksums are invalid.  Fix<y>? yes
-
-	Group descriptor 6301 checksum is invalid.  FIXED.
-	Group descriptor 7799 checksum is invalid.  FIXED.
-
-There wer=re a few places which accessed bg_flags directly 
-rather than using the helper functions; fixing these seems
-to resolve the problem.
-
-Reported-by: Justin Maggard <jmaggard10@gmail.com>
-Reported-by: Ric Wheeler <rwheeler@redhat.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-Applies to the pu branch
-
-Index: e2fsprogs/e2fsck/pass2.c
-===================================================================
---- e2fsprogs.orig/e2fsck/pass2.c
-+++ e2fsprogs/e2fsck/pass2.c
-@@ -987,12 +987,12 @@ out_htree:
- 		 * we could call a function in pass1.c that checks the
- 		 * newly visible inodes.
- 		 */
--		if (fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT) {
-+		if (ext2fs_bg_flag_test(fs, group, EXT2_BG_INODE_UNINIT)) {
- 			pctx.num = dirent->inode;
- 			if (fix_problem(ctx, PR_2_INOREF_BG_INO_UNINIT,
- 					&cd->pctx)){
--				fs->group_desc[group].bg_flags &=
--					~EXT2_BG_INODE_UNINIT;
-+				ext2fs_bg_flags_clear(fs, group,
-+						      EXT2_BG_INODE_UNINIT);
- 				ext2fs_mark_super_dirty(fs);
- 				ctx->flags |= E2F_FLAG_RESTART_LATER;
- 			} else {
-Index: e2fsprogs/lib/ext2fs/openfs.c
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/openfs.c
-+++ e2fsprogs/lib/ext2fs/openfs.c
-@@ -350,11 +350,12 @@ errcode_t ext2fs_open2(const char *name,
- 	if (superblock > 1 && EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
- 					EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
- 		struct ext2_group_desc *gd;
--		for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
--		     i++, gd++) {
--			gd->bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
--			gd->bg_flags &= ~EXT2_BG_INODE_UNINIT;
--			gd->bg_itable_unused = 0;
-+		dgrp_t group;
-+
-+		for (group = 0; group < fs->group_desc_count; group++) {
-+			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-+			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
-+			fs->group_desc[group].bg_itable_unused = 0;
- 		}
- 		ext2fs_mark_super_dirty(fs);
- 	}
+Ric
 
