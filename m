@@ -1,124 +1,42 @@
-From: Peng Tao <bergwolf@gmail.com>
-Subject: Re: [PATCH 1/4]ext4: Fix wrong comparisons in mext_check_arguments()
-Date: Thu, 03 Sep 2009 00:02:43 +0800
-Message-ID: <4A9E9723.50803@gmail.com>
-References: <4A9DE3DE.2010509@rs.jp.nec.com>
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Re: MD/DM and barriers (was Re: [patch] ext2/3: document conditions
+ when reliable operation is possible)
+Date: Wed, 02 Sep 2009 20:17:41 +0400
+Message-ID: <4A9E9AA5.4020107@msgid.tls.msk.ru>
+References: <20090825225114.GE4300@elf.ucw.cz> <4A948C94.7040103@redhat.com> <20090826025849.GF32712@mit.edu> <200908270019.04231.rob@landley.net> <20090827122423.GO6997@mit.edu> <4A9685D4.2070906@redhat.com> <4A96BA2D.60804@garzik.org> <20090901140120.GD2028@ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Jeff Garzik <jeff@garzik.org>, Ric Wheeler <rwheeler@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, Rob Landley <rob@landley.net>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ey-out-2122.google.com ([74.125.78.27]:12068 "EHLO
-	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750848AbZIBQCx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 12:02:53 -0400
-Received: by ey-out-2122.google.com with SMTP id 25so217599eya.19
-        for <linux-ext4@vger.kernel.org>; Wed, 02 Sep 2009 09:02:54 -0700 (PDT)
-In-Reply-To: <4A9DE3DE.2010509@rs.jp.nec.com>
+Received: from isrv.corpit.ru ([81.13.33.159]:56730 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752817AbZIBQRk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Sep 2009 12:17:40 -0400
+In-Reply-To: <20090901140120.GD2028@ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, Akira,
+Pavel Machek wrote:
+> On Thu 2009-08-27 12:54:05, Jeff Garzik wrote:
+[]
+>> Only md/raid1 supports barriers at present, it seems.  None of the other  
+>> MD drivers support barriers.
+> 
+> Not even md/raid0? Ouch :-(.
 
-Akira Fujita wrote:
-> ext4: Fix wrong comparisons in mext_check_arguments()
-> 
-> From: Akira Fujita <a-fujita@rs.jp.nec.com>
-> 
-> mext_check_arguments() in move_extents.c has wrong comparisons.
-> orig_start which is passed from user-space is block unit,
-> but i_size of inode is byte unit, therefore the checks do not work fine.
-> This mis-check leads to the overflow of 'len' and then hits BUG_ON()
-> in ext4_move_extens().   The patch fixes this issue.
-While the bug is true, I wander if it checks all conditions, because i_size isn't 
-blocksize aligned.
-> 
-> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> ---
->  fs/ext4/move_extent.c |   39 ++++++++++++++++++++++++---------------
->  1 files changed, 24 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index 5821e0b..60ed567 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -972,43 +972,52 @@ mext_check_arguments(struct inode *orig_inode,
->  	}
-> 
->  	if (orig_inode->i_size > donor_inode->i_size) {
-> -		if (orig_start >= donor_inode->i_size) {
-> +		if (orig_start << orig_inode->i_blkbits >=
-> +						donor_inode->i_size) {
->  			ext4_debug("ext4 move extent: orig start offset "
->  			"[%llu] should be less than donor file size "
->  			"[%lld] [ino:orig %lu, donor_inode %lu]\n",
-> -			orig_start, donor_inode->i_size,
-> -			orig_inode->i_ino, donor_inode->i_ino);
-> +			orig_start << orig_inode->i_blkbits,
-> +			donor_inode->i_size, orig_inode->i_ino,
-> +			donor_inode->i_ino);
->  			return -EINVAL;
->  		}
-> -
-> -		if (orig_start + *len > donor_inode->i_size) {
-> +		if ((orig_start + *len) << orig_inode->i_blkbits >
-> +						donor_inode->i_size) {
->  			ext4_debug("ext4 move extent: End offset [%llu] should "
->  				"be less than donor file size [%lld]."
->  				"So adjust length from %llu to %lld "
->  				"[ino:orig %lu, donor %lu]\n",
-> -				orig_start + *len, donor_inode->i_size,
-> -				*len, donor_inode->i_size - orig_start,
-> +				(orig_start + *len) << orig_inode->i_blkbits,
-> +				donor_inode->i_size,
-> +				*len, (donor_inode->i_size >>
-> +				orig_inode->i_blkbits) - orig_start,
->  				orig_inode->i_ino, donor_inode->i_ino);
-> -			*len = donor_inode->i_size - orig_start;
-> +			*len = (donor_inode->i_size >> orig_inode->i_blkbits) -
-> +				orig_start;
->  		}
->  	} else {
-> -		if (orig_start >= orig_inode->i_size) {
-> +		if (orig_start << orig_inode->i_blkbits >=
-> +						orig_inode->i_size) {
->  			ext4_debug("ext4 move extent: start offset [%llu] "
->  				"should be less than original file size "
->  				"[%lld] [inode:orig %lu, donor %lu]\n",
-> -				 orig_start, orig_inode->i_size,
-> -				orig_inode->i_ino, donor_inode->i_ino);
-> +				orig_start << orig_inode->i_blkbits,
-> +				orig_inode->i_size, orig_inode->i_ino,
-> +				donor_inode->i_ino);
->  			return -EINVAL;
->  		}
-> -
-> -		if (orig_start + *len > orig_inode->i_size) {
-> +		if ((orig_start + *len) << orig_inode->i_blkbits >
-> +						orig_inode->i_size) {
->  			ext4_debug("ext4 move extent: Adjust length "
->  				"from %llu to %lld. Because it should be "
->  				"less than original file size "
->  				"[ino:orig %lu, donor %lu]\n",
-> -				*len, orig_inode->i_size - orig_start,
-> +				*len, (orig_inode->i_size >>
-> +				orig_inode->i_blkbits) - orig_start,
->  				orig_inode->i_ino, donor_inode->i_ino);
-> -			*len = orig_inode->i_size - orig_start;
-> +			*len = (orig_inode->i_size >> orig_inode->i_blkbits) -
-> +				orig_start;
->  		}
->  	}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Only for raid1 there's no requiriment for inter-drive ordering.  Hence
+only raid1 supports barriers (and gained that support very recently,
+in 1 or 2 kernel releases).  For the rest, including raid0 and linear,
+inter-drive ordering is necessary to implement barriers.  Or md should
+have its own queue (flushing) mechanisms.
 
-
--- 
-Best Regards,
-Peng Tao
-State Key Laboratory of Networking and Switching Technology
-Beijing Univ. of Posts and Telecoms.
+/mjt
