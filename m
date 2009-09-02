@@ -1,44 +1,38 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH] e2fsprogs: remove misleading argument from
 	ext2fs_bg_flags_clear
-Date: Wed, 02 Sep 2009 17:28:11 -0600
-Message-ID: <20090902232811.GG4197@webber.adilger.int>
-References: <4A9EE6E4.2000307@redhat.com>
+Date: Wed, 2 Sep 2009 19:42:43 -0400
+Message-ID: <20090902234243.GC30497@mit.edu>
+References: <4A9EE6E4.2000307@redhat.com> <20090902232811.GG4197@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:59844 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753800AbZIBX2A (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 19:28:00 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n82NS2Gt001214
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 16:28:02 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KPD00900AFCYN00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 02 Sep 2009 16:28:02 -0700 (PDT)
-In-reply-to: <4A9EE6E4.2000307@redhat.com>
+Received: from thunk.org ([69.25.196.29]:40346 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753684AbZIBXmo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Sep 2009 19:42:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20090902232811.GG4197@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 02, 2009  16:43 -0500, Eric Sandeen wrote:
-> ext2fs_bg_flags_clear shouldn't take an unused bg_flags argument
-> if its purpose is to clear -all- flags.  That just makes people
-> like me call it for the wrong purpose ;)
+On Wed, Sep 02, 2009 at 05:28:11PM -0600, Andreas Dilger wrote:
+> On Sep 02, 2009  16:43 -0500, Eric Sandeen wrote:
+> > ext2fs_bg_flags_clear shouldn't take an unused bg_flags argument
+> > if its purpose is to clear -all- flags.  That just makes people
+> > like me call it for the wrong purpose ;)
+> 
+> I'd pointed this out when the code was originally submitted.
+> That said, I'd prefer a function which allows clearing
+> individual flags, rather than all of them.  It is possible to
+> call it with ~0 to clear all of the flags.
 
-I'd pointed this out when the code was originally submitted.
-That said, I'd prefer a function which allows clearing
-individual flags, rather than all of them.  It is possible to
-call it with ~0 to clear all of the flags.
+Agreed; if we want to have a function which clears all of the flags,
+it should be named something like ext2fs_bg_flags_zap(), or some such.
+It would be confusing for ext2fs_bg_flags_clear() and
+ext2fs_bg_flags_set() not to be symmetric.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+						- Ted
