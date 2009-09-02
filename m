@@ -1,52 +1,98 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
-Date: Wed, 2 Sep 2009 08:09:58 -0400
-Message-ID: <20090902120958.GA16415@mit.edu>
-References: <4A9E5496.8050909@in.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Sachin Sant <sachinp@in.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:50896 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750970AbZIBMKE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Sep 2009 08:10:04 -0400
-Content-Disposition: inline
-In-Reply-To: <4A9E5496.8050909@in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 10/16] ext4: Remove syncing logic from ext4_file_write
+Date: Wed,  2 Sep 2009 15:59:20 +0200
+Message-ID: <1251899966-7316-11-git-send-email-jack@suse.cz>
+References: <1251899966-7316-1-git-send-email-jack@suse.cz>
+Cc: LKML <linux-kernel@vger.kernel.org>, hch@lst.de,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1251899966-7316-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 02, 2009 at 04:48:46PM +0530, Sachin Sant wrote:
-> While executing fsstress against ext4 with 2.6.31-rc8 on a
-> powerpc box, ran into the following Bug.
->
-> ------------[ cut here ]------------
-> cpu 0x0: Vector: 700 (Program Check) at [c0000000f3ae3970]
->    pc: c000000000280f28: .jbd2_journal_commit_transaction+0x8ac/0x1bfc
->    lr: c000000000280e58: .jbd2_journal_commit_transaction+0x7dc/0x1bfc
->    sp: c0000000f3ae3bf0
->   msr: 8000000000029032
->  current = 0xc0000000f315c7d0
->  paca    = 0xc000000000b62600
->    pid   = 23139, comm = kjournald2
-> kernel BUG at fs/jbd2/commit.c:533!
+The syncing is now properly handled by generic_file_aio_write() so
+no special ext4 code is needed.
 
-Hmm, that's this ASSERT:
+CC: linux-ext4@vger.kernel.org
+CC: tytso@mit.edu
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/file.c |   53 ++---------------------------------------------------
+ 1 files changed, 2 insertions(+), 51 deletions(-)
 
-     J_ASSERT(commit_transaction->t_nr_buffers <=
-              commit_transaction->t_outstanding_credits);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 3f1873f..aafe432 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -58,10 +58,7 @@ static ssize_t
+ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 		unsigned long nr_segs, loff_t pos)
+ {
+-	struct file *file = iocb->ki_filp;
+-	struct inode *inode = file->f_path.dentry->d_inode;
+-	ssize_t ret;
+-	int err;
++	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+ 
+ 	/*
+ 	 * If we have encountered a bitmap-format file, the size limit
+@@ -81,53 +78,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 		}
+ 	}
+ 
+-	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
+-	/*
+-	 * Skip flushing if there was an error, or if nothing was written.
+-	 */
+-	if (ret <= 0)
+-		return ret;
+-
+-	/*
+-	 * If the inode is IS_SYNC, or is O_SYNC and we are doing data
+-	 * journalling then we need to make sure that we force the transaction
+-	 * to disk to keep all metadata uptodate synchronously.
+-	 */
+-	if (file->f_flags & O_SYNC) {
+-		/*
+-		 * If we are non-data-journaled, then the dirty data has
+-		 * already been flushed to backing store by generic_osync_inode,
+-		 * and the inode has been flushed too if there have been any
+-		 * modifications other than mere timestamp updates.
+-		 *
+-		 * Open question --- do we care about flushing timestamps too
+-		 * if the inode is IS_SYNC?
+-		 */
+-		if (!ext4_should_journal_data(inode))
+-			return ret;
+-
+-		goto force_commit;
+-	}
+-
+-	/*
+-	 * So we know that there has been no forced data flush.  If the inode
+-	 * is marked IS_SYNC, we need to force one ourselves.
+-	 */
+-	if (!IS_SYNC(inode))
+-		return ret;
+-
+-	/*
+-	 * Open question #2 --- should we force data to disk here too?  If we
+-	 * don't, the only impact is that data=writeback filesystems won't
+-	 * flush data to disk automatically on IS_SYNC, only metadata (but
+-	 * historically, that is what ext2 has done.)
+-	 */
+-
+-force_commit:
+-	err = ext4_force_commit(inode->i_sb);
+-	if (err)
+-		return err;
+-	return ret;
++	return generic_file_aio_write(iocb, iov, nr_segs, pos);
+ }
+ 
+ static struct vm_operations_struct ext4_file_vm_ops = {
+-- 
+1.6.0.2
 
-in jbd2_journal_commit_transaction().  That's not something I've ever
-seen before, nor have we made any changes in the jbd2 logic in quite
-some time that would could be related to that code.
-
-Is it possible to extract out the contents of the commit_transaction
-structure?  In particular, the t_nr_buffers and t_outstanding_credits value?
-
-Also, how big was /dev/sda4? 
-
-At this point, I can't rule out a wild pointer corrupting the data
-structure, however improbable that sounds... 
-
-						- Ted
