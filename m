@@ -1,58 +1,94 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] libext2fs: use ext2fs_blocks_count() in ext2fs_open2()
-Date: Wed, 02 Sep 2009 16:55:31 -0600
-Message-ID: <20090902225531.GD4197@webber.adilger.int>
-References: <20090902055953.GF4197@webber.adilger.int>
- <150c16850909012305y2481c54fra671b123780caa80@mail.gmail.com>
- <sandeen@redhat.com> <4A9EA09E.10509@redhat.com>
- <13135.1251925342@alphaville.usa.hp.com>
- <150c16850909021428v5e001691r8a5e28b5c1be9326@mail.gmail.com>
- <13808.1251927450@alphaville.usa.hp.com> <4A9EE6FF.4000901@redhat.com>
- <150c16850909021445se2ebc6ahc896dc6c5aa56f8b@mail.gmail.com>
- <4A9EF2AB.3090602@redhat.com>
+From: Rob Landley <rob@landley.net>
+Subject: Re: [testcase] test your fs/storage stack (was Re: [patch] ext2/3: document conditions when reliable operation is possible)
+Date: Wed, 2 Sep 2009 18:00:48 -0500
+Message-ID: <200909021800.51096.rob@landley.net>
+References: <20090826001645.GN4300@elf.ucw.cz> <20090902201210.GC1840@ucw.cz> <4A9ED8AB.5080003@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Justin Maggard <jmaggard10@gmail.com>, nicholas.dokos@hp.com,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58646 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752156AbZIBWzU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 18:55:20 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n82MtMa5028169
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 15:55:22 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KPD00M008XXS400@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 02 Sep 2009 15:55:22 -0700 (PDT)
-In-reply-to: <4A9EF2AB.3090602@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Pavel Machek <pavel@ucw.cz>, david@lang.hm,
+	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4A9ED8AB.5080003@redhat.com>
+Content-Disposition: inline
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sep 02, 2009  17:33 -0500, Eric Sandeen wrote:
-> Justin Maggard wrote:
-> > On Wed, Sep 2, 2009 at 2:43 PM, Eric Sandeen<sandeen@redhat.com> wrote:
-> >> You guys are still getting bad checksums?
-> > 
-> > Yeah, I am.
-> 
-> Oh, sorry, all the other bugs gave me a head-fake, and I forgot the
-> original problem of -fsck- corrupting the checksums.  :)  I had a simple
-> mkdir giving me the corruptions.  Ok, on to that.
+On Wednesday 02 September 2009 15:42:19 Ric Wheeler wrote:
+> On 09/02/2009 04:12 PM, Pavel Machek wrote:
+> >>>> people aren't objecting to better documentation, they are objecting to
+> >>>> misleading documentation.
+> >>>
+> >>> Actually Ric is. He's trying hard to make RAID5 look better than it
+> >>> really is.
+> >>
+> >> I object to misleading and dangerous documentation that you have
+> >> proposed. I spend a lot of time working in data integrity, talking and
+> >> writing about it so I care deeply that we don't misinform people.
+> >
+> > Yes, truth is dangerous. To vendors selling crap products.
+>
+> Pavel, you have no information and an attitude of not wanting to listen to
+> anyone who has real experience or facts. Not just me, but also Ted and
+> others.
+>
+> Totally pointless to reply to you further.
 
-I found the source of the checksum error last night - the reserved bytes
-in the 64-bit group descriptor are not zero after the e2fsck is run.
-It should be pretty easy to run e2fsck under gdb and put a hardware watch
-on those bytes to see who twiddles them.
+For the record, I've been able to follow Pavel's arguments, and I've been able 
+to follow Ted's arguments.  But as far as I can tell, you're arguing about a 
+different topic than the rest of us.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+There's a difference between:
 
+A) This filesystem was corrupted because the underlying hardware is permanently 
+damaged, no longer functioning as it did when it was new, and never will 
+again.
+
+B) We had a transient glitch that ate the filesystem.  The underlying hardware 
+is as good as new, but our data is gone.
+
+You can argue about whether or not "new" was ever any good, but Linux has run 
+on PC-class hardware from day 1.  Sure PC-class hardware remains crap in many 
+different ways, but this is not a _new_ problem.  Refusing to work around what 
+people actually _have_ and insisting we get a better class of user instead 
+_is_ a new problem, kind of a disturbing one.
+
+USB keys are the modern successor to floppy drives, and even now 
+Documentation/blockdev/floppy.txt is still full of some of the torturous 
+workarounds implemented for that over the past 2 decades.  The hardware 
+existed, and instead of turning up their nose at it they made it work as best 
+they could.
+
+Perhaps what's needed for the flash thing is a userspace package, the way 
+mdutils made floppies a lot more usable than the kernel managed at the time.  
+For the flash problem perhaps some FUSE thing a bit like mtdblock might be 
+nice, a translation layer remapping an arbitrary underlying block device into 
+larger granularity chunks and being sure to do the "write the new one before 
+you erase the old one" trick that so many hardware-only flash devices _don't_, 
+and then maybe even use Pavel's crash tool to figure out the write granularity 
+of various sticks and ship it with a whitelist people can email updates to so 
+we don't have to guess large.  (Pressure on the USB vendors to give us a "raw 
+view" extension bypassing the "pretend to be a hard drive, with remapping" 
+hardware in future devices would be nice too, but won't help any of the 
+hardware out in the field.  I'm not sure that block remapping wouldn't screw up 
+_this_ approach either, but it's an example of something that culd be 
+_tried_.)
+
+However, thinking about how to _fix_ a problem is predicated on acknowledging 
+that there actually _is_ a problem.  "The hardware is not physically damaged 
+but your data was lost" sounds to me like a software problem, and thus 
+something software could at least _attempt_ to address.  "There's millions of 
+'em, Linux can't cope" doesn't seem like a useful approach.
+
+I already addressed the software raid thing last post.
+
+Rob
+-- 
+Latency is more important than throughput. It's that simple. - Linus Torvalds
