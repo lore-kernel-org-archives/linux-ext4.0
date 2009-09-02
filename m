@@ -1,30 +1,100 @@
-From: Justin Maggard <jmaggard10@gmail.com>
-Subject: Re: [PATCH] libext2fs: use proper functions to set/clear block group
-	flags
-Date: Wed, 2 Sep 2009 14:26:47 -0700
-Message-ID: <150c16850909021426s7ea705a9ube8aa8bbbc77aa0c@mail.gmail.com>
-References: <4A9ED75A.7030406@redhat.com> <4A9EE06B.5010500@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] libext2fs: use proper functions to set/clear block group
+ flags
+Date: Wed, 02 Sep 2009 16:36:31 -0500
+Message-ID: <4A9EE55F.3030800@redhat.com>
+References: <4A9ED75A.7030406@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Ric Wheeler <rwheeler@redhat.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Transfer-Encoding: 7bit
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Justin Maggard <jmaggard10@gmail.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f204.google.com ([209.85.222.204]:42708 "EHLO
-	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750783AbZIBVdc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 17:33:32 -0400
-Received: by pzk42 with SMTP id 42so1037486pzk.19
-        for <linux-ext4@vger.kernel.org>; Wed, 02 Sep 2009 14:33:34 -0700 (PDT)
-In-Reply-To: <4A9EE06B.5010500@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41707 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750943AbZIBVgd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Sep 2009 17:36:33 -0400
+In-Reply-To: <4A9ED75A.7030406@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 2, 2009 at 2:15 PM, Eric Sandeen<sandeen@redhat.com> wrote:
-> Well, it resolves that problem, but further testing reveals another
-> lurking behind it, so expect more patches ;)
+As Justin & Ric reported, something like this on a
+22T (sparse) bigfile:
 
-Thanks for the update. :)  My test just finished with, unfortunately,
-the same results.
+	e2fsprogs/misc/mke2fs -E lazy_itable_init=1 \
+			      -O uninit_bg -b 4096 bigfile
+	mount -o loop bigfile mnt/
+	for I in `seq 1 5`; do mkdir mnt/$I; done
+	umount mnt/
+	e2fsprogs/e2fsck/e2fsck -f bigfile
 
--Justin
+would give us corrupted block group checksums:
+
+	<other problems related to uninit snipped>
+	One or more block group descriptor checksums are invalid.  Fix<y>? yes
+
+	Group descriptor 6301 checksum is invalid.  FIXED.
+	Group descriptor 7799 checksum is invalid.  FIXED.
+
+There wer=re a few places which accessed bg_flags directly 
+rather than using the helper functions; fixing these seems
+to resolve the problem.
+
+V2: use _flag_clear not _flags_clear, which clears all flags ...
+
+Even w/ this patch, I'm still getting bitmap mismatches, off
+by a 33rd bit.
+
+Reported-by: Justin Maggard <jmaggard10@gmail.com>
+Reported-by: Ric Wheeler <rwheeler@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+Applies to the pu branch
+
+Index: e2fsprogs/e2fsck/pass2.c
+===================================================================
+--- e2fsprogs.orig/e2fsck/pass2.c
++++ e2fsprogs/e2fsck/pass2.c
+@@ -987,12 +987,12 @@ out_htree:
+ 		 * we could call a function in pass1.c that checks the
+ 		 * newly visible inodes.
+ 		 */
+-		if (fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT) {
++		if (ext2fs_bg_flag_test(fs, group, EXT2_BG_INODE_UNINIT)) {
+ 			pctx.num = dirent->inode;
+ 			if (fix_problem(ctx, PR_2_INOREF_BG_INO_UNINIT,
+ 					&cd->pctx)){
+-				fs->group_desc[group].bg_flags &=
+-					~EXT2_BG_INODE_UNINIT;
++				ext2fs_bg_flag_clear(fs, group,
++						      EXT2_BG_INODE_UNINIT);
+ 				ext2fs_mark_super_dirty(fs);
+ 				ctx->flags |= E2F_FLAG_RESTART_LATER;
+ 			} else {
+Index: e2fsprogs/lib/ext2fs/openfs.c
+===================================================================
+--- e2fsprogs.orig/lib/ext2fs/openfs.c
++++ e2fsprogs/lib/ext2fs/openfs.c
+@@ -350,11 +350,12 @@ errcode_t ext2fs_open2(const char *name,
+ 	if (superblock > 1 && EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+ 					EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+ 		struct ext2_group_desc *gd;
+-		for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
+-		     i++, gd++) {
+-			gd->bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
+-			gd->bg_flags &= ~EXT2_BG_INODE_UNINIT;
+-			gd->bg_itable_unused = 0;
++		dgrp_t group;
++
++		for (group = 0; group < fs->group_desc_count; group++) {
++			ext2fs_bg_flag_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
++			ext2fs_bg_flag_clear(fs, group, EXT2_BG_INODE_UNINIT);
++			fs->group_desc[group].bg_itable_unused = 0;
+ 		}
+ 		ext2fs_mark_super_dirty(fs);
+ 	}
+
+
+
