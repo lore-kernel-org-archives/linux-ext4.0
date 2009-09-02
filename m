@@ -1,86 +1,38 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: remove misleading argument from ext2fs_bg_flags_clear
-Date: Wed, 02 Sep 2009 16:43:00 -0500
-Message-ID: <4A9EE6E4.2000307@redhat.com>
+Subject: Re: [PATCH] libext2fs: use ext2fs_blocks_count() in ext2fs_open2()
+Date: Wed, 02 Sep 2009 16:43:27 -0500
+Message-ID: <4A9EE6FF.4000901@redhat.com>
+References: <4A9D9574.3010606@redhat.com> <20090902055953.GF4197@webber.adilger.int> <150c16850909012305y2481c54fra671b123780caa80@mail.gmail.com> <sandeen@redhat.com> <4A9EA09E.10509@redhat.com> <13135.1251925342@alphaville.usa.hp.com>  <150c16850909021428v5e001691r8a5e28b5c1be9326@mail.gmail.com> <13808.1251927450@alphaville.usa.hp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Justin Maggard <jmaggard10@gmail.com>,
+	Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: nicholas.dokos@hp.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28750 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27680 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751314AbZIBVm6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Sep 2009 17:42:58 -0400
-Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n82Lh1TQ026798
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 17:43:01 -0400
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n82Lh09c013684
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 17:43:00 -0400
+	id S1752411AbZIBVnc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Sep 2009 17:43:32 -0400
+In-Reply-To: <13808.1251927450@alphaville.usa.hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2fs_bg_flags_clear shouldn't take an unused bg_flags argument
-if its purpose is to clear -all- flags.  That just makes people
-like me call it for the wrong purpose ;)
+Nick Dokos wrote:
+> Justin Maggard <jmaggard10@gmail.com> wrote:
+> 
+>> On Wed, Sep 2, 2009 at 2:02 PM, Nick Dokos<nicholas.dokos@hp.com> wrote:
+>>> The following patch fixes a problem I think, but I'm not sure whether it
+>>> resolves Justin's problem. I'm running a test, but I thought I'd send it
+>>> out for people to try and/or comment on. Let me know of any problems.
+>> Just finished trying with that patch, but it looks like it doesn't
+>> resolve my issue either.
+>>
+> 
+> Yup, it didn't pass my test either.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+You guys are still getting bad checksums?
 
-Index: e2fsprogs/lib/ext2fs/blknum.c
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/blknum.c
-+++ e2fsprogs/lib/ext2fs/blknum.c
-@@ -435,9 +435,9 @@ void ext2fs_bg_flags_set(ext2_filsys fs,
- }
- 
- /*
-- * Clear the flags for this block group
-+ * Clear all flags for this block group
-  */
--void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group, __u16 bg_flags)
-+void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group)
- {
- 	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
- 		struct ext4_group_desc *gdp;
-Index: e2fsprogs/lib/ext2fs/csum.c
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/csum.c
-+++ e2fsprogs/lib/ext2fs/csum.c
-@@ -204,7 +204,7 @@ int main(int argc, char **argv)
- 		fs->group_desc[i].bg_free_blocks_count = 31119;
- 		fs->group_desc[i].bg_free_inodes_count = 15701;
- 		fs->group_desc[i].bg_used_dirs_count = 2;
--		ext2fs_bg_flags_clear(fs, i, 0);
-+		ext2fs_bg_flags_clear(fs, i);
- 	};
- 
- 	csum1 = ext2fs_group_desc_csum(fs, 0);
-Index: e2fsprogs/resize/resize2fs.c
-===================================================================
---- e2fsprogs.orig/resize/resize2fs.c
-+++ e2fsprogs/resize/resize2fs.c
-@@ -495,7 +495,7 @@ retry:
- 		       sizeof(struct ext2_group_desc));
- 		adjblocks = 0;
- 
--		ext2fs_bg_flags_clear(fs, i, 0);
-+		ext2fs_bg_flags_clear(fs, i);
- 		if (csum_flag)
- 			ext2fs_bg_flag_set(fs, i, EXT2_BG_INODE_UNINIT | EXT2_BG_INODE_ZEROED)
- 				;
-Index: e2fsprogs/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/ext2fs.h
-+++ e2fsprogs/lib/ext2fs/ext2fs.h
-@@ -777,8 +777,7 @@ extern void ext2fs_bg_itable_unused_set(
- 				     blk64_t blk);
- extern __u16 ext2fs_bg_flags(ext2_filsys fs, dgrp_t group);
- extern void ext2fs_bg_flags_set(ext2_filsys fs, dgrp_t group, __u16 bg_flags);
--extern void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group,
--				  __u16 bg_flags);
-+extern void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group);
- extern int ext2fs_bg_flag_test(ext2_filsys fs, dgrp_t group, __u16 bg_flag);
- extern void ext2fs_bg_flag_set(ext2_filsys fs, dgrp_t group, __u16 bg_flag);
- extern void ext2fs_bg_flag_clear(ext2_filsys fs, dgrp_t group, __u16 bg_flag);
-
+-Eric
