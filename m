@@ -1,44 +1,46 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Wed, 2 Sep 2009 22:55:58 +0200
-Message-ID: <20090902205558.GB2398@elf.ucw.cz>
-References: <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <200908262253.17886.rob@landley.net> <4A967175.5070700@redhat.com> <20090827221319.GA1601@ucw.cz> <4A9733C1.2070904@redhat.com> <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz> <alpine.DEB.2.01.0908300152490.5744@bogon.housecafe.de>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 3/4]ext4: Return exchanged blocks count to user space in
+	failure
+Date: Wed, 2 Sep 2009 16:59:19 -0400
+Message-ID: <87f94c370909021359p171c6f6dte9b700cd48a5fde0@mail.gmail.com>
+References: <4A9DE3EA.1080602@rs.jp.nec.com> <4A9E9521.2010701@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, NeilBrown <neilb@suse.de>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Christian Kujau <lists@nerdbynature.de>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.01.0908300152490.5744@bogon.housecafe.de>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Peng Tao <bergwolf@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from qw-out-2122.google.com ([74.125.92.25]:60942 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751314AbZIBU7R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 16:59:17 -0400
+Received: by qw-out-2122.google.com with SMTP id 8so428566qwh.37
+        for <linux-ext4@vger.kernel.org>; Wed, 02 Sep 2009 13:59:19 -0700 (PDT)
+In-Reply-To: <4A9E9521.2010701@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 2009-08-30 02:01:10, Christian Kujau wrote:
-> On Sun, 30 Aug 2009 at 09:51, Pavel Machek wrote:
-> > > give system administrators.  It's better than the fear-mongering
-> > > patches you had proposed earlier, but what would be better *still* is
-> > > telling people why running with degraded RAID arrays is bad, and to
-> > > give them further tips about how to use RAID arrays safely.
-> > 
-> > Maybe this belongs to Doc*/filesystems, and more detailed RAID
-> > description should go to md description?
-> 
-> Why should this be placed in *kernel* documentation anyway? The "dangers 
-> of RAID", the hints that "backups are a good idea" - isn't that something 
-> for howtos for sysadmins? No end-user will ever look into
+On Wed, Sep 2, 2009 at 11:54 AM, Peng Tao<bergwolf@gmail.com> wrote:
+> Hi, Akira,
+>
+> Akira Fujita wrote:
+>> ext4: Return exchanged blocks count to user space in failure
+>>
+>> From: Akira Fujita <a-fujita@rs.jp.nec.com>
+>>
+>> Return exchanged blocks count (moved_len) to user space,
+>> if ext4_move_extents() failed on the way.
+> Even with the patch, I still don't see how users can fix EXT4_IOC_MOVE_EXT failures,
+> because the orig file itself may be broken.
 
-The fact that two kernel subsystems (MD RAID, journaling filesystems)
-do not work well together is surprising and should be documented near
-the source.
-								Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+Peng,
+
+I have not looked at the code very closely, but can you tell me where
+a file corruption can take place?   Not completing the replacement of
+extents with donor extents is one thing.  Corrupting the original file
+contents is another.
+
+Clearly we need EXT4_IOC_MOVE_EXT to fail gracefully and not corrupt
+the original file the vast majority of the time.
+
+Greg
