@@ -1,54 +1,54 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: ext4 writepages is making tiny bios?
-Date: Tue, 1 Sep 2009 20:17:30 -0400
-Message-ID: <20090902001730.GF7885@think>
-References: <20090901184450.GB7885@think>
- <20090901205744.GE6996@mit.edu>
- <20090901212740.GA9930@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:64081 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752499AbZIBARn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Sep 2009 20:17:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20090901212740.GA9930@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+Date: 1 Sep 2009 21:10:20 -0400
+Message-ID: <20090902011020.32110.qmail@science.horizon.com>
+References: <20090901161828.GN4197@webber.adilger.int>
+Cc: david@lang.hm, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	pavel@ucw.cz
+To: adilger@sun.com, linux@horizon.com
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <20090901161828.GN4197@webber.adilger.int>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 01, 2009 at 05:27:40PM -0400, Christoph Hellwig wrote:
-> On Tue, Sep 01, 2009 at 04:57:44PM -0400, Theodore Tso wrote:
-> > > This graph shows the difference:
-> > > 
-> > > http://oss.oracle.com/~mason/seekwatcher/trace-buffered.png
-> > 
-> > Wow, I'm surprised how seeky XFS was in these graphs compared to ext4
-> > and btrfs.  I wonder what was going on.
+>> - I seem to recall that ZFS does replicate metadata.
 > 
-> XFS did the mistake of trusting the VM, while everyone more or less
-> overrode it.  Removing all those checks and writing out much larger
-> data fixes it with a relatively small patch:
+> ZFS definitely does replicate data.  At the lowest level it has RAID-1,
+> and RAID-Z/Z2, which are pretty close to RAID-5/6 respectively, but with
+> the important difference that every write is a full-stripe-width write,
+> so that it is not possible for RAID-Z/Z2 to cause corruption due to a
+> partially-written RAID parity stripe.
 > 
-> 	http://verein.lst.de/~hch/xfs/xfs-writeback-scaling
+> In addition, for internal metadata blocks there are 1 or 2 duplicate
+> copies written to different devices, so that in case of a fatal device
+> corruption (e.g. double failure of a RAID-Z device) the metadata tree
+> is still intact.
+
+Forgive me for implying by omission that ZFS did not replicate data.
+What I was trying to point out is that it replicates metadata *more*,
+and you can choose among the redundant backups.
+
+> What else is interesting is that in the case of 1-4-bit errors the
+> default checksum function can also be used as ECC to recover the correct
+> data even if there is no replicated copy of the data.
+
+Interesting.  Do you actually see suhc low-bit-weight errors in
+practice?  I had assumed that modern disks were complicated enough
+that errors would be high-bit-weight miscorrections.
+
+>> One of ZFS's big performance problems is that currently it only checksums
+>> the entire RAID stripe, so it always has to read every drive, and doesn't
+>> get RAID's IOPS advantage.
 > 
-> when that code was last benchamrked extensively (on SLES9) it
-> worked nicely to saturate extremly large machines using buffered
-> I/O, since then VM tuning basically destroyed it.
-> 
+> Or this is a drawback of the Linux software RAID because it doesn't detect
+> the case when the parity is bad before there is a second drive failure and
+> the bad parity is used to reconstruct the data block incorrectly (which
+> will also go undetected because there is no checksum).
 
-I sent Christoph other versions of the graphs and tried a few fixes.
-With patches they are down to almost 0 seeks/sec.
+Well, all conventional RAID systems lack block checksums (or, more to
+the point, rely on the drive's checksumming), and have this problem.
 
-For the Ext4 bio size, this array is just a few sata drives and is
-very tolerant.  Real raid or cciss controllers will benefit much more
-from bigger bios.
-
-And most importantly, seekwatcher wouldn't take as long to make the
-graphs ;)
-
--chris
-
+I was pointing out that ZFS currently doesn't support partial-stripe
+*reads*, thus limiting IOPS in random-read applications.  But that's
+an "implementation detail", not a major architectural issue.
