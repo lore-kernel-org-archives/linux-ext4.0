@@ -1,44 +1,72 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: ext4 writepages is making tiny bios?
-Date: Thu, 3 Sep 2009 12:42:09 -0400
-Message-ID: <20090903164209.GA28384@infradead.org>
-References: <20090901184450.GB7885@think> <20090901205744.GE6996@mit.edu> <20090901212740.GA9930@infradead.org> <20090903055201.GA7146@discord.disaster>
+From: david@lang.hm
+Subject: what fsck can (and can't) do was Re: [patch] ext2/3: document
+ conditions when reliable operation is possible
+Date: Thu, 3 Sep 2009 09:56:48 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.0909030848480.28411@asgard.lang.hm>
+References: <20090824212518.GF29763@elf.ucw.cz> <alpine.DEB.2.00.0908280748080.6822@asgard.lang.hm> <20090829100558.GH1634@ucw.cz> <200908291522.07694.rob@landley.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Pavel Machek <pavel@ucw.cz>, Ric Wheeler <rwheeler@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Rob Landley <rob@landley.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:49692 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932081AbZICQmM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 12:42:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20090903055201.GA7146@discord.disaster>
+Received: from mail.lang.hm ([64.81.33.126]:56098 "EHLO bifrost.lang.hm"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756009AbZICQ5z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Sep 2009 12:57:55 -0400
+In-Reply-To: <200908291522.07694.rob@landley.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 03, 2009 at 03:52:01PM +1000, Dave Chinner wrote:
-> > XFS did the mistake of trusting the VM, while everyone more or less
-> > overrode it.  Removing all those checks and writing out much larger
-> > data fixes it with a relatively small patch:
-> > 
-> > 	http://verein.lst.de/~hch/xfs/xfs-writeback-scaling
-> 
-> Careful:
-> 
-> -	tloff = min(tlast, startpage->index + 64);
-> +	tloff = min(tlast, startpage->index + 8192);
-> 
-> That will cause 64k page machines to try to write back 512MB at a
-> time. This will re-introduce similar to the behaviour in sles9 where
-> writeback would only terminate at the end of an extent (because the
-> mapping end wasn't capped like above).
+On Sat, 29 Aug 2009, Rob Landley wrote:
 
-Pretty good point, any applies to all the different things we discussed
-recently.  Ted, should be maybe introduce a max_writeback_mb instead of
-the max_writeback_pages in the VM, too?
+> On Saturday 29 August 2009 05:05:58 Pavel Machek wrote:
+>> On Fri 2009-08-28 07:49:38, david@lang.hm wrote:
+>>> On Thu, 27 Aug 2009, Rob Landley wrote:
+>>>> Pavel's response was to attempt to document this.  Not that journaling
+>>>> is _bad_, but that it doesn't protect against this class of problem.
+>>>
+>>> I don't think anyone is disagreeing with the statement that journaling
+>>> doesn't protect against this class of problems, but Pavel's statements
+>>> didn't say that. he stated that ext3 is more dangerous than ext2.
+>>
+>> Well, if you use 'common' fsck policy, ext3 _is_ more dangerous.
+>
+> The filesystem itself isn't more dangerous, but it may provide a false sense of
+> security when used on storage devices it wasn't designed for.
+
+from this discussin (and the similar discussion on lwn.net) there appears 
+to be confusion/disagreement over what fsck does and what the results of 
+not running it are.
+
+it has been stated here that fsck cannot fix broken data, all it tries to 
+do is to clean up metadata, but it would probably help to get a clear 
+statement of what exactly that means.
+
+I know that it:
+
+finds entries that don't actually have data and deletes them
+
+finds entries where multiple files share data blocks and duplicates the 
+(bad for one file) data to seperate them
+
+finds blocks that have been orphaned (allocated, but no directory pointer 
+to them) and creates entries in lost+found
+
+but if a fsck does not get run on a filesystem that has been damaged, what 
+additional damage can be done?
+
+can it overwrite data that could have been saved?
+
+can it cause new files that are created (or new data written to existing, 
+but uncorrupted files) to be lost?
+
+or is it just a matter of not knowing about existing corruption?
+
+David Lang
 
