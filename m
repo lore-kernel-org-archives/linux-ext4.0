@@ -1,73 +1,109 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: remove misleading argument from	ext2fs_bg_flags_clear
-Date: Wed, 02 Sep 2009 22:00:14 -0500
-Message-ID: <4A9F313E.8030605@redhat.com>
-References: <4A9EE6E4.2000307@redhat.com> <20090902232811.GG4197@webber.adilger.int> <20090902234243.GC30497@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: [PATCH] Fix ext2fs_set_gdt_csum() to use access functions.
+Date: Wed, 02 Sep 2009 23:21:55 -0400
+Message-ID: <12386.1251948115@gamaville.dokosmarshall.org>
+Reply-To: nicholas.dokos@hp.com
+Cc: nicholas.dokos@hp.com, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger@sun.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Justin Maggard <jmaggard10@gmail.com>,
+	Ric Wheeler <rwheeler@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([209.173.210.139]:12832 "EHLO mail.sandeen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753963AbZICDAN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Sep 2009 23:00:13 -0400
-In-Reply-To: <20090902234243.GC30497@mit.edu>
+Received: from vms173005pub.verizon.net ([206.46.173.5]:54357 "EHLO
+	vms173005pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753985AbZICDWO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 23:22:14 -0400
+Received: from gamaville.dokosmarshall.org ([98.110.172.159])
+ by vms173005.mailsrvcs.net
+ (Sun Java(tm) System Messaging Server 6.3-7.04 (built Sep 26 2008; 32bit))
+ with ESMTPA id <0KPD00AYBLCHUZLA@vms173005.mailsrvcs.net> for
+ linux-ext4@vger.kernel.org; Wed, 02 Sep 2009 22:21:59 -0500 (CDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Wed, Sep 02, 2009 at 05:28:11PM -0600, Andreas Dilger wrote:
->> On Sep 02, 2009  16:43 -0500, Eric Sandeen wrote:
->>> ext2fs_bg_flags_clear shouldn't take an unused bg_flags argument
->>> if its purpose is to clear -all- flags.  That just makes people
->>> like me call it for the wrong purpose ;)
->> I'd pointed this out when the code was originally submitted.
->> That said, I'd prefer a function which allows clearing
->> individual flags, rather than all of them.  It is possible to
->> call it with ~0 to clear all of the flags.
+Following Andreas's suggestion, I found that ext2fs_set_gdt_csum()
+was the culprit: it used an ext2_group_desc pointer to access/set
+fields and it did that directly, not through access functions.
 
-ext2fs_bg_flag_clear(fs, group, flag) does just that...
+I'm testing the patch now, but it'll take a while, so again I'm sending
+it out for comments and to possibly try out. Even if it checks out, it
+will need some additional care once the flags situation settles down.
 
-TBH "ext2fs_bg_clear_flags(fs, group, ~0)" seems a bit tortured to me.
+Thanks,
+Nick
 
-> Agreed; if we want to have a function which clears all of the flags,
-> it should be named something like ext2fs_bg_flags_zap(), or some such.
-> It would be confusing for ext2fs_bg_flags_clear() and
-> ext2fs_bg_flags_set() not to be symmetric.
-> 
-> 						- Ted
+>From 6a3b83cda1bcd1e3594515ee888f175bf5cc7906 Mon Sep 17 00:00:00 2001
+From: Nick Dokos <nicholas.dokos@hp.com>
+Date: Wed, 2 Sep 2009 23:00:23 -0400
+Subject: [PATCH] Fix ext2fs_set_gdt_csum() to use access functions.
 
-But they are symmetric; just a bit odd in usage, esp. since the argument 
-is ignored.
+Replace all field accesses with calls to access functions.
+Most importantly, get rid of the mis-declared group descriptor
+pointer which caused the wrong fields to be updated.
 
-Ok should have looked closer; we have these which overwrite bg_flags:
+Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
+---
+ lib/ext2fs/csum.c |   30 +++++++++++++++++-------------
+ 1 files changed, 17 insertions(+), 13 deletions(-)
 
-void ext2fs_bg_flags_set(ext2_filsys fs, dgrp_t group, __u16 bg_flags);
-void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group,__u16 bg_flags);
-
-(_set sets exactly bg_flags; _clear clears all and ignores bg_flags)
-
-and these, which can twiddle individual bits in bg_flags:
-
-void ext2fs_bg_flag_set(ext2_filsys fs, dgrp_t group, __u16 bg_flag);
-void ext2fs_bg_flag_clear(ext2_filsys fs, dgrp_t group, __u16 bg_flag);
-
-hrmph.  Ok, not the most obvious.  I still don't think that an unused 
-variable to "ext2fs_bg_flags_clear" is helpful, regardless of the name.
-
-Oh, and ext2fs_bg_flags_set is unused it seems.
-
-What about perhaps just these 3:
-
-ext2fs_bg_flags_zero(fs, group) /* zeros bg_flags */
-
-ext2fs_bg_flags_set(fs, group, flags) /* adds flags to bg_flags */
-ext2fs_bg_flags_clear(fs, group, flags) /* clears flags in bg_flags */
-
-and remove the original ext2fs_bg_flags_set / ext2fs_bg_flags_clear.
-
--Eric
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index a0f25e3..def3ddd 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -105,7 +105,6 @@ static __u32 find_last_inode_ingrp(ext2fs_inode_bitmap bitmap,
+ errcode_t ext2fs_set_gdt_csum(ext2_filsys fs)
+ {
+ 	struct ext2_super_block *sb = fs->super;
+-	struct ext2_group_desc *bg = fs->group_desc;
+ 	int dirty = 0;
+ 	dgrp_t i;
+ 
+@@ -116,27 +115,32 @@ errcode_t ext2fs_set_gdt_csum(ext2_filsys fs)
+ 					EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+ 		return 0;
+ 
+-	for (i = 0; i < fs->group_desc_count; i++, bg++) {
+-		int old_csum = bg->bg_checksum;
+-		int old_unused = bg->bg_itable_unused;
+-		int old_flags = bg->bg_flags;
++	for (i = 0; i < fs->group_desc_count; i++) {
++		unsigned int old_csum = ext2fs_bg_checksum(fs, i);
++                int old_unused = ext2fs_bg_itable_unused(fs, i);
++		unsigned int old_flags = ext2fs_bg_flags(fs, i);
++                int old_free_inodes_count = ext2fs_bg_free_inodes_count(fs, i);
++                
+ 
+-		if (bg->bg_free_inodes_count == sb->s_inodes_per_group) {
+-			bg->bg_flags |= EXT2_BG_INODE_UNINIT;
+-			bg->bg_itable_unused = sb->s_inodes_per_group;
++		if (old_free_inodes_count == sb->s_inodes_per_group) {
++			ext2fs_bg_flags_set(fs, i, old_flags | EXT2_BG_INODE_UNINIT);
++			ext2fs_bg_itable_unused_set(fs, i, sb->s_inodes_per_group);
+ 		} else {
+-			bg->bg_flags &= ~EXT2_BG_INODE_UNINIT;
+-			bg->bg_itable_unused = sb->s_inodes_per_group -
++			int unused = sb->s_inodes_per_group -
+ 				find_last_inode_ingrp(fs->inode_map,
+ 						      sb->s_inodes_per_group,i);
++
++			ext2fs_bg_flags_set(fs, i, old_flags & ~EXT2_BG_INODE_UNINIT);
++			
++			ext2fs_bg_itable_unused_set(fs, i, unused);
+ 		}
+ 
+ 		ext2fs_group_desc_csum_set(fs, i);
+-		if (old_flags != bg->bg_flags)
++		if (old_flags != ext2fs_bg_flags(fs, i))
+ 			dirty = 1;
+-		if (old_unused != bg->bg_itable_unused)
++		if (old_unused != ext2fs_bg_itable_unused(fs, i))
+ 			dirty = 1;
+-		if (old_csum != bg->bg_checksum)
++		if (old_csum != ext2fs_bg_checksum(fs, i))
+ 			dirty = 1;
+ 	}
+ 	if (dirty)
+-- 
+1.6.0.6
 
