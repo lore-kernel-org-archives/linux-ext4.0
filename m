@@ -1,93 +1,142 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [patch] ext2/3: document conditions when reliable operation is
-	possible
-Date: Thu, 3 Sep 2009 11:47:09 +0200
-Message-ID: <20090903094709.GG3793@elf.ucw.cz>
-References: <4A9468E8.607@redhat.com> <20090825225114.GE4300@elf.ucw.cz> <4A946DD1.8090906@redhat.com> <20090825232601.GF4300@elf.ucw.cz> <4A947682.2010204@redhat.com> <20090825235359.GJ4300@elf.ucw.cz> <4A947DA9.2080906@redhat.com> <20090826001645.GN4300@elf.ucw.cz> <4A948259.40007@redhat.com> <20090826010018.GA17684@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	Rob Landley <rob@landley.net>,
-	kernel list
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext3: Convert filesystem to the new truncate calling sequence
+Date: Thu,  3 Sep 2009 13:07:05 +0200
+Message-ID: <1251976025-25211-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: npiggin@suse.de
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:50320 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752505AbZICJr3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 05:47:29 -0400
-Content-Disposition: inline
-In-Reply-To: <20090826010018.GA17684@mit.edu>
+Received: from cantor.suse.de ([195.135.220.2]:54676 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754927AbZICLHJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Sep 2009 07:07:09 -0400
+Received: from relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx1.suse.de (Postfix) with ESMTP id 2DC2E94033
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2009 13:07:11 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 2009-08-25 21:00:18, Theodore Tso wrote:
-> On Tue, Aug 25, 2009 at 08:31:21PM -0400, Ric Wheeler wrote:
-> >>> You are simply incorrect, Ted did not say that ext3 does not work
-> >>> with MD raid5.
-> >>
-> >> http://lkml.org/lkml/2009/8/25/312
-> >
-> > I will let Ted clarify his text on his own, but the quoted text says "... 
-> > have potential...".
-> >
-> > Why not ask Neil if he designed MD to not work properly with ext3?
-> 
-> So let me clarify by saying the following things.   
-> 
-> 1) Filesystems are designed to expect that storage devices have
-> certain properties.  These include returning the same data that you
-> wrote, and that an error when writing a sector, or a power failure
-> when writing sector, should not be amplified to cause collateral
-> damage with previously succfessfully written sectors.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/file.c  |    2 +-
+ fs/ext3/inode.c |   68 +++++++++++++++++++++++++++++++++---------------------
+ 2 files changed, 42 insertions(+), 28 deletions(-)
 
-Yes. Unfortunately, different filesystems expect different properties
-from block devices. ext3 will work with write cache enabled/barriers
-enabled, while ext2 needs write cache disabled.
+ Nick, here is a minimalistic patch converting ext3 to the new truncate
+sequence. It has survived some basic testing so feel free to add it to
+your patch series.
 
-The requirements are also quite surprising; AFAICT ext3 can handle
-disk writing garbage to single sector during powerfail, while xfs can
-not handle that.
-
-Now, how do you expect users to know these subtle details when it is
-not documented anywhere? And why are you fighting against documenting
-these subtleties?
-
-> Secondly, what's the probability of a failure causes the RAID array to
-> become degraded, followed by a power failure, versus a power failure
-> while the RAID array is not running in degraded mode?  Hopefully you
-> are running with the RAID array in full, proper running order a much
-> larger percentage of the time than running with the RAID array in
-> degraded mode.  If not, the bug is with the system administrator!
-
-As was uncovered, MD RAID does not properly support barriers,
-so... you don't actually need drive failure.
-
-> Maybe a random OS engineer doesn't know these things --- but trust me
-> when I say a competent system administrator had better be familiar
-> with these concepts.  And someone who wants their data to be
-> reliably
-
-Trust me, 99% of sysadmins are not compentent by your definition. So
-this should be documented.
-
-> At the end of the day, filesystems are not magic.  They can't
-> compensate for crap hardware, or incompetently administered machines.
-
-ext3 greatly contributes to administrator incomentency:
-
-# The journal supports the transactions start and stop, and in case of a
-# crash, the journal can replay the transactions to quickly put the
-# partition back into a consistent state.
-
-...it does not mention that (non-default!) barrier=1 is needed to make
-this reliable, nor it mentions that there are certain requirements for
-this to work. It just says that journal will magically help you.
-
-And you wonder while people expect magic from your filesystem?
-
-								Pavel
-
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index 5b49704..299d3c1 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -129,7 +129,7 @@ const struct file_operations ext3_file_operations = {
+ };
+ 
+ const struct inode_operations ext3_file_inode_operations = {
+-	.truncate	= ext3_truncate,
++	.new_truncate	= 1,
+ 	.setattr	= ext3_setattr,
+ #ifdef CONFIG_EXT3_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index b49908a..ac165bf 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -3047,21 +3047,45 @@ int ext3_write_inode(struct inode *inode, int wait)
+ }
+ 
+ /*
+- * ext3_setattr()
++ * ext3_setsize()
+  *
+- * Called from notify_change.
++ * This is a helper for ext3_setattr(). It sets i_size, truncates
++ * page cache and truncates inode blocks if they are over i_size.
+  *
+- * We want to trap VFS attempts to truncate the file as soon as
+- * possible.  In particular, we want to make sure that when the VFS
+- * shrinks i_size, we put the inode on the orphan list and modify
+- * i_disksize immediately, so that during the subsequent flushing of
+- * dirty pages and freeing of disk blocks, we can guarantee that any
+- * commit will leave the blocks being flushed in an unused state on
++ * ext3_truncate() takes care of updating i_disksize and adding inode
++ * to the orphan list. That makes sure that we can guarantee that any
++ * commit will leave the blocks being truncated in an unused state on
+  * disk.  (On recovery, the inode will get truncated and the blocks will
+  * be freed, so we have a strong guarantee that no future commit will
+  * leave these blocks visible to the user.)
++ */
++static int ext3_setsize(struct inode *inode, loff_t newsize)
++{
++	int error = 0;
++	loff_t oldsize;
++
++	error = inode_newsize_ok(inode, newsize);
++	if (error)
++		goto out;
++	/* VFS should have checked these and return error... */
++	WARN_ON(!S_ISREG(inode->i_mode) || IS_APPEND(inode) ||
++		IS_IMMUTABLE(inode));
++
++	oldsize = inode->i_size;
++	i_size_write(inode, newsize);
++	truncate_pagecache(inode, oldsize, newsize);
++	ext3_truncate(inode);
++out:
++	return error;
++}
++
++/*
++ * ext3_setattr()
++ *
++ * Handle special things ext3 needs for changing owner of the file,
++ * changing ACLs or truncating file.
+  *
+- * Called with inode->sem down.
++ * Called from notify_change with inode->i_mutex down.
+  */
+ int ext3_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+@@ -3100,29 +3124,19 @@ int ext3_setattr(struct dentry *dentry, struct iattr *attr)
+ 		ext3_journal_stop(handle);
+ 	}
+ 
+-	if (S_ISREG(inode->i_mode) &&
+-	    attr->ia_valid & ATTR_SIZE && attr->ia_size < inode->i_size) {
+-		handle_t *handle;
+-
+-		handle = ext3_journal_start(inode, 3);
+-		if (IS_ERR(handle)) {
+-			error = PTR_ERR(handle);
+-			goto err_out;
+-		}
+-
+-		error = ext3_orphan_add(handle, inode);
+-		EXT3_I(inode)->i_disksize = attr->ia_size;
+-		rc = ext3_mark_inode_dirty(handle, inode);
+-		if (!error)
+-			error = rc;
+-		ext3_journal_stop(handle);
++	if (attr->ia_valid & ATTR_SIZE) {
++		error = ext3_setsize(inode, attr->ia_size);
++		if (error)
++			return error;
+ 	}
+ 
+-	rc = inode_setattr(inode, attr);
++	generic_setattr(inode, attr);
+ 
+-	if (!rc && (ia_valid & ATTR_MODE))
++	if (ia_valid & ATTR_MODE)
+ 		rc = ext3_acl_chmod(inode);
+ 
++	/* Mark inode dirty due to changes done by generic_setattr() */
++	mark_inode_dirty(inode);
+ err_out:
+ 	ext3_std_error(inode->i_sb, error);
+ 	if (!error)
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+1.6.0.2
+
