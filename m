@@ -1,16 +1,12 @@
-From: Krzysztof Halasa <khc@pm.waw.pl>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3: document conditions when reliable operation is possible)
-Date: Thu, 03 Sep 2009 13:12:21 +0200
-Message-ID: <m3ab1cp9ii.fsf@intrepid.localdomain>
-References: <20090828064449.GA27528@elf.ucw.cz>
-	<20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>
-	<alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm>
-	<4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru>
-	<20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>
-	<20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca>
-	<20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+ document conditions when reliable operation is possible)
+Date: Thu, 03 Sep 2009 07:18:10 -0400
+Message-ID: <4A9FA5F2.9090704@redhat.com>
+References: <20090828064449.GA27528@elf.ucw.cz>	<20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>	<alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm>	<4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru>	<20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>	<20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca>	<20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com> <m3ab1cp9ii.fsf@intrepid.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: Christoph Hellwig <hch@infradead.org>, Mark Lord <lkml@rtr.ca>,
 	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
 	Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
@@ -21,23 +17,26 @@ Cc: Christoph Hellwig <hch@infradead.org>, Mark Lord <lkml@rtr.ca>,
 	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
 	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from khc.piap.pl ([195.187.100.11]:37129 "EHLO khc.piap.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752078AbZICLMX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Sep 2009 07:12:23 -0400
-In-Reply-To: <4A9F230F.40707@redhat.com> (Ric Wheeler's message of "Wed, 02
-	Sep 2009 21:59:43 -0400")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Krzysztof Halasa <khc@pm.waw.pl>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <m3ab1cp9ii.fsf@intrepid.localdomain>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Ric Wheeler <rwheeler@redhat.com> writes:
+On 09/03/2009 07:12 AM, Krzysztof Halasa wrote:
+> Ric Wheeler<rwheeler@redhat.com>  writes:
+>
+>> Just to add some support to this, all of the external RAID arrays that
+>> I know of normally run with write cache disabled on the component
+>> drives.
+>
+> Do they use "off the shelf" SATA (or PATA) disks, and if so, which ones?
 
-> Just to add some support to this, all of the external RAID arrays that
-> I know of normally run with write cache disabled on the component
-> drives.
+Which drives various vendors ships changes with specific products. Usually, they 
+ship drives that have carefully vetted firmware, etc. but they are close to the 
+same drives you buy on the open market.
 
-Do they use "off the shelf" SATA (or PATA) disks, and if so, which ones?
--- 
-Krzysztof Halasa
+Seagate has a huge slice of the market,
+
+ric
+
