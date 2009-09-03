@@ -1,51 +1,49 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: [PATCH] Fix ext2fs_set_gdt_csum() to use access functions.
-Date: Thu, 03 Sep 2009 01:11:10 -0400
-Message-ID: <15737.1251954670@gamaville.dokosmarshall.org>
-References: <12386.1251948115@gamaville.dokosmarshall.org>
- <4A9F4B57.9080602@redhat.com>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>,
-	Justin Maggard <jmaggard10@gmail.com>,
-	Ric Wheeler <rwheeler@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] e2fsprogs: remove misleading argument from
+	ext2fs_bg_flags_clear
+Date: Wed, 02 Sep 2009 23:12:35 -0600
+Message-ID: <20090903051235.GL4197@webber.adilger.int>
+References: <4A9EE6E4.2000307@redhat.com>
+ <20090902232811.GG4197@webber.adilger.int> <20090902234243.GC30497@mit.edu>
+ <4A9F313E.8030605@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vms173017pub.verizon.net ([206.46.173.17]:44127 "EHLO
-	vms173017pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753450AbZICFLU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 01:11:20 -0400
-Received: from gamaville.dokosmarshall.org ([98.110.172.159])
- by vms173017.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 6.3-7.04 (built Sep 26 2008; 32bit))
- with ESMTPA id <0KPD005VBQEKNAI4@vms173017.mailsrvcs.net> for
- linux-ext4@vger.kernel.org; Thu, 03 Sep 2009 00:11:09 -0500 (CDT)
-In-reply-to: Message from Eric Sandeen <sandeen@redhat.com> of
- "Wed, 02 Sep 2009 23:51:35 CDT." <4A9F4B57.9080602@redhat.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:33995 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753612AbZICFM3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 01:12:29 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n835CRIB015801
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Sep 2009 22:12:27 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KPD00H00QASQM00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 02 Sep 2009 22:12:27 -0700 (PDT)
+In-reply-to: <4A9F313E.8030605@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen <sandeen@redhat.com> wrote:
+On Sep 02, 2009  22:00 -0500, Eric Sandeen wrote:
+> What about perhaps just these 3:
+>
+> ext2fs_bg_flags_zero(fs, group) /* zeros bg_flags */
+>
+> ext2fs_bg_flags_set(fs, group, flags) /* adds flags to bg_flags */
+> ext2fs_bg_flags_clear(fs, group, flags) /* clears flags in bg_flags */
+>
+> and remove the original ext2fs_bg_flags_set / ext2fs_bg_flags_clear.
 
-> > 
-> > Replace all field accesses with calls to access functions.
-> > Most importantly, get rid of the mis-declared group descriptor
-> > pointer which caused the wrong fields to be updated.
-> 
-> Not quite sure what you mean by this?  It worked ok for the "old" size ...
-> 
+Yes, this is exactly what I would expect from this kind of interface.
 
-Yes, it worked fine for the old ext2_group_desc structure, but it has no
-hope of working with the ext4_group_desc: the sizes are different, so
-doing bg++ gets it pointing somewhere within the first descriptor, not
-to the beginning of the second. That's how it ended up modifying
-reserved fields.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-Sorry about the whitespace problems.  As for the flags, I didn't worry
-too much about how to set them: I figured that once the dust settles,
-we'll follow the proper convention.
-
-Thanks for looking it over and testing too! We'll see whether Justin's
-problem disappears.
-
-Nick
