@@ -1,63 +1,67 @@
-From: Sachin Sant <sachinp@in.ibm.com>
-Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
-Date: Thu, 03 Sep 2009 13:06:10 +0530
-Message-ID: <4A9F71EA.4070406@in.ibm.com>
-References: <4A9E5496.8050909@in.ibm.com> <20090902120958.GA16415@mit.edu> <20090902210737.GV4197@webber.adilger.int> <20090902223011.GA30497@mit.edu> <4A9F3F7F.6030304@in.ibm.com>
+From: Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH] e4defrag: fallocate donor file only once
+Date: Thu, 3 Sep 2009 16:00:49 +0800
+Message-ID: <6149e97b0909030100p1930c0fra28663724e51114@mail.gmail.com>
+References: <1251905704-10078-1-git-send-email-bergwolf@gmail.com>
+	 <87f94c370909021509u7d07a6e5ia210cfd8b8db70e0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:49783 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752080AbZICHgM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 03:36:12 -0400
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp03.in.ibm.com (8.14.3/8.13.1) with ESMTP id n837aCwV021417
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 13:06:12 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n837aCO92183320
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 13:06:12 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n837aBPw008053
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 17:36:12 +1000
-In-Reply-To: <4A9F3F7F.6030304@in.ibm.com>
+Received: from mail-px0-f204.google.com ([209.85.216.204]:45216 "EHLO
+	mail-px0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750943AbZICIAr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 04:00:47 -0400
+Received: by pxi42 with SMTP id 42so1529058pxi.20
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2009 01:00:50 -0700 (PDT)
+In-Reply-To: <87f94c370909021509u7d07a6e5ia210cfd8b8db70e0@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sachin Sant wrote:
-> So i have not been able to recreate this again in my last attempt.
-> I will try couple of time to see if i can recreate this.
+On Thu, Sep 3, 2009 at 6:09 AM, Greg Freemyer<greg.freemyer@gmail.com> =
+wrote:
+> On Wed, Sep 2, 2009 at 11:35 AM, Peng Tao<bergwolf@gmail.com> wrote:
+>> If we allocate the donor file once for all, it will have a better ch=
+ance
+>> to be continuous.
+>>
+>> Signed-off-by: "Peng Tao" <bergwolf@gmail.com>
 >
-> The box under test is a 4 way POWER6. The disk partition (/dev/sda4)
-> in question is about 19GB.
+> Seems like an improvement, but I'm not seeing any special handling fo=
+r
+> sparse files. =C2=A0(Not before or after this patch.)
 >
-> fsstress was invoked with -p 50 -n 1000 -c -f dwrite=0
-I have a script (thanks to Aneesh) which executes a series of
-test(like fsstress, fsx-linux and resize) with various ext4 mount
-options (data=journal, data=ordered, data=ordered,nodelalloc
-with 1024/4096 as size). While executing the above script for the
-first time i ran into this bug.
+> Seems like there should be an outer loop that identifies contiguous
+> data block sets in a sparse file and defrags them individually as
+> opposed to trying to defrag the entire file at once.
+>
+> My impression is that with a large sparse file, e4defrag currently
+> (with or without this patch) would fallocate a full non-sparse donor
+> set of blocks the full size of the original file, then swap in just
+> the truly allocated blocks?
+Thanks for the reminder. The original code takes good care of sparse
+files in join_extents(). Please ignore my patch.
 
-After the initial run i have rerun the tests 4 time now, but
-have not been able to recreate the same issue. [Although 4th time
-i ran into another issue. Will start a separate thread for that.]
+Sorry for the noise.
 
-As for this issue not sure how to proceed further. I probably will
-continue to execute the tests few more times. Maybe will try on
-a different box.
+>
+> If so, that is not very optimum.
+>
+> Greg
+>
 
-thanks
--Sachin
 
--- 
 
----------------------------------
-Sachin Sant
-IBM Linux Technology Center
-India Systems and Technology Labs
-Bangalore, India
----------------------------------
-
+--=20
+Cheers,
+Peng Tao
+State Key Laboratory of Networking and Switching Technology
+Beijing Univ. of Posts and Telecoms.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
