@@ -1,109 +1,64 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: [PATCH] Fix ext2fs_set_gdt_csum() to use access functions.
-Date: Wed, 02 Sep 2009 23:21:55 -0400
-Message-ID: <12386.1251948115@gamaville.dokosmarshall.org>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@sun.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Justin Maggard <jmaggard10@gmail.com>,
-	Ric Wheeler <rwheeler@redhat.com>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Sachin Sant <sachinp@in.ibm.com>
+Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
+Date: Thu, 03 Sep 2009 09:31:03 +0530
+Message-ID: <4A9F3F7F.6030304@in.ibm.com>
+References: <4A9E5496.8050909@in.ibm.com> <20090902120958.GA16415@mit.edu> <20090902210737.GV4197@webber.adilger.int> <20090902223011.GA30497@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vms173005pub.verizon.net ([206.46.173.5]:54357 "EHLO
-	vms173005pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753985AbZICDWO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2009 23:22:14 -0400
-Received: from gamaville.dokosmarshall.org ([98.110.172.159])
- by vms173005.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 6.3-7.04 (built Sep 26 2008; 32bit))
- with ESMTPA id <0KPD00AYBLCHUZLA@vms173005.mailsrvcs.net> for
- linux-ext4@vger.kernel.org; Wed, 02 Sep 2009 22:21:59 -0500 (CDT)
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:49118 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750740AbZICEBG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 00:01:06 -0400
+Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [202.81.31.246])
+	by e23smtp02.au.ibm.com (8.14.3/8.13.1) with ESMTP id n833wt3j015811
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 13:58:55 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n833xQAx1319038
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 13:59:26 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n834158T012893
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 14:01:05 +1000
+In-Reply-To: <20090902223011.GA30497@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Following Andreas's suggestion, I found that ext2fs_set_gdt_csum()
-was the culprit: it used an ext2_group_desc pointer to access/set
-fields and it did that directly, not through access functions.
+Theodore Tso wrote:
+> On Wed, Sep 02, 2009 at 03:07:37PM -0600, Andreas Dilger wrote:
+>   
+>> Given the nature of the test being run (fsstress) it seems entirely
+>> possible that there is some transaction which doesn't reserve enough
+>> credits for the operation in some rare corner case?
+>>     
+>
+> That's possible, although we're running fsstress in the XFSQA tests.
+>
+> Sanchin, what are the parameters used when you ran fsstress, and how
+> big is the partition in question?  How many CPU's are in the PowerPC
+> system in question?
+Hi Ted,
 
-I'm testing the patch now, but it'll take a while, so again I'm sending
-it out for comments and to possibly try out. Even if it checks out, it
-will need some additional care once the flags situation settles down.
+So i have not been able to recreate this again in my last attempt.
+I will try couple of time to see if i can recreate this.
 
-Thanks,
-Nick
+The box under test is a 4 way POWER6. The disk partition (/dev/sda4)
+in question is about 19GB.
 
->From 6a3b83cda1bcd1e3594515ee888f175bf5cc7906 Mon Sep 17 00:00:00 2001
-From: Nick Dokos <nicholas.dokos@hp.com>
-Date: Wed, 2 Sep 2009 23:00:23 -0400
-Subject: [PATCH] Fix ext2fs_set_gdt_csum() to use access functions.
+fsstress was invoked with -p 50 -n 1000 -c -f dwrite=0
 
-Replace all field accesses with calls to access functions.
-Most importantly, get rid of the mis-declared group descriptor
-pointer which caused the wrong fields to be updated.
+Thanks
+-Sachin
 
-Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
----
- lib/ext2fs/csum.c |   30 +++++++++++++++++-------------
- 1 files changed, 17 insertions(+), 13 deletions(-)
 
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index a0f25e3..def3ddd 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -105,7 +105,6 @@ static __u32 find_last_inode_ingrp(ext2fs_inode_bitmap bitmap,
- errcode_t ext2fs_set_gdt_csum(ext2_filsys fs)
- {
- 	struct ext2_super_block *sb = fs->super;
--	struct ext2_group_desc *bg = fs->group_desc;
- 	int dirty = 0;
- 	dgrp_t i;
- 
-@@ -116,27 +115,32 @@ errcode_t ext2fs_set_gdt_csum(ext2_filsys fs)
- 					EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
- 		return 0;
- 
--	for (i = 0; i < fs->group_desc_count; i++, bg++) {
--		int old_csum = bg->bg_checksum;
--		int old_unused = bg->bg_itable_unused;
--		int old_flags = bg->bg_flags;
-+	for (i = 0; i < fs->group_desc_count; i++) {
-+		unsigned int old_csum = ext2fs_bg_checksum(fs, i);
-+                int old_unused = ext2fs_bg_itable_unused(fs, i);
-+		unsigned int old_flags = ext2fs_bg_flags(fs, i);
-+                int old_free_inodes_count = ext2fs_bg_free_inodes_count(fs, i);
-+                
- 
--		if (bg->bg_free_inodes_count == sb->s_inodes_per_group) {
--			bg->bg_flags |= EXT2_BG_INODE_UNINIT;
--			bg->bg_itable_unused = sb->s_inodes_per_group;
-+		if (old_free_inodes_count == sb->s_inodes_per_group) {
-+			ext2fs_bg_flags_set(fs, i, old_flags | EXT2_BG_INODE_UNINIT);
-+			ext2fs_bg_itable_unused_set(fs, i, sb->s_inodes_per_group);
- 		} else {
--			bg->bg_flags &= ~EXT2_BG_INODE_UNINIT;
--			bg->bg_itable_unused = sb->s_inodes_per_group -
-+			int unused = sb->s_inodes_per_group -
- 				find_last_inode_ingrp(fs->inode_map,
- 						      sb->s_inodes_per_group,i);
-+
-+			ext2fs_bg_flags_set(fs, i, old_flags & ~EXT2_BG_INODE_UNINIT);
-+			
-+			ext2fs_bg_itable_unused_set(fs, i, unused);
- 		}
- 
- 		ext2fs_group_desc_csum_set(fs, i);
--		if (old_flags != bg->bg_flags)
-+		if (old_flags != ext2fs_bg_flags(fs, i))
- 			dirty = 1;
--		if (old_unused != bg->bg_itable_unused)
-+		if (old_unused != ext2fs_bg_itable_unused(fs, i))
- 			dirty = 1;
--		if (old_csum != bg->bg_checksum)
-+		if (old_csum != ext2fs_bg_checksum(fs, i))
- 			dirty = 1;
- 	}
- 	if (dirty)
 -- 
-1.6.0.6
+
+---------------------------------
+Sachin Sant
+IBM Linux Technology Center
+India Systems and Technology Labs
+Bangalore, India
+---------------------------------
 
