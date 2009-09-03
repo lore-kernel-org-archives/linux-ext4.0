@@ -1,67 +1,63 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: ext4 writepages is making tiny bios?
-Date: Thu, 3 Sep 2009 15:52:01 +1000
-Message-ID: <20090903055201.GA7146@discord.disaster>
-References: <20090901184450.GB7885@think> <20090901205744.GE6996@mit.edu> <20090901212740.GA9930@infradead.org>
+From: Sachin Sant <sachinp@in.ibm.com>
+Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
+Date: Thu, 03 Sep 2009 13:06:10 +0530
+Message-ID: <4A9F71EA.4070406@in.ibm.com>
+References: <4A9E5496.8050909@in.ibm.com> <20090902120958.GA16415@mit.edu> <20090902210737.GV4197@webber.adilger.int> <20090902223011.GA30497@mit.edu> <4A9F3F7F.6030304@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20090901212740.GA9930@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:49783 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752080AbZICHgM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 03:36:12 -0400
+Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
+	by e28smtp03.in.ibm.com (8.14.3/8.13.1) with ESMTP id n837aCwV021417
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 13:06:12 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n837aCO92183320
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 13:06:12 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n837aBPw008053
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 17:36:12 +1000
+In-Reply-To: <4A9F3F7F.6030304@in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 01, 2009 at 05:27:40PM -0400, Christoph Hellwig wrote:
-> On Tue, Sep 01, 2009 at 04:57:44PM -0400, Theodore Tso wrote:
-> > > This graph shows the difference:
-> > > 
-> > > http://oss.oracle.com/~mason/seekwatcher/trace-buffered.png
-> > 
-> > Wow, I'm surprised how seeky XFS was in these graphs compared to ext4
-> > and btrfs.  I wonder what was going on.
-> 
-> XFS did the mistake of trusting the VM, while everyone more or less
-> overrode it.  Removing all those checks and writing out much larger
-> data fixes it with a relatively small patch:
-> 
-> 	http://verein.lst.de/~hch/xfs/xfs-writeback-scaling
+Sachin Sant wrote:
+> So i have not been able to recreate this again in my last attempt.
+> I will try couple of time to see if i can recreate this.
+>
+> The box under test is a 4 way POWER6. The disk partition (/dev/sda4)
+> in question is about 19GB.
+>
+> fsstress was invoked with -p 50 -n 1000 -c -f dwrite=0
+I have a script (thanks to Aneesh) which executes a series of
+test(like fsstress, fsx-linux and resize) with various ext4 mount
+options (data=journal, data=ordered, data=ordered,nodelalloc
+with 1024/4096 as size). While executing the above script for the
+first time i ran into this bug.
 
-Careful:
+After the initial run i have rerun the tests 4 time now, but
+have not been able to recreate the same issue. [Although 4th time
+i ran into another issue. Will start a separate thread for that.]
 
--	tloff = min(tlast, startpage->index + 64);
-+	tloff = min(tlast, startpage->index + 8192);
+As for this issue not sure how to proceed further. I probably will
+continue to execute the tests few more times. Maybe will try on
+a different box.
 
-That will cause 64k page machines to try to write back 512MB at a
-time. This will re-introduce similar to the behaviour in sles9 where
-writeback would only terminate at the end of an extent (because the
-mapping end wasn't capped like above).
+thanks
+-Sachin
 
-This has two nasty side effects:
-
-	1. horrible fsync latency when streaming writes are
-	   occuring (e.g. NFS writes) which limit throughput
-	2. a single large streaming write could delay the writeback
-	   of thousands of small files indefinitely.
-
-#1 is still an issue, but #2 might not be so bad compared to sles9
-given the way inodes are cycled during writeback now...
-
-> when that code was last benchamrked extensively (on SLES9) it
-> worked nicely to saturate extremly large machines using buffered
-> I/O, since then VM tuning basically destroyed it.
-
-It was removed because it caused all sorts of problems and buffered
-writes on sles9 were limited by lock contention in XFS, not the VM.
-On 2.6.15, pdflush and the code the above patch removes was capable
-of pushing more than 6GB/s of buffered writes to a single block
-device. VM writeback has gone steadily down hill since then...
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+
+---------------------------------
+Sachin Sant
+IBM Linux Technology Center
+India Systems and Technology Labs
+Bangalore, India
+---------------------------------
+
