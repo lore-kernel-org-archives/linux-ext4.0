@@ -1,57 +1,46 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Wed, 02 Sep 2009 21:59:43 -0400
-Message-ID: <4A9F230F.40707@redhat.com>
-References: <20090828064449.GA27528@elf.ucw.cz> <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz> <alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm> <4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru> <20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com> <20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca> <20090831132139.GA5425@infradead.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] libext2fs: use ext2fs_blocks_count() in ext2fs_open2()
+Date: Wed, 02 Sep 2009 21:41:14 -0500
+Message-ID: <4A9F2CCA.8000307@redhat.com>
+References: <20090902055953.GF4197@webber.adilger.int> <150c16850909012305y2481c54fra671b123780caa80@mail.gmail.com> <sandeen@redhat.com> <4A9EA09E.10509@redhat.com> <13135.1251925342@alphaville.usa.hp.com> <150c16850909021428v5e001691r8a5e28b5c1be9326@mail.gmail.com> <13808.1251927450@alphaville.usa.hp.com> <4A9EE6FF.4000901@redhat.com> <150c16850909021445se2ebc6ahc896dc6c5aa56f8b@mail.gmail.com> <4A9EF2AB.3090602@redhat.com> <20090902225531.GD4197@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Mark Lord <lkml@rtr.ca>, Michael Tokarev <mjt@tls.msk.ru>,
-	david@lang.hm, Pavel Machek <pavel@ucw.cz>,
-	Theodore Tso <tytso@mit.edu>, NeilBrown <neilb@suse.de>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20090831132139.GA5425@infradead.org>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Justin Maggard <jmaggard10@gmail.com>, nicholas.dokos@hp.com,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sandeen.net ([209.173.210.139]:12357 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753963AbZICClM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Sep 2009 22:41:12 -0400
+In-Reply-To: <20090902225531.GD4197@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/31/2009 09:21 AM, Christoph Hellwig wrote:
-> On Mon, Aug 31, 2009 at 09:19:58AM -0400, Mark Lord wrote:
->>> In my opinion even that is too weak.  We know how to control the cache
->>> settings on all common disks (that is scsi and ata), so we should always
->>> disable the write cache unless we know that the whole stack (filesystem,
->>> raid, volume managers) supports barriers.  And even then we should make
->>> sure the filesystems does actually use barriers everywhere that's needed
->>> which failed at for years.
->> ..
->>
->> That stack does not know that my MD device has full battery backup,
->> so it bloody well better NOT prevent me from enabling the write caches.
->
-> No one is going to prevent you from doing it.  That question is one of
-> sane defaults.  And always safe, but slower if you have advanced
-> equipment is a much better default than usafe by default on most of
-> the install base.
->
+Andreas Dilger wrote:
+> On Sep 02, 2009  17:33 -0500, Eric Sandeen wrote:
+>> Justin Maggard wrote:
+>>> On Wed, Sep 2, 2009 at 2:43 PM, Eric Sandeen<sandeen@redhat.com> wrote:
+>>>> You guys are still getting bad checksums?
+>>> Yeah, I am.
+>> Oh, sorry, all the other bugs gave me a head-fake, and I forgot the
+>> original problem of -fsck- corrupting the checksums.  :)  I had a simple
+>> mkdir giving me the corruptions.  Ok, on to that.
+> 
+> I found the source of the checksum error last night - the reserved bytes
+> in the 64-bit group descriptor are not zero after the e2fsck is run.
+> It should be pretty easy to run e2fsck under gdb and put a hardware watch
+> on those bytes to see who twiddles them.
 
-Just to add some support to this, all of the external RAID arrays that I know of 
-normally run with write cache disabled on the component drives. In addition, 
-many of them will disable their internal write cache if/when they detect that 
-they have lost their UPS.
+Thanks, I saw that email a bit late today, will take a look.
 
-I think that if we had done this kind of sane default earlier for MD levels that 
-do not handle barriers, we would not have left some people worried about our 
-software RAID.
+-Eric
 
-To be clear, if a sophisticated user wants to override this default, that should 
-be supported. It is not (in my opinion) a safe default behaviour.
-
-Ric
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
 
