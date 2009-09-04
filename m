@@ -1,55 +1,169 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: wishful thinking about atomic, multi-sector or full MD stripe
- width, writes in storage
-Date: Fri, 04 Sep 2009 17:29:20 -0400
-Message-ID: <4AA186B0.5090905@redhat.com>
-References: <20090828064449.GA27528@elf.ucw.cz>	<20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>	<alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm>	<4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru>	<20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>	<20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca>	<20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com>	<m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com>	<m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com> <m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com> <4AA184D7.1010502@rtr.ca>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC] ext4: limit block allocations for indirect-block files
+ to < 2^32
+Date: Fri, 04 Sep 2009 17:17:48 -0500
+Message-ID: <4AA1920C.9040406@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Krzysztof Halasa <khc@pm.waw.pl>,
-	Christoph Hellwig <hch@infradead.org>,
-	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
-	Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
-	NeilBrown <neilb@suse.de>, Rob Landley <rob@landley.net>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Mark Lord <lkml@rtr.ca>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <4AA184D7.1010502@rtr.ca>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43519 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934277AbZIDWRr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Sep 2009 18:17:47 -0400
+Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n84MHnio019487
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Sep 2009 18:17:49 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n84MHmgu007059
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Sep 2009 18:17:49 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/04/2009 05:21 PM, Mark Lord wrote:
-> Ric Wheeler wrote:
-> ..
->> You must disable the write cache on these commodity drives *if* the 
->> MD RAID level does not support barriers properly.
-> ..
->
-> Rather than further trying to cripple Linux on the notebook,
-> (it's bad enough already)..
+Today, the ext4 allocator will happily allocate blocks past
+2^32 for indirect-block files, which results in the block
+numbers getting truncated, and corruption ensues.
 
-People using MD on notebooks (not sure there are that many using RAID5 
-MD) could leave their write cache enabled.
+This patch limits such allocations to < 2^32, and adds
+WARN_ONs (maybe should be BUG_ONs) if we do get blocks
+larger than that.
 
->
-> How about instead, *fixing* the MD layer to properly support barriers?
-> That would be far more useful, productive, and better for end-users.
->
-> Cheers
+This should address RH Bug 519471, ext4 bitmap allocator 
+must limit blocks to < 2^32
 
-Fixing MD would be great - not sure that it would end up still faster 
-(look at md1 devices with working barriers with compared to md1 with 
-write cache disabled).
+* ext4_find_goal() is modified to choose a goal < UINT_MAX,
+  so that our starting point is in an acceptable range.
 
-In the mean time, if you are using MD to make your data more reliable, I 
-would still strongly urge you to disable the write cache when you see 
-"barriers disabled" messages spit out in /var/log/messages :-)
+* ext4_xattr_block_set() is modified such that the goal block
+  is < UINT_MAX, as above.
 
-ric
+* ext4_mb_regular_allocator() is modified so that the group
+  search does not continue into groups which are too high
+
+* ext4_mb_use_preallocated() has a check that we don't use
+  preallocated space which is too far out
+
+* ext4_alloc_blocks() and ext4_xattr_block_set() add some WARN_ONs
+
+No attempt has been made to limit inode locations to < 2^32,
+so we may wind up with blocks far from their inodes.  Doing
+this much already will lead to some odd ENOSPC issues when the
+"lower 32" gets full, and further restricting inodes could
+make that even weirder.
+
+For high inodes, choosing a goal of the original, % UINT_MAX,
+may be a bit odd, but then we're in an odd situation anyway,
+and I don't know of a better heuristic.
+
+Perhaps an ext4-specific #define would be better than UINT_MAX?
+
+The allocator being what it is, I may have missed some spots,
+so I'd welcome review.
+
+Thanks,
+-Eric
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f9c642b..cda3f8d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -551,15 +551,21 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+  *
+  *	Normally this function find the preferred place for block allocation,
+  *	returns it.
++ *	Because this is only used for bitmap files, we limit the block nr
++ *	to 32 bits.
+  */
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
+ 				   Indirect *partial)
+ {
++	ext4_fsblk_t goal;
++
+ 	/*
+ 	 * XXX need to get goal block from mballoc's data structures
+ 	 */
+ 
+-	return ext4_find_near(inode, partial);
++	goal = ext4_find_near(inode, partial);
++	goal = goal % UINT_MAX;
++	return goal;
+ }
+ 
+ /**
+@@ -640,6 +646,8 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		if (*err)
+ 			goto failed_out;
+ 
++		WARN_ON(current_block + count > UINT_MAX);
++
+ 		target -= count;
+ 		/* allocate blocks for indirect blocks */
+ 		while (index < indirect_blks && count) {
+@@ -674,6 +682,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		ar.flags = EXT4_MB_HINT_DATA;
+ 
+ 	current_block = ext4_mb_new_blocks(handle, &ar, err);
++	WARN_ON(current_block + ar.len > UINT_MAX);
+ 
+ 	if (*err && (target == blks)) {
+ 		/*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index cd25846..bb10f88 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1943,6 +1943,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	sb = ac->ac_sb;
+ 	sbi = EXT4_SB(sb);
+ 	ngroups = ext4_get_groups_count(sb);
++	/* bitmap files are limited to low blocks */
++	if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL))
++		ngroups %= (UINT_MAX / EXT4_BLOCKS_PER_GROUP(sb));
++
+ 	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
+ 
+ 	/* first, try the goal */
+@@ -3382,6 +3386,10 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ 			ac->ac_o_ex.fe_logical >= pa->pa_lstart + pa->pa_len)
+ 			continue;
+ 
++		if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL) &&
++			pa->pa_pstart + pa->pa_len > UINT_MAX)
++			continue;
++
+ 		/* found preallocated blocks, use them */
+ 		spin_lock(&pa->pa_lock);
+ 		if (pa->pa_deleted == 0 && pa->pa_free) {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 62b31c2..9ed0f12 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -810,12 +810,22 @@ inserted:
+ 			get_bh(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
++			ext4_fsblk_t goal, block;
++
++			goal = ext4_group_first_block_no(sb,
+ 						EXT4_I(inode)->i_block_group);
+-			ext4_fsblk_t block = ext4_new_meta_blocks(handle, inode,
++
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				goal = goal % UINT_MAX;
++
++			block = ext4_new_meta_blocks(handle, inode,
+ 						  goal, NULL, &error);
+ 			if (error)
+ 				goto cleanup;
++
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				WARN_ON(block > UINT_MAX);
++
+ 			ea_idebug(inode, "creating block %d", block);
+ 
+ 			new_bh = sb_getblk(sb, block);
 
