@@ -1,55 +1,45 @@
-From: Rob Landley <rob@landley.net>
-Subject: Re: [testcase] test your fs/storage stack (was Re: [patch] ext2/3: document conditions when reliable operation is possible)
-Date: Fri, 4 Sep 2009 02:44:53 -0500
-Message-ID: <200909040244.54772.rob@landley.net>
-References: <20090826001645.GN4300@elf.ucw.cz> <200909022141.48827.rob@landley.net> <4A9FCF53.10105@hp.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
+Date: Fri, 4 Sep 2009 13:32:55 +0530
+Message-ID: <20090904080254.GA19757@skywalker.linux.vnet.ibm.com>
+References: <4A9E5496.8050909@in.ibm.com> <20090902120958.GA16415@mit.edu> <20090902210737.GV4197@webber.adilger.int> <20090902223011.GA30497@mit.edu> <4A9F3F7F.6030304@in.ibm.com> <4A9F71EA.4070406@in.ibm.com> <4AA09ED6.3050007@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, Pavel Machek <pavel@ucw.cz>,
-	david@lang.hm, Theodore Tso <tytso@mit.edu>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: jim owens <jowens@hp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	linux-ext4@vger.kernel.org
+To: Sachin Sant <sachinp@in.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static-71-162-243-5.phlapa.fios.verizon.net ([71.162.243.5]:34961
-	"EHLO grelber.thyrsus.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932472AbZIDHoz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Sep 2009 03:44:55 -0400
-In-Reply-To: <4A9FCF53.10105@hp.com>
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:45560 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752856AbZIDIDO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Sep 2009 04:03:14 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp03.au.ibm.com (8.14.3/8.13.1) with ESMTP id n8480rHF031331
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Sep 2009 18:00:53 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8483FRR430120
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Sep 2009 18:03:15 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8483E9n014214
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Sep 2009 18:03:15 +1000
 Content-Disposition: inline
+In-Reply-To: <4AA09ED6.3050007@in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thursday 03 September 2009 09:14:43 jim owens wrote:
-> Rob Landley wrote:
-> > I think he understands he was clueless too, that's why he investigated
-> > the failure and wrote it up for posterity.
-> >
-> >> And Ric said do not stigmatize whole classes of A) devices, B) raid,
-> >> and C) filesystems with "Pavel says...".
-> >
-> > I don't care what "Pavel says", so you can leave the ad hominem at the
-> > door, thanks.
+On Fri, Sep 04, 2009 at 10:30:06AM +0530, Sachin Sant wrote:
+> Sachin Sant wrote:
+>> As for this issue not sure how to proceed further. I probably will
+>> continue to execute the tests few more times. Maybe will try on
+>> a different box.
+> After increasing nproc value from 50 to 150 (-p 150)
+> i was able to recreate this bug again.
 >
-> See, this is exactly the problem we have with all the proposed
-> documentation.  The reader (you) did not get what the writer (me)
-> was trying to say.  That does not say either of us was wrong in
-> what we thought was meant, simply that we did not communicate.
 
-That's why I've mostly stopped bothering with this thread.  I could respond to 
-Ric Wheeler's latest (what does write barriers have to do with whether or not 
-a multi-sector stripe is guaranteed to be atomically updated during a panic or 
-power failure?) but there's just no point.
 
-The LWN article on the topic is out, and incomplete as it is I expect it's the 
-best documentation anybody will actually _read_.
+Can you find the below info
 
-Rob
--- 
-Latency is more important than throughput. It's that simple. - Linus Torvalds
+a) blocksize with which the file system was created
+b) I guess the file system was in data=journal mode (looking at the dmesg output)
+
+-aneesh
