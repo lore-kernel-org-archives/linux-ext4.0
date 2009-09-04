@@ -1,58 +1,336 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: wishful thinking about atomic, multi-sector or full MD stripe
- width, writes in storage
-Date: Thu, 03 Sep 2009 20:39:36 -0400
-Message-ID: <4AA061C8.9080600@redhat.com>
-References: <20090828064449.GA27528@elf.ucw.cz>	<20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>	<alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm>	<4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru>	<20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>	<20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca>	<20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com>	<m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com>	<m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com>	<m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com> <m33a73oael.fsf@intrepid.localdomain>
+From: Mingming <cmm@us.ibm.com>
+Subject: [PATCH 2/2 V3] allow direct IO to fallocate and holes
+Date: Thu, 03 Sep 2009 17:44:50 -0700
+Message-ID: <1252025090.15321.17.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>, Mark Lord <lkml@rtr.ca>,
-	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
-	Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
-	NeilBrown <neilb@suse.de>, Rob Landley <rob@landley.net>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Krzysztof Halasa <khc@pm.waw.pl>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <m33a73oael.fsf@intrepid.localdomain>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:49193 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753966AbZIDAov (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2009 20:44:51 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e33.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n840gnaW030653
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 18:42:49 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n840irVH258308
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 18:44:53 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n840iqB7030369
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Sep 2009 18:44:53 -0600
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/03/2009 07:50 PM, Krzysztof Halasa wrote:
-> Ric Wheeler<rwheeler@redhat.com>  writes:
->
->    
->> The whole thread above is about software MD using commodity drives
->> (S-ATA or SAS) without battery backed write cache.
->>      
-> Yes. However, you mentioned external RAID arrays disable disk caches.
-> That's why I asked if they are using SATA or SCSI/etc. disks, and if
-> they have battery-backed cache.
->
->    
+ext4: Use end_io call back to avoid direct I/O fallback to buffered I/O
 
-Sorry for the confusion - they disable the write caches on the component 
-drives normally, but have their own write cache which is not disabled in 
-most cases.
+From: Mingming <cmm@us.ibm.com>
 
->> Also, when you enable the write cache (MD or not) you are buffering
->> multiple MB's of data that can go away on power loss. Far greater
->> (10x) the exposure that the partial RAID rewrite case worries about.
->>      
-> The cache is flushed with working barriers. I guess it should be
-> superior to disabled WB cache, in both performance and expected disk
-> lifetime.
->    
+Currently the DIO VFS code passes create = 0 when writing to the
+middle of file.  It does this to avoid block allocation for holes, so
+as not to expose stale data out when there is a parallel buffered read
+(which does not hold the i_mutex lock).  Direct I/O writes into holes
+falls back to buffered IO for this reason.
 
-True - barriers (especially on big, slow s-ata drives) usually give you 
-an overall win. SAS drives it seems to make less of an impact, but then 
-you always need to benchmark your workload on anything to get the only 
-numbers that really matter :-)
+Since preallocated extents are treated as holes when doing a
+get_block() look up (buffer is not mapped), direct IO over fallocate
+also falls back to buffered IO.  Thus ext4 actually silently falls
+back to buffered IO in above two cases, which is undesirable.
 
-ric
+To fix this, this patch creates unitialized extents when a direct I/O
+write into holes in sparse files, and registering an end_io callback which
+converts the uninitialized extent to an initialized extent after the
+I/O is completed.
+
+Singed-Off-By: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h  |   14 +++
+ fs/ext4/inode.c |  199 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/super.c |   11 +++
+ 3 files changed, 223 insertions(+), 1 deletion(-)
+
+Index: linux-2.6.31-rc4/fs/ext4/ext4.h
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/ext4.h
++++ linux-2.6.31-rc4/fs/ext4/ext4.h
+@@ -978,6 +978,9 @@ struct ext4_sb_info {
+ 
+ 	unsigned int s_log_groups_per_flex;
+ 	struct flex_groups *s_flex_groups;
++
++	/* workqueue for dio unwritten */
++	struct workqueue_struct *dio_unwritten_wq;
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+Index: linux-2.6.31-rc4/fs/ext4/super.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/super.c
++++ linux-2.6.31-rc4/fs/ext4/super.c
+@@ -578,6 +578,9 @@ static void ext4_put_super(struct super_
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	int i, err;
+ 
++	flush_workqueue(sbi->dio_unwritten_wq);
++	destroy_workqueue(sbi->dio_unwritten_wq);
++
+ 	lock_super(sb);
+ 	lock_kernel();
+ 	if (sb->s_dirt)
+@@ -2781,6 +2784,12 @@ no_journal:
+ 			clear_opt(sbi->s_mount_opt, NOBH);
+ 		}
+ 	}
++	EXT4_SB(sb)->dio_unwritten_wq = create_workqueue("ext4-dio-unwritten");
++	if (!EXT4_SB(sb)->dio_unwritten_wq) {
++		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
++		goto failed_mount_wq;
++	}
++
+ 	/*
+ 	 * The jbd2_journal_load will have done any necessary log recovery,
+ 	 * so we can safely mount the rest of the filesystem now.
+@@ -2893,6 +2902,8 @@ cantfind_ext4:
+ 
+ failed_mount4:
+ 	ext4_msg(sb, KERN_ERR, "mount failed");
++	destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
++failed_mount_wq:
+ 	ext4_release_system_zone(sb);
+ 	if (sbi->s_journal) {
+ 		jbd2_journal_destroy(sbi->s_journal);
+Index: linux-2.6.31-rc4/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/inode.c
++++ linux-2.6.31-rc4/fs/ext4/inode.c
+@@ -37,6 +37,7 @@
+ #include <linux/namei.h>
+ #include <linux/uio.h>
+ #include <linux/bio.h>
++#include <linux/workqueue.h>
+ 
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+@@ -3282,6 +3283,8 @@ static int ext4_releasepage(struct page 
+ }
+ 
+ /*
++ * O_DIRECT for ext3 (or indirect map) based files
++ *
+  * If the O_DIRECT write will extend the file then add this inode to the
+  * orphan list.  So recovery will truncate it back to the original size
+  * if the machine crashes during the write.
+@@ -3290,7 +3293,7 @@ static int ext4_releasepage(struct page 
+  * crashes then stale disk data _may_ be exposed inside the file. But current
+  * VFS code falls back into buffered path in that case so we are safe.
+  */
+-static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
++static ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 			      const struct iovec *iov, loff_t offset,
+ 			      unsigned long nr_segs)
+ {
+@@ -3364,6 +3367,198 @@ out:
+ 	return ret;
+ }
+ 
++/* Maximum number of blocks we map for direct IO at once. */
++
++static int ext4_get_block_dio_write(struct inode *inode, sector_t iblock,
++		   struct buffer_head *bh_result, int create)
++{
++	handle_t *handle = NULL;
++	int ret = 0;
++	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
++	int dio_credits;
++
++	/*
++	 * DIO VFS code passes create = 0 flag for write to
++	 * the middle of file. It does this to avoid block
++	 * allocation for holes, to prevent expose stale data
++	 * out when there is parallel buffered read (which does
++	 * not hold the i_mutex lock) while direct IO write has
++	 * not completed. DIO request on holes finally falls back
++	 * to buffered IO for this reason.
++	 *
++	 * For ext4 extent based file, since we support fallocate,
++	 * new allocated extent as uninitialized, for holes, we
++	 * could fallocate blocks for holes, thus parallel
++	 * buffered IO read will zero out the page when read on
++	 * a hole while parallel DIO write to the hole has not completed.
++	 *
++	 * when we come here, we know it's a direct IO write to
++	 * to the middle of file (<i_size)
++	 * so it's safe to override the create flag from VFS.
++	 */
++	create = EXT4_GET_BLOCKS_DIO_CREATE_EXT;
++
++	if (max_blocks > DIO_MAX_BLOCKS)
++		max_blocks = DIO_MAX_BLOCKS;
++	dio_credits = ext4_chunk_trans_blocks(inode, max_blocks);
++	handle = ext4_journal_start(inode, dio_credits);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out;
++	}
++	ret = ext4_get_blocks(handle, inode, iblock, max_blocks, bh_result,
++			      create);
++	if (ret > 0) {
++		bh_result->b_size = (ret << inode->i_blkbits);
++		ret = 0;
++	}
++	ext4_journal_stop(handle);
++out:
++	return ret;
++}
++
++#define		DIO_AIO		0x1
++
++static void ext4_free_io_end(ext4_io_end_t *io)
++{
++	kfree(io);
++}
++
++/*
++ * IO write completion for unwritten extents.
++ *
++ * check a range of space and convert unwritten extents to written.
++ */
++static void ext4_end_dio_unwritten(struct work_struct *work)
++{
++	ext4_io_end_t *io = container_of(work, ext4_io_end_t, work);
++	struct inode *inode = io->inode;
++	loff_t offset = io->offset;
++	size_t size = io->size;
++	int ret = 0;
++	int aio = io->flag & DIO_AIO;
++
++	if (aio)
++		mutex_lock(&inode->i_mutex);
++	if (offset + size <= i_size_read(inode))
++		ret = ext4_convert_unwritten_extents(inode, offset, size);
++
++	if (ret < 0)
++		printk(KERN_EMERG "%s: failed to convert unwritten"
++			"extents to written extents, error is %d\n",
++                       __func__, ret);
++
++	ext4_free_io_end(io);
++	if (aio)
++		mutex_unlock(&inode->i_mutex);
++}
++
++static ext4_io_end_t *ext4_init_io_end (struct inode *inode, unsigned int flag)
++{
++	ext4_io_end_t *io = NULL;
++
++	io = kmalloc(sizeof(*io), GFP_NOFS);
++
++	if (io) {
++		io->inode = inode;
++		io->flag = flag;
++		io->offset = 0;
++		io->size = 0;
++		io->error = 0;
++		INIT_WORK(&io->work, ext4_end_dio_unwritten);
++	}
++
++	return io;
++}
++
++static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
++			    ssize_t size, void *private)
++{
++        ext4_io_end_t *io_end = iocb->private;
++	struct workqueue_struct *wq;
++
++	/* if not hole or unwritten extents, just simple return */
++	if (!io_end || !size || !iocb->private)
++		return;
++	io_end->offset = offset;
++	io_end->size = size;
++	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
++
++	/* We need to convert unwritten extents to written */
++	queue_work(wq, &io_end->work);
++
++        if (is_sync_kiocb(iocb))
++		flush_workqueue(wq);
++
++	iocb->private = NULL;
++}
++/*
++ * For ext4 extent files, ext4 will do direct-io write to holes,
++ * preallocated extents, and those write extend the file, no need to
++ * fall back to buffered IO.
++ *
++ * For holes, we fallocate those blocks, mark them as unintialized
++ * If those blocks were preallocated, we mark sure they are splited, but
++ * still keep the range to write as unintialized.
++ *
++ * When end_io call back function called at the last IO complete time,
++ * those extents will be converted to written extents.
++ *
++ * If the O_DIRECT write will extend the file then add this inode to the
++ * orphan list.  So recovery will truncate it back to the original size
++ * if the machine crashes during the write.
++ *
++ */
++static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
++			      const struct iovec *iov, loff_t offset,
++			      unsigned long nr_segs)
++{
++	struct file *file = iocb->ki_filp;
++	struct inode *inode = file->f_mapping->host;
++	ssize_t ret;
++	size_t count = iov_length(iov, nr_segs);
++
++	loff_t final_size = offset + count;
++	if (rw == WRITE && final_size <= inode->i_size) {
++		/*
++ 		 * For DIO we fallocate blocks for holes, we fallocate blocks
++ 		 * The fallocated extent for hole is marked as uninitialized
++ 		 * to prevent paralel buffered read to expose the stale data
++ 		 * before DIO complete the data IO.
++ 		 * as for previously fallocated extents, ext4 get_block
++ 		 * will just simply mark the buffer mapped but still
++ 		 * keep the extents uninitialized.
++ 		 *
++ 		 * At the end of IO, the ext4 end_io callback function
++ 		 * will convert those unwritten extents to written,
++ 		 *
++ 		 */
++		iocb->private = ext4_init_io_end(inode, !is_sync_kiocb(iocb));
++		if (!iocb->private)
++			return -ENOMEM;
++		ret = blockdev_direct_IO(rw, iocb, inode,
++					 inode->i_sb->s_bdev, iov,
++					 offset, nr_segs,
++					 ext4_get_block_dio_write,
++					 ext4_end_io_dio);
++		return ret;
++	}
++	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
++}
++
++static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
++			      const struct iovec *iov, loff_t offset,
++			      unsigned long nr_segs)
++{
++	struct file *file = iocb->ki_filp;
++	struct inode *inode = file->f_mapping->host;
++
++	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
++		return ext4_ext_direct_IO(rw, iocb, iov, offset, nr_segs);
++
++	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
++}
++
+ /*
+  * Pages can be marked dirty completely asynchronously from ext4's journalling
+  * activity.  By filemap_sync_pte(), try_to_unmap_one(), etc.  We cannot do
+
 
