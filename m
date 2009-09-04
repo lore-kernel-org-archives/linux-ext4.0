@@ -1,224 +1,39 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH] e4defrag: fallocate donor file only once
-Date: Fri, 4 Sep 2009 15:10:45 -0400
-Message-ID: <87f94c370909041210l56c97b9ekf7d98aae6cd10827@mail.gmail.com>
-References: <1251905704-10078-1-git-send-email-bergwolf@gmail.com>
-	 <87f94c370909021509u7d07a6e5ia210cfd8b8db70e0@mail.gmail.com>
-	 <6149e97b0909030100p1930c0fra28663724e51114@mail.gmail.com>
-	 <87f94c370909030230w6ab49265yf6e689cbae1d458c@mail.gmail.com>
-	 <6149e97b0909032008m26e554c8x92750455e26a52a0@mail.gmail.com>
-	 <87f94c370909040536v391bd546ye9eb1038f4a32cba@mail.gmail.com>
-	 <4AA146B0.6070701@gmail.com>
+From: Mark Lord <lkml@rtr.ca>
+Subject: Re: wishful thinking about atomic, multi-sector or full MD stripe
+ width, writes in storage
+Date: Fri, 04 Sep 2009 17:21:27 -0400
+Message-ID: <4AA184D7.1010502@rtr.ca>
+References: <20090828064449.GA27528@elf.ucw.cz>	<20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>	<alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm>	<4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru>	<20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>	<20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca>	<20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com>	<m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com>	<m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com> <m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>
-To: Peng Tao <bergwolf@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.221.181]:40004 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753797AbZIDTKo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Sep 2009 15:10:44 -0400
-Received: by qyk11 with SMTP id 11so1071166qyk.1
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Sep 2009 12:10:45 -0700 (PDT)
-In-Reply-To: <4AA146B0.6070701@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Krzysztof Halasa <khc@pm.waw.pl>,
+	Christoph Hellwig <hch@infradead.org>,
+	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
+	Pavel Machek <pavel@ucw.cz>, Theodore Tso <tytso@mit.edu>,
+	NeilBrown <neilb@suse.de>, Rob Landley <rob@landley.net>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4A9FCF6B.1080704@redhat.com>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 4, 2009 at 12:56 PM, Peng Tao<bergwolf@gmail.com> wrote:
-> Greg Freemyer wrote:
->> On Thu, Sep 3, 2009 at 11:08 PM, Peng Tao<bergwolf@gmail.com> wrote:
->>> On Thu, Sep 3, 2009 at 5:30 PM, Greg Freemyer<greg.freemyer@gmail.c=
-om> wrote:
->>>> On Thu, Sep 3, 2009 at 4:00 AM, Peng Tao<bergwolf@gmail.com> wrote=
-:
->>>>> On Thu, Sep 3, 2009 at 6:09 AM, Greg Freemyer<greg.freemyer@gmail=
-=2Ecom> wrote:
->>>>>> On Wed, Sep 2, 2009 at 11:35 AM, Peng Tao<bergwolf@gmail.com> wr=
-ote:
->>>>>>> If we allocate the donor file once for all, it will have a bett=
-er chance
->>>>>>> to be continuous.
->>>>>>>
->>>>>>> Signed-off-by: "Peng Tao" <bergwolf@gmail.com>
->>>>>> Seems like an improvement, but I'm not seeing any special handli=
-ng for
->>>>>> sparse files. =A0(Not before or after this patch.)
->>>>>>
->>>>>> Seems like there should be an outer loop that identifies contigu=
-ous
->>>>>> data block sets in a sparse file and defrags them individually a=
-s
->>>>>> opposed to trying to defrag the entire file at once.
->>>>>>
->>>>>> My impression is that with a large sparse file, e4defrag current=
-ly
->>>>>> (with or without this patch) would fallocate a full non-sparse d=
-onor
->>>>>> set of blocks the full size of the original file, then swap in j=
-ust
->>>>>> the truly allocated blocks?
->>>>> Thanks for the reminder. The original code takes good care of spa=
-rse
->>>>> files in join_extents(). Please ignore my patch.
->>>>>
->>>>> Sorry for the noise.
->>>> RFC from a more ext4 knowledgeable person than me:
->>>>
->>>> The code in e4defrag still looks way to complex. =A0I don't see wh=
-y it
->>>> needs to know so much about extents and groups.
->>>>
->>>> I just looked at util/copy_sparse.c
->>>>
->>>> It simply loops through all the blocks in the source file and call=
-s
->>>> ioctl(fd, FIBMAP, &b) to see if they are allocated vs. sparse,
->>>>
->>>> If allocated it copies the block from src to dest. =A0Pretty strai=
-ght
->>>> forward and has none of the complexity of e4defrag.
->>>>
->>>> Seems to me e4defrag should have the actual defrag_file() rewritte=
-n to
->>>> be something like:
->>>>
->>>> defrag_file() =A0{
->>>> =A0 =A0loop through the blocks looking for the contiguous set of d=
-ata blocks.
->>>> =A0 =A0 =A0 =A0 =A0defrag_contiguous_data(start_block, num_blocks)
->>>> }
->>>>
->>>> defrag_contiguous_data(start_block, num_blocks) {
->>>> =A0 =A0// allocate one full extent at a time and donate the blocks=
- to orig file
->>>> =A0 =A0for(start=3Dstart_block; start < start_block, num_blocks; s=
-tart+=3Dchunk) {
->>>> =A0 =A0 =A0 =A0 =A0fallocate(chunk);
->>>> =A0 =A0 =A0 =A0 =A0move_ext(orig, donor, start, 0, chunk);
->>>> =A0 =A0 =A0}
->>>> }
->>>>
->>>> And then set chunk to be the max size of one extent. =A0Maybe the
->>>> "chunk" should be bigger than one extent?
->>>>
->>>> Also, I did not put any logic in above to show testing to see if t=
-he
->>>> new file is less fragmented than the original. =A0That will add to=
- the
->>>> complexity, but hopefully the actual defrag logic can be as relati=
-vely
->>>> simple as the above instead of what it is now.
->>>>
->>>> Anyway, t would be a major change to e4defrag, but it seems that i=
-t
->>>> would give ext4 a much better chance to reorganize itself by calli=
-ng
->>>> fallocate on full extent size chunks at minimum, instead of what t=
-he
->>>> code currently does.
->>> Hi, Greg,
->>>
->>> The current e4defrag is doing most of work exactly same as your RFC=
-,
->>> and in a nicer manner. If you look into the code path, you'll see t=
-hat
->>> its logic is very much like the RFC except that it first fallocates=
- a
->>> donor file to see if a defragmentation is really necessary so it wo=
-n't
->>> have to fall back during defragmentation, which IMO is a good desig=
-n
->>> point.
->>>
->>> Please correct me if I understand anything wrong.
->>
->> I've looked a lot more at the current code. =A0I'm pretty sure this =
-is right:
->>
->> First, assume defrag of a non-sparse 1TB file.
->>
->> The current code will walk the extent tree and create a single exten=
-t
->> group that covers the full 1TB, then call fallocate to try to get 1T=
-B
->> of donor blocks. =A0Then compare the number of extents in the origin=
-al
->> and the donor. =A0If the donor has less it will swap in the donor
->> blocks.
->>
->> It seems much smarter work on extent size chunks (or whatever best
->> fits the kernels block structure.
->>
->> ie.
->>
->> for (start_block=3D0; start_block < max_blocks; start_block+=3D
->> max_blocks_in_extent)
->>
->> =A0 =A0 =A0 current_extents =3D num_extents_in_block_range(start_blo=
-ck,
->> start+max_blocks_in_extent);
->>
->> =A0 =A0 =A0 if (current_extents =3D=3D 1) continue;
->>
->> =A0 =A0 =A0 // allocate a sparse file with perfectly aligned donor b=
-locks as
->> currently required by kernel
->> =A0 =A0 =A0 fallocate(start_block * block_size, max_blocks_in_extent=
- * block_size);
->>
->> =A0 =A0 =A0 donor_extents =3D num_extents_in_block_range(start_block=
-,
->> start+max_blocks_in_extent);
->>
->> =A0 =A0 =A0if (donor_extents < current_extents)
->> =A0 =A0 =A0 =A0 =A0 =A0 donate_donor_blocks_to_orig(start_block,
->> start+max_blocks_in_extent);
->>
->> )
->>
->> And in the case of a sparse file, it seems much easier to understand
->> if the above is called on each logically contiguous set or data
->> blocks. =A0Seriously, why bother the kernel by making it able to acc=
-ept
->> a block range that has holes in it.
-> Agreed. If the kernel doesn't have to deal with holes, the EXT4_IOC_M=
-OVE_EXT
-> ioctl can be much simplified.
->>
->> It seems reasonable for the kernel to check the block range being
->> passed in and if the orig files has a hole in the middle of it, then
->> return an error.
->>
->> Back to e4defrag, even if the code is not greatly simplified, the
->> above seems like it would use far less resources than the current
->> code. =A0 Think about a large file that has the first 90% of the blo=
-cks
->> defrag'ed. =A0The above would cause just the tail to be defrag'ed, n=
-ot
->> the entire file.
-> Yes, it makes sense. Are you planning some patch for above changes?
+Ric Wheeler wrote:
+..
+> You must disable the write cache on these commodity drives *if* the MD 
+> RAID level does not support barriers properly.
+..
 
-I'm "planning", but I doubt that I get to it for a few weeks.  If you
-or someone else has time, that would be great.
+Rather than further trying to cripple Linux on the notebook,
+(it's bad enough already)..
 
-Greg
---=20
-Greg Freemyer
-Head of EDD Tape Extraction and Processing team
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-Preservation and Forensic processing of Exchange Repositories White Pap=
-er -
-<http://www.norcrossgroup.com/forms/whitepapers/tng_whitepaper_fpe.html=
->
+How about instead, *fixing* the MD layer to properly support barriers?
+That would be far more useful, productive, and better for end-users.
 
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers
