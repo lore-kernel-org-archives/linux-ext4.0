@@ -1,45 +1,39 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: ext4 writepages is making tiny bios?
-Date: Fri, 4 Sep 2009 09:20:13 +0200
-Message-ID: <20090904072013.GR18599@kernel.dk>
-References: <20090901184450.GB7885@think> <20090901205744.GE6996@mit.edu> <20090901212740.GA9930@infradead.org> <20090903055201.GA7146@discord.disaster> <20090903164209.GA28384@infradead.org> <20090904001545.GA30759@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20090904001545.GA30759@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH] resize2fs: calculate minimal fs size only once
+Date: Fri,  4 Sep 2009 15:22:39 +0800
+Message-ID: <1252048959-7936-1-git-send-email-bergwolf@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, "Peng Tao" <bergwolf@gmail.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f190.google.com ([209.85.222.190]:61035 "EHLO
+	mail-pz0-f190.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756606AbZIDHXI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Sep 2009 03:23:08 -0400
+Received: by pzk28 with SMTP id 28so583237pzk.27
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Sep 2009 00:23:09 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 03 2009, Theodore Tso wrote:
-> On Thu, Sep 03, 2009 at 12:42:09PM -0400, Christoph Hellwig wrote:
-> > > Careful:
-> > > 
-> > > -	tloff = min(tlast, startpage->index + 64);
-> > > +	tloff = min(tlast, startpage->index + 8192);
-> > > 
-> > > That will cause 64k page machines to try to write back 512MB at a
-> > > time. This will re-introduce similar to the behaviour in sles9 where
-> > > writeback would only terminate at the end of an extent (because the
-> > > mapping end wasn't capped like above).
-> > 
-> > Pretty good point, any applies to all the different things we discussed
-> > recently.  Ted, should be maybe introduce a max_writeback_mb instead of
-> > the max_writeback_pages in the VM, too?
-> 
-> Good point.
-> 
-> Jens, maybe we should replace my patch with this one, which makes the
-> tunable in terms of megabytes instead of pages?
+When running resize2fs -M, no need to recalculate the minimal fs size.
 
-That is probably a better metric than 'pages', lets update it.
+Signed-off-by: "Peng Tao" <bergwolf@gmail.com>
+---
+ resize/main.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+diff --git a/resize/main.c b/resize/main.c
+index c6cbb5e..220c192 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -375,7 +375,7 @@ int main (int argc, char ** argv)
+ 		exit(1);
+ 	}
+ 	if (force_min_size)
+-		new_size = calculate_minimum_resize_size(fs);
++		new_size = min_size;
+ 	else if (new_size_str) {
+ 		new_size = parse_num_blocks(new_size_str,
+ 					    fs->super->s_log_block_size);
 -- 
-Jens Axboe
+1.6.4.2.446.gbd046
 
