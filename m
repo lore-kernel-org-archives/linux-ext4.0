@@ -1,132 +1,174 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: [PATCH] Make non-journal fsync work properly.
-Date: Fri, 04 Sep 2009 19:55:00 -0700
-Message-ID: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC V2] ext4: limit block allocations for indirect-block
+ files to < 2^32
+Date: Fri, 04 Sep 2009 22:21:51 -0500
+Message-ID: <4AA1D94F.8060703@redhat.com>
+References: <4AA1920C.9040406@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:29649 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757082AbZIECzF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Sep 2009 22:55:05 -0400
-Received: from spaceape9.eur.corp.google.com (spaceape9.eur.corp.google.com [172.28.16.143])
-	by smtp-out.google.com with ESMTP id n852t6Bf017918
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Sep 2009 19:55:06 -0700
+Received: from sandeen.net ([209.173.210.139]:14039 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934608AbZIEDVu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Sep 2009 23:21:50 -0400
+Received: from Liberator.local (unknown [10.0.0.176])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.sandeen.net (Postfix) with ESMTP id D24CBA9C9A1
+	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2009 22:21:51 -0500 (CDT)
+In-Reply-To: <4AA1920C.9040406@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
-mode:  If we're not using a journal, ext4_write_inode() now calls
-ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
-with a new "do_sync" parameter.  If that parameter is nonzero
-ext4_do_update_inode() calls sync_dirty_buffer() instead of
-ext4_handle_dirty_metadata().
+Today, the ext4 allocator will happily allocate blocks past
+232 for indirect-block files, which results in the block
+numbers getting truncated, and corruption ensues.
 
-This problem was found in power-fail testing, checking the amount of
-loss of files and blocks after a power failure when using fsync() and
-when not using fsync().  It turned out that using fsync() was actually
-worse than not doing so, possibly because it increased the likelihood
-that the inodes would remain unflushed and would therefore be lost at
-the power failure.
+This patch limits such allocations to < 232, and adds
+WARN_ONs (maybe should be BUG_ONs) if we do get blocks
+larger than that.
 
-Signed-off-by: Frank Mayhar <fmayhar@google.com>
+This should address RH Bug 519471, ext4 bitmap allocator 
+must limit blocks to < 232
 
- fs/ext4/inode.c |   52 ++++++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 38 insertions(+), 14 deletions(-)
+* ext4_find_goal() is modified to choose a goal < UINT_MAX,
+  so that our starting point is in an acceptable range.
+
+* ext4_xattr_block_set() is modified such that the goal block
+  is < UINT_MAX, as above.
+
+* ext4_mb_regular_allocator() is modified so that the group
+  search does not continue into groups which are too high
+
+* ext4_mb_use_preallocated() has a check that we don't use
+  preallocated space which is too far out
+
+* ext4_alloc_blocks() and ext4_xattr_block_set() add some WARN_ONs
+
+No attempt has been made to limit inode locations to < 232,
+so we may wind up with blocks far from their inodes.  Doing
+this much already will lead to some odd ENOSPC issues when the
+"lower 32" gets full, and further restricting inodes could
+make that even weirder.
+
+For high inodes, choosing a goal of the original, % UINT_MAX,
+may be a bit odd, but then we're in an odd situation anyway,
+and I don't know of a better heuristic.
+
+Perhaps an ext4-specific #define would be better than UINT_MAX?
+
+The allocator being what it is, I may have missed some spots,
+so I'd welcome review.
+
+Thanks,
+-Eric
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+V2: got modulo-happy in ext4_mb_regular_allocator, just limit
+ngroups to no more than UINT_MAX.
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d87f6a0..24dbfb6 100644
+index f9c642b..cda3f8d 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4741,7 +4741,8 @@ static int ext4_inode_blocks_set(handle_t *handle,
+@@ -551,15 +551,21 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+  *
+  *	Normally this function find the preferred place for block allocation,
+  *	returns it.
++ *	Because this is only used for non-extent files, we limit the block nr
++ *	to 32 bits.
   */
- static int ext4_do_update_inode(handle_t *handle,
- 				struct inode *inode,
--				struct ext4_iloc *iloc)
-+				struct ext4_iloc *iloc,
-+				int do_sync)
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
+ 				   Indirect *partial)
  {
- 	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-@@ -4843,10 +4844,20 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
- 	}
- 
--	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--	rc = ext4_handle_dirty_metadata(handle, inode, bh);
--	if (!err)
--		err = rc;
-+	/*
-+	 * This is only true if we're not using a journal and we were called
-+	 * from ext4_write_inode() to sync the inode.  We can therefore just
-+	 * use sync_dirty_buffer() directly to do the dirty work.
-+	 */
-+	if (do_sync) {
-+		BUFFER_TRACE(bh, "call sync_dirty_buffer");
-+		sync_dirty_buffer(bh);
-+	} else {
-+		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-+		rc = ext4_handle_dirty_metadata(handle, inode, bh);
-+		if (!err)
-+			err = rc;
-+	}
- 	ei->i_state &= ~EXT4_STATE_NEW;
- 
- out_brelse:
-@@ -4892,19 +4903,32 @@ out_brelse:
-  */
- int ext4_write_inode(struct inode *inode, int wait)
- {
-+	int err;
++	ext4_fsblk_t goal;
 +
- 	if (current->flags & PF_MEMALLOC)
- 		return 0;
+ 	/*
+ 	 * XXX need to get goal block from mballoc's data structures
+ 	 */
  
--	if (ext4_journal_current_handle()) {
--		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
--		dump_stack();
--		return -EIO;
--	}
-+	if (EXT4_SB(inode->i_sb)->s_journal) {
-+		if (ext4_journal_current_handle()) {
-+			jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
-+			dump_stack();
-+			return -EIO;
-+		}
- 
--	if (!wait)
--		return 0;
-+		if (!wait)
-+			return 0;
-+
-+		err = ext4_force_commit(inode->i_sb);
-+	} else {
-+		struct ext4_iloc iloc;
- 
--	return ext4_force_commit(inode->i_sb);
-+		err = ext4_get_inode_loc(inode, &iloc);
-+		if (err)
-+			return err;
-+		err = ext4_do_update_inode(EXT4_NOJOURNAL_HANDLE,
-+					   inode, &iloc, wait);
-+	}
-+	return err;
+-	return ext4_find_near(inode, partial);
++	goal = ext4_find_near(inode, partial);
++	goal = goal % UINT_MAX;
++	return goal;
  }
  
- /*
-@@ -5198,7 +5222,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
- 	get_bh(iloc->bh);
+ /**
+@@ -640,6 +646,8 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		if (*err)
+ 			goto failed_out;
  
- 	/* ext4_do_update_inode() does jbd2_journal_dirty_metadata */
--	err = ext4_do_update_inode(handle, inode, iloc);
-+	err = ext4_do_update_inode(handle, inode, iloc, 0);
- 	put_bh(iloc->bh);
- 	return err;
- }
-
--- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
++		WARN_ON(current_block + count > UINT_MAX);
++
+ 		target -= count;
+ 		/* allocate blocks for indirect blocks */
+ 		while (index < indirect_blks && count) {
+@@ -674,6 +682,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		ar.flags = EXT4_MB_HINT_DATA;
+ 
+ 	current_block = ext4_mb_new_blocks(handle, &ar, err);
++	WARN_ON(current_block + ar.len > UINT_MAX);
+ 
+ 	if (*err && (target == blks)) {
+ 		/*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index cd25846..10384c3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1943,6 +1943,11 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	sb = ac->ac_sb;
+ 	sbi = EXT4_SB(sb);
+ 	ngroups = ext4_get_groups_count(sb);
++	/* non-extent files are limited to low blocks/groups */
++	if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL))
++		ngroups = min_t(unsigned long, ngroups,
++				(UINT_MAX / EXT4_BLOCKS_PER_GROUP(sb)));
++
+ 	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
+ 
+ 	/* first, try the goal */
+@@ -3382,6 +3387,10 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ 			ac->ac_o_ex.fe_logical >= pa->pa_lstart + pa->pa_len)
+ 			continue;
+ 
++		if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL) &&
++			pa->pa_pstart + pa->pa_len > UINT_MAX)
++			continue;
++
+ 		/* found preallocated blocks, use them */
+ 		spin_lock(&pa->pa_lock);
+ 		if (pa->pa_deleted == 0 && pa->pa_free) {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 62b31c2..9ed0f12 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -810,12 +810,22 @@ inserted:
+ 			get_bh(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
++			ext4_fsblk_t goal, block;
++
++			goal = ext4_group_first_block_no(sb,
+ 						EXT4_I(inode)->i_block_group);
+-			ext4_fsblk_t block = ext4_new_meta_blocks(handle, inode,
++
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				goal = goal % UINT_MAX;
++
++			block = ext4_new_meta_blocks(handle, inode,
+ 						  goal, NULL, &error);
+ 			if (error)
+ 				goto cleanup;
++
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				WARN_ON(block > UINT_MAX);
++
+ 			ea_idebug(inode, "creating block %d", block);
+ 
+ 			new_bh = sb_getblk(sb, block);
 
