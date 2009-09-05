@@ -1,42 +1,83 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [testcase] test your fs/storage stack (was Re: [patch] ext2/3:
-	document conditions when reliable operation is possible)
-Date: Sat, 5 Sep 2009 23:27:32 +0200
-Message-ID: <20090905212732.GB27650@elf.ucw.cz>
-References: <20090826001645.GN4300@elf.ucw.cz> <200909022141.48827.rob@landley.net> <4A9FCF53.10105@hp.com> <200909040244.54772.rob@landley.net> <4AA0FECE.3010200@redhat.com> <20090905102810.GA1341@ucw.cz> <20090905075424.4e103612@bike.lwn.net>
+From: "NeilBrown" <neilb@suse.de>
+Subject: Re: wishful thinking about atomic,
+      multi-sector or full MD stripe width, writes in storage
+Date: Sun, 6 Sep 2009 07:43:41 +1000 (EST)
+Message-ID: <bfda833fe08ee0e8e1d6583cab1d00fc.squirrel@neil.brown.name>
+References: <20090828064449.GA27528@elf.ucw.cz>
+    <20090828120854.GA8153@mit.edu> <20090830075135.GA1874@ucw.cz>
+    <alpine.DEB.2.00.0908300550320.6822@asgard.lang.hm>
+    <4A9A88B6.9050902@redhat.com> <4A9A9034.8000703@msgid.tls.msk.ru>
+    <20090830163513.GA25899@infradead.org> <4A9BCCEF.7010402@redhat.com>
+    <20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca>
+    <20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com>
+    <m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com>
+    <m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com>
+    <m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com>
+    <4AA184D7.1010502@rtr.ca> <4AA186B0.5090905@redhat.com>
+    <4AA26055.2090400@rtr.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Rob Landley <rob@landley.net>,
-	jim owens <jowens@hp.com>, david@lang.hm,
-	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "Ric Wheeler" <rwheeler@redhat.com>,
+	"Krzysztof Halasa" <khc@pm.waw.pl>,
+	"Christoph Hellwig" <hch@infradead.org>,
+	"Michael Tokarev" <mjt@tls.msk.ru>, david@lang.hm,
+	"Pavel Machek" <pavel@ucw.cz>, "Theodore Tso" <tytso@mit.edu>,
+	"Rob Landley" <rob@landley.net>, "Florian Weimer" <fweimer@bfk.de>,
+	"Goswin von Brederlow" <goswin-v-b@web.de>,
+	"kernel list" <linux-kernel@vger.kernel.org>,
+	"Andrew Morton" <akpm@osdl.org>, mtk.manpages@gmail.com,
 	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jonathan Corbet <corbet@lwn.net>
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: "Mark Lord" <lkml@rtr.ca>
 Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20090905075424.4e103612@bike.lwn.net>
+In-Reply-To: <4AA26055.2090400@rtr.ca>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat 2009-09-05 07:54:24, Jonathan Corbet wrote:
-> On Sat, 5 Sep 2009 12:28:10 +0200
-> Pavel Machek <pavel@ucw.cz> wrote:
-> 
-> > >> The LWN article on the topic is out, and incomplete as it is I expect it's the
-> > >> best documentation anybody will actually _read_.  
-> > 
-> > Would anyone (probably privately?) share the lwn link?
-> 
-> 	http://lwn.net/SubscriberLink/349970/9875eff987190551/
-> 
-> assuming you've not already gotten one from elsewhere.
+On Sat, September 5, 2009 10:57 pm, Mark Lord wrote:
+> Ric Wheeler wrote:
+>> On 09/04/2009 05:21 PM, Mark Lord wrote:
+> ..
+>>> How about instead, *fixing* the MD layer to properly support barriers?
+>>> That would be far more useful, productive, and better for end-users.
+> ..
+>> Fixing MD would be great - not sure that it would end up still faster
+>> (look at md1 devices with working barriers with compared to md1 with
+>> write cache disabled).
+> ..
+>
+> There's no inherent reason for it to be slower, except possibly
+> drives with b0rked FUA support.
+>
+> So the first step is to fix MD to pass barriers to the LLDs
+> for most/all RAID types.
 
-Thanks, and thanks for nice article!
-									Pavel
+Having MD "pass barriers" to LLDs isn't really very useful.
+The barrier need to act with respect to all addresses of the device,
+and once you pass it down, it can only act with respect to addresses
+on that device.
+What any striping RAID level needs to do when it sees a barrier
+is:
+   suspend all future writes
+   drain and flush all queues
+   submit the barrier write
+   drain and flush all queues
+   unsuspend writes
 
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+I guess "drain can flush all queues" can be done with an empty barrier
+so maybe that is exactly what you meant.
+
+The double flush which (I think) is required by the barrier semantic
+is unfortunate.  I wonder if it would actually make things slower than
+necessary.
+
+NeilBrown
+
+>
+> Then, if it has performance issues, those can be addressed
+> by more application of little grey cells.  :)
+>
+> Cheers
+>
+
