@@ -1,129 +1,36 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: Automatically enable journal_async_commit on
- ext4 file systems
-Date: Sat, 05 Sep 2009 21:57:47 -0500
-Message-ID: <4AA3252B.6020401@redhat.com>
-References: <1252189963-23868-1-git-send-email-tytso@mit.edu> <1252189963-23868-2-git-send-email-tytso@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 2/4]ext4: Remove unneeded BUG_ON() in
+	ext4_move_extents()
+Date: Sat, 5 Sep 2009 23:13:38 -0400
+Message-ID: <20090906031338.GC3055@mit.edu>
+References: <4A9DE3E5.8080104@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([209.173.210.139]:22381 "EHLO mail.sandeen.net"
+Received: from thunk.org ([69.25.196.29]:36984 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752008AbZIFC5q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Sep 2009 22:57:46 -0400
-In-Reply-To: <1252189963-23868-2-git-send-email-tytso@mit.edu>
+	id S1753909AbZIFDNj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Sep 2009 23:13:39 -0400
+Content-Disposition: inline
+In-Reply-To: <4A9DE3E5.8080104@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> Now that we have cleaned up journal_async_commit, it's safe to enable
-> it all the time.  But we only want to do so if ext4-specific INCOMPAT
-> features are enabled, since otherwise we will prevent the filesystem
-> from being mounted using ext3.
-
-Has anyone done some serious power-fail/crash (real or simulated) 
-testing with this?  If not, I think we should before it's default...
-
--Eric
-
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  Documentation/filesystems/ext4.txt |    8 ++++++--
->  fs/ext4/super.c                    |   26 ++++++++++++++++++++++++--
->  2 files changed, 30 insertions(+), 4 deletions(-)
+On Wed, Sep 02, 2009 at 12:17:57PM +0900, Akira Fujita wrote:
+> ext4: Remove unneeded BUG_ON() in ext4_move_extents()
 > 
-> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-> index 3e329db..4f8d73a 100644
-> --- a/Documentation/filesystems/ext4.txt
-> +++ b/Documentation/filesystems/ext4.txt
-> @@ -135,8 +135,12 @@ ro                   	Mount filesystem read only. Note that ext4 will
->  		     	writes to the filesystem.
->  
->  journal_async_commit	Commit block can be written to disk without waiting
-> -			for descriptor blocks. If enabled older kernels cannot
-> -			mount the device.
-> +			for descriptor blocks.  This mount option will be 
-> +			automatically enabled if ext4-specific INCOMPAT
-> +			features are present in the file system.
-> +
-> +nojournal_async_commit	Disable the journal_async_commit option, even
-> +			for ext4 filesystems.
->  
->  journal=update		Update the ext4 file system's journal to the current
->  			format.
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index f1815d3..f644a5c 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -75,6 +75,15 @@ static int ext4_unfreeze(struct super_block *sb);
->  static void ext4_write_super(struct super_block *sb);
->  static int ext4_freeze(struct super_block *sb);
->  
-> +/*
-> + * If ext4 filesystem features are enabled, then enable async_commits
-> + * by default.
-> + */
-> +#define ASYNC_COMMIT_DEFAULT(sb) (EXT4_HAS_INCOMPAT_FEATURE(sb, \
-> +					(EXT4_FEATURE_INCOMPAT_EXTENTS| \
-> +					 EXT4_FEATURE_INCOMPAT_64BIT| \
-> +					 EXT4_FEATURE_INCOMPAT_FLEX_BG)))
-> +
->  
->  ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
->  			       struct ext4_group_desc *bg)
-> @@ -845,8 +854,13 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
->  	 */
->  	seq_puts(seq, ",barrier=");
->  	seq_puts(seq, test_opt(sb, BARRIER) ? "1" : "0");
-> -	if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
-> -		seq_puts(seq, ",journal_async_commit");
-> +	if (ASYNC_COMMIT_DEFAULT(sb)) {
-> +		if (!test_opt(sb, JOURNAL_ASYNC_COMMIT))
-> +			seq_puts(seq, ",nojournal_async_commit");
-> +	} else {
-> +		if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
-> +			seq_puts(seq, ",journal_async_commit");
-> +	}
->  	if (test_opt(sb, NOBH))
->  		seq_puts(seq, ",nobh");
->  	if (test_opt(sb, I_VERSION))
-> @@ -1050,6 +1064,7 @@ enum {
->  	Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
->  	Opt_journal_update, Opt_journal_dev,
->  	Opt_journal_checksum, Opt_journal_async_commit,
-> +	Opt_nojournal_async_commit,
->  	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
->  	Opt_data_err_abort, Opt_data_err_ignore, Opt_mb_history_length,
->  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-> @@ -1092,6 +1107,7 @@ static const match_table_t tokens = {
->  	{Opt_journal_dev, "journal_dev=%u"},
->  	{Opt_journal_checksum, "journal_checksum"},
->  	{Opt_journal_async_commit, "journal_async_commit"},
-> +	{Opt_nojournal_async_commit, "nojournal_async_commit"},
->  	{Opt_abort, "abort"},
->  	{Opt_data_journal, "data=journal"},
->  	{Opt_data_ordered, "data=ordered"},
-> @@ -1284,6 +1300,9 @@ static int parse_options(char *options, struct super_block *sb,
->  		case Opt_journal_async_commit:
->  			set_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
->  			break;
-> +		case Opt_nojournal_async_commit:
-> +			clear_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
-> +			break;
->  		case Opt_noload:
->  			set_opt(sbi->s_mount_opt, NOLOAD);
->  			break;
-> @@ -2422,6 +2441,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	 */
->  	set_opt(sbi->s_mount_opt, DELALLOC);
->  
-> +	if (ASYNC_COMMIT_DEFAULT(sb))
-> +		set_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
-> +
->  	if (!parse_options((char *) data, sb, &journal_devnum,
->  			   &journal_ioprio, NULL, 0))
->  		goto failed_mount;
+> From: Akira Fujita <a-fujita@rs.jp.nec.com>
+> 
+> ext4_move_extents() checks with BUG_ON() whether
+> the exchanged blocks count accords with request blocks count.
+> But, if the target range (orig_start + len) includes sparse block(s),
+> 'moved_len' (exchanged blocks count) does not accord with
+> 'len' (request blocks count),
+> since sparse block is not counted in 'moved_len'.
+> Therefore we hit BUG_ON(), though it succeeded.
 
+Added to the ext4 patch queue.
+
+					- Ted
