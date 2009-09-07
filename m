@@ -1,34 +1,27 @@
-From: Ravi Pinjala <ravi@p-static.net>
-Subject: e4defrag doesn't work on root filesystem
-Date: Mon, 07 Sep 2009 10:48:01 -0500
-Message-ID: <4AA52B31.5090205@p-static.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: calculate minimal fs size only once
+Date: Mon, 7 Sep 2009 14:21:18 -0400
+Message-ID: <20090907182118.GB22901@mit.edu>
+References: <1252048959-7936-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from irongate.mail.utexas.edu ([146.6.25.6]:7429 "EHLO
-	irongate.mail.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753861AbZIGQAq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Sep 2009 12:00:46 -0400
+Received: from thunk.org ([69.25.196.29]:43050 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751886AbZIGSVV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Sep 2009 14:21:21 -0400
+Content-Disposition: inline
+In-Reply-To: <1252048959-7936-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Fri, Sep 04, 2009 at 03:22:39PM +0800, Peng Tao wrote:
+> When running resize2fs -M, no need to recalculate the minimal fs size.
+> 
+> Signed-off-by: "Peng Tao" <bergwolf@gmail.com>
 
-I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
-When I try to defragment files on my root filesystem, it refuses to
-acknowledge that the filesystem is ext4. I believe the problem is that
-it checks the filesystem type by parsing /etc/mtab, but the root
-filesystem shows up there like this:
+Applied to the maint branch, thanks.
 
-rootfs on / type rootfs (rw)
-/dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
-
-so it gets confused by the bogus first entry. It works just fine on
-other ext4 filesystems I have.
-
-(If this is the wrong mailing list, I apologize; I couldn't find one for
-e2fsprogs, so I thought this was the next best thing.)
-
---Ravi
+					- Ted
