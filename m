@@ -1,22 +1,34 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: No conference call today....
-Date: Mon, 07 Sep 2009 09:42:33 -0400
-Message-ID: <E1MkeUL-0007oU-Lu@closure.thunk.org>
+From: Ravi Pinjala <ravi@p-static.net>
+Subject: e4defrag doesn't work on root filesystem
+Date: Mon, 07 Sep 2009 10:48:01 -0500
+Message-ID: <4AA52B31.5090205@p-static.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34595 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751800AbZIGNmg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Sep 2009 09:42:36 -0400
+Received: from irongate.mail.utexas.edu ([146.6.25.6]:7429 "EHLO
+	irongate.mail.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753861AbZIGQAq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Sep 2009 12:00:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
-We never said for sure whether or not we would be doing a conference
-call today, but given that it's Labor Day in the US (and I probably
-won't be back from running some errands by 11 US/Eastern), let's not.
-Our next concall will be next week on Monday at 11.
+I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
+When I try to defragment files on my root filesystem, it refuses to
+acknowledge that the filesystem is ext4. I believe the problem is that
+it checks the filesystem type by parsing /etc/mtab, but the root
+filesystem shows up there like this:
 
-I'll be around on #ext4 later on today if folks want to chat.
+rootfs on / type rootfs (rw)
+/dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
 
-     	       	  	      	       	  	- Ted
+so it gets confused by the bogus first entry. It works just fine on
+other ext4 filesystems I have.
+
+(If this is the wrong mailing list, I apologize; I couldn't find one for
+e2fsprogs, so I thought this was the next best thing.)
+
+--Ravi
