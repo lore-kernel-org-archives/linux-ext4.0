@@ -1,37 +1,67 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
-	page_mkwrite
-Date: Mon, 7 Sep 2009 17:52:25 +0530
-Message-ID: <20090907122225.GB14516@skywalker.linux.vnet.ibm.com>
-References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090829022656.GK16732@mit.edu> <20090831063006.GA7711@skywalker.linux.vnet.ibm.com> <20090831122448.GG20822@mit.edu> <20090831123313.GA21973@skywalker.linux.vnet.ibm.com> <20090831125025.GI20822@mit.edu> <20090831170601.GA26003@skywalker.linux.vnet.ibm.com> <20090906034951.GG3055@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: wishful thinking about atomic, multi-sector or full MD stripe
+	width, writes in storage
+Date: Mon, 7 Sep 2009 09:10:26 -0400
+Message-ID: <20090907131026.GC32427@mit.edu>
+References: <4A9BCDFE.50008@rtr.ca> <20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com> <m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com> <m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com> <m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com> <20090907114534.GP23450@elf.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Krzysztof Halasa <khc@pm.waw.pl>,
+	Christoph Hellwig <hch@infradead.org>, Mark Lord <lkml@rtr.ca>,
+	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
+	NeilBrown <neilb@suse.de>, Rob Landley <rob@landley.net>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:40067 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753224AbZIGMWi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Sep 2009 08:22:38 -0400
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp08.au.ibm.com (8.14.3/8.13.1) with ESMTP id n87CJH4P004362
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Sep 2009 22:19:17 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n87CMcCC1085692
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Sep 2009 22:22:38 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n87CMbQK001904
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Sep 2009 22:22:37 +1000
+Received: from thunk.org ([69.25.196.29]:44360 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751446AbZIGNL4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Sep 2009 09:11:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20090906034951.GG3055@mit.edu>
+In-Reply-To: <20090907114534.GP23450@elf.ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 05, 2009 at 11:49:51PM -0400, Theodore Tso wrote:
-> OK, I've added this patch to the ext4 patch queue.
+On Mon, Sep 07, 2009 at 01:45:34PM +0200, Pavel Machek wrote:
 > 
+> Yes, but ext3 was designed to handle the partial write  (according to
+> tytso).
 
+I'm not sure what made you think that I said that.  In practice things
+usually work out, as a conseuqence of the fact that ext3 uses physical
+block journaling, but it's not perfect, becase...
 
-I have sent a v3 version of this patch. You may want to take that
+> > Also, when you enable the write cache (MD or not) you are buffering 
+> > multiple MB's of data that can go away on power loss. Far greater (10x) 
+> > the exposure that the partial RAID rewrite case worries about.
+> 
+> Yes, that's what barriers are for. Except that they are not there on
+> MD0/MD5/MD6. They actually work on local sata drives...
 
--aneesh
+Yes, but ext3 does not enable barriers by default (the patch has been
+submitted but akpm has balked because he doesn't like the performance
+degredation and doesn't believe that Chris Mason's "workload of doom"
+is a common case).  Note though that it is possible for dirty blocks
+to remain in the track buffer for *minutes* without being written to
+spinning rust platters without a barrier.
+
+See Chris Mason's report of this phenonmenon here:
+
+	http://lkml.org/lkml/2009/3/30/297
+
+Here's Chris Mason "barrier test" which will corrupt ext3 filesystems
+50% of the time after a power drop if the filesystem is mounted with
+barriers disabled (which is the default; use the mount option
+barrier=1 to enable barriers):
+
+	http://lkml.indiana.edu/hypermail/linux/kernel/0805.2/1518.html
+
+(Yes, ext4 has barriers enabled by default.)
+
+							- Ted
