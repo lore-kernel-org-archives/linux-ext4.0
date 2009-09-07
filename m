@@ -1,67 +1,37 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: wishful thinking about atomic, multi-sector or full MD stripe
-	width, writes in storage
-Date: Mon, 7 Sep 2009 13:45:34 +0200
-Message-ID: <20090907114534.GP23450@elf.ucw.cz>
-References: <20090831131626.GA17325@infradead.org> <4A9BCDFE.50008@rtr.ca> <20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com> <m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com> <m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com> <m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V2] ext4: Drop mapped buffer_head check during
+	page_mkwrite
+Date: Mon, 7 Sep 2009 17:52:25 +0530
+Message-ID: <20090907122225.GB14516@skywalker.linux.vnet.ibm.com>
+References: <1251264196-31382-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090829022656.GK16732@mit.edu> <20090831063006.GA7711@skywalker.linux.vnet.ibm.com> <20090831122448.GG20822@mit.edu> <20090831123313.GA21973@skywalker.linux.vnet.ibm.com> <20090831125025.GI20822@mit.edu> <20090831170601.GA26003@skywalker.linux.vnet.ibm.com> <20090906034951.GG3055@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Krzysztof Halasa <khc@pm.waw.pl>,
-	Christoph Hellwig <hch@infradead.org>, Mark Lord <lkml@rtr.ca>,
-	Michael Tokarev <mjt@tls.msk.ru>, david@lang.hm,
-	Theodore Tso <tytso@mit.edu>, NeilBrown <neilb@suse.de>,
-	Rob Landley <rob@landley.net>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: Ric Wheeler <rwheeler@redhat.com>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:60601 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752581AbZIGLpj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Sep 2009 07:45:39 -0400
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:40067 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753224AbZIGMWi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Sep 2009 08:22:38 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp08.au.ibm.com (8.14.3/8.13.1) with ESMTP id n87CJH4P004362
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Sep 2009 22:19:17 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n87CMcCC1085692
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Sep 2009 22:22:38 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n87CMbQK001904
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Sep 2009 22:22:37 +1000
 Content-Disposition: inline
-In-Reply-To: <4A9FCF6B.1080704@redhat.com>
+In-Reply-To: <20090906034951.GG3055@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+On Sat, Sep 05, 2009 at 11:49:51PM -0400, Theodore Tso wrote:
+> OK, I've added this patch to the ext4 patch queue.
+> 
 
-> Note that even without MD raid, the file system issues IO's in file 
-> system block size (4096 bytes normally) and most commodity storage 
-> devices use a 512  byte sector size which means that we have to update 8 
-> 512b sectors.
->
-> Drives can (and do) have multiple platters and surfaces and it is 
-> perfectly normal to have contiguous logical ranges of sectors map to 
-> non-contiguous sectors physically. Imagine a 4KB write stripe that 
-> straddles two adjacent tracks on one platter (requiring a seek) or mapped 
-> across two surfaces (requiring a head switch). Also, a remapped sector 
-> can require more or less a full surface seek from where ever you are to 
-> the remapped sector area of the drive.
 
-Yes, but ext3 was designed to handle the partial write  (according to
-tytso).
+I have sent a v3 version of this patch. You may want to take that
 
-> These are all examples that can after a power loss,  even a local 
-> (non-MD) device,  do a partial update of that 4KB write range of
-> sectors. 
-
-Yes, but ext3 journal protects metadata integrity in that case.
-
-> In other words, this is not just an MD issue, it is entirely possible 
-> even with non-MD devices.
->
-> Also, when you enable the write cache (MD or not) you are buffering 
-> multiple MB's of data that can go away on power loss. Far greater (10x) 
-> the exposure that the partial RAID rewrite case worries about.
-
-Yes, that's what barriers are for. Except that they are not there on
-MD0/MD5/MD6. They actually work on local sata drives...
-
-								Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+-aneesh
