@@ -1,47 +1,50 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: Re: [PATCH] Make non-journal fsync work properly.
-Date: Tue, 08 Sep 2009 15:39:51 -0700
-Message-ID: <1252449591.15572.5.camel@bobble.smo.corp.google.com>
-References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
-	 <20090908050614.GA10477@mit.edu>
-	 <1252424465.17646.7.camel@bobble.smo.corp.google.com>
-	 <20090908220504.GS22901@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Odd "leak" of extent info into data blocks?
+Date: Tue, 8 Sep 2009 19:36:44 -0400
+Message-ID: <20090908233644.GV22901@mit.edu>
+References: <6601abe90908221610p60629809qcde6848308b8affe@mail.gmail.com> <20090908175605.GB7801@shell> <6601abe90909081121p17b154a4s2e6852da2b71951f@mail.gmail.com> <20090908194045.GQ22901@mit.edu> <6601abe90909081418k5de55938mfe411fccfe10a258@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Valerie Aurora <vaurora@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:44149 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752504AbZIHWj4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 18:39:56 -0400
-In-Reply-To: <20090908220504.GS22901@mit.edu>
+Received: from THUNK.ORG ([69.25.196.29]:44992 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752036AbZIHXgt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Sep 2009 19:36:49 -0400
+Content-Disposition: inline
+In-Reply-To: <6601abe90909081418k5de55938mfe411fccfe10a258@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2009-09-08 at 18:05 -0400, Theodore Tso wrote:
-> On Tue, Sep 08, 2009 at 08:41:05AM -0700, Frank Mayhar wrote:
-> > I needed to doublecheck before answering but I think I've covered that
-> > angle.  Specifically, in ext4_write_inode the patch only calls
-> > ext4_do_update_inode() if s_journal is NULL, otherwise it takes the
-> > current path.
-> > 
-> > So I think your concern is covered by the current patch.  Can you take
-> > another look and let me know if you agree?  Thanks.
+On Tue, Sep 08, 2009 at 02:18:35PM -0700, Curt Wohlgemuth wrote:
 > 
-> It wasn't obvious from reading the diff, but after I applied the patch
-> and looked more closely, you're right.  I'm still worried though that
-> the code is a bit fragile.  At the very *least* the restriction that
-> ext4_do_update_inode's do_sync flag should only be called when there
-> is no journal needs to be explicitly documented.  Possibly we should
-> have a BUG() check to enforce this restriction; although a comment
-> before ext4_do_update_inode() is probably enough.
+> All bforget() does is clear the buffer's dirty bit.  Meanwhile, the
+> page is still marked dirty, and can be in the middle of writeback;
+> it's true that __block_write_full_page() will check the dirty bit for
+> each buffer in the page, but there doesn't seem to be any
+> synchronization to ensure that the write won't take place at some
+> point in time after bforget() is called.  Which means it can be called
+> after the bitmap is changed.
 
-I agree that the code as-is is a bit fragile.  Commentary is good but it
-would probably be better to enforce the journal/no journal distinction
-in ext4_do_update_inode() itself.
--- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
+Let me make sure I got this right.  The problem that you're worried
+about is a block that had previously contained an extent tree node for
+an inode that gets deleted, and then that blocks gets reallocated for
+use as a data block.  In ext3 and ext4, metadata blocks (such as
+extent tree blocks), aren't stored in the page cache.
 
+So I'm not sure why you're worried about the page being marked dirty.
+What's the scenario you are concerned about?
+
+If it's the case where a data block for a deleted inode getting
+rewritten after the inode is deleted, when the inode is deleted,
+truncate_inode_apges() end up dropping the pages from the page cache
+*before* the block allocation bitmap is dropped.
+
+> This is why I opted to wait for the buffer to be written out before
+> continuing on to ext4_free_blocks().
+
+Just to be clear, which buffer are you talking about here?
+
+     	   	  	       	       - Ted
