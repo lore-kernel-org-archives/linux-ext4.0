@@ -1,235 +1,71 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH] e4defrag: fallocate donor file only once
-Date: Tue, 8 Sep 2009 11:41:05 -0400
-Message-ID: <87f94c370909080841q5042201du4124ddb253ef0ea8@mail.gmail.com>
-References: <1251905704-10078-1-git-send-email-bergwolf@gmail.com>
-	 <87f94c370909021509u7d07a6e5ia210cfd8b8db70e0@mail.gmail.com>
-	 <6149e97b0909030100p1930c0fra28663724e51114@mail.gmail.com>
-	 <87f94c370909030230w6ab49265yf6e689cbae1d458c@mail.gmail.com>
-	 <6149e97b0909032008m26e554c8x92750455e26a52a0@mail.gmail.com>
-	 <87f94c370909040536v391bd546ye9eb1038f4a32cba@mail.gmail.com>
-	 <4AA146B0.6070701@gmail.com>
-	 <87f94c370909041210l56c97b9ekf7d98aae6cd10827@mail.gmail.com>
-	 <4AA291F0.3020505@gmail.com>
+From: Frank Mayhar <fmayhar@google.com>
+Subject: Re: [PATCH] Make non-journal fsync work properly.
+Date: Tue, 08 Sep 2009 08:41:05 -0700
+Message-ID: <1252424465.17646.7.camel@bobble.smo.corp.google.com>
+References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
+	 <20090908050614.GA10477@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Peng Tao <bergwolf@gmail.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.26]:15155 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750760AbZIHPlD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 11:41:03 -0400
-Received: by qw-out-2122.google.com with SMTP id 9so41453qwb.37
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Sep 2009 08:41:06 -0700 (PDT)
-In-Reply-To: <4AA291F0.3020505@gmail.com>
+Received: from smtp-out.google.com ([216.239.45.13]:13808 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750990AbZIHPlH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 11:41:07 -0400
+In-Reply-To: <20090908050614.GA10477@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 5, 2009 at 12:29 PM, Peng Tao<bergwolf@gmail.com> wrote:
-> Greg Freemyer wrote:
->> On Fri, Sep 4, 2009 at 12:56 PM, Peng Tao<bergwolf@gmail.com> wrote:
->>> Greg Freemyer wrote:
->>>> On Thu, Sep 3, 2009 at 11:08 PM, Peng Tao<bergwolf@gmail.com> wrot=
-e:
->>>>> On Thu, Sep 3, 2009 at 5:30 PM, Greg Freemyer<greg.freemyer@gmail=
-=2Ecom> wrote:
->>>>>> On Thu, Sep 3, 2009 at 4:00 AM, Peng Tao<bergwolf@gmail.com> wro=
-te:
->>>>>>> On Thu, Sep 3, 2009 at 6:09 AM, Greg Freemyer<greg.freemyer@gma=
-il.com> wrote:
->>>>>>>> On Wed, Sep 2, 2009 at 11:35 AM, Peng Tao<bergwolf@gmail.com> =
-wrote:
->>>>>>>>> If we allocate the donor file once for all, it will have a be=
-tter chance
->>>>>>>>> to be continuous.
->>>>>>>>>
->>>>>>>>> Signed-off-by: "Peng Tao" <bergwolf@gmail.com>
->>>>>>>> Seems like an improvement, but I'm not seeing any special hand=
-ling for
->>>>>>>> sparse files. =A0(Not before or after this patch.)
->>>>>>>>
->>>>>>>> Seems like there should be an outer loop that identifies conti=
-guous
->>>>>>>> data block sets in a sparse file and defrags them individually=
- as
->>>>>>>> opposed to trying to defrag the entire file at once.
->>>>>>>>
->>>>>>>> My impression is that with a large sparse file, e4defrag curre=
-ntly
->>>>>>>> (with or without this patch) would fallocate a full non-sparse=
- donor
->>>>>>>> set of blocks the full size of the original file, then swap in=
- just
->>>>>>>> the truly allocated blocks?
->>>>>>> Thanks for the reminder. The original code takes good care of s=
-parse
->>>>>>> files in join_extents(). Please ignore my patch.
->>>>>>>
->>>>>>> Sorry for the noise.
->>>>>> RFC from a more ext4 knowledgeable person than me:
->>>>>>
->>>>>> The code in e4defrag still looks way to complex. =A0I don't see =
-why it
->>>>>> needs to know so much about extents and groups.
->>>>>>
->>>>>> I just looked at util/copy_sparse.c
->>>>>>
->>>>>> It simply loops through all the blocks in the source file and ca=
-lls
->>>>>> ioctl(fd, FIBMAP, &b) to see if they are allocated vs. sparse,
->>>>>>
->>>>>> If allocated it copies the block from src to dest. =A0Pretty str=
-aight
->>>>>> forward and has none of the complexity of e4defrag.
->>>>>>
->>>>>> Seems to me e4defrag should have the actual defrag_file() rewrit=
-ten to
->>>>>> be something like:
->>>>>>
->>>>>> defrag_file() =A0{
->>>>>> =A0 =A0loop through the blocks looking for the contiguous set of=
- data blocks.
->>>>>> =A0 =A0 =A0 =A0 =A0defrag_contiguous_data(start_block, num_block=
-s)
->>>>>> }
->>>>>>
->>>>>> defrag_contiguous_data(start_block, num_blocks) {
->>>>>> =A0 =A0// allocate one full extent at a time and donate the bloc=
-ks to orig file
->>>>>> =A0 =A0for(start=3Dstart_block; start < start_block, num_blocks;=
- start+=3Dchunk) {
->>>>>> =A0 =A0 =A0 =A0 =A0fallocate(chunk);
->>>>>> =A0 =A0 =A0 =A0 =A0move_ext(orig, donor, start, 0, chunk);
->>>>>> =A0 =A0 =A0}
->>>>>> }
->>>>>>
->>>>>> And then set chunk to be the max size of one extent. =A0Maybe th=
-e
->>>>>> "chunk" should be bigger than one extent?
->>>>>>
->>>>>> Also, I did not put any logic in above to show testing to see if=
- the
->>>>>> new file is less fragmented than the original. =A0That will add =
-to the
->>>>>> complexity, but hopefully the actual defrag logic can be as rela=
-tively
->>>>>> simple as the above instead of what it is now.
->>>>>>
->>>>>> Anyway, t would be a major change to e4defrag, but it seems that=
- it
->>>>>> would give ext4 a much better chance to reorganize itself by cal=
-ling
->>>>>> fallocate on full extent size chunks at minimum, instead of what=
- the
->>>>>> code currently does.
->>>>> Hi, Greg,
->>>>>
->>>>> The current e4defrag is doing most of work exactly same as your R=
-=46C,
->>>>> and in a nicer manner. If you look into the code path, you'll see=
- that
->>>>> its logic is very much like the RFC except that it first fallocat=
-es a
->>>>> donor file to see if a defragmentation is really necessary so it =
-won't
->>>>> have to fall back during defragmentation, which IMO is a good des=
-ign
->>>>> point.
->>>>>
->>>>> Please correct me if I understand anything wrong.
->>>> I've looked a lot more at the current code. =A0I'm pretty sure thi=
-s is right:
->>>>
->>>> First, assume defrag of a non-sparse 1TB file.
->>>>
->>>> The current code will walk the extent tree and create a single ext=
-ent
->>>> group that covers the full 1TB, then call fallocate to try to get =
-1TB
->>>> of donor blocks. =A0Then compare the number of extents in the orig=
-inal
->>>> and the donor. =A0If the donor has less it will swap in the donor
->>>> blocks.
->>>>
->>>> It seems much smarter work on extent size chunks (or whatever best
->>>> fits the kernels block structure.
->>>>
->>>> ie.
->>>>
->>>> for (start_block=3D0; start_block < max_blocks; start_block+=3D
->>>> max_blocks_in_extent)
->>>>
->>>> =A0 =A0 =A0 current_extents =3D num_extents_in_block_range(start_b=
-lock,
->>>> start+max_blocks_in_extent);
->>>>
->>>> =A0 =A0 =A0 if (current_extents =3D=3D 1) continue;
->>>>
->>>> =A0 =A0 =A0 // allocate a sparse file with perfectly aligned donor=
- blocks as
->>>> currently required by kernel
->>>> =A0 =A0 =A0 fallocate(start_block * block_size, max_blocks_in_exte=
-nt * block_size);
->>>>
->>>> =A0 =A0 =A0 donor_extents =3D num_extents_in_block_range(start_blo=
-ck,
->>>> start+max_blocks_in_extent);
->>>>
->>>> =A0 =A0 =A0if (donor_extents < current_extents)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 donate_donor_blocks_to_orig(start_block,
->>>> start+max_blocks_in_extent);
->>>>
->>>> )
->>>>
->>>> And in the case of a sparse file, it seems much easier to understa=
-nd
->>>> if the above is called on each logically contiguous set or data
->>>> blocks. =A0Seriously, why bother the kernel by making it able to a=
-ccept
->>>> a block range that has holes in it.
->>> Agreed. If the kernel doesn't have to deal with holes, the EXT4_IOC=
-_MOVE_EXT
->>> ioctl can be much simplified.
->>>> It seems reasonable for the kernel to check the block range being
->>>> passed in and if the orig files has a hole in the middle of it, th=
-en
->>>> return an error.
->>>>
->>>> Back to e4defrag, even if the code is not greatly simplified, the
->>>> above seems like it would use far less resources than the current
->>>> code. =A0 Think about a large file that has the first 90% of the b=
-locks
->>>> defrag'ed. =A0The above would cause just the tail to be defrag'ed,=
- not
->>>> the entire file.
->>> Yes, it makes sense. Are you planning some patch for above changes?
->>
->> I'm "planning", but I doubt that I get to it for a few weeks. =A0If =
-you
->> or someone else has time, that would be great.
-> I don't have time for it in a few weeks either. So if anyone is inter=
-ested,
-> please drop in.
->>
->> Greg
->
->
-> --
-> Best Regards,
-> Peng Tao
-> State Key Laboratory of Networking and Switching Technology
-> Beijing Univ. of Posts and Telecoms.
->
+On Tue, 2009-09-08 at 01:06 -0400, Theodore Tso wrote:
+> On Fri, Sep 04, 2009 at 07:55:00PM -0700, Frank Mayhar wrote:
+> > Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
+> > mode:  If we're not using a journal, ext4_write_inode() now calls
+> > ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
+> > with a new "do_sync" parameter.  If that parameter is nonzero
+> > ext4_do_update_inode() calls sync_dirty_buffer() instead of
+> > ext4_handle_dirty_metadata().
+> 
+> Hi Frank,
+> 
+> The problem with this patch is that it's only safe to call
+> sync_dirty_buffer() if we are not journalling.  If we are using the
+> journal, we must *not* call sync_dirty_buffer(), but instead must use
+> jbd2_journal_dirty_metadata().
+> 
+> The problem is that there are paths where ext4_do_update_inode() can
+> get called with do_sync==1, even when journalling is enabled.
+> Specifically, if ext4_write_inode() is called with wait==1, wait is
+> passed to ext4_do_update_inode() as do_sync, and then when a journal
+> is present, we will end up calling sync_dirty_buffer(), which means we
+> will be writing out the modified metadata *before* the transaction has
+> committed.
 
-If I take a shot at this, which branch should a base my patch against? =
- Master?
+I needed to doublecheck before answering but I think I've covered that
+angle.  Specifically, in ext4_write_inode the patch only calls
+ext4_do_update_inode() if s_journal is NULL, otherwise it takes the
+current path.
 
-Thanks
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So I think your concern is covered by the current patch.  Can you take
+another look and let me know if you agree?  Thanks.
+
+> I think what you need to do instead is to add an extra parameter
+> do_sync to ext4_handle_dirty_metadata(), and continue to call
+> ext4_handle_dirty_metadata.  However in code paths where we will later
+> force a commit to guarantee that the metadata has been written out
+> (i.e., in the fsync() code path), ext4_handle_dirty_metadata() should
+> be called with the new do_sync parameter set to 1.
+> 
+> Does that make sense?
+
+Actually, yes it does (my above comment notwithstanding) and I
+considered that approach.  Unfortunately, as Curt pointed out, there are
+a metric buttload of calls to ext4_handle_dirty_metadata().  The "right"
+way to fix this might be to change all of them and use
+handle_dirty_metadata to deal with this but it seems like an awfully
+intrusive change to fix this one problem.
+-- 
+Frank Mayhar <fmayhar@google.com>
+Google, Inc.
+
