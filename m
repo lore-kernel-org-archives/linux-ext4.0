@@ -1,84 +1,62 @@
-From: Ravi Pinjala <ravi@p-static.net>
-Subject: Re: e4defrag doesn't work on root filesystem
-Date: Tue, 08 Sep 2009 08:42:13 -0500
-Message-ID: <4AA65F35.9090707@p-static.net>
-References: <4AA52B31.5090205@p-static.net> <4AA5D5C8.2010304@redhat.com>
+From: Sachin Sant <sachinp@in.ibm.com>
+Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
+Date: Tue, 08 Sep 2009 19:51:06 +0530
+Message-ID: <4AA66852.8040009@in.ibm.com>
+References: <4A9E5496.8050909@in.ibm.com> <20090902120958.GA16415@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from irongate.mail.utexas.edu ([146.6.25.6]:48004 "EHLO
-	irongate.mail.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754371AbZIHNmT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 09:42:19 -0400
-In-Reply-To: <4AA5D5C8.2010304@redhat.com>
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:51296 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750877AbZIHOVH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 10:21:07 -0400
+Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
+	by e28smtp03.in.ibm.com (8.14.3/8.13.1) with ESMTP id n88EL8WM030584
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Sep 2009 19:51:08 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n88EL7b62318484
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Sep 2009 19:51:07 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n88EL78j004640
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Sep 2009 19:51:07 +0530
+In-Reply-To: <20090902120958.GA16415@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Ravi Pinjala wrote:
->> Hi,
+Theodore Tso wrote:
+> On Wed, Sep 02, 2009 at 04:48:46PM +0530, Sachin Sant wrote:
+>   
+>> While executing fsstress against ext4 with 2.6.31-rc8 on a
+>> powerpc box, ran into the following Bug.
 >>
->> I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
->> When I try to defragment files on my root filesystem, it refuses to
->> acknowledge that the filesystem is ext4. I believe the problem is that
->> it checks the filesystem type by parsing /etc/mtab, but the root
->> filesystem shows up there like this:
->>
->> rootfs on / type rootfs (rw)
->> /dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
->>
->> so it gets confused by the bogus first entry. It works just fine on
->> other ext4 filesystems I have.
->>
->> (If this is the wrong mailing list, I apologize; I couldn't find one for
->> e2fsprogs, so I thought this was the next best thing.)
->>
->> --Ravi
->> -- 
->>   
-> This list is a fine place to report it, thanks.
-> 
-> In is_ext4() it does a statfs on the file, and checks that the magic is
-> EXT4,
-> but then that's the same as ext2 and ext3 unfortunately  ....
-> 
-> It later does getmntent for the actual fs type, but fails, as you said.
-> 
-> Does this fix it for you?
+>> ------------[ cut here ]------------
+>> cpu 0x0: Vector: 700 (Program Check) at [c0000000f3ae3970]
+>>    pc: c000000000280f28: .jbd2_journal_commit_transaction+0x8ac/0x1bfc
+>>    lr: c000000000280e58: .jbd2_journal_commit_transaction+0x7dc/0x1bfc
+>>    sp: c0000000f3ae3bf0
+>>   msr: 8000000000029032
+>>  current = 0xc0000000f315c7d0
+>>  paca    = 0xc000000000b62600
+>>    pid   = 23139, comm = kjournald2
+>> kernel BUG at fs/jbd2/commit.c:533!
+>>     
+Let me know if there is any thing i could try to help
+find a solution for this problem. After increasing the
+nproc value, i am able to consistently recreate this issue.
 
-Yeah, that works great. Thanks!
+Thanks
+-Sachin
 
---Ravi
+-- 
 
-> 
-> =========
-> 
-> Skip "rootfs" entry when checking for ext4 filesystem.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-> index 82e3868..0d04df9 100644
-> --- a/misc/e4defrag.c
-> +++ b/misc/e4defrag.c
-> @@ -430,6 +430,8 @@ static int is_ext4(const char *file)
->     }
-> 
->     while ((mnt = getmntent(fp)) != NULL) {
-> +        if (mnt->mnt_fsname[0] != '/')
-> +            continue;
->         len = strlen(mnt->mnt_dir);
->         ret = memcmp(file_path, mnt->mnt_dir, len);
->         if (ret != 0)
-> 
-> 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+---------------------------------
+Sachin Sant
+IBM Linux Technology Center
+India Systems and Technology Labs
+Bangalore, India
+---------------------------------
 
