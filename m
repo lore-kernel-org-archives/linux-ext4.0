@@ -1,58 +1,40 @@
 From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH] Make non-journal fsync work properly.
-Date: Tue, 8 Sep 2009 17:41:21 -0400
-Message-ID: <20090908214121.GR22901@mit.edu>
-References: <1252119300.23871.7.camel@bobble.smo.corp.google.com> <20090908050614.GA10477@mit.edu> <6601abe90909080757r23faeabbt7dcdfa3d5daf5985@mail.gmail.com>
+Date: Tue, 8 Sep 2009 18:05:04 -0400
+Message-ID: <20090908220504.GS22901@mit.edu>
+References: <1252119300.23871.7.camel@bobble.smo.corp.google.com> <20090908050614.GA10477@mit.edu> <1252424465.17646.7.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Frank Mayhar <fmayhar@google.com>, linux-ext4@vger.kernel.org
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58363 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:49193 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752111AbZIHVlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Sep 2009 17:41:23 -0400
+	id S1751542AbZIHWFH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Sep 2009 18:05:07 -0400
 Content-Disposition: inline
-In-Reply-To: <6601abe90909080757r23faeabbt7dcdfa3d5daf5985@mail.gmail.com>
+In-Reply-To: <1252424465.17646.7.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 08, 2009 at 07:57:02AM -0700, Curt Wohlgemuth wrote:
+On Tue, Sep 08, 2009 at 08:41:05AM -0700, Frank Mayhar wrote:
+> I needed to doublecheck before answering but I think I've covered that
+> angle.  Specifically, in ext4_write_inode the patch only calls
+> ext4_do_update_inode() if s_journal is NULL, otherwise it takes the
+> current path.
 > 
-> I think we can take a look at this, but there are a lot of calls to
-> ext4_handle_dirty_metadata(), and it's not clear on a quick inspection
-> that we'd be able to determine which would need to be called with
-> do_sync = 1...
+> So I think your concern is covered by the current patch.  Can you take
+> another look and let me know if you agree?  Thanks.
 
-Well, it's already the case that ext4_handle_dirty_metadata is a
-#define:
+It wasn't obvious from reading the diff, but after I applied the patch
+and looked more closely, you're right.  I'm still worried though that
+the code is a bit fragile.  At the very *least* the restriction that
+ext4_do_update_inode's do_sync flag should only be called when there
+is no journal needs to be explicitly documented.  Possibly we should
+have a BUG() check to enforce this restriction; although a comment
+before ext4_do_update_inode() is probably enough.
 
-#define ext4_handle_dirty_metadata(handle, inode, bh) \
-	__ext4_handle_dirty_metadata(__func__, (handle), (inode), (bh))
+							- Ted
 
-So all we need to do is change it to be:
 
-#define ext4_handle_dirty_metadata(handle, inode, bh) \
-	__ext4_handle_dirty_metadata(__func__, (handle), (inode), (bh), 0)
-
-#define ext4_handle_dirty_metadata_sync(handle, inode, bh) \
-	__ext4_handle_dirty_metadata(__func__, (handle), (inode), (bh), 1)
-
-And then add the extra function parameter to
-__ext4_handle_dirty_metadata().  Hey, presto!  :-)
-
-> On the other hand, this would take care of a similar problem that I
-> was going to be sending a patch for this week: where removing an
-> extent block without a journal requires a sync_dirty_buffer() in order
-> to avoid writeback of the extent header in the block, *after* the
-> block is marked free in the bitmap.
-
-As I mentioned in the other message, the other thing we can do is to
-use bforget(); that is more efficient than using sync_dirty_buffer(),
-since it eliminates the write altogether.  Since the file has been
-deleted, there's no point writing the dirty buffer out; simply using
-bforget() to drop the dirty buffer is all that is necessary.
-
-Regards,
-
-						- Ted
+					
