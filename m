@@ -1,48 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: fsync on ext[34] working only by an accident
-Date: Tue, 8 Sep 2009 15:26:01 +0200
-Message-ID: <20090908132601.GA17778@duck.suse.cz>
+From: Ravi Pinjala <ravi@p-static.net>
+Subject: Re: e4defrag doesn't work on root filesystem
+Date: Tue, 08 Sep 2009 08:42:13 -0500
+Message-ID: <4AA65F35.9090707@p-static.net>
+References: <4AA52B31.5090205@p-static.net> <4AA5D5C8.2010304@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:38484 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752251AbZIHN0A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Sep 2009 09:26:00 -0400
-Received: from relay1.suse.de (mail2.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx1.suse.de (Postfix) with ESMTP id 105CC8E8CC
-	for <linux-ext4@vger.kernel.org>; Tue,  8 Sep 2009 15:26:03 +0200 (CEST)
-Content-Disposition: inline
+Received: from irongate.mail.utexas.edu ([146.6.25.6]:48004 "EHLO
+	irongate.mail.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754371AbZIHNmT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 09:42:19 -0400
+In-Reply-To: <4AA5D5C8.2010304@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Eric Sandeen wrote:
+> Ravi Pinjala wrote:
+>> Hi,
+>>
+>> I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
+>> When I try to defragment files on my root filesystem, it refuses to
+>> acknowledge that the filesystem is ext4. I believe the problem is that
+>> it checks the filesystem type by parsing /etc/mtab, but the root
+>> filesystem shows up there like this:
+>>
+>> rootfs on / type rootfs (rw)
+>> /dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
+>>
+>> so it gets confused by the bogus first entry. It works just fine on
+>> other ext4 filesystems I have.
+>>
+>> (If this is the wrong mailing list, I apologize; I couldn't find one for
+>> e2fsprogs, so I thought this was the next best thing.)
+>>
+>> --Ravi
+>> -- 
+>>   
+> This list is a fine place to report it, thanks.
+> 
+> In is_ext4() it does a statfs on the file, and checks that the magic is
+> EXT4,
+> but then that's the same as ext2 and ext3 unfortunately  ....
+> 
+> It later does getmntent for the actual fs type, but fails, as you said.
+> 
+> Does this fix it for you?
 
-  When looking at how ext3/4 handles fsync, I've realized I don't
-understand how writing out inode on fsync can work. The problem is that
-ext3/4 mostly calls ext?_mark_inode_dirty() which actually does *not* dirty
-the inode. It just copies the in-memory inode content to disk buffer.
-So in particular the inode looks clean to VFS and our check in
-ext?_sync_file() shouldn't trigger.
-  The only obvious case when we call mark_inode_dirty() is from write_end
-functions when we update i_size but that's clearly not enough. Now I did
-some research why things seem to be actually working. The trick is that
-when allocating block, we call vfs_dq_alloc_block() which calls
-mark_inode_dirty(). But that's all what's keeping our fsync / writeout
-logic from breaking!
-  There are even some cases when the logic actually is broken (I've tested
-it and it really does not work) - for example when you create an empty
-file, the inode won't get written when you fsync it.
-  So what we should IMHO do is to convert all ext?_mark_inode_dirty()
-calls to simple mark_inode_dirty() (or even maybe introduce and use
-mark_inode_dirty_datasync() where appropriate). It will cost us some more
-CPU and stack space but if we optimize ext3_dirty_inode() for the case
-where handle is already started, it shouldn't be too bad.
+Yeah, that works great. Thanks!
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+--Ravi
+
+> 
+> =========
+> 
+> Skip "rootfs" entry when checking for ext4 filesystem.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+> index 82e3868..0d04df9 100644
+> --- a/misc/e4defrag.c
+> +++ b/misc/e4defrag.c
+> @@ -430,6 +430,8 @@ static int is_ext4(const char *file)
+>     }
+> 
+>     while ((mnt = getmntent(fp)) != NULL) {
+> +        if (mnt->mnt_fsname[0] != '/')
+> +            continue;
+>         len = strlen(mnt->mnt_dir);
+>         ret = memcmp(file_path, mnt->mnt_dir, len);
+>         if (ret != 0)
+> 
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
