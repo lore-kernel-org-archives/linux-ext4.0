@@ -1,63 +1,56 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: Automatically enable journal_async_commit on
-	ext4 file systems
-Date: Tue, 8 Sep 2009 00:45:41 -0400
-Message-ID: <20090908044541.GF22901@mit.edu>
-References: <1252189963-23868-1-git-send-email-tytso@mit.edu> <1252189963-23868-2-git-send-email-tytso@mit.edu> <4AA59A82.9090502@gmail.com>
+Subject: Re: [PATCH] Make non-journal fsync work properly.
+Date: Tue, 8 Sep 2009 01:06:14 -0400
+Message-ID: <20090908050614.GA10477@mit.edu>
+References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60024 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56833 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412AbZIHEpp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Sep 2009 00:45:45 -0400
+	id S1752466AbZIHFGQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Sep 2009 01:06:16 -0400
 Content-Disposition: inline
-In-Reply-To: <4AA59A82.9090502@gmail.com>
+In-Reply-To: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 07, 2009 at 07:42:58PM -0400, Ric Wheeler wrote:
->
-> I am not sure that we are really good with ASYNC commit being on all of  
-> the time - I really worry that we will see lots of issues.
+On Fri, Sep 04, 2009 at 07:55:00PM -0700, Frank Mayhar wrote:
+> Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
+> mode:  If we're not using a journal, ext4_write_inode() now calls
+> ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
+> with a new "do_sync" parameter.  If that parameter is nonzero
+> ext4_do_update_inode() calls sync_dirty_buffer() instead of
+> ext4_handle_dirty_metadata().
 
-There really isn't much difference between async commit and non-async
-commit.  In fact, the name is really a bit of a misnomer at this
-point.
+Hi Frank,
 
-So here's what we do on a non-async commit:
+The problem with this patch is that it's only safe to call
+sync_dirty_buffer() if we are not journalling.  If we are using the
+journal, we must *not* call sync_dirty_buffer(), but instead must use
+jbd2_journal_dirty_metadata().
 
-1)  Write the journal data, revoke, and descriptor blocks
-2)  Wait for the block I/O layer to signal that all of these blocks 
-    have been written out --- *without* a barrier
-3)  Write the commit block with a barrier
-4)  Wait for the I/O to commit block to be done
+The problem is that there are paths where ext4_do_update_inode() can
+get called with do_sync==1, even when journalling is enabled.
+Specifically, if ext4_write_inode() is called with wait==1, wait is
+passed to ext4_do_update_inode() as do_sync, and then when a journal
+is present, we will end up calling sync_dirty_buffer(), which means we
+will be writing out the modified metadata *before* the transaction has
+committed.
 
-This is what we do with an async commit:
+If you try using your patch with journalling enabled, and you try
+doing some power fail testing, my code inspection leads me to believe
+with 99% certainty that the filesystem will be corrupted as a result.
 
-1)  Write the journal data, revoke, and descriptor blocks
-2)  Write the commit block (with a checksum) with a barrier
-3)  Wait for the I/O to in steps (1) and (2) to be done
+I think what you need to do instead is to add an extra parameter
+do_sync to ext4_handle_dirty_metadata(), and continue to call
+ext4_handle_dirty_metadata.  However in code paths where we will later
+force a commit to guarantee that the metadata has been written out
+(i.e., in the fsync() code path), ext4_handle_dirty_metadata() should
+be called with the new do_sync parameter set to 1.
 
-That's the only difference at this point.  The fatal flaw with async
-commit from before was this that we weren't writing the commit block
-in step (2) with a barrier --- and that *was* disastrous, since it
-meant the equivalent of mounting with barrier=0.
-
-But now that it is fixed, this code path does make sense, and given
-that we weren't inserting a barrier between steps 2 and 3, we were in
-fact (theoretically) vulnerable to the commit block and the journal
-blocks getting reordered in 2.6.30 and older kernels.  Turning on the
-journal checksum (in the prior commit) helps solve that issue, but at
-that point, we might as well write the commit block before we start
-waiting on all of the journal blocks.
-
-As far as the code complexity issue concern, it really wasn't that
-complicated, and in fact we're not really changing the existing code
-path that we've been using for over a year now by very much.  The only
-difference in fact is where we call the function to write the commit
-record.
+Does that make sense?
 
 						- Ted
