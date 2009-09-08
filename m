@@ -1,78 +1,109 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: print more sysadmin-friendly message in check_block_validity()
-Date: Tue,  8 Sep 2009 08:22:42 -0400
-Message-ID: <1252412562-738-1-git-send-email-tytso@mit.edu>
-References: <4AA645F0.8050903@linux.vnet.ibm.com>
-Cc: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: enable cache flush in ext3_sync_file
+Date: Tue, 8 Sep 2009 15:04:38 +0200
+Message-ID: <20090908130438.GA2528@atrey.karlin.mff.cuni.cz>
+References: <20090831193712.GB2672@lst.de> <4A9D66C5.4060806@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="0OAP2g/MAC+5xKAE"
+Cc: Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:46884 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751050AbZIHMWo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Sep 2009 08:22:44 -0400
-In-Reply-To: <4AA645F0.8050903@linux.vnet.ibm.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:55251 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752251AbZIHNEg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 09:04:36 -0400
+Content-Disposition: inline
+In-Reply-To: <4A9D66C5.4060806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Drop the WARN_ON(1), as he stack trace is not appropriate, since it is
-triggered by file system corruption, and it misleads users into
-thinking there is a kernel bug.  In addition, change the message
-displayed by ext4_error() to make it clear that this is a file system
-corruption problem.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+--0OAP2g/MAC+5xKAE
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3400961..4d3fd0e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1121,16 +1121,15 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
- 		ext4_discard_preallocations(inode);
- }
- 
--static int check_block_validity(struct inode *inode, sector_t logical,
--				sector_t phys, int len)
-+static int check_block_validity(struct inode *inode, const char *msg,
-+				sector_t logical, sector_t phys, int len)
- {
- 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), phys, len)) {
--		ext4_error(inode->i_sb, "check_block_validity",
-+		ext4_error(inode->i_sb, msg,
- 			   "inode #%lu logical block %llu mapped to %llu "
- 			   "(size %d)", inode->i_ino,
- 			   (unsigned long long) logical,
- 			   (unsigned long long) phys, len);
--		WARN_ON(1);
- 		return -EIO;
- 	}
- 	return 0;
-@@ -1182,8 +1181,8 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	if (retval > 0 && buffer_mapped(bh)) {
--		int ret = check_block_validity(inode, block,
--					       bh->b_blocknr, retval);
-+		int ret = check_block_validity(inode, "file system corruption",
-+					       block, bh->b_blocknr, retval);
- 		if (ret != 0)
- 			return ret;
- 	}
-@@ -1264,8 +1263,9 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
- 
- 	up_write((&EXT4_I(inode)->i_data_sem));
- 	if (retval > 0 && buffer_mapped(bh)) {
--		int ret = check_block_validity(inode, block,
--					       bh->b_blocknr, retval);
-+		int ret = check_block_validity(inode, "file system "
-+					       "corruption after allocation",
-+					       block, bh->b_blocknr, retval);
- 		if (ret != 0)
- 			return ret;
- 	}
+> Christoph Hellwig wrote:
+> > We need to flush the write cache unconditionally in ->fsync, otherwise
+> > writes into already allocated blocks can get lost.  Writes into fully
+> > allocated files are very common when using disk images for
+> > virtualization, and without this fix can easily lose data after
+> > an fdatasync, which is the typical implementation for a cache flush on
+> > the virtual drive.
+> > 
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> 
+> Given that I tried to do the same thing 1.5 years ago (though not quite
+> correctly) ...
+> 
+> Acked-by: Eric Sandeen <sandeen@redhat.com>
+  But would the patch below be better? When we force a transaction
+commit we don't have to flush caches again. Or am I missing something?
+
+								Honza
 -- 
-1.6.3.2.1.gb9f7d.dirty
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
 
+--0OAP2g/MAC+5xKAE
+Content-Type: text/x-diff; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext3-Flush-disk-caches-on-fsync-when-needed.patch"
+
+>From 4412c3d5cc04849d959e9083d3bdf0b4a058e947 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Tue, 8 Sep 2009 14:59:42 +0200
+Subject: [PATCH] ext3: Flush disk caches on fsync when needed
+
+In case we fsync() a file and inode is not dirty, we don't force a transaction
+to disk and hence don't flush disk caches. Thus file data could be just in disk
+caches and not on persistent storage. Fix the problem by flushing disk caches
+if we didn't force a transaction commit.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/fsync.c |   12 +++++++++++-
+ 1 files changed, 11 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext3/fsync.c b/fs/ext3/fsync.c
+index d336341..451d166 100644
+--- a/fs/ext3/fsync.c
++++ b/fs/ext3/fsync.c
+@@ -23,6 +23,7 @@
+  */
+ 
+ #include <linux/time.h>
++#include <linux/blkdev.h>
+ #include <linux/fs.h>
+ #include <linux/sched.h>
+ #include <linux/writeback.h>
+@@ -73,7 +74,7 @@ int ext3_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 	}
+ 
+ 	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+-		goto out;
++		goto flush;
+ 
+ 	/*
+ 	 * The VFS has written the file data.  If the inode is unaltered
+@@ -85,7 +86,16 @@ int ext3_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 			.nr_to_write = 0, /* sys_fsync did this */
+ 		};
+ 		ret = sync_inode(inode, &wbc);
++		goto out;
+ 	}
++flush:
++	/*
++	 * In case we didn't commit a transaction, we have to flush
++	 * disk caches manually so that data really is on persistent
++	 * storage
++	 */
++	if (test_opt(inode->i_sb, BARRIER))
++		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ out:
+ 	return ret;
+ }
+-- 
+1.6.0.2
+
+
+--0OAP2g/MAC+5xKAE--
