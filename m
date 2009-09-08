@@ -1,153 +1,71 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: Automatically enable journal_async_commit on
- ext4 file systems
-Date: Mon, 07 Sep 2009 19:48:02 -0400
-Message-ID: <4AA59BB2.3010308@gmail.com>
-References: <1252189963-23868-1-git-send-email-tytso@mit.edu> <1252189963-23868-2-git-send-email-tytso@mit.edu> <4AA3252B.6020401@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: e4defrag doesn't work on root filesystem
+Date: Mon, 07 Sep 2009 22:55:52 -0500
+Message-ID: <4AA5D5C8.2010304@redhat.com>
+References: <4AA52B31.5090205@p-static.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Ravi Pinjala <ravi@p-static.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.221.181]:50944 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752843AbZIGXyt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Sep 2009 19:54:49 -0400
-Received: by qyk11 with SMTP id 11so2363497qyk.1
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Sep 2009 16:54:51 -0700 (PDT)
-In-Reply-To: <4AA3252B.6020401@redhat.com>
+Received: from sandeen.net ([209.173.210.139]:27208 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753388AbZIHDzu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Sep 2009 23:55:50 -0400
+In-Reply-To: <4AA52B31.5090205@p-static.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Theodore Ts'o wrote:
->> Now that we have cleaned up journal_async_commit, it's safe to enable
->> it all the time.  But we only want to do so if ext4-specific INCOMPAT
->> features are enabled, since otherwise we will prevent the filesystem
->> from being mounted using ext3.
+Ravi Pinjala wrote:
+> Hi,
 >
-> Has anyone done some serious power-fail/crash (real or simulated) 
-> testing with this?  If not, I think we should before it's default...
+> I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
+> When I try to defragment files on my root filesystem, it refuses to
+> acknowledge that the filesystem is ext4. I believe the problem is that
+> it checks the filesystem type by parsing /etc/mtab, but the root
+> filesystem shows up there like this:
 >
-> -Eric
+> rootfs on / type rootfs (rw)
+> /dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
+>
+> so it gets confused by the bogus first entry. It works just fine on
+> other ext4 filesystems I have.
+>
+> (If this is the wrong mailing list, I apologize; I couldn't find one for
+> e2fsprogs, so I thought this was the next best thing.)
+>
+> --Ravi
+> --
+>   
+This list is a fine place to report it, thanks.
 
-I think that we also need to see some very compelling performance 
-numbers to justify the complexity. Journaling is complex enough, so if 
-this is not a win, we should (in my opinion) go with the simplest 
-technique :-)
+In is_ext4() it does a statfs on the file, and checks that the magic is EXT4,
+but then that's the same as ext2 and ext3 unfortunately  ....
 
-ric
+It later does getmntent for the actual fs type, but fails, as you said.
 
->
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> ---
->>  Documentation/filesystems/ext4.txt |    8 ++++++--
->>  fs/ext4/super.c                    |   26 ++++++++++++++++++++++++--
->>  2 files changed, 30 insertions(+), 4 deletions(-)
->>
->> diff --git a/Documentation/filesystems/ext4.txt 
->> b/Documentation/filesystems/ext4.txt
->> index 3e329db..4f8d73a 100644
->> --- a/Documentation/filesystems/ext4.txt
->> +++ b/Documentation/filesystems/ext4.txt
->> @@ -135,8 +135,12 @@ ro                       Mount filesystem read 
->> only. Note that ext4 will
->>                   writes to the filesystem.
->>  
->>  journal_async_commit    Commit block can be written to disk without 
->> waiting
->> -            for descriptor blocks. If enabled older kernels cannot
->> -            mount the device.
->> +            for descriptor blocks.  This mount option will be 
->> +            automatically enabled if ext4-specific INCOMPAT
->> +            features are present in the file system.
->> +
->> +nojournal_async_commit    Disable the journal_async_commit option, even
->> +            for ext4 filesystems.
->>  
->>  journal=update        Update the ext4 file system's journal to the 
->> current
->>              format.
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index f1815d3..f644a5c 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -75,6 +75,15 @@ static int ext4_unfreeze(struct super_block *sb);
->>  static void ext4_write_super(struct super_block *sb);
->>  static int ext4_freeze(struct super_block *sb);
->>  
->> +/*
->> + * If ext4 filesystem features are enabled, then enable async_commits
->> + * by default.
->> + */
->> +#define ASYNC_COMMIT_DEFAULT(sb) (EXT4_HAS_INCOMPAT_FEATURE(sb, \
->> +                    (EXT4_FEATURE_INCOMPAT_EXTENTS| \
->> +                     EXT4_FEATURE_INCOMPAT_64BIT| \
->> +                     EXT4_FEATURE_INCOMPAT_FLEX_BG)))
->> +
->>  
->>  ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
->>                     struct ext4_group_desc *bg)
->> @@ -845,8 +854,13 @@ static int ext4_show_options(struct seq_file 
->> *seq, struct vfsmount *vfs)
->>       */
->>      seq_puts(seq, ",barrier=");
->>      seq_puts(seq, test_opt(sb, BARRIER) ? "1" : "0");
->> -    if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
->> -        seq_puts(seq, ",journal_async_commit");
->> +    if (ASYNC_COMMIT_DEFAULT(sb)) {
->> +        if (!test_opt(sb, JOURNAL_ASYNC_COMMIT))
->> +            seq_puts(seq, ",nojournal_async_commit");
->> +    } else {
->> +        if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
->> +            seq_puts(seq, ",journal_async_commit");
->> +    }
->>      if (test_opt(sb, NOBH))
->>          seq_puts(seq, ",nobh");
->>      if (test_opt(sb, I_VERSION))
->> @@ -1050,6 +1064,7 @@ enum {
->>      Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
->>      Opt_journal_update, Opt_journal_dev,
->>      Opt_journal_checksum, Opt_journal_async_commit,
->> +    Opt_nojournal_async_commit,
->>      Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
->>      Opt_data_err_abort, Opt_data_err_ignore, Opt_mb_history_length,
->>      Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
->> @@ -1092,6 +1107,7 @@ static const match_table_t tokens = {
->>      {Opt_journal_dev, "journal_dev=%u"},
->>      {Opt_journal_checksum, "journal_checksum"},
->>      {Opt_journal_async_commit, "journal_async_commit"},
->> +    {Opt_nojournal_async_commit, "nojournal_async_commit"},
->>      {Opt_abort, "abort"},
->>      {Opt_data_journal, "data=journal"},
->>      {Opt_data_ordered, "data=ordered"},
->> @@ -1284,6 +1300,9 @@ static int parse_options(char *options, struct 
->> super_block *sb,
->>          case Opt_journal_async_commit:
->>              set_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
->>              break;
->> +        case Opt_nojournal_async_commit:
->> +            clear_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
->> +            break;
->>          case Opt_noload:
->>              set_opt(sbi->s_mount_opt, NOLOAD);
->>              break;
->> @@ -2422,6 +2441,9 @@ static int ext4_fill_super(struct super_block 
->> *sb, void *data, int silent)
->>       */
->>      set_opt(sbi->s_mount_opt, DELALLOC);
->>  
->> +    if (ASYNC_COMMIT_DEFAULT(sb))
->> +        set_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
->> +
->>      if (!parse_options((char *) data, sb, &journal_devnum,
->>                 &journal_ioprio, NULL, 0))
->>          goto failed_mount;
->
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Does this fix it for you?
+
+=========
+
+Skip "rootfs" entry when checking for ext4 filesystem.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 82e3868..0d04df9 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -430,6 +430,8 @@ static int is_ext4(const char *file)
+ 	}
+ 
+ 	while ((mnt = getmntent(fp)) != NULL) {
++		if (mnt->mnt_fsname[0] != '/')
++			continue;
+ 		len = strlen(mnt->mnt_dir);
+ 		ret = memcmp(file_path, mnt->mnt_dir, len);
+ 		if (ret != 0)
+
 
