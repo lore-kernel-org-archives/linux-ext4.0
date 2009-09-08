@@ -1,132 +1,63 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 3/4]ext4: Return exchanged blocks count to user space
- in 	failure
-Date: Tue, 08 Sep 2009 13:11:48 +0900
-Message-ID: <4AA5D984.6030607@rs.jp.nec.com>
-References: <4A9DE3EA.1080602@rs.jp.nec.com> <4A9E9521.2010701@gmail.com>	 <87f94c370909021359p171c6f6dte9b700cd48a5fde0@mail.gmail.com> <6149e97b0909022213p2b8463fdm796c8687d36ae54c@mail.gmail.com> <4AA0E419.7010707@rs.jp.nec.com> <4AA143B2.6060401@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: Automatically enable journal_async_commit on
+	ext4 file systems
+Date: Tue, 8 Sep 2009 00:45:41 -0400
+Message-ID: <20090908044541.GF22901@mit.edu>
+References: <1252189963-23868-1-git-send-email-tytso@mit.edu> <1252189963-23868-2-git-send-email-tytso@mit.edu> <4AA59A82.9090502@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Peng Tao <bergwolf@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:34027 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751434AbZIHEMQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Sep 2009 00:12:16 -0400
-In-Reply-To: <4AA143B2.6060401@gmail.com>
+Received: from thunk.org ([69.25.196.29]:60024 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751412AbZIHEpp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Sep 2009 00:45:45 -0400
+Content-Disposition: inline
+In-Reply-To: <4AA59A82.9090502@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Peng,
+On Mon, Sep 07, 2009 at 07:42:58PM -0400, Ric Wheeler wrote:
+>
+> I am not sure that we are really good with ASYNC commit being on all of  
+> the time - I really worry that we will see lots of issues.
 
-Peng Tao wrote:
-> Hi, Akira,
-> 
-> Akira Fujita wrote:
->> Hi Peng,
->> Peng Tao wrote:
->>> Hi, Greg,
->>>
->>> On Thu, Sep 3, 2009 at 4:59 AM, Greg Freemyer<greg.freemyer@gmail.com> wrote:
->>>> Peng,
->>>>
->>>> I have not looked at the code very closely, but can you tell me where
->>>> a file corruption can take place?   Not completing the replacement of
->>>> extents with donor extents is one thing.  Corrupting the original file
->>>> contents is another.
->>> The file corruption is mainly because of the half done replacement.
->>>
->>> My test case is here:
->>> http://marc.info/?l=linux-ext4&m=124992522305319&w=2
->>>
->> This patch solves your test case problem.
->>
->>> $dd if=/dev/zero of=zero.img bs=10M count=0 seek=50
->>> $dd if=../609xp.img of=first.img bs=10M count=1
->>> $dd if=/dev/zero of=first.img bs=10M count=0 seek=50
->>> $dd if=../609xp.img of=last.img bs=10M count=1 seek=49
->>> $dd if=../609xp.img of=middle.img bs=10M count=1 seek=24
->>> $dd if=/dev/zero of=middle.img bs=10M count=0 seek=50
->>
->> This problem is caused by the fact that logical offset of
->> orig file is different from donor file's.
->> To detect the logical offset difference in EXT4_IOC_MOVE_EXT,
->> add checks to mext_calc_swap_extents() and handles it as error,
->> since data exchange must be done between the same blocks.
->>
->> Note: This problem does not happen in ext4 online defrag
->>       (means with e4defrag command), because the donor file
->>       which is created by e4defrag in user space is
->>       file constitution same as orig file.
->>
->> And add the extent null check to ext_get_path() for
->> followings test case.
->>> $dd if=/dev/zero of=zero.img bs=10M count=0 seek=50
->> More test cases are needed for EXT4_IOC_MOVE_EXT,
->> so this patch may not be complete,
->> but the problem you reported is fixed at least.
->> I am now testing EXT4_IOC_MOVE_EXT hard.
->>
->> BTW, I'm now looking into the empty extent issue which
->> you reported, so I will release the patch soon.
->> http://marc.info/?l=linux-ext4&m=124975192830024&w=2
->>
->> Could you do your test case again with this patch?
-> After applying the two patches, I run my test case with first.img as the orig file (and middle.img or
-> last.img as donor file). My kernel panics and I find following message in /var/log/messages after reboot:
+There really isn't much difference between async commit and non-async
+commit.  In fact, the name is really a bit of a misnomer at this
+point.
 
-I could not reproduce this panic.
-Would you tell me about your test environment (1-5)?
+So here's what we do on a non-async commit:
 
-1. What is your kernel version? (2.6.31-rc2 + ext4 patch queue + my patch?)
-2. What FS mount options are enabled?
-3. What options are enabled to create ext4?
-4. Are image files  (first.img, middle.img and last.img)
-   same as your previous mail?
-   http://marc.info/?l=linux-ext4&m=124992522305319&w=2
-5. What arguments are set to EXT4_IOC_MOVE_EXT in your test case?
+1)  Write the journal data, revoke, and descriptor blocks
+2)  Wait for the block I/O layer to signal that all of these blocks 
+    have been written out --- *without* a barrier
+3)  Write the commit block with a barrier
+4)  Wait for the I/O to commit block to be done
 
-Regards,
-Akira Fujita
+This is what we do with an async commit:
 
+1)  Write the journal data, revoke, and descriptor blocks
+2)  Write the commit block (with a checksum) with a barrier
+3)  Wait for the I/O to in steps (1) and (2) to be done
 
-> Sep  4 23:21:05 bergwolf -- MARK --
->  [ 3183.602852] Modules linked in: ext4 ppdev lp parport binfmt_misc i915 kvm_intel kvm uinput ipv6 cpufreq_userspace cpufreq_conservative cpufreq_powersave jbd2 crc16 fuse dm_snapshot dm_mirror dm_region_hash dm_log dm_mod zlib_deflate crc32c acpi_cpufreq sbp2 snd_hda_codec_analog snd_hda_intel snd_hda_codec snd_pcm_oss snd_mixer_oss pcmcia rtc_cmos snd_pcm rtc_core i2c_i801 rtc_lib snd_timer snd_page_alloc psmouse yenta_socket rsrc_nonstatic thinkpad_acpi pcmcia_core serio_raw evdev uhci_hcd firewire_ohci firewire_core crc_itu_t video output ehci_hcd e1000e usbcore [last unloaded: ext4]
->  [ 3183.602951] 
->  [ 3183.602958] Pid: 6937, comm: a.out Not tainted (2.6.31-rc2-drm-intel-next #2) 7676A26
->  [ 3183.602965] EIP: 0060:[<c01cfa26>] EFLAGS: 00210287 CPU: 1
->  [ 3183.602977] EIP is at journal_start+0x39/0xb9
->  [ 3183.602982] EAX: f61a2a80 EBX: f26f048c ECX: f6995200 EDX: f6995000
->  [ 3183.602988] ESI: f26f048c EDI: f6f59c88 EBP: f1a77c90 ESP: f1a77c7c
->  [ 3183.602994]  DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
->  [ 3183.603010]  00000002 f6995000 f6f59c88 f26f048c f6f59c88 f1a77c98 c01c9cc6 f1a77cac
->  [ 3183.603024] <0> c01c0b51 f6f59c88 00000001 f6995200 f1a77cc0 c0192799 004cba00 f6f59c88
->  [ 3183.603039] <0> f68b3840 f1a77cd4 c018ab14 004cba00 00000000 ff7fc000 f1a77d44 c015c7ec
->  [ 3183.603070]  [<c01c9cc6>] ? ext3_journal_start_sb+0x40/0x42
->  [ 3183.603076]  [<c01c0b51>] ? ext3_dirty_inode+0x24/0x67
->  [ 3183.603087]  [<c0192799>] ? __mark_inode_dirty+0x23/0xc6
->  [ 3183.603097]  [<c018ab14>] ? file_update_time+0x7a/0xa3
->  [ 3183.603108]  [<c015c7ec>] ? __generic_file_aio_write_nolock+0x2d6/0x3fe
->  [ 3183.603151]  [<fa29d3b4>] ? ext4_ext_find_extent+0x3f/0x230 [ext4]
->  [ 3183.603161]  [<c015d0e3>] ? generic_file_aio_write+0x57/0xb4
->  [ 3183.603200]  [<fa2a6c26>] ? mext_replace_branches+0x31f/0x329 [ext4]
->  [ 3183.603209]  [<c01bef56>] ? ext3_file_write+0x1a/0x88
->  [ 3183.603219]  [<c017b6e2>] ? do_sync_write+0xab/0xe9
->  [ 3183.603229]  [<c0137403>] ? autoremove_wake_function+0x0/0x33
->  [ 3183.603239]  [<c013dbda>] ? getnstimeofday+0x52/0xda
->  [ 3183.603249]  [<c014d027>] ? do_acct_process+0x68d/0x6b2
->  [ 3183.603257]  [<c015b46c>] ? find_get_page+0x1d/0x81
->  [ 3183.603268]  [<c018df9f>] ? mntput_no_expire+0x19/0xb3
->  [ 3183.603276]  [<c017c9c7>] ? __fput+0x17c/0x184
->  [ 3183.603286]  [<c014d09f>] ? acct_process+0x53/0x66
->  [ 3183.603294]  [<c012a318>] ? do_exit+0x174/0x573
->  [ 3183.603303]  [<c012a778>] ? do_group_exit+0x61/0x88
->  [ 3183.603311]  [<c012a7b2>] ? sys_exit_group+0x13/0x17
->  [ 3183.603320]  [<c0102994>] ? sysenter_do_call+0x12/0x28
->  [ 3183.603419] ---[ end trace cba419e95b73d96f ]---
-> 
-> I'm not sure why ext3 journal is involved. I've run the case twice and both
-> turned out with the same trace messages.
+That's the only difference at this point.  The fatal flaw with async
+commit from before was this that we weren't writing the commit block
+in step (2) with a barrier --- and that *was* disastrous, since it
+meant the equivalent of mounting with barrier=0.
 
+But now that it is fixed, this code path does make sense, and given
+that we weren't inserting a barrier between steps 2 and 3, we were in
+fact (theoretically) vulnerable to the commit block and the journal
+blocks getting reordered in 2.6.30 and older kernels.  Turning on the
+journal checksum (in the prior commit) helps solve that issue, but at
+that point, we might as well write the commit block before we start
+waiting on all of the journal blocks.
+
+As far as the code complexity issue concern, it really wasn't that
+complicated, and in fact we're not really changing the existing code
+path that we've been using for over a year now by very much.  The only
+difference in fact is where we call the function to write the commit
+record.
+
+						- Ted
