@@ -1,18 +1,36 @@
-From: "Nicholas Lee" <kvapilovajar@cityofchesapeake.net>
-Subject: Complete range of your medical needs now at our online chemists!
-Date: Tue, 8 Sep 2009 17:44:04 +0100
-Message-ID: <20090908174404.7020800@cityofchesapeake.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] Skip "rootfs" entry when checking for ext4 filesystem.
+Date: Tue, 08 Sep 2009 11:13:50 -0500
+Message-ID: <4AA682BE.2030200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: ravi@p-static.net
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 62.101.182.162.dyn.user.ono.com ([62.101.182.162]:1981 "HELO
-	wergvan" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1750729AbZIHPqQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Sep 2009 11:46:16 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:21586 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751170AbZIHQNv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Sep 2009 12:13:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Recharge your love gun http://rquisc.briefextol.com/
+Skip "rootfs" entry when checking for ext4 filesystem.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 82e3868..0d04df9 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -430,6 +430,8 @@ static int is_ext4(const char *file)
+ 	}
+ 
+ 	while ((mnt = getmntent(fp)) != NULL) {
++		if (mnt->mnt_fsname[0] != '/')
++			continue;
+ 		len = strlen(mnt->mnt_dir);
+ 		ret = memcmp(file_path, mnt->mnt_dir, len);
+ 		if (ret != 0)
 
