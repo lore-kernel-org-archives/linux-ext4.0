@@ -1,137 +1,44 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: [PATCH] ext4: Make non-journal fsync work properly. REPOST
-Date: Wed, 09 Sep 2009 10:34:24 -0700
-Message-ID: <1252517664.18594.3.camel@bobble.smo.corp.google.com>
-References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
-	 <20090908050614.GA10477@mit.edu>
-	 <1252424465.17646.7.camel@bobble.smo.corp.google.com>
-	 <20090908220504.GS22901@mit.edu>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: Re: ext4+quota+nfs issue
+Date: Wed, 9 Sep 2009 10:45:06 -0700
+Message-ID: <150c16850909091045h1962fd67n77c265c9b99c5f44@mail.gmail.com>
+References: <4AA5E5F3.30309@primeinteractive.net>
+	 <4AA72C14.1020005@primeinteractive.net>
+	 <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>
+	 <4AA7C38E.8020306@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:58910 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752393AbZIIRe1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Sep 2009 13:34:27 -0400
-In-Reply-To: <20090908220504.GS22901@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jiri Kosina <jkosina@suse.cz>,
+	Pavol Cvengros <pavol.cvengros@primeinteractive.net>,
+	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753555AbZIIRpH@vger.kernel.org>
+In-Reply-To: <4AA7C38E.8020306@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
-mode:  If we're not using a journal, ext4_write_inode() now calls
-ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
-with a new "do_sync" parameter.  If that parameter is nonzero _and_ we're
-not using a journal, ext4_do_update_inode() calls sync_dirty_buffer()
-instead of ext4_handle_dirty_metadata().
+On Wed, Sep 9, 2009 at 8:02 AM, Eric Sandeen<sandeen@redhat.com> wrote:
+>> On Wed, 9 Sep 2009, Pavol Cvengros wrote:
+>>
+>>> Hi,
+>>>
+>>> can somebody who is aware of ext4 and quota have a look on this one?
+>>>
+>
+> This was also just reported at:
+>
+> https://bugzilla.redhat.com/show_bug.cgi?id=521914
+>
+> -Eric
+>
 
-This problem was found in power-fail testing, checking the amount of
-loss of files and blocks after a power failure when using fsync() and
-when not using fsync().  It turned out that using fsync() was actually
-worse than not doing so, possibly because it increased the likelihood
-that the inodes would remain unflushed and would therefore be lost at
-the power failure.
+I've seen exactly the same thing myself as well, but on local I/O.
+The only difference I was able to find between filesystems I saw this
+on, versus filesystems that I didn't see this on, was how it was
+created.  The filesystems without this issue were made using
+mkfs.ext4, and the ones that _did_ have the issue were created with
+mkfs.ext3, and then mounted -t ext4.  Pavol, can you check your
+filesystem features from "dumpe2fs -h [your_device]"?
 
-Signed-off-by: Frank Mayhar <fmayhar@google.com>
-
- fs/ext4/inode.c |   54 ++++++++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 40 insertions(+), 14 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d87f6a0..ef2e780 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4741,7 +4741,8 @@ static int ext4_inode_blocks_set(handle_t *handle,
-  */
- static int ext4_do_update_inode(handle_t *handle,
- 				struct inode *inode,
--				struct ext4_iloc *iloc)
-+				struct ext4_iloc *iloc,
-+				int do_sync)
- {
- 	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-@@ -4843,10 +4844,22 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
- 	}
- 
--	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--	rc = ext4_handle_dirty_metadata(handle, inode, bh);
--	if (!err)
--		err = rc;
-+	/*
-+	 * If we're not using a journal and we were called from
-+	 * ext4_write_inode() to sync the inode (making do_sync true),
-+	 * we can just use sync_dirty_buffer() directly to do our dirty
-+	 * work.  Testing s_journal here is a bit redundant but it's
-+	 * worth it to avoid potential future trouble.
-+	 */
-+	if (EXT4_SB(inode->i_sb)->s_journal == NULL && do_sync) {
-+		BUFFER_TRACE(bh, "call sync_dirty_buffer");
-+		sync_dirty_buffer(bh);
-+	} else {
-+		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-+		rc = ext4_handle_dirty_metadata(handle, inode, bh);
-+		if (!err)
-+			err = rc;
-+	}
- 	ei->i_state &= ~EXT4_STATE_NEW;
- 
- out_brelse:
-@@ -4892,19 +4905,32 @@ out_brelse:
-  */
- int ext4_write_inode(struct inode *inode, int wait)
- {
-+	int err;
-+
- 	if (current->flags & PF_MEMALLOC)
- 		return 0;
- 
--	if (ext4_journal_current_handle()) {
--		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
--		dump_stack();
--		return -EIO;
--	}
-+	if (EXT4_SB(inode->i_sb)->s_journal) {
-+		if (ext4_journal_current_handle()) {
-+			jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
-+			dump_stack();
-+			return -EIO;
-+		}
- 
--	if (!wait)
--		return 0;
-+		if (!wait)
-+			return 0;
-+
-+		err = ext4_force_commit(inode->i_sb);
-+	} else {
-+		struct ext4_iloc iloc;
- 
--	return ext4_force_commit(inode->i_sb);
-+		err = ext4_get_inode_loc(inode, &iloc);
-+		if (err)
-+			return err;
-+		err = ext4_do_update_inode(EXT4_NOJOURNAL_HANDLE,
-+					   inode, &iloc, wait);
-+	}
-+	return err;
- }
- 
- /*
-@@ -5198,7 +5224,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
- 	get_bh(iloc->bh);
- 
- 	/* ext4_do_update_inode() does jbd2_journal_dirty_metadata */
--	err = ext4_do_update_inode(handle, inode, iloc);
-+	err = ext4_do_update_inode(handle, inode, iloc, 0);
- 	put_bh(iloc->bh);
- 	return err;
- }
-
--- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
-
+-Justin
