@@ -1,102 +1,93 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4+quota+nfs issue
-Date: Wed, 09 Sep 2009 10:02:38 -0500
-Message-ID: <4AA7C38E.8020306@redhat.com>
-References: <4AA5E5F3.30309@primeinteractive.net> <4AA72C14.1020005@primeinteractive.net> <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Odd "leak" of extent info into data blocks?
+Date: Wed, 9 Sep 2009 11:19:11 -0400
+Message-ID: <20090909151911.GX22901@mit.edu>
+References: <6601abe90908221610p60629809qcde6848308b8affe@mail.gmail.com> <20090908175605.GB7801@shell> <6601abe90909081121p17b154a4s2e6852da2b71951f@mail.gmail.com> <20090908194045.GQ22901@mit.edu> <6601abe90909081418k5de55938mfe411fccfe10a258@mail.gmail.com> <20090908233644.GV22901@mit.edu> <6601abe90909082100n48afdba9qee087ff46bfe4e3f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Pavol Cvengros <pavol.cvengros@primeinteractive.net>,
-	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
-To: Jiri Kosina <jkosina@suse.cz>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Valerie Aurora <vaurora@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18036 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:35845 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751599AbZIIPDE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Sep 2009 11:03:04 -0400
-In-Reply-To: <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>
+	id S1753492AbZIIPTS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Sep 2009 11:19:18 -0400
+Content-Disposition: inline
+In-Reply-To: <6601abe90909082100n48afdba9qee087ff46bfe4e3f@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jiri Kosina wrote:
-> [ adding relevant CCs ]
-> 
-> On Wed, 9 Sep 2009, Pavol Cvengros wrote:
-> 
->> Hi,
->>
->> can somebody who is aware of ext4 and quota have a look on this one?
->>
+On Tue, Sep 08, 2009 at 09:00:50PM -0700, Curt Wohlgemuth wrote:
+>=20
+> >=A0In ext3 and ext4, metadata blocks (such as
+> > extent tree blocks), aren't stored in the page cache.
+>=20
+> Hmm.  You're saying that in the absence of a journal, all metadata
+> writes go direct to disk?  Where should I look for this in the code?
 
-This was also just reported at:
+Sorry, let me be more precise.  All metadata writes, regardless of
+whether a journal is present or not, are written via the buffer head
+(bh) abstraction.  They have to, because that's how we do our
+journalling; the jbd/jbd2 layer is built on top of the bh I/O request
+layer, and even when a journal is not present, we are still doing our
+metadata I/O via the submit_bh and ll_rw_block interface.
 
-https://bugzilla.redhat.com/show_bug.cgi?id=521914
+It used to be the case (in Linux 2.4) that the buffer cache was stored
+separately from the page cache.  In Linux 2.6, the buffer cache is
+implemented on top of the page cache, so technically, the metadata
+blocks are stored in the page cache; however, they are only *accessed*
+via the buffer cache abstraction.
 
--Eric
+> The problem is that I've seen this in real life.  And the patch below
+> seems to fix it.  (Unfortunately, I haven't been able to recreate thi=
+s
+> in a simple example, after several days work.  I've only seen this in
+> a *very* small number of cases on heavily loaded machines.)
 
->> Thanks,
->>
->> P.
->>
->> On 8. 9. 2009 7:04, Pavol Cvengros wrote:
->>> Hello,
->>>
->>> recently we have build and started to use raid storage with formatted
->>> capacity of 4.5T (ext4 formatted, default params).
->>> FS has quota turned on and is exported via NFS to nodes.
->>> If we turn qouta on on this FS and are trying to use it over NFS we get the
->>> following:
->>>
->>> ------------[ cut here ]------------
->>> WARNING: at fs/quota/dquot.c:964 dquot_claim_space+0x181/0x190()
->>> Hardware name: S3210SH
->>> Modules linked in: nfs fscache nfsd lockd auth_rpcgss exportfs sunrpc
->>> coretemp hwmon ipmi_si ipmi_msghandler ehci_hcd sr_mod cdrom uhci_hcd floppy
->>> usbcore i2c_i801 i2c_core processor 3w_9xxx button thermal
->>> Pid: 268, comm: pdflush Tainted: G        W  2.6.30-gentoo-r3_host #1
->>> Call Trace:
->>>  [<ffffffff803151e1>] ? dquot_claim_space+0x181/0x190
->>>  [<ffffffff80245c59>] ? warn_slowpath_common+0x89/0x100
->>>  [<ffffffff803151e1>] ? dquot_claim_space+0x181/0x190
->>>  [<ffffffff80367e83>] ? ext4_mb_mark_diskspace_used+0x423/0x440
->>>  [<ffffffff8036c05f>] ? ext4_mb_new_blocks+0x2cf/0x460
->>>  [<ffffffff80360a17>] ? ext4_ext_find_extent+0x307/0x330
->>>  [<ffffffff80362508>] ? ext4_ext_get_blocks+0x578/0xfc0
->>>  [<ffffffff8028e828>] ? __pagevec_free+0x48/0x70
->>>  [<ffffffff803a1c65>] ? blk_rq_bio_prep+0x35/0x130
->>>  [<ffffffff8034d310>] ? ext4_get_blocks_wrap+0x210/0x380
->>>  [<ffffffff8034d8d8>] ? mpage_da_map_blocks+0xe8/0x750
->>>  [<ffffffff80292cee>] ? pagevec_lookup_tag+0x2e/0x50
->>>  [<ffffffff8029084c>] ? write_cache_pages+0x11c/0x400
->>>  [<ffffffff8034e500>] ? __mpage_da_writepage+0x0/0x190
->>>  [<ffffffff8034e269>] ? ext4_da_writepages+0x329/0x4b0
->>>  [<ffffffff80290bd2>] ? do_writepages+0x32/0x70
->>>  [<ffffffff802e4140>] ? __writeback_single_inode+0xb0/0x490
->>>  [<ffffffff8023c753>] ? dequeue_entity+0x23/0x1c0
->>>  [<ffffffff802e4b16>] ? generic_sync_sb_inodes+0x316/0x4f0
->>>  [<ffffffff802e4f4e>] ? writeback_inodes+0x5e/0x110
->>>  [<ffffffff80290e56>] ? wb_kupdate+0xc6/0x160
->>>  [<ffffffff80292110>] ? pdflush+0x120/0x230
->>>  [<ffffffff80290d90>] ? wb_kupdate+0x0/0x160
->>>  [<ffffffff80291ff0>] ? pdflush+0x0/0x230
->>>  [<ffffffff80261154>] ? kthread+0x64/0xc0
->>>  [<ffffffff8020d13a>] ? child_rip+0xa/0x20
->>>  [<ffffffff802610f0>] ? kthread+0x0/0xc0
->>>  [<ffffffff8020d130>] ? child_rip+0x0/0x20
->>> ---[ end trace cb54e6523e9ab60d ]---
->>>
->>> fstab entry:
->>> /dev/sdb1              /mnt/storage    ext4
->>> noatime,nodiratime,usrjquota=aquota.user,grpjquota=aquota.group,jqfmt=vfsv0 
->>>
->>> qith quotaoff on tihs FS, warnings stop.
->>>
->>> Question is if it's safe to use quotas with this problem (warning) or not.
->>> Can't afford data damage.
->>>
->>> Thanks,
->>>
->>> Pavol Cvengros
+I believe that you have a problem.  The problem is you have a dirty bh
+which is getting written out after the block gets reallocated for use
+as a data block.  But a bforget() call should have the problem just as
+as well.  In fact, I think the real fix should be this.
 
+commit 1b58b00e02893b4bbab2b5f137316b82feadac52
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Wed Sep 9 11:18:42 2009 -0400
 
+    ext4: Use bforget() in no journal mode when in ext4_journal_forget(=
+)
+   =20
+    When ext4 is using a journal, a metadata block which is deallocated
+    must be passed into the journal layer so it can be "revoked".  The
+    jbd2_journal_forget() function is also responsible for calling
+    bforget().  Without a journal, ext4_journal_forget() must call
+    bforget(), to avoid a race from a dirty metadata block getting writ=
+ten
+    back after it has been reallocated and reused for another inode's d=
+ata
+    block.
+   =20
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index eb27fd0..d4f4b39 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -44,7 +44,7 @@ int __ext4_journal_forget(const char *where, handle_t=
+ *handle,
+ 						  handle, err);
+ 	}
+ 	else
+-		brelse(bh);
++		bforget(bh);
+ 	return err;
+ }
+=20
+
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
