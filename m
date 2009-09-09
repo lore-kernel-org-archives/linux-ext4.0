@@ -1,140 +1,109 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: Odd "leak" of extent info into data blocks?
-Date: Tue, 8 Sep 2009 21:00:50 -0700
-Message-ID: <6601abe90909082100n48afdba9qee087ff46bfe4e3f@mail.gmail.com>
-References: <6601abe90908221610p60629809qcde6848308b8affe@mail.gmail.com>
-	 <20090908175605.GB7801@shell>
-	 <6601abe90909081121p17b154a4s2e6852da2b71951f@mail.gmail.com>
-	 <20090908194045.GQ22901@mit.edu>
-	 <6601abe90909081418k5de55938mfe411fccfe10a258@mail.gmail.com>
-	 <20090908233644.GV22901@mit.edu>
+From: Jiri Kosina <jkosina@suse.cz>
+Subject: Re: ext4+quota+nfs issue
+Date: Wed, 9 Sep 2009 11:42:03 +0200 (CEST)
+Message-ID: <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>
+References: <4AA5E5F3.30309@primeinteractive.net> <4AA72C14.1020005@primeinteractive.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Valerie Aurora <vaurora@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+To: Pavol Cvengros <pavol.cvengros@primeinteractive.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:29096 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750721AbZIIEAw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Sep 2009 00:00:52 -0400
-Received: from spaceape8.eur.corp.google.com (spaceape8.eur.corp.google.com [172.28.16.142])
-	by smtp-out.google.com with ESMTP id n8940rAM002342
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Sep 2009 05:00:54 +0100
-Received: from an-out-0708.google.com (ancc5.prod.google.com [10.100.29.5])
-	by spaceape8.eur.corp.google.com with ESMTP id n8940p4p019543
-	for <linux-ext4@vger.kernel.org>; Tue, 8 Sep 2009 21:00:51 -0700
-Received: by an-out-0708.google.com with SMTP id c5so1517542anc.42
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Sep 2009 21:00:50 -0700 (PDT)
-In-Reply-To: <20090908233644.GV22901@mit.edu>
+Received: from cantor2.suse.de ([195.135.220.15]:33868 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752046AbZIIJmE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Sep 2009 05:42:04 -0400
+In-Reply-To: <4AA72C14.1020005@primeinteractive.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted:
 
-On Tue, Sep 8, 2009 at 4:36 PM, Theodore Tso<tytso@mit.edu> wrote:
-> On Tue, Sep 08, 2009 at 02:18:35PM -0700, Curt Wohlgemuth wrote:
->>
->> All bforget() does is clear the buffer's dirty bit. =A0Meanwhile, th=
-e
->> page is still marked dirty, and can be in the middle of writeback;
->> it's true that __block_write_full_page() will check the dirty bit fo=
-r
->> each buffer in the page, but there doesn't seem to be any
->> synchronization to ensure that the write won't take place at some
->> point in time after bforget() is called. =A0Which means it can be ca=
-lled
->> after the bitmap is changed.
->
-> Let me make sure I got this right. =A0The problem that you're worried
-> about is a block that had previously contained an extent tree node fo=
-r
-> an inode that gets deleted, and then that blocks gets reallocated for
-> use as a data block.
+[ adding relevant CCs ]
 
-Correct.
+On Wed, 9 Sep 2009, Pavol Cvengros wrote:
 
->=A0In ext3 and ext4, metadata blocks (such as
-> extent tree blocks), aren't stored in the page cache.
+> Hi,
+> 
+> can somebody who is aware of ext4 and quota have a look on this one?
+> 
+> 
+> Thanks,
+> 
+> P.
+> 
+> On 8. 9. 2009 7:04, Pavol Cvengros wrote:
+> > Hello,
+> > 
+> > recently we have build and started to use raid storage with formatted
+> > capacity of 4.5T (ext4 formatted, default params).
+> > FS has quota turned on and is exported via NFS to nodes.
+> > If we turn qouta on on this FS and are trying to use it over NFS we get the
+> > following:
+> > 
+> > ------------[ cut here ]------------
+> > WARNING: at fs/quota/dquot.c:964 dquot_claim_space+0x181/0x190()
+> > Hardware name: S3210SH
+> > Modules linked in: nfs fscache nfsd lockd auth_rpcgss exportfs sunrpc
+> > coretemp hwmon ipmi_si ipmi_msghandler ehci_hcd sr_mod cdrom uhci_hcd floppy
+> > usbcore i2c_i801 i2c_core processor 3w_9xxx button thermal
+> > Pid: 268, comm: pdflush Tainted: G        W  2.6.30-gentoo-r3_host #1
+> > Call Trace:
+> >  [<ffffffff803151e1>] ? dquot_claim_space+0x181/0x190
+> >  [<ffffffff80245c59>] ? warn_slowpath_common+0x89/0x100
+> >  [<ffffffff803151e1>] ? dquot_claim_space+0x181/0x190
+> >  [<ffffffff80367e83>] ? ext4_mb_mark_diskspace_used+0x423/0x440
+> >  [<ffffffff8036c05f>] ? ext4_mb_new_blocks+0x2cf/0x460
+> >  [<ffffffff80360a17>] ? ext4_ext_find_extent+0x307/0x330
+> >  [<ffffffff80362508>] ? ext4_ext_get_blocks+0x578/0xfc0
+> >  [<ffffffff8028e828>] ? __pagevec_free+0x48/0x70
+> >  [<ffffffff803a1c65>] ? blk_rq_bio_prep+0x35/0x130
+> >  [<ffffffff8034d310>] ? ext4_get_blocks_wrap+0x210/0x380
+> >  [<ffffffff8034d8d8>] ? mpage_da_map_blocks+0xe8/0x750
+> >  [<ffffffff80292cee>] ? pagevec_lookup_tag+0x2e/0x50
+> >  [<ffffffff8029084c>] ? write_cache_pages+0x11c/0x400
+> >  [<ffffffff8034e500>] ? __mpage_da_writepage+0x0/0x190
+> >  [<ffffffff8034e269>] ? ext4_da_writepages+0x329/0x4b0
+> >  [<ffffffff80290bd2>] ? do_writepages+0x32/0x70
+> >  [<ffffffff802e4140>] ? __writeback_single_inode+0xb0/0x490
+> >  [<ffffffff8023c753>] ? dequeue_entity+0x23/0x1c0
+> >  [<ffffffff802e4b16>] ? generic_sync_sb_inodes+0x316/0x4f0
+> >  [<ffffffff802e4f4e>] ? writeback_inodes+0x5e/0x110
+> >  [<ffffffff80290e56>] ? wb_kupdate+0xc6/0x160
+> >  [<ffffffff80292110>] ? pdflush+0x120/0x230
+> >  [<ffffffff80290d90>] ? wb_kupdate+0x0/0x160
+> >  [<ffffffff80291ff0>] ? pdflush+0x0/0x230
+> >  [<ffffffff80261154>] ? kthread+0x64/0xc0
+> >  [<ffffffff8020d13a>] ? child_rip+0xa/0x20
+> >  [<ffffffff802610f0>] ? kthread+0x0/0xc0
+> >  [<ffffffff8020d130>] ? child_rip+0x0/0x20
+> > ---[ end trace cb54e6523e9ab60d ]---
+> > 
+> > fstab entry:
+> > /dev/sdb1              /mnt/storage    ext4
+> > noatime,nodiratime,usrjquota=aquota.user,grpjquota=aquota.group,jqfmt=vfsv0 
+> > 
+> > qith quotaoff on tihs FS, warnings stop.
+> > 
+> > Question is if it's safe to use quotas with this problem (warning) or not.
+> > Can't afford data damage.
+> > 
+> > Thanks,
+> > 
+> > Pavol Cvengros
+> > -- 
+> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Please read the FAQ at  http://www.tux.org/lkml/
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+> 
 
-Hmm.  You're saying that in the absence of a journal, all metadata
-writes go direct to disk?  Where should I look for this in the code?
+-- 
+Jiri Kosina
+SUSE Labs, Novell Inc.
 
-Looking at ext4_ext_new_meta_block() and code that uses it, I don't
-see anything that prevents the use of the page cache.  And if this
-were the case, wouldn't the call to mark_buffer_dirty() in
-__ext4_handle_dirty_metadata() (when there's no journal) do nothing?
-
-I also put in code in submit_bio() to scan all pages for the extent
-header pattern that I was seeing ("leaking" into the data pages).
-When I saw it, the stack trace was always from pdflush() (from
-wb_kupdate()).  I.e., these are from the page cache.
-
-> So I'm not sure why you're worried about the page being marked dirty.
-> What's the scenario you are concerned about?
-
-If you're right that metadata writes are not through the page cache,
-then there is no scenario I'm worried about :-) .
-
-The problem is that I've seen this in real life.  And the patch below
-seems to fix it.  (Unfortunately, I haven't been able to recreate this
-in a simple example, after several days work.  I've only seen this in
-a *very* small number of cases on heavily loaded machines.)
-
-> If it's the case where a data block for a deleted inode getting
-> rewritten after the inode is deleted, when the inode is deleted,
-> truncate_inode_apges() end up dropping the pages from the page cache
-> *before* the block allocation bitmap is dropped.
-
-It's quite possible that there's an interaction with older code that
-we have in our 2.6.26-based kernels -- our ext4/jbd2 code is pretty
-up-to-date, but the rest of the code base is not.  But really, in my
-case -- and you'll have to trust me -- I've seen this pattern:
-
-1. file A (~8MB) is written out and closed, with a final mod time of 12=
-:08 p.m.
-2. My submit_bio() scan sees the "bad extent header" written out to
-physical block B at 12:15 p.m.
-3. Looking at file A later, its logical block 2048 corresponds to
-physical block B -- and contains the "bad extent header" pattern.
-
-truncate_inode_pages() only deals with data blocks, right?  So it
-should have no effect on metadata...
-
->> This is why I opted to wait for the buffer to be written out before
->> continuing on to ext4_free_blocks().
->
-> Just to be clear, which buffer are you talking about here?
-
-The leaf extent blocks buffer_head.  Here's the patch, as applied to a
-2.6.30.3 version of extents.c:
-
-diff -Naur orig/fs/ext4/extents.c new/fs/ext4/extents.c
---- orig/fs/ext4/extents.c	2009-09-08 20:28:46.000000000 -0700
-+++ new/fs/ext4/extents.c	2009-09-08 20:31:42.000000000 -0700
-@@ -1958,6 +1958,15 @@
- 		return err;
- 	ext_debug("index is empty, remove it, free block %llu\n", leaf);
- 	bh =3D sb_find_get_block(inode->i_sb, leaf);
-+
-+	/*
-+	 * If we don't have a journal, then we've dirtied the BH for the leaf
-+	 * block, but we're freeing the block now.  We need to wait here for
-+	 * the page to be written out before we proceed.
-+	 */
-+	if (!ext4_handle_valid(handle) && bh)
-+		sync_dirty_buffer(bh);
-+
- 	ext4_forget(handle, 1, inode, bh, leaf);
- 	ext4_free_blocks(handle, inode, leaf, 1, 1);
- 	return err;
-
-
-Thanks,
-Curt
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
