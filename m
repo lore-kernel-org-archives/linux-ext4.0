@@ -1,35 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH, RFC V3] ext4: limit block allocations for	indirect-block
- files to < 2^32
-Date: Thu, 10 Sep 2009 11:56:51 -0500
-Message-ID: <4AA92FD3.2010301@redhat.com>
-References: <4AA1920C.9040406@redhat.com> <4AA1D94F.8060703@redhat.com> <20090905164535.GL4197@webber.adilger.int> <4AA92307.4010304@redhat.com> <20090910165327.GB23700@mit.edu>
+From: David Rees <drees76@gmail.com>
+Subject: EXT4-fs error - ext4_mb_generate_buddy
+Date: Thu, 10 Sep 2009 11:56:42 -0700
+Message-ID: <72dbd3150909101156qa2c4e3dnfef02d509f63330f@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60828 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750714AbZIJQ4w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Sep 2009 12:56:52 -0400
-In-Reply-To: <20090910165327.GB23700@mit.edu>
+Received: from mail-vw0-f195.google.com ([209.85.212.195]:40387 "EHLO
+	mail-vw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753049AbZIJS47 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 14:56:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Thu, Sep 10, 2009 at 11:02:15AM -0500, Eric Sandeen wrote:
->> Today, the ext4 allocator will happily allocate blocks past
->> 232 for indirect-block files, which results in the block
->> numbers getting truncated, and corruption ensues.
-> 
-> Everywhere where you say 232, you mean 2^32, right?
+Running ext4 on Fedora 10, kernel 2.6.29.6-93.fc10.x86_64.  Partition
+in question is an 8 disk software RAID10 with mostly SATA disks and
+one IDE disk.  We've never seen any hardware or filesystem corruption
+issues on this machine in the past, though the RAID10 setup is new -
+was put into service the same time we migrated the partition from ext3
+to ext4 (fresh filesystem created and data copied over).
 
-sorry, cut and paste error, yes.
+Earlier today, we saw this message in the logs:
 
-(email client helpfully turned 2^32 into something prettier, but then
-didn't copy it right on the resend)
+EXT4-fs error (device md0): ext4_mb_generate_buddy: EXT4-fs: group
+586: 19635 blocks in bitmap, 19636 in gd
 
--Eric
+It looks rather ominous and we will be scheduling a reboot to force a
+fsck as well as to upgrade to kernel-2.6.29.6-99.fc10.x86_64 (which
+doesn't appear to have any ext4 related changes in it).  Looking in
+the archives, I'm not quite sure what to make of the message, but it
+does seem to indicate that we may have filesystem corruption.  Any
+suggestions?
+
+Thanks
+
+-Dave
