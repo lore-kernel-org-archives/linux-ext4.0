@@ -1,51 +1,50 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] Make non-journal fsync work properly.
-Date: Thu, 10 Sep 2009 12:27:47 +0530
-Message-ID: <20090910065747.GC8690@skywalker.linux.vnet.ibm.com>
-References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
+Subject: Re: [PATCH 2/2 V3] allow direct IO to fallocate and holes
+Date: Thu, 10 Sep 2009 13:27:30 +0530
+Message-ID: <20090910075730.GD8690@skywalker.linux.vnet.ibm.com>
+References: <1252025090.15321.17.camel@mingming-laptop>
+ <20090907215746.GA11748@duck.suse.cz>
+ <1252529462.19097.170.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Frank Mayhar <fmayhar@google.com>
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:58111 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752963AbZIJG5q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 02:57:46 -0400
-Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
-	by e28smtp06.in.ibm.com (8.14.3/8.13.1) with ESMTP id n8A6vm8H017749
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:27:48 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8A6vmGd1601708
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:27:48 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8A6vlLM021799
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:27:48 +0530
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:50170 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752704AbZIJH5b (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 03:57:31 -0400
+Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
+	by e28smtp05.in.ibm.com (8.14.3/8.13.1) with ESMTP id n8A7vWCP026138
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 13:27:32 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8A7vWoE2384010
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 13:27:32 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8A7vVke003737
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 17:57:32 +1000
 Content-Disposition: inline
-In-Reply-To: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
+In-Reply-To: <1252529462.19097.170.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 04, 2009 at 07:55:00PM -0700, Frank Mayhar wrote:
-> Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
-> mode:  If we're not using a journal, ext4_write_inode() now calls
-> ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
-> with a new "do_sync" parameter.  If that parameter is nonzero
-> ext4_do_update_inode() calls sync_dirty_buffer() instead of
-> ext4_handle_dirty_metadata().
-> 
-> This problem was found in power-fail testing, checking the amount of
-> loss of files and blocks after a power failure when using fsync() and
-> when not using fsync().  It turned out that using fsync() was actually
-> worse than not doing so, possibly because it increased the likelihood
-> that the inodes would remain unflushed and would therefore be lost at
-> the power failure.
-> 
+On Wed, Sep 09, 2009 at 01:51:02PM -0700, Mingming wrote:
+.....
+.....
 
-I think this is related to the other thread discussing the extent leak
-with non journal mode. I don't find ext4 without journal adding meta
-data blocks to the inode's address space mapping private_list. That 
-would mean sync_mapping_buffers -> fsync_buffers_list won't sync 
-the related metadata blocks.Tell me what i am missing 
+> >   I think fsync() still won't work correctly since it can happen user sees
+> > AIO completed, calls fsync() that completes, 
+> 
+> hmm, does fsync() ensure user sees AIO data completed?
+>
+
+If we call fsync after getting AIO completion event and crash we should
+ensure that the data can be read back properly. That is either
+
+a) we should ensure that we convert the extent before returning the io
+    completion event
+b) Or the fsync should be able to guarantee that it will force the extent
+   conversion pending on the file.
 
 -aneesh
