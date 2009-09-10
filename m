@@ -1,69 +1,51 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: ext4: Can we talk about bforget() and metadata blocks
-Date: Thu, 10 Sep 2009 12:24:01 +0530
-Message-ID: <20090910065401.GB8690@skywalker.linux.vnet.ibm.com>
-References: <6601abe90909091029s74465ebave932987e5fdf93ba@mail.gmail.com>
- <20090909225429.GB24951@mit.edu>
- <6601abe90909091707s1df9e71bvb4551772dc4917cb@mail.gmail.com>
- <20090910013540.GF24951@mit.edu>
+Subject: Re: [PATCH] Make non-journal fsync work properly.
+Date: Thu, 10 Sep 2009 12:27:47 +0530
+Message-ID: <20090910065747.GC8690@skywalker.linux.vnet.ibm.com>
+References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp01.in.ibm.com ([59.145.155.1]:37301 "EHLO
-	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753582AbZIJGyA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 02:54:00 -0400
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp01.in.ibm.com (8.14.3/8.13.1) with ESMTP id n8A6s1lU011442
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:24:01 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8A6s1P12334906
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:24:01 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8A6s1OW025959
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 16:54:01 +1000
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:58111 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752963AbZIJG5q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 02:57:46 -0400
+Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
+	by e28smtp06.in.ibm.com (8.14.3/8.13.1) with ESMTP id n8A6vm8H017749
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:27:48 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8A6vmGd1601708
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:27:48 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8A6vlLM021799
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 12:27:48 +0530
 Content-Disposition: inline
-In-Reply-To: <20090910013540.GF24951@mit.edu>
+In-Reply-To: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 09, 2009 at 09:35:40PM -0400, Theodore Tso wrote:
-> On Wed, Sep 09, 2009 at 05:07:28PM -0700, Curt Wohlgemuth wrote:
-> > 
-> > First, ext4_journal_forget() is called from ext4_forget() only when
-> > we're journalling; without a journal, ext4_journal_forget() is only
-> > called for various non-extent paths.  ext4_forget() could be changed,
-> > of course...
+On Fri, Sep 04, 2009 at 07:55:00PM -0700, Frank Mayhar wrote:
+> Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
+> mode:  If we're not using a journal, ext4_write_inode() now calls
+> ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
+> with a new "do_sync" parameter.  If that parameter is nonzero
+> ext4_do_update_inode() calls sync_dirty_buffer() instead of
+> ext4_handle_dirty_metadata().
 > 
-> Ext4_forget() calls either ext4_journal_forget() or
-> ext4_journal_revoke().  So we need to fix up both functions.
+> This problem was found in power-fail testing, checking the amount of
+> loss of files and blocks after a power failure when using fsync() and
+> when not using fsync().  It turned out that using fsync() was actually
+> worse than not doing so, possibly because it increased the likelihood
+> that the inodes would remain unflushed and would therefore be lost at
+> the power failure.
 > 
-> 			      	      	  - Ted
-> 
-> commit 4afdf0958f6f7b878e6d85cb4e0c0c12a0bd74e2
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Wed Sep 9 21:32:41 2009 -0400
-> 
->     ext4: Use bforget() in no journal mode for ext4_journal_{forget,revoke}()
->     
->     When ext4 is using a journal, a metadata block which is deallocated
->     must be passed into the journal layer so it can be dropped from the
->     current transaction and/or revoked.  This is done by calling the
->     functions ext4_journal_forget() and ext4_journal_revoke(), which call
->     jbd2_journal_forget(), and jbd2_journal_revoke(), respectively.
->     
->     Since the jbd2_journal_forget() and jbd2_journal_revoke() call
->     bforget(), if ext4 is not using a journal, ext4_journal_forget() and
->     ext4_journal_revoke() must call bforget() to avoid a dirty metadata
->     block overwriting a block after it has been reallocated and reused for
->     another inode's data block.
->     
 
-I am sure i am missing something. But where are we adding the buffer_head
-to the mapping->private_list ?. For ext2 when we allocate meta data blocks
-we do mark_buffer_dirty_inode which add the buffer_head to the inodes
-private_list. Shouldn't we do something similar with Ext4 without journal ?
+I think this is related to the other thread discussing the extent leak
+with non journal mode. I don't find ext4 without journal adding meta
+data blocks to the inode's address space mapping private_list. That 
+would mean sync_mapping_buffers -> fsync_buffers_list won't sync 
+the related metadata blocks.Tell me what i am missing 
 
 -aneesh
