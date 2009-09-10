@@ -1,23 +1,35 @@
-From: Jan Kara <jack@suse.cz>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: fsync on ext[34] working only by an accident
-Date: Thu, 10 Sep 2009 11:15:32 +0200
-Message-ID: <20090910091532.GE607@duck.suse.cz>
-References: <20090908132601.GA17778@duck.suse.cz> <20090910064605.GA8690@skywalker.linux.vnet.ibm.com> <20090910085056.GA607@duck.suse.cz> <20090910090449.GA11418@skywalker.linux.vnet.ibm.com>
+Date: Thu, 10 Sep 2009 14:45:51 +0530
+Message-ID: <20090910091551.GB11418@skywalker.linux.vnet.ibm.com>
+References: <20090908132601.GA17778@duck.suse.cz>
+ <20090910064605.GA8690@skywalker.linux.vnet.ibm.com>
+ <20090910085056.GA607@duck.suse.cz>
+ <20090910090449.GA11418@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47690 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752616AbZIJJPb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Sep 2009 05:15:31 -0400
+Received: from e23smtp01.au.ibm.com ([202.81.31.143]:34634 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754154AbZIJJPy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 05:15:54 -0400
+Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
+	by e23smtp01.au.ibm.com (8.14.3/8.13.1) with ESMTP id n8A9EfUX000950
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 19:14:41 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8A9E3uc1343626
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 19:14:03 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8A9Ft2X016211
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 19:15:55 +1000
 Content-Disposition: inline
 In-Reply-To: <20090910090449.GA11418@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 10-09-09 14:34:49, Aneesh Kumar K.V wrote:
+On Thu, Sep 10, 2009 at 02:34:49PM +0530, Aneesh Kumar K.V wrote:
 > On Thu, Sep 10, 2009 at 10:50:56AM +0200, Jan Kara wrote:
 > >   Hi,
 > > 
@@ -47,24 +59,12 @@ On Thu 10-09-09 14:34:49, Aneesh Kumar K.V wrote:
 > > does nothing with the inode.
 > 
 > When we don't have a journal handle we do that as a part of journal commit
-          ^^^^^ you meant probably "do"
-
 > right ? __jbd2_journal_temp_unlink_buffer -> mark_buffer_dirty  
-  Yes, that happens. But as I said above:
-a) mark_buffer_dirty() dirties blockdevice inode and thus not the one we
-   check in ext4_sync_file().
-b) this happens only after we commit the transaction and only if the buffer
-   is not part of the next transaction.
-  Believe me, I've actually checked with blktrace, that the code does not
-work in some cases ;).
-
+> 
 > I guess fsync only requires the meta data update to be in journal ?
-  Yes, to be more precise, it requires transaction with the metadata update
-to be committed. And the problem is we force a transaction commit in
-ext4_sync_file() only if the inode has a dirty bit set - which is
-accidentally set only by quota code.
+> 
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Adding the file inode to the sb->s_dirty is done through block_write_end ?
+Why do you mention above that it is not "clearly not enough" ?
+
+-aneesh
