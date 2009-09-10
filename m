@@ -1,114 +1,210 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: ext4: Can we talk about bforget() and metadata blocks
-Date: Thu, 10 Sep 2009 08:55:14 -0700
-Message-ID: <6601abe90909100855h6ef60d32vfbbf23fa15fc66aa@mail.gmail.com>
-References: <6601abe90909091029s74465ebave932987e5fdf93ba@mail.gmail.com>
-	 <20090909225429.GB24951@mit.edu>
-	 <6601abe90909091707s1df9e71bvb4551772dc4917cb@mail.gmail.com>
-	 <20090910013540.GF24951@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC V3] ext4: limit block allocations for indirect-block
+ files to < 2^32
+Date: Thu, 10 Sep 2009 11:02:15 -0500
+Message-ID: <4AA92307.4010304@redhat.com>
+References: <4AA1920C.9040406@redhat.com> <4AA1D94F.8060703@redhat.com> <20090905164535.GL4197@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:3957 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751913AbZIJPzP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2009 11:55:15 -0400
-Received: from zps35.corp.google.com (zps35.corp.google.com [172.25.146.35])
-	by smtp-out.google.com with ESMTP id n8AFtHiR024317
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 16:55:17 +0100
-Received: from pzk14 (pzk14.prod.google.com [10.243.19.142])
-	by zps35.corp.google.com with ESMTP id n8AFsU2G028081
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 08:55:14 -0700
-Received: by pzk14 with SMTP id 14so183404pzk.1
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 08:55:14 -0700 (PDT)
-In-Reply-To: <20090910013540.GF24951@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:62186 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751607AbZIJQCP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Sep 2009 12:02:15 -0400
+In-Reply-To: <20090905164535.GL4197@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 9, 2009 at 6:35 PM, Theodore Tso<tytso@mit.edu> wrote:
-> On Wed, Sep 09, 2009 at 05:07:28PM -0700, Curt Wohlgemuth wrote:
->>
->> First, ext4_journal_forget() is called from ext4_forget() only when
->> we're journalling; without a journal, ext4_journal_forget() is only
->> called for various non-extent paths. =A0ext4_forget() could be chang=
-ed,
->> of course...
->
-> Ext4_forget() calls either ext4_journal_forget() or
-> ext4_journal_revoke(). =A0So we need to fix up both functions.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0- Ted
->
-> commit 4afdf0958f6f7b878e6d85cb4e0c0c12a0bd74e2
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date: =A0 Wed Sep 9 21:32:41 2009 -0400
->
-> =A0 =A0ext4: Use bforget() in no journal mode for ext4_journal_{forge=
-t,revoke}()
->
-> =A0 =A0When ext4 is using a journal, a metadata block which is deallo=
-cated
-> =A0 =A0must be passed into the journal layer so it can be dropped fro=
-m the
-> =A0 =A0current transaction and/or revoked. =A0This is done by calling=
- the
-> =A0 =A0functions ext4_journal_forget() and ext4_journal_revoke(), whi=
-ch call
-> =A0 =A0jbd2_journal_forget(), and jbd2_journal_revoke(), respectively=
-=2E
->
-> =A0 =A0Since the jbd2_journal_forget() and jbd2_journal_revoke() call
-> =A0 =A0bforget(), if ext4 is not using a journal, ext4_journal_forget=
-() and
-> =A0 =A0ext4_journal_revoke() must call bforget() to avoid a dirty met=
-adata
-> =A0 =A0block overwriting a block after it has been reallocated and re=
-used for
-> =A0 =A0another inode's data block.
->
-> =A0 =A0Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->
-> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> index eb27fd0..ecb9ca4 100644
-> --- a/fs/ext4/ext4_jbd2.c
-> +++ b/fs/ext4/ext4_jbd2.c
-> @@ -44,7 +44,7 @@ int __ext4_journal_forget(const char *where, handle=
-_t *handle,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0handle, err);
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0else
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bforget(bh);
-> =A0 =A0 =A0 =A0return err;
-> =A0}
->
-> @@ -60,7 +60,7 @@ int __ext4_journal_revoke(const char *where, handle=
-_t *handle,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0handle, err);
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0else
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bforget(bh);
-> =A0 =A0 =A0 =A0return err;
-> =A0}
+Today, the ext4 allocator will happily allocate blocks past
+232 for indirect-block files, which results in the block
+numbers getting truncated, and corruption ensues.
 
-This looks quite reasonable to me.  And of course, your patch fixes
-the brelse() calls that I added back in July.
+This patch limits such allocations to < 232, and adds
+WARN_ONs (maybe should be BUG_ONs) if we do get blocks
+larger than that.
 
-Of course, validating this patch on my end will be tough; I need at
-least a week of no corruptions to convince myself that the problem is
-fixed, to the same degree that my call to sync_dirty_buffer() works.
+This should address RH Bug 519471, ext4 bitmap allocator 
+must limit blocks to < 232
+
+* ext4_find_goal() is modified to choose a goal < UINT_MAX,
+  so that our starting point is in an acceptable range.
+
+* ext4_xattr_block_set() is modified such that the goal block
+  is < UINT_MAX, as above.
+
+* ext4_mb_regular_allocator() is modified so that the group
+  search does not continue into groups which are too high
+
+* ext4_mb_use_preallocated() has a check that we don't use
+  preallocated space which is too far out
+
+* ext4_alloc_blocks() and ext4_xattr_block_set() add some WARN_ONs
+
+No attempt has been made to limit inode locations to < 232,
+so we may wind up with blocks far from their inodes.  Doing
+this much already will lead to some odd ENOSPC issues when the
+"lower 32" gets full, and further restricting inodes could
+make that even weirder.
+
+For high inodes, choosing a goal of the original, % UINT_MAX,
+may be a bit odd, but then we're in an odd situation anyway,
+and I don't know of a better heuristic.
+
+Perhaps an ext4-specific #define would be better than UINT_MAX?
+
+The allocator being what it is, I may have missed some spots,
+so I'd welcome review.
 
 Thanks,
-Curt
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+V2: got modulo-happy in ext4_mb_regular_allocator, just limit
+ngroups to no more than UINT_MAX.
+
+V3: address some of Andreas' review points
+But I think we need some better macro & sb info member names...
+
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9714db3..1147994 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -386,6 +386,9 @@ struct ext4_mount_options {
+ #endif
+ };
+ 
++/* Max physical block we can addres w/o extents */
++#define EXT4_MAX_BLOCK_FILE_PHYS	0xFFFFFFFF
++
+ /*
+  * Structure of an inode on the disk
+  */
+@@ -841,6 +844,7 @@ struct ext4_sb_info {
+ 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+ 	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
+ 	ext4_group_t s_groups_count;	/* Number of groups in the fs */
++	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
+ 	unsigned long s_overhead_last;  /* Last calculated overhead */
+ 	unsigned long s_blocks_last;    /* Last seen block count */
+ 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f9c642b..f716d49 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -551,15 +551,21 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+  *
+  *	Normally this function find the preferred place for block allocation,
+  *	returns it.
++ *	Because this is only used for non-extent files, we limit the block nr
++ *	to 32 bits.
+  */
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
+ 				   Indirect *partial)
+ {
++	ext4_fsblk_t goal;
++
+ 	/*
+ 	 * XXX need to get goal block from mballoc's data structures
+ 	 */
+ 
+-	return ext4_find_near(inode, partial);
++	goal = ext4_find_near(inode, partial);
++	goal = goal & EXT4_MAX_BLOCK_FILE_PHYS;
++	return goal;
+ }
+ 
+ /**
+@@ -640,6 +646,8 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		if (*err)
+ 			goto failed_out;
+ 
++		WARN_ON(current_block + count > EXT4_MAX_BLOCK_FILE_PHYS);
++
+ 		target -= count;
+ 		/* allocate blocks for indirect blocks */
+ 		while (index < indirect_blks && count) {
+@@ -674,6 +682,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		ar.flags = EXT4_MB_HINT_DATA;
+ 
+ 	current_block = ext4_mb_new_blocks(handle, &ar, err);
++	WARN_ON(current_block + ar.len > EXT4_MAX_BLOCK_FILE_PHYS);
+ 
+ 	if (*err && (target == blks)) {
+ 		/*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index cd25846..b87854b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1943,6 +1943,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	sb = ac->ac_sb;
+ 	sbi = EXT4_SB(sb);
+ 	ngroups = ext4_get_groups_count(sb);
++	/* non-extent files are limited to low blocks/groups */
++	if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL))
++		ngroups = sbi->s_blockfile_groups;
++
+ 	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
+ 
+ 	/* first, try the goal */
+@@ -3382,6 +3386,11 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ 			ac->ac_o_ex.fe_logical >= pa->pa_lstart + pa->pa_len)
+ 			continue;
+ 
++		/* non-extent files can't have physical blocks past 2^32 */
++		if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL) &&
++			pa->pa_pstart + pa->pa_len > EXT4_MAX_BLOCK_FILE_PHYS)
++			continue;
++
+ 		/* found preallocated blocks, use them */
+ 		spin_lock(&pa->pa_lock);
+ 		if (pa->pa_deleted == 0 && pa->pa_free) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8f4f079..8dcdded 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2595,6 +2595,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 	sbi->s_groups_count = blocks_count;
++	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
++			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
+ 	sbi->s_group_desc = kmalloc(db_count * sizeof(struct buffer_head *),
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 62b31c2..6bce3f8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -810,12 +810,23 @@ inserted:
+ 			get_bh(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
++			ext4_fsblk_t goal, block;
++
++			goal = ext4_group_first_block_no(sb,
+ 						EXT4_I(inode)->i_block_group);
+-			ext4_fsblk_t block = ext4_new_meta_blocks(handle, inode,
++
++			/* non-extent files can't have physical blocks past 2^32 */
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				goal = goal & EXT4_MAX_BLOCK_FILE_PHYS;
++
++			block = ext4_new_meta_blocks(handle, inode,
+ 						  goal, NULL, &error);
+ 			if (error)
+ 				goto cleanup;
++
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				WARN_ON(block > EXT4_MAX_BLOCK_FILE_PHYS);
++
+ 			ea_idebug(inode, "creating block %d", block);
+ 
+ 			new_bh = sb_getblk(sb, block);
+
