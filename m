@@ -1,91 +1,60 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: Automatically enable journal_async_commit on
- ext4 file systems
-Date: Fri, 11 Sep 2009 10:39:32 -0400
-Message-ID: <4AAA6124.6090509@redhat.com>
-References: <1252189963-23868-1-git-send-email-tytso@mit.edu> <1252189963-23868-2-git-send-email-tytso@mit.edu> <4AA59A82.9090502@gmail.com> <20090908044541.GF22901@mit.edu> <4AA6450B.9040001@redhat.com> <20090911024505.GA9363@mit.edu> <4AAA2F6F.3080903@redhat.com> <20090911131332.GD20710@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] debugfs: open with EXT2_FLAG_64BITS
+Date: Fri, 11 Sep 2009 10:18:28 -0500
+Message-ID: <4AAA6A44.90902@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17984 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35824 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751770AbZIKOjT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Sep 2009 10:39:19 -0400
-In-Reply-To: <20090911131332.GD20710@mit.edu>
+	id S1754287AbZIKPSd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Sep 2009 11:18:33 -0400
+Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n8BFIakO015115
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Sep 2009 11:18:36 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n8BFIT8m015350
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Sep 2009 11:18:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/11/2009 09:13 AM, Theodore Tso wrote:
-> On Fri, Sep 11, 2009 at 07:07:27AM -0400, Ric Wheeler wrote:
->    
->> I still think that we changing from a situation in which the drive state
->> with regards to our transactions is almost always consistent to one in
->> which we will often not be consistent.
->>
->> More or less, moving from tight control of the persistent state on the
->> platter to a situation in which, after power failure, we will more often
->> see a bad transaction.  The checksum will catch those conditions, but
->> catching and repairing is not the same as avoiding the need to repair in
->> the first place :)
->>      
-> We won't need to repair anything.  We still have a barrier before we
-> allow the filesystem to proceed with writing back buffers or
-> allocating blocks that aren't safe to be be written back or allocated
-> until after the commit.
->
-> So if the checksum doesn't match, we simply discard the last commit,
-> and the filesystem will be in a consistent state.  This case is
-> analogous to what happens if we didn't have enough time to write the
-> journal blocks plus the commit blocks before the crash.  By removing
-> the barrier before the commit block, it's possible for the commit
-> block to be written before the rest of the journal blocks, but we can
-> treat this case the same way that we treat a missing commit block ---
-> we simply throw away the last transaction.
->
->
-> The problems that I've worried about in the past is what happens if we
-> have a checksum failure on some commit block *other* than the last
-> commit block in the journal.  In that case, we *will* need to do a
-> full file system check and repair, and it is a toss up whether we are
-> better off ignoring the checksum failure, and replaying all of the
-> journal transaction, and hope that the checksum failure is caused by a
-> corrupted data block that will be later overwritten by a later
-> transaction, or whether we abort the journal replay immediately and
-> not replay the later transactions.  Currently we do the latter, but
-> the problem is that since we have already started reusing blocks that
-> might have been deleted in previous transactions, and some of the
-> buffes pinned by previous transactions have already been written out,
-> the file system will be in trouble.  This is where adding per-block
-> checksums into the journal descriptor blocks might allow us to do a
-> better job of recovering from failures in the journal.
->
-> *However*, this is problem is totally orthogonal to the async commit.
-> In the case of the last transaction, where some journal blocks were
-> written out before the commit block was written out, it is safe to
-> throw away the last transaction and consider it simply a "not
-> committed transaction".
->
->    
->> The key is really how can we measure the impact of this in a realistic
->> way. How many fsck's are needed after a power fail? Chris's directory
->> corruption test?
->>      
-> So the test should be that there should be *zero* file system
-> corruptions caused by a power failure.  (Unless the power fail induces
-> a hardware error, of course; if the stress caused by the power drop
-> causes a head crash, nothing we can do about that in software!)  The
-> async commit patch should be that safe.  If we can confirm that, then
-> the case for making it be the default mount option should be a
-> no-brainer.
->
->         	      	     	     	       - Ted
->    
+Pointing debugfs from the pu branch at a large filesystem is
+still failing with:
 
-The above makes sense to me. Now we just need to figure out how to test 
-properly and verify :-(
+ Filesystem too large to use legacy bitmaps while reading block bitmap
 
-ric
+We need to open with EXT2_FLAG_64BITS; I'm not sure if this
+should be a switch based on the size of the fs or not?
+
+But in any case the below gets things moving enough to
+use debugfs on a large filesystem.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 3bb309f..fbebae7 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -127,7 +127,7 @@ void do_open_filesys(int argc, char **argv)
+ 	int	catastrophic = 0;
+ 	blk64_t	superblock = 0;
+ 	blk64_t	blocksize = 0;
+-	int	open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
++	int	open_flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS; 
+ 	char	*data_filename = 0;
+ 
+ 	reset_getopt();
+@@ -2148,7 +2148,7 @@ int main(int argc, char **argv)
+ 	int		sci_idx;
+ 	const char	*usage = "Usage: %s [-b blocksize] [-s superblock] [-f cmd_file] [-R request] [-V] [[-w] [-c] device]";
+ 	int		c;
+-	int		open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
++	int		open_flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS;
+ 	char		*request = 0;
+ 	int		exit_status = 0;
+ 	char		*cmd_file = 0;
 
