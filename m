@@ -1,102 +1,91 @@
-From: Pavol Cvengros <pavol.cvengros@primeinteractive.net>
-Subject: Re: ext4+quota+nfs issue
-Date: Fri, 11 Sep 2009 16:33:48 +0200
-Message-ID: <4AAA5FCC.2010707@primeinteractive.net>
-References: <4AA5E5F3.30309@primeinteractive.net>	 <4AA72C14.1020005@primeinteractive.net>	 <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>	 <4AA7C38E.8020306@redhat.com> <150c16850909091045h1962fd67n77c265c9b99c5f44@mail.gmail.com> <4AA7FBD7.9080406@primeinteractive.net>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH 2/2] ext4: Automatically enable journal_async_commit on
+ ext4 file systems
+Date: Fri, 11 Sep 2009 10:39:32 -0400
+Message-ID: <4AAA6124.6090509@redhat.com>
+References: <1252189963-23868-1-git-send-email-tytso@mit.edu> <1252189963-23868-2-git-send-email-tytso@mit.edu> <4AA59A82.9090502@gmail.com> <20090908044541.GF22901@mit.edu> <4AA6450B.9040001@redhat.com> <20090911024505.GA9363@mit.edu> <4AAA2F6F.3080903@redhat.com> <20090911131332.GD20710@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, Jiri Kosina <jkosina@suse.cz>,
-	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
-To: Justin Maggard <jmaggard10@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753721AbZIKOeH@vger.kernel.org>
-In-Reply-To: <4AA7FBD7.9080406@primeinteractive.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:17984 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751770AbZIKOjT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Sep 2009 10:39:19 -0400
+In-Reply-To: <20090911131332.GD20710@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-
-did this dump helped ?
-Should I try something?
-
-P.
-
-On 9/9/2009 9:02 PM, Pavol Cvengros wrote:
-> On 9/9/2009 7:45 PM, Justin Maggard wrote:
->> On Wed, Sep 9, 2009 at 8:02 AM, Eric Sandeen<sandeen@redhat.com>  wrote:
->>>> On Wed, 9 Sep 2009, Pavol Cvengros wrote:
->>>>
->>>>> Hi,
->>>>>
->>>>> can somebody who is aware of ext4 and quota have a look on this one?
->>>>>
->>> This was also just reported at:
->>>
->>> https://bugzilla.redhat.com/show_bug.cgi?id=521914
->>>
->>> -Eric
->>>
->> I've seen exactly the same thing myself as well, but on local I/O.
->> The only difference I was able to find between filesystems I saw this
->> on, versus filesystems that I didn't see this on, was how it was
->> created.  The filesystems without this issue were made using
->> mkfs.ext4, and the ones that _did_ have the issue were created with
->> mkfs.ext3, and then mounted -t ext4.  Pavol, can you check your
->> filesystem features from "dumpe2fs -h [your_device]"?
+On 09/11/2009 09:13 AM, Theodore Tso wrote:
+> On Fri, Sep 11, 2009 at 07:07:27AM -0400, Ric Wheeler wrote:
+>    
+>> I still think that we changing from a situation in which the drive state
+>> with regards to our transactions is almost always consistent to one in
+>> which we will often not be consistent.
 >>
->> -Justin
->> -- 
+>> More or less, moving from tight control of the persistent state on the
+>> platter to a situation in which, after power failure, we will more often
+>> see a bad transaction.  The checksum will catch those conditions, but
+>> catching and repairing is not the same as avoiding the need to repair in
+>> the first place :)
+>>      
+> We won't need to repair anything.  We still have a barrier before we
+> allow the filesystem to proceed with writing back buffers or
+> allocating blocks that aren't safe to be be written back or allocated
+> until after the commit.
 >
-> here is the dump....
+> So if the checksum doesn't match, we simply discard the last commit,
+> and the filesystem will be in a consistent state.  This case is
+> analogous to what happens if we didn't have enough time to write the
+> journal blocks plus the commit blocks before the crash.  By removing
+> the barrier before the commit block, it's possible for the commit
+> block to be written before the rest of the journal blocks, but we can
+> treat this case the same way that we treat a missing commit block ---
+> we simply throw away the last transaction.
 >
-> host_stor0 ~ # dumpe2fs -h /dev/sdb1
-> dumpe2fs 1.41.9 (22-Aug-2009)
-> Filesystem volume name: <none>
-> Last mounted on: <not available>
-> Filesystem UUID:          f8aef49b-1903-4e25-9a7b-a3f5557107fb
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index 
-> filetype needs_recovery extent flex_bg sparse_super large_file 
-> huge_file uninit_bg dir_nlink extra_isize
-> Filesystem flags:         signed_directory_hash
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              305176576
-> Block count:              1220689911
-> Reserved block count:     12206899
-> Free blocks:              977820919
-> Free inodes:              250981592
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      732
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         8192
-> Inode blocks per group:   512
-> Flex block group size:    16
-> Filesystem created:       Tue Jun 30 20:04:20 2009
-> Last mount time:          Tue Aug 18 12:21:18 2009
-> Last write time:          Tue Aug 18 12:21:18 2009
-> Mount count:              10
-> Maximum mount count:      -1
-> Last checked:             Tue Jun 30 20:04:20 2009
-> Check interval:           0 (<none>)
-> Lifetime writes:          73 GB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> Default directory hash:   half_md4
-> Directory Hash Seed:      317c2fc4-9c86-42ca-a3c3-0d6c632dcb46
-> Journal backup:           inode blocks
-> Journal size:             128M
 >
-> P.
+> The problems that I've worried about in the past is what happens if we
+> have a checksum failure on some commit block *other* than the last
+> commit block in the journal.  In that case, we *will* need to do a
+> full file system check and repair, and it is a toss up whether we are
+> better off ignoring the checksum failure, and replaying all of the
+> journal transaction, and hope that the checksum failure is caused by a
+> corrupted data block that will be later overwritten by a later
+> transaction, or whether we abort the journal replay immediately and
+> not replay the later transactions.  Currently we do the latter, but
+> the problem is that since we have already started reusing blocks that
+> might have been deleted in previous transactions, and some of the
+> buffes pinned by previous transactions have already been written out,
+> the file system will be in trouble.  This is where adding per-block
+> checksums into the journal descriptor blocks might allow us to do a
+> better job of recovering from failures in the journal.
+>
+> *However*, this is problem is totally orthogonal to the async commit.
+> In the case of the last transaction, where some journal blocks were
+> written out before the commit block was written out, it is safe to
+> throw away the last transaction and consider it simply a "not
+> committed transaction".
+>
+>    
+>> The key is really how can we measure the impact of this in a realistic
+>> way. How many fsck's are needed after a power fail? Chris's directory
+>> corruption test?
+>>      
+> So the test should be that there should be *zero* file system
+> corruptions caused by a power failure.  (Unless the power fail induces
+> a hardware error, of course; if the stress caused by the power drop
+> causes a head crash, nothing we can do about that in software!)  The
+> async commit patch should be that safe.  If we can confirm that, then
+> the case for making it be the default mount option should be a
+> no-brainer.
+>
+>         	      	     	     	       - Ted
+>    
+
+The above makes sense to me. Now we just need to figure out how to test 
+properly and verify :-(
+
+ric
+
