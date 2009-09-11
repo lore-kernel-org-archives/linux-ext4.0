@@ -1,330 +1,285 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 3/4]ext4: Return exchanged blocks count to user space
- in 	failure
-Date: Fri, 11 Sep 2009 14:06:56 +0900
-Message-ID: <4AA9DAF0.2020402@rs.jp.nec.com>
-References: <4A9DE3EA.1080602@rs.jp.nec.com> <4A9E9521.2010701@gmail.com>	 <87f94c370909021359p171c6f6dte9b700cd48a5fde0@mail.gmail.com> <6149e97b0909022213p2b8463fdm796c8687d36ae54c@mail.gmail.com> <4AA0E419.7010707@rs.jp.nec.com> <4AA143B2.6060401@gmail.com> <4AA5D984.6030607@rs.jp.nec.com> <4AA60F36.9040605@gmail.com>
+From: Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH 3/4]ext4: Return exchanged blocks count to user space in
+	failure
+Date: Fri, 11 Sep 2009 13:28:52 +0800
+Message-ID: <6149e97b0909102228i439c35bekec888184aea32e78@mail.gmail.com>
+References: <4A9DE3EA.1080602@rs.jp.nec.com> <4A9E9521.2010701@gmail.com>
+	 <87f94c370909021359p171c6f6dte9b700cd48a5fde0@mail.gmail.com>
+	 <6149e97b0909022213p2b8463fdm796c8687d36ae54c@mail.gmail.com>
+	 <4AA0E419.7010707@rs.jp.nec.com> <4AA143B2.6060401@gmail.com>
+	 <4AA5D984.6030607@rs.jp.nec.com> <4AA60F36.9040605@gmail.com>
+	 <4AA9DAF0.2020402@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
 Cc: Greg Freemyer <greg.freemyer@gmail.com>,
 	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Peng Tao <bergwolf@gmail.com>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:36033 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751103AbZIKFHV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Sep 2009 01:07:21 -0400
-In-Reply-To: <4AA60F36.9040605@gmail.com>
+Received: from mail-pz0-f184.google.com ([209.85.222.184]:48865 "EHLO
+	mail-pz0-f184.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753569AbZIKF2s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Sep 2009 01:28:48 -0400
+Received: by mail-pz0-f184.google.com with SMTP id 14so651216pzk.1
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2009 22:28:52 -0700 (PDT)
+In-Reply-To: <4AA9DAF0.2020402@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Peng,
-Peng Tao wrote:
->>> After applying the two patches, I run my test case with first.img as the orig file (and middle.img or
->>> last.img as donor file). My kernel panics and I find following message in /var/log/messages after reboot:
->> I could not reproduce this panic.
->> Would you tell me about your test environment (1-5)?
->>
->> 1. What is your kernel version? (2.6.31-rc2 + ext4 patch queue + my patch?)
-> Only 2.6.31-rc2 from linus tree + your two patches. I didn't apply ext4 patch queue.
->> 2. What FS mount options are enabled?
-> rw,noatime,relatime,commit=360
->> 3. What options are enabled to create ext4?
->  [bergwolf@~]$sudo tune2fs -l /dev/sda9
-> tune2fs 1.41.9 (22-Aug-2009)
-> Filesystem volume name:   <none>
-> Last mounted on:          /other
-> Filesystem UUID:          90548cb8-5748-4b18-bbe9-e7254439cb82
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-> Filesystem flags:         signed_directory_hash 
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              125184
-> Block count:              500015
-> Reserved block count:     25000
-> Free blocks:              299959
-> Free inodes:              125162
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      122
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         7824
-> Inode blocks per group:   489
-> Flex block group size:    16
-> Filesystem created:       Sun Sep  7 15:13:09 2008
-> Last mount time:          Tue Sep  8 15:19:44 2009
-> Last write time:          Tue Sep  8 15:19:44 2009
-> Mount count:              13
-> Maximum mount count:      36
-> Last checked:             Fri Sep  4 20:56:50 2009
-> Check interval:           15552000 (6 months)
-> Next check after:         Wed Mar  3 20:56:50 2010
-> Lifetime writes:          1128 MB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:	          256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> Default directory hash:   tea
-> Directory Hash Seed:      3c5f2a77-c446-4124-94f7-958ba6155f37
-> Journal backup:           inode blocks
->> 4. Are image files  (first.img, middle.img and last.img)
->>    same as your previous mail?
->>    http://marc.info/?l=linux-ext4&m=124992522305319&w=2
-> Yes.
->> 5. What arguments are set to EXT4_IOC_MOVE_EXT in your test case?
->         move_data.donor_fd = donor_fd;
->         move_data.orig_start = 0;
->         move_data.donor_start = 0;
->         move_data.len = SECTOR_TO_BLOCK(statbuf.st_blocks, fs.f_bsize); 
-> 
->         err = ioctl(orig_fd, EXT4_IOC_MOVE_EXT, &move_data);
-
-I tried to reproduce your problem with the following steps,
-but I couldn't. Please check my procedure.
-
-1. Test environment
-linux2.6.31-rc2 + two patches as follows:
-http://marc.info/?l=linux-ext4&m=125186152727422&w=3
-http://marc.info/?l=linux-ext4&m=125205817410548&w=3
-
-2. Create ext4 filesystem and mount it
-mke2fs -t ext4 -b 4096 /dev/XXX
-mount -t ext4 -O rw,noatime,relatime,commit=360 /dev/XXX /mnt/XXX
-
-3. Create orig and donor files
-dd if=/dev/urandom of=/mnt/XXX/first.img bs=10M count=1
-dd if=/dev/zero of=/mnt/XXX/first.img bs=10M count=0 seek=50
-dd if=/dev/urandom of=/mnt/XXX/last.img bs=10M count=1 seek=49
-
-4. Call EXT4_MOVE_MOVE_EXT ioctl to files with the following arguments
-(orig_file = /mnt/XXX/first.img, donor_file = /mnt/XXX/last.img)
-move_data.orig_start = 0;
-move_data.donor_start = 0;
-move_data.len = 12152;
-ioctl(orig_fd, EXT4_IOC_MOVE_EXT, &move_data)
-
-However, EXT4_IOC_MOVE_EXT returned ENODATA (this is a fine result by my patch)
-and it didn't occur the kernel panic which you got.
-If I chose a wrong step, please correct me.
-
-I appreciate if you could test following environment.
-- 2.6.31-rc8 + ext4 patch queue
- (commit:bdacccd94d08a3f89e7fca676b28aa262c6d75fa) + attached patch
-
-Regards,
-Akira Fujita
-
----
- fs/ext4/move_extent.c |   72 +++++++++++++++++++++++++++++++++---------------
- 1 files changed, 49 insertions(+), 23 deletions(-)
-
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 7bfbd58..7266247 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -25,6 +25,8 @@
- 		if (IS_ERR(path)) {					\
- 			ret = PTR_ERR(path);				\
- 			path = NULL;					\
-+		} else if (path[ext_depth(inode)].p_ext == NULL) {	\
-+			ret = -ENODATA;					\
- 		}							\
- 	} while (0)
-
-@@ -284,7 +286,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
-
- 	if (new_flag) {
- 		get_ext_path(orig_path, orig_inode, eblock, err);
--		if (orig_path == NULL)
-+		if (err)
- 			goto out;
-
- 		if (ext4_ext_insert_extent(handle, orig_inode,
-@@ -295,7 +297,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
- 	if (end_flag) {
- 		get_ext_path(orig_path, orig_inode,
- 				      le32_to_cpu(end_ext->ee_block) - 1, err);
--		if (orig_path == NULL)
-+		if (err)
- 			goto out;
-
- 		if (ext4_ext_insert_extent(handle, orig_inode,
-@@ -554,8 +556,10 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
-  * @orig_off:		block offset of original inode
-  * @donor_off:		block offset of donor inode
-  * @max_count:		the maximun length of extents
-+ *
-+ * Return 0 on success, or a negative error value on failure.
-  */
--static void
-+static int
- mext_calc_swap_extents(struct ext4_extent *tmp_dext,
- 			      struct ext4_extent *tmp_oext,
- 			      ext4_lblk_t orig_off, ext4_lblk_t donor_off,
-@@ -564,6 +568,19 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
- 	ext4_lblk_t diff, orig_diff;
- 	struct ext4_extent dext_old, oext_old;
-
-+	BUG_ON(orig_off != donor_off);
-+
-+	/* original and donor extents have to cover the same block offset */
-+	if (orig_off < le32_to_cpu(tmp_oext->ee_block) ||
-+	    le32_to_cpu(tmp_oext->ee_block) +
-+			ext4_ext_get_actual_len(tmp_oext) - 1 < orig_off)
-+		return -ENODATA;
-+
-+	if (orig_off < le32_to_cpu(tmp_dext->ee_block) ||
-+	    le32_to_cpu(tmp_dext->ee_block) +
-+			ext4_ext_get_actual_len(tmp_dext) - 1 < orig_off)
-+		return -ENODATA;
-+
- 	dext_old = *tmp_dext;
- 	oext_old = *tmp_oext;
-
-@@ -591,6 +608,8 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
-
- 	copy_extent_status(&oext_old, tmp_dext);
- 	copy_extent_status(&dext_old, tmp_oext);
-+
-+	return 0;
- }
-
- /**
-@@ -632,12 +651,12 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
-
- 	/* Get the original extent for the block "orig_off" */
- 	get_ext_path(orig_path, orig_inode, orig_off, err);
--	if (orig_path == NULL)
-+	if (err)
- 		goto out;
-
- 	/* Get the donor extent for the head */
- 	get_ext_path(donor_path, donor_inode, donor_off, err);
--	if (donor_path == NULL)
-+	if (err)
- 		goto out;
- 	depth = ext_depth(orig_inode);
- 	oext = orig_path[depth].p_ext;
-@@ -647,8 +666,10 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 	dext = donor_path[depth].p_ext;
- 	tmp_dext = *dext;
-
--	mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
-+	err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
- 				      donor_off, count);
-+	if (err)
-+		goto out;
-
- 	/* Loop for the donor extents */
- 	while (1) {
-@@ -679,7 +700,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 		if (orig_path)
- 			ext4_ext_drop_refs(orig_path);
- 		get_ext_path(orig_path, orig_inode, orig_off, err);
--		if (orig_path == NULL)
-+		if (err)
- 			goto out;
- 		depth = ext_depth(orig_inode);
- 		oext = orig_path[depth].p_ext;
-@@ -694,7 +715,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 			ext4_ext_drop_refs(donor_path);
- 		get_ext_path(donor_path, donor_inode,
- 				      donor_off, err);
--		if (donor_path == NULL)
-+		if (err)
- 			goto out;
- 		depth = ext_depth(donor_inode);
- 		dext = donor_path[depth].p_ext;
-@@ -705,9 +726,10 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 		}
- 		tmp_dext = *dext;
-
--		mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
--					      donor_off,
--					      count - replaced_count);
-+		err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
-+					   donor_off, count - replaced_count);
-+		if (err)
-+			goto out;
- 	}
-
- out:
-@@ -1156,27 +1178,27 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		len -= block_end - file_end;
-
- 	get_ext_path(orig_path, orig_inode, block_start, ret);
--	if (orig_path == NULL)
-+	if (ret)
- 		goto out2;
-
- 	/* Get path structure to check the hole */
- 	get_ext_path(holecheck_path, orig_inode, block_start, ret);
--	if (holecheck_path == NULL)
-+	if (ret)
- 		goto out;
-
- 	depth = ext_depth(orig_inode);
- 	ext_cur = holecheck_path[depth].p_ext;
--	if (ext_cur == NULL) {
--		ret = -EINVAL;
--		goto out;
--	}
-
- 	/*
--	 * Get proper extent whose ee_block is beyond block_start
--	 * if block_start was within the hole.
-+	 * Get proper starting location of block replacement if block_start was
-+	 * within the hole.
- 	 */
- 	if (le32_to_cpu(ext_cur->ee_block) +
- 		ext4_ext_get_actual_len(ext_cur) - 1 < block_start) {
-+		/*
-+		 * The hole exists between extents or the tail of
-+		 * original file.
-+		 */
- 		last_extent = mext_next_extent(orig_inode,
- 					holecheck_path, &ext_cur);
- 		if (last_extent < 0) {
-@@ -1189,8 +1211,12 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			ret = last_extent;
- 			goto out;
- 		}
--	}
--	seq_start = block_start;
-+		seq_start = le32_to_cpu(ext_cur->ee_block);
-+	} else if (le32_to_cpu(ext_cur->ee_block) > block_start)
-+		/* The hole exists at the beginning of original file. */
-+		seq_start = le32_to_cpu(ext_cur->ee_block);
-+	else
-+		seq_start = block_start;
-
- 	/* No blocks within the specified range. */
- 	if (le32_to_cpu(ext_cur->ee_block) > block_end) {
-@@ -1292,7 +1318,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			ext4_ext_drop_refs(holecheck_path);
- 		get_ext_path(holecheck_path, orig_inode,
- 				      seq_start, ret);
--		if (holecheck_path == NULL)
-+		if (ret)
- 			break;
- 		depth = holecheck_path->p_depth;
-
-@@ -1300,7 +1326,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		if (orig_path)
- 			ext4_ext_drop_refs(orig_path);
- 		get_ext_path(orig_path, orig_inode, seq_start, ret);
--		if (orig_path == NULL)
-+		if (ret)
- 			break;
-
- 		ext_cur = holecheck_path[depth].p_ext;
+SGksIEFyaWthLAoKMjAwOS85LzExIEFraXJhIEZ1aml0YSA8YS1mdWppdGFAcnMuanAubmVjLmNv
+bT46Cj4gSGkgUGVuZywKPiBQZW5nIFRhbyB3cm90ZToKPj4+PiBBZnRlciBhcHBseWluZyB0aGUg
+dHdvIHBhdGNoZXMsIEkgcnVuIG15IHRlc3QgY2FzZSB3aXRoIGZpcnN0LmltZyBhcyB0aGUgb3Jp
+ZyBmaWxlIChhbmQgbWlkZGxlLmltZyBvcgo+Pj4+IGxhc3QuaW1nIGFzIGRvbm9yIGZpbGUpLiBN
+eSBrZXJuZWwgcGFuaWNzIGFuZCBJIGZpbmQgZm9sbG93aW5nIG1lc3NhZ2UgaW4gL3Zhci9sb2cv
+bWVzc2FnZXMgYWZ0ZXIgcmVib290Ogo+Pj4gSSBjb3VsZCBub3QgcmVwcm9kdWNlIHRoaXMgcGFu
+aWMuCj4+PiBXb3VsZCB5b3UgdGVsbCBtZSBhYm91dCB5b3VyIHRlc3QgZW52aXJvbm1lbnQgKDEt
+NSk/Cj4+Pgo+Pj4gMS4gV2hhdCBpcyB5b3VyIGtlcm5lbCB2ZXJzaW9uPyAoMi42LjMxLXJjMiAr
+IGV4dDQgcGF0Y2ggcXVldWUgKyBteSBwYXRjaD8pCj4+IE9ubHkgMi42LjMxLXJjMiBmcm9tIGxp
+bnVzIHRyZWUgKyB5b3VyIHR3byBwYXRjaGVzLiBJIGRpZG4ndCBhcHBseSBleHQ0IHBhdGNoIHF1
+ZXVlLgo+Pj4gMi4gV2hhdCBGUyBtb3VudCBvcHRpb25zIGFyZSBlbmFibGVkPwo+PiBydyxub2F0
+aW1lLHJlbGF0aW1lLGNvbW1pdD0zNjAKPj4+IDMuIFdoYXQgb3B0aW9ucyBhcmUgZW5hYmxlZCB0
+byBjcmVhdGUgZXh0ND8KPj4gwqBbYmVyZ3dvbGZAfl0kc3VkbyB0dW5lMmZzIC1sIC9kZXYvc2Rh
+OQo+PiB0dW5lMmZzIDEuNDEuOSAoMjItQXVnLTIwMDkpCj4+IEZpbGVzeXN0ZW0gdm9sdW1lIG5h
+bWU6IMKgIDxub25lPgo+PiBMYXN0IG1vdW50ZWQgb246IMKgIMKgIMKgIMKgIMKgL290aGVyCj4+
+IEZpbGVzeXN0ZW0gVVVJRDogwqAgwqAgwqAgwqAgwqA5MDU0OGNiOC01NzQ4LTRiMTgtYmJlOS1l
+NzI1NDQzOWNiODIKPj4gRmlsZXN5c3RlbSBtYWdpYyBudW1iZXI6IMKgMHhFRjUzCj4+IEZpbGVz
+eXN0ZW0gcmV2aXNpb24gIzogwqAgwqAxIChkeW5hbWljKQo+PiBGaWxlc3lzdGVtIGZlYXR1cmVz
+OiDCoCDCoCDCoGhhc19qb3VybmFsIGV4dF9hdHRyIHJlc2l6ZV9pbm9kZSBkaXJfaW5kZXggZmls
+ZXR5cGUgbmVlZHNfcmVjb3ZlcnkgZXh0ZW50IGZsZXhfYmcgc3BhcnNlX3N1cGVyIGxhcmdlX2Zp
+bGUgaHVnZV9maWxlIHVuaW5pdF9iZyBkaXJfbmxpbmsgZXh0cmFfaXNpemUKPj4gRmlsZXN5c3Rl
+bSBmbGFnczogwqAgwqAgwqAgwqAgc2lnbmVkX2RpcmVjdG9yeV9oYXNoCj4+IERlZmF1bHQgbW91
+bnQgb3B0aW9uczogwqAgwqAobm9uZSkKPj4gRmlsZXN5c3RlbSBzdGF0ZTogwqAgwqAgwqAgwqAg
+Y2xlYW4KPj4gRXJyb3JzIGJlaGF2aW9yOiDCoCDCoCDCoCDCoCDCoENvbnRpbnVlCj4+IEZpbGVz
+eXN0ZW0gT1MgdHlwZTogwqAgwqAgwqAgTGludXgKPj4gSW5vZGUgY291bnQ6IMKgIMKgIMKgIMKg
+IMKgIMKgIMKgMTI1MTg0Cj4+IEJsb2NrIGNvdW50OiDCoCDCoCDCoCDCoCDCoCDCoCDCoDUwMDAx
+NQo+PiBSZXNlcnZlZCBibG9jayBjb3VudDogwqAgwqAgMjUwMDAKPj4gRnJlZSBibG9ja3M6IMKg
+IMKgIMKgIMKgIMKgIMKgIMKgMjk5OTU5Cj4+IEZyZWUgaW5vZGVzOiDCoCDCoCDCoCDCoCDCoCDC
+oCDCoDEyNTE2Mgo+PiBGaXJzdCBibG9jazogwqAgwqAgwqAgwqAgwqAgwqAgwqAwCj4+IEJsb2Nr
+IHNpemU6IMKgIMKgIMKgIMKgIMKgIMKgIMKgIDQwOTYKPj4gRnJhZ21lbnQgc2l6ZTogwqAgwqAg
+wqAgwqAgwqAgwqA0MDk2Cj4+IFJlc2VydmVkIEdEVCBibG9ja3M6IMKgIMKgIMKgMTIyCj4+IEJs
+b2NrcyBwZXIgZ3JvdXA6IMKgIMKgIMKgIMKgIDMyNzY4Cj4+IEZyYWdtZW50cyBwZXIgZ3JvdXA6
+IMKgIMKgIMKgMzI3NjgKPj4gSW5vZGVzIHBlciBncm91cDogwqAgwqAgwqAgwqAgNzgyNAo+PiBJ
+bm9kZSBibG9ja3MgcGVyIGdyb3VwOiDCoCA0ODkKPj4gRmxleCBibG9jayBncm91cCBzaXplOiDC
+oCDCoDE2Cj4+IEZpbGVzeXN0ZW0gY3JlYXRlZDogwqAgwqAgwqAgU3VuIFNlcCDCoDcgMTU6MTM6
+MDkgMjAwOAo+PiBMYXN0IG1vdW50IHRpbWU6IMKgIMKgIMKgIMKgIMKgVHVlIFNlcCDCoDggMTU6
+MTk6NDQgMjAwOQo+PiBMYXN0IHdyaXRlIHRpbWU6IMKgIMKgIMKgIMKgIMKgVHVlIFNlcCDCoDgg
+MTU6MTk6NDQgMjAwOQo+PiBNb3VudCBjb3VudDogwqAgwqAgwqAgwqAgwqAgwqAgwqAxMwo+PiBN
+YXhpbXVtIG1vdW50IGNvdW50OiDCoCDCoCDCoDM2Cj4+IExhc3QgY2hlY2tlZDogwqAgwqAgwqAg
+wqAgwqAgwqAgRnJpIFNlcCDCoDQgMjA6NTY6NTAgMjAwOQo+PiBDaGVjayBpbnRlcnZhbDogwqAg
+wqAgwqAgwqAgwqAgMTU1NTIwMDAgKDYgbW9udGhzKQo+PiBOZXh0IGNoZWNrIGFmdGVyOiDCoCDC
+oCDCoCDCoCBXZWQgTWFyIMKgMyAyMDo1Njo1MCAyMDEwCj4+IExpZmV0aW1lIHdyaXRlczogwqAg
+wqAgwqAgwqAgwqAxMTI4IE1CCj4+IFJlc2VydmVkIGJsb2NrcyB1aWQ6IMKgIMKgIMKgMCAodXNl
+ciByb290KQo+PiBSZXNlcnZlZCBibG9ja3MgZ2lkOiDCoCDCoCDCoDAgKGdyb3VwIHJvb3QpCj4+
+IEZpcnN0IGlub2RlOiDCoCDCoCDCoCDCoCDCoCDCoCDCoDExCj4+IElub2RlIHNpemU6IMKgIMKg
+IMKgIMKgIMKgIMKgIDI1Ngo+PiBSZXF1aXJlZCBleHRyYSBpc2l6ZTogwqAgwqAgMjgKPj4gRGVz
+aXJlZCBleHRyYSBpc2l6ZTogwqAgwqAgwqAyOAo+PiBKb3VybmFsIGlub2RlOiDCoCDCoCDCoCDC
+oCDCoCDCoDgKPj4gRGVmYXVsdCBkaXJlY3RvcnkgaGFzaDogwqAgdGVhCj4+IERpcmVjdG9yeSBI
+YXNoIFNlZWQ6IMKgIMKgIMKgM2M1ZjJhNzctYzQ0Ni00MTI0LTk0ZjctOTU4YmE2MTU1ZjM3Cj4+
+IEpvdXJuYWwgYmFja3VwOiDCoCDCoCDCoCDCoCDCoCBpbm9kZSBibG9ja3MKPj4+IDQuIEFyZSBp
+bWFnZSBmaWxlcyDCoChmaXJzdC5pbWcsIG1pZGRsZS5pbWcgYW5kIGxhc3QuaW1nKQo+Pj4gwqAg
+wqBzYW1lIGFzIHlvdXIgcHJldmlvdXMgbWFpbD8KPj4+IMKgIMKgaHR0cDovL21hcmMuaW5mby8/
+bD1saW51eC1leHQ0Jm09MTI0OTkyNTIyMzA1MzE5Jnc9Mgo+PiBZZXMuCj4+PiA1LiBXaGF0IGFy
+Z3VtZW50cyBhcmUgc2V0IHRvIEVYVDRfSU9DX01PVkVfRVhUIGluIHlvdXIgdGVzdCBjYXNlPwo+
+PiDCoCDCoCDCoCDCoCBtb3ZlX2RhdGEuZG9ub3JfZmQgPSBkb25vcl9mZDsKPj4gwqAgwqAgwqAg
+wqAgbW92ZV9kYXRhLm9yaWdfc3RhcnQgPSAwOwo+PiDCoCDCoCDCoCDCoCBtb3ZlX2RhdGEuZG9u
+b3Jfc3RhcnQgPSAwOwo+PiDCoCDCoCDCoCDCoCBtb3ZlX2RhdGEubGVuID0gU0VDVE9SX1RPX0JM
+T0NLKHN0YXRidWYuc3RfYmxvY2tzLCBmcy5mX2JzaXplKTsKPj4KPj4gwqAgwqAgwqAgwqAgZXJy
+ID0gaW9jdGwob3JpZ19mZCwgRVhUNF9JT0NfTU9WRV9FWFQsICZtb3ZlX2RhdGEpOwo+Cj4gSSB0
+cmllZCB0byByZXByb2R1Y2UgeW91ciBwcm9ibGVtIHdpdGggdGhlIGZvbGxvd2luZyBzdGVwcywK
+PiBidXQgSSBjb3VsZG4ndC4gUGxlYXNlIGNoZWNrIG15IHByb2NlZHVyZS4KPgo+IDEuIFRlc3Qg
+ZW52aXJvbm1lbnQKPiBsaW51eDIuNi4zMS1yYzIgKyB0d28gcGF0Y2hlcyBhcyBmb2xsb3dzOgo+
+IGh0dHA6Ly9tYXJjLmluZm8vP2w9bGludXgtZXh0NCZtPTEyNTE4NjE1MjcyNzQyMiZ3PTMKPiBo
+dHRwOi8vbWFyYy5pbmZvLz9sPWxpbnV4LWV4dDQmbT0xMjUyMDU4MTc0MTA1NDgmdz0zCj4KPiAy
+LiBDcmVhdGUgZXh0NCBmaWxlc3lzdGVtIGFuZCBtb3VudCBpdAo+IG1rZTJmcyAtdCBleHQ0IC1i
+IDQwOTYgL2Rldi9YWFgKPiBtb3VudCAtdCBleHQ0IC1PIHJ3LG5vYXRpbWUscmVsYXRpbWUsY29t
+bWl0PTM2MCAvZGV2L1hYWCAvbW50L1hYWAo+Cj4gMy4gQ3JlYXRlIG9yaWcgYW5kIGRvbm9yIGZp
+bGVzCj4gZGQgaWY9L2Rldi91cmFuZG9tIG9mPS9tbnQvWFhYL2ZpcnN0LmltZyBicz0xME0gY291
+bnQ9MQo+IGRkIGlmPS9kZXYvemVybyBvZj0vbW50L1hYWC9maXJzdC5pbWcgYnM9MTBNIGNvdW50
+PTAgc2Vlaz01MAo+IGRkIGlmPS9kZXYvdXJhbmRvbSBvZj0vbW50L1hYWC9sYXN0LmltZyBicz0x
+ME0gY291bnQ9MSBzZWVrPTQ5Cj4KPiA0LiBDYWxsIEVYVDRfTU9WRV9NT1ZFX0VYVCBpb2N0bCB0
+byBmaWxlcyB3aXRoIHRoZSBmb2xsb3dpbmcgYXJndW1lbnRzCj4gKG9yaWdfZmlsZSA9IC9tbnQv
+WFhYL2ZpcnN0LmltZywgZG9ub3JfZmlsZSA9IC9tbnQvWFhYL2xhc3QuaW1nKQo+IG1vdmVfZGF0
+YS5vcmlnX3N0YXJ0ID0gMDsKPiBtb3ZlX2RhdGEuZG9ub3Jfc3RhcnQgPSAwOwo+IG1vdmVfZGF0
+YS5sZW4gPSAxMjE1MjsKPiBpb2N0bChvcmlnX2ZkLCBFWFQ0X0lPQ19NT1ZFX0VYVCwgJm1vdmVf
+ZGF0YSkKPgo+IEhvd2V2ZXIsIEVYVDRfSU9DX01PVkVfRVhUIHJldHVybmVkIEVOT0RBVEEgKHRo
+aXMgaXMgYSBmaW5lIHJlc3VsdCBieSBteSBwYXRjaCkKPiBhbmQgaXQgZGlkbid0IG9jY3VyIHRo
+ZSBrZXJuZWwgcGFuaWMgd2hpY2ggeW91IGdvdC4KPiBJZiBJIGNob3NlIGEgd3Jvbmcgc3RlcCwg
+cGxlYXNlIGNvcnJlY3QgbWUuCkp1c3QgYSBxdWljayByZXNwb25zZS4KSSBkb24ndCBzZWUgYW55
+IHdyb25nIHN0ZXAgYWJvdmUuIEknbGwgcmV2aWV3IG15IHRlc3QgbGF0ZXIgdG9kYXkgd2hlbgpJ
+IGFtIGJhY2sgaG9tZSBhbmQgc2VlIGlmIEkgd2FzIG1pc3NpbmcgYW55dGhpbmcuCj4KPiBJIGFw
+cHJlY2lhdGUgaWYgeW91IGNvdWxkIHRlc3QgZm9sbG93aW5nIGVudmlyb25tZW50Lgo+IC0gMi42
+LjMxLXJjOCArIGV4dDQgcGF0Y2ggcXVldWUKPiDCoChjb21taXQ6YmRhY2NjZDk0ZDA4YTNmODll
+N2ZjYTY3NmIyOGFhMjYyYzZkNzVmYSkgKyBhdHRhY2hlZCBwYXRjaApXaWxsIGdpdmUgaXQgYSBz
+aG90IGxhdGVyLgoKPgo+IFJlZ2FyZHMsCj4gQWtpcmEgRnVqaXRhCj4KPiAtLS0KPiDCoGZzL2V4
+dDQvbW92ZV9leHRlbnQuYyB8IMKgIDcyICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+Ky0tLS0tLS0tLS0tLS0tLQo+IMKgMSBmaWxlcyBjaGFuZ2VkLCA0OSBpbnNlcnRpb25zKCspLCAy
+MyBkZWxldGlvbnMoLSkKPgo+IGRpZmYgLS1naXQgYS9mcy9leHQ0L21vdmVfZXh0ZW50LmMgYi9m
+cy9leHQ0L21vdmVfZXh0ZW50LmMKPiBpbmRleCA3YmZiZDU4Li43MjY2MjQ3IDEwMDY0NAo+IC0t
+LSBhL2ZzL2V4dDQvbW92ZV9leHRlbnQuYwo+ICsrKyBiL2ZzL2V4dDQvbW92ZV9leHRlbnQuYwo+
+IEBAIC0yNSw2ICsyNSw4IEBACj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBpZiAoSVNfRVJSKHBh
+dGgpKSB7IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIFwKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoHJldCA9IFBUUl9FUlIo
+cGF0aCk7IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgXAo+IMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgcGF0aCA9IE5VTEw7IMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgXAo+ICsgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgfSBlbHNlIGlmIChwYXRoW2V4dF9kZXB0aChpbm9kZSldLnBfZXh0ID09IE5VTEwp
+IHsgwqAgwqAgwqBcCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCByZXQgPSAt
+RU5PREFUQTsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+XAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgfSDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBcCj4g
+wqAgwqAgwqAgwqB9IHdoaWxlICgwKQo+Cj4gQEAgLTI4NCw3ICsyODYsNyBAQCBtZXh0X2luc2Vy
+dF9hY3Jvc3NfYmxvY2tzKGhhbmRsZV90ICpoYW5kbGUsIHN0cnVjdCBpbm9kZSAqb3JpZ19pbm9k
+ZSwKPgo+IMKgIMKgIMKgIMKgaWYgKG5ld19mbGFnKSB7Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqBnZXRfZXh0X3BhdGgob3JpZ19wYXRoLCBvcmlnX2lub2RlLCBlYmxvY2ssIGVycik7Cj4gLSDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCBpZiAob3JpZ19wYXRoID09IE5VTEwpCj4gKyDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCBpZiAoZXJyKQo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+Z290byBvdXQ7Cj4KPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGlmIChleHQ0X2V4dF9pbnNlcnRf
+ZXh0ZW50KGhhbmRsZSwgb3JpZ19pbm9kZSwKPiBAQCAtMjk1LDcgKzI5Nyw3IEBAIG1leHRfaW5z
+ZXJ0X2Fjcm9zc19ibG9ja3MoaGFuZGxlX3QgKmhhbmRsZSwgc3RydWN0IGlub2RlICpvcmlnX2lu
+b2RlLAo+IMKgIMKgIMKgIMKgaWYgKGVuZF9mbGFnKSB7Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqBnZXRfZXh0X3BhdGgob3JpZ19wYXRoLCBvcmlnX2lub2RlLAo+IMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgbGUzMl90b19jcHUoZW5kX2V4
+dC0+ZWVfYmxvY2spIC0gMSwgZXJyKTsKPiAtIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChvcmln
+X3BhdGggPT0gTlVMTCkKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChlcnIpCj4gwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBnb3RvIG91dDsKPgo+IMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgaWYgKGV4dDRfZXh0X2luc2VydF9leHRlbnQoaGFuZGxlLCBvcmlnX2lub2RlLAo+
+IEBAIC01NTQsOCArNTU2LDEwIEBAIG1leHRfbGVhZl9ibG9jayhoYW5kbGVfdCAqaGFuZGxlLCBz
+dHJ1Y3QgaW5vZGUgKm9yaWdfaW5vZGUsCj4gwqAqIEBvcmlnX29mZjogwqAgwqAgwqAgwqAgwqBi
+bG9jayBvZmZzZXQgb2Ygb3JpZ2luYWwgaW5vZGUKPiDCoCogQGRvbm9yX29mZjogwqAgwqAgwqAg
+wqAgYmxvY2sgb2Zmc2V0IG9mIGRvbm9yIGlub2RlCj4gwqAqIEBtYXhfY291bnQ6IMKgIMKgIMKg
+IMKgIHRoZSBtYXhpbXVuIGxlbmd0aCBvZiBleHRlbnRzCj4gKyAqCj4gKyAqIFJldHVybiAwIG9u
+IHN1Y2Nlc3MsIG9yIGEgbmVnYXRpdmUgZXJyb3IgdmFsdWUgb24gZmFpbHVyZS4KPiDCoCovCj4g
+LXN0YXRpYyB2b2lkCj4gK3N0YXRpYyBpbnQKPiDCoG1leHRfY2FsY19zd2FwX2V4dGVudHMoc3Ry
+dWN0IGV4dDRfZXh0ZW50ICp0bXBfZGV4dCwKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoHN0cnVjdCBleHQ0X2V4dGVudCAqdG1wX29leHQsCj4gwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBleHQ0X2xibGtfdCBvcmlnX29mZiwg
+ZXh0NF9sYmxrX3QgZG9ub3Jfb2ZmLAo+IEBAIC01NjQsNiArNTY4LDE5IEBAIG1leHRfY2FsY19z
+d2FwX2V4dGVudHMoc3RydWN0IGV4dDRfZXh0ZW50ICp0bXBfZGV4dCwKPiDCoCDCoCDCoCDCoGV4
+dDRfbGJsa190IGRpZmYsIG9yaWdfZGlmZjsKPiDCoCDCoCDCoCDCoHN0cnVjdCBleHQ0X2V4dGVu
+dCBkZXh0X29sZCwgb2V4dF9vbGQ7Cj4KPiArIMKgIMKgIMKgIEJVR19PTihvcmlnX29mZiAhPSBk
+b25vcl9vZmYpOwo+ICsKPiArIMKgIMKgIMKgIC8qIG9yaWdpbmFsIGFuZCBkb25vciBleHRlbnRz
+IGhhdmUgdG8gY292ZXIgdGhlIHNhbWUgYmxvY2sgb2Zmc2V0ICovCj4gKyDCoCDCoCDCoCBpZiAo
+b3JpZ19vZmYgPCBsZTMyX3RvX2NwdSh0bXBfb2V4dC0+ZWVfYmxvY2spIHx8Cj4gKyDCoCDCoCDC
+oCDCoCDCoCBsZTMyX3RvX2NwdSh0bXBfb2V4dC0+ZWVfYmxvY2spICsKPiArIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIGV4dDRfZXh0X2dldF9hY3R1YWxfbGVuKHRtcF9vZXh0KSAt
+IDEgPCBvcmlnX29mZikKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIHJldHVybiAtRU5PREFUQTsK
+PiArCj4gKyDCoCDCoCDCoCBpZiAob3JpZ19vZmYgPCBsZTMyX3RvX2NwdSh0bXBfZGV4dC0+ZWVf
+YmxvY2spIHx8Cj4gKyDCoCDCoCDCoCDCoCDCoCBsZTMyX3RvX2NwdSh0bXBfZGV4dC0+ZWVfYmxv
+Y2spICsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGV4dDRfZXh0X2dldF9h
+Y3R1YWxfbGVuKHRtcF9kZXh0KSAtIDEgPCBvcmlnX29mZikKPiArIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIHJldHVybiAtRU5PREFUQTsKPiArCj4gwqAgwqAgwqAgwqBkZXh0X29sZCA9ICp0bXBfZGV4
+dDsKPiDCoCDCoCDCoCDCoG9leHRfb2xkID0gKnRtcF9vZXh0Owo+Cj4gQEAgLTU5MSw2ICs2MDgs
+OCBAQCBtZXh0X2NhbGNfc3dhcF9leHRlbnRzKHN0cnVjdCBleHQ0X2V4dGVudCAqdG1wX2RleHQs
+Cj4KPiDCoCDCoCDCoCDCoGNvcHlfZXh0ZW50X3N0YXR1cygmb2V4dF9vbGQsIHRtcF9kZXh0KTsK
+PiDCoCDCoCDCoCDCoGNvcHlfZXh0ZW50X3N0YXR1cygmZGV4dF9vbGQsIHRtcF9vZXh0KTsKPiAr
+Cj4gKyDCoCDCoCDCoCByZXR1cm4gMDsKPiDCoH0KPgo+IMKgLyoqCj4gQEAgLTYzMiwxMiArNjUx
+LDEyIEBAIG1leHRfcmVwbGFjZV9icmFuY2hlcyhoYW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5v
+ZGUgKm9yaWdfaW5vZGUsCj4KPiDCoCDCoCDCoCDCoC8qIEdldCB0aGUgb3JpZ2luYWwgZXh0ZW50
+IGZvciB0aGUgYmxvY2sgIm9yaWdfb2ZmIiAqLwo+IMKgIMKgIMKgIMKgZ2V0X2V4dF9wYXRoKG9y
+aWdfcGF0aCwgb3JpZ19pbm9kZSwgb3JpZ19vZmYsIGVycik7Cj4gLSDCoCDCoCDCoCBpZiAob3Jp
+Z19wYXRoID09IE5VTEwpCj4gKyDCoCDCoCDCoCBpZiAoZXJyKQo+IMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgZ290byBvdXQ7Cj4KPiDCoCDCoCDCoCDCoC8qIEdldCB0aGUgZG9ub3IgZXh0ZW50IGZv
+ciB0aGUgaGVhZCAqLwo+IMKgIMKgIMKgIMKgZ2V0X2V4dF9wYXRoKGRvbm9yX3BhdGgsIGRvbm9y
+X2lub2RlLCBkb25vcl9vZmYsIGVycik7Cj4gLSDCoCDCoCDCoCBpZiAoZG9ub3JfcGF0aCA9PSBO
+VUxMKQo+ICsgwqAgwqAgwqAgaWYgKGVycikKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGdvdG8g
+b3V0Owo+IMKgIMKgIMKgIMKgZGVwdGggPSBleHRfZGVwdGgob3JpZ19pbm9kZSk7Cj4gwqAgwqAg
+wqAgwqBvZXh0ID0gb3JpZ19wYXRoW2RlcHRoXS5wX2V4dDsKPiBAQCAtNjQ3LDggKzY2NiwxMCBA
+QCBtZXh0X3JlcGxhY2VfYnJhbmNoZXMoaGFuZGxlX3QgKmhhbmRsZSwgc3RydWN0IGlub2RlICpv
+cmlnX2lub2RlLAo+IMKgIMKgIMKgIMKgZGV4dCA9IGRvbm9yX3BhdGhbZGVwdGhdLnBfZXh0Owo+
+IMKgIMKgIMKgIMKgdG1wX2RleHQgPSAqZGV4dDsKPgo+IC0gwqAgwqAgwqAgbWV4dF9jYWxjX3N3
+YXBfZXh0ZW50cygmdG1wX2RleHQsICZ0bXBfb2V4dCwgb3JpZ19vZmYsCj4gKyDCoCDCoCDCoCBl
+cnIgPSBtZXh0X2NhbGNfc3dhcF9leHRlbnRzKCZ0bXBfZGV4dCwgJnRtcF9vZXh0LCBvcmlnX29m
+ZiwKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoGRvbm9yX29mZiwgY291bnQpOwo+ICsgwqAgwqAgwqAgaWYgKGVycikKPiArIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIGdvdG8gb3V0Owo+Cj4gwqAgwqAgwqAgwqAvKiBMb29wIGZvciB0aGUgZG9u
+b3IgZXh0ZW50cyAqLwo+IMKgIMKgIMKgIMKgd2hpbGUgKDEpIHsKPiBAQCAtNjc5LDcgKzcwMCw3
+IEBAIG1leHRfcmVwbGFjZV9icmFuY2hlcyhoYW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5vZGUg
+Km9yaWdfaW5vZGUsCj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBpZiAob3JpZ19wYXRoKQo+IMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZXh0NF9leHRfZHJvcF9yZWZzKG9yaWdf
+cGF0aCk7Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBnZXRfZXh0X3BhdGgob3JpZ19wYXRoLCBv
+cmlnX2lub2RlLCBvcmlnX29mZiwgZXJyKTsKPiAtIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChv
+cmlnX3BhdGggPT0gTlVMTCkKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChlcnIpCj4gwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBnb3RvIG91dDsKPiDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoGRlcHRoID0gZXh0X2RlcHRoKG9yaWdfaW5vZGUpOwo+IMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgb2V4dCA9IG9yaWdfcGF0aFtkZXB0aF0ucF9leHQ7Cj4gQEAgLTY5NCw3ICs3MTUs
+NyBAQCBtZXh0X3JlcGxhY2VfYnJhbmNoZXMoaGFuZGxlX3QgKmhhbmRsZSwgc3RydWN0IGlub2Rl
+ICpvcmlnX2lub2RlLAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZXh0NF9l
+eHRfZHJvcF9yZWZzKGRvbm9yX3BhdGgpOwo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZ2V0X2V4
+dF9wYXRoKGRvbm9yX3BhdGgsIGRvbm9yX2lub2RlLAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZG9ub3Jfb2ZmLCBlcnIpOwo+IC0gwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgaWYgKGRvbm9yX3BhdGggPT0gTlVMTCkKPiArIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIGlmIChlcnIpCj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBn
+b3RvIG91dDsKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGRlcHRoID0gZXh0X2RlcHRoKGRvbm9y
+X2lub2RlKTsKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGRleHQgPSBkb25vcl9wYXRoW2RlcHRo
+XS5wX2V4dDsKPiBAQCAtNzA1LDkgKzcyNiwxMCBAQCBtZXh0X3JlcGxhY2VfYnJhbmNoZXMoaGFu
+ZGxlX3QgKmhhbmRsZSwgc3RydWN0IGlub2RlICpvcmlnX2lub2RlLAo+IMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgfQo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgdG1wX2RleHQgPSAqZGV4dDsKPgo+
+IC0gwqAgwqAgwqAgwqAgwqAgwqAgwqAgbWV4dF9jYWxjX3N3YXBfZXh0ZW50cygmdG1wX2RleHQs
+ICZ0bXBfb2V4dCwgb3JpZ19vZmYsCj4gLSDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBkb25vcl9vZmYsCj4gLSDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCBjb3VudCAtIHJlcGxhY2VkX2NvdW50KTsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGVyciA9
+IG1leHRfY2FsY19zd2FwX2V4dGVudHMoJnRtcF9kZXh0LCAmdG1wX29leHQsIG9yaWdfb2ZmLAo+
+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqBkb25vcl9vZmYsIGNvdW50IC0gcmVwbGFjZWRfY291bnQpOwo+ICsgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgaWYgKGVycikKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IGdvdG8gb3V0Owo+IMKgIMKgIMKgIMKgfQo+Cj4gwqBvdXQ6Cj4gQEAgLTExNTYsMjcgKzExNzgs
+MjcgQEAgZXh0NF9tb3ZlX2V4dGVudHMoc3RydWN0IGZpbGUgKm9fZmlscCwgc3RydWN0IGZpbGUg
+KmRfZmlscCwKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGxlbiAtPSBibG9ja19lbmQgLSBmaWxl
+X2VuZDsKPgo+IMKgIMKgIMKgIMKgZ2V0X2V4dF9wYXRoKG9yaWdfcGF0aCwgb3JpZ19pbm9kZSwg
+YmxvY2tfc3RhcnQsIHJldCk7Cj4gLSDCoCDCoCDCoCBpZiAob3JpZ19wYXRoID09IE5VTEwpCj4g
+KyDCoCDCoCDCoCBpZiAocmV0KQo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZ290byBvdXQyOwo+
+Cj4gwqAgwqAgwqAgwqAvKiBHZXQgcGF0aCBzdHJ1Y3R1cmUgdG8gY2hlY2sgdGhlIGhvbGUgKi8K
+PiDCoCDCoCDCoCDCoGdldF9leHRfcGF0aChob2xlY2hlY2tfcGF0aCwgb3JpZ19pbm9kZSwgYmxv
+Y2tfc3RhcnQsIHJldCk7Cj4gLSDCoCDCoCDCoCBpZiAoaG9sZWNoZWNrX3BhdGggPT0gTlVMTCkK
+PiArIMKgIMKgIMKgIGlmIChyZXQpCj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBnb3RvIG91dDsK
+Pgo+IMKgIMKgIMKgIMKgZGVwdGggPSBleHRfZGVwdGgob3JpZ19pbm9kZSk7Cj4gwqAgwqAgwqAg
+wqBleHRfY3VyID0gaG9sZWNoZWNrX3BhdGhbZGVwdGhdLnBfZXh0Owo+IC0gwqAgwqAgwqAgaWYg
+KGV4dF9jdXIgPT0gTlVMTCkgewo+IC0gwqAgwqAgwqAgwqAgwqAgwqAgwqAgcmV0ID0gLUVJTlZB
+TDsKPiAtIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGdvdG8gb3V0Owo+IC0gwqAgwqAgwqAgfQo+Cj4g
+wqAgwqAgwqAgwqAvKgo+IC0gwqAgwqAgwqAgwqAqIEdldCBwcm9wZXIgZXh0ZW50IHdob3NlIGVl
+X2Jsb2NrIGlzIGJleW9uZCBibG9ja19zdGFydAo+IC0gwqAgwqAgwqAgwqAqIGlmIGJsb2NrX3N0
+YXJ0IHdhcyB3aXRoaW4gdGhlIGhvbGUuCj4gKyDCoCDCoCDCoCDCoCogR2V0IHByb3BlciBzdGFy
+dGluZyBsb2NhdGlvbiBvZiBibG9jayByZXBsYWNlbWVudCBpZiBibG9ja19zdGFydCB3YXMKPiAr
+IMKgIMKgIMKgIMKgKiB3aXRoaW4gdGhlIGhvbGUuCj4gwqAgwqAgwqAgwqAgKi8KPiDCoCDCoCDC
+oCDCoGlmIChsZTMyX3RvX2NwdShleHRfY3VyLT5lZV9ibG9jaykgKwo+IMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgZXh0NF9leHRfZ2V0X2FjdHVhbF9sZW4oZXh0X2N1cikgLSAxIDwgYmxvY2tfc3Rh
+cnQpIHsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIC8qCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCogVGhlIGhvbGUgZXhpc3RzIGJldHdlZW4gZXh0ZW50cyBvciB0aGUgdGFpbCBvZgo+ICsg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAqIG9yaWdpbmFsIGZpbGUuCj4gKyDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCovCj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBsYXN0X2V4dGVudCA9IG1leHRf
+bmV4dF9leHRlbnQob3JpZ19pbm9kZSwKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGhvbGVjaGVja19wYXRoLCAmZXh0X2N1cik7Cj4g
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBpZiAobGFzdF9leHRlbnQgPCAwKSB7Cj4gQEAgLTExODks
+OCArMTIxMSwxMiBAQCBleHQ0X21vdmVfZXh0ZW50cyhzdHJ1Y3QgZmlsZSAqb19maWxwLCBzdHJ1
+Y3QgZmlsZSAqZF9maWxwLAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgcmV0
+ID0gbGFzdF9leHRlbnQ7Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBnb3Rv
+IG91dDsKPiDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoH0KPiAtIMKgIMKgIMKgIH0KPiAtIMKgIMKg
+IMKgIHNlcV9zdGFydCA9IGJsb2NrX3N0YXJ0Owo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgc2Vx
+X3N0YXJ0ID0gbGUzMl90b19jcHUoZXh0X2N1ci0+ZWVfYmxvY2spOwo+ICsgwqAgwqAgwqAgfSBl
+bHNlIGlmIChsZTMyX3RvX2NwdShleHRfY3VyLT5lZV9ibG9jaykgPiBibG9ja19zdGFydCkKPiAr
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIC8qIFRoZSBob2xlIGV4aXN0cyBhdCB0aGUgYmVnaW5uaW5n
+IG9mIG9yaWdpbmFsIGZpbGUuICovCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCBzZXFfc3RhcnQg
+PSBsZTMyX3RvX2NwdShleHRfY3VyLT5lZV9ibG9jayk7Cj4gKyDCoCDCoCDCoCBlbHNlCj4gKyDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCBzZXFfc3RhcnQgPSBibG9ja19zdGFydDsKPgo+IMKgIMKgIMKg
+IMKgLyogTm8gYmxvY2tzIHdpdGhpbiB0aGUgc3BlY2lmaWVkIHJhbmdlLiAqLwo+IMKgIMKgIMKg
+IMKgaWYgKGxlMzJfdG9fY3B1KGV4dF9jdXItPmVlX2Jsb2NrKSA+IGJsb2NrX2VuZCkgewo+IEBA
+IC0xMjkyLDcgKzEzMTgsNyBAQCBleHQ0X21vdmVfZXh0ZW50cyhzdHJ1Y3QgZmlsZSAqb19maWxw
+LCBzdHJ1Y3QgZmlsZSAqZF9maWxwLAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgZXh0NF9leHRfZHJvcF9yZWZzKGhvbGVjaGVja19wYXRoKTsKPiDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoGdldF9leHRfcGF0aChob2xlY2hlY2tfcGF0aCwgb3JpZ19pbm9kZSwKPiDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoHNlcV9zdGFy
+dCwgcmV0KTsKPiAtIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChob2xlY2hlY2tfcGF0aCA9PSBO
+VUxMKQo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKHJldCkKPiDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoGJyZWFrOwo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZGVwdGgg
+PSBob2xlY2hlY2tfcGF0aC0+cF9kZXB0aDsKPgo+IEBAIC0xMzAwLDcgKzEzMjYsNyBAQCBleHQ0
+X21vdmVfZXh0ZW50cyhzdHJ1Y3QgZmlsZSAqb19maWxwLCBzdHJ1Y3QgZmlsZSAqZF9maWxwLAo+
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgaWYgKG9yaWdfcGF0aCkKPiDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoGV4dDRfZXh0X2Ryb3BfcmVmcyhvcmlnX3BhdGgpOwo+IMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgZ2V0X2V4dF9wYXRoKG9yaWdfcGF0aCwgb3JpZ19pbm9kZSwgc2Vx
+X3N0YXJ0LCByZXQpOwo+IC0gwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKG9yaWdfcGF0aCA9PSBO
+VUxMKQo+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKHJldCkKPiDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoGJyZWFrOwo+Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBleHRf
+Y3VyID0gaG9sZWNoZWNrX3BhdGhbZGVwdGhdLnBfZXh0Owo+CgoKCi0tIApDaGVlcnMsClBlbmcg
+VGFvClN0YXRlIEtleSBMYWJvcmF0b3J5IG9mIE5ldHdvcmtpbmcgYW5kIFN3aXRjaGluZyBUZWNo
+bm9sb2d5CkJlaWppbmcgVW5pdi4gb2YgUG9zdHMgYW5kIFRlbGVjb21zLgo=
