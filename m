@@ -1,155 +1,97 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Preparing to push patches for the merge window
-Date: Fri, 11 Sep 2009 17:48:53 -0400
-Message-ID: <E1MmDzB-000357-Po@closure.thunk.org>
+From: Damien Guibouret <damien.guibouret@partition-saving.com>
+Subject: Re: flex_bg information initialization and question on resize/bad
+ inodes with 48 bits filesystem
+Date: Sat, 12 Sep 2009 10:08:43 +0200
+Message-ID: <4AAB570B.70607@partition-saving.com>
+References: <4AAA8F6C.6030206@partition-saving.com> <20090911183540.GB28764@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:32889 "EHLO thunker.thunk.org"
+Received: from smtp2-g21.free.fr ([212.27.42.2]:58919 "EHLO smtp2-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753228AbZIKVsw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Sep 2009 17:48:52 -0400
+	id S1751927AbZILIGW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Sep 2009 04:06:22 -0400
+Received: from smtp2-g21.free.fr (localhost [127.0.0.1])
+	by smtp2-g21.free.fr (Postfix) with ESMTP id EDF514B0192
+	for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2009 10:06:19 +0200 (CEST)
+Received: from [192.168.103.118] (lan31-6-82-230-26-21.fbx.proxad.net [82.230.26.21])
+	by smtp2-g21.free.fr (Postfix) with ESMTP id 049DB4B00C4
+	for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2009 10:06:16 +0200 (CEST)
+In-Reply-To: <20090911183540.GB28764@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-See below for a list for what I currently have in the ext4 patch queue.
+Theodore Tso wrote:
+> On Fri, Sep 11, 2009 at 07:57:00PM +0200, Damien Guibouret wrote:
+> 
+>>I have looked at the new features provided by ext4 and have a question  
+>>on flex_bg information initialization:
+>>into ext4_fill_flex_info function of fs/ext4/super.c (lines 1698, 1700  
+>>and 1702 for kernel 2.6.31) doesn't the atomic_set calls be atomic_add  
+>>to sum statistics of each group composing a flex group, or do I  
+>>misunderstand something ?
+> 
+> 
+> Good eye; that's a bug; thanks for pointing that out.
+> 
+> 
+>>For the extension to manage 48 bits blocks number, I do not see anything  
+>>to treat this for resize and bad inodes into kernel or e2fsprogs. For  
+>>the resize inode, it is perhaps an incompatibility of this feature with  
+>>48 bits blocks number, but for the bad inode ?
+> 
+> 
+> There is a plan for how to handle online resizing for > 2^32 block
+> filesystems, but it hasn't been implemented yet.  The basic support
+> for it is there; that's what the META_BG feature is designed to
+> support, so existing kernels will be able to deal with resized large
+> filesystemes.  But the code to actually do the on-line resizing hasn't
+> been implemented yet.
+> 
+> For the bad block inode, the solution is to make it be extent mapped
+> inode.  This also hasn't been implemented yet, but this is a much
+> simpler one to write.  The main reason why we haven't is that modern
+> disks rarely have system-visible bad blocks; normally the hard drive
+> has its own bad block remapping layer in hardware so we never see a
+> bad block until the disk is failing so badly it needs to be replaced
+> ASAP.
+> 
+> 						- Ted
+> 
+> 
 
-Patches which are NOT yet included are:
+Hi,
 
-o  Mingming's Fallocate / Direct I/O patches.
+Thanks for the information.
 
-	Mingming, it looked like you were still polishing these two
-	patches?
+Looking at ext4.h, I think the setting of extra time fields forgets to mask the epoch bits so the 
+epoch part overwrites nsec part. The second change is only for coherency (2 -> EXT4_EPOCH_BITS):
 
-o  Eric's "limit block allocations for indirect-block files to < 2^32" patch
+--- fs/ext4/ext4.h.old  2009-09-12 09:45:42.161490080 +0200
++++ fs/ext4/ext4.h      2009-09-12 09:47:43.808996848 +0200
+@@ -481,8 +481,8 @@
+  static inline __le32 ext4_encode_extra_time(struct timespec *time)
+  {
+         return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+-                          time->tv_sec >> 32 : 0) |
+-                          ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
++                          (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
++                          ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
+  }
 
-	Eric, looks like you were still polishing this?
+  static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+@@ -490,7 +490,7 @@
+         if (sizeof(time->tv_sec) > 4)
+                time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+                                << 32;
+-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
++       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+  }
 
-o Patches to fix crashes associated with sparse files and the
-  EXT4_IOC_MOVE_EXT ioctl which Peng Tao and Akira Fujita-san have been
-  working on.   (Looks like they are still working on trying to
-  reproduce the problem reliably, and there have been patches going back
-  and forth, but they seem to be for testing only.)
+  #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)                         \
 
-o  A port of Chris Mason's "ext3: Add locking to ext3_do_update_inode" to
-   ext4.  I'll try to look into this.
+Regards,
 
-Are there other patches not listed above or below that should be
-targeted for 2.6.32?
-
-What I may do is push what we have so far to Linus, and then we can do a
-second push for patches that aren't quite ready yet.
-
-					- Ted
-
-Akira Fujita (5):
-      ext4: Fix compile warnings with MB_DEBUG
-      ext4: Fix wrong comparisons in mext_check_arguments()
-      ext4: Remove unneeded BUG_ON() in ext4_move_extents()
-      ext4: Return exchanged blocks count to user space in failure
-      ext4: Fix small typo for move_extent_per_page()
-
-Andreas Dilger (1):
-      jbd2: round commit timer up to avoid uncommitted transaction
-
-Andreas Schlick (1):
-      ext4: Always set dx_node's fake_dirent explicitly.
-
-Aneesh Kumar K.V (7):
-      ext4: Fix memory leak fix when mounting an ext4 filesystem
-      ext4: Add missing unlock_new_inode() call in extent migration code
-      ext4: Allow rename to create more than EXT4_LINK_MAX subdirectories
-      ext4: Take page lock before looking at attached buffer_heads flags
-      ext4: move ext4_mb_init_group() function earlier in the mballoc.c
-      ext4: check for need init flag in ext4_mb_load_buddy
-      ext4: Clarify the locking details in mballoc
-
-Christoph Hellwig (1):
-      ext4: fix cache flush in ext4_sync_file
-
-Curt Wohlgemuth (1):
-      ext4: More buffer head reference leaks
-
-Eric Sandeen (6):
-      ext4: reject too-large filesystems on 32-bit kernels
-      ext4: open-code ext4_mb_update_group_info
-      simplify some logic in ext4_mb_normalize_request
-      ext4: Add feature set check helper for mount & remount paths
-      ext4: use variables not types in sizeofs() for allocations
-      ext4: use ext4_grpblk_t more extensively
-
-Frank Mayhar (1):
-      ext4: Make non-journal fsync work properly
-
-H Hartley Sweeten (1):
-      jbd2: bitfields should be unsigned
-
-Jan Kara (3):
-      jbd2: Fail to load a journal if it is too short
-      jbd2: Annotate transaction start also for jbd2_journal_restart()
-      ext4: Fix possible deadlock between ext4_truncate() and ext4_get_blocks()
-
-Joe Perches (1):
-      ext4: Remove unnecessary semicolons in mballoc.c
-
-Manish Katiyar (1):
-      ext4: Fix typo in ext4/Kconfig
-
-Mingming (2):
-      ext4: Compile warning fix when EXT_DEBUG enabled
-      ext4: Show unwritten extent flag in ext4_ext_show_leaf()
-
-Peng Tao (2):
-      ext4: fix build warning when EXT4FS_DEBUG is on
-      ext4: fix journal ref count in move_extent_par_page
-
-Roel Kluin (1):
-      ext4: remove redundant test on unsigned
-
-Theodore Ts'o (18):
-      ext4: Avoid null pointer dereference when decoding EROFS w/o a journal
-      ext4: Add configurable run-time mballoc debugging
-      ext4: Display the mballoc flags in mb_history in hex instead of decimal
-      ext4: Fix bugs in mballoc's stream allocation mode
-      ext4: Avoid group preallocation for closed files
-      ext4: fix extent sanity checking code with AGGRESSIVE_TEST
-      ext4: Limit number of links that can be created by ext4_link()
-      ext4: Fix spelling typo in the trace format for trace_ext4_da_writepages()
-      ext4: Restore wbc->range_start in ext4_da_writepages()
-      ext4: Add new tracepoint: trace_ext4_da_write_pages()
-      ext4: fix tracepoint format string warnings
-      ext4: Remove journal_checksum mount option and enable it by default
-      ext4: print more sysadmin-friendly message in check_block_validity()
-      ext4: Use bforget() in no journal mode for ext4_journal_{forget,revoke}()
-      ext4: Assure that metadata blocks are written during fsync in no journal mode
-      ext4: Don't update superblock write time when filesystem is read-only
-      ext4: Fix async commit mode to be safe by using a barrier
-      ext4: Fix initalization of s_flex_groups
-
-Tobias Klauser (1):
-      ext4: Declare seq_operations and file_operations structures as const
-
- Documentation/filesystems/ext4.txt |    8 +-
- fs/ext4/Kconfig                    |   11 +-
- fs/ext4/balloc.c                   |    2 +-
- fs/ext4/ext4.h                     |   84 ++++++--
- fs/ext4/ext4_extents.h             |    3 +-
- fs/ext4/ext4_jbd2.c                |    9 +-
- fs/ext4/extents.c                  |  112 ++++++----
- fs/ext4/fsync.c                    |    4 +-
- fs/ext4/ialloc.c                   |    2 +-
- fs/ext4/inode.c                    |  128 +++++++----
- fs/ext4/ioctl.c                    |    7 +-
- fs/ext4/mballoc.c                  |  420 ++++++++++++++++++------------------
- fs/ext4/mballoc.h                  |   22 ++-
- fs/ext4/migrate.c                  |    2 +-
- fs/ext4/move_extent.c              |   47 +++--
- fs/ext4/namei.c                    |   22 ++-
- fs/ext4/resize.c                   |    7 +-
- fs/ext4/super.c                    |  152 ++++++++------
- fs/jbd2/commit.c                   |   11 +-
- fs/jbd2/journal.c                  |    6 +
- fs/jbd2/transaction.c              |    7 +-
- include/linux/jbd2.h               |    2 +-
- include/trace/events/ext4.h        |  109 +++++++---
- include/trace/events/jbd2.h        |    2 +-
- 24 files changed, 697 insertions(+), 482 deletions(-)
+Damien
