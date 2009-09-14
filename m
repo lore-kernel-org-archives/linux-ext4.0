@@ -1,64 +1,158 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 3/4]ext4: Return exchanged blocks count to user space
- in 	failure
-Date: Mon, 14 Sep 2009 15:16:47 +0900
-Message-ID: <4AADDFCF.9010602@rs.jp.nec.com>
-References: <4A9DE3EA.1080602@rs.jp.nec.com> <4A9E9521.2010701@gmail.com>	 <87f94c370909021359p171c6f6dte9b700cd48a5fde0@mail.gmail.com> <6149e97b0909022213p2b8463fdm796c8687d36ae54c@mail.gmail.com> <4AA0E419.7010707@rs.jp.nec.com> <4AA143B2.6060401@gmail.com> <4AA5D984.6030607@rs.jp.nec.com> <4AA60F36.9040605@gmail.com> <4AA9DAF0.2020402@rs.jp.nec.com> <4AAA816F.6060809@gmail.com>
+Subject: [PATCH 1/4]ext4: Replace get_ext_path macro with  an inline funciton
+Date: Mon, 14 Sep 2009 17:17:14 +0900
+Message-ID: <4AADFC0A.6040704@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Peng Tao <bergwolf@gmail.com>
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:64139 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1749667AbZINGRY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 02:17:24 -0400
-In-Reply-To: <4AAA816F.6060809@gmail.com>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:64609 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754831AbZINIST (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 04:18:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Peng,
+ext4: Replace get_ext_path macro with an inline function
 
-Peng Tao wrote:
->> I tried to reproduce your problem with the following steps,
->> but I couldn't. Please check my procedure.
->>
->> 1. Test environment
->> linux2.6.31-rc2 + two patches as follows:
->> http://marc.info/?l=linux-ext4&m=125186152727422&w=3
->> http://marc.info/?l=linux-ext4&m=125205817410548&w=3
->>
->> 2. Create ext4 filesystem and mount it
->> mke2fs -t ext4 -b 4096 /dev/XXX
->> mount -t ext4 -O rw,noatime,relatime,commit=360 /dev/XXX /mnt/XXX
->>
->> 3. Create orig and donor files
->> dd if=/dev/urandom of=/mnt/XXX/first.img bs=10M count=1
->> dd if=/dev/zero of=/mnt/XXX/first.img bs=10M count=0 seek=50
->> dd if=/dev/urandom of=/mnt/XXX/last.img bs=10M count=1 seek=49
->>
->> 4. Call EXT4_MOVE_MOVE_EXT ioctl to files with the following arguments
->> (orig_file = /mnt/XXX/first.img, donor_file = /mnt/XXX/last.img)
->> move_data.orig_start = 0;
->> move_data.donor_start = 0;
->> move_data.len = 12152;
->> ioctl(orig_fd, EXT4_IOC_MOVE_EXT, &move_data)
->>
->> However, EXT4_IOC_MOVE_EXT returned ENODATA (this is a fine result by my patch)
->> and it didn't occur the kernel panic which you got.
->> If I chose a wrong step, please correct me.
-> Sorry, I didn't notice that I was at commit 7638d5322bd89d49e013a03fe2afaeb6d214fabd
-> of linus tree that includes a few patches after 2.6.31-rc2.
->> I appreciate if you could test following environment.
->> - 2.6.31-rc8 + ext4 patch queue
->>  (commit:bdacccd94d08a3f89e7fca676b28aa262c6d75fa) + attached patch
-> I can't reproduce the panic in the above environment. I believe the problem
-> is fixed. Thanks for your work!
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Ok, I will re-base the patch and then send it to the list.
-Thanks for your work, too.
+Replace get_ext_path macro with an inline function,
+since this macro looks like a function call but its arguments
+get modified. Ted pointed this out, thanks.
 
-Regards,
-Akira Fujita.
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ fs/ext4/move_extent.c |   55 ++++++++++++++++++++++++++++++------------------
+ 1 files changed, 34 insertions(+), 21 deletions(-)
+
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 7bfbd58..00888e6 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -19,14 +19,29 @@
+ #include "ext4_extents.h"
+ #include "ext4.h"
+
+-#define get_ext_path(path, inode, block, ret)		\
+-	do {								\
+-		path = ext4_ext_find_extent(inode, block, path);	\
+-		if (IS_ERR(path)) {					\
+-			ret = PTR_ERR(path);				\
+-			path = NULL;					\
+-		}							\
+-	} while (0)
++/**
++ * get_ext_path - Find an extent path for designated logical block number.
++ *
++ * @inode:	an inode which is searched
++ * @lblock:	logical block number to find an extent path
++ * @path:	pointer to an extent path pointer (for output)
++ *
++ * ext4_ext_find_extent wrapper. Return 0 on success, or a negative error value
++ * on failure.
++ */
++static inline int
++get_ext_path(struct inode *inode, ext4_lblk_t lblock,
++		struct ext4_ext_path **path)
++{
++	int ret = 0;
++
++	*path = ext4_ext_find_extent(inode, lblock, *path);
++	if (IS_ERR(*path)) {
++		ret = PTR_ERR(*path);
++		*path = NULL;
++	}
++	return ret;
++}
+
+ /**
+  * copy_extent_status - Copy the extent's initialization status
+@@ -283,7 +298,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
+ 	}
+
+ 	if (new_flag) {
+-		get_ext_path(orig_path, orig_inode, eblock, err);
++		err = get_ext_path(orig_inode, eblock, &orig_path);
+ 		if (orig_path == NULL)
+ 			goto out;
+
+@@ -293,8 +308,8 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
+ 	}
+
+ 	if (end_flag) {
+-		get_ext_path(orig_path, orig_inode,
+-				      le32_to_cpu(end_ext->ee_block) - 1, err);
++		err = get_ext_path(orig_inode,
++				le32_to_cpu(end_ext->ee_block) - 1, &orig_path);
+ 		if (orig_path == NULL)
+ 			goto out;
+
+@@ -631,12 +646,12 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 	mext_double_down_write(orig_inode, donor_inode);
+
+ 	/* Get the original extent for the block "orig_off" */
+-	get_ext_path(orig_path, orig_inode, orig_off, err);
++	err = get_ext_path(orig_inode, orig_off, &orig_path);
+ 	if (orig_path == NULL)
+ 		goto out;
+
+ 	/* Get the donor extent for the head */
+-	get_ext_path(donor_path, donor_inode, donor_off, err);
++	err = get_ext_path(donor_inode, donor_off, &donor_path);
+ 	if (donor_path == NULL)
+ 		goto out;
+ 	depth = ext_depth(orig_inode);
+@@ -678,7 +693,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+
+ 		if (orig_path)
+ 			ext4_ext_drop_refs(orig_path);
+-		get_ext_path(orig_path, orig_inode, orig_off, err);
++		err = get_ext_path(orig_inode, orig_off, &orig_path);
+ 		if (orig_path == NULL)
+ 			goto out;
+ 		depth = ext_depth(orig_inode);
+@@ -692,8 +707,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+
+ 		if (donor_path)
+ 			ext4_ext_drop_refs(donor_path);
+-		get_ext_path(donor_path, donor_inode,
+-				      donor_off, err);
++		err = get_ext_path(donor_inode, donor_off, &donor_path);
+ 		if (donor_path == NULL)
+ 			goto out;
+ 		depth = ext_depth(donor_inode);
+@@ -1155,12 +1169,12 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 	if (file_end < block_end)
+ 		len -= block_end - file_end;
+
+-	get_ext_path(orig_path, orig_inode, block_start, ret);
++	ret = get_ext_path(orig_inode, block_start, &orig_path);
+ 	if (orig_path == NULL)
+ 		goto out2;
+
+ 	/* Get path structure to check the hole */
+-	get_ext_path(holecheck_path, orig_inode, block_start, ret);
++	ret = get_ext_path(orig_inode, block_start, &holecheck_path);
+ 	if (holecheck_path == NULL)
+ 		goto out;
+
+@@ -1290,8 +1304,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		/* Decrease buffer counter */
+ 		if (holecheck_path)
+ 			ext4_ext_drop_refs(holecheck_path);
+-		get_ext_path(holecheck_path, orig_inode,
+-				      seq_start, ret);
++		ret = get_ext_path(orig_inode, seq_start, &holecheck_path);
+ 		if (holecheck_path == NULL)
+ 			break;
+ 		depth = holecheck_path->p_depth;
+@@ -1299,7 +1312,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		/* Decrease buffer counter */
+ 		if (orig_path)
+ 			ext4_ext_drop_refs(orig_path);
+-		get_ext_path(orig_path, orig_inode, seq_start, ret);
++		ret = get_ext_path(orig_inode, seq_start, &orig_path);
+ 		if (orig_path == NULL)
+ 			break;
