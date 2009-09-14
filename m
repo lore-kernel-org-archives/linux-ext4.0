@@ -1,183 +1,88 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: Preparing to push patches for the merge window
-Date: Mon, 14 Sep 2009 07:24:36 -0700
-Message-ID: <1252938276.4920.11.camel@mingming-laptop>
-References: <E1MmDzB-000357-Po@closure.thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: fsync on ext[34] working only by an accident
+Date: Mon, 14 Sep 2009 17:25:29 +0200
+Message-ID: <20090914152529.GA25549@duck.suse.cz>
+References: <20090908132601.GA17778@duck.suse.cz> <20090910064605.GA8690@skywalker.linux.vnet.ibm.com> <20090910085056.GA607@duck.suse.cz> <20090910090449.GA11418@skywalker.linux.vnet.ibm.com> <20090910091551.GB11418@skywalker.linux.vnet.ibm.com> <20090910105216.GG607@duck.suse.cz> <20090910110455.GA17531@skywalker.linux.vnet.ibm.com> <20090910131007.GC31907@mit.edu> <20090910140636.GJ607@duck.suse.cz> <1252613686.7006.5.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:40852 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750832AbZINOZB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 10:25:01 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e35.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n8EEFCE2027580
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2009 08:15:12 -0600
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8EEOfGW030718
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2009 08:24:43 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8EEOeUm032150
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2009 08:24:41 -0600
-In-Reply-To: <E1MmDzB-000357-Po@closure.thunk.org>
+Received: from cantor2.suse.de ([195.135.220.15]:53143 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750854AbZINPZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Sep 2009 11:25:28 -0400
+Content-Disposition: inline
+In-Reply-To: <1252613686.7006.5.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2009-09-11 at 17:48 -0400, Theodore Ts'o wrote:
-> See below for a list for what I currently have in the ext4 patch queue.
+On Thu 10-09-09 13:14:46, Mingming wrote:
+> On Thu, 2009-09-10 at 16:06 +0200, Jan Kara wrote:
+> > On Thu 10-09-09 09:10:07, Theodore Tso wrote:
+> > > On Thu, Sep 10, 2009 at 04:34:55PM +0530, Aneesh Kumar K.V wrote:
+> > > > mark_buffer_dirty -> __set_page_dirty -> __mark_inode_dirty
+> > > 
+> > > We need to be careful here.  First of all, mark_buffer_dirty() on the
+> > > code paths you are talking about is being passed a metadata buffer
+> > > head.  As such, has Jan has pointed out, the bh is part of the buffer
+> > > cache, so the page->mapping of associated with bh->b_page is the inode
+> > > of the block device --- *not* the ext4 inode.
+> > > 
+> > > Secondly, __set_page_dirty calls __mark_inode_dirty passing in
+> > > I_DIRTY_PAGES --- which should be a hint.  What Jan is talking about
+> > > is where we set the inode flags I_DIRTY_SYNC and I_DIRTY_DATASYNC:
+> > > 
+> > >  * I_DIRTY_SYNC		Inode is dirty, but doesn't have to be written on
+> > >  *			fdatasync().  i_atime is the usual cause.
+> > >  * I_DIRTY_DATASYNC	Data-related inode changes pending. We keep track of
+> > >  *			these changes separately from I_DIRTY_SYNC so that we
+> > >  *			don't have to write inode on fdatasync() when only
+> > >  *			mtime has changed in it.
+> > > 
+> > > This is important because ext4_sync_file() (which is called by fsync()
+> > > and fdatasync()) uses this logic to determine whether or not to call
+> > > sync_inode(), which is what will force a commit when wbc.sync_mode is
+> > > set to WB_SYNC_ALL.
+> >   Yes, this is exactly what I was trying to point out.
+> > 
+> > > In fact, I think the problem is worse than Jan is pointing out,
+> > > because it's not enough that vfs_fq_alloc_space() is calling
+> > > mark_inode_dirty(), since that only sets I_DIRTY_SYNC.  When we touch
+> > > i_size or i_block[], we need to make sure that I_DIRTY_DATASYNC is
+> > > set, so that fdatasync() will force a commit.
+> >   Actually no. mark_inode_dirty() dirties inode with I_DIRTY ==
+> > (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES) so it happens to work.
+> > The fact that quota *could* dirty the inode with I_DIRTY_SYNC only
+> > is right but that's a separate issue.
+> > 
+> > > I think the right thing to do is to create an
+> > > _ext[34]_mark_inode_dirty() which takes an extra argument, which
+> > > controls whether or not we set I_DIRTY_SYNC or I_DIRTY_DATASYNC.  In
+> > > fact, most of the time, we want to be setting I_DIRTY_DATASYNC, so we
+> > > should probably have ext[34]_mark_inode_dirty() call
+> > > _ext[34]_mark_inode_dirty() with I_DIRTY_DATASYNC, and then create a
+> > > ext[34]_mark_inode_nodatasync() version passes in I_DIRTY_SYNC.
+> > > 
+> > > This will cause pdflush to call ext4_write_inode() more frequently,
+> > > but pdflush calls write_inode with wait=0, and ext4_write_inode() is a
+> > > no-op in that case.
+> >   Thinking about it, it won't work so easily. The problem is that when
+> > pdflush decides to write the inode, it unconditionally clears dirty flags.
+> > We could redirty the inode in write_inode() but that's IMHO too ugly to
+> > bear it.
 > 
-> Patches which are NOT yet included are:
-> 
-> o  Mingming's Fallocate / Direct I/O patches.
-> 
-> 	Mingming, it looked like you were still polishing these two
-> 	patches?
-> 
+> I am a little confused here, so pdflush could found the dirty inodes
+> (due to quota) but it doesn't force journal comminit and write the inode
+> to disk? 
+  pdflush never forces a journal commit. It just does a periodic writeout
+so there's no need to force a journal commit. It just calls write_inode(),
+which ext3/4 implement as NOP because the inode is already part of the
+running transaction when it is dirty.
 
-Yeah, the aio fsync issue is till being working on. I also have some
-issue with using igrab/iput to hold the inode in cache. 
-
-Thanks,
-Mingming
-> o  Eric's "limit block allocations for indirect-block files to < 2^32" patch
-> 
-> 	Eric, looks like you were still polishing this?
-> 
-> o Patches to fix crashes associated with sparse files and the
->   EXT4_IOC_MOVE_EXT ioctl which Peng Tao and Akira Fujita-san have been
->   working on.   (Looks like they are still working on trying to
->   reproduce the problem reliably, and there have been patches going back
->   and forth, but they seem to be for testing only.)
-> 
-> o  A port of Chris Mason's "ext3: Add locking to ext3_do_update_inode" to
->    ext4.  I'll try to look into this.
-> 
-> Are there other patches not listed above or below that should be
-> targeted for 2.6.32?
-> 
-> What I may do is push what we have so far to Linus, and then we can do a
-> second push for patches that aren't quite ready yet.
-> 
-> 					- Ted
-> 
-> Akira Fujita (5):
->       ext4: Fix compile warnings with MB_DEBUG
->       ext4: Fix wrong comparisons in mext_check_arguments()
->       ext4: Remove unneeded BUG_ON() in ext4_move_extents()
->       ext4: Return exchanged blocks count to user space in failure
->       ext4: Fix small typo for move_extent_per_page()
-> 
-> Andreas Dilger (1):
->       jbd2: round commit timer up to avoid uncommitted transaction
-> 
-> Andreas Schlick (1):
->       ext4: Always set dx_node's fake_dirent explicitly.
-> 
-> Aneesh Kumar K.V (7):
->       ext4: Fix memory leak fix when mounting an ext4 filesystem
->       ext4: Add missing unlock_new_inode() call in extent migration code
->       ext4: Allow rename to create more than EXT4_LINK_MAX subdirectories
->       ext4: Take page lock before looking at attached buffer_heads flags
->       ext4: move ext4_mb_init_group() function earlier in the mballoc.c
->       ext4: check for need init flag in ext4_mb_load_buddy
->       ext4: Clarify the locking details in mballoc
-> 
-> Christoph Hellwig (1):
->       ext4: fix cache flush in ext4_sync_file
-> 
-> Curt Wohlgemuth (1):
->       ext4: More buffer head reference leaks
-> 
-> Eric Sandeen (6):
->       ext4: reject too-large filesystems on 32-bit kernels
->       ext4: open-code ext4_mb_update_group_info
->       simplify some logic in ext4_mb_normalize_request
->       ext4: Add feature set check helper for mount & remount paths
->       ext4: use variables not types in sizeofs() for allocations
->       ext4: use ext4_grpblk_t more extensively
-> 
-> Frank Mayhar (1):
->       ext4: Make non-journal fsync work properly
-> 
-> H Hartley Sweeten (1):
->       jbd2: bitfields should be unsigned
-> 
-> Jan Kara (3):
->       jbd2: Fail to load a journal if it is too short
->       jbd2: Annotate transaction start also for jbd2_journal_restart()
->       ext4: Fix possible deadlock between ext4_truncate() and ext4_get_blocks()
-> 
-> Joe Perches (1):
->       ext4: Remove unnecessary semicolons in mballoc.c
-> 
-> Manish Katiyar (1):
->       ext4: Fix typo in ext4/Kconfig
-> 
-> Mingming (2):
->       ext4: Compile warning fix when EXT_DEBUG enabled
->       ext4: Show unwritten extent flag in ext4_ext_show_leaf()
-> 
-> Peng Tao (2):
->       ext4: fix build warning when EXT4FS_DEBUG is on
->       ext4: fix journal ref count in move_extent_par_page
-> 
-> Roel Kluin (1):
->       ext4: remove redundant test on unsigned
-> 
-> Theodore Ts'o (18):
->       ext4: Avoid null pointer dereference when decoding EROFS w/o a journal
->       ext4: Add configurable run-time mballoc debugging
->       ext4: Display the mballoc flags in mb_history in hex instead of decimal
->       ext4: Fix bugs in mballoc's stream allocation mode
->       ext4: Avoid group preallocation for closed files
->       ext4: fix extent sanity checking code with AGGRESSIVE_TEST
->       ext4: Limit number of links that can be created by ext4_link()
->       ext4: Fix spelling typo in the trace format for trace_ext4_da_writepages()
->       ext4: Restore wbc->range_start in ext4_da_writepages()
->       ext4: Add new tracepoint: trace_ext4_da_write_pages()
->       ext4: fix tracepoint format string warnings
->       ext4: Remove journal_checksum mount option and enable it by default
->       ext4: print more sysadmin-friendly message in check_block_validity()
->       ext4: Use bforget() in no journal mode for ext4_journal_{forget,revoke}()
->       ext4: Assure that metadata blocks are written during fsync in no journal mode
->       ext4: Don't update superblock write time when filesystem is read-only
->       ext4: Fix async commit mode to be safe by using a barrier
->       ext4: Fix initalization of s_flex_groups
-> 
-> Tobias Klauser (1):
->       ext4: Declare seq_operations and file_operations structures as const
-> 
->  Documentation/filesystems/ext4.txt |    8 +-
->  fs/ext4/Kconfig                    |   11 +-
->  fs/ext4/balloc.c                   |    2 +-
->  fs/ext4/ext4.h                     |   84 ++++++--
->  fs/ext4/ext4_extents.h             |    3 +-
->  fs/ext4/ext4_jbd2.c                |    9 +-
->  fs/ext4/extents.c                  |  112 ++++++----
->  fs/ext4/fsync.c                    |    4 +-
->  fs/ext4/ialloc.c                   |    2 +-
->  fs/ext4/inode.c                    |  128 +++++++----
->  fs/ext4/ioctl.c                    |    7 +-
->  fs/ext4/mballoc.c                  |  420 ++++++++++++++++++------------------
->  fs/ext4/mballoc.h                  |   22 ++-
->  fs/ext4/migrate.c                  |    2 +-
->  fs/ext4/move_extent.c              |   47 +++--
->  fs/ext4/namei.c                    |   22 ++-
->  fs/ext4/resize.c                   |    7 +-
->  fs/ext4/super.c                    |  152 ++++++++------
->  fs/jbd2/commit.c                   |   11 +-
->  fs/jbd2/journal.c                  |    6 +
->  fs/jbd2/transaction.c              |    7 +-
->  include/linux/jbd2.h               |    2 +-
->  include/trace/events/ext4.h        |  109 +++++++---
->  include/trace/events/jbd2.h        |    2 +-
->  24 files changed, 697 insertions(+), 482 deletions(-)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
