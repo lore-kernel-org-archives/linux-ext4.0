@@ -1,60 +1,64 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] debugfs: open with EXT2_FLAG_64BITS
-Date: Sat, 12 Sep 2009 22:29:19 +0200
-Message-ID: <20090912202919.GY9372@webber.adilger.int>
-References: <4AAA6A44.90902@redhat.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 3/4]ext4: Return exchanged blocks count to user space
+ in 	failure
+Date: Mon, 14 Sep 2009 15:16:47 +0900
+Message-ID: <4AADDFCF.9010602@rs.jp.nec.com>
+References: <4A9DE3EA.1080602@rs.jp.nec.com> <4A9E9521.2010701@gmail.com>	 <87f94c370909021359p171c6f6dte9b700cd48a5fde0@mail.gmail.com> <6149e97b0909022213p2b8463fdm796c8687d36ae54c@mail.gmail.com> <4AA0E419.7010707@rs.jp.nec.com> <4AA143B2.6060401@gmail.com> <4AA5D984.6030607@rs.jp.nec.com> <4AA60F36.9040605@gmail.com> <4AA9DAF0.2020402@rs.jp.nec.com> <4AAA816F.6060809@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:40425 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751372AbZILU3W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Sep 2009 16:29:22 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8CKTPAX025276
-	for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2009 13:29:26 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KPV00K00KV17P00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Sat,
- 12 Sep 2009 13:29:25 -0700 (PDT)
-In-reply-to: <4AAA6A44.90902@redhat.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:64139 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1749667AbZINGRY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 02:17:24 -0400
+In-Reply-To: <4AAA816F.6060809@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 11, 2009  10:18 -0500, Eric Sandeen wrote:
-> Pointing debugfs from the pu branch at a large filesystem is
-> still failing with:
->
-> Filesystem too large to use legacy bitmaps while reading block bitmap
->
-> We need to open with EXT2_FLAG_64BITS; I'm not sure if this
-> should be a switch based on the size of the fs or not?
+Hi Peng,
 
-The one thing that is already VERY painful is the time it takes for
-debugfs to read the bitmaps from disk at startup.  Running with
-"-c" allows that step to be skipped, but tha means it isn't possible
-to modify the filesystem at all.
+Peng Tao wrote:
+>> I tried to reproduce your problem with the following steps,
+>> but I couldn't. Please check my procedure.
+>>
+>> 1. Test environment
+>> linux2.6.31-rc2 + two patches as follows:
+>> http://marc.info/?l=linux-ext4&m=125186152727422&w=3
+>> http://marc.info/?l=linux-ext4&m=125205817410548&w=3
+>>
+>> 2. Create ext4 filesystem and mount it
+>> mke2fs -t ext4 -b 4096 /dev/XXX
+>> mount -t ext4 -O rw,noatime,relatime,commit=360 /dev/XXX /mnt/XXX
+>>
+>> 3. Create orig and donor files
+>> dd if=/dev/urandom of=/mnt/XXX/first.img bs=10M count=1
+>> dd if=/dev/zero of=/mnt/XXX/first.img bs=10M count=0 seek=50
+>> dd if=/dev/urandom of=/mnt/XXX/last.img bs=10M count=1 seek=49
+>>
+>> 4. Call EXT4_MOVE_MOVE_EXT ioctl to files with the following arguments
+>> (orig_file = /mnt/XXX/first.img, donor_file = /mnt/XXX/last.img)
+>> move_data.orig_start = 0;
+>> move_data.donor_start = 0;
+>> move_data.len = 12152;
+>> ioctl(orig_fd, EXT4_IOC_MOVE_EXT, &move_data)
+>>
+>> However, EXT4_IOC_MOVE_EXT returned ENODATA (this is a fine result by my patch)
+>> and it didn't occur the kernel panic which you got.
+>> If I chose a wrong step, please correct me.
+> Sorry, I didn't notice that I was at commit 7638d5322bd89d49e013a03fe2afaeb6d214fabd
+> of linus tree that includes a few patches after 2.6.31-rc2.
+>> I appreciate if you could test following environment.
+>> - 2.6.31-rc8 + ext4 patch queue
+>>  (commit:bdacccd94d08a3f89e7fca676b28aa262c6d75fa) + attached patch
+> I can't reproduce the panic in the above environment. I believe the problem
+> is fixed. Thanks for your work!
 
-The time for 8TB filesystems is already in the multi-minute range, so
-I can't imagine how long it will take on huge filesystems.  The only
-saving grace might be flex_bg avoiding seeks between every pair of
-bitmaps.
+Ok, I will re-base the patch and then send it to the list.
+Thanks for your work, too.
 
-Has any attention been given to the ext2fs_load_bitmaps() function for
-flex_bg filesystems?  This would need to be tuned to read groups_per_flex
-block bitmaps first, then groups_per_flex inode bitmaps before skipping
-to the next flex group.  Otherwise we may still be reading each pair of
-block+inode bitmaps at a time, and only by virtue of disk track caching
-are we avoiding a seek between each one (which would eventually break
-down once the groups_per_flex exceeds the track cache size).
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+Regards,
+Akira Fujita.
