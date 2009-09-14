@@ -1,141 +1,58 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [PATCH 4/4]ext4: Fix different block exchange issue in EXT4_IOC_MOVE_EXT
-Date: Mon, 14 Sep 2009 17:17:30 +0900
-Message-ID: <4AADFC1A.7020609@rs.jp.nec.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2 V3] allow direct IO to fallocate and holes
+Date: Mon, 14 Sep 2009 13:25:44 +0200
+Message-ID: <20090914112544.GB24075@duck.suse.cz>
+References: <1252025090.15321.17.camel@mingming-laptop> <20090907215746.GA11748@duck.suse.cz> <1252529462.19097.170.camel@mingming-laptop> <20090910075730.GD8690@skywalker.linux.vnet.ibm.com> <20090910085440.GB607@duck.suse.cz> <1252613820.7006.8.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Peng Tao <bergwolf@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <sandeen@redhat.com>
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:64996 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754589AbZINITa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 04:19:30 -0400
+Received: from cantor.suse.de ([195.135.220.2]:41445 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751276AbZINLZr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Sep 2009 07:25:47 -0400
+Content-Disposition: inline
+In-Reply-To: <1252613820.7006.8.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: Fix different block exchange issue in EXT4_IOC_MOVE_EXT
+On Thu 10-09-09 13:17:00, Mingming wrote:
+> On Thu, 2009-09-10 at 10:54 +0200, Jan Kara wrote:
+> > On Thu 10-09-09 13:27:30, Aneesh Kumar K.V wrote:
+> > > On Wed, Sep 09, 2009 at 01:51:02PM -0700, Mingming wrote:
+> > > .....
+> > > .....
+> > > 
+> > > > >   I think fsync() still won't work correctly since it can happen user sees
+> > > > > AIO completed, calls fsync() that completes, 
+> > > > 
+> > > > hmm, does fsync() ensure user sees AIO data completed?
+> > > >
+> > > 
+> > > If we call fsync after getting AIO completion event and crash we should
+> > > ensure that the data can be read back properly. That is either
+> > > 
+> > > a) we should ensure that we convert the extent before returning the io
+> > >     completion event
+> > > b) Or the fsync should be able to guarantee that it will force the extent
+> > >    conversion pending on the file.
+> >   Exactly.
+> > 
+> > a) should happen in the sync-io case where we can afford to do IO from the
+> > end_io callback (and due to flush_workqueue call, it happens with the
+> > current Mingming's patch so that is file). But for tha aio case, we have to
+> > somehow implement b).
+> > 
+> to implement b), I think we need to keep track of a list of completed
+> IOs from AIO, but not get converted extents, and force fsync to run
+> flush_queue on those completed IOs?
+  Yes that would work fine.
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-
-If logical block offset of original file which is passed to
-EXT4_IOC_MOVE_EXT is different from donor file's,
-a calculation error occurs in ext4_calc_swap_extents(),
-therefore wrong block is exchanged between original file and donor file.
-As a result, we hit ext4_error() in check_block_validity().
-To detect the logical offset difference in EXT4_IOC_MOVE_EXT,
-add checks to mext_calc_swap_extents() and handle it as error,
-since data exchange must be done between the same blocks in EXT4_IOC_MOVE_EXT.
-
-Reported-by: Peng Tao　<bergwolf@gmail.com>　
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
----
-
- fs/ext4/move_extent.c |   46 +++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 37 insertions(+), 9 deletions(-)
-
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 7c26c74..a22371f 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -597,8 +597,10 @@ out:
-  * @orig_off:		block offset of original inode
-  * @donor_off:		block offset of donor inode
-  * @max_count:		the maximun length of extents
-+ *
-+ * Return 0 on success, or a negative error value on failure.
-  */
--static void
-+static int
- mext_calc_swap_extents(struct ext4_extent *tmp_dext,
- 			      struct ext4_extent *tmp_oext,
- 			      ext4_lblk_t orig_off, ext4_lblk_t donor_off,
-@@ -607,6 +609,19 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
- 	ext4_lblk_t diff, orig_diff;
- 	struct ext4_extent dext_old, oext_old;
-
-+	BUG_ON(orig_off != donor_off);
-+
-+	/* original and donor extents have to cover the same block offset */
-+	if (orig_off < le32_to_cpu(tmp_oext->ee_block) ||
-+	    le32_to_cpu(tmp_oext->ee_block) +
-+			ext4_ext_get_actual_len(tmp_oext) - 1 < orig_off)
-+		return -ENODATA;
-+
-+	if (orig_off < le32_to_cpu(tmp_dext->ee_block) ||
-+	    le32_to_cpu(tmp_dext->ee_block) +
-+			ext4_ext_get_actual_len(tmp_dext) - 1 < orig_off)
-+		return -ENODATA;
-+
- 	dext_old = *tmp_dext;
- 	oext_old = *tmp_oext;
-
-@@ -634,6 +649,8 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
-
- 	copy_extent_status(&oext_old, tmp_dext);
- 	copy_extent_status(&dext_old, tmp_oext);
-+
-+	return 0;
- }
-
- /**
-@@ -690,8 +707,10 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 	dext = donor_path[depth].p_ext;
- 	tmp_dext = *dext;
-
--	mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
-+	err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
- 				      donor_off, count);
-+	if (err)
-+		goto out;
-
- 	/* Loop for the donor extents */
- 	while (1) {
-@@ -760,9 +779,10 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 		}
- 		tmp_dext = *dext;
-
--		mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
--					      donor_off,
--					      count - replaced_count);
-+		err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
-+					   donor_off, count - replaced_count);
-+		if (err)
-+			goto out;
- 	}
-
- out:
-@@ -1244,11 +1264,15 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 	ext_cur = holecheck_path[depth].p_ext;
-
- 	/*
--	 * Get proper extent whose ee_block is beyond block_start
--	 * if block_start was within the hole.
-+	 * Get proper starting location of block replacement if block_start was
-+	 * within the hole.
- 	 */
- 	if (le32_to_cpu(ext_cur->ee_block) +
- 		ext4_ext_get_actual_len(ext_cur) - 1 < block_start) {
-+		/*
-+		 * The hole exists between extents or the tail of
-+		 * original file.
-+		 */
- 		last_extent = mext_next_extent(orig_inode,
- 					holecheck_path, &ext_cur);
- 		if (last_extent < 0) {
-@@ -1261,8 +1285,12 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			ret1 = last_extent;
- 			goto out;
- 		}
--	}
--	seq_start = block_start;
-+		seq_start = le32_to_cpu(ext_cur->ee_block);
-+	} else if (le32_to_cpu(ext_cur->ee_block) > block_start)
-+		/* The hole exists at the beginning of original file. */
-+		seq_start = le32_to_cpu(ext_cur->ee_block);
-+	else
-+		seq_start = block_start;
-
- 	/* No blocks within the specified range. */
- 	if (le32_to_cpu(ext_cur->ee_block) > block_end) {
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
