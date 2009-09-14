@@ -1,75 +1,173 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: fsync on ext[34] working only by an accident
-Date: Mon, 14 Sep 2009 18:00:41 +0200
-Message-ID: <20090914160041.GB25549@duck.suse.cz>
-References: <20090908132601.GA17778@duck.suse.cz> <20090910064605.GA8690@skywalker.linux.vnet.ibm.com> <20090910085056.GA607@duck.suse.cz> <20090910090449.GA11418@skywalker.linux.vnet.ibm.com> <20090910091551.GB11418@skywalker.linux.vnet.ibm.com> <20090910105216.GG607@duck.suse.cz> <20090910110455.GA17531@skywalker.linux.vnet.ibm.com> <20090910131007.GC31907@mit.edu> <20090910140636.GJ607@duck.suse.cz> <20090910165201.GA23700@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Make non-journal fsync work properly. REPOST
+Date: Mon, 14 Sep 2009 22:24:13 +0530
+Message-ID: <20090914165413.GA4375@skywalker.linux.vnet.ibm.com>
+References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
+ <20090908050614.GA10477@mit.edu>
+ <1252424465.17646.7.camel@bobble.smo.corp.google.com>
+ <20090908220504.GS22901@mit.edu>
+ <1252517664.18594.3.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54620 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756000AbZINQAj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Sep 2009 12:00:39 -0400
+Received: from e23smtp09.au.ibm.com ([202.81.31.142]:54579 "EHLO
+	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755514AbZINQye (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 12:54:34 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp09.au.ibm.com (8.14.3/8.13.1) with ESMTP id n8EGnDKL024339
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 02:49:13 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8EGsa82417956
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 02:54:37 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8EGsaUr020517
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 02:54:36 +1000
 Content-Disposition: inline
-In-Reply-To: <20090910165201.GA23700@mit.edu>
+In-Reply-To: <1252517664.18594.3.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 10-09-09 12:52:01, Theodore Tso wrote:
-> On Thu, Sep 10, 2009 at 04:06:36PM +0200, Jan Kara wrote:
-> > > In fact, I think the problem is worse than Jan is pointing out,
-> > > because it's not enough that vfs_fq_alloc_space() is calling
-> > > mark_inode_dirty(), since that only sets I_DIRTY_SYNC.  When we touch
-> > > i_size or i_block[], we need to make sure that I_DIRTY_DATASYNC is
-> > > set, so that fdatasync() will force a commit.
-> >   Actually no. mark_inode_dirty() dirties inode with I_DIRTY ==
-> > (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES) so it happens to work.
-> > The fact that quota *could* dirty the inode with I_DIRTY_SYNC only
-> > is right but that's a separate issue.
+On Wed, Sep 09, 2009 at 10:34:24AM -0700, Frank Mayhar wrote:
+> Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
+> mode:  If we're not using a journal, ext4_write_inode() now calls
+> ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
+> with a new "do_sync" parameter.  If that parameter is nonzero _and_ we're
+> not using a journal, ext4_do_update_inode() calls sync_dirty_buffer()
+> instead of ext4_handle_dirty_metadata().
 > 
-> Oops, you're right.  I mixed up I_DIRTY and I_DIRTY_SYNC.  Hmm, what's
-> actually a bit surprising is that we don't have a
-> mark_inode_dirty_datasync() which only sets I_DIRTY_DATASYNC.
-  Yeah. But that's easy to fix ;).
-
-> And shouldn't quota be dirtying the inode using I_DIRTY_DATASYNC only?
-> After, all the reason why we need to do this is because it's messing
-> with i_size, right?
-  Quota does not touch i_size. It touches only i_blocks - that's why it
-dirties the inode. Since i_blocks are not really needed to get to the data,
-I think I_DIRTY_SYNC for quota is more appropriate.
-
-> >   Thinking about it, it won't work so easily. The problem is that when
-> > pdflush decides to write the inode, it unconditionally clears dirty flags.
-> > We could redirty the inode in write_inode() but that's IMHO too ugly to
-> > bear it.
+> This problem was found in power-fail testing, checking the amount of
+> loss of files and blocks after a power failure when using fsync() and
+> when not using fsync().  It turned out that using fsync() was actually
+> worse than not doing so, possibly because it increased the likelihood
+> that the inodes would remain unflushed and would therefore be lost at
+> the power failure.
 > 
-> Hmm, yes.  I wonder if this is something we should change, and make it
-> be the responsibility of the filesystem's write_inode method function
-> to clear I_DIRTY_SYNC and I_DIRTY_DATASYNC flags.  That would allow
-> the file system to refuse to clean the inode for whatever reason the
-> file system saw fit.  That would require sweeping through all of the
-> file systems, but it might be useful for more file systems other than
-> ext3/ext4.
-  Possibly yes. But OTOH from the point of view of pdflush, the inode
-actually is clean. It could be even evicted from memory when needed before
-the transaction commits - which invalidates my approach to solving the
-fsync() trouble. Nasty.
-  Also just not clearing dirty bits in write_inode() would probably rather
-confuse current writeback code because all inodes would stay dirty until
-a transaction commit with no way of getting rid of them. So pdflush would
-needlessly burn CPU cycles scanning them and trying to write them. Also
-it's not completely clear how we would clear the dirty bits after the
-transaction commits since during commit, it could become part of a freshly
-started transaction.
-  Sigh, it's rather convoluted. Probably we have to somehow pin the inode
-in memory until the transaction commits to fix the "remember TID" approach.
+> Signed-off-by: Frank Mayhar <fmayhar@google.com>
+> 
+>  fs/ext4/inode.c |   54 ++++++++++++++++++++++++++++++++++++++++--------------
+>  1 files changed, 40 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index d87f6a0..ef2e780 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4741,7 +4741,8 @@ static int ext4_inode_blocks_set(handle_t *handle,
+>   */
+>  static int ext4_do_update_inode(handle_t *handle,
+>  				struct inode *inode,
+> -				struct ext4_iloc *iloc)
+> +				struct ext4_iloc *iloc,
+> +				int do_sync)
+>  {
+>  	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+> @@ -4843,10 +4844,22 @@ static int ext4_do_update_inode(handle_t *handle,
+>  		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
+>  	}
+> 
+> -	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+> -	rc = ext4_handle_dirty_metadata(handle, inode, bh);
+> -	if (!err)
+> -		err = rc;
+> +	/*
+> +	 * If we're not using a journal and we were called from
+> +	 * ext4_write_inode() to sync the inode (making do_sync true),
+> +	 * we can just use sync_dirty_buffer() directly to do our dirty
+> +	 * work.  Testing s_journal here is a bit redundant but it's
+> +	 * worth it to avoid potential future trouble.
+> +	 */
+> +	if (EXT4_SB(inode->i_sb)->s_journal == NULL && do_sync) {
+> +		BUFFER_TRACE(bh, "call sync_dirty_buffer");
+> +		sync_dirty_buffer(bh);
+> +	} else {
+> +		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+> +		rc = ext4_handle_dirty_metadata(handle, inode, bh);
+> +		if (!err)
+> +			err = rc;
+> +	}
+>  	ei->i_state &= ~EXT4_STATE_NEW;
+> 
+>  out_brelse:
+> @@ -4892,19 +4905,32 @@ out_brelse:
+>   */
+>  int ext4_write_inode(struct inode *inode, int wait)
+>  {
+> +	int err;
+> +
+>  	if (current->flags & PF_MEMALLOC)
+>  		return 0;
+> 
+> -	if (ext4_journal_current_handle()) {
+> -		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
+> -		dump_stack();
+> -		return -EIO;
+> -	}
+> +	if (EXT4_SB(inode->i_sb)->s_journal) {
+> +		if (ext4_journal_current_handle()) {
+> +			jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
+> +			dump_stack();
+> +			return -EIO;
+> +		}
+> 
+> -	if (!wait)
+> -		return 0;
+> +		if (!wait)
+> +			return 0;
+> +
+> +		err = ext4_force_commit(inode->i_sb);
+> +	} else {
+> +		struct ext4_iloc iloc;
+> 
+> -	return ext4_force_commit(inode->i_sb);
+> +		err = ext4_get_inode_loc(inode, &iloc);
+> +		if (err)
+> +			return err;
+> +		err = ext4_do_update_inode(EXT4_NOJOURNAL_HANDLE,
+> +					   inode, &iloc, wait);
+> +	}
+> +	return err;
+>  }
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
+Why not just do 
+
+err = ext4_get_inode_loc(inode, &iloc);                                                                                   
+if (err)
+	return err;
+if (wait)
+   sync_dirty_buffer(iloc.bh);
+
+
+because when we updated inode we would have called ext4_mark_inode_dirty which
+internally does ext4_mark_iloc_dirty -> ext4_do_update_inode
+
+May be we also want to check the error from sync_dirty_buffer
+
+ sync_dirty_buffer(bh);
+ if (buffer_req(bh) && !buffer_uptodate(bh)) {
+      ext4_error(inode->i_sb, __func__,
+		  "IO error syncing inode, "
+			  "inode=%lu, block=%llu",
+			  inode->i_ino,
+			  (unsigned long long) bh->b_blocknr);
+       err = -EIO;
+ }
+
+
+> 
+>  /*
+> @@ -5198,7 +5224,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+>  	get_bh(iloc->bh);
+> 
+>  	/* ext4_do_update_inode() does jbd2_journal_dirty_metadata */
+> -	err = ext4_do_update_inode(handle, inode, iloc);
+> +	err = ext4_do_update_inode(handle, inode, iloc, 0);
+>  	put_bh(iloc->bh);
+>  	return err;
+>  }
+> 
+
+-aneesh
