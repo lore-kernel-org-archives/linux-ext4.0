@@ -1,63 +1,208 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: ext4+quota+nfs issue
-Date: Tue, 15 Sep 2009 00:22:28 +0530
-Message-ID: <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
-References: <4AA5E5F3.30309@primeinteractive.net>
- <4AA72C14.1020005@primeinteractive.net>
- <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>
- <4AA7C38E.8020306@redhat.com>
- <150c16850909091045h1962fd67n77c265c9b99c5f44@mail.gmail.com>
- <4AA7FBD7.9080406@primeinteractive.net>
- <4AAA5FCC.2010707@primeinteractive.net>
- <20090914175056.GE25549@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC V4] ext4: limit block allocations for indirect-block
+ files to < 2^32
+Date: Mon, 14 Sep 2009 15:03:49 -0500
+Message-ID: <4AAEA1A5.50605@redhat.com>
+References: <4AA1920C.9040406@redhat.com> <4AA1D94F.8060703@redhat.com> <20090905164535.GL4197@webber.adilger.int> <4AA92307.4010304@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pavol Cvengros <pavol.cvengros@primeinteractive.net>,
-	Justin Maggard <jmaggard10@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Jiri Kosina <jkosina@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:53934 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756790AbZINSwg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Sep 2009 14:52:36 -0400
-Content-Disposition: inline
-In-Reply-To: <20090914175056.GE25549@duck.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:49865 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754891AbZINUDs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Sep 2009 16:03:48 -0400
+In-Reply-To: <4AA92307.4010304@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 14, 2009 at 07:50:56PM +0200, Jan Kara wrote:
->   I've found some time to look into this and I can see a few problems in
-> the code. Firstly, what may cause your problems:
->   vfs_dq_claim_blocks() is called in ext4_mb_mark_diskspace_used(). But
-> as far as I can understand the code, ext4_mb_normalize_request() can
-> increase the amount of space we really allocate and thus we try to
-> allocate more blocks than we have actually reserved in quota. Aneesh, is
-> that right?
+Today, the ext4 allocator will happily allocate blocks past
+2^32 for indirect-block files, which results in the block
+numbers getting truncated, and corruption ensues.
 
-ext4_mb_mark_diskspace_used use ac->ac_b_ex.fe_len which is NOT the normalized
-request len. it is min(allocated_len, original_len). So i guess that code
-should be safe
+This patch limits such allocations to < 2^32, and adds
+BUG_ONs if we do get blocks larger than that.
+
+This should address RH Bug 519471, ext4 bitmap allocator 
+must limit blocks to < 2^32
+
+* ext4_find_goal() is modified to choose a goal < UINT_MAX,
+  so that our starting point is in an acceptable range.
+
+* ext4_xattr_block_set() is modified such that the goal block
+  is < UINT_MAX, as above.
+
+* ext4_mb_regular_allocator() is modified so that the group
+  search does not continue into groups which are too high
+
+* ext4_mb_use_preallocated() has a check that we don't use
+  preallocated space which is too far out
+
+* ext4_alloc_blocks() and ext4_xattr_block_set() add some BUG_ONs
+
+No attempt has been made to limit inode locations to < 2^32,
+so we may wind up with blocks far from their inodes.  Doing
+this much already will lead to some odd ENOSPC issues when the
+"lower 32" gets full, and further restricting inodes could
+make that even weirder.
+
+For high inodes, choosing a goal of the original, % UINT_MAX,
+may be a bit odd, but then we're in an odd situation anyway,
+and I don't know of a better heuristic.
+
+The allocator being what it is, I may have missed some spots,
+so I'd welcome review.
+
+Thanks,
+-Eric
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+V2: got modulo-happy in ext4_mb_regular_allocator, just limit
+ngroups to no more than UINT_MAX.
+
+V3: address some of Andreas' review points
+But I think we need some better macro & sb info member names...
+
+V4: Change to BUG_ONs per Andreas's further review
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9714db3..1147994 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -386,6 +386,9 @@ struct ext4_mount_options {
+ #endif
+ };
  
++/* Max physical block we can addres w/o extents */
++#define EXT4_MAX_BLOCK_FILE_PHYS	0xFFFFFFFF
++
+ /*
+  * Structure of an inode on the disk
+  */
+@@ -841,6 +844,7 @@ struct ext4_sb_info {
+ 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+ 	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
+ 	ext4_group_t s_groups_count;	/* Number of groups in the fs */
++	ext4_group_t s_blockfile_groups;/* Groups acceptable for non-extent files */
+ 	unsigned long s_overhead_last;  /* Last calculated overhead */
+ 	unsigned long s_blocks_last;    /* Last seen block count */
+ 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f9c642b..9431c8f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -551,15 +551,21 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+  *
+  *	Normally this function find the preferred place for block allocation,
+  *	returns it.
++ *	Because this is only used for non-extent files, we limit the block nr
++ *	to 32 bits.
+  */
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
+ 				   Indirect *partial)
+ {
++	ext4_fsblk_t goal;
++
+ 	/*
+ 	 * XXX need to get goal block from mballoc's data structures
+ 	 */
+ 
+-	return ext4_find_near(inode, partial);
++	goal = ext4_find_near(inode, partial);
++	goal = goal & EXT4_MAX_BLOCK_FILE_PHYS;
++	return goal;
+ }
+ 
+ /**
+@@ -640,6 +646,8 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		if (*err)
+ 			goto failed_out;
+ 
++		BUG_ON(current_block + count > EXT4_MAX_BLOCK_FILE_PHYS);
++
+ 		target -= count;
+ 		/* allocate blocks for indirect blocks */
+ 		while (index < indirect_blks && count) {
+@@ -674,6 +682,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 		ar.flags = EXT4_MB_HINT_DATA;
+ 
+ 	current_block = ext4_mb_new_blocks(handle, &ar, err);
++	BUG_ON(current_block + ar.len > EXT4_MAX_BLOCK_FILE_PHYS);
+ 
+ 	if (*err && (target == blks)) {
+ 		/*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index cd25846..b87854b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1943,6 +1943,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	sb = ac->ac_sb;
+ 	sbi = EXT4_SB(sb);
+ 	ngroups = ext4_get_groups_count(sb);
++	/* non-extent files are limited to low blocks/groups */
++	if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL))
++		ngroups = sbi->s_blockfile_groups;
++
+ 	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
+ 
+ 	/* first, try the goal */
+@@ -3382,6 +3386,11 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ 			ac->ac_o_ex.fe_logical >= pa->pa_lstart + pa->pa_len)
+ 			continue;
+ 
++		/* non-extent files can't have physical blocks past 2^32 */
++		if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL) &&
++			pa->pa_pstart + pa->pa_len > EXT4_MAX_BLOCK_FILE_PHYS)
++			continue;
++
+ 		/* found preallocated blocks, use them */
+ 		spin_lock(&pa->pa_lock);
+ 		if (pa->pa_deleted == 0 && pa->pa_free) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8f4f079..8dcdded 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2595,6 +2595,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 	sbi->s_groups_count = blocks_count;
++	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
++			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
+ 	sbi->s_group_desc = kmalloc(db_count * sizeof(struct buffer_head *),
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 62b31c2..fed5b01 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -810,12 +810,23 @@ inserted:
+ 			get_bh(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
++			ext4_fsblk_t goal, block;
++
++			goal = ext4_group_first_block_no(sb,
+ 						EXT4_I(inode)->i_block_group);
+-			ext4_fsblk_t block = ext4_new_meta_blocks(handle, inode,
++
++			/* non-extent files can't have physical blocks past 2^32 */
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				goal = goal & EXT4_MAX_BLOCK_FILE_PHYS;
++
++			block = ext4_new_meta_blocks(handle, inode,
+ 						  goal, NULL, &error);
+ 			if (error)
+ 				goto cleanup;
++
++			if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++				BUG_ON(block > EXT4_MAX_BLOCK_FILE_PHYS);
++
+ 			ea_idebug(inode, "creating block %d", block);
+ 
+ 			new_bh = sb_getblk(sb, block);
 
->   Secondly, ext4_da_reserve_space() seems to have a bug that it can reserve
-> quota blocks multiple times if ext4_claim_free_blocks() fail and we retry
-> the allocation. We should release the quota reservation before restarting.
-> Actually, when we find out we cannot reserve quota space, we could force
-> some delayed allocated writes to disk (thus possibly release some quota
-> in case we have overestimated the amount of blocks needed). But that's
-> a different issue.
-
-That would imply the file system was full. But the dumpe2fs ouput list
-large number of free blocks. But yes the code should have released the
-quota reservation before trying block reservation again.
-
-
->   Thirdly, ext4_indirect_calc_metadata_amount() is wrong for sparse files.
-> The worst case is 3 metadata blocks per data block if we make the file
-> sufficiently sparse and there's no easy way around that...
-> 
-
--aneesh
