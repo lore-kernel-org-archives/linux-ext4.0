@@ -1,77 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] replace MAX_DEFRAG_SIZE with EXT_MAX_BLOCK
-Date: Mon, 14 Sep 2009 15:29:35 -0500
-Message-ID: <4AAEA7AF.6080801@redhat.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: [PATCH 0/3][RFC] add a message in mount/remount/umount for
+ ext2/ext3/ext4
+Date: Tue, 15 Sep 2009 15:20:39 +0900
+Message-ID: <20090915152039.fdca8936.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: sct@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org
+To: tytso@mit.edu, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53280 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933929AbZINU3e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Sep 2009 16:29:34 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n8EKTb7h006977
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2009 16:29:37 -0400
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n8EKTZ3D023266
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2009 16:29:36 -0400
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:57494 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756585AbZIOGYs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2009 02:24:48 -0400
+Received: from m3.gw.fujitsu.co.jp ([10.0.50.73])
+	by fgwmail6.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id n8F6OpCV003022
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Tue, 15 Sep 2009 15:24:51 +0900
+Received: from smail (m3 [127.0.0.1])
+	by outgoing.m3.gw.fujitsu.co.jp (Postfix) with ESMTP id CD00845DE5B
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 15:24:50 +0900 (JST)
+Received: from s3.gw.fujitsu.co.jp (s3.gw.fujitsu.co.jp [10.0.50.93])
+	by m3.gw.fujitsu.co.jp (Postfix) with ESMTP id A7ADC45DE52
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 15:24:49 +0900 (JST)
+Received: from s3.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 47570E38006
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 15:24:49 +0900 (JST)
+Received: from m107.s.css.fujitsu.com (m107.s.css.fujitsu.com [10.249.87.107])
+	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id BFB251DB8043
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 15:24:48 +0900 (JST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There's no reason to redefine the maximum allowable offset
-in an extent-based file just for defrag; 
-EXT_MAX_BLOCK already does this.
+Hi Ted, Andrew and all.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Under the current implementation, we cannot know in the system log 
+(/var/log/messages) when the filesystem (ext2/ext3/ext4) is unmounted.
+For enterprise users, they often want to observe certain filesystems'
+actions (mount/unmount) in the system log. Besides, by the system log, 
+we occasionally wants to know whether a certain filesystem has been
+unmounted or not at the time when a problem happens.
+
+The following patch series implement above demand. 
+Please apply it.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 ---
+ fs/ext2/super.c |   16 ++++++++++++++++
+ fs/ext3/super.c |   32 +++++++++++++++++++++++---------
+ fs/ext4/super.c |   30 ++++++++++++++++++++++--------
+ 3 files changed, 61 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1147994..0bd094f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -459,7 +459,6 @@ struct move_extent {
- 	__u64 len;		/* block length to be moved */
- 	__u64 moved_len;	/* moved block length */
- };
--#define MAX_DEFRAG_SIZE         ((1UL<<31) - 1)
- 
- #define EXT4_EPOCH_BITS 2
- #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 20a8410..7cbe9a7 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -138,6 +138,7 @@ typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
- #define EXT_BREAK      1
- #define EXT_REPEAT     2
- 
-+/* Maximum logical block in a file; ext4_extent's ee_block is __le32 */
- #define EXT_MAX_BLOCK	0xffffffff
- 
- /*
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index bbf2dd9..92bf922 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -960,12 +960,12 @@ mext_check_arguments(struct inode *orig_inode,
- 		return -EINVAL;
- 	}
- 
--	if ((orig_start > MAX_DEFRAG_SIZE) ||
--	    (donor_start > MAX_DEFRAG_SIZE) ||
--	    (*len > MAX_DEFRAG_SIZE) ||
--	    (orig_start + *len > MAX_DEFRAG_SIZE))  {
--		ext4_debug("ext4 move extent: Can't handle over [%lu] blocks "
--			"[ino:orig %lu, donor %lu]\n", MAX_DEFRAG_SIZE,
-+	if ((orig_start > EXT_MAX_BLOCK) ||
-+	    (donor_start > EXT_MAX_BLOCK) ||
-+	    (*len > EXT_MAX_BLOCK) ||
-+	    (orig_start + *len > EXT_MAX_BLOCK))  {
-+		ext4_debug("ext4 move extent: Can't handle over [%u] blocks "
-+			"[ino:orig %lu, donor %lu]\n", EXT_MAX_BLOCK,
- 			orig_inode->i_ino, donor_inode->i_ino);
- 		return -EINVAL;
- 	}
-
+Regards,
+Toshiyuki Okajima
