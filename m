@@ -1,58 +1,30 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 0/3][RFC] add a message in mount/remount/umount for ext2/ext3/ext4
-Date: Tue, 15 Sep 2009 10:15:58 -0500
-Message-ID: <4AAFAFAE.2090801@redhat.com>
-References: <20090915152039.fdca8936.toshi.okajima@jp.fujitsu.com>
+From: Florian Weimer <fw@deneb.enyo.de>
+Subject: Re: Question on readdir implementation
+Date: Tue, 15 Sep 2009 17:56:32 +0000
+Message-ID: <87ocpcf5wv.fsf@mid.deneb.enyo.de>
+References: <20090915095724.GA8440@zhanghuan.nrchpc.ac.cn>
+	<20090915145337.GB23118@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, akpm@linux-foundation.org, sct@redhat.com,
-	adilger@sun.com, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Zhang Huan <zhhuan@gmail.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36292 "EHLO mx1.redhat.com"
+Received: from mail.enyo.de ([212.9.189.167]:51218 "EHLO mail.enyo.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751705AbZIOPQC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Sep 2009 11:16:02 -0400
-In-Reply-To: <20090915152039.fdca8936.toshi.okajima@jp.fujitsu.com>
+	id S1754242AbZIOScJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Sep 2009 14:32:09 -0400
+In-Reply-To: <20090915145337.GB23118@mit.edu> (Theodore Tso's message of "Tue,
+	15 Sep 2009 10:53:37 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Toshiyuki Okajima wrote:
-> Hi Ted, Andrew and all.
-> 
-> Under the current implementation, we cannot know in the system log 
-> (/var/log/messages) when the filesystem (ext2/ext3/ext4) is unmounted.
-> For enterprise users, they often want to observe certain filesystems'
-> actions (mount/unmount) in the system log. Besides, by the system log, 
-> we occasionally wants to know whether a certain filesystem has been
-> unmounted or not at the time when a problem happens.
-> 
-> The following patch series implement above demand. 
-> Please apply it.
+* Theodore Tso:
 
-If this is really a common requirement, perhaps we should at least
-consider putting it in the vfs, in  vfs_kern_mount(),
-generic_shutdown_super(), and do_remount_sb().
+> So this is something we could do in the future.  In practice, no one
+> has complained about this as far as NFS is concerned, so it's not high
+> priority for me to pursue.  Were you worried about this as a practical
+> matter, or as a theoretical one?
 
-That way we'll have common behavior and less replicated code; nothing in
-this patch series is unique to ext[234] as far as I can tell.
-
-sb->s_type->name could be used to print the fs type in a generic message.
-
--Eric
-
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> ---
->  fs/ext2/super.c |   16 ++++++++++++++++
->  fs/ext3/super.c |   32 +++++++++++++++++++++++---------
->  fs/ext4/super.c |   30 ++++++++++++++++++++++--------
->  3 files changed, 61 insertions(+), 17 deletions(-)
-> 
-> Regards,
-> Toshiyuki Okajima
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+readdir returning entries in essentially randomized order is a
+practical performance problem for many things, from grep -r to tar. 8-(
+(My recent FIBMAP/FIEMAP question was related to that, too.)
