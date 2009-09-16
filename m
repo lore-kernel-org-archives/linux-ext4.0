@@ -1,52 +1,94 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 0/3][RFC] add a message in mount/remount/umount for
- ext2/ext3/ext4
-Date: Tue, 15 Sep 2009 15:20:44 -0700
-Message-ID: <20090915152044.2e4b941f.akpm@linux-foundation.org>
-References: <20090915152039.fdca8936.toshi.okajima@jp.fujitsu.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH 2/3][RFC] ext3: add a message in remount/umount for ext3
+Date: Wed, 16 Sep 2009 13:49:21 +0900
+Message-ID: <20090916134921.c2eb5fca.toshi.okajima@jp.fujitsu.com>
+References: <20090915152407.dd0fe2c8.toshi.okajima@jp.fujitsu.com>
+	<20090915142333.GP2537@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, sct@redhat.com, adilger@sun.com,
+Cc: tytso@mit.edu, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37703 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751221AbZIOWU6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Sep 2009 18:20:58 -0400
-In-Reply-To: <20090915152039.fdca8936.toshi.okajima@jp.fujitsu.com>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:36807 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752264AbZIPExc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 00:53:32 -0400
+Received: from m6.gw.fujitsu.co.jp ([10.0.50.76])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id n8G4rXsF003136
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Wed, 16 Sep 2009 13:53:33 +0900
+Received: from smail (m6 [127.0.0.1])
+	by outgoing.m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 1E22645DE4F
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:53:33 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
+	by m6.gw.fujitsu.co.jp (Postfix) with ESMTP id F2C1245DE4E
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:53:32 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id DA3131DB8038
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:53:32 +0900 (JST)
+Received: from m105.s.css.fujitsu.com (m105.s.css.fujitsu.com [10.249.87.105])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 92D191DB8037
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:53:32 +0900 (JST)
+In-Reply-To: <20090915142333.GP2537@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 15 Sep 2009 15:20:39 +0900
-Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
+Hi Andreas,
 
-> Hi Ted, Andrew and all.
+On Tue, 15 Sep 2009 08:23:33 -0600
+Andreas Dilger <adilger@sun.com> wrote:
+> [NB - removed Stephen from CC list]
 > 
-> Under the current implementation, we cannot know in the system log 
-> (/var/log/messages) when the filesystem (ext2/ext3/ext4) is unmounted.
-> For enterprise users, they often want to observe certain filesystems'
-> actions (mount/unmount) in the system log. Besides, by the system log, 
-> we occasionally wants to know whether a certain filesystem has been
-> unmounted or not at the time when a problem happens.
+> On Sep 15, 2009  15:24 +0900, Toshiyuki Okajima wrote:
+> > +static void ext3_print_mount_message(struct super_block *sb, 
+> > +					int is_remount)
+> > +{
+> > +	printk(KERN_INFO "EXT3 FS %s on %s, ", 
+> > +			is_remount? "remounted": "mounted", sb->s_id);
+> > +	if (EXT3_SB(sb)->s_journal->j_inode == NULL) {
+> > +		char b[BDEVNAME_SIZE];
+> > +
+> > +		printk("external journal on %s\n",
+> > +			bdevname(EXT3_SB(sb)->s_journal->j_dev, b));
+> > +	} else {
+> > +		printk("internal journal\n");
+> > +	}
 > 
+> This won't necessarily work as you expected, because the separate
+> printk() calls will result in the message being printed on separate
+> lines of output.
+Thanks for your comment.
+I'll apply it into new patch.
 
-I don't think we want to make random printks a part of the kernel
-ABI like this.
+> 
+> Instead, this should print this all in a single line:
+> 
+> 	char jbuf[BDEVNAME_SIZE + 20] = "internal journal";
+> 
+> 	if (EXT3_SB(sb)->s_journal->j_inode == NULL) {
+> 		sprintf(jbuf, "external journal on ");
+> 		bdevname(EXT3_SB(sb)->s_journal->j_dev,
+> 			 jbuf + 20));
+> 	}
+> 	
+> 	printk(KERN_INFO "EXT3 FS %s on %s, %s\n", 
+> 	       is_remount? "remounted": "mounted", sb->s_id, jbuf)
+> 
+> > @@ -1296,15 +1317,6 @@ static int ext3_setup_super(struct super
+> > -	printk(KERN_INFO "EXT3 FS on %s, ", sb->s_id);
+> > -	if (EXT3_SB(sb)->s_journal->j_inode == NULL) {
+> > -		char b[BDEVNAME_SIZE];
+> > -
+> > -		printk("external journal on %s\n",
+> > -			bdevname(EXT3_SB(sb)->s_journal->j_dev, b));
+> > -	} else {
+> > -		printk("internal journal\n");
+> > -	}
+> 
+> Interesting, it was broken already...  Well, best to fix it anyways.
+> The same should be done for the ext4 patch.
 
-I understand that it's practical and easy for people to parse the logs
-in a local ad-hoc manner such as this, but...  ugh.
-
-If there's a userspace requirement for notification when filesystems
-are mounted and unmounted then fine, let's look at that.  What is the
-detailed requirement?  What info do we want to see?  What is an
-appropriate way of delivering that info?  kobject_uevent() looks like a
-suitable place to start.
-
-
-That being said, there is perhaps a case to made for being more verbose
-when filesystems are mounted and unmounted.  But yes, doing that in the
-VFS for all filesystems sounds better.  This might upset people who
-have thousands of NFS autmounts though.
+Thanks,
+Toshiyuki Okajima
