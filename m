@@ -1,66 +1,172 @@
-From: Pavol Cvengros <pavol.cvengros@primeinteractive.net>
-Subject: Re: ext4+quota+nfs issue
-Date: Wed, 16 Sep 2009 08:35:48 +0200
-Message-ID: <4AB08744.1020102@primeinteractive.net>
-References: <4AA5E5F3.30309@primeinteractive.net> <4AA72C14.1020005@primeinteractive.net> <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz> <4AA7C38E.8020306@redhat.com> <150c16850909091045h1962fd67n77c265c9b99c5f44@mail.gmail.com> <4AA7FBD7.9080406@primeinteractive.net> <4AAA5FCC.2010707@primeinteractive.net> <20090914175056.GE25549@duck.suse.cz> <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 3/4]ext4: Add null extent check to ext_get_path()
+Date: Wed, 16 Sep 2009 16:41:06 +0900
+Message-ID: <4AB09692.6070701@rs.jp.nec.com>
+References: <4AADFC13.4070101@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Justin Maggard <jmaggard10@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Jiri Kosina <jkosina@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns1.primeinteractive.net ([195.95.205.253]:56229 "EHLO
-	mail.primeinteractive.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751113AbZIPGgU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 02:36:20 -0400
-In-Reply-To: <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:51735 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751212AbZIPHlh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 03:41:37 -0400
+In-Reply-To: <4AADFC13.4070101@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/14/2009 8:52 PM, Aneesh Kumar K.V wrote:
-> On Mon, Sep 14, 2009 at 07:50:56PM +0200, Jan Kara wrote:
->    
->>    I've found some time to look into this and I can see a few problems in
->> the code. Firstly, what may cause your problems:
->>    vfs_dq_claim_blocks() is called in ext4_mb_mark_diskspace_used(). But
->> as far as I can understand the code, ext4_mb_normalize_request() can
->> increase the amount of space we really allocate and thus we try to
->> allocate more blocks than we have actually reserved in quota. Aneesh, is
->> that right?
->>      
-> ext4_mb_mark_diskspace_used use ac->ac_b_ex.fe_len which is NOT the normalized
-> request len. it is min(allocated_len, original_len). So i guess that code
-> should be safe
->
->
->    
->>    Secondly, ext4_da_reserve_space() seems to have a bug that it can reserve
->> quota blocks multiple times if ext4_claim_free_blocks() fail and we retry
->> the allocation. We should release the quota reservation before restarting.
->> Actually, when we find out we cannot reserve quota space, we could force
->> some delayed allocated writes to disk (thus possibly release some quota
->> in case we have overestimated the amount of blocks needed). But that's
->> a different issue.
->>      
-> That would imply the file system was full. But the dumpe2fs ouput list
-> large number of free blocks. But yes the code should have released the
-> quota reservation before trying block reservation again.
->
->
->    
+Hi Ted,
 
-file system is fresh but unfortunately already used and I can't 
-"re-format" it. Is there a way around this? I think that FS was created 
-by "mkfs.ext4 -j /dev....."
+This is V2 patch.
+(I forgot to release path structure in error case. :-! )
 
->>    Thirdly, ext4_indirect_calc_metadata_amount() is wrong for sparse files.
->> The worst case is 3 metadata blocks per data block if we make the file
->> sufficiently sparse and there's no easy way around that...
->>
->>      
-> -aneesh
->    
+Akira Fujita wrote:
+> ext4: Add null extent check to ext_get_path
+> 
+> From: Akira Fujita <a-fujita@rs.jp.nec.com>
+> 
+> There is the possibility that path structure which is taken
+> by ext4_ext_find_extent() indicates null extents.
+> Because during data block exchanging in ext4_move_extents(),
+> constitution of an extent tree may be changed.
+> As a solution, the patch adds null extent check
+> to ext_get_path().
+> 
 
+Best regards,
+Akira Fujita
+
+Reported-by: Peng Tao　<bergwolf@gmail.com>
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ fs/ext4/move_extent.c |   34 ++++++++++++++++------------------
+ 1 files changed, 16 insertions(+), 18 deletions(-)
+
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 6d126d0..2af7802 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -39,7 +39,9 @@ get_ext_path(struct inode *inode, ext4_lblk_t lblock,
+ 	if (IS_ERR(*path)) {
+ 		ret = PTR_ERR(*path);
+ 		*path = NULL;
+-	}
++	} else if ((*path)[ext_depth(inode)].p_ext == NULL)
++		ret = -ENODATA;
++
+ 	return ret;
+ }
+
+@@ -316,7 +318,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
+
+ 	if (new_flag) {
+ 		err = get_ext_path(orig_inode, eblock, &orig_path);
+-		if (orig_path == NULL)
++		if (err)
+ 			goto out;
+
+ 		if (ext4_ext_insert_extent(handle, orig_inode,
+@@ -327,7 +329,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
+ 	if (end_flag) {
+ 		err = get_ext_path(orig_inode,
+ 				le32_to_cpu(end_ext->ee_block) - 1, &orig_path);
+-		if (orig_path == NULL)
++		if (err)
+ 			goto out;
+
+ 		if (ext4_ext_insert_extent(handle, orig_inode,
+@@ -673,12 +675,12 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+
+ 	/* Get the original extent for the block "orig_off" */
+ 	err = get_ext_path(orig_inode, orig_off, &orig_path);
+-	if (orig_path == NULL)
++	if (err)
+ 		goto out;
+
+ 	/* Get the donor extent for the head */
+ 	err = get_ext_path(donor_inode, donor_off, &donor_path);
+-	if (donor_path == NULL)
++	if (err)
+ 		goto out;
+ 	depth = ext_depth(orig_inode);
+ 	oext = orig_path[depth].p_ext;
+@@ -733,7 +735,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 		if (orig_path)
+ 			ext4_ext_drop_refs(orig_path);
+ 		err = get_ext_path(orig_inode, orig_off, &orig_path);
+-		if (orig_path == NULL)
++		if (err)
+ 			goto out;
+ 		depth = ext_depth(orig_inode);
+ 		oext = orig_path[depth].p_ext;
+@@ -747,7 +749,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 		if (donor_path)
+ 			ext4_ext_drop_refs(donor_path);
+ 		err = get_ext_path(donor_inode, donor_off, &donor_path);
+-		if (donor_path == NULL)
++		if (err)
+ 			goto out;
+ 		depth = ext_depth(donor_inode);
+ 		dext = donor_path[depth].p_ext;
+@@ -1222,7 +1224,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 					donor_start, &len, *moved_len);
+ 	mext_double_up_read(orig_inode, donor_inode);
+ 	if (ret1)
+-		goto out2;
++		goto out;
+
+ 	file_end = (i_size_read(orig_inode) - 1) >> orig_inode->i_blkbits;
+ 	block_end = block_start + len - 1;
+@@ -1230,20 +1232,16 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		len -= block_end - file_end;
+
+ 	ret1 = get_ext_path(orig_inode, block_start, &orig_path);
+-	if (orig_path == NULL)
+-		goto out2;
++	if (ret1)
++		goto out;
+
+ 	/* Get path structure to check the hole */
+ 	ret1 = get_ext_path(orig_inode, block_start, &holecheck_path);
+-	if (holecheck_path == NULL)
++	if (ret1)
+ 		goto out;
+
+ 	depth = ext_depth(orig_inode);
+ 	ext_cur = holecheck_path[depth].p_ext;
+-	if (ext_cur == NULL) {
+-		ret1 = -EINVAL;
+-		goto out;
+-	}
+
+ 	/*
+ 	 * Get proper extent whose ee_block is beyond block_start
+@@ -1372,7 +1370,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		if (holecheck_path)
+ 			ext4_ext_drop_refs(holecheck_path);
+ 		ret1 = get_ext_path(orig_inode, seq_start, &holecheck_path);
+-		if (holecheck_path == NULL)
++		if (ret1)
+ 			break;
+ 		depth = holecheck_path->p_depth;
+
+@@ -1380,7 +1378,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		if (orig_path)
+ 			ext4_ext_drop_refs(orig_path);
+ 		ret1 = get_ext_path(orig_inode, seq_start, &orig_path);
+-		if (orig_path == NULL)
++		if (ret1)
+ 			break;
+
+ 		ext_cur = holecheck_path[depth].p_ext;
+@@ -1397,7 +1395,7 @@ out:
+ 		ext4_ext_drop_refs(holecheck_path);
+ 		kfree(holecheck_path);
+ 	}
+-out2:
++
+ 	ret2 = mext_inode_double_unlock(orig_inode, donor_inode);
+
+ 	if (ret1)
