@@ -1,172 +1,50 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 3/4]ext4: Add null extent check to ext_get_path()
-Date: Wed, 16 Sep 2009 16:41:06 +0900
-Message-ID: <4AB09692.6070701@rs.jp.nec.com>
-References: <4AADFC13.4070101@rs.jp.nec.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14156] Running fsstress "fsx" on ext4 filesystem gives dirty
+ metadata buffer warning message
+Date: Wed, 16 Sep 2009 12:03:49 GMT
+Message-ID: <200909161203.n8GC3ngw027068@demeter.kernel.org>
+References: <bug-14156-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:51735 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751212AbZIPHlh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 03:41:37 -0400
-In-Reply-To: <4AADFC13.4070101@rs.jp.nec.com>
+Received: from demeter.kernel.org ([140.211.167.39]:42840 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756049AbZIPMDq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 08:03:46 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n8GC3ndh027069
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 12:03:49 GMT
+In-Reply-To: <bug-14156-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+http://bugzilla.kernel.org/show_bug.cgi?id=14156
 
-This is V2 patch.
-(I forgot to release path structure in error case. :-! )
 
-Akira Fujita wrote:
-> ext4: Add null extent check to ext_get_path
-> 
-> From: Akira Fujita <a-fujita@rs.jp.nec.com>
-> 
-> There is the possibility that path structure which is taken
-> by ext4_ext_find_extent() indicates null extents.
-> Because during data block exchanging in ext4_move_extents(),
-> constitution of an extent tree may be changed.
-> As a solution, the patch adds null extent check
-> to ext_get_path().
-> 
 
-Best regards,
-Akira Fujita
 
-Reported-by: Peng Tao　<bergwolf@gmail.com>
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
----
- fs/ext4/move_extent.c |   34 ++++++++++++++++------------------
- 1 files changed, 16 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 6d126d0..2af7802 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -39,7 +39,9 @@ get_ext_path(struct inode *inode, ext4_lblk_t lblock,
- 	if (IS_ERR(*path)) {
- 		ret = PTR_ERR(*path);
- 		*path = NULL;
--	}
-+	} else if ((*path)[ext_depth(inode)].p_ext == NULL)
-+		ret = -ENODATA;
-+
- 	return ret;
- }
+--- Comment #1 from muni <mbeeraka@in.ibm.com>  2009-09-16 12:03:48 ---
+While running the fsx tests on 2.6.31-rc8 kernel, the above mentioned occurred.
 
-@@ -316,7 +318,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
+Steps for running fsx test:
+1. Create an ext4 partition with blocksize 1024 and mount it with 
+"-o errors=panic,data=journal" options
+2. Install the autotest framework
+3. Run fsx test attached to this bug
+4. Check the dmesg.
 
- 	if (new_flag) {
- 		err = get_ext_path(orig_inode, eblock, &orig_path);
--		if (orig_path == NULL)
-+		if (err)
- 			goto out;
+You can see several messages like the one below:
 
- 		if (ext4_ext_insert_extent(handle, orig_inode,
-@@ -327,7 +329,7 @@ mext_insert_across_blocks(handle_t *handle, struct inode *orig_inode,
- 	if (end_flag) {
- 		err = get_ext_path(orig_inode,
- 				le32_to_cpu(end_ext->ee_block) - 1, &orig_path);
--		if (orig_path == NULL)
-+		if (err)
- 			goto out;
+kernel: JBD: Spotted dirty metadata buffer (dev = sdb5,
+blocknr = 41444). There's a risk of filesystem corruption in case of system
+crash.
 
- 		if (ext4_ext_insert_extent(handle, orig_inode,
-@@ -673,12 +675,12 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+Thanks
+Muni
 
- 	/* Get the original extent for the block "orig_off" */
- 	err = get_ext_path(orig_inode, orig_off, &orig_path);
--	if (orig_path == NULL)
-+	if (err)
- 		goto out;
-
- 	/* Get the donor extent for the head */
- 	err = get_ext_path(donor_inode, donor_off, &donor_path);
--	if (donor_path == NULL)
-+	if (err)
- 		goto out;
- 	depth = ext_depth(orig_inode);
- 	oext = orig_path[depth].p_ext;
-@@ -733,7 +735,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 		if (orig_path)
- 			ext4_ext_drop_refs(orig_path);
- 		err = get_ext_path(orig_inode, orig_off, &orig_path);
--		if (orig_path == NULL)
-+		if (err)
- 			goto out;
- 		depth = ext_depth(orig_inode);
- 		oext = orig_path[depth].p_ext;
-@@ -747,7 +749,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 		if (donor_path)
- 			ext4_ext_drop_refs(donor_path);
- 		err = get_ext_path(donor_inode, donor_off, &donor_path);
--		if (donor_path == NULL)
-+		if (err)
- 			goto out;
- 		depth = ext_depth(donor_inode);
- 		dext = donor_path[depth].p_ext;
-@@ -1222,7 +1224,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 					donor_start, &len, *moved_len);
- 	mext_double_up_read(orig_inode, donor_inode);
- 	if (ret1)
--		goto out2;
-+		goto out;
-
- 	file_end = (i_size_read(orig_inode) - 1) >> orig_inode->i_blkbits;
- 	block_end = block_start + len - 1;
-@@ -1230,20 +1232,16 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		len -= block_end - file_end;
-
- 	ret1 = get_ext_path(orig_inode, block_start, &orig_path);
--	if (orig_path == NULL)
--		goto out2;
-+	if (ret1)
-+		goto out;
-
- 	/* Get path structure to check the hole */
- 	ret1 = get_ext_path(orig_inode, block_start, &holecheck_path);
--	if (holecheck_path == NULL)
-+	if (ret1)
- 		goto out;
-
- 	depth = ext_depth(orig_inode);
- 	ext_cur = holecheck_path[depth].p_ext;
--	if (ext_cur == NULL) {
--		ret1 = -EINVAL;
--		goto out;
--	}
-
- 	/*
- 	 * Get proper extent whose ee_block is beyond block_start
-@@ -1372,7 +1370,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		if (holecheck_path)
- 			ext4_ext_drop_refs(holecheck_path);
- 		ret1 = get_ext_path(orig_inode, seq_start, &holecheck_path);
--		if (holecheck_path == NULL)
-+		if (ret1)
- 			break;
- 		depth = holecheck_path->p_depth;
-
-@@ -1380,7 +1378,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		if (orig_path)
- 			ext4_ext_drop_refs(orig_path);
- 		ret1 = get_ext_path(orig_inode, seq_start, &orig_path);
--		if (orig_path == NULL)
-+		if (ret1)
- 			break;
-
- 		ext_cur = holecheck_path[depth].p_ext;
-@@ -1397,7 +1395,7 @@ out:
- 		ext4_ext_drop_refs(holecheck_path);
- 		kfree(holecheck_path);
- 	}
--out2:
-+
- 	ret2 = mext_inode_double_unlock(orig_inode, donor_inode);
-
- 	if (ret1)
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
