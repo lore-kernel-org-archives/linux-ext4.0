@@ -1,53 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext3: Don't update superblock write time when filesystem is read-only
-Date: Wed, 16 Sep 2009 11:21:13 -0400
-Message-ID: <1253114473-16240-1-git-send-email-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] ext3/jbd fixes for 2.6.32-rc1
+Date: Wed, 16 Sep 2009 17:49:07 +0200
+Message-ID: <20090916154907.GO26030@duck.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:49984 "EHLO thunker.thunk.org"
+Received: from cantor2.suse.de ([195.135.220.15]:48297 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759228AbZIPPVM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Sep 2009 11:21:12 -0400
+	id S1753718AbZIPPtJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Sep 2009 11:49:09 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This avoids updating the superblock write time when we are mounting
-the root file system read/only but we need to replay the journal; at
-that point, for people who are east of GMT and who make their clock
-tick in localtime for Windows bug-for-bug compatibility, and this will
-cause e2fsck to complain and force a full file system check.
+  Hello Linus,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext3/super.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+  could you please pull from
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index a8d80a7..62c86af 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2321,7 +2321,18 @@ static int ext3_commit_super(struct super_block *sb,
- 
- 	if (!sbh)
- 		return error;
--	es->s_wtime = cpu_to_le32(get_seconds());
-+	/*
-+	 * If the file system is mounted read-only, don't update the
-+	 * superblock write time.  This avoids updating the superblock
-+	 * write time when we are mounting the root file system
-+	 * read/only but we need to replay the journal; at that point,
-+	 * for people who are east of GMT and who make their clock
-+	 * tick in localtime for Windows bug-for-bug compatibility,
-+	 * the clock is set in the future, and this will cause e2fsck
-+	 * to complain and force a full file system check.
-+	 */
-+	if (!(sb->s_flags & MS_RDONLY))
-+		es->s_wtime = cpu_to_le32(get_seconds());
- 	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
- 	BUFFER_TRACE(sbh, "marking dirty");
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
+
+  to get:
+
+Andreas Dilger (1):
+      JBD: round commit timer up to avoid uncommitted transaction
+
+Chris Mason (1):
+      ext3: Add locking to ext3_do_update_inode
+
+Jan Kara (5):
+      ext3: Update MAINTAINERS for ext3 and JBD
+      jbd: Journal block numbers can ever be only 32-bit use unsigned int for them
+      jbd: Annotate transaction start also for journal_restart()
+      ext3: Fix possible deadlock between ext3_truncate() and ext3_get_blocks()
+      ext3: Flush disk caches on fsync when needed
+
+The diffstat is
+
+ MAINTAINERS          |    3 +--
+ fs/ext3/fsync.c      |   12 +++++++++++-
+ fs/ext3/inode.c      |   28 ++++++++++++++++++++++++----
+ fs/jbd/checkpoint.c  |    6 +++---
+ fs/jbd/commit.c      |    2 +-
+ fs/jbd/journal.c     |   30 +++++++++++++++---------------
+ fs/jbd/recovery.c    |   18 +++++++++---------
+ fs/jbd/revoke.c      |   16 ++++++++--------
+ fs/jbd/transaction.c |    9 +++++----
+ include/linux/jbd.h  |   26 +++++++++++++-------------
+ 10 files changed, 90 insertions(+), 60 deletions(-)
+
+                                                        Thanks
+                                                                Honza
 -- 
-1.6.3.2.1.gb9f7d.dirty
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
