@@ -1,134 +1,99 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 1/4]ext4: Fix wrong comparisons in	mext_check_arguments()
-Date: Wed, 16 Sep 2009 13:56:04 +0900
-Message-ID: <4AB06FE4.2010405@rs.jp.nec.com>
-References: <4A9DE3DE.2010509@rs.jp.nec.com> <20090906021032.GA3055@mit.edu>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH 0/3][RFC] add a message in mount/remount/umount for
+ ext2/ext3/ext4
+Date: Wed, 16 Sep 2009 13:55:43 +0900
+Message-ID: <20090916135543.3cc0b0b5.toshi.okajima@jp.fujitsu.com>
+References: <20090915152039.fdca8936.toshi.okajima@jp.fujitsu.com>
+	<20090915152044.2e4b941f.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:39844 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751402AbZIPE4V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 00:56:21 -0400
-In-Reply-To: <20090906021032.GA3055@mit.edu>
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:45484 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751409AbZIPE7w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 00:59:52 -0400
+Received: from m3.gw.fujitsu.co.jp ([10.0.50.73])
+	by fgwmail6.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id n8G4xstb017642
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Wed, 16 Sep 2009 13:59:54 +0900
+Received: from smail (m3 [127.0.0.1])
+	by outgoing.m3.gw.fujitsu.co.jp (Postfix) with ESMTP id 720AB45DE54
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:59:54 +0900 (JST)
+Received: from s3.gw.fujitsu.co.jp (s3.gw.fujitsu.co.jp [10.0.50.93])
+	by m3.gw.fujitsu.co.jp (Postfix) with ESMTP id 442BC45DE53
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:59:54 +0900 (JST)
+Received: from s3.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 0D3DFE38004
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:59:54 +0900 (JST)
+Received: from m105.s.css.fujitsu.com (m105.s.css.fujitsu.com [10.249.87.105])
+	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id B5E221DB8042
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 13:59:53 +0900 (JST)
+In-Reply-To: <20090915152044.2e4b941f.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi Andrew,
+Thanks for your comment.
 
-We found that "fix-wrong-comparisons-in-mext_check_arguments"
-in the ext4 patch queue does not fix the objective issue completely.
-(The last partial block is not checked in mext_check_arguments().)
-
-Could you replace "fix-wrong-comparisons-in-mext_check_arguments"
-in the ext4 patch queue with this patch ?
-
-Regards,
-Akira Fujita
-
-Theodore Tso wrote:
-> On Wed, Sep 02, 2009 at 12:17:50PM +0900, Akira Fujita wrote:
->> ext4: Fix wrong comparisons in mext_check_arguments()
->>
->> From: Akira Fujita <a-fujita@rs.jp.nec.com>
->>
->> mext_check_arguments() in move_extents.c has wrong comparisons.
->> orig_start which is passed from user-space is block unit,
->> but i_size of inode is byte unit, therefore the checks do not work fine.
->> This mis-check leads to the overflow of 'len' and then hits BUG_ON()
->> in ext4_move_extens().   The patch fixes this issue.
+On Tue, 15 Sep 2009 15:20:44 -0700
+Andrew Morton <akpm@linux-foundation.org> wrote:
+> On Tue, 15 Sep 2009 15:20:39 +0900
+> Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
 > 
-> Thanks, I've added this to the ext4 patch queue to be pushed when the
-> 2.6.32 merge window opens.
+> > Hi Ted, Andrew and all.
+> > 
+> > Under the current implementation, we cannot know in the system log 
+> > (/var/log/messages) when the filesystem (ext2/ext3/ext4) is unmounted.
+> > For enterprise users, they often want to observe certain filesystems'
+> > actions (mount/unmount) in the system log. Besides, by the system log, 
+> > we occasionally wants to know whether a certain filesystem has been
+> > unmounted or not at the time when a problem happens.
+> > 
 > 
-> 						- Ted
+> I don't think we want to make random printks a part of the kernel
+> ABI like this.
+Yes.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-Reviewed-by: Greg Freemyer <greg.freemyer@gmail.com>
----
- move_extent.c |   46 +++++++++++++++++++++++++++-------------------
- 1 file changed, 27 insertions(+), 19 deletions(-)
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 429fb6f..0670464 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -898,6 +898,10 @@ mext_check_arguments(struct inode *orig_inode,
- 			  struct inode *donor_inode, __u64 orig_start,
- 			  __u64 donor_start, __u64 *len, __u64 moved_len)
- {
-+	ext4_lblk_t orig_blocks, donor_blocks;
-+	unsigned int blkbits = orig_inode->i_blkbits;
-+	unsigned int blocksize = 1 << blkbits;
-+
- 	/* Regular file check */
- 	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
- 		ext4_debug("ext4 move extent: The argument files should be "
-@@ -972,43 +976,47 @@ mext_check_arguments(struct inode *orig_inode,
- 	}
+However, the message of the mount is already included in ext3/ext4.
+So, I think it is no problem that the message of the umount which is opposite
+operation of the mount is added. And it is natural, I think.
 
- 	if (orig_inode->i_size > donor_inode->i_size) {
--		if (orig_start >= donor_inode->i_size) {
-+		donor_blocks = (donor_inode->i_size + blocksize - 1) >> blkbits;
-+		/* TODO: eliminate this artificial restriction */
-+		if (orig_start >= donor_blocks) {
- 			ext4_debug("ext4 move extent: orig start offset "
--			"[%llu] should be less than donor file size "
--			"[%lld] [ino:orig %lu, donor_inode %lu]\n",
--			orig_start, donor_inode->i_size,
-+			"[%llu] should be less than donor file blocks "
-+			"[%u] [ino:orig %lu, donor %lu]\n",
-+			orig_start, donor_blocks,
- 			orig_inode->i_ino, donor_inode->i_ino);
- 			return -EINVAL;
- 		}
+> 
+> I understand that it's practical and easy for people to parse the logs
+> in a local ad-hoc manner such as this, but...  ugh.
+> 
+> If there's a userspace requirement for notification when filesystems
+> are mounted and unmounted then fine, let's look at that.  What is the
+> detailed requirement?  What info do we want to see?  What is an
+> appropriate way of delivering that info?  kobject_uevent() looks like a
+> suitable place to start.
+> 
+> 
+> That being said, there is perhaps a case to made for being more verbose
+> when filesystems are mounted and unmounted.  But yes, doing that in the
+> VFS for all filesystems sounds better.  This might upset people who
+> have thousands of NFS autmounts though.
 
--		if (orig_start + *len > donor_inode->i_size) {
-+		/* TODO: eliminate this artificial restriction */
-+		if (orig_start + *len > donor_blocks) {
- 			ext4_debug("ext4 move extent: End offset [%llu] should "
--				"be less than donor file size [%lld]."
--				"So adjust length from %llu to %lld "
-+				"be less than donor file blocks [%u]."
-+				"So adjust length from %llu to %llu "
- 				"[ino:orig %lu, donor %lu]\n",
--				orig_start + *len, donor_inode->i_size,
--				*len, donor_inode->i_size - orig_start,
-+				orig_start + *len, donor_blocks,
-+				*len, donor_blocks - orig_start,
- 				orig_inode->i_ino, donor_inode->i_ino);
--			*len = donor_inode->i_size - orig_start;
-+			*len = donor_blocks - orig_start;
- 		}
- 	} else {
--		if (orig_start >= orig_inode->i_size) {
-+		orig_blocks = (orig_inode->i_size + blocksize - 1) >> blkbits;
-+		if (orig_start >= orig_blocks) {
- 			ext4_debug("ext4 move extent: start offset [%llu] "
--				"should be less than original file size "
--				"[%lld] [inode:orig %lu, donor %lu]\n",
--				 orig_start, orig_inode->i_size,
-+				"should be less than original file blocks "
-+				"[%u] [ino:orig %lu, donor %lu]\n",
-+				 orig_start, orig_blocks,
- 				orig_inode->i_ino, donor_inode->i_ino);
- 			return -EINVAL;
- 		}
+Sample case (this feature is required):
+  A filesystem detects its corruption. A user asks me why the filesystem
+  has been corrupted. The user send me a material to examine why it happens.
+  The material is the system log. He cannot send me any other materials.
+  Because his machine does mission critical jobs, so he doesn't want to stop
+  it. Therefore only by the system log I have to examine why it happens.
 
--		if (orig_start + *len > orig_inode->i_size) {
-+		if (orig_start + *len > orig_blocks) {
- 			ext4_debug("ext4 move extent: Adjust length "
--				"from %llu to %lld. Because it should be "
--				"less than original file size "
-+				"from %llu to %llu. Because it should be "
-+				"less than original file blocks "
- 				"[ino:orig %lu, donor %lu]\n",
--				*len, orig_inode->i_size - orig_start,
-+				*len, orig_blocks - orig_start,
- 				orig_inode->i_ino, donor_inode->i_ino);
--			*len = orig_inode->i_size - orig_start;
-+			*len = orig_blocks - orig_start;
- 		}
- 	}
+  Whenever I solve such a problem, I want the time stamp which is made
+  when the filesystem is mounted/unmounted.
+  If this feature is included, I can easily understand whether the filesystem
+  is mounted or not in a certain time zone by checking the time stamps.
+
+  For example:
+   If he restored the filesystem at a certain time, I can judge whether
+   he left the filesystem mounted or not by this feature.
+  (If he left the filesystem mounted, the filesystem was corrupted by his
+   restoration operation.)
+
+Thanks,
+Toshiyuki Okajima
