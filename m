@@ -1,36 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14156] Running fsstress "fsx" on ext4 filesystem gives dirty
- metadata buffer warning message
-Date: Wed, 16 Sep 2009 12:06:00 GMT
-Message-ID: <200909161206.n8GC60M6027299@demeter.kernel.org>
-References: <bug-14156-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext3: Don't update superblock write time when filesystem is read-only
+Date: Wed, 16 Sep 2009 11:21:13 -0400
+Message-ID: <1253114473-16240-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:46413 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753493AbZIPMF5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 08:05:57 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n8GC60oG027300
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2009 12:06:00 GMT
-In-Reply-To: <bug-14156-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:49984 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759228AbZIPPVM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Sep 2009 11:21:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14156
+This avoids updating the superblock write time when we are mounting
+the root file system read/only but we need to replay the journal; at
+that point, for people who are east of GMT and who make their clock
+tick in localtime for Windows bug-for-bug compatibility, and this will
+cause e2fsck to complain and force a full file system check.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext3/super.c |   13 ++++++++++++-
+ 1 files changed, 12 insertions(+), 1 deletions(-)
 
-
-
-
---- Comment #2 from muni <mbeeraka@in.ibm.com>  2009-09-16 12:06:00 ---
-Created an attachment (id=23101)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=23101)
-fsx tarball
-
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index a8d80a7..62c86af 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2321,7 +2321,18 @@ static int ext3_commit_super(struct super_block *sb,
+ 
+ 	if (!sbh)
+ 		return error;
+-	es->s_wtime = cpu_to_le32(get_seconds());
++	/*
++	 * If the file system is mounted read-only, don't update the
++	 * superblock write time.  This avoids updating the superblock
++	 * write time when we are mounting the root file system
++	 * read/only but we need to replay the journal; at that point,
++	 * for people who are east of GMT and who make their clock
++	 * tick in localtime for Windows bug-for-bug compatibility,
++	 * the clock is set in the future, and this will cause e2fsck
++	 * to complain and force a full file system check.
++	 */
++	if (!(sb->s_flags & MS_RDONLY))
++		es->s_wtime = cpu_to_le32(get_seconds());
+ 	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
+ 	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
+ 	BUFFER_TRACE(sbh, "marking dirty");
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.6.3.2.1.gb9f7d.dirty
+
