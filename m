@@ -1,100 +1,66 @@
-From: Zhang Huan <zhhuan@gmail.com>
-Subject: Re: Question on readdir implementation
-Date: Wed, 16 Sep 2009 13:47:46 +0800
-Message-ID: <20090916054746.GA2393@zhanghuan.nrchpc.ac.cn>
-References: <20090915095724.GA8440@zhanghuan.nrchpc.ac.cn> <20090915145337.GB23118@mit.edu>
+From: Pavol Cvengros <pavol.cvengros@primeinteractive.net>
+Subject: Re: ext4+quota+nfs issue
+Date: Wed, 16 Sep 2009 08:35:48 +0200
+Message-ID: <4AB08744.1020102@primeinteractive.net>
+References: <4AA5E5F3.30309@primeinteractive.net> <4AA72C14.1020005@primeinteractive.net> <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz> <4AA7C38E.8020306@redhat.com> <150c16850909091045h1962fd67n77c265c9b99c5f44@mail.gmail.com> <4AA7FBD7.9080406@primeinteractive.net> <4AAA5FCC.2010707@primeinteractive.net> <20090914175056.GE25549@duck.suse.cz> <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Justin Maggard <jmaggard10@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Jiri Kosina <jkosina@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.248]:17633 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751624AbZIPFrz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 01:47:55 -0400
-Received: by an-out-0708.google.com with SMTP id d40so10748598and.1
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2009 22:47:58 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20090915145337.GB23118@mit.edu>
+Received: from ns1.primeinteractive.net ([195.95.205.253]:56229 "EHLO
+	mail.primeinteractive.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751113AbZIPGgU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2009 02:36:20 -0400
+In-Reply-To: <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 15, 2009 at 10:53:37AM -0400, Theodore Tso wrote:
-> On Tue, Sep 15, 2009 at 05:57:24PM +0800, Zhang Huan wrote:
-> > Hi all,
-> > 
-> > I'm reading EXT4 codes and has some questions about readdir
-> > implementation.
-> > 
-> > Why traverse the directory in hash order? This brings lots of code to
-> > build and traverse a red-black tree. Why not just plainly traverse the
-> > directory's blocks?
-> > 
-> > Since the red-black tree is built every time a NFS readdir request comes
-> > in, in case of hash collision, the nfs client may receive duplicate dir
-> > entries if the buffer is not large enough to return all entries with the
-> > same hash value in once.
-> 
-> The reason why we have to do this is because of the telldir() and
-> seekdir() interfaces.  NFS is implicated in this as well, because it
-> traverses the directory using a 32-bit offset on the protocol wire.
-> 
-> The fundamental problem is they presume that directory is stored as a
-> linear array.  For file systems which use some kind of B-tree or other
-> non-linear data structure to speed up directory lookups, the problem
-> is what to do when we need to split a B-tree leaf.  When this happens,
-> half of the directory entries in the that B-tree leaf must be moved to
-> a new directory block.  However, readdir() must still return every
-> single entry in the directory once and exactly once; and this must be
-> true even if even if telldir()/seekdir() is used, and even if NFS
-> decides to wait for several minutes or hours between reading the first
-> set of directory entries, and then reading the next set of directory
-> entries, sending to the NFS server nothing but the 32-bit offset
-> token.
-> 
-> It is for this reason that we must traverse the directory in hash
-> order; so that directory entries are returned once and only once even
-> in the face of node splits.  We try very hard to avoid a hash
-> collisions, including using a keyed hash which is kept secret to
-> prevent users from deliberately trying to trigger the failure mode.
-> 
-> Looking more closely at what we have done, we should be able to do
-> better on architectures where off_t is 64 bits.  Internally, we use a
-> 64-bit hash, but we only put the high 32 bits of the hash in f_offset
-> because we can't tell whether the telldir() or telldir64() call might
-> be used by an application, and we can't tell whether the NFS server is
-> speaking NFSv2 (where the readdir cookie is only 32 bits) or NFSv3
-> (where the readdir cookie is cookie is 64 bits).  On platforms where
-> off_t is 64-bytes, we could store the full 64-bit hash value in
-> f_offset, but we would swap the low and high 32-bit values, so that 32
-> LSB are in the high 32 bits of f_offset and vice versa.  
-> 
-> The NFS v2 server would still get a 64-bit f_offset, but it currently
-> doesn't do any range checking before dropping it into the 32-bit
-> cookie, so the high 32 bits would get truncated.  This would result in
-> the same behaviour we have today for those poor benighted souls which
-> are still using NFSv2, but allow for better behavior for NFSv3 at
-> least on 64-bit platforms.
-> 
-Thanks for replying to explain in such details.
+On 9/14/2009 8:52 PM, Aneesh Kumar K.V wrote:
+> On Mon, Sep 14, 2009 at 07:50:56PM +0200, Jan Kara wrote:
+>    
+>>    I've found some time to look into this and I can see a few problems in
+>> the code. Firstly, what may cause your problems:
+>>    vfs_dq_claim_blocks() is called in ext4_mb_mark_diskspace_used(). But
+>> as far as I can understand the code, ext4_mb_normalize_request() can
+>> increase the amount of space we really allocate and thus we try to
+>> allocate more blocks than we have actually reserved in quota. Aneesh, is
+>> that right?
+>>      
+> ext4_mb_mark_diskspace_used use ac->ac_b_ex.fe_len which is NOT the normalized
+> request len. it is min(allocated_len, original_len). So i guess that code
+> should be safe
+>
+>
+>    
+>>    Secondly, ext4_da_reserve_space() seems to have a bug that it can reserve
+>> quota blocks multiple times if ext4_claim_free_blocks() fail and we retry
+>> the allocation. We should release the quota reservation before restarting.
+>> Actually, when we find out we cannot reserve quota space, we could force
+>> some delayed allocated writes to disk (thus possibly release some quota
+>> in case we have overestimated the amount of blocks needed). But that's
+>> a different issue.
+>>      
+> That would imply the file system was full. But the dumpe2fs ouput list
+> large number of free blocks. But yes the code should have released the
+> quota reservation before trying block reservation again.
+>
+>
+>    
 
-So there isn't much we can do before we improve nfsd's offset range
-checking.
+file system is fresh but unfortunately already used and I can't 
+"re-format" it. Is there a way around this? I think that FS was created 
+by "mkfs.ext4 -j /dev....."
 
-> So this is something we could do in the future.  In practice, no one
-> has complained about this as far as NFS is concerned, so it's not high
-> priority for me to pursue.  Were you worried about this as a practical
-> matter, or as a theoretical one?
-> 
-Oh, I was asking because some guy I work with told me he has seen this
-once before. He was testing a proprietary Windows NFS v3 client then,
-using EXT3 as backend filesystem.
-I do not know it is hash collision that cause the problem until I spent
-some time reading EXT3 codes.
+>>    Thirdly, ext4_indirect_calc_metadata_amount() is wrong for sparse files.
+>> The worst case is 3 metadata blocks per data block if we make the file
+>> sufficiently sparse and there's no easy way around that...
+>>
+>>      
+> -aneesh
+>    
 
-> Regards,
-> 
-> 						- Ted
-
--- 
-Zhang Huan
