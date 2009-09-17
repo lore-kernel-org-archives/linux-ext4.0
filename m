@@ -1,166 +1,123 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: [PATCH 2/2] ext4: Handle nested ext4_journal_start/stop calls without
-	a journal
-Date: Thu, 17 Sep 2009 14:55:43 -0700
-Message-ID: <6601abe90909171455g597fe672g1ca6d426e609f937@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC] mke2fs: get device topology values from blkid
+Date: Thu, 17 Sep 2009 17:22:49 -0500
+Message-ID: <4AB2B6B9.7010506@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:57666 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751757AbZIQVzm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Sep 2009 17:55:42 -0400
-Received: from zps35.corp.google.com (zps35.corp.google.com [172.25.146.35])
-	by smtp-out.google.com with ESMTP id n8HLtjmW019033
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 14:55:45 -0700
-Received: from pzk28 (pzk28.prod.google.com [10.243.19.156])
-	by zps35.corp.google.com with ESMTP id n8HLthJG032315
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 14:55:43 -0700
-Received: by pzk28 with SMTP id 28so349539pzk.5
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 14:55:43 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:17941 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751003AbZIQWWq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Sep 2009 18:22:46 -0400
+Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n8HMMoP6026111
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 18:22:50 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n8HMMllI004594
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 18:22:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch fixes a problem with handling nested calls to
-ext4_journal_start/ext4_journal_stop, when there is no journal present.
+This is just a rough cut, due to the blkid header selection
+issues I mentioned earlier on the list.  It'll also need
+some config-fu to be sure we've got a blkid which has these
+calls, but with it in place, we'll finally have automatic
+selection of stride/stripe:
 
-	Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+# misc/mke2fs -b 4096 /dev/md0 
+mke2fs 1.41.9 (22-Aug-2009)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=16 blocks, Stripe width=32 blocks
+...
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-Instead of using the special value of
-
-        (handle_t *)0x1
-
-to represent a handle when there is no journal present, we now use a real
-handle_t, so we can use its ref counting.  The h_transaction field now
-determines if there is a journal present or not.
-
-Note that ext4_handle_valid() previously returned 1 if a NULL handle was
-sent in -- which is a bad use of this routine.  Instead now, we'll get a
-NULL pointer dereference...
-
-
-diff -uprN orig/fs/ext4/ext4_jbd2.h new/fs/ext4/ext4_jbd2.h
---- orig/fs/ext4/ext4_jbd2.h	2009-09-17 14:32:13.000000000 -0700
-+++ new/fs/ext4/ext4_jbd2.h	2009-09-17 14:31:01.000000000 -0700
-@@ -161,11 +161,11 @@ int __ext4_handle_dirty_metadata(const c
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
- int __ext4_journal_stop(const char *where, handle_t *handle);
-
--#define EXT4_NOJOURNAL_HANDLE	((handle_t *) 0x1)
-+#define EXT4_NOJOURNAL_TRANSACTION ((transaction_t *) 0x1)
-
- static inline int ext4_handle_valid(handle_t *handle)
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 84c4361..8fd3cd8 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -49,6 +49,7 @@ extern int optind;
+ #include <sys/types.h>
+ #include <libgen.h>
+ #include <limits.h>
++#include <blkid/blkid.h>
+ 
+ #include "ext2fs/ext2_fs.h"
+ #include "et/com_err.h"
+@@ -614,6 +615,8 @@ static void show_stats(ext2_filsys fs)
+ 		s->s_log_block_size);
+ 	printf(_("Fragment size=%u (log=%u)\n"), fs->fragsize,
+ 		s->s_log_frag_size);
++	printf(_("Stride=%u blocks, Stripe width=%u blocks\n"),
++	       s->s_raid_stride, s->s_raid_stripe_width);
+ 	printf(_("%u inodes, %u blocks\n"), s->s_inodes_count,
+ 	       s->s_blocks_count);
+ 	printf(_("%u blocks (%2.2f%%) reserved for the super user\n"),
+@@ -1073,6 +1076,51 @@ static int get_bool_from_profile(char **fs_types, const char *opt, int def_val)
+ extern const char *mke2fs_default_profile;
+ static const char *default_files[] = { "<default>", 0 };
+ 
++/*
++ * Sets the geometry of a device (stripe/stride)
++ */
++static errcode_t ext2fs_get_device_geometry(const char *file,
++					    struct ext2_super_block *fs_param)
++{
++	int fd;
++	int rc = 1;
++	int blocksize;
++	blkid_probe pr;
++	blkid_topology tp;
++	unsigned long min_io;
++	unsigned long opt_io;
++
++#ifdef HAVE_OPEN64
++	fd = open64(file, O_RDONLY);
++#else
++	fd = open(file, O_RDONLY);
++#endif
++	if (fd < 0)
++		return errno;
++
++	pr = blkid_new_probe();
++	if (!pr)
++		goto out;
++
++	rc = blkid_probe_set_device(pr, fd, 0, 0);
++	if (rc)
++		goto out;
++
++	tp = blkid_probe_get_topology(pr);
++	if (!tp)
++		goto out;
++
++	min_io = blkid_topology_get_minimum_io_size(tp);
++	opt_io = blkid_topology_get_optimal_io_size(tp);
++	blocksize = EXT2_BLOCK_SIZE(fs_param);
++
++	fs_param->s_raid_stride = min_io / blocksize;
++	fs_param->s_raid_stripe_width = opt_io / blocksize;
++	rc = 0;
++out:
++	close(fd);
++	return rc;
++}
+ static void PRS(int argc, char *argv[])
  {
---	if (handle == EXT4_NOJOURNAL_HANDLE)
-+	if (handle->h_transaction == EXT4_NOJOURNAL_TRANSACTION)
- 		return 0;
- 	return 1;
- }
-diff -uprN orig/fs/ext4/inode.c new/fs/ext4/inode.c
---- orig/fs/ext4/inode.c	2009-09-17 14:14:43.000000000 -0700
-+++ new/fs/ext4/inode.c	2009-09-17 14:32:58.000000000 -0700
-@@ -4931,12 +4931,14 @@ int ext4_write_inode(struct inode *inode
- 		err = ext4_force_commit(inode->i_sb);
- 	} else {
- 		struct ext4_iloc iloc;
-+		handle_t *handle = ext4_journal_start(inode, 1);
+ 	int		b, c;
+@@ -1633,6 +1681,8 @@ got_size:
+ 	fs_param.s_log_frag_size = fs_param.s_log_block_size =
+ 		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
+ 
++	ext2fs_get_device_geometry(device_name, &fs_param);
++
+ 	blocksize = EXT2_BLOCK_SIZE(&fs_param);
+ 
+ 	lazy_itable_init = get_bool_from_profile(fs_types,
 
- 		err = ext4_get_inode_loc(inode, &iloc);
- 		if (err)
- 			return err;
--		err = ext4_do_update_inode(EXT4_NOJOURNAL_HANDLE,
--					   inode, &iloc, wait);
-+		err = ext4_do_update_inode(handle, inode, &iloc, wait);
-+
-+		ext4_journal_stop(handle);
- 	}
- 	return err;
- }
-diff -uprN orig/fs/ext4/namei.c new/fs/ext4/namei.c
---- orig/fs/ext4/namei.c	2009-09-17 14:29:57.000000000 -0700
-+++ new/fs/ext4/namei.c	2009-09-17 14:33:06.000000000 -0700
-@@ -2076,7 +2076,8 @@ int ext4_orphan_del(handle_t *handle, st
- 	struct ext4_iloc iloc;
- 	int err = 0;
-
--	if (!ext4_handle_valid(handle))
-+	/* ext4_handle_valid() assumes a valid handle_t pointer */
-+	if (handle && !ext4_handle_valid(handle))
- 		return 0;
-
- 	mutex_lock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
-diff -uprN orig/fs/ext4/super.c new/fs/ext4/super.c
---- orig/fs/ext4/super.c	2009-09-17 14:30:02.000000000 -0700
-+++ new/fs/ext4/super.c	2009-09-17 14:33:06.000000000 -0700
-@@ -198,6 +198,43 @@ void ext4_itable_unused_set(struct super
- 		bg->bg_itable_unused_hi = cpu_to_le16(count >> 16);
- }
-
-+
-+/* If the current tasks journal_info is NULL, create a new one, else
-+ * bump its ref count */
-+static handle_t *ext4_get_nojournal(void)
-+{
-+	handle_t *handle = current->journal_info;
-+
-+	if (handle) {
-+		BUG_ON(handle->h_transaction != EXT4_NOJOURNAL_TRANSACTION);
-+		handle->h_ref++;
-+		return handle;
-+	}
-+
-+	handle = jbd2_alloc_handle(GFP_NOFS);
-+	if (!handle)
-+		return NULL;
-+
-+	memset(handle, 0, sizeof(*handle));
-+	handle->h_ref = 1;
-+	handle->h_transaction = EXT4_NOJOURNAL_TRANSACTION;
-+
-+	current->journal_info = handle;
-+	return handle;
-+}
-+
-+
-+/* Decrement the ref count, delete if now 0. */
-+static void ext4_put_nojournal(handle_t *handle)
-+{
-+	BUG_ON(handle->h_transaction != EXT4_NOJOURNAL_TRANSACTION);
-+	if (--handle->h_ref > 0)
-+		return;
-+
-+	jbd2_free_handle(handle);
-+	current->journal_info = NULL;
-+}
-+
- /*
-  * Wrappers for jbd2_journal_start/end.
-  *
-@@ -224,11 +261,7 @@ handle_t *ext4_journal_start_sb(struct s
- 		}
- 		return jbd2_journal_start(journal, nblocks);
- 	}
--	/*
--	 * We're not journaling, return the appropriate indication.
--	 */
--	current->journal_info = EXT4_NOJOURNAL_HANDLE;
--	return current->journal_info;
-+	return ext4_get_nojournal();
- }
-
- /*
-@@ -244,11 +277,7 @@ int __ext4_journal_stop(const char *wher
- 	int rc;
-
- 	if (!ext4_handle_valid(handle)) {
--		/*
--		 * Do this here since we don't call jbd2_journal_stop() in
--		 * no-journal mode.
--		 */
--		current->journal_info = NULL;
-+		ext4_put_nojournal(handle);
- 		return 0;
- 	}
- 	sb = handle->h_transaction->t_journal->j_private;
