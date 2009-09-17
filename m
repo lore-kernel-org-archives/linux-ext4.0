@@ -1,123 +1,62 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: store EXT4_EXT_MIGRATE in i_state instead of i_flags
-Date: Thu, 17 Sep 2009 09:25:21 -0400
-Message-ID: <1253193921-10914-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: jehan procaccia <jehan.procaccia@it-sudparis.eu>
+Subject: ext4 and quota generate "Data will be lost" errors :-(
+Date: Thu, 17 Sep 2009 15:49:52 +0200
+Message-ID: <4AB23E80.9070805@it-sudparis.eu>
+Reply-To: jehan.procaccia@it-sudparis.eu
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:37681 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752438AbZIQNZY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Sep 2009 09:25:24 -0400
+Received: from smtp4.int-evry.fr ([157.159.10.71]:39061 "EHLO
+	smtp4.int-evry.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750937AbZIQOXx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Sep 2009 10:23:53 -0400
+Received: from smtp2.int-evry.fr (smtp2.int-evry.fr [157.159.10.45])
+	by smtp4.int-evry.fr (Postfix) with ESMTP id DF9F4FE2E82
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 15:49:58 +0200 (CEST)
+Received: from smtp-ext.int-evry.fr (smtp-ext.int-evry.fr [157.159.11.17])
+	by smtp2.int-evry.fr (Postfix) with ESMTP id 9B271405019
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 15:49:54 +0200 (CEST)
+Received: from [157.159.50.197] (PAT7414.micro.int-evry.fr [157.159.50.197])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp-ext.int-evry.fr (Postfix) with ESMTP id 5E2D890011
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 15:49:54 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-EXT4_EXT_MIGRATE is only intended to be used for an in-memory flag,
-and the hex value assigned to it collides with FS_DIRECTIO_FL (which
-is also stored in i_flags).  There's no reason for the
-EXT4_EXT_MIGRATE bit to be stored in i_flags, so we switch it to use
-i_state instead.
+Since I run a ext4 FS with quota on my Redhat 5.4 , I often get these 
+kind of messages on the console:
 
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    |    2 +-
- fs/ext4/inode.c   |    6 ++----
- fs/ext4/migrate.c |   20 ++++++++++----------
- 3 files changed, 13 insertions(+), 15 deletions(-)
+Message from syslogd@ at Thu Sep 17 15:40:11 2009 ...
+gizeh kernel: mpage_da_map_blocks block allocation failed for inode 
+3412191 at logical offset 0 with max blocks 1 with error -122
+Message from syslogd@ at Thu Sep 17 15:40:11 2009 ...
+gizeh kernel: This should not happen.!! Data will be lost
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b558de8..98cf2b3 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -268,7 +268,6 @@ struct flex_groups {
- #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
- #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
- #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
--#define EXT4_EXT_MIGRATE		0x00100000 /* Inode is migrating */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
- #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
-@@ -306,6 +305,7 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
- #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
- #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
- #define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
-+#define EXT4_STATE_EXT_MIGRATE		0x00000020 /* Inode is migrating */
- 
- /* Used to pass group descriptor data when online resize is done */
- struct ext4_new_group_input {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5a89792..a5b4ce4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1255,8 +1255,7 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
- 			 * i_data's format changing.  Force the migrate
- 			 * to fail by clearing migrate flags
- 			 */
--			EXT4_I(inode)->i_flags = EXT4_I(inode)->i_flags &
--							~EXT4_EXT_MIGRATE;
-+			EXT4_I(inode)->i_state &= ~EXT4_STATE_EXT_MIGRATE;
- 		}
- 	}
- 
-@@ -4596,8 +4595,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 	if (ext4_inode_blocks_set(handle, raw_inode, ei))
- 		goto out_brelse;
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
--	/* clear the migrate flag in the raw_inode */
--	raw_inode->i_flags = cpu_to_le32(ei->i_flags & ~EXT4_EXT_MIGRATE);
-+	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
- 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
- 	    cpu_to_le32(EXT4_OS_HURD))
- 		raw_inode->i_file_acl_high =
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 05361ad..bf519f2 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -353,17 +353,16 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
- 	/*
--	 * if EXT4_EXT_MIGRATE is cleared a block allocation
-+	 * if EXT4_STATE_EXT_MIGRATE is cleared a block allocation
- 	 * happened after we started the migrate. We need to
- 	 * fail the migrate
- 	 */
--	if (!(EXT4_I(inode)->i_flags & EXT4_EXT_MIGRATE)) {
-+	if (!(EXT4_I(inode)->i_state & EXT4_STATE_EXT_MIGRATE)) {
- 		retval = -EAGAIN;
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 		goto err_out;
- 	} else
--		EXT4_I(inode)->i_flags = EXT4_I(inode)->i_flags &
--							~EXT4_EXT_MIGRATE;
-+		EXT4_I(inode)->i_state &= ~EXT4_STATE_EXT_MIGRATE;
- 	/*
- 	 * We have the extent map build with the tmp inode.
- 	 * Now copy the i_data across
-@@ -517,14 +516,15 @@ int ext4_ext_migrate(struct inode *inode)
- 	 * when we add extents we extent the journal
- 	 */
- 	/*
--	 * Even though we take i_mutex we can still cause block allocation
--	 * via mmap write to holes. If we have allocated new blocks we fail
--	 * migrate.  New block allocation will clear EXT4_EXT_MIGRATE flag.
--	 * The flag is updated with i_data_sem held to prevent racing with
--	 * block allocation.
-+	 * Even though we take i_mutex we can still cause block
-+	 * allocation via mmap write to holes. If we have allocated
-+	 * new blocks we fail migrate.  New block allocation will
-+	 * clear EXT4_STATE_EXT_MIGRATE flag.  The flag is updated
-+	 * with i_data_sem held to prevent racing with block
-+	 * allocation.
- 	 */
- 	down_read((&EXT4_I(inode)->i_data_sem));
--	EXT4_I(inode)->i_flags = EXT4_I(inode)->i_flags | EXT4_EXT_MIGRATE;
-+	EXT4_I(inode)->i_state |= EXT4_STATE_EXT_MIGRATE;
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	handle = ext4_journal_start(inode, 1);
--- 
-1.6.3.2.1.gb9f7d.dirty
+my system is runing on:
+$ uname -a
+Linux gizeh.int-evry.fr 2.6.18-164.el5 #1 SMP Tue Aug 18 15:51:48 EDT 
+2009 x86_64 x86_64 x86_64 GNU/Linux
+$ rpm -q quota
+quota-3.16-7 
+I upgraded redhat quota package from recompile fedora10 sources because 
+of this changelog:
+
+* Thu Oct 30 2008 Ondrej Vasik <ovasik@redhat.com <mailto:ovasik@redhat.com>> 1:3.16-6
+- fix implementation of ext4 support
+
+
+I have a discussion with redhat on this: 
+https://bugzilla.redhat.com/show_bug.cgi?id=522615
+the reponse is to move back to ext3 until redhat support quota for ext4 .
+
+my probleme is that I have lot of users and filesystems in this 
+situation now, and I wonder I couldn't expect a workaround ?
+is this issue know in recent kernel,  will I really lose data ? 
+any advice greatly appreciated .
+
+regards
+
 
