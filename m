@@ -1,66 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: Don't update superblock write time when filesystem
- is read-only
-Date: Thu, 17 Sep 2009 09:46:59 -0500
-Message-ID: <4AB24BE3.1090406@redhat.com>
-References: <1253114473-16240-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42540 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752038AbZIQOrA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Sep 2009 10:47:00 -0400
-In-Reply-To: <1253114473-16240-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/7] fs: buffer_head writepage no invalidate
+Date: Thu, 17 Sep 2009 17:21:41 +0200
+Message-ID: <1253200907-31392-2-git-send-email-jack@suse.cz>
+References: <1253200907-31392-1-git-send-email-jack@suse.cz>
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, npiggin@suse.de
+To: linux-fsdevel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1253200907-31392-1-git-send-email-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Ts'o wrote:
-> This avoids updating the superblock write time when we are mounting
-> the root file system read/only but we need to replay the journal; at
-> that point, for people who are east of GMT and who make their clock
-> tick in localtime for Windows bug-for-bug compatibility, and this will
-> cause e2fsck to complain and force a full file system check.
+From: Nick Piggin <npiggin@suse.de>
 
-Just out of curiosity, why does e2fsck even care?  Why is a fairly
-common & explainable time delta the trigger for a full fsck?
+invalidate should not be required in the writeout path. The truncate
+sequence will first reduce i_size, then clean and discard any existing
+pagecache (and no new dirty pagecache can be added because i_size was
+reduced and i_mutex is being held), then filesystem data structures
+are updated.
 
-It seems like this solution may have some implications for forensics, etc.
+Filesystem needs to be able to handle writeout at any point before
+the last step, and once the 2nd step completes, there should be no
+unfreeable dirty buffers anyway (truncate performs the do_invalidatepage).
 
-Thanks,
--Eric
+Having filesystem changes depend on reading i_size without holding
+i_mutex is confusing at least. There is still a case in writepage
+paths in buffer.c uses i_size (testing which block to write out), but
+this is a small improvement.
+---
+ fs/buffer.c |   20 ++------------------
+ 1 files changed, 2 insertions(+), 18 deletions(-)
 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext3/super.c |   13 ++++++++++++-
->  1 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index a8d80a7..62c86af 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -2321,7 +2321,18 @@ static int ext3_commit_super(struct super_block *sb,
->  
->  	if (!sbh)
->  		return error;
-> -	es->s_wtime = cpu_to_le32(get_seconds());
-> +	/*
-> +	 * If the file system is mounted read-only, don't update the
-> +	 * superblock write time.  This avoids updating the superblock
-> +	 * write time when we are mounting the root file system
-> +	 * read/only but we need to replay the journal; at that point,
-> +	 * for people who are east of GMT and who make their clock
-> +	 * tick in localtime for Windows bug-for-bug compatibility,
-> +	 * the clock is set in the future, and this will cause e2fsck
-> +	 * to complain and force a full file system check.
-> +	 */
-> +	if (!(sb->s_flags & MS_RDONLY))
-> +		es->s_wtime = cpu_to_le32(get_seconds());
->  	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
->  	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
->  	BUFFER_TRACE(sbh, "marking dirty");
+diff --git a/fs/buffer.c b/fs/buffer.c
+index d8d1b46..67b260a 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2666,18 +2666,8 @@ int nobh_writepage(struct page *page, get_block_t *get_block,
+ 	/* Is the page fully outside i_size? (truncate in progress) */
+ 	offset = i_size & (PAGE_CACHE_SIZE-1);
+ 	if (page->index >= end_index+1 || !offset) {
+-		/*
+-		 * The page may have dirty, unmapped buffers.  For example,
+-		 * they may have been added in ext3_writepage().  Make them
+-		 * freeable here, so the page does not leak.
+-		 */
+-#if 0
+-		/* Not really sure about this  - do we need this ? */
+-		if (page->mapping->a_ops->invalidatepage)
+-			page->mapping->a_ops->invalidatepage(page, offset);
+-#endif
+ 		unlock_page(page);
+-		return 0; /* don't care */
++		return 0;
+ 	}
+ 
+ 	/*
+@@ -2870,14 +2860,8 @@ int block_write_full_page_endio(struct page *page, get_block_t *get_block,
+ 	/* Is the page fully outside i_size? (truncate in progress) */
+ 	offset = i_size & (PAGE_CACHE_SIZE-1);
+ 	if (page->index >= end_index+1 || !offset) {
+-		/*
+-		 * The page may have dirty, unmapped buffers.  For example,
+-		 * they may have been added in ext3_writepage().  Make them
+-		 * freeable here, so the page does not leak.
+-		 */
+-		do_invalidatepage(page, 0);
+ 		unlock_page(page);
+-		return 0; /* don't care */
++		return 0;
+ 	}
+ 
+ 	/*
+-- 
+1.6.0.2
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
