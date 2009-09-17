@@ -1,64 +1,123 @@
-From: Jens Kubieziel <maillist@kubieziel.de>
-Subject: git svn clone freezes the pc on ext4
-Date: Thu, 17 Sep 2009 15:13:56 +0200
-Message-ID: <20090917131356.GG9393@kubieziel.de>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="cHMo6Wbp1wrKhbfi"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: store EXT4_EXT_MIGRATE in i_state instead of i_flags
+Date: Thu, 17 Sep 2009 09:25:21 -0400
+Message-ID: <1253193921-10914-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from jengate.thur.de ([217.17.193.190]:46100 "EHLO jengate.thur.de"
+Received: from thunk.org ([69.25.196.29]:37681 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751180AbZIQNVc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Sep 2009 09:21:32 -0400
-Received: from tacop (p5B2B4D17.dip.t-dialin.net [91.43.77.23])
-	(authenticated bits=0)
-	by jengate.thur.de (8.14.3/8.14.1) with ESMTP id n8HDDx9c030541
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 15:14:07 +0200
-Content-Disposition: inline
+	id S1752438AbZIQNZY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Sep 2009 09:25:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+EXT4_EXT_MIGRATE is only intended to be used for an in-memory flag,
+and the hex value assigned to it collides with FS_DIRECTIO_FL (which
+is also stored in i_flags).  There's no reason for the
+EXT4_EXT_MIGRATE bit to be stored in i_flags, so we switch it to use
+i_state instead.
 
---cHMo6Wbp1wrKhbfi
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/inode.c   |    6 ++----
+ fs/ext4/migrate.c |   20 ++++++++++----------
+ 3 files changed, 13 insertions(+), 15 deletions(-)
 
-Hi,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b558de8..98cf2b3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -268,7 +268,6 @@ struct flex_groups {
+ #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+ #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+ #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+-#define EXT4_EXT_MIGRATE		0x00100000 /* Inode is migrating */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+@@ -306,6 +305,7 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+ #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
+ #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
+ #define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
++#define EXT4_STATE_EXT_MIGRATE		0x00000020 /* Inode is migrating */
+ 
+ /* Used to pass group descriptor data when online resize is done */
+ struct ext4_new_group_input {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5a89792..a5b4ce4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1255,8 +1255,7 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
+ 			 * i_data's format changing.  Force the migrate
+ 			 * to fail by clearing migrate flags
+ 			 */
+-			EXT4_I(inode)->i_flags = EXT4_I(inode)->i_flags &
+-							~EXT4_EXT_MIGRATE;
++			EXT4_I(inode)->i_state &= ~EXT4_STATE_EXT_MIGRATE;
+ 		}
+ 	}
+ 
+@@ -4596,8 +4595,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	if (ext4_inode_blocks_set(handle, raw_inode, ei))
+ 		goto out_brelse;
+ 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
+-	/* clear the migrate flag in the raw_inode */
+-	raw_inode->i_flags = cpu_to_le32(ei->i_flags & ~EXT4_EXT_MIGRATE);
++	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
+ 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+ 	    cpu_to_le32(EXT4_OS_HURD))
+ 		raw_inode->i_file_acl_high =
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 05361ad..bf519f2 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -353,17 +353,16 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+ 
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	/*
+-	 * if EXT4_EXT_MIGRATE is cleared a block allocation
++	 * if EXT4_STATE_EXT_MIGRATE is cleared a block allocation
+ 	 * happened after we started the migrate. We need to
+ 	 * fail the migrate
+ 	 */
+-	if (!(EXT4_I(inode)->i_flags & EXT4_EXT_MIGRATE)) {
++	if (!(EXT4_I(inode)->i_state & EXT4_STATE_EXT_MIGRATE)) {
+ 		retval = -EAGAIN;
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 		goto err_out;
+ 	} else
+-		EXT4_I(inode)->i_flags = EXT4_I(inode)->i_flags &
+-							~EXT4_EXT_MIGRATE;
++		EXT4_I(inode)->i_state &= ~EXT4_STATE_EXT_MIGRATE;
+ 	/*
+ 	 * We have the extent map build with the tmp inode.
+ 	 * Now copy the i_data across
+@@ -517,14 +516,15 @@ int ext4_ext_migrate(struct inode *inode)
+ 	 * when we add extents we extent the journal
+ 	 */
+ 	/*
+-	 * Even though we take i_mutex we can still cause block allocation
+-	 * via mmap write to holes. If we have allocated new blocks we fail
+-	 * migrate.  New block allocation will clear EXT4_EXT_MIGRATE flag.
+-	 * The flag is updated with i_data_sem held to prevent racing with
+-	 * block allocation.
++	 * Even though we take i_mutex we can still cause block
++	 * allocation via mmap write to holes. If we have allocated
++	 * new blocks we fail migrate.  New block allocation will
++	 * clear EXT4_STATE_EXT_MIGRATE flag.  The flag is updated
++	 * with i_data_sem held to prevent racing with block
++	 * allocation.
+ 	 */
+ 	down_read((&EXT4_I(inode)->i_data_sem));
+-	EXT4_I(inode)->i_flags = EXT4_I(inode)->i_flags | EXT4_EXT_MIGRATE;
++	EXT4_I(inode)->i_state |= EXT4_STATE_EXT_MIGRATE;
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+ 	handle = ext4_journal_start(inode, 1);
+-- 
+1.6.3.2.1.gb9f7d.dirty
 
-I recently changed my /home-partition to ext4 and wanted to clone a SVN
-repository. After calling "git svn clone https://...", git began
-fetching old revisions and at every try the complete pc freezes. It
-doesn't respond to any keyboard presses nor to SysRq. I tried the same
-command on different filesystems (ext3, reiser) and with different git
-versions. Only git on ext4 causes this freeze.
-
-The system logs have no uncommon messages. I found only:
-EXT4 FS on sda3, internal journal on sda3:8
-EXT4-fs: deleayed allocation enabled
-EXT4-fs: file extents enabled
-EXT4-fs: mballoc enabled
-EXT4-fs: mounted filesystem with ordered data mode
-Linux version is 2.6.28-15 (default installation from Ubuntu jaunty).
-
-How can I find out more about this freeze? Is maybe something known what
-causes this? Thanks for any hints.
-
---=20
-Jens Kubieziel                                   http://www.kubieziel.de
-
---cHMo6Wbp1wrKhbfi
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFKsjYUVm02LO4Jd+gRAvJBAKCEqVyR+197rKoj3Slp0051hQxragCghTi9
-OXuqm8q11Ew+v+7tCsER1l4=
-=tv1y
------END PGP SIGNATURE-----
-
---cHMo6Wbp1wrKhbfi--
