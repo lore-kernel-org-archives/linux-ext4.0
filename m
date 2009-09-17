@@ -1,64 +1,66 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13604] cascade of "mpage_da_map_blocks block allocation failed"
- errors
-Date: Thu, 17 Sep 2009 14:44:45 GMT
-Message-ID: <200909171444.n8HEijdB012292@demeter.kernel.org>
-References: <bug-13604-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext3: Don't update superblock write time when filesystem
+ is read-only
+Date: Thu, 17 Sep 2009 09:46:59 -0500
+Message-ID: <4AB24BE3.1090406@redhat.com>
+References: <1253114473-16240-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:35523 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751251AbZIQOom (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Sep 2009 10:44:42 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n8HEijSb012293
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2009 14:44:45 GMT
-In-Reply-To: <bug-13604-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:42540 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752038AbZIQOrA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Sep 2009 10:47:00 -0400
+In-Reply-To: <1253114473-16240-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13604
+Theodore Ts'o wrote:
+> This avoids updating the superblock write time when we are mounting
+> the root file system read/only but we need to replay the journal; at
+> that point, for people who are east of GMT and who make their clock
+> tick in localtime for Windows bug-for-bug compatibility, and this will
+> cause e2fsck to complain and force a full file system check.
 
+Just out of curiosity, why does e2fsck even care?  Why is a fairly
+common & explainable time delta the trigger for a full fsck?
 
-procaccia <jehan.procaccia@it-sudparis.eu> changed:
+It seems like this solution may have some implications for forensics, etc.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jehan.procaccia@it-sudparis
-                   |                            |.eu
+Thanks,
+-Eric
 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext3/super.c |   13 ++++++++++++-
+>  1 files changed, 12 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index a8d80a7..62c86af 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2321,7 +2321,18 @@ static int ext3_commit_super(struct super_block *sb,
+>  
+>  	if (!sbh)
+>  		return error;
+> -	es->s_wtime = cpu_to_le32(get_seconds());
+> +	/*
+> +	 * If the file system is mounted read-only, don't update the
+> +	 * superblock write time.  This avoids updating the superblock
+> +	 * write time when we are mounting the root file system
+> +	 * read/only but we need to replay the journal; at that point,
+> +	 * for people who are east of GMT and who make their clock
+> +	 * tick in localtime for Windows bug-for-bug compatibility,
+> +	 * the clock is set in the future, and this will cause e2fsck
+> +	 * to complain and force a full file system check.
+> +	 */
+> +	if (!(sb->s_flags & MS_RDONLY))
+> +		es->s_wtime = cpu_to_le32(get_seconds());
+>  	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
+>  	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
+>  	BUFFER_TRACE(sbh, "marking dirty");
 
-
-
---- Comment #2 from procaccia <jehan.procaccia@it-sudparis.eu>  2009-09-17 14:44:42 ---
-Any news on this bug ?
-
-I get lots of the same error messages with ext4 and quotas on those ext4 FS:
-
-Message from syslogd@ at Thu Sep 17 16:39:51 2009 ...
-gizeh kernel: mpage_da_map_blocks block allocation failed for inode 15407 at
-logical offset 0 with max blocks 2 with error -122
-Message from syslogd@ at Thu Sep 17 16:39:51 2009 ...
-gizeh kernel: This should not happen.!! Data will be lost
-
-$ uname -a
-Linux gizeh.int-evry.fr 2.6.18-164.el5 #1 SMP Tue Aug 18 15:51:48 EDT 2009
-x86_64 x86_64 x86_64 GNU/Linux
-$ rpm -q quota
-quota-3.16-7
-
-Will data really be lost ? or is this alert is for people over-quota only ?
-I have opened a bug on redhat:
-https://bugzilla.redhat.com/show_bug.cgi?id=522615
-I've been told to wait until kernel quota for ext4 will be supported, but what
-is the probleme ? is there a plan to solve this issue ? perhaps it's already
-solve on a newer kernel than mine (2.6.18-164.el5 ) ?
-Any news & advice greatly appreciated.
-regards .
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
