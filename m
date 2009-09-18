@@ -1,107 +1,38 @@
-From: Sachin Sant <sachinp@in.ibm.com>
-Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
-Date: Fri, 18 Sep 2009 14:37:06 +0530
-Message-ID: <4AB34DBA.1080909@in.ibm.com>
-References: <4A9E5496.8050909@in.ibm.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
+Date: Fri, 18 Sep 2009 07:43:04 -0400
+Message-ID: <4AB37248.4050309@redhat.com>
+References: <20090916162457.GA84213@freezingfog.local>	<20090916190831.GH2537@webber.adilger.int>	<20090916204225.GB84213@freezingfog.local>	<20090916212250.GL2537@webber.adilger.int>	<20090916231131.GC84213@freezingfog.local> <4AB28DD5.30607@redhat.com> <yq1ocp8943k.fsf@sermon.lab.mkp.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Cc: Will Drewry <redpig@dataspill.org>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp08.in.ibm.com ([59.145.155.8]:59124 "EHLO
-	e28smtp08.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751023AbZIRJHH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 05:07:07 -0400
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp08.in.ibm.com (8.14.3/8.13.1) with ESMTP id n8I91YbN027858
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 14:31:34 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8I977Ou950306
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 14:37:07 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8I976kk020264
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 19:07:06 +1000
-In-Reply-To: <4A9E5496.8050909@in.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:29806 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756757AbZIRLmw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Sep 2009 07:42:52 -0400
+In-Reply-To: <yq1ocp8943k.fsf@sermon.lab.mkp.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sachin Sant wrote:
-> While executing fsstress against ext4 with 2.6.31-rc8 on a
-> powerpc box, ran into the following Bug.
+On 09/18/2009 02:09 AM, Martin K. Petersen wrote:
+>>>>>> "Ric" == Ric Wheeler<rwheeler@redhat.com>  writes:
+>>>>>>              
+> Ric>  One note - the WRITE_SAME command in SCSI has long been used by
+> Ric>  array vendors to do relatively high performance zero fills.
 >
-> ------------[ cut here ]------------
-> cpu 0x0: Vector: 700 (Program Check) at [c0000000f3ae3970]
->    pc: c000000000280f28: .jbd2_journal_commit_transaction+0x8ac/0x1bfc
->    lr: c000000000280e58: .jbd2_journal_commit_transaction+0x7dc/0x1bfc
->    sp: c0000000f3ae3bf0
->   msr: 8000000000029032
->  current = 0xc0000000f315c7d0
->  paca    = 0xc000000000b62600
->    pid   = 23139, comm = kjournald2
-> kernel BUG at fs/jbd2/commit.c:533!
-> enter ? for help
-> [c0000000f3ae3dd0] c000000000289c60 .kjournald2+0x198/0x46c
-> [c0000000f3ae3ed0] c0000000000a86a0 .kthread+0xac/0xb8
-> [c0000000f3ae3f90] c00000000002ab3c .kernel_thread+0x54/0x70
-> 0:mon>
-> Ext4 FS was created and mounted using :
+> I've been working on WRITE SAME and UNMAP support recently (layering on
+> top of Christoph's patch kit).  It might be worthwhile to expose the
+> WRITE SAME functionality further up the stack.  It could also be helpful
+> for initializing RAID disks, for instance...
 >
-> /usr/local/e2fsprogs/sbin/mkfs.ext4 -b 4096 /dev/sda4
-> mount -t ext4 -o errors=panic,data=journal /dev/sda4 /mnt/tmp/
-I still have this bug with 2.6.31. Is there a solution
-available for this ?
+>    
 
-Let me know if i can help debug this in any way ?
+Using it to initialize RAID disks is exactly what it is there for - that 
+sounds quite useful...
 
-Thanks
--Sachin
-
->
-> Register information from xmon debugger :
-> 0:mon> r
-> R00 = 0000000000000001   R16 = c0000000334e0160
-> R01 = c0000000f3ae3bf0   R17 = 0000000000000000
-> R02 = c000000000a6f1e8   R18 = 0000000000000000
-> R03 = c0000000e87c9024   R19 = 0000000000000001
-> R04 = c0000000334e0100   R20 = 0000000000000001
-> R05 = 0000000000000409   R21 = 0000000000000409
-> R06 = 0000000000000000   R22 = c0000000f3ae3c78
-> R07 = c0000000f315c7d0   R23 = 0000000000000000
-> R08 = c000000000b62600   R24 = c0000000e87c9000
-> R09 = 00000000000000a0   R25 = c0000000334e0170
-> R10 = c0000000f3ae0080   R26 = c0000000334e0100
-> R11 = 0000000100051657   R27 = c0000000334e0150
-> R12 = 0000000024000088   R28 = c0000000f3ae3c78
-> R13 = c000000000b62600   R29 = c0000000f315c7d0
-> R14 = c0000000008325c8   R30 = c0000000009ec158
-> R15 = c0000000e87c939c   R31 = 0000000000000000
-> pc  = c000000000280f28 .jbd2_journal_commit_transaction+0x8ac/0x1bfc
-> lr  = c000000000280e58 .jbd2_journal_commit_transaction+0x7dc/0x1bfc
-> msr = 8000000000029032   cr  = 24000084
-> ctr = 0000000000000000   xer = 0000000020000001   trap =  700
-> 0:mon>
->
-> e2fsprog utility version is :
->
-> # /usr/local/e2fsprogs/sbin/mkfs.ext4 -V
-> mke2fs 1.41.6 (30-May-2009)
->        Using EXT2FS Library version 1.41.6
->
-> Let me know if i can provide any other information.
->
-> Thanks
-> -Sachin
->
-
-
--- 
-
----------------------------------
-Sachin Sant
-IBM Linux Technology Center
-India Systems and Technology Labs
-Bangalore, India
----------------------------------
+ric
 
