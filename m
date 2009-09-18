@@ -1,40 +1,107 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH, RFC] mke2fs: get device topology values from blkid
-Date: Fri, 18 Sep 2009 02:13:41 -0400
-Message-ID: <yq1k4zw93vu.fsf@sermon.lab.mkp.net>
-References: <4AB2B6B9.7010506@redhat.com>
+From: Sachin Sant <sachinp@in.ibm.com>
+Subject: Re: EXT4: kernel BUG at fs/jbd2/commit.c:533!
+Date: Fri, 18 Sep 2009 14:37:06 +0530
+Message-ID: <4AB34DBA.1080909@in.ibm.com>
+References: <4A9E5496.8050909@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:61884 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750950AbZIRGOF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 02:14:05 -0400
-In-Reply-To: <4AB2B6B9.7010506@redhat.com> (Eric Sandeen's message of "Thu, 17
-	Sep 2009 17:22:49 -0500")
+Received: from e28smtp08.in.ibm.com ([59.145.155.8]:59124 "EHLO
+	e28smtp08.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751023AbZIRJHH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 05:07:07 -0400
+Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
+	by e28smtp08.in.ibm.com (8.14.3/8.13.1) with ESMTP id n8I91YbN027858
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 14:31:34 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8I977Ou950306
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 14:37:07 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n8I976kk020264
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 19:07:06 +1000
+In-Reply-To: <4A9E5496.8050909@in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Eric" == Eric Sandeen <sandeen@redhat.com> writes:
+Sachin Sant wrote:
+> While executing fsstress against ext4 with 2.6.31-rc8 on a
+> powerpc box, ran into the following Bug.
+>
+> ------------[ cut here ]------------
+> cpu 0x0: Vector: 700 (Program Check) at [c0000000f3ae3970]
+>    pc: c000000000280f28: .jbd2_journal_commit_transaction+0x8ac/0x1bfc
+>    lr: c000000000280e58: .jbd2_journal_commit_transaction+0x7dc/0x1bfc
+>    sp: c0000000f3ae3bf0
+>   msr: 8000000000029032
+>  current = 0xc0000000f315c7d0
+>  paca    = 0xc000000000b62600
+>    pid   = 23139, comm = kjournald2
+> kernel BUG at fs/jbd2/commit.c:533!
+> enter ? for help
+> [c0000000f3ae3dd0] c000000000289c60 .kjournald2+0x198/0x46c
+> [c0000000f3ae3ed0] c0000000000a86a0 .kthread+0xac/0xb8
+> [c0000000f3ae3f90] c00000000002ab3c .kernel_thread+0x54/0x70
+> 0:mon>
+> Ext4 FS was created and mounted using :
+>
+> /usr/local/e2fsprogs/sbin/mkfs.ext4 -b 4096 /dev/sda4
+> mount -t ext4 -o errors=panic,data=journal /dev/sda4 /mnt/tmp/
+I still have this bug with 2.6.31. Is there a solution
+available for this ?
 
-Eric> This is just a rough cut, due to the blkid header selection issues
-Eric> I mentioned earlier on the list.  It'll also need some config-fu
-Eric> to be sure we've got a blkid which has these calls, but with it in
-Eric> place, we'll finally have automatic selection of stride/stripe:
+Let me know if i can help debug this in any way ?
 
-What about alignment?
+Thanks
+-Sachin
 
-I know that in our friendly DM universe the volume will be aligned.  But
-what if the user does mkfs on /dev/sdX and the drive isn't naturally
-aligned?
+>
+> Register information from xmon debugger :
+> 0:mon> r
+> R00 = 0000000000000001   R16 = c0000000334e0160
+> R01 = c0000000f3ae3bf0   R17 = 0000000000000000
+> R02 = c000000000a6f1e8   R18 = 0000000000000000
+> R03 = c0000000e87c9024   R19 = 0000000000000001
+> R04 = c0000000334e0100   R20 = 0000000000000001
+> R05 = 0000000000000409   R21 = 0000000000000409
+> R06 = 0000000000000000   R22 = c0000000f3ae3c78
+> R07 = c0000000f315c7d0   R23 = 0000000000000000
+> R08 = c000000000b62600   R24 = c0000000e87c9000
+> R09 = 00000000000000a0   R25 = c0000000334e0170
+> R10 = c0000000f3ae0080   R26 = c0000000334e0100
+> R11 = 0000000100051657   R27 = c0000000334e0150
+> R12 = 0000000024000088   R28 = c0000000f3ae3c78
+> R13 = c000000000b62600   R29 = c0000000f315c7d0
+> R14 = c0000000008325c8   R30 = c0000000009ec158
+> R15 = c0000000e87c939c   R31 = 0000000000000000
+> pc  = c000000000280f28 .jbd2_journal_commit_transaction+0x8ac/0x1bfc
+> lr  = c000000000280e58 .jbd2_journal_commit_transaction+0x7dc/0x1bfc
+> msr = 8000000000029032   cr  = 24000084
+> ctr = 0000000000000000   xer = 0000000020000001   trap =  700
+> 0:mon>
+>
+> e2fsprog utility version is :
+>
+> # /usr/local/e2fsprogs/sbin/mkfs.ext4 -V
+> mke2fs 1.41.6 (30-May-2009)
+>        Using EXT2FS Library version 1.41.6
+>
+> Let me know if i can provide any other information.
+>
+> Thanks
+> -Sachin
+>
 
-How flexible is the extN on-disk format?  Can you pad and shift things
-if need be?
-
-Also, are you guys affected by the previously-acked-sectors-are-now-gone
-problems with 512-byte logical/4KB physical drives?
 
 -- 
-Martin K. Petersen	Oracle Linux Engineering
+
+---------------------------------
+Sachin Sant
+IBM Linux Technology Center
+India Systems and Technology Labs
+Bangalore, India
+---------------------------------
+
