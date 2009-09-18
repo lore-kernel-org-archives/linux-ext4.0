@@ -1,60 +1,77 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
-Date: Fri, 18 Sep 2009 07:56:53 -0600
-Message-ID: <20090918135653.GR2537@webber.adilger.int>
-References: <20090916162457.GA84213@freezingfog.local>
- <20090916190831.GH2537@webber.adilger.int>
- <20090916204225.GB84213@freezingfog.local>
- <20090916212250.GL2537@webber.adilger.int>
- <20090916231131.GC84213@freezingfog.local> <4AB28DD5.30607@redhat.com>
- <yq1ocp8943k.fsf@sermon.lab.mkp.net> <4AB37248.4050309@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH, RFC] mke2fs: get device topology values from blkid
+Date: Fri, 18 Sep 2009 09:04:37 -0500
+Message-ID: <4AB39375.6040506@redhat.com>
+References: <4AB2B6B9.7010506@redhat.com> <20090918055547.GO2537@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Will Drewry <redpig@dataspill.org>, linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:47508 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751200AbZIRN4u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 09:56:50 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8IDurwr000559
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 06:56:53 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KQ6000006EV0X00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 18 Sep 2009 06:56:53 -0700 (PDT)
-In-reply-to: <4AB37248.4050309@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:25622 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753688AbZIROEj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Sep 2009 10:04:39 -0400
+In-Reply-To: <20090918055547.GO2537@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 18, 2009  07:43 -0400, Ric Wheeler wrote:
-> On 09/18/2009 02:09 AM, Martin K. Petersen wrote:
->>>>>>> "Ric" == Ric Wheeler<rwheeler@redhat.com>  writes:
->>>>>>>              
->> Ric>  One note - the WRITE_SAME command in SCSI has long been used by
->> Ric>  array vendors to do relatively high performance zero fills.
+Andreas Dilger wrote:
+> On Sep 17, 2009  17:22 -0500, Eric Sandeen wrote:
+>> This is just a rough cut, due to the blkid header selection
+>> issues I mentioned earlier on the list.  It'll also need
+>> some config-fu to be sure we've got a blkid which has these
+>> calls, but with it in place, we'll finally have automatic
+>> selection of stride/stripe:
 >>
->> I've been working on WRITE SAME and UNMAP support recently (layering on
->> top of Christoph's patch kit).  It might be worthwhile to expose the
->> WRITE SAME functionality further up the stack.  It could also be helpful
->> for initializing RAID disks, for instance...
->
-> Using it to initialize RAID disks is exactly what it is there for - that  
-> sounds quite useful...
+>> # misc/mke2fs -b 4096 /dev/md0 
+>> mke2fs 1.41.9 (22-Aug-2009)
+>> Filesystem label=
+>> OS type: Linux
+>> Block size=4096 (log=2)
+>> Fragment size=4096 (log=2)
+>> Stride=16 blocks, Stripe width=32 blocks
+>> ...
+> 
+> Cool.
+> 
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>>  	printf(_("Fragment size=%u (log=%u)\n"), fs->fragsize,
+>>  		s->s_log_frag_size);
+>> +	printf(_("Stride=%u blocks, Stripe width=%u blocks\n"),
+>> +	       s->s_raid_stride, s->s_raid_stripe_width);
+> 
+> I was going to say we should only print these if non-zero, but for
+> Pete's sake we print the "Fragment size", which has never been useful,
+> so I don't see any harm in this.  Maybe "RAID Stride ..."?
+> 
+>> +static errcode_t ext2fs_get_device_geometry(const char *file,
+>> +					    struct ext2_super_block *fs_param)
+>> +{
+>> +	rc = blkid_probe_set_device(pr, fd, 0, 0);
+> 
+> Is this in the e2fsprogs blkid code yet?  I'm guessing not, since you
 
-In ext4 we already have a routine ext4_ext_zeroout() that is used to zero
-out chunks of disk in order to wipe uninitialized extents when they need
-to be put into use.  It currently maps ZERO_PAGE() multiple times to avoid
-causing cache pressure, but if we could wire it up to some block-level
-routine that optimized this it would be even better.
+right, not yet.  I don't know what the long-term plan is for e2fsprogs 
+blkid; keeping 2 trees in sync seems like a lot of work w/o much gain...
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> are getting build problems, which means anyone building with something
+> other than latest & greatest util-linux will also get failures.
+> 
+> Either this needs to be configured in, or you need to upgrade the
+> blkid included with e2fsprogs to handle this.
+
+Yep, that's why I said "It'll also need some config-fu to be sure we've 
+got a blkid which has these calls...." :) and why I was asking about 
+moving the in-tree headers slightly out of the way.
+
+-Eric
+
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
 
