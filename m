@@ -1,57 +1,53 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH, RFC] mke2fs: get device topology values from blkid
-Date: Fri, 18 Sep 2009 08:20:24 -0600
-Message-ID: <20090918142024.GU2537@webber.adilger.int>
-References: <4AB2B6B9.7010506@redhat.com>
- <20090918055547.GO2537@webber.adilger.int> <4AB39375.6040506@redhat.com>
+Date: Fri, 18 Sep 2009 09:23:47 -0500
+Message-ID: <4AB397F3.3090206@redhat.com>
+References: <4AB2B6B9.7010506@redhat.com> <yq1k4zw93vu.fsf@sermon.lab.mkp.net>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:37218 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751046AbZIROUU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 10:20:20 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8IEKOdL005574
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 07:20:24 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KQ6004007QHRI00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 18 Sep 2009 07:20:24 -0700 (PDT)
-In-reply-to: <4AB39375.6040506@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:27985 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751150AbZIROXw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Sep 2009 10:23:52 -0400
+In-Reply-To: <yq1k4zw93vu.fsf@sermon.lab.mkp.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 18, 2009  09:04 -0500, Eric Sandeen wrote:
-> Andreas Dilger wrote:
->>> +	rc = blkid_probe_set_device(pr, fd, 0, 0);
->>
->> Is this in the e2fsprogs blkid code yet?  I'm guessing not, since you
->
-> right, not yet.  I don't know what the long-term plan is for e2fsprogs  
-> blkid; keeping 2 trees in sync seems like a lot of work w/o much gain...
+Martin K. Petersen wrote:
+>>>>>> "Eric" == Eric Sandeen <sandeen@redhat.com> writes:
+> 
+> Eric> This is just a rough cut, due to the blkid header selection issues
+> Eric> I mentioned earlier on the list.  It'll also need some config-fu
+> Eric> to be sure we've got a blkid which has these calls, but with it in
+> Eric> place, we'll finally have automatic selection of stride/stripe:
+> 
+> What about alignment?
+> 
+> I know that in our friendly DM universe the volume will be aligned.  But
+> what if the user does mkfs on /dev/sdX and the drive isn't naturally
+> aligned?
 
-I thought that was Ted's plan?  We usually recommend people to update to
-the latest e2fsprogs, yet not everyone will be able to upgrade to the
-latest util-linux, especially if it is pulling in other libraries that
-can cause package conflicts (e.g. with xfstools or similar).
+heh, mkfs.ext* complains if you point it at a whole disk, though it will 
+proceed...
 
->> Either this needs to be configured in, or you need to upgrade the
->> blkid included with e2fsprogs to handle this.
->
-> Yep, that's why I said "It'll also need some config-fu to be sure we've  
-> got a blkid which has these calls...." :) and why I was asking about  
-> moving the in-tree headers slightly out of the way.
+> How flexible is the extN on-disk format?  Can you pad and shift things
+> if need be?
 
-Sigh, it helps if I read the whole email, I guess... :-)
+shifting by 63 sectors would be tough I think; maybe a stern warning and 
+a "proceed y/N?" would be better.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I had sort of assumed that -we- could assume the lower layers 
+(partitions, volumes) got well-aligned before mkfs, but didn't think 
+about making the fs on the whole device.
 
+> Also, are you guys affected by the previously-acked-sectors-are-now-gone
+> problems with 512-byte logical/4KB physical drives?
+
+previously-acked-sectors-are-now-gone?  I guess I haven't been keeping 
+up.  What do you mean by this?
+
+-Eric
