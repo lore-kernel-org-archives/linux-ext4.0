@@ -1,36 +1,40 @@
 From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
-Date: Fri, 18 Sep 2009 02:09:03 -0400
-Message-ID: <yq1ocp8943k.fsf@sermon.lab.mkp.net>
-References: <20090916162457.GA84213@freezingfog.local>
-	<20090916190831.GH2537@webber.adilger.int>
-	<20090916204225.GB84213@freezingfog.local>
-	<20090916212250.GL2537@webber.adilger.int>
-	<20090916231131.GC84213@freezingfog.local> <4AB28DD5.30607@redhat.com>
+Subject: Re: [PATCH, RFC] mke2fs: get device topology values from blkid
+Date: Fri, 18 Sep 2009 02:13:41 -0400
+Message-ID: <yq1k4zw93vu.fsf@sermon.lab.mkp.net>
+References: <4AB2B6B9.7010506@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Will Drewry <redpig@dataspill.org>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:31154 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751645AbZIRGJV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 02:09:21 -0400
-In-Reply-To: <4AB28DD5.30607@redhat.com> (Ric Wheeler's message of "Thu, 17
-	Sep 2009 15:28:21 -0400")
+Received: from acsinet12.oracle.com ([141.146.126.234]:61884 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750950AbZIRGOF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 02:14:05 -0400
+In-Reply-To: <4AB2B6B9.7010506@redhat.com> (Eric Sandeen's message of "Thu, 17
+	Sep 2009 17:22:49 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Ric" == Ric Wheeler <rwheeler@redhat.com> writes:
+>>>>> "Eric" == Eric Sandeen <sandeen@redhat.com> writes:
 
-Ric> One note - the WRITE_SAME command in SCSI has long been used by
-Ric> array vendors to do relatively high performance zero fills.
+Eric> This is just a rough cut, due to the blkid header selection issues
+Eric> I mentioned earlier on the list.  It'll also need some config-fu
+Eric> to be sure we've got a blkid which has these calls, but with it in
+Eric> place, we'll finally have automatic selection of stride/stripe:
 
-I've been working on WRITE SAME and UNMAP support recently (layering on
-top of Christoph's patch kit).  It might be worthwhile to expose the
-WRITE SAME functionality further up the stack.  It could also be helpful
-for initializing RAID disks, for instance...
+What about alignment?
+
+I know that in our friendly DM universe the volume will be aligned.  But
+what if the user does mkfs on /dev/sdX and the drive isn't naturally
+aligned?
+
+How flexible is the extN on-disk format?  Can you pad and shift things
+if need be?
+
+Also, are you guys affected by the previously-acked-sectors-are-now-gone
+problems with 512-byte logical/4KB physical drives?
 
 -- 
 Martin K. Petersen	Oracle Linux Engineering
