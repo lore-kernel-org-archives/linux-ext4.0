@@ -1,168 +1,571 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: [PATCH 2/2] ext4: Handle nested ext4_journal_start/stop calls
-	without a journal
-Date: Fri, 18 Sep 2009 14:33:04 -0700
-Message-ID: <6601abe90909181433l67e7764w6416ae5975b78c3f@mail.gmail.com>
-References: <6601abe90909171455g597fe672g1ca6d426e609f937@mail.gmail.com>
-	 <20090918055010.GN2537@webber.adilger.int>
-	 <6601abe90909181133g27458301nb3aae756e473541c@mail.gmail.com>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: [PATCH 2/2 V3] allow direct IO to fallocate and holes
+Date: Fri, 18 Sep 2009 15:29:42 -0700
+Message-ID: <1253312982.4817.9.camel@mingming-laptop>
+References: <1252025090.15321.17.camel@mingming-laptop>
+	 <20090907215746.GA11748@duck.suse.cz>
+	 <1252529462.19097.170.camel@mingming-laptop>
+	 <20090910075730.GD8690@skywalker.linux.vnet.ibm.com>
+	 <20090910085440.GB607@duck.suse.cz>
+	 <1252613820.7006.8.camel@mingming-laptop>
+	 <20090914112544.GB24075@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <sandeen@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:25121 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751927AbZIRVdG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 17:33:06 -0400
-Received: from wpaz33.hot.corp.google.com (wpaz33.hot.corp.google.com [172.24.198.97])
-	by smtp-out.google.com with ESMTP id n8ILX7qi030859
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 22:33:08 +0100
-Received: from pzk42 (pzk42.prod.google.com [10.243.19.170])
-	by wpaz33.hot.corp.google.com with ESMTP id n8ILX4vR020876
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 14:33:05 -0700
-Received: by pzk42 with SMTP id 42so476587pzk.31
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 14:33:04 -0700 (PDT)
-In-Reply-To: <6601abe90909181133g27458301nb3aae756e473541c@mail.gmail.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:40970 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751425AbZIRW3r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 18:29:47 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e33.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n8IMRZdG013327
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 16:27:35 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8IMTkX0196422
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 16:29:46 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8IMTixd030021
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 16:29:45 -0600
+In-Reply-To: <20090914112544.GB24075@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here's version 2, thanks to Andreas' suggestion.
+On Mon, 2009-09-14 at 13:25 +0200, Jan Kara wrote:
+> On Thu 10-09-09 13:17:00, Mingming wrote:
+> > On Thu, 2009-09-10 at 10:54 +0200, Jan Kara wrote:
+> > > On Thu 10-09-09 13:27:30, Aneesh Kumar K.V wrote:
+> > > > On Wed, Sep 09, 2009 at 01:51:02PM -0700, Mingming wrote:
+> > > > .....
+> > > > .....
+> > > > 
+> > > > > >   I think fsync() still won't work correctly since it can happen user sees
+> > > > > > AIO completed, calls fsync() that completes, 
+> > > > > 
+> > > > > hmm, does fsync() ensure user sees AIO data completed?
+> > > > >
+> > > > 
+> > > > If we call fsync after getting AIO completion event and crash we should
+> > > > ensure that the data can be read back properly. That is either
+> > > > 
+> > > > a) we should ensure that we convert the extent before returning the io
+> > > >     completion event
+> > > > b) Or the fsync should be able to guarantee that it will force the extent
+> > > >    conversion pending on the file.
+> > >   Exactly.
+> > > 
+> > > a) should happen in the sync-io case where we can afford to do IO from the
+> > > end_io callback (and due to flush_workqueue call, it happens with the
+> > > current Mingming's patch so that is file). But for tha aio case, we have to
+> > > somehow implement b).
+> > > 
+> > to implement b), I think we need to keep track of a list of completed
+> > IOs from AIO, but not get converted extents, and force fsync to run
+> > flush_queue on those completed IOs?
+>   Yes that would work fine.
+> 
+> 									Honza
 
-Curt
+It turns out it takes a quit effort to avoid the race between fsync()
+and the work queue. But finally I think I got this right.
+
+Here is the increamental fix. Please let me know what you think about
+the approch. Thanks,
+Mingming
 
 
-This patch fixes a problem with handling nested calls to
-ext4_journal_start/ext4_journal_stop, when there is no journal present.
+ext4: async direct IO for holes and fallocate support
 
-	Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+From: Mingming <cmm@us.ibm.com>
+
+for async direct IO that covers holes or fallocate, the end_io
+call back function now queued the convertion work on workqueue but
+don't flush the work rightaway as it might take too long to afford.
+
+But when fsyc is called after all the data is completed, user expects
+the metadata also being updated before fsync returns.
+
+Thus we need to flush the conversion work when fsync() is called.This
+patch keep track of a listed of completed async direct io that has a work
+queued on workqueue. When fsycn() is called, it will go through the list
+and do the conversion. 
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
+ fs/ext4/ext4.h    |   12 ++
+ fs/ext4/extents.c |   19 ++++
+ fs/ext4/fsync.c   |    5 +
+ fs/ext4/inode.c   |  231 +++++++++++++++++++++++++++++++++++++++++++++---------
+ fs/ext4/super.c   |    8 +
+ 5 files changed, 234 insertions(+), 41 deletions(-)
 
-Taking Andreas' suggestion, what I'm calling "an allocated handle that
-doesn't use a journal" is now identified by a value in the range
-
-   [1, 4095]
-
-A handle with value 0 (NULL) still represents "an unallocated handle."
-
-I added a comment atop ext4_handle_valid() to indicate that sending it a
-NULL pointer was just wrong.
-
-diff -uprN orig/fs/ext4/ext4_jbd2.h new/fs/ext4/ext4_jbd2.h
---- orig/fs/ext4/ext4_jbd2.h	2009-09-18 14:04:15.000000000 -0700
-+++ new/fs/ext4/ext4_jbd2.h	2009-09-18 14:17:31.000000000 -0700
-@@ -161,11 +161,13 @@ int __ext4_handle_dirty_metadata(const c
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
- int __ext4_journal_stop(const char *where, handle_t *handle);
-
--#define EXT4_NOJOURNAL_HANDLE	((handle_t *) 0x1)
-+#define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
-
-+/* Note:  Do not use this for NULL handles.  This is only to determine if
-+ * a properly allocated handle is using a journal or not. */
- static inline int ext4_handle_valid(handle_t *handle)
+Index: linux-2.6.31-rc4/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/inode.c
++++ linux-2.6.31-rc4/fs/ext4/inode.c
+@@ -3377,6 +3377,8 @@ static int ext4_get_block_dio_write(stru
+ 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+ 	int dio_credits;
+ 
++	ext4_debug("ext4_get_block_dio_write: inode %lu, create flag %d\n",
++		   inode->i_ino, create);
+ 	/*
+ 	 * DIO VFS code passes create = 0 flag for write to
+ 	 * the middle of file. It does this to avoid block
+@@ -3417,55 +3419,152 @@ out:
+ 	return ret;
+ }
+ 
+-#define		DIO_AIO		0x1
+-
+ static void ext4_free_io_end(ext4_io_end_t *io)
  {
--	if (handle == EXT4_NOJOURNAL_HANDLE)
-+	if ((unsigned long)handle < EXT4_NOJOURNAL_MAX_REF_COUNT)
- 		return 0;
- 	return 1;
++	BUG_ON(!io);
++	iput(io->inode);
+ 	kfree(io);
  }
-diff -uprN orig/fs/ext4/inode.c new/fs/ext4/inode.c
---- orig/fs/ext4/inode.c	2009-09-18 14:04:15.000000000 -0700
-+++ new/fs/ext4/inode.c	2009-09-18 14:17:31.000000000 -0700
-@@ -4931,12 +4931,14 @@ int ext4_write_inode(struct inode *inode
- 		err = ext4_force_commit(inode->i_sb);
- 	} else {
- 		struct ext4_iloc iloc;
-+		handle_t *handle = ext4_journal_start(inode, 1);
-
- 		err = ext4_get_inode_loc(inode, &iloc);
- 		if (err)
- 			return err;
--		err = ext4_do_update_inode(EXT4_NOJOURNAL_HANDLE,
--					   inode, &iloc, wait);
-+		err = ext4_do_update_inode(handle, inode, &iloc, wait);
-+
-+		ext4_journal_stop(handle);
- 	}
- 	return err;
- }
-diff -uprN orig/fs/ext4/namei.c new/fs/ext4/namei.c
---- orig/fs/ext4/namei.c	2009-09-18 14:04:15.000000000 -0700
-+++ new/fs/ext4/namei.c	2009-09-18 14:17:31.000000000 -0700
-@@ -2076,7 +2076,8 @@ int ext4_orphan_del(handle_t *handle, st
- 	struct ext4_iloc iloc;
- 	int err = 0;
-
--	if (!ext4_handle_valid(handle))
-+	/* ext4_handle_valid() assumes a valid handle_t pointer */
-+	if (handle && !ext4_handle_valid(handle))
- 		return 0;
-
- 	mutex_lock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
-diff -uprN orig/fs/ext4/super.c new/fs/ext4/super.c
---- orig/fs/ext4/super.c	2009-09-18 14:04:15.000000000 -0700
-+++ new/fs/ext4/super.c	2009-09-18 14:17:31.000000000 -0700
-@@ -198,6 +198,36 @@ void ext4_itable_unused_set(struct super
- 		bg->bg_itable_unused_hi = cpu_to_le16(count >> 16);
- }
-
-+
-+/* Just increment the non-pointer handle value */
-+static handle_t *ext4_get_nojournal(void)
++static void dump_aio_dio_list(struct inode * inode)
 +{
-+	handle_t *handle = current->journal_info;
-+	unsigned long ref_cnt = (unsigned long)handle;
++#ifdef	EXT4_DEBUG
++	struct list_head *cur, *before, *after;
++	ext4_io_end_t *io, *io0, *io1;
 +
-+	BUG_ON(ref_cnt >= EXT4_NOJOURNAL_MAX_REF_COUNT);
++	if (list_empty(&EXT4_I(inode)->i_aio_dio_complete_list)){
++		ext4_debug("inode %lu aio dio list is empty\n", inode->i_ino);
++		return;
++	}
 +
-+	ref_cnt++;
-+	handle = (handle_t *)ref_cnt;
++	ext4_debug("Dump inode %lu aio_dio_completed_IO list \n", inode->i_ino);
++	list_for_each_entry(io, &EXT4_I(inode)->i_aio_dio_complete_list, list){
++		cur = &io->list;
++		before = cur->prev;
++		io0 = container_of(before, ext4_io_end_t, list);
++		after = cur->next;
++		io1 = container_of(after, ext4_io_end_t, list);
 +
-+	current->journal_info = handle;
-+	return handle;
++		ext4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
++			    io, inode->i_ino, io0, io1);
++	}
++#endif
 +}
-+
-+
-+/* Decrement the non-pointer handle value */
-+static void ext4_put_nojournal(handle_t *handle)
-+{
-+	unsigned long ref_cnt = (unsigned long)handle;
-+
-+	BUG_ON(ref_cnt == 0);
-+
-+	ref_cnt--;
-+	handle = (handle_t *)ref_cnt;
-+
-+	current->journal_info = handle;
-+}
-+
+ 
  /*
-  * Wrappers for jbd2_journal_start/end.
+- * IO write completion for unwritten extents.
+- *
+  * check a range of space and convert unwritten extents to written.
+  */
+-static void ext4_end_dio_unwritten(struct work_struct *work)
++static int ext4_end_aio_dio_nolock(ext4_io_end_t *io)
+ {
+-	ext4_io_end_t *io = container_of(work, ext4_io_end_t, work);
+ 	struct inode *inode = io->inode;
+ 	loff_t offset = io->offset;
+ 	size_t size = io->size;
+ 	int ret = 0;
+-	int aio = io->flag & DIO_AIO;
+ 
+-	if (aio)
+-		mutex_lock(&inode->i_mutex);
++	ext4_debug("end_aio_dio_onlock: io 0x%p from inode %lu,list->next 0x%p,"
++		   "list->prev 0x%p\n",
++	           io, inode->i_ino, io->list.next, io->list.prev);
++
++	if (list_empty(&io->list))
++		return ret;
++
++	if (io->flag != DIO_AIO_UNWRITTEN)
++		return ret;
++
+ 	if (offset + size <= i_size_read(inode))
+ 		ret = ext4_convert_unwritten_extents(inode, offset, size);
+ 
+-	if (ret < 0)
++	if (ret < 0) {
+ 		printk(KERN_EMERG "%s: failed to convert unwritten"
+-			"extents to written extents, error is %d\n",
+-                       __func__, ret);
++			"extents to written extents, error is %d"
++			" io is still on inode %lu aio dio list\n",
++                       __func__, ret, inode->i_ino);
++		return ret;
++	}
++
++	/* clear the DIO AIO unwritten flag */
++	io->flag = 0;
++	return ret;
++}
++/*
++ * work on completed aio dio IO, to convert unwritten extents to extents
++ */
++static void ext4_end_aio_dio_work(struct work_struct *work)
++{
++	ext4_io_end_t *io  = container_of(work, ext4_io_end_t, work);
++	struct inode *inode = io->inode;
++	int ret = 0;
++
++	mutex_lock(&inode->i_mutex);
++	ret = ext4_end_aio_dio_nolock(io);
++	if (ret >= 0) {
++		if (!list_empty(&io->list))
++			list_del_init(&io->list);
++		ext4_free_io_end(io);
++	}
++	mutex_unlock(&inode->i_mutex);
++}
++/*
++ * This function is called from ext4_sync_file().
++ *
++ * When AIO DIO IO is completed, the work to convert unwritten
++ * extents to written is queued on workqueue but may not get immediately
++ * scheduled. When fsync is called, we need to ensure the
++ * conversion is complete before fsync returns.
++ * The inode keeps track of a list of completed AIO from DIO path
++ * that might needs to do the conversion. This function walks through
++ * the list and convert the related unwritten extents to written.
++ */
++int flush_aio_dio_completed_IO(struct inode *inode)
++{
++	ext4_io_end_t *io;
++	int ret = 0;
++	int ret2 = 0;
+ 
+-	ext4_free_io_end(io);
+-	if (aio)
+-		mutex_unlock(&inode->i_mutex);
++	if (list_empty(&EXT4_I(inode)->i_aio_dio_complete_list))
++		return ret;
++
++	dump_aio_dio_list(inode);
++	while (!list_empty(&EXT4_I(inode)->i_aio_dio_complete_list)){
++		io = list_entry(EXT4_I(inode)->i_aio_dio_complete_list.next,
++				ext4_io_end_t, list);
++		/*
++		 * Calling ext4_end_aio_dio_nolock() to convert completed
++		 * IO to written.
++		 *
++		 * When ext4_sync_file() is called, run_queue() may already
++		 * about to flush the work corresponding to this io structure.
++		 * It will be upset if it founds the io structure related
++		 * to the work-to-be schedule is freed.
++		 *
++		 * Thus we need to keep the io structure still valid here after
++		 * convertion finished. The io structure has a flag to
++		 * avoid double converting from both fsync and background work
++		 * queue work.
++		 */
++		ret = ext4_end_aio_dio_nolock(io);
++		if (ret < 0)
++			ret2 = ret;
++		else
++			list_del_init(&io->list);
++	}
++	return (ret2 < 0) ? ret2 : 0;
+ }
+ 
+-static ext4_io_end_t *ext4_init_io_end (struct inode *inode, unsigned int flag)
++static ext4_io_end_t *ext4_init_io_end (struct inode *inode)
+ {
+ 	ext4_io_end_t *io = NULL;
+ 
+ 	io = kmalloc(sizeof(*io), GFP_NOFS);
+ 
+ 	if (io) {
++		igrab(inode);
+ 		io->inode = inode;
+-		io->flag = flag;
++		io->flag = 0;
+ 		io->offset = 0;
+ 		io->size = 0;
+ 		io->error = 0;
+-		INIT_WORK(&io->work, ext4_end_dio_unwritten);
++		INIT_WORK(&io->work, ext4_end_aio_dio_work);
++		INIT_LIST_HEAD(&io->list);
+ 	}
+ 
+ 	return io;
+@@ -3477,19 +3576,31 @@ static void ext4_end_io_dio(struct kiocb
+         ext4_io_end_t *io_end = iocb->private;
+ 	struct workqueue_struct *wq;
+ 
+-	/* if not hole or unwritten extents, just simple return */
+-	if (!io_end || !size || !iocb->private)
++	ext_debug("ext4_end_io_dio(): io_end 0x%p"
++		  "for inode %lu, iocb 0x%p, offset %llu, size %llu\n",
++ 		  iocb->private, io_end->inode->i_ino, iocb, offset,
++		  size);
++	/* if not async direct IO or dio with 0 bytes write, just return */
++	if (!io_end || !size)
++		return;
++
++	/* if not aio dio with unwritten extents, just free io and return */
++	if (io_end->flag != DIO_AIO_UNWRITTEN){
++		ext4_free_io_end(io_end);
++		iocb->private = NULL;
+ 		return;
++	}
++
+ 	io_end->offset = offset;
+ 	io_end->size = size;
+ 	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+ 
+-	/* We need to convert unwritten extents to written */
++	/* queue the work to convert unwritten extents to written */
+ 	queue_work(wq, &io_end->work);
+ 
+-        if (is_sync_kiocb(iocb))
+-		flush_workqueue(wq);
+-
++	/* Add the io_end to per-inode completed aio dio list*/
++	list_add_tail(&io_end->list,
++		 &EXT4_I(io_end->inode)->i_aio_dio_complete_list);
+ 	iocb->private = NULL;
+ }
+ /*
+@@ -3501,8 +3612,10 @@ static void ext4_end_io_dio(struct kiocb
+  * If those blocks were preallocated, we mark sure they are splited, but
+  * still keep the range to write as unintialized.
   *
-@@ -224,11 +254,7 @@ handle_t *ext4_journal_start_sb(struct s
- 		}
- 		return jbd2_journal_start(journal, nblocks);
+- * When end_io call back function called at the last IO complete time,
+- * those extents will be converted to written extents.
++ * The unwrritten extents will be converted to written when DIO is completed.
++ * For async direct IO, since the IO may still pending when return, we
++ * set up an end_io call back function, which will do the convertion
++ * when async direct IO completed.
+  *
+  * If the O_DIRECT write will extend the file then add this inode to the
+  * orphan list.  So recovery will truncate it back to the original size
+@@ -3521,28 +3634,76 @@ static ssize_t ext4_ext_direct_IO(int rw
+ 	loff_t final_size = offset + count;
+ 	if (rw == WRITE && final_size <= inode->i_size) {
+ 		/*
+- 		 * For DIO we fallocate blocks for holes, we fallocate blocks
+- 		 * The fallocated extent for hole is marked as uninitialized
++ 		 * We could direct write to holes and fallocate.
++		 *
++ 		 * Allocated blocks to fill the hole are marked as uninitialized
+  		 * to prevent paralel buffered read to expose the stale data
+  		 * before DIO complete the data IO.
+- 		 * as for previously fallocated extents, ext4 get_block
++		 *
++ 		 * As to previously fallocated extents, ext4 get_block
+  		 * will just simply mark the buffer mapped but still
+  		 * keep the extents uninitialized.
+  		 *
+- 		 * At the end of IO, the ext4 end_io callback function
+- 		 * will convert those unwritten extents to written,
+- 		 *
++		 * for non AIO case, we will convert those unwritten extents
++		 * to written after return back from blockdev_direct_IO.
++		 *
++		 * for async DIO, the conversion needs to be defered when
++		 * the IO is completed. The ext4 end_io callback function
++		 * will be called to take care of the conversion work.
++		 * Here for async case, we allocate an io_end structure to
++		 * hook to the iocb.
+  		 */
+-		iocb->private = ext4_init_io_end(inode, !is_sync_kiocb(iocb));
+-		if (!iocb->private)
+-			return -ENOMEM;
++		iocb->private = NULL;
++		EXT4_I(inode)->cur_aio_dio = NULL;
++		if (!is_sync_kiocb(iocb)) {
++			iocb->private = ext4_init_io_end(inode);
++			if (!iocb->private)
++				return -ENOMEM;
++			/*
++			 * we save the io structure for current async
++			 * direct IO, so that later ext4_get_blocks()
++			 * could flag the io structure whether there
++			 * is a unwritten extents needs to be converted
++			 * when IO is completed.
++			 */
++			EXT4_I(inode)->cur_aio_dio = iocb->private;
++		}
++
+ 		ret = blockdev_direct_IO(rw, iocb, inode,
+ 					 inode->i_sb->s_bdev, iov,
+ 					 offset, nr_segs,
+ 					 ext4_get_block_dio_write,
+ 					 ext4_end_io_dio);
++		if (iocb->private)
++			EXT4_I(inode)->cur_aio_dio = NULL;
++		/*
++		 * The io_end structure takes a reference to the inode,
++		 * that structure needs to be destroyed and the
++		 * reference to the inode need to be dropped, when IO is
++		 * complete, even with 0 byte write, or failed.
++		 *
++		 * In the successful AIO DIO case, the io_end structure will be
++		 * desctroyed and the reference to the inode will be dropped
++		 * after the end_io call back function is called.
++		 *
++		 * In the case there is 0 byte write, or error case, since
++		 * VFS direct IO won't invoke the end_io call back function,
++		 * we need to free the end_io structure here.
++		 */
++		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
++			ext4_free_io_end(iocb->private);
++			iocb->private = NULL;
++		} else if (ret > 0)
++			/*
++			 * for non AIO case, since the IO is already
++			 * completed, we could do the convertion right here
++			 */
++			ret = ext4_convert_unwritten_extents(inode,
++								offset, ret);
+ 		return ret;
  	}
--	/*
--	 * We're not journaling, return the appropriate indication.
--	 */
--	current->journal_info = EXT4_NOJOURNAL_HANDLE;
--	return current->journal_info;
-+	return ext4_get_nojournal();
++
++	/* for write the the end of file case, we fall back to old way */
+ 	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
  }
-
+ 
+Index: linux-2.6.31-rc4/fs/ext4/ext4.h
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/ext4.h
++++ linux-2.6.31-rc4/fs/ext4/ext4.h
+@@ -110,10 +110,11 @@ struct ext4_allocation_request {
+ 	/* flags. see above EXT4_MB_HINT_* */
+ 	unsigned int flags;
+ };
+-
++#define	DIO_AIO_UNWRITTEN	0x1
+ typedef struct ext4_io_end{
++	struct list_head	list;		/* per-file finished AIO list */
+ 	struct inode		*inode;		/* file being written to */
+-	unsigned int		flag;		/* sync IO or AIO */
++	unsigned int		flag;		/* unwritten or not */
+ 	int			error;		/* I/O error code */
+ 	ext4_lblk_t		offset;		/* offset in the file */
+ 	size_t			size;		/* size of the extent */
+@@ -671,6 +672,11 @@ struct ext4_inode_info {
+ 	__u16 i_extra_isize;
+ 
+ 	spinlock_t i_block_reservation_lock;
++
++	/* completed async DIOs that might need unwritten extents handling */
++	struct list_head i_aio_dio_complete_list;
++	/* current io_end structure for async DIO write*/
++	ext4_io_end_t *cur_aio_dio;
+ };
+ 
  /*
-@@ -244,11 +270,7 @@ int __ext4_journal_stop(const char *wher
- 	int rc;
-
- 	if (!ext4_handle_valid(handle)) {
--		/*
--		 * Do this here since we don't call jbd2_journal_stop() in
--		 * no-journal mode.
--		 */
--		current->journal_info = NULL;
-+		ext4_put_nojournal(handle);
- 		return 0;
+@@ -1399,7 +1405,7 @@ extern int ext4_block_truncate_page(hand
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t ext4_get_reserved_space(struct inode *inode);
+-
++extern int flush_aio_dio_completed_IO(struct inode *inode);
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+ extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
+Index: linux-2.6.31-rc4/fs/ext4/super.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/super.c
++++ linux-2.6.31-rc4/fs/ext4/super.c
+@@ -685,6 +685,8 @@ static struct inode *ext4_alloc_inode(st
+ 	ei->i_allocated_meta_blocks = 0;
+ 	ei->i_delalloc_reserved_flag = 0;
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
++	INIT_LIST_HEAD(&ei->i_aio_dio_complete_list);
++	ei->cur_aio_dio = NULL;
+ 
+ 	return &ei->vfs_inode;
+ }
+@@ -3344,11 +3346,13 @@ static int ext4_sync_fs(struct super_blo
+ {
+ 	int ret = 0;
+ 	tid_t target;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	trace_ext4_sync_fs(sb, wait);
+-	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target)) {
++	flush_workqueue(sbi->dio_unwritten_wq);
++	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
+ 		if (wait)
+-			jbd2_log_wait_commit(EXT4_SB(sb)->s_journal, target);
++			jbd2_log_wait_commit(sbi->s_journal, target);
  	}
- 	sb = handle->h_transaction->t_journal->j_private;
+ 	return ret;
+ }
+Index: linux-2.6.31-rc4/fs/ext4/fsync.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/fsync.c
++++ linux-2.6.31-rc4/fs/ext4/fsync.c
+@@ -44,6 +44,8 @@
+  *
+  * What we do is just kick off a commit and wait on it.  This will snapshot the
+  * inode to disk.
++ *
++ * i_mutex lock is hold when enter and exit this function
+  */
+ 
+ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+@@ -56,6 +58,9 @@ int ext4_sync_file(struct file *file, st
+ 
+ 	trace_ext4_sync_file(file, dentry, datasync);
+ 
++	ret = flush_aio_dio_completed_IO(inode);
++	if (ret < 0)
++		goto out;
+ 	/*
+ 	 * data=writeback:
+ 	 *  The caller's filemap_fdatawrite()/wait will sync the data.
+Index: linux-2.6.31-rc4/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/extents.c
++++ linux-2.6.31-rc4/fs/ext4/extents.c
+@@ -3016,6 +3016,7 @@ ext4_ext_handle_uninitialized_extents(ha
+ {
+ 	int ret = 0;
+ 	int err = 0;
++	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+ 
+ 	ext_debug("ext4_ext_handle_uninitialized_extents: inode %lu, logical"
+ 		  "block %llu, max_blocks %u, flags %d, allocated %u",
+@@ -3028,6 +3029,9 @@ ext4_ext_handle_uninitialized_extents(ha
+ 		ret = ext4_split_unwritten_extents(handle,
+ 						inode, path, iblock,
+ 						max_blocks, flags);
++		/* flag the io_end struct that we need convert when IO done */
++		if (io)
++			io->flag = DIO_AIO_UNWRITTEN;
+ 		goto out;
+ 	}
+ 	/* DIO end_io complete, convert the filled extent to written */
+@@ -3113,6 +3117,7 @@ int ext4_ext_get_blocks(handle_t *handle
+ 	int err = 0, depth, ret, cache_type;
+ 	unsigned int allocated = 0;
+ 	struct ext4_allocation_request ar;
++	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+ 
+ 	__clear_bit(BH_New, &bh_result->b_state);
+ 	ext_debug("blocks %u/%u requested for inode %lu\n",
+@@ -3262,8 +3267,20 @@ int ext4_ext_get_blocks(handle_t *handle
+ 	/* try to insert new extent into found leaf and return */
+ 	ext4_ext_store_pblock(&newex, newblock);
+ 	newex.ee_len = cpu_to_le16(ar.len);
+-	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT)  /* Mark uninitialized */
++	/* Mark uninitialized */
++	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT){
+ 		ext4_ext_mark_uninitialized(&newex);
++		/*
++		 * io_end structure was created for every async
++		 * direct IO write to the middle of the file.
++		 * To avoid unecessary convertion for every aio dio rewrite
++		 * to the mid of file, here we flag the IO that is really
++		 * need the convertion.
++		 *
++		 */
++		if (io && flags == EXT4_GET_BLOCKS_DIO_CREATE_EXT)
++			io->flag = DIO_AIO_UNWRITTEN;
++	}
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+ 	if (err) {
+ 		/* free data blocks we just allocated */
+
+
+
