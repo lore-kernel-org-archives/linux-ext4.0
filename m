@@ -1,53 +1,46 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH, RFC] mke2fs: get device topology values from blkid
-Date: Fri, 18 Sep 2009 09:23:47 -0500
-Message-ID: <4AB397F3.3090206@redhat.com>
-References: <4AB2B6B9.7010506@redhat.com> <yq1k4zw93vu.fsf@sermon.lab.mkp.net>
+Date: Fri, 18 Sep 2009 09:30:27 -0500
+Message-ID: <4AB39983.1000001@redhat.com>
+References: <4AB2B6B9.7010506@redhat.com> <20090918055547.GO2537@webber.adilger.int> <4AB39375.6040506@redhat.com> <20090918142024.GU2537@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27985 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54326 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751150AbZIROXw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Sep 2009 10:23:52 -0400
-In-Reply-To: <yq1k4zw93vu.fsf@sermon.lab.mkp.net>
+	id S1752501AbZIROa2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Sep 2009 10:30:28 -0400
+In-Reply-To: <20090918142024.GU2537@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Martin K. Petersen wrote:
->>>>>> "Eric" == Eric Sandeen <sandeen@redhat.com> writes:
+Andreas Dilger wrote:
+> On Sep 18, 2009  09:04 -0500, Eric Sandeen wrote:
+>> Andreas Dilger wrote:
+>>>> +	rc = blkid_probe_set_device(pr, fd, 0, 0);
+>>> Is this in the e2fsprogs blkid code yet?  I'm guessing not, since you
+>> right, not yet.  I don't know what the long-term plan is for e2fsprogs  
+>> blkid; keeping 2 trees in sync seems like a lot of work w/o much gain...
 > 
-> Eric> This is just a rough cut, due to the blkid header selection issues
-> Eric> I mentioned earlier on the list.  It'll also need some config-fu
-> Eric> to be sure we've got a blkid which has these calls, but with it in
-> Eric> place, we'll finally have automatic selection of stride/stripe:
-> 
-> What about alignment?
-> 
-> I know that in our friendly DM universe the volume will be aligned.  But
-> what if the user does mkfs on /dev/sdX and the drive isn't naturally
-> aligned?
+> I thought that was Ted's plan?  We usually recommend people to update to
+> the latest e2fsprogs, yet not everyone will be able to upgrade to the
+> latest util-linux, especially if it is pulling in other libraries that
+> can cause package conflicts (e.g. with xfstools or similar).
 
-heh, mkfs.ext* complains if you point it at a whole disk, though it will 
-proceed...
+It doesn't much matter to me personally since my distro ;) seems pretty 
+well committed to using the blkid & libuuid now in util-linux-ng.
 
-> How flexible is the extN on-disk format?  Can you pad and shift things
-> if need be?
+I guess I'm not thinking too much about a world where people are pulling 
+down tarballs & doing make install; I'm sure that still goes on but 
+those folks are smart enough to handle things moving around, or should be.
 
-shifting by 63 sectors would be tough I think; maybe a stern warning and 
-a "proceed y/N?" would be better.
+*shrug*
 
-I had sort of assumed that -we- could assume the lower layers 
-(partitions, volumes) got well-aligned before mkfs, but didn't think 
-about making the fs on the whole device.
-
-> Also, are you guys affected by the previously-acked-sectors-are-now-gone
-> problems with 512-byte logical/4KB physical drives?
-
-previously-acked-sectors-are-now-gone?  I guess I haven't been keeping 
-up.  What do you mean by this?
+As long as we can teach the e2fsprogs build to optionally pull libblkid 
+& libuuid headers from the system rather than the e2fsprogs tree, it'll 
+give the flexibility we need.
 
 -Eric
