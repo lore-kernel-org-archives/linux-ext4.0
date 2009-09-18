@@ -1,56 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: howto downgrade ext4 to ext3
-Date: Fri, 18 Sep 2009 13:24:32 -0500
-Message-ID: <4AB3D060.2020101@redhat.com>
-References: <4AB39EC5.6070107@it-sudparis.eu> <20090918175851.GH26991@mit.edu>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: [PATCH 2/2] ext4: Handle nested ext4_journal_start/stop calls
+	without a journal
+Date: Fri, 18 Sep 2009 11:33:04 -0700
+Message-ID: <6601abe90909181133g27458301nb3aae756e473541c@mail.gmail.com>
+References: <6601abe90909171455g597fe672g1ca6d426e609f937@mail.gmail.com>
+	 <20090918055010.GN2537@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: jehan procaccia <jehan.procaccia@it-sudparis.eu>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21380 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757242AbZIRSYq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Sep 2009 14:24:46 -0400
-In-Reply-To: <20090918175851.GH26991@mit.edu>
+Received: from smtp-out.google.com ([216.239.45.13]:44041 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757940AbZIRSdF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2009 14:33:05 -0400
+Received: from spaceape9.eur.corp.google.com (spaceape9.eur.corp.google.com [172.28.16.143])
+	by smtp-out.google.com with ESMTP id n8IIX7oI009058
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 11:33:07 -0700
+Received: from pxi36 (pxi36.prod.google.com [10.243.27.36])
+	by spaceape9.eur.corp.google.com with ESMTP id n8IIVjbD001691
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 11:33:04 -0700
+Received: by pxi36 with SMTP id 36so929378pxi.6
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 11:33:04 -0700 (PDT)
+In-Reply-To: <20090918055010.GN2537@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Fri, Sep 18, 2009 at 04:52:53PM +0200, jehan procaccia wrote:
->> some of you might have followed my miseries about quota support and ext4 ...
->> http://marc.info/?l=linux-ext4&m=125320312905576&w=2
+On Thu, Sep 17, 2009 at 10:50 PM, Andreas Dilger <adilger@sun.com> wrot=
+e:
+> On Sep 17, 2009 =A014:55 -0700, Curt Wohlgemuth wrote:
+>> This patch fixes a problem with handling nested calls to
+>> ext4_journal_start/ext4_journal_stop, when there is no journal prese=
+nt.
 >>
->> Apparently the only sure and secure solution offered to me is to  
->> downgrade my ext4 FS to ext3 :-( .
->> now , is there a procedure to do that ?
-> 
-> There isn't a procedure to do this, other than backup, reformat, and
-> restore.  Sorry about that; it's just one of those things we haven't
-> had the resources to create --- and it would not be a trivial task.
-> 
-> Looking at the problems you had, have you tried simply mounting your
-> ext4 filesystem with -o nodelalloc?  The RHEL5.4 kernel doesn't have
-> various delalloc patches, and I can certainly understand why Red Hat
-> might not be willing to try to engage in backporting all of the
-> delalloc fixes to its kernel, but you might be able to use the -o
-> nodelalloc feature to simply disable the ext4 feature which appears to
-> be causing the problem.  This will cause you to give up some
-> performance, but not as much as dropping back to ext3.
+>> =A0 =A0 =A0 Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+>> ---
+>>
+>> Instead of using the special value of
+>>
+>> =A0 =A0 =A0 =A0 (handle_t *)0x1
+>>
+>> to represent a handle when there is no journal present, we now use a=
+ real
+>> handle_t, so we can use its ref counting. =A0The h_transaction field=
+ now
+>> determines if there is a journal present or not.
+>
+> You _could_ just use the "handle" value as a refcount, and anything l=
+ess
+> than, say, 4096 is considered a "special" handle. =A0I can't imagine =
+the
+> refcount being more than 3 or 4 even in extreme cases.
 
-Ah, that's a good idea I hadn't thought of, thanks.
+That's an elegant idea; thanks.  I'll work this up and send a patch out=
+ for it.
 
-Delalloc should be mostly ok in that kernel, but quota doesn't handle 
-it.  So dropping quota -or- dropping delalloc should suffice.
+Thanks,
+Curt
 
-OTOH, the -o nodelalloc paths have not gotten a lot of test coverage, so 
-caveats apply.
-
--Eric
-
-> Regards,
-> 
-> 	     	     	     		 - Ted
-
+>
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+>
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
