@@ -1,74 +1,52 @@
-From: Karel Zak <kzak@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH, RFC] mke2fs: get device topology values from blkid
-Date: Sat, 19 Sep 2009 01:59:52 +0200
-Message-ID: <20090918235952.GE29406@nb.net.home>
-References: <4AB2B6B9.7010506@redhat.com>
+Date: Fri, 18 Sep 2009 22:03:52 -0500
+Message-ID: <4AB44A18.2090104@redhat.com>
+References: <4AB2B6B9.7010506@redhat.com> <20090918235952.GE29406@nb.net.home>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5223 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57501 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756476AbZIRX7u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Sep 2009 19:59:50 -0400
-Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n8INxsam001384
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 19:59:54 -0400
-Content-Disposition: inline
-In-Reply-To: <4AB2B6B9.7010506@redhat.com>
+	id S1750964AbZISDDw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Sep 2009 23:03:52 -0400
+Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n8J33uqY026623
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2009 23:03:56 -0400
+In-Reply-To: <20090918235952.GE29406@nb.net.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 17, 2009 at 05:22:49PM -0500, Eric Sandeen wrote:
-> +static errcode_t ext2fs_get_device_geometry(const char *file,
-> +					    struct ext2_super_block *fs_param)
-> +{
-> +	int fd;
-> +	int rc = 1;
-> +	int blocksize;
-> +	blkid_probe pr;
-> +	blkid_topology tp;
-> +	unsigned long min_io;
-> +	unsigned long opt_io;
-> +
-> +#ifdef HAVE_OPEN64
-> +	fd = open64(file, O_RDONLY);
-> +#else
-> +	fd = open(file, O_RDONLY);
-> +#endif
-> +	if (fd < 0)
-> +		return errno;
-> +
-> +	pr = blkid_new_probe();
-> +	if (!pr)
-> +		goto out;
-> +
-> +	rc = blkid_probe_set_device(pr, fd, 0, 0);
-> +	if (rc)
-> +		goto out;
-> +
-> +	tp = blkid_probe_get_topology(pr);
-> +	if (!tp)
-> +		goto out;
-> +
-> +	min_io = blkid_topology_get_minimum_io_size(tp);
-> +	opt_io = blkid_topology_get_optimal_io_size(tp);
-> +	blocksize = EXT2_BLOCK_SIZE(fs_param);
-> +
-> +	fs_param->s_raid_stride = min_io / blocksize;
-> +	fs_param->s_raid_stripe_width = opt_io / blocksize;
-> +	rc = 0;
-> +out:
+Karel Zak wrote:
+> On Thu, Sep 17, 2009 at 05:22:49PM -0500, Eric Sandeen wrote:
+>> +static errcode_t ext2fs_get_device_geometry(const char *file,
+>> +					    struct ext2_super_block *fs_param)
+>> +{
 
-   blkid_free_probe(pr);
+...
 
-just in case you want to keep valgrind mem-leak checkers silent :-) 
+>> +	fs_param->s_raid_stride = min_io / blocksize;
+>> +	fs_param->s_raid_stripe_width = opt_io / blocksize;
+>> +	rc = 0;
+>> +out:
+> 
+>    blkid_free_probe(pr);
+> 
+> just in case you want to keep valgrind mem-leak checkers silent :-) 
 
-> +	close(fd);
-> +	return rc;
-> +}
+ok :)  If you haven't already updated your mkfs sample 
+(blkid/samples/mkfs.c), now's the time to do so; I'll blame my error on 
+cut and paste.  :)
 
-    Karel
--- 
- Karel Zak  <kzak@redhat.com>
+Thanks,
+-Eric
+
+>> +	close(fd);
+>> +	return rc;
+>> +}
+> 
+>     Karel
+
