@@ -1,294 +1,173 @@
-From: Francesco Pretto <ceztkoml@gmail.com>
-Subject: Re: Does ext4 perform online update of the bad blocks inode?
-Date: Sat, 19 Sep 2009 13:31:23 +0200
-Message-ID: <b13782500909190431m1e6c8cebi321c2b60f4bbd9f1@mail.gmail.com>
-References: <loom.20090918T221210-583@post.gmane.org>
-	 <20090918211100.GG2537@webber.adilger.int>
+From: Will Drewry <redpig@dataspill.org>
+Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
+Date: Sat, 19 Sep 2009 07:19:09 -0500
+Message-ID: <20090919121909.GA1077@freezingfog.local>
+References: <20090916162457.GA84213@freezingfog.local> <20090916190831.GH2537@webber.adilger.int> <20090916204225.GB84213@freezingfog.local> <20090916212250.GL2537@webber.adilger.int> <20090916231131.GC84213@freezingfog.local>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=0022154015929d75040473ec9655
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+To: Andreas Dilger <adilger@sun.com>, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f216.google.com ([209.85.220.216]:53971 "EHLO
-	mail-fx0-f216.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751298AbZISLh6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Sep 2009 07:37:58 -0400
-Received: by fxm12 with SMTP id 12so1282880fxm.18
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Sep 2009 04:38:01 -0700 (PDT)
-In-Reply-To: <20090918211100.GG2537@webber.adilger.int>
+Received: from mail-yx0-f199.google.com ([209.85.210.199]:44640 "EHLO
+	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754049AbZISMTQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Sep 2009 08:19:16 -0400
+Received: by yxe37 with SMTP id 37so1753082yxe.33
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Sep 2009 05:19:19 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20090916231131.GC84213@freezingfog.local>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---0022154015929d75040473ec9655
-Content-Type: text/plain; charset=UTF-8
+On Wed, Sep 16, 2009 at 06:11:31PM -0500, Will Drewry wrote:
+> On Wed, Sep 16, 2009 at 03:22:50PM -0600, Andreas Dilger wrote:
+> > On Sep 16, 2009  15:42 -0500, Will Drewry wrote:
+[snip]
+> > It might make sense to avoid requiring the user to specify this,
+> > rather remembering the option supplied at mke2fs time?  There is
+> > the COMPAT_LAZY_BG superblock flag that might be usable for this,
+> > though Ted might have some comments about any potential compatibility
+> > issues.
+> 
+> Cool - yeah I'd love to make use of the COMPAT_LAZY_BG flag since it
+> seems that all (but e2p/features.c) references to it seem to be gone
+> from the e2fsprogs source and the kernel.  I'm happy to rewrite it to do
+> so and update mke2fs to set LAZY_BG when lazy_itable_init=1 is set.
+> 
+> > Other than that, the patch looks reasonable at first glance.
+> 
+> Thanks!  If Ted has any feedback on the use of COMPAT_LAZY_BG, I'll
+> rewrite it using that (or not).  Using COMPAT_LAZY_BG would also be nice
+> because it would make it easier to decide when it's okay to online resize
+> without initializing itables too (and would fit its initial purpose
+> of being useful for sparse files)!
 
-2009/9/18 Andreas Dilger <adilger@sun.com>:
->
-> This isn't even safe on an UNMOUNTED filesystem, since "badblocks"
-> by default does destructive testing of the block device.
 
-With destructive testing, I think you mean here a read/write test,
-since a read only test isn't supposed to be destructive (usually).
-According to badblocks(8), option -n, "By default only a
-non-destructive read-only test is done". Moreover, according to
-fsck.ext4(8), option -c, "This  option  causes  e2fsck to use
-badblocks(8) program to do a read-only scan of the device in order to
-find  any  bad  blocks" and later "If  this  option  is specified
-twice, then the bad block scan will be done using a non-destructive
-read-write test". So I think the *potentially* unsafe command you
-meant was "fsck.ext4 -n -c -c device".
+Here's the same patch for offline resizing based on LAZY_BG. I only have
+a less-than-stable kernel patch at present, but I figured I wouldn't push
+on that until I have a bit more time.
 
-Assuming that the manual is correct, and "fsck.ext4 -n -c device" does
-really perform a read-only test opening the fs just to update the bad
-blocks inode, my question still persists: is safe to launch it weekly
-on a mounted filesystem? The wording of the manual seems to tell "yes,
-it's supposed to be safe but don't do it because of <unexplained
-reason>" :-)
+This change adds support for offline resize2fs to use lazy inode
+table initialization if the superblock is marked with LAZY_BG and
+GDT_CSUM.  This speeds up offline resizing dramatically and doesn't
+undermine the speed gains of e2fsck on the first run after resizing.
 
-> Since most
-> disks will internally relocate bad blocks on writes, it is very
-> unlikely that "badblocks" will ever find a problem on a new disk.
->
+Thanks!
+will
 
-I'd like to believe you but please read the "smartctl --all" output
-(attached) for a Toshiba 120GB notebook drive I recently replaced, or
-just observe this excerpt:
+Signed-off-by: Will Drewry <redpig <at> dataspill.org>
+---
 
-  5 Reallocated_Sector_Ct   0x0033   100   100   050    Pre-fail
-Always       -       2
-196 Reallocated_Event_Count 0x0032   100   100   000    Old_age
-Always       -       2
-....
-Num  Test_Description    Status                  Remaining
-LifeTime(hours)  LBA_of_first_error
-# 1  Extended offline    Completed: read failure       00%      6366
-      57398211
-# 2  Extended offline    Completed: read failure       00%      6350
-      57398211
-
-So, just 2 sectors reallocated but still read failures that are
-visible on the linux block device layer. I can guarantee this: I
-extensively repeated read tests on the disk, no way I could force the
-drive to relocate more failing sectors using its own SMART mechanism.
-So, what I mean is that hw bad blocks relocate features could not work
-as expected even on modern drives. Because of bugged implementation?
-Don't know.
-
-You didn't answer my main question: does ext4 do something in case of
-a read/write failure that is detected in the block device layer?
-Exotic filesystems like NTFS (when running Windows, sure) seems to
-update its bad blocks list online, so it doesn't seems a bad think for
-notebook/desktop users.
-
-The same problem is open for DM users: since evms is deprecated,
-there's no more a BBR target. So, for example, your buggy hard drive
-doesn't intercept the first and the only failing sector? The error
-arrives in the block device layer and the failing drive is
-deactived/removed from the RAID volume. Not good for me to throw away
-a disk for just one failing sector. This is matter for another mailing
-list, so please ignore.
-
-Regards,
-Francesco
-
---0022154015929d75040473ec9655
-Content-Type: application/octet-stream; name=smartctl-all
-Content-Disposition: attachment; filename=smartctl-all
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_fzs98ple0
-
-c21hcnRjdGwgdmVyc2lvbiA1LjM4IFtpNjg2LXBjLWxpbnV4LWdudV0gQ29weXJpZ2h0IChDKSAy
-MDAyLTggQnJ1Y2UgQWxsZW4KSG9tZSBwYWdlIGlzIGh0dHA6Ly9zbWFydG1vbnRvb2xzLnNvdXJj
-ZWZvcmdlLm5ldC8KCj09PSBTVEFSVCBPRiBJTkZPUk1BVElPTiBTRUNUSU9OID09PQpNb2RlbCBG
-YW1pbHk6ICAgICBUb3NoaWJhIDIuNSIgSEREIHNlcmllcyAoODAgR0IgYW5kIGFib3ZlKQpEZXZp
-Y2UgTW9kZWw6ICAgICBUT1NISUJBIE1LMTIzNEdTWApTZXJpYWwgTnVtYmVyOiAgICA5NjdYMDA3
-NlQKRmlybXdhcmUgVmVyc2lvbjogQUgwMDFBClVzZXIgQ2FwYWNpdHk6ICAgIDEyMCwwMzQsMTIz
-LDc3NiBieXRlcwpEZXZpY2UgaXM6ICAgICAgICBJbiBzbWFydGN0bCBkYXRhYmFzZSBbZm9yIGRl
-dGFpbHMgdXNlOiAtUCBzaG93XQpBVEEgVmVyc2lvbiBpczogICA3CkFUQSBTdGFuZGFyZCBpczog
-IEV4YWN0IEFUQSBzcGVjaWZpY2F0aW9uIGRyYWZ0IHZlcnNpb24gbm90IGluZGljYXRlZApMb2Nh
-bCBUaW1lIGlzOiAgICBTYXQgU2VwIDE5IDEyOjMzOjQwIDIwMDkgQ0VTVApTTUFSVCBzdXBwb3J0
-IGlzOiBBdmFpbGFibGUgLSBkZXZpY2UgaGFzIFNNQVJUIGNhcGFiaWxpdHkuClNNQVJUIHN1cHBv
-cnQgaXM6IEVuYWJsZWQKCj09PSBTVEFSVCBPRiBSRUFEIFNNQVJUIERBVEEgU0VDVElPTiA9PT0K
-U01BUlQgb3ZlcmFsbC1oZWFsdGggc2VsZi1hc3Nlc3NtZW50IHRlc3QgcmVzdWx0OiBQQVNTRUQK
-CkdlbmVyYWwgU01BUlQgVmFsdWVzOgpPZmZsaW5lIGRhdGEgY29sbGVjdGlvbiBzdGF0dXM6ICAo
-MHg4MikJT2ZmbGluZSBkYXRhIGNvbGxlY3Rpb24gYWN0aXZpdHkKCQkJCQl3YXMgY29tcGxldGVk
-IHdpdGhvdXQgZXJyb3IuCgkJCQkJQXV0byBPZmZsaW5lIERhdGEgQ29sbGVjdGlvbjogRW5hYmxl
-ZC4KU2VsZi10ZXN0IGV4ZWN1dGlvbiBzdGF0dXM6ICAgICAgKCAxMTIpCVRoZSBwcmV2aW91cyBz
-ZWxmLXRlc3QgY29tcGxldGVkIGhhdmluZwoJCQkJCXRoZSByZWFkIGVsZW1lbnQgb2YgdGhlIHRl
-c3QgZmFpbGVkLgpUb3RhbCB0aW1lIHRvIGNvbXBsZXRlIE9mZmxpbmUgCmRhdGEgY29sbGVjdGlv
-bjogCQkgKCA0MzUpIHNlY29uZHMuCk9mZmxpbmUgZGF0YSBjb2xsZWN0aW9uCmNhcGFiaWxpdGll
-czogCQkJICgweDViKSBTTUFSVCBleGVjdXRlIE9mZmxpbmUgaW1tZWRpYXRlLgoJCQkJCUF1dG8g
-T2ZmbGluZSBkYXRhIGNvbGxlY3Rpb24gb24vb2ZmIHN1cHBvcnQuCgkJCQkJU3VzcGVuZCBPZmZs
-aW5lIGNvbGxlY3Rpb24gdXBvbiBuZXcKCQkJCQljb21tYW5kLgoJCQkJCU9mZmxpbmUgc3VyZmFj
-ZSBzY2FuIHN1cHBvcnRlZC4KCQkJCQlTZWxmLXRlc3Qgc3VwcG9ydGVkLgoJCQkJCU5vIENvbnZl
-eWFuY2UgU2VsZi10ZXN0IHN1cHBvcnRlZC4KCQkJCQlTZWxlY3RpdmUgU2VsZi10ZXN0IHN1cHBv
-cnRlZC4KU01BUlQgY2FwYWJpbGl0aWVzOiAgICAgICAgICAgICgweDAwMDMpCVNhdmVzIFNNQVJU
-IGRhdGEgYmVmb3JlIGVudGVyaW5nCgkJCQkJcG93ZXItc2F2aW5nIG1vZGUuCgkJCQkJU3VwcG9y
-dHMgU01BUlQgYXV0byBzYXZlIHRpbWVyLgpFcnJvciBsb2dnaW5nIGNhcGFiaWxpdHk6ICAgICAg
-ICAoMHgwMSkJRXJyb3IgbG9nZ2luZyBzdXBwb3J0ZWQuCgkJCQkJR2VuZXJhbCBQdXJwb3NlIExv
-Z2dpbmcgc3VwcG9ydGVkLgpTaG9ydCBzZWxmLXRlc3Qgcm91dGluZSAKcmVjb21tZW5kZWQgcG9s
-bGluZyB0aW1lOiAJICggICAyKSBtaW51dGVzLgpFeHRlbmRlZCBzZWxmLXRlc3Qgcm91dGluZQpy
-ZWNvbW1lbmRlZCBwb2xsaW5nIHRpbWU6IAkgKCAgODYpIG1pbnV0ZXMuCgpTTUFSVCBBdHRyaWJ1
-dGVzIERhdGEgU3RydWN0dXJlIHJldmlzaW9uIG51bWJlcjogMTYKVmVuZG9yIFNwZWNpZmljIFNN
-QVJUIEF0dHJpYnV0ZXMgd2l0aCBUaHJlc2hvbGRzOgpJRCMgQVRUUklCVVRFX05BTUUgICAgICAg
-ICAgRkxBRyAgICAgVkFMVUUgV09SU1QgVEhSRVNIIFRZUEUgICAgICBVUERBVEVEICBXSEVOX0ZB
-SUxFRCBSQVdfVkFMVUUKICAxIFJhd19SZWFkX0Vycm9yX1JhdGUgICAgIDB4MDAwYiAgIDEwMCAg
-IDEwMCAgIDA1MCAgICBQcmUtZmFpbCAgQWx3YXlzICAgICAgIC0gICAgICAgMAogIDIgVGhyb3Vn
-aHB1dF9QZXJmb3JtYW5jZSAgMHgwMDA1ICAgMTAwICAgMTAwICAgMDUwICAgIFByZS1mYWlsICBP
-ZmZsaW5lICAgICAgLSAgICAgICAwCiAgMyBTcGluX1VwX1RpbWUgICAgICAgICAgICAweDAwMjcg
-ICAxMDAgICAxMDAgICAwMDEgICAgUHJlLWZhaWwgIEFsd2F5cyAgICAgICAtICAgICAgIDE3MjIK
-ICA0IFN0YXJ0X1N0b3BfQ291bnQgICAgICAgIDB4MDAzMiAgIDEwMCAgIDEwMCAgIDAwMCAgICBP
-bGRfYWdlICAgQWx3YXlzICAgICAgIC0gICAgICAgMzIxNQogIDUgUmVhbGxvY2F0ZWRfU2VjdG9y
-X0N0ICAgMHgwMDMzICAgMTAwICAgMTAwICAgMDUwICAgIFByZS1mYWlsICBBbHdheXMgICAgICAg
-LSAgICAgICAyCiAgNyBTZWVrX0Vycm9yX1JhdGUgICAgICAgICAweDAwMGIgICAxMDAgICAxMDAg
-ICAwNTAgICAgUHJlLWZhaWwgIEFsd2F5cyAgICAgICAtICAgICAgIDAKICA4IFNlZWtfVGltZV9Q
-ZXJmb3JtYW5jZSAgIDB4MDAwNSAgIDEwMCAgIDEwMCAgIDA1MCAgICBQcmUtZmFpbCAgT2ZmbGlu
-ZSAgICAgIC0gICAgICAgMAogIDkgUG93ZXJfT25fSG91cnMgICAgICAgICAgMHgwMDMyICAgMDg0
-ICAgMDg0ICAgMDAwICAgIE9sZF9hZ2UgICBBbHdheXMgICAgICAgLSAgICAgICA2Njk0CiAxMCBT
-cGluX1JldHJ5X0NvdW50ICAgICAgICAweDAwMzMgICAxNjQgICAxMDAgICAwMzAgICAgUHJlLWZh
-aWwgIEFsd2F5cyAgICAgICAtICAgICAgIDAKIDEyIFBvd2VyX0N5Y2xlX0NvdW50ICAgICAgIDB4
-MDAzMiAgIDEwMCAgIDEwMCAgIDAwMCAgICBPbGRfYWdlICAgQWx3YXlzICAgICAgIC0gICAgICAg
-MzE5OAoxOTIgUG93ZXItT2ZmX1JldHJhY3RfQ291bnQgMHgwMDMyICAgMTAwICAgMTAwICAgMDAw
-ICAgIE9sZF9hZ2UgICBBbHdheXMgICAgICAgLSAgICAgICAxOTUKMTkzIExvYWRfQ3ljbGVfQ291
-bnQgICAgICAgIDB4MDAzMiAgIDA3MSAgIDA3MSAgIDAwMCAgICBPbGRfYWdlICAgQWx3YXlzICAg
-ICAgIC0gICAgICAgMjk1NDEwCjE5NCBUZW1wZXJhdHVyZV9DZWxzaXVzICAgICAweDAwMjIgICAx
-MDAgICAxMDAgICAwMDAgICAgT2xkX2FnZSAgIEFsd2F5cyAgICAgICAtICAgICAgIDI2IChMaWZl
-dGltZSBNaW4vTWF4IDEwLzYwKQoxOTYgUmVhbGxvY2F0ZWRfRXZlbnRfQ291bnQgMHgwMDMyICAg
-MTAwICAgMTAwICAgMDAwICAgIE9sZF9hZ2UgICBBbHdheXMgICAgICAgLSAgICAgICAyCjE5NyBD
-dXJyZW50X1BlbmRpbmdfU2VjdG9yICAweDAwMzIgICAxMDAgICAxMDAgICAwMDAgICAgT2xkX2Fn
-ZSAgIEFsd2F5cyAgICAgICAtICAgICAgIDEKMTk4IE9mZmxpbmVfVW5jb3JyZWN0YWJsZSAgIDB4
-MDAzMCAgIDEwMCAgIDEwMCAgIDAwMCAgICBPbGRfYWdlICAgT2ZmbGluZSAgICAgIC0gICAgICAg
-MQoxOTkgVURNQV9DUkNfRXJyb3JfQ291bnQgICAgMHgwMDMyICAgMjAwICAgMjUzICAgMDAwICAg
-IE9sZF9hZ2UgICBBbHdheXMgICAgICAgLSAgICAgICAzCjIyMCBEaXNrX1NoaWZ0ICAgICAgICAg
-ICAgICAweDAwMDIgICAxMDAgICAxMDAgICAwMDAgICAgT2xkX2FnZSAgIEFsd2F5cyAgICAgICAt
-ICAgICAgIDY5CjIyMiBMb2FkZWRfSG91cnMgICAgICAgICAgICAweDAwMzIgICAwODcgICAwODcg
-ICAwMDAgICAgT2xkX2FnZSAgIEFsd2F5cyAgICAgICAtICAgICAgIDUzNDkKMjIzIExvYWRfUmV0
-cnlfQ291bnQgICAgICAgIDB4MDAzMiAgIDEwMCAgIDEwMCAgIDAwMCAgICBPbGRfYWdlICAgQWx3
-YXlzICAgICAgIC0gICAgICAgMAoyMjQgTG9hZF9GcmljdGlvbiAgICAgICAgICAgMHgwMDIyICAg
-MTAwICAgMTAwICAgMDAwICAgIE9sZF9hZ2UgICBBbHdheXMgICAgICAgLSAgICAgICAwCjIyNiBM
-b2FkLWluX1RpbWUgICAgICAgICAgICAweDAwMjYgICAxMDAgICAxMDAgICAwMDAgICAgT2xkX2Fn
-ZSAgIEFsd2F5cyAgICAgICAtICAgICAgIDYzMgoyNDAgSGVhZF9GbHlpbmdfSG91cnMgICAgICAg
-MHgwMDAxICAgMTAwICAgMTAwICAgMDAxICAgIFByZS1mYWlsICBPZmZsaW5lICAgICAgLSAgICAg
-ICAwCgpTTUFSVCBFcnJvciBMb2cgVmVyc2lvbjogMQpBVEEgRXJyb3IgQ291bnQ6IDI1IChkZXZp
-Y2UgbG9nIGNvbnRhaW5zIG9ubHkgdGhlIG1vc3QgcmVjZW50IGZpdmUgZXJyb3JzKQoJQ1IgPSBD
-b21tYW5kIFJlZ2lzdGVyIFtIRVhdCglGUiA9IEZlYXR1cmVzIFJlZ2lzdGVyIFtIRVhdCglTQyA9
-IFNlY3RvciBDb3VudCBSZWdpc3RlciBbSEVYXQoJU04gPSBTZWN0b3IgTnVtYmVyIFJlZ2lzdGVy
-IFtIRVhdCglDTCA9IEN5bGluZGVyIExvdyBSZWdpc3RlciBbSEVYXQoJQ0ggPSBDeWxpbmRlciBI
-aWdoIFJlZ2lzdGVyIFtIRVhdCglESCA9IERldmljZS9IZWFkIFJlZ2lzdGVyIFtIRVhdCglEQyA9
-IERldmljZSBDb21tYW5kIFJlZ2lzdGVyIFtIRVhdCglFUiA9IEVycm9yIHJlZ2lzdGVyIFtIRVhd
-CglTVCA9IFN0YXR1cyByZWdpc3RlciBbSEVYXQpQb3dlcmVkX1VwX1RpbWUgaXMgbWVhc3VyZWQg
-ZnJvbSBwb3dlciBvbiwgYW5kIHByaW50ZWQgYXMKRERkK2hoOm1tOlNTLnNzcyB3aGVyZSBERD1k
-YXlzLCBoaD1ob3VycywgbW09bWludXRlcywKU1M9c2VjLCBhbmQgc3NzPW1pbGxpc2VjLiBJdCAi
-d3JhcHMiIGFmdGVyIDQ5LjcxMCBkYXlzLgoKRXJyb3IgMjUgb2NjdXJyZWQgYXQgZGlzayBwb3dl
-ci1vbiBsaWZldGltZTogNjY5MyBob3VycyAoMjc4IGRheXMgKyAyMSBob3VycykKICBXaGVuIHRo
-ZSBjb21tYW5kIHRoYXQgY2F1c2VkIHRoZSBlcnJvciBvY2N1cnJlZCwgdGhlIGRldmljZSB3YXMg
-YWN0aXZlIG9yIGlkbGUuCgogIEFmdGVyIGNvbW1hbmQgY29tcGxldGlvbiBvY2N1cnJlZCwgcmVn
-aXN0ZXJzIHdlcmU6CiAgRVIgU1QgU0MgU04gQ0wgQ0ggREgKICAtLSAtLSAtLSAtLSAtLSAtLSAt
-LQogIDQwIDQxIDAyIGMzIGQzIDZiIDQzCgogIENvbW1hbmRzIGxlYWRpbmcgdG8gdGhlIGNvbW1h
-bmQgdGhhdCBjYXVzZWQgdGhlIGVycm9yIHdlcmU6CiAgQ1IgRlIgU0MgU04gQ0wgQ0ggREggREMg
-ICBQb3dlcmVkX1VwX1RpbWUgIENvbW1hbmQvRmVhdHVyZV9OYW1lCiAgLS0gLS0gLS0gLS0gLS0g
-LS0gLS0gLS0gIC0tLS0tLS0tLS0tLS0tLS0gIC0tLS0tLS0tLS0tLS0tLS0tLS0tCiAgNjAgNTgg
-MDAgNmQgZDMgNmIgNDAgMDAgICAgICAwMTozODozNi43NTAgIFJFQUQgRlBETUEgUVVFVUVECiAg
-MjcgMDAgMDAgMDAgMDAgMDAgZTAgMDAgICAgICAwMTozODozNi43NTAgIFJFQUQgTkFUSVZFIE1B
-WCBBRERSRVNTIEVYVAogIGVjIDAwIDAwIDAwIDAwIDAwIGEwIDAwICAgICAgMDE6Mzg6MzYuNzQ5
-ICBJREVOVElGWSBERVZJQ0UKICBlZiAwMyA0NSAwMCAwMCAwMCBhMCAwMCAgICAgIDAxOjM4OjM2
-Ljc0OSAgU0VUIEZFQVRVUkVTIFtTZXQgdHJhbnNmZXIgbW9kZV0KICAyNyAwMCAwMCAwMCAwMCAw
-MCBlMCAwMCAgICAgIDAxOjM4OjM2Ljc0OSAgUkVBRCBOQVRJVkUgTUFYIEFERFJFU1MgRVhUCgpF
-cnJvciAyNCBvY2N1cnJlZCBhdCBkaXNrIHBvd2VyLW9uIGxpZmV0aW1lOiA2NjkzIGhvdXJzICgy
-NzggZGF5cyArIDIxIGhvdXJzKQogIFdoZW4gdGhlIGNvbW1hbmQgdGhhdCBjYXVzZWQgdGhlIGVy
-cm9yIG9jY3VycmVkLCB0aGUgZGV2aWNlIHdhcyBhY3RpdmUgb3IgaWRsZS4KCiAgQWZ0ZXIgY29t
-bWFuZCBjb21wbGV0aW9uIG9jY3VycmVkLCByZWdpc3RlcnMgd2VyZToKICBFUiBTVCBTQyBTTiBD
-TCBDSCBESAogIC0tIC0tIC0tIC0tIC0tIC0tIC0tCiAgNDAgNDEgMGEgYzMgZDMgNmIgNDMKCiAg
-Q29tbWFuZHMgbGVhZGluZyB0byB0aGUgY29tbWFuZCB0aGF0IGNhdXNlZCB0aGUgZXJyb3Igd2Vy
-ZToKICBDUiBGUiBTQyBTTiBDTCBDSCBESCBEQyAgIFBvd2VyZWRfVXBfVGltZSAgQ29tbWFuZC9G
-ZWF0dXJlX05hbWUKICAtLSAtLSAtLSAtLSAtLSAtLSAtLSAtLSAgLS0tLS0tLS0tLS0tLS0tLSAg
-LS0tLS0tLS0tLS0tLS0tLS0tLS0KICA2MCA1OCAwOCA2ZCBkMyA2YiA0MCAwMCAgICAgIDAxOjM4
-OjI5Ljk5NSAgUkVBRCBGUERNQSBRVUVVRUQKICA2MCA2NiAwMCA1ZiBkNCA2YiA0MCAwMCAgICAg
-IDAxOjM4OjI5Ljk5NCAgUkVBRCBGUERNQSBRVUVVRUQKICAyNyAwMCAwMCAwMCAwMCAwMCBlMCAw
-MCAgICAgIDAxOjM4OjI5Ljk5NCAgUkVBRCBOQVRJVkUgTUFYIEFERFJFU1MgRVhUCiAgZWMgMDAg
-MDAgMDAgMDAgMDAgYTAgMDAgICAgICAwMTozODoyOS45OTMgIElERU5USUZZIERFVklDRQogIGVm
-IDAzIDQ1IDAwIDAwIDAwIGEwIDAwICAgICAgMDE6Mzg6MjkuOTkzICBTRVQgRkVBVFVSRVMgW1Nl
-dCB0cmFuc2ZlciBtb2RlXQoKRXJyb3IgMjMgb2NjdXJyZWQgYXQgZGlzayBwb3dlci1vbiBsaWZl
-dGltZTogNjY5MyBob3VycyAoMjc4IGRheXMgKyAyMSBob3VycykKICBXaGVuIHRoZSBjb21tYW5k
-IHRoYXQgY2F1c2VkIHRoZSBlcnJvciBvY2N1cnJlZCwgdGhlIGRldmljZSB3YXMgYWN0aXZlIG9y
-IGlkbGUuCgogIEFmdGVyIGNvbW1hbmQgY29tcGxldGlvbiBvY2N1cnJlZCwgcmVnaXN0ZXJzIHdl
-cmU6CiAgRVIgU1QgU0MgU04gQ0wgQ0ggREgKICAtLSAtLSAtLSAtLSAtLSAtLSAtLQogIDQwIDQx
-IDAyIGMzIGQzIDZiIDQzCgogIENvbW1hbmRzIGxlYWRpbmcgdG8gdGhlIGNvbW1hbmQgdGhhdCBj
-YXVzZWQgdGhlIGVycm9yIHdlcmU6CiAgQ1IgRlIgU0MgU04gQ0wgQ0ggREggREMgICBQb3dlcmVk
-X1VwX1RpbWUgIENvbW1hbmQvRmVhdHVyZV9OYW1lCiAgLS0gLS0gLS0gLS0gLS0gLS0gLS0gLS0g
-IC0tLS0tLS0tLS0tLS0tLS0gIC0tLS0tLS0tLS0tLS0tLS0tLS0tCiAgNjAgNjYgMDggNWYgZDQg
-NmIgNDAgMDAgICAgICAwMTozODoyMy4yNTEgIFJFQUQgRlBETUEgUVVFVUVECiAgNjAgNTggMDAg
-NmQgZDMgNmIgNDAgMDAgICAgICAwMTozODoyMy4yNTAgIFJFQUQgRlBETUEgUVVFVUVECiAgMjcg
-MDAgMDAgMDAgMDAgMDAgZTAgMDAgICAgICAwMTozODoyMy4yNTAgIFJFQUQgTkFUSVZFIE1BWCBB
-RERSRVNTIEVYVAogIGVjIDAwIDAwIDAwIDAwIDAwIGEwIDAwICAgICAgMDE6Mzg6MjMuMjQ5ICBJ
-REVOVElGWSBERVZJQ0UKICBlZiAwMyA0NSAwMCAwMCAwMCBhMCAwMCAgICAgIDAxOjM4OjIzLjI0
-OSAgU0VUIEZFQVRVUkVTIFtTZXQgdHJhbnNmZXIgbW9kZV0KCkVycm9yIDIyIG9jY3VycmVkIGF0
-IGRpc2sgcG93ZXItb24gbGlmZXRpbWU6IDY2OTMgaG91cnMgKDI3OCBkYXlzICsgMjEgaG91cnMp
-CiAgV2hlbiB0aGUgY29tbWFuZCB0aGF0IGNhdXNlZCB0aGUgZXJyb3Igb2NjdXJyZWQsIHRoZSBk
-ZXZpY2Ugd2FzIGFjdGl2ZSBvciBpZGxlLgoKICBBZnRlciBjb21tYW5kIGNvbXBsZXRpb24gb2Nj
-dXJyZWQsIHJlZ2lzdGVycyB3ZXJlOgogIEVSIFNUIFNDIFNOIENMIENIIERICiAgLS0gLS0gLS0g
-LS0gLS0gLS0gLS0KICA0MCA0MSAxMiBjMyBkMyA2YiA0MwoKICBDb21tYW5kcyBsZWFkaW5nIHRv
-IHRoZSBjb21tYW5kIHRoYXQgY2F1c2VkIHRoZSBlcnJvciB3ZXJlOgogIENSIEZSIFNDIFNOIENM
-IENIIERIIERDICAgUG93ZXJlZF9VcF9UaW1lICBDb21tYW5kL0ZlYXR1cmVfTmFtZQogIC0tIC0t
-IC0tIC0tIC0tIC0tIC0tIC0tICAtLS0tLS0tLS0tLS0tLS0tICAtLS0tLS0tLS0tLS0tLS0tLS0t
-LQogIDYwIDU4IDEwIDZkIGQzIDZiIDQwIDAwICAgICAgMDE6Mzg6MDkuOTcxICBSRUFEIEZQRE1B
-IFFVRVVFRAogIDYwIDY2IDA4IDVmIGQ0IDZiIDQwIDAwICAgICAgMDE6Mzg6MDkuOTcxICBSRUFE
-IEZQRE1BIFFVRVVFRAogIDYwIDlhIDAwIGM1IGQzIDZiIDQwIDAwICAgICAgMDE6Mzg6MDkuOTcx
-ICBSRUFEIEZQRE1BIFFVRVVFRAogIDI3IDAwIDAwIDAwIDAwIDAwIGUwIDAwICAgICAgMDE6Mzg6
-MDkuOTcwICBSRUFEIE5BVElWRSBNQVggQUREUkVTUyBFWFQKICBlYyAwMCAwMCAwMCAwMCAwMCBh
-MCAwMCAgICAgIDAxOjM4OjA5Ljk2OSAgSURFTlRJRlkgREVWSUNFCgpFcnJvciAyMSBvY2N1cnJl
-ZCBhdCBkaXNrIHBvd2VyLW9uIGxpZmV0aW1lOiA2NjkzIGhvdXJzICgyNzggZGF5cyArIDIxIGhv
-dXJzKQogIFdoZW4gdGhlIGNvbW1hbmQgdGhhdCBjYXVzZWQgdGhlIGVycm9yIG9jY3VycmVkLCB0
-aGUgZGV2aWNlIHdhcyBhY3RpdmUgb3IgaWRsZS4KCiAgQWZ0ZXIgY29tbWFuZCBjb21wbGV0aW9u
-IG9jY3VycmVkLCByZWdpc3RlcnMgd2VyZToKICBFUiBTVCBTQyBTTiBDTCBDSCBESAogIC0tIC0t
-IC0tIC0tIC0tIC0tIC0tCiAgNDAgNDEgMDIgYzMgZDMgNmIgNDMKCiAgQ29tbWFuZHMgbGVhZGlu
-ZyB0byB0aGUgY29tbWFuZCB0aGF0IGNhdXNlZCB0aGUgZXJyb3Igd2VyZToKICBDUiBGUiBTQyBT
-TiBDTCBDSCBESCBEQyAgIFBvd2VyZWRfVXBfVGltZSAgQ29tbWFuZC9GZWF0dXJlX05hbWUKICAt
-LSAtLSAtLSAtLSAtLSAtLSAtLSAtLSAgLS0tLS0tLS0tLS0tLS0tLSAgLS0tLS0tLS0tLS0tLS0t
-LS0tLS0KICA2MCA5YSAxMCBjNSBkMyA2YiA0MCAwMCAgICAgIDAxOjM4OjAzLjIyNiAgUkVBRCBG
-UERNQSBRVUVVRUQKICA2MCA2NiAwOCA1ZiBkNCA2YiA0MCAwMCAgICAgIDAxOjM4OjAzLjIyNiAg
-UkVBRCBGUERNQSBRVUVVRUQKICA2MCA1OCAwMCA2ZCBkMyA2YiA0MCAwMCAgICAgIDAxOjM4OjAz
-LjIyNiAgUkVBRCBGUERNQSBRVUVVRUQKICAyNyAwMCAwMCAwMCAwMCAwMCBlMCAwMCAgICAgIDAx
-OjM4OjAzLjIyNiAgUkVBRCBOQVRJVkUgTUFYIEFERFJFU1MgRVhUCiAgZWMgMDAgMDAgMDAgMDAg
-MDAgYTAgMDAgICAgICAwMTozODowMy4yMjUgIElERU5USUZZIERFVklDRQoKU01BUlQgU2VsZi10
-ZXN0IGxvZyBzdHJ1Y3R1cmUgcmV2aXNpb24gbnVtYmVyIDEKTnVtICBUZXN0X0Rlc2NyaXB0aW9u
-ICAgIFN0YXR1cyAgICAgICAgICAgICAgICAgIFJlbWFpbmluZyAgTGlmZVRpbWUoaG91cnMpICBM
-QkFfb2ZfZmlyc3RfZXJyb3IKIyAxICBFeHRlbmRlZCBvZmZsaW5lICAgIENvbXBsZXRlZDogcmVh
-ZCBmYWlsdXJlICAgICAgIDAwJSAgICAgIDYzNjYgICAgICAgICA1NzM5ODIxMQojIDIgIEV4dGVu
-ZGVkIG9mZmxpbmUgICAgQ29tcGxldGVkOiByZWFkIGZhaWx1cmUgICAgICAgMDAlICAgICAgNjM1
-MCAgICAgICAgIDU3Mzk4MjExCiMgMyAgRXh0ZW5kZWQgb2ZmbGluZSAgICBDb21wbGV0ZWQgd2l0
-aG91dCBlcnJvciAgICAgICAwMCUgICAgICA0NTMyICAgICAgICAgLQojIDQgIEV4dGVuZGVkIG9m
-ZmxpbmUgICAgQWJvcnRlZCBieSBob3N0ICAgICAgICAgICAgICAgOTAlICAgICAgNDUzMSAgICAg
-ICAgIC0KIyA1ICBFeHRlbmRlZCBvZmZsaW5lICAgIEludGVycnVwdGVkIChob3N0IHJlc2V0KSAg
-ICAgIDcwJSAgICAgIDQ1MzAgICAgICAgICAtCiMgNiAgRXh0ZW5kZWQgb2ZmbGluZSAgICBDb21w
-bGV0ZWQgd2l0aG91dCBlcnJvciAgICAgICAwMCUgICAgICAzNjU1ICAgICAgICAgLQojIDcgIEV4
-dGVuZGVkIG9mZmxpbmUgICAgQWJvcnRlZCBieSBob3N0ICAgICAgICAgICAgICAgOTAlICAgICAg
-MzY1NCAgICAgICAgIC0KIyA4ICBFeHRlbmRlZCBvZmZsaW5lICAgIENvbXBsZXRlZCB3aXRob3V0
-IGVycm9yICAgICAgIDAwJSAgICAgIDM1NjcgICAgICAgICAtCiMgOSAgU2hvcnQgb2ZmbGluZSAg
-ICAgICBDb21wbGV0ZWQgd2l0aG91dCBlcnJvciAgICAgICAwMCUgICAgICAzNTY1ICAgICAgICAg
-LQojMTAgIFNob3J0IG9mZmxpbmUgICAgICAgQ29tcGxldGVkIHdpdGhvdXQgZXJyb3IgICAgICAg
-MDAlICAgICAgMTgzNyAgICAgICAgIC0KIzExICBTaG9ydCBvZmZsaW5lICAgICAgIENvbXBsZXRl
-ZCB3aXRob3V0IGVycm9yICAgICAgIDAwJSAgICAgIDE3ODUgICAgICAgICAtCiMxMiAgU2hvcnQg
-b2ZmbGluZSAgICAgICBDb21wbGV0ZWQgd2l0aG91dCBlcnJvciAgICAgICAwMCUgICAgICAxNzgw
-ICAgICAgICAgLQojMTMgIFNob3J0IG9mZmxpbmUgICAgICAgQ29tcGxldGVkIHdpdGhvdXQgZXJy
-b3IgICAgICAgMDAlICAgICAgMTY4MSAgICAgICAgIC0KIzE0ICBTaG9ydCBvZmZsaW5lICAgICAg
-IENvbXBsZXRlZCB3aXRob3V0IGVycm9yICAgICAgIDAwJSAgICAgIDE2NjMgICAgICAgICAtCiMx
-NSAgU2hvcnQgb2ZmbGluZSAgICAgICBDb21wbGV0ZWQgd2l0aG91dCBlcnJvciAgICAgICAwMCUg
-ICAgICAxNjYxICAgICAgICAgLQojMTYgIFNob3J0IG9mZmxpbmUgICAgICAgQ29tcGxldGVkIHdp
-dGhvdXQgZXJyb3IgICAgICAgMDAlICAgICAgMTY0NiAgICAgICAgIC0KIzE3ICBTaG9ydCBvZmZs
-aW5lICAgICAgIENvbXBsZXRlZCB3aXRob3V0IGVycm9yICAgICAgIDAwJSAgICAgIDE2MDggICAg
-ICAgICAtCiMxOCAgU2hvcnQgb2ZmbGluZSAgICAgICBDb21wbGV0ZWQgd2l0aG91dCBlcnJvciAg
-ICAgICAwMCUgICAgICAxNjAxICAgICAgICAgLQojMTkgIFNob3J0IG9mZmxpbmUgICAgICAgQ29t
-cGxldGVkIHdpdGhvdXQgZXJyb3IgICAgICAgMDAlICAgICAgMTU4NCAgICAgICAgIC0KIzIwICBT
-aG9ydCBvZmZsaW5lICAgICAgIENvbXBsZXRlZCB3aXRob3V0IGVycm9yICAgICAgIDAwJSAgICAg
-IDE1NjQgICAgICAgICAtCiMyMSAgU2hvcnQgb2ZmbGluZSAgICAgICBJbnRlcnJ1cHRlZCAoaG9z
-dCByZXNldCkgICAgICA0MCUgICAgICAxNDIxICAgICAgICAgLQoKU01BUlQgU2VsZWN0aXZlIHNl
-bGYtdGVzdCBsb2cgZGF0YSBzdHJ1Y3R1cmUgcmV2aXNpb24gbnVtYmVyIDEKIFNQQU4gIE1JTl9M
-QkEgIE1BWF9MQkEgIENVUlJFTlRfVEVTVF9TVEFUVVMKICAgIDEgICAgICAgIDAgICAgICAgIDAg
-IE5vdF90ZXN0aW5nCiAgICAyICAgICAgICAwICAgICAgICAwICBOb3RfdGVzdGluZwogICAgMyAg
-ICAgICAgMCAgICAgICAgMCAgTm90X3Rlc3RpbmcKICAgIDQgICAgICAgIDAgICAgICAgIDAgIE5v
-dF90ZXN0aW5nCiAgICA1ICAgICAgICAwICAgICAgICAwICBOb3RfdGVzdGluZwpTZWxlY3RpdmUg
-c2VsZi10ZXN0IGZsYWdzICgweDApOgogIEFmdGVyIHNjYW5uaW5nIHNlbGVjdGVkIHNwYW5zLCBk
-byBOT1QgcmVhZC1zY2FuIHJlbWFpbmRlciBvZiBkaXNrLgpJZiBTZWxlY3RpdmUgc2VsZi10ZXN0
-IGlzIHBlbmRpbmcgb24gcG93ZXItdXAsIHJlc3VtZSBhZnRlciAwIG1pbnV0ZSBkZWxheS4KCg==
---0022154015929d75040473ec9655--
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 5c3d17f..45fab3e 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -508,6 +508,7 @@ typedef struct ext2_icount *ext2_icount_t;
+                                         EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
+                                         EXT2_FEATURE_COMPAT_RESIZE_INODE|\
+                                         EXT2_FEATURE_COMPAT_DIR_INDEX|\
++                                        EXT2_FEATURE_COMPAT_LAZY_BG|\
+                                         EXT2_FEATURE_COMPAT_EXT_ATTR)
+ 
+ /* This #ifdef is temporary until compression is fully supported */
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 84c4361..28880a9 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1687,6 +1687,12 @@ got_size:
+ 		fs_param.s_log_groups_per_flex = int_log2(flex_bg_size);
+ 	}
+ 
++	/* Mark the filesystem as friendly to uninit_bg during later resizing. */
++	if (lazy_itable_init &&
++	    EXT2_HAS_RO_COMPAT_FEATURE(&fs_param,
++	                               EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++		fs_param.s_feature_compat |= EXT2_FEATURE_COMPAT_LAZY_BG;
++
+ 	if (inode_size && fs_param.s_rev_level >= EXT2_DYNAMIC_REV) {
+ 		if (inode_size < EXT2_GOOD_OLD_INODE_SIZE ||
+ 		    inode_size > EXT2_BLOCK_SIZE(&fs_param) ||
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 1a5d910..12003e4 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -302,7 +302,7 @@ errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
+ 	int		adj, old_numblocks, numblocks, adjblocks;
+ 	unsigned long	i, j, old_desc_blocks, max_group;
+ 	unsigned int	meta_bg, meta_bg_size;
+-	int		has_super, csum_flag;
++	int		has_super, csum_flag, lazy_flag;
+ 	unsigned long long new_inodes;	/* u64 to check for overflow */
+ 	double		percent;
+ 
+@@ -482,6 +482,8 @@ retry:
+ 
+ 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+ 					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
++					       EXT2_FEATURE_COMPAT_LAZY_BG);
+ 	adj = old_fs->group_desc_count;
+ 	max_group = fs->group_desc_count - adj;
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+@@ -496,9 +498,12 @@ retry:
+ 		adjblocks = 0;
+ 
+ 		fs->group_desc[i].bg_flags = 0;
+-		if (csum_flag)
+-			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_UNINIT |
+-				EXT2_BG_INODE_ZEROED;
++		if (csum_flag) {
++			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_UNINIT;
++			if (!lazy_flag) {
++				fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
++			}
++		}
+ 		if (i == fs->group_desc_count-1) {
+ 			numblocks = (fs->super->s_blocks_count -
+ 				     fs->super->s_first_data_block) %
+@@ -568,7 +573,7 @@ errout:
+ static errcode_t adjust_superblock(ext2_resize_t rfs, blk_t new_size)
+ {
+ 	ext2_filsys fs;
+-	int		adj = 0;
++	int		adj = 0, csum_flag = 0, lazy_flag = 0, num = 0;
+ 	errcode_t	retval;
+ 	blk_t		group_block;
+ 	unsigned long	i;
+@@ -624,6 +629,11 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk_t new_size)
+ 				&rfs->itable_buf);
+ 	if (retval)
+ 		goto errout;
++	/* Track if we can get by with a lazy init */
++	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
++					       EXT2_FEATURE_COMPAT_LAZY_BG);
+ 
+ 	memset(rfs->itable_buf, 0, fs->blocksize * fs->inode_blocks_per_group);
+ 	group_block = fs->super->s_first_data_block +
+@@ -642,10 +652,21 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk_t new_size)
+ 		/*
+ 		 * Write out the new inode table
+ 		 */
++		if (csum_flag && lazy_flag) {
++			/* These are _new_ inode tables. No inodes should be in use. */
++			fs->group_desc[i].bg_itable_unused = fs->super->s_inodes_per_group;
++			num = ((((fs->super->s_inodes_per_group -
++				  fs->group_desc[i].bg_itable_unused) *
++				 EXT2_INODE_SIZE(fs->super)) +
++				EXT2_BLOCK_SIZE(fs->super) - 1) /
++			       EXT2_BLOCK_SIZE(fs->super));
++		} else {
++			num = fs->inode_blocks_per_group;
++		}
+ 		retval = io_channel_write_blk(fs->io,
+-					      fs->group_desc[i].bg_inode_table,
+-					      fs->inode_blocks_per_group,
+-					      rfs->itable_buf);
++					      fs->group_desc[i].bg_inode_table, /* blk */
++					      num,  /* count */
++					      rfs->itable_buf);  /* contents */
+ 		if (retval) goto errout;
+ 
+ 		io_channel_flush(fs->io);
