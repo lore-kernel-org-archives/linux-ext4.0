@@ -1,52 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: EXT3: filename duplicates
-Date: Mon, 21 Sep 2009 11:52:23 -0500
-Message-ID: <4AB7AF47.4070208@redhat.com>
-References: <Pine.LNX.4.62.0906042111550.22287@tamago.serverit.net>
+From: Mingming <cmm@us.ibm.com>
+Subject: [PATCH] Ext4: avoid multiple quota reservation when retry block
+ reservation for delalloc
+Date: Mon, 21 Sep 2009 09:52:30 -0700
+Message-ID: <1253551950.9099.10.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Szabolcs Szakacsits <szaka@ntfs-3g.com>
+To: Jan Kara <jack@suse.cz>, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58430 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751227AbZIUQwZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Sep 2009 12:52:25 -0400
-In-Reply-To: <Pine.LNX.4.62.0906042111550.22287@tamago.serverit.net>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:55519 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751305AbZIUQwt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Sep 2009 12:52:49 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e38.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n8LGmomG027732
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 10:48:50 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8LGqX8p195732
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 10:52:34 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8LGqV5S025277
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 10:52:32 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Szabolcs Szakacsits wrote:
-> Hi,
-> 
-> When testing file creation performance we noticed that sometimes ext3 
-> getdents64(2) lists some files twice. For instance after creating 
-> filesnames from 1 to 1000000 in an empty directory:
-> 
->  find | grep ./976253
->  ./976253
->  ./976253
-> 
-> This is 100% reproducible. Kernel is 2.6.25.5, x86_64.
-> 
-> Sorry if this was already known and fixed (couldn't find relevant info in 
-> the archives, changelogs).
+Ext4: release reserved quota before block reservation for delalloc retry
 
-these 2 should have fixed it:
+ext4_da_reserve_space() can reserve quota blocks multiple times if
+ext4_claim_free_blocks() fail and we retry the allocation. We should
+release the quota reservation before restarting.
 
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=6a897cf447a83c9c3fd1b85a1e525c02d6eada7d
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=8c9fa93d51123c5540762b1a9e1919d6f9c4af7c
+Bug found be Jan Kara.
 
--Eric
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-> Regards,
-> 	   Szaka
-> 
-> --
-> NTFS-3G: http://ntfs-3g.org
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+---
+ fs/ext4/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: linux-2.6.31-rc4/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/inode.c
++++ linux-2.6.31-rc4/fs/ext4/inode.c
+@@ -1785,11 +1785,11 @@ repeat:
+ 
+ 	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++		vfs_dq_release_reservation_block(inode, total);
+ 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+ 			yield();
+ 			goto repeat;
+ 		}
+-		vfs_dq_release_reservation_block(inode, total);
+ 		return -ENOSPC;
+ 	}
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+
 
