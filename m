@@ -1,57 +1,125 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: kernel BUG at fs/ext4/move_extent.c:1317!
-Date: Mon, 21 Sep 2009 15:06:15 -0400
-Message-ID: <87f94c370909211206q6a265d13r7ea868900dd013ee@mail.gmail.com>
-References: <37d33d830909200625i574f3688vb0d5b82183ba2476@mail.gmail.com>
-	 <6149e97b0909201822y5f29d091jbc00b740244f39a8@mail.gmail.com>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: [PATCH] Ext4: avoid multiple quota reservation when retry
+	block reservation for delalloc
+Date: Mon, 21 Sep 2009 16:18:02 -0700
+Message-ID: <1253575082.9099.14.camel@mingming-laptop>
+References: <1253551950.9099.10.camel@mingming-laptop>
+	 <20090921181527.GA27777@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: SandeepKsinha <sandeepksinha@gmail.com>,
-	ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
-To: Peng Tao <bergwolf@gmail.com>
+Content-Type: multipart/mixed; boundary="=-iWh6UW2FC5RpiWdbggKP"
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.26]:13694 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753124AbZIUTGL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Sep 2009 15:06:11 -0400
-Received: by qw-out-2122.google.com with SMTP id 5so1024960qwd.37
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 12:06:15 -0700 (PDT)
-In-Reply-To: <6149e97b0909201822y5f29d091jbc00b740244f39a8@mail.gmail.com>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:44455 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754391AbZIUXSB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Sep 2009 19:18:01 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n8LNGAIV006943
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 17:16:10 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8LNI4Lp217384
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 17:18:04 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8LNI4eg009981
+	for <linux-ext4@vger.kernel.org>; Mon, 21 Sep 2009 17:18:04 -0600
+In-Reply-To: <20090921181527.GA27777@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-resend - I inadvertently was not in plain text mode before.
 
-On Sun, Sep 20, 2009 at 9:22 PM, Peng Tao <bergwolf@gmail.com> wrote:
-> Hi, Sandeep,
->
-> On Sun, Sep 20, 2009 at 9:25 PM, SandeepKsinha <sandeepksinha@gmail.com> wrote:
->> Hi Akira/others,
->>
->> I hit the following assert kernel BUG at fs/ext4/move_extent.c:1317!
->>
->> The file I was playing around with was a simple holey file created like:
->>
->> [/mnt]
->> [18:35:13 sinhas]$ dd if=/dev/zero of=/mnt/ext4image seek=1000 count=5
->> 5+0 records in
->> 5+0 records out
->> 2560 bytes (2.6 kB) copied, 0.000146457 s, 17.5 MB/s
->>
->> I am using v2.6.31. I have seen some patchsets a couple of days from
->> you. Does any of them address any similar problem.?
-> Yes. The BUG_ON is unnecessary and is removed in the latest mainline
-> kernel. Please refer to commit
-> daea696dbac0e33af3cfe304efbfb8d74e0effe6 for details.
-    <snip>
->   --
->   Cheers,
->    Peng Tao
+--=-iWh6UW2FC5RpiWdbggKP
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Ted,
+On Mon, 2009-09-21 at 20:15 +0200, Jan Kara wrote:
+> On Mon 21-09-09 09:52:30, Mingming wrote:
+> > Ext4: release reserved quota before block reservation for delalloc retry
+> > 
+> > ext4_da_reserve_space() can reserve quota blocks multiple times if
+> > ext4_claim_free_blocks() fail and we retry the allocation. We should
+> > release the quota reservation before restarting.
+> > 
+> > Bug found be Jan Kara.
+>             ^^ by
 
-I think the few small ext4_move_ext() / e4defrag related fixes for
-sparse files to work should get pushed to stable.  I don't know if
-this is the only one or if there are others.
+attached is the updated patch with this typo fixed.
 
-Greg
+> > 
+> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> > 
+> > ---
+> >  fs/ext4/inode.c |    2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > Index: linux-2.6.31-rc4/fs/ext4/inode.c
+> > ===================================================================
+> > --- linux-2.6.31-rc4.orig/fs/ext4/inode.c
+> > +++ linux-2.6.31-rc4/fs/ext4/inode.c
+> > @@ -1785,11 +1785,11 @@ repeat:
+> >  
+> >  	if (ext4_claim_free_blocks(sbi, total)) {
+> >  		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> > +		vfs_dq_release_reservation_block(inode, total);
+> >  		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+> >  			yield();
+> >  			goto repeat;
+> >  		}
+> > -		vfs_dq_release_reservation_block(inode, total);
+> >  		return -ENOSPC;
+> >  	}
+> >  	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+> > 
+>   The patch is fine. Acked-by: Jan Kara <jack@suse.cz>
+
+Thanks!
+
+> But it's certainly not the issue hit by Pavol but I'm out of ideas where
+> could be a problem provided he runs with extents...
+> 
+
+I am not sure where is the problem reported by Pavol by looking at the
+code either. Perhaps enable some debugging code, but I am under
+impression that the system is in-use now...
+
+Mingming
+
+--=-iWh6UW2FC5RpiWdbggKP
+Content-Disposition: attachment; filename="quota-dealloc-fix.patch"
+Content-Type: text/x-patch; name="quota-dealloc-fix.patch"; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+Ext4: release reserved quota when block reservation for delalloc retry
+
+ext4_da_reserve_space() can reserve quota blocks multiple times if
+ext4_claim_free_blocks() fail and we retry the allocation. We should
+release the quota reservation before restarting.
+
+Bug found by Jan Kara.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+
+---
+ fs/ext4/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: linux-2.6.31-rc4/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/inode.c
++++ linux-2.6.31-rc4/fs/ext4/inode.c
+@@ -1785,11 +1785,11 @@ repeat:
+ 
+ 	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++		vfs_dq_release_reservation_block(inode, total);
+ 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+ 			yield();
+ 			goto repeat;
+ 		}
+-		vfs_dq_release_reservation_block(inode, total);
+ 		return -ENOSPC;
+ 	}
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+
+--=-iWh6UW2FC5RpiWdbggKP--
+
