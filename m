@@ -1,75 +1,87 @@
-From: Mikael Pettersson <mikpe@it.uu.se>
-Subject: [2.6.31] kernel BUG at fs/ext3/super.c:435
-Date: Mon, 21 Sep 2009 09:29:01 +0200
-Message-ID: <19127.11069.273003.421830@pilspetsen.it.uu.se>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: ext4+quota+nfs issue
+Date: Mon, 21 Sep 2009 09:28:35 -0700
+Message-ID: <1253550515.9099.5.camel@mingming-laptop>
+References: <4AA5E5F3.30309@primeinteractive.net>
+	 <4AA72C14.1020005@primeinteractive.net>
+	 <alpine.LRH.2.00.0909091141300.25928@twin.jikos.cz>
+	 <4AA7C38E.8020306@redhat.com>
+	 <150c16850909091045h1962fd67n77c265c9b99c5f44@mail.gmail.com>
+	 <4AA7FBD7.9080406@primeinteractive.net>
+	 <4AAA5FCC.2010707@primeinteractive.net>
+	 <20090914175056.GE25549@duck.suse.cz>
+	 <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754537AbZIUH3G@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>,
+	Pavol Cvengros <pavol.cvengros@primeinteractive.net>,
+	Justin Maggard <jmaggard10@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Jiri Kosina <jkosina@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:33493 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751634AbZIUQ2m (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Sep 2009 12:28:42 -0400
+In-Reply-To: <20090914185228.GA5984@skywalker.linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-One of my machines just oopsed in ext3_put_super()
-during reboot after a glibc update:
+On Tue, 2009-09-15 at 00:22 +0530, Aneesh Kumar K.V wrote:
+> On Mon, Sep 14, 2009 at 07:50:56PM +0200, Jan Kara wrote:
+> >   I've found some time to look into this and I can see a few problems in
+> > the code. Firstly, what may cause your problems:
+> >   vfs_dq_claim_blocks() is called in ext4_mb_mark_diskspace_used(). But
+> > as far as I can understand the code, ext4_mb_normalize_request() can
+> > increase the amount of space we really allocate and thus we try to
+> > allocate more blocks than we have actually reserved in quota. Aneesh, is
+> > that right?
+> 
+> ext4_mb_mark_diskspace_used use ac->ac_b_ex.fe_len which is NOT the normalized
+> request len. it is min(allocated_len, original_len). So i guess that code
+> should be safe
+> 
 
->	if (!list_empty(&sbi->s_orphan))
->		dump_orphan_list(sb, sbi);
->	J_ASSERT(list_empty(&sbi->s_orphan));
+That's right. ac->ac_b_ex.fe_len is the number of blocks that account
+for the original request. It is used for update the per-fs free blocks
+counter and the per-fs dirty(delayed) blocks counter too. Quota counters
+are updated based on this value.
 
-Turning off swap:  
-Turning off quotas:  quotaoff: Warning: No quota format detected in the kernel.
+> 
+> >   Secondly, ext4_da_reserve_space() seems to have a bug that it can reserve
+> > quota blocks multiple times if ext4_claim_free_blocks() fail and we retry
+> > the allocation. We should release the quota reservation before restarting.
+> > Actually, when we find out we cannot reserve quota space, we could force
+> > some delayed allocated writes to disk (thus possibly release some quota
+> > in case we have overestimated the amount of blocks needed). But that's
+> > a different issue.
+> 
+> That would imply the file system was full. But the dumpe2fs ouput list
+> large number of free blocks. But yes the code should have released the
+> quota reservation before trying block reservation again.
+> 
+> 
 
-Unmounting file systems:  sb orphan head is 17
-sb_info orphan list:
-  inode sda2:17 at d7565a18: mode 100600, nlink 0, next 15
-  inode sda2:15 at dd646ba0: mode 100600, nlink 0, next 0
-kernel BUG at fs/ext3/super.c:435!
-Unable to handle kernel NULL pointer dereference at virtual address 00000000
-pgd = dfb90000
-[00000000] *pgd=00000000
-Internal error: Oops: 805 [#1]
-Modules linked in:
-CPU: 0    Not tainted  (2.6.31 #1)
-PC is at __bug+0x20/0x2c
-LR is at release_console_sem+0x1a4/0x204
-pc : [<c0025128>]    lr : [<c0035fb4>]    psr: 60000013
-sp : de827eb8  ip : de827df8  fp : de827ec4
-r10: 00000000  r9 : de827f60  r8 : 00000000
-r7 : df9335a4  r6 : df967200  r5 : df9335a4  r4 : df9334e0
-r3 : 00000000  r2 : c03060c4  r1 : 002bdc93  r0 : 00000029
-Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
-Control: 0005397f  Table: 1fb90000  DAC: 00000015
-Process umount (pid: 16089, stack limit = 0xde826270)
-Stack: (0xde827eb8 to 0xde828000)
-7ea0:                                                       de827ef4 de827ec8 
-7ec0: c00d11b4 c0025118 00008180 00000000 00000000 c025d9f0 df967200 c025d9f0 
-7ee0: 00000000 df80a1a0 de827f0c de827ef8 c0089518 c00d1068 df402660 00000003 
-7f00: de827f24 de827f10 c00895cc c00894ac df967200 c030b234 de827f3c de827f28 
-7f20: c0089aac c00895bc df80a1a0 df967200 de827f5c de827f40 c009c82c c0089a74 
-7f40: df80a198 df80a198 df80a1a0 df80a1b8 de827fa4 de827f60 c009cd74 c009c7cc 
-7f60: de827f60 de827f60 de827f68 de827f68 df80a1a0 df4373d8 c0027660 00000000 
-7f80: 2a008164 2a00a798 00000034 c0022004 de826000 00000000 00000000 de827fa8 
-7fa0: c0021e80 c009cae4 00000000 2a008164 2a00a798 00000001 00000001 00000274 
-7fc0: 00000000 2a008164 2a00a798 00000034 2a00a1e8 2a00a788 00000000 bed3defa 
-7fe0: 00000000 bed3da58 2a0020b4 4012c96c 60000010 2a00a798 00000000 00000000 
-Backtrace: 
-[<c0025108>] (__bug+0x0/0x2c) from [<c00d11b4>] (ext3_put_super+0x15c/0x1cc)
-[<c00d1058>] (ext3_put_super+0x0/0x1cc) from [<c0089518>] (generic_shutdown_super+0x7c/0x110)
- r7:df80a1a0 r6:00000000 r5:c025d9f0 r4:df967200
-[<c008949c>] (generic_shutdown_super+0x0/0x110) from [<c00895cc>] (kill_block_super+0x20/0x38)
- r5:00000003 r4:df402660
-[<c00895ac>] (kill_block_super+0x0/0x38) from [<c0089aac>] (deactivate_super+0x48/0x60)
- r5:c030b234 r4:df967200
-[<c0089a64>] (deactivate_super+0x0/0x60) from [<c009c82c>] (mntput_no_expire+0x70/0xa8)
- r5:df967200 r4:df80a1a0
-[<c009c7bc>] (mntput_no_expire+0x0/0xa8) from [<c009cd74>] (sys_umount+0x2a0/0x2d0)
- r6:df80a1b8 r5:df80a1a0 r4:df80a198
-[<c009cad4>] (sys_umount+0x0/0x2d0) from [<c0021e80>] (ret_fast_syscall+0x0/0x2c)
-Code: e1a01000 e59f000c eb08bdc9 e3a03000 (e5833000) 
+I'll send out a patch shortly.
 
-The machine came up Ok after the reboot with no noticeable
-complaints from the kernel or mount (/dev/sda2 is /tmp).
+> >   Thirdly, ext4_indirect_calc_metadata_amount() is wrong for sparse files.
+> > The worst case is 3 metadata blocks per data block if we make the file
+> > sufficiently sparse and there's no easy way around that...
+> > 
+> 
 
-/Mikael
+If this is a real concern, I am all for fix it.  Just we have consider
+the worse case before, at that time it seems a little overprotect that
+we have always account for the worse case. In regularly cases, we pretty
+much always reserve more metadata(indirect) blocks than needed...
+
+> -aneesh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
