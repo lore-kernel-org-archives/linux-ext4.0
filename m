@@ -1,46 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: howto downgrade ext4 to ext3
-Date: Tue, 22 Sep 2009 10:33:33 -0500
-Message-ID: <4AB8EE4D.8050705@redhat.com>
-References: <4AB39EC5.6070107@it-sudparis.eu> <20090918175851.GH26991@mit.edu> <4AB3D060.2020101@redhat.com> <20090918193456.GA27303@mit.edu> <4AB3F9C4.1010702@it-sudparis.eu> <20090918225834.GC28781@mit.edu> <4AB53F3E.4040007@it-sudparis.eu> <4AB581EF.7050701@redhat.com> <4AB8EDBA.1080108@it-sudparis.eu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 5/7] ext4: Convert filesystem to the new truncate
+	calling convention
+Date: Tue, 22 Sep 2009 19:16:04 +0200
+Message-ID: <20090922171604.GA31447@duck.suse.cz>
+References: <1253200907-31392-1-git-send-email-jack@suse.cz> <1253200907-31392-6-git-send-email-jack@suse.cz> <20090922143604.GA2183@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: jehan.procaccia@it-sudparis.eu
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org, npiggin@suse.de,
+	tytso@mit.edu
+To: Al Viro <viro@ZenIV.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20969 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:40002 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756594AbZIVPeS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Sep 2009 11:34:18 -0400
-In-Reply-To: <4AB8EDBA.1080108@it-sudparis.eu>
+	id S1751315AbZIVRQD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Sep 2009 13:16:03 -0400
+Content-Disposition: inline
+In-Reply-To: <20090922143604.GA2183@ZenIV.linux.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jehan procaccia wrote:
-
-...
-
-> I had the time to experiment an ext4 FS mounted with -nodelalloc, and 
-> now quotas seems to work fine with it ;-) .
-
-...
-
-> I will announce a maintenance on that server in order to remount  my 12 
-> x 200GB partitions with -nodelalloc, if ever performances drops too much 
-> , then I'll probably choose to set quotas off until a redhat kernel 
-> package provides a solution .
+On Tue 22-09-09 15:36:04, Al Viro wrote:
+> On Thu, Sep 17, 2009 at 05:21:45PM +0200, Jan Kara wrote:
+> > CC: linux-ext4@vger.kernel.org
+> > CC: tytso@mit.edu
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/file.c  |    2 +-
+> >  fs/ext4/inode.c |  166 ++++++++++++++++++++++++++++++++----------------------
+> >  2 files changed, 99 insertions(+), 69 deletions(-)
+> > 
+> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> > index 3f1873f..22f49d7 100644
+> > --- a/fs/ext4/file.c
+> > +++ b/fs/ext4/file.c
+> > @@ -198,7 +198,7 @@ const struct file_operations ext4_file_operations = {
+> >  };
+> >  
+> >  const struct inode_operations ext4_file_inode_operations = {
+> > -	.truncate	= ext4_truncate,
+> > +	.new_truncate	= 1,
+> >  	.setattr	= ext4_setattr,
+> >  	.getattr	= ext4_getattr,
+> >  #ifdef CONFIG_EXT4_FS_XATTR
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 58492ab..be25874 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -3354,6 +3354,7 @@ static int ext4_journalled_set_page_dirty(struct page *page)
+> >  }
+> >  
+> >  static const struct address_space_operations ext4_ordered_aops = {
+> > +	.new_writepage		= 1,
 > 
-> does 2.6.31 already patche to deal correclty with delalloc and quotas ?
-
-Mostly fixed in .31, although there is a recent thread on this list,
-"ext4+quota+nfs issue"
-
-For your purposes, I expect this will all get sorted out by RHEL5.5's
-time :)
-
--Eric
-
-> Thanks .
+> No.  We already have one half-finished series here; mixing it with another
+> one is not going to happen.  Such flags are tolerable only as bisectability
+> helpers.  They *must* disappear by the end of series.  Before it can be
+> submitted for merge.
 > 
+> In effect, you are mixing truncate switchover with your writepage one.
+> Please, split and reorder.
+  Well, this wasn't meant as a final version of those patches. It was
+meant as a request for comment whether it makes sence to fix the problem
+how I propose to fix it. If we agree on that, I'll go and convert the rest
+of filesystems so that we can remove .new_writepage hack. By that time I
+hope that new truncate sequence patches will be merged so that dependency
+should go away as well...
 
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
