@@ -1,71 +1,89 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
-Date: Wed, 23 Sep 2009 03:34:36 -0600
-Message-ID: <20090923093436.GW10562@webber.adilger.int>
-References: <20090916162457.GA84213@freezingfog.local>
- <20090916190831.GH2537@webber.adilger.int>
- <20090916204225.GB84213@freezingfog.local>
- <20090916212250.GL2537@webber.adilger.int>
- <20090916231131.GC84213@freezingfog.local>
- <20090919121909.GA1077@freezingfog.local>
+Subject: [PATCH] always set EXCLUSIVE flag for modifying e2fsck
+Date: Wed, 23 Sep 2009 03:56:41 -0600
+Message-ID: <20090923095640.GX10562@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; CHARSET=US-ASCII
 Content-Transfer-Encoding: 7BIT
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Will Drewry <redpig@dataspill.org>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:64242 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752886AbZIWJej (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Sep 2009 05:34:39 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8N9YgPM029058
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2009 02:34:42 -0700 (PDT)
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:62265 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750776AbZIWJ4q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Sep 2009 05:56:46 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8N9ummG010205
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2009 02:56:48 -0700 (PDT)
 Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KQF006003NONQ00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 23 Sep 2009 02:34:42 -0700 (PDT)
-In-reply-to: <20090919121909.GA1077@freezingfog.local>
+ id <0KQF00B004T33600@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 23 Sep 2009 02:56:48 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 19, 2009  07:19 -0500, Will Drewry wrote:
-> @@ -482,6 +482,8 @@ retry:
->  
->  	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
->  					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-> +	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
-> +					       EXT2_FEATURE_COMPAT_LAZY_BG);
->  	adj = old_fs->group_desc_count;
->  	max_group = fs->group_desc_count - adj;
->  	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
-> @@ -496,9 +498,12 @@ retry:
->  		adjblocks = 0;
->  
->  		fs->group_desc[i].bg_flags = 0;
-> -		if (csum_flag)
-> -			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_UNINIT |
-> -				EXT2_BG_INODE_ZEROED;
-> +		if (csum_flag) {
-> +			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_UNINIT;
-> +			if (!lazy_flag) {
-> +				fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
-> +			}
-> +		}
+The checks done by e2fsck for mounted vs. read-only runs is confusing.
 
-This code could be cleaned up a bit by assigning "EXT2_BG_INODE_ZEROED" to
-lazy_flag so that you don't need to check this each time:
+On the one hand, if e2fsck is NOT run with the "-n" flag (i.e. it might
+modify the filesystem, there is no guarantee that it will open the
+filesystem with the EXCLUSIVE flag (i.e. O_EXCL) to prevent the block
+device from being used (in most cases = mounted).
 
-	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
-					    EXT2_FEATURE_COMPAT_LAZY_BG) ?
-				EXT2_BG_INODE_ZEROED : 0;
+On the other hand, if the filesystem IS mounted it also does NOT set
+the EXCLUSIVE flag to prevent it from clobbering an in-use filesystem.
+That seems like a bad choice also.
 
-		if (csum_flag)
-			fs->group_desc[i].bg_flags |=
-				EXT2_BG_INODE_UNINIT | lazy_flag;
+On the gripping hand, if e2fsck IS run with "-n" (i.e. read-only),
+and the /etc/fstab or /proc/mounts does not report the same block
+device to match the mountpoint (which happens for Lustre, and can
+also happen if there is an overlay mount) then the e2fsck thinks
+the filesystem is unmounted, but fails because the EXCLUSIVE flag
+is set even though it is running read-only.
 
-Still waiting to head from Ted on the use of COMPAT_LAZY_BG.
+Change the logic here so that EXCLUSIVE is ALWAYS set when e2fsck
+might modify the filesystem, regardless of whether the filesystem
+is mounted or not.
+
+Index: e2fsprogs-1.41.6/e2fsck/unix.c
+===================================================================
+--- e2fsprogs-1.41.6.orig/e2fsck/unix.c
++++ e2fsprogs-1.41.6/e2fsck/unix.c
+@@ -1230,9 +1230,7 @@ restart:
+ 		io_ptr = unix_io_manager;
+ 	flags = EXT2_FLAG_NOFREE_ON_ERROR;
+        if ((ctx->options & E2F_OPT_READONLY) == 0)
+-		flags |= EXT2_FLAG_RW;
+-	if ((ctx->mount_flags & EXT2_MF_MOUNTED) == 0)
+-		flags |= EXT2_FLAG_EXCLUSIVE;
++		flags |= EXT2_FLAG_RW | EXT2_FLAG_EXCLUSIVE;
+ 
+ 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
+ 
+
+If we want to assume that check_mount() will abort if the filesystem
+is mounted, unless the user wants to shoot themselves in the foot, then 
+the above patch could instead be modified to clear EXT2_FLAG_EXCLUSIVE
+if the MF_MOUNTED flag IS set, per below.
+
+Index: e2fsprogs-1.41.6/e2fsck/unix.c
+===================================================================
+--- e2fsprogs-1.41.6.orig/e2fsck/unix.c
++++ e2fsprogs-1.41.6/e2fsck/unix.c
+@@ -1230,9 +1230,10 @@ restart:
+ 		io_ptr = unix_io_manager;
+ 	flags = EXT2_FLAG_NOFREE_ON_ERROR;
+        if ((ctx->options & E2F_OPT_READONLY) == 0)
+-		flags |= EXT2_FLAG_RW;
+-	if ((ctx->mount_flags & EXT2_MF_MOUNTED) != 0)
+-		flags |= EXT2_FLAG_EXCLUSIVE;
++		flags |= EXT2_FLAG_RW | EXT2_FLAG_EXCLUSIVE;
++	/* we will have aborted in check_mount() unless user asks for this */
++	if ((ctx->mount_flags & EXT2_MF_MOUNTED) != 0)
++		flags &= ~EXT2_FLAG_EXCLUSIVE;
+ 
+ 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
+ 
 
 Cheers, Andreas
 --
