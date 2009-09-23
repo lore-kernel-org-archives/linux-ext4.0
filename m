@@ -1,198 +1,170 @@
-From: Will Drewry <redpig@dataspill.org>
-Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
-Date: Wed, 23 Sep 2009 14:28:03 -0500
-Message-ID: <2359eed20909231228m2050cf65pa9029f931f655b10@mail.gmail.com>
-References: <20090916162457.GA84213@freezingfog.local>
-	 <20090916190831.GH2537@webber.adilger.int>
-	 <20090916204225.GB84213@freezingfog.local>
-	 <20090916212250.GL2537@webber.adilger.int>
-	 <20090916231131.GC84213@freezingfog.local>
-	 <20090919121909.GA1077@freezingfog.local>
-	 <20090923093436.GW10562@webber.adilger.int>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: ext4 inode corruption
+Date: Wed, 23 Sep 2009 15:50:53 -0700
+Message-ID: <6601abe90909231550g5b55f277l218560c827693322@mail.gmail.com>
+References: <6601abe90909230927m6d45cd75wef3525fc23837110@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.221.174]:49782 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751105AbZIWT2C convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Sep 2009 15:28:02 -0400
-Received: by qyk4 with SMTP id 4so779243qyk.33
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2009 12:28:05 -0700 (PDT)
-In-Reply-To: <20090923093436.GW10562@webber.adilger.int>
+Received: from smtp-out.google.com ([216.239.45.13]:30489 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750769AbZIWWuy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Sep 2009 18:50:54 -0400
+Received: from spaceape8.eur.corp.google.com (spaceape8.eur.corp.google.com [172.28.16.142])
+	by smtp-out.google.com with ESMTP id n8NMov9M000916
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2009 15:50:57 -0700
+Received: from pxi36 (pxi36.prod.google.com [10.243.27.36])
+	by spaceape8.eur.corp.google.com with ESMTP id n8NMorFD018711
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2009 15:50:54 -0700
+Received: by pxi36 with SMTP id 36so919272pxi.18
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2009 15:50:53 -0700 (PDT)
+In-Reply-To: <6601abe90909230927m6d45cd75wef3525fc23837110@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 23, 2009 at 4:34 AM, Andreas Dilger <adilger@sun.com> wrote=
-:
-> On Sep 19, 2009 =A007:19 -0500, Will Drewry wrote:
->> @@ -482,6 +482,8 @@ retry:
->>
->> =A0 =A0 =A0 csum_flag =3D EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
->> + =A0 =A0 lazy_flag =3D EXT2_HAS_COMPAT_FEATURE(fs->super,
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0EXT2_FEATURE_COMPAT_LAZY_BG);
->> =A0 =A0 =A0 adj =3D old_fs->group_desc_count;
->> =A0 =A0 =A0 max_group =3D fs->group_desc_count - adj;
->> =A0 =A0 =A0 if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPA=
-T_META_BG)
->> @@ -496,9 +498,12 @@ retry:
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 adjblocks =3D 0;
->>
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 fs->group_desc[i].bg_flags =3D 0;
->> - =A0 =A0 =A0 =A0 =A0 =A0 if (csum_flag)
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fs->group_desc[i].bg_flags=
- |=3D EXT2_BG_INODE_UNINIT |
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT2_BG_IN=
-ODE_ZEROED;
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (csum_flag) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fs->group_desc[i].bg_flags=
- |=3D EXT2_BG_INODE_UNINIT;
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!lazy_flag) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fs->group_=
-desc[i].bg_flags |=3D EXT2_BG_INODE_ZEROED;
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->> + =A0 =A0 =A0 =A0 =A0 =A0 }
+Sorry to reply to self, but I'm now pretty sure that I understand this
+problem.  (Of course this insight came mere hours after I sent this
+email -- and not in the previous 4 days of staring at it.)
+
+It's likely the same issue fixed by
+
+       commit	1b774f669b4b02f4d2abf2792362ab72a2e124ab
+       ext4: Use bforget() in no journal mode for ext4_journal_{forget,=
+revoke}()
+
+In the previous case, in no-journal mode an about-to-be-freed metadata
+block is marked dirty and available for writeback.  The block is then
+marked free, and re-used as a data block for a different inode; the
+writeback takes place, corrupting the data block.
+
+In this case, the newly-freed block is re-used as a *metadata* block
+for a different inode.  Hence the same pattern we were seeing before:
+eh_entries =3D 0, eh_max =3D 340.
+
+These inodes were left on systems from kernels without the above
+patch.  Accessing the files on *patched* kernels will still make the
+BUG fire, hence the confusion.
+
+Thanks,
+Curt
+
+
+On Wed, Sep 23, 2009 at 9:27 AM, Curt Wohlgemuth <curtw@google.com> wro=
+te:
+> We've been seeing sporadic inode corruption on our ext4 partitions wh=
+ich
+> we've been trying to analyze, without much success. =A0I'm wondering =
+if
+> anybody might have some clues as to where things might be going wrong=
+=2E
 >
-> This code could be cleaned up a bit by assigning "EXT2_BG_INODE_ZEROE=
-D" to
-> lazy_flag so that you don't need to check this each time:
+> We find out about the corruption via a BUG firing in ext4_ext_get_blo=
+cks():
 >
-> =A0 =A0 =A0 =A0lazy_flag =3D EXT2_HAS_COMPAT_FEATURE(fs->super,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0EXT2_FEATURE_COMPAT_LAZY_BG) ?
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_B=
-G_INODE_ZEROED : 0;
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * consistent leaf must not be empty;
+> =A0 =A0 =A0 =A0 * this situation is possible, though, _during_ tree m=
+odification;
+> =A0 =A0 =A0 =A0 * this is why assert can't be put in ext4_ext_find_ex=
+tent()
+> =A0 =A0 =A0 =A0 */
+> =A0 =A0 =A0 =A0BUG_ON(path[depth].p_ext =3D=3D NULL && depth !=3D 0);
 >
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (csum_flag)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0fs->group_desc[i].bg_f=
-lags |=3D
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_B=
-G_INODE_UNINIT | lazy_flag;
+> Of course, this fires long after the inode in question is corrupted. =
+=A0With
+> some diagnostics added in front of this bug, we can find the inodes; =
+they
+> all have characteristics like this:
 >
-> Still waiting to head from Ted on the use of COMPAT_LAZY_BG.
-
-Ah nice - I can definitely do that.  I also think I mangled the spaces
-v tabs on the ext4.h part of the patch.  If COMPAT_LAZY_BG is off limit=
-s,
-I can easily use some other flag/indicator.
-
-That aside, I've also got a barebones kernel patch which supports lazy
-online resizing which accompanies the e2fsprogs patch above. I realize
-it is probably less-than-practical until there is an initializing
-thread, but I'd appreciate any feedback if possible -- even if just to
-ensure I'm understanding things correctly.
-
-Thanks!
-will
-
-
-Signed-off-by: Will Drewry <redpig@dataspill.org>
----
-fs/ext4/ext4.h   |    1 +
-fs/ext4/resize.c |   38 ++++++++++++++++++++++++++++++++++++--
-2 files changed, 37 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9714db3..24d2880 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1043,6 +1043,7 @@ static inline int ext4_valid_inum(struct
-super_block *sb, unsigned long ino)
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT4_FEATURE_COMPAT_LAZY_BG		0x0040
-
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 68b0351..faf9263 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -183,7 +183,7 @@ static int setup_new_group_blocks(struct super_bloc=
-k *sb,
- 	handle_t *handle;
- 	ext4_fsblk_t block;
- 	ext4_grpblk_t bit;
--	int i;
-+	int i, lazy =3D 0;
- 	int err =3D 0, err2;
-
- 	/* This transaction may be extended/restarted along the way */
-@@ -261,13 +261,31 @@ static int setup_new_group_blocks(struct super_bl=
-ock *sb,
- 		   input->inode_bitmap - start);
- 	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
-
--	/* Zero out all of the inode table blocks */
-+	/* Zero out all of the inode table blocks except if the fs supports l=
-azy
-+	 * itables. */
-+	lazy =3D EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+	         EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
-+	       EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_LAZY_BG);
-+	if (lazy) {
-+		ext4_debug("lazy_bg for inode blocks "
-+			   "%#04llx (+%d) - %#04llx (+%d) ",
-+			   input->inode_table, input->inode_table - start,
-+			  input->inode_table + sbi->s_itb_per_group - 1,
-+			  (input->inode_table - start) + sbi->s_itb_per_group - 1);
-+	}
-+
- 	for (i =3D 0, block =3D input->inode_table, bit =3D block - start;
- 	     i < sbi->s_itb_per_group; i++, bit++, block++) {
- 		struct buffer_head *it;
-
- 		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
-
-+		/* Even though we don't initialize the inode table, we need
-+		 * to mark the blocks used by it for later init. */
-+		if (lazy) {
-+			ext4_set_bit(bit, bh->b_data);
-+			continue;
-+		}
- 		if ((err =3D extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-
-@@ -286,6 +304,11 @@ static int setup_new_group_blocks(struct super_blo=
-ck *sb,
- 	mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8, bh->b_data)=
-;
- 	ext4_handle_dirty_metadata(handle, NULL, bh);
- 	brelse(bh);
-+	/* If lazy, we're done since we are marked INODE_UNINIT and that
-+	 * includes the inode bitmap. (ext4_init_inode_bitmap will do
-+	 * this for us later). */
-+	if (lazy)
-+		goto exit_journal;
- 	/* Mark unused entries in inode bitmap used */
- 	ext4_debug("clear inode bitmap %#04llx (+%llu)\n",
- 		   input->inode_bitmap, input->inode_bitmap - start);
-@@ -868,6 +891,17 @@ int ext4_group_add(struct super_block *sb, struct
-ext4_new_group_data *input)
- 	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
- 	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
- 	gdp->bg_flags =3D cpu_to_le16(EXT4_BG_INODE_ZEROED);
-+	/* If we can do lazy initialization, we do. */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &=
-&
-+	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_LAZY_BG)) {
-+		/* Only use EXT4_BG_INODE_UNINIT and not BLOCK_UNINIT
-+		 * because we purposefully initialize the block bitmaps
-+		 * to avoid managing super block backup decisions, making
-+		 * sure the last block is init'd, etc.
-+		 */
-+		gdp->bg_flags =3D cpu_to_le16(EXT4_BG_INODE_UNINIT);
-+		ext4_itable_unused_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
-+	}
- 	gdp->bg_checksum =3D ext4_group_desc_csum(sbi, input->group, gdp);
-
- 	/*
+> Output from debugfs' stat command:
+>
+> =A0 Inode: 1195575 =A0 Type: regular =A0 =A0Mode: =A00600 =A0 Flags: =
+0x80000
+> =A0 Generation: 2821101782 =A0 =A0Version: 0x00000001
+> =A0 User: 35800 =A0 Group: =A05000 =A0 Size: 8400896
+> =A0 File ACL: 0 =A0 =A0Directory ACL: 0
+> =A0 Links: 1 =A0 Blockcount: 8
+> =A0 Fragment: =A0Address: 0 =A0 =A0Number: 0 =A0 =A0Size: 0
+> =A0 ctime: 0x4a9f8009 -- Thu Sep =A03 01:36:25 2009
+> =A0 atime: 0x4a9f7ff7 -- Thu Sep =A03 01:36:07 2009
+> =A0 mtime: 0x4a9f8009 -- Thu Sep =A03 01:36:25 2009
+> =A0 EXTENTS:
+>
+> Note that no data blocks are printed out here.
+>
+> Following the actual extent tree, it always looks like this:
+>
+> =A0 in-inode extent header:
+> =A0 =A0 eh_magic: 0xf30a
+> =A0 =A0 eh_entries: 1
+> =A0 =A0 eh_max: 4
+> =A0 =A0 eh_depth: 1
+>
+> =A0 in-inode extent index 0:
+> =A0 =A0 ei_block: 0
+> =A0 =A0 ei_leaf_lo: 36738577
+> =A0 =A0 ei_leaf_hi: 0
+>
+> =A0 =A0 =A0leaf node header (at block 36738577):
+> =A0 =A0 =A0 =A0eh_magic: 0xf30a
+> =A0 =A0 =A0 =A0eh_entries: 0
+> =A0 =A0 =A0 =A0eh_max: 340
+> =A0 =A0 =A0 =A0eh_depth: 0
+>
+> The i_size value of the inode will vary, from 8192 to 8400896. =A0But=
+ the
+> i_blocks value is *always* 8.
+>
+> The extent tree always has depth of 1 in the in-inode header, and a v=
+alid
+> leaf node header; but the leaf node header always has 0 entries. =A0T=
+his is
+> what's causing the BUG above to fire.
+>
+> We believe the general pattern of user space calls to create these fi=
+les is
+> something like this:
+>
+> =A0 open(O_DIRECT)
+> =A0 fallocate(fd, FALLOC_FL_KEEP_SIZE, 0, 8400896)
+> =A0 < various writes to the file >
+> =A0 fallocate(fd, 0, 0, actual_size + BLOCK_SIZE)
+> =A0 ftruncate(fd, actual_size)
+>
+> The second fallocate() call without KEEP_SIZE allows the following
+> ftruncate to actually truncate the file -- a known issue recently fix=
+ed by
+> Jiaying Zhang (but her fix is not in our kernel yet). =A0"actual_size=
+" can be
+> 0 at times.
+>
+> I can't think of any actions that would cause the i_size to be so lar=
+ge, yet
+> the i_blocks always be 8. =A0Looking at the code in
+>
+> =A0 ext4_ext_remove_space()
+> =A0 ext4_ext_rm_leaf()
+> =A0 ext4_ext_rm_idx()
+>
+> I don't see a way for the extent tree to take the shape above. =A0The=
+re are no
+> errors that I can see around the time the corrupted inodes are create=
+d. =A0It
+> *seems* as though the corruption is coming during truncation, but all=
+ our
+> efforts to reproduce this with small test cases have so far failed.
+>
+> We're using a 2.6.26 code base, with most of the latest ext4 patches
+> applied.
+>
+> Any insights/ruminations/guesses as to what might be happening are we=
+lcome.
+>
+> Thanks,
+> Curt
+>
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
