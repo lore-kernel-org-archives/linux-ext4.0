@@ -1,553 +1,170 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 2/2] pu branch: make fs->group_desc opaque
-Date: Thu, 24 Sep 2009 21:35:47 -0500
-Message-ID: <4ABC2C83.8080504@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH][RFC] resize2fs and uninit_bg questions
+Date: Fri, 25 Sep 2009 00:21:25 -0600
+Message-ID: <20090925062125.GF10562@webber.adilger.int>
+References: <20090916162457.GA84213@freezingfog.local>
+ <20090916190831.GH2537@webber.adilger.int>
+ <20090916204225.GB84213@freezingfog.local>
+ <20090916212250.GL2537@webber.adilger.int>
+ <20090916231131.GC84213@freezingfog.local>
+ <20090919121909.GA1077@freezingfog.local>
+ <20090923093436.GW10562@webber.adilger.int>
+ <2359eed20909231228m2050cf65pa9029f931f655b10@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Eric Sandeen <esandeen@redhat.com>
+To: Will Drewry <redpig@dataspill.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48002 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752728AbZIYCfs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Sep 2009 22:35:48 -0400
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n8P2ZqvQ016886
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2009 22:35:52 -0400
-Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n8P2ZlDN001824
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2009 22:35:51 -0400
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:43030 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752096AbZIYGV3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Sep 2009 02:21:29 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8P6LU6N001690
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2009 23:21:30 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KQI00D00K5LAF00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
+ 24 Sep 2009 23:21:30 -0700 (PDT)
+In-reply-to: <2359eed20909231228m2050cf65pa9029f931f655b10@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To prevent direct array indexing of fs->group_desc[i] (because
-the group_desc may be a different size for different filesystems)
-make it an opaque pointer that may only be accessed through the
-accessor functions in blknum.c.  The type itself is still available
-in a public header; if we have a group_desc that we know is one type
-or another, it's ok to access its fields directly.  This change only
-prevents us from indexing off fs->group_desc[i] directly.
+On Sep 23, 2009  14:28 -0500, Will Drewry wrote:
+> That aside, I've also got a barebones kernel patch which supports lazy
+> online resizing which accompanies the e2fsprogs patch above. I realize
+> it is probably less-than-practical until there is an initializing
+> thread, but I'd appreciate any feedback if possible -- even if just to
+> ensure I'm understanding things correctly.
 
-Change the accessors in blknum.c to use ext4fs_group_desc(), a version
-of ext2fs_group_desc() which returns a ext3_group_desc pointer.
+This is looking very good.  For prototyping the initializing thread, I
+would suggest to create a "per-group initialization and check" function
+(maybe just stealing the inside of the ext4_check_descriptors() loop as
+a starting point) that is called inline for each group at mount time.
+Add in the check for a missing INODE_ZEROED and do the zeroing there.
 
-This simplifies and collapses a fair bit of code in blknum.c
+While that will initially just push the mke2fs time into the kernel, it
+would likely be somewhat faster than running it from mke2fs because it
+will not need any userspace memory, nor will there be any user->kernel
+data copying going on.
 
-Tested with "make check" but no 64-bit testing yet.
+Once you have that working, you can work on adding this to a kernel
+thread that starts at mount time and stops when it has checked all
+of the groups, or if the filesystem is being unmounted.  It probably
+makes sense to only have one of these threads for the entire system
+(instead of one per filesystem), so that they don't start crazy seeking
+IO when there are multiple new partitions on a single disk.  That means
+some kind of work queue with a list of superblocks and their groups to
+check (so that when online resizing only the new groups are checked).
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
 
-(Note, this applies after my "e2fsprogs: clean up ext2fs_bg_flags interfaces"
-patch sent on 9/09/09)
+One recent thought I had was that we might want to distinguish between
+filesystems that want lazy itable zeroing (i.e. real production filesystems)
+and ones that don't want itable zeroing at all (i.e. filesystems for
+testing or ones created on sparse loop devices that will always return
+0s for unwritten blocks).  The latter is very useful for keeping image
+size small, for VM images, etc.
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index aa4d94c..9cb67f1 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -198,6 +198,8 @@ typedef struct ext2_file *ext2_file_t;
-  */
- #define EXT2_MKJOURNAL_V1_SUPER	0x0000001
- 
-+struct opaque_ext2_group_desc;
-+
- struct struct_ext2_filsys {
- 	errcode_t			magic;
- 	io_channel			io;
-@@ -208,7 +210,7 @@ struct struct_ext2_filsys {
- 	int				fragsize;
- 	dgrp_t				group_desc_count;
- 	unsigned long			desc_blocks;
--	struct ext2_group_desc *	group_desc;
-+	struct opaque_ext2_group_desc *	group_desc;
- 	int				inode_blocks_per_group;
- 	ext2fs_inode_bitmap		inode_map;
- 	ext2fs_block_bitmap		block_map;
-@@ -752,7 +754,7 @@ extern void ext2fs_free_blocks_count_add(struct ext2_super_block *super,
- 					 blk64_t blk);
- /* Block group descriptor accessor functions */
- extern struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
--					  struct ext2_group_desc *gdp,
-+					  struct opaque_ext2_group_desc *gdp,
- 					  dgrp_t group);
- extern blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group);
- extern void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
-diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
-index 91abdfb..bcbfc72 100644
---- a/lib/ext2fs/blknum.c
-+++ b/lib/ext2fs/blknum.c
-@@ -162,7 +162,7 @@ void ext2fs_free_blocks_count_add(struct ext2_super_block *super, blk64_t blk)
-  * do the swap there.
-  */
- struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
--					  struct ext2_group_desc *gdp,
-+					  struct opaque_ext2_group_desc *gdp,
- 					  dgrp_t group)
- {
- 	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT)
-@@ -172,22 +172,26 @@ struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
- 		return (struct ext2_group_desc *) gdp + group;
- }
- 
-+/* Do the same but as an ext4 group desc for internal use here */
-+static struct ext4_group_desc *ext4fs_group_desc(ext2_filsys fs,
-+					  struct opaque_ext2_group_desc *gdp,
-+					  dgrp_t group)
-+{
-+	return (struct ext4_group_desc *)ext2fs_group_desc(fs, gdp, group);
-+}
-+
- /*
-  * Return the block bitmap block of a group
-  */
- blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
-+	struct ext4_group_desc *gdp;
- 
--		return gdp->bg_block_bitmap |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u64) gdp->bg_block_bitmap_hi << 32 : 0);
--	}
--
--	return fs->group_desc[group].bg_block_bitmap;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_block_bitmap |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u64)gdp->bg_block_bitmap_hi << 32 : 0);
- }
- 
- /*
-@@ -195,14 +199,12 @@ blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_block_bitmap = blk;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_block_bitmap_hi = (__u64) blk >> 32;
--	} else
--		fs->group_desc[group].bg_block_bitmap = blk;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_block_bitmap = blk;
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_block_bitmap_hi = (__u64) blk >> 32;
- }
- 
- /*
-@@ -210,17 +212,13 @@ void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
-  */
- blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		return gdp->bg_inode_bitmap |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u64) gdp->bg_inode_bitmap_hi << 32 : 0);
--	}
-+	struct ext4_group_desc *gdp;
- 
--	return fs->group_desc[group].bg_inode_bitmap;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_inode_bitmap |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u64) gdp->bg_inode_bitmap_hi << 32 : 0);
- }
- 
- /*
-@@ -228,14 +226,12 @@ blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_inode_bitmap = blk;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_inode_bitmap_hi = (__u64) blk >> 32;
--	} else
--		fs->group_desc[group].bg_inode_bitmap = blk;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_inode_bitmap = blk;
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_inode_bitmap_hi = (__u64) blk >> 32;
- }
- 
- /*
-@@ -243,17 +239,13 @@ void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
-  */
- blk64_t ext2fs_inode_table_loc(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		return gdp->bg_inode_table |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u64) gdp->bg_inode_table_hi << 32 : 0);
--	}
-+	struct ext4_group_desc *gdp;
- 
--	return fs->group_desc[group].bg_inode_table;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_inode_table |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u64) gdp->bg_inode_table_hi << 32 : 0);
- }
- 
- /*
-@@ -261,14 +253,12 @@ blk64_t ext2fs_inode_table_loc(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_inode_table = blk;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_inode_table_hi = (__u64) blk >> 32;
--	} else
--		fs->group_desc[group].bg_inode_table = blk;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_inode_table = blk;
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_inode_table_hi = (__u64) blk >> 32;
- }
- 
- /*
-@@ -276,17 +266,13 @@ void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
-  */
- __u32 ext2fs_bg_free_blocks_count(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
-+	struct ext4_group_desc *gdp;
- 
--		return gdp->bg_free_blocks_count |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u32) gdp->bg_free_blocks_count_hi << 16 : 0);
--	}
--
--	return fs->group_desc[group].bg_free_blocks_count;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_free_blocks_count |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u32) gdp->bg_free_blocks_count_hi << 16 : 0);
- }
- 
- /*
-@@ -294,14 +280,13 @@ __u32 ext2fs_bg_free_blocks_count(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_bg_free_blocks_count_set(ext2_filsys fs, dgrp_t group, __u32 n)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_free_blocks_count = n;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_free_blocks_count_hi = (__u32) n >> 16;
--	} else
--		fs->group_desc[group].bg_free_blocks_count = n;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_free_blocks_count = n;
-+
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_free_blocks_count_hi = (__u32) n >> 16;
- }
- 
- /*
-@@ -309,17 +294,13 @@ void ext2fs_bg_free_blocks_count_set(ext2_filsys fs, dgrp_t group, __u32 n)
-  */
- __u32 ext2fs_bg_free_inodes_count(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
-+	struct ext4_group_desc *gdp;
- 
--		return gdp->bg_free_inodes_count |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u32) gdp->bg_free_inodes_count_hi << 16 : 0);
--	}
--
--	return fs->group_desc[group].bg_free_inodes_count;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_free_inodes_count |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u32) gdp->bg_free_inodes_count_hi << 16 : 0);
- }
- 
- /*
-@@ -327,14 +308,12 @@ __u32 ext2fs_bg_free_inodes_count(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_bg_free_inodes_count_set(ext2_filsys fs, dgrp_t group, __u32 n)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_free_inodes_count = n;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_free_inodes_count_hi = (__u32) n >> 16;
--	} else
--		fs->group_desc[group].bg_free_inodes_count = n;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_free_inodes_count = n;
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_free_inodes_count_hi = (__u32) n >> 16;
- }
- 
- /*
-@@ -342,17 +321,13 @@ void ext2fs_bg_free_inodes_count_set(ext2_filsys fs, dgrp_t group, __u32 n)
-  */
- __u32 ext2fs_bg_used_dirs_count(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		return gdp->bg_used_dirs_count |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u32) gdp->bg_used_dirs_count_hi << 16 : 0);
--	}
-+	struct ext4_group_desc *gdp;
- 
--	return fs->group_desc[group].bg_used_dirs_count;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_used_dirs_count |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u32) gdp->bg_used_dirs_count_hi << 16 : 0);
- }
- 
- /*
-@@ -360,14 +335,12 @@ __u32 ext2fs_bg_used_dirs_count(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_bg_used_dirs_count_set(ext2_filsys fs, dgrp_t group, __u32 n)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_used_dirs_count = n;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_used_dirs_count_hi = (__u32) n >> 16;
--	} else
--		fs->group_desc[group].bg_used_dirs_count = n;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_used_dirs_count = n;
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_used_dirs_count_hi = (__u32) n >> 16;
- }
- 
- /*
-@@ -375,17 +348,13 @@ void ext2fs_bg_used_dirs_count_set(ext2_filsys fs, dgrp_t group, __u32 n)
-  */
- __u32 ext2fs_bg_itable_unused(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		return gdp->bg_itable_unused |
--			(fs->super->s_feature_incompat
--			 & EXT4_FEATURE_INCOMPAT_64BIT ?
--			 (__u32) gdp->bg_itable_unused_hi << 16 : 0);
--	}
-+	struct ext4_group_desc *gdp;
- 
--	return fs->group_desc[group].bg_itable_unused;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_itable_unused |
-+		(fs->super->s_feature_incompat
-+		 & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u32) gdp->bg_itable_unused_hi << 16 : 0);
- }
- 
- /*
-@@ -393,14 +362,12 @@ __u32 ext2fs_bg_itable_unused(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_bg_itable_unused_set(ext2_filsys fs, dgrp_t group, __u32 n)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		gdp->bg_itable_unused = n;
--		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
--			gdp->bg_itable_unused_hi = (__u32) n >> 16;
--	} else
--		fs->group_desc[group].bg_itable_unused = n;
-+	struct ext4_group_desc *gdp;
-+
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_itable_unused = n;
-+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
-+		gdp->bg_itable_unused_hi = (__u32) n >> 16;
- }
- 
- /*
-@@ -408,14 +375,10 @@ void ext2fs_bg_itable_unused_set(ext2_filsys fs, dgrp_t group, __u32 n)
-  */
- __u16 ext2fs_bg_flags(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
-+	struct ext4_group_desc *gdp;
- 
--		return gdp->bg_flags;
--	}
--
--	return fs->group_desc[group].bg_flags;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_flags;
- }
- 
- /*
-@@ -423,15 +386,11 @@ __u16 ext2fs_bg_flags(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_bg_flags_zap(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		gdp->bg_flags = 0;
--		return;
--	}
-+	struct ext4_group_desc *gdp;
- 
--	fs->group_desc[group].bg_flags = 0;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_flags = 0;
-+	return;
- }
- 
- /*
-@@ -439,14 +398,10 @@ void ext2fs_bg_flags_zap(ext2_filsys fs, dgrp_t group)
-  */
- int ext2fs_bg_flag_test(ext2_filsys fs, dgrp_t group, __u16 bg_flag)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		return gdp->bg_flags & bg_flag;
--	}
-+	struct ext4_group_desc *gdp;
- 
--	return fs->group_desc[group].bg_flags & bg_flag;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_flags & bg_flag;
- }
- 
- /*
-@@ -454,15 +409,11 @@ int ext2fs_bg_flag_test(ext2_filsys fs, dgrp_t group, __u16 bg_flag)
-  */
- void ext2fs_bg_flags_set(ext2_filsys fs, dgrp_t group, __u16 bg_flags)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
-+	struct ext4_group_desc *gdp;
- 
--		gdp->bg_flags |= bg_flags;
--		return;
--	}
--
--	fs->group_desc[group].bg_flags |= bg_flags;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_flags |= bg_flags;
-+	return;
- }
- 
- /*
-@@ -470,15 +421,11 @@ void ext2fs_bg_flags_set(ext2_filsys fs, dgrp_t group, __u16 bg_flags)
-  */
- void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group, __u16 bg_flags)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		gdp->bg_flags &= ~bg_flags;
--		return;
--	}
-+	struct ext4_group_desc *gdp;
- 
--	fs->group_desc[group].bg_flags &= ~bg_flags;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_flags &= ~bg_flags;
-+	return;
- }
- 
- /*
-@@ -486,14 +433,10 @@ void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group, __u16 bg_flags)
-  */
- __u16 ext2fs_bg_checksum(ext2_filsys fs, dgrp_t group)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--
--		return gdp->bg_checksum;
--	}
-+	struct ext4_group_desc *gdp;
- 
--	return fs->group_desc[group].bg_checksum;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	return gdp->bg_checksum;
- }
- 
- /*
-@@ -501,15 +444,11 @@ __u16 ext2fs_bg_checksum(ext2_filsys fs, dgrp_t group)
-  */
- void ext2fs_bg_checksum_set(ext2_filsys fs, dgrp_t group, __u16 checksum)
- {
--	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
--		struct ext4_group_desc *gdp;
--		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
--		
--		gdp->bg_checksum = checksum;
--		return;
--	}
-+	struct ext4_group_desc *gdp;
- 
--	fs->group_desc[group].bg_checksum = checksum;
-+	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
-+	gdp->bg_checksum = checksum;
-+	return;
- }
- 
- /*
+IMHO for filesystems that want itable zeroing could just be a mke2fs
+option, and the kernel detects this from groups that do not have
+INODE_ZEROED set.  Filesystems that don't want any itable zeroing
+should set COMPAT_LAZY_BG to tell the kernel not to zero the itable
+(though the flag would be misnamed in that case).
 
+Maybe it makes sense to keep COMPAT_LAZY_BG for filesystems that haven't
+had their itables zeroed, but want it, and add a new COMPAT_NO_ZERO flag
+that indicates the kernel shouldn't zero itables at all?   Ted?
+
+> Signed-off-by: Will Drewry <redpig@dataspill.org>
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 68b0351..faf9263 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -261,13 +261,31 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  		   input->inode_bitmap - start);
+>  	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
+> 
+> -	/* Zero out all of the inode table blocks */
+> +	/* Zero out all of the inode table blocks except if the fs supports lazy
+> +	 * itables. */
+> +	lazy = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> +	         EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
+
+(style) This continuation should be aligned with the '(' on the previous line.
+
+> +	       EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_LAZY_BG);
+> +	if (lazy) {
+> +		ext4_debug("lazy_bg for inode blocks "
+> +			   "%#04llx (+%d) - %#04llx (+%d) ",
+> +			   input->inode_table, input->inode_table - start,
+> +			  input->inode_table + sbi->s_itb_per_group - 1,
+
+(style) the indenting doesn't match (first 2 lines are correct), last one not
+
+> +			  (input->inode_table - start) + sbi->s_itb_per_group - 1);
+
+(style) wrap at 80 columns, or in this case, remove a few spaces to make
+line 80 columns wide.
+
+(suggestion) It might make sense to print this debug message with the
+inode table geometry regardless of whether it is lazy or not, and just
+indicate in the message whether it will be zeroed or not.
+
+>  	for (i = 0, block = input->inode_table, bit = block - start;
+>  	     i < sbi->s_itb_per_group; i++, bit++, block++) {
+>  		struct buffer_head *it;
+> 
+>  		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
+> 
+> +		/* Even though we don't initialize the inode table, we need
+> +		 * to mark the blocks used by it for later init. */
+> +		if (lazy) {
+> +			ext4_set_bit(bit, bh->b_data);
+> +			continue;
+> +		}
+
+(suggestion) I prefer not to do the same operation in two different parts
+of the loop, as this does, since if there are other changes to the code
+later the "if (lazy)" clause will get increasing code duplication.
+
+ Better would be a conditional here that only did the loop internals if
+not lazy, like:
+
+
+ 	for (i = 0, block = input->inode_table, bit = block - start;
+ 	     i < sbi->s_itb_per_group; i++, bit++, block++) {
+ 		struct buffer_head *it;
+
+ 		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
+
+		/* If the filesystem is not using lazy initialization then we
+		 * need zero the inode table blocks to avoid e2fsck issues. */
+		if (!lazy) {
+			if ((err = extend_or_restart_transaction(handle, 1,bh)))
+				goto exit_bh;
+
+			if (IS_ERR(it = bclean(handle, sb, block))) {
+				err = PTR_ERR(it);
+				goto exit_bh;
+			}
+			ext4_handle_dirty_metadata(handle, NULL, it);
+			brelse(it);
+		}
+		ext4_set_bit(bit, bh->b_data);
+	}
+
+It could also be an "if (lazy) goto set_bit;", but given the small size
+of the conditional I think the above is still pretty readable and not
+too much indented.
+
+The rest of it looks good.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
