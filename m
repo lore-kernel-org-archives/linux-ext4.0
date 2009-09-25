@@ -1,81 +1,55 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Question on fallocate/ftruncate sequence
-Date: Fri, 25 Sep 2009 01:35:46 -0600
-Message-ID: <20090925073546.GJ10562@webber.adilger.int>
-References: <5df78e1d0908281444x556a7c2ey763dc6233820abc6@mail.gmail.com>
- <20090828221432.GS4197@webber.adilger.int>
- <5df78e1d0908281740w7bc0f283x5004ca5b231b3af5@mail.gmail.com>
- <20090830025250.GA25768@mit.edu>
- <5df78e1d0908311240s3205b4bcrb65b2552b4ed579c@mail.gmail.com>
- <20090831215612.GG4197@webber.adilger.int>
- <5df78e1d0908311633k1f16a096t701e0cdab54b174c@mail.gmail.com>
- <20090902084134.GO4197@webber.adilger.int>
- <5df78e1d0909022220m1152b313o92f6cb7cc8858298@mail.gmail.com>
- <5df78e1d0909232227y2cb52abew827d7732a3bc9040@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [GIT PULL] ext4 for v2.6.32
+Date: Fri, 25 Sep 2009 13:31:35 +0530
+Message-ID: <20090925080135.GA15586@skywalker.linux.vnet.ibm.com>
+References: <E1MohbG-0006qg-1y@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, Frank Mayhar <fmayhar@google.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jiaying Zhang <jiayingz@google.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:59458 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752116AbZIYHfu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Sep 2009 03:35:50 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n8P7Zqx9016127
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 00:35:52 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KQI00H00NK2O100@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 25 Sep 2009 00:35:52 -0700 (PDT)
-In-reply-to: <5df78e1d0909232227y2cb52abew827d7732a3bc9040@mail.gmail.com>
+Received: from e23smtp05.au.ibm.com ([202.81.31.147]:60676 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752721AbZIYIB4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Sep 2009 04:01:56 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp05.au.ibm.com (8.14.3/8.13.1) with ESMTP id n8P7xFx5028394
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 17:59:15 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n8P81tB21065124
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 18:01:56 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n8P81tSU016681
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 18:01:55 +1000
+Content-Disposition: inline
+In-Reply-To: <E1MohbG-0006qg-1y@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 23, 2009  22:27 -0700, Jiaying Zhang wrote:
-> Sorry for taking so long to finish this. Here is the new patch based =
-on
-> Andreas's suggestions. Now the patch clears the EXT4_EOFBLOCKS_FL
-> flag when we allocate beyond the maximum allocated block. I also
-> made the EOFBLOCKS flag user visible and added the handling
-> in ext4_ioctl as Andrea suggested.
->=20
-> Index: linux-2.6.30.5/include/linux/fs.h
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> +#define FS_EOFBLOCKS_FL=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 0x00200000 /* B=
-locks allocated beyond EOF */
+On Fri, Sep 18, 2009 at 01:50:26PM -0400, Theodore Ts'o wrote:
+> Hi Linus, 
+> 
+> Please pull from:
+> 
+> 	git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+> 
+> to grab the following changes for v2.6.32.
 
-Can you please use 0x00400000 here.  I've already asked Ted to reserve
-the 0x0020000 inode flag for use by large extended attributes.
+.....
+....
 
-> =A0#define FS_RESERVED_FL=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 0x80000000 /* =
-reserved for ext2 lib */
->=20
-> -#define FS_FL_USER_VISIBLE=A0=A0=A0 =A0=A0=A0 0x0003DFFF /* User vis=
-ible flags */
-> +#define FS_FL_USER_VISIBLE=A0=A0=A0 =A0=A0=A0 0x0023DFFF /* User vis=
-ible flags */
+> 
+> Frank Mayhar (1):
+>       ext4: Make non-journal fsync work properly
+> 
 
-This would need to be changed to 0x0043DFFF to match.
+I had a review comment on this patch
+http://article.gmane.org/gmane.comp.file-systems.ext4/15498
 
-Sorry, I haven't looked at the rest of the patch yet, just thought I'd
-mention this early on.
+Frank agreed to send an updated patch
+http://article.gmane.org/gmane.comp.file-systems.ext4/15499
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+But the comment is not critical. So should we do a new patch as a cleanup
+or leave the change as it is now ?
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-aneesh
