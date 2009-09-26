@@ -1,90 +1,94 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: Question on fallocate/ftruncate sequence
-Date: Fri, 25 Sep 2009 15:08:01 -0700
-Message-ID: <5df78e1d0909251508id9c8652tdf09afdd5376ace0@mail.gmail.com>
-References: <5df78e1d0908281444x556a7c2ey763dc6233820abc6@mail.gmail.com>
-	 <5df78e1d0908281740w7bc0f283x5004ca5b231b3af5@mail.gmail.com>
-	 <20090830025250.GA25768@mit.edu>
-	 <5df78e1d0908311240s3205b4bcrb65b2552b4ed579c@mail.gmail.com>
-	 <20090831215612.GG4197@webber.adilger.int>
-	 <5df78e1d0908311633k1f16a096t701e0cdab54b174c@mail.gmail.com>
-	 <20090902084134.GO4197@webber.adilger.int>
-	 <5df78e1d0909022220m1152b313o92f6cb7cc8858298@mail.gmail.com>
-	 <5df78e1d0909232227y2cb52abew827d7732a3bc9040@mail.gmail.com>
-	 <20090925073546.GJ10562@webber.adilger.int>
+From: Frank Mayhar <fmayhar@google.com>
+Subject: [PATCH] ext4: Make non-journal fsync work properly.  (Version 3)
+Date: Fri, 25 Sep 2009 17:39:05 -0700
+Message-ID: <1253925545.22432.57.camel@bobble.smo.corp.google.com>
+References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
+	 <20090908050614.GA10477@mit.edu>
+	 <1252424465.17646.7.camel@bobble.smo.corp.google.com>
+	 <20090908220504.GS22901@mit.edu>
+	 <1252517664.18594.3.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, Frank Mayhar <fmayhar@google.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:55548 "EHLO
+Received: from smtp-out.google.com ([216.239.33.17]:38103 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751718AbZIYWID convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Sep 2009 18:08:03 -0400
-Received: from zps77.corp.google.com (zps77.corp.google.com [172.25.146.77])
-	by smtp-out.google.com with ESMTP id n8PM84JM010415
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 23:08:05 +0100
-Received: from pxi5 (pxi5.prod.google.com [10.243.27.5])
-	by zps77.corp.google.com with ESMTP id n8PM7Q5M005138
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 15:08:02 -0700
-Received: by pxi5 with SMTP id 5so3625986pxi.12
-        for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2009 15:08:01 -0700 (PDT)
-In-Reply-To: <20090925073546.GJ10562@webber.adilger.int>
+	with ESMTP id S1752712AbZIZAjI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Sep 2009 20:39:08 -0400
+In-Reply-To: <1252517664.18594.3.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks a lot for the notification! I will change it in my patch.
+This patch follows Aneesh' suggestion of just calling
+sync_dirty_buffer() directly.  Sorry about the delay, I've been busy
 
-Jiaying
+Teach ext4_write_inode() about non-journal mode in a better way,
+suggested upstream.  Instead of using ext4_do_update_inode(), it
+now calls sync_dirty_buffer() directly.  Also handle possible
+error return from that function.
 
-On Fri, Sep 25, 2009 at 12:35 AM, Andreas Dilger <adilger@sun.com> wrot=
-e:
-> On Sep 23, 2009 =A022:27 -0700, Jiaying Zhang wrote:
->> Sorry for taking so long to finish this. Here is the new patch based=
- on
->> Andreas's suggestions. Now the patch clears the EXT4_EOFBLOCKS_FL
->> flag when we allocate beyond the maximum allocated block. I also
->> made the EOFBLOCKS flag user visible and added the handling
->> in ext4_ioctl as Andrea suggested.
->>
->> Index: linux-2.6.30.5/include/linux/fs.h
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->> +#define FS_EOFBLOCKS_FL=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 0x00200000 /* =
-Blocks allocated beyond EOF */
->
-> Can you please use 0x00400000 here. =A0I've already asked Ted to rese=
-rve
-> the 0x0020000 inode flag for use by large extended attributes.
->
->> =A0#define FS_RESERVED_FL=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 0x80000000 /*=
- reserved for ext2 lib */
->>
->> -#define FS_FL_USER_VISIBLE=A0=A0=A0 =A0=A0=A0 0x0003DFFF /* User vi=
-sible flags */
->> +#define FS_FL_USER_VISIBLE=A0=A0=A0 =A0=A0=A0 0x0023DFFF /* User vi=
-sible flags */
->
-> This would need to be changed to 0x0043DFFF to match.
->
-> Sorry, I haven't looked at the rest of the patch yet, just thought I'=
-d
-> mention this early on.
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Frank Mayhar <fmayhar@google.com>
+
+ fs/ext4/inode.c |   37 +++++++++++++++++++++++++++++--------
+ 1 files changed, 29 insertions(+), 8 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d87f6a0..ab31cc4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4892,19 +4892,40 @@ out_brelse:
+  */
+ int ext4_write_inode(struct inode *inode, int wait)
+ {
++	int err;
++
+ 	if (current->flags & PF_MEMALLOC)
+ 		return 0;
+ 
+-	if (ext4_journal_current_handle()) {
+-		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
+-		dump_stack();
+-		return -EIO;
+-	}
++	if (EXT4_SB(inode->i_sb)->s_journal) {
++		if (ext4_journal_current_handle()) {
++			jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
++			dump_stack();
++			return -EIO;
++		}
+ 
+-	if (!wait)
+-		return 0;
++		if (!wait)
++			return 0;
++
++		err = ext4_force_commit(inode->i_sb);
++	} else {
++		struct ext4_iloc iloc;
+ 
+-	return ext4_force_commit(inode->i_sb);
++		err = ext4_get_inode_loc(inode, &iloc);
++		if (err)
++			return err;
++		if (wait)
++			sync_dirty_buffer(iloc.bh);
++		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
++			ext4_error(inode->i_sb, __func__,
++				   "IO error syncing inode, "
++				   "inode=%lu, block=%llu",
++				   inode->i_ino,
++				   (unsigned long long)iloc.bh->b_blocknr);
++			err = -EIO;
++		}
++	}
++	return err;
+ }
+ 
+ /*
+
+-- 
+Frank Mayhar <fmayhar@google.com>
+Google, Inc.
+
