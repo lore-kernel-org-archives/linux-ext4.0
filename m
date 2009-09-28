@@ -1,94 +1,47 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: [PATCH] ext4: Make non-journal fsync work properly.  (Version 3)
-Date: Fri, 25 Sep 2009 17:39:05 -0700
-Message-ID: <1253925545.22432.57.camel@bobble.smo.corp.google.com>
-References: <1252119300.23871.7.camel@bobble.smo.corp.google.com>
-	 <20090908050614.GA10477@mit.edu>
-	 <1252424465.17646.7.camel@bobble.smo.corp.google.com>
-	 <20090908220504.GS22901@mit.edu>
-	 <1252517664.18594.3.camel@bobble.smo.corp.google.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: Fix hueristic which avoids group preallocation for closed files
+Date: Mon, 28 Sep 2009 00:13:17 -0400
+Message-ID: <1254111198-8552-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:38103 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752712AbZIZAjI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Sep 2009 20:39:08 -0400
-In-Reply-To: <1252517664.18594.3.camel@bobble.smo.corp.google.com>
+Received: from thunk.org ([69.25.196.29]:55574 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750910AbZI1ENS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Sep 2009 00:13:18 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch follows Aneesh' suggestion of just calling
-sync_dirty_buffer() directly.  Sorry about the delay, I've been busy
+The hueristic was designed to avoid using locality group preallocation
+when writing the last segment of a closed file.  Fix it by move
+setting size to the maximum of size and isize until after we check
+whether size == isize.
 
-Teach ext4_write_inode() about non-journal mode in a better way,
-suggested upstream.  Instead of using ext4_do_update_inode(), it
-now calls sync_dirty_buffer() directly.  Also handle possible
-error return from that function.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Signed-off-by: Frank Mayhar <fmayhar@google.com>
-
- fs/ext4/inode.c |   37 +++++++++++++++++++++++++++++--------
- 1 files changed, 29 insertions(+), 8 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d87f6a0..ab31cc4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4892,19 +4892,40 @@ out_brelse:
-  */
- int ext4_write_inode(struct inode *inode, int wait)
- {
-+	int err;
-+
- 	if (current->flags & PF_MEMALLOC)
- 		return 0;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e9c6189..c73d439 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4189,7 +4189,6 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ 	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
+ 	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
+ 		>> bsbits;
+-	size = max(size, isize);
  
--	if (ext4_journal_current_handle()) {
--		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
--		dump_stack();
--		return -EIO;
--	}
-+	if (EXT4_SB(inode->i_sb)->s_journal) {
-+		if (ext4_journal_current_handle()) {
-+			jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
-+			dump_stack();
-+			return -EIO;
-+		}
+ 	if ((size == isize) &&
+ 	    !ext4_fs_is_busy(sbi) &&
+@@ -4199,6 +4198,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ 	}
  
--	if (!wait)
--		return 0;
-+		if (!wait)
-+			return 0;
-+
-+		err = ext4_force_commit(inode->i_sb);
-+	} else {
-+		struct ext4_iloc iloc;
- 
--	return ext4_force_commit(inode->i_sb);
-+		err = ext4_get_inode_loc(inode, &iloc);
-+		if (err)
-+			return err;
-+		if (wait)
-+			sync_dirty_buffer(iloc.bh);
-+		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
-+			ext4_error(inode->i_sb, __func__,
-+				   "IO error syncing inode, "
-+				   "inode=%lu, block=%llu",
-+				   inode->i_ino,
-+				   (unsigned long long)iloc.bh->b_blocknr);
-+			err = -EIO;
-+		}
-+	}
-+	return err;
- }
- 
- /*
-
+ 	/* don't use group allocation for large files */
++	size = max(size, isize);
+ 	if (size >= sbi->s_mb_stream_request) {
+ 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
+ 		return;
 -- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
+1.6.4.4.2.g31f8e.dirty
 
