@@ -1,61 +1,63 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH]ext4: Add checks whether two inodes are different
-Date: Mon, 28 Sep 2009 16:00:00 -0400
-Message-ID: <20090928200000.GA22733@mit.edu>
-References: <4ABC7FC5.5070803@rs.jp.nec.com> <20090925103453.GR10562@webber.adilger.int>
+Subject: Re: hard lockup, followed by ext4_lookup: deleted inode
+	referenced: 524788
+Date: Mon, 28 Sep 2009 16:25:07 -0400
+Message-ID: <20090928202507.GB22733@mit.edu>
+References: <20090928191644.GR12922@hexapodia.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andy Isaacson <adi@hexapodia.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:38296 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:51828 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752441AbZI1UAH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Sep 2009 16:00:07 -0400
+	id S1751575AbZI1UZF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Sep 2009 16:25:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20090925103453.GR10562@webber.adilger.int>
+In-Reply-To: <20090928191644.GR12922@hexapodia.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 25, 2009 at 04:34:53AM -0600, Andreas Dilger wrote:
+On Mon, Sep 28, 2009 at 12:16:44PM -0700, Andy Isaacson wrote:
+> After a hard lockup and reboot, my test box (running recent Linus git
+> 851b147) came up with:
 > 
-> Wouldn't it make more sense to just return an error (or no error
-> but do nothing) in the case of source/target inode being the same?
-> I don't see how that would be good to "defragment" the inode onto
-> itself, just like "cp f f" and "rename f f" don't make sense either.
+> [    5.016854] EXT4-fs (sda1): mounted filesystem with ordered data mode
+> [    8.809125] EXT4-fs (sda1): internal journal on sda1:8
+> [   10.165239] EXT4-fs error (device sda1): ext4_lookup: deleted inode referenced: 524788
+> [   10.165286] Aborting journal on device sda1:8.
+> [   10.168111] EXT4-fs error (device sda1): ext4_journal_start_sb: Detected aborted journal
+> [   10.168169] EXT4-fs (sda1): Remounting filesystem read-only
+> [   10.171614] EXT4-fs (sda1): Remounting filesystem read-only
 
-The code actually checks to make sure the source and target inodes are
-different, but it does so too late.  So the following patch should fix
-the problem which Akira-san was attempting to solve, without
-introducing any extra code complexity (we just move some lines of code
-around instead.)
+It would be useful to see what pathname is associated with inode 524788.
 
-					- Ted
+You can use debugfs to find this out.  For example to find a pathname
+which points to inode 14666, you can do this:
 
-commit 7cdf27b7241ef616b4158a26d7d85bd36f499462
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Sep 28 15:58:29 2009 -0400
+# debugfs /dev/sda1
+debugfs 1.41.9 (22-Aug-2009)
+debugfs:  ncheck 14666
+Inode	  Pathname
+14666	  /grub/menu.lst
 
-    ext4: EXT4_IOC_MOVE_EXT: Check for different original and donor inodes first
-    
-    Move the check to make sure the original and donor inodes are
-    different earlier, to avoid a potential deadlock by trying to lock the
-    same inode twice.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Also try using the debugfs stat command, send me the output, please:
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 5332fd4..25b6b14 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1001,14 +1001,6 @@ mext_check_arguments(struct inode *orig_inode,
- 		return -EINVAL;
- 	}
- 
--	/* orig and donor should be different file */
--	if (orig_inode->i_ino == donor_inode->i_ino) {
--		ext4_debug("ext4 move extent: The argument files should not "
--			"be same file [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
+debugfs: stat <14666>
+
+> 2. after a lockup the journal recovery should not fail.
+
+I'm not sure it was a matter of the journal recovery failing.  All we
+know for certain is that filesystem was corrupted after the lockup and
+remounting the filesystem.  What caused the file system corruption is
+open to question at the moment; it could have been caused by the
+lockup; or it could have been a file that was deleted right about the
+time of the lockup; or it could have been some completely random
+filesystem corruption that.
+
+It would be useful to know whether the inode was in question was
+supposed to have been deleted.  If it was, it would be useful to know
+if the dtime reported by debugfs's stat was around the time of the
+original lockup.  
+
+						- Ted
