@@ -1,47 +1,275 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: Fix hueristic which avoids group preallocation for closed files
-Date: Mon, 28 Sep 2009 00:13:17 -0400
-Message-ID: <1254111198-8552-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: Adjust ext4_da_writepages() to write out larger contiguous chunks
+Date: Mon, 28 Sep 2009 00:13:18 -0400
+Message-ID: <1254111198-8552-2-git-send-email-tytso@mit.edu>
+References: <1254111198-8552-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:55574 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:55573 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750910AbZI1ENS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Sep 2009 00:13:18 -0400
+	id S1750858AbZI1ENT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Sep 2009 00:13:19 -0400
+In-Reply-To: <1254111198-8552-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The hueristic was designed to avoid using locality group preallocation
-when writing the last segment of a closed file.  Fix it by move
-setting size to the maximum of size and isize until after we check
-whether size == isize.
+Work around problems in the writeback code to force out writebacks in
+larger chunks than just 4mb, which is just too small.  This also works
+around limitations in the ext4 block allocator, which can't allocate
+more than 2048 blocks at a time.  So we need to defeat the round-robin
+characteristics of the writeback code and try to write out as many
+blocks in one inode before allowing the writeback code to move on to
+another inode.  We add a a new per-filesystem tunable,
+max_contig_writeback_mb, which caps this to a default of 128mb per
+inode.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h              |    1 +
+ fs/ext4/inode.c             |  100 +++++++++++++++++++++++++++++++++++++-----
+ fs/ext4/super.c             |    3 +
+ include/trace/events/ext4.h |   14 ++++--
+ 4 files changed, 102 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e9c6189..c73d439 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4189,7 +4189,6 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- 	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
- 	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
- 		>> bsbits;
--	size = max(size, isize);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e227eea..9f99427 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -942,6 +942,7 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_stats;
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
++	unsigned int s_max_contig_writeback_mb;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
+ 	unsigned long s_mb_last_start;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5fb72a9..9e0acb7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1145,6 +1145,60 @@ static int check_block_validity(struct inode *inode, const char *msg,
+ }
  
- 	if ((size == isize) &&
- 	    !ext4_fs_is_busy(sbi) &&
-@@ -4199,6 +4198,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ /*
++ * Return the number of dirty pages in the given inode starting at
++ * page frame idx.
++ */
++static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx)
++{
++	struct address_space *mapping = inode->i_mapping;
++	pgoff_t	index;
++	struct pagevec pvec;
++	pgoff_t num = 0;
++	int i, nr_pages, done = 0;
++
++	pagevec_init(&pvec, 0);
++
++	while (!done) {
++		index = idx;
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++					      PAGECACHE_TAG_DIRTY,
++					      (pgoff_t)PAGEVEC_SIZE);
++		if (nr_pages == 0)
++			break;
++		for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
++			struct buffer_head *bh, *head;
++
++			lock_page(page);
++			if (unlikely(page->mapping != mapping) ||
++			    !PageDirty(page) ||
++			    PageWriteback(page) ||
++			    page->index != idx) {
++				done = 1;
++				unlock_page(page);
++				break;
++			}
++			head = page_buffers(page);
++			bh = head;
++			do {
++				if (!buffer_delay(bh) &&
++				    !buffer_unwritten(bh)) {
++					done = 1;
++					break;
++				}
++			} while ((bh = bh->b_this_page) != head);
++			unlock_page(page);
++			if (done)
++				break;
++			idx++;
++			num++;
++		}
++		pagevec_release(&pvec);
++	}
++	return num;
++}
++
++/*
+  * The ext4_get_blocks() function tries to look up the requested blocks,
+  * and returns if the blocks are already mapped.
+  *
+@@ -2744,7 +2798,8 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	int pages_written = 0;
+ 	long pages_skipped;
+ 	int range_cyclic, cycled = 1, io_done = 0;
+-	int needed_blocks, ret = 0, nr_to_writebump = 0;
++	int needed_blocks, ret = 0;
++	long desired_nr_to_write, nr_to_writebump = 0;
+ 	loff_t range_start = wbc->range_start;
+ 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+ 
+@@ -2771,16 +2826,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	if (unlikely(sbi->s_mount_flags & EXT4_MF_FS_ABORTED))
+ 		return -EROFS;
+ 
+-	/*
+-	 * Make sure nr_to_write is >= sbi->s_mb_stream_request
+-	 * This make sure small files blocks are allocated in
+-	 * single attempt. This ensure that small files
+-	 * get less fragmented.
+-	 */
+-	if (wbc->nr_to_write < sbi->s_mb_stream_request) {
+-		nr_to_writebump = sbi->s_mb_stream_request - wbc->nr_to_write;
+-		wbc->nr_to_write = sbi->s_mb_stream_request;
+-	}
+ 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
+ 		range_whole = 1;
+ 
+@@ -2795,6 +2840,36 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	} else
+ 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
+ 
++	/*
++	 * This works around two forms of stupidity.  The first is in
++	 * the writeback code, which caps the maximum number of pages
++	 * written to be 1024 pages.  This is wrong on multiple
++	 * levels; different architectues have a different page size,
++	 * which changes the maximum amount of data which gets
++	 * written.  Secondly, 4 megabytes is way too small.  XFS
++	 * forces this value to be 16 megabytes by multiplying
++	 * nr_to_write parameter by four, and then relies on its
++	 * allocator to allocate larger extents to make them
++	 * contiguous.  Unfortunately this brings us to the second
++	 * stupidity, which is that ext4's mballoc code only allocates
++	 * at most 2048 blocks.  So we force contiguous writes up to
++	 * the number of dirty blocks in the inode, or
++	 * sbi->max_contig_writeback_mb whichever is smaller.
++	 */
++	if (!range_cyclic && range_whole)
++		desired_nr_to_write = wbc->nr_to_write * 8;
++	else
++		desired_nr_to_write = ext4_num_dirty_pages(inode, index);
++	if (desired_nr_to_write > (sbi->s_max_contig_writeback_mb << 
++				   (20 - PAGE_CACHE_SHIFT)))
++		desired_nr_to_write = (sbi->s_max_contig_writeback_mb << 
++				       (20 - PAGE_CACHE_SHIFT));
++
++	if (wbc->nr_to_write < desired_nr_to_write) {
++		nr_to_writebump = desired_nr_to_write - wbc->nr_to_write;
++		wbc->nr_to_write = desired_nr_to_write;
++	}
++
+ 	mpd.wbc = wbc;
+ 	mpd.inode = mapping->host;
+ 
+@@ -2914,7 +2989,8 @@ retry:
+ out_writepages:
+ 	if (!no_nrwrite_index_update)
+ 		wbc->no_nrwrite_index_update = 0;
+-	wbc->nr_to_write -= nr_to_writebump;
++	if (wbc->nr_to_write > nr_to_writebump)
++		wbc->nr_to_write -= nr_to_writebump;
+ 	wbc->range_start = range_start;
+ 	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
+ 	return ret;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index df539ba..9d04bd9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2197,6 +2197,7 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+ EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
++EXT4_RW_ATTR_SBI_UI(max_contig_writeback, s_max_contig_writeback_mb);
+ 
+ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(delayed_allocation_blocks),
+@@ -2210,6 +2211,7 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(mb_order2_req),
+ 	ATTR_LIST(mb_stream_req),
+ 	ATTR_LIST(mb_group_prealloc),
++	ATTR_LIST(max_contig_writeback),
+ 	NULL,
+ };
+ 
+@@ -2679,6 +2681,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
  	}
  
- 	/* don't use group allocation for large files */
-+	size = max(size, isize);
- 	if (size >= sbi->s_mb_stream_request) {
- 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
- 		return;
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
++	sbi->s_max_contig_writeback_mb = 128;
+ 
+ 	/*
+ 	 * set up enough so that it can read an inode
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index c1bd8f1..7c6bbb7 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -236,6 +236,7 @@ TRACE_EVENT(ext4_da_writepages,
+ 		__field(	char,	for_kupdate		)
+ 		__field(	char,	for_reclaim		)
+ 		__field(	char,	range_cyclic		)
++		__field(       pgoff_t,	writeback_index		)
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -249,15 +250,17 @@ TRACE_EVENT(ext4_da_writepages,
+ 		__entry->for_kupdate	= wbc->for_kupdate;
+ 		__entry->for_reclaim	= wbc->for_reclaim;
+ 		__entry->range_cyclic	= wbc->range_cyclic;
++		__entry->writeback_index = inode->i_mapping->writeback_index;
+ 	),
+ 
+-	TP_printk("dev %s ino %lu nr_to_write %ld pages_skipped %ld range_start %llu range_end %llu nonblocking %d for_kupdate %d for_reclaim %d range_cyclic %d",
++	TP_printk("dev %s ino %lu nr_to_write %ld pages_skipped %ld range_start %llu range_end %llu nonblocking %d for_kupdate %d for_reclaim %d range_cyclic %d writeback_index %lu",
+ 		  jbd2_dev_to_name(__entry->dev),
+ 		  (unsigned long) __entry->ino, __entry->nr_to_write,
+ 		  __entry->pages_skipped, __entry->range_start,
+ 		  __entry->range_end, __entry->nonblocking,
+ 		  __entry->for_kupdate, __entry->for_reclaim,
+-		  __entry->range_cyclic)
++		  __entry->range_cyclic,
++		  (unsigned long) __entry->writeback_index)
+ );
+ 
+ TRACE_EVENT(ext4_da_write_pages,
+@@ -309,6 +312,7 @@ TRACE_EVENT(ext4_da_writepages_result,
+ 		__field(	char,	encountered_congestion	)
+ 		__field(	char,	more_io			)	
+ 		__field(	char,	no_nrwrite_index_update )
++		__field(       pgoff_t,	writeback_index		)
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -320,14 +324,16 @@ TRACE_EVENT(ext4_da_writepages_result,
+ 		__entry->encountered_congestion	= wbc->encountered_congestion;
+ 		__entry->more_io	= wbc->more_io;
+ 		__entry->no_nrwrite_index_update = wbc->no_nrwrite_index_update;
++		__entry->writeback_index = inode->i_mapping->writeback_index;
+ 	),
+ 
+-	TP_printk("dev %s ino %lu ret %d pages_written %d pages_skipped %ld congestion %d more_io %d no_nrwrite_index_update %d",
++	TP_printk("dev %s ino %lu ret %d pages_written %d pages_skipped %ld congestion %d more_io %d no_nrwrite_index_update %d writeback_index %lu",
+ 		  jbd2_dev_to_name(__entry->dev),
+ 		  (unsigned long) __entry->ino, __entry->ret,
+ 		  __entry->pages_written, __entry->pages_skipped,
+ 		  __entry->encountered_congestion, __entry->more_io,
+-		  __entry->no_nrwrite_index_update)
++		  __entry->no_nrwrite_index_update,
++		  (unsigned long) __entry->writeback_index)
+ );
+ 
+ TRACE_EVENT(ext4_da_write_begin,
 -- 
 1.6.4.4.2.g31f8e.dirty
 
