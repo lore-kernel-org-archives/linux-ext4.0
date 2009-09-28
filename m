@@ -1,42 +1,37 @@
-From: Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH] blkid/Makefile.in: ignore rmdir non-empty dir error
-Date: Mon, 28 Sep 2009 18:57:22 +0800
-Message-ID: <1254135442-28755-1-git-send-email-bergwolf@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Peng Tao <bergwolf@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] Ext4: avoid multiple quota reservation when retry
+	block reservation for delalloc
+Date: Mon, 28 Sep 2009 10:49:27 -0400
+Message-ID: <20090928144927.GE17514@mit.edu>
+References: <1253551950.9099.10.camel@mingming-laptop> <20090921181527.GA27777@duck.suse.cz> <1253575082.9099.14.camel@mingming-laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f191.google.com ([209.85.222.191]:51750 "EHLO
-	mail-pz0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752198AbZI1K52 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Sep 2009 06:57:28 -0400
-Received: by pzk29 with SMTP id 29so2316201pzk.33
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2009 03:57:32 -0700 (PDT)
+Received: from thunk.org ([69.25.196.29]:43164 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751755AbZI1Ota (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Sep 2009 10:49:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1253575082.9099.14.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Otherwise, make clean returns the following error, which is missleading.
-rmdir tests
-rmdir: failed to remove `tests': Directory not empty
-make: [clean] Error 1 (ignored)
+On Mon, Sep 21, 2009 at 04:18:02PM -0700, Mingming wrote:
+> On Mon, 2009-09-21 at 20:15 +0200, Jan Kara wrote:
+> > On Mon 21-09-09 09:52:30, Mingming wrote:
+> > > Ext4: release reserved quota before block reservation for delalloc retry
+> > > 
+> > > ext4_da_reserve_space() can reserve quota blocks multiple times if
+> > > ext4_claim_free_blocks() fail and we retry the allocation. We should
+> > > release the quota reservation before restarting.
+> > > 
+> > > Bug found be Jan Kara.
+> >             ^^ by
+> 
+> attached is the updated patch with this typo fixed.
 
-Signed-off-by: Peng Tao <bergwolf@gmail.com>
----
- lib/blkid/Makefile.in |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Added to the ext4 patch queue, thanks.
 
-diff --git a/lib/blkid/Makefile.in b/lib/blkid/Makefile.in
-index 9169226..618c0b2 100644
---- a/lib/blkid/Makefile.in
-+++ b/lib/blkid/Makefile.in
-@@ -181,7 +181,7 @@ clean::
- 		tests/*.img results test_probe core profiled/* \
- 		checker/* blkid_types.h ../libblkid.a ../libblkid_p.a \
- 		$(SMANPAGES) blkid
--	-rmdir tests
-+	-rmdir --ignore-fail-on-non-empty tests
- 
- mostlyclean:: clean
- distclean:: clean
--- 
-1.6.5.rc2.262.g5224f
-
+						- Ted
