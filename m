@@ -1,39 +1,68 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH]ext4: Add checks whether two inodes are different
-Date: Tue, 29 Sep 2009 10:49:14 -0400
-Message-ID: <20090929144914.GD24383@mit.edu>
-References: <4ABC7FC5.5070803@rs.jp.nec.com> <20090925103453.GR10562@webber.adilger.int> <20090928200000.GA22733@mit.edu> <4AC198AF.1070600@rs.jp.nec.com>
+From: Andy Isaacson <adi@hexapodia.org>
+Subject: Re: hard lockup, followed by ext4_lookup: deleted inode referenced: 524788
+Date: Tue, 29 Sep 2009 09:12:50 -0700
+Message-ID: <20090929161250.GX12922@hexapodia.org>
+References: <20090928191644.GR12922@hexapodia.org> <20090928202507.GB22733@mit.edu> <20090928212838.GS12922@hexapodia.org> <20090929031308.GB24383@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51772 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752992AbZI2OtQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Sep 2009 10:49:16 -0400
+To: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752289AbZI2QMs@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4AC198AF.1070600@rs.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20090929031308.GB24383@mit.edu>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 29, 2009 at 02:18:39PM +0900, Akira Fujita wrote:
-> I thought the argument check (orig and donor inodes are different)
-> should be done in mext_check_arguments()
+On Mon, Sep 28, 2009 at 11:13:08PM -0400, Theodore Tso wrote:
+> What this indicates to me is that an inode table block was written to
+> the wrong location on disk.  In fact, given large numbers of inode
+> numbers involved, it looks like large numbers of inode table blocks
+> were written to the wrong location on disk.
 
-Sometimes separating things into multiple functions can actually make
-things harder to understand, since it means you have to jump all over
-the file to follow what a particular function is doing.  Sometimes
-having a function which is nested deeply in a loop can be made easier
-to understand by separating it out into a separate function which is
-called once.
+Aha, sounds like an excellent theory.
 
-Part of the reason why mext_check_arguments() is so huge is because of
-all of the ext4_debug() statements.  It's not clear to me they really
-all need to be there.  I'd also use EBUSY if the file is a swap file,
-so it's easier for the userspace code to understand what is going on
-in that case.  For the other many cases where EINVAL is returned,
-hopefully that's obvious enough for userspace to figure out without
-having to resort to looking to the system debug logs.
+> I'm surprised by how many inode tables blocks apparently had gotten
+> mis-directed.  Almost certainly there must have been some kind of
+> hardware failure that must have triggered this.  I'm not sure what
+> caused it, but it does seem like your filesystem has been toasted
+> fairly badly.
 
-       	  	    	       	   	  	- Ted
+As I said, the machine hung hard while doing a bunch of writes to a USB
+thumbdrive and a kernel compile on sda1.  It could be hardware, but I've
+been using this laptop as my primary test box for several months and
+it's been fairly reliable (as reliable as git-of-the-day is, pretty
+much).
+
+I'll run memtest86 and check SMART.
+
+Note that it is running DMAR (the Intel VT-d iommu implementation), it
+could be that a DMA got messed up -- since the logs didn't make it I
+don't know if DMAR reported any DMA protection faults at the time of
+failure.  The DMAR on this box has had some issues in the past which
+seem to be fixed, but ...
+
+> At this point my advice to you would be to try to recover as much data
+> from the disk as you can, and to *not* try to run fsck or mount the
+
+Oh, all the data is well backed-up; this is a seriously bleeding-edge
+box.
+
+I've taken a complete image of /dev/sda1 and will be reinstalling it.
+The image is from after the kernel remounted / RO.
+
+> disk using dd to a backup hard drive first.  If you're really curious
+> we could try to look at the dumpe2fs output and see if we can find the
+> pattern of what might have caused so many misdirected writes, but
+> there's no guarantee that we would be able to find the definitive root
+> cause, and from a recovery perspective, it's probably faster and less
+> risk to reinstall your system disk from scratch.
+
+I would like to get as close to root cause as possible.  I have a
+filesystem image copied away and I'll be attempting to repro the
+failure; this is a test system for a large deployment, so I don't want
+any issues lurking. :)
+
+Let me know what debug commands you'd like to run.  dumpe2fs output is
+at http://web.hexapodia.org/~adi/tmp/dumpe2fs.out
+
+-andy
