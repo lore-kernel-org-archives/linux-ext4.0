@@ -1,78 +1,38 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 3/3] e4defrag: avoid unsuccessful return in non-privileged
-	user
-Date: Wed, 30 Sep 2009 14:37:24 -0400
-Message-ID: <87f94c370909301137s40f09b7wb08ca7dee9f8dd15@mail.gmail.com>
-References: <4AC3073D.9070606@sx.jp.nec.com>
+From: Andy Isaacson <adi@hexapodia.org>
+Subject: Re: hard lockup, followed by ext4_lookup: deleted inode referenced: 524788
+Date: Wed, 30 Sep 2009 12:38:23 -0700
+Message-ID: <20090930193823.GA15892@hexapodia.org>
+References: <20090928191644.GR12922@hexapodia.org> <20090928202507.GB22733@mit.edu> <20090928212838.GS12922@hexapodia.org> <20090929031308.GB24383@mit.edu> <20090929161250.GX12922@hexapodia.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f199.google.com ([209.85.210.199]:41672 "EHLO
-	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751804AbZI3ShU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Sep 2009 14:37:20 -0400
-Received: by yxe37 with SMTP id 37so7065730yxe.33
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Sep 2009 11:37:24 -0700 (PDT)
-In-Reply-To: <4AC3073D.9070606@sx.jp.nec.com>
+Received: from straum.hexapodia.org ([64.81.70.185]:46060 "EHLO
+	straum.hexapodia.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755169AbZI3TiU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Sep 2009 15:38:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20090929161250.GX12922@hexapodia.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2009/9/30 Kazuya Mio <k-mio@sx.jp.nec.com>:
-> If non-privileged user does e4defrag, e4defrag returns 1 despite
-> its success. This patch fixes this problem.
->
-> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-> ---
->
-> =A0e4defrag.c | =A0 =A01 +
-> =A01 file changed, 1 insertion(+)
-> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-> index 94f8529..98dda92 100644
-> --- a/misc/e4defrag.c
-> +++ b/misc/e4defrag.c
-> @@ -2025,6 +2025,7 @@ int main(int argc, char *argv[])
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!(=
-mode_flag & DETAIL) &&
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0current_uid !=3D ROOT_UID) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0printf(" Done.\n");
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 success_flag =3D 1;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0continue;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+On Tue, Sep 29, 2009 at 09:12:50AM -0700, Andy Isaacson wrote:
+> I'll run memtest86 and check SMART.
 
-I should know this, but this patch made me wonder about the underlying
-implementation of EXT4_IOC_MOVE_EXT.
+The host ran memtest86+ for 8 hours with no errors and the disk isn't
+reporting any problems via SMART.
 
-After EXT4_IOC_MOVE_EXT is called, can userspace somehow modify the
-defragged file?
+> I would like to get as close to root cause as possible.  I have a
+> filesystem image copied away and I'll be attempting to repro the
+> failure; this is a test system for a large deployment, so I don't want
+> any issues lurking. :)
+> 
+> Let me know what debug commands you'd like to run.  dumpe2fs output is
+> at http://web.hexapodia.org/~adi/tmp/dumpe2fs.out
 
-ie. If I only have readonly access to a file and I call
-EXT4_IOC_MOVE_EXT to replace some of the data blocks, is it possible
-now for me to write data to the donor_fd and thus modify the data in
-the original file?
+I'm going to try to reproduce the failure today.  To my untutored eye
+the dumpe2fs output looks OK around group 48.
 
-Greg
---=20
-Greg Freemyer
-Head of EDD Tape Extraction and Processing team
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-Preservation and Forensic processing of Exchange Repositories White Pap=
-er -
-<http://www.norcrossgroup.com/forms/whitepapers/tng_whitepaper_fpe.html=
->
-
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks for any further suggestions,
+-andy
