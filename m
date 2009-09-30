@@ -1,57 +1,79 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/3][RFC](Repost) ext4: add a message in remount/umount
-	for ext4
-Date: Wed, 30 Sep 2009 13:22:20 -0400
-Message-ID: <20090930172220.GL24383@mit.edu>
-References: <20090930154931.ef2a4760.toshi.okajima@jp.fujitsu.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 1/3] e4defrag: output blocks per extent by -c option
+Date: Wed, 30 Sep 2009 14:28:12 -0400
+Message-ID: <87f94c370909301128w4bfe6f4bh80bf3d6540ed83d3@mail.gmail.com>
+References: <4AC306B0.9070308@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, adilger@sun.com, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:43103 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754197AbZI3RW7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Sep 2009 13:22:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20090930154931.ef2a4760.toshi.okajima@jp.fujitsu.com>
+Received: from mail-yx0-f199.google.com ([209.85.210.199]:35988 "EHLO
+	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755020AbZI3S2J convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Sep 2009 14:28:09 -0400
+Received: by yxe37 with SMTP id 37so7058473yxe.33
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Sep 2009 11:28:13 -0700 (PDT)
+In-Reply-To: <4AC306B0.9070308@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 30, 2009 at 03:49:31PM +0900, Toshiyuki Okajima wrote:
-> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> 
-> ext4 doesn't log a record of having unmounted the filesystem. And ext4 doesn't 
-> log a record when the filesystem is remounted also with read-only. Therefore 
-> in the system log, we cannot judge whether or not at the certain time this
-> filesystem user touches it.
-> For enterprise users, they often want to know when a certain filesystem is 
-> mounted/remounted/unmounted.
-> 
-> So, we output the message to the system log when the filesystem is 
-> remounted/unmounted.
-> 
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+2009/9/30 Kazuya Mio <k-mio@sx.jp.nec.com>:
+> e4defrag with -c option outputs "ratio" that means the levels of
+> fragmentation. However, it's difficult for users to understand, so we=
+ will
+> use blocks per extent instead of ratio.
+>
+> Before:
+> # e4defrag -c /mnt/mp1/file
+> <File> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 now/best =A0 =A0 =A0 =A0 =A0ratio
+> /mnt/mp1/file =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 14/1 =A0 =A0 =A0 =A0 =A0 =A0 0.01%
+>
+> =A0Total/best extents =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 14/1
+> =A0Fragmentation ratio =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A00.01%
+> =A0Fragmentation score =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A00.10
+> =A0[0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+> =A0This file(/mnt/mp1/file) does not need defragmentation.
+> =A0Done.
+>
+> After:
+> # e4defrag -c /mnt/mp1/file
+> <File> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 now/best =A0 =A0 =A0 =A0blk/ext
+> /mnt/mp1/file =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 14/1 =A0 =A0 =A0 =A0 =A0 =A0 =A07142
+>
+> =A0Total/best extents =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 14/1
+> =A0Average blocks per extent =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A07142
+> =A0Fragmentation score =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A00
+> =A0[0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+> =A0This file(/mnt/mp1/file) does not need defragmentation.
+> =A0Done.
 
-The question of whether this should be at the VFS layer is still an
-open one, I think.  It is true that ext3 and ext4 does print some
-filesystem specific information, but that could be handled via a new
-method function in struct super_ops:
+RFC
 
-       mount_msg(struct super *sb, char *buf, int buflen)
+If we are going go that far (which I like), how about adding the avg
+extent size in bytes.  (ie. 7142 * blocksize I assume).
 
-Note by the way that I've made some changes to clean up ext4's
-mount/umount messages, trying to get rid of excess messages.  In fact
-ext4 already prints a "filesystem mounted" message in
-ext4_fill_super().  You removed the one in ext4_setup_super(), but
-I've already removed it in a recent commit pushed to Linus to remove
-superflous mount-time printk's.  I left the one at the very end of
-ext4_fill_super() in; and your patch adds one about 2/3'rd of the way
-into ext4_fill_super() --- so two "filesystem mounted" messages would
-end up getting printed as a result.  
+Also a note about the max blocks / extent might be good.
 
-Did you actually test the patch and see what sort of messages would be
-printed as a result?
+ie. Add a more or less hard coded line
+Ext4 max blocks per extent     32,768  (128MiB)
 
-						- Ted
+Otherwise your typical user won't know what perfect is.
+
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
