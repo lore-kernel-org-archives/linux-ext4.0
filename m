@@ -1,67 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Updated fsx.c program (fixed fallocate)
-Date: Wed, 30 Sep 2009 11:47:59 -0500
-Message-ID: <4AC38BBF.4080707@redhat.com>
-References: <20090826052505.GA22238@webber.adilger.int> <20090929213859.GB13825@webber.adilger.int> <20090929223938.GD3384@webber.adilger.int> <20090930082154.20e351cd.randy.dunlap@oracle.com> <4AC37A15.8030407@redhat.com> <20090930161913.GA3425@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 3/3][RFC](Repost) ext4: add a message in remount/umount
+	for ext4
+Date: Wed, 30 Sep 2009 13:22:20 -0400
+Message-ID: <20090930172220.GL24383@mit.edu>
+References: <20090930154931.ef2a4760.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Randy Dunlap <randy.dunlap@oracle.com>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <esandeen@redhat.com>,
-	Subrata Modak <subrata@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org
-To: Dave Jones <davej@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, adilger@sun.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52546 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:43103 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754197AbZI3QsW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Sep 2009 12:48:22 -0400
-In-Reply-To: <20090930161913.GA3425@redhat.com>
+	id S1754197AbZI3RW7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Sep 2009 13:22:59 -0400
+Content-Disposition: inline
+In-Reply-To: <20090930154931.ef2a4760.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dave Jones wrote:
-> On Wed, Sep 30, 2009 at 10:32:37AM -0500, Eric Sandeen wrote:
->  > Randy Dunlap wrote:
->  > > On Tue, 29 Sep 2009 16:39:38 -0600 Andreas Dilger wrote:
->  > > 
->  > >> I've done some work to merge some of the existing fsx.c mods into a
->  > >> single version.  Over & above the version that is in the LTP, I've
->  > >> included AKPM's O_DIRECT fixes (with a twist), the BSD mmap page and
->  > >> segfault handling, and per-write fsync.
->  > > 
->  > > It sure would be Good if fsx-linux had a fixed, known home, instead of
->  > > having to look at Andrew's ext3-tools, Dave's codemonkey files,
->  > > LTP, linux-fsdevel mailing list, etc.
->  > > 
->  > > Is there a linux-fs-tests package somewhere?  (like where the xfstests
->  > > are being merged into)
->  > 
->  > Well, I think Andreas' idea was to make LTP the official home for now 
->  > which is why I was going to send it here ...
->  > 
->  > But I don't think xfstests is being merged into anything at the moment; 
->  > if anything, we're working to make it a more generic suite of tests (it 
->  > can run about 50 tests on generic posix filesystems by now).
+On Wed, Sep 30, 2009 at 03:49:31PM +0900, Toshiyuki Okajima wrote:
+> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 > 
-> I'd love to see a tests/ directory shipped with the kernel.
-> It's been talked about for about several years and still hasn't happened.
+> ext4 doesn't log a record of having unmounted the filesystem. And ext4 doesn't 
+> log a record when the filesystem is remounted also with read-only. Therefore 
+> in the system log, we cannot judge whether or not at the certain time this
+> filesystem user touches it.
+> For enterprise users, they often want to know when a certain filesystem is 
+> mounted/remounted/unmounted.
 > 
-> Is it just because no-one has stepped up to do it ?
-> I would be happy to manage a git tree for marshalling stuff on its way to Linus
-> if that's all that's holding this idea back.
+> So, we output the message to the system log when the filesystem is 
+> remounted/unmounted.
 > 
-> Of course if there are other objections..
-> 
-> 	Dave
->  
+> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-Perhaps for simple, small things like fsx.c that might make sense, but a 
-full-blown test suite could add significantly to the size of the tarball 
-I'd think (especially by the time you start including things like 
-including pre-corrupted images, perhaps)...
+The question of whether this should be at the VFS layer is still an
+open one, I think.  It is true that ext3 and ext4 does print some
+filesystem specific information, but that could be handled via a new
+method function in struct super_ops:
 
--Eric
+       mount_msg(struct super *sb, char *buf, int buflen)
 
+Note by the way that I've made some changes to clean up ext4's
+mount/umount messages, trying to get rid of excess messages.  In fact
+ext4 already prints a "filesystem mounted" message in
+ext4_fill_super().  You removed the one in ext4_setup_super(), but
+I've already removed it in a recent commit pushed to Linus to remove
+superflous mount-time printk's.  I left the one at the very end of
+ext4_fill_super() in; and your patch adds one about 2/3'rd of the way
+into ext4_fill_super() --- so two "filesystem mounted" messages would
+end up getting printed as a result.  
 
+Did you actually test the patch and see what sort of messages would be
+printed as a result?
+
+						- Ted
