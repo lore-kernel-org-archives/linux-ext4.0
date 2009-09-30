@@ -1,107 +1,53 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [BUG] kernel BUG at fs/ext4/extents.c:2863
-Date: Wed, 30 Sep 2009 10:48:09 -0500
-Message-ID: <4AC37DB9.2060602@redhat.com>
-References: <4AC304EE.5080009@linux.vnet.ibm.com>
+From: Dave Jones <davej@redhat.com>
+Subject: Re: Updated fsx.c program (fixed fallocate)
+Date: Wed, 30 Sep 2009 12:19:13 -0400
+Message-ID: <20090930161913.GA3425@redhat.com>
+References: <20090826052505.GA22238@webber.adilger.int> <20090929213859.GB13825@webber.adilger.int> <20090929223938.GD3384@webber.adilger.int> <20090930082154.20e351cd.randy.dunlap@oracle.com> <4AC37A15.8030407@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	sachin p sant <sachinp@linux.vnet.ibm.com>,
-	Ramon <rcvalle@linux.vnet.ibm.com>,
-	Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
-	aneesh.kumar@in.ibm.com
-To: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54713 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754689AbZI3PsS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Sep 2009 11:48:18 -0400
-In-Reply-To: <4AC304EE.5080009@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Randy Dunlap <randy.dunlap@oracle.com>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <esandeen@redhat.com>,
+	Subrata Modak <subrata@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4AC37A15.8030407@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Nageswara R Sastry wrote:
-> Hi,
-> 
-> While working with fsfuzz encountered the following kernel stack traces.
-> 
-> Environment: 2.6.32-rc1 and 2.6.31 (kernel BUG at fs/ext4/extents.c:2833)
-> Architecture: s390
+On Wed, Sep 30, 2009 at 10:32:37AM -0500, Eric Sandeen wrote:
+ > Randy Dunlap wrote:
+ > > On Tue, 29 Sep 2009 16:39:38 -0600 Andreas Dilger wrote:
+ > > 
+ > >> I've done some work to merge some of the existing fsx.c mods into a
+ > >> single version.  Over & above the version that is in the LTP, I've
+ > >> included AKPM's O_DIRECT fixes (with a twist), the BSD mmap page and
+ > >> segfault handling, and per-write fsync.
+ > > 
+ > > It sure would be Good if fsx-linux had a fixed, known home, instead of
+ > > having to look at Andrew's ext3-tools, Dave's codemonkey files,
+ > > LTP, linux-fsdevel mailing list, etc.
+ > > 
+ > > Is there a linux-fs-tests package somewhere?  (like where the xfstests
+ > > are being merged into)
+ > 
+ > Well, I think Andreas' idea was to make LTP the official home for now 
+ > which is why I was going to send it here ...
+ > 
+ > But I don't think xfstests is being merged into anything at the moment; 
+ > if anything, we're working to make it a more generic suite of tests (it 
+ > can run about 50 tests on generic posix filesystems by now).
 
-providing the fuzzed image (perhaps filing a bug on the kernel.org 
-bugzilla and attaching it there) would be great.
+I'd love to see a tests/ directory shipped with the kernel.
+It's been talked about for about several years and still hasn't happened.
 
--Eric
+Is it just because no-one has stepped up to do it ?
+I would be happy to manage a git tree for marshalling stuff on its way to Linus
+if that's all that's holding this idea back.
 
-> 
-> ------------[ cut here ]------------
-> kernel BUG at fs/ext4/extents.c:2863!
-> illegal operation: 0001 [#1] SMP
-> Modules linked in: cbc md5 aes_s390 aes_generic ecb ecryptfs ext4 jbd2 
-> crc16 autofs4 lockd sunrpc ipv6 loop qeth_l2 qeth qdio vmur ccwgroup 
-> dm_round_robin dm_multipath scsi_dh sd_mod scsi_mod multipath 
-> dm_snapshot dm_zero dm_mirror dm_region_hash dm_log dm_mod dasd_fba_mod 
-> dasd_eckd_mod dasd_mod ext3 jbd
-> CPU: 0 Not tainted 2.6.32-rc2 #1
-> Process fstest (pid: 5755, task: 0000000024a48038, ksp: 0000000011afbe20)
-> Krnl PSW : 0704000180000000 000003e00200f3f4 
-> (ext4_ext_get_blocks+0x240/0x10cc [ext4])
->            R:0 T:1 IO:1 EX:1 Key:0 M:1 W:0 P:0 AS:0 CC:0 PM:0 EA:3
-> Krnl GPRS: 0000000000000000 0000000000000000 0000000000002400 
-> 0000000000000000
->            000000001416c000 000000000c8da000 000000002b539370 
-> 0000000000000000
->            000000002b5390f0 000000002b5390f0 0000000011afba90 
-> 000000002b539040
->            000003e001fe3000 000003e002023198 000003e00200f388 
-> 0000000011afb6c8
-> Krnl Code: 000003e00200f3e8: a71100ff           tmll    %r1,255
->            000003e00200f3ec: a7740006           brc     7,3e00200f3f8
->            000003e00200f3f0: a7f40001           brc     15,3e00200f3f2
->           >000003e00200f3f4: a7f40000           brc     15,3e00200f3f4
->            000003e00200f3f8: e3b040100004       lg      %r11,16(%r4)
->            000003e00200f3fe: b90200bb           ltgr    %r11,%r11
->            000003e00200f402: a78404ea           brc     8,3e00200fdd6
->            000003e00200f406: 5810b000           l       %r1,0(%r11)
-> Call Trace:
-> ([<000003e00200f388>] ext4_ext_get_blocks+0x1d4/0x10cc [ext4])
->  [<000003e001fed31e>] ext4_get_blocks+0xba/0x3c0 [ext4]
->  [<000003e001fee9d8>] ext4_get_block+0xcc/0x114 [ext4]
->  [<00000000001449ba>] do_mpage_readpage+0x1fa/0x688
->  [<0000000000144f7a>] mpage_readpages+0xae/0x100
->  [<00000000000d49f8>] __do_page_cache_readahead+0x160/0x1f4
->  [<00000000000d4acc>] ra_submit+0x40/0x54
->  [<00000000000d4f94>] page_cache_sync_readahead+0x40/0x50
->  [<00000000000cc334>] generic_file_aio_read+0x284/0x6a4
->  [<000000000010ed34>] do_sync_read+0xd0/0x118
->  [<000000000010fad0>] vfs_read+0xa8/0x174
->  [<000000000010fc92>] SyS_read+0x56/0x84
->  [<0000000000027f5a>] sysc_tracego+0xe/0x14
->  [<0000004e53f12cc4>] 0x4e53f12cc4
-> Last Breaking-Event-Address:
->  [<000003e00200f3f0>] ext4_ext_get_blocks+0x23c/0x10cc [ext4]
-> 
-> ---[ end trace 7a3a53bbf5dda9be ]---
-> 
-> 
->    2858         /*
->    2859          * consistent leaf must not be empty;
->    2860          * this situation is possible, though, _during_ tree 
-> modification;
->    2861          * this is why assert can't be put in 
-> ext4_ext_find_extent()
->    2862          */
->    2863         BUG_ON(path[depth].p_ext == NULL && depth != 0);
->    2864         eh = path[depth].p_hdr;
->    2865
-> 
-> Thank you
-> Regards
-> R.Nageswara Sastry
-> 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Of course if there are other objections..
 
+	Dave
+ 
