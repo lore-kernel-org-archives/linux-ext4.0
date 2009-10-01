@@ -1,55 +1,48 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14287] ext4: fixpoint divide exception at ext4_fill_super
-Date: Thu, 1 Oct 2009 06:01:29 GMT
-Message-ID: <200910010601.n9161T8c021076@demeter.kernel.org>
-References: <bug-14287-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Kernel BUG] ext4 for v2.6.32 round II
+Date: Thu, 1 Oct 2009 02:40:41 -0400
+Message-ID: <20091001064041.GV24383@mit.edu>
+References: <E1Msrgx-0001br-MP@closure.thunk.org> <20091001014128.GA2092@phenom2.trippelsdorf.de> <alpine.LFD.2.01.0909301847030.6996@localhost.localdomain> <20091001021531.GA2025@phenom2.trippelsdorf.de> <20091001030151.GR24383@mit.edu> <20091001034716.GA2008@phenom2.trippelsdorf.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Markus Trippelsdorf <markus@trippelsdorf.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:37269 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752104AbZJAGBZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Oct 2009 02:01:25 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9161Tpx021077
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Oct 2009 06:01:29 GMT
-In-Reply-To: <bug-14287-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:54655 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752822AbZJAGky (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Oct 2009 02:40:54 -0400
+Content-Disposition: inline
+In-Reply-To: <20091001034716.GA2008@phenom2.trippelsdorf.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14287
+On Thu, Oct 01, 2009 at 05:47:16AM +0200, Markus Trippelsdorf wrote:
+> On Wed, Sep 30, 2009 at 11:01:51PM -0400, Theodore Tso wrote:
+> > Hi Markus, 
+> > 
+> > I'm pretty sure the following should fix your problems; can you
+> > confirm?
+> 
+> Yes, everything is fine again.
 
+Linus, can you pull from:
 
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
+This will pick up the fix to the problem Markus reported, plus some
+old code that we had promised would be removed for 2.6.31.
 
+    	      	     	      	       	       - Ted
 
---- Comment #2 from R.N.Sastry <rnsastry@linux.vnet.ibm.com>  2009-10-01 06:01:28 ---
-Use the ext4.base file from already attached to other bug #14286
-http://bugzilla.kernel.org/attachment.cgi?id=23214
+Eric Sandeen (1):
+      ext4: drop ext4dev compat
 
-unzip the above file(s) 
-ext4.319.img.tar.gz
-ext4.base.tar.gz 
+Theodore Ts'o (1):
+      ext4: fix a BUG_ON crash by checking that page has buffers attached to it
 
-And download the fsfuzzer from site
-http://www.risesecurity.org/files/fsfuzzer-0.7.3.tar.gz
-
-Untar it
-cd fsfuzzer-0.7.3
-./configure
-make
-
-cp ext4.319.img to fsfuzzer-0.7.3/cfs
-cp ext4.base to fsfuzzer-0.7.3/fs
-and run the file named run_test in fsfuzzer-0.7.3
-./run_test ext4 319
-
-Check the dmesg.
-
-Thanks!!
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+ fs/ext4/Kconfig |   14 --------------
+ fs/ext4/inode.c |   22 +++++++++++-----------
+ fs/ext4/super.c |   31 -------------------------------
+ 3 files changed, 11 insertions(+), 56 deletions(-)
