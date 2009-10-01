@@ -1,59 +1,51 @@
-From: Andrew Lutomirski <andy@luto.us>
-Subject: Re: 2.6.32-rc1 oops in ext4
-Date: Thu, 1 Oct 2009 12:42:45 -0400
-Message-ID: <cb0375e10910010942m31c40ff5kc261deaa87969e55@mail.gmail.com>
-References: <cb0375e10909301954y68e18290m97e9fecfbc5aa6e3@mail.gmail.com>
-	 <20091001030733.GS24383@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Where all does preallocated/extra space hide?
+Date: Thu, 01 Oct 2009 11:55:47 -0500
+Message-ID: <4AC4DF13.10704@redhat.com>
+References: <4AC23A17.5020100@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Tso <tytso@mit.edu>, Andrew Lutomirski <andy@luto.us>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f210.google.com ([209.85.218.210]:62926 "EHLO
-	mail-bw0-f210.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753622AbZJAQmm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Oct 2009 12:42:42 -0400
-In-Reply-To: <20091001030733.GS24383@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:63586 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753471AbZJAQzr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Oct 2009 12:55:47 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n91Gtp3D014162
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Oct 2009 12:55:52 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n91Gtl51028653
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Oct 2009 12:55:51 -0400
+In-Reply-To: <4AC23A17.5020100@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 30, 2009 at 11:07 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Wed, Sep 30, 2009 at 10:54:26PM -0400, Andrew Lutomirski wrote:
->> All I did was boot Fedora 11 and open a Konsole. =A0I'm running
->> 84d88d5d4efc37dfb8a93a4a58d8a227ee86ffa4.
->
-> I'm pretty sure this patch should fix things; can you confirm?
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0- Ted
->
-> commit 1f94533d9cd75f6d2826018d54a971b9cc085992
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date: =A0 Wed Sep 30 22:57:41 2009 -0400
->
-> =A0 =A0ext4: fix a BUG_ON crash by checking that page has buffers att=
-ached to it
->
-> =A0 =A0In ext4_num_dirty_pages() we were calling page_buffers() befor=
-e
-> =A0 =A0checking to see if the page actually had pages attached to it;=
- this
-> =A0 =A0would cause a BUG check crash in the inline function page_buff=
-ers().
->
-> =A0 =A0Thanks to Markus Trippelsdorf for reporting this bug.
->
-> =A0 =A0Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Eric Sandeen wrote:
+> I was running some of the xfstests enospc tests on ext4, and they were
+> failing; in one case, manymanymany small files are made to fill up a
+> 100M filesystem.  ext4 stops quite early with -ENOSPC, but after a bit,
+> (or after a "sync") we get 40MB free again.  So 40% of the fs space is
+> hidden somewhere in preallocation...
+> 
+> I tried calling out to discard group prealloc but that's only a few
+> blocks.  I'll go trace through the sync paths to see what all gets
+> released, but if anyone knows offhand where the rest of that space is
+> hiding, please give me a shout.  :)
+> 
+> Thanks,
+> -Eric
 
-I patched that onto the same kernel from git and it seems to work.
+Possibly related; on a 1G filesystem, doing this:
 
-Tested-by: Andy Lutomirski <luto@mit.edu>
+#!/bin/bash
 
-Thanks,
-Andy
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+xfs_io -F -f -d -c 'pwrite -b 64k 0 512m' /mnt/test/io_test
+rm /mnt/test/io_test
+
+in a "while true" loop spews ENOSPC.  (it's a direct IO 512m write in 
+64k chunks).  Buffered IO seems fine ...
+
+-Eric
