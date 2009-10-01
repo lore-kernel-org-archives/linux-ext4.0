@@ -1,36 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14300] BUG_ON crash w/ ext4
-Date: Thu, 1 Oct 2009 22:24:28 GMT
-Message-ID: <200910012224.n91MOSOf013148@demeter.kernel.org>
-References: <bug-14300-13602@http.bugzilla.kernel.org/>
+From: scjody@sun.com
+Subject: [patch 0/4] Journal guided resync and support
+Date: Thu, 01 Oct 2009 18:39:29 -0400
+Message-ID: <20091001223929.120106893@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:45058 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753357AbZJAWYY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Oct 2009 18:24:24 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n91MOS9L013149
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Oct 2009 22:24:28 GMT
-In-Reply-To: <bug-14300-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN
+Content-Transfer-Encoding: 7BIT
+Cc: linux-kernel@vger.kernel.org, Andreas Dilger <adilger@sun.com>
+To: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753841AbZJAWkO@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14300
+This is an updated implementation of journal guided resync, intended to be
+suitable for production systems.  This feature addresses the problem with RAID
+arrays that take too long to resync - similar to the existing MD write-intent
+bitmap feature, we resync only the stripes that were undergoing writes at the
+time of the crash.  Unlike write-intent bitmaps, our testing shows very little
+performance degredation as a result of the feature - around 3-5% vs around 30%
+for bitmaps.
 
+This feature is based on work described in this paper:
+http://www.usenix.org/events/fast05/tech/denehy.html
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
+As a summary, we introduce a new data write mode known as declared mode.  This
+is based on ordered mode except that a list of blocks to be written during the
+current transaction is added to the journal before the blocks themselves are
+written to the disk.  Then, if the system crashes, we can resync only those
+blocks during journal replay and skip the rest of the resync of the RAID array.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-     Kernel Version|                            |2.6.32-rc1
+The changes consist of patches to ext3, jbd, MD, and the raid456 personality.
+These patches are currently against the RHEL 5 kernel 2.6.18-128.1.6.  Porting
+to ext4/jbd2 and a more modern kernel is a TODO item.
 
-
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Cheers,
+Jody
