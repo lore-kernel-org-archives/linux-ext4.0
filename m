@@ -1,296 +1,300 @@
-From: scjody@sun.com
-Subject: [patch 2/4] [md] Add RESYNC_RANGE ioctl
-Date: Thu, 01 Oct 2009 18:39:31 -0400
-Message-ID: <20091001224016.013217204@sun.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [patch 3/4] [jbd] Add support for journal guided resync.
+Date: Thu, 1 Oct 2009 16:39:31 -0700
+Message-ID: <20091001163931.6959c453.akpm@linux-foundation.org>
 References: <20091001223929.120106893@sun.com>
+	<20091001224018.740641147@sun.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; NAME=''md-resync-range.patch
-Content-Transfer-Encoding: 7BIT
-Cc: linux-kernel@vger.kernel.org, Andreas Dilger <adilger@sun.com>
-To: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753917AbZJAWkj@vger.kernel.org>
-Content-disposition: inline; filename=md-resync-range.patch
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org,
+	linux-kernel@vger.kernel.org, adilger@sun.com
+To: scjody@sun.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35807 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755148AbZJAXkD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Oct 2009 19:40:03 -0400
+In-Reply-To: <20091001224018.740641147@sun.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Add the RESYNC_RANGE ioctl and implement it for RAID 4/5/6.  This causes an
-immediate resync of the requested sectors if the device is under resync.
+On Thu, 01 Oct 2009 18:39:32 -0400
+scjody@sun.com wrote:
 
-TODO: In raid456 (and probably in any other personality that implements
-this), there should be some concept of the last blocks that were resynced
-since the personality can resync more data than requested which will result
-in multiple resyncs of the same data with this implementation.
+> Adds support for declare blocks, used by ext3's journal guided resync (declared
+> mode.)  A declare block is added to the journal to list blocks to be written
+> during the current transaction.  During journal replay, we perform a RAID
+> resync of only these blocks and skip the rest of the resync.
+> 
+> ...
+>  
+> +int wait_for_descriptors(journal_t *journal, transaction_t *trans) {
 
-Index: linux-2.6.18-128.1.6/drivers/md/md.c
-===================================================================
---- linux-2.6.18-128.1.6.orig/drivers/md/md.c
-+++ linux-2.6.18-128.1.6/drivers/md/md.c
-@@ -4512,6 +4512,71 @@ static int md_ioctl(struct inode *inode,
- 			goto done_unlock;
- 		}
- 
-+		case RESYNC_RANGE:
-+		{
-+			mdu_range_t range;
-+			struct hd_struct *part = inode->i_bdev->bd_part;
-+			int ret;
-+
-+			if (!arg) {
-+				err = -EINVAL;
-+				goto abort_unlock;
-+			}
-+
-+			ret = copy_from_user(&range, argp, sizeof(range));
-+			if (ret) {
-+				err = -EFAULT;
-+				goto abort_unlock;
-+			}
-+
-+			if (range.start > range.end) {
-+				err = -EINVAL;
-+				goto abort_unlock;
-+			}
-+
-+			if (part) {
-+				sector_t part_end;
-+
-+				range.start += part->start_sect;
-+				range.end += part->start_sect;
-+
-+				part_end = part->start_sect + part->nr_sects - 1;
-+
-+				if (range.end > part_end) {
-+					err = -EINVAL;
-+					goto abort_unlock;
-+				}
-+			}
-+
-+			if (range.end >= mddev->array_size<<1) {
-+				err = -EINVAL;
-+				goto abort_unlock;
-+			}
-+
-+			if (!test_bit(MD_RECOVERY_RUNNING, &mddev->recovery)) {
-+				/* We are already in sync; return success */
-+				err = 0;
-+				goto abort_unlock;
-+			}
-+
-+			if (!test_bit(MD_RECOVERY_SYNC, &mddev->recovery)) {
-+				/* Something is running but not a resync. */
-+				err = -EBUSY;
-+				goto abort_unlock;
-+			}
-+
-+			if (mddev->pers->resync_range == NULL) {
-+				err = -EINVAL;
-+				goto abort_unlock;
-+			}
-+
-+
-+			err = mddev->pers->resync_range(mddev, range.start,
-+							range.end);
-+
-+			goto done_unlock;
-+		}
-+
- 		default:
- 			err = -EINVAL;
- 			goto abort_unlock;
-@@ -4865,6 +4930,7 @@ static int md_seq_show(struct seq_file *
- 	mdk_rdev_t *rdev;
- 	struct mdstat_info *mi = seq->private;
- 	struct bitmap *bitmap;
-+	unsigned long resync;
- 
- 	if (v == (void*)1) {
- 		struct mdk_personality *pers;
-@@ -4883,6 +4949,8 @@ static int md_seq_show(struct seq_file *
- 		return 0;
- 	}
- 
-+	resync = (mddev->curr_resync - atomic_read(&mddev->recovery_active))/2;
-+ 
- 	if (mddev_lock(mddev) < 0)
- 		return -EINTR;
- 
-Index: linux-2.6.18-128.1.6/include/linux/raid/md_u.h
-===================================================================
---- linux-2.6.18-128.1.6.orig/include/linux/raid/md_u.h
-+++ linux-2.6.18-128.1.6/include/linux/raid/md_u.h
-@@ -46,6 +46,7 @@
- #define STOP_ARRAY_RO		_IO (MD_MAJOR, 0x33)
- #define RESTART_ARRAY_RW	_IO (MD_MAJOR, 0x34)
- #define SKIP_RESYNC		_IO (MD_MAJOR, 0x40)
-+#define RESYNC_RANGE		_IO (MD_MAJOR, 0x41)
- 
- typedef struct mdu_version_s {
- 	int major;
-@@ -121,5 +122,11 @@ typedef struct mdu_param_s
- 	int			max_fault;	/* unused for now */
- } mdu_param_t;
- 
-+typedef struct mdu_range_s
-+{
-+	__u64           start;          /* starting sector */
-+	__u64           end;            /* ending sector */
-+} mdu_range_t;
-+
- #endif 
- 
-Index: linux-2.6.18-128.1.6/drivers/md/raid5.c
-===================================================================
---- linux-2.6.18-128.1.6.orig/drivers/md/raid5.c
-+++ linux-2.6.18-128.1.6/drivers/md/raid5.c
-@@ -1698,8 +1698,10 @@ static void handle_stripe5(struct stripe
- 		}
- 	}
- 	if (failed > 1 && syncing) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,0);
-+		if (!test_bit(STRIPE_RESYNC_RANGE, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS,0);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
-+		clear_bit(STRIPE_RESYNC_RANGE, &sh->state);
- 		syncing = 0;
- 	}
- 
-@@ -1932,8 +1934,10 @@ static void handle_stripe5(struct stripe
- 		}
- 	}
- 	if (syncing && locked == 0 && test_bit(STRIPE_INSYNC, &sh->state)) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,1);
-+		if (!test_bit(STRIPE_RESYNC_RANGE, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS,1);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
-+		clear_bit(STRIPE_RESYNC_RANGE, &sh->state);
- 	}
- 
- 	/* If the failed drive is just a ReadError, then we might need to progress
-@@ -2275,8 +2279,10 @@ static void handle_stripe6(struct stripe
- 		}
- 	}
- 	if (failed > 2 && syncing) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,0);
-+		if (!test_bit(STRIPE_RESYNC_RANGE, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS,0);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
-+		clear_bit(STRIPE_RESYNC_RANGE, &sh->state);
- 		syncing = 0;
- 	}
- 
-@@ -2571,8 +2577,10 @@ static void handle_stripe6(struct stripe
- 	}
- 
- 	if (syncing && locked == 0 && test_bit(STRIPE_INSYNC, &sh->state)) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,1);
-+		if (!test_bit(STRIPE_RESYNC_RANGE, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS,1);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
-+		clear_bit(STRIPE_RESYNC_RANGE, &sh->state);
- 	}
- 
- 	/* If the failed drives are just a ReadError, then we might need
-@@ -3300,6 +3308,52 @@ static inline sector_t sync_request(mdde
- 	return STRIPE_SECTORS;
- }
- 
-+/* Perform an immediate resync of the requested range. */
-+static int resync_range(mddev_t *mddev, sector_t start, sector_t end)
-+{
-+	raid5_conf_t *conf = (raid5_conf_t *) mddev->private;
-+	sector_t j, sync_end;
-+	unsigned int dd_idx, pd_idx, disks, data_disks;
-+
-+	printk("resync_range, sectors %llu - %llu\n", (unsigned long long)start,
-+	       (unsigned long long)end);
-+
-+	disks = conf->raid_disks;
-+	data_disks = disks - conf->max_degraded;
-+
-+	j = raid5_compute_sector(start, disks, data_disks,
-+				 &dd_idx, &pd_idx, conf);
-+	sync_end = raid5_compute_sector(end, disks, data_disks,
-+					&dd_idx, &pd_idx, conf);
-+
-+	while (j <= sync_end) {
-+		struct stripe_head *sh;
-+
-+		pd_idx = stripe_to_pdidx(j, conf, disks);
-+		sh = get_active_stripe(conf, j, disks, pd_idx, 1);
-+		if (sh == NULL) {
-+			sh = get_active_stripe(conf, j, disks, pd_idx, 0);
-+			/* make sure we don't swamp the stripe cache if someone
-+			 * else is trying to get access
-+			 */
-+			schedule_timeout_uninterruptible(1);
-+		}
-+
-+		spin_lock(&sh->lock);
-+		set_bit(STRIPE_SYNCING, &sh->state);
-+		set_bit(STRIPE_RESYNC_RANGE, &sh->state);
-+		clear_bit(STRIPE_INSYNC, &sh->state);
-+		spin_unlock(&sh->lock);
-+
-+		handle_stripe(sh, NULL, NULL);
-+		release_stripe(sh);
-+
-+		j += STRIPE_SECTORS;
-+	}
-+
-+	return 0;
-+}
-+
- /*
-  * This is our raid5 kernel thread.
-  *
-@@ -4106,6 +4160,7 @@ static struct mdk_personality raid6_pers
- 	.resize		= raid5_resize,
- 	.quiesce	= raid5_quiesce,
- 	.skip_resync	= skip_resync,
-+	.resync_range	= resync_range,
- };
- static struct mdk_personality raid5_personality =
- {
-@@ -4128,6 +4183,7 @@ static struct mdk_personality raid5_pers
- #endif
- 	.quiesce	= raid5_quiesce,
- 	.skip_resync	= skip_resync,
-+	.resync_range	= resync_range,
- };
- 
- static struct mdk_personality raid4_personality =
-@@ -4147,6 +4203,7 @@ static struct mdk_personality raid4_pers
- 	.resize		= raid5_resize,
- 	.quiesce	= raid5_quiesce,
- 	.skip_resync	= skip_resync,
-+	.resync_range	= resync_range,
- };
- 
- static int __init raid5_init(void)
-Index: linux-2.6.18-128.1.6/include/linux/raid/md_k.h
-===================================================================
---- linux-2.6.18-128.1.6.orig/include/linux/raid/md_k.h
-+++ linux-2.6.18-128.1.6/include/linux/raid/md_k.h
-@@ -284,6 +284,7 @@ struct mdk_personality
- 	 */
- 	void (*quiesce) (mddev_t *mddev, int state);
- 	int (*skip_resync) (mddev_t *mddev, sector_t start, sector_t end);
-+	int (*resync_range) (mddev_t *mddev, sector_t start, sector_t end);
- };
- 
- 
-Index: linux-2.6.18-128.1.6/include/linux/raid/raid5.h
-===================================================================
---- linux-2.6.18-128.1.6.orig/include/linux/raid/raid5.h
-+++ linux-2.6.18-128.1.6/include/linux/raid/raid5.h
-@@ -180,6 +180,8 @@ struct stripe_head {
- #define	STRIPE_EXPANDING	9
- #define	STRIPE_EXPAND_SOURCE	10
- #define	STRIPE_EXPAND_READY	11
-+#define	STRIPE_RESYNC_RANGE	12
-+
- /*
-  * Plugging:
-  *
+Opening brace goes on the next line, please.  Several instances.
 
--- 
+> +	struct journal_head *jh;
+> +	struct buffer_head *bh;
+> +	int err = 0;
+> +
+> +wait_for_ctlbuf:
+> +
+> +	while (trans->t_log_list != NULL) {
+> +
+> +		jh = trans->t_log_list->b_tprev;
+> +		bh = jh2bh(jh);
+> +		if (buffer_locked(bh)) {
+> +			wait_on_buffer(bh);
+> +			goto wait_for_ctlbuf;
+> +		}
+> +		if (cond_resched())
+> +			goto wait_for_ctlbuf;
+> +
+> +		if (unlikely(!buffer_uptodate(bh)))
+> +			err = -EIO;
+> +
+> +		BUFFER_TRACE(bh, "ph5: control buffer writeout done: unfile");
+> +		clear_buffer_jwrite(bh);
+> +		journal_unfile_buffer(journal, jh);
+> +		journal_put_journal_head(jh);
+> +		__brelse(bh);		/* One for getblk */
+> +	}
+> +
+> +	return err;
+> +}
+> +
+> +struct journal_head *get_descriptor(journal_t *journal, transaction_t *trans,
+> +				    int blocktype, char **tagp, int *space_left) {
+
+Did all these functions need global scope?  Some do, but I didn't check
+them all.
+
+Those which cannot be made static should be given appropriate names,
+such as jbd_get_descriptor().
+
+> +	struct journal_head *descriptor;
+> +	struct buffer_head *dbh;
+> +	journal_header_t *header;
+> +
+> +	jbd_debug(4, "JBD: get descriptor\n");
+> +
+> +	descriptor = journal_get_descriptor_buffer(journal);
+> +	if (!descriptor)
+> +		return NULL;
+> +
+> +	dbh = jh2bh(descriptor);
+> +	jbd_debug(4, "JBD: got buffer %llu (%p)\n",
+> +	    (unsigned long long)dbh->b_blocknr, dbh->b_data);
+> +	header = (journal_header_t *)&dbh->b_data[0];
+> +	header->h_magic     = cpu_to_be32(JFS_MAGIC_NUMBER);
+> +	header->h_blocktype = cpu_to_be32(blocktype);
+> +	header->h_sequence  = cpu_to_be32(trans->t_tid);
+> +
+> +	*tagp = &dbh->b_data[sizeof(journal_header_t)];
+> +	*space_left = dbh->b_size - sizeof(journal_header_t);
+> +
+> +	set_buffer_jwrite(dbh);
+> +	set_buffer_dirty(dbh);
+> +
+> +	/* Record it so that we can wait for it later */
+> +	BUFFER_TRACE(dbh, "ph3: file as descriptor");
+> +	journal_file_buffer(descriptor, trans, BJ_LogCtl);
+> +
+> +	return descriptor;
+> +}
+> +
+>
+> ...
+>
+> +void write_declare_blocks(journal_t *journal, transaction_t *transaction,
+> +			  int committing)
+> +{
+> +	struct journal_head *jh, *descriptor = NULL;
+> +	struct buffer_head *bh;
+> +	int i, bufs = 0, err;
+> +	unsigned int n, count = 0, to_write;
+> +	unsigned long nextblock = 0;
+> +	char *tagp = NULL;
+> +	journal_block_tag_t *tag = NULL;
+> +	int space_left = 0, first_tag = 0, tag_flag;
+> +	struct radix_tree_root *root;
+> +
+> +	root = &transaction->t_declare_root;
+> +
+> +	spin_lock(&journal->j_list_lock);
+> +	to_write = transaction->t_declare_request;
+> +	transaction->t_declare_request = 0;
+> +	spin_unlock(&journal->j_list_lock);
+> +
+> +	if (to_write == UINT_MAX)
+> +		jbd_debug (1, "jbd: tid %d write declare request for ALL "
+> +			   "blocks\n", transaction->t_tid);
+> +	else
+> +		jbd_debug (1, "jbd: tid %d write declare request for %u "
+> +			   "blocks\n", transaction->t_tid, to_write);
+> +write_declare:
+> +	cond_resched();
+> +	spin_lock(&journal->j_list_lock);
+> +
+> +	n = radix_tree_gang_lookup(root, journal->j_declare_jhs, nextblock, 1);
+> +	while (n) {
+> +		if (!descriptor) {
+> +			J_ASSERT(bufs == 0);
+> +
+> +			spin_unlock(&journal->j_list_lock);
+> +
+> +			descriptor = get_descriptor(journal, transaction,
+> +						    JFS_DECLARE_BLOCK,
+> +						    &tagp, &space_left);
+> +
+> +			if (!descriptor) {
+> +				journal_abort(journal, -EIO);
+> +				return;
+> +			}
+> +
+> +			first_tag = 1;
+> +			journal->j_declare_bhs[bufs++] = jh2bh(descriptor);
+> +
+> +			goto write_declare;
+> +		}
+> +
+> +		jh = (struct journal_head *)journal->j_declare_jhs[0];
+> +		bh = jh2bh(jh);
+> +
+> +		/* refile the buffer as having been declared */
+> +		if (!inverted_lock(journal, bh))
+> +			goto write_declare;
+> +		__journal_unfile_buffer(jh);
+> +		__journal_file_buffer(jh, transaction, BJ_DeclareDone);
+> +
+> +		jbd_unlock_bh_state(bh);
+> +
+> +		/* record the block's tag in the current descriptor buffer */
+> +		tag_flag = 0;
+> +		if (!first_tag)
+> +			tag_flag |= JFS_FLAG_SAME_UUID;
+> +
+> +		tag = (journal_block_tag_t *)tagp;
+> +		tag->t_blocknr = cpu_to_be32(bh->b_blocknr);
+> +		tag->t_flags = cpu_to_be32(tag_flag);
+> +		tagp += sizeof(journal_block_tag_t);
+> +		space_left -= sizeof(journal_block_tag_t);
+> +
+> +		if (first_tag) {
+> +			memcpy (tagp, journal->j_uuid, 16);
+
+Please pass the patches through scripts/checkpatch.pl and review the
+result.
+
+> +			tagp += 16;
+> +			space_left -= 16;
+> +			first_tag = 0;
+> +		}
+> +
+> +		count++;
+> +
+> +		/* advance to the next journal head and buffer */
+> +		nextblock = bh->b_blocknr + 1;
+> +		n = radix_tree_gang_lookup(root, journal->j_declare_jhs,
+> +					   nextblock, 1);
+> +
+> +		/* If there's no more to do, or if the descriptor is full,
+> +		   let the IO rip! */
+> +
+> +		if (bufs == ARRAY_SIZE(journal->j_declare_bhs) || n == 0 ||
+> +		    count == to_write ||
+> +		    space_left < sizeof(journal_block_tag_t) + 16) {
+> +
+> +			jbd_debug(4, "JBD: Submit %d IOs\n", bufs);
+> +
+> +			/* Write an end-of-descriptor marker before
+> +			 * submitting the IOs.  "tag" still points to
+> +                         * the last tag we set up.
+> +			 */
+> +
+> +			tag->t_flags |= cpu_to_be32(JFS_FLAG_LAST_TAG);
+> +
+>
+> ...
+>
+> +int journal_write_declare(journal_t *journal)
+> +{
+> +	transaction_t *transaction = journal->j_running_transaction;
+> +	DEFINE_WAIT(wait);
+> +
+> +	if (transaction == NULL)
+> +		return 0;
+> +
+> +	spin_lock(&journal->j_list_lock);
+> +
+> +	if (transaction->t_declare_root.rnode == NULL) {
+> +		spin_unlock(&journal->j_list_lock);
+> +		return 0;
+> +	}
+> +
+> +	transaction->t_declare_request = UINT_MAX;
+> +
+> +	jbd_debug(1, "waking commit thread for fsync declare\n");
+> +	wake_up(&journal->j_wait_commit);
+> +
+> +	prepare_to_wait(&journal->j_wait_declare, &wait, TASK_INTERRUPTIBLE);
+> +	spin_unlock(&journal->j_list_lock);
+> +	schedule();
+> +	finish_wait(&journal->j_wait_declare, &wait);
+
+If this function is only ever called by a kernel thread then
+TASK_INTERRUPTIBLE is OK.
+
+If this function can be called by a userspace process then
+TASK_INTERRUPTIBLE is buggy - a signal_pending() state will cause the
+schedule() to fall straight through.
+
+> +	return 0;
+> +}
+> +
+>
+> ...
+>
+> +static int resync_range(journal_t *j, unsigned long start,
+> +			unsigned long end)
+> +{
+> +	int err;
+> +	struct inode *fake_inode = kmalloc(sizeof(*fake_inode), GFP_KERNEL);
+> +	mdu_range_t range;
+> +	sector_t sectors_per_block = j->j_blocksize >> 9;
+> +	mm_segment_t old_fs;
+> +
+> +	if (fake_inode == NULL) {
+> +		printk(KERN_ERR "JBD: Out of memory during recovery.\n");
+> +		return -ENOMEM;
+> +	}
+> +
+> +	fake_inode->i_bdev = j->j_fs_dev;
+> +	range.start = start * sectors_per_block;
+> +	range.end = end * sectors_per_block + sectors_per_block - 1;
+> +
+> +	old_fs = get_fs();
+> +	set_fs(KERNEL_DS);
+> +	err = blkdev_driver_ioctl(fake_inode, NULL, j->j_fs_dev->bd_disk,
+> +				  RESYNC_RANGE, (long)&range);
+> +	set_fs(old_fs);
+
+erk, what's happening here.
+
+I can't find the blkdev_driver_ioctl() definition.  If I could, I'd be
+asking if it can be refactored so we can call a regular kernel function
+and avoid the nasty set_fs(), and do away with the nasty fake_inode.
+
+
+> +	jbd_debug(3, "RESYNC_RANGE of sectors %llu - %llu returned %d\n",
+> +		  range.start, range.end, err);
+> +
+> +	kfree(fake_inode);
+> +
+> +	return err;
+> +}
+>  
+>
+> ...
+>
+
