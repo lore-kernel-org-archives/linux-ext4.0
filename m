@@ -1,48 +1,77 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Kernel BUG] ext4 for v2.6.32 round II
-Date: Thu, 1 Oct 2009 02:40:41 -0400
-Message-ID: <20091001064041.GV24383@mit.edu>
-References: <E1Msrgx-0001br-MP@closure.thunk.org> <20091001014128.GA2092@phenom2.trippelsdorf.de> <alpine.LFD.2.01.0909301847030.6996@localhost.localdomain> <20091001021531.GA2025@phenom2.trippelsdorf.de> <20091001030151.GR24383@mit.edu> <20091001034716.GA2008@phenom2.trippelsdorf.de>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH 1/3] e4defrag: output blocks per extent by -c option
+Date: Thu, 01 Oct 2009 17:15:37 +0900
+Message-ID: <4AC46529.4040605@sx.jp.nec.com>
+References: <4AC306B0.9070308@sx.jp.nec.com> <87f94c370909301128w4bfe6f4bh80bf3d6540ed83d3@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Markus Trippelsdorf <markus@trippelsdorf.de>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54655 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752822AbZJAGky (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Oct 2009 02:40:54 -0400
-Content-Disposition: inline
-In-Reply-To: <20091001034716.GA2008@phenom2.trippelsdorf.de>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:61671 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755827AbZJAIRN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Oct 2009 04:17:13 -0400
+In-Reply-To: <87f94c370909301128w4bfe6f4bh80bf3d6540ed83d3@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 01, 2009 at 05:47:16AM +0200, Markus Trippelsdorf wrote:
-> On Wed, Sep 30, 2009 at 11:01:51PM -0400, Theodore Tso wrote:
-> > Hi Markus, 
-> > 
-> > I'm pretty sure the following should fix your problems; can you
-> > confirm?
+2009/10/01 3:28, Greg Freemyer wrote::
+> 2009/9/30 Kazuya Mio <k-mio@sx.jp.nec.com>:
+>> e4defrag with -c option outputs "ratio" that means the levels of
+>> fragmentation. However, it's difficult for users to understand, so we will
+>> use blocks per extent instead of ratio.
+>>
+>> Before:
+>> # e4defrag -c /mnt/mp1/file
+>> <File>                                         now/best          ratio
+>> /mnt/mp1/file                                   14/1             0.01%
+>>
+>>  Total/best extents                             14/1
+>>  Fragmentation ratio                            0.01%
+>>  Fragmentation score                            0.10
+>>  [0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+>>  This file(/mnt/mp1/file) does not need defragmentation.
+>>  Done.
+>>
+>> After:
+>> # e4defrag -c /mnt/mp1/file
+>> <File>                                         now/best        blk/ext
+>> /mnt/mp1/file                                   14/1              7142
+>>
+>>  Total/best extents                             14/1
+>>  Average blocks per extent                      7142
+>>  Fragmentation score                            0
+>>  [0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+>>  This file(/mnt/mp1/file) does not need defragmentation.
+>>  Done.
 > 
-> Yes, everything is fine again.
+> RFC
+> 
+> If we are going go that far (which I like), how about adding the avg
+> extent size in bytes.  (ie. 7142 * blocksize I assume).
+> 
+> Also a note about the max blocks / extent might be good.
+> 
+> ie. Add a more or less hard coded line
+> Ext4 max blocks per extent     32,768  (128MiB)
 
-Linus, can you pull from:
+Your ideas sound good. How about the following output image?
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+# e4defrag -c /mnt/mp1/file
+<File>                                         now/best         KB/ext
+/mnt/mp1/file                                   14/1              4000
 
-This will pick up the fix to the problem Markus reported, plus some
-old code that we had promised would be removed for 2.6.31.
+ Total/best extents                             14/1
+ Min bytes per extent                           1024 KB
+ Max bytes per extent                           20489 KB
+ Average bytes per extent                       4000 KB
+ Fragmentation score                            0
+ [0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+ This file(/mnt/mp1/file) does not need defragmentation.
+ Done.
 
-    	      	     	      	       	       - Ted
+Regards,
 
-Eric Sandeen (1):
-      ext4: drop ext4dev compat
-
-Theodore Ts'o (1):
-      ext4: fix a BUG_ON crash by checking that page has buffers attached to it
-
- fs/ext4/Kconfig |   14 --------------
- fs/ext4/inode.c |   22 +++++++++++-----------
- fs/ext4/super.c |   31 -------------------------------
- 3 files changed, 11 insertions(+), 56 deletions(-)
+Kazuya Mio
