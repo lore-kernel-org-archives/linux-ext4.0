@@ -1,81 +1,77 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: 2.6.32-rc1 oops in ext4
-Date: Wed, 30 Sep 2009 23:07:33 -0400
-Message-ID: <20091001030733.GS24383@mit.edu>
-References: <cb0375e10909301954y68e18290m97e9fecfbc5aa6e3@mail.gmail.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH 3/3][RFC](Repost) ext4: add a message in remount/umount
+ for ext4
+Date: Thu, 01 Oct 2009 12:20:17 +0900
+Message-ID: <4AC41FF1.7060703@jp.fujitsu.com>
+References: <20090930154931.ef2a4760.toshi.okajima@jp.fujitsu.com> <20090930172220.GL24383@mit.edu>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andrew Lutomirski <andy@luto.us>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, adilger@sun.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40046 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755479AbZJADHd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Sep 2009 23:07:33 -0400
-Content-Disposition: inline
-In-Reply-To: <cb0375e10909301954y68e18290m97e9fecfbc5aa6e3@mail.gmail.com>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:43499 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752914AbZJADUU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Sep 2009 23:20:20 -0400
+Received: from m3.gw.fujitsu.co.jp ([10.0.50.73])
+	by fgwmail5.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id n913KMYW017882
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Thu, 1 Oct 2009 12:20:22 +0900
+Received: from smail (m3 [127.0.0.1])
+	by outgoing.m3.gw.fujitsu.co.jp (Postfix) with ESMTP id B5E4E45DE51
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Oct 2009 12:20:22 +0900 (JST)
+Received: from s3.gw.fujitsu.co.jp (s3.gw.fujitsu.co.jp [10.0.50.93])
+	by m3.gw.fujitsu.co.jp (Postfix) with ESMTP id 521E845DE4F
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Oct 2009 12:20:22 +0900 (JST)
+Received: from s3.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 20A52E38006
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Oct 2009 12:20:22 +0900 (JST)
+Received: from ml14.s.css.fujitsu.com (ml14.s.css.fujitsu.com [10.249.87.104])
+	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 722831DB8040
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Oct 2009 12:20:21 +0900 (JST)
+In-Reply-To: <20090930172220.GL24383@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 30, 2009 at 10:54:26PM -0400, Andrew Lutomirski wrote:
-> All I did was boot Fedora 11 and open a Konsole.  I'm running
-> 84d88d5d4efc37dfb8a93a4a58d8a227ee86ffa4.
+Hi Ted, thank you for your comment.
 
-I'm pretty sure this patch should fix things; can you confirm?
+Theodore Tso wrote:
+ > On Wed, Sep 30, 2009 at 03:49:31PM +0900, Toshiyuki Okajima wrote:
+ > > > From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+ > > >
+ > > > ext4 doesn't log a record of having unmounted the filesystem. And ext4 doesn't
+ > > > log a record when the filesystem is remounted also with read-only. Therefore
+ > > > in the system log, we cannot judge whether or not at the certain time this
+ > > > filesystem user touches it.
+ > > > For enterprise users, they often want to know when a certain filesystem is
+ > > > mounted/remounted/unmounted.
+ > > >
+ > > > So, we output the message to the system log when the filesystem is
+ > > > remounted/unmounted.
+ > > >
+ > > > Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+ >
+ > The question of whether this should be at the VFS layer is still an
+ > open one, I think.  It is true that ext3 and ext4 does print some
+I am recognizing it. But I think I have already explained its answer as follows:
+  - A print mechanism has already been included at mount time.
+  - The umount operation is opposite "mount operation". Therefore I think
+    it is no problem that we add the print mechanism at the umount time.
 
-    	   	     	   	      	      - Ted
+ > filesystem specific information, but that could be handled via a new
+ > method function in struct super_ops:
+ >
+ >        mount_msg(struct super *sb, char *buf, int buflen)
+ >
+However, I have noticed that the purpose of ext3/ext4 messages at mount time
+is for specific information but not for a general purpose by this comment.
 
-commit 1f94533d9cd75f6d2826018d54a971b9cc085992
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Wed Sep 30 22:57:41 2009 -0400
+So, I think I should rearrange this feature into the VFS layer.
+I try to reimplement it later.
 
-    ext4: fix a BUG_ON crash by checking that page has buffers attached to it
-    
-    In ext4_num_dirty_pages() we were calling page_buffers() before
-    checking to see if the page actually had pages attached to it; this
-    would cause a BUG check crash in the inline function page_buffers().
-    
-    Thanks to Markus Trippelsdorf for reporting this bug.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Thanks,
+Toshiyuki Okajima
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ec367bc..6e65d0e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1146,8 +1146,8 @@ static int check_block_validity(struct inode *inode, const char *msg,
- }
- 
- /*
-- * Return the number of dirty pages in the given inode starting at
-- * page frame idx.
-+ * Return the number of contiguous dirty pages in a given inode
-+ * starting at page frame idx.
-  */
- static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
- 				    unsigned int max_pages)
-@@ -1181,15 +1181,15 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
- 				unlock_page(page);
- 				break;
- 			}
--			head = page_buffers(page);
--			bh = head;
--			do {
--				if (!buffer_delay(bh) &&
--				    !buffer_unwritten(bh)) {
--					done = 1;
--					break;
--				}
--			} while ((bh = bh->b_this_page) != head);
-+			if (page_has_buffers(page)) {
-+				bh = head = page_buffers(page);
-+				do {
-+					if (!buffer_delay(bh) &&
-+					    !buffer_unwritten(bh))
-+						done = 1;
-+					bh = bh->b_this_page;
-+				} while (!done && (bh != head));
-+			}
- 			unlock_page(page);
- 			if (done)
- 				break;
