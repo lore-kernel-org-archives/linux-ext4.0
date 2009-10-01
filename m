@@ -1,167 +1,50 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfststests 220: test for prealloc/delalloc/reserved space
- recapture
-Date: Thu, 01 Oct 2009 13:59:31 -0500
-Message-ID: <4AC4FC13.3050505@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14300] New: BUG_ON crash w/ ext4
+Date: Thu, 1 Oct 2009 22:19:30 GMT
+Message-ID: <bug-14300-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: xfs-oss <xfs@oss.sgi.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5186 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932088AbZJAS7d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Oct 2009 14:59:33 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:34223 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753191AbZJAWT0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Oct 2009 18:19:26 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n91MJUak012524
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Oct 2009 22:19:30 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Test writing and removing a file in a loop; filesize is 64m,
-filesystem size is 256m.  Loop 16 times each for buffered and
-direct.
+http://bugzilla.kernel.org/show_bug.cgi?id=14300
 
-ext4 hits enospc after a couple loops.
+           Summary: BUG_ON crash w/ ext4
+           Product: File System
+           Version: 2.5
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: rjw@sisk.pl
+            Blocks: 14230
+        Regression: Yes
 
-Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
----
 
-(note this has the sized mkfs infra from the previous patch this week
-since that patch needed more work w.r.t. modifying existing tests)
+Subject    : [Kernel BUG] ext4 for v2.6.32 round II
+Submitter  : Markus Trippelsdorf <markus@trippelsdorf.de>
+Date       : 2009-10-01 1:41
+References : http://marc.info/?l=linux-kernel&m=125436130800340&w=4
+Handled-By : Theodore Tso <tytso@mit.edu>
+Patch      : http://patchwork.kernel.org/patch/50810/
 
-diff --git a/common.rc b/common.rc
-index 761170d..8d0cd4e 100644
---- a/common.rc
-+++ b/common.rc
-@@ -237,6 +237,27 @@ _scratch_mkfs_options()
-     echo $SCRATCH_OPTIONS $MKFS_OPTIONS $* $SCRATCH_DEV
- }
- 
-+# arg 1 is size in bytes, arg 2 is (optional) blocksize
-+_scratch_mkfs_sized()
-+{
-+    fssz=$1
-+    bsz=$2
-+    [ -z "$bsz" ] && bsz=4096
-+    let blocks=$fssz/$bsz
-+
-+    case $FSTYP in
-+    xfs)
-+        _scratch_mkfs_xfs -d size=$fssz -b size=$bsz 2>&1 >>$here/$seq.full
-+    ;;
-+    ext2|ext3|ext4)
-+        /sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS -b $bsz $SCRATCH_DEV $blocks  2>&1>>$here/$seq.full
-+    ;;
-+    *)
-+    _notrun "Filesystem $FSTYP not supported in _scratch_mkfs_sized"
-+    ;;
-+    esac
-+}
-+
- _scratch_mkfs_xfs()
- {
-     # extra mkfs options can be added by tests
+This entry is being used for tracking a regression from 2.6.31.  Please don't
+close it until the problem is fixed in the mainline.
 
-diff --git a/220 b/220
-new file mode 100755
-index 0000000..55982b7
---- /dev/null
-+++ b/220
-@@ -0,0 +1,76 @@
-+#! /bin/sh
-+# FS QA Test No. 220
-+#
-+# Test for prealloc space leaks by rewriting the same file in a loop
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2009 Eric Sandeen.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=sandeen@sandeen.net
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux IRIX
-+_require_scratch
-+
-+# real QA test starts here
-+rm -f $seq.full
-+
-+umount $SCRATCH_DEV 2>/dev/null
-+let fssize=256*1024*1024
-+echo "--> mkfs 256m filesystem"
-+_scratch_mkfs_sized $fssize >> $seq.full 2>&1
-+_scratch_mount
-+
-+loops=16
-+
-+echo "--> $loops buffered 64m writes in a loop"
-+for I in `seq 1 $loops`; do
-+	echo -n "$I "
-+	xfs_io -F -f -c 'pwrite 0 64m' $SCRATCH_MNT/test >> $seq.full
-+	rm -f $SCRATCH_MNT/test
-+done
-+
-+echo
-+umount $SCRATCH_DEV
-+_scratch_mount
-+
-+echo "--> $loops direct 64m writes in a loop"
-+for I in `seq 1 $loops`; do
-+	echo -n "$I "
-+	xfs_io -F -f -d -c 'pwrite 0 64m' $SCRATCH_MNT/test >> $seq.full
-+	rm -f $SCRATCH_MNT/test 
-+done
-+
-+echo
-+umount $SCRATCH_DEV
-+
-+status=0
-+exit
-diff --git a/220.out b/220.out
-new file mode 100644
-index 0000000..497a585
---- /dev/null
-+++ b/220.out
-@@ -0,0 +1,6 @@
-+QA output created by 220
-+--> mkfs 256m filesystem
-+--> 16 buffered 64m writes in a loop
-+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 
-+--> 16 direct 64m writes in a loop
-+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 
-diff --git a/group b/group
-index 7cea01d..9b8a401 100644
---- a/group
-+++ b/group
-@@ -329,3 +329,4 @@ prealloc
- 217 log metadata auto
- 218 auto fsr quick
- 219 auto quota quick
-+220 enospc auto quick
-
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
