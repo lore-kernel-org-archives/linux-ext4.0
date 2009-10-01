@@ -1,29 +1,29 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Kernel BUG] ext4 for v2.6.32 round II
-Date: Wed, 30 Sep 2009 23:01:51 -0400
-Message-ID: <20091001030151.GR24383@mit.edu>
-References: <E1Msrgx-0001br-MP@closure.thunk.org> <20091001014128.GA2092@phenom2.trippelsdorf.de> <alpine.LFD.2.01.0909301847030.6996@localhost.localdomain> <20091001021531.GA2025@phenom2.trippelsdorf.de>
+Subject: Re: 2.6.32-rc1 oops in ext4
+Date: Wed, 30 Sep 2009 23:07:33 -0400
+Message-ID: <20091001030733.GS24383@mit.edu>
+References: <cb0375e10909301954y68e18290m97e9fecfbc5aa6e3@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Markus Trippelsdorf <markus@trippelsdorf.de>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Lutomirski <andy@luto.us>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52156 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40046 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755467AbZJADCC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Sep 2009 23:02:02 -0400
+	id S1755479AbZJADHd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Sep 2009 23:07:33 -0400
 Content-Disposition: inline
-In-Reply-To: <20091001021531.GA2025@phenom2.trippelsdorf.de>
+In-Reply-To: <cb0375e10909301954y68e18290m97e9fecfbc5aa6e3@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Markus, 
+On Wed, Sep 30, 2009 at 10:54:26PM -0400, Andrew Lutomirski wrote:
+> All I did was boot Fedora 11 and open a Konsole.  I'm running
+> 84d88d5d4efc37dfb8a93a4a58d8a227ee86ffa4.
 
-I'm pretty sure the following should fix your problems; can you
-confirm?
+I'm pretty sure this patch should fix things; can you confirm?
 
-						- Ted
+    	   	     	   	      	      - Ted
 
 commit 1f94533d9cd75f6d2826018d54a971b9cc085992
 Author: Theodore Ts'o <tytso@mit.edu>
