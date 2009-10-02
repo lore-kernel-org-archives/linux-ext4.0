@@ -1,78 +1,366 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [patch 4/4] [ext3] Add journal guided resync (data=declared mode)
-Date: Fri, 2 Oct 2009 11:51:59 +1000
-Message-ID: <19141.23743.35576.466246@notabene.brown>
-References: <20091001223929.120106893@sun.com>
-	<20091001224021.757201872@sun.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [PATCH 1/2]ext4: Fix exchanged block count in EXT4_IOC_MOVE_EXT failure
+Date: Fri, 02 Oct 2009 17:24:37 +0900
+Message-ID: <4AC5B8C5.8000205@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Andreas Dilger <adilger@sun.com>
-To: scjody@sun.com
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: message from scjody@sun.com on Thursday October 1
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:53630 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753395AbZJBIZQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2009 04:25:16 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thursday October 1, scjody@sun.com wrote:
-> We introduce a new data write mode known as declared mode.  This is based on
-> ordered mode except that a list of blocks to be written during the current
-> transaction is added to the journal before the blocks themselves are written to
-> the disk.  Then, if the system crashes, we can resync only those blocks during
-> journal replay and skip the rest of the resync of the RAID array.
-> 
-> TODO: Add support to e2fsck.
-> 
-> TODO: The following sequence of events could cause resync to be skipped
-> incorrectly:
->  - An MD array that supports RESYNC_RANGE is undergoing resync.
->  - A filesystem on that array is mounted with data=declared.
->  - The machine crashes before the resync completes.
->  - The array is restarted and the filesystem is remounted.
->  - Recovery resyncs only the blocks that were undergoing writes during
->    the crash and skips the rest.
-> Addressing this requires even more communication between MD and ext and
-> I need to think more about how to do this.
+ext4: Fix block count in EXT4_IOC_MOVE_EXT failure
 
-I have thought about this sort of thing from time to time and I have a
-very different idea for how the necessary communication between the
-filesystem and MD would happen.  I think my approach would completely
-address this problem, and doesn't need to add any ioctls (which I am not
-keen on).
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-I would add two new BIO_RW_ flags to be used with WRITE requests.
-The first flag would mean "don't worry about a crash in the middle of
-this write,  I will validate it after a crash before I rely on the
-data."
-The second would mean "last time I wrote data near here there might
-have been a failure, be extra careful".
+The halfway exchanged block count should be returned to the user-space,
+if EXT4_IOC_MOVE_EXT is failed for some reasons
+in the environment where block size is not same as page size.
+But current EXT4_IOC_MOVE_EXT returns
+page-aligned block count to the user-space.
+The patch fixes this issue.
 
-So the first flag would be used during normal filesystem writes for
-every block that gets recorded in the journal, and for every write
-to the journal.
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ fs/ext4/move_extent.c |  139 ++++++++++++++++++++++++++-----------------------
+ 1 files changed, 73 insertions(+), 66 deletions(-)
 
-The second flag is used after a crash to re-write every block that
-could have been in-flight during the crash.  Some of those blocks will
-be read from the journal and written to their proper home, other will
-be read from wherever they are and written back there.
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 25b6b14..83f8c9e 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -661,6 +661,7 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
+  * @donor_inode:	donor inode
+  * @from:		block offset of orig_inode
+  * @count:		block count to be replaced
++ * @err:		pointer to save return value
+  *
+  * Replace original inode extents and donor inode extents page by page.
+  * We implement this replacement in the following three steps:
+@@ -671,19 +672,18 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
+  * 3. Change the block information of donor inode to point at the saved
+  *    original inode blocks in the dummy extents.
+  *
+- * Return 0 on success, or a negative error value on failure.
++ * Return replaced block count.
+  */
+ static int
+ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 			   struct inode *donor_inode, ext4_lblk_t from,
+-			   ext4_lblk_t count)
++			   ext4_lblk_t count, int *err)
+ {
+ 	struct ext4_ext_path *orig_path = NULL;
+ 	struct ext4_ext_path *donor_path = NULL;
+ 	struct ext4_extent *oext, *dext;
+ 	struct ext4_extent tmp_dext, tmp_oext;
+ 	ext4_lblk_t orig_off = from, donor_off = from;
+-	int err = 0;
+ 	int depth;
+ 	int replaced_count = 0;
+ 	int dext_alen;
+@@ -691,13 +691,13 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 	mext_double_down_write(orig_inode, donor_inode);
 
-The first flag would be interpreted by MD as "don't set the bitmap
-bit".  The second flag would be interpreted as "don't trust the
-parity block, but do a reconstruct-write".
+ 	/* Get the original extent for the block "orig_off" */
+-	err = get_ext_path(orig_inode, orig_off, &orig_path);
+-	if (err)
++	*err = get_ext_path(orig_inode, orig_off, &orig_path);
++	if (*err)
+ 		goto out;
 
-With this scheme you would still need a write-intent-bitmap on the MD
-array, but no bits would ever be set if the filesystem were using the
-new flags, so no performance impact.  You probably could run without a
-bitmap, in which case the flag would me "don't mark the array as
-active".
+ 	/* Get the donor extent for the head */
+-	err = get_ext_path(donor_inode, donor_off, &donor_path);
+-	if (err)
++	*err = get_ext_path(donor_inode, donor_off, &donor_path);
++	if (*err)
+ 		goto out;
+ 	depth = ext_depth(orig_inode);
+ 	oext = orig_path[depth].p_ext;
+@@ -707,9 +707,9 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 	dext = donor_path[depth].p_ext;
+ 	tmp_dext = *dext;
 
-I'm not entirely sure about the second flag.  Maybe it would be better
-to make it a flag for READ and have it mean "validate and correct any
-redundancy information (duplicates or parity) for this block before
-returning it.  Then we could have just one flag, which meant different
-things for READ and WRITE.
+-	err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
++	*err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+ 				      donor_off, count);
+-	if (err)
++	if (*err)
+ 		goto out;
 
-What do you think?
+ 	/* Loop for the donor extents */
+@@ -718,7 +718,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 		if (!dext) {
+ 			ext4_error(donor_inode->i_sb, __func__,
+ 				   "The extent for donor must be found");
+-			err = -EIO;
++			*err = -EIO;
+ 			goto out;
+ 		} else if (donor_off != le32_to_cpu(tmp_dext.ee_block)) {
+ 			ext4_error(donor_inode->i_sb, __func__,
+@@ -726,20 +726,20 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 				"extent(%u) should be equal",
+ 				donor_off,
+ 				le32_to_cpu(tmp_dext.ee_block));
+-			err = -EIO;
++			*err = -EIO;
+ 			goto out;
+ 		}
 
-NeilBrown
+ 		/* Set donor extent to orig extent */
+-		err = mext_leaf_block(handle, orig_inode,
++		*err = mext_leaf_block(handle, orig_inode,
+ 					   orig_path, &tmp_dext, &orig_off);
+-		if (err < 0)
++		if (*err)
+ 			goto out;
+
+ 		/* Set orig extent to donor extent */
+-		err = mext_leaf_block(handle, donor_inode,
++		*err = mext_leaf_block(handle, donor_inode,
+ 					   donor_path, &tmp_oext, &donor_off);
+-		if (err < 0)
++		if (*err)
+ 			goto out;
+
+ 		dext_alen = ext4_ext_get_actual_len(&tmp_dext);
+@@ -753,35 +753,25 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+
+ 		if (orig_path)
+ 			ext4_ext_drop_refs(orig_path);
+-		err = get_ext_path(orig_inode, orig_off, &orig_path);
+-		if (err)
++		*err = get_ext_path(orig_inode, orig_off, &orig_path);
++		if (*err)
+ 			goto out;
+ 		depth = ext_depth(orig_inode);
+ 		oext = orig_path[depth].p_ext;
+-		if (le32_to_cpu(oext->ee_block) +
+-				ext4_ext_get_actual_len(oext) <= orig_off) {
+-			err = 0;
+-			goto out;
+-		}
+ 		tmp_oext = *oext;
+
+ 		if (donor_path)
+ 			ext4_ext_drop_refs(donor_path);
+-		err = get_ext_path(donor_inode, donor_off, &donor_path);
+-		if (err)
++		*err = get_ext_path(donor_inode, donor_off, &donor_path);
++		if (*err)
+ 			goto out;
+ 		depth = ext_depth(donor_inode);
+ 		dext = donor_path[depth].p_ext;
+-		if (le32_to_cpu(dext->ee_block) +
+-				ext4_ext_get_actual_len(dext) <= donor_off) {
+-			err = 0;
+-			goto out;
+-		}
+ 		tmp_dext = *dext;
+
+-		err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
++		*err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+ 					   donor_off, count - replaced_count);
+-		if (err)
++		if (*err)
+ 			goto out;
+ 	}
+
+@@ -796,7 +786,7 @@ out:
+ 	}
+
+ 	mext_double_up_write(orig_inode, donor_inode);
+-	return err;
++	return replaced_count;
+ }
+
+ /**
+@@ -808,16 +798,17 @@ out:
+  * @data_offset_in_page:	block index where data swapping starts
+  * @block_len_in_page:		the number of blocks to be swapped
+  * @uninit:			orig extent is uninitialized or not
++ * @err:			pointer to save return value
+  *
+  * Save the data in original inode blocks and replace original inode extents
+  * with donor inode extents by calling mext_replace_branches().
+- * Finally, write out the saved data in new original inode blocks. Return 0
+- * on success, or a negative error value on failure.
++ * Finally, write out the saved data in new original inode blocks. Return
++ * replaced block count.
+  */
+ static int
+ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 		  pgoff_t orig_page_offset, int data_offset_in_page,
+-		  int block_len_in_page, int uninit)
++		  int block_len_in_page, int uninit, int *err)
+ {
+ 	struct inode *orig_inode = o_filp->f_dentry->d_inode;
+ 	struct address_space *mapping = orig_inode->i_mapping;
+@@ -829,9 +820,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	long long offs = orig_page_offset << PAGE_CACHE_SHIFT;
+ 	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
+ 	unsigned int w_flags = 0;
+-	unsigned int tmp_data_len, data_len;
++	unsigned int tmp_data_size, data_size, replaced_size;
+ 	void *fsdata;
+-	int ret, i, jblocks;
++	int i, jblocks;
++	int err2 = 0;
++	int replaced_count = 0;
+ 	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
+
+ 	/*
+@@ -841,8 +834,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
+ 	handle = ext4_journal_start(orig_inode, jblocks);
+ 	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		return ret;
++		*err = PTR_ERR(handle);
++		return 0;
+ 	}
+
+ 	if (segment_eq(get_fs(), KERNEL_DS))
+@@ -858,9 +851,9 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	 * Just swap data blocks between orig and donor.
+ 	 */
+ 	if (uninit) {
+-		ret = mext_replace_branches(handle, orig_inode,
+-						 donor_inode, orig_blk_offset,
+-						 block_len_in_page);
++		replaced_count = mext_replace_branches(handle, orig_inode,
++						donor_inode, orig_blk_offset,
++						block_len_in_page, err);
+
+ 		/* Clear the inode cache not to refer to the old data */
+ 		ext4_ext_invalidate_cache(orig_inode);
+@@ -870,27 +863,28 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+
+ 	offs = (long long)orig_blk_offset << orig_inode->i_blkbits;
+
+-	/* Calculate data_len */
++	/* Calculate data_size */
+ 	if ((orig_blk_offset + block_len_in_page - 1) ==
+ 	    ((orig_inode->i_size - 1) >> orig_inode->i_blkbits)) {
+ 		/* Replace the last block */
+-		tmp_data_len = orig_inode->i_size & (blocksize - 1);
++		tmp_data_size = orig_inode->i_size & (blocksize - 1);
+ 		/*
+-		 * If data_len equal zero, it shows data_len is multiples of
++		 * If data_size equal zero, it shows data_size is multiples of
+ 		 * blocksize. So we set appropriate value.
+ 		 */
+-		if (tmp_data_len == 0)
+-			tmp_data_len = blocksize;
++		if (tmp_data_size == 0)
++			tmp_data_size = blocksize;
+
+-		data_len = tmp_data_len +
++		data_size = tmp_data_size +
+ 			((block_len_in_page - 1) << orig_inode->i_blkbits);
+-	} else {
+-		data_len = block_len_in_page << orig_inode->i_blkbits;
+-	}
++	} else
++		data_size = block_len_in_page << orig_inode->i_blkbits;
++
++	replaced_size = data_size;
+
+-	ret = a_ops->write_begin(o_filp, mapping, offs, data_len, w_flags,
++	*err = a_ops->write_begin(o_filp, mapping, offs, data_size, w_flags,
+ 				 &page, &fsdata);
+-	if (unlikely(ret < 0))
++	if (unlikely(*err < 0))
+ 		goto out;
+
+ 	if (!PageUptodate(page)) {
+@@ -911,10 +905,17 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	/* Release old bh and drop refs */
+ 	try_to_release_page(page, 0);
+
+-	ret = mext_replace_branches(handle, orig_inode, donor_inode,
+-					 orig_blk_offset, block_len_in_page);
+-	if (ret < 0)
+-		goto out;
++	replaced_count = mext_replace_branches(handle, orig_inode, donor_inode,
++					orig_blk_offset, block_len_in_page,
++					&err2);
++	if (err2) {
++		if (replaced_count) {
++			block_len_in_page = replaced_count;
++			replaced_size =
++				block_len_in_page << orig_inode->i_blkbits;
++		} else
++			goto out;
++	}
+
+ 	/* Clear the inode cache not to refer to the old data */
+ 	ext4_ext_invalidate_cache(orig_inode);
+@@ -928,16 +929,16 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 		bh = bh->b_this_page;
+
+ 	for (i = 0; i < block_len_in_page; i++) {
+-		ret = ext4_get_block(orig_inode,
++		*err = ext4_get_block(orig_inode,
+ 				(sector_t)(orig_blk_offset + i), bh, 0);
+-		if (ret < 0)
++		if (*err < 0)
+ 			goto out;
+
+ 		if (bh->b_this_page != NULL)
+ 			bh = bh->b_this_page;
+ 	}
+
+-	ret = a_ops->write_end(o_filp, mapping, offs, data_len, data_len,
++	*err = a_ops->write_end(o_filp, mapping, offs, data_size, replaced_size,
+ 			       page, fsdata);
+ 	page = NULL;
+
+@@ -951,7 +952,10 @@ out:
+ out2:
+ 	ext4_journal_stop(handle);
+
+-	return ret < 0 ? ret : 0;
++	if (err2)
++		*err = err2;
++
++	return replaced_count;
+ }
+
+ /**
+@@ -1367,15 +1371,17 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		while (orig_page_offset <= seq_end_page) {
+
+ 			/* Swap original branches with new branches */
+-			ret1 = move_extent_per_page(o_filp, donor_inode,
++			block_len_in_page = move_extent_per_page(
++						o_filp, donor_inode,
+ 						orig_page_offset,
+ 						data_offset_in_page,
+-						block_len_in_page, uninit);
+-			if (ret1 < 0)
+-				goto out;
+-			orig_page_offset++;
++						block_len_in_page, uninit,
++						&ret1);
++
+ 			/* Count how many blocks we have exchanged */
+ 			*moved_len += block_len_in_page;
++			if (ret1 < 0)
++				goto out;
+ 			if (*moved_len > len) {
+ 				ext4_error(orig_inode->i_sb, __func__,
+ 					"We replaced blocks too much! "
+@@ -1385,6 +1391,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 				goto out;
+ 			}
+
++			orig_page_offset++;
+ 			data_offset_in_page = 0;
+ 			rest_blocks -= block_len_in_page;
+ 			if (rest_blocks > blocks_per_page)
