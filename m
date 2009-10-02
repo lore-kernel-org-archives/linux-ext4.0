@@ -1,59 +1,166 @@
-From: Tobias Doerffel <tobias.doerffel@gmail.com>
-Subject: Re: [PATCH] ext4: in ext4_dirty_inode() current_handle only needed for debugging
-Date: Sat, 3 Oct 2009 00:36:21 +0200
-Message-ID: <200910030036.37640.tobias.doerffel@gmail.com>
-References: <1254522048-15046-1-git-send-email-tobias.doerffel@gmail.com>
+From: Jiaying Zhang <jiayingz@google.com>
+Subject: Re: Question on fallocate/ftruncate sequence
+Date: Fri, 2 Oct 2009 16:21:23 -0700
+Message-ID: <5df78e1d0910021621r5c973713hffed161bf92647cf@mail.gmail.com>
+References: <1248389165.17459.3.camel@bobble.smo.corp.google.com>
+	 <5df78e1d0908311633k1f16a096t701e0cdab54b174c@mail.gmail.com>
+	 <20090902084134.GO4197@webber.adilger.int>
+	 <5df78e1d0909022220m1152b313o92f6cb7cc8858298@mail.gmail.com>
+	 <5df78e1d0909232227y2cb52abew827d7732a3bc9040@mail.gmail.com>
+	 <4AC25CCB.8050805@redhat.com>
+	 <5df78e1d0909291238q44bbf9e8q98205ffa9b6b2518@mail.gmail.com>
+	 <4AC26630.6030509@redhat.com>
+	 <5df78e1d0910021510g3f32485bva30e08cf00c8682a@mail.gmail.com>
+	 <4AC67EAC.2090008@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1520648.eQf7IxDlfN";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed; boundary=000e0cd21218b7f7e10474fc0541
+Cc: Andreas Dilger <adilger@sun.com>, Theodore Tso <tytso@mit.edu>,
+	Frank Mayhar <fmayhar@google.com>,
+	Curt Wohlgemuth <curtw@google.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from jack.hrz.tu-chemnitz.de ([134.109.132.46]:57496 "EHLO
-	jack.hrz.tu-chemnitz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752455AbZJBXCS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2009 19:02:18 -0400
-Received: from vpnclient-194-145.hrz.tu-chemnitz.de ([134.109.194.145] helo=nc10.localnet)
-	by jack.hrz.tu-chemnitz.de with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.69)
-	(envelope-from <doto@hrz.tu-chemnitz.de>)
-	id 1Mtqjy-0002gv-60
-	for linux-ext4@vger.kernel.org; Sat, 03 Oct 2009 00:36:42 +0200
-In-Reply-To: <1254522048-15046-1-git-send-email-tobias.doerffel@gmail.com>
+Received: from smtp-out.google.com ([216.239.33.17]:3712 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753001AbZJBXVY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2009 19:21:24 -0400
+Received: from zps35.corp.google.com (zps35.corp.google.com [172.25.146.35])
+	by smtp-out.google.com with ESMTP id n92NLQJY024868
+	for <linux-ext4@vger.kernel.org>; Sat, 3 Oct 2009 00:21:26 +0100
+Received: from pxi15 (pxi15.prod.google.com [10.243.27.15])
+	by zps35.corp.google.com with ESMTP id n92NLNHu025157
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Oct 2009 16:21:23 -0700
+Received: by pxi15 with SMTP id 15so1448338pxi.26
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Oct 2009 16:21:23 -0700 (PDT)
+In-Reply-To: <4AC67EAC.2090008@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---nextPart1520648.eQf7IxDlfN
-Content-Type: Text/Plain;
-  charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+--000e0cd21218b7f7e10474fc0541
+Content-Type: text/plain; charset=ISO-8859-1
 
-Hi,
+On Fri, Oct 2, 2009 at 3:29 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+> Jiaying Zhang wrote:
+>>
+>> FYI, here is my patch synced with the latest ext4-git tree:
+>
+> The patch came through pretty mangled, if you could post it in plain text w/
+> no wrapping, or maybe as an attachment, it'd be great.
 
-Am Samstag, 3. Oktober 2009 00:20:48 schrieb Tobias Doerffel:
-> As of d3d1faf6a74496ea4435fd057c6a2cad49f3e523 in ext4_dirty_inode()
-> the current_handle variable is only used for debugging now. Therefore
-> compiling fs/ext4/inode.c without JBD_DEBUG set will result in a
-> compiler warning:
-Sorry for the noise, didn't look at the ML archive before.. looks like Curt=
-=20
-already handles this.
+Hmm. I guess my email client re-formated it somehow.
+Sorry about the problem. Patch attached in this email.
 
-Regards,
-Tobias
+Jiaying
 
---nextPart1520648.eQf7IxDlfN
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
+>
+> Thanks,
+> -Eric
+>
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+--000e0cd21218b7f7e10474fc0541
+Content-Type: text/x-patch; charset=US-ASCII; name="fallocate_keepsizse.patch"
+Content-Disposition: attachment; filename="fallocate_keepsizse.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_g0bk0gg70
 
-iEYEABECAAYFAkrGgGUACgkQHsjdpw2OaafhUwCgyTxErkGeqX/ZpSmDouS32e1r
-SaIAn0M5R/l/w4fG3TIhk/ROIHcer1/2
-=0TFj
------END PGP SIGNATURE-----
-
---nextPart1520648.eQf7IxDlfN--
+ZGlmZiAtLWdpdCBhL2ZzL2V4dDQvZXh0NC5oIGIvZnMvZXh0NC9leHQ0LmgKaW5kZXggOWE5OTY3
+Mi4uMmEzZDA0MyAxMDA2NDQKLS0tIGEvZnMvZXh0NC9leHQ0LmgKKysrIGIvZnMvZXh0NC9leHQ0
+LmgKQEAgLTI4NCwxMCArMjg0LDExIEBAIHN0cnVjdCBmbGV4X2dyb3VwcyB7CiAjZGVmaW5lIEVY
+VDRfVE9QRElSX0ZMCQkJMHgwMDAyMDAwMCAvKiBUb3Agb2YgZGlyZWN0b3J5IGhpZXJhcmNoaWVz
+Ki8KICNkZWZpbmUgRVhUNF9IVUdFX0ZJTEVfRkwgICAgICAgICAgICAgICAweDAwMDQwMDAwIC8q
+IFNldCB0byBlYWNoIGh1Z2UgZmlsZSAqLwogI2RlZmluZSBFWFQ0X0VYVEVOVFNfRkwJCQkweDAw
+MDgwMDAwIC8qIElub2RlIHVzZXMgZXh0ZW50cyAqLworI2RlZmluZSBFWFQ0X0VPRkJMT0NLU19G
+TAkJMHgwMDQwMDAwMCAvKiBCbG9ja3MgYWxsb2NhdGVkIGJleW9uZCBFT0YgKGJpdCByZXNlcnZl
+ZCBpbiBmcy5oKSAqLwogI2RlZmluZSBFWFQ0X1JFU0VSVkVEX0ZMCQkweDgwMDAwMDAwIC8qIHJl
+c2VydmVkIGZvciBleHQ0IGxpYiAqLwogCi0jZGVmaW5lIEVYVDRfRkxfVVNFUl9WSVNJQkxFCQkw
+eDAwMEJERkZGIC8qIFVzZXIgdmlzaWJsZSBmbGFncyAqLwotI2RlZmluZSBFWFQ0X0ZMX1VTRVJf
+TU9ESUZJQUJMRQkJMHgwMDBCODBGRiAvKiBVc2VyIG1vZGlmaWFibGUgZmxhZ3MgKi8KKyNkZWZp
+bmUgRVhUNF9GTF9VU0VSX1ZJU0lCTEUJCTB4MDA0QkRGRkYgLyogVXNlciB2aXNpYmxlIGZsYWdz
+ICovCisjZGVmaW5lIEVYVDRfRkxfVVNFUl9NT0RJRklBQkxFCQkweDAwNEI4MEZGIC8qIFVzZXIg
+bW9kaWZpYWJsZSBmbGFncyAqLwogCiAvKiBGbGFncyB0aGF0IHNob3VsZCBiZSBpbmhlcml0ZWQg
+YnkgbmV3IGlub2RlcyBmcm9tIHRoZWlyIHBhcmVudC4gKi8KICNkZWZpbmUgRVhUNF9GTF9JTkhF
+UklURUQgKEVYVDRfU0VDUk1fRkwgfCBFWFQ0X1VOUk1fRkwgfCBFWFQ0X0NPTVBSX0ZMIHxcCmRp
+ZmYgLS1naXQgYS9mcy9leHQ0L2V4dGVudHMuYyBiL2ZzL2V4dDQvZXh0ZW50cy5jCmluZGV4IDEw
+NTM5ZTMuLjM5NzJmODggMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQvZXh0ZW50cy5jCisrKyBiL2ZzL2V4
+dDQvZXh0ZW50cy5jCkBAIC0zMTMxLDcgKzMxMzEsNyBAQCBpbnQgZXh0NF9leHRfZ2V0X2Jsb2Nr
+cyhoYW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5vZGUgKmlub2RlLAogewogCXN0cnVjdCBleHQ0
+X2V4dF9wYXRoICpwYXRoID0gTlVMTDsKIAlzdHJ1Y3QgZXh0NF9leHRlbnRfaGVhZGVyICplaDsK
+LQlzdHJ1Y3QgZXh0NF9leHRlbnQgbmV3ZXgsICpleDsKKwlzdHJ1Y3QgZXh0NF9leHRlbnQgbmV3
+ZXgsICpleCwgKmxhc3RfZXg7CiAJZXh0NF9mc2Jsa190IG5ld2Jsb2NrOwogCWludCBlcnIgPSAw
+LCBkZXB0aCwgcmV0LCBjYWNoZV90eXBlOwogCXVuc2lnbmVkIGludCBhbGxvY2F0ZWQgPSAwOwpA
+QCAtMzMwMCw2ICszMzAwLDE0IEBAIGludCBleHQ0X2V4dF9nZXRfYmxvY2tzKGhhbmRsZV90ICpo
+YW5kbGUsIHN0cnVjdCBpbm9kZSAqaW5vZGUsCiAJCWlmIChpbyAmJiBmbGFncyA9PSBFWFQ0X0dF
+VF9CTE9DS1NfRElPX0NSRUFURV9FWFQpCiAJCQlpby0+ZmxhZyA9IERJT19BSU9fVU5XUklUVEVO
+OwogCX0KKworCWlmICh1bmxpa2VseShpbm9kZS0+aV9mbGFncyAmIEVYVDRfRU9GQkxPQ0tTX0ZM
+KSkgeworCQlCVUdfT04oIWVoLT5laF9lbnRyaWVzKTsKKwkJbGFzdF9leCA9IEVYVF9MQVNUX0VY
+VEVOVChlaCk7CisJCWlmIChpYmxvY2sgKyBhci5sZW4gPiBsZTMyX3RvX2NwdShsYXN0X2V4LT5l
+ZV9ibG9jaykKKwkJCQkJKyBleHQ0X2V4dF9nZXRfYWN0dWFsX2xlbihsYXN0X2V4KSkKKwkJCWlu
+b2RlLT5pX2ZsYWdzICY9IH5FWFQ0X0VPRkJMT0NLU19GTDsKKwl9CiAJZXJyID0gZXh0NF9leHRf
+aW5zZXJ0X2V4dGVudChoYW5kbGUsIGlub2RlLCBwYXRoLCAmbmV3ZXgsIGZsYWdzKTsKIAlpZiAo
+ZXJyKSB7CiAJCS8qIGZyZWUgZGF0YSBibG9ja3Mgd2UganVzdCBhbGxvY2F0ZWQgKi8KQEAgLTM0
+MTgsNiArMzQyNiwxMyBAQCBzdGF0aWMgdm9pZCBleHQ0X2ZhbGxvY191cGRhdGVfaW5vZGUoc3Ry
+dWN0IGlub2RlICppbm9kZSwKIAkJCWlfc2l6ZV93cml0ZShpbm9kZSwgbmV3X3NpemUpOwogCQlp
+ZiAobmV3X3NpemUgPiBFWFQ0X0koaW5vZGUpLT5pX2Rpc2tzaXplKQogCQkJZXh0NF91cGRhdGVf
+aV9kaXNrc2l6ZShpbm9kZSwgbmV3X3NpemUpOworCX0gZWxzZSB7CisJCS8qCisJCSAqIE1hcmsg
+dGhhdCB3ZSBhbGxvY2F0ZSBiZXlvbmQgRU9GIHNvIHRoZSBzdWJzZXF1ZW50IHRydW5jYXRlCisJ
+CSAqIGNhbiBwcm9jZWVkIGV2ZW4gaWYgdGhlIG5ldyBzaXplIGlzIHRoZSBzYW1lIGFzIGlfc2l6
+ZS4KKwkJICovCisJCWlmIChuZXdfc2l6ZSA+IGlfc2l6ZV9yZWFkKGlub2RlKSkKKwkJCWlub2Rl
+LT5pX2ZsYWdzIHw9IEVYVDRfRU9GQkxPQ0tTX0ZMOwogCX0KIAogfQpkaWZmIC0tZ2l0IGEvZnMv
+ZXh0NC9pbm9kZS5jIGIvZnMvZXh0NC9pbm9kZS5jCmluZGV4IGYyNDZiNDMuLjFkMTg1N2QgMTAw
+NjQ0Ci0tLSBhL2ZzL2V4dDQvaW5vZGUuYworKysgYi9mcy9leHQ0L2lub2RlLmMKQEAgLTQ2MjAs
+NiArNDYyMCw4IEBAIHZvaWQgZXh0NF90cnVuY2F0ZShzdHJ1Y3QgaW5vZGUgKmlub2RlKQogCWlm
+ICghZXh0NF9jYW5fdHJ1bmNhdGUoaW5vZGUpKQogCQlyZXR1cm47CiAKKwlpbm9kZS0+aV9mbGFn
+cyAmPSB+RVhUNF9FT0ZCTE9DS1NfRkw7CisKIAlpZiAoaW5vZGUtPmlfc2l6ZSA9PSAwICYmICF0
+ZXN0X29wdChpbm9kZS0+aV9zYiwgTk9fQVVUT19EQV9BTExPQykpCiAJCWVpLT5pX3N0YXRlIHw9
+IEVYVDRfU1RBVEVfREFfQUxMT0NfQ0xPU0U7CiAKQEAgLTQ5MzIsOCArNDkzNCw4IEBAIHZvaWQg
+ZXh0NF9nZXRfaW5vZGVfZmxhZ3Moc3RydWN0IGV4dDRfaW5vZGVfaW5mbyAqZWkpCiB7CiAJdW5z
+aWduZWQgaW50IGZsYWdzID0gZWktPnZmc19pbm9kZS5pX2ZsYWdzOwogCi0JZWktPmlfZmxhZ3Mg
+Jj0gfihFWFQ0X1NZTkNfRkx8RVhUNF9BUFBFTkRfRkx8Ci0JCQlFWFQ0X0lNTVVUQUJMRV9GTHxF
+WFQ0X05PQVRJTUVfRkx8RVhUNF9ESVJTWU5DX0ZMKTsKKwllaS0+aV9mbGFncyAmPSB+KEVYVDRf
+U1lOQ19GTHxFWFQ0X0FQUEVORF9GTHxFWFQ0X0lNTVVUQUJMRV9GTHwKKwkJCUVYVDRfTk9BVElN
+RV9GTHxFWFQ0X0RJUlNZTkNfRkx8RVhUNF9FT0ZCTE9DS1NfRkwpOwogCWlmIChmbGFncyAmIFNf
+U1lOQykKIAkJZWktPmlfZmxhZ3MgfD0gRVhUNF9TWU5DX0ZMOwogCWlmIChmbGFncyAmIFNfQVBQ
+RU5EKQpAQCAtNDk0NCw2ICs0OTQ2LDggQEAgdm9pZCBleHQ0X2dldF9pbm9kZV9mbGFncyhzdHJ1
+Y3QgZXh0NF9pbm9kZV9pbmZvICplaSkKIAkJZWktPmlfZmxhZ3MgfD0gRVhUNF9OT0FUSU1FX0ZM
+OwogCWlmIChmbGFncyAmIFNfRElSU1lOQykKIAkJZWktPmlfZmxhZ3MgfD0gRVhUNF9ESVJTWU5D
+X0ZMOworCWlmIChmbGFncyAmIEZTX0VPRkJMT0NLU19GTCkKKwkJZWktPmlfZmxhZ3MgfD0gRVhU
+NF9FT0ZCTE9DS1NfRkw7CiB9CiAKIHN0YXRpYyBibGtjbnRfdCBleHQ0X2lub2RlX2Jsb2Nrcyhz
+dHJ1Y3QgZXh0NF9pbm9kZSAqcmF3X2lub2RlLApAQCAtNTQ1Myw3ICs1NDU3LDkgQEAgaW50IGV4
+dDRfc2V0YXR0cihzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIHN0cnVjdCBpYXR0ciAqYXR0cikKIAl9
+CiAKIAlpZiAoU19JU1JFRyhpbm9kZS0+aV9tb2RlKSAmJgotCSAgICBhdHRyLT5pYV92YWxpZCAm
+IEFUVFJfU0laRSAmJiBhdHRyLT5pYV9zaXplIDwgaW5vZGUtPmlfc2l6ZSkgeworCSAgICBhdHRy
+LT5pYV92YWxpZCAmIEFUVFJfU0laRSAmJgorCSAgICAoYXR0ci0+aWFfc2l6ZSA8IGlub2RlLT5p
+X3NpemUgfHwKKwkgICAgIChpbm9kZS0+aV9mbGFncyAmIEVYVDRfRU9GQkxPQ0tTX0ZMKSkpIHsK
+IAkJaGFuZGxlX3QgKmhhbmRsZTsKIAogCQloYW5kbGUgPSBleHQ0X2pvdXJuYWxfc3RhcnQoaW5v
+ZGUsIDMpOwpAQCAtNTQ4NCw2ICs1NDkwLDExIEBAIGludCBleHQ0X3NldGF0dHIoc3RydWN0IGRl
+bnRyeSAqZGVudHJ5LCBzdHJ1Y3QgaWF0dHIgKmF0dHIpCiAJCQkJZ290byBlcnJfb3V0OwogCQkJ
+fQogCQl9CisJCWlmICgoaW5vZGUtPmlfZmxhZ3MgJiBFWFQ0X0VPRkJMT0NLU19GTCkpIHsKKwkJ
+CXJjID0gdm10cnVuY2F0ZShpbm9kZSwgYXR0ci0+aWFfc2l6ZSk7CisJCQlpZiAocmMpCisJCQkJ
+Z290byBlcnJfb3V0OworCQl9CiAJfQogCiAJcmMgPSBpbm9kZV9zZXRhdHRyKGlub2RlLCBhdHRy
+KTsKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaW9jdGwuYyBiL2ZzL2V4dDQvaW9jdGwuYwppbmRleCBk
+MWZlNDk1Li5lN2M1NDNkIDEwMDY0NAotLS0gYS9mcy9leHQ0L2lvY3RsLmMKKysrIGIvZnMvZXh0
+NC9pb2N0bC5jCkBAIC0xMDQsNiArMTA0LDE2IEBAIGxvbmcgZXh0NF9pb2N0bChzdHJ1Y3QgZmls
+ZSAqZmlscCwgdW5zaWduZWQgaW50IGNtZCwgdW5zaWduZWQgbG9uZyBhcmcpCiAJCQlmbGFncyAm
+PSB+RVhUNF9FWFRFTlRTX0ZMOwogCQl9CiAKKwkJaWYgKGZsYWdzICYgRVhUNF9FT0ZCTE9DS1Nf
+RkwpIHsKKwkJCS8qIHdlIGRvbid0IHN1cHBvcnQgYWRkaW5nIEVPRkJMT0NLUyBmbGFnICovCisJ
+CQlpZiAoIShvbGRmbGFncyAmIEVYVDRfRU9GQkxPQ0tTX0ZMKSkgeworCQkJCWVyciA9IC1FT1BO
+T1RTVVBQOworCQkJCWdvdG8gZmxhZ3Nfb3V0OworCQkJfQorCQl9IGVsc2UgaWYgKG9sZGZsYWdz
+ICYgRVhUNF9FT0ZCTE9DS1NfRkwpCisJCQkvKiBmcmVlIHRoZSBzcGFjZSByZXNlcnZlZCB3aXRo
+IGZhbGxvY2F0ZSBLRUVQU0laRSAqLworCQkJdm10cnVuY2F0ZShpbm9kZSwgaW5vZGUtPmlfc2l6
+ZSk7CisKIAkJaGFuZGxlID0gZXh0NF9qb3VybmFsX3N0YXJ0KGlub2RlLCAxKTsKIAkJaWYgKElT
+X0VSUihoYW5kbGUpKSB7CiAJCQllcnIgPSBQVFJfRVJSKGhhbmRsZSk7CmRpZmYgLS1naXQgYS9p
+bmNsdWRlL2xpbnV4L2ZzLmggYi9pbmNsdWRlL2xpbnV4L2ZzLmgKaW5kZXggMmFkYWEyNS4uN2Iz
+ZjBkZiAxMDA2NDQKLS0tIGEvaW5jbHVkZS9saW51eC9mcy5oCisrKyBiL2luY2x1ZGUvbGludXgv
+ZnMuaApAQCAtMzQzLDEwICszNDMsMTEgQEAgc3RydWN0IGlub2Rlc19zdGF0X3QgewogI2RlZmlu
+ZSBGU19UT1BESVJfRkwJCQkweDAwMDIwMDAwIC8qIFRvcCBvZiBkaXJlY3RvcnkgaGllcmFyY2hp
+ZXMqLwogI2RlZmluZSBGU19FWFRFTlRfRkwJCQkweDAwMDgwMDAwIC8qIEV4dGVudHMgKi8KICNk
+ZWZpbmUgRlNfRElSRUNUSU9fRkwJCQkweDAwMTAwMDAwIC8qIFVzZSBkaXJlY3QgaS9vICovCisj
+ZGVmaW5lIEZTX0VPRkJMT0NLU19GTAkJCTB4MDA0MDAwMDAgLyogQmxvY2tzIGFsbG9jYXRlZCBi
+ZXlvbmQgRU9GICovCiAjZGVmaW5lIEZTX1JFU0VSVkVEX0ZMCQkJMHg4MDAwMDAwMCAvKiByZXNl
+cnZlZCBmb3IgZXh0MiBsaWIgKi8KIAotI2RlZmluZSBGU19GTF9VU0VSX1ZJU0lCTEUJCTB4MDAw
+M0RGRkYgLyogVXNlciB2aXNpYmxlIGZsYWdzICovCi0jZGVmaW5lIEZTX0ZMX1VTRVJfTU9ESUZJ
+QUJMRQkJMHgwMDAzODBGRiAvKiBVc2VyIG1vZGlmaWFibGUgZmxhZ3MgKi8KKyNkZWZpbmUgRlNf
+RkxfVVNFUl9WSVNJQkxFCQkweDAwNDNERkZGIC8qIFVzZXIgdmlzaWJsZSBmbGFncyAqLworI2Rl
+ZmluZSBGU19GTF9VU0VSX01PRElGSUFCTEUJCTB4MDA0MzgwRkYgLyogVXNlciBtb2RpZmlhYmxl
+IGZsYWdzICovCiAKIAogI2RlZmluZSBTWU5DX0ZJTEVfUkFOR0VfV0FJVF9CRUZPUkUJMQo=
+--000e0cd21218b7f7e10474fc0541--
