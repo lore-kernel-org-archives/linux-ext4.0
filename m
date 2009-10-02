@@ -1,30 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Question on fallocate/ftruncate sequence
-Date: Fri, 02 Oct 2009 17:29:00 -0500
-Message-ID: <4AC67EAC.2090008@redhat.com>
-References: <1248389165.17459.3.camel@bobble.smo.corp.google.com>	 <5df78e1d0908311240s3205b4bcrb65b2552b4ed579c@mail.gmail.com>	 <20090831215612.GG4197@webber.adilger.int>	 <5df78e1d0908311633k1f16a096t701e0cdab54b174c@mail.gmail.com>	 <20090902084134.GO4197@webber.adilger.int>	 <5df78e1d0909022220m1152b313o92f6cb7cc8858298@mail.gmail.com>	 <5df78e1d0909232227y2cb52abew827d7732a3bc9040@mail.gmail.com>	 <4AC25CCB.8050805@redhat.com>	 <5df78e1d0909291238q44bbf9e8q98205ffa9b6b2518@mail.gmail.com>	 <4AC26630.6030509@redhat.com> <5df78e1d0910021510g3f32485bva30e08cf00c8682a@mail.gmail.com>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: Updated fsx.c program (fixed fallocate)
+Date: Fri, 02 Oct 2009 15:37:11 -0700
+Message-ID: <1254523031.4095.208.camel@mingming-laptop>
+References: <20090826052505.GA22238@webber.adilger.int>
+	 <20090929213859.GB13825@webber.adilger.int>
+	 <20090929223938.GD3384@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, Theodore Tso <tytso@mit.edu>,
-	Frank Mayhar <fmayhar@google.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jiaying Zhang <jiayingz@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6409 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751250AbZJBW3H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Oct 2009 18:29:07 -0400
-In-Reply-To: <5df78e1d0910021510g3f32485bva30e08cf00c8682a@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>,
+	Subrata Modak <subrata@linux.vnet.ibm.com>,
+	Dave Jones <davej@redhat.com>, linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090929223938.GD3384@webber.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Jiaying Zhang wrote:
-> FYI, here is my patch synced with the latest ext4-git tree:
+On Tue, 2009-09-29 at 16:39 -0600, Andreas Dilger wrote:
+> I've done some work to merge some of the existing fsx.c mods into a
+> single version.  Over & above the version that is in the LTP, I've
+> included AKPM's O_DIRECT fixes (with a twist), the BSD mmap page and
+> segfault handling, and per-write fsync.
+> 
+> The twist for the O_DIRECT feature is that it will randomly open file
+> descriptors with O_DIRECT, and if you use the Lustre-inspired multi-fd
+> support (by specifying multiple pathnames for the output file) fsx will
+> be testing buffered and O_DIRECT and mmap IO on the same file.
+> 
+> Updated patch to have proper fallocate() handling in case glibc doesn't
+> have this, for non-x86 architectures from MingMing Cao, based on code
+> used by DB2.
+> 
+> Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-The patch came through pretty mangled, if you could post it in plain 
-text w/ no wrapping, or maybe as an attachment, it'd be great.
+On top of this, a little update to add O_DIRECT define.
 
-Thanks,
--Eric
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+
+--- fsx.c.orig	2009-10-02 14:22:12.299565348 -0700
++++ fsx.c	2009-10-01 16:36:17.271593794 -0700
+@@ -78,6 +78,10 @@
+ 
+ #define	LOGSIZE	100000
+ 
++#ifndef O_DIRECT
++#define O_DIRECT        040000  /* direct disk access hint */
++#endif
++
+ struct log_entry	oplog[LOGSIZE];	/* the log */
+ int			logptr = 0;	/* current position in log */
+ int			logcount = 0;	/* total ops */
+
+
