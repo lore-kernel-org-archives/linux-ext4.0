@@ -1,67 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Updated fsx.c program (fixed fallocate)
-Date: Fri, 02 Oct 2009 17:40:12 -0500
-Message-ID: <4AC6814C.7070305@redhat.com>
-References: <20090826052505.GA22238@webber.adilger.int>	 <20090929213859.GB13825@webber.adilger.int>	 <20090929223938.GD3384@webber.adilger.int> <1254523031.4095.208.camel@mingming-laptop>
+From: Tobias Doerffel <tobias.doerffel@gmail.com>
+Subject: [PATCH] ext4: in ext4_dirty_inode() current_handle only needed for debugging
+Date: Sat,  3 Oct 2009 00:20:48 +0200
+Message-ID: <1254522048-15046-1-git-send-email-tobias.doerffel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <esandeen@redhat.com>,
-	Subrata Modak <subrata@linux.vnet.ibm.com>,
-	Dave Jones <davej@redhat.com>, linux-fsdevel@vger.kernel.org
-To: Mingming <cmm@us.ibm.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Tobias Doerffel <tobias.doerffel@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756104AbZJBWk0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Oct 2009 18:40:26 -0400
-In-Reply-To: <1254523031.4095.208.camel@mingming-laptop>
+Received: from jack.hrz.tu-chemnitz.de ([134.109.132.46]:46177 "EHLO
+	jack.hrz.tu-chemnitz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752455AbZJBWzU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2009 18:55:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mingming wrote:
-> On Tue, 2009-09-29 at 16:39 -0600, Andreas Dilger wrote:
->> I've done some work to merge some of the existing fsx.c mods into a
->> single version.  Over & above the version that is in the LTP, I've
->> included AKPM's O_DIRECT fixes (with a twist), the BSD mmap page and
->> segfault handling, and per-write fsync.
->>
->> The twist for the O_DIRECT feature is that it will randomly open file
->> descriptors with O_DIRECT, and if you use the Lustre-inspired multi-fd
->> support (by specifying multiple pathnames for the output file) fsx will
->> be testing buffered and O_DIRECT and mmap IO on the same file.
->>
->> Updated patch to have proper fallocate() handling in case glibc doesn't
->> have this, for non-x86 architectures from MingMing Cao, based on code
->> used by DB2.
->>
->> Signed-off-by: Andreas Dilger <adilger@sun.com>
-> 
-> On top of this, a little update to add O_DIRECT define.
-> 
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> 
-> --- fsx.c.orig	2009-10-02 14:22:12.299565348 -0700
-> +++ fsx.c	2009-10-01 16:36:17.271593794 -0700
-> @@ -78,6 +78,10 @@
->  
->  #define	LOGSIZE	100000
->  
-> +#ifndef O_DIRECT
-> +#define O_DIRECT        040000  /* direct disk access hint */
-> +#endif
-> +
->  struct log_entry	oplog[LOGSIZE];	/* the log */
->  int			logptr = 0;	/* current position in log */
->  int			logcount = 0;	/* total ops */
-> 
-> 
+As of d3d1faf6a74496ea4435fd057c6a2cad49f3e523 in ext4_dirty_inode()
+the current_handle variable is only used for debugging now. Therefore
+compiling fs/ext4/inode.c without JBD_DEBUG set will result in a
+compiler warning:
 
-I think that
+fs/ext4/inode.c: In function =E2=80=98ext4_dirty_inode=E2=80=99:
+fs/ext4/inode.c:5818: warning: unused variable =E2=80=98current_handle=E2=
+=80=99
 
-#define _GNU_SOURCE
+This commit fixes the issue by adding an according #ifdef directive.
+---
+ fs/ext4/inode.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-will pull in the glibc headers' definition rather than doing our own....
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 26f1a0a..e5daa6c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5815,7 +5815,9 @@ int ext4_mark_inode_dirty(handle_t *handle, struc=
+t inode *inode)
+  */
+ void ext4_dirty_inode(struct inode *inode)
+ {
++#ifdef CONFIG_JBD_DEBUG
+ 	handle_t *current_handle =3D ext4_journal_current_handle();
++#endif
+ 	handle_t *handle;
+=20
+ 	handle =3D ext4_journal_start(inode, 2);
+--=20
+1.6.3.3
 
--Eric
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
