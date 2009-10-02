@@ -1,54 +1,59 @@
 From: Tobias Doerffel <tobias.doerffel@gmail.com>
-Subject: [PATCH] ext4: in ext4_dirty_inode() current_handle only needed for debugging
-Date: Sat,  3 Oct 2009 00:20:48 +0200
-Message-ID: <1254522048-15046-1-git-send-email-tobias.doerffel@gmail.com>
+Subject: Re: [PATCH] ext4: in ext4_dirty_inode() current_handle only needed for debugging
+Date: Sat, 3 Oct 2009 00:36:21 +0200
+Message-ID: <200910030036.37640.tobias.doerffel@gmail.com>
+References: <1254522048-15046-1-git-send-email-tobias.doerffel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Tobias Doerffel <tobias.doerffel@gmail.com>
+Content-Type: multipart/signed;
+  boundary="nextPart1520648.eQf7IxDlfN";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from jack.hrz.tu-chemnitz.de ([134.109.132.46]:46177 "EHLO
+Received: from jack.hrz.tu-chemnitz.de ([134.109.132.46]:57496 "EHLO
 	jack.hrz.tu-chemnitz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752455AbZJBWzU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2009 18:55:20 -0400
+	with ESMTP id S1752455AbZJBXCS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2009 19:02:18 -0400
+Received: from vpnclient-194-145.hrz.tu-chemnitz.de ([134.109.194.145] helo=nc10.localnet)
+	by jack.hrz.tu-chemnitz.de with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.69)
+	(envelope-from <doto@hrz.tu-chemnitz.de>)
+	id 1Mtqjy-0002gv-60
+	for linux-ext4@vger.kernel.org; Sat, 03 Oct 2009 00:36:42 +0200
+In-Reply-To: <1254522048-15046-1-git-send-email-tobias.doerffel@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As of d3d1faf6a74496ea4435fd057c6a2cad49f3e523 in ext4_dirty_inode()
-the current_handle variable is only used for debugging now. Therefore
-compiling fs/ext4/inode.c without JBD_DEBUG set will result in a
-compiler warning:
+--nextPart1520648.eQf7IxDlfN
+Content-Type: Text/Plain;
+  charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 
-fs/ext4/inode.c: In function =E2=80=98ext4_dirty_inode=E2=80=99:
-fs/ext4/inode.c:5818: warning: unused variable =E2=80=98current_handle=E2=
-=80=99
+Hi,
 
-This commit fixes the issue by adding an according #ifdef directive.
----
- fs/ext4/inode.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 26f1a0a..e5daa6c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5815,7 +5815,9 @@ int ext4_mark_inode_dirty(handle_t *handle, struc=
-t inode *inode)
-  */
- void ext4_dirty_inode(struct inode *inode)
- {
-+#ifdef CONFIG_JBD_DEBUG
- 	handle_t *current_handle =3D ext4_journal_current_handle();
-+#endif
- 	handle_t *handle;
+Am Samstag, 3. Oktober 2009 00:20:48 schrieb Tobias Doerffel:
+> As of d3d1faf6a74496ea4435fd057c6a2cad49f3e523 in ext4_dirty_inode()
+> the current_handle variable is only used for debugging now. Therefore
+> compiling fs/ext4/inode.c without JBD_DEBUG set will result in a
+> compiler warning:
+Sorry for the noise, didn't look at the ML archive before.. looks like Curt=
 =20
- 	handle =3D ext4_journal_start(inode, 2);
---=20
-1.6.3.3
+already handles this.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regards,
+Tobias
+
+--nextPart1520648.eQf7IxDlfN
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkrGgGUACgkQHsjdpw2OaafhUwCgyTxErkGeqX/ZpSmDouS32e1r
+SaIAn0M5R/l/w4fG3TIhk/ROIHcer1/2
+=0TFj
+-----END PGP SIGNATURE-----
+
+--nextPart1520648.eQf7IxDlfN--
