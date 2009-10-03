@@ -1,36 +1,49 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: retry failed direct IO allocations
-Date: Fri, 2 Oct 2009 22:04:36 -0400
-Message-ID: <20091003020436.GC11365@mit.edu>
-References: <4AC6810F.9020600@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51588 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753359AbZJCCEe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Oct 2009 22:04:34 -0400
-Content-Disposition: inline
-In-Reply-To: <4AC6810F.9020600@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: Re: Updated fsx.c program (fixed fallocate)
+Date: Fri, 02 Oct 2009 22:40:26 -0400
+Message-ID: <8912.1254537626@gamaville.dokosmarshall.org>
+References: <20090826052505.GA22238@webber.adilger.int>
+ <20090929213859.GB13825@webber.adilger.int>
+ <20090929223938.GD3384@webber.adilger.int>
+ <1254523031.4095.208.camel@mingming-laptop> <4AC6814C.7070305@redhat.com>
+ <1254525965.4095.210.camel@mingming-laptop>
+Reply-To: nicholas.dokos@hp.com
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <esandeen@redhat.com>,
+	Subrata Modak <subrata@linux.vnet.ibm.com>,
+	Dave Jones <davej@redhat.com>, linux-fsdevel@vger.kernel.org,
+	nicholas.dokos@hp.com
+To: Mingming <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: Message from Mingming <cmm@us.ibm.com> of
+ "Fri, 02 Oct 2009 16:26:05 PDT." <1254525965.4095.210.camel@mingming-laptop>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 02, 2009 at 05:39:11PM -0500, Eric Sandeen wrote:
-> On a 256M filesystem, doing this in a loop:
->
->        xfs_io -F -f -d -c 'pwrite 0 64m' test
->        rm -f test
->
-> eventually leads to ENOSPC.  (the xfs_io command does a
-> 64m direct IO write to the file "test")
->
-> As with other block allocation callers, it looks like we need to
-> potentially retry the allocations on the initial ENOSPC.
->
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Mingming wrote:
+> > I think that
+> > 
+> > #define _GNU_SOURCE
+> > 
+> > will pull in the glibc headers' definition rather than doing our own....
+> > 
+> 
+> Oh? that's sounds good...
+> 
+> I tried to replace above with 
+> #define _GNU_SOURCE	1
+> 
+> gcc complained O_DIRECT is still not defined. what did I missing?
+> 
 
-Thanks, added to the ext4 patch queue.
 
-						- Ted
+,----
+| #define _GNU_SOURCE 1
+| 
+| #include <fcntl.h>
+`----
+
+should do it.
+
+Nick
