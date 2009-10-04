@@ -1,36 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14315] kernel BUG at fs/ext4/inode.c
-Date: Sun, 4 Oct 2009 02:14:47 GMT
-Message-ID: <200910040214.n942ElSj017692@demeter.kernel.org>
-References: <bug-14315-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] blkid/Makefile.in: ignore rmdir non-empty dir error
+Date: Sat, 3 Oct 2009 22:29:52 -0400
+Message-ID: <20091004022952.GE15688@mit.edu>
+References: <1254135442-28755-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:49943 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751371AbZJDCPY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Oct 2009 22:15:24 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n942ElVf017693
-	for <linux-ext4@vger.kernel.org>; Sun, 4 Oct 2009 02:14:47 GMT
-In-Reply-To: <bug-14315-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:52843 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753009AbZJDCab (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 3 Oct 2009 22:30:31 -0400
+Content-Disposition: inline
+In-Reply-To: <1254135442-28755-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14315
+On Mon, Sep 28, 2009 at 06:57:22PM +0800, Peng Tao wrote:
+>  		checker/* blkid_types.h ../libblkid.a ../libblkid_p.a \
+>  		$(SMANPAGES) blkid
+> -	-rmdir tests
+> +	-rmdir --ignore-fail-on-non-empty tests
+>  
 
+Sorry, NACK.  This will blow up on systems that aren't using the GNU
+shellutils.  The error is ignored, which is good enough.  We can do
+something like this instead:
 
-Theodore Tso <tytso@mit.edu> changed:
+	@echo rmdir tests/tmp tests
+	-@rmdir tests/tmp tests >& /dev/null
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+If we really care, I suppose.
 
-
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
