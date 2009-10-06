@@ -1,196 +1,99 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [PATCH][RFC] vfs: add message print mechanism for the mount/umount
- into the VFS layer
-Date: Tue, 6 Oct 2009 12:51:42 +0900
-Message-ID: <20091006125142.b766ad98.toshi.okajima@jp.fujitsu.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH 1/3] e4defrag: output blocks per extent by -c option
+Date: Tue, 06 Oct 2009 14:27:50 +0900
+Message-ID: <4ACAD556.8060501@sx.jp.nec.com>
+References: <4AC306B0.9070308@sx.jp.nec.com>	 <87f94c370909301128w4bfe6f4bh80bf3d6540ed83d3@mail.gmail.com>	 <4AC46529.4040605@sx.jp.nec.com> <87f94c370910020828p2a21d52cu1451a80d6fdb8a34@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: viro@zeniv.linux.org.uk, tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Greg Freemyer <greg.freemyer@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:43577 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752604AbZJFF35 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Oct 2009 01:29:57 -0400
+In-Reply-To: <87f94c370910020828p2a21d52cu1451a80d6fdb8a34@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi. 
+2009/10/03 0:28, Greg Freemyer wrote::
+> 2009/10/1 Kazuya Mio <k-mio@sx.jp.nec.com>:
+>> 2009/10/01 3:28, Greg Freemyer wrote::
+>>> 2009/9/30 Kazuya Mio <k-mio@sx.jp.nec.com>:
+>>>> e4defrag with -c option outputs "ratio" that means the levels of
+>>>> fragmentation. However, it's difficult for users to understand, so we will
+>>>> use blocks per extent instead of ratio.
+>>>>
+>>>> Before:
+>>>> # e4defrag -c /mnt/mp1/file
+>>>> <File>                                         now/best          ratio
+>>>> /mnt/mp1/file                                   14/1             0.01%
+>>>>
+>>>>  Total/best extents                             14/1
+>>>>  Fragmentation ratio                            0.01%
+>>>>  Fragmentation score                            0.10
+>>>>  [0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+>>>>  This file(/mnt/mp1/file) does not need defragmentation.
+>>>>  Done.
+>>>>
+>>>> After:
+>>>> # e4defrag -c /mnt/mp1/file
+>>>> <File>                                         now/best        blk/ext
+>>>> /mnt/mp1/file                                   14/1              7142
+>>>>
+>>>>  Total/best extents                             14/1
+>>>>  Average blocks per extent                      7142
+>>>>  Fragmentation score                            0
+>>>>  [0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+>>>>  This file(/mnt/mp1/file) does not need defragmentation.
+>>>>  Done.
+>>> RFC
+>>>
+>>> If we are going go that far (which I like), how about adding the avg
+>>> extent size in bytes.  (ie. 7142 * blocksize I assume).
+>>>
+>>> Also a note about the max blocks / extent might be good.
+>>>
+>>> ie. Add a more or less hard coded line
+>>> Ext4 max blocks per extent     32,768  (128MiB)
+>> Your ideas sound good. How about the following output image?
+>>
+>> # e4defrag -c /mnt/mp1/file
+>> <File>                                         now/best         KB/ext
+>> /mnt/mp1/file                                   14/1              4000
+>>
+>>  Total/best extents                             14/1
+>>  Min bytes per extent                           1024 KB
+>>  Max bytes per extent                           20489 KB
+>>  Average bytes per extent                       4000 KB
+>>  Fragmentation score                            0
+>>  [0-30 no problem: 31-55 a little bit fragmented: 55- needs defrag]
+>>  This file(/mnt/mp1/file) does not need defragmentation.
+>>  Done.
+>>
+>> Regards,
+>>
+>> Kazuya Mio
+> 
+> I was thinking more of the theoretical max bytes per extent, not the
+> largest extent found in the actual file.
+> 
+> I say this because most users of e4defrag won't know what perfection
+> is, so they won't know if and when they have come close if they don't
+> know what the ultimate goal is.
+> 
+> Specifically, think of a admin hosting a few virtual machines where
+> the virtual disks are ext4 files.  They could easily be 100's of GB so
+> they may think even 128MB / extent can be improved on, even though
+> they have already achieved the theoretical max.
+> 
+> Greg
 
-Now, on the VFS-layer any messages aren't printed at mount/umount time 
-(when the operation normally terminates).
-But there are some filesystems which print their own specific messages at those
-times.
+I see. But I think e4defrag doesn't always need to print logical max
+bytes per extent. So, I will add it to e4defrag man page instead of
+standard output. What do you think?
 
-For the purpose of the system management and so on, users (especially, 
-enterprise users) want to observe their system operations from the system logs.
-We may manage to observe some filesystems' operations (mount/umount) from the 
-logs. But the filesystems of which we can observe the operations are not all.
+Regards,
 
-Therefore to achieve the observations for all filesystems is to add the message 
-mechanism into the VFS layer. If any filesystems' specific messages at 
-mount/umount time are added into this, we can distinguish more easily each 
-message among the system logs for our systems' observations. 
-
-This patch provides the following:
-- message output at mount/umount time
-- the functions of printing the filesystem's specific information at 
-  mount/umount time
-
-(NOTE: This mechanism becomes effective only when the users call
-       the mount system call because they don't want to observe the pseudo 
-       filesystems.)
-
-P.S.
-This concept derives from the following:
-- http://marc.info/?l=linux-ext4&m=125429349122986&w=2
-- http://marc.info/?l=linux-ext4&m=125436936109125&w=2 
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
---
- fs/namespace.c        |   19 ++++++++++++++++++-
- fs/super.c            |   18 ++++++++++++++++--
- include/linux/fs.h    |    3 +++
- include/linux/mount.h |    3 +++
- 4 files changed, 40 insertions(+), 3 deletions(-)
-
-diff -Nurp linux-2.6.32-rc3.orig/fs/namespace.c linux-2.6.32-rc3/fs/namespace.c
---- linux-2.6.32-rc3.orig/fs/namespace.c	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/fs/namespace.c	2009-10-06 09:58:19.000000000 +0900
-@@ -599,6 +599,7 @@ static struct vfsmount *clone_mnt(struct
- static inline void __mntput(struct vfsmount *mnt)
- {
- 	struct super_block *sb = mnt->mnt_sb;
-+	int silent = !(mnt->mnt_flags & MNT_VERBOSE_MSG);
- 	/*
- 	 * This probably indicates that somebody messed
- 	 * up a mnt_want/drop_write() pair.  If this
-@@ -612,7 +613,7 @@ static inline void __mntput(struct vfsmo
- 	WARN_ON(count_mnt_writers(mnt));
- 	dput(mnt->mnt_root);
- 	free_vfsmnt(mnt);
--	deactivate_super(sb);
-+	__deactivate_super(sb, silent);
- }
- 
- void mntput_no_expire(struct vfsmount *mnt)
-@@ -1653,6 +1654,9 @@ static int do_new_mount(struct path *pat
- 	if (IS_ERR(mnt))
- 		return PTR_ERR(mnt);
- 
-+	/* for verbose messages on VFS layer at mount/umount */
-+	if (!(flags & MS_SILENT))
-+		mnt_flags |= MNT_VERBOSE_MSG;
- 	return do_add_mount(mnt, path, mnt_flags, NULL);
- }
- 
-@@ -1664,6 +1668,7 @@ int do_add_mount(struct vfsmount *newmnt
- 		 int mnt_flags, struct list_head *fslist)
- {
- 	int err;
-+	struct super_block *sb = newmnt->mnt_sb;
- 
- 	down_write(&namespace_sem);
- 	/* Something was mounted here while we slept */
-@@ -1692,10 +1697,22 @@ int do_add_mount(struct vfsmount *newmnt
- 		list_add_tail(&newmnt->mnt_expire, fslist);
- 
- 	up_write(&namespace_sem);
-+	/* 
-+	 * message output at mount for log observers
-+	 */
-+	if (newmnt->mnt_flags & MNT_VERBOSE_MSG) {
-+		printk(KERN_INFO "Device %s mounted file system type %s read-%s\n",
-+					sb->s_id, sb->s_type->name,
-+					sb->s_flags & MS_RDONLY ? "only" : "write");
-+		/* fs specific messages for mount */
-+		if (sb->s_op != NULL && sb->s_op->mount_msg != NULL)
-+			sb->s_op->mount_msg(sb);
-+	}
- 	return 0;
- 
- unlock:
- 	up_write(&namespace_sem);
-+	newmnt->mnt_flags &= ~MNT_VERBOSE_MSG;
- 	mntput(newmnt);
- 	return err;
- }
-diff -Nurp linux-2.6.32-rc3.orig/fs/super.c linux-2.6.32-rc3/fs/super.c
---- linux-2.6.32-rc3.orig/fs/super.c	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/fs/super.c	2009-10-06 09:58:19.000000000 +0900
-@@ -177,15 +177,16 @@ void put_super(struct super_block *sb)
- 
- 
- /**
-- *	deactivate_super	-	drop an active reference to superblock
-+ *	__deactivate_super	-	drop an active reference to superblock
-  *	@s: superblock to deactivate
-+ *	@silent: disable verbose messages for umount from mount-tree
-  *
-  *	Drops an active reference to superblock, acquiring a temprory one if
-  *	there is no active references left.  In that case we lock superblock,
-  *	tell fs driver to shut it down and drop the temporary reference we
-  *	had just acquired.
-  */
--void deactivate_super(struct super_block *s)
-+void __deactivate_super(struct super_block *s, int silent)
- {
- 	struct file_system_type *fs = s->s_type;
- 	if (atomic_dec_and_lock(&s->s_active, &sb_lock)) {
-@@ -193,12 +194,25 @@ void deactivate_super(struct super_block
- 		spin_unlock(&sb_lock);
- 		vfs_dq_off(s, 0);
- 		down_write(&s->s_umount);
-+		/* fs specific messages for umount */
-+		if (!silent && s->s_op != NULL && s->s_op->umount_msg != NULL)
-+			s->s_op->umount_msg(s);
- 		fs->kill_sb(s);
-+		/*
-+		 * message output at umount for log observers
-+		 */ 
-+		if (!silent)
-+			printk(KERN_INFO "Device %s unmounted\n", s->s_id);
- 		put_filesystem(fs);
- 		put_super(s);
- 	}
- }
- 
-+void deactivate_super(struct super_block *s)
-+{
-+	__deactivate_super(s, !0);
-+}
-+
- EXPORT_SYMBOL(deactivate_super);
- 
- /**
-diff -Nurp linux-2.6.32-rc3.orig/include/linux/fs.h linux-2.6.32-rc3/include/linux/fs.h
---- linux-2.6.32-rc3.orig/include/linux/fs.h	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/include/linux/fs.h	2009-10-06 09:58:19.000000000 +0900
-@@ -1577,6 +1577,8 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- #endif
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-+	void (*mount_msg)(struct super_block*);
-+	void (*umount_msg)(struct super_block*);
- };
- 
- /*
-@@ -1774,6 +1776,7 @@ void kill_block_super(struct super_block
- void kill_anon_super(struct super_block *sb);
- void kill_litter_super(struct super_block *sb);
- void deactivate_super(struct super_block *sb);
-+void __deactivate_super(struct super_block *sb, int silent);
- void deactivate_locked_super(struct super_block *sb);
- int set_anon_super(struct super_block *s, void *data);
- struct super_block *sget(struct file_system_type *type,
-diff -Nurp linux-2.6.32-rc3.orig/include/linux/mount.h linux-2.6.32-rc3/include/linux/mount.h
---- linux-2.6.32-rc3.orig/include/linux/mount.h	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/include/linux/mount.h	2009-10-06 09:58:19.000000000 +0900
-@@ -36,6 +36,9 @@ struct mnt_namespace;
- #define MNT_UNBINDABLE	0x2000	/* if the vfsmount is a unbindable mount */
- #define MNT_PNODE_MASK	0x3000	/* propagation flag mask */
- 
-+#define MNT_VERBOSE_MSG	0x10000 /* verbose messages on the VFS layer at mount
-+				   /umount only when called from do_new_mount */
-+
- struct vfsmount {
- 	struct list_head mnt_hash;
- 	struct vfsmount *mnt_parent;	/* fs we are mounted on */
+Kazuya Mio
