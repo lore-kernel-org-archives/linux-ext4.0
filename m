@@ -1,108 +1,394 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: [PATCH 2/2]Fix return value of splitting extents for dio write
- over fallocate
-Date: Thu, 08 Oct 2009 16:08:09 -0700
-Message-ID: <1255043289.4931.17.camel@mingming-laptop>
-References: <1254936214.18662.7.camel@mingming-laptop>
-	 <1254941429.18662.8.camel@mingming-laptop>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 1/2]ext4: Fix exchanged block count in EXT4_IOC_MOVE_EXT
+ failure
+Date: Fri, 09 Oct 2009 08:56:07 +0900
+Message-ID: <4ACE7C17.106@rs.jp.nec.com>
+References: <4AC5B8C5.8000205@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>
-To: tytso@mit.edu
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:43185 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932699AbZJHXIt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2009 19:08:49 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e33.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n98N5oDO031853
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 17:05:50 -0600
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n98N8Bof263480
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 17:08:11 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n98N8ATa028983
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 17:08:10 -0600
-In-Reply-To: <1254941429.18662.8.camel@mingming-laptop>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:45315 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760158AbZJHX5k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2009 19:57:40 -0400
+In-Reply-To: <4AC5B8C5.8000205@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2009-10-07 at 11:50 -0700, Mingming wrote:
-> On Wed, 2009-10-07 at 10:23 -0700, Mingming wrote:
-> > ext4: Fix return value of splitting extents for dio write over fallocate 
+Hi Ted,
+
+If my patches do not seem to have a problem,
+would you add them to the ext4 patch queue?
+
+http://marc.info/?l=linux-ext4&m=125447192609335&w=2
+http://marc.info/?l=linux-ext4&m=125447192709338&w=2
+
+Regards,
+Akira Fujita
+
+Akira Fujita wrote:
+> ext4: Fix block count in EXT4_IOC_MOVE_EXT failure
 > 
-> Please pick up this patch instead, after fixing compile warning.
+> From: Akira Fujita <a-fujita@rs.jp.nec.com>
 > 
-> ext4: Fix return value of splitting extents for dio write over fallocate
+> The halfway exchanged block count should be returned to the user-space,
+> if EXT4_IOC_MOVE_EXT is failed for some reasons
+> in the environment where block size is not same as page size.
+> But current EXT4_IOC_MOVE_EXT returns
+> page-aligned block count to the user-space.
+> The patch fixes this issue.
 > 
-> To prepare direct IO write, we need to split the unwritten extents before
-> submit the IO. In case of no split needs at all, ext4_split_unwritten_extents()
-> was incorrectly returns 0 instead of the size of uninitalized extents. This bug
-> caused wrong return value sent back to VFS code when it gets called from async
-> IO path, leads to falling back to buffered IO.
+> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+> ---
+>  fs/ext4/move_extent.c |  139 ++++++++++++++++++++++++++-----------------------
+>  1 files changed, 73 insertions(+), 66 deletions(-)
 > 
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> index 25b6b14..83f8c9e 100644
+> --- a/fs/ext4/move_extent.c
+> +++ b/fs/ext4/move_extent.c
+> @@ -661,6 +661,7 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
+>   * @donor_inode:	donor inode
+>   * @from:		block offset of orig_inode
+>   * @count:		block count to be replaced
+> + * @err:		pointer to save return value
+>   *
+>   * Replace original inode extents and donor inode extents page by page.
+>   * We implement this replacement in the following three steps:
+> @@ -671,19 +672,18 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
+>   * 3. Change the block information of donor inode to point at the saved
+>   *    original inode blocks in the dummy extents.
+>   *
+> - * Return 0 on success, or a negative error value on failure.
+> + * Return replaced block count.
+>   */
+>  static int
+>  mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+>  			   struct inode *donor_inode, ext4_lblk_t from,
+> -			   ext4_lblk_t count)
+> +			   ext4_lblk_t count, int *err)
+>  {
+>  	struct ext4_ext_path *orig_path = NULL;
+>  	struct ext4_ext_path *donor_path = NULL;
+>  	struct ext4_extent *oext, *dext;
+>  	struct ext4_extent tmp_dext, tmp_oext;
+>  	ext4_lblk_t orig_off = from, donor_off = from;
+> -	int err = 0;
+>  	int depth;
+>  	int replaced_count = 0;
+>  	int dext_alen;
+> @@ -691,13 +691,13 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+>  	mext_double_down_write(orig_inode, donor_inode);
+> 
+>  	/* Get the original extent for the block "orig_off" */
+> -	err = get_ext_path(orig_inode, orig_off, &orig_path);
+> -	if (err)
+> +	*err = get_ext_path(orig_inode, orig_off, &orig_path);
+> +	if (*err)
+>  		goto out;
+> 
+>  	/* Get the donor extent for the head */
+> -	err = get_ext_path(donor_inode, donor_off, &donor_path);
+> -	if (err)
+> +	*err = get_ext_path(donor_inode, donor_off, &donor_path);
+> +	if (*err)
+>  		goto out;
+>  	depth = ext_depth(orig_inode);
+>  	oext = orig_path[depth].p_ext;
+> @@ -707,9 +707,9 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+>  	dext = donor_path[depth].p_ext;
+>  	tmp_dext = *dext;
+> 
+> -	err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+> +	*err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+>  				      donor_off, count);
+> -	if (err)
+> +	if (*err)
+>  		goto out;
+> 
+>  	/* Loop for the donor extents */
+> @@ -718,7 +718,7 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+>  		if (!dext) {
+>  			ext4_error(donor_inode->i_sb, __func__,
+>  				   "The extent for donor must be found");
+> -			err = -EIO;
+> +			*err = -EIO;
+>  			goto out;
+>  		} else if (donor_off != le32_to_cpu(tmp_dext.ee_block)) {
+>  			ext4_error(donor_inode->i_sb, __func__,
+> @@ -726,20 +726,20 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+>  				"extent(%u) should be equal",
+>  				donor_off,
+>  				le32_to_cpu(tmp_dext.ee_block));
+> -			err = -EIO;
+> +			*err = -EIO;
+>  			goto out;
+>  		}
+> 
+>  		/* Set donor extent to orig extent */
+> -		err = mext_leaf_block(handle, orig_inode,
+> +		*err = mext_leaf_block(handle, orig_inode,
+>  					   orig_path, &tmp_dext, &orig_off);
+> -		if (err < 0)
+> +		if (*err)
+>  			goto out;
+> 
+>  		/* Set orig extent to donor extent */
+> -		err = mext_leaf_block(handle, donor_inode,
+> +		*err = mext_leaf_block(handle, donor_inode,
+>  					   donor_path, &tmp_oext, &donor_off);
+> -		if (err < 0)
+> +		if (*err)
+>  			goto out;
+> 
+>  		dext_alen = ext4_ext_get_actual_len(&tmp_dext);
+> @@ -753,35 +753,25 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+> 
+>  		if (orig_path)
+>  			ext4_ext_drop_refs(orig_path);
+> -		err = get_ext_path(orig_inode, orig_off, &orig_path);
+> -		if (err)
+> +		*err = get_ext_path(orig_inode, orig_off, &orig_path);
+> +		if (*err)
+>  			goto out;
+>  		depth = ext_depth(orig_inode);
+>  		oext = orig_path[depth].p_ext;
+> -		if (le32_to_cpu(oext->ee_block) +
+> -				ext4_ext_get_actual_len(oext) <= orig_off) {
+> -			err = 0;
+> -			goto out;
+> -		}
+>  		tmp_oext = *oext;
+> 
+>  		if (donor_path)
+>  			ext4_ext_drop_refs(donor_path);
+> -		err = get_ext_path(donor_inode, donor_off, &donor_path);
+> -		if (err)
+> +		*err = get_ext_path(donor_inode, donor_off, &donor_path);
+> +		if (*err)
+>  			goto out;
+>  		depth = ext_depth(donor_inode);
+>  		dext = donor_path[depth].p_ext;
+> -		if (le32_to_cpu(dext->ee_block) +
+> -				ext4_ext_get_actual_len(dext) <= donor_off) {
+> -			err = 0;
+> -			goto out;
+> -		}
+>  		tmp_dext = *dext;
+> 
+> -		err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+> +		*err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+>  					   donor_off, count - replaced_count);
+> -		if (err)
+> +		if (*err)
+>  			goto out;
+>  	}
+> 
+> @@ -796,7 +786,7 @@ out:
+>  	}
+> 
+>  	mext_double_up_write(orig_inode, donor_inode);
+> -	return err;
+> +	return replaced_count;
+>  }
+> 
+>  /**
+> @@ -808,16 +798,17 @@ out:
+>   * @data_offset_in_page:	block index where data swapping starts
+>   * @block_len_in_page:		the number of blocks to be swapped
+>   * @uninit:			orig extent is uninitialized or not
+> + * @err:			pointer to save return value
+>   *
+>   * Save the data in original inode blocks and replace original inode extents
+>   * with donor inode extents by calling mext_replace_branches().
+> - * Finally, write out the saved data in new original inode blocks. Return 0
+> - * on success, or a negative error value on failure.
+> + * Finally, write out the saved data in new original inode blocks. Return
+> + * replaced block count.
+>   */
+>  static int
+>  move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+>  		  pgoff_t orig_page_offset, int data_offset_in_page,
+> -		  int block_len_in_page, int uninit)
+> +		  int block_len_in_page, int uninit, int *err)
+>  {
+>  	struct inode *orig_inode = o_filp->f_dentry->d_inode;
+>  	struct address_space *mapping = orig_inode->i_mapping;
+> @@ -829,9 +820,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+>  	long long offs = orig_page_offset << PAGE_CACHE_SHIFT;
+>  	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
+>  	unsigned int w_flags = 0;
+> -	unsigned int tmp_data_len, data_len;
+> +	unsigned int tmp_data_size, data_size, replaced_size;
+>  	void *fsdata;
+> -	int ret, i, jblocks;
+> +	int i, jblocks;
+> +	int err2 = 0;
+> +	int replaced_count = 0;
+>  	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
+> 
+>  	/*
+> @@ -841,8 +834,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+>  	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
+>  	handle = ext4_journal_start(orig_inode, jblocks);
+>  	if (IS_ERR(handle)) {
+> -		ret = PTR_ERR(handle);
+> -		return ret;
+> +		*err = PTR_ERR(handle);
+> +		return 0;
+>  	}
+> 
+>  	if (segment_eq(get_fs(), KERNEL_DS))
+> @@ -858,9 +851,9 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+>  	 * Just swap data blocks between orig and donor.
+>  	 */
+>  	if (uninit) {
+> -		ret = mext_replace_branches(handle, orig_inode,
+> -						 donor_inode, orig_blk_offset,
+> -						 block_len_in_page);
+> +		replaced_count = mext_replace_branches(handle, orig_inode,
+> +						donor_inode, orig_blk_offset,
+> +						block_len_in_page, err);
+> 
+>  		/* Clear the inode cache not to refer to the old data */
+>  		ext4_ext_invalidate_cache(orig_inode);
+> @@ -870,27 +863,28 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+> 
+>  	offs = (long long)orig_blk_offset << orig_inode->i_blkbits;
+> 
+> -	/* Calculate data_len */
+> +	/* Calculate data_size */
+>  	if ((orig_blk_offset + block_len_in_page - 1) ==
+>  	    ((orig_inode->i_size - 1) >> orig_inode->i_blkbits)) {
+>  		/* Replace the last block */
+> -		tmp_data_len = orig_inode->i_size & (blocksize - 1);
+> +		tmp_data_size = orig_inode->i_size & (blocksize - 1);
+>  		/*
+> -		 * If data_len equal zero, it shows data_len is multiples of
+> +		 * If data_size equal zero, it shows data_size is multiples of
+>  		 * blocksize. So we set appropriate value.
+>  		 */
+> -		if (tmp_data_len == 0)
+> -			tmp_data_len = blocksize;
+> +		if (tmp_data_size == 0)
+> +			tmp_data_size = blocksize;
+> 
+> -		data_len = tmp_data_len +
+> +		data_size = tmp_data_size +
+>  			((block_len_in_page - 1) << orig_inode->i_blkbits);
+> -	} else {
+> -		data_len = block_len_in_page << orig_inode->i_blkbits;
+> -	}
+> +	} else
+> +		data_size = block_len_in_page << orig_inode->i_blkbits;
+> +
+> +	replaced_size = data_size;
+> 
+> -	ret = a_ops->write_begin(o_filp, mapping, offs, data_len, w_flags,
+> +	*err = a_ops->write_begin(o_filp, mapping, offs, data_size, w_flags,
+>  				 &page, &fsdata);
+> -	if (unlikely(ret < 0))
+> +	if (unlikely(*err < 0))
+>  		goto out;
+> 
+>  	if (!PageUptodate(page)) {
+> @@ -911,10 +905,17 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+>  	/* Release old bh and drop refs */
+>  	try_to_release_page(page, 0);
+> 
+> -	ret = mext_replace_branches(handle, orig_inode, donor_inode,
+> -					 orig_blk_offset, block_len_in_page);
+> -	if (ret < 0)
+> -		goto out;
+> +	replaced_count = mext_replace_branches(handle, orig_inode, donor_inode,
+> +					orig_blk_offset, block_len_in_page,
+> +					&err2);
+> +	if (err2) {
+> +		if (replaced_count) {
+> +			block_len_in_page = replaced_count;
+> +			replaced_size =
+> +				block_len_in_page << orig_inode->i_blkbits;
+> +		} else
+> +			goto out;
+> +	}
+> 
+>  	/* Clear the inode cache not to refer to the old data */
+>  	ext4_ext_invalidate_cache(orig_inode);
+> @@ -928,16 +929,16 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+>  		bh = bh->b_this_page;
+> 
+>  	for (i = 0; i < block_len_in_page; i++) {
+> -		ret = ext4_get_block(orig_inode,
+> +		*err = ext4_get_block(orig_inode,
+>  				(sector_t)(orig_blk_offset + i), bh, 0);
+> -		if (ret < 0)
+> +		if (*err < 0)
+>  			goto out;
+> 
+>  		if (bh->b_this_page != NULL)
+>  			bh = bh->b_this_page;
+>  	}
+> 
+> -	ret = a_ops->write_end(o_filp, mapping, offs, data_len, data_len,
+> +	*err = a_ops->write_end(o_filp, mapping, offs, data_size, replaced_size,
+>  			       page, fsdata);
+>  	page = NULL;
+> 
+> @@ -951,7 +952,10 @@ out:
+>  out2:
+>  	ext4_journal_stop(handle);
+> 
+> -	return ret < 0 ? ret : 0;
+> +	if (err2)
+> +		*err = err2;
+> +
+> +	return replaced_count;
+>  }
+> 
+>  /**
+> @@ -1367,15 +1371,17 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>  		while (orig_page_offset <= seq_end_page) {
+> 
+>  			/* Swap original branches with new branches */
+> -			ret1 = move_extent_per_page(o_filp, donor_inode,
+> +			block_len_in_page = move_extent_per_page(
+> +						o_filp, donor_inode,
+>  						orig_page_offset,
+>  						data_offset_in_page,
+> -						block_len_in_page, uninit);
+> -			if (ret1 < 0)
+> -				goto out;
+> -			orig_page_offset++;
+> +						block_len_in_page, uninit,
+> +						&ret1);
+> +
+>  			/* Count how many blocks we have exchanged */
+>  			*moved_len += block_len_in_page;
+> +			if (ret1 < 0)
+> +				goto out;
+>  			if (*moved_len > len) {
+>  				ext4_error(orig_inode->i_sb, __func__,
+>  					"We replaced blocks too much! "
+> @@ -1385,6 +1391,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>  				goto out;
+>  			}
+> 
+> +			orig_page_offset++;
+>  			data_offset_in_page = 0;
+>  			rest_blocks -= block_len_in_page;
+>  			if (rest_blocks > blocks_per_page)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Jiayang zhang pointed that there is another issue with avoid splitting
-the unintialized extent when it's going to be fullfilled. The start
-offset to write needs to be at the beginning of the uninitialized
-extent. The following is the updated patch.
+-- 
+Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Please review and pick up this patch. Thanks.
-Mingming
-
-
-
-ext4: Fix direct IO return values over fallocate space
-
-To prepare direct IO write, we need to split the unwritten extents before
-submit the IO. In case of the full uninitialized extent is going to be written,
-there is no need to split the extenT at all. ext4_split_unwritten_extents() has
-bug to check whether it's full fill of the unintialized extent, and
-incorrectly returns 0 instead of the size of uninitalized extents. The later bug
-caused wrong return value sent back to VFS code when it gets called from async
-IO path, leads to falling back to buffered IO.
-
-Thanks to Jiaying Zhang who reported the bugs and tested the patch.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/extents.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-
-Index: linux-2.6.31-rc4/fs/ext4/extents.c
-===================================================================
---- linux-2.6.31-rc4.orig/fs/ext4/extents.c
-+++ linux-2.6.31-rc4/fs/ext4/extents.c
-@@ -2788,6 +2788,8 @@ fix_extent_len:
-  * into three uninitialized extent(at most). After IO complete, the part
-  * being filled will be convert to initialized by the end_io callback function
-  * via ext4_convert_unwritten_extents().
-+ *
-+ * Returns the size of unitialized extent to be writen, on success.
-  */
- static int ext4_split_unwritten_extents(handle_t *handle,
- 					struct inode *inode,
-@@ -2805,7 +2807,6 @@ static int ext4_split_unwritten_extents(
- 	unsigned int allocated, ee_len, depth;
- 	ext4_fsblk_t newblock;
- 	int err = 0;
--	int ret = 0;
- 	unsigned int newdepth;
- 
- 	ext_debug("ext4_split_unwritten_extents: inode %lu,"
-@@ -2828,8 +2829,8 @@ static int ext4_split_unwritten_extents(
-  	 * the size of extent to write, there is no need to split
-  	 * uninitialized extent
-  	 */
-- 	if (allocated <= max_blocks)
--		return ret;
-+ 	if (iblock == ee_block && allocated <= max_blocks)
-+		return allocated;
- 
- 	err = ext4_ext_get_access(handle, inode, path + depth);
- 	if (err)
-
+The First Fundamental Software Development Group,
+Software Development Division,
+NEC Software Tohoku, Ltd.
 
