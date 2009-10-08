@@ -1,63 +1,52 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH 2/2] ext4: update donor file's ctime/mtime
-Date: Thu, 08 Oct 2009 17:04:20 +0900
-Message-ID: <4ACD9D04.40503@sx.jp.nec.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: Where all does preallocated/extra space hide?
+Date: Thu, 8 Oct 2009 17:18:52 +0530
+Message-ID: <20091008114851.GA22610@skywalker.linux.vnet.ibm.com>
+References: <4AC23A17.5020100@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:36540 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754396AbZJHIHg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2009 04:07:36 -0400
+Received: from e23smtp05.au.ibm.com ([202.81.31.147]:42779 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757596AbZJHLte (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2009 07:49:34 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
+	by e23smtp05.au.ibm.com (8.14.3/8.13.1) with ESMTP id n98BkCcL002931
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 22:46:12 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n98Bmuwn1208402
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 22:48:56 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n98Bmu0r001420
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 22:48:56 +1100
+Content-Disposition: inline
+In-Reply-To: <4AC23A17.5020100@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-EXT4_IOC_MOVE_EXT changes donor file data, but doesn't update ctime/mtime.
-This patch fixes this problem.
+On Tue, Sep 29, 2009 at 11:47:19AM -0500, Eric Sandeen wrote:
+> I was running some of the xfstests enospc tests on ext4, and they were
+> failing; in one case, manymanymany small files are made to fill up a
+> 100M filesystem.  ext4 stops quite early with -ENOSPC, but after a bit,
+> (or after a "sync") we get 40MB free again.  So 40% of the fs space is
+> hidden somewhere in preallocation...
+> 
+> I tried calling out to discard group prealloc but that's only a few
+> blocks.  I'll go trace through the sync paths to see what all gets
+> released, but if anyone knows offhand where the rest of that space is
+> hiding, please give me a shout.  :)
+> 
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
 
- move_extent.c |   20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index e2e99fd..1cb2609 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -1210,6 +1210,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 	ext4_lblk_t block_end, seq_start, add_blocks, file_end, seq_blocks = 0;
- 	ext4_lblk_t rest_blocks;
- 	pgoff_t orig_page_offset = 0, seq_end_page;
-+	handle_t *handle;
- 	int ret1, ret2, depth, last_extent = 0;
- 	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
- 	int data_offset_in_page;
-@@ -1406,6 +1407,25 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 
- 	}
- out:
-+	/*
-+	 * Note that ctime/mtime will not be updated if power failure is
-+	 * detected during block replacing.
-+	 */
-+	if (*moved_len) {
-+		handle = ext4_journal_start(donor_inode, 1);
-+		if (IS_ERR(handle))
-+			ret2 = PTR_ERR(handle);
-+		else {
-+			donor_inode->i_ctime = donor_inode->i_mtime =
-+					ext4_current_time(donor_inode);
-+			ret2 = ext4_mark_inode_dirty(handle, donor_inode);
-+			ext4_journal_stop(handle);
-+		}
-+
-+		if (!ret1)
-+			ret1 = ret2;
-+	}
-+
- 	if (orig_path) {
- 		ext4_ext_drop_refs(orig_path);
- 		kfree(orig_path);
+preallocation space is discarded by default if we fail a block allocation
+ext4_mb_discard_preallocations does that. What might be happening is the
+extra meta data blocks that we reserve for making sure we will be able
+to properly insert the new extent on block allocation.  I guess we should
+force a data allocation when we fail with ENOSPC in ext4_da_writepages
+We currently force a journal commit so that the we claim back the blocks
+from deleted files. But we can also force block allocation for delayed
+allocated inodes so that we free some of the extra meta data we reserved
 
+-aneesh
