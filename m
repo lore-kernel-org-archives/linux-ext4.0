@@ -1,67 +1,69 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Skip "rootfs" entry when checking for ext4 filesystem.
-Date: Thu, 08 Oct 2009 15:14:06 -0500
-Message-ID: <4ACE480E.9070508@redhat.com>
-References: <4AA682BE.2030200@redhat.com>
+Subject: Re: [PATCH] debugfs: open with EXT2_FLAG_64BITS
+Date: Thu, 08 Oct 2009 15:17:00 -0500
+Message-ID: <4ACE48BC.7010505@redhat.com>
+References: <4AAA6A44.90902@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ravi@p-static.net
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10494 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31943 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754638AbZJHUOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Oct 2009 16:14:35 -0400
-In-Reply-To: <4AA682BE.2030200@redhat.com>
+	id S1756281AbZJHUR1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Oct 2009 16:17:27 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n98KH1m3008108
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 16:17:01 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n98KH0HX030339
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 16:17:00 -0400
+In-Reply-To: <4AAA6A44.90902@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ping on this one?
+Eric Sandeen wrote:
+> Pointing debugfs from the pu branch at a large filesystem is
+> still failing with:
+> 
+>  Filesystem too large to use legacy bitmaps while reading block bitmap
+> 
+> We need to open with EXT2_FLAG_64BITS; I'm not sure if this
+> should be a switch based on the size of the fs or not?
+> 
+> But in any case the below gets things moving enough to
+> use debugfs on a large filesystem.
 
-Ravi reported a failure w/o it:
-
-> Hi,
-> 
-> I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
-> When I try to defragment files on my root filesystem, it refuses to
-> acknowledge that the filesystem is ext4. I believe the problem is that
-> it checks the filesystem type by parsing /etc/mtab, but the root
-> filesystem shows up there like this:
-> 
-> rootfs on / type rootfs (rw)
-> /dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
-> 
-> so it gets confused by the bogus first entry. It works just fine on
-> other ext4 filesystems I have.
-> 
-> (If this is the wrong mailing list, I apologize; I couldn't find one for
-> e2fsprogs, so I thought this was the next best thing.)
-> 
-> --Ravi
+ping?
 
 Thanks,
 -Eric
 
-Eric Sandeen wrote:
-> Skip "rootfs" entry when checking for ext4 filesystem.
-> 
 > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > ---
 > 
-> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-> index 82e3868..0d04df9 100644
-> --- a/misc/e4defrag.c
-> +++ b/misc/e4defrag.c
-> @@ -430,6 +430,8 @@ static int is_ext4(const char *file)
->  	}
+> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+> index 3bb309f..fbebae7 100644
+> --- a/debugfs/debugfs.c
+> +++ b/debugfs/debugfs.c
+> @@ -127,7 +127,7 @@ void do_open_filesys(int argc, char **argv)
+>  	int	catastrophic = 0;
+>  	blk64_t	superblock = 0;
+>  	blk64_t	blocksize = 0;
+> -	int	open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
+> +	int	open_flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS; 
+>  	char	*data_filename = 0;
 >  
->  	while ((mnt = getmntent(fp)) != NULL) {
-> +		if (mnt->mnt_fsname[0] != '/')
-> +			continue;
->  		len = strlen(mnt->mnt_dir);
->  		ret = memcmp(file_path, mnt->mnt_dir, len);
->  		if (ret != 0)
+>  	reset_getopt();
+> @@ -2148,7 +2148,7 @@ int main(int argc, char **argv)
+>  	int		sci_idx;
+>  	const char	*usage = "Usage: %s [-b blocksize] [-s superblock] [-f cmd_file] [-R request] [-V] [[-w] [-c] device]";
+>  	int		c;
+> -	int		open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
+> +	int		open_flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS;
+>  	char		*request = 0;
+>  	int		exit_status = 0;
+>  	char		*cmd_file = 0;
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
