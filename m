@@ -1,43 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 9 Oct 2009 16:50:36 GMT
-Message-ID: <200910091650.n99Goad2003303@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 2/2] ext4: update donor file's ctime/mtime
+Date: Fri, 09 Oct 2009 11:20:55 -0600
+Message-ID: <EE52B431-D993-47A3-B914-5FE2ACE953B8@sun.com>
+References: <4ACD9D04.40503@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:60860 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761096AbZJIQvM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 12:51:12 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n99Goa7m003304
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 16:50:36 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:61027 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752725AbZJIRVu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 13:21:50 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n99HL8dg005608
+	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 10:21:08 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KR900800BG0UT00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 09 Oct 2009 10:21:08 -0700 (PDT)
+In-reply-to: <4ACD9D04.40503@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
+On 8-Oct-09, at 02:04, Kazuya Mio wrote:
 
-Theodore Tso <tytso@mit.edu> changed:
+> EXT4_IOC_MOVE_EXT changes donor file data, but doesn't update ctime/ 
+> mtime.
+> This patch fixes this problem.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
-
-
-
---- Comment #4 from Theodore Tso <tytso@mit.edu>  2009-10-09 16:50:35 ---
-Can you also attach the output of dmesg, so we can see what kind of device you
-are using for your root filesystem, and what sort of boot messages are being
-emitted by the kernel?   This could very well be a device driver problem.
-
-Also, what distribution are you using?
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+I would argue that just migrating the file data shouldn't update the  
+ctime/mtime.
+Those are used to determine if the file has changed in some way,  
+usually for the
+purpose of backup.  Migrating the data does not change anything from  
+the user-space
+POV and shouldn't force a new backup of the file.
