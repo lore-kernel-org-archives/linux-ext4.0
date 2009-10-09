@@ -1,40 +1,70 @@
-From: Jiri Kosina <jkosina-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: ext4 corruptions
-Date: Fri, 9 Oct 2009 23:53:24 +0200 (CEST)
-Message-ID: <alpine.LRH.2.00.0910092351140.12171@twin.jikos.cz>
-References: <1255116014.3014.8.camel@mini>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
+Date: Fri, 9 Oct 2009 22:01:44 GMT
+Message-ID: <200910092201.n99M1iBY007169@demeter.kernel.org>
+References: <bug-14256-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger-xsfywfwIY+M@public.gmane.org>
-To: Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
-Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1255116014.3014.8.camel@mini>
-Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:55967 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934649AbZJIWCU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 18:02:20 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n99M1inK007170
+	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 22:01:44 GMT
+In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=14256
 
 
-[ adding some CCs so that this doesn't get lost in the lkml wilderness ]
 
-On Fri, 9 Oct 2009, Alexey Fisher wrote:
 
-> I have really bad ext4 corruptions, i needed to reinstall 3 of my test
-> systems.
-> The symptoms:
-> is use karmic beta for this with ubuntu supplied kernel 2.6.31 ... after
-> testing 2.6.32-rc[1-3] and booting again to 2.6.31 fsck will find some
-> bad things and will try to fix it. After this action is the system
-> unusable.
 
-Does this happen also when you switch from vanilla 2.6.32-rcX to vanilla 
-2.6.31, or only from vanilla 2.6.32-rcX to "Ubuntu 2.6.31"?
-
-> Do any one had same problem? The is no sans to bisect it, after some
-> jumps between 2.6.31 and 2.6.32 the system will be broken.  Is it kernel
-> or fsck problem?
+--- Comment #2 from Rafael J. Wysocki <rjw@sisk.pl>  2009-10-09 22:01:43 ---
+On Friday 09 October 2009, Mikael Pettersson wrote:
+> Mikael Pettersson writes:
+>  > Rafael J. Wysocki writes:
+>  >  > On Sunday 04 October 2009, Mikael Pettersson wrote:
+>  >  > > Rafael J. Wysocki wrote:
+>  >  > > > The following bug entry is on the current list of known regressions
+>  >  > > > introduced between 2.6.30 and 2.6.31.  Please verify if it still should
+>  >  > > > be listed and let me know (either way).
+>  >  > > > 
+>  >  > > > 
+>  >  > > > Bug-Entry	: http://bugzilla.kernel.org/show_bug.cgi?id=3D14256
+>  >  > > > Subject		: kernel BUG at fs/ext3/super.c:435
+>  >  > > > Submitter	: Mikael Pettersson <mikpe@it.uu.se>
+>  >  > > > Date		: 2009-09-21 7:29 (11 days old)
+>  >  > > > References	: http://marc.info/?l=3Dlinux-kernel&m=3D125351816109264&w=3D4
+>  >  > > 
+>  >  > > The exact same bug (same cause, same symptom) just hit me again in 2.6.32-rc1.
+>  >  > 
+>  >  > Thanks for the update.
+>  >  > 
+>  >  > Could you check the current Linus' tree, please?  There are some known
+>  >  > regression fixes in there.
+>  > 
+>  > I tried simplified versions of the bug trigger on two machines
+>  > running 2.6.32-rc1-git6, and neither triggered the kernel bug.
+>  > 
+>  > The original recipe involved doing a glibc rebuild, run its test
+>  > suite, install it, and reboot. Today however machine 1 was already
+>  > doing a rebuild so after the rebuild it did a reboot into the new
+>  > kernel before the install. The second machine booted the new kernel
+>  > directly to install the binary packages from the first machine.
+>  > 
+>  > I'll re-run the full bug trigger recipe on a third machine later next
+>  > week (it must rebuild glibc itself anyway due to arch differences).
+> 
+> Not fixed in 2.6.32-rc3. A glibc rebuild + install triggered the
+> exact same bug on the third machine.
 
 -- 
-Jiri Kosina
-SUSE Labs, Novell Inc.
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
