@@ -1,69 +1,63 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Where all does preallocated/extra space hide?
-Date: Fri, 9 Oct 2009 10:57:04 +0530
-Message-ID: <20091009052704.GA1457@skywalker.linux.vnet.ibm.com>
-References: <4AC23A17.5020100@redhat.com>
- <20091008114851.GA22610@skywalker.linux.vnet.ibm.com>
- <4ACE0BA9.4090607@redhat.com>
+From: Andy Isaacson <adi@hexapodia.org>
+Subject: DMAR regression in 2.6.31 leads to ext4 corruption?
+Date: Thu, 8 Oct 2009 23:17:29 -0700
+Message-ID: <20091009061729.GA31242@hexapodia.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	iommu@lists.linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp08.in.ibm.com ([59.145.155.8]:52023 "EHLO
-	e28smtp08.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751647AbZJIF1l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 01:27:41 -0400
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp08.in.ibm.com (8.14.3/8.13.1) with ESMTP id n995GfkL021578
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 10:46:41 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n995R3Mk2457670
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 10:57:03 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n995R29o017964
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 16:27:02 +1100
+Received: from straum.hexapodia.org ([64.81.70.185]:41390 "EHLO
+	straum.hexapodia.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751548AbZJIGSH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 02:18:07 -0400
 Content-Disposition: inline
-In-Reply-To: <4ACE0BA9.4090607@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 08, 2009 at 10:56:25AM -0500, Eric Sandeen wrote:
-> Aneesh Kumar K.V wrote:
-> > On Tue, Sep 29, 2009 at 11:47:19AM -0500, Eric Sandeen wrote:
-> >> I was running some of the xfstests enospc tests on ext4, and they were
-> >> failing; in one case, manymanymany small files are made to fill up a
-> >> 100M filesystem.  ext4 stops quite early with -ENOSPC, but after a bit,
-> >> (or after a "sync") we get 40MB free again.  So 40% of the fs space is
-> >> hidden somewhere in preallocation...
-> >>
-> >> I tried calling out to discard group prealloc but that's only a few
-> >> blocks.  I'll go trace through the sync paths to see what all gets
-> >> released, but if anyone knows offhand where the rest of that space is
-> >> hiding, please give me a shout.  :)
-> >>
-> > 
-> > 
-> > preallocation space is discarded by default if we fail a block allocation
-> > ext4_mb_discard_preallocations does that. What might be happening is the
-> > extra meta data blocks that we reserve for making sure we will be able
-> > to properly insert the new extent on block allocation.  I guess we should
-> > force a data allocation when we fail with ENOSPC in ext4_da_writepages
-> > We currently force a journal commit so that the we claim back the blocks
-> > from deleted files. But we can also force block allocation for delayed
-> > allocated inodes so that we free some of the extra meta data we reserved
-> > 
-> > -aneesh
-> 
-> Yep, I should have followed up, I narrowed it down to just that - the
-> worst-case metadata blocks - 2 metadata blocks for a 20-byte write into
-> an empty file.  :)
-> 
-> I'm working on an inode walker to push out delalloc files on enospc.
+[resending to fit under vger's size limits, sorry if anybody gets this
+twice.]
 
+I'm testing DMAR support on 2.6.32 on Intel VT-d laptop platforms.  It
+was pretty stable circa 2.6.31-rc5 (we have dozens of machines running
+2.6.31-rc8), but in the last two weeks I've had a bunch of instability
+on Linus' tip kernels that looked potentially like IOMMU badness.
 
-Should we do an inode walker ? I guess we should be doing something
-similar to balance_dirty_pages. That will kick in the flusher threads
-which inturn will force the block allocation of dirty inodes. 
+For example,
+<20090928191644.GR12922@hexapodia.org>
+http://lkml.org/lkml/2009/9/28/201
 
--aneesh 
+Today while running 817b33d38 I got the following (on a Thinkpad X200
+I'd replaced the Dell with, just in case it was previously-good hardware
+going bad).
+
+[   29.450550] EXT4-fs error (device sda1): ext4_lookup: deleted inode referenced: 79
+[   30.022328] DRHD: handling fault status reg 3
+[   30.022328] DMAR:[DMA Write] Request device [00:02.0] fault addr ddae28000 
+[   30.022328] DMAR:[fault reason 05] PTE Write access is not set
+[   30.146136] DRHD: handling fault status reg 3
+[   30.248938] DMAR:[DMA Write] Request device [00:02.0] fault addr ddae28000 
+[   30.248939] DMAR:[fault reason 05] PTE Write access is not set
+
+The full output of fsck and full dmesg are at the URL below.
+
+I don't know that DMAR is resulting in my repeated filesystem
+corruption, but it does seem like a potential cause (and would explain
+why I'm seeing this whereas most people aren't, since few people are
+using VT-d *and* i915).
+
+I see that the BROKEN_GFX_WA code has been removed; do we actually
+believe that the relevant code is working?  Could it be corrupting my
+AHCI DMAs if not?  At the end of the last thread Ted thought that we'd
+lost a write of an inode block; this time the symptoms look different,
+in that I don't see one inode block representing a significant data
+loss (though I'm by no means an expert).
+
+Complete dmesg etc are at
+http://web.hexapodia.org/~adi/bugs/20091008-ext4-dmar/
+
+I'll try running with BROKEN_GFX_WA turned back on and see if that
+improves things at all.
+
+Thanks,
+-andy
