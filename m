@@ -1,47 +1,39 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 corruptions
-Date: Fri, 09 Oct 2009 17:03:35 -0500
-Message-ID: <4ACFB337.8040109@redhat.com>
-References: <1255116014.3014.8.camel@mini> <alpine.LRH.2.00.0910092351140.12171@twin.jikos.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 9 Oct 2009 22:35:03 GMT
+Message-ID: <200910092235.n99MZ3Z2010943@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Alexey Fisher <bug-track@fisher-privat.net>,
-	Kernel Testers List <kernel-testers@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@sun.com>
-To: Jiri Kosina <jkosina@suse.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934665AbZJIWEO@vger.kernel.org>
-In-Reply-To: <alpine.LRH.2.00.0910092351140.12171@twin.jikos.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:53894 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757626AbZJIWfj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 18:35:39 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n99MZ3YT010944
+	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 22:35:03 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jiri Kosina wrote:
-> [ adding some CCs so that this doesn't get lost in the lkml wilderness ]
-> 
-> On Fri, 9 Oct 2009, Alexey Fisher wrote:
-> 
->> I have really bad ext4 corruptions, i needed to reinstall 3 of my test
->> systems.
->> The symptoms:
->> is use karmic beta for this with ubuntu supplied kernel 2.6.31 ... after
->> testing 2.6.32-rc[1-3] and booting again to 2.6.31 fsck will find some
->> bad things and will try to fix it. After this action is the system
->> unusable.
-> 
-> Does this happen also when you switch from vanilla 2.6.32-rcX to vanilla 
-> 2.6.31, or only from vanilla 2.6.32-rcX to "Ubuntu 2.6.31"?
-> 
->> Do any one had same problem? The is no sans to bisect it, after some
->> jumps between 2.6.31 and 2.6.32 the system will be broken.  Is it kernel
->> or fsck problem?
-> 
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-Not sure if this is the same as
-http://bugzilla.kernel.org/show_bug.cgi?id=14354 but it's similarly
-lacking in useful info ;)
 
-Please provide the fsck output, any kernel messages, etc ...
+Rafael J. Wysocki <rjw@sisk.pl> changed:
 
--Eric
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |rjw@sisk.pl
+     Kernel Version|                            |2.6.32-rc1
+             Blocks|                            |14230
+         Regression|No                          |Yes
+
+
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
