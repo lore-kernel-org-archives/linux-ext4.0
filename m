@@ -1,8 +1,7 @@
 From: Mingming <cmm@us.ibm.com>
-Subject: Re: [PATCH 1/2] code clean up for dio fallocate handling
-Date: Thu, 08 Oct 2009 18:03:49 -0700
-Message-ID: <1255050229.4931.146.camel@mingming-laptop>
-References: <1254935953.18662.2.camel@mingming-laptop>
+Subject: [PATCH 1/4 v2] Direct IO return value fix for holes/fallocate
+Date: Thu, 08 Oct 2009 18:13:16 -0700
+Message-ID: <1255050796.4931.190.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
@@ -10,81 +9,76 @@ Cc: ext4 development <linux-ext4@vger.kernel.org>,
 	Curt Wohlgemuth <curtw@google.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:52465 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760113AbZJIBEb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2009 21:04:31 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n990vQEW006235
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 18:57:26 -0600
+Received: from e35.co.us.ibm.com ([32.97.110.153]:45570 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932109AbZJIBOD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2009 21:14:03 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e35.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n9912kSS029967
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 19:02:46 -0600
 Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n9913p7F247422
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 19:03:51 -0600
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n991DMvM169622
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 19:13:22 -0600
 Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n9913p7Z016912
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 19:03:51 -0600
-In-Reply-To: <1254935953.18662.2.camel@mingming-laptop>
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n991DHr3007162
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Oct 2009 19:13:21 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2009-10-07 at 10:19 -0700, Mingming wrote:
-> ext4: code clean up for dio fallocate handling
-> 
-> In the non async IO direct IO case, the io_end structure could be NULL.
-> The ext4_debug() call in ext4_end_io_dio() (inode.c) should be moved
-> after checking the io_end structure to be a non NULL pointer.
-> 
-> The comment above ext4_get_block_dio_write() ("Maximum
-> number of blocks...") is a duplicate; the original and correct comment
-> is above the #define DIO_MAX_BLOCKS up above.
-> 
-> The check for allocated > max_blocks in ext4_split_unwritten_extents()
-> can be removed, since the code returns immediately once allocated blocks
-> is less or equals to the requested blocks to convert.
-> 
-> Based on review comments from Curt Wohlgemuth.
-> 
-> Signed-off-by:	Mingming Cao <cmm@us.ibm.com>
+ext4: Direct IO return value fix for holes/fallocate
 
-Updated cleanup patch after [patch 2/2 Fix return value of splitting
-extents for dio write over fallocate ]fixed another bug. We still need
-the check for allocated > max_blocks in ext4_split_unwritten_extents().
+When direct IO complete, ext4 will convert unwritten extents to written,
+for
+writes over preallocated space, or holes.
 
-I'll resubmit the updated patch series (including two other bug
-fixes/clean ups sent earlier this week) to the list again to avoid
-confusion.
+ext4_direct_IO should returns the number of bytes read/write on success.
+However there is a bug that cause ext4_direct_IO returns the number of
+bytes converted to written extents, which is 0 on success. This bug
+causes
+direct IO falls back to buffered IO even on sucessful rewrites or
+preallocated space. 
 
-Thanks,
-Mingming
-
-
-ext4: code clean up for dio fallocate handling
-
-The ext4_debug() call in ext4_end_io_dio() (inode.c) has a
-should be moved after checking the io_end structure to be not a NULL pointer.
-
-The comment above ext4_get_block_dio_write() ("Maximum
-number of blocks...") is a duplicate; the original and correct comment
-is above the #define DIO_MAX_BLOCKS up above.
-
-The check for allocated > max_blocks in ext4_split_unwritten_extents()
-can be removed, since the code returns immediately once allocated blocks is
-less or equals to the requested blocks to convert.
-
-Based on review comments from Curt Wohlgemuth.
-
-Signed-off-by:	Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext4/extents.c |   96 +++++++++++++++++++++++++-----------------------------
- fs/ext4/inode.c   |    9 ++---
- 2 files changed, 50 insertions(+), 55 deletions(-)
+ fs/ext4/extents.c |    1 +
+ fs/ext4/inode.c   |    8 ++++++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
+Index: linux-2.6.31-rc4/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.31-rc4.orig/fs/ext4/extents.c
++++ linux-2.6.31-rc4/fs/ext4/extents.c
+@@ -3500,6 +3500,7 @@ retry:
+  *
+  * This function is called from the direct IO end io call back
+  * function, to convert the fallocated extents after IO is completed.
++ * Returns 0 on success.
+  */
+ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+ 				    loff_t len)
 Index: linux-2.6.31-rc4/fs/ext4/inode.c
 ===================================================================
 --- linux-2.6.31-rc4.orig/fs/ext4/inode.c
 +++ linux-2.6.31-rc4/fs/ext4/inode.c
-@@ -3367,8 +3367,6 @@ out:
- 	return ret;
- }
+@@ -3693,13 +3693,17 @@ static ssize_t ext4_ext_direct_IO(int rw
+ 		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
+ 			ext4_free_io_end(iocb->private);
+ 			iocb->private = NULL;
+-		} else if (ret > 0)
++		} else if (ret > 0){
++			int err;
+ 			/*
+ 			 * for non AIO case, since the IO is already
+ 			 * completed, we could do the convertion right here
+ 			 */
+-			ret = ext4_convert_unwritten_extents(inode,
++			err = ext4_convert_unwritten_extents(inode,
+ 								offset, ret);
++			if (err < 0)
++				ret = err;
++		}
+ 		return ret;
+ 	}
  
--/* Maximum number of blocks we map for direct IO at once. */
+
+
