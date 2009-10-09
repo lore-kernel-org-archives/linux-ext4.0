@@ -1,58 +1,43 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: ext4 DIO read performance issue on SSD
-Date: Fri, 9 Oct 2009 16:34:08 -0700
-Message-ID: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
+From: Andy Isaacson <adi@hexapodia.org>
+Subject: Re: DMAR regression in 2.6.31 leads to ext4 corruption?
+Date: Fri, 9 Oct 2009 16:37:07 -0700
+Message-ID: <20091009233707.GA24745@hexapodia.org>
+References: <20091009061729.GA31242@hexapodia.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andrew Morton <akpm@google.com>, Michael Rubin <mrubin@google.com>,
-	Manuel Benitez <rickyb@google.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:25566 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755045AbZJIXfS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2009 19:35:18 -0400
-Received: from wpaz21.hot.corp.google.com (wpaz21.hot.corp.google.com [172.24.198.85])
-	by smtp-out.google.com with ESMTP id n99NYAuY009999
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 16:34:11 -0700
-Received: from ywh16 (ywh16.prod.google.com [10.192.8.16])
-	by wpaz21.hot.corp.google.com with ESMTP id n99NY8k4032438
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Oct 2009 16:34:09 -0700
-Received: by ywh16 with SMTP id 16so6668440ywh.13
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Oct 2009 16:34:08 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	iommu@lists.linux-foundation.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761600AbZJIXhp@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20091009061729.GA31242@hexapodia.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Thu, Oct 08, 2009 at 11:17:29PM -0700, Andy Isaacson wrote:
+> I'm testing DMAR support on 2.6.32 on Intel VT-d laptop platforms.  It
+> was pretty stable circa 2.6.31-rc5 (we have dozens of machines running
+> 2.6.31-rc8), but in the last two weeks I've had a bunch of instability
+> on Linus' tip kernels that looked potentially like IOMMU badness.
+> 
+> For example,
+> <20090928191644.GR12922@hexapodia.org>
+> http://lkml.org/lkml/2009/9/28/201
+> 
+> Today while running 817b33d38 I got the following (on a Thinkpad X200
+> I'd replaced the Dell with, just in case it was previously-good hardware
+> going bad).
+> 
+> [   29.450550] EXT4-fs error (device sda1): ext4_lookup: deleted inode referenced: 79
+> [   30.022328] DRHD: handling fault status reg 3
+> [   30.022328] DMAR:[DMA Write] Request device [00:02.0] fault addr ddae28000 
+> [   30.022328] DMAR:[fault reason 05] PTE Write access is not set
+> [   30.146136] DRHD: handling fault status reg 3
+> [   30.248938] DMAR:[DMA Write] Request device [00:02.0] fault addr ddae28000 
+> [   30.248939] DMAR:[fault reason 05] PTE Write access is not set
+> 
+> The full output of fsck and full dmesg are at the URL below.
 
-Recently, we are evaluating the ext4 performance on a high speed SSD.
-One problem we found is that ext4 performance doesn't scale well with
-multiple threads or multiple AIOs reading a single file with O_DIRECT.
-E.g., with 4k block size, multiple-thread DIO AIO random read on ext4
-can lose up to 50% throughput compared to the results we get via RAW IO.
+I also have a "e2image -r" for this filesystem.  Please let me know if
+you'd like any further information.
 
-After some initial analysis, we think the ext4 performance problem is caused
-by the use of i_mutex lock during DIO read. I.e., during DIO read, we grab
-the i_mutex lock in __blockdev_direct_IO because ext4 uses the default
-DIO_LOCKING from the generic fs code. I did a quick test by calling
-blockdev_direct_IO_no_locking() in ext4_direct_IO() and I saw ext4 DIO read
-got 99% performance as raw IO.
-
-As we understand, the reason why we want to take i_mutex lock during DIO
-read is to prevent it from accessing stale data that may be exposed by a
-simultaneous write. We saw that Mingming Cao has implemented a patch set
-with which when a get_block request comes from direct write, ext4 only
-allocates or splits an uninitialized extent. That uninitialized extent
-will be marked as initialized at the end_io callback. We are wondering
-whether we can extend this idea to buffer write as well. I.e., we always
-allocate an uninitialized extent first during any write and convert it
-as initialized at the time of end_io callback. This will eliminate the need
-to hold i_mutex lock during direct read because a DIO read should never get
-a block marked initialized before the block has been written with new data.
-
-We haven't implemented anything yet because we want to ask here first to
-see whether this proposal makes sense to you.
-
-Regards,
-
-Jiaying
+-andy
