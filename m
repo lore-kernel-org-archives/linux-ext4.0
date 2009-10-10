@@ -1,73 +1,56 @@
-From: Andy Isaacson <adi@hexapodia.org>
-Subject: Re: DMAR regression in 2.6.31 leads to ext4 corruption?
-Date: Fri, 9 Oct 2009 18:47:14 -0700
-Message-ID: <20091010014714.GG30557@hexapodia.org>
-References: <20091009061729.GA31242@hexapodia.org> <20091010000926.GA17547@sequoia.sous-sol.org>
+From: Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
+Subject: Re: ext4 corruptions
+Date: Sat, 10 Oct 2009 09:29:44 +0200
+Message-ID: <1255159784.27545.4.camel@zwerg>
+References: <1255116014.3014.8.camel@mini>
+	 <alpine.LRH.2.00.0910092351140.12171@twin.jikos.cz>
+	 <4ACFB337.8040109@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	iommu@lists.linux-foundation.org
-To: Chris Wright <chrisw@sous-sol.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761587AbZJJBrw@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20091010000926.GA17547@sequoia.sous-sol.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jiri Kosina <jkosina-AlSwsSmVLrQ@public.gmane.org>,
+	Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>,
+	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger-xsfywfwIY+M@public.gmane.org>
+To: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <4ACFB337.8040109-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 09, 2009 at 05:09:26PM -0700, Chris Wright wrote:
-> There's some timing coincidence there, but it's a full 1/2 second between
-> the ext4 error and the DMAR fault (and there's various DMAR faults
-> along the way for the same buffer before and after the ext4 error).
-> That fault is quite typical of a driver bug, and it's the VGA device
-> (rather its driver) that is culpable.  The IOMMU caught the VGA device
-> trying to do a DMA write to a buffer mapped r/o.
-
-Yeah, this timing coincidence isn't very compelling to me, but
-*something* sure is hosing my filesystems.  (Note that I've had ext3 and
-ext4 both fail with what look like missed, misdirected, or corrupted
-writes.)
-
-> > The full output of fsck and full dmesg are at the URL below.
+Am Freitag, den 09.10.2009, 17:03 -0500 schrieb Eric Sandeen:
+> Jiri Kosina wrote:
+> > [ adding some CCs so that this doesn't get lost in the lkml wilderness ]
 > > 
-> > I don't know that DMAR is resulting in my repeated filesystem
-> > corruption, but it does seem like a potential cause (and would explain
-> > why I'm seeing this whereas most people aren't, since few people are
-> > using VT-d *and* i915).
+> > On Fri, 9 Oct 2009, Alexey Fisher wrote:
+> > 
+> >> I have really bad ext4 corruptions, i needed to reinstall 3 of my test
+> >> systems.
+> >> The symptoms:
+> >> is use karmic beta for this with ubuntu supplied kernel 2.6.31 ... after
+> >> testing 2.6.32-rc[1-3] and booting again to 2.6.31 fsck will find some
+> >> bad things and will try to fix it. After this action is the system
+> >> unusable.
+> > 
+> > Does this happen also when you switch from vanilla 2.6.32-rcX to vanilla 
+> > 2.6.31, or only from vanilla 2.6.32-rcX to "Ubuntu 2.6.31"?
+> > 
+> >> Do any one had same problem? The is no sans to bisect it, after some
+> >> jumps between 2.6.31 and 2.6.32 the system will be broken.  Is it kernel
+> >> or fsck problem?
+> > 
 > 
-> I do use it every day on my primary workstation (x200), and haven't
-> had any issue (I'm using ext3).
-
-What BIOS version are you using?  The X200 I'm testing on has "BIOS
-Version 2.02 (6DET38WW) 2008-12-19".  Hmm, I see there's a 3.08
-2009-09-07 available...
-
-Could you provide a dmesg from a working machine?
-
-> > I see that the BROKEN_GFX_WA code has been removed; do we actually
-> > believe that the relevant code is working?  Could it be corrupting my
-> > AHCI DMAs if not?
+> Not sure if this is the same as
+> http://bugzilla.kernel.org/show_bug.cgi?id=14354 but it's similarly
+> lacking in useful info ;)
 > 
-> It should be for your adapter (after 66a4fe0c merged in agp fixes).
-> While it could still be broken (aside of the initial faults before the
-> device is even initialized in Linux -- I'm not seeing any faults, btw),
-> iommu=pt will put all devices in a 1:1 mapped domain and would suppress
-> the DMAR faults you see (similar to intel_iommu=off, but allowing the
-> iommu to still be used for pci device assignment).  However, doing that
-> or enabling the gfx workaround would allow the device to generate invalid
-> DMA requests since if effectively disables the IOMMU for the gfx device,
-> which would leave a better opportunity for DMA related corruption.
+> Please provide the fsck output, any kernel messages, etc ...
+> 
+> -Eric
 
-OK, thanks for the confirmation that the BROKEN_GFX_WA issues should be
-fixed in current linus kernels, I'm certainly running with 66a4fe0c.
+Thank you for the tip. These systems i need for testing graphic
+regressions, so i'll try reproduce it on virtual system.
 
-> The earlier fs issues we saw w/ the IOMMU were when it was actively
-> blocking disk DMA requests, but that's not happening here.
-
-Well, we don't know for sure what happened on the previous boot where
-the filesystem corruption occurred.  I'm imagining a nightmare scenario
-where GPU erroneous writes cause DMAR faults and handling them somehow
-causes AHCI DMA requests to get lost.
-
-I'm going to go ahead on the theory that the BIOS needs an update.
-
--andy
+Alexey
