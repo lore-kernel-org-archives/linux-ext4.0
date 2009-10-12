@@ -1,58 +1,33 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Fun with fdatasync()
-Date: Mon, 12 Oct 2009 10:00:49 -0400
-Message-ID: <20091012140049.GO2632@think>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Mon, 12 Oct 2009 15:24:11 GMT
+Message-ID: <200910121524.n9CFOBpd015994@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, jbacik@redhat.com
-To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932207AbZJLOB4@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:57401 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757184AbZJLPYs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2009 11:24:48 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9CFOBfR015996
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2009 15:24:11 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 
-Hello everyone,
 
-Josef has been doing some benchmarking around rpm performance on the
-filesystem and noticed that ext3 was going really fast on the
-fdatasyncs.
 
-It seems pretty surprising to me that rpm -Uvh should do fdatasync
-without forcing fsyncs.  The files get overwritten, and any time we mark
-an inode dirty I_DIRTY_DATASYNC is getting set.
 
-Handling of I_DIRTY_DATASYNC seems to work like this:
+--- Comment #23 from Eric Sandeen <sandeen@redhat.com>  2009-10-12 15:24:10 ---
+When you do these "forced resets," are they power cycles?
 
-mark_inode_dirty() will set I_DIRTY_DATASYNC
-
-ext3_sync_file will force a full commit on I_DIRTY_DATASYNC
-
-This part makes good sense.  If the inode has changed, we're supposed to
-do a full commit.
-
-writeback_single_inode is where things seem to go wrong:
-
-        /* Set I_SYNC, reset I_DIRTY */
-        dirty = inode->i_state & I_DIRTY;
-        inode->i_state |= I_SYNC;
-        inode->i_state &= ~I_DIRTY;
-
-Whoops, we just lost I_DIRTY_DATASYNC.  So, if pdflush comes in and does some
-writeback before we fdatasync, we'll skip the full commit because
-I_DIRTY_DATASYNC is gone.
-
-The solution to me seems to be that we need to keep I_DIRTY_DATASYNC
-until the FS does an fsync/O_SYNC operation, and make the FS
-responsible for clearing it.
-
-This does risk extra full fsyncs if the FS does a transaction commit on
-its own, but the FS should be responsible for keeping track of which
-transaction last changed a given file and doing a shortcut in the fsync
-code if the file is already on safely on disk.
-
-Am I missing something?  I don't see how fdatasync is safe in our
-current usage.
-
--chris
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
