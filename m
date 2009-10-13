@@ -1,75 +1,74 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: Fun with fdatasync()
-Date: Tue, 13 Oct 2009 12:00:28 -0400
-Message-ID: <20091013160028.GA7850@think>
-References: <20091012140049.GO2632@think>
- <20091012220043.GC3965@duck.suse.cz>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Help understanding prealloc space choice?
+Date: Tue, 13 Oct 2009 11:06:35 -0700
+Message-ID: <6601abe90910131106u3a569d51g1322fe6764a2fbb6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jbacik@redhat.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:60878 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933893AbZJMQBp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2009 12:01:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20091012220043.GC3965@duck.suse.cz>
+Received: from smtp-out.google.com ([216.239.33.17]:8822 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933967AbZJMSHq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2009 14:07:46 -0400
+Received: from zps19.corp.google.com (zps19.corp.google.com [172.25.146.19])
+	by smtp-out.google.com with ESMTP id n9DI6cD9010736
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2009 19:06:38 +0100
+Received: from pzk5 (pzk5.prod.google.com [10.243.19.133])
+	by zps19.corp.google.com with ESMTP id n9DI5Nfc000455
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2009 11:06:36 -0700
+Received: by pzk5 with SMTP id 5so2171430pzk.18
+        for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2009 11:06:35 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 13, 2009 at 12:00:43AM +0200, Jan Kara wrote:
->   Hi,
-> 
-> On Mon 12-10-09 10:00:49, Chris Mason wrote:
+Hi all:
 
-[ clearing of I_DIRTY_DATASYNC by pdflush ]
+I'm looking in ext4_mb_use_preallocated() and am seeing something odd.
 
-> > 
-> > Am I missing something?  I don't see how fdatasync is safe in our
-> > current usage.
->   Yeah, we already discussed similar problems I_DIRTY flags with Ted and
-> others in thread "fsync on ext[34] working only by an accident" on
-> linux-ext4.
->   I don't quite like clearing dirty flags only on sync - pdflush would then
-> unnecessarily try to get rid of those inodes and burn CPU on them.
-> Actually, mapping->private_list (and bh->b_assoc_buffers) is meant to be
-> used exactly for the purpose of tracking what needs to be written on fsync
-> so my current plan is to somehow utilize that list to fix the problem.
->   Maybe I even get to that tomorrow ;) Thanks for the reminder.
+First we look through the inode prealloc list, and see if we have a
+preallocation that satisfies the allocation context:
 
-I honestly don't remember all the details now, but I know that when
-reiserfs stopped using the b_assoc_buffers stuff life got much less
-complex.  From an outsider's point of view the last thing jbd needs is
-another list of buffers to live on.
+       /* all fields in this condition don't change,
+        * so we can skip locking for them */
+       if (ac->ac_o_ex.fe_logical < pa->pa_lstart ||
+               ac->ac_o_ex.fe_logical >= pa->pa_lstart + pa->pa_len)
+               continue;
 
-It seems like ext34 need to be able to answer 3 questions during an
-fsync or fdatasync:
+       /* non-extent files can't have physical blocks past 2^32 */
+       if (!(EXT4_I(ac->ac_inode)->i_flags & EXT4_EXTENTS_FL) &&
+               pa->pa_pstart + pa->pa_len > EXT4_MAX_BLOCK_FILE_PHYS)
+               continue;
 
-The last transaction to change this file (fill hole, change
-i_size)
+       /* found preallocated blocks, use them */
+       spin_lock(&pa->pa_lock);
+       if (pa->pa_deleted == 0 && pa->pa_free) {
 
-The last transaction to log this inode (for full fsync)
-
-The last transaction committed such that fsync would consider it done.
-
-Filling holes and changing i_size only happens from a handful of places,
-so it would be easy to update a transid field in the in-memory inode for
-that.
-
-The inode logging code could bump a second transid field to catch all
-the other ways inodes change.
-
-The transaction code could (or already does?) export an easy way to
-check the last commit.  Put the three together and you can safely jump
-out of fsync or fdatasync based on what the inode really needs instead
-of guessing with the I_ flags or page dirty bits.
-
--chris
+            => Now we're good, and have an AC that satisfies us.
+            => We call ext4_mb_use_inode_pa(ac, pa);
 
 
+But ext4_mb_use_inode_pa() has this:
+
+	BUG_ON(pa->pa_free < len);
+
+Nowhere do we check the 'pa_free' value to decide if this preallocation is
+okay to use.
 
 
+Further down in ext4_mb_use_preallocated() we check the locality group
+prealloc list; for this, we DO check pa_free:
 
+         spin_lock(&pa->pa_lock);
+         if (pa->pa_deleted == 0 &&
+                         pa->pa_free >= ac->ac_o_ex.fe_len) {
 
+                 cpa = ext4_mb_check_group_pa(goal_block,
+                                                 pa, cpa);
+
+So my question is:  Is it a bug that we don't check that an inode
+preallocation has enough free blocks for the AC before we try to use it?  I
+have hit the BUG_ON above at least once in my testing, but I can't
+characterize what the workload was at the time (nor can I reproduce it...).
+
+Thanks,
+Curt
