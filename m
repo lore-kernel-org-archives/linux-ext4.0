@@ -1,29 +1,30 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: [Bug 14354] Status of barrier requests in LVM and
-	dm-crypt?
-Date: Tue, 13 Oct 2009 10:49:45 -0400
-Message-ID: <20091013144945.GA22223@redhat.com>
-References: <E1MxPQM-00074N-Ph@closure.thunk.org>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Tue, 13 Oct 2009 14:50:59 GMT
+Message-ID: <200910131450.n9DEoxEa020577@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mikulas Patocka <mpatocka@redhat.com>, dm-devel@redhat.com,
-	linux-ext4@vger.kernel.org, bugzilla-daemon@bugzilla.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <dm-devel-bounces@redhat.com>
-Content-Disposition: inline
-In-Reply-To: <E1MxPQM-00074N-Ph@closure.thunk.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:41774 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933749AbZJMOvg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2009 10:51:36 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9DEoxvb020578
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2009 14:50:59 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
+
+
+
+
+
+--- Comment #34 from Mike Snitzer <snitzer@redhat.com>  2009-10-13 14:50:58 ---
 On Mon, Oct 12 2009 at  2:15pm -0400,
 Theodore Ts'o <tytso@mit.edu> wrote:
 
@@ -55,3 +56,8 @@ that result in -EOPNOTSUPP are retried without the barrier, see:
 http://git.kernel.org/linus/51aa32284958
 
 Mike
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
