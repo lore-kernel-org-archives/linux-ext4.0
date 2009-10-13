@@ -1,61 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext3: retry failed direct IO allocations
-Date: Mon, 12 Oct 2009 21:34:27 -0500
-Message-ID: <4AD3E733.4080903@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Tue, 13 Oct 2009 08:02:12 GMT
+Message-ID: <200910130802.n9D82CN4009098@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15374 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756757AbZJMCe7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Oct 2009 22:34:59 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:48737 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933599AbZJMICs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2009 04:02:48 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9D82C6H009099
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2009 08:02:12 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On a 256M 4k block filesystem, doing this in a loop:
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-    dd if=/dev/zero of=test oflag=direct bs=1M count=64
-    rm -f test
 
-eventually leads to spurious ENOSPC:
 
-    dd: writing `test': No space left on device
 
-As with other block allocation callers, it looks like we need to
-potentially retry the allocations on the initial ENOSPC.
 
-A similar patch went into ext4 (commit
-fbbf69456619de5d251cb9f1df609069178c62d5)
+--- Comment #31 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-13 08:02:12 ---
+Created an attachment (id=23377)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=23377)
+demsg host=zwerg 2.6.31
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index acf1b14..069a163 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1735,6 +1735,7 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
- 	ssize_t ret;
- 	int orphan = 0;
- 	size_t count = iov_length(iov, nr_segs);
-+	int retries = 0;
- 
- 	if (rw == WRITE) {
- 		loff_t final_size = offset + count;
-@@ -1757,9 +1758,12 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
- 		}
- 	}
- 
-+retry:
- 	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
- 				 offset, nr_segs,
- 				 ext3_get_block, NULL);
-+	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
- 
- 	if (orphan) {
- 		int err;
-
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
