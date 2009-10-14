@@ -1,88 +1,81 @@
-From: Andy Isaacson <adi@hexapodia.org>
-Subject: Re: DMAR regression in 2.6.31 leads to ext4 corruption?
-Date: Wed, 14 Oct 2009 10:52:14 -0700
-Message-ID: <20091014175214.GD6827@hexapodia.org>
-References: <20091009061729.GA31242@hexapodia.org> <20091010000926.GA17547@sequoia.sous-sol.org> <20091010014714.GG30557@hexapodia.org> <1255522166.4523.238.camel@macbook.infradead.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 2/2] ext4: update donor file's ctime/mtime
+Date: Wed, 14 Oct 2009 11:10:57 -0700
+Message-ID: <A1BDA448-5948-4D2E-B456-5AF6F87149DF@sun.com>
+References: <4ACD9D04.40503@sx.jp.nec.com>
+ <EE52B431-D993-47A3-B914-5FE2ACE953B8@sun.com> <4AD52E2E.80404@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Wright <chrisw@sous-sol.org>,
-	iommu@lists.linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: David Woodhouse <dwmw2@infradead.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755334AbZJNRww@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1255522166.4523.238.camel@macbook.infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:44815 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752772AbZJNSLl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 14:11:41 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n9EIAwh2017186
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 11:10:59 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KRI00400NOXT500@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 14 Oct 2009 11:10:58 -0700 (PDT)
+In-reply-to: <4AD52E2E.80404@sx.jp.nec.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 14, 2009 at 01:09:26PM +0100, David Woodhouse wrote:
-> On Fri, 2009-10-09 at 18:47 -0700, Andy Isaacson wrote:
-> > Well, we don't know for sure what happened on the previous boot where
-> > the filesystem corruption occurred.  I'm imagining a nightmare scenario
-> > where GPU erroneous writes cause DMAR faults and handling them somehow
-> > causes AHCI DMA requests to get lost.
-> 
-> Seems unlikely. The GPU faults happen whenever the GATT changes, because
-> it translates _every_ address in the GATT through the IOMMU right there
-> and then -- so if parts of the table are uninitialised, they'll cause
-> stray write faults. But no writes are actually _happening_.
-> 
-> > I'm going to go ahead on the theory that the BIOS needs an update.
-> 
-> I can't really imagine how that would help; how the BIOS would be
-> responsible for this. I'm more inclined to blame the drive. It's not an
-> SSD, is it?
+On 13-Oct-09, at 18:49, Kazuya Mio wrote:
+> 2009/10/10 2:20, Andreas Dilger wrote::
+>>
+>> On 8-Oct-09, at 02:04, Kazuya Mio wrote:
+>>
+>>> EXT4_IOC_MOVE_EXT changes donor file data, but doesn't update
+>>> ctime/mtime.  This patch fixes this problem.
+>>
+>> I would argue that just migrating the file data shouldn't update the
+>> ctime/mtime.  Those are used to determine if the file has changed  
+>> in some way, usually for the purpose of backup.  Migrating the data  
+>> does not change anything from user-space POV and shouldn't force a  
+>> new backup of the file.
+>
+> EXT4_IOC_MOVE_EXT always changes the original actual contents of  
+> donor file
+> if orig file and donor file aren't the same. It may be that some of
+> user-space implementations hide such a changing. For example, e4defrag
+> unlinks the donor file, and removes it by decreasing reference count  
+> after
+> calling EXT4_IOC_MOVE_EXT. But from the ioctl point of view,
+> EXT4_IOC_MOVE_EXT doesn't know whether donor file will be removed or  
+> not,
+> so I think we should update ctime/mtime.
 
-It's a Fujitsu (now serviced by Toshiba?) MHZ2160BH.  smartctl says:
+Maybe I am confused.  Is EXT4_IOC_MOVE_EXT used for file  
+defragmentation?
+I thought the goal of this ioctl was to copy the data from the donor  
+inode
+to the target inode (using a new allocation in the target inode), and  
+then
+once the whole donor file had been copied (defragmented) the target  
+extents
+replace the entire donor file's extents?
 
-Device Model:     FUJITSU MHZ2160BH G1
-Serial Number:    K60WT8C2HHRS
-Firmware Version: 0084000A
-User Capacity:    160,041,885,696 bytes
-...
-ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_
-FAILED RAW_VALUE
-  1 Raw_Read_Error_Rate     0x000f   100   100   046    Pre-fail  Always       -
-       219593
-  2 Throughput_Performance  0x0005   100   100   030    Pre-fail  Offline      -
-       27721728
-  3 Spin_Up_Time            0x0003   100   100   025    Pre-fail  Always       -
-       0
-  4 Start_Stop_Count        0x0032   099   099   000    Old_age   Always       -
-       406
-  5 Reallocated_Sector_Ct   0x0033   100   100   024    Pre-fail  Always       -
-       8589934592000
-  7 Seek_Error_Rate         0x000f   100   100   047    Pre-fail  Always       -
-       112
-  8 Seek_Time_Performance   0x0005   100   100   019    Pre-fail  Offline      -
-       0
-  9 Power_On_Hours          0x0032   097   097   000    Old_age   Always       -
-       1598
- 10 Spin_Retry_Count        0x0013   100   100   020    Pre-fail  Always       -
-       0
- 12 Power_Cycle_Count       0x0032   100   100   000    Old_age   Always       -
-       284
-192 Power-Off_Retract_Count 0x0032   100   100   000    Old_age   Always       -
-       78
-193 Load_Cycle_Count        0x0032   100   100   000    Old_age   Always       -
-       1216
-194 Temperature_Celsius     0x0022   100   100   000    Old_age   Always       -
-       38 (Lifetime Min/Max 21/46)
-195 Hardware_ECC_Recovered  0x001a   100   100   000    Old_age   Always       -
-       247
-196 Reallocated_Event_Count 0x0032   100   100   000    Old_age   Always       -
-       457965568
-197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -
-       0
-198 Offline_Uncorrectable   0x0010   100   100   000    Old_age   Offline      -
-       0
-199 UDMA_CRC_Error_Count    0x003e   200   253   000    Old_age   Always       -
-       0
-200 Multi_Zone_Error_Rate   0x000f   100   100   060    Pre-fail  Always       -
-       10448
-203 Run_Out_Cancel          0x0002   100   100   000    Old_age   Always       -
-       1529011503750
-240 Head_Flying_Hours       0x003e   200   200   000    Old_age   Always       -
-       0
+In this model it would be OK to change the mtime/ctime of the _target_  
+file,
+but when these extents move back to the donor file the mtime/ctime of  
+the donor
+file should not be changed, I think, so that it does not force a full  
+backup.
 
--andy
+If the caller has done something to change the actual data in the  
+donor file
+it can always use utimes() to update the ctime/mtime, but it is not  
+possible
+for userspace to revert the ctime after it has changed.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
