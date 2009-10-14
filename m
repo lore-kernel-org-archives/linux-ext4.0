@@ -1,39 +1,47 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Wed, 14 Oct 2009 00:48:02 GMT
-Message-ID: <200910140048.n9E0m2jn031754@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH 2/2] ext4: update donor file's ctime/mtime
+Date: Wed, 14 Oct 2009 10:49:34 +0900
+Message-ID: <4AD52E2E.80404@sx.jp.nec.com>
+References: <4ACD9D04.40503@sx.jp.nec.com> <EE52B431-D993-47A3-B914-5FE2ACE953B8@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:50479 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752419AbZJNAsi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2009 20:48:38 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9E0m2xn031755
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 00:48:02 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:47865 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752528AbZJNBzt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Oct 2009 21:55:49 -0400
+In-Reply-To: <EE52B431-D993-47A3-B914-5FE2ACE953B8@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+2009/10/10 2:20, Andreas Dilger wrote::
+> 
+> On 8-Oct-09, at 02:04, Kazuya Mio wrote:
+> 
+>> EXT4_IOC_MOVE_EXT changes donor file data, but doesn't update 
+>> ctime/mtime.
+>> This patch fixes this problem.
+> 
+> I would argue that just migrating the file data shouldn't update the 
+> ctime/mtime.
+> Those are used to determine if the file has changed in some way, usually 
+> for the
+> purpose of backup.  Migrating the data does not change anything from the 
+> user-space
+> POV and shouldn't force a new backup of the file.
 
+EXT4_IOC_MOVE_EXT always changes the original actual contents of donor file
+if orig file and donor file aren't the same. It may be that some of
+user-space implementations hide such a changing. For example, e4defrag
+unlinks the donor file, and removes it by decreasing reference count after
+calling EXT4_IOC_MOVE_EXT. But from the ioctl point of view,
+EXT4_IOC_MOVE_EXT doesn't know whether donor file will be removed or not,
+so I think we should update ctime/mtime.
 
+Am I missing something?
 
-
-
---- Comment #42 from Holger Freyther <zecke@selfish.org>  2009-10-14 00:48:01 ---
-Created an attachment (id=23400)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=23400)
-2: fsck on issue detected in attachment 23398
-
-This is the fsck log. Again indepedent files use the same block. In this case
-the .o and other files created during the kernel compile. I will try to prepare
-my netbook to work on a reproducable testcase.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Regards,
+Kazuya Mio
