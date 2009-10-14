@@ -1,43 +1,70 @@
-From: David Woodhouse <dwmw2@infradead.org>
-Subject: Re: DMAR regression in 2.6.31 leads to ext4 corruption?
-Date: Wed, 14 Oct 2009 13:09:26 +0100
-Message-ID: <1255522166.4523.238.camel@macbook.infradead.org>
-References: <20091009061729.GA31242@hexapodia.org>
-	 <20091010000926.GA17547@sequoia.sous-sol.org>
-	 <20091010014714.GG30557@hexapodia.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: retry failed direct IO allocations
+Date: Wed, 14 Oct 2009 14:53:16 +0200
+Message-ID: <20091014125316.GF12701@duck.suse.cz>
+References: <4AD3E733.4080903@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Chris Wright <chrisw@sous-sol.org>,
-	iommu@lists.linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Andy Isaacson <adi@hexapodia.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:58320 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755212AbZJNMKg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 08:10:36 -0400
-In-Reply-To: <20091010014714.GG30557@hexapodia.org>
+Received: from cantor.suse.de ([195.135.220.2]:38993 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760393AbZJNMx4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Oct 2009 08:53:56 -0400
+Content-Disposition: inline
+In-Reply-To: <4AD3E733.4080903@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2009-10-09 at 18:47 -0700, Andy Isaacson wrote:
-> Well, we don't know for sure what happened on the previous boot where
-> the filesystem corruption occurred.  I'm imagining a nightmare scenario
-> where GPU erroneous writes cause DMAR faults and handling them somehow
-> causes AHCI DMA requests to get lost.
+On Mon 12-10-09 21:34:27, Eric Sandeen wrote:
+> On a 256M 4k block filesystem, doing this in a loop:
+>
+>    dd if=/dev/zero of=test oflag=direct bs=1M count=64
+>    rm -f test
+>
+> eventually leads to spurious ENOSPC:
+>
+>    dd: writing `test': No space left on device
+>
+> As with other block allocation callers, it looks like we need to
+> potentially retry the allocations on the initial ENOSPC.
+>
+> A similar patch went into ext4 (commit
+> fbbf69456619de5d251cb9f1df609069178c62d5)
+  Thanks for the patch Eric. Committed to my tree.
 
-Seems unlikely. The GPU faults happen whenever the GATT changes, because
-it translates _every_ address in the GATT through the IOMMU right there
-and then -- so if parts of the table are uninitialised, they'll cause
-stray write faults. But no writes are actually _happening_.
+								Honza
 
-> I'm going to go ahead on the theory that the BIOS needs an update.
-
-I can't really imagine how that would help; how the BIOS would be
-responsible for this. I'm more inclined to blame the drive. It's not an
-SSD, is it?
-
+> ---
+>
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index acf1b14..069a163 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1735,6 +1735,7 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
+> 	ssize_t ret;
+> 	int orphan = 0;
+> 	size_t count = iov_length(iov, nr_segs);
+> +	int retries = 0;
+>
+> 	if (rw == WRITE) {
+> 		loff_t final_size = offset + count;
+> @@ -1757,9 +1758,12 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
+> 		}
+> 	}
+>
+> +retry:
+> 	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
+> 				 offset, nr_segs,
+> 				 ext3_get_block, NULL);
+> +	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+> +		goto retry;
+>
+> 	if (orphan) {
+> 		int err;
+>
 -- 
-dwmw2
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
