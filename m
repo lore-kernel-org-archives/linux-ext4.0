@@ -1,37 +1,89 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Wed, 14 Oct 2009 13:36:11 GMT
-Message-ID: <200910141336.n9EDaBA9007878@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Bhavesh Davda <bhavesh@vmware.com>
+Subject: RE: DMAR regression in 2.6.31 leads to ext4 corruption?
+Date: Wed, 14 Oct 2009 08:26:27 -0700
+Message-ID: <8B1F619C9F5F454E81D90D3C161698D7017DD55F68@EXCH-MBX-3.vmware.com>
+References: <20091009061729.GA31242@hexapodia.org>
+	<20091010000926.GA17547@sequoia.sous-sol.org>
+	<20091010014714.GG30557@hexapodia.org>
+ <1255522166.4523.238.camel@macbook.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:34692 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760793AbZJNNgr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 09:36:47 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9EDaB9k007881
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 13:36:11 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="Windows-1252"
+Content-Transfer-Encoding: 8BIT
+Cc: Chris Wright <chrisw@sous-sol.org>,
+	"iommu@lists.linux-foundation.org" <iommu@lists.linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: David Woodhouse <dwmw2@infradead.org>,
+	Andy Isaacson <adi@hexapodia.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934525AbZJNP1J@vger.kernel.org>
+In-Reply-To: <1255522166.4523.238.camel@macbook.infradead.org>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+Sorry if this is unrelated, but I'm also seeing a IOMMU PTE Write fault on my Lenovo x200 booted into 2.6.32-rc4 early on boot. I'm just using ext3, and no visible file system corruptioin so far.
 
+[    0.208727] DMAR: Forcing write-buffer flush capability
+...
+[    0.221299] DMAR: Host address width 36
+[    0.221299] DMAR: DRHD base: 0x000000feb03000 flags: 0x0
+[    0.221299] IOMMU feb03000: ver 1:0 cap c9008020e30260 ecap 1000
+[    0.221299] DMAR: DRHD base: 0x000000feb01000 flags: 0x0
+[    0.221299] IOMMU feb01000: ver 1:0 cap c0000020630260 ecap 1000
+[    0.221299] DMAR: DRHD base: 0x000000feb00000 flags: 0x0
+[    0.221299] IOMMU feb00000: ver 1:0 cap c0000020630270 ecap 1000
+[    0.221299] DMAR: DRHD base: 0x000000feb02000 flags: 0x1
+[    0.221299] IOMMU feb02000: ver 1:0 cap c9008020630260 ecap 1000
+[    0.221299] DMAR: RMRR base: 0x000000f2826c00 end: 0x000000f28273ff
+[    0.221299] DMAR: RMRR base: 0x000000bdc00000 end: 0x000000bfffffff
+[    0.221299] DMAR: No ATSR found
+...
+[    0.224001] DRHD: handling fault status reg 3
+[    0.224003] DMAR:[DMA Write] Request device [00:02.0] fault addr 95e7000
+[    0.224004] DMAR:[fault reason 05] PTE Write access is not set
+[    0.224084] PCI-DMA: Intel(R) Virtualization Technology for Directed I/O
 
+BIOS version 6DET33WW (1.10)
 
+Thanks
 
+- Bhavesh
+ 
+Bhavesh P. Davda
 
---- Comment #48 from Theodore Tso <tytso@mit.edu>  2009-10-14 13:36:10 ---
-Ric,
-
-The default mode is ordered for ext4; the default mode for ext3 is writeback. 
-The reason for not making the change in ext4 is that with delayed allocation,
-we don't have the stalling problems that ext3 had.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> -----Original Message-----
+> From: iommu-bounces@lists.linux-foundation.org [mailto:iommu-
+> bounces@lists.linux-foundation.org] On Behalf Of David Woodhouse
+> Sent: Wednesday, October 14, 2009 5:09 AM
+> To: Andy Isaacson
+> Cc: Chris Wright; iommu@lists.linux-foundation.org; linux-
+> ext4@vger.kernel.org; linux-kernel@vger.kernel.org
+> Subject: Re: DMAR regression in 2.6.31 leads to ext4 corruption?
+> 
+> On Fri, 2009-10-09 at 18:47 -0700, Andy Isaacson wrote:
+> > Well, we don't know for sure what happened on the previous boot where
+> > the filesystem corruption occurred.  I'm imagining a nightmare
+> scenario
+> > where GPU erroneous writes cause DMAR faults and handling them
+> somehow
+> > causes AHCI DMA requests to get lost.
+> 
+> Seems unlikely. The GPU faults happen whenever the GATT changes,
+> because
+> it translates _every_ address in the GATT through the IOMMU right there
+> and then -- so if parts of the table are uninitialised, they'll cause
+> stray write faults. But no writes are actually _happening_.
+> 
+> > I'm going to go ahead on the theory that the BIOS needs an update.
+> 
+> I can't really imagine how that would help; how the BIOS would be
+> responsible for this. I'm more inclined to blame the drive. It's not an
+> SSD, is it?
+> 
+> --
+> dwmw2
+> 
+> _______________________________________________
+> iommu mailing list
+> iommu@lists.linux-foundation.org
+> https://lists.linux-foundation.org/mailman/listinfo/iommu
