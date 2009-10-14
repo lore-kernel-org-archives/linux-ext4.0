@@ -1,81 +1,104 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 2/2] ext4: update donor file's ctime/mtime
-Date: Wed, 14 Oct 2009 11:10:57 -0700
-Message-ID: <A1BDA448-5948-4D2E-B456-5AF6F87149DF@sun.com>
-References: <4ACD9D04.40503@sx.jp.nec.com>
- <EE52B431-D993-47A3-B914-5FE2ACE953B8@sun.com> <4AD52E2E.80404@sx.jp.nec.com>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: ext4 DIO read performance issue on SSD
+Date: Wed, 14 Oct 2009 11:48:37 -0700
+Message-ID: <1255546117.4377.62.camel@mingming-laptop>
+References: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@google.com>,
+	Michael Rubin <mrubin@google.com>,
+	Manuel Benitez <rickyb@google.com>
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:44815 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752772AbZJNSLl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 14:11:41 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n9EIAwh2017186
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 11:10:59 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KRI00400NOXT500@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 14 Oct 2009 11:10:58 -0700 (PDT)
-In-reply-to: <4AD52E2E.80404@sx.jp.nec.com>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:60600 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761384AbZJNStk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 14:49:40 -0400
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by e38.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n9EIimwU027290
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 12:44:48 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n9EImi7i088128
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 12:48:49 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n9EImeeF022497
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 12:48:40 -0600
+In-Reply-To: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 13-Oct-09, at 18:49, Kazuya Mio wrote:
-> 2009/10/10 2:20, Andreas Dilger wrote::
->>
->> On 8-Oct-09, at 02:04, Kazuya Mio wrote:
->>
->>> EXT4_IOC_MOVE_EXT changes donor file data, but doesn't update
->>> ctime/mtime.  This patch fixes this problem.
->>
->> I would argue that just migrating the file data shouldn't update the
->> ctime/mtime.  Those are used to determine if the file has changed  
->> in some way, usually for the purpose of backup.  Migrating the data  
->> does not change anything from user-space POV and shouldn't force a  
->> new backup of the file.
->
-> EXT4_IOC_MOVE_EXT always changes the original actual contents of  
-> donor file
-> if orig file and donor file aren't the same. It may be that some of
-> user-space implementations hide such a changing. For example, e4defrag
-> unlinks the donor file, and removes it by decreasing reference count  
-> after
-> calling EXT4_IOC_MOVE_EXT. But from the ioctl point of view,
-> EXT4_IOC_MOVE_EXT doesn't know whether donor file will be removed or  
-> not,
-> so I think we should update ctime/mtime.
+On Fri, 2009-10-09 at 16:34 -0700, Jiaying Zhang wrote:
+> Hello,
+> 
+> Recently, we are evaluating the ext4 performance on a high speed SSD.
+> One problem we found is that ext4 performance doesn't scale well with
+> multiple threads or multiple AIOs reading a single file with O_DIRECT.
+> E.g., with 4k block size, multiple-thread DIO AIO random read on ext4
+> can lose up to 50% throughput compared to the results we get via RAW IO.
+> 
+> After some initial analysis, we think the ext4 performance problem is caused
+> by the use of i_mutex lock during DIO read. I.e., during DIO read, we grab
+> the i_mutex lock in __blockdev_direct_IO because ext4 uses the default
+> DIO_LOCKING from the generic fs code. I did a quick test by calling
+> blockdev_direct_IO_no_locking() in ext4_direct_IO() and I saw ext4 DIO read
+> got 99% performance as raw IO.
+> 
 
-Maybe I am confused.  Is EXT4_IOC_MOVE_EXT used for file  
-defragmentation?
-I thought the goal of this ioctl was to copy the data from the donor  
-inode
-to the target inode (using a new allocation in the target inode), and  
-then
-once the whole donor file had been copied (defragmented) the target  
-extents
-replace the entire donor file's extents?
+This is very interesting...and impressive number.
 
-In this model it would be OK to change the mtime/ctime of the _target_  
-file,
-but when these extents move back to the donor file the mtime/ctime of  
-the donor
-file should not be changed, I think, so that it does not force a full  
-backup.
+I tried to change ext4 to call blockdev_direct_IO_no_locking() directly,
+but then realize that we can't do this all the time, as ext4 support
+ext3 non-extent based files, and uninitialized extent is not support on
+ext3 format file.
 
-If the caller has done something to change the actual data in the  
-donor file
-it can always use utimes() to update the ctime/mtime, but it is not  
-possible
-for userspace to revert the ctime after it has changed.
+> As we understand, the reason why we want to take i_mutex lock during DIO
+> read is to prevent it from accessing stale data that may be exposed by a
+> simultaneous write. We saw that Mingming Cao has implemented a patch set
+> with which when a get_block request comes from direct write, ext4 only
+> allocates or splits an uninitialized extent. That uninitialized extent
+> will be marked as initialized at the end_io callback.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Though I need to clarify that with all the patches in mainline, we only
+treat new allocated blocks form direct io write to holes, not to writes
+to the end of file. I actually have proposed to treat the write to the
+end of file also as unintialized extents, but there is some concerns
+that this getting tricky with updating inode size when it is async IO
+direct IO. So it didn't getting done yet.
+
+>  We are wondering
+> whether we can extend this idea to buffer write as well. I.e., we always
+> allocate an uninitialized extent first during any write and convert it
+> as initialized at the time of end_io callback. This will eliminate the need
+> to hold i_mutex lock during direct read because a DIO read should never get
+> a block marked initialized before the block has been written with new data.
+> 
+
+Oh I don't think so. For buffered IO, the data is being copied to
+buffer, direct IO read would first flush what's in page cache to disk,
+then read from disk. So if there is concurrent buffered write and direct
+read, removing the i_mutex locks from the direct IO path should still
+gurantee the right order, without having to treat buffered allocation
+with uninitialized extent/end_io.
+
+The i_mutex lock, from my understanding, is there to protect direct IO
+write to hole and concurrent direct IO read, we should able to remove
+this lock for extent based ext4 file. 
+
+> We haven't implemented anything yet because we want to ask here first to
+> see whether this proposal makes sense to you.
+> 
+
+It does make sense to me.
+
+Mingming
+> Regards,
+> 
+> Jiaying
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
