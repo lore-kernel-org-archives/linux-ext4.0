@@ -1,111 +1,128 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: update donor file's ctime/mtime
-Date: Wed, 14 Oct 2009 17:19:33 -0400
-Message-ID: <87f94c370910141419g38b4b371sa1470107953cc47f@mail.gmail.com>
-References: <4ACD9D04.40503@sx.jp.nec.com>
-	 <EE52B431-D993-47A3-B914-5FE2ACE953B8@sun.com>
-	 <4AD52E2E.80404@sx.jp.nec.com>
-	 <A1BDA448-5948-4D2E-B456-5AF6F87149DF@sun.com>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: ext4 DIO read performance issue on SSD
+Date: Wed, 14 Oct 2009 13:57:32 -0700
+Message-ID: <1255553852.4377.63.camel@mingming-laptop>
+References: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
+	 <1255546117.4377.62.camel@mingming-laptop>
+	 <5df78e1d0910141248h1f537863n97991585e6147ca7@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Kazuya Mio <k-mio@sx.jp.nec.com>, linux-ext4@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@google.com>,
+	Michael Rubin <mrubin@google.com>,
+	Manuel Benitez <rickyb@google.com>
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f180.google.com ([209.85.223.180]:36317 "EHLO
-	mail-iw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757060AbZJNVUJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 17:20:09 -0400
-Received: by iwn10 with SMTP id 10so139081iwn.4
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 14:19:33 -0700 (PDT)
-In-Reply-To: <A1BDA448-5948-4D2E-B456-5AF6F87149DF@sun.com>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:42126 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759108AbZJNVZp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Oct 2009 17:25:45 -0400
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e38.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n9ELKnhL028371
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 15:20:49 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n9ELOtZv118110
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 15:24:56 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n9ELOjc4027931
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2009 15:24:45 -0600
+In-Reply-To: <5df78e1d0910141248h1f537863n97991585e6147ca7@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 14, 2009 at 2:10 PM, Andreas Dilger <adilger@sun.com> wrote=
-:
-> On 13-Oct-09, at 18:49, Kazuya Mio wrote:
->>
->> 2009/10/10 2:20, Andreas Dilger wrote::
->>>
->>> On 8-Oct-09, at 02:04, Kazuya Mio wrote:
->>>
->>>> EXT4_IOC_MOVE_EXT changes donor file data, but doesn't update
->>>> ctime/mtime. =A0This patch fixes this problem.
->>>
->>> I would argue that just migrating the file data shouldn't update th=
-e
->>> ctime/mtime. =A0Those are used to determine if the file has changed=
- in some
->>> way, usually for the purpose of backup. =A0Migrating the data does =
-not change
->>> anything from user-space POV and shouldn't force a new backup of th=
-e file.
->>
->> EXT4_IOC_MOVE_EXT always changes the original actual contents of don=
-or
->> file
->> if orig file and donor file aren't the same. It may be that some of
->> user-space implementations hide such a changing. For example, e4defr=
-ag
->> unlinks the donor file, and removes it by decreasing reference count=
- after
->> calling EXT4_IOC_MOVE_EXT. But from the ioctl point of view,
->> EXT4_IOC_MOVE_EXT doesn't know whether donor file will be removed or=
- not,
->> so I think we should update ctime/mtime.
->
-> Maybe I am confused. =A0Is EXT4_IOC_MOVE_EXT used for file defragment=
-ation?
-> I thought the goal of this ioctl was to copy the data from the donor =
-inode
-> to the target inode (using a new allocation in the target inode), and=
- then
-> once the whole donor file had been copied (defragmented) the target e=
-xtents
-> replace the entire donor file's extents?
->
-> In this model it would be OK to change the mtime/ctime of the _target=
-_ file,
-> but when these extents move back to the donor file the mtime/ctime of=
- the
-> donor
-> file should not be changed, I think, so that it does not force a full
-> backup.
->
-> If the caller has done something to change the actual data in the don=
-or file
-> it can always use utimes() to update the ctime/mtime, but it is not p=
-ossible
-> for userspace to revert the ctime after it has changed.
->
-> Cheers, Andreas
+On Wed, 2009-10-14 at 12:48 -0700, Jiaying Zhang wrote:
+> On Wed, Oct 14, 2009 at 11:48 AM, Mingming <cmm@us.ibm.com> wrote:
+> > On Fri, 2009-10-09 at 16:34 -0700, Jiaying Zhang wrote:
+> >> Hello,
+> >>
+> >> Recently, we are evaluating the ext4 performance on a high speed SSD.
+> >> One problem we found is that ext4 performance doesn't scale well with
+> >> multiple threads or multiple AIOs reading a single file with O_DIRECT.
+> >> E.g., with 4k block size, multiple-thread DIO AIO random read on ext4
+> >> can lose up to 50% throughput compared to the results we get via RAW IO.
+> >>
+> >> After some initial analysis, we think the ext4 performance problem is caused
+> >> by the use of i_mutex lock during DIO read. I.e., during DIO read, we grab
+> >> the i_mutex lock in __blockdev_direct_IO because ext4 uses the default
+> >> DIO_LOCKING from the generic fs code. I did a quick test by calling
+> >> blockdev_direct_IO_no_locking() in ext4_direct_IO() and I saw ext4 DIO read
+> >> got 99% performance as raw IO.
+> >>
+> >
+> > This is very interesting...and impressive number.
+> >
+> > I tried to change ext4 to call blockdev_direct_IO_no_locking() directly,
+> > but then realize that we can't do this all the time, as ext4 support
+> > ext3 non-extent based files, and uninitialized extent is not support on
+> > ext3 format file.
+> >
+> >> As we understand, the reason why we want to take i_mutex lock during DIO
+> >> read is to prevent it from accessing stale data that may be exposed by a
+> >> simultaneous write. We saw that Mingming Cao has implemented a patch set
+> >> with which when a get_block request comes from direct write, ext4 only
+> >> allocates or splits an uninitialized extent. That uninitialized extent
+> >> will be marked as initialized at the end_io callback.
+> >
+> > Though I need to clarify that with all the patches in mainline, we only
+> > treat new allocated blocks form direct io write to holes, not to writes
+> > to the end of file. I actually have proposed to treat the write to the
+> > end of file also as unintialized extents, but there is some concerns
+> > that this getting tricky with updating inode size when it is async IO
+> > direct IO. So it didn't getting done yet.
+> >
+> >>  We are wondering
+> >> whether we can extend this idea to buffer write as well. I.e., we always
+> >> allocate an uninitialized extent first during any write and convert it
+> >> as initialized at the time of end_io callback. This will eliminate the need
+> >> to hold i_mutex lock during direct read because a DIO read should never get
+> >> a block marked initialized before the block has been written with new data.
+> >>
+> >
+> > Oh I don't think so. For buffered IO, the data is being copied to
+> > buffer, direct IO read would first flush what's in page cache to disk,
+> 
+> Hmm, do you mean the filemap_write_and_wait_range() in
+> __blockdev_direct_IO? 
+
+yes, that's the one to flush the page cache before direct read.
+
+> Or do we flush page cache after calling
+> get_block in dio read?
+> 
+> Jiaying
+> 
+> > then read from disk. So if there is concurrent buffered write and direct
+> > read, removing the i_mutex locks from the direct IO path should still
+> > gurantee the right order, without having to treat buffered allocation
+> > with uninitialized extent/end_io.
+> >
+> > The i_mutex lock, from my understanding, is there to protect direct IO
+> > write to hole and concurrent direct IO read, we should able to remove
+> > this lock for extent based ext4 file.
+> >
+> 
+> 
+> >> We haven't implemented anything yet because we want to ask here first to
+> >> see whether this proposal makes sense to you.
+> >>
+> >
+> > It does make sense to me.
+> >
+> > Mingming
+> >> Regards,
+> >>
+> >> Jiaying
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> >
+> >
 > --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-You have it backwards.
 
-The target file is the fragmented file containing good data.  ie. It
-is the target of the defragmentation process.
-
-The donor file starts out as fallocated file with no valid data in it,
-but the data blocks are less fragmented than the target hopefully.
-
-The target file ends up using the data blocks provided by the donor,
-but with the target files original data in them.
-
-What the donor has at the end of the process, I don't know for sure.
-I assume it is a zero length file that is in need of being deleted.
-Having the donor's timestamps seems technically correct, but of little
-real world consequence.  Or maybe there will eventually be a use case
-that reuses the donor file for some purpose.
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
