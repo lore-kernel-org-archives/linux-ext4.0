@@ -1,135 +1,179 @@
-From: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
-Subject: [PATCH 7/8] trivial: fix many typos s/untill/until/
-Date: Thu, 15 Oct 2009 17:21:12 -0300
-Message-ID: <1255638072-6236-1-git-send-email-cascardo@holoscopio.com>
-Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-	bonding-devel@lists.sourceforge.net, netdev@vger.kernel.org,
-	linux-wireless@vger.kernel.org, users@rt2x00.serialmonkey.com,
-	linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
-	linux-ext4@vger.kernel.org, linux-bluetooth@vger.kernel.org,
-	linux-sctp@vger.kernel.org,
-	Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
-To: trivial@kernel.org
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: ext4 DIO read performance issue on SSD
+Date: Thu, 15 Oct 2009 16:28:24 -0700
+Message-ID: <1255649304.4377.1155.camel@mingming-laptop>
+References: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
+	 <1255546117.4377.62.camel@mingming-laptop>
+	 <5df78e1d0910142214s51a4db0and358fc432225338b@mail.gmail.com>
+	 <1255627868.4377.1113.camel@mingming-laptop>
+	 <5df78e1d0910151307p342a0c71x5413fad2202a1daa@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@google.com>,
+	Michael Rubin <mrubin@google.com>,
+	Manuel Benitez <rickyb@google.com>
+To: Jiaying Zhang <jiayingz@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:37636 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754794AbZJOX3H (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Oct 2009 19:29:07 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e38.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n9FNOCGw021848
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2009 17:24:12 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n9FNSQuQ252368
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2009 17:28:26 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n9FNSQCI009385
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2009 17:28:26 -0600
+In-Reply-To: <5df78e1d0910151307p342a0c71x5413fad2202a1daa@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
----
- drivers/infiniband/ulp/iser/iser_verbs.c |    2 +-
- drivers/net/bonding/bond_alb.c           |    2 +-
- drivers/net/wireless/rt2x00/rt2800usb.c  |    2 +-
- drivers/scsi/bnx2i/bnx2i_iscsi.c         |    2 +-
- drivers/staging/rtl8187se/r8180.h        |    2 +-
- fs/ext4/balloc.c                         |    2 +-
- net/bluetooth/bnep/core.c                |    2 +-
- net/sctp/sm_statefuns.c                  |    2 +-
- 8 files changed, 8 insertions(+), 8 deletions(-)
+On Thu, 2009-10-15 at 13:07 -0700, Jiaying Zhang wrote:
+> On Thu, Oct 15, 2009 at 10:31 AM, Mingming <cmm@us.ibm.com> wrote:
+> > On Wed, 2009-10-14 at 22:14 -0700, Jiaying Zhang wrote:
+> >> Mingming,
+> >>
+> >
+> > Hi Jiaying,
+> >
+> >> On Wed, Oct 14, 2009 at 11:48 AM, Mingming <cmm@us.ibm.com> wrote:
+> >> > On Fri, 2009-10-09 at 16:34 -0700, Jiaying Zhang wrote:
+> >> >> Hello,
+> >> >>
+> >> >> Recently, we are evaluating the ext4 performance on a high speed SSD.
+> >> >> One problem we found is that ext4 performance doesn't scale well with
+> >> >> multiple threads or multiple AIOs reading a single file with O_DIRECT.
+> >> >> E.g., with 4k block size, multiple-thread DIO AIO random read on ext4
+> >> >> can lose up to 50% throughput compared to the results we get via RAW IO.
+> >> >>
+> >> >> After some initial analysis, we think the ext4 performance problem is caused
+> >> >> by the use of i_mutex lock during DIO read. I.e., during DIO read, we grab
+> >> >> the i_mutex lock in __blockdev_direct_IO because ext4 uses the default
+> >> >> DIO_LOCKING from the generic fs code. I did a quick test by calling
+> >> >> blockdev_direct_IO_no_locking() in ext4_direct_IO() and I saw ext4 DIO read
+> >> >> got 99% performance as raw IO.
+> >> >>
+> >> >
+> >> > This is very interesting...and impressive number.
+> >> >
+> >> > I tried to change ext4 to call blockdev_direct_IO_no_locking() directly,
+> >> > but then realize that we can't do this all the time, as ext4 support
+> >> > ext3 non-extent based files, and uninitialized extent is not support on
+> >> > ext3 format file.
+> >> >
+> >> >> As we understand, the reason why we want to take i_mutex lock during DIO
+> >> >> read is to prevent it from accessing stale data that may be exposed by a
+> >> >> simultaneous write. We saw that Mingming Cao has implemented a patch set
+> >> >> with which when a get_block request comes from direct write, ext4 only
+> >> >> allocates or splits an uninitialized extent. That uninitialized extent
+> >> >> will be marked as initialized at the end_io callback.
+> >> >
+> >> > Though I need to clarify that with all the patches in mainline, we only
+> >> > treat new allocated blocks form direct io write to holes, not to writes
+> >> > to the end of file. I actually have proposed to treat the write to the
+> >> > end of file also as unintialized extents, but there is some concerns
+> >> > that this getting tricky with updating inode size when it is async IO
+> >> > direct IO. So it didn't getting done yet.
+> >>
+> >> I read you previous email thread again. As I understand, the main
+> >> concern for allocating uninitialized blocks in i_size extending write
+> >> is that we may end up having uninitialized blocks beyond i_size
+> >> if the system crashes during write. Can we protect this case by
+> >> adding the inode into the orphan list in ext4_ext_direct_IO,
+> >> i.e., same as we have done in ext4_ind_direct_IO?
+> >>
+> >
+> > Sure we could do that, though initially I hoped we could get rid of
+> > that:)
+> >
+> > The tricky part is async direct write to the end of file. By the time
+> > the IO is completed, the inode may be truncated or extended larger.
+> > Updating the most "safe" size is the part I haven't thought through yet.
+> >
+> 
+> Ok. I think I understand the problem better now :).
+> 
+> Looking at the __blockdev_direct_IO(), I saw it actually treats
+> size-extending aio dio write as synchronous and expects the dio to
+> complete before return (fs/direct-io.c line 1204 and line 1056-1061).
 
-diff --git a/drivers/infiniband/ulp/iser/iser_verbs.c b/drivers/infiniband/ulp/iser/iser_verbs.c
-index ea9e155..8579f32 100644
---- a/drivers/infiniband/ulp/iser/iser_verbs.c
-+++ b/drivers/infiniband/ulp/iser/iser_verbs.c
-@@ -499,7 +499,7 @@ void iser_conn_init(struct iser_conn *ib_conn)
- 
-  /**
-  * starts the process of connecting to the target
-- * sleeps untill the connection is established or rejected
-+ * sleeps until the connection is established or rejected
-  */
- int iser_connect(struct iser_conn   *ib_conn,
- 		 struct sockaddr_in *src_addr,
-diff --git a/drivers/net/bonding/bond_alb.c b/drivers/net/bonding/bond_alb.c
-index 9b5936f..a1e7eb9 100644
---- a/drivers/net/bonding/bond_alb.c
-+++ b/drivers/net/bonding/bond_alb.c
-@@ -559,7 +559,7 @@ static void rlb_update_rx_clients(struct bonding *bond)
- 		}
- 	}
- 
--	/* do not update the entries again untill this counter is zero so that
-+	/* do not update the entries again until this counter is zero so that
- 	 * not to confuse the clients.
- 	 */
- 	bond_info->rlb_update_delay_counter = RLB_UPDATE_DELAY;
-diff --git a/drivers/net/wireless/rt2x00/rt2800usb.c b/drivers/net/wireless/rt2x00/rt2800usb.c
-index a084077..449886c 100644
---- a/drivers/net/wireless/rt2x00/rt2800usb.c
-+++ b/drivers/net/wireless/rt2x00/rt2800usb.c
-@@ -1257,7 +1257,7 @@ static int rt2800usb_init_registers(struct rt2x00_dev *rt2x00dev)
- 	unsigned int i;
- 
- 	/*
--	 * Wait untill BBP and RF are ready.
-+	 * Wait until BBP and RF are ready.
- 	 */
- 	for (i = 0; i < REGISTER_BUSY_COUNT; i++) {
- 		rt2x00usb_register_read(rt2x00dev, MAC_CSR0, &reg);
-diff --git a/drivers/scsi/bnx2i/bnx2i_iscsi.c b/drivers/scsi/bnx2i/bnx2i_iscsi.c
-index cafb888..10110be 100644
---- a/drivers/scsi/bnx2i/bnx2i_iscsi.c
-+++ b/drivers/scsi/bnx2i/bnx2i_iscsi.c
-@@ -1883,7 +1883,7 @@ static void bnx2i_ep_disconnect(struct iscsi_endpoint *ep)
- 
- 	bnx2i_ep = ep->dd_data;
- 
--	/* driver should not attempt connection cleanup untill TCP_CONNECT
-+	/* driver should not attempt connection cleanup until TCP_CONNECT
- 	 * completes either successfully or fails. Timeout is 9-secs, so
- 	 * wait for it to complete
- 	 */
-diff --git a/drivers/staging/rtl8187se/r8180.h b/drivers/staging/rtl8187se/r8180.h
-index 8216d7e..35ed60b 100644
---- a/drivers/staging/rtl8187se/r8180.h
-+++ b/drivers/staging/rtl8187se/r8180.h
-@@ -521,7 +521,7 @@ typedef struct r8180_priv
- 	//u32 NumTxOkInPeriod;   //YJ,del,080828
- 	u8   TxPollingTimes;
- 
--	bool	bApBufOurFrame;// TRUE if AP buffer our unicast data , we will keep eAwake untill receive data or timeout.
-+	bool	bApBufOurFrame;// TRUE if AP buffer our unicast data , we will keep eAwake until receive data or timeout.
- 	u8	WaitBufDataBcnCount;
- 	u8	WaitBufDataTimeOut;
- 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1d04189..2565b8c 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -519,7 +519,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 		metadata = 1;
- 
- 	/* We need to make sure we don't reuse
--	 * block released untill the transaction commit.
-+	 * block released until the transaction commit.
- 	 * writeback mode have weak data consistency so
- 	 * don't force data as metadata when freeing block
- 	 * for writeback mode.
-diff --git a/net/bluetooth/bnep/core.c b/net/bluetooth/bnep/core.c
-index 1bd9398..9ac0497 100644
---- a/net/bluetooth/bnep/core.c
-+++ b/net/bluetooth/bnep/core.c
-@@ -629,7 +629,7 @@ int bnep_del_connection(struct bnep_conndel_req *req)
- 	s = __bnep_get_session(req->dst);
- 	if (s) {
- 		/* Wakeup user-space which is polling for socket errors.
--		 * This is temporary hack untill we have shutdown in L2CAP */
-+		 * This is temporary hack until we have shutdown in L2CAP */
- 		s->sock->sk->sk_err = EUNATCH;
- 
- 		/* Kill session thread */
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index c8fae19..ba2f66d 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3569,7 +3569,7 @@ sctp_disposition_t sctp_sf_do_asconf(const struct sctp_endpoint *ep,
- 	 * To do this properly, we'll set the destination address of the chunk
- 	 * and at the transmit time, will try look up the transport to use.
- 	 * Since ASCONFs may be bundled, the correct transport may not be
--	 * created untill we process the entire packet, thus this workaround.
-+	 * created until we process the entire packet, thus this workaround.
- 	 */
- 	asconf_ack->dest = chunk->source;
- 	sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(asconf_ack));
--- 
-1.6.3.3
+Oh? It seems it will keep the write async as long as it's not a partial
+write 
+        /*
+         * The only time we want to leave bios in flight is when a successful
+         * partial aio read or full aio write have been setup.  In that case
+         * bio completion will call aio_complete.  The only time it's safe to
+         * call aio_complete is when we return -EIOCBQUEUED, so we key on that.
+         * This had *better* be the only place that raises -EIOCBQUEUED.
+         */
+        BUG_ON(ret == -EIOCBQUEUED);
+        if (dio->is_async && ret == 0 && dio->result &&
+            ((rw & READ) || (dio->result == dio->size)))
+                ret = -EIOCBQUEUED;
+
+        if (ret != -EIOCBQUEUED)
+                dio_await_completion(dio);
+
+> Can we follow the same rule and check whether it is a size-extending
+> aio write in ext4_end_io_dio()? In such cases, we can call
+> ext4_end_aio_dio_nolock() synchronously instead of queuing
+> the work. I think this will protect us from truncate because we
+> are still holding i_mutex and i_alloc_sem.
+> 
+> Jiaying
+> 
+> >
+> >
+> >> Jiaying
+> >>
+> >> >
+> >> >>  We are wondering
+> >> >> whether we can extend this idea to buffer write as well. I.e., we always
+> >> >> allocate an uninitialized extent first during any write and convert it
+> >> >> as initialized at the time of end_io callback. This will eliminate the need
+> >> >> to hold i_mutex lock during direct read because a DIO read should never get
+> >> >> a block marked initialized before the block has been written with new data.
+> >> >>
+> >> >
+> >> > Oh I don't think so. For buffered IO, the data is being copied to
+> >> > buffer, direct IO read would first flush what's in page cache to disk,
+> >> > then read from disk. So if there is concurrent buffered write and direct
+> >> > read, removing the i_mutex locks from the direct IO path should still
+> >> > gurantee the right order, without having to treat buffered allocation
+> >> > with uninitialized extent/end_io.
+> >> >
+> >> > The i_mutex lock, from my understanding, is there to protect direct IO
+> >> > write to hole and concurrent direct IO read, we should able to remove
+> >> > this lock for extent based ext4 file.
+> >> >
+> >> >> We haven't implemented anything yet because we want to ask here first to
+> >> >> see whether this proposal makes sense to you.
+> >> >>
+> >> >
+> >> > It does make sense to me.
+> >> >
+> >> > Mingming
+> >> >> Regards,
+> >> >>
+> >> >> Jiaying
+> >> >> --
+> >> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> >> >> the body of a message to majordomo@vger.kernel.org
+> >> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> >
+> >> >
+> >> >
+> >
+> >
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
