@@ -1,31 +1,30 @@
-From: Mikulas Patocka <mpatocka@redhat.com>
-Subject: Re: [Bug 14354] Status of barrier requests in LVM and
-	dm-crypt?
-Date: Thu, 15 Oct 2009 15:10:10 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0910151454090.22075@hs20-bc2-1.build.redhat.com>
-References: <E1MxPQM-00074N-Ph@closure.thunk.org>
-	<20091013144945.GA22223@redhat.com>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Thu, 15 Oct 2009 19:10:36 GMT
+Message-ID: <200910151910.n9FJAasR019746@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: dm-devel@redhat.com, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, bugzilla-daemon@bugzilla.kernel.org
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <20091013144945.GA22223@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:33754 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762948AbZJOTLM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Oct 2009 15:11:12 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9FJAaSP019747
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2009 19:10:36 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 
 
+
+
+--- Comment #57 from Mikulas Patocka <mpatocka@redhat.com>  2009-10-15 19:10:35 ---
 On Tue, 13 Oct 2009, Mike Snitzer wrote:
 
 > On Mon, Oct 12 2009 at  2:15pm -0400,
@@ -82,3 +81,8 @@ If you see errors under normal operations, without power loss, then it has
 probably nothing to do with barriers at all.
 
 Mikulas
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
