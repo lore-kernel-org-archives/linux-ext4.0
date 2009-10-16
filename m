@@ -1,31 +1,41 @@
-From: Parag Warudkar <parag.lkml@gmail.com>
-Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
-Date: Fri, 16 Oct 2009 18:24:18 -0400
-Message-ID: <f7848160910161524j36876b80ma559426b00c98050@mail.gmail.com>
-References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>
-	 <20091016091558.GA10184@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 16 Oct 2009 22:24:23 GMT
+Message-ID: <200910162224.n9GMONFN012841@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Tso <tytso@mit.edu>,
-	Parag Warudkar <parag.lkml@gmail.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.153]:3661 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751400AbZJPWYS convert rfc822-to-8bit (ORCPT
+Received: from demeter.kernel.org ([140.211.167.39]:39629 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751460AbZJPWYS convert rfc822-to-8bit (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 18:24:18 -0400
-In-Reply-To: <20091016091558.GA10184@mit.edu>
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9GMONEn012842
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 22:24:23 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=3D14354
+
+
+
+
+
+--- Comment #68 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>=
+  2009-10-16 22:24:22 ---
+Reply-To: parag.lkml@gmail.com
 
 On Fri, Oct 16, 2009 at 5:15 AM, Theodore Tso <tytso@mit.edu> wrote:
 >
 > A number of people have reported this, and there is some discussion
 > and some suggestions that I've made here:
 >
-> =A0 =A0 =A0 =A0http://bugzilla.kernel.org/show_bug.cgi?id=3D14354
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0http://bugzilla.kernel.org/show_bug.cgi?id=
+=3D14354
 
 Ok, I went through this bug report and here are some immediately
 useful things to note -
@@ -40,7 +50,8 @@ running make - laptop was
 > So if you can come up with a reliable reproduction case, and don't
 > mind doing some experiments and/or exchanging debugging correspondanc=
 e
-> with me, please let me know. =A0I'd **really** appreciate the help.
+> with me, please let me know. =C2=A0I'd **really** appreciate the help=
+=2E
 
 My laptop is a reliable test case - for me at least! I tried just now
 to abruptly reset the laptop and upon reboot there was fsck followed
@@ -100,12 +111,12 @@ the same disk.
 y
 > or in the e2fsprogs sources in the contrib directory) to take a
 > snapshot and then check the snapshot right after you reboot and login
-> to your system. =A0The reported file system corruptions seem to invol=
-ve
+> to your system. =C2=A0The reported file system corruptions seem to in=
+volve
 > the block allocation bitmaps getting corrupted, and so you will
 > significantly reduce the chances of data loss if you run e2fsck as
-> soon as possible after the file system corruption happens. =A0This he=
-lps
+> soon as possible after the file system corruption happens. =C2=A0This=
+ helps
 > you not lose data, and it also helps us find the bug, since it helps
 > pinpoint the earliest possible point where the file system is getting
 > corrupted.
@@ -120,8 +131,8 @@ unclean shutdown.
 > I'm going to be at the kernel summit in Tokyo next week, so my e-mail
 > latency will be a bit longer than normal, which is one of the reason
 > why I've left a goodly list of potential experiments for people to
-> try. =A0If you can come up with a reliable regression, and are willin=
-g
+> try. =C2=A0If you can come up with a reliable regression, and are wil=
+ling
 > to work with me or to try some of the above mentioned tests, I'll
 > definitely buy you a real (or virtual) beer.
 >
@@ -139,7 +150,11 @@ And that's on different hardware/different disks.
 Thanks,
 
 Parag
---
+
+--=20
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
