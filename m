@@ -1,32 +1,23 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 16 Oct 2009 19:14:31 GMT
-Message-ID: <200910161914.n9GJEVbF012071@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Fri, 16 Oct 2009 15:16:09 -0400
+Message-ID: <4AD8C679.3030300@redhat.com>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>,
+	Parag Warudkar <parag.lkml@gmail.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:59372 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750930AbZJPTO1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 15:14:27 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9GJEVwR012072
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 19:14:32 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:23603 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751035AbZJPTO2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Oct 2009 15:14:28 -0400
+In-Reply-To: <20091016091558.GA10184@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
-
-
-
-
-
---- Comment #64 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-10-16 19:14:31 ---
-Reply-To: rwheeler@redhat.com
 
 On 10/16/2009 05:15 AM, Theodore Tso wrote:
 > On Fri, Oct 16, 2009 at 12:28:18AM -0400, Parag Warudkar wrote:
@@ -154,9 +145,5 @@ Ric
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+>    
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
