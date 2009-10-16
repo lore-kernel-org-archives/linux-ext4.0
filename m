@@ -1,30 +1,23 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 16 Oct 2009 09:16:06 GMT
-Message-ID: <200910160916.n9G9G6rw010350@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Fri, 16 Oct 2009 05:15:58 -0400
+Message-ID: <20091016091558.GA10184@mit.edu>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
+To: Parag Warudkar <parag.lkml@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:50041 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757739AbZJPJQn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 05:16:43 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9G9G6w7010351
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 09:16:06 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:53745 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757391AbZJPJQi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Oct 2009 05:16:38 -0400
+Content-Disposition: inline
+In-Reply-To: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
-
-
-
-
-
---- Comment #59 from Theodore Tso <tytso@mit.edu>  2009-10-16 09:16:05 ---
 On Fri, Oct 16, 2009 at 12:28:18AM -0400, Parag Warudkar wrote:
 > So I have been experimenting with various root file systems on my
 > laptop running latest git. This laptop some times has problems waking
@@ -34,7 +27,7 @@ On Fri, Oct 16, 2009 at 12:28:18AM -0400, Parag Warudkar wrote:
 A number of people have reported this, and there is some discussion
 and some suggestions that I've made here:
 
-    http://bugzilla.kernel.org/show_bug.cgi?id=14354
+	http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 It's been very frustrating because I have not been able to replicate
 it myself; I've been very much looking for someone who is (a) willing
@@ -126,9 +119,4 @@ it would **definitely** be a good thing to get this fixed before
 
 Thanks,
 
-                        - Ted
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
