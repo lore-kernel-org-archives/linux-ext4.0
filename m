@@ -1,39 +1,40 @@
-From: Jiri Kosina <jkosina-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 7/8] trivial: fix many typos s/untill/until/
-Date: Fri, 16 Oct 2009 15:24:21 +0200 (CEST)
-Message-ID: <alpine.LSU.2.00.0910161523400.8582@wotan.suse.de>
-References: <1255638072-6236-1-git-send-email-cascardo@holoscopio.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Fri, 16 Oct 2009 09:06:38 -0400
+Message-ID: <20091016130638.GA8196@mit.edu>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	bonding-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, users-IdT//7ivld+3fTS+yoWyeR8Sddau0WhX@public.gmane.org,
-	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-bluetooth-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Thadeu Lima de Souza Cascardo <cascardo-DmMZpsCg3uxeGPcbtGPokg@public.gmane.org>
-Return-path: <linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1255638072-6236-1-git-send-email-cascardo-DmMZpsCg3uxeGPcbtGPokg@public.gmane.org>
-Sender: linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: Parag Warudkar <parag.lkml@gmail.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:54436 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759613AbZJPOOI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Oct 2009 10:14:08 -0400
+Content-Disposition: inline
+In-Reply-To: <20091016091558.GA10184@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 15 Oct 2009, Thadeu Lima de Souza Cascardo wrote:
+On Fri, Oct 16, 2009 at 05:15:58AM -0400, Theodore Tso wrote:
+> These are three commits that seem most likely, but there are
+> only 93 ext4-related commits, so doing a "git bisect start v2.6.31
+> v2.6.32-rc5 -- fs/ext4 fs/jbd2" 
 
-> Signed-off-by: Thadeu Lima de Souza Cascardo <cascardo-DmMZpsCg3uxeGPcbtGPokg@public.gmane.org>
-> ---
->  drivers/infiniband/ulp/iser/iser_verbs.c |    2 +-
->  drivers/net/bonding/bond_alb.c           |    2 +-
->  drivers/net/wireless/rt2x00/rt2800usb.c  |    2 +-
->  drivers/scsi/bnx2i/bnx2i_iscsi.c         |    2 +-
->  drivers/staging/rtl8187se/r8180.h        |    2 +-
->  fs/ext4/balloc.c                         |    2 +-
->  net/bluetooth/bnep/core.c                |    2 +-
->  net/sctp/sm_statefuns.c                  |    2 +-
->  8 files changed, 8 insertions(+), 8 deletions(-)
+One correction.  The git bsect start usage is:
 
-Merged together with patches 2-8 from your series and applied to trivial 
-queue.
+     git bisect start [<bad> [<good>...]] [--] [<paths>...]
 
--- 
-Jiri Kosina
-SUSE Labs, Novell Inc.
+So the correct git bisect start command should be:
+
+     git bisect start v2.6.32-rc5 v2.6.31 -- fs/ext4 fs/jbd2
+
+And similarly, "git bisect start v2.6.31 v2.6.31-rc3" should have been:
+
+     git bisect start v2.6.31-rc3 v2.6.31
+
+My apologies for any confusion.
+
+						- Ted
