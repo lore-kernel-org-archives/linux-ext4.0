@@ -1,219 +1,162 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: ext4 DIO read performance issue on SSD
-Date: Fri, 16 Oct 2009 11:56:43 -0700
-Message-ID: <1255719403.4377.1168.camel@mingming-laptop>
-References: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
-	 <1255546117.4377.62.camel@mingming-laptop>
-	 <5df78e1d0910142214s51a4db0and358fc432225338b@mail.gmail.com>
-	 <1255627868.4377.1113.camel@mingming-laptop>
-	 <5df78e1d0910151307p342a0c71x5413fad2202a1daa@mail.gmail.com>
-	 <1255649304.4377.1155.camel@mingming-laptop>
-	 <5df78e1d0910151633s54ef6bb5pe1957eb0cf33eff6@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 16 Oct 2009 19:14:31 GMT
+Message-ID: <200910161914.n9GJEVbF012071@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@google.com>,
-	Michael Rubin <mrubin@google.com>,
-	Manuel Benitez <rickyb@google.com>
-To: Jiaying Zhang <jiayingz@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:49738 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754079AbZJPS4p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 14:56:45 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id n9GIsijg003802
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 12:54:44 -0600
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n9GIujEQ168438
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 12:56:45 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n9GIui88017148
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 12:56:44 -0600
-In-Reply-To: <5df78e1d0910151633s54ef6bb5pe1957eb0cf33eff6@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:59372 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750930AbZJPTO1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 15:14:27 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9GJEVwR012072
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 19:14:32 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2009-10-15 at 16:33 -0700, Jiaying Zhang wrote:
-> On Thu, Oct 15, 2009 at 4:28 PM, Mingming <cmm@us.ibm.com> wrote:
-> > On Thu, 2009-10-15 at 13:07 -0700, Jiaying Zhang wrote:
-> >> On Thu, Oct 15, 2009 at 10:31 AM, Mingming <cmm@us.ibm.com> wrote:
-> >> > On Wed, 2009-10-14 at 22:14 -0700, Jiaying Zhang wrote:
-> >> >> Mingming,
-> >> >>
-> >> >
-> >> > Hi Jiaying,
-> >> >
-> >> >> On Wed, Oct 14, 2009 at 11:48 AM, Mingming <cmm@us.ibm.com> wrote:
-> >> >> > On Fri, 2009-10-09 at 16:34 -0700, Jiaying Zhang wrote:
-> >> >> >> Hello,
-> >> >> >>
-> >> >> >> Recently, we are evaluating the ext4 performance on a high speed SSD.
-> >> >> >> One problem we found is that ext4 performance doesn't scale well with
-> >> >> >> multiple threads or multiple AIOs reading a single file with O_DIRECT.
-> >> >> >> E.g., with 4k block size, multiple-thread DIO AIO random read on ext4
-> >> >> >> can lose up to 50% throughput compared to the results we get via RAW IO.
-> >> >> >>
-> >> >> >> After some initial analysis, we think the ext4 performance problem is caused
-> >> >> >> by the use of i_mutex lock during DIO read. I.e., during DIO read, we grab
-> >> >> >> the i_mutex lock in __blockdev_direct_IO because ext4 uses the default
-> >> >> >> DIO_LOCKING from the generic fs code. I did a quick test by calling
-> >> >> >> blockdev_direct_IO_no_locking() in ext4_direct_IO() and I saw ext4 DIO read
-> >> >> >> got 99% performance as raw IO.
-> >> >> >>
-> >> >> >
-> >> >> > This is very interesting...and impressive number.
-> >> >> >
-> >> >> > I tried to change ext4 to call blockdev_direct_IO_no_locking() directly,
-> >> >> > but then realize that we can't do this all the time, as ext4 support
-> >> >> > ext3 non-extent based files, and uninitialized extent is not support on
-> >> >> > ext3 format file.
-> >> >> >
-> >> >> >> As we understand, the reason why we want to take i_mutex lock during DIO
-> >> >> >> read is to prevent it from accessing stale data that may be exposed by a
-> >> >> >> simultaneous write. We saw that Mingming Cao has implemented a patch set
-> >> >> >> with which when a get_block request comes from direct write, ext4 only
-> >> >> >> allocates or splits an uninitialized extent. That uninitialized extent
-> >> >> >> will be marked as initialized at the end_io callback.
-> >> >> >
-> >> >> > Though I need to clarify that with all the patches in mainline, we only
-> >> >> > treat new allocated blocks form direct io write to holes, not to writes
-> >> >> > to the end of file. I actually have proposed to treat the write to the
-> >> >> > end of file also as unintialized extents, but there is some concerns
-> >> >> > that this getting tricky with updating inode size when it is async IO
-> >> >> > direct IO. So it didn't getting done yet.
-> >> >>
-> >> >> I read you previous email thread again. As I understand, the main
-> >> >> concern for allocating uninitialized blocks in i_size extending write
-> >> >> is that we may end up having uninitialized blocks beyond i_size
-> >> >> if the system crashes during write. Can we protect this case by
-> >> >> adding the inode into the orphan list in ext4_ext_direct_IO,
-> >> >> i.e., same as we have done in ext4_ind_direct_IO?
-> >> >>
-> >> >
-> >> > Sure we could do that, though initially I hoped we could get rid of
-> >> > that:)
-> >> >
-> >> > The tricky part is async direct write to the end of file. By the time
-> >> > the IO is completed, the inode may be truncated or extended larger.
-> >> > Updating the most "safe" size is the part I haven't thought through yet.
-> >> >
-> >>
-> >> Ok. I think I understand the problem better now :).
-> >>
-> >> Looking at the __blockdev_direct_IO(), I saw it actually treats
-> >> size-extending aio dio write as synchronous and expects the dio to
-> >> complete before return (fs/direct-io.c line 1204 and line 1056-1061).
-> >
-> > Oh? It seems it will keep the write async as long as it's not a partial
-> > write
-> >        /*
-> >         * The only time we want to leave bios in flight is when a successful
-> >         * partial aio read or full aio write have been setup.  In that case
-> >         * bio completion will call aio_complete.  The only time it's safe to
-> >         * call aio_complete is when we return -EIOCBQUEUED, so we key on that.
-> >         * This had *better* be the only place that raises -EIOCBQUEUED.
-> >         */
-> >        BUG_ON(ret == -EIOCBQUEUED);
-> >        if (dio->is_async && ret == 0 && dio->result &&
-> >            ((rw & READ) || (dio->result == dio->size)))
-> >                ret = -EIOCBQUEUED;
-> >
-> >        if (ret != -EIOCBQUEUED)
-> >                dio_await_completion(dio);
-> >
-> 
-> If I read the code correctly, dio->is_async is not set for file extending write:
-> 
->         /*
->          * For file extending writes updating i_size before data
->          * writeouts complete can expose uninitialized blocks. So
->          * even for AIO, we need to wait for i/o to complete before
->          * returning in this case.
->          */
->         dio->is_async = !is_sync_kiocb(iocb) && !((rw & WRITE) &&
->                 (end > i_size_read(inode)));
-> 
-
-Ah... that's a little surprise to know. Async write to the end of file
-is actually synchonous. That explains why ext3 async direct IO could
-always expand inode i_size safely without having to worry about expose
-stale data out. 
-
-It would be better to fix this with end_io callback, user expects get
-higher performance via async mode.
-
-But, these are seperate from removing i_mutex lock from direct IO read,
-IMHO. The dio write to end of file won't extend inode size until the IO
-is completed (AIO or non AIO mode). So if we remove the i_mutex lock
-from the dio read,  in the case of parallel dio/buffered write to end of
-file and direct io read, it won't expose updated inode's block mapping
-tree to parallel direct IO read, as the i_size hasn't been changed yet.
-
-The only concern to remove the the lock from dio read path, is the
-buffered write to the hole. Isn't it?
-
-> Jiaying
-> 
-> >> Can we follow the same rule and check whether it is a size-extending
-> >> aio write in ext4_end_io_dio()? In such cases, we can call
-> >> ext4_end_aio_dio_nolock() synchronously instead of queuing
-> >> the work. I think this will protect us from truncate because we
-> >> are still holding i_mutex and i_alloc_sem.
-> >>
-> >> Jiaying
-> >>
-> >> >
-> >> >
-> >> >> Jiaying
-> >> >>
-> >> >> >
-> >> >> >>  We are wondering
-> >> >> >> whether we can extend this idea to buffer write as well. I.e., we always
-> >> >> >> allocate an uninitialized extent first during any write and convert it
-> >> >> >> as initialized at the time of end_io callback. This will eliminate the need
-> >> >> >> to hold i_mutex lock during direct read because a DIO read should never get
-> >> >> >> a block marked initialized before the block has been written with new data.
-> >> >> >>
-> >> >> >
-> >> >> > Oh I don't think so. For buffered IO, the data is being copied to
-> >> >> > buffer, direct IO read would first flush what's in page cache to disk,
-> >> >> > then read from disk. So if there is concurrent buffered write and direct
-> >> >> > read, removing the i_mutex locks from the direct IO path should still
-> >> >> > gurantee the right order, without having to treat buffered allocation
-> >> >> > with uninitialized extent/end_io.
-> >> >> >
-> >> >> > The i_mutex lock, from my understanding, is there to protect direct IO
-> >> >> > write to hole and concurrent direct IO read, we should able to remove
-> >> >> > this lock for extent based ext4 file.
-> >> >> >
-> >> >> >> We haven't implemented anything yet because we want to ask here first to
-> >> >> >> see whether this proposal makes sense to you.
-> >> >> >>
-> >> >> >
-> >> >> > It does make sense to me.
-> >> >> >
-> >> >> > Mingming
-> >> >> >> Regards,
-> >> >> >>
-> >> >> >> Jiaying
-> >> >> >> --
-> >> >> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >> >> >> the body of a message to majordomo@vger.kernel.org
-> >> >> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >> >> >
-> >> >> >
-> >> >> >
-> >> >
-> >> >
-> >> >
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> >
-> >
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 
+
+
+
+--- Comment #64 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-10-16 19:14:31 ---
+Reply-To: rwheeler@redhat.com
+
+On 10/16/2009 05:15 AM, Theodore Tso wrote:
+> On Fri, Oct 16, 2009 at 12:28:18AM -0400, Parag Warudkar wrote:
+>    
+>> So I have been experimenting with various root file systems on my
+>> laptop running latest git. This laptop some times has problems waking
+>> up from sleep and that results in it needing a hard reset and
+>> subsequently unclean file system.
+>>      
+> A number of people have reported this, and there is some discussion
+> and some suggestions that I've made here:
+>
+> 	http://bugzilla.kernel.org/show_bug.cgi?id=14354
+>
+> It's been very frustrating because I have not been able to replicate
+> it myself; I've been very much looking for someone who is (a) willing
+> to work with me on this, and perhaps willing to risk running fsck
+> frequently, perhaps after every single unclean shutdown, and (b) who
+> can reliably reproduce this problem.  On my system, which is a T400
+> running 9.04 with the latest git kernels, I've not been able to
+> reproduce it, despite many efforts to try to reproduce it.  (i.e.,
+> suspend the machine and then pull the battery and power; pulling the
+> battery and power, "echo c>  /proc/sysrq-trigger", etc., while
+> doing "make -j4" when the system is being uncleanly shutdown)
+>    
+
+I wonder if we might have better luck if we tested using an external 
+(e-sata or USB connected) S-ATA drive.
+
+Instead of pulling the drive's data connection, most of these have an 
+external power source that could be turned off so the drive firmware 
+won't have a chance to flush the volatile write cache. Note that some 
+drives automatically write back the cache if they have power and see a 
+bus disconnect, so hot unplugging just the e-sata or usb cable does not 
+do the trick.
+
+Given the number of cheap external drives, this should be easy to test 
+at home....
+
+Ric
+
+
+
+> So if you can come up with a reliable reproduction case, and don't
+> mind doing some experiments and/or exchanging debugging correspondance
+> with me, please let me know.  I'd **really** appreciate the help.
+>
+> Information that would be helpful to me would be:
+>
+> a) Detailed hardware information (what type of disk/SSD, what type of
+> laptop, hardware configuration, etc.)
+>
+> b) Detailed software information (what version of the kernel are you
+> using including any special patches, what distro and version are you
+> using, are you using LVM or dm-crypt, what partition or partitions did
+> you have mounted, was the failing partition a root partition or some
+> other mounted partition, etc.)
+>
+> c) Detailed reproduction recipe (what programs were you running before
+> the crash/failed suspend/resume, etc.)
+>
+>
+> If you do decide to go hunting this problem, one thing I would
+> strongly suggest is that either to use "tune2fs -c 1 /dev/XXX" to
+> force a fsck after every reboot, or if you are using LVM, to use the
+> e2croncheck script (found as an attachment in the above bugzilla entry
+> or in the e2fsprogs sources in the contrib directory) to take a
+> snapshot and then check the snapshot right after you reboot and login
+> to your system.  The reported file system corruptions seem to involve
+> the block allocation bitmaps getting corrupted, and so you will
+> significantly reduce the chances of data loss if you run e2fsck as
+> soon as possible after the file system corruption happens.  This helps
+> you not lose data, and it also helps us find the bug, since it helps
+> pinpoint the earliest possible point where the file system is getting
+> corrupted.
+>
+> (I suspect that some bug reporters had their file system get corrupted
+> one or more boot sessions earlier, and by the time the corruption was
+> painfully obvious, they had lost data.  Mercifully, running fsck
+> frequently is much less painful on a freshly created ext4 filesystem,
+> and of course if you are using an SSD.)
+>
+> If you can reliably reproduce the problem, it would be great to get a
+> bisection, or at least a confirmation that the problem doesn't exist
+> on 2.6.31, but does exist on 2.6.32-rcX kernels.  At this point I'm
+> reasonably sure it's a post-2.6.31 regression, but it would be good to
+> get a hard confirmation of that fact.
+>
+> For people with a reliable reproduction case, one possible experiment
+> can be found here:
+>
+>     http://bugzilla.kernel.org/show_bug.cgi?id=14354#c18
+>
+> Another thing you might try is to try reverting these commits one at a
+> time, and see if they make the problem go away: d0646f7, 5534fb5,
+> 7178057.  These are three commits that seem most likely, but there are
+> only 93 ext4-related commits, so doing a "git bisect start v2.6.31
+> v2.6.32-rc5 -- fs/ext4 fs/jbd2" should only take at most seven compile
+> tests --- assuming this is indeed a 2.6.31 regression and the problem
+> is an ext4-specific code change, as opposed to some other recent
+> change in the writeback code or some device driver which is
+> interacting badly with ext4.
+>
+> If that assumption isn't true and so a git bisect limited to fs/ext4
+> and fs/jbd2 doesn't find a bad commit which when reverted makes the
+> problem go away, we could try a full bisection search via "git bisect
+> start v2.6.31 v2.6.31-rc3", which would take approximately 14 compile
+> tests, but hopefully that wouldn't be necessary.
+>
+> I'm going to be at the kernel summit in Tokyo next week, so my e-mail
+> latency will be a bit longer than normal, which is one of the reason
+> why I've left a goodly list of potential experiments for people to
+> try.  If you can come up with a reliable regression, and are willing
+> to work with me or to try some of the above mentioned tests, I'll
+> definitely buy you a real (or virtual) beer.
+>
+> Given that a number of people have reported losing data as a result,
+> it would **definitely** be a good thing to get this fixed before
+> 2.6.32 is released.
+>
+> Thanks,
+>
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
