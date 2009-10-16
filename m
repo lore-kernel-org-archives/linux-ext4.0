@@ -1,161 +1,70 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 16 Oct 2009 22:24:23 GMT
-Message-ID: <200910162224.n9GMONFN012841@demeter.kernel.org>
+Date: Fri, 16 Oct 2009 23:02:34 GMT
+Message-ID: <200910162302.n9GN2Y9U018197@demeter.kernel.org>
 References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39629 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:40864 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751460AbZJPWYS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 18:24:18 -0400
+	with ESMTP id S1750722AbZJPXC3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 19:02:29 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9GMONEn012842
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 22:24:23 GMT
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9GN2YMg018198
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 23:02:34 GMT
 In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=3D14354
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 
 
 
 
---- Comment #68 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>=
-  2009-10-16 22:24:22 ---
-Reply-To: parag.lkml@gmail.com
+--- Comment #69 from Brian Rogers <brian@xyzw.org>  2009-10-16 23:02:32 ---
+I have an idea for anyone who gets this problem on a clean reboot. Do what it
+takes to reproduce the problem, then quit to single-user mode (sudo telinit 1)
+and try to remount root as read-only:
 
-On Fri, Oct 16, 2009 at 5:15 AM, Theodore Tso <tytso@mit.edu> wrote:
->
-> A number of people have reported this, and there is some discussion
-> and some suggestions that I've made here:
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0http://bugzilla.kernel.org/show_bug.cgi?id=
-=3D14354
+mount -o ro,remount /
 
-Ok, I went through this bug report and here are some immediately
-useful things to note -
-1) I am not running Karmic - I am running Jaunty x86_64 clean install
-2) I am not using dm/lvm or anything fancy for that matter
-3) So far, I have been able to reproduce this problem by just hitting
-the power button on my laptop when it is doing nothing. It also
-happens when waking up from s2ram and the laptop wasn't doing anything
-when it was suspended (I mean I wasn't copying/deleting stuff, wasn't
-running make - laptop was
+If you can't do this because the filesystem is busy, look for and kill any
+process that might have a file open for writing. Remounting as read-only does
+not seem to be forcible, as the command appears to succeed, but you still have
+write access. So it's a good idea to 'touch /blah' to make sure you've turned
+off write access.
 
-> So if you can come up with a reliable reproduction case, and don't
-> mind doing some experiments and/or exchanging debugging correspondanc=
-e
-> with me, please let me know. =C2=A0I'd **really** appreciate the help=
-=2E
+Plan A. If you've successfully remounted as read-only, run 'e2fsck -f' on your
+filesystem. If you had no errors on the filesystem before, but you do now, you
+know the errors were introduced during the session. If there are no errors on
+this check and you never get the corruption on the next boot after doing this,
+it's probably a problem with data not getting flushed by the time the system
+reboots.
 
-My laptop is a reliable test case - for me at least! I tried just now
-to abruptly reset the laptop and upon reboot there was fsck followed
-by another reboot only to have X fail to start and NetWorkManager
-segfault. At this point I am pretty sure I can reproduce it just be
-power cycling the laptop using the power button.
-After another fsck and a reboot it finally comes up.
+Plan B. If you can't remount as read-only and can't find a process responsible
+for that to kill, run sync, then 'e2fsck -fn' on the partition and report the
+results.
 
->
-> Information that would be helpful to me would be:
->
-> a) Detailed hardware information (what type of disk/SSD, what type of
-> laptop, hardware configuration, etc.)
+I just did a dist-upgrade on my desktop machine running Karmic and the standard
+Karmic 2.6.31 kernel, and I was going to do the above before rebooting, but had
+to resort to plan B because I couldn't remount / as read-only. Even after sync,
+e2fsck warned that it was skipping journal recovery, and it reported errors.
 
-SSD is a Corsair P256 latest firmware, been used on other machine
-without any issues.
-Laptop is HP EliteBook 8530p, 4GB RAM, Intel T9400 CPU, Intel WiFi,
-ATI 3650 GPU.
-No proprietary drivers ever loaded.
+Ted, is it to be expected that e2fsck would find a journal recovery necessary
+and see errors even if the filesystem was still mounted rw, but had been synced
+and no write access had taken place since the sync? I know no writing had taken
+place because I could run sync after the drive had spun down, and it wouldn't
+spin up again. Yet e2fsck continued to report the same result.
 
+I did 'reboot -f' after this to avoid any script shenanigans and used
+'init=/bin/bash' on the next boot so I could manually examine the situation.
+When my root fs was been mounted read-only, it replayed the journal, then there
+were no errors on 'e2fsck -f'.
 
->
-> b) Detailed software information (what version of the kernel are you
-> using including any special patches, what distro and version are you
-> using, are you using LVM or dm-crypt, what partition or partitions di=
-d
-> you have mounted, was the failing partition a root partition or some
-> other mounted partition, etc.)
-It happens on current custom compiled git - both on custom and minimal
-localmodconfig.
-It also happens on Ubuntu daily kernel PPA builds.
-
->
-> c) Detailed reproduction recipe (what programs were you running befor=
-e
-> the crash/failed suspend/resume, etc.)
->
-Really nothing special - I boot to desktop, may be open FireFox for
-few minutes and then try reset.
-fsck then reports a bunch of errors and forces reboot. On reboot X
-fails to start, file system although mounted rw cannot be written to -
-vim for instance won't open any file due to write errors. Another fsck
-finds few more problems (or sometimes not) and reboot brings it back
-to desktop.
-
-So my problem is not corruption really but the amount and nature of
-errors fsck encounters and corrects on unclean shutdown and the write
-failures until another fsck -f finds more problems and reboots. None
-of this happens on any other filesystem including the /boot ext3 fs on
-the same disk.
-
->
-> If you do decide to go hunting this problem, one thing I would
-> strongly suggest is that either to use "tune2fs -c 1 /dev/XXX" to
-> force a fsck after every reboot, or if you are using LVM, to use the
-> e2croncheck script (found as an attachment in the above bugzilla entr=
-y
-> or in the e2fsprogs sources in the contrib directory) to take a
-> snapshot and then check the snapshot right after you reboot and login
-> to your system. =C2=A0The reported file system corruptions seem to in=
-volve
-> the block allocation bitmaps getting corrupted, and so you will
-> significantly reduce the chances of data loss if you run e2fsck as
-> soon as possible after the file system corruption happens. =C2=A0This=
- helps
-> you not lose data, and it also helps us find the bug, since it helps
-> pinpoint the earliest possible point where the file system is getting
-> corrupted.
-
-I have enabled fsck on every mount but I am not certain ongoing "clean
-state" corruption is the problem in my case.
-Things have worked well without any trouble if I don't end up doing a
-unclean shutdown.
-
-[ snip]
-
-> I'm going to be at the kernel summit in Tokyo next week, so my e-mail
-> latency will be a bit longer than normal, which is one of the reason
-> why I've left a goodly list of potential experiments for people to
-> try. =C2=A0If you can come up with a reliable regression, and are wil=
-ling
-> to work with me or to try some of the above mentioned tests, I'll
-> definitely buy you a real (or virtual) beer.
->
-
-I will try the things you mentioned - finding if this happens in pre
-=2E32 kernels is the first one on my list followed by reverting the
-specific commits you mentioned, followed if necessary by complete
-bisection.
-
-I am afraid however this is not a regression - at least not a recent
-one, as I have had this experience with ext4 and unclean shutdowns
-since long time.
-And that's on different hardware/different disks.
-
-Thanks,
-
-Parag
-
---=20
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
 ------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+You are watching the assignee of the bug.
