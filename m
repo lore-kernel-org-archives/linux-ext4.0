@@ -1,33 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14287] ext4: fixpoint divide exception at ext4_fill_super
-Date: Fri, 16 Oct 2009 12:29:43 GMT
-Message-ID: <200910161229.n9GCThx8007403@demeter.kernel.org>
-References: <bug-14287-13602@http.bugzilla.kernel.org/>
+From: Jiri Kosina <jkosina-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 7/8] trivial: fix many typos s/untill/until/
+Date: Fri, 16 Oct 2009 15:24:21 +0200 (CEST)
+Message-ID: <alpine.LSU.2.00.0910161523400.8582@wotan.suse.de>
+References: <1255638072-6236-1-git-send-email-cascardo@holoscopio.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:35664 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757470AbZJPMaU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Oct 2009 08:30:20 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9GCThJp007404
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2009 12:29:43 GMT
-In-Reply-To: <bug-14287-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	bonding-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, users-IdT//7ivld+3fTS+yoWyeR8Sddau0WhX@public.gmane.org,
+	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-bluetooth-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Thadeu Lima de Souza Cascardo <cascardo-DmMZpsCg3uxeGPcbtGPokg@public.gmane.org>
+Return-path: <linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1255638072-6236-1-git-send-email-cascardo-DmMZpsCg3uxeGPcbtGPokg@public.gmane.org>
+Sender: linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14287
+On Thu, 15 Oct 2009, Thadeu Lima de Souza Cascardo wrote:
 
+> Signed-off-by: Thadeu Lima de Souza Cascardo <cascardo-DmMZpsCg3uxeGPcbtGPokg@public.gmane.org>
+> ---
+>  drivers/infiniband/ulp/iser/iser_verbs.c |    2 +-
+>  drivers/net/bonding/bond_alb.c           |    2 +-
+>  drivers/net/wireless/rt2x00/rt2800usb.c  |    2 +-
+>  drivers/scsi/bnx2i/bnx2i_iscsi.c         |    2 +-
+>  drivers/staging/rtl8187se/r8180.h        |    2 +-
+>  fs/ext4/balloc.c                         |    2 +-
+>  net/bluetooth/bnep/core.c                |    2 +-
+>  net/sctp/sm_statefuns.c                  |    2 +-
+>  8 files changed, 8 insertions(+), 8 deletions(-)
 
-
-
-
---- Comment #3 from R.N.Sastry <rnsastry@linux.vnet.ibm.com>  2009-10-16 12:29:42 ---
-Any updates!!
+Merged together with patches 2-8 from your series and applied to trivial 
+queue.
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jiri Kosina
+SUSE Labs, Novell Inc.
