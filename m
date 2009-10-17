@@ -1,45 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Sat, 17 Oct 2009 20:59:08 GMT
-Message-ID: <200910172059.n9HKx8bI015264@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: optimising filesystem for many small files
+Date: Sat, 17 Oct 2009 18:26:19 -0400
+Message-ID: <20091017222619.GA10074@mit.edu>
+References: <84c89ac10910162352x5cdeca37icfbf0af2f2325d7c@mail.gmail.com> <4AD9D599.3000306@redhat.com> <84c89ac10910171056i773dfb93wc2e917a086dd8ef0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, ext3-users@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Viji V Nair <viji@fedoraproject.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39994 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753831AbZJQU7E (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Oct 2009 16:59:04 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9HKx86K015265
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Oct 2009 20:59:08 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:48010 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751930AbZJQW0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Oct 2009 18:26:20 -0400
+Content-Disposition: inline
+In-Reply-To: <84c89ac10910171056i773dfb93wc2e917a086dd8ef0@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+On Sat, Oct 17, 2009 at 11:26:04PM +0530, Viji V Nair wrote:
+> these files are not in a single directory, this is a pyramid
+> structure. There are total 15 pyramids and coming down from top to
+> bottom the sub directories and files  are multiplied by a factor of 4.
+> 
+> The IO is scattered all over!!!! and this is a single disk file system.
+> 
+> Since the python application is creating files, it is creating
+> multiple files to multiple sub directories at a time.
 
+What is the application trying to do, at a high level?  Sometimes it's
+not possible to optimize a filesystem against a badly designed
+application.  :-(
 
+It sounds like it is generating files distributed in subdirectories in
+a completely random order.  How are the files going to be read
+afterwards?  In the order they were created, or some other order
+different from the order in which they were read?
 
+With a sufficiently bad access patterns, there may not be a lot you
+can do, other than (a) throw hardware at the problem, or (b) fix or
+redesign the application to be more intelligent (if possible).
 
-
---- Comment #86 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-17 20:59:07 ---
-With commit fe188c0e i get "clean" fsck log with 91ac6f43 i get error like:
-
-Free blocks count wrong for group #0 (8935, counted=8922).
-
-Entry 'libnss_wins.so.2' in /var/spool/postfix/lib (155666) has deleted/unused
-inode 136151.  Clear? yes
-
-Running additional passes to resolve blocks claimed by more than one inode...
-Pass 1B: Rescanning for multiply-claimed blocks
-Multiply-claimed block(s) in inode 131134: 557394
-Multiply-claimed block(s) in inode 131201: 557394
-
-... you'll see it. To be sue i double checked two this kernels.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+	     		       	    		    - Ted
