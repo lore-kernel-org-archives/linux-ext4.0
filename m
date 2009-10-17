@@ -1,54 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Sat, 17 Oct 2009 11:37:25 GMT
-Message-ID: <200910171137.n9HBbP4T023087@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: optimising filesystem for many small files
+Date: Sat, 17 Oct 2009 09:32:57 -0500
+Message-ID: <4AD9D599.3000306@redhat.com>
+References: <84c89ac10910162352x5cdeca37icfbf0af2f2325d7c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:45349 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750719AbZJQLhU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Oct 2009 07:37:20 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9HBbPaX023088
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Oct 2009 11:37:25 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, ext3-users@redhat.com
+To: Viji V Nair <viji@fedoraproject.org>
+Return-path: <ext3-users-bounces@redhat.com>
+In-Reply-To: <84c89ac10910162352x5cdeca37icfbf0af2f2325d7c@mail.gmail.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/ext3-users>
+List-Post: <mailto:ext3-users@redhat.com>
+List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=subscribe>
+Sender: ext3-users-bounces@redhat.com
+Errors-To: ext3-users-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+Viji V Nair wrote:
+> Hi,
+> 
+> System : Fedora 11 x86_64
+> Current Filesystem: 150G ext4 (formatted with "-T small" option)
+> Number of files: 50 Million, 1 to 30K png images
+> 
+> We are generating these files using a python programme and getting very 
+> slow IO performance. While generation there in only write, no read. 
+> After generation there is heavy read and no write.
+> 
+> I am looking for best practices/recommendation to get a better performance.
+> 
+> Any suggestions of the above are greatly appreciated.
+> 
+> Viji
+> 
 
+I would start with using blktrace and/or seekwatcher to see what your IO 
+patterns look like when you're populating the disk; I would guess that 
+you're seeing IO scattered all over.
 
+How you are placing the files in subdirectories will affect this quite a 
+lot; sitting in 1 directory for a while, filling with images, before 
+moving on to the next directory, will probably help.  Putting each new 
+file in a new subdirectory will probably give very bad results.
 
-
-
---- Comment #79 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-17 11:37:24 ---
-Thank you for explanation. While bisect fsck.log was for me like: i have broken
-files WTF fsck do not telling me anything. If you mean with "files system
-corruption": corrupted orphan, unattached inode, block bitmap difference...;
-yes this test clearly reproduce it. But only with md5sum i kan see how big are
-real damages.
-
-Here is the script i do:
-make modules_install
-echo "1v3 done"
-sleep 5m 
-make modules_install
-echo "2v3 done"
-sleep 5m
-make modules_install
-echo "3v3 done do checksum"
-
-mount /dev/sda13 /mnt
-md5deep -r /lib/modules/$k_version/* > /mnt/md5sums
-umount /mnt
-
-sleep 1m
-echo c > /proc/sysrq-trigger
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+-Eric
