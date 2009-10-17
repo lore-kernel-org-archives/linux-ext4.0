@@ -1,110 +1,36 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 DIO read performance issue on SSD
-Date: Fri, 16 Oct 2009 15:15:53 -0400
-Message-ID: <20091016191553.GA8013@mit.edu>
-References: <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com> <1255546117.4377.62.camel@mingming-laptop> <5df78e1d0910141248h1f537863n97991585e6147ca7@mail.gmail.com> <1255553852.4377.63.camel@mingming-laptop> <5df78e1d0910141442g680edac9m6bce0f9eb21f8ea6@mail.gmail.com> <1255627645.4377.1109.camel@mingming-laptop> <5df78e1d0910151827r7b6a9359mac6541833884c3d2@mail.gmail.com> <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Sat, 17 Oct 2009 06:12:44 GMT
+Message-ID: <200910170612.n9H6CiEh007807@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@google.com>,
-	Michael Rubin <mrubin@google.com>,
-	Manuel Benitez <rickyb@google.com>, Mingming <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jiaying Zhang <jiayingz@google.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:51422 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750839AbZJQGGh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Oct 2009 02:06:37 -0400
-Content-Disposition: inline
-In-Reply-To: <5df78e1d0910151827r7b6a9359mac6541833884c3d2@mail.gmail.com> <5df78e1d0910091634q22e6a372g3738b0d9e9d0e6c9@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:38356 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750839AbZJQGMj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Oct 2009 02:12:39 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9H6CiLC007808
+	for <linux-ext4@vger.kernel.org>; Sat, 17 Oct 2009 06:12:44 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 09, 2009 at 04:34:08PM -0700, Jiaying Zhang wrote:
-> Recently, we are evaluating the ext4 performance on a high speed SSD.
-> One problem we found is that ext4 performance doesn't scale well with
-> multiple threads or multiple AIOs reading a single file with O_DIRECT.
-> E.g., with 4k block size, multiple-thread DIO AIO random read on ext4
-> can lose up to 50% throughput compared to the results we get via RAW IO.
-> 
-> After some initial analysis, we think the ext4 performance problem is caused
-> by the use of i_mutex lock during DIO read. I.e., during DIO read, we grab
-> the i_mutex lock in __blockdev_direct_IO because ext4 uses the default
-> DIO_LOCKING from the generic fs code. I did a quick test by calling
-> blockdev_direct_IO_no_locking() in ext4_direct_IO() and I saw ext4 DIO read
-> got 99% performance as raw IO.
-
-Your diagnosis makes sense, and the test of using
-blockdev_direct_IO_nol_locking() tends to confirm things, but before
-we start surgery, there's a very easy way of confirming that i_mutex
-is under contention.  Enable CONFIG_LOCK_STAT, do "echo 0> >
-/proc/lock_stat" before running your benchmark, and then capture the
-contents of /proc/lock_stat after running your benchmark.  For more
-information see Documentation/lockstat.txt in the kernel sources.
-It's always nice to grab before and after snapshots, and it's a handy
-way of finding other contention points.
-
-> That uninitialized extent will be marked as initialized at the
-> end_io callback. We are wondering whether we can extend this idea to
-> buffer write as well. I.e., we always allocate an uninitialized
-> extent first during any write and convert it as initialized at the
-> time of end_io callback. This will eliminate the need to hold
-> i_mutex lock during direct read because a DIO read should never get
-> a block marked initialized before the block has been written with
-> new data.
-
-Obviously this will only work for extent-mapped inodes.  So it means
-complicating the callback code somewhat, but in theory, this should
-work.
-
-On Thu, Oct 15, 2009 at 06:27:12PM -0700, Jiaying Zhang wrote:
-> Thinking about this again, I think there is another benefit to always
-> allocate uninitialized blocks first in all kinds of write, including
-> size-extending write.
-> 
-> Currently, we avoid exposing stale data during size-extending
-> write by adding the inode to the orphan list before changing the
-> file size. This helps us with journaled ext4 because the journal
-> guarantees that the on-disk orphan list will be updated first before
-> data is written to disk and i_size is updated. But with non-journal ext4,
-> we don't update orphan list during size-extending write because
-> without a journal, there is no guarantee on the ordering of writes to disk.
-> So if the system crashes after the on-disk i_size is updated but before
-> data hits to disk (this is rare but can happen during fsync), we may
-> end up exposing stale data with non-journal ext4.
-
-Actually, that's not quite correct.  That's the plan for how works in
-ext3's guarded mode (which hasn't been merged into mainline nor ported
-to ext4), but in ext3 and ext4's ordered mode the way we avoid
-exposing stale data is by forcing data blocks to disk before the
-commit is allowed to complete.  You're right that either way, it doesn't
-help you if you're not using a journal.  (This is also going to be a
-problem in supporting TRIM/DISCARD, since we are depending on the
-commit mechanism to determine when it's safe to send the TRIM command
-to the block device --- but that's an separate issue.)
-
-> I think allocating uninitialized extend first during such size-extending
-> write and then converting the extend into initialized during end_io
-> time can help close this security hole with non-journal ext4.
-
-Well..... strictly speaking, using end_io won't guarantee that no
-stale data will be avoided, since the end_io callback is called when
-the data has been transfered to the disk controller, and not when data
-has actually be written to iron oxide.  In other words, since there's
-no barrier operation, there are no guarantees on a power drop.  Still,
-it's certainly better than nothing, and it will make things much
-better than they were previously.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 
-By the way, something which would be worth testing is making sure that
-direct I/O read racing with a buffered write with delayed allocation
-works correctly today.  What should happen (although it may not be
-what application programmers expect) is that direct I/O read from part
-of a file which has just been written via buffered write with delayed
-allocation enabled and the block has been't been allocated yet, the
-direct I/O read should behave a read from a hole.  (XFS behaves the
-same way; we don't gurantee cache coherence when direct I/O and
-non-direct I/O is mixed.)
 
-							- Ted
+
+
+--- Comment #73 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-17 06:12:43 ---
+oh... man... s/fsck/fstab/g
+
+cat fstab:
+/dev/sda1 /               ext4    auto_da_alloc=0,errors=remount-ro 0       1
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
