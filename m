@@ -1,56 +1,38 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Sat, 17 Oct 2009 15:23:22 GMT
-Message-ID: <200910171523.n9HFNMqn028738@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsck: Always fix last mount/write/check time with -p
+Date: Sat, 17 Oct 2009 10:23:09 -0500
+Message-ID: <4AD9E15D.2060400@redhat.com>
+References: <E1MxMjT-0003XH-Mn@zelda.netsplit.com> <20091017010330.GA8081@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Scott James Remnant <scott@ubuntu.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:56492 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752343AbZJQPXR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Oct 2009 11:23:17 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9HFNMbN028739
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Oct 2009 15:23:22 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:65426 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751945AbZJQPXL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Oct 2009 11:23:11 -0400
+In-Reply-To: <20091017010330.GA8081@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+Theodore Tso wrote:
+...
 
+> In any case, I accept that in some cases it's not possible for the
+> distribution to do the right thing.  I do want to leave the
+> possibility for a "strict mode", in the hopes that one day we can do a
+> better job.  So here's what I ultimately checked into e2fsprogs.
+> 
+>        	     	       	      		 	 - Ted
+> 
+> From ba5131f6d48eded504e84c2a8ffc8131df8a512e Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Fri, 16 Oct 2009 20:46:45 -0400
+> Subject: [PATCH] e2fsck: Accept superblock times to be fudged by up to 24 hours by default
 
+could you please push this out to the kernel.org repo?
 
-
-
---- Comment #82 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-17 15:23:20 ---
-I double checking it now, but is seems to be this patch:
-
-commit 91ac6f43317c0bf99969665f98016548011dfa38
-Author: Frank Mayhar <fmayhar@google.com>
-Date:   Wed Sep 9 22:33:47 2009 -0400
-
-    ext4: Make non-journal fsync work properly
-
-    Teach ext4_write_inode() and ext4_do_update_inode() about non-journal
-    mode:  If we're not using a journal, ext4_write_inode() now calls
-    ext4_do_update_inode() (after getting the iloc via ext4_get_inode_loc())
-    with a new "do_sync" parameter.  If that parameter is nonzero _and_ we're
-    not using a journal, ext4_do_update_inode() calls sync_dirty_buffer()
-    instead of ext4_handle_dirty_metadata().
-
-    This problem was found in power-fail testing, checking the amount of
-    loss of files and blocks after a power failure when using fsync() and
-    when not using fsync().  It turned out that using fsync() was actually
-    worse than not doing so, possibly because it increased the likelihood
-    that the inodes would remain unflushed and would therefore be lost at
-    the power failure.
-
-    Signed-off-by: Frank Mayhar <fmayhar@google.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks,
+-Eric
