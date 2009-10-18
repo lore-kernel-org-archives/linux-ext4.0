@@ -1,44 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: optimising filesystem for many small files
-Date: Sat, 17 Oct 2009 18:26:19 -0400
-Message-ID: <20091017222619.GA10074@mit.edu>
-References: <84c89ac10910162352x5cdeca37icfbf0af2f2325d7c@mail.gmail.com> <4AD9D599.3000306@redhat.com> <84c89ac10910171056i773dfb93wc2e917a086dd8ef0@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Sun, 18 Oct 2009 00:02:56 GMT
+Message-ID: <200910180002.n9I02usL006596@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, ext3-users@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Viji V Nair <viji@fedoraproject.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:48010 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751930AbZJQW0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Oct 2009 18:26:20 -0400
-Content-Disposition: inline
-In-Reply-To: <84c89ac10910171056i773dfb93wc2e917a086dd8ef0@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:38733 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751742AbZJRACv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Oct 2009 20:02:51 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9I02uhk006598
+	for <linux-ext4@vger.kernel.org>; Sun, 18 Oct 2009 00:02:56 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 17, 2009 at 11:26:04PM +0530, Viji V Nair wrote:
-> these files are not in a single directory, this is a pyramid
-> structure. There are total 15 pyramids and coming down from top to
-> bottom the sub directories and files  are multiplied by a factor of 4.
-> 
-> The IO is scattered all over!!!! and this is a single disk file system.
-> 
-> Since the python application is creating files, it is creating
-> multiple files to multiple sub directories at a time.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-What is the application trying to do, at a high level?  Sometimes it's
-not possible to optimize a filesystem against a badly designed
-application.  :-(
 
-It sounds like it is generating files distributed in subdirectories in
-a completely random order.  How are the files going to be read
-afterwards?  In the order they were created, or some other order
-different from the order in which they were read?
+Alasdair G Kergon <agk@redhat.com> changed:
 
-With a sufficiently bad access patterns, there may not be a lot you
-can do, other than (a) throw hardware at the problem, or (b) fix or
-redesign the application to be more intelligent (if possible).
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+  Attachment #23442|application/octet-stream    |text/plain
+          mime type|                            |
 
-	     		       	    		    - Ted
+
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
