@@ -1,25 +1,43 @@
-From: Doug Hunley <doug@hunley.homeip.net>
-Subject: changing stride and stripe_width post-fs-creation?
-Date: Tue, 20 Oct 2009 13:32:07 -0400
-Message-ID: <7284e2210910201032h74cf437bm6043d97748ece4c9@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Tue, 20 Oct 2009 20:21:03 GMT
+Message-ID: <200910202021.n9KKL32h029379@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f207.google.com ([209.85.219.207]:54349 "EHLO
-	mail-ew0-f207.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751096AbZJTRcD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2009 13:32:03 -0400
-Received: by ewy3 with SMTP id 3so5065280ewy.17
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2009 10:32:07 -0700 (PDT)
+Received: from demeter.kernel.org ([140.211.167.39]:54263 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751381AbZJTUU6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2009 16:20:58 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9KKL3VI029380
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2009 20:21:03 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Is it safe to use tune2fs to alter stride and stripe_width on an ext4
-fs once it has been created? Any caveats I should know about? Thanks
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
+
+
+
+
+
+--- Comment #95 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-20 20:21:01 ---
+Created an attachment (id=23480)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=23480)
+kernel config
+
+How about my kernel config? i use almost the same config on all my pc's on
+different platforms i386/amd64. CPU - pentium M, athom, core2duo E8400O; RAM -
+1.5G, 2G, 4G; i915/ich6, g945/ich7, g45/ich10r. ...
+
+So i don't think , it is about hardware... probably it is about kernel config.
+
+Alexey
 
 -- 
-Douglas J Hunley, RHCT
-doug.hunley@gmail.com : http://douglasjhunley.com : Twitter: @hunleyd
-
-Obsessively opposed to the typical.
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
