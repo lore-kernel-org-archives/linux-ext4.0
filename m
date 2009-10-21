@@ -1,34 +1,45 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Wed, 21 Oct 2009 05:55:56 GMT
-Message-ID: <200910210555.n9L5tuld015658@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: fix configure.in typo
+Date: Wed, 21 Oct 2009 03:52:32 -0400
+Message-ID: <20091021075232.GA9574@mit.edu>
+References: <4ADE8477.2070906@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39828 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750958AbZJUFzv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Oct 2009 01:55:51 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9L5tu9a015659
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2009 05:55:56 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:51243 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752735AbZJUHwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Oct 2009 03:52:51 -0400
+Content-Disposition: inline
+In-Reply-To: <4ADE8477.2070906@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+On Tue, Oct 20, 2009 at 10:48:07PM -0500, Eric Sandeen wrote:
+> I think vim <esc>wq turned into <esc>2wq or something; in any case
+> blkid_probe_get_topology2 is not the right thing to search for.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Applied, thanks.
+
+					- Ted
+> (note; with this, once I try to build w/ a new libblkid, I still
+> get a mkfs build error ... it's still picking up the in-tree blkid
+> headers)
+
+Hmmm... which in-tree header files is it picking up?  And what error
+are you seeing?
+
+There are a few header files that I can see that we should probably
+clean-up, but they don't look like they should be problematic.
+
+build.static/lib/blkid/blkid_types.h -- just simple type definitions
+lib/blkid/blkidP.h ---  only used by lib/blkid/*.c
+lib/blkid/list.h --- only used by lib/blkid/*.c
+lib/blkid/probe.h -- only used by lib/blkid/probe.c
 
 
 
-
-
---- Comment #98 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-21 05:55:49 ---
-I use "gcc (Ubuntu 4.4.1-4ubuntu8) 4.4.1", you can see it in dmesg.
-Are there any way to disasm this function?
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
