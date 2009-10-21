@@ -1,180 +1,114 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: [PATCH 14/41] whiteout: Split of ext2_append_link() from ext2_add_link()
-Date: Wed, 21 Oct 2009 12:19:12 -0700
-Message-ID: <1256152779-10054-15-git-send-email-vaurora@redhat.com>
-References: <1256152779-10054-1-git-send-email-vaurora@redhat.com>
- <1256152779-10054-2-git-send-email-vaurora@redhat.com>
- <1256152779-10054-3-git-send-email-vaurora@redhat.com>
- <1256152779-10054-4-git-send-email-vaurora@redhat.com>
- <1256152779-10054-5-git-send-email-vaurora@redhat.com>
- <1256152779-10054-6-git-send-email-vaurora@redhat.com>
- <1256152779-10054-7-git-send-email-vaurora@redhat.com>
- <1256152779-10054-8-git-send-email-vaurora@redhat.com>
- <1256152779-10054-9-git-send-email-vaurora@redhat.com>
- <1256152779-10054-10-git-send-email-vaurora@redhat.com>
- <1256152779-10054-11-git-send-email-vaurora@redhat.com>
- <1256152779-10054-12-git-send-email-vaurora@redhat.com>
- <1256152779-10054-13-git-send-email-vaurora@redhat.com>
- <1256152779-10054-14-git-send-email-vaurora@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Jan Blunck <jblunck@suse.de>, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Jan Blunck <jblunck@suse.de>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Andy Whitcroft <apw@canonical.com>,
-	Scott James Remnant <scott@canonica
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755324AbZJUT2q@vger.kernel.org>
-In-Reply-To: <1256152779-10054-14-git-send-email-vaurora@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC V2] ext4: flush delalloc blocks when space is low
+Date: Wed, 21 Oct 2009 14:51:04 -0500
+Message-ID: <4ADF6628.9080105@redhat.com>
+References: <4ADE24CF.1080906@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:17620 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754128AbZJUTvB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Oct 2009 15:51:01 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n9LJp5JM014508
+	for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2009 15:51:05 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n9LJp5H6012104
+	for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2009 15:51:05 -0400
+In-Reply-To: <4ADE24CF.1080906@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Blunck <jblunck@suse.de>
+Creating many small files in rapid succession on a small
+filesystem can lead to spurious ENOSPC; on a 104MB filesystem:
 
-The ext2_append_link() is later used to find or append a directory
-entry to whiteout.
+for i in `seq 1 22500`; do
+    echo -n > $SCRATCH_MNT/$i
+    echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX > $SCRATCH_MNT/$i
+done
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
-Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-Cc: Theodore Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
+leads to ENOSPC even though after a sync, 40% of the fs is free
+again.
+
+This is because we reserve worst-case metadata for delalloc writes,
+and when data is allocated that worst-case reservation was not
+needed.
+
+I've added 2 flushers here:
+
+ * when free space is low compared to dirty blocks, do an async flush
+ * when we get a hard ENOSPC, do a sync flush before retry
+
+This resolves the testcase for me, and survives all 4 generic
+ENOSPC tests in xfstests.
+
+V2: don't try to sync if we're still in a (probably nested) transaction.
+
+Thanks to Josef for pointing out that possibility.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/ext2/dir.c |   70 ++++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 50 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 6cde970..cb8ceff 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -472,9 +472,10 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 1d04189..28bde58 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -605,11 +605,27 @@ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+  */
+ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ {
+-	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) ||
++	s64 dirtyblocks = 0;
++	struct percpu_counter *dbc = &EXT4_SB(sb)->s_dirtyblocks_counter;
++
++	if (test_opt(sb, DELALLOC))
++		dirtyblocks = percpu_counter_read_positive(dbc);
++
++	if ((!ext4_has_free_blocks(EXT4_SB(sb), 1) && !dirtyblocks) ||
+ 	    (*retries)++ > 3 ||
+ 	    !EXT4_SB(sb)->s_journal)
+ 		return 0;
+ 
++	/* try a sync to flush delalloc space & free resvd metadata */
++	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) && dirtyblocks) {
++		if (!ext4_journal_current_handle()) {
++			down_read(&sb->s_umount);
++			sync_inodes_sb(sb);
++			up_read(&sb->s_umount);
++			return 1;
++		}
++	}
++
+ 	jbd_debug(1, "%s: retrying operation after ENOSPC\n", sb->s_id);
+ 
+ 	return jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5c5bc5d..27c8b9b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3024,11 +3024,18 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 	if (2 * free_blocks < 3 * dirty_blocks ||
+ 		free_blocks < (dirty_blocks + EXT4_FREEBLOCKS_WATERMARK)) {
+ 		/*
+-		 * free block count is less that 150% of dirty blocks
+-		 * or free blocks is less that watermark
++		 * free block count is less than 150% of dirty blocks
++		 * or free blocks is less than watermark
+ 		 */
+ 		return 1;
+ 	}
++	/*
++	 * Even if we don't switch but are nearing capacity,
++	 * start pushing delalloc when 1/2 of free blocks are dirty.
++	 */
++	if (free_blocks < 2 * dirty_blocks)
++		writeback_inodes_sb(sb);
++
+ 	return 0;
  }
  
- /*
-- *	Parent is locked.
-+ * Find or append a given dentry to the parent directory
-  */
--int ext2_add_link (struct dentry *dentry, struct inode *inode)
-+static ext2_dirent * ext2_append_entry(struct dentry * dentry,
-+				       struct page ** page)
- {
- 	struct inode *dir = dentry->d_parent->d_inode;
- 	const char *name = dentry->d_name.name;
-@@ -482,13 +483,10 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	unsigned chunk_size = ext2_chunk_size(dir);
- 	unsigned reclen = EXT2_DIR_REC_LEN(namelen);
- 	unsigned short rec_len, name_len;
--	struct page *page = NULL;
--	ext2_dirent * de;
-+	ext2_dirent * de = NULL;
- 	unsigned long npages = dir_pages(dir);
- 	unsigned long n;
- 	char *kaddr;
--	loff_t pos;
--	int err;
- 
- 	/*
- 	 * We take care of directory expansion in the same loop.
-@@ -498,20 +496,19 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	for (n = 0; n <= npages; n++) {
- 		char *dir_end;
- 
--		page = ext2_get_page(dir, n, 0);
--		err = PTR_ERR(page);
--		if (IS_ERR(page))
-+		*page = ext2_get_page(dir, n, 0);
-+		de = ERR_PTR(PTR_ERR(*page));
-+		if (IS_ERR(*page))
- 			goto out;
--		lock_page(page);
--		kaddr = page_address(page);
-+		lock_page(*page);
-+		kaddr = page_address(*page);
- 		dir_end = kaddr + ext2_last_byte(dir, n);
- 		de = (ext2_dirent *)kaddr;
- 		kaddr += PAGE_CACHE_SIZE - reclen;
- 		while ((char *)de <= kaddr) {
- 			if ((char *)de == dir_end) {
- 				/* We hit i_size */
--				name_len = 0;
--				rec_len = chunk_size;
-+				de->name_len = 0;
- 				de->rec_len = ext2_rec_len_to_disk(chunk_size);
- 				de->inode = 0;
- 				goto got_it;
-@@ -519,12 +516,11 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 			if (de->rec_len == 0) {
- 				ext2_error(dir->i_sb, __func__,
- 					"zero-length directory entry");
--				err = -EIO;
-+				de = ERR_PTR(-EIO);
- 				goto out_unlock;
- 			}
--			err = -EEXIST;
- 			if (ext2_match (namelen, name, de))
--				goto out_unlock;
-+				goto got_it;
- 			name_len = EXT2_DIR_REC_LEN(de->name_len);
- 			rec_len = ext2_rec_len_from_disk(de->rec_len);
- 			if (!de->inode && rec_len >= reclen)
-@@ -533,13 +529,48 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 				goto got_it;
- 			de = (ext2_dirent *) ((char *) de + rec_len);
- 		}
--		unlock_page(page);
--		ext2_put_page(page);
-+		unlock_page(*page);
-+		ext2_put_page(*page);
- 	}
-+
- 	BUG();
--	return -EINVAL;
- 
- got_it:
-+	return de;
-+	/* OFFSET_CACHE */
-+out_unlock:
-+	unlock_page(*page);
-+	ext2_put_page(*page);
-+out:
-+	return de;
-+}
-+
-+/*
-+ *	Parent is locked.
-+ */
-+int ext2_add_link (struct dentry *dentry, struct inode *inode)
-+{
-+	struct inode *dir = dentry->d_parent->d_inode;
-+	const char *name = dentry->d_name.name;
-+	int namelen = dentry->d_name.len;
-+	unsigned short rec_len, name_len;
-+	ext2_dirent * de;
-+	struct page *page;
-+	loff_t pos;
-+	int err;
-+
-+	de = ext2_append_entry(dentry, &page);
-+	if (IS_ERR(de))
-+		return PTR_ERR(de);
-+
-+	err = -EEXIST;
-+	if (ext2_match (namelen, name, de))
-+		goto out_unlock;
-+
-+got_it:
-+	name_len = EXT2_DIR_REC_LEN(de->name_len);
-+	rec_len = ext2_rec_len_from_disk(de->rec_len);
-+
- 	pos = page_offset(page) +
- 		(char*)de - (char*)page_address(page);
- 	err = __ext2_write_begin(NULL, page->mapping, pos, rec_len, 0,
-@@ -563,7 +594,6 @@ got_it:
- 	/* OFFSET_CACHE */
- out_put:
- 	ext2_put_page(page);
--out:
- 	return err;
- out_unlock:
- 	unlock_page(page);
--- 
-1.6.3.3
+
+
