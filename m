@@ -1,78 +1,39 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: changing stride and stripe_width post-fs-creation?
-Date: Tue, 20 Oct 2009 15:30:59 -0600
-Message-ID: <0ABACA66-004A-43AE-83B0-203CFD73AB86@sun.com>
-References: <7284e2210910201032h74cf437bm6043d97748ece4c9@mail.gmail.com>
- <EA1A7036-FD43-4996-9665-E04FD32A449F@sun.com> <4ADE28BF.6000605@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Wed, 21 Oct 2009 00:53:03 GMT
+Message-ID: <200910210053.n9L0r3en009274@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Doug Hunley <doug@hunley.homeip.net>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:43678 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752060AbZJTVa4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2009 17:30:56 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n9KLV0EY009279
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2009 14:31:00 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KRU00G000TPZB00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 20 Oct 2009 14:31:00 -0700 (PDT)
-In-reply-to: <4ADE28BF.6000605@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:56853 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751069AbZJUAw7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Oct 2009 20:52:59 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9L0r313009275
+	for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2009 00:53:03 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 20-Oct-09, at 15:16, Eric Sandeen wrote:
-> Andreas Dilger wrote:
->> The stride is mostly used at fs creation time, but there is no  
->> problem
->> with changing it.  The stripe_width is used by the allocator to align
->> file allocations with the RAID layout.
->> One question for Eric is whether the new libdisk patches he made  
->> will set
->> the stripe_width to something ridiculous like 512 or 4096 bytes, or  
->> if it
->> just leaves that field unset in that case.  I suspect it would be  
->> bad for
->> mballoc to see the stripe_width be such a small value.
->
-> well... yes, it does set it to whatever is reported:
->
-> +       min_io = blkid_topology_get_minimum_io_size(tp);
-> +       opt_io = blkid_topology_get_optimal_io_size(tp);
-> +       blocksize = EXT2_BLOCK_SIZE(fs_param);
-> +
-> +       fs_param->s_raid_stride = min_io / blocksize;
-> +       fs_param->s_raid_stripe_width = opt_io / blocksize;
->
->
-> if mballoc can't handle certain values then maybe the kernel code  
-> should be changed to ignore it?  Small values could just as easily  
-> come from a user too
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-That probably makes the most sense to have the kernel ignore the  
-value.  It's
-not that it can't "handle" it, just that I suspect mballoc will work  
-poorly if
-it is trying to align the allocations to 1-block values (i.e. no  
-alignment at
-all).  Even with regular disks, reading in 64kB-aligned chunks is more  
-efficient
-than reading misaligned chunks because of the track buffer.
 
-Probably ignoring anything below 64kB makes sense, or possibly using  
-some
-multiple of the specified size until it is larger than 64kB is better  
-(in
-case someone formats their RAID-5 with 5 disks * 8kB chunk size or  
-similar).
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
 
+
+--- Comment #96 from Theodore Tso <tytso@mit.edu>  2009-10-21 00:52:57 ---
+Alexey, what version of GCC are you using?   If applying the patch in
+attachment #23468 stops file system corruption, but you're not seeing the
+message or the kernel stack dump that would be triggered by WARN_ON(1) in your
+logs, then the conditional is never triggering.   So the only thing that might
+be making a difference is if this is either moving some code around or some
+kind of compiler bug.   Something really doesn't make sense, and there is
+definitely something very subtle going on here.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
