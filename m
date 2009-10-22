@@ -1,33 +1,34 @@
-From: Fredrik Andersson <nablaman@gmail.com>
-Subject: Re: Fwd: Ext4 bug with fallocate
-Date: Thu, 22 Oct 2009 09:37:09 +0200
-Message-ID: <a125a870910220037j1ceeb19du73c977b8ce3df2b7@mail.gmail.com>
-References: <a125a870910180836i66781e1ey8113e7f8569f1fad@mail.gmail.com>
-	 <a125a870910180847s5f3eaf6cxfe58e6ceb26419c6@mail.gmail.com>
-	 <4ADB3AEC.8040901@redhat.com>
-	 <a125a870910190249l39183927i8f042a9ace39904c@mail.gmail.com>
-	 <a125a870910200949v5d9d0318q65b0ff6d5a1181e1@mail.gmail.com>
-	 <1256084662.4316.4.camel@mingming-laptop>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14422] EXT4 is corrupted after clean shutdown
+Date: Thu, 22 Oct 2009 13:01:43 GMT
+Message-ID: <200910221301.n9MD1hwI010706@demeter.kernel.org>
+References: <bug-14422-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Mingming <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f207.google.com ([209.85.219.207]:56623 "EHLO
-	mail-ew0-f207.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752600AbZJVHhG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Oct 2009 03:37:06 -0400
-Received: by ewy3 with SMTP id 3so260701ewy.17
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2009 00:37:09 -0700 (PDT)
-In-Reply-To: <1256084662.4316.4.camel@mingming-laptop>
+Received: from demeter.kernel.org ([140.211.167.39]:48623 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752494AbZJVNBj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Oct 2009 09:01:39 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9MD1hYk010708
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2009 13:01:43 GMT
+In-Reply-To: <bug-14422-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> The link you provided about is related to a race between restart a
-> transaction from truncate, and the other process is doing something like
-> block allocation to the same file. Do you have another threads
-> allocating blocks while you are truncating?
+http://bugzilla.kernel.org/show_bug.cgi?id=14422
 
-No, there is only a single thread in this program. No other thread or
-process is accessing the same file or file descriptor.
 
-/Fredrik
+
+
+
+--- Comment #5 from okias <d.okias@gmail.com>  2009-10-22 13:01:41 ---
+It's not hardware or architecture related. Conformed on Asus, Kubuntu x86_32
+with 2.6.32-rc5
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
