@@ -1,76 +1,100 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Sun, 25 Oct 2009 19:04:22 GMT
-Message-ID: <200910251904.n9PJ4ME9020434@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+Subject: [Bug 14465] New: WARNING: at
+ /build/buildd/linux-2.6.31/fs/inode.c:1212 generic_delete_inode+0x14e/0x160
+Date: Sun, 25 Oct 2009 20:30:49 GMT
+Message-ID: <bug-14465-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:48512 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:56933 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753953AbZJYTES convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Oct 2009 15:04:18 -0400
+	with ESMTP id S1752183AbZJYUap (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Oct 2009 16:30:45 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9PJ4Msw020437
-	for <linux-ext4@vger.kernel.org>; Sun, 25 Oct 2009 19:04:22 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9PKUnhp004608
+	for <linux-ext4@vger.kernel.org>; Sun, 25 Oct 2009 20:30:49 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+http://bugzilla.kernel.org/show_bug.cgi?id=14465
+
+               URL: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/4
+                    53039
+           Summary: WARNING: at /build/buildd/linux-2.6.31/fs/inode.c:1212
+                    generic_delete_inode+0x14e/0x160
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.31
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: socketpair@gmail.com
+        Regression: No
 
 
-
-
-
---- Comment #115 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-10-25 19:04:20 ---
-Reply-To: pavel@ucw.cz
-
-Hi!
-
->>> So I have been experimenting with various root file systems on my
->>> laptop running latest git. This laptop some times has problems waking
->>> up from sleep and that results in it needing a hard reset and
->>> subsequently unclean file system.
->>>      
->> A number of people have reported this, and there is some discussion
->> and some suggestions that I've made here:
->>
->> 	http://bugzilla.kernel.org/show_bug.cgi?id=14354
->>
->> It's been very frustrating because I have not been able to replicate
->> it myself; I've been very much looking for someone who is (a) willing
->> to work with me on this, and perhaps willing to risk running fsck
->> frequently, perhaps after every single unclean shutdown, and (b) who
->> can reliably reproduce this problem.  On my system, which is a T400
->> running 9.04 with the latest git kernels, I've not been able to
->> reproduce it, despite many efforts to try to reproduce it.  (i.e.,
->> suspend the machine and then pull the battery and power; pulling the
->> battery and power, "echo c>  /proc/sysrq-trigger", etc., while
->> doing "make -j4" when the system is being uncleanly shutdown)
->>    
->
-> I wonder if we might have better luck if we tested using an external  
-> (e-sata or USB connected) S-ATA drive.
->
-> Instead of pulling the drive's data connection, most of these have an  
-> external power source that could be turned off so the drive firmware  
-> won't have a chance to flush the volatile write cache. Note that some  
-> drives automatically write back the cache if they have power and see a  
-> bus disconnect, so hot unplugging just the e-sata or usb cable does not  
-> do the trick.
->
-> Given the number of cheap external drives, this should be easy to test  
-> at home....
-
-Do they support barriers?
-
-(Anyway, you may want to use some kind of VM for testing. That should
-make the testing cycle shorter, easier to reprorduce *and* more repeatable.)
-
-                                    Pavel
+ct 16 17:47:14 mmarkk-laptop kernel: [ 554.606251] ------------[ cut here
+]------------
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606272] WARNING: at
+/build/buildd/linux-2.6.31/fs/inode.c:1212 generic_delete_inode+0x14e/0x160(
+)
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606278] Hardware name: 900
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606282] Modules linked in:
+nls_iso8859_1 nls_cp437 vfat fat binfmt_misc ppdev joydev arc4 ecb sn
+d_hda_codec_realtek iptable_filter ip_tables x_tables snd_hda_intel
+snd_hda_codec snd_hwdep snd_pcm_oss snd_mixer_oss snd_pcm snd_seq_dummy s
+nd_seq_oss ath5k snd_seq_midi mac80211 snd_rawmidi snd_seq_midi_event led_class
+uvcvideo snd_seq ath psmouse snd_timer videodev snd_seq_devic
+e v4l1_compat serio_raw cfg80211 snd atl2 soundcore snd_page_alloc lp
+eeepc_laptop parport fbcon tileblit font bitblit softcursor usb_storage
+ i915 drm i2c_algo_bit video output intel_agp agpgart
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606380] Pid: 2300, comm: chattr Not
+tainted 2.6.31-14-generic #47-Ubuntu
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606385] Call Trace:
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606398] [<c014518d>]
+warn_slowpath_common+0x6d/0xa0
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606406] [<c01faf6e>] ?
+generic_delete_inode+0x14e/0x160
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606413] [<c01faf6e>] ?
+generic_delete_inode+0x14e/0x160
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606422] [<c01451d5>]
+warn_slowpath_null+0x15/0x20
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606429] [<c01faf6e>]
+generic_delete_inode+0x14e/0x160
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606438] [<c05708b8>] ?
+_spin_lock+0x8/0x10
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606445] [<c01fafa5>]
+generic_drop_inode+0x25/0x30
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606454] [<c01fa011>] iput+0x41/0x60
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606462] [<c0284896>]
+ext4_ext_migrate+0x3d6/0x520
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606471] [<c0263447>] ?
+ext4_do_update_inode+0x267/0x4b0
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606479] [<c0269292>]
+ext4_ioctl+0x6f2/0x750
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606488] [<c0268ba0>] ?
+ext4_ioctl+0x0/0x750
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606496] [<c01f4c9c>]
+vfs_ioctl+0x1c/0x90
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606502] [<c01f0236>] ?
+putname+0x26/0x40
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606510] [<c01f4fc1>]
+do_vfs_ioctl+0x71/0x310
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606517] [<c01f52bf>]
+sys_ioctl+0x5f/0x80
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606525] [<c01e5669>] ?
+sys_open+0x29/0x40
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606533] [<c010336c>]
+syscall_call+0x7/0xb
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606539] ---[ end trace
+11cc579a33f830d2 ]---
+Oct 16 17:47:14 mmarkk-laptop kernel: [ 554.606613] ------------[ cut here
+]------------
 
 -- 
 Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
