@@ -1,24 +1,32 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
-Date: Sun, 25 Oct 2009 07:22:02 +0100
-Message-ID: <20091025062202.GB1391@ucw.cz>
-References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu> <4AD8C679.3030300@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Sun, 25 Oct 2009 19:04:22 GMT
+Message-ID: <200910251904.n9PJ4ME9020434@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	Parag Warudkar <parag.lkml@gmail.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	bugzilla-daemon@bugzilla.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:40175 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753682AbZJYTEM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Oct 2009 15:04:12 -0400
-Content-Disposition: inline
-In-Reply-To: <4AD8C679.3030300@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:48512 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753953AbZJYTES convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Oct 2009 15:04:18 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9PJ4Msw020437
+	for <linux-ext4@vger.kernel.org>; Sun, 25 Oct 2009 19:04:22 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
+
+
+
+
+
+--- Comment #115 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-10-25 19:04:20 ---
+Reply-To: pavel@ucw.cz
 
 Hi!
 
@@ -62,8 +70,9 @@ Do they support barriers?
 (Anyway, you may want to use some kind of VM for testing. That should
 make the testing cycle shorter, easier to reprorduce *and* more repeatable.)
 
-									Pavel
+                                    Pavel
 
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
