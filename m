@@ -1,33 +1,47 @@
-From: =?GB2312?B?tqG2qLuq?= <dingdinghua85@gmail.com>
-Subject: question about e2progs
-Date: Mon, 26 Oct 2009 11:08:05 +0800
-Message-ID: <7bb361260910252008m28baac3fj7566d792d33c84e3@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] debugfs: open with EXT2_FLAG_64BITS
+Date: Mon, 26 Oct 2009 01:15:55 -0400
+Message-ID: <20091026051555.GA13941@mit.edu>
+References: <4AAA6A44.90902@redhat.com> <4ACE48BC.7010505@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f218.google.com ([209.85.220.218]:55103 "EHLO
-	mail-fx0-f218.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754558AbZJZDID convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Oct 2009 23:08:03 -0400
-Received: by fxm18 with SMTP id 18so11745567fxm.37
-        for <linux-ext4@vger.kernel.org>; Sun, 25 Oct 2009 20:08:05 -0700 (PDT)
+Received: from THUNK.ORG ([69.25.196.29]:38024 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753557AbZJZFPv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Oct 2009 01:15:51 -0400
+Content-Disposition: inline
+In-Reply-To: <4ACE48BC.7010505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-hello, when i read e2progs code, i'm confused about the E2F_FLAG_RESTAR=
-T flag,
-we will restart the whole fsck routine if this flag set. The flag is
-set in handle_fs_bad_blocks
-& check_dir_block, is there anyone tell my why need to retart the
-whole routine if the above
-two situation happend, thanks.
+On Thu, Oct 08, 2009 at 03:17:00PM -0500, Eric Sandeen wrote:
+> Eric Sandeen wrote:
+> > Pointing debugfs from the pu branch at a large filesystem is
+> > still failing with:
+> > 
+> >  Filesystem too large to use legacy bitmaps while reading block bitmap
+> > 
+> > We need to open with EXT2_FLAG_64BITS; I'm not sure if this
+> > should be a switch based on the size of the fs or not?
+> > 
+> > But in any case the below gets things moving enough to
+> > use debugfs on a large filesystem.
+> 
+> ping?
 
---=20
-=B6=A1=B6=A8=BB=AA
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I've added this patch to the pu branch.  I've also updated the pu
+branch so it's up to date with the latest maint branch.  I also found
+some missing conversions of ext2fs_group_{first,last}_block() to
+ext2fs_group_{first,last}_block2().  
+
+I also cleaned up a number of patches which I'm confident enough are
+clean enough that I've fast forwarded the next branch to include them.
+
+There are now only 16 patches left that are unique to the pu branch,
+down from 57 patches initially (and many of the patches are smaller as
+they were refactored).
+
+						- Ted
