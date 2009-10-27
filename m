@@ -1,30 +1,30 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Tue, 27 Oct 2009 10:00:40 GMT
-Message-ID: <200910271000.n9RA0emQ021250@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+Subject: [Bug 14422] EXT4 is corrupted after clean shutdown
+Date: Tue, 27 Oct 2009 10:01:27 GMT
+Message-ID: <200910271001.n9RA1RWT021467@demeter.kernel.org>
+References: <bug-14422-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54221 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:54261 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752978AbZJ0KAg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 06:00:36 -0400
+	with ESMTP id S1752537AbZJ0KBW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 06:01:22 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9RA0ebI021251
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 10:00:40 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9RA1R2I021468
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 10:01:27 GMT
+In-Reply-To: <bug-14422-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+http://bugzilla.kernel.org/show_bug.cgi?id=14422
 
 
 
 
 
---- Comment #123 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-10-27 10:00:39 ---
+--- Comment #8 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-10-27 10:01:27 ---
 Can you try this patch ?
 
 commit a8836b1d6f92273e001012c7705ae8f4c3d5fb65
