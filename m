@@ -1,57 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Tue, 27 Oct 2009 06:39:50 GMT
-Message-ID: <200910270639.n9R6dosP018078@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Fredrik Andersson <nablaman@gmail.com>
+Subject: Re: Fwd: Ext4 bug with fallocate
+Date: Tue, 27 Oct 2009 09:17:03 +0100
+Message-ID: <a125a870910270117qa90debp8d5a9f90ffb8434@mail.gmail.com>
+References: <a125a870910180836i66781e1ey8113e7f8569f1fad@mail.gmail.com>
+	 <a125a870910180847s5f3eaf6cxfe58e6ceb26419c6@mail.gmail.com>
+	 <4AE67A1B.8060704@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:35357 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756201AbZJ0Gjq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 02:39:46 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9R6do1l018079
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 06:39:50 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mail-ew0-f208.google.com ([209.85.219.208]:46604 "EHLO
+	mail-ew0-f208.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932110AbZJ0IQ7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 04:16:59 -0400
+Received: by ewy4 with SMTP id 4so4391676ewy.37
+        for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 01:17:03 -0700 (PDT)
+In-Reply-To: <4AE67A1B.8060704@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+> Not trying to ignore you, but trying to sort out some corruption issu=
+es that
+> I'm afraid I have to rank higher than a hang for now...
 
+I understand. Good to know someone is thinking about it anyway :-)
 
+>
+> From the traces, things are hung up on the i_data_sem; several pdflus=
+hes
+> want it for read in ext4_get_blocks_wrap, and drbdmakes presumably ha=
+ve it
+> downed for write in ext4_ext_truncate. =A0I'm not immediately seeing =
+the
+> deadlock tonight, but then it's getting late...
+>
+> Is the application that's triggering this something you can share?
+>
 
+Sorry, I can't provide source code for these applications.
 
+But drdbmake does what is described above: Preallocates a very big
+chunk on disk and then
+truncates it to its final length once it's done.
 
---- Comment #122 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-10-27 06:39:41 ---
-Can you test with the below patch
+Please let me know if you need more details.
 
-Commit 487caeef9fc08c0565e082c40a8aaf58dad92bbb fixed a deadlock
-between get_block and truncate by dropping the i_data_sem during
-truncate. But i guess we should make sure we drop any preallocation
-that we did as a part of the block allocation. Otherwise we definitely
-can get multiple claimed blocks. But this can happen only if we have
-block allocation and truncate happening on the same file simultaneously.
-
-With delayed allocation i guess it is possible that pdflush tries to do
-block allocation while application does a truncate
-
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 10539e3..14539b5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -113,6 +113,7 @@ static int ext4_ext_truncate_extend_restart(handle_t
-*handle,
-      */
-     ext4_ext_invalidate_cache(inode);
-
-+    ext4_discard_preallocations(inode);
-     return err;
- }
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+/Fredrik
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
