@@ -1,40 +1,28 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Mon, 26 Oct 2009 22:40:42 GMT
-Message-ID: <200910262240.n9QMegX2008177@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: journaled quota file question
+Date: Tue, 27 Oct 2009 03:14:45 +0300
+Message-ID: <871vkpwv4a.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:46109 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754526AbZJZWkh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Oct 2009 18:40:37 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9QMegFo008178
-	for <linux-ext4@vger.kernel.org>; Mon, 26 Oct 2009 22:40:42 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:50557 "EHLO mail.2ka.mipt.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754722AbZJ0AOj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Oct 2009 20:14:39 -0400
+Received: from dmon-lp ([unknown] [10.55.92.161])
+ by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
+ (built Apr 16 2009)) with ESMTPA id <0KS500MG7A35M750@mail.2ka.mipt.ru> for
+ linux-ext4@vger.kernel.org; Tue, 27 Oct 2009 02:18:44 +0300 (MSK)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+While looking to ext3/4 quota code I'm wondering
+Why do we have to place journaled quota file on fs root?
+In some situations it may be useful to place it deeper for example:
+/root/dir/quota_file
+The only reason what comes in to my mind is that some one
+may rename parent folder rename("/root/dir", "/root/dir2")
+Is this the only reason?
 
-
-
-
-
---- Comment #121 from Eric Sandeen <sandeen@redhat.com>  2009-10-26 22:40:40 ---
-(In reply to comment #89)
-> Created an attachment (id=23458)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=23458) [details]
-> skip the non-journal branch if readonly
-
-I'm skeptical of reports that this patch fixed things as well; from code
-inspection and instrumented testing, I don't see how we get here w/ s_journal
-NULL on a journalling filesystem mount, even during recovery...
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
