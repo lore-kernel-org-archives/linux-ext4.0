@@ -1,19 +1,19 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Tue, 27 Oct 2009 21:23:34 GMT
-Message-ID: <200910272123.n9RLNYiC022274@demeter.kernel.org>
+Date: Tue, 27 Oct 2009 21:42:11 GMT
+Message-ID: <200910272142.n9RLgB7f026211@demeter.kernel.org>
 References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:37171 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:33519 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932315AbZJ0VXa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 17:23:30 -0400
+	with ESMTP id S1751767AbZJ0VmH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 17:42:07 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9RLNY5T022275
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 21:23:34 GMT
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9RLgBHi026212
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 21:42:11 GMT
 In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -24,58 +24,44 @@ http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
 
 
---- Comment #134 from Linus Torvalds <torvalds@linux-foundation.org>  2009-10-27 21:23:33 ---
-On Tue, 27 Oct 2009, in comment #132 from Eric Sandeen <sandeen@redhat.com>
-wrote:
+--- Comment #135 from Eric Sandeen <sandeen@redhat.com>  2009-10-27 21:42:09 ---
+(In reply to comment #134)
+
+> Example issues that are exclusive to the root filesystem and would never 
+> be an issue on any other filesystem (exactly due to the "mount ro first, 
+> fsck later" behavior of root):
 > 
-> Perhaps more strange, doing the same test on a non-root fs under 2.6.32 also
-> doesn't seem to hit it reliably.  Could it be something about the remount,ro
-> flush of the root fs on the way down?
-> 
-> Suspecting that possibly "mount -o ro; e2fsck -a /dev/root" during bootup was
-> causing problems by writing to the mounted fs, I short-circuited the boot-time
-> fsck -a; things were still badly corrupted so that doesn't seem to be it.
+>  - flaky in-kernel recovery code might trash more than it fixes, and would 
+>    never trigger for the "fsck first" case because fsck would already have 
+>    done it.
 
-It certainly isn't about the 'remount,ro' on the way down, since that's 
-the part you avoid entirely in a non-clean shutdown.
+Yep, but I didn't have auto-fsck in my non-root testing, and I did "mount -o
+ro" followed by "e2fsck -a" on it to try to "be like /", and didn't see it. 
+Though I'll re-check just to be sure.
 
-But it could easily be something special about mounting the root 
-filesystem, together with bad interaction with 'fsck'. 
+>  - flaky user-mode fsck doesn't understand that the kernel already did 
+>    recovery, and re-does it.
 
-Non-root filesystems will be fsck'd _before_ being mounted, but the root 
-filesystem will be fsck'd _after_ the mount.
+It should print out a message if it's recovering again, we should see it in the
+logs... and I don't think I have.
 
-If the initial root ro-mount causes the filesystem recovery, and fsck then 
-screws things up, then "root filesystem is special" might well trigger. It 
-might explain why Ted and others are unable to re-create this - maybe they 
-are being careful, and do ext4 testing with a non-ext4 root? 
+>  - virtually indexed caches might be loaded by the mount, and when you do 
+>    fsck later, the fsck writes back through the physically indexed direct 
+>    device. So the mounted root filesystem may never see those changes, 
+>    even after you re-mount it 'rw'.
 
-Example issues that are exclusive to the root filesystem and would never 
-be an issue on any other filesystem (exactly due to the "mount ro first, 
-fsck later" behavior of root):
+Yes, I've been worried about this... but would this be new?
 
- - flaky in-kernel recovery code might trash more than it fixes, and would 
-   never trigger for the "fsck first" case because fsck would already have 
-   done it.
+Could probably test this theory by forcing an immediate reboot if e2fsck does
+recovery on a readonly mounted fs.
 
- - flaky user-mode fsck doesn't understand that the kernel already did 
-   recovery, and re-does it.
+>  - even if every filesystem cache is physically indexed (ie using the 
+>    buffer cache rather page cache), there may be various cached values 
+>    that the kernel keeps around in separate caches, like the superblock 
+>    compatibility bits, free block counts, etc. fsck might change them, but 
+>    does 'remount,rw' always re-read them?
 
- - virtually indexed caches might be loaded by the mount, and when you do 
-   fsck later, the fsck writes back through the physically indexed direct 
-   device. So the mounted root filesystem may never see those changes, 
-   even after you re-mount it 'rw'.
-
- - even if every filesystem cache is physically indexed (ie using the 
-   buffer cache rather page cache), there may be various cached values 
-   that the kernel keeps around in separate caches, like the superblock 
-   compatibility bits, free block counts, etc. fsck might change them, but 
-   does 'remount,rw' always re-read them?
-
-None of the four cases above are issues for a filesystem that isn't 
-mounted before fsck runs.
-
-            Linus
+same test above would help determine this, I think.
 
 -- 
 Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
