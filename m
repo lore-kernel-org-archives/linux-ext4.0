@@ -1,43 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Fwd: Ext4 bug with fallocate
-Date: Mon, 26 Oct 2009 23:42:03 -0500
-Message-ID: <4AE67A1B.8060704@redhat.com>
-References: <a125a870910180836i66781e1ey8113e7f8569f1fad@mail.gmail.com> <a125a870910180847s5f3eaf6cxfe58e6ceb26419c6@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Tue, 27 Oct 2009 12:24:36 +0530
+Message-ID: <20091027065436.GA25569@skywalker.linux.vnet.ibm.com>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
+ <200910262240.n9QMegX2008177@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Fredrik Andersson <nablaman@gmail.com>
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34504 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751337AbZJ0Ema (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Oct 2009 00:42:30 -0400
-In-Reply-To: <a125a870910180847s5f3eaf6cxfe58e6ceb26419c6@mail.gmail.com>
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:59700 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756199AbZJ0Gjd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 02:39:33 -0400
+Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
+	by e28smtp03.in.ibm.com (8.14.3/8.13.1) with ESMTP id n9R6da4e020588
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 12:09:36 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n9R6dasY2810054
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 12:09:36 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n9R6daHZ030992
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 17:39:36 +1100
+Content-Disposition: inline
+In-Reply-To: <200910262240.n9QMegX2008177@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fredrik Andersson wrote:
-> Hi, I'd like to report what I'm fairly certain is an ext4 bug. I hope
-> this is the right place to do so.
-> 
-> My program creates a big file (around 30 GB) with posix_fallocate (to
-> utilize extents), fills it with data and uses ftruncate to crop it to
-> its final size (usually somewhere between 20 and 25 GB).
-> The problem is that in around 5% of the cases, the program locks up
-> completely in a syscall. The process can thus not be killed even with
-> kill -9, and a reboot is all that will do.
+Can you test with the below patch
+
+Commit 487caeef9fc08c0565e082c40a8aaf58dad92bbb fixed a deadlock
+between get_block and truncate by dropping the i_data_sem during
+truncate. But i guess we should make sure we drop any preallocation
+that we did as a part of the block allocation. Otherwise we definitely
+can get multiple claimed blocks. But this can happen only if we have
+block allocation and truncate happening on the same file simultaneously.
+
+With delayed allocation i guess it is possible that pdflush tries to do
+block allocation while application does a truncate
 
 
-Not trying to ignore you, but trying to sort out some corruption issues 
-that I'm afraid I have to rank higher than a hang for now...
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 10539e3..14539b5 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -113,6 +113,7 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
+ 	 */
+ 	ext4_ext_invalidate_cache(inode);
+ 
++	ext4_discard_preallocations(inode);
+ 	return err;
+ }
+ 
 
- From the traces, things are hung up on the i_data_sem; several 
-pdflushes want it for read in ext4_get_blocks_wrap, and drbdmakes 
-presumably have it downed for write in ext4_ext_truncate.  I'm not 
-immediately seeing the deadlock tonight, but then it's getting late...
-
-Is the application that's triggering this something you can share?
-
-Thanks,
--Eric
