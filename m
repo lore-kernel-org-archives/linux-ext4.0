@@ -1,53 +1,35 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/4] ext4: Avoid issuing barriers on error recovery path
-Date: Tue, 27 Oct 2009 13:48:47 +0100
-Message-ID: <1256647729-29834-3-git-send-email-jack@suse.cz>
-References: <1256647729-29834-1-git-send-email-jack@suse.cz>
-Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Tue, 27 Oct 2009 13:02:11 GMT
+Message-ID: <200910271302.n9RD2BOx021658@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:53089 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754034AbZJ0Msq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Oct 2009 08:48:46 -0400
-In-Reply-To: <1256647729-29834-1-git-send-email-jack@suse.cz>
+Received: from demeter.kernel.org ([140.211.167.39]:55586 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754416AbZJ0NCG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2009 09:02:06 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9RD2BoV021659
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2009 13:02:11 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is no reason why we should issue IO barriers when we
-just hit an error in ext4_sync_file. So move out: label to
-just return and introduce flush: label to those places which
-really need it.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/fsync.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 2b15312..2bf9413 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -88,7 +88,7 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
- 		ret = sync_mapping_buffers(inode->i_mapping);
- 
- 	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
--		goto out;
-+		goto flush;
- 
- 	/*
- 	 * The VFS has written the file data.  If the inode is unaltered
-@@ -103,8 +103,9 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
- 		if (ret == 0)
- 			ret = err;
- 	}
--out:
-+flush:
- 	if (journal && (journal->j_flags & JBD2_BARRIER))
- 		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
-+out:
- 	return ret;
- }
+
+
+
+--- Comment #128 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-27 13:02:09 ---
+So i got corruption with this patch too: "i_blocks... i_size should be",
+"multiply claimed blocks" ...
+I got corruption o third crush.
+
 -- 
-1.6.0.2
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
