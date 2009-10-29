@@ -1,31 +1,27 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Thu, 29 Oct 2009 20:11:08 GMT
-Message-ID: <200910292011.n9TKB8B0017201@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Mingming <cmm@us.ibm.com>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Thu, 29 Oct 2009 13:10:38 -0700
+Message-ID: <1256847038.4341.0.camel@mingming-laptop>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>
+	 <20091016091558.GA10184@mit.edu>
+	 <20091027101534.GA27584@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	Parag Warudkar <parag.lkml@gmail.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:41574 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754604AbZJ2ULE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2009 16:11:04 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9TKB8U1017203
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2009 20:11:08 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:51990 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754609AbZJ2ULF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Oct 2009 16:11:05 -0400
+In-Reply-To: <20091027101534.GA27584@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
-
-
-
-
-
---- Comment #143 from Mingming Cao <cmm@us.ibm.com>  2009-10-29 20:11:04 ---
 On Tue, 2009-10-27 at 15:45 +0530, Aneesh Kumar K.V wrote:
 > Can you try this patch ?
 > 
@@ -67,7 +63,4 @@ Make sense, reviewed-by: Mingming Cao <cmm@us.ibm.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+
