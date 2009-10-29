@@ -1,62 +1,71 @@
-From: Justin Maggard <jmaggard10@gmail.com>
-Subject: EXT4 >16TB resize2fs support
-Date: Thu, 29 Oct 2009 14:54:11 -0700
-Message-ID: <150c16850910291454j18db2729m572dc0fe22658f1e@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Thu, 29 Oct 2009 21:55:38 GMT
+Message-ID: <200910292155.n9TLtcIp012856@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f179.google.com ([209.85.216.179]:44300 "EHLO
-	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753465AbZJ2VyH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2009 17:54:07 -0400
-Received: by pxi9 with SMTP id 9so1457846pxi.4
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2009 14:54:11 -0700 (PDT)
+Received: from demeter.kernel.org ([140.211.167.39]:53952 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753030AbZJ2Vzd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2009 17:55:33 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9TLtcw2012857
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2009 21:55:38 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-What is the current expected status of resize2fs support with 64-bit
-filesystems?  Specifically, expanding from <16TB to >16TB.  I'm using
-the latest code from pu, and seeing some odd things.  I'm not sure
-what the 64bit feature flag does exactly, but is the transition not
-handled properly?
 
-I started with a 15TB LV and filesystem, and then added a new 2TB
-drive to the LV.  I tried resize2fs (compiled for x86_64) with the
-filesystem online.  It said it expanded successfully, but it was very
-quick, and the filesystem was still the same size.
-resize2fs 1.41.9 (22-Aug-2009)
-Filesystem at /dev/vg/lv is mounted on /lv; on-line resizing required
-old desc_blocks = 955, new_desc_blocks = 1161
-Performing an on-line resize of /dev/vg/lv to 4869357568 (4k) blocks.
-The filesystem on /dev/vg/lv is now 4869357568 blocks long.
 
-Then I unmounted and re-ran resize2fs.  It claimed it was going to
-resize to 4869357568 (4k) blocks, but after it was done, my filesystem
-was only 2.2TB.  Resize2fs output is below:
-resize2fs 1.41.9 (22-Aug-2009)
-Resizing the filesystem on /dev/vg/lv to 4869357568 (4k) blocks.
-Begin pass 2 (max = 32768)
-Relocating blocks             XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-Begin pass 3 (max = 122222)
-Scanning inode table          XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-The filesystem on /dev/vg/lv is now 574390272 blocks long.
 
-After that, I re-mounted and tried doing another online resize, which
-resulted in a floating point exception:
-resize2fs 1.41.9 (22-Aug-2009)
-Filesystem at /dev/vg/lv is mounted on /lv; on-line resizing required
-old desc_blocks = 137, new_desc_blocks = 1161
-Performing an on-line resize of /dev/vg/lv to 4869357568 (4k) blocks.
-Floating point exception
 
-After that, I ran e2fsck -f, which reported that the filesystem was clean.
+--- Comment #148 from Theodore Tso <tytso@mit.edu>  2009-10-29 21:55:36 ---
+>>  - virtually indexed caches might be loaded by the mount, and when you do 
+>>    fsck later, the fsck writes back through the physically indexed direct 
+>>    device. So the mounted root filesystem may never see those changes, 
+>>    even after you re-mount it 'rw'.
+>
+>Yes, I've been worried about this... but would this be new?
 
-So... what is expected to work at this point, and what is expected to
-be broken with the resize process?  Any idea why my fs was shrunk down
-to 2.2TB when it was supposed to grow to 18TB?
+Eric, Linus,
 
-Thanks!
--Justin
+If fsck ever modifies the filesystem, it sets bit 0 in the exit status code.  
+For the root file system, bit 1 is set as well.  To quote the fsck man page:
+
+       The exit code returned by fsck is the sum of the following conditions:
+            0    - No errors
+            1    - File system errors corrected
+            2    - System should be rebooted
+            4    - File system errors left uncorrected
+            8    - Operational error
+            16   - Usage or syntax error
+            32   - Fsck canceled by user request
+            128  - Shared library error
+       The exit code returned when multiple file systems are  checked  is  the
+       bit-wise OR of the exit codes for each file system that is checked.
+
+Distribution init scripts are supposed to force a reboot when the root file
+system is checked, and fsck returns a non-zero exit code.   This should avoid
+the problem that Linus is afraid of.   Of course, Ubuntu Karmic *does* have a
+new set of fancy-shamncy init scripts that is supposed to run (some) fsck's in
+parallel with the rest of the boot process.  Presumably this doesn't include
+critical file systems such as the root and whatever filesystems might be
+supplying /var or /usr.  But maybe Karmic introduced a bug and the init scripts
+aren't forcing a reboot after fsck prints "*** REBOOT LINUX ***" and returns
+with an exit status code of 3 (file system errors correct, system should be
+rebooted).
+
+Note though that this shouldn't happen on a simple unclean shutdown, since the
+journal replay takes place before the root file system is initially mounted
+(even read-only).   [n.b. The fact that Avery was using -o noload, is not
+normal, and I'm not sure what he was trying to test.]
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
