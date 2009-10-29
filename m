@@ -1,30 +1,25 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Thu, 29 Oct 2009 21:39:07 GMT
-Message-ID: <200910292139.n9TLd7bJ007722@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Thu, 29 Oct 2009 16:38:57 -0500
+Message-ID: <4AEA0B71.5050805@redhat.com>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>	 <20091016091558.GA10184@mit.edu>	 <20091027101534.GA27584@skywalker.linux.vnet.ibm.com> <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
+To: Parag Warudkar <parag.lkml@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54405 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752656AbZJ2VjC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2009 17:39:02 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9TLd71P007723
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2009 21:39:07 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:61680 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752900AbZJ2VjD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Oct 2009 17:39:03 -0400
+In-Reply-To: <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
-
-
-
-
-
---- Comment #145 from Eric Sandeen <sandeen@redhat.com>  2009-10-29 21:39:06 ---
 Parag Warudkar wrote:
 > On Tue, Oct 27, 2009 at 6:15 AM, Aneesh Kumar K.V
 > <aneesh.kumar@linux.vnet.ibm.com> wrote:
@@ -59,7 +54,3 @@ this patch in place after 8 iterations, I'm afraid.
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
