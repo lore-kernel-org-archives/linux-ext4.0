@@ -1,67 +1,94 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 30 Oct 2009 13:54:43 GMT
-Message-ID: <200910301354.n9UDshGu004484@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad corruption with
+	2.6.32-rc1 and upwards]
+Date: Fri, 30 Oct 2009 10:20:35 -0400
+Message-ID: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Ted Augustine <taugustine@techpathways.com>,
+	Alexey Fisher <bug-track@fisher-privat.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:49990 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932095AbZJ3Nyi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 09:54:38 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UDsh16004485
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 13:54:43 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mail-iw0-f180.google.com ([209.85.223.180]:64991 "EHLO
+	mail-iw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932128AbZJ3OUc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 10:20:32 -0400
+Received: by iwn10 with SMTP id 10so2146737iwn.4
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 07:20:37 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+On Fri, Oct 30, 2009 at 4:22 AM,  <bugzilla-daemon@bugzilla.kernel.org>=
+ wrote:
+> http://bugzilla.kernel.org/show_bug.cgi?id=3D14354
+>
+> --- Comment #152 from Alexey Fisher <bug-track@fisher-privat.net> =A0=
+2009-10-30 08:22:10 ---
+> Ted,
+> Thank you for explanation :)
+> Notice: i learning computer forensic, and was trained to mount all ev=
+idence
+> systems with "-o ro" to not contaminate it. It seems like ext4 break =
+this
+> tradition, so many forensics will surprised =A0why md5sum do not matc=
+h.
 
+Ted,  (Alexey there is a response to further down).
 
+I have not followed this thread ultra-closely but Alexey's comment got
+my attention.
 
+Ignoring computer forensics, with LVM snapshots, hardware raid array
+snapshots, etc. even in the presence of a dirty log, we need to be
+able to mount a drive in true read-only fashion fro many backup
+operations to function correctly.
 
+XFS added an extra mount flag for that 5 or so years ago.
 
---- Comment #155 from Eric Sandeen <sandeen@redhat.com>  2009-10-30 13:54:35 ---
-Theodore Tso wrote:
-> On Thu, Oct 29, 2009 at 04:38:57PM -0500, Eric Sandeen wrote:
->> I've been running my testcase, and I just hit the usual corruption with  
->> this patch in place after 8 iterations, I'm afraid.
-> 
-> Eric, since you have a relatively controllable reproduction case, have
-> you tried reproducing Alexey's bisection results?  Specifically he
-> seemed to find that commit fe188c0e shows no problem, and commit
-> 91ac6f43 is the first commit with problems?
+I hope ext4 either has or will add a true read-only mount option.
+Maybe Eric Sandeen remembers the actual drivers for adding that
+feature to XFS.
 
-I can try it but I have very little faith in that result to be honest.
+Alexey,
 
-> Having to do multiple iterations will make doing a bisection a major
-> pain, but maybe we'll get something out of that.
+I do computer forensics as part of my job (see my signature). Never
+trust the -o ro flag with any filesystem type to keep evidence from
+being modified.  It is not designed for forensic use.  And it is hard
+to test because it may work in most scenarios, but then under certain
+situations, the journal gets applied, or cleared, etc.
 
-Well I've been doing bisects but I'm getting skeptical of the results; 
-either my testcase isn't reliable enough or all the merges are confusing 
-git-bisect (?)  Anyway it keeps ending up on nonsensical commits.
+fyi: Yes I have read where doing so is advised, but I think that
+technique was developed back before Journaled filesystems were common.
+ With a modern FS, it is just not a reliable technique in all
+situations.
 
-> Other things that might be worth doing given that you have a test case
-> would be to try reverting commit 91ac6f43, and see if that helps, and
-> to try this patch: http://bugzilla.kernel.org/attachment.cgi?id=23468
-> 
-> Or have you tried some of these experiments already?
-> 
-> Regards,
-> 
-> 						- Ted
+If you must mount a filesystem readonly to perform an exam, then use a
+hardware write-blocker to prevent modification.  If the filesystem
+cannot be mounted readonly because a writeblocker is in use, then you
+know you have issues.
 
-After talking to Aneesh last night, I think other good spot-checks will 
-be to revert 487caeef9fc08c0565e082c40a8aaf58dad92bbb, and to test Jan's 
-sync patches.
+The reality is that in more complex exams, we clone the original
+evidence, then perform part of the exam in a live environment.  This
+clearly modifies the clone, but not the original.  But the process
+should be repeatable by simply making more clones, etc.
 
--Eric
+Greg
+--=20
+Greg Freemyer
+Head of EDD Tape Extraction and Processing team
+Litigation Triage Solutions Specialist
+http://www.linkedin.com/in/gregfreemyer
+Preservation and Forensic processing of Exchange Repositories White Pap=
+er -
+<http://www.norcrossgroup.com/forms/whitepapers/tng_whitepaper_fpe.html=
+>
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+The Norcross Group
+The Intersection of Evidence & Technology
+http://www.norcrossgroup.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
