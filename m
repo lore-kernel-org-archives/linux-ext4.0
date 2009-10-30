@@ -1,52 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 30 Oct 2009 10:42:40 GMT
-Message-ID: <200910301042.n9UAge7p015766@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Fri, 30 Oct 2009 08:54:27 -0500
+Message-ID: <4AEAF013.60300@redhat.com>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu> <20091027101534.GA27584@skywalker.linux.vnet.ibm.com> <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com> <4AEA0B71.5050805@redhat.com> <20091030081602.GM18464@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Parag Warudkar <parag.lkml@gmail.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	LKML <linux-kernel@vger.k
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:48054 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756972AbZJ3Kmg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 06:42:36 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UAgf3X015770
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 10:42:41 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:44266 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757253AbZJ3Nyc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Oct 2009 09:54:32 -0400
+In-Reply-To: <20091030081602.GM18464@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+Theodore Tso wrote:
+> On Thu, Oct 29, 2009 at 04:38:57PM -0500, Eric Sandeen wrote:
+>> I've been running my testcase, and I just hit the usual corruption with  
+>> this patch in place after 8 iterations, I'm afraid.
+> 
+> Eric, since you have a relatively controllable reproduction case, have
+> you tried reproducing Alexey's bisection results?  Specifically he
+> seemed to find that commit fe188c0e shows no problem, and commit
+> 91ac6f43 is the first commit with problems?
 
+I can try it but I have very little faith in that result to be honest.
 
+> Having to do multiple iterations will make doing a bisection a major
+> pain, but maybe we'll get something out of that.
 
+Well I've been doing bisects but I'm getting skeptical of the results; 
+either my testcase isn't reliable enough or all the merges are confusing 
+git-bisect (?)  Anyway it keeps ending up on nonsensical commits.
 
+> Other things that might be worth doing given that you have a test case
+> would be to try reverting commit 91ac6f43, and see if that helps, and
+> to try this patch: http://bugzilla.kernel.org/attachment.cgi?id=23468
+> 
+> Or have you tried some of these experiments already?
+> 
+> Regards,
+> 
+> 						- Ted
 
---- Comment #154 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-10-30 10:42:38 ---
-To further update on 487caeef9fc08c0565e082c40a8aaf58dad92bbb, If we happen to
-create a prealloc space mapping the same offset that we are truncating them we
-can end up having multiple claimed blocks. ext4_mb_return_to_preallocation
-which is done during truncate doesn't put the blocks back into prealloc space
-because it depends on us discarding the prealloc space at the beginning of the
-truncate.
+After talking to Aneesh last night, I think other good spot-checks will 
+be to revert 487caeef9fc08c0565e082c40a8aaf58dad92bbb, and to test Jan's 
+sync patches.
 
-Now whether we can end up having block allocation that can get a prealloc space
-mapping the same offset that we are truncating is something i haven't yet
-figured out. We do invalidate all pages before we start a truncate. That would
-imply flusher threads will not find any of those dirty pages. Also for multiple
-claimed blocks to happen we should get the same block number that we are
-freeing via truncate. AFAIU that cannot happen because bits mapping those
-blocks are marked used in buddy cache. So we cannot preallocate them. 
-
-But i guess discarding prealloc space after reacquiring i_data_sem seemed to be
-a safe bet to me. But still doesn't fully explain why we end up having multiple
-claimed blocks. May be i am missing some code paths in the above analysis.
-
--aneesh
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+-Eric
