@@ -1,45 +1,33 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Thu, 29 Oct 2009 22:23:42 GMT
-Message-ID: <200910292223.n9TMNgqY019708@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [PATCH 0/4]ext4: Bug fixes for EXT4_IOC_MOVE_EXT ioctl
+Date: Fri, 30 Oct 2009 16:41:43 +0900
+Message-ID: <4AEA98B7.2080104@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:38179 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756741AbZJ2WXh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2009 18:23:37 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9TMNg8j019709
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2009 22:23:42 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:40498 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752875AbZJ3Hmd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 03:42:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+Hi,
 
+This patch series is related to EXT4_IOC_MOVE_EXT ioctl.
+The first one is a patch I sent before but not be included in
+the ext4 patch queue yet, so I resend it.
 
+1/4 [RESEND] Fix block count in EXT4_IOC_MOVE_EXT failure
+2/4 Fix lock order problem in ext4_move_extents()
+3/4 Fix possible recursive locking warning in EXT4_IOC_MOVE_EXT
+4/4 Fix comment typo in move_extents.c
 
+These patches are applies to 2.6.31-git17 with the latest ext4 patch queue
+(4504d7f7fff06501c517a3e2eb87a1381ecbc539).
 
-
---- Comment #150 from Eric Sandeen <sandeen@redhat.com>  2009-10-29 22:23:41 ---
-Created an attachment (id=23592)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=23592)
-console log w/ aneesh's patch
-
-Well, now that I look again, w/ Aneesh's patch it didn't show up the
-multiply-claimed blocks this time, but did still have pretty massive
-corruption.  Probably needs a few more test runs to make sure that's not a
-fluke.
-
-Attached is a console log of the fs errors runtime, followed by the boot-time
-fsck.
-
--Eric
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Regards,
+Akira Fujita
