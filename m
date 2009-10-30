@@ -1,24 +1,31 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
-Date: Fri, 30 Oct 2009 08:54:27 -0500
-Message-ID: <4AEAF013.60300@redhat.com>
-References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu> <20091027101534.GA27584@skywalker.linux.vnet.ibm.com> <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com> <4AEA0B71.5050805@redhat.com> <20091030081602.GM18464@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 30 Oct 2009 13:54:43 GMT
+Message-ID: <200910301354.n9UDshGu004484@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Parag Warudkar <parag.lkml@gmail.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	LKML <linux-kernel@vger.k
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44266 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757253AbZJ3Nyc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Oct 2009 09:54:32 -0400
-In-Reply-To: <20091030081602.GM18464@mit.edu>
+Received: from demeter.kernel.org ([140.211.167.39]:49990 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932095AbZJ3Nyi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 09:54:38 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UDsh16004485
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 13:54:43 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
+
+
+
+
+
+--- Comment #155 from Eric Sandeen <sandeen@redhat.com>  2009-10-30 13:54:35 ---
 Theodore Tso wrote:
 > On Thu, Oct 29, 2009 at 04:38:57PM -0500, Eric Sandeen wrote:
 >> I've been running my testcase, and I just hit the usual corruption with  
@@ -53,3 +60,8 @@ be to revert 487caeef9fc08c0565e082c40a8aaf58dad92bbb, and to test Jan's
 sync patches.
 
 -Eric
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
