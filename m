@@ -1,29 +1,31 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
-Date: Fri, 30 Oct 2009 13:56:27 -0600
-Message-ID: <3D6E88E0-7271-4CEC-85DC-9E4416F030F5@sun.com>
-References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>
- <20091016091558.GA10184@mit.edu>
- <20091027101534.GA27584@skywalker.linux.vnet.ibm.com>
- <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com>
- <4AEA0B71.5050805@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 30 Oct 2009 19:56:43 GMT
+Message-ID: <200910301956.n9UJuht2018259@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Parag Warudkar <parag.lkml@gmail.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	bugzilla-daemon@bugzilla.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56339 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756129AbZJ3T4f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 15:56:35 -0400
-In-reply-to: <4AEA0B71.5050805@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:34960 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932405AbZJ3T4i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 15:56:38 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UJuhCx018260
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 19:56:43 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
+
+
+
+
+
+--- Comment #160 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-10-30 19:56:41 ---
+Reply-To: adilger@sun.com
 
 On 2009-10-29, at 15:38, Eric Sandeen wrote:
 > Parag Warudkar wrote:
@@ -63,3 +65,7 @@ Andreas Dilger
 Sr. Staff Engineer, Lustre Group
 Sun Microsystems of Canada, Inc.
 
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
