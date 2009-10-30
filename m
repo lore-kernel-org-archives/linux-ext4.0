@@ -1,21 +1,30 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
-Date: Fri, 30 Oct 2009 04:16:02 -0400
-Message-ID: <20091030081602.GM18464@mit.edu>
-References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu> <20091027101534.GA27584@skywalker.linux.vnet.ibm.com> <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com> <4AEA0B71.5050805@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 30 Oct 2009 08:16:43 GMT
+Message-ID: <200910300816.n9U8Ghxd009055@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Parag Warudkar <parag.lkml@gmail.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	bugzilla-daemon@bugzilla.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755691AbZJ3IQR@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4AEA0B71.5050805@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:52636 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755263AbZJ3IQi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 04:16:38 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9U8GhOc009057
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 08:16:43 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
+
+
+
+
+
+--- Comment #151 from Theodore Tso <tytso@mit.edu>  2009-10-30 08:16:22 ---
 On Thu, Oct 29, 2009 at 04:38:57PM -0500, Eric Sandeen wrote:
 >
 > I've been running my testcase, and I just hit the usual corruption with  
@@ -37,4 +46,9 @@ Or have you tried some of these experiments already?
 
 Regards,
 
-						- Ted
+                        - Ted
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
