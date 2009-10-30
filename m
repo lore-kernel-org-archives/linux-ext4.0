@@ -1,82 +1,36 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad corruption
- with 	2.6.32-rc1 and upwards]
-Date: Fri, 30 Oct 2009 11:14:23 -0500
-Message-ID: <4AEB10DF.6090106@redhat.com>
-References: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>	 <4AEB02F0.5040309@redhat.com> <1256916681.3145.8.camel@mini>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 30 Oct 2009 16:27:23 GMT
+Message-ID: <200910301627.n9UGRN1N018744@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	Ted Augustine <taugustine@techpathways.com>,
-	linux-ext4@vger.kernel.org
-To: Alexey Fisher <bug-track@fisher-privat.net>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28265 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932530AbZJ3QOh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Oct 2009 12:14:37 -0400
-In-Reply-To: <1256916681.3145.8.camel@mini>
+Received: from demeter.kernel.org ([140.211.167.39]:59852 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932601AbZJ3Q1T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 12:27:19 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UGRNiF018745
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 16:27:23 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Alexey Fisher wrote:
-> Am Freitag, den 30.10.2009, 10:14 -0500 schrieb Eric Sandeen:
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-...
 
->> After a little brief digging I'm not sure when the xfs mount option went 
->> in or why...
->>
->> But for both
->>
->> xfs: mount -o ro,norecovery
->>
->> and
->>
->> ext[34]: mount -o ro,noload
->>
->> I don't think either one should touch the disk.
->>
->> Also, both should skip journal replay if you set the block device 
->> readonly prior to mount (hdparm -r can do this).
-> 
-> Interesting tip, thank you.
-> But there is some problems:
-> 1. "hdparm -r" will set complete drive to ro mode. This is bad if i
-> use /dev/sda1 for root and /dev/sda5 need to be forced readonly.
 
-So point it at the partition not the drive:
 
-[root@neon ~]# hdparm -r 1 /dev/sda1
 
-/dev/sda1:
-  setting readonly to 1 (on)
-  readonly      =  1 (on)
-[root@neon ~]# hdparm -r /dev/sda2
+--- Comment #156 from Eric Sandeen <sandeen@redhat.com>  2009-10-30 16:27:16 ---
+Reverting 487caeef9fc08c0565e082c40a8aaf58dad92bbb (that i_sem change from Jan)
+on .32-rc5 still leads to significant corruption in my testing, so it doesn't
+seem to be the (only?) regression.  (that corruption includes many
+multiply-claimed blocks, FWIW).
 
-/dev/sda2:
-  readonly      =  0 (off)
-
-It doesn't change the hardware, it sets a flag on the kernel's block 
-device structure.
-
-> 2. the fact xfs and ext[3,4] use different options for true_ro make
-> things complicated.
-
-the hazards of being an open source sysadmin I guess.
-
-> 3. the definition of ro is broken.
-
-depends on what you mean by ro.  A user can only read from the 
-filesystem so it is accurate in that respect.  Is "ro" for the fs or the 
-bdev?  Semantic differences but not necessarily broken.
-
-> 4. many frustrated admins who mounted part of raid1 only with "-o ro"
-
-Dunno what you mean by that ...
-
--Eric
-
-> Regards,
-> Alexey
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
