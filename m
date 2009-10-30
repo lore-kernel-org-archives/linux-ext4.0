@@ -1,52 +1,79 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: EXT4 >16TB resize2fs support
-Date: Fri, 30 Oct 2009 09:17:57 -0600
-Message-ID: <00E93B30-1C92-4185-8E80-B4AD840183B5@sun.com>
-References: <150c16850910291454j18db2729m572dc0fe22658f1e@mail.gmail.com>
+From: Alexey Fisher <bug-track@fisher-privat.net>
+Subject: Re: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad
+ corruption with 	2.6.32-rc1 and upwards]
+Date: Fri, 30 Oct 2009 16:31:21 +0100
+Message-ID: <1256916681.3145.8.camel@mini>
+References: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>
+	 <4AEB02F0.5040309@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Justin Maggard <jmaggard10@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Ted Augustine <taugustine@techpathways.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42480 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932339AbZJ3PRz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 11:17:55 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n9UFHvBL005741
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 08:18:00 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KSC007001ZMZY00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 30 Oct 2009 08:17:57 -0700 (PDT)
-In-reply-to: <150c16850910291454j18db2729m572dc0fe22658f1e@mail.gmail.com>
+Received: from mail.gmx.net ([213.165.64.20]:34412 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S932449AbZJ3PbU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Oct 2009 11:31:20 -0400
+In-Reply-To: <4AEB02F0.5040309@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2009-10-29, at 15:54, Justin Maggard wrote:
-> What is the current expected status of resize2fs support with 64-bit
-> filesystems?  Specifically, expanding from <16TB to >16TB.  I'm using
-> the latest code from pu, and seeing some odd things.  I'm not sure
-> what the 64bit feature flag does exactly, but is the transition not
-> handled properly?
+Am Freitag, den 30.10.2009, 10:14 -0500 schrieb Eric Sandeen:
+> Greg Freemyer wrote:
+> > On Fri, Oct 30, 2009 at 4:22 AM,  <bugzilla-daemon@bugzilla.kernel.org> wrote:
+> >> http://bugzilla.kernel.org/show_bug.cgi?id=14354
+> >>
+> >> --- Comment #152 from Alexey Fisher <bug-track@fisher-privat.net>  2009-10-30 08:22:10 ---
+> >> Ted,
+> >> Thank you for explanation :)
+> >> Notice: i learning computer forensic, and was trained to mount all evidence
+> >> systems with "-o ro" to not contaminate it. It seems like ext4 break this
+> >> tradition, so many forensics will surprised  why md5sum do not match.
+> > 
+> > Ted,  (Alexey there is a response to further down).
+> > 
+> > I have not followed this thread ultra-closely but Alexey's comment got
+> > my attention.
+> > 
+> > Ignoring computer forensics, with LVM snapshots, hardware raid array
+> > snapshots, etc. even in the presence of a dirty log, we need to be
+> > able to mount a drive in true read-only fashion fro many backup
+> > operations to function correctly.
+> > 
+> > XFS added an extra mount flag for that 5 or so years ago.
+> > I hope ext4 either has or will add a true read-only mount option.
+> > Maybe Eric Sandeen remembers the actual drivers for adding that
+> > feature to XFS.
+> > 
+> 
+> After a little brief digging I'm not sure when the xfs mount option went 
+> in or why...
+> 
+> But for both
+> 
+> xfs: mount -o ro,norecovery
+> 
+> and
+> 
+> ext[34]: mount -o ro,noload
+> 
+> I don't think either one should touch the disk.
+> 
+> Also, both should skip journal replay if you set the block device 
+> readonly prior to mount (hdparm -r can do this).
 
-This isn't supposed to work at all, and in fact should be disabled.
-Firstly, the group descriptors are not big enough to hold the 64-bit
-block addresses unless the filesystem was originally formatted > 16TB.
+Interesting tip, thank you.
+But there is some problems:
+1. "hdparm -r" will set complete drive to ro mode. This is bad if i
+use /dev/sda1 for root and /dev/sda5 need to be forced readonly.
+2. the fact xfs and ext[3,4] use different options for true_ro make
+things complicated.
+3. the definition of ro is broken.
+4. many frustrated admins who mounted part of raid1 only with "-o ro"
 
-Secondly, the resize code has not been made 64-bit clean.
-
-> So... what is expected to work at this point, and what is expected to
-> be broken with the resize process?  Any idea why my fs was shrunk down
-> to 2.2TB when it was supposed to grow to 18TB?
-
-
-The filesystem size was truncated to a 32-bit value.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Regards,
+Alexey
 
