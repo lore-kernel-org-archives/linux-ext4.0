@@ -1,53 +1,42 @@
-From: Duane Griffin <duaneg@dghda.com>
-Subject: Re: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad corruption
-	with 2.6.32-rc1 and upwards]
-Date: Fri, 30 Oct 2009 17:43:14 +0000
-Message-ID: <e9e943910910301043n3e5e8816y74286b0c159a8a78@mail.gmail.com>
-References: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>
-	 <4AEB02F0.5040309@redhat.com> <1256916681.3145.8.camel@mini>
-	 <4AEB10DF.6090106@redhat.com> <1256921545.3145.51.camel@mini>
-	 <4AEB1E9E.9020408@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 30 Oct 2009 19:17:40 GMT
+Message-ID: <200910301917.n9UJHepO006006@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Alexey Fisher <bug-track@fisher-privat.net>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Ted Augustine <taugustine@techpathways.com>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f227.google.com ([209.85.218.227]:62834 "EHLO
-	mail-bw0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932601AbZJ3RnL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 13:43:11 -0400
-Received: by bwz27 with SMTP id 27so3841779bwz.21
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 10:43:14 -0700 (PDT)
-In-Reply-To: <4AEB1E9E.9020408@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:52158 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757365AbZJ3TRf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 15:17:35 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UJHeTp006007
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 19:17:40 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2009/10/30 Eric Sandeen <sandeen@redhat.com>:
-> Alexey Fisher wrote:
->> Hmm... bdev. any chance to do temporary recovery and load it as external
->> journal if ro used? Anyway, you already pointed me to hdparm, so i can
->> use it too.
->
-> There were patches floated to in-ram recovery for those blocks so that you
-> could have a consistent fs w/o touching the disk but it didn't seem to get
-> far.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-Those were mine, I think. I got stuck at the point of needing to
-handle escaped blocks -- I couldn't find any way of reliably and
-efficiently getting hold of a buffer after it had been read from disk
-but before anybody else had a chance to access it. I think if I could
-have cracked that then I could have got it working. The only other
-missing piece of functionality was handling the transition from
-read-only (unrecovered) to read-write.
 
-It would have needed a very thorough audit of the places where ext3
-was doing ll_rw_block and such like, though.
 
-Cheers,
-Duane.
+
+
+--- Comment #158 from Eric Sandeen <sandeen@redhat.com>  2009-10-30 19:17:33 ---
+Thanks Linus, yep I probably just got "lucky" and incorrectly marked a good
+run.
+
+Or, somehow the bisect between two post-.31 commits wound up with .30 in the
+Makefile, and I *cough* tested the wrong kernel, not expecting the version to
+move backwards.
+
+I'm running some bisects & tests in the background to try to narrow it down
+while we have our thinking caps on ... FWIW I can confirm that 2.6.32-rc3
+fails.
 
 -- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
