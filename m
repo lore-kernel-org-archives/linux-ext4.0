@@ -1,50 +1,40 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [PATCH 4/4]ext4: Fix comment typo in move_extent.c
-Date: Fri, 30 Oct 2009 16:42:08 +0900
-Message-ID: <4AEA98D0.5070602@rs.jp.nec.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Fri, 30 Oct 2009 04:16:02 -0400
+Message-ID: <20091030081602.GM18464@mit.edu>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu> <20091027101534.GA27584@skywalker.linux.vnet.ibm.com> <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com> <4AEA0B71.5050805@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41055 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753111AbZJ3HoS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 03:44:18 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Parag Warudkar <parag.lkml@gmail.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755691AbZJ3IQR@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4AEA0B71.5050805@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext4: Fix comment typo in move_extent.c
+On Thu, Oct 29, 2009 at 04:38:57PM -0500, Eric Sandeen wrote:
+>
+> I've been running my testcase, and I just hit the usual corruption with  
+> this patch in place after 8 iterations, I'm afraid.
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Eric, since you have a relatively controllable reproduction case, have
+you tried reproducing Alexey's bisection results?  Specifically he
+seemed to find that commit fe188c0e shows no problem, and commit
+91ac6f43 is the first commit with problems?
 
-Fix some comment typo in move_extent.c
+Having to do multiple iterations will make doing a bisection a major
+pain, but maybe we'll get something out of that.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.co.jp>
----
- fs/ext4/move_extent.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Other things that might be worth doing given that you have a test case
+would be to try reverting commit 91ac6f43, and see if that helps, and
+to try this patch: http://bugzilla.kernel.org/attachment.cgi?id=23468
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 2ca6aa3..5a106e0 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -568,7 +568,7 @@ out:
-  * @tmp_oext:		the extent that will belong to the donor inode
-  * @orig_off:		block offset of original inode
-  * @donor_off:		block offset of donor inode
-- * @max_count:		the maximun length of extents
-+ * @max_count:		the maximum length of extents
-  *
-  * Return 0 on success, or a negative error value on failure.
-  */
-@@ -1073,7 +1073,7 @@ mext_check_arguments(struct inode *orig_inode,
- 	}
+Or have you tried some of these experiments already?
 
- 	if (!*len) {
--		ext4_debug("ext4 move extent: len shoudld not be 0 "
-+		ext4_debug("ext4 move extent: len should not be 0 "
- 			"[ino:orig %lu, donor %lu]\n", orig_inode->i_ino,
- 			donor_inode->i_ino);
- 		return -EINVAL;
+Regards,
+
+						- Ted
