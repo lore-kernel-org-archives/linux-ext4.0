@@ -1,98 +1,49 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Sat, 31 Oct 2009 09:15:59 GMT
-Message-ID: <200910310915.n9V9Fx12028852@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Sat, 31 Oct 2009 20:54:28 +0530
+Message-ID: <20091031152428.GA25548@skywalker.linux.vnet.ibm.com>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com>
+ <20091016091558.GA10184@mit.edu>
+ <20091027101534.GA27584@skywalker.linux.vnet.ibm.com>
+ <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com>
+ <4AEA0B71.5050805@redhat.com>
+ <3D6E88E0-7271-4CEC-85DC-9E4416F030F5@sun.com>
+ <20091031091528.GO18464@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Parag Warudkar <parag.lkml@gmail.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ex
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:42701 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756290AbZJaJPz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2009 05:15:55 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9V9Fxux028853
-	for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2009 09:15:59 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:58139 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757839AbZJaPZy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2009 11:25:54 -0400
+Content-Disposition: inline
+In-Reply-To: <20091031091528.GO18464@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+On Sat, Oct 31, 2009 at 05:15:28AM -0400, Theodore Tso wrote:
+> On Fri, Oct 30, 2009 at 01:56:27PM -0600, Andreas Dilger wrote:
+> > I wonder if there are multiple problems involved here?  Eric, it seems
+> > possible that your reproducer is exercising a similar, though unrelated
+> > codepath.  
+> 
+> Note that Aneesh has pubished two patches which insert a call to
+> ext4_discard_preallocations().  One is a patch which inserts it into
+> fs/inode.c's truncate path (for direct/indirect-mapped inodes) and one
+> which is patch which inserts it into fs/extents.c truncate path (for
+> extent-mapped inodes).  As near as I can tell both patches are
+> necessary, and it looks to me like they should be combined into a
+> single patch, since commit 487caeef9 affects both truncate paths.
+> Aneesh, do you concur?
+> 
 
+We need only the patch that drop prealloc space in ext4_truncate_restart_trans
+ext4_ext_truncate_extend_restart calls ext4_truncate_restart_trans. So adding
+the prealloc space dropping in ext4_truncate_restart_trans should handle both
+direct/indirect-mapped inode and extent-mapped inodes.
 
-
-
-
---- Comment #161 from Theodore Tso <tytso@mit.edu>  2009-10-31 09:15:45 ---
-On Fri, Oct 30, 2009 at 01:56:27PM -0600, Andreas Dilger wrote:
-> I wonder if there are multiple problems involved here?  Eric, it seems
-> possible that your reproducer is exercising a similar, though unrelated
-> codepath.  
-
-Note that Aneesh has pubished two patches which insert a call to
-ext4_discard_preallocations().  One is a patch which inserts it into
-fs/inode.c's truncate path (for direct/indirect-mapped inodes) and one
-which is patch which inserts it into fs/extents.c truncate path (for
-extent-mapped inodes).  As near as I can tell both patches are
-necessary, and it looks to me like they should be combined into a
-single patch, since commit 487caeef9 affects both truncate paths.
-Aneesh, do you concur?
-
-Like Andreas, I am suspicious that there may be multiple problems
-occurring here, so here is a proposed plan of attack.
-
-Step 1) Sanity check that commit 0a80e986 shows the problem.  This is
-immediately after the first batch of ext4 patches which I sent to
-Linus during the post-2.6.31 merge window.  Given that patches in the
-middle of this first patch have been reported by Avery as showing the
-problem, and while we may have some "git bisect good" revisions that
-were really bad, in general if a revision is reported bad, the problem
-is probably there at that version and successive versions.  Hence, I'm
-_pretty_ sure that 0a80e986 should demonstrate the problem.
-
-Step 2) Sanity check that commit ab86e576 does _not_ show the problem.
-This commit corresponds to 2.6.31-git6, and there are no ext4 patches
-that I pushed before that point.  There are three commits that show up
-in response to the command "git log v2.6.31..v2.6.31-git6 -- fs/ext4
-fs/jbd2", but they weren't pushed by me.  Although come to think of
-it, Jan Kara's commit 0d34ec62, "ext4: Remove syncing logic from
-ext4_file_write" is one we might want to look at very carefully if
-commit ab86e576 also shows the problem....
-
-Step 3) Assuming that Step 1 and Step 2 are as I expect, with commit
-ab86e576 being "good", and commit 0a80e986 being "bad", we will have
-localized the problem commit(s) to the 63 commits that were initially
-pushed to Linus during the merge window.  One of the commits is
-487caeef9, which Aneesh has argued convincingly seems to be
-problematic, and which seems to solve at least one or two reporter's
-problems, but clearly isn't a complete solution.  So let's try to
-narrow things down further by testing this branch:
-
-    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test-history
-
-This branch corresponds to commit ab86e576 (from Step 2), but with the
-problematic commit 487caeef9 removed.  It was generated by applying
-the following guilt patch series to v2.6.31-git6:
-
-    git://repo.or.cz/ext4-patch-queue.git test-history
-
-The advantage of starting with the head of test-history is that if
-there are multiple problematic commits, this should show the problem
-(just as reverting 487caeef9 would) --- but since 487caeef9 is
-actually removed, we can now do a "git bisect start test-history
-v2.6.31-git6" and hopefully be able to localize whatever additional
-commits might be bad.
-
-(We could also keep applying and unapplying the patch corresponding to
-the revert of 487caeef9 while doing a bisection, but that tends to be
-error prone.)
-
-Does that sounds like a plan?
-
-                            - Ted
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+-aneesh
