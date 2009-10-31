@@ -1,119 +1,89 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bugme-new] [Bug 14507] New: kswapd crash, BUG: unable to
- handle kernel NULL pointer dereference at (null)
-Date: Fri, 30 Oct 2009 16:19:28 -0700
-Message-ID: <20091030161928.f4302714.akpm@linux-foundation.org>
-References: <bug-14507-10286@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 14354] Re: ext4 increased intolerance to unclean shutdown?
+Date: Sat, 31 Oct 2009 05:15:28 -0400
+Message-ID: <20091031091528.GO18464@mit.edu>
+References: <f7848160910152128h96237b7ga103915082d6412b@mail.gmail.com> <20091016091558.GA10184@mit.edu> <20091027101534.GA27584@skywalker.linux.vnet.ibm.com> <f7848160910291425q30377641qfe23e74fbc643d89@mail.gmail.com> <4AEA0B71.5050805@redhat.com> <3D6E88E0-7271-4CEC-85DC-9E4416F030F5@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: bugzilla-daemon@bugzilla.kernel.org,
-	bugme-daemon@bugzilla.kernel.org, yagp@free.fr
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Parag Warudkar <parag.lkml@gmail.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	bugzilla-daemon@bugzilla.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:45663 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933023AbZJ3XT1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Oct 2009 19:19:27 -0400
-In-Reply-To: <bug-14507-10286@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:36750 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751433AbZJaJPg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 31 Oct 2009 05:15:36 -0400
+Content-Disposition: inline
+In-Reply-To: <3D6E88E0-7271-4CEC-85DC-9E4416F030F5@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Oct 30, 2009 at 01:56:27PM -0600, Andreas Dilger wrote:
+> I wonder if there are multiple problems involved here?  Eric, it seems
+> possible that your reproducer is exercising a similar, though unrelated
+> codepath.  
 
-(switched to email.  Please respond via emailed reply-to-all, not via the
-bugzilla web interface).
+Note that Aneesh has pubished two patches which insert a call to
+ext4_discard_preallocations().  One is a patch which inserts it into
+fs/inode.c's truncate path (for direct/indirect-mapped inodes) and one
+which is patch which inserts it into fs/extents.c truncate path (for
+extent-mapped inodes).  As near as I can tell both patches are
+necessary, and it looks to me like they should be combined into a
+single patch, since commit 487caeef9 affects both truncate paths.
+Aneesh, do you concur?
 
-On Thu, 29 Oct 2009 12:34:19 GMT
-bugzilla-daemon@bugzilla.kernel.org wrote:
+Like Andreas, I am suspicious that there may be multiple problems
+occurring here, so here is a proposed plan of attack.
 
-> http://bugzilla.kernel.org/show_bug.cgi?id=14507
-> 
->            Summary: kswapd crash, BUG: unable to handle kernel NULL
->                     pointer dereference at (null)
+Step 1) Sanity check that commit 0a80e986 shows the problem.  This is
+immediately after the first batch of ext4 patches which I sent to
+Linus during the post-2.6.31 merge window.  Given that patches in the
+middle of this first patch have been reported by Avery as showing the
+problem, and while we may have some "git bisect good" revisions that
+were really bad, in general if a revision is reported bad, the problem
+is probably there at that version and successive versions.  Hence, I'm
+_pretty_ sure that 0a80e986 should demonstrate the problem.
 
-ext3 went splat.
+Step 2) Sanity check that commit ab86e576 does _not_ show the problem.
+This commit corresponds to 2.6.31-git6, and there are no ext4 patches
+that I pushed before that point.  There are three commits that show up
+in response to the command "git log v2.6.31..v2.6.31-git6 -- fs/ext4
+fs/jbd2", but they weren't pushed by me.  Although come to think of
+it, Jan Kara's commit 0d34ec62, "ext4: Remove syncing logic from
+ext4_file_write" is one we might want to look at very carefully if
+commit ab86e576 also shows the problem....
 
->            Product: Memory Management
->            Version: 2.5
->     Kernel Version: 2.6.30.9-90.fc11.x86_64
->           Platform: All
->         OS/Version: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: high
->           Priority: P1
->          Component: Other
->         AssignedTo: akpm@linux-foundation.org
->         ReportedBy: yagp@free.fr
->         Regression: No
-> 
-> 
-> On my Linux 64 bits machine, from time to time, kswapd crashes and sometimes
-> the system freeze a little bit after. 
-> 
-> Precisions: 
-> 1) CPU Intel Core i7 920, 12 GB of RAM
-> 2) According to memtest86, the RAM is OK (test made during 6 hours). 
-> 
-> 
-> BUG: unable to handle kernel NULL pointer dereference at (null)
-> IP: [<ffffffff811b99c7>] bit_spin_lock+0x29/0x49
-> PGD 17f9e5067 PUD 2a6d9e067 PMD 0 
-> Oops: 0002 [#1] SMP 
-> last sysfs file: /sys/devices/pci0000:00/0000:00:1c.2/0000:06:00.0/irq
-> CPU 5 
-> Modules linked in: fuse sunrpc ip6t_REJECT nf_conntrack_ipv6 ip6table_filter
-> ip6_tables ipv6 cpufreq_ondemand acpi_cpufreq freq_table dm_multipath
-> firewire_ohci firewire_core snd_hda_codec_realtek nvidia(P) snd_hda_intel
-> crc_itu_t snd_hda_codec snd_hwdep snd_pcm pata_jmicron snd_timer i2c_i801
-> sym53c8xx scsi_transport_spi snd soundcore snd_page_alloc iTCO_wdt
-> iTCO_vendor_support r8169 mii wmi pcspkr asus_atk0110 hwmon ata_generic
-> pata_acpi nouveau drm i2c_algo_bit i2c_core [last unloaded: microcode]
-> Pid: 72, comm: kswapd0 Tainted: P    B      2.6.30.9-90.fc11.x86_64 #1 System
-> Product Name
-> RIP: 0010:[<ffffffff811b99c7>]  [<ffffffff811b99c7>] bit_spin_lock+0x29/0x49
-> RSP: 0018:ffff88033ca8f900  EFLAGS: 00010246
-> RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0020000000000009
-> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000017
-> RBP: ffff88033ca8f910 R08: ffffe20002492630 R09: 00000000ffffffd0
-> R10: ffff88033ca8fc20 R11: 00000000000027d0 R12: ffffe20002492608
-> R13: 0000000000000000 R14: ffff88033c6f1164 R15: ffff8800a6c35000
-> FS:  0000000000000000(0000) GS:ffff880032a87000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-> CR2: 0000000000000000 CR3: 000000017f9fc000 CR4: 00000000000006e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process kswapd0 (pid: 72, threadinfo ffff88033ca8e000, task ffff88033d17c500)
-> Stack:
-> ffff88033ca8f940 00000000abfa2d3c ffff88033ca8f940 ffffffff811b9a14
-> ffff8800a6c34f50 00000000abfa2d3c ffff88033ca8f970 ffff88033c6f1000
-> ffff88033ca8f9b0 ffffffff811b525c ffff88033ca8f970 ffffe20002492501
-> Call Trace:
-> [<ffffffff811b9a14>] journal_grab_journal_head+0x2d/0x61
-> [<ffffffff811b525c>] journal_try_to_free_buffers+0x58/0x189
-> [<ffffffff8117d82c>] ext3_releasepage+0x74/0x93
-> [<ffffffff810d09af>] try_to_release_page+0x47/0x64
-> [<ffffffff810de710>] shrink_page_list+0x484/0x62a
-> [<ffffffff8110f2e5>] ? mem_cgroup_del_lru_list+0x7d/0xa2
-> [<ffffffff810df116>] shrink_list+0x2fe/0x674
-> [<ffffffff810da1f0>] ? get_dirty_limits+0x36/0x282
-> [<ffffffff8104788b>] ? pick_next_task_fair+0xbf/0xe1
-> [<ffffffff810df748>] shrink_zone+0x2bc/0x35f
-> [<ffffffff810e008e>] kswapd+0x493/0x649
-> [<ffffffff810ddf56>] ? isolate_pages_global+0x0/0x222
-> [<ffffffff81070663>] ? autoremove_wake_function+0x0/0x5f
-> [<ffffffff810dfbfb>] ? kswapd+0x0/0x649
-> [<ffffffff81070171>] kthread+0x6d/0xae
-> [<ffffffff810528e7>] ? schedule_tail+0x38/0xa3
-> [<ffffffff8101310a>] child_rip+0xa/0x20
-> [<ffffffff81070104>] ? kthread+0x0/0xae
-> [<ffffffff81013100>] ? child_rip+0x0/0x20
-> Code: c9 c3 55 48 89 e5 48 83 ec 10 0f 1f 44 00 00 65 48 8b 04 25 28 00 00 00
-> 48 89 45 f8 31 c0 eb 0b f3 90 0f a3 3e 19 c0 85 c0 75 f5 <f0> 0f ab 3e 19 c0 85
-> c0 75 ed 48 8b 45 f8 65 48 33 04 25 28 00 
-> RIP  [<ffffffff811b99c7>] bit_spin_lock+0x29/0x49
-> RSP <ffff88033ca8f900>
-> CR2: 0000000000000000
-> ---[ end trace 69e0d92a3fdf35cd ]---
+Step 3) Assuming that Step 1 and Step 2 are as I expect, with commit
+ab86e576 being "good", and commit 0a80e986 being "bad", we will have
+localized the problem commit(s) to the 63 commits that were initially
+pushed to Linus during the merge window.  One of the commits is
+487caeef9, which Aneesh has argued convincingly seems to be
+problematic, and which seems to solve at least one or two reporter's
+problems, but clearly isn't a complete solution.  So let's try to
+narrow things down further by testing this branch:
 
+    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test-history
+
+This branch corresponds to commit ab86e576 (from Step 2), but with the
+problematic commit 487caeef9 removed.  It was generated by applying
+the following guilt patch series to v2.6.31-git6:
+
+    git://repo.or.cz/ext4-patch-queue.git test-history
+
+The advantage of starting with the head of test-history is that if
+there are multiple problematic commits, this should show the problem
+(just as reverting 487caeef9 would) --- but since 487caeef9 is
+actually removed, we can now do a "git bisect start test-history
+v2.6.31-git6" and hopefully be able to localize whatever additional
+commits might be bad.
+
+(We could also keep applying and unapplying the patch corresponding to
+the revert of 487caeef9 while doing a bisection, but that tends to be
+error prone.)
+
+Does that sounds like a plan?
+
+							- Ted
