@@ -1,38 +1,37 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: journaled quota file question
-Date: Sat, 31 Oct 2009 21:59:44 +0300
-Message-ID: <871vkj4cf3.fsf@openvz.org>
-References: <871vkpwv4a.fsf@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Sat, 31 Oct 2009 19:15:41 GMT
+Message-ID: <200910311915.n9VJFfY8023824@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:62927 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932755AbZJaR7f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 31 Oct 2009 13:59:35 -0400
-Received: from dmon-lp ([unknown] [10.55.92.161])
- by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KSE00KZ74U92E20@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Sat, 31 Oct 2009 21:03:50 +0300 (MSK)
-In-reply-to: <871vkpwv4a.fsf@openvz.org>
+Received: from demeter.kernel.org ([140.211.167.39]:32812 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933143AbZJaTPg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2009 15:15:36 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9VJFfI8023825
+	for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2009 19:15:41 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-> While looking to ext3/4 quota code I'm wondering
-> Why do we have to place journaled quota file on fs root?
-> In some situations it may be useful to place it deeper for example:
-> /root/dir/quota_file
-> The only reason what comes in to my mind is that some one
-> may rename parent folder rename("/root/dir", "/root/dir2")
-> Is this the only reason?
-add an author in cc:
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+
+--- Comment #164 from Eric Sandeen <sandeen@redhat.com>  2009-10-31 19:15:31 ---
+Well, the proposed "good" point survived 20 runs.  The proposed bad point
+survived 14 runs, and then showed a problem.  Confidence level... well... not
+great yet.
+
+I'll test the good point for more runs, to be sure.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
