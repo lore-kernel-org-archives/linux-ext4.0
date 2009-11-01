@@ -1,76 +1,57 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Fri, 30 Oct 2009 18:05:36 GMT
-Message-ID: <200910301805.n9UI5aFH016683@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad
+	corruption with 2.6.32-rc1 and upwards]
+Date: Sun, 1 Nov 2009 01:45:42 -0400
+Message-ID: <20091101054542.GP18464@mit.edu>
+References: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Augustine <taugustine@techpathways.com>,
+	Alexey Fisher <bug-track@fisher-privat.net>,
+	linux-ext4@vger.kernel.org
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:41943 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932741AbZJ3SFc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2009 14:05:32 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n9UI5ac5016685
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2009 18:05:36 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:56471 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750943AbZKAFpt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Nov 2009 01:45:49 -0400
+Content-Disposition: inline
+In-Reply-To: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+On Fri, Oct 30, 2009 at 10:20:35AM -0400, Greg Freemyer wrote:
+> Ignoring computer forensics, with LVM snapshots, hardware raid array
+> snapshots, etc. even in the presence of a dirty log, we need to be
+> able to mount a drive in true read-only fashion fro many backup
+> operations to function correctly.
 
+Can you go into more detail about "many backup operations"?   
 
+> XFS added an extra mount flag for that 5 or so years ago.
 
+As Eric has already pointed out, "norecovery" and "noload" mean the
+same thing.  But not recovering the journal is dangerous; the file
+system is not necessarily going to be consistent, and while the kernel
+_shouldn't_ crash given an inconsistent filesystem image --- and a lot
+of fsfuzzer testing and bug fixing means that it _probably_ won't
+crash --- taking a backup of an inconsistent file system image due to
+the journal recovery being suppressed isn't such a great idea.
 
+As I mentioned, trying to _simulate_ a journal recovery by using the
+journal instead of data blocks for those blocks in the journal is
+possible, but it's a non-trival task to code up.  A Google Summer of
+Student project could probably do it, but it's not a day or half-day
+project.
 
---- Comment #157 from Linus Torvalds <torvalds@linux-foundation.org>  2009-10-30 18:05:28 ---
-On Fri, 30 Oct 2009, bugzilla-daemon@bugzilla.kernel.org wrote:
-> 
-> Well I've been doing bisects but I'm getting skeptical of the results; 
-> either my testcase isn't reliable enough or all the merges are confusing 
-> git-bisect (?)  Anyway it keeps ending up on nonsensical commits.
+If someone is interested in simulating a journal recovery in a true ro
+fashion, I'm happy to lay out the design for such a thing.  Contact me
+if you're interested....
 
-Merges don't confuse git-bisect (lots of merges may make bisection 
-slightly less _efficient_, though, because it can be impossible to find 
-commits that are nicely "in the middle"), but the way bisection works, 
-even a _single_ wrong "git bisect good/bad" statement can - and will - 
-make bisection results go off totally in the weeds.
+						- Ted
 
-Bisection is designed to be efficient, which is absolutely wonderful when 
-you have a 100% unambiguous bug that needs to be found in 10,000 commits. 
-It's what gives us that nice log2() behavior.
+P.S.  We can certainly add an alias so that ext4 understands
+norecovery much like XFS does.  If we are going to standardize on a
+mount option, I'd agree that XFS's norecovery is probably a better
+choice than ext3/4's noload.
 
-But the downside of that efficiency is the same as the downside of any 
-very efficient data compression with no checksum: there is absolutely zero 
-redundancy. So then if even just a single bit of information (in this case 
-the "good/bad" info) is wrong, the end result will not just be wrong - it 
-will be _disastrously_ wrong, and you won't even be anywhere _close_ to 
-the correct end result.
-
-[ In fact, the way bisection works, if you give a single incorrect 
-  bisection point, the end result will usually be close to the commit you 
-  incorrectly marked, rather than the actual buggy commit you searched 
-  for.
-
-  That _can_ be used as a hint when you're unsure - when getting a clearly 
-  bogus bisection result, you can look at the bisect log, and try to find 
-  the first commit in the log that is close to the clearly bogus result, 
-  and you might decide to re-test that commit more carefully. And then if, 
-  on re-testing, it turns out that you had been wrong the first time, you 
-  might be able to avoid re-doing the whole bisection thing, and instead 
-  re-do the log up to the incorrect - and now fixed - entry, and continue 
-  from there. ]
-
-That said, if you end up being uncertain about the bisection points, and 
-can't give more than a "95% confidence", bisection will almost inevitably 
-fail. A bug that is timing-dependent can be almost impossible to bisect. 
-Even if you can reliably trigger it _eventually_, you may have to test so 
-long at each bisection point that bisection becomes practically useless.
-
-        Linus
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
