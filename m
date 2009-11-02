@@ -1,40 +1,48 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: [PATCH 04/27] ext2: Add ext2_sb_info mutex
-Date: Mon, 2 Nov 2009 11:26:54 +0100
-Message-ID: <20091102102654.GG31511@one.firstfloor.org>
-References: <1257156307-24175-1-git-send-email-jblunck@suse.de> <1257156307-24175-5-git-send-email-jblunck@suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: journaled quota file question
+Date: Mon, 2 Nov 2009 13:31:24 +0100
+Message-ID: <20091102123124.GA23161@duck.suse.cz>
+References: <871vkpwv4a.fsf@openvz.org> <871vkj4cf3.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, Matthew Wilcox <matthew@wil.cx>,
-	linux-kernel@vger.kernel.org, Andi Kleen <andi@firstfloor.org>,
-	Jan Kara <jack@suse.cz>, Al Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andi Kleen <ak@linux.intel.com>,
-	Christoph Hellwig <hch@lst.de>,
-	Pekka Enberg <penberg@cs.helsinki.fi>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Jan Blunck <jblunck@suse.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754654AbZKBK0y@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:37006 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754725AbZKBMbU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Nov 2009 07:31:20 -0500
 Content-Disposition: inline
-In-Reply-To: <1257156307-24175-5-git-send-email-jblunck@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <871vkj4cf3.fsf@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> @@ -762,6 +767,12 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	sbi->s_sb_block = sb_block;
->  
->  	/*
-> +	 * mutex for protection of modifications of the superblock while being
-> +	 * write out by ext2_write_super() or ext2_sync_fs().
-> +	 */
-> +	mutex_init(&sbi->s_mutex);
+  Hi,
 
-I didn't go over all the code paths in detail, but if you replace
-the BKL with a mutex that is hold over a longer write-out sleep
-period you potentially limit IO parallelism a lot.
+On Sat 31-10-09 21:59:44, Dmitry Monakhov wrote:
+> Dmitry Monakhov <dmonakhov@openvz.org> writes:
+> 
+> > While looking to ext3/4 quota code I'm wondering
+> > Why do we have to place journaled quota file on fs root?
+> > In some situations it may be useful to place it deeper for example:
+> > /root/dir/quota_file
+> > The only reason what comes in to my mind is that some one
+> > may rename parent folder rename("/root/dir", "/root/dir2")
+> > Is this the only reason?
+  Well, the reason is that we have to read & write the files during orphan
+recovery on mount. A that time the filesystem is not fully set up so you
+cannot use VFS directory traversal code and I didn't want to implement
+ext[34] specific one. Also as you write above, if you have quota files in
+some subdirectory, there are more possibilities for failure.
+  Admittedly, I don't see a big point in having quota files in some other
+directory. In fact, they should rather be system files not visible in
+any directory but that requires rather non-trivial changes to repquota and
+moving quotacheck functionality to fsck and I never got to doing that.
 
-In this case since the BKL didn't protect over the sleep anyways it might
-be reasonable to drop it during the IO operation (and possibly if
-you're sure nothing else sleeps use a spin lock)
+> add an author in cc:
+  Thanks.
 
--Andi
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
