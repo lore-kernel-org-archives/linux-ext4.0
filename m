@@ -1,74 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad corruption
- with 2.6.32-rc1 and upwards]
-Date: Mon, 02 Nov 2009 17:02:05 -0600
-Message-ID: <4AEF64ED.1040703@redhat.com>
-References: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com> <20091101054542.GP18464@mit.edu> <87f94c370911021359x19f57427o19e6f7bfcfadae21@mail.gmail.com> <42D1C316-13BF-401C-BB2F-A3DF62996A54@sun.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Mon, 2 Nov 2009 23:11:02 GMT
+Message-ID: <200911022311.nA2NB2OG001728@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Ted Augustine <taugustine@techpathways.com>,
-	Alexey Fisher <bug-track@fisher-privat.net>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55602 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757176AbZKBXCN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Nov 2009 18:02:13 -0500
-In-Reply-To: <42D1C316-13BF-401C-BB2F-A3DF62996A54@sun.com>
+Received: from demeter.kernel.org ([140.211.167.39]:58706 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932090AbZKBXK7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Nov 2009 18:10:59 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nA2NB3PE001729
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Nov 2009 23:11:03 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On 2009-11-02, at 14:59, Greg Freemyer wrote:
->> One example is a hardware raid array that creates readonly snapshots
->> or clones.  (Lots of those exist in the real world).
->>
->> So the typical backup procedure is:
->>
->> ====
->> Queisce application (databases, etc. have utils to do this.)
->>
->> Queisce filesystem (xfs_freeze -f can be done from userspace. is there
->> a ext4 util?)
->>
->> issue raid array command to create snapshot.
->>
->> release filesystem (xfs_freeze -u)
->>
->> release the app (util provided by app).
->>
->> Mount the snapshot readonly (true readonly with zero writes to the
->> block device).
->>
->> Backup the readonly snapshot (to tape, etc.).
-> 
-> I thought Takashi Sato was working on allowing a filesystem freeze
-> ioctl from userspace?  This would hook into the filesystem-specific
-> freeze code so that when the ioctl() returns the on-disk filesystem
-> is fully consistent and does not even require journal replay.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-That's in and done; most recent xfsprogs' xfs_freeze utility will even 
-freeze non-xfs filesystems now :)  Otherwise a wrapper utility around 
-the ioctl would be trivial to write.
 
->> I believe XFS had 2 issues related to this process when first
->> implemented in linux.
->>
->> 1) It required the UUID to be unique.  Obviously in the above scenario
->> it is not, so "mount -o nouuid" was added for xfs.
->>
->> 2) Journal replay was originally aways attempted in the above process,
->> so the "mount -o norecovery" option was added to force a true readonly
->> mount.
 
-these days a frozen xfs fs should be consistent & not need replay.
+
+
+--- Comment #168 from Eric Sandeen <sandeen@redhat.com>  2009-11-02 23:10:53 ---
+if the folks who saw this could revert d0646f7b636d067d715fab52a2ba9c6f0f46b0d7
+(or just pull Linus' git tree, because he's reverted it upstream) and retest
+your scenarios that'd be great.
 
 -Eric
 
->> ext4 may already support mounting of readonly clones, but if not it
->> needs to before it will qualify as a data center ready filesystem.
-
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
