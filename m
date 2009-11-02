@@ -1,48 +1,30 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: journaled quota file question
-Date: Mon, 2 Nov 2009 13:31:24 +0100
-Message-ID: <20091102123124.GA23161@duck.suse.cz>
-References: <871vkpwv4a.fsf@openvz.org> <871vkj4cf3.fsf@openvz.org>
+From: Julia Lawall <julia@diku.dk>
+Subject: question about ext4/inode.c
+Date: Mon, 2 Nov 2009 17:10:46 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0911021708550.2115@ask.diku.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37006 "EHLO mx2.suse.de"
+Received: from mgw2.diku.dk ([130.225.96.92]:50876 "EHLO mgw2.diku.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754725AbZKBMbU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Nov 2009 07:31:20 -0500
-Content-Disposition: inline
-In-Reply-To: <871vkj4cf3.fsf@openvz.org>
+	id S1755336AbZKBQKn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Nov 2009 11:10:43 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+The function ext4_da_writepages_trans_blocks contains the following code:
 
-On Sat 31-10-09 21:59:44, Dmitry Monakhov wrote:
-> Dmitry Monakhov <dmonakhov@openvz.org> writes:
-> 
-> > While looking to ext3/4 quota code I'm wondering
-> > Why do we have to place journaled quota file on fs root?
-> > In some situations it may be useful to place it deeper for example:
-> > /root/dir/quota_file
-> > The only reason what comes in to my mind is that some one
-> > may rename parent folder rename("/root/dir", "/root/dir2")
-> > Is this the only reason?
-  Well, the reason is that we have to read & write the files during orphan
-recovery on mount. A that time the filesystem is not fully set up so you
-cannot use VFS directory traversal code and I didn't want to implement
-ext[34] specific one. Also as you write above, if you have quota files in
-some subdirectory, there are more possibilities for failure.
-  Admittedly, I don't see a big point in having quota files in some other
-directory. In fact, they should rather be system files not visible in
-any directory but that requires rather non-trivial changes to repquota and
-moving quotacheck functionality to fsck and I never got to doing that.
+        if (!(inode->i_flags & EXT4_EXTENTS_FL) &&
+            (max_blocks > EXT4_MAX_TRANS_DATA))
+                max_blocks = EXT4_MAX_TRANS_DATA;
 
-> add an author in cc:
-  Thanks.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Elsewhere the constant EXT4_EXTENTS_FL is used as follows:
+
+EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL
+
+Should that be done in ext4_da_writepages_trans_blocks as well?
+
+thanks,
+julia
