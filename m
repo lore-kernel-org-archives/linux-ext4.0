@@ -1,40 +1,46 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: [PATCH 4/4] ext4: Wait for proper transaction commit on fsync
-Date: Wed, 04 Nov 2009 15:57:22 +0100
-Message-ID: <87zl728hil.fsf@basil.nowhere.org>
-References: <1256647729-29834-1-git-send-email-jack@suse.cz>
-	<1256647729-29834-5-git-send-email-jack@suse.cz>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: one way to dmesg
+Date: Wed, 4 Nov 2009 10:18:49 -0500
+Message-ID: <87f94c370911040718k766d910fr23342c82d4632faa@mail.gmail.com>
+References: <1257344804.2852.11.camel@zwerg>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: Alexey Fisher <bug-track@fisher-privat.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:33142 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756513AbZKDO5T (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Nov 2009 09:57:19 -0500
-In-Reply-To: <1256647729-29834-5-git-send-email-jack@suse.cz> (Jan Kara's message of "Tue, 27 Oct 2009 13:48:49 +0100")
+Received: from mail-iw0-f180.google.com ([209.85.223.180]:39485 "EHLO
+	mail-iw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756045AbZKDPSp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Nov 2009 10:18:45 -0500
+Received: by iwn10 with SMTP id 10so4993536iwn.4
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Nov 2009 07:18:50 -0800 (PST)
+In-Reply-To: <1257344804.2852.11.camel@zwerg>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
->  	ext4_io_end_t *cur_aio_dio;
-> +
-> +	/*
-> +	 * Transactions that contain inode's metadata needed to complete
-> +	 * fsync and fdatasync, respectively.
-> +	 */
-> +	atomic_t i_sync_tid;
-> +	atomic_t i_datasync_tid;
+On Wed, Nov 4, 2009 at 9:26 AM, Alexey Fisher
+<bug-track@fisher-privat.net> wrote:
+> Hallo,
+> this is sort of continue of discussion about unified way to mount fs
+> readonly.
+> I wont to know how about dmesg/printk. I see ext[234] produce different
+> logs on mount even it use same code. I feel like i have some time to
+> digg in. My target is easy to parse dmesg.
 
-This might be a stupid question, but the atomic implies you don't hold
-any kind of reference to the transaction. So what prevents these IDs
-from wrapping while in there? Given it would be probably take a long
-time today, but might be not fully future proof to very fast future IO
-devices.
+Patches for unified mount messages already exist.  Various versions
+have been posted in the last couple months.
 
--Andi
+I don't know if they have been accepted yet or not.
 
-
+Greg
 -- 
-ak@linux.intel.com -- Speaking for myself only.
+Greg Freemyer
+Head of EDD Tape Extraction and Processing team
+Litigation Triage Solutions Specialist
+http://www.linkedin.com/in/gregfreemyer
+Preservation and Forensic processing of Exchange Repositories White Paper -
+<http://www.norcrossgroup.com/forms/whitepapers/tng_whitepaper_fpe.html>
+
+The Norcross Group
+The Intersection of Evidence & Technology
+http://www.norcrossgroup.com
