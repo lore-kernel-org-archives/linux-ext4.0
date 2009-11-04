@@ -1,208 +1,57 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [REPOST] [PATCH][RFC] vfs: add message print mechanism for the
- mount/umount into the VFS layer
-Date: Wed, 4 Nov 2009 13:49:09 +0900
-Message-ID: <20091104134909.81bf8c25.toshi.okajima@jp.fujitsu.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: xt4 - True Readonly mount [WAS - Re: [Bug 14354] Bad corruption
+ with 2.6.32-rc1 and upwards]
+Date: Wed, 04 Nov 2009 01:05:28 -0700
+Message-ID: <9EA6C408-DC45-457F-B7FA-93F08A769E78@sun.com>
+References: <87f94c370910300720s5ea3d780o45fcf32303820a3c@mail.gmail.com>
+ <20091101054542.GP18464@mit.edu>
+ <87f94c370911021359x19f57427o19e6f7bfcfadae21@mail.gmail.com>
+ <42D1C316-13BF-401C-BB2F-A3DF62996A54@sun.com> <4AEF64ED.1040703@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: viro@zeniv.linux.org.uk, tytso@mit.edu
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Ted Augustine <taugustine@techpathways.com>,
+	Alexey Fisher <bug-track@fisher-privat.net>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:44548 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750705AbZKDFBZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Nov 2009 00:01:25 -0500
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35810 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751518AbZKDIF0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Nov 2009 03:05:26 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nA485UDZ028951
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Nov 2009 00:05:31 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KSK00100RNNTV00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 04 Nov 2009 00:05:30 -0800 (PST)
+In-reply-to: <4AEF64ED.1040703@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi. 
+On 2009-11-02, at 16:02, Eric Sandeen wrote:
+> Andreas Dilger wrote:
+>> I thought Takashi Sato was working on allowing a filesystem freeze
+>> ioctl from userspace?  This would hook into the filesystem-specific
+>> freeze code so that when the ioctl() returns the on-disk filesystem
+>> is fully consistent and does not even require journal replay.
+>
+> That's in and done; most recent xfsprogs' xfs_freeze utility will  
+> even freeze non-xfs filesystems now :)  Otherwise a wrapper utility  
+> around the ioctl would be trivial to write.
 
-Now, on the VFS-layer any messages aren't printed at mount/umount time 
-(when the operation normally terminates).
-But there are some filesystems which print their own specific messages at those
-times.
 
-For the purpose of the system management and so on, users (especially, 
-enterprise users) want to observe their system operations from the system logs.
-We may manage to observe some filesystems' operations (mount/umount) from the 
-logs. But the filesystems of which we can observe the operations are not all.
+It probably makes sense to add a tune2fs option to freeze and unfreeze  
+the
+filesystem?  That would allow ext* users to have an available/documented
+command even if they don't have xfsprogs installed.
 
-Therefore to achieve the observations for all filesystems is to add the common
-message mechanism into the VFS layer. If any filesystems' specific messages at 
-mount/umount time are added into this, we can distinguish more easily each 
-message among the system logs for our systems' observations. 
-
-This patch provides the following:
-- message output of common format from VFS at mount/umount time
-- the functions of printing the filesystem's specific information at 
-  mount/umount time
-
-(NOTE: This mechanism becomes effective only when the users call
-       the mount system call because they don't want to observe the pseudo 
-       filesystems.)
-
-Example of display:
-------------------------------------------------------------------------------------
-Device sda1 mounted file system type ext3 read-write
-Device sda2 mounted file system type ext3 read-write
-Device sdd2 mounted file system type ext3 read-write
-Device sdd2 unmounted
-------------------------------------------------------------------------------------
-
-P.S.
-This concept derives from the following:
-- http://marc.info/?l=linux-ext4&m=125429349122986&w=2
-- http://marc.info/?l=linux-ext4&m=125436936109125&w=2 
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Cheers, Andreas
 --
- fs/namespace.c        |   19 ++++++++++++++++++-
- fs/super.c            |   18 ++++++++++++++++--
- include/linux/fs.h    |    3 +++
- include/linux/mount.h |    3 +++
- 4 files changed, 40 insertions(+), 3 deletions(-)
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-diff -Nurp linux-2.6.32-rc3.orig/fs/namespace.c linux-2.6.32-rc3/fs/namespace.c
---- linux-2.6.32-rc3.orig/fs/namespace.c	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/fs/namespace.c	2009-10-06 09:58:19.000000000 +0900
-@@ -599,6 +599,7 @@ static struct vfsmount *clone_mnt(struct
- static inline void __mntput(struct vfsmount *mnt)
- {
- 	struct super_block *sb = mnt->mnt_sb;
-+	int silent = !(mnt->mnt_flags & MNT_VERBOSE_MSG);
- 	/*
- 	 * This probably indicates that somebody messed
- 	 * up a mnt_want/drop_write() pair.  If this
-@@ -612,7 +613,7 @@ static inline void __mntput(struct vfsmo
- 	WARN_ON(count_mnt_writers(mnt));
- 	dput(mnt->mnt_root);
- 	free_vfsmnt(mnt);
--	deactivate_super(sb);
-+	__deactivate_super(sb, silent);
- }
- 
- void mntput_no_expire(struct vfsmount *mnt)
-@@ -1653,6 +1654,9 @@ static int do_new_mount(struct path *pat
- 	if (IS_ERR(mnt))
- 		return PTR_ERR(mnt);
- 
-+	/* for verbose messages on VFS layer at mount/umount */
-+	if (!(flags & MS_SILENT))
-+		mnt_flags |= MNT_VERBOSE_MSG;
- 	return do_add_mount(mnt, path, mnt_flags, NULL);
- }
- 
-@@ -1664,6 +1668,7 @@ int do_add_mount(struct vfsmount *newmnt
- 		 int mnt_flags, struct list_head *fslist)
- {
- 	int err;
-+	struct super_block *sb = newmnt->mnt_sb;
- 
- 	down_write(&namespace_sem);
- 	/* Something was mounted here while we slept */
-@@ -1692,10 +1697,22 @@ int do_add_mount(struct vfsmount *newmnt
- 		list_add_tail(&newmnt->mnt_expire, fslist);
- 
- 	up_write(&namespace_sem);
-+	/* 
-+	 * message output at mount for log observers
-+	 */
-+	if (newmnt->mnt_flags & MNT_VERBOSE_MSG) {
-+		printk(KERN_INFO "Device %s mounted file system type %s read-%s\n",
-+					sb->s_id, sb->s_type->name,
-+					sb->s_flags & MS_RDONLY ? "only" : "write");
-+		/* fs specific messages for mount */
-+		if (sb->s_op != NULL && sb->s_op->mount_msg != NULL)
-+			sb->s_op->mount_msg(sb);
-+	}
- 	return 0;
- 
- unlock:
- 	up_write(&namespace_sem);
-+	newmnt->mnt_flags &= ~MNT_VERBOSE_MSG;
- 	mntput(newmnt);
- 	return err;
- }
-diff -Nurp linux-2.6.32-rc3.orig/fs/super.c linux-2.6.32-rc3/fs/super.c
---- linux-2.6.32-rc3.orig/fs/super.c	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/fs/super.c	2009-10-06 09:58:19.000000000 +0900
-@@ -177,15 +177,16 @@ void put_super(struct super_block *sb)
- 
- 
- /**
-- *	deactivate_super	-	drop an active reference to superblock
-+ *	__deactivate_super	-	drop an active reference to superblock
-  *	@s: superblock to deactivate
-+ *	@silent: disable verbose messages for umount from mount-tree
-  *
-  *	Drops an active reference to superblock, acquiring a temprory one if
-  *	there is no active references left.  In that case we lock superblock,
-  *	tell fs driver to shut it down and drop the temporary reference we
-  *	had just acquired.
-  */
--void deactivate_super(struct super_block *s)
-+void __deactivate_super(struct super_block *s, int silent)
- {
- 	struct file_system_type *fs = s->s_type;
- 	if (atomic_dec_and_lock(&s->s_active, &sb_lock)) {
-@@ -193,12 +194,25 @@ void deactivate_super(struct super_block
- 		spin_unlock(&sb_lock);
- 		vfs_dq_off(s, 0);
- 		down_write(&s->s_umount);
-+		/* fs specific messages for umount */
-+		if (!silent && s->s_op != NULL && s->s_op->umount_msg != NULL)
-+			s->s_op->umount_msg(s);
- 		fs->kill_sb(s);
-+		/*
-+		 * message output at umount for log observers
-+		 */ 
-+		if (!silent)
-+			printk(KERN_INFO "Device %s unmounted\n", s->s_id);
- 		put_filesystem(fs);
- 		put_super(s);
- 	}
- }
- 
-+void deactivate_super(struct super_block *s)
-+{
-+	__deactivate_super(s, !0);
-+}
-+
- EXPORT_SYMBOL(deactivate_super);
- 
- /**
-diff -Nurp linux-2.6.32-rc3.orig/include/linux/fs.h linux-2.6.32-rc3/include/linux/fs.h
---- linux-2.6.32-rc3.orig/include/linux/fs.h	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/include/linux/fs.h	2009-10-06 09:58:19.000000000 +0900
-@@ -1577,6 +1577,8 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- #endif
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-+	void (*mount_msg)(struct super_block*);
-+	void (*umount_msg)(struct super_block*);
- };
- 
- /*
-@@ -1774,6 +1776,7 @@ void kill_block_super(struct super_block
- void kill_anon_super(struct super_block *sb);
- void kill_litter_super(struct super_block *sb);
- void deactivate_super(struct super_block *sb);
-+void __deactivate_super(struct super_block *sb, int silent);
- void deactivate_locked_super(struct super_block *sb);
- int set_anon_super(struct super_block *s, void *data);
- struct super_block *sget(struct file_system_type *type,
-diff -Nurp linux-2.6.32-rc3.orig/include/linux/mount.h linux-2.6.32-rc3/include/linux/mount.h
---- linux-2.6.32-rc3.orig/include/linux/mount.h	2009-10-05 09:12:30.000000000 +0900
-+++ linux-2.6.32-rc3/include/linux/mount.h	2009-10-06 09:58:19.000000000 +0900
-@@ -36,6 +36,9 @@ struct mnt_namespace;
- #define MNT_UNBINDABLE	0x2000	/* if the vfsmount is a unbindable mount */
- #define MNT_PNODE_MASK	0x3000	/* propagation flag mask */
- 
-+#define MNT_VERBOSE_MSG	0x10000 /* verbose messages on the VFS layer at mount
-+				   /umount only when called from do_new_mount */
-+
- struct vfsmount {
- 	struct list_head mnt_hash;
- 	struct vfsmount *mnt_parent;	/* fs we are mounted on */
