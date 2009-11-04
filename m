@@ -1,52 +1,63 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Corrupt superblocks
-Date: Wed, 04 Nov 2009 13:21:14 -0600
-Message-ID: <4AF1D42A.6000304@redhat.com>
-References: <200911041939.57795.fabian-buettner@gmx.de>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: ext4_fiemap gives 0 extents for files smaller than a block (patch
+ included)
+Date: Wed, 04 Nov 2009 12:44:11 -0700
+Message-ID: <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com>
+References: <1257360161.22057.16.camel@michlmayr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: fabian-buettner@gmx.de
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Leonard Michlmayr <leonard.michlmayr@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10981 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755295AbZKDTVL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Nov 2009 14:21:11 -0500
-In-Reply-To: <200911041939.57795.fabian-buettner@gmx.de>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56017 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757990AbZKDToJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Nov 2009 14:44:09 -0500
+In-reply-to: <1257360161.22057.16.camel@michlmayr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-fabian-buettner@gmx.de wrote:
-> Hello,
-> 
-> After updating my gentoo machine (new udev, lvm2) and rebooting, my initrd was 
-> broken (i had CONFIG_SYSFS_DEPRECATED and CONFIG_SYSFS_DEPRECATEDV2 activated) 
-> and the new udev didn't like these settings.
-> So I received a warning regarding this issue. Unfortunately I had set the init 
-> bootparameter to init=/sbin/bootchartd. And when i was returning from getting 
-> a cup of coffee. Bootchartd was spamming my console telling me: No space left 
-> on the device (or similar). When i was seeing this i had instantly a VERY bad 
-> feeling about what was going on there.
-> 
-> So i put in the rescuecd, chrooted into my old system, built a new kernel 
-> without these deprecated options, rebooted again.
-> 
-> This time fsck.ext4 was telling me: No such file or directory while trying to 
-> open /dev/vg/root, the superblock could not be read.
+On 2009-11-04, at 11:42, Leonard Michlmayr wrote:
+> Fiemap (ioctl) does not return any extents for small files on ext4.
+> (fm_start=0, fm_length=filesize)
+>
+> File affected: fs/ext4/extents.c
+>
+> I found the reason of the bug: wrong rounding. It will not only affect
+> small files, but any request that overlaps an extent boundary by less
+> that blocksize.
 
-This looks more like a storage problem tnan an ext4 problem.
+>
+> @@ -3700,7 +3701,8 @@
+>  		start_blk = start >> inode->i_sb->s_blocksize_bits;
+> -		len_blks = len >> inode->i_sb->s_blocksize_bits;
+> +		end_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
+> +		len_blks = end_blk - start_blk + 1;
 
-> That's the story how I managed to corrupt my superblock and probably also it's 
-> backups.
+I don't think this is quite correct either.  For example, if blocksize  
+is 1024
+and start is 1023 (start_blk = 0) and len is 2 (end = 1024, end_blk =  
+1) then
+len_blks = 2 which is too much.
 
-Why do you say you have a corrupted superblock?
+I think the right calculation here is:
 
-I suppose I'd try booting a live/rescue cd, and just manually run e2fsck
-against your root device, as a starter - and capture any interesting output.
+                   end_blk = (start + len + inode->i_sb->s_blocksize -  
+1) >>
+                             inode->i_sb->s_blocksize_bits;
+                   len_blks = end_blk - start_blk;
 
-Any sort of kernel or fsck logs indicating more of what actually went
-wrong would be Very helpful here.
+I'm also wondering (unrelated to this bug) why inode->i_sb- 
+ >s_blocksize_bits
+is used instead of inode->i_blkbits?  That is probably worth a  
+separate cleanup
+patch.
 
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
