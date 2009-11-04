@@ -1,63 +1,43 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: one way to dmesg
-Date: Wed, 4 Nov 2009 10:46:30 -0500
-Message-ID: <87f94c370911040746k49dce1f6ge8591f7714b8b19d@mail.gmail.com>
-References: <1257344804.2852.11.camel@zwerg>
-	 <87f94c370911040718k766d910fr23342c82d4632faa@mail.gmail.com>
-	 <1257348551.2091.1.camel@mini>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/4] ext4: Wait for proper transaction commit on fsync
+Date: Wed, 4 Nov 2009 16:53:44 +0100
+Message-ID: <20091104155344.GC21088@duck.suse.cz>
+References: <1256647729-29834-1-git-send-email-jack@suse.cz> <1256647729-29834-5-git-send-email-jack@suse.cz> <87zl728hil.fsf@basil.nowhere.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Alexey Fisher <bug-track@fisher-privat.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f180.google.com ([209.85.223.180]:37827 "EHLO
-	mail-iw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755947AbZKDPqZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Nov 2009 10:46:25 -0500
-Received: by iwn10 with SMTP id 10so5016778iwn.4
-        for <linux-ext4@vger.kernel.org>; Wed, 04 Nov 2009 07:46:30 -0800 (PST)
-In-Reply-To: <1257348551.2091.1.camel@mini>
+Received: from cantor2.suse.de ([195.135.220.15]:57819 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756757AbZKDPxk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Nov 2009 10:53:40 -0500
+Content-Disposition: inline
+In-Reply-To: <87zl728hil.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 4, 2009 at 10:29 AM, Alexey Fisher
-<bug-track@fisher-privat.net> wrote:
-> Am Mittwoch, den 04.11.2009, 10:18 -0500 schrieb Greg Freemyer:
->> On Wed, Nov 4, 2009 at 9:26 AM, Alexey Fisher
->> <bug-track@fisher-privat.net> wrote:
->> > Hallo,
->> > this is sort of continue of discussion about unified way to mount =
-fs
->> > readonly.
->> > I wont to know how about dmesg/printk. I see ext[234] produce diff=
-erent
->> > logs on mount even it use same code. I feel like i have some time =
-to
->> > digg in. My target is easy to parse dmesg.
->>
->> Patches for unified mount messages already exist. =A0Various version=
-s
->> have been posted in the last couple months.
->>
->> I don't know if they have been accepted yet or not.
->
-> Can you point me this patch?
-> I found only "add a message in remount/umount for ext4"
-> http://patchwork.ozlabs.org/project/linux-ext4/list/?page=3D1
+On Wed 04-11-09 15:57:22, Andi Kleen wrote:
+> Jan Kara <jack@suse.cz> writes:
+> >  	ext4_io_end_t *cur_aio_dio;
+> > +
+> > +	/*
+> > +	 * Transactions that contain inode's metadata needed to complete
+> > +	 * fsync and fdatasync, respectively.
+> > +	 */
+> > +	atomic_t i_sync_tid;
+> > +	atomic_t i_datasync_tid;
+> 
+> This might be a stupid question, but the atomic implies you don't hold
+> any kind of reference to the transaction. So what prevents these IDs
+> from wrapping while in there? Given it would be probably take a long
+> time today, but might be not fully future proof to very fast future IO
+> devices.
+  Yes, IDs can wrap. But journalling layer actually compares them so that
+wrapping does not matter unless you manage to do 2^31 transactions
+inbetween. So we are still a few orders of magnitude safe with current hw.
 
-Looks like Toshiyuki Okajima is the author.
-
-http://markmail.org/message/ghyjee2krfmgtybt was just posted in the
-last day or two.
-
-That patch only adds the new unified dmesg print to the vfs layer.  I
-think there were other patches that removed the scattered prints from
-the various individual filesystems.
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
