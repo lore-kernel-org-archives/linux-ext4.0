@@ -1,41 +1,56 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: one way to dmesg
-Date: Thu, 5 Nov 2009 10:02:50 -0500
-Message-ID: <20091105150250.GL6510@mit.edu>
-References: <1257344804.2852.11.camel@zwerg> <87f94c370911040718k766d910fr23342c82d4632faa@mail.gmail.com> <1257348551.2091.1.camel@mini> <87f94c370911040746k49dce1f6ge8591f7714b8b19d@mail.gmail.com> <1257350354.2091.9.camel@mini>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH, RFC V2] ext4: flush delalloc blocks when space is low
+Date: Thu, 05 Nov 2009 09:45:43 -0600
+Message-ID: <4AF2F327.7090402@redhat.com>
+References: <4ADE24CF.1080906@redhat.com> <4ADF6628.9080105@redhat.com> <20091105140913.GD17008@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Greg Freemyer <greg.freemyer@gmail.com>, linux-ext4@vger.kernel.org
-To: Alexey Fisher <bug-track@fisher-privat.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46445 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:3910 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750848AbZKEPCu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Nov 2009 10:02:50 -0500
-Content-Disposition: inline
-In-Reply-To: <1257350354.2091.9.camel@mini>
+	id S1756567AbZKEPpn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Nov 2009 10:45:43 -0500
+In-Reply-To: <20091105140913.GD17008@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 04, 2009 at 04:59:14PM +0100, Alexey Fisher wrote:
-> 
-> Great, look really nice :)
-> but this is not all what i mean.
-> For example fs specific messages: EXT4-fs blabla, if you look to source
-> you'll see "EXT3 FS" "EXT II FS" (fat is worse), if you need to grep it
-> will be nightmare. It seems like ext4 is mostly up to date, ext2/3 need
-> some work. Are there any work on this?
+Jan Kara wrote:
+...
 
-What problem are you trying to solve?
+>> +	/* try a sync to flush delalloc space & free resvd metadata */
+>> +	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) && dirtyblocks) {
+>> +		if (!ext4_journal_current_handle()) {
+>> +			down_read(&sb->s_umount);
+>> +			sync_inodes_sb(sb);
+>> +			up_read(&sb->s_umount);
+>   ext4_should_retry_alloc() is called quite deep from the filesystem. In
+> particular we can hold i_mutex of some inodes etc. So I'd almost bet
+> that taking s_umount sem here violates lock ranking in some code paths
+> (an easy check would be to enable lockdep and stress the filesystem a
+> bit).
+>   Also calling sync_inodes_sb() with i_mutex held just seems as a bad
+> thing to do although I don't see where it could deadlock and so it's
+> probably just a matter of taste...
 
-Is it just an aesthetics thing?  Is there a specific scenario where
-you need some kind of extra functionality?  If so, what is it?
+Well, to be honest I agree with you ;)  It does still feel like a hack.
 
-There's some question about whether parsing dmesg is the best way to
-get information about error/event reporting.  See the following
-presentation from this year's Plumber's conference for a set of
-ruminations on this issue:
+>   If we start writeback from ext4_nonda_switch as you do below, I think
+> that we should get decent results even without synchronous writeback in
+> the allocation path (maybe we'd need to tweak a bit the logic in
+> ext4_nonda_switch to provide more time for writeback thread to catchup).
 
-http://linuxplumbersconf.org/2009/slides/Andi-Kleen-plumbers-error.pdf
+I think starting writeback helps a lot, but it seems that in the end we
+still need a synchronous attempt when we hit a real enocpc... after I
+finish dealing with this corruption thing I'll come back and look at this.
 
-						- Ted
+Maybe we should put the writeback in for now, and worry about the
+synchronous sync-up later?
+
+Thanks for the review,
+
+-Eric
+
+> 								Honza
