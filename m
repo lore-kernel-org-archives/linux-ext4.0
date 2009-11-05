@@ -1,70 +1,59 @@
-From: Alexey Fisher <bug-track@fisher-privat.net>
-Subject: Re: one way to dmesg
-Date: Thu, 05 Nov 2009 16:51:17 +0100
-Message-ID: <1257436277.2343.25.camel@mini>
-References: <1257344804.2852.11.camel@zwerg>
-	 <87f94c370911040718k766d910fr23342c82d4632faa@mail.gmail.com>
-	 <1257348551.2091.1.camel@mini>
-	 <87f94c370911040746k49dce1f6ge8591f7714b8b19d@mail.gmail.com>
-	 <1257350354.2091.9.camel@mini>  <20091105150250.GL6510@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH, RFC V2] ext4: flush delalloc blocks when space is low
+Date: Thu, 5 Nov 2009 17:05:39 +0100
+Message-ID: <20091105160539.GE17008@atrey.karlin.mff.cuni.cz>
+References: <4ADE24CF.1080906@redhat.com> <4ADF6628.9080105@redhat.com> <20091105140913.GD17008@atrey.karlin.mff.cuni.cz> <4AF2F327.7090402@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:54647 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1756333AbZKEPvP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Nov 2009 10:51:15 -0500
-In-Reply-To: <20091105150250.GL6510@mit.edu>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:37610 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753102AbZKEQFe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Nov 2009 11:05:34 -0500
+Content-Disposition: inline
+In-Reply-To: <4AF2F327.7090402@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Am Donnerstag, den 05.11.2009, 10:02 -0500 schrieb Theodore Tso:
-> On Wed, Nov 04, 2009 at 04:59:14PM +0100, Alexey Fisher wrote:
-> > 
-> > Great, look really nice :)
-> > but this is not all what i mean.
-> > For example fs specific messages: EXT4-fs blabla, if you look to source
-> > you'll see "EXT3 FS" "EXT II FS" (fat is worse), if you need to grep it
-> > will be nightmare. It seems like ext4 is mostly up to date, ext2/3 need
-> > some work. Are there any work on this?
+> Jan Kara wrote:
+> ...
 > 
-> What problem are you trying to solve?
+> >> +	/* try a sync to flush delalloc space & free resvd metadata */
+> >> +	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) && dirtyblocks) {
+> >> +		if (!ext4_journal_current_handle()) {
+> >> +			down_read(&sb->s_umount);
+> >> +			sync_inodes_sb(sb);
+> >> +			up_read(&sb->s_umount);
+> >   ext4_should_retry_alloc() is called quite deep from the filesystem. In
+> > particular we can hold i_mutex of some inodes etc. So I'd almost bet
+> > that taking s_umount sem here violates lock ranking in some code paths
+> > (an easy check would be to enable lockdep and stress the filesystem a
+> > bit).
+> >   Also calling sync_inodes_sb() with i_mutex held just seems as a bad
+> > thing to do although I don't see where it could deadlock and so it's
+> > probably just a matter of taste...
 > 
-> Is it just an aesthetics thing?  Is there a specific scenario where
-> you need some kind of extra functionality?  If so, what is it?
-
-1. reduce information flow if you need to do some critical work with fs.
-Easy way to filter it, some thing like 'grep -- "-fs"' (not 'grep --
-[EXT,FAT,XFS...]').
-2. fs should notify if some opposite to default options are used (or
-default options disabled).
-3. fs should be silent if default options used
-4. fs should say for what bdev this message. 
-example: you will 'mount -o ro,xip,reservation -t ext2 /dev/sda[2,4,5]'
-
-in dmesg you'll get:
-[ 4893.684892] reservations ON
-[ 4893.684896] xip option not supported
-[ 4893.684961] EXT2-fs warning: mounting ext3 filesystem as ext2
-[ 4893.684964] EXT2-fs warning: maximal mount count reached, running
-e2fsck is recommended
-[ 4893.684990] EXT II FS: 0.5b, 95/08/09, bs=1024, fs=1024, gc=2,
-bpg=8192, ipg=1280, mo=80010]
-
-the question is how to filter it? for what bdev was this message? This
-is not only about ext* this is about all fs, i just begun with ext2.
-
-> There's some question about whether parsing dmesg is the best way to
-> get information about error/event reporting.  See the following
-> presentation from this year's Plumber's conference for a set of
-> ruminations on this issue:
+> Well, to be honest I agree with you ;)  It does still feel like a hack.
 > 
-> http://linuxplumbersconf.org/2009/slides/Andi-Kleen-plumbers-error.pdf
+> >   If we start writeback from ext4_nonda_switch as you do below, I think
+> > that we should get decent results even without synchronous writeback in
+> > the allocation path (maybe we'd need to tweak a bit the logic in
+> > ext4_nonda_switch to provide more time for writeback thread to catchup).
+> 
+> I think starting writeback helps a lot, but it seems that in the end we
+> still need a synchronous attempt when we hit a real enocpc... after I
+> finish dealing with this corruption thing I'll come back and look at this.
+  Without the synchronous attempt, it will never be perfect, that is
+correct. But it could be quite close to perfect...
 
-Thank you for the link, this is god food for brain :)
-Please take a look to my initial "[PATCH] Unify log messages in ext2" on
-linux-ext4.
+> Maybe we should put the writeback in for now, and worry about the
+> synchronous sync-up later?
+  Yes, I'd do that for now.
 
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
