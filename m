@@ -1,18 +1,86 @@
-From: "Jacob Edwards" <neijnens1@makingspace.co.uk>
-Subject: No Pumps, surgery, and exercises!
-Date: Thu, 5 Nov 2009 14:46:50 -0500
-Message-ID: <20091105144650.4070105@makingspace.co.uk>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 4/4 v2] Fix direct IO return values over fullfilled
+	fallocate space
+Date: Fri, 6 Nov 2009 04:02:25 -0500
+Message-ID: <20091106090224.GT6510@mit.edu>
+References: <1255050792.4931.185.camel@mingming-laptop> <20091104022707.GI6510@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Curt Wohlgemuth <curtw@google.com>
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from c-69-253-148-203.hsd1.nj.comcast.net ([69.253.148.203]:64395
-	"HELO c-69-253-148-203.hsd1.nj.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1758273AbZKETqy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Nov 2009 14:46:54 -0500
+Received: from thunk.org ([69.25.196.29]:46578 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753750AbZKFJCZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Nov 2009 04:02:25 -0500
+Content-Disposition: inline
+In-Reply-To: <20091104022707.GI6510@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-What's your wife's favorite time-spending? http://aru.rojogtucri.com/
+I've rewritten the commit description and one of the in-line code
+comments as follows.
 
+					- Ted
+
+ext4: Fix return value of ext4_split_unwritten_extents() to fix direct I/O
+
+From: Mingming <cmm@us.ibm.com>
+
+To prepare for a direct I/O write, we need to split the unwritten
+extents before submitting the I/O.  When no extents needed to be
+split, ext4_split_unwritten_extents() was incorrectly returning 0
+instead of the size of uninitialized extents. This bug caused the
+wrong return value sent back to VFS code when it gets called from
+async IO path, leading to an unnecessary fall back to buffered IO.
+
+This bug also hid the fact that the check to see whether or not a
+split would be necessary was incorrect; we can only skip splitting the
+extent if the write completely covers the uninitialized extent.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e991ae2..715264b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2807,6 +2807,8 @@ fix_extent_len:
+  * into three uninitialized extent(at most). After IO complete, the part
+  * being filled will be convert to initialized by the end_io callback function
+  * via ext4_convert_unwritten_extents().
++ *
++ * Returns the size of uninitialized extent to be written on success.
+  */
+ static int ext4_split_unwritten_extents(handle_t *handle,
+ 					struct inode *inode,
+@@ -2824,7 +2826,6 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	unsigned int allocated, ee_len, depth;
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
+-	int ret = 0;
+ 
+ 	ext_debug("ext4_split_unwritten_extents: inode %lu,"
+ 		  "iblock %llu, max_blocks %u\n", inode->i_ino,
+@@ -2842,12 +2843,12 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+ 
+ 	/*
+- 	 * if the entire unintialized extent length less than
+- 	 * the size of extent to write, there is no need to split
+- 	 * uninitialized extent
++ 	 * If the uninitialized extent begins at the same logical
++ 	 * block where the write begins, and the write completely
++ 	 * covers the extent, then we don't need to split it.
+  	 */
+- 	if (allocated <= max_blocks)
+-		return ret;
++	if ((iblock == ee_block) && (allocated <= max_blocks))
++		return allocated;
+ 
+ 	err = ext4_ext_get_access(handle, inode, path + depth);
+ 	if (err)
