@@ -1,76 +1,75 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [OOPs] ext4: fixpoint divide exception at
-	ext4_fill_super+0x141c/0x2908
-Date: Fri, 6 Nov 2009 14:48:50 -0500
-Message-ID: <20091106194850.GE26342@mit.edu>
-References: <4A93792C.2000705@linux.vnet.ibm.com> <4AF17638.7010105@linux.vnet.ibm.com> <4AF1877C.7010606@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Fri, 6 Nov 2009 20:49:35 GMT
+Message-ID: <200911062049.nA6KnZNI029393@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
-	sachin p sant <sachinp@linux.vnet.ibm.com>,
-	Ramon <rcvalle@linux.vnet.ibm.com>, aneesh.kumar@in.ibm.com
-To: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52086 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759682AbZKFTsr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Nov 2009 14:48:47 -0500
-Content-Disposition: inline
-In-Reply-To: <4AF1877C.7010606@linux.vnet.ibm.com>
+Received: from demeter.kernel.org ([140.211.167.39]:47366 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759392AbZKFUta (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2009 15:49:30 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nA6KnZch029395
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Nov 2009 20:49:35 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 04, 2009 at 07:24:04PM +0530, Nageswara R Sastry wrote:
-> Seems to be I have a little format related issue with the patch. So  
-> resending it. Please accept my apologies.
-> Sachin thanks for letting me know.
->
->>  > ------------[ cut here ]------------
->>  > Kernel BUG at 000003e00429d934 [verbose debug info unavailable]
->>  > fixpoint divide exception: 0009 [#1] SMP
->>
->> Please find the patch which solves the following 'fixpoint divide  
->> exception'. I tested the same and not seeing any KERNEL BUG/exception.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-Nageswara,
 
-Thanks for sending this patch.  The problem with it is that it leaves
-sbi->s_log_groups_per_flex non-zero, but it leaves sbi->s_flex_groups
-unallocated.  This should lead to number of kernel oops caused by a
-null pointer dereference if there is any attempt to allocate blocks or
-inodes, or to resize the filesystem.
 
-A better fix is would be:
 
-ext4: Avoid divide by zero when trying to mount a corrupted file system
 
-If s_log_groups_per_flex is greater than 31, then groups_per_flex will
-will overflow and cause a divide by zero error.  This can cause kernel
-BUG if such a file system is mounted.
+--- Comment #177 from Chris Mason <chris.mason@oracle.com>  2009-11-06 20:49:25 ---
+Created an attachment (id=23685)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=23685)
+Horrible horrible debugging hack
 
-Thanks to Nageswara R Sastry for analyzing the failure and providing
-an initial patch.
+I started reading this because I was afraid the writeback changes were broken,
+but tracking down crc errors is really interesting as well.  I started with the
+assumption someone was changing the buffer after we crc but before it hits
+disk, which in ext4 terms means that someone is probably changing data that has
+been sent to the log without properly diving into the jdb2
+do_get_write_access()
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14287
+Eric helped prove this is the case by testing a patch that always crcs and
+writes a stable duplicate of the metadata buffer instead of the metadata buffer
+itself (a one liner since the log code was already setup for this).
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d4ca92a..8662b2e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1673,14 +1673,14 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 	size_t size;
- 	int i;
- 
--	if (!sbi->s_es->s_log_groups_per_flex) {
-+	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
-+	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
-+
-+	if (groups_per_flex < 2) {
- 		sbi->s_log_groups_per_flex = 0;
- 		return 1;
- 	}
- 
--	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
--	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
+This attachment is a hack but the basic idea is to set the page for a buffer
+head readonly before we crc the page, and then set it read/write again when
+we're done with it.  It will only work when the pagesize and the blocksize are
+the same.
+
+It probably has some false positives lurking, but so far it has found a number
+of places where ext4 is changing a buffer without properly calling into the
+jdb2 do_get_write_access() func.
+
+Eric hit a few easy ones:
+
+ext4_statfs():
+        /* why is statfs changing the super? */
+        ext4_free_blocks_count_set(es, buf->f_bfree);
+
+ext4_setxattr_set_handle()
+                memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+
+But I hit a much harder case to fix.  ext4_symlink will log the data blocks
+that hold the symlink name (well ext4_write_begin will log them).
+
+ext4 uses the generic symlink read helpers, so when we read the link we dive
+into page_getlink() which uses nd_terminate_link to stuff a NULL into the end
+of the link's name.  Since the null goes directly into the page cache page and
+the page was logged, we're changing things that could affect the log crcs.
+
+I think a more generic and less hacky form of this patch would be a really good
+thing...maybe it already exists and I just don't know about it yet ;)
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
