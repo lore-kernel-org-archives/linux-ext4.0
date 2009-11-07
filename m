@@ -1,110 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: partial revert to fix double brelse WARNING()
-Date: Sat,  7 Nov 2009 02:43:42 -0500
-Message-ID: <1257579823-31295-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: partial revert to fix double brelse WARNING()
+Date: Sat, 7 Nov 2009 03:11:16 -0500
+Message-ID: <20091107081116.GG26342@mit.edu>
+References: <1257579823-31295-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39776 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40264 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751014AbZKGHnn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Nov 2009 02:43:43 -0500
+	id S1751137AbZKGILM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Nov 2009 03:11:12 -0500
+Content-Disposition: inline
+In-Reply-To: <1257579823-31295-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a partial revert of commit 6487a9d (only the changes made to
-fs/ext4/namei.c), since it is causing the following brelse() of an
-already free buffer when running fsstress on a file system with 1k
-blocksize:
+On Sat, Nov 07, 2009 at 02:43:42AM -0500, Theodore Ts'o wrote:
+> This is a partial revert of commit 6487a9d (only the changes made to
+> fs/ext4/namei.c), since it is causing the following brelse() of an
+> already free buffer when running fsstress on a file system with 1k
+> blocksize:
 
-WARNING: at /usr/projects/linux/ext4/fs/buffer.c:1197 __brelse+0x2e/0x33()
-Hardware name:
-VFS: brelse: Trying to free free buffer
-Modules linked in:
-Pid: 2226, comm: jbd2/sdd-8 Not tainted 2.6.32-rc6-00577-g0003f55 #101
-Call Trace:
- [<c01587fb>] warn_slowpath_common+0x65/0x95
- [<c0158869>] warn_slowpath_fmt+0x29/0x2c
- [<c021168e>] __brelse+0x2e/0x33
- [<c0288a9f>] jbd2_journal_refile_buffer+0x67/0x6c
- [<c028a9ed>] jbd2_journal_commit_transaction+0x319/0x14d8
- [<c0164d73>] ? try_to_del_timer_sync+0x58/0x60
- [<c0175bcc>] ? sched_clock_cpu+0x12a/0x13e
- [<c017f6b4>] ? trace_hardirqs_off+0xb/0xd
- [<c0175c1f>] ? cpu_clock+0x3f/0x5b
- [<c017f6ec>] ? lock_release_holdtime+0x36/0x137
- [<c0664ad0>] ? _spin_unlock_irqrestore+0x44/0x51
- [<c0180af3>] ? trace_hardirqs_on_caller+0x103/0x124
- [<c0180b1f>] ? trace_hardirqs_on+0xb/0xd
- [<c0164d73>] ? try_to_del_timer_sync+0x58/0x60
- [<c0290d1c>] kjournald2+0x11a/0x310
- [<c017118e>] ? autoremove_wake_function+0x0/0x38
- [<c0290c02>] ? kjournald2+0x0/0x310
- [<c0170ee6>] kthread+0x66/0x6b
- [<c0170e80>] ? kthread+0x0/0x6b
- [<c01251b3>] kernel_thread_helper+0x7/0x10
----[ end trace 5579351b86af61e3 ]---
+This description isn't quite right.  I did get this error while
+running fsstress on a file system with a 1k blocksize, but the real
+problem was that I was using a device that wasn't big enough for
+fsstress, and it was really an ENOSPC error while extending a
+directory from 1 block.  Curt's patch didn't take into account that
+the call to ext4_append() in make_indexed_dir() could also return
+ENOSPC, that would cause a double brelse().
 
-Commit 6487a9d was an attempt some buffer head leaks in an ENOSPC
-error path, but in some cases it actually results in an excess ENOSPC.
-Fixing this means cleaning up who is responsible for releasing the
-buffer heads from the callee to the caller of add_dirent_to_buf().
+I suppose I could have fixed it up by adding an explicit check for
+ENOSPC and not freeing the buffer head in that one return path, which
+would have made for a smaller patch, but the resulting code would be
+really horrible.  So I still think the best thing to do for now is to
+partially revert commit 6487a9d now, and fix things up cleanly after
+2.6.32 is released.
 
-That's a pretty complicated change, though, and we're late in the rcX
-development cycle, so let's revert this now, and we'll fix things up
-after the merge window opens so the fix can get sufficient testing.
-We've lived with this buffer_head leak on ENOSPC in ext3 and ext4 for
-a very long time; a few more months won't kill us.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-I plan to push this to Linus since it fixes a regression introduced in
-commit 6487a9d.
-
- fs/ext4/namei.c |   16 ++++------------
- 1 files changed, 4 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 7c8fe80..6d2c1b8 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1518,12 +1518,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 			return retval;
- 
- 		if (blocks == 1 && !dx_fallback &&
--		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
--			retval = make_indexed_dir(handle, dentry, inode, bh);
--			if (retval == -ENOSPC)
--				brelse(bh);
--			return retval;
--		}
-+		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
-+			return make_indexed_dir(handle, dentry, inode, bh);
- 		brelse(bh);
- 	}
- 	bh = ext4_append(handle, dir, &block, &retval);
-@@ -1532,10 +1528,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	de->inode = 0;
- 	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
--	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
--	if (retval == -ENOSPC)
--		brelse(bh);
--	return retval;
-+	return add_dirent_to_buf(handle, dentry, inode, de, bh);
- }
- 
- /*
-@@ -1664,8 +1657,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 	if (!de)
- 		goto cleanup;
- 	err = add_dirent_to_buf(handle, dentry, inode, de, bh);
--	if (err != -ENOSPC)
--		bh = NULL;
-+	bh = NULL;
- 	goto cleanup;
- 
- journal_error:
--- 
-1.6.5.104.g2567b.dirty
-
+						- Ted
