@@ -1,133 +1,107 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: Fix potential buffer head leak when add_dirent_to_buf() returns ENOSPC
-Date: Sat,  7 Nov 2009 02:43:43 -0500
-Message-ID: <1257579823-31295-2-git-send-email-tytso@mit.edu>
-References: <1257579823-31295-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: partial revert to fix double brelse WARNING()
+Date: Sat,  7 Nov 2009 02:43:42 -0500
+Message-ID: <1257579823-31295-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39775 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:39776 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750881AbZKGHnn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751014AbZKGHnn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 7 Nov 2009 02:43:43 -0500
-In-Reply-To: <1257579823-31295-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously add_dirent_to_buf() did not free its passed-in buffer head
-in the case of ENOSPC, since in some cases the caller still needed it.
-However, this lead to potential buffer head leaks since not all
-callers dealt with this correctly.  Fix this by making simplifying the
-freeing convention; now add_dirent_to_buf() *never* frees the
-passed-in buffer head, and leaves that to the responsibility of its
-caller.  This makes things cleaner and easier to prove that the code
-is neither leaking buffer heads or calling brelse() one time too many.
+This is a partial revert of commit 6487a9d (only the changes made to
+fs/ext4/namei.c), since it is causing the following brelse() of an
+already free buffer when running fsstress on a file system with 1k
+blocksize:
+
+WARNING: at /usr/projects/linux/ext4/fs/buffer.c:1197 __brelse+0x2e/0x33()
+Hardware name:
+VFS: brelse: Trying to free free buffer
+Modules linked in:
+Pid: 2226, comm: jbd2/sdd-8 Not tainted 2.6.32-rc6-00577-g0003f55 #101
+Call Trace:
+ [<c01587fb>] warn_slowpath_common+0x65/0x95
+ [<c0158869>] warn_slowpath_fmt+0x29/0x2c
+ [<c021168e>] __brelse+0x2e/0x33
+ [<c0288a9f>] jbd2_journal_refile_buffer+0x67/0x6c
+ [<c028a9ed>] jbd2_journal_commit_transaction+0x319/0x14d8
+ [<c0164d73>] ? try_to_del_timer_sync+0x58/0x60
+ [<c0175bcc>] ? sched_clock_cpu+0x12a/0x13e
+ [<c017f6b4>] ? trace_hardirqs_off+0xb/0xd
+ [<c0175c1f>] ? cpu_clock+0x3f/0x5b
+ [<c017f6ec>] ? lock_release_holdtime+0x36/0x137
+ [<c0664ad0>] ? _spin_unlock_irqrestore+0x44/0x51
+ [<c0180af3>] ? trace_hardirqs_on_caller+0x103/0x124
+ [<c0180b1f>] ? trace_hardirqs_on+0xb/0xd
+ [<c0164d73>] ? try_to_del_timer_sync+0x58/0x60
+ [<c0290d1c>] kjournald2+0x11a/0x310
+ [<c017118e>] ? autoremove_wake_function+0x0/0x38
+ [<c0290c02>] ? kjournald2+0x0/0x310
+ [<c0170ee6>] kthread+0x66/0x6b
+ [<c0170e80>] ? kthread+0x0/0x6b
+ [<c01251b3>] kernel_thread_helper+0x7/0x10
+---[ end trace 5579351b86af61e3 ]---
+
+Commit 6487a9d was an attempt some buffer head leaks in an ENOSPC
+error path, but in some cases it actually results in an excess ENOSPC.
+Fixing this means cleaning up who is responsible for releasing the
+buffer heads from the callee to the caller of add_dirent_to_buf().
+
+That's a pretty complicated change, though, and we're late in the rcX
+development cycle, so let's revert this now, and we'll fix things up
+after the merge window opens so the fix can get sufficient testing.
+We've lived with this buffer_head leak on ENOSPC in ext3 and ext4 for
+a very long time; a few more months won't kill us.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
-I plan to save this commit until after the 2.6.32 ships.
+I plan to push this to Linus since it fixes a regression introduced in
+commit 6487a9d.
 
- fs/ext4/namei.c |   30 ++++++++++++------------------
- 1 files changed, 12 insertions(+), 18 deletions(-)
+ fs/ext4/namei.c |   16 ++++------------
+ 1 files changed, 4 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6d2c1b8..fde08c9 100644
+index 7c8fe80..6d2c1b8 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1292,9 +1292,6 @@ errout:
-  * add_dirent_to_buf will attempt search the directory block for
-  * space.  It will return -ENOSPC if no space is available, and -EIO
-  * and -EEXIST if directory entry already exists.
-- *
-- * NOTE!  bh is NOT released in the case where ENOSPC is returned.  In
-- * all other cases bh is released.
-  */
- static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 			     struct inode *inode, struct ext4_dir_entry_2 *de,
-@@ -1315,14 +1312,10 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 		top = bh->b_data + blocksize - reclen;
- 		while ((char *) de <= top) {
- 			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
--						  bh, offset)) {
--				brelse(bh);
-+						  bh, offset))
- 				return -EIO;
--			}
--			if (ext4_match(namelen, name, de)) {
--				brelse(bh);
-+			if (ext4_match(namelen, name, de))
- 				return -EEXIST;
--			}
- 			nlen = EXT4_DIR_REC_LEN(de->name_len);
- 			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
- 			if ((de->inode? rlen - nlen: rlen) >= reclen)
-@@ -1337,7 +1330,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	err = ext4_journal_get_write_access(handle, bh);
- 	if (err) {
- 		ext4_std_error(dir->i_sb, err);
--		brelse(bh);
- 		return err;
- 	}
- 
-@@ -1377,7 +1369,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	err = ext4_handle_dirty_metadata(handle, dir, bh);
- 	if (err)
- 		ext4_std_error(dir->i_sb, err);
--	brelse(bh);
- 	return 0;
- }
- 
-@@ -1471,7 +1462,9 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	if (!(de))
- 		return retval;
- 
--	return add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	brelse(bh);
-+	return retval;
- }
- 
- /*
-@@ -1514,8 +1507,10 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		if(!bh)
+@@ -1518,12 +1518,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
  			return retval;
- 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
--		if (retval != -ENOSPC)
-+		if (retval != -ENOSPC) {
-+			brelse(bh);
- 			return retval;
-+		}
  
  		if (blocks == 1 && !dx_fallback &&
- 		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
-@@ -1528,7 +1523,9 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+-		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
+-			retval = make_indexed_dir(handle, dentry, inode, bh);
+-			if (retval == -ENOSPC)
+-				brelse(bh);
+-			return retval;
+-		}
++		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
++			return make_indexed_dir(handle, dentry, inode, bh);
+ 		brelse(bh);
+ 	}
+ 	bh = ext4_append(handle, dir, &block, &retval);
+@@ -1532,10 +1528,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
  	de = (struct ext4_dir_entry_2 *) bh->b_data;
  	de->inode = 0;
  	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
--	return add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	brelse(bh);
-+	return retval;
+-	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
+-	if (retval == -ENOSPC)
+-		brelse(bh);
+-	return retval;
++	return add_dirent_to_buf(handle, dentry, inode, de, bh);
  }
  
  /*
-@@ -1561,10 +1558,8 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 		goto journal_error;
- 
- 	err = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
--	if (err != -ENOSPC) {
--		bh = NULL;
-+	if (err != -ENOSPC)
- 		goto cleanup;
--	}
- 
- 	/* Block full, should compress but for now just split */
- 	dxtrace(printk(KERN_DEBUG "using %u of %u node entries\n",
-@@ -1657,7 +1652,6 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+@@ -1664,8 +1657,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
  	if (!de)
  		goto cleanup;
  	err = add_dirent_to_buf(handle, dentry, inode, de, bh);
--	bh = NULL;
+-	if (err != -ENOSPC)
+-		bh = NULL;
++	bh = NULL;
  	goto cleanup;
  
  journal_error:
