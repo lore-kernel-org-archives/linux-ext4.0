@@ -1,50 +1,136 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: journal all modifications in
-	ext4_xattr_set_handle
-Date: Fri, 6 Nov 2009 21:33:41 -0500
-Message-ID: <20091107023341.GF26342@mit.edu>
-References: <4AF4A334.1000304@redhat.com> <4AF4A49F.8030005@redhat.com> <55C0D494-12AD-4EF7-8C35-411B2B5151EF@sun.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: Fix potential buffer head leak when add_dirent_to_buf() returns ENOSPC
+Date: Sat,  7 Nov 2009 02:43:43 -0500
+Message-ID: <1257579823-31295-2-git-send-email-tytso@mit.edu>
+References: <1257579823-31295-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33772 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:39775 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753542AbZKGCdj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Nov 2009 21:33:39 -0500
-Content-Disposition: inline
-In-Reply-To: <55C0D494-12AD-4EF7-8C35-411B2B5151EF@sun.com>
+	id S1750881AbZKGHnn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Nov 2009 02:43:43 -0500
+In-Reply-To: <1257579823-31295-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 06, 2009 at 05:22:51PM -0700, Andreas Dilger wrote:
-> On 2009-11-06, at 15:35, Eric Sandeen wrote:
->> Eric Sandeen wrote:
->>> ext4_xattr_set_handle() was modifying s_inode_size outside
->>> of journaling constraints; this is one of the accesses that
->>> was causing the crc errors in journal replay as seen in
->>> kernel.org bugzilla #14354.
->>
->> Oh, and for those who haven't been following the bug, big
->> thanks to Chris Mason for helping to look into this and coming
->> up with the debugging patch that made it obvious...
->
-> It would be great, IMHO, to have this debugging patch submitted to
-> the kernel also, and enabled under a CONFIG option.
+Previously add_dirent_to_buf() did not free its passed-in buffer head
+in the case of ENOSPC, since in some cases the caller still needed it.
+However, this lead to potential buffer head leaks since not all
+callers dealt with this correctly.  Fix this by making simplifying the
+freeing convention; now add_dirent_to_buf() *never* frees the
+passed-in buffer head, and leaves that to the responsibility of its
+caller.  This makes things cleaner and easier to prove that the code
+is neither leaking buffer heads or calling brelse() one time too many.
 
-The debugging patch is only safe when the file system's block size ==
-page size.  I suppose we could leave a warning in Kconfig that the
-debugging option is only safe to be used when all of the file systems
-in the system have a 4k (or whatever the page size happens to be)
-block size, but it's probably better to clean up the patch so that
-it's only enabled on a mount option, and then only if the file system
-block size is the same as the page size.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+I plan to save this commit until after the 2.6.32 ships.
 
-> I'd also be interested to see the "write shadow buffer to journal"
-> one-line patch that was discussed in the bug.
+ fs/ext4/namei.c |   30 ++++++++++++------------------
+ 1 files changed, 12 insertions(+), 18 deletions(-)
 
-Which patch are you referring to?
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6d2c1b8..fde08c9 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1292,9 +1292,6 @@ errout:
+  * add_dirent_to_buf will attempt search the directory block for
+  * space.  It will return -ENOSPC if no space is available, and -EIO
+  * and -EEXIST if directory entry already exists.
+- *
+- * NOTE!  bh is NOT released in the case where ENOSPC is returned.  In
+- * all other cases bh is released.
+  */
+ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 			     struct inode *inode, struct ext4_dir_entry_2 *de,
+@@ -1315,14 +1312,10 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 		top = bh->b_data + blocksize - reclen;
+ 		while ((char *) de <= top) {
+ 			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
+-						  bh, offset)) {
+-				brelse(bh);
++						  bh, offset))
+ 				return -EIO;
+-			}
+-			if (ext4_match(namelen, name, de)) {
+-				brelse(bh);
++			if (ext4_match(namelen, name, de))
+ 				return -EEXIST;
+-			}
+ 			nlen = EXT4_DIR_REC_LEN(de->name_len);
+ 			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
+ 			if ((de->inode? rlen - nlen: rlen) >= reclen)
+@@ -1337,7 +1330,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 	err = ext4_journal_get_write_access(handle, bh);
+ 	if (err) {
+ 		ext4_std_error(dir->i_sb, err);
+-		brelse(bh);
+ 		return err;
+ 	}
+ 
+@@ -1377,7 +1369,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 	err = ext4_handle_dirty_metadata(handle, dir, bh);
+ 	if (err)
+ 		ext4_std_error(dir->i_sb, err);
+-	brelse(bh);
+ 	return 0;
+ }
+ 
+@@ -1471,7 +1462,9 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	if (!(de))
+ 		return retval;
+ 
+-	return add_dirent_to_buf(handle, dentry, inode, de, bh);
++	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
++	brelse(bh);
++	return retval;
+ }
+ 
+ /*
+@@ -1514,8 +1507,10 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 		if(!bh)
+ 			return retval;
+ 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
+-		if (retval != -ENOSPC)
++		if (retval != -ENOSPC) {
++			brelse(bh);
+ 			return retval;
++		}
+ 
+ 		if (blocks == 1 && !dx_fallback &&
+ 		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
+@@ -1528,7 +1523,9 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
+ 	de->inode = 0;
+ 	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
+-	return add_dirent_to_buf(handle, dentry, inode, de, bh);
++	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
++	brelse(bh);
++	return retval;
+ }
+ 
+ /*
+@@ -1561,10 +1558,8 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 		goto journal_error;
+ 
+ 	err = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
+-	if (err != -ENOSPC) {
+-		bh = NULL;
++	if (err != -ENOSPC)
+ 		goto cleanup;
+-	}
+ 
+ 	/* Block full, should compress but for now just split */
+ 	dxtrace(printk(KERN_DEBUG "using %u of %u node entries\n",
+@@ -1657,7 +1652,6 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 	if (!de)
+ 		goto cleanup;
+ 	err = add_dirent_to_buf(handle, dentry, inode, de, bh);
+-	bh = NULL;
+ 	goto cleanup;
+ 
+ journal_error:
+-- 
+1.6.5.104.g2567b.dirty
 
-					- Ted
