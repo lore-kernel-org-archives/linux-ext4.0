@@ -1,135 +1,30 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V2 2/2] ext4: Fix potential buffer head leak when add_dirent_to_buf() returns ENOSPC
-Date: Sun,  8 Nov 2009 16:08:47 -0500
-Message-ID: <1257714527-14077-2-git-send-email-tytso@mit.edu>
-References: <1257714527-14077-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Curt Wohlgemuth <curtw@google.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Sun, 8 Nov 2009 16:12:35 -0500
+Message-ID: <20091108211235.GA7592@mit.edu>
+References: <bug-14354-13602@http.bugzilla.kernel.org/> <200911082105.nA8L5eFA002306@demeter.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56194 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56217 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755182AbZKHVIu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 8 Nov 2009 16:08:50 -0500
-In-Reply-To: <1257714527-14077-1-git-send-email-tytso@mit.edu>
+	id S1755048AbZKHVMf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Nov 2009 16:12:35 -0500
+Content-Disposition: inline
+In-Reply-To: <200911082105.nA8L5eFA002306@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously add_dirent_to_buf() did not free its passed-in buffer head
-in the case of ENOSPC, since in some cases the caller still needed it.
-However, this led to potential buffer head leaks since not all callers
-dealt with this correctly.  Fix this by making simplifying the freeing
-convention; now add_dirent_to_buf() *never* frees the passed-in buffer
-head, and leaves that to the responsibility of its caller.  This makes
-things cleaner and easier to prove that the code is neither leaking
-buffer heads or calling brelse() one time too many.
+> First off, it's slower. Secondly, 'l' is already 'strlen+1', so it looks 
+> like ext4 _already_ copies the NUL terminating character.
+> 
+> So I suspect the debugging patch complained about writing a NUL to a 
+> location that was already NUL to begin with.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Curt Wohlgemuth <curtw@google.com>
----
- fs/ext4/namei.c |   30 ++++++++++++------------------
- 1 files changed, 12 insertions(+), 18 deletions(-)
+Umm, yeah.  Good point.  Since the debugging patch marks the page ro,
+short of doing a test before trying to null-terminate the symlink, the
+debugging patch is always going to flag a false-positive here.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6d2c1b8..fde08c9 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1292,9 +1292,6 @@ errout:
-  * add_dirent_to_buf will attempt search the directory block for
-  * space.  It will return -ENOSPC if no space is available, and -EIO
-  * and -EEXIST if directory entry already exists.
-- *
-- * NOTE!  bh is NOT released in the case where ENOSPC is returned.  In
-- * all other cases bh is released.
-  */
- static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 			     struct inode *inode, struct ext4_dir_entry_2 *de,
-@@ -1315,14 +1312,10 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 		top = bh->b_data + blocksize - reclen;
- 		while ((char *) de <= top) {
- 			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
--						  bh, offset)) {
--				brelse(bh);
-+						  bh, offset))
- 				return -EIO;
--			}
--			if (ext4_match(namelen, name, de)) {
--				brelse(bh);
-+			if (ext4_match(namelen, name, de))
- 				return -EEXIST;
--			}
- 			nlen = EXT4_DIR_REC_LEN(de->name_len);
- 			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
- 			if ((de->inode? rlen - nlen: rlen) >= reclen)
-@@ -1337,7 +1330,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	err = ext4_journal_get_write_access(handle, bh);
- 	if (err) {
- 		ext4_std_error(dir->i_sb, err);
--		brelse(bh);
- 		return err;
- 	}
- 
-@@ -1377,7 +1369,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	err = ext4_handle_dirty_metadata(handle, dir, bh);
- 	if (err)
- 		ext4_std_error(dir->i_sb, err);
--	brelse(bh);
- 	return 0;
- }
- 
-@@ -1471,7 +1462,9 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	if (!(de))
- 		return retval;
- 
--	return add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	brelse(bh);
-+	return retval;
- }
- 
- /*
-@@ -1514,8 +1507,10 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		if(!bh)
- 			return retval;
- 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
--		if (retval != -ENOSPC)
-+		if (retval != -ENOSPC) {
-+			brelse(bh);
- 			return retval;
-+		}
- 
- 		if (blocks == 1 && !dx_fallback &&
- 		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
-@@ -1528,7 +1523,9 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	de->inode = 0;
- 	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
--	return add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
-+	brelse(bh);
-+	return retval;
- }
- 
- /*
-@@ -1561,10 +1558,8 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 		goto journal_error;
- 
- 	err = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
--	if (err != -ENOSPC) {
--		bh = NULL;
-+	if (err != -ENOSPC)
- 		goto cleanup;
--	}
- 
- 	/* Block full, should compress but for now just split */
- 	dxtrace(printk(KERN_DEBUG "using %u of %u node entries\n",
-@@ -1657,7 +1652,6 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 	if (!de)
- 		goto cleanup;
- 	err = add_dirent_to_buf(handle, dentry, inode, de, bh);
--	bh = NULL;
- 	goto cleanup;
- 
- journal_error:
--- 
-1.6.5.216.g5288a.dirty
-
+	  	   	  	   	- Ted
