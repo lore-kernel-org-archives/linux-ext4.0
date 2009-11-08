@@ -1,44 +1,84 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
-Date: Sun, 8 Nov 2009 18:12:13 GMT
-Message-ID: <200911081812.nA8ICD4B001460@demeter.kernel.org>
-References: <bug-14354-13602@http.bugzilla.kernel.org/>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: [dm-devel] [PATCH v4 00/12] introduce
+ skip_spaces(), reducing code size plus some clean-ups
+Date: Sun, 08 Nov 2009 10:05:03 -0600
+Message-ID: <1257696303.4184.8.camel@mulgrave.site>
+References: <cover.1257602781.git.andre.goddard@gmail.com>
+Reply-To: Linux filesystem caching discussion list <linux-cachefs@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:53087 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754537AbZKHSMI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Nov 2009 13:12:08 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nA8ICD7D001465
-	for <linux-ext4@vger.kernel.org>; Sun, 8 Nov 2009 18:12:13 GMT
-In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Cc: Pavel Roskin <proski@gnu.org>,
+	Stefan Haberland <stefan.haberland@de.ibm.com>,
+	Jan Kara <jack@suse.cz>, linux-cachefs@redhat.com,
+	Mike Snitzer <snitzer@redhat.com>, Neil Brown <neilb@suse.de>,
+	Frederic Weisbecker <fweisbec@gmail.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Heiko Carstens <heiko.carstens@de.ibm.com>,
+	"James E . J . Bottomley" <jejb@parisc-linux.org>,
+	ibm-acpi-devel@lists.sourceforge.net, Chr,
+	Julia Lawall <julia@diku.dk>, "H . Peter Anvin" <hpa@zytor.com>,
+	Daire Byrne <Daire.Byrne@framestore.com>,
+	Alasdair G Kergon <agk@redhat.com>, Greg Banks <gnb@melbourne.sgi.com>,
+	Stefan Weinhuber <wein@de.ibm.com>,
+	Eric Sandeen <sandeen@redhat.com>, Adam Belay <abelay@mit.edu>,
+	netfilter-devel@vger.kernel.org, Helge Deller <deller@gmx.de>,
+	x86@kernel.org, James Morris <jmorris@namei.org>,
+	Takashi Iwai <tiwai@suse.de>, Ingo Molnar <mingo@redhat.com>,
+	Alan Cox <alan@l
+To: device-mapper development <dm-devel@redhat.com>
+Return-path: <linux-cachefs-bounces@redhat.com>
+In-Reply-To: <cover.1257602781.git.andre.goddard@gmail.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cachefs>,
+	<mailto:linux-cachefs-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/linux-cachefs>
+List-Post: <mailto:linux-cachefs@redhat.com>
+List-Help: <mailto:linux-cachefs-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cachefs>,
+	<mailto:linux-cachefs-request@redhat.com?subject=subscribe>
+Sender: linux-cachefs-bounces@redhat.com
+Errors-To: linux-cachefs-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14354
+On Sat, 2009-11-07 at 13:16 -0200, Andr=C3=A9 Goddard Rosa wrote:
+> This patch reduces lib.a code size by 173 bytes on my Core 2 with gcc 4=
+.4.1
+> even considering that it exports a newly defined function skip_spaces()
+> to drivers:
+>    text    data     bss     dec     hex filename                       =
+   =20
+>   64867     840     592   66299   102fb (TOTALS-lib.a-before)
+>   64954     584     588   66126   1024e (TOTALS-lib.a-after)
+> and implements some code tidy up.
+>=20
+> Besides reducing lib.a size, it converts many in-tree drivers to use th=
+e
+> newly defined function, which makes another small reduction on kernel s=
+ize
+> overall when those drivers are used.
 
+Before we embark on something as massive as this, could we take a step
+back.  I agree that if I were coming up with the strstip() interface
+today I probably wouldn't have given it two overloaded uses.
 
+However, I think the function, in spite of this minor issue, is very
+usable.  I still don't understand why people thought adding a
+__must_check, which is what damaged one of the overloaded uses, is a
+good idea.
 
+Assuming there's a good answer to the above:
 
+> + * skip_spaces - Removes leading whitespace from @s.
+> + * @s: The string to be stripped.
+> + *
+> + * Returns a pointer to the first non-whitespace character in @s.
+> + */
+> +const char *skip_spaces(const char *str)
 
---- Comment #181 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-11-08 18:12:03 ---
-Reply-To: hch@infradead.org
+I don't think const return is a good idea because most functions will be
+manipulating the string and using pointers that won't be const, so this
+will generate a ton of 'initialization discards qualifiers from pointer
+target type' ... so that leads to the question of whether this patch
+series was actually compiled ...
 
-On Fri, Nov 06, 2009 at 10:07:15PM +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
-> That said, I haven't looked at how nasty it would be to change the name 
-> lookup to use <ptr,len>. Maybe it wouldn't be as horrible as I suspect it 
-> is (the filesystems themselves wouldn't need changing, since the lowlevel 
-> filesystem name lookup routines always sees a 'struct dentry' rather than 
-> the pathname).
-
-FYI there are other filesystems that historically store the the name
-without terminating NULL in the symlink and would benefit from that.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+James
