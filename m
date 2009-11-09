@@ -1,54 +1,79 @@
 From: Pavel Machek <pavel@ucw.cz>
-Subject: periodic fsck was Re: [patch] ext2/3: document conditions when
- reliable operation is possible
-Date: Mon, 9 Nov 2009 09:53:18 +0100
-Message-ID: <20091109085318.GE4818__43449.0505409942$1257756823$gmane$org@elf.ucw.cz>
-References: <20090824223915.GI17684@mit.edu>
- <20090824230036.GK29763@elf.ucw.cz>
- <4A932B18.1020209@redhat.com>
- <20090825093414.GB15563@elf.ucw.cz>
- <4A94ACDF.30405@redhat.com>
- <20090826111751.GC26595@elf.ucw.cz>
- <alpine.DEB.2.00.0908260428310.30426@asgard.lang.hm>
- <20090826131028.GB1370@ucw.cz>
- <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm>
- <20090826180248.GB6997@mit.edu>
+Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
+ document conditions when reliable operation is possible)
+Date: Mon, 9 Nov 2009 11:50:54 +0100
+Message-ID: <20091109105054.GA8750@elf.ucw.cz>
+References: <20090824212518.GF29763@elf.ucw.cz>
+ <20090825232601.GF4300@elf.ucw.cz>
+ <4A947682.2010204@redhat.com>
+ <200908262253.17886.rob@landley.net>
+ <4A967175.5070700@redhat.com>
+ <20090827221319.GA1601@ucw.cz>
+ <4A9733C1.2070904@redhat.com>
+ <20090828064449.GA27528@elf.ucw.cz>
+ <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, david@lang.hm,
-	Rik van Riel <riel@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:40045 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754314AbZKIIxW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Nov 2009 03:53:22 -0500
+Cc: Ric Wheeler <rwheeler@redhat.com>, Rob Landley <rob@landley.net>,
+	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090826180248.GB6997@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 2009-08-26 14:02:48, Theodore Tso wrote:
-> On Wed, Aug 26, 2009 at 06:43:24AM -0700, david@lang.hm wrote:
-> >>>
-> >>> as the ext3 authors have stated many times over the years, you still need
-> >>> to run fsck periodicly anyway.
-> >>
-> >> Where is that documented?
+Hi!
+
+> >> If you have a specific bug in MD code, please propose a patch.
 > >
-> > linux-kernel mailing list archives.
+> > Interesting. So, what's technically wrong with the patch below?
+> >
 > 
-> Probably from some 6-8 years ago, in e-mail postings that I made.  My
-> argument has always been that PC-class hardware is crap, and it's a
+> You mean apart from ".... that high highly undesirable ...." ??
+>                                ^^^^^^^^^^^
+> 
 
-Well, in SUSE11-or-so, distro stopped period fscks, silently :-(. I
-believed that it was really bad idea at that point, but because I
-could not find piece of documentation recommending them, I lost the
-argument.
+Ok, I still believe kernel documentation should be ... well... in
+kernel, not in LWN article, so I fixed the patch according to your
+comments.
+
+Signed-off-by: Pavel Machek <pavel@ucw.cz>
+
+diff --git a/Documentation/filesystems/dangers.txt b/Documentation/filesystems/dangers.txt
+new file mode 100644
+index 0000000..14d0324
+--- /dev/null
++++ b/Documentation/filesystems/dangers.txt
+@@ -0,0 +1,21 @@
++There are storage devices that have highly undesirable properties when
++they are disconnected or suffer power failures while writes are in
++progress; such devices include flash devices and degraded DM/MD RAID
++4/5/6 (*) arrays.  These devices have the property of potentially
++corrupting blocks being written at the time of the power failure, and
++worse yet, amplifying the region where blocks are corrupted such that
++additional sectors are also damaged during the power failure.
++        
++Users who use such storage devices are well advised take
++countermeasures, such as the use of Uninterruptible Power Supplies,
++and making sure the flash device is not hot-unplugged while the device
++is being used.  Regular backups when using any devices, and these
++devices in particular is also a Very Good Idea.
++        
++Otherwise, file systems placed on these devices can suffer silent data
++and file system corruption.  An forced use of fsck may detect metadata
++corruption resulting in file system corruption, but will not suffice
++to detect data corruption.
++
++(*) If device failure causes the array to become degraded during or
++immediately after the power failure, the same problem can result.
+
 									Pavel
-
 -- 
 (english) http://www.livejournal.com/~pavelmachek
 (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
