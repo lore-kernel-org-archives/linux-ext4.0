@@ -1,144 +1,65 @@
-From: Julia Lawall <julia@diku.dk>
-Subject: Re: [PATCH v4 12/12] tree-wide: convert open calls
- to remove spaces to skip_spaces() lib function
-Date: Sun, 8 Nov 2009 21:23:07 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0911082103000.8143@ask.diku.dk>
-References: <cover.1257602781.git.andre.goddard@gmail.com>
-	<7d5883637aa976b54e944998f635d47a41618a75.1257602781.git.andre.goddard@gmail.com>
-	<20091108184722.GA1647@mit.edu>
-Reply-To: Linux filesystem caching discussion list <linux-cachefs@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 14562] New: On umount warn in page_alloc.c:1751
+	__alloc_pages_slowpath
+Date: Sun, 8 Nov 2009 21:44:43 -0500
+Message-ID: <20091109024443.GD7592@mit.edu>
+References: <bug-14562-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Pavel Roskin <proski@gnu.org>,
-	Stefan Haberland <stefan.haberland@de.ibm.com>,
-	Jan Kara <jack@suse.cz>, linux-cachefs@redhat.com,
-	Mike Snitzer <snitzer@redhat.com>, Neil Brown <neilb@suse.de>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Heiko Carstens <heiko.carstens@de.ibm.com>,
-	"James E . J . Bottomley" <jejb@parisc-linux.org>,
-	ibm-acpi-devel@lists.sourceforge.net, dm-devel@redhat.com,
-	"H . Peter Anvin" <hpa@zytor.com>,
-	Daire Byrne <Daire.Byrne@framestore.com>,
-	Alasdair G Kergon <agk@redhat.com>, Greg Banks <gnb@melbourne.sgi.com>,
-	Stefan Weinhuber <wein@de.ibm.com>,
-	Eric Sandeen <sandeen@redhat.com>, Adam Belay <abelay@mit.edu>,
-	Helge Deller <deller@gmx.de>, x86@kernel.org,
-	James Morris <jmorris@namei.org>, Takashi Iwai <tiwai@suse.de>,
-	=?iso-8859-1?Q?Andr=E9?= Goddard Rosa <andre.goddard@gmail.com>,
-	Alan Cox <alan@lxorguk.ukuu.or
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-cachefs-bounces@redhat.com>
-In-Reply-To: <20091108184722.GA1647@mit.edu>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/linux-cachefs>,
-	<mailto:linux-cachefs-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cachefs>
-List-Post: <mailto:linux-cachefs@redhat.com>
-List-Help: <mailto:linux-cachefs-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cachefs>,
-	<mailto:linux-cachefs-request@redhat.com?subject=subscribe>
-Sender: linux-cachefs-bounces@redhat.com
-Errors-To: linux-cachefs-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:48374 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752783AbZKICoo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Nov 2009 21:44:44 -0500
+Content-Disposition: inline
+In-Reply-To: <bug-14562-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> > Also, while at it, if we see (*str && isspace(*str)), we can be sure to
-> > remove the first condition (*str) as the second one (isspace(*str)) also
-> > evaluates to 0 whenever *str == 0, making it redundant. In other words,
-> > "a char equals zero is never a space".
+On Sun, Nov 08, 2009 at 10:52:59PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+> 
+> Created a new ext4 fs on sda5.
+> Did copy my backup (about 40Gig back) und did a umount to the fs.
+> After this i got this warning:
 
-I tried the following semantic patch (http://coccinelle.lip6.fr), and got 
-the results below.
+Did you also do a mount operation shortly afterwards?  It looks like 4
+seconds after the unmount completed, it was a mount operation that
+caused the warning.
 
-@@
-expression str;
-@@
+> [43805.914995] EXT4-fs: mballoc: 6643657 preallocated, 1203082 discarded
+> [43809.377291] ------------[ cut here ]------------
+> [43809.377320] WARNING: at /build/buildd/linux-2.6.31/mm/page_alloc.c:1751
 
-( // ignore skip_spaces cases
- while (*str &&  isspace(*str)) { \(str++;\|++str;\) }
-|
-- *str && 
-  isspace(*str)
-)
+The EXT4-fs: mballoc: is the last line you would normally expect to
+see when unmounting the filesystem.  And the warning took place 4
+seconds later, which is a eternity as far as kernel-time is
+considered.
 
-I haven't checked the results in any way, however.
+Also, look at the bottom of the call trace:
 
-julia
+> [43809.377512] Call Trace:
+> [43809.377531]  [<c014518d>] warn_slowpath_common+0x6d/0xa0
+  	....
+> [43809.377633]  [<c01e088f>] __kmalloc+0xdf/0x180
+> [43809.377646]  [<c031974e>] match_number+0x2e/0xa0
+> [43809.377657]  [<c03197ea>] match_int+0xa/0x10
+> [43809.377670]  [<c0274102>] parse_options+0x152/0x810
+  	....
+> [43809.377760]  [<c027baa0>] ? ext4_fill_super+0x0/0x1900
+> [43809.377772]  [<c01e9cde>] vfs_kern_mount+0x5e/0x120
+> [43809.377784]  [<c01e9df9>] do_kern_mount+0x39/0xd0
+> [43809.377797]  [<c01fee2e>] do_new_mount+0x6e/0xa0
+> [43809.377808]  [<c01ff7f9>] do_mount+0x1c9/0x1e0
+> [43809.377819]  [<c01ff876>] sys_mount+0x66/0xa0
+  		  	       ^^^^^^^^^
+> [43809.377831]  [<c010336c>] syscall_call+0x7/0xb
+> [43809.377840] ---[ end trace a7919e7f17c0a727 ]---
 
-diff -u -p a/drivers/leds/led-class.c b/drivers/leds/led-class.c
---- a/drivers/leds/led-class.c
-+++ b/drivers/leds/led-class.c
-@@ -50,7 +50,7 @@ static ssize_t led_brightness_store(stru
- 	unsigned long state = simple_strtoul(buf, &after, 10);
- 	size_t count = after - buf;
- 
--	if (*after && isspace(*after))
-+	if (isspace(*after))
- 		count++;
- 
- 	if (count == size) {
-diff -u -p a/drivers/leds/ledtrig-timer.c b/drivers/leds/ledtrig-timer.c
---- a/drivers/leds/ledtrig-timer.c
-+++ b/drivers/leds/ledtrig-timer.c
-@@ -83,7 +83,7 @@ static ssize_t led_delay_on_store(struct
- 	unsigned long state = simple_strtoul(buf, &after, 10);
- 	size_t count = after - buf;
- 
--	if (*after && isspace(*after))
-+	if (isspace(*after))
- 		count++;
- 
- 	if (count == size) {
-@@ -127,7 +127,7 @@ static ssize_t led_delay_off_store(struc
- 	unsigned long state = simple_strtoul(buf, &after, 10);
- 	size_t count = after - buf;
- 
--	if (*after && isspace(*after))
-+	if (isspace(*after))
- 		count++;
- 
- 	if (count == size) {
-diff -u -p a/drivers/video/backlight/lcd.c b/drivers/video/backlight/lcd.c
---- a/drivers/video/backlight/lcd.c
-+++ b/drivers/video/backlight/lcd.c
-@@ -101,7 +101,7 @@ static ssize_t lcd_store_power(struct de
- 	int power = simple_strtoul(buf, &endp, 0);
- 	size_t size = endp - buf;
- 
--	if (*endp && isspace(*endp))
-+	if (isspace(*endp))
- 		size++;
- 	if (size != count)
- 		return -EINVAL;
-@@ -140,7 +140,7 @@ static ssize_t lcd_store_contrast(struct
- 	int contrast = simple_strtoul(buf, &endp, 0);
- 	size_t size = endp - buf;
- 
--	if (*endp && isspace(*endp))
-+	if (isspace(*endp))
- 		size++;
- 	if (size != count)
- 		return -EINVAL;
-diff -u -p a/drivers/video/display/display-sysfs.c b/drivers/video/display/display-sysfs.c
---- a/drivers/video/display/display-sysfs.c
-+++ b/drivers/video/display/display-sysfs.c
-@@ -67,7 +67,7 @@ static ssize_t display_store_contrast(st
- 	contrast = simple_strtoul(buf, &endp, 0);
- 	size = endp - buf;
- 
--	if (*endp && isspace(*endp))
-+	if (isspace(*endp))
- 		size++;
- 
- 	if (size != count)
-diff -u -p a/drivers/video/output.c b/drivers/video/output.c
---- a/drivers/video/output.c
-+++ b/drivers/video/output.c
-@@ -50,7 +50,7 @@ static ssize_t video_output_store_state(
- 	int request_state = simple_strtoul(buf,&endp,0);
- 	size_t size = endp - buf;
- 
--	if (*endp && isspace(*endp))
-+	if (isspace(*endp))
- 		size++;
- 	if (size != count)
- 		return -EINVAL;
+
+Looks like this was some kind of "interesting" set of mount options
+passed to the kernel.  Any chance you could figure out what the mount
+options were to the mount operation?
+
+					- Ted
