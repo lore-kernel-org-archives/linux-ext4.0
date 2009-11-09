@@ -1,79 +1,66 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14562] On umount warn in page_alloc.c:1751
- __alloc_pages_slowpath
-Date: Mon, 9 Nov 2009 02:44:53 GMT
-Message-ID: <200911090244.nA92irUr024316@demeter.kernel.org>
-References: <bug-14562-13602@http.bugzilla.kernel.org/>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 2/2] ext4: journal superblock modifications in	ext4_statfs()
+Date: Sun, 08 Nov 2009 21:41:28 -0700
+Message-ID: <AB457F38-7E3A-43CE-B334-AE363BAE040C@sun.com>
+References: <4AF4A429.7090507@redhat.com>
+ <6BDA2C94-6FA5-48EE-9E68-56BDFC4B558A@sun.com> <20091108214804.GC7592@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:44462 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752881AbZKICor (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Nov 2009 21:44:47 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nA92ir76024317
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Nov 2009 02:44:53 GMT
-In-Reply-To: <bug-14562-13602@http.bugzilla.kernel.org/>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:62438 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752562AbZKIElZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Nov 2009 23:41:25 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nA94fUdG000479
+	for <linux-ext4@vger.kernel.org>; Sun, 8 Nov 2009 20:41:30 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KST00900RFUB700@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Sun,
+ 08 Nov 2009 20:41:30 -0800 (PST)
+In-reply-to: <20091108214804.GC7592@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14562
+On 2009-11-08, at 14:48, Theodore Tso wrote:
+> On Fri, Nov 06, 2009 at 05:26:51PM -0700, Andreas Dilger wrote:
+>> If the choice is between adding a proper transaction here, or not
+>> doing this at all, I'd rather just not do it at all.  Of course, I'd
+>> like to work out some kind of compromise, like only updating the
+>> superblock when there is already a shadow BH that is being used to
+>> write to the journal, or similar.
+>
+> In practice, the superblock is never going to modified in normal
+> operations, unless a resize happens to be happening.
+
+Actually, Eric had a important case where the superblock is modified
+is whenever any file is added to the orphan list, so this basically
+happens all the time.  When the orphan code was added, it made sense
+to put the head of the orphan list on the superblock because it was
+updated for every truncate to change the free block counters.
+
+> Since we already force the superblock summary counters to be correct
+> during an unmount or file system freeze, we really only need this so
+> that it's correct after a file system crash.
+>
+> I don't think people generally end up calling statfs() all that
+> frequently, so it's not clear how much adding a 30 second throttle
+> would help.  Maybe we should just not bother trying to update the
+> superblock at all on a statfs()?
 
 
+The reason we added this was for running a read-only e2fsck on a
+filesystem without getting spurious errors just because the superblock
+summaries were incorrect.  The other alternative is to change e2fsck
+so that it doesn't consider just a block/inode summary an error.
 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-
---- Comment #1 from Theodore Tso <tytso@mit.edu>  2009-11-09 02:44:52 ---
-On Sun, Nov 08, 2009 at 10:52:59PM +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
-> 
-> Created a new ext4 fs on sda5.
-> Did copy my backup (about 40Gig back) und did a umount to the fs.
-> After this i got this warning:
-
-Did you also do a mount operation shortly afterwards?  It looks like 4
-seconds after the unmount completed, it was a mount operation that
-caused the warning.
-
-> [43805.914995] EXT4-fs: mballoc: 6643657 preallocated, 1203082 discarded
-> [43809.377291] ------------[ cut here ]------------
-> [43809.377320] WARNING: at /build/buildd/linux-2.6.31/mm/page_alloc.c:1751
-
-The EXT4-fs: mballoc: is the last line you would normally expect to
-see when unmounting the filesystem.  And the warning took place 4
-seconds later, which is a eternity as far as kernel-time is
-considered.
-
-Also, look at the bottom of the call trace:
-
-> [43809.377512] Call Trace:
-> [43809.377531]  [<c014518d>] warn_slowpath_common+0x6d/0xa0
-      ....
-> [43809.377633]  [<c01e088f>] __kmalloc+0xdf/0x180
-> [43809.377646]  [<c031974e>] match_number+0x2e/0xa0
-> [43809.377657]  [<c03197ea>] match_int+0xa/0x10
-> [43809.377670]  [<c0274102>] parse_options+0x152/0x810
-      ....
-> [43809.377760]  [<c027baa0>] ? ext4_fill_super+0x0/0x1900
-> [43809.377772]  [<c01e9cde>] vfs_kern_mount+0x5e/0x120
-> [43809.377784]  [<c01e9df9>] do_kern_mount+0x39/0xd0
-> [43809.377797]  [<c01fee2e>] do_new_mount+0x6e/0xa0
-> [43809.377808]  [<c01ff7f9>] do_mount+0x1c9/0x1e0
-> [43809.377819]  [<c01ff876>] sys_mount+0x66/0xa0
-                       ^^^^^^^^^
-> [43809.377831]  [<c010336c>] syscall_call+0x7/0xb
-> [43809.377840] ---[ end trace a7919e7f17c0a727 ]---
-
-
-Looks like this was some kind of "interesting" set of mount options
-passed to the kernel.  Any chance you could figure out what the mount
-options were to the mount operation?
-
-                    - Ted
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
