@@ -1,55 +1,49 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: journal superblock modifications in
-	ext4_statfs()
-Date: Mon, 9 Nov 2009 07:53:36 -0500
-Message-ID: <20091109125336.GF7592@mit.edu>
-References: <4AF4A429.7090507@redhat.com> <6BDA2C94-6FA5-48EE-9E68-56BDFC4B558A@sun.com> <20091108214804.GC7592@mit.edu> <4AF741A4.9060907@redhat.com>
+Subject: Re: periodic fsck was Re: [patch] ext2/3: document conditions when
+	reliable operation is possible
+Date: Mon, 9 Nov 2009 09:05:55 -0500
+Message-ID: <20091109140555.GG7592@mit.edu>
+References: <20090824230036.GK29763@elf.ucw.cz> <4A932B18.1020209@redhat.com> <20090825093414.GB15563@elf.ucw.cz> <4A94ACDF.30405@redhat.com> <20090826111751.GC26595@elf.ucw.cz> <alpine.DEB.2.00.0908260428310.30426@asgard.lang.hm> <20090826131028.GB1370@ucw.cz> <alpine.DEB.2.00.0908260642560.28411@asgard.lang.hm> <20090826180248.GB6997@mit.edu> <20091109085318.GE4818@elf.ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:54383 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755733AbZKIMxm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Nov 2009 07:53:42 -0500
+Cc: david@lang.hm, Rik van Riel <riel@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Florian Weimer <fweimer@bfk.de>,
+	Goswin von Brederlow <goswin-v-b@web.de>,
+	Rob Landley <rob@landley.net>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
+	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, corbet@lwn.net, jack@suse.cz
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756005AbZKIOHO@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4AF741A4.9060907@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20091109085318.GE4818@elf.ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Nov 08, 2009 at 04:09:40PM -0600, Eric Sandeen wrote:
->
-> But don't we journal the superblock sometimes, not others ... for  
-> example write_super -> ext4_write_super -> ext4_commit_super does no  
-> journaling of superblock modifications. ext4_orphan_add, however, does.  
-> This would likely lead to trouble w/ the debugging patch ... though I  
-> didn't see it ... ?
+On Mon, Nov 09, 2009 at 09:53:18AM +0100, Pavel Machek wrote:
+> 
+> Well, in SUSE11-or-so, distro stopped period fscks, silently :-(. I
+> believed that it was really bad idea at that point, but because I
+> could not find piece of documentation recommending them, I lost the
+> argument.
 
-Ah, I had forgotten about ext4_orphan_add(); that is indeed the one
-place where we would be updating the super block under normal
-operations, besides online-resize.
+It's an engineering trade-off.  If you have perfect memory that is
+never has cosmic-ray hiccups, and hard drives that never write data to
+the wrong place, etc. then you don't need periodic fsck's.
 
-I've been looking at the write_super() paths, and from what I can tell
-it's only used in two places.  The generic fsync() handler,
-file_fsync(), which we do't use, and sync_supers(), which will indeed
-call write_super() -> ext4_write_super() if sb->s_dirt is set.  That
-led me to examine the places where we set s_dirt, and it's in a lot of
-places where we're no longer modifying the superblock any more, but
-we're still setting sb->s_dirt.  I don't know why you didn't see
-problems with the debugging patch; the only thing I can think of is
-that since the actual superblock update is deferred to a
-timer-triggered callback, you were getting consistently lucky ---
-which is hard for me to believe, but I don't have a better suggestion.
+If you do have imperfect hardware, the question then is how imperfect
+your hardware is, and how frequently it introduces errors.  If you
+check too frequently, though, users get upset, especially when it
+happens at the most inconvenient time (when you're trying to recover
+from unscheduled downtime by rebooting); if you check too infrequently
+then it doesn't help you too much since too much data gets damaged
+before fsck notices.
 
-What I think we do need to do is eliminate all of the places where we
-set sb->s_dirt, and if we need to update the superblock, we do it
-ourselves, under journaling control.
+So these days, what I strongly recommend is that people use LVM
+snapshots, and schedule weekly checks during some low usage period
+(i.e., 3am on Saturdays), using something like the e2croncheck shell
+script.
 
-That leaves places which call ext4_commit_super() directly, which is
-at mount and unmount time (which should be OK, as long as it's before
-or after journalling is active) and when we freeze the filesystem,
-which might be OK, but we need to take a careful look at it.
-
-            	       	       	       	  - Ted
+						- Ted
