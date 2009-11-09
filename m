@@ -1,79 +1,55 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: raid is dangerous but that's secret (was Re: [patch] ext2/3:
- document conditions when reliable operation is possible)
-Date: Mon, 9 Nov 2009 11:50:54 +0100
-Message-ID: <20091109105054.GA8750@elf.ucw.cz>
-References: <20090824212518.GF29763@elf.ucw.cz>
- <20090825232601.GF4300@elf.ucw.cz>
- <4A947682.2010204@redhat.com>
- <200908262253.17886.rob@landley.net>
- <4A967175.5070700@redhat.com>
- <20090827221319.GA1601@ucw.cz>
- <4A9733C1.2070904@redhat.com>
- <20090828064449.GA27528@elf.ucw.cz>
- <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: journal superblock modifications in
+	ext4_statfs()
+Date: Mon, 9 Nov 2009 07:53:36 -0500
+Message-ID: <20091109125336.GF7592@mit.edu>
+References: <4AF4A429.7090507@redhat.com> <6BDA2C94-6FA5-48EE-9E68-56BDFC4B558A@sun.com> <20091108214804.GC7592@mit.edu> <4AF741A4.9060907@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>, Rob Landley <rob@landley.net>,
-	Theodore Tso <tytso@mit.edu>, Florian Weimer <fweimer@bfk.de>,
-	Goswin von Brederlow <goswin-v-b@web.de>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, corbet@lwn.net
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-doc-owner@vger.kernel.org>
+Cc: Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:54383 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755733AbZKIMxm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Nov 2009 07:53:42 -0500
 Content-Disposition: inline
-In-Reply-To: <ff262c08b0c3a7a9c32dabd53a4a9a27.squirrel@neil.brown.name>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4AF741A4.9060907@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+On Sun, Nov 08, 2009 at 04:09:40PM -0600, Eric Sandeen wrote:
+>
+> But don't we journal the superblock sometimes, not others ... for  
+> example write_super -> ext4_write_super -> ext4_commit_super does no  
+> journaling of superblock modifications. ext4_orphan_add, however, does.  
+> This would likely lead to trouble w/ the debugging patch ... though I  
+> didn't see it ... ?
 
-> >> If you have a specific bug in MD code, please propose a patch.
-> >
-> > Interesting. So, what's technically wrong with the patch below?
-> >
-> 
-> You mean apart from ".... that high highly undesirable ...." ??
->                                ^^^^^^^^^^^
-> 
+Ah, I had forgotten about ext4_orphan_add(); that is indeed the one
+place where we would be updating the super block under normal
+operations, besides online-resize.
 
-Ok, I still believe kernel documentation should be ... well... in
-kernel, not in LWN article, so I fixed the patch according to your
-comments.
+I've been looking at the write_super() paths, and from what I can tell
+it's only used in two places.  The generic fsync() handler,
+file_fsync(), which we do't use, and sync_supers(), which will indeed
+call write_super() -> ext4_write_super() if sb->s_dirt is set.  That
+led me to examine the places where we set s_dirt, and it's in a lot of
+places where we're no longer modifying the superblock any more, but
+we're still setting sb->s_dirt.  I don't know why you didn't see
+problems with the debugging patch; the only thing I can think of is
+that since the actual superblock update is deferred to a
+timer-triggered callback, you were getting consistently lucky ---
+which is hard for me to believe, but I don't have a better suggestion.
 
-Signed-off-by: Pavel Machek <pavel@ucw.cz>
+What I think we do need to do is eliminate all of the places where we
+set sb->s_dirt, and if we need to update the superblock, we do it
+ourselves, under journaling control.
 
-diff --git a/Documentation/filesystems/dangers.txt b/Documentation/filesystems/dangers.txt
-new file mode 100644
-index 0000000..14d0324
---- /dev/null
-+++ b/Documentation/filesystems/dangers.txt
-@@ -0,0 +1,21 @@
-+There are storage devices that have highly undesirable properties when
-+they are disconnected or suffer power failures while writes are in
-+progress; such devices include flash devices and degraded DM/MD RAID
-+4/5/6 (*) arrays.  These devices have the property of potentially
-+corrupting blocks being written at the time of the power failure, and
-+worse yet, amplifying the region where blocks are corrupted such that
-+additional sectors are also damaged during the power failure.
-+        
-+Users who use such storage devices are well advised take
-+countermeasures, such as the use of Uninterruptible Power Supplies,
-+and making sure the flash device is not hot-unplugged while the device
-+is being used.  Regular backups when using any devices, and these
-+devices in particular is also a Very Good Idea.
-+        
-+Otherwise, file systems placed on these devices can suffer silent data
-+and file system corruption.  An forced use of fsck may detect metadata
-+corruption resulting in file system corruption, but will not suffice
-+to detect data corruption.
-+
-+(*) If device failure causes the array to become degraded during or
-+immediately after the power failure, the same problem can result.
+That leaves places which call ext4_commit_super() directly, which is
+at mount and unmount time (which should be OK, as long as it's before
+or after journalling is active) and when we freeze the filesystem,
+which might be OK, but we need to take a careful look at it.
 
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+            	       	       	       	  - Ted
