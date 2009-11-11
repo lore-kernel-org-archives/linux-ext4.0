@@ -1,49 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PULL] Ext3 and JBD fixes
-Date: Wed, 11 Nov 2009 15:28:24 +0100
-Message-ID: <20091111142824.GD21511@duck.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
+Date: Wed, 11 Nov 2009 15:27:56 GMT
+Message-ID: <200911111527.nABFRurF004137@demeter.kernel.org>
+References: <bug-14256-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:35330 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754398AbZKKO2U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Nov 2009 09:28:20 -0500
-Content-Disposition: inline
+Received: from demeter.kernel.org ([140.211.167.39]:56952 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754440AbZKKP1u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Nov 2009 10:27:50 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nABFRuUM004138
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2009 15:27:56 GMT
+In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+http://bugzilla.kernel.org/show_bug.cgi?id=14256
 
-  could you please pull from
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
 
-  to get:
 
-Eric Sandeen (1):
-      ext3: retry failed direct IO allocations
 
-Jan Kara (1):
-      ext3: Wait for proper transaction commit on fsync
+--- Comment #8 from Jan Kara <jack@suse.cz>  2009-11-11 15:27:53 ---
+Created an attachment (id=23749)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=23749)
+Patch reporting lost inode references
 
-Tao Ma (1):
-      JBD/JBD2: free j_wbuf if journal init fails.
+This patch reports more information about inodes left in orphan list.
 
-The diffstat is
-
- fs/ext3/fsync.c           |   36 ++++++++++++++++--------------------
- fs/ext3/inode.c           |   36 +++++++++++++++++++++++++++++++++++-
- fs/ext3/super.c           |    2 ++
- fs/jbd/journal.c          |    2 ++
- fs/jbd2/journal.c         |    2 ++
- include/linux/ext3_fs_i.h |    8 ++++++++
- 6 files changed, 65 insertions(+), 21 deletions(-)
-
-							Thanks
-								Honza
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
