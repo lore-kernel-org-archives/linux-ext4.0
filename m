@@ -1,45 +1,49 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/4] Fix fsync on ext3 and ext4 (v2)
-Date: Wed, 11 Nov 2009 15:17:11 +0100
-Message-ID: <20091111141711.GB21511@duck.suse.cz>
-References: <1256647729-29834-1-git-send-email-jack@suse.cz> <20091105130250.GC17008@atrey.karlin.mff.cuni.cz> <20091105163510.GA5897@skywalker.linux.vnet.ibm.com>
+Subject: [PULL] Ext3 and JBD fixes
+Date: Wed, 11 Nov 2009 15:28:24 +0100
+Message-ID: <20091111142824.GD21511@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:34881 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:35330 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756112AbZKKORJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Nov 2009 09:17:09 -0500
+	id S1754398AbZKKO2U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Nov 2009 09:28:20 -0500
 Content-Disposition: inline
-In-Reply-To: <20091105163510.GA5897@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-11-09 22:05:10, Aneesh Kumar K.V wrote:
-> On Thu, Nov 05, 2009 at 02:02:50PM +0100, Jan Kara wrote:
-> >   Hi,
-> > 
-> > >   this is a second try for a patchset which makes ext3 and ext4 properly force
-> > > a transaction commit when needed. We now do not rely on buffer dirty bits
-> > > (which does not work as pdflush can just clear them without forcing a
-> > > transaction commit) but rather keep transaction ids that need to be committed
-> > > for each inode.
-> > >   Since last version, I've implemented Aneesh's and Curt's comments and also
-> > > fixed a missing initialization of the fields. I've tested that now the patch
-> > > works correctly for uninitialized extents as well as for standard writes.  If
-> > > noone objects, would you merge the ext4 part Ted? I'll take care of the ext3
-> > > patch.
-> >   Aneesh, Ted, is the second version of the patchset fine with you?
-> 
-> The patches looks good.
-> 
-> Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-  Thanks for the review! I've merged the ext3 patch and will push it to
-Linus soon. Ted, will you take care of ext4 changes? Thanks.
+  Hello Linus,
 
-									Honza
+  could you please pull from
+
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
+
+  to get:
+
+Eric Sandeen (1):
+      ext3: retry failed direct IO allocations
+
+Jan Kara (1):
+      ext3: Wait for proper transaction commit on fsync
+
+Tao Ma (1):
+      JBD/JBD2: free j_wbuf if journal init fails.
+
+The diffstat is
+
+ fs/ext3/fsync.c           |   36 ++++++++++++++++--------------------
+ fs/ext3/inode.c           |   36 +++++++++++++++++++++++++++++++++++-
+ fs/ext3/super.c           |    2 ++
+ fs/jbd/journal.c          |    2 ++
+ fs/jbd2/journal.c         |    2 ++
+ include/linux/ext3_fs_i.h |    8 ++++++++
+ 6 files changed, 65 insertions(+), 21 deletions(-)
+
+							Thanks
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
