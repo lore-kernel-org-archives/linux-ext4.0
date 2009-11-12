@@ -1,35 +1,52 @@
-From: "Renato S. Yamane" <yamane@diamondcut.com.br>
-Subject: Ext4 on SSD Intel X25-M
-Date: Thu, 12 Nov 2009 11:59:50 -0200
-Message-ID: <4AFC14D6.7080700@diamondcut.com.br>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Ext4 on SSD Intel X25-M
+Date: Thu, 12 Nov 2009 09:11:52 -0600
+Message-ID: <4AFC25B8.2070804@redhat.com>
+References: <4AFC14D6.7080700@diamondcut.com.br>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: "Renato S. Yamane" <yamane@diamondcut.com.br>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-04.mandic.com.br ([200.225.81.151]:40087 "EHLO
-	smtp-04.mandic.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751899AbZKLOGR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Nov 2009 09:06:17 -0500
-Received: from unknown (HELO [192.168.1.104]) (48XWxNa3qdTI2cq3yJaVop5Ok6I=@[200.228.134.10])
-          (envelope-sender <yamane@diamondcut.com.br>)
-          by smtp-04.mandic.com.br (qmail-ldap-1.03) with AES256-SHA encrypted SMTP
-          for <linux-ext4@vger.kernel.org>; 12 Nov 2009 13:59:42 -0000
+Received: from mx1.redhat.com ([209.132.183.28]:4056 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752816AbZKLPLu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Nov 2009 10:11:50 -0500
+In-Reply-To: <4AFC14D6.7080700@diamondcut.com.br>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Renato S. Yamane wrote:
+> Hi,
+> 
+> [please, leave me on cc because I'm not subscribed on this ML]
+> 
+> I'm using Intel SSD X25-M on my laptop, and I always hear that is not a 
+> good idea use journal on SSD (it decrease the life time).
+> 
+> I ask Intel about this, but I don't receive any answer.
+> 
+> So, I would like to know if is possible disable Journal on EXT4.
 
-[please, leave me on cc because I'm not subscribed on this ML]
+It is possible, mkfs with "-O ^has_journal" but then of course you ... 
+have no journaling.
 
-I'm using Intel SSD X25-M on my laptop, and I always hear that is not a 
-good idea use journal on SSD (it decrease the life time).
+However, Intel has always said, I think, that you should treat their 
+SSDs just like you would treat any other hard drive, so I probably would 
+not hesitate to leave the journal intact.
 
-I ask Intel about this, but I don't receive any answer.
+There is a write lifetime of course, but I think it's much better than 
+if you were writing to, say, a securedigital card.
 
-So, I would like to know if is possible disable Journal on EXT4.
+-Eric
 
-I'm using Debian Testing (squeeze).
+> I'm using Debian Testing (squeeze).
+> 
+> Regards,
+> Renato S. Yamane
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Regards,
-Renato S. Yamane
