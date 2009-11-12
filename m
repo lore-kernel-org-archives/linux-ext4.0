@@ -1,47 +1,45 @@
-From: Stefan Schmidt <stefan@datenfreihafen.org>
-Subject: [PATCH] fs/jbd: Export log_start_commit to fix ext3 build
-Date: Thu, 12 Nov 2009 09:58:43 +0100
-Message-ID: <20091112085843.GA2682@excalibur.local>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext3 build failure: "log_start_commit" [fs/ext3/ext3.ko]
+	undefined
+Date: Thu, 12 Nov 2009 10:40:42 +0100
+Message-ID: <20091112094042.GC14528@duck.suse.cz>
+References: <4AFB5529.2010302@s5r6.in-berlin.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Stefan Richter <stefanr@s5r6.in-berlin.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sirius.lasnet.de ([78.47.116.19]:41465 "EHLO sirius.lasnet.de"
+Received: from cantor.suse.de ([195.135.220.2]:45081 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752305AbZKLJiU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Nov 2009 04:38:20 -0500
+	id S1752554AbZKLJki (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Nov 2009 04:40:38 -0500
 Content-Disposition: inline
+In-Reply-To: <4AFB5529.2010302@s5r6.in-berlin.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->From 9bf22057947bfaeef14287dd03ac8f058e4dd43a Mon Sep 17 00:00:00 2001
-From: Stefan Schmidt <stefan@datenfreihafen.org>
-Date: Thu, 12 Nov 2009 09:53:50 +0100
-Subject: [PATCH] fs/jbd: Export log_start_commit to fix ext3 build.
+On Thu 12-11-09 01:22:01, Stefan Richter wrote:
+> Hi Jan,
+> 
+> I just pulled linux-2.6.git and got this:
+> ERROR: "log_start_commit" [fs/ext3/ext3.ko] undefined!
+> 
+> I guess it is due to "ext3: Wait for proper transaction commit on fsync".
+> 
+> Is this log_start_commit() of fs/jbd/journal.c?
+> 
+> $ grep -e JBD -e EXT3 .config
+> CONFIG_EXT3_FS=m
+> # CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
+> # CONFIG_EXT3_FS_XATTR is not set
+> CONFIG_JBD=m
+> CONFIG_JBD2=m
+  Yes, thanks. I've already merged the fix.
 
-This fixes:
-ERROR: "log_start_commit" [fs/ext3/ext3.ko] undefined!
+								Honza
 
-Signed-off-by: Stefan Schmidt <stefan@datenfreihafen.org>
----
- fs/jbd/journal.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 49d5cd6..4160afa 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -73,6 +73,7 @@ EXPORT_SYMBOL(journal_errno);
- EXPORT_SYMBOL(journal_ack_err);
- EXPORT_SYMBOL(journal_clear_err);
- EXPORT_SYMBOL(log_wait_commit);
-+EXPORT_SYMBOL(log_start_commit);
- EXPORT_SYMBOL(journal_start_commit);
- EXPORT_SYMBOL(journal_force_commit_nested);
- EXPORT_SYMBOL(journal_wipe);
 -- 
-1.6.5.2
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
