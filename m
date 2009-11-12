@@ -1,38 +1,196 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PULL] Build fix when ext3 is a module
-Date: Thu, 12 Nov 2009 10:49:12 +0100
-Message-ID: <20091112094912.GD14528@duck.suse.cz>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH v2][64-bit e2fsprogs] 64-bit block number truncated in
+ e2sck pass2.
+Date: Thu, 12 Nov 2009 04:14:02 -0700
+Message-ID: <84B1CAF4-3AC4-4858-8BDC-23BCA0B3C446@sun.com>
+References: <10898.1258005718@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: nicholas.dokos@hp.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44964 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751805AbZKLJtI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Nov 2009 04:49:08 -0500
-Content-Disposition: inline
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35373 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751344AbZKLLOC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Nov 2009 06:14:02 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nACBE4Y1011011
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2009 03:14:07 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KSZ00E00TPAJ800@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
+ 12 Nov 2009 03:14:04 -0800 (PST)
+In-reply-to: <10898.1258005718@gamaville.dokosmarshall.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+On 2009-11-11, at 23:01, Nick Dokos wrote:
+> However, there is another call to ext2fs_read_dir_block() in
+> pass 1, specifically in the routine check_is_really_dir(),
+> a routine with a question mark over its head.  I've gone ahead
+> and fixed it up to deal with extent-mapped inodes as well.
+> I also added some comments reflecting my (possibly faulty)
+> understanding of what the routine is trying to do, so I'd
+> appreciate comments/corrections. In particular, I don't
+> quite understand why the relevant index for deciding whether
+> something can or cannot be a device file is 4, so I've left
+> it unchanged.
 
-  I'm wearing a brown paper bag for today... Could you please pull from
+The code and comments look good to me.  The reason that device
+files cannot have anything in block 4 is because the mapping
+from 64-bit major + 64-bit minor will use at most 4 32-bit
+fields in i_blocks[0-3] so they always store zeroes in the
+i_blocks[4-15].
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
+Reviewed-by: Andreas Dilger <adilger@sun.com>
 
-  to get:
+> From 44de200d84379ed6debb1bf054de57a8828a9e0d Mon Sep 17 00:00:00 2001
+> From: Nick Dokos <nicholas.dokos@hp.com>
+> Date: Wed, 11 Nov 2009 21:21:36 -0500
+> Subject: [PATCH] Deal with 64-bit block numbers in directory.
+>
+> e2fsck was truncating the (> 2^32) block number of a directory in  
+> pass 2
+> and generating spurious errors. The fix is to replace a call to
+> ext2fs_read_dir_block() by the corresponding 64-bit safe call to
+> ext2fs_read_dir_block3().
+>
+> The pass1 check_is_really_dir() function (which uses the above  
+> function,
+> and therefore needs the same fix) needs additional changes to deal  
+> with
+> extent-mapped inodes.
+>
+> Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
+> ---
+> e2fsck/pass1.c |   61 ++++++++++++++++++++++++++++++++++++++++++++ 
+> +-----------
+> e2fsck/pass2.c |    2 +-
+> 2 files changed, 50 insertions(+), 13 deletions(-)
+>
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index 557d642..fcae923 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -405,34 +405,71 @@ static void check_is_really_dir(e2fsck_t ctx,  
+> struct problem_context *pctx,
+> 	errcode_t		retval;
+> 	blk64_t			blk;
+> 	unsigned int		i, rec_len, not_device = 0;
+> +	int			extent_fs;
+>
+> +	/* If the mode looks OK, we believe it.  If the first block in
+> +	 * the i_block array is 0, this cannot be a directory. If the
+> +	 * inode is extent-mapped, it is still the case that the latter
+> +	 * cannot be 0 - the magic number in the extent header would make
+> +	 * it nonzero.
+> +	 */
+> 	if (LINUX_S_ISDIR(inode->i_mode) || LINUX_S_ISREG(inode->i_mode) ||
+> 	    LINUX_S_ISLNK(inode->i_mode) || inode->i_block[0] == 0)
+> 		return;
+>
+> -	for (i=0; i < EXT2_N_BLOCKS; i++) {
+> -		blk = inode->i_block[i];
+> -		if (!blk)
+> -			continue;
+> -		if (i >= 4)
+> -			not_device++;
+> +	/* Check the block numbers in the i_block array for validity:
+> +	 * zero blocks are skipped (but the first one cannot be zero - see  
+> above),
+> +	 * other blocks are checked against the first and max data blocks  
+> (from the
+> +	 * the superblock) and against the block bitmap. Any invalid block  
+> found
+> +	 * means this cannot be a directory.
+> +	 *
+> +	 * If there are non-zero blocks past the fourth entry, then this  
+> cannot be
+> +	 * a device file: we remember that for the next check.
+> +	 *
+> +	 * For extent mapped files, we don't do any sanity checking: just  
+> try to
+> +	 * get the phys block of logical block 0 and run with it.
+> +	 */
+> +	extent_fs = (ctx->fs->super->s_feature_incompat &  
+> EXT3_FEATURE_INCOMPAT_EXTENTS);
+> +	if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) {
+> +		/* extent mapped */
+> +		if  (ext2fs_bmap2(ctx->fs, pctx->ino, inode, 0, 0, 0, 0, &blk))
+> +			return;
+> +		/* device files are never extent mapped */
+> +		not_device++;
+> +	} else {
+> +		for (i=0; i < EXT2_N_BLOCKS; i++) {
+> +			blk = inode->i_block[i];
+> +			if (!blk)
+> +				continue;
+> +			if (i >= 4)
+> +				not_device++;
+>
+> -		if (blk < ctx->fs->super->s_first_data_block ||
+> -		    blk >= ext2fs_blocks_count(ctx->fs->super) ||
+> -		    ext2fs_fast_test_block_bitmap2(ctx->block_found_map, blk))
+> -			return;	/* Invalid block, can't be dir */
+> +			if (blk < ctx->fs->super->s_first_data_block ||
+> +			    blk >= ext2fs_blocks_count(ctx->fs->super) ||
+> +			    ext2fs_fast_test_block_bitmap2(ctx->block_found_map, blk))
+> +				return;	/* Invalid block, can't be dir */
+> +		}
+> +		blk = (blk64_t) inode->i_block[0];
+> 	}
+>
+> +	/* If the mode says this is a device file and the i_links_count  
+> field
+> +	 * is sane and we have not ruled it out as a device file previously,
+> +	 * we declare it a device file, not a directory.
+> +	 */
+> 	if ((LINUX_S_ISCHR(inode->i_mode) || LINUX_S_ISBLK(inode->i_mode)) &&
+> 	    (inode->i_links_count == 1) && !not_device)
+> 		return;
+>
+> +	/* read the first block */
+> 	old_op = ehandler_operation(_("reading directory block"));
+> -	retval = ext2fs_read_dir_block(ctx->fs, inode->i_block[0], buf);
+> +	retval = ext2fs_read_dir_block3(ctx->fs, blk, buf, ctx->fs->flags);
+> 	ehandler_operation(0);
+> 	if (retval)
+> 		return;
+>
+> +	/* the rest is independent of whether this is block-mapped or
+> +	 * extent-mapped, so it can remain untouched.
+> +	 */
+> 	dirent = (struct ext2_dir_entry *) buf;
+> 	retval = ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
+> 	if (retval)
+> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+> index b757131..7b75f83 100644
+> --- a/e2fsck/pass2.c
+> +++ b/e2fsck/pass2.c
+> @@ -780,7 +780,7 @@ static int check_dir_block(ext2_filsys fs,
+> #endif
+>
+> 	old_op = ehandler_operation(_("reading directory block"));
+> -	cd->pctx.errcode = ext2fs_read_dir_block(fs, block_nr, buf);
+> +	cd->pctx.errcode = ext2fs_read_dir_block3(fs, block_nr, buf, fs- 
+> >flags);
+> 	ehandler_operation(0);
+> 	if (cd->pctx.errcode == EXT2_ET_DIR_CORRUPTED)
+> 		cd->pctx.errcode = 0; /* We'll handle this ourselves */
+> -- 
+> 1.6.0.6
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux- 
+> ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Stefan Schmidt (1):
-      fs/jbd: Export log_start_commit to fix ext3 build.
 
-The diffstat is
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
- fs/jbd/journal.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-							Thanks
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
