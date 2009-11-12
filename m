@@ -1,73 +1,39 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH 1/2] vfs: tracepoints for buffer flag updates
-Date: Thu, 12 Nov 2009 00:09:36 +0530
-Message-ID: <20091111183936.GA13999@skywalker.linux.vnet.ibm.com>
-References: <1257964260-14020-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Stefan Richter <stefanr@s5r6.in-berlin.de>
+Subject: ext3 build failure: "log_start_commit" [fs/ext3/ext3.ko] undefined
+Date: Thu, 12 Nov 2009 01:22:01 +0100
+Message-ID: <4AFB5529.2010302@s5r6.in-berlin.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:42206 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758363AbZKKSji (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Nov 2009 13:39:38 -0500
-Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
-	by e23smtp08.au.ibm.com (8.14.3/8.13.1) with ESMTP id nABIdhKH015009
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2009 05:39:43 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nABIaTTg1581300
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2009 05:36:29 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nABIdgHG012008
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2009 05:39:42 +1100
-Content-Disposition: inline
-In-Reply-To: <1257964260-14020-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from einhorn.in-berlin.de ([192.109.42.8]:35103 "EHLO
+	einhorn.in-berlin.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758940AbZKLAWH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Nov 2009 19:22:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patchset when enabled with stacktrace will give output like the below
+Hi Jan,
 
-              dd-1905  [003]    26.445155: set_buffer_uptodate: bh = df5c28c0 device = vda block = 34817 new state= 0x23
-              dd-1905  [003]    26.445156: <stack trace>
- => set_buffer_uptodate
- => __block_commit_write
- => block_write_end
- => ext3_writeback_write_end
- => generic_file_buffered_write
- => __generic_file_aio_write
- => generic_file_aio_write
- => do_sync_write
-              dd-1905  [003]    26.445168: clear_buffer_new: bh = df5c28c0 device = vda block = 34817 new state = 0x23
-              dd-1905  [003]    26.445169: <stack trace>
- => clear_buffer_new
- => __block_commit_write
- => block_write_end
- => ext3_writeback_write_end
- => generic_file_buffered_write
- => __generic_file_aio_write
- => generic_file_aio_write
- => do_sync_write
-              dd-1905  [003]    26.445182: set_buffer_revokevalid: bh = df406540 device = vda block = 32835 new state= 0x310029
-              dd-1905  [003]    26.445183: <stack trace>
- => journal_cancel_revoke
- => do_get_write_access
- => journal_get_write_access
- => __ext3_journal_get_write_access
- => ext3_reserve_inode_write
- => ext3_mark_inode_dirty
- => ext3_dirty_inode
- => __mark_inode_dirty
-              dd-1905  [003]    26.445197: clear_buffer_revoked: bh = df406540 device = vda block = 32835 new state = 0x310029
-              dd-1905  [003]    26.445198: <stack trace>
- => journal_cancel_revoke
- => do_get_write_access
- => journal_get_write_access
- => __ext3_journal_get_write_access
- => ext3_reserve_inode_write
- => ext3_mark_inode_dirty
- => ext3_dirty_inode
- => __mark_inode_dirty
+I just pulled linux-2.6.git and got this:
+ERROR: "log_start_commit" [fs/ext3/ext3.ko] undefined!
 
+I guess it is due to "ext3: Wait for proper transaction commit on fsync".
 
--aneesh
+Is this log_start_commit() of fs/jbd/journal.c?
+
+$ grep -e JBD -e EXT3 .config
+CONFIG_EXT3_FS=m
+# CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
+# CONFIG_EXT3_FS_XATTR is not set
+CONFIG_JBD=m
+CONFIG_JBD2=m
+
+Hth,
+-- 
+Stefan Richter
+-=====-==--= =-== -==--
+http://arcgraph.de/sr/
