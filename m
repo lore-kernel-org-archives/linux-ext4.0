@@ -1,39 +1,43 @@
-From: Stefan Richter <stefanr@s5r6.in-berlin.de>
-Subject: ext3 build failure: "log_start_commit" [fs/ext3/ext3.ko] undefined
-Date: Thu, 12 Nov 2009 01:22:01 +0100
-Message-ID: <4AFB5529.2010302@s5r6.in-berlin.de>
+From: Nikanth Karthikesan <knikanth@suse.de>
+Subject: [BUILD FAILURE][PATCH] Export symbol log_start_commit. ext3 needs it.
+Date: Thu, 12 Nov 2009 11:06:52 +0530
+Message-ID: <200911121106.52555.knikanth@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: Text/Plain;
+  charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>, Jan Kara <jack@suse.cz>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from einhorn.in-berlin.de ([192.109.42.8]:35103 "EHLO
-	einhorn.in-berlin.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758940AbZKLAWH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Nov 2009 19:22:07 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:37878 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752297AbZKLFeu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Nov 2009 00:34:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
-
-I just pulled linux-2.6.git and got this:
+The linus git fails to build with the message
 ERROR: "log_start_commit" [fs/ext3/ext3.ko] undefined!
+Top commit id: aa021baa3295fa6e3f367d80f8955dd5176656eb
 
-I guess it is due to "ext3: Wait for proper transaction commit on fsync".
+Export log_start_commit to modules. ext3 needs it to be built
+as a module.
 
-Is this log_start_commit() of fs/jbd/journal.c?
+Signed-off-by: Nikanth Karthikesan <knikanth@suse.de>
 
-$ grep -e JBD -e EXT3 .config
-CONFIG_EXT3_FS=m
-# CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
-# CONFIG_EXT3_FS_XATTR is not set
-CONFIG_JBD=m
-CONFIG_JBD2=m
+---
 
-Hth,
--- 
-Stefan Richter
--=====-==--= =-== -==--
-http://arcgraph.de/sr/
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 49d5cd6..2e13cf3 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -72,6 +72,7 @@ EXPORT_SYMBOL(journal_abort);
+ EXPORT_SYMBOL(journal_errno);
+ EXPORT_SYMBOL(journal_ack_err);
+ EXPORT_SYMBOL(journal_clear_err);
++EXPORT_SYMBOL(log_start_commit);
+ EXPORT_SYMBOL(log_wait_commit);
+ EXPORT_SYMBOL(journal_start_commit);
+ EXPORT_SYMBOL(journal_force_commit_nested);
