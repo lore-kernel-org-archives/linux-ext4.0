@@ -1,49 +1,49 @@
-From: "Renato S. Yamane" <yamane@diamondcut.com.br>
-Subject: Re: Ext4 on SSD Intel X25-M
-Date: Thu, 12 Nov 2009 18:06:54 -0200
-Message-ID: <4AFC6ADE.30802@diamondcut.com.br>
-References: <4AFC14D6.7080700@diamondcut.com.br> <20091112153017.GA32122@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: exit fix_sb_journal_backup early for
+	external journal
+Date: Thu, 12 Nov 2009 19:47:29 -0500
+Message-ID: <20091113004729.GC32122@mit.edu>
+References: <4AF88220.90908@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, sandeen@redhat.com
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	mjevans1983@gmail.com
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-01.mandic.com.br ([200.225.81.132]:41742 "EHLO
-	smtp-01.mandic.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754200AbZKLUGu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Nov 2009 15:06:50 -0500
-Received: from unknown (HELO [192.168.1.104]) (48XWxNa3qdTI2cq3yJaVop5Ok6I=@[200.228.134.10])
-          (envelope-sender <yamane@diamondcut.com.br>)
-          by smtp-01.mandic.com.br (qmail-ldap-1.03) with AES256-SHA encrypted SMTP
-          for <linux-ext4@vger.kernel.org>; 12 Nov 2009 20:06:52 -0000
-In-Reply-To: <20091112153017.GA32122@mit.edu>
+Received: from thunk.org ([69.25.196.29]:34213 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754759AbZKMC3q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Nov 2009 21:29:46 -0500
+Content-Disposition: inline
+In-Reply-To: <4AF88220.90908@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12-11-2009 13:30, Theodore Tso wrote:
-> On Thu, Nov 12, 2009 at 11:59:50AM -0200, Renato S. Yamane wrote:
->> [please, leave me on cc because I'm not subscribed on this ML]
->>
->> I'm using Intel SSD X25-M on my laptop, and I always hear that is not a
->> good idea use journal on SSD (it decrease the life time).
->>
->> I ask Intel about this, but I don't receive any answer.
->>
->> So, I would like to know if is possible disable Journal on EXT4.
->
-> It is possible to create an ext4 file system without a journal.  It
-> would mean that unclean shutdowns would require a full fsck, which on
-> a freshly created file system on an SSD isn't _that_ bad.  Depending
-> on how full/fragmented your filesystem happens to be, it will probably
-> be under 10 seconds.
->
-> That being said, though, it shouldn't be necessary to avoid using a
-> journal on the Intel SSD.  Intel says that laptop will last at least 5
-> years with 10GB worth of writes per day...
+On Mon, Nov 09, 2009 at 02:57:04PM -0600, Eric Sandeen wrote:
+> Resizing a filesystem with an external journal fails when it tries
+> to read inode 0:
+> 
+> # touch testfs
+> # truncate testfs 1342177280
+> # touch testjournal
+> # truncate testjournal 134217728
+> # mke2fs -O journal_dev testjournal 
+> # losetup /dev/loop0 testjournal 
+> # mkfs.ext4 -J device=/dev/loop0 testfs 127680
+> # resize2fs testfs 
+> resize2fs 1.41.9 (22-Aug-2009)
+> Resizing the filesystem on testfs to 327680 (4k) blocks.
+> resize2fs: Illegal inode number while trying to resize testfs
+> Please run 'e2fsck -fy testfs' to fix the filesystem
+> after the aborted resize operation.
+> 
+> I think the right, simple thing to do is just bail out early
+> for an external journal here, as there are no backup blocks
+> to update.
+> 
+> Reported-by: mjevans1983@gmail.com
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Woww! Thank you so much Theodore and Eric!
-I will keep using journal on my SSD X25-M.
+Thanks, applied to the e2fsprogs maint branch.
 
-Regards,
-Renato S. Yamane
+					- Ted
