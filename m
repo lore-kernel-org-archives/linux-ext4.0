@@ -1,84 +1,83 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] handle journal checksum errors via ext4_error()
-Date: Sat, 14 Nov 2009 15:27:55 -0500
-Message-ID: <20091114202755.GC4221@mit.edu>
-References: <4AF1BBD0.3050108@redhat.com>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Group descriptor 0 checksum is invalid
+Date: Sat, 14 Nov 2009 14:00:15 -0800 (PST)
+Message-ID: <alpine.DEB.2.01.0911141349050.27639@bogon.housecafe.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36608 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750985AbZKNU1x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 Nov 2009 15:27:53 -0500
-Content-Disposition: inline
-In-Reply-To: <4AF1BBD0.3050108@redhat.com>
+Received: from moutng.kundenserver.de ([212.227.17.10]:50631 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751575AbZKNWBX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Nov 2009 17:01:23 -0500
+Received: from localhost ([127.0.0.1])
+	by bogon.housecafe.de with esmtp (Exim 4.69)
+	(envelope-from <lists@nerdbynature.de>)
+	id 1N9QfH-0002Pd-8t
+	for linux-ext4@vger.kernel.org; Sat, 14 Nov 2009 23:00:15 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 04, 2009 at 11:37:20AM -0600, Eric Sandeen wrote:
-> As the code stands today, journal checksum errors on the root fs,
-> resulting in only a partial journal replay, result in no kernel
-> messages and no error condition, because it is all handled under
-> a "!(sb->s_flags & MS_RDONLY)" test - and the root fs starts out
-> life in RO mode.
-> 
-> It seems to me that just calling ext4_error() here is almost the
-> right thing to do; it will unconditionally mark the fs with errors,
-> and act according to the selected mount -o errors= behavior...
-> 
-> However, for the root fs, ext4_error will be short-circuited because
-> the root is mounted readonly; and in fact these errors came into
-> being while we were writing to a read-only fs during journal recovery.
-> So we won't do a journal_abort or anything like that, and other than
-> a printk and an error flag, not much action is taken for a
-> partially-recovered fs.  Does this seem like enough?
-> 
-> Should we just let the root fs carry on if it's been partially-recovered,
-> and therefore pretty well known to be corrupt?
+Hi,
 
-I've been thinking about this some more, and I think we need to make
-change to jbd2_journal_load() so that it checks for the failed journal
-checksum, and then avoid resetting the journal.  This allows for a
-userspace program like e2fsck to do something better about recovering
-from this situation.
+when trying to convert an ext3 filesystem to ext4, I'm getting these 
+"Group descriptor 0 checksum is invalid" messages. I've seen them before 
+and the net is full of them, but I still wonder if they're expected to 
+show up at all during the filesystem's first fsck. See below for the 
+script log.
 
-						- Ted
+Thanks,
+Christian.
 
-jbd2: don't wipe the journal on a failed journal checksum
+sid:~# cat /proc/version
+Linux version 2.6.32-rc7 (dummy@sid) (gcc version 4.4.2 (Debian 4.4.2-2) ) #1 SMP Sat Nov 14 22:00:51 CET 2009
+sid:~# mkfs.ext3 -q /dev/xvdc
+sid:~# mount -t ext3 /dev/xvdc /mnt/d2
+sid:~# grep /dev/xvdc /proc/mounts
+/dev/xvdc /mnt/d2 ext3 rw,relatime,errors=continue,data=writeback 0 0
+sid:~# df -h /dev/xvdc
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/xvdc              16G  173M   15G   2% /mnt/d2
+sid:~# umount /dev/xvdc
+sid:~# tune2fs -O extents,uninit_bg /dev/xvdc
+tune2fs 1.41.9 (22-Aug-2009)
 
-If there is a failed journal checksum, don't reset the journal.  This
-allows for userspace programs to decide how to recover from this
-situation.  It may be that ignoring the journal checksum failure might
-be a better way of recovering the file system.  Once we add per-block
-checksums, we can definitely do better.  Until then, a system
-administrator can try backing up the file system image (or taking a
-snapshot) and and trying to determine experimentally whether ignoring
-the checksum failure or aborting the journal replay results in less
-data loss.
+Please run e2fsck on the filesystem.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/jbd2/journal.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+sid:~# tune2fs -l /dev/xvdc | grep -i feat
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent sparse_super large_file uninit_bg
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index fed8538..af60d98 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1248,6 +1248,13 @@ int jbd2_journal_load(journal_t *journal)
- 	if (jbd2_journal_recover(journal))
- 		goto recovery_error;
- 
-+	if (journal->j_failed_commit) {
-+		printk(KERN_ERR "JBD2: journal transaction %u on %s "
-+		       "is corrupt.\n", journal->j_failed_commit,
-+		       journal->j_devname);
-+		return -EIO;
-+	}
-+
- 	/* OK, we've finished with the dynamic journal bits:
- 	 * reinitialise the dynamic contents of the superblock in memory
- 	 * and reset them on disk. */
+sid:~# e2fsck -fpDC0 /dev/xvdc
+/dev/xvdc: One or more block group descriptor checksums are invalid.  FIXED.
+/dev/xvdc: Group descriptor 0 checksum is invalid.  
 
+/dev/xvdc: UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY.
+	(i.e., without -a or -p options)
+
+sid:~# e2fsck -fDC0 /dev/xvdc
+e2fsck 1.41.9 (22-Aug-2009)
+One or more block group descriptor checksums are invalid.  Fix<y>? yes
+
+Group descriptor 0 checksum is invalid.  FIXED.
+Group descriptor 1 checksum is invalid.  FIXED.
+[...]
+Group descriptor 126 checksum is invalid.  FIXED.
+Group descriptor 127 checksum is invalid.  FIXED.
+Pass 1: Checking inodes, blocks, and sizes
+/dev/xvdc: |  [...]
+Pass 3: Checking directory connectivity
+Pass 3A: Optimizing directories
+Rebuilding directory: |================                / 50.0% [...]
+Pass 5: Checking group summary information
+/dev/xvdc: |========================================================| 100.0%
+/dev/xvdc: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/xvdc: 11/1048576 files (0.0% non-contiguous), 109874/4194304 blocks
+sid:~# 
+sid:~# e2fsck -fC0 /dev/xvdc
+/dev/xvdc: |                                            [...]
+/dev/xvdc: 11/1048576 files (0.0% non-contiguous), 109874/4194304 blocks
+
+-- 
+BOFH excuse #389:
+
+/dev/clue was linked to /dev/null
