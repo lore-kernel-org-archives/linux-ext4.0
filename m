@@ -1,83 +1,102 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Group descriptor 0 checksum is invalid
-Date: Sat, 14 Nov 2009 14:00:15 -0800 (PST)
-Message-ID: <alpine.DEB.2.01.0911141349050.27639@bogon.housecafe.de>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Dirent blocks leaking into data file blocks
+Date: Sat, 14 Nov 2009 18:29:12 -0500
+Message-ID: <20091114232912.GF4221@mit.edu>
+References: <6601abe90911131546v43838123g3bc312d46a97e199@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.10]:50631 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751575AbZKNWBX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Nov 2009 17:01:23 -0500
-Received: from localhost ([127.0.0.1])
-	by bogon.housecafe.de with esmtp (Exim 4.69)
-	(envelope-from <lists@nerdbynature.de>)
-	id 1N9QfH-0002Pd-8t
-	for linux-ext4@vger.kernel.org; Sat, 14 Nov 2009 23:00:15 +0100
+Received: from thunk.org ([69.25.196.29]:48687 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751637AbZKNX3I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 14 Nov 2009 18:29:08 -0500
+Content-Disposition: inline
+In-Reply-To: <6601abe90911131546v43838123g3bc312d46a97e199@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Fri, Nov 13, 2009 at 03:46:09PM -0800, Curt Wohlgemuth wrote:
+> So when a directory is removed with "rm -rf foo" , as the files are deleted,
+> the directory block(s) are marked dirty.  But when the directory blocks
+> themselves are freed up, bforget() isn't called for their bufferheads, and
+> so they remain dirty in the page cache, and can be written down later, after
+> their blocks have been reused.
 
-when trying to convert an ext3 filesystem to ext4, I'm getting these 
-"Group descriptor 0 checksum is invalid" messages. I've seen them before 
-and the net is full of them, but I still wonder if they're expected to 
-show up at all during the filesystem's first fsck. See below for the 
-script log.
+Well, it should be happening as part of the call to ext4_forget().  It
+looks like it's happening on the code paths that release the blocks.
+This is critically important if journalling is enabled, since we have
+to call jbd2_journal_revoke() on directory blocks before they can be
+reused as data blocks.  Hmm, if the buffer was part of a transaction,
+we don't call __bforget() on it in jbd2_journal_forget().  So I can
+see how you might be seeing a problem with journalling enabled, but
+I'm puzzled why you were also seeing a problem without journalling.
 
-Thanks,
-Christian.
+So to help debug what is going on, I tried adding the a new tracepoint
+to ext4_forget().  I've attached it to the end of this message.  Using
+it, I can confirm that ext4_forget() is getting called for
+directories.  I do see a problem though that we're not checking to see
+if the inode is a directory; in that case, we need to treat it as if
+it were metadata, and call ext4_journal_revoke() instead of
+ext4_journal_forget().  Otherwise we could have the problem that after
+a crash, on a journal replay, we might end up replaying the directory
+block after it has been reallocated and used as a data block.
+(Hmm.... I think this might be a problem for ext3 as well.)
 
-sid:~# cat /proc/version
-Linux version 2.6.32-rc7 (dummy@sid) (gcc version 4.4.2 (Debian 4.4.2-2) ) #1 SMP Sat Nov 14 22:00:51 CET 2009
-sid:~# mkfs.ext3 -q /dev/xvdc
-sid:~# mount -t ext3 /dev/xvdc /mnt/d2
-sid:~# grep /dev/xvdc /proc/mounts
-/dev/xvdc /mnt/d2 ext3 rw,relatime,errors=continue,data=writeback 0 0
-sid:~# df -h /dev/xvdc
-Filesystem            Size  Used Avail Use% Mounted on
-/dev/xvdc              16G  173M   15G   2% /mnt/d2
-sid:~# umount /dev/xvdc
-sid:~# tune2fs -O extents,uninit_bg /dev/xvdc
-tune2fs 1.41.9 (22-Aug-2009)
+I am very puzzled why you are seeing a problem in no journal mode,
+though.  It looks like the right thing should be happening.  Is the
+8MB data file is getting written via direct I/O or buffered I/O?
 
-Please run e2fsck on the filesystem.
+    	      	 	 	     	    	- Ted
 
-sid:~# tune2fs -l /dev/xvdc | grep -i feat
-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent sparse_super large_file uninit_bg
 
-sid:~# e2fsck -fpDC0 /dev/xvdc
-/dev/xvdc: One or more block group descriptor checksums are invalid.  FIXED.
-/dev/xvdc: Group descriptor 0 checksum is invalid.  
-
-/dev/xvdc: UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY.
-	(i.e., without -a or -p options)
-
-sid:~# e2fsck -fDC0 /dev/xvdc
-e2fsck 1.41.9 (22-Aug-2009)
-One or more block group descriptor checksums are invalid.  Fix<y>? yes
-
-Group descriptor 0 checksum is invalid.  FIXED.
-Group descriptor 1 checksum is invalid.  FIXED.
-[...]
-Group descriptor 126 checksum is invalid.  FIXED.
-Group descriptor 127 checksum is invalid.  FIXED.
-Pass 1: Checking inodes, blocks, and sizes
-/dev/xvdc: |  [...]
-Pass 3: Checking directory connectivity
-Pass 3A: Optimizing directories
-Rebuilding directory: |================                / 50.0% [...]
-Pass 5: Checking group summary information
-/dev/xvdc: |========================================================| 100.0%
-/dev/xvdc: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/xvdc: 11/1048576 files (0.0% non-contiguous), 109874/4194304 blocks
-sid:~# 
-sid:~# e2fsck -fC0 /dev/xvdc
-/dev/xvdc: |                                            [...]
-/dev/xvdc: 11/1048576 files (0.0% non-contiguous), 109874/4194304 blocks
-
--- 
-BOFH excuse #389:
-
-/dev/clue was linked to /dev/null
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 554c679..13de1dd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -89,6 +89,7 @@ int ext4_forget(handle_t *handle, int is_metadata, struct inode *inode,
+ 
+ 	might_sleep();
+ 
++	trace_ext4_forget(inode, is_metadata, blocknr);
+ 	BUFFER_TRACE(bh, "enter");
+ 
+ 	jbd_debug(4, "forgetting bh %p: is_metadata = %d, mode %o, "
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index d09550b..b390e1f 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -907,6 +907,32 @@ TRACE_EVENT(ext4_mballoc_free,
+ 		  __entry->result_len, __entry->result_logical)
+ );
+ 
++TRACE_EVENT(ext4_forget,
++	TP_PROTO(struct inode *inode, int is_metadata, __u64 block),
++
++	TP_ARGS(inode, is_metadata, block),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(	umode_t, mode			)
++		__field(	int,	is_metadata		)
++		__field(	__u64,	block			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->mode	= inode->i_mode;
++		__entry->is_metadata = is_metadata;
++		__entry->block	= block;
++	),
++
++	TP_printk("dev %s ino %lu mode %d is_metadata %d block %llu",
++		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino,
++		  __entry->mode, __entry->is_metadata, __entry->block)
++);
++
+ #endif /* _TRACE_EXT4_H */
+ 
+ /* This part must be outside protection */
