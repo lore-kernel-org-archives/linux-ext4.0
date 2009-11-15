@@ -1,48 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: ext4_forget() must treat directory or symlink blocks as metadata
-Date: Sun, 15 Nov 2009 15:48:45 -0500
-Message-ID: <1258318125-23703-1-git-send-email-tytso@mit.edu>
-References: <20091115204346.GE4323@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Renato S. Yamane" <yamane@diamondcut.com.br>
+Subject: Re: Ext4 on SSD Intel X25-M
+Date: Sun, 15 Nov 2009 19:15:54 -0200
+Message-ID: <4B006F8A.8000606@diamondcut.com.br>
+References: <4AFC14D6.7080700@diamondcut.com.br>	<20091112153017.GA32122@mit.edu> <878wea84lq.fsf@mid.deneb.enyo.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Florian Weimer <fw@deneb.enyo.de>, Theodore Tso <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:42957 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753534AbZKOUsn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Nov 2009 15:48:43 -0500
-In-Reply-To: <20091115204346.GE4323@mit.edu>
+Received: from smtp-04.mandic.com.br ([200.225.81.151]:35666 "EHLO
+	smtp-04.mandic.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751300AbZKOVPq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Nov 2009 16:15:46 -0500
+Received: from 189.114.151.225.dynamic.adsl.gvt.net.br (HELO [192.168.1.104]) (4s3fxNW2pdTI28e3yZjKop5Ok6I=@[189.114.151.225])
+          (envelope-sender <yamane@diamondcut.com.br>)
+          by smtp-04.mandic.com.br (qmail-ldap-1.03) with AES256-SHA encrypted SMTP
+          for <linux-ext4@vger.kernel.org>; 15 Nov 2009 21:15:48 -0000
+In-Reply-To: <878wea84lq.fsf@mid.deneb.enyo.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When a directory gets unlinked, ext4_forget() is called on any buffer
-heads corresponding to its data blocks.  Data blocks from directories
-must be treated as metadata, so that they are revoked by
-jbd2_journal_revoke, and not just forgotten via ext4_journal_forget().
+On 13-11-2009 20:03, Florian Weimer wrote:
+> * Theodore Tso:
+>> That being said, though, it shouldn't be necessary to avoid using a
+>> journal on the Intel SSD.  Intel says that laptop will last at least 5
+>> years with 10GB worth of writes per day, and that's a huge amount.  I
+>> have an X25-M SSD in my laptop, using an ext4 file system and with the
+>> journal enabled, and since the file system was created 266 days ago,
+>> when I put my X25-M into service, the drive has seen 570GB worth of
+>> writes, so I'm averaging 2.14 GB writes per day.
+>
+> That really depends on the software you use.  Just fetching mail on my
+> machine causes about 500 MB of data written to disk.  That's because
+> I'm using Gnus with nnml and slightly large mail folders and Gnus
+> rewrites those index files from scratch each time new mail for a
+> folder arrives.  I should really consider this a bug and fix it, but I
+> haven't yet found a good solution.
 
-Thanks to Curt Wohlgemuth for pointing out potential problems in this
-area.
+So sorry for this stupid question, but...
+How can I know the average writes per day?
+I try run smart, but it not help me:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@kernel.org
----
- fs/ext4/inode.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE 
+UPDATED  WHEN_FAILED RAW_VALUE
+   3 Spin_Up_Time            0x0000   100   000   000    Old_age 
+Offline      -       0
+   4 Start_Stop_Count        0x0000   100   000   000    Old_age 
+Offline      -       0
+   5 Reallocated_Sector_Ct   0x0002   100   100   000    Old_age 
+Always       -       0
+   9 Power_On_Hours          0x0002   100   100   000    Old_age 
+Always       -       229
+  12 Power_Cycle_Count       0x0002   100   100   000    Old_age 
+Always       -       62
+192 Power-Off_Retract_Count 0x0002   100   100   000    Old_age   Always 
+       -       48
+232 Unknown_Attribute       0x0003   100   100   010    Pre-fail  Always 
+       -       0
+233 Unknown_Attribute       0x0002   099   099   000    Old_age   Always 
+       -       0
+225 Load_Cycle_Count        0x0000   200   200   000    Old_age 
+Offline      -       44867
+226 Load-in_Time            0x0002   255   000   000    Old_age   Always 
+       -       0
+227 Torq-amp_Count          0x0002   000   000   000    Old_age   Always 
+       -       0
+228 Power-off_Retract_Count 0x0002   000   000   000    Old_age   Always 
+       -       0
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 13de1dd..24729ed 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -97,6 +97,10 @@ int ext4_forget(handle_t *handle, int is_metadata, struct inode *inode,
- 		  bh, is_metadata, inode->i_mode,
- 		  test_opt(inode->i_sb, DATA_FLAGS));
- 
-+	/* Directory or symlink blocks must be treated as metadata */
-+	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-+		is_metadata = 1;
-+
- 	/* Never use the revoke function if we are doing full data
- 	 * journaling: there is no need to, and a V1 superblock won't
- 	 * support it.  Otherwise, only skip the revoke on un-journaled
--- 
-1.6.5.216.g5288a.dirty
-
+Reagards,
+Renato S. Yamane
