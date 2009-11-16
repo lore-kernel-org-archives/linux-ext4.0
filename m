@@ -1,59 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14620] New: WARNING: at mm/page_alloc.c:1805
- __alloc_pages_nodemask
-Date: Mon, 16 Nov 2009 21:30:29 GMT
-Message-ID: <bug-14620-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext3: journal all modifications in ext3_xattr_set_handle
+Date: Mon, 16 Nov 2009 16:27:30 -0600
+Message-ID: <4B01D1D2.1060409@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:56794 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754400AbZKPVaY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Nov 2009 16:30:24 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nAGLUUYH018112
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2009 21:30:30 GMT
+Received: from mx1.redhat.com ([209.132.183.28]:41950 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754528AbZKPW1a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Nov 2009 17:27:30 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=3D14620
+ext3_xattr_set_handle() was zeroing out an inode outside
+of journaling constraints; this is one of the accesses that
+was causing the crc errors in journal replay as seen in
+kernel.org bugzilla #14354.
 
-           Summary: WARNING: at mm/page_alloc.c:1805
-                    __alloc_pages_nodemask
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.31-rc6
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: rjw@sisk.pl
-            Blocks: 14230
-        Regression: Yes
+Although ext3 doesn't have the crc issue, modifications
+out of journal control are a Bad Thing.
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Subject    : 2.6.31-rc6: WARNING: at mm/page_alloc.c:1805 __alloc_pages=
-_nodemas
-Submitter  : Rog=C3=A9rio Brito <rbrito@ime.usp.br>
-Date       : 2009-11-06 23:10
-References : http://marc.info/?l=3Dlinux-kernel&m=3D125754907413892&w=3D=
-4
+diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+index 545e37c..387d92d 100644
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -960,6 +960,10 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	if (error)
+ 		goto cleanup;
+ 
++	error = ext3_journal_get_write_access(handle, is.iloc.bh);
++	if (error)
++		goto cleanup;
++
+ 	if (EXT3_I(inode)->i_state & EXT3_STATE_NEW) {
+ 		struct ext3_inode *raw_inode = ext3_raw_inode(&is.iloc);
+ 		memset(raw_inode, 0, EXT3_SB(inode->i_sb)->s_inode_size);
+@@ -985,9 +989,6 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		if (flags & XATTR_CREATE)
+ 			goto cleanup;
+ 	}
+-	error = ext3_journal_get_write_access(handle, is.iloc.bh);
+-	if (error)
+-		goto cleanup;
+ 	if (!value) {
+ 		if (!is.s.not_found)
+ 			error = ext3_xattr_ibody_set(handle, inode, &i, &is);
 
-This entry is being used for tracking a regression from 2.6.31.  Please=
- don't
-close it until the problem is fixed in the mainline.
-
---=20
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
