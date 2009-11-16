@@ -1,68 +1,43 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Avoid issuing unnecessary barriers
-Date: Mon, 16 Nov 2009 11:29:10 +0100
-Message-ID: <20091116102910.GA23231@duck.suse.cz>
-References: <20091116004757.GN4323@mit.edu> <1258339242-2028-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 4/4] ext4: Wait for proper transaction commit on fsync
+Date: Mon, 16 Nov 2009 11:43:31 +0100
+Message-ID: <20091116104331.GB23231@duck.suse.cz>
+References: <1256647729-29834-1-git-send-email-jack@suse.cz> <1256647729-29834-5-git-send-email-jack@suse.cz> <20091116004641.GM4323@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51759 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:52309 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751571AbZKPK3H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Nov 2009 05:29:07 -0500
+	id S1752163AbZKPKn0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Nov 2009 05:43:26 -0500
 Content-Disposition: inline
-In-Reply-To: <1258339242-2028-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20091116004641.GM4323@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 15-11-09 21:40:42, Theodore Ts'o wrote:
-> We don't to issue an I/O barrier on an error or if we force commit
-> because we are doing data journaling.
+On Sun 15-11-09 19:46:41, Theodore Tso wrote:
+> On Tue, Oct 27, 2009 at 01:48:49PM +0100, Jan Kara wrote:
+> > +	/*
+> > +	 * Transactions that contain inode's metadata needed to complete
+> > +	 * fsync and fdatasync, respectively.
+> > +	 */
+> > +	atomic_t i_sync_tid;
+> > +	atomic_t i_datasync_tid;
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan Kara <jack@suse.cz>
-> ---
-> This patch should be equivalent to Jan's "ext4: Avoid issuing barriers
-> on error recovery path", but it removes more lines than it adds.  :-)
-  Yeah, it looks fine. Acked-by: Jan Kara <jack@suse.cz>
+> Why do we need an atomic_t here at all?  It's not clear it's
+> necessary.  What specific race are you worried about?
+  Well, i_[data]sync_tid are set and read from several places which aren't
+currently synchronized against each other and I din't want to introduce any
+synchronization. So atomic_t seemed like a clean way of making clear that
+loads / stores from those fields are atomic, regardless of architecture,
+memory alignment or whatever insanity that might make us see just half
+overwritten field.  On all archs where this means just plain stores / loads
+(such as x86), there's no performance hit since the operations are
+implemented as such.
 
 									Honza
-> 
->  fs/ext4/fsync.c |    8 +++-----
->  1 files changed, 3 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index 2b15312..a3c2507 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -60,7 +60,7 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
->  
->  	ret = flush_aio_dio_completed_IO(inode);
->  	if (ret < 0)
-> -		goto out;
-> +		return ret;
->  	/*
->  	 * data=writeback:
->  	 *  The caller's filemap_fdatawrite()/wait will sync the data.
-> @@ -79,10 +79,8 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
->  	 *  (they were dirtied by commit).  But that's OK - the blocks are
->  	 *  safe in-journal, which is all fsync() needs to ensure.
->  	 */
-> -	if (ext4_should_journal_data(inode)) {
-> -		ret = ext4_force_commit(inode->i_sb);
-> -		goto out;
-> -	}
-> +	if (ext4_should_journal_data(inode))
-> +		return ext4_force_commit(inode->i_sb);
->  
->  	if (!journal)
->  		ret = sync_mapping_buffers(inode->i_mapping);
-> -- 
-> 1.6.5.216.g5288a.dirty
-> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
