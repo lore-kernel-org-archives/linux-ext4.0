@@ -1,65 +1,94 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext3: make "norecovery" an alias for "noload"
-Date: Mon, 16 Nov 2009 16:50:49 -0600
-Message-ID: <4B01D749.3030601@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Andreas Dilger <andreas.dilger@lustre.org>
+Subject: Re: [PATCH 2/2] ext4: journal superblock modifications in	ext4_statfs()
+Date: Mon, 16 Nov 2009 15:38:16 -0800
+Message-ID: <F64B29C1-A90E-42F5-80CF-5704283D9A1B@sun.com>
+References: <4AF4A429.7090507@redhat.com> <6BDA2C94-6FA5-48EE-9E68-56BDFC4B558A@sun.com> <20091108214804.GC7592@mit.edu> <AB457F38-7E3A-43CE-B334-AE363BAE040C@sun.com> <20091115032941.GB4323@mit.edu>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38345 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752121AbZKPWut (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Nov 2009 17:50:49 -0500
+Received: from mail-qy0-f174.google.com ([209.85.221.174]:41875 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754545AbZKPXii (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Nov 2009 18:38:38 -0500
+Received: by qyk4 with SMTP id 4so2932196qyk.33
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2009 15:38:43 -0800 (PST)
+In-Reply-To: <20091115032941.GB4323@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Users on the list recently complained about differences across
-filesystems w.r.t. how to mount without a journal replay.
+On 2009-11-14, at 19:29, Theodore Tso wrote:
+> On Sun, Nov 08, 2009 at 09:41:28PM -0700, Andreas Dilger wrote:
+>>
+>> The reason we added this was for running a read-only e2fsck on a
+>> filesystem without getting spurious errors just because the  
+>> superblock
+>> summaries were incorrect.  The other alternative is to change e2fsck
+>> so that it doesn't consider just a block/inode summary an error.
+>
+> We've been doing this for a while --- e2fsprogs 1.34, since April
+> 2003.  In e2fsck/super.c:check_super_block():
+>
+> 	if ((free_blocks != sb->s_free_blocks_count) ||
+> 	    (free_inodes != sb->s_free_inodes_count)) {
+> 		if (ctx->options & E2F_OPT_READONLY)
+> 			ext2fs_unmark_valid(fs);
+> 		else {
 
-In the discussion it was noted that xfs's "norecovery" option is
-perhaps more descriptively accurate than "noload," so let's make
-that an alias for ext3.
+The problem is that if you do "e2fsck -fn" it will still report this  
+as an error in the filesystem, even though "e2fsck -fp" will silently  
+fix it.  I just repeated this test and still see errors, even 30  
+minutes after a file was modified, even after multiple syncs.
 
-Also show this status in /proc/mounts
+[adilger@webber ~]$ sync; sleep 10; sync
+[adilger@webber ~]$ e2fsck -fn /dev/dm-0
+e2fsck 1.41.6.sun1 (30-May-2009)
+Warning!  /dev/dm-0 is mounted.
+Warning: skipping journal recovery because doing a read-only  
+filesystem check.
+Pass 1: Checking inodes, blocks, and sizes
+Deleted inode 884739 has zero dtime.  Fix? no
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  -1784645
+Fix? no
 
-diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-index 05d5cf1..8b8d973 100644
---- a/Documentation/filesystems/ext3.txt
-+++ b/Documentation/filesystems/ext3.txt
-@@ -33,7 +33,7 @@ journal_dev=devnum	When the external journal device's major/minor numbers
- 			in devnum.
- 
- noload			Don't load the journal on mounting. Note that this forces
--			mount of inconsistent filesystem, which can lead to
-+norecovery		mount of inconsistent filesystem, which can lead to
- 			various problems.
- 
- data=journal		All data are committed into the journal prior to being
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 427496c..c14fb95 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -636,6 +636,9 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (test_opt(sb, DATA_ERR_ABORT))
- 		seq_puts(seq, ",data_err=abort");
- 
-+	if (test_opt(sb, NOLOAD))
-+		seq_puts(seq, ",norecovery");
-+
- 	ext3_show_quota_options(seq, sb);
- 
- 	return 0;
-@@ -818,6 +821,7 @@ static const match_table_t tokens = {
- 	{Opt_reservation, "reservation"},
- 	{Opt_noreservation, "noreservation"},
- 	{Opt_noload, "noload"},
-+	{Opt_noload, "norecovery"},
- 	{Opt_nobh, "nobh"},
- 	{Opt_bh, "bh"},
- 	{Opt_commit, "commit=%u"},
+Inode bitmap differences:  -884739
+Fix? no
+
+
+home: ********** WARNING: Filesystem still has errors **********
+
+home: 72709/2621440 files (17.6% non-contiguous), 4730591/5242880 blocks
+[adilger@webber ~]$ echo $?
+4
+
+> Hence, I think it's safe to eliminate the updates in ext4_statfs()
+> altogether.
+
+
+Not yet.  I'd be happy if the "-n" e2fsck treated these fields in the  
+same
+way as it does for the real e2fsck.
+
+The other thing that comes to mind is that we don't recover the journal
+for a read-only e2fsck, but we DO recover it on a read-only mount  
+seems inconsistent.  It wouldn't be hard to have e2fsck -n read the  
+journal and
+persistently cache the journal blocks in its internal cache (i.e. flag
+them so they can't be discarded from cache) before it runs the rest of  
+the
+e2fsck.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
