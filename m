@@ -1,54 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext3: journal all modifications in ext3_xattr_set_handle
-Date: Mon, 16 Nov 2009 16:27:30 -0600
-Message-ID: <4B01D1D2.1060409@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14354] Bad corruption with 2.6.32-rc1 and upwards
+Date: Mon, 16 Nov 2009 22:30:02 GMT
+Message-ID: <200911162230.nAGMU28U030333@demeter.kernel.org>
+References: <bug-14354-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41950 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754528AbZKPW1a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Nov 2009 17:27:30 -0500
+Received: from demeter.kernel.org ([140.211.167.39]:34237 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754167AbZKPW35 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Nov 2009 17:29:57 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nAGMU289030334
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2009 22:30:02 GMT
+In-Reply-To: <bug-14354-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext3_xattr_set_handle() was zeroing out an inode outside
-of journaling constraints; this is one of the accesses that
-was causing the crc errors in journal replay as seen in
-kernel.org bugzilla #14354.
+http://bugzilla.kernel.org/show_bug.cgi?id=14354
 
-Although ext3 doesn't have the crc issue, modifications
-out of journal control are a Bad Thing.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Rafael J. Wysocki <rjw@sisk.pl> changed:
 
-diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
-index 545e37c..387d92d 100644
---- a/fs/ext3/xattr.c
-+++ b/fs/ext3/xattr.c
-@@ -960,6 +960,10 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	if (error)
- 		goto cleanup;
- 
-+	error = ext3_journal_get_write_access(handle, is.iloc.bh);
-+	if (error)
-+		goto cleanup;
-+
- 	if (EXT3_I(inode)->i_state & EXT3_STATE_NEW) {
- 		struct ext3_inode *raw_inode = ext3_raw_inode(&is.iloc);
- 		memset(raw_inode, 0, EXT3_SB(inode->i_sb)->s_inode_size);
-@@ -985,9 +989,6 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 		if (flags & XATTR_CREATE)
- 			goto cleanup;
- 	}
--	error = ext3_journal_get_write_access(handle, is.iloc.bh);
--	if (error)
--		goto cleanup;
- 	if (!value) {
- 		if (!is.s.not_found)
- 			error = ext3_xattr_ibody_set(handle, inode, &i, &is);
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|RESOLVED                    |REOPENED
+         Resolution|CODE_FIX                    |
 
+
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
