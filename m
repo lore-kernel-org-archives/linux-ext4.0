@@ -1,34 +1,34 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Group descriptor 0 checksum is invalid
-Date: Sun, 15 Nov 2009 22:11:01 -0500
-Message-ID: <20091116031101.GP4323@mit.edu>
-References: <alpine.DEB.2.01.0911141349050.27639@bogon.housecafe.de>
+Subject: Re: [PATCH] mke2fs support for BLKDISCARD
+Date: Sun, 15 Nov 2009 23:54:28 -0500
+Message-ID: <20091116045428.GA17961@mit.edu>
+References: <4ACD0CDD.2070806@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59858 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:50402 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751873AbZKPDLB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Nov 2009 22:11:01 -0500
+	id S1752768AbZKPEya (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Nov 2009 23:54:30 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.01.0911141349050.27639@bogon.housecafe.de>
+In-Reply-To: <4ACD0CDD.2070806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 14, 2009 at 02:00:15PM -0800, Christian Kujau wrote:
-> Hi,
-> 
-> when trying to convert an ext3 filesystem to ext4, I'm getting these 
-> "Group descriptor 0 checksum is invalid" messages. I've seen them before 
-> and the net is full of them, but I still wonder if they're expected to 
-> show up at all during the filesystem's first fsck. See below for the 
-> script log.
+On Wed, Oct 07, 2009 at 04:49:17PM -0500, Eric Sandeen wrote:
+> Try calling the BLKDISCARD ioctl at mkfs time to pre-discard all blocks
+> on an ssd, or a thinly-provisioned storage device.
+>
+> No real error checking; if it fails, it fails, and that's ok - it's
+> just an optimization.  Also, it cannot work in conjunction with
+> the undo io manager, for obvious reasons.
+>
+> Optionally disabled with a "-K" (mnemonic: Keep) option.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Yes, it's expected.  We may try to make tune2fs better about fixing up
-the checksums when enabling uninit_bg at some point in the future, but
-for now, it's one of the reasons why tune2fs requests that you run
-e2fsck on the file system.
+Added to e2fsprogs's maint branch, thanks.
 
-					- Ted
+						- Ted
