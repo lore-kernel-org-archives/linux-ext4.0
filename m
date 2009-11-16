@@ -1,29 +1,34 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/4] ext4: Fix error handling ext4_ind_get_blocks
-Date: Sun, 15 Nov 2009 21:57:05 -0500
-Message-ID: <20091116025705.GO4323@mit.edu>
-References: <1256647729-29834-1-git-send-email-jack@suse.cz> <1256647729-29834-4-git-send-email-jack@suse.cz>
+Subject: Re: Group descriptor 0 checksum is invalid
+Date: Sun, 15 Nov 2009 22:11:01 -0500
+Message-ID: <20091116031101.GP4323@mit.edu>
+References: <alpine.DEB.2.01.0911141349050.27639@bogon.housecafe.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59835 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59858 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751469AbZKPC5E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Nov 2009 21:57:04 -0500
+	id S1751873AbZKPDLB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Nov 2009 22:11:01 -0500
 Content-Disposition: inline
-In-Reply-To: <1256647729-29834-4-git-send-email-jack@suse.cz>
+In-Reply-To: <alpine.DEB.2.01.0911141349050.27639@bogon.housecafe.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 27, 2009 at 01:48:48PM +0100, Jan Kara wrote:
-> When an error happened in ext4_splice_branch we failed to notice that
-> in ext4_ind_get_blocks and mapped the buffer anyway. Fix the problem
-> by checking for error properly.
+On Sat, Nov 14, 2009 at 02:00:15PM -0800, Christian Kujau wrote:
+> Hi,
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> when trying to convert an ext3 filesystem to ext4, I'm getting these 
+> "Group descriptor 0 checksum is invalid" messages. I've seen them before 
+> and the net is full of them, but I still wonder if they're expected to 
+> show up at all during the filesystem's first fsck. See below for the 
+> script log.
 
-Added to the ext4 patch queue, thanks.
+Yes, it's expected.  We may try to make tune2fs better about fixing up
+the checksums when enabling uninit_bg at some point in the future, but
+for now, it's one of the reasons why tune2fs requests that you run
+e2fsck on the file system.
 
-						- Ted
+					- Ted
