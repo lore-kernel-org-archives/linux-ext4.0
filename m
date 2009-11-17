@@ -1,84 +1,46 @@
-From: Pavel Emelyanov <xemul@openvz.org>
-Subject: [PATCH] A request to reserve a "tree id" field on ext[34] inodes
-Date: Tue, 17 Nov 2009 17:04:59 +0300
-Message-ID: <4B02AD8B.2030202@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Remove failed journal checksum check
+Date: Tue, 17 Nov 2009 17:05:42 +0100
+Message-ID: <20091117160542.GB1923@atrey.karlin.mff.cuni.cz>
+References: <20091114202755.GC4221@mit.edu> <1258316900-20808-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dmitri Monakhov <dmonakhov@openvz.org>
-To: Andreas Dilger <adilger@sun.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27771 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752695AbZKQOFU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Nov 2009 09:05:20 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:33376 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751011AbZKQQFh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Nov 2009 11:05:37 -0500
+Content-Disposition: inline
+In-Reply-To: <1258316900-20808-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
+> Now that we are checking for failed journal checksums in the jbd2
+> layer, we don't need to check in the ext4 mount path --- since a
+> checksum fail will result in ext4_load_journal() returning an error,
+> causing the file system to refuse to be mounted until e2fsck can deal
+> with the problem.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/super.c |   20 --------------------
+>  1 files changed, 0 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 8662b2e..04c6690 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2721,26 +2721,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL)) {
+>  		if (ext4_load_journal(sb, es, journal_devnum))
+>  			goto failed_mount3;
+  But shouldn't we set the EXT4_ERROR_FS flag? We don't semm to do this
+in ext4_load_journal() when jbd2_journal_load() fails.
 
-We have a proposal to implement a 2-level disk quota on ext3 and ext4.
+									Honza
 
-In two words - the aim is to have directories on ext3/4 partitions
-which are limited by its disk usage and the number of inodes. Further
-the plan is to allow configuring uid and gid quotas within them.
-
-The main usage of this is containers. When two or more of them are
-located on one disk their roots will be marked with a unique tree id
-and thus the disk consumption of each container will be limited. While
-achieving this goal having an id of what tree an inode belongs to is
-a key requirement. 
-
-So first we would like to ask to reserve a place on ext3 and ext4 inodes
-for that ID.
-
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-
----
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 26d3cf8..0fda97c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -471,7 +471,7 @@ struct ext4_inode {
- 			__le16	l_i_file_acl_high;
- 			__le16	l_i_uid_high;	/* these 2 fields */
- 			__le16	l_i_gid_high;	/* were reserved2[0] */
--			__u32	l_i_reserved2;
-+			__u32	l_i_tree_id;	/* reserved for 2-level disk quota */
- 		} linux2;
- 		struct {
- 			__le16	h_i_reserved1;	/* Obsoleted fragment number/size which are removed in ext4 */
-@@ -585,7 +585,7 @@ do {									       \
- #define i_gid_low	i_gid
- #define i_uid_high	osd2.linux2.l_i_uid_high
- #define i_gid_high	osd2.linux2.l_i_gid_high
--#define i_reserved2	osd2.linux2.l_i_reserved2
-+#define i_tree_id	osd2.linux2.l_i_tree_id
- 
- #elif defined(__GNU__)
- 
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 7499b36..d9f633d 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -320,7 +320,7 @@ struct ext3_inode {
- 			__u16	i_pad1;
- 			__le16	l_i_uid_high;	/* these 2 fields    */
- 			__le16	l_i_gid_high;	/* were reserved2[0] */
--			__u32	l_i_reserved2;
-+			__u32	l_i_tree_id;	/* reserved for 2-level disk quota */
- 		} linux2;
- 		struct {
- 			__u8	h_i_frag;	/* Fragment number */
-@@ -351,7 +351,7 @@ struct ext3_inode {
- #define i_gid_low	i_gid
- #define i_uid_high	osd2.linux2.l_i_uid_high
- #define i_gid_high	osd2.linux2.l_i_gid_high
--#define i_reserved2	osd2.linux2.l_i_reserved2
-+#define i_tree_id	osd2.linux2.l_i_tree_id
- 
- #elif defined(__GNU__)
- 
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
