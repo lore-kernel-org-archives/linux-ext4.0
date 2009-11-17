@@ -1,70 +1,174 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: [PATCH] ext2: clear uptodate flag on super block I/O error
-Date: Tue, 17 Nov 2009 03:08:21 +0100
-Message-ID: <20091117020821.GF5818@wotan.suse.de>
-References: <20091111123340.703f5c86@nehalam> <200911112234.24180.elendil@planet.nl> <20091113144727.575cf038@nehalam> <20091113150719.9d31dde2.akpm@linux-foundation.org> <20091116160449.3fc5e958@nehalam>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: make trim/discard optional (and off by default)
+Date: Mon, 16 Nov 2009 22:17:22 -0500
+Message-ID: <4B0215C2.60703@redhat.com>
+References: <4B01D5B5.7090302@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>,
-	jens.axboe@oracle.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Stephen Hemminger <shemminger@vyatta.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41501 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:51230 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755453AbZKQCIT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Nov 2009 21:08:19 -0500
-Content-Disposition: inline
-In-Reply-To: <20091116160449.3fc5e958@nehalam>
+	id S1753589AbZKQDRT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Nov 2009 22:17:19 -0500
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nAH3HOxn025103
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2009 22:17:24 -0500
+In-Reply-To: <4B01D5B5.7090302@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 16, 2009 at 04:04:49PM -0800, Stephen Hemminger wrote:
-> This fixes a WARN backtrace in mark_buffer_dirty() that occurs during
-> unmount when a USB or floppy device is removed. I reported this a kernel
-> regression, but looks like it might have been there for longer
-> than that.
-> 
-> The super block update from a previous operation has marked the buffer
-> as in error, and the flag has to be cleared before doing the update.
-> (Similar code already exists in ext4).
-> 
-> Signed-off-by: Stephen Hemminger <shemminger@vyatta.com>
-> 
-> --- a/fs/ext2/super.c	2009-11-16 15:55:36.399078475 -0800
-> +++ b/fs/ext2/super.c	2009-11-16 15:59:49.814765923 -0800
-> @@ -1121,8 +1121,20 @@ static void ext2_sync_super(struct super
->  static int ext2_sync_fs(struct super_block *sb, int wait)
->  {
->  	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
-> +	struct buffer_head *sbh = EXT2_SB(sb)->s_sbh;
->  
->  	lock_kernel();
-> +	if (buffer_write_io_error(sbh)) {
-> +		/*
-> +		 * This happens if USB or floppy device is yanked out.
-> +		 * Maybe user put device back in so warn and update again.
-> +		 */
-> +		printk(KERN_ERR
-> +		       "EXT2-fs: previous I/O error to superblock detected\n");
-> +		clear_buffer_write_io_error(sbh);
-> +		set_buffer_uptodate(sbh);
-> +	}
+On 11/16/2009 05:44 PM, Eric Sandeen wrote:
+> It is anticipated that when sb_issue_discard starts doing
+> real work on trim-capable devices, we may see issues.  Make
+> this mount-time optional, and default it to off until we know
+> that things are working out OK.
+>
+> (Q: should we call this "discard" instead?  What's the more common
+> term users might expect ... ?)
+
+Users will be confused regardless of what we do here, but the actual 
+discard only invokes ATA_TRIM commands on ATA devices. (SCSI uses its 
+own command, either a WRITE_SAME with discard or UNMAP).
+
+Not sure that any real user cares since they both end up doing roughly 
+the same thing...
+
+ric
+
+>
+> Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+> ---
+>
+>
+> diff --git a/Documentation/filesystems/ext4.txt 
+> b/Documentation/filesystems/ext4.txt
+> index 6d94e06..87036af 100644
+> --- a/Documentation/filesystems/ext4.txt
+> +++ b/Documentation/filesystems/ext4.txt
+> @@ -353,6 +353,12 @@ noauto_da_alloc        replacing existing files 
+> via patterns such as
+>             system crashes before the delayed allocation
+>             blocks are forced to disk.
+>
+> +trim            Controls whether ext4 should issue TRIM/discard
+> +notrim(*)        commands to the underlying block device when
+> +            blocks are freed.  This is useful for SSD devices
+> +            and sparse/thinly-provisioned LUNs, but it is off
+> +            by default until sufficient testing has been done.
 > +
->  	if (es->s_state & cpu_to_le16(EXT2_VALID_FS)) {
->  		ext2_debug("setting valid to 0\n");
->  		es->s_state &= cpu_to_le16(~EXT2_VALID_FS);
-
-I think the real fix is to avoid clearing uptodate in case of io errors.
-For read io errors, the buffer/page should not have been uptodate to
-start with, and for write io errors, an error writing back the buffer
-does not mean it is somehow no longer the most uptodate copy of the data.
-
-Higher level policy about IO errors (whether to retry, ignore, throw
-out the data, etc) would be nice to implement properly too, but that is
-not really the job of the low level cache and IO routines.
-
-I proposed some patches a while back but didn't get much interest.
-Maybe I should just ask someone to merge them.
+> Data Mode
+> =========
+> There are 3 different data modes:
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 8825515..410adb6 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -750,6 +750,7 @@ struct ext4_inode_info {
+> #define EXT4_MOUNT_DELALLOC        0x8000000 /* Delalloc support */
+> #define EXT4_MOUNT_DATA_ERR_ABORT    0x10000000 /* Abort on file data 
+> write */
+> #define EXT4_MOUNT_BLOCK_VALIDITY    0x20000000 /* Block validity 
+> checking */
+> +#define EXT4_MOUNT_TRIM            0x40000000 /* Issue TRIM requests */
+>
+> #define clear_opt(o, opt)        o &= ~EXT4_MOUNT_##opt
+> #define set_opt(o, opt)            o |= EXT4_MOUNT_##opt
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index bba1282..8a4f77b 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2529,7 +2529,6 @@ static void release_blocks_on_commit(journal_t 
+> *journal, transaction_t *txn)
+>     struct ext4_group_info *db;
+>     int err, count = 0, count2 = 0;
+>     struct ext4_free_data *entry;
+> -    ext4_fsblk_t discard_block;
+>     struct list_head *l, *ltmp;
+>
+>     list_for_each_safe(l, ltmp, &txn->t_private_list) {
+> @@ -2559,13 +2558,19 @@ static void release_blocks_on_commit(journal_t 
+> *journal, transaction_t *txn)
+>             page_cache_release(e4b.bd_bitmap_page);
+>         }
+>         ext4_unlock_group(sb, entry->group);
+> -        discard_block = (ext4_fsblk_t) entry->group * 
+> EXT4_BLOCKS_PER_GROUP(sb)
+> -            + entry->start_blk
+> -            + le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+> -        trace_ext4_discard_blocks(sb, (unsigned long long)discard_block,
+> -                      entry->count);
+> -        sb_issue_discard(sb, discard_block, entry->count);
+> -
+> +        if (test_opt(sb, TRIM)) {
+> +            ext4_fsblk_t discard_block;
+> +            struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+> +
+> +            discard_block = (ext4_fsblk_t)entry->group *
+> +                        EXT4_BLOCKS_PER_GROUP(sb)
+> +                    + entry->start_blk
+> +                    + le32_to_cpu(es->s_first_data_block);
+> +            trace_ext4_discard_blocks(sb,
+> +                    (unsigned long long)discard_block,
+> +                    entry->count);
+> +            sb_issue_discard(sb, discard_block, entry->count);
+> +        }
+>         kmem_cache_free(ext4_free_ext_cachep, entry);
+>         ext4_mb_release_desc(&e4b);
+>     }
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index d4ca92a..fc4a8d8 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -899,6 +899,9 @@ static int ext4_show_options(struct seq_file *seq, 
+> struct vfsmount *vfs)
+>     if (test_opt(sb, NO_AUTO_DA_ALLOC))
+>         seq_puts(seq, ",noauto_da_alloc");
+>
+> +    if (test_opt(sb, TRIM))
+> +        seq_puts(seq, ",trim");
+> +
+>     ext4_show_quota_options(seq, sb);
+>
+>     return 0;
+> @@ -1079,7 +1082,8 @@ enum {
+>     Opt_usrquota, Opt_grpquota, Opt_i_version,
+>     Opt_stripe, Opt_delalloc, Opt_nodelalloc,
+>     Opt_block_validity, Opt_noblock_validity,
+> -    Opt_inode_readahead_blks, Opt_journal_ioprio
+> +    Opt_inode_readahead_blks, Opt_journal_ioprio,
+> +    Opt_trim, Opt_notrim,
+> };
+>
+> static const match_table_t tokens = {
+> @@ -1144,6 +1148,8 @@ static const match_table_t tokens = {
+>     {Opt_auto_da_alloc, "auto_da_alloc=%u"},
+>     {Opt_auto_da_alloc, "auto_da_alloc"},
+>     {Opt_noauto_da_alloc, "noauto_da_alloc"},
+> +    {Opt_trim, "trim"},
+> +    {Opt_notrim, "notrim"},
+>     {Opt_err, NULL},
+> };
+>
+> @@ -1565,6 +1571,12 @@ set_qf_format:
+>             else
+>                 set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
+>             break;
+> +        case Opt_trim:
+> +            set_opt(sbi->s_mount_opt, TRIM);
+> +            break;
+> +        case Opt_notrim:
+> +            clear_opt(sbi->s_mount_opt, TRIM);
+> +            break;
+>         default:
+>             ext4_msg(sb, KERN_ERR,
+>                    "Unrecognized mount option \"%s\" "
+>
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
