@@ -1,44 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14601] Wrong handling of META_BG when getting number of blocks
- for group descriptors
-Date: Tue, 17 Nov 2009 21:47:50 GMT
-Message-ID: <200911172147.nAHLloT6018102@demeter.kernel.org>
-References: <bug-14601-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsprogs: open device writable for trim/discard
+Date: Tue, 17 Nov 2009 15:49:03 -0600
+Message-ID: <4B031A4F.5080105@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:46664 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752208AbZKQVro (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Nov 2009 16:47:44 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nAHLloa7018103
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 21:47:50 GMT
-In-Reply-To: <bug-14601-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:59548 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753343AbZKQVtG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Nov 2009 16:49:06 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nAHLnBT2000563
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 16:49:12 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id nAHLn3hH015141
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 16:49:11 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14601
+Sorry about that, the discard ioctl doesn't actually work
+unless you open the file with write capabilities...
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Jan Kara <jack@suse.cz> changed:
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 94b4c81..0aa31d8 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1877,7 +1877,7 @@ static void mke2fs_discard_blocks(ext2_filsys fs)
+ 	range[0] = 0;
+ 	range[1] = blocks * blocksize;
+ 
+-	fd = open64(fs->device_name, O_RDONLY);
++	fd = open64(fs->device_name, O_RDWR);
+ 
+ 	/*
+ 	 * We don't care about whether the ioctl succeeds; it's only an
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
-
-
-
-
---- Comment #1 from Jan Kara <jack@suse.cz>  2009-11-17 21:47:49 ---
-Thanks for the patch. It looks good but please look at
-Documentation/SubmittingPatches how a patch for kernel should look like (most
-notably it misses a Signed-off-by, it should be in a unified format and with a
-changelog). Also please create one patch for ext3 and one patch for ext4 since
-I will merge the ext3 part and Ted Tso takes care of ext4. Thanks.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
