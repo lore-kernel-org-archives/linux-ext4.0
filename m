@@ -1,78 +1,122 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] A request to reserve a "tree id" field on ext[34] inodes
-Date: Wed, 18 Nov 2009 00:19:59 +0300
-Message-ID: <87k4xosvb4.fsf@openvz.org>
-References: <4B02AD8B.2030202@openvz.org>
- <20091117171226.GC1923@atrey.karlin.mff.cuni.cz> <4B02E3AD.3090904@openvz.org>
- <20091117184715.GD1923@atrey.karlin.mff.cuni.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] Unify log messages in ext2
+Date: Tue, 17 Nov 2009 22:23:14 +0100
+Message-ID: <20091117212314.GA26567@atrey.karlin.mff.cuni.cz>
+References: <0EAA3AC5-9EB3-4547-AA50-0B601665B1C3@sun.com> <1257406384-4457-1-git-send-email-bug-track@fisher-privat.net> <1257519207.19442.10.camel@zwerg>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Pavel Emelyanov <xemul@openvz.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>
+To: Alexey Fisher <bug-track@fisher-privat.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:49418 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752299AbZKQVT4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Nov 2009 16:19:56 -0500
-Received: from dmon-lp ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KT900FYYVGQVG20@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Wed, 18 Nov 2009 00:24:30 +0300 (MSK)
-In-reply-to: <20091117184715.GD1923@atrey.karlin.mff.cuni.cz>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:51063 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751639AbZKQVXJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Nov 2009 16:23:09 -0500
+Content-Disposition: inline
+In-Reply-To: <1257519207.19442.10.camel@zwerg>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+  Hi,
 
->> Jan Kara wrote:
->> >   Hi,
->> > 
->> >> We have a proposal to implement a 2-level disk quota on ext3 and ext4.
->> >>
->> >> In two words - the aim is to have directories on ext3/4 partitions
->> >> which are limited by its disk usage and the number of inodes. Further
->> >> the plan is to allow configuring uid and gid quotas within them.
->> >   If I understand it right, this is something like XFS's project quota,
->> > right? 
->> 
->> Not exactly. XFS tree quota actually replaces gid one. My proposal is
->> to add the 3rd id.
->   Yeah, OK, but it's quite similar :)
->
->> > Also by 2-level, you mean it won't be possible to nest such subtrees?
->> 
->> As I see it - nesting can be done on top of it. I mean - once we have
->> a tree id of an inode and if we say "id A is a sub-id of id B" we're done.
->   But for implementation, it's kind of important whether there is going
-> to be just one "tree" limitation for each inode, or arbitrary number of
-> them...
->
->> > I.e. have a quota on directories a/, b/, a/b, a/c?
->> > 
-I've post fs assumptions to Andreas's replay
->> >> The main usage of this is containers. When two or more of them are
->> >> located on one disk their roots will be marked with a unique tree id
->> >> and thus the disk consumption of each container will be limited. While
->> >> achieving this goal having an id of what tree an inode belongs to is
->> >> a key requirement.
->> >>
->> >> So first we would like to ask to reserve a place on ext3 and ext4 inodes
->> >> for that ID.
->> >   Do you really need to store tree ID on disk? I'd think that it should
->> > be enough to keep some id / pointer in memory and initialize it when we
->> > load inode into memory (from an id / pointer of parent directory). Then
->> > it would be enough to store a fact that some directory is a root of
->> > "quota tree" somewhere - either in extended attributes, as a flag in
->> > the inode, or together with quota data.
->> We can't do it inside ext4_nfs_get_inode unfortunately :(
-Also we will have problems with orphan list cleanup on unclean umount.
->   Right, that's nasty. OK, but as Andreas suggested, extended attributes
-> are more flexible for this - most notably every fs supporting them would
-> be able to support your tree quota extension.
->
-> 								Honza
+  overall I like the patch. A few comments are below. When you fix them,
+I can take care of merging the patch (please CC me on the posting so
+that I don't miss it in the mailing list).
+
+> Am Donnerstag, den 05.11.2009, 08:33 +0100 schrieb Alexey Fisher:
+> > make messages produced by ext2 more unified. It should be
+> > easy to parse.
+> > 
+> > dmesg before patch:
+> > [ 4893.684892] reservations ON
+> > [ 4893.684896] xip option not supported
+> > [ 4893.684961] EXT2-fs warning: mounting ext3 filesystem as ext2
+> > [ 4893.684964] EXT2-fs warning: maximal mount count reached, running
+> > e2fsck is recommended
+> > [ 4893.684990] EXT II FS: 0.5b, 95/08/09, bs=1024, fs=1024, gc=2,
+> > bpg=8192, ipg=1280, mo=80010]
+> > 
+> > dmesg after patch:
+> > [ 4893.684892] EXT2-fs (loop0): reservations ON
+> > [ 4893.684896] EXT2-fs (loop0): xip option not supported
+> > [ 4893.684961] EXT2-fs (loop0): warning: mounting ext3 filesystem as
+> > ext2
+> > [ 4893.684964] EXT2-fs (loop0): warning: maximal mount count reached,
+> > running e2fsck is recommended
+> > [ 4893.684990] EXT2-fs (loop0): 0.5b, 95/08/09, bs=1024, fs=1024, gc=2,
+> > bpg=8192, ipg=1280, mo=80010]
+> > 
+> > Signed-off-by: Alexey Fisher <bug-track@fisher-privat.net>
+> > Reviewed-by: Andreas Dilger <adilger@sun.com>
+> > ---
+> >  fs/ext2/ext2.h  |    2 +
+> >  fs/ext2/super.c |  151 +++++++++++++++++++++++++++++++------------------------
+> >  2 files changed, 88 insertions(+), 65 deletions(-)
+> > 
+> > diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+> > index 9a8a8e2..29f65c5 100644
+> > --- a/fs/ext2/ext2.h
+> > +++ b/fs/ext2/ext2.h
+> > @@ -142,6 +142,8 @@ struct dentry *ext2_get_parent(struct dentry *child);
+> >  /* super.c */
+> >  extern void ext2_error (struct super_block *, const char *, const char *, ...)
+> >  	__attribute__ ((format (printf, 3, 4)));
+> > +extern void ext2_msg(struct super_block *, const char *, const char *, ...)
+> > +	__attribute__ ((format (printf, 3, 4)));
+> >  extern void ext2_warning (struct super_block *, const char *, const char *, ...)
+> >  	__attribute__ ((format (printf, 3, 4)));
+> >  extern void ext2_update_dynamic_rev (struct super_block *sb);
+> > diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> > index 1a9ffee..105fcd1 100644
+> > --- a/fs/ext2/super.c
+> > +++ b/fs/ext2/super.c
+> > @@ -58,26 +58,38 @@ void ext2_error (struct super_block * sb, const char * function,
+> >  	}
+> >  
+> >  	va_start(args, fmt);
+> > -	printk(KERN_CRIT "EXT2-fs error (device %s): %s: ",sb->s_id, function);
+> > +	ext2_msg(sb, KERN_CRIT, "error %s", function);
+  So this will be:
+EXT2-fs (sda6): error function_foo
+error message
+  Not quite what we want I think. Besides that I'd like a bit more
+messages like:
+EXT2-fs error (device): function: message
+
+And for other warnings:
+EXT2-fs warning (device): function: message
+
+It's still easy to parse by grep and IMHO nicer to read.
+
+> > @@ -420,7 +432,7 @@ static const match_table_t tokens = {
+> >  };
+> >  
+> >  static int parse_options (char * options,
+> > -			  struct ext2_sb_info *sbi)
+> > +			  struct ext2_sb_info *sbi, struct super_block *sb)
+> >  {
+> >  	char * p;
+> >  	substring_t args[MAX_OPT_ARGS];
+  When you pass in 'sb', there's no need to pass in 'sbi' since than can
+be obtained as EXT2_SB(sb).
+
+> >  cantfind_ext2:
+> >  	if (!silent)
+> > -		printk("VFS: Can't find an ext2 filesystem on dev %s.\n",
+> > -		       sb->s_id);
+> > +		ext2_msg(sb, KERN_ERR,
+> > +			"VFS: Can't find an ext2 filesystem");
+> >  	goto failed_mount;
+  This message will be strange:
+EXT2-fs (device): VFS: Can't find an ext2 filesystem
+
+  I'd maybe drop the "VFS:" and leave "on dev ..." in the message. I
+know the device name will be duplicated but without that the sentence
+just doesn't quite make sence.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
