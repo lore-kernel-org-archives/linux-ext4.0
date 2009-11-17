@@ -1,53 +1,42 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] A request to reserve a "tree id" field on ext[34] inodes
-Date: Tue, 17 Nov 2009 18:12:26 +0100
-Message-ID: <20091117171226.GC1923@atrey.karlin.mff.cuni.cz>
-References: <4B02AD8B.2030202@openvz.org>
+From: Stephen Hemminger <shemminger@vyatta.com>
+Subject: Re: [PATCH] ext2: clear uptodate flag on super block I/O error
+Date: Tue, 17 Nov 2009 09:16:03 -0800
+Message-ID: <20091117091603.3d9abab9@nehalam>
+References: <20091111123340.703f5c86@nehalam>
+	<200911112234.24180.elendil@planet.nl>
+	<20091113144727.575cf038@nehalam>
+	<20091113150719.9d31dde2.akpm@linux-foundation.org>
+	<20091116160449.3fc5e958@nehalam>
+	<20091117020821.GF5818@wotan.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, Dmitri Monakhov <dmonakhov@openvz.org>
-To: Pavel Emelyanov <xemul@openvz.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>,
+	jens.axboe@oracle.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Nick Piggin <npiggin@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34308 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751445AbZKQRMV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Nov 2009 12:12:21 -0500
-Content-Disposition: inline
-In-Reply-To: <4B02AD8B.2030202@openvz.org>
+Received: from mail.vyatta.com ([76.74.103.46]:36646 "EHLO mail.vyatta.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755846AbZKQRQS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Nov 2009 12:16:18 -0500
+In-Reply-To: <20091117020821.GF5818@wotan.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
 
-> We have a proposal to implement a 2-level disk quota on ext3 and ext4.
+> I think the real fix is to avoid clearing uptodate in case of io errors.
+> For read io errors, the buffer/page should not have been uptodate to
+> start with, and for write io errors, an error writing back the buffer
+> does not mean it is somehow no longer the most uptodate copy of the data.
 > 
-> In two words - the aim is to have directories on ext3/4 partitions
-> which are limited by its disk usage and the number of inodes. Further
-> the plan is to allow configuring uid and gid quotas within them.
-  If I understand it right, this is something like XFS's project quota,
-right? Note that such thing has implications such as you have to forbid
-hardlinks between different "quota trees", otherwise it just won't fly...
-Also by 2-level, you mean it won't be possible to nest such subtrees?
-I.e. have a quota on directories a/, b/, a/b, a/c?
-
-> The main usage of this is containers. When two or more of them are
-> located on one disk their roots will be marked with a unique tree id
-> and thus the disk consumption of each container will be limited. While
-> achieving this goal having an id of what tree an inode belongs to is
-> a key requirement.
+> Higher level policy about IO errors (whether to retry, ignore, throw
+> out the data, etc) would be nice to implement properly too, but that is
+> not really the job of the low level cache and IO routines.
 > 
-> So first we would like to ask to reserve a place on ext3 and ext4 inodes
-> for that ID.
-  Do you really need to store tree ID on disk? I'd think that it should
-be enough to keep some id / pointer in memory and initialize it when we
-load inode into memory (from an id / pointer of parent directory). Then
-it would be enough to store a fact that some directory is a root of
-"quota tree" somewhere - either in extended attributes, as a flag in
-the inode, or together with quota data.
+> I proposed some patches a while back but didn't get much interest.
+> Maybe I should just ask someone to merge them.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+I am interested in fixing current releases. But I agree it should be handled
+in a general way in future.
