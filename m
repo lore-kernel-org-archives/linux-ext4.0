@@ -1,72 +1,63 @@
-From: Pavel Emelyanov <xemul@openvz.org>
-Subject: Re: [PATCH] A request to reserve a "tree id" field on ext[34] inodes
-Date: Tue, 17 Nov 2009 20:55:57 +0300
-Message-ID: <4B02E3AD.3090904@openvz.org>
-References: <4B02AD8B.2030202@openvz.org> <20091117171226.GC1923@atrey.karlin.mff.cuni.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, Dmitri Monakhov <dmonakhov@openvz.org>
-To: Jan Kara <jack@suse.cz>
+From: Stephen Hemminger <shemminger@vyatta.com>
+Subject: [PATCH 1/2] ext2: clear uptodate flag on super block I/O error (v2)
+Date: Tue, 17 Nov 2009 09:46:18 -0800
+Message-ID: <20091117174647.315080808@vyatta.com>
+References: <20091117174617.285298261@vyatta.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:37673 "EHLO relay.sw.ru"
+Received: from suva.vyatta.com ([76.74.103.44]:37781 "EHLO suva.vyatta.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752278AbZKQR5B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Nov 2009 12:57:01 -0500
-In-Reply-To: <20091117171226.GC1923@atrey.karlin.mff.cuni.cz>
+	id S1755951AbZKQSHt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Nov 2009 13:07:49 -0500
+Received: from suva.vyatta.com (suva [127.0.0.1])
+	by suva.vyatta.com (8.13.7/8.13.7) with ESMTP id nAHHlseI030045
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 09:47:54 -0800
+Content-Disposition: inline; filename=ext2-uptodate.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
->   Hi,
-> 
->> We have a proposal to implement a 2-level disk quota on ext3 and ext4.
->>
->> In two words - the aim is to have directories on ext3/4 partitions
->> which are limited by its disk usage and the number of inodes. Further
->> the plan is to allow configuring uid and gid quotas within them.
->   If I understand it right, this is something like XFS's project quota,
-> right? 
+This fixes a WARN backtrace in mark_buffer_dirty() that occurs during
+unmount when a USB or floppy device is removed. 
+The super block update from a previous operation has marked the buffer
+as in error, and the flag has to be cleared before doing the update.
+(Similar code already exists in ext4).
 
-Not exactly. XFS tree quota actually replaces gid one. My proposal is
-to add the 3rd id.
+Signed-off-by: Stephen Hemminger <shemminger@vyatta.com>
 
-> Note that such thing has implications such as you have to forbid
-> hardlinks between different "quota trees", otherwise it just won't fly...
+---
+Patch against 2.6.32-rc7
+Revised to handle both sync_fs and put_super updating superblock.
 
-Yes, I know it. We know other things we'll have to disable, but this is
-OK to live without them.
 
-> Also by 2-level, you mean it won't be possible to nest such subtrees?
+--- a/fs/ext2/super.c	2009-11-17 09:13:21.346375999 -0800
++++ b/fs/ext2/super.c	2009-11-17 09:14:12.177002522 -0800
+@@ -1099,11 +1099,24 @@ static void ext2_commit_super (struct su
+ 
+ static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es)
+ {
++	struct buffer_head *sbh = EXT2_SB(sb)->s_sbh;
++
++	if (buffer_write_io_error(sbh)) {
++		/*
++		 * This happens if USB or floppy device is yanked out.
++		 * Maybe user put device back in so warn and update again.
++		 */
++		printk(KERN_ERR
++		       "EXT2-fs: previous I/O error to superblock detected\n");
++		clear_buffer_write_io_error(sbh);
++		set_buffer_uptodate(sbh);
++	}
++
+ 	es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
+ 	es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
+ 	es->s_wtime = cpu_to_le32(get_seconds());
+-	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
+-	sync_dirty_buffer(EXT2_SB(sb)->s_sbh);
++	mark_buffer_dirty(sbh);
++	sync_dirty_buffer(sbh);
+ 	sb->s_dirt = 0;
+ }
+ 
 
-As I see it - nesting can be done on top of it. I mean - once we have
-a tree id of an inode and if we say "id A is a sub-id of id B" we're done.
-
-As far as containers are concerned - we'll have to map container id to
-quota tree id, since changing a container id is fast and simple, but
-it's not so for tree id. That said, this treeid is just a way do distinguish
-inodes from one sub-tree from the others.
-
-> I.e. have a quota on directories a/, b/, a/b, a/c?
-> 
->> The main usage of this is containers. When two or more of them are
->> located on one disk their roots will be marked with a unique tree id
->> and thus the disk consumption of each container will be limited. While
->> achieving this goal having an id of what tree an inode belongs to is
->> a key requirement.
->>
->> So first we would like to ask to reserve a place on ext3 and ext4 inodes
->> for that ID.
->   Do you really need to store tree ID on disk? I'd think that it should
-> be enough to keep some id / pointer in memory and initialize it when we
-> load inode into memory (from an id / pointer of parent directory). Then
-> it would be enough to store a fact that some directory is a root of
-> "quota tree" somewhere - either in extended attributes, as a flag in
-> the inode, or together with quota data.
-
-We can't do it inside ext4_nfs_get_inode unfortunately :(
-
-> 								Honza
+-- 
 
