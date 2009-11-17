@@ -1,26 +1,26 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/2 V2] ext4: make trim/discard optional (and off by default)
-Date: Tue, 17 Nov 2009 10:54:15 -0600
-Message-ID: <4B02D537.8000103@redhat.com>
-References: <4B01D5B5.7090302@redhat.com>
+Subject: [PATCH 1/2 V3] ext4: make trim/discard optional (and off by default)
+Date: Tue, 17 Nov 2009 11:05:01 -0600
+Message-ID: <4B02D7BD.8070900@redhat.com>
+References: <4B01D5B5.7090302@redhat.com> <4B02D537.8000103@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43940 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19012 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754767AbZKQQyO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Nov 2009 11:54:14 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nAHGsKBN018699
+	id S1754882AbZKQRFA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Nov 2009 12:05:00 -0500
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nAHH56ha023511
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 11:54:20 -0500
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 12:05:06 -0500
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id nAHGsFDp025253
+	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id nAHH51UB001355
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 11:54:19 -0500
-In-Reply-To: <4B01D5B5.7090302@redhat.com>
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2009 12:05:05 -0500
+In-Reply-To: <4B02D537.8000103@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -30,8 +30,9 @@ this mount-time optional, and default it to off until we know
 that things are working out OK.
 
 V2: rename "trim" to "discard" to match btrfs & gfs2
+V3: fix mailer flowed text mangling, sorry.
 
-Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
 diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
