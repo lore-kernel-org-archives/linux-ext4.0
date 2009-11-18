@@ -1,113 +1,169 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Remove failed journal checksum check
-Date: Wed, 18 Nov 2009 11:10:01 +0100
-Message-ID: <20091118100936.GA13268@pobox.suse.cz>
-References: <20091114202755.GC4221@mit.edu> <1258316900-20808-1-git-send-email-tytso@mit.edu> <20091117160542.GB1923@atrey.karlin.mff.cuni.cz> <20091118035014.GA10380@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] A request to reserve a "tree id" field on ext[34] inodes
+Date: Wed, 18 Nov 2009 20:43:13 +0300
+Message-ID: <87skcb20ge.fsf@openvz.org>
+References: <4B02AD8B.2030202@openvz.org>
+ <0D1BE31B-34F9-40A1-8C7F-6A9FFF18DA8E@sun.com> <87lji4svcg.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Pavel Emelyanov <xemul@openvz.org>, Theodore Ts'o <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:45269 "EHLO mx1.suse.de"
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:49132 "EHLO mail.2ka.mipt.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754895AbZKRKJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Nov 2009 05:09:56 -0500
-Content-Disposition: inline
-In-Reply-To: <20091118035014.GA10380@thunk.org>
+	id S1758053AbZKRRnL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Nov 2009 12:43:11 -0500
+Received: from dmon-lp ([unknown] [10.55.93.124])
+ by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
+ (built Apr 16 2009)) with ESMTPA id <0KTB00JUWG3HAS10@mail.2ka.mipt.ru> for
+ linux-ext4@vger.kernel.org; Wed, 18 Nov 2009 20:47:44 +0300 (MSK)
+In-reply-to: <87lji4svcg.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 17-11-09 22:50:14, tytso@mit.edu wrote:
-> On Tue, Nov 17, 2009 at 05:05:42PM +0100, Jan Kara wrote:
-> >   But shouldn't we set the EXT4_ERROR_FS flag? We don't semm to do this
-> > in ext4_load_journal() when jbd2_journal_load() fails.
-> 
-> No, we don't need to set the EXT4_ERROR_FS flag.  When
-> jbd2_journal_load() fails, we are leaving the journal in place and we
-> are refusing the mount.  In the case of a root file system with this
-> problem, this will lead to a panic, and the user will have to use a
-> rescue CD.
-> 
-> In any case, when e2fsck runs, the current version will report the
-> error, abort the journal playback, and then force a full check of the
-> file system.  So this actually does what we want without setting the
-> EXT4_ERROR_FS flag.  In fact setting the flag will likely be
-> pointless, since if the superblock is journalled, it will get
-> overwritten during the journal replay.
-  Ah, you're right. Thanks for explanation.
+Dmitry Monakhov <dmonakhov@openvz.org> writes:
 
-> In fact, what I think e2fsck should do as the default option is to
-> *skip* the journal transaction with the failed checksum, but *not*
-> abort the journal replay, and to replay the rest of the journal
-> transactions with correct checksums, and then force a full fsck.
-> Aborting a journal transaction and abandoning 10 or more transactions
-> after the failed transaction is likely to do far more damage.  We're
-> better off replaying the transactions, hope that some or all of the
-> blocks in the skipped, failed transaction, are contained in subsequent
-> transaction, and then clean up the file system afterwards.
-  I agree, Replaying all transactions with correct checksum seems like a
-better option. Of course, having per-block checksums and replaying all
-blocks that have correct checksum is even better.
-
-> E2fsck should have a (non-default) option to replay the failed
-> transaction anyway, and a really paranoid system administrator,
-> though, could try it both ways.  Using a LVM snapshot would allow the
-> sysadmin to try both ways quite efficiently.
-  Yes, possibly this can be useful as well.
-
-> Here's an excerpt from journal of a file system that was aborted
-> during an fs_mark run.  (Generated using "logdump -a" in debugfs):
-> 
-> Found expected sequence 5735, type 2 (commit block) at block 1977
-> Found expected sequence 5736, type 1 (descriptor block) at block 1978
-> Dumping descriptor block, sequence 5736, at block 1978:
->   FS block 277 logged at journal block 1979 (flags 0x0)
->   FS block 2 logged at journal block 1980 (flags 0x2)
->   FS block 1009 logged at journal block 1981 (flags 0x2)
->   FS block 547 logged at journal block 1982 (flags 0x2)
->   FS block 4433 logged at journal block 1983 (flags 0x2)
->   FS block 267 logged at journal block 1984 (flags 0xa)
-> Found expected sequence 5736, type 2 (commit block) at block 1985
-> Found expected sequence 5737, type 1 (descriptor block) at block 1986
-> Dumping descriptor block, sequence 5737, at block 1986:
->   FS block 277 logged at journal block 1987 (flags 0x0)
->   FS block 2 logged at journal block 1988 (flags 0x2)
->   FS block 1009 logged at journal block 1989 (flags 0x2)
->   FS block 547 logged at journal block 1990 (flags 0x2)
->   FS block 4451 logged at journal block 1991 (flags 0x2)
->   FS block 267 logged at journal block 1992 (flags 0xa)
-> Found expected sequence 5737, type 2 (commit block) at block 1993
-> Found expected sequence 5738, type 1 (descriptor block) at block 1994
-> Dumping descriptor block, sequence 5738, at block 1994:
->   FS block 277 logged at journal block 1995 (flags 0x0)
->   FS block 2 logged at journal block 1996 (flags 0x2)
->   FS block 1009 logged at journal block 1997 (flags 0x2)
->   FS block 547 logged at journal block 1998 (flags 0x2)
->   FS block 4680 logged at journal block 1999 (flags 0x2)
->   FS block 267 logged at journal block 2000 (flags 0xa)
-> Found expected sequence 5738, type 2 (commit block) at block 2001
-> Found expected sequence 5739, type 1 (descriptor block) at block 2002
-> Dumping descriptor block, sequence 5739, at block 2002:
->   FS block 277 logged at journal block 2003 (flags 0x0)
->   FS block 2 logged at journal block 2004 (flags 0x2)
->   FS block 1009 logged at journal block 2005 (flags 0x2)
->   FS block 547 logged at journal block 2006 (flags 0x2)
->   FS block 4714 logged at journal block 2007 (flags 0x2)
->   FS block 291 logged at journal block 2008 (flags 0xa)
+> Andreas Dilger <adilger@sun.com> writes:
 >
-> This is a best case, but note how many blocks can appear multiple
-> times in the journal.  If fs blocks 277, 2, 1009, or 547 are corrupted
-> in any transaction before #5739, causing a checksum failure in commit
-> #5436 (for example), replaying the subsequent transactions will
-> recover the damage.  In fact, if blocks 4433 or 267 are intact, we're
-> better off replaying commit #5436, even if the journal checksum
-> doesn't match, since the corrupted blocks will be repaired by
-> subsequent commits, and at least that way we don't lose the updates to
-> blocks 4433 and 267.
-  Yes, it heavily depends on the load. But you're right that bitmaps, group
-descriptors and superblock are likely to be in further transactions. OTOH
-inodes, directory blocks or indirect blocks (or however we call such blocks
-for extents) and not that likely to be there.
-
-								Honza
+>> On 2009-11-17, at 06:04, Pavel Emelyanov wrote:
+>>> We have a proposal to implement a 2-level disk quota on ext3 and ext4.
+>>>
+>>> In two words - the aim is to have directories on ext3/4 partitions
+>>> which are limited by its disk usage and the number of inodes. Further
+>>> the plan is to allow configuring uid and gid quotas within them.
+>>>
+>>> The main usage of this is containers. When two or more of them are
+>>> located on one disk their roots will be marked with a unique tree id
+>>> and thus the disk consumption of each container will be limited. While
+>>> achieving this goal having an id of what tree an inode belongs to is
+>>> a key requirement.
+>>
+>> How do you handle files with multiple links, if they are located in
+>> different trees?  The inode would need to have multiple tree ids.
+> A short answer is "NO", inode can not belongs to multiple trees.
+> Containers has some non obvious specific. 
+> Each container isolated from another as much as possible. 
+> Container has its own root tree. This tree is exported inside
+> CT by numerous possible ways (name-space, virtual-stack-fs, chroot)
+>
+> So container's root are independent tree or several trees.
+> usually they organized like follows /ct_root/CT_${ID}/${tree_content}
+> There are many reasons to keep this trees separate one from another
+>    - inode attr: 
+>      If inode has links in A n B trees. And A-user call chown() for
+>      this inode, then B's owner will be surprised.
+>      The only way to overcome this is to virtualize inode atributes
+>      (for each tree) which is madness IMHO.
+>    - checkpoint/restore/online-backup:
+>      This is like suspend resume for VM, but in this case only
+>      container's process are stopped(freezed) for some time. After CT's
+>      process are stopped we may create backup CT's tree without freezing
+>      FS as a whole.
+> As I already say there are many way to accomplish this task. But everyone
+> has strong disadvantages:
+> Virtual block devices(qemu-like): problems with consistency and performance
+> ext3/4 + stack-fs(unionfs/vzfs): Bad failure resistance. It is
+>         impossible to support jorunalling quota file on stack-fs level.
+> XFS with proj quota : Lack of quota file journalling. XFS itself
+>         (please dont balme me, but i'm really not huge XFS fan)
+>
+> So the only way to implement journalled quota for containers is to
+> implement it on native fs level.
+>
+> "Containers directory tree-id" assumptions:
+> (1) Tree id is embedded inside inode
+> (2) Tree id is inherent from parent dir
+> (3) Inode can not belongs to different directory trees
+>
+> Default directory tree (with id == 0) has special meaning.
+> directory which belongs to default tree may contains roots of
+> other trees. Default tree is used for subtree manipulation.
+>
+> ->rename restriction:
+>   if (S_ISDIR(old_inode->i_mode)) {
+>       if ((new_dir->i_tree_id == 0) || /* move to default tree */
+>                (new_dir->i_tree_id == old_inode->i_tree_id)) /*same tree */
+>              goto good;
+>       return -EXDEV;
+>   } else {
+>       /* If entry have more than one link then it is bad idea to allow
+>          rename it to different (even if it's default tree) tree,
+>          because this result in rule (3) violation.
+>       if (old_inode->i_nlink > 1) && 
+>                     (new_dir->i_tree_id != old_inode->i_tree_id)
+>             return -EXDEV;
+>  }
+> ->link restriction: /* Links may  belongs to only one tree */
+>    if(new_dir->i_tree_id != old_inode->i_tree_id)
+>             return -EXDEV;
+>
+>>
+>> You can instead just store this data in an xattr (which will normally
+>> be stored in the inode, so no performance impact), and then you are
+>> free to store multiple values per inode.
+> Yes xattr is possible, but struct ext4_xattr_entry is so big plus 
+> space for attr_name ...., But we only want 4 bytes.
+In other point of view it may be too expensive reserve the last 4
+bytes in EXT4_GOOD_OLD_INODE. At the same time store tree_id as xattr.
+result in space wasting. But in fact new inode has room for space
+reservation. We may store it like it is done for i_version_hi field
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -494,6 +494,7 @@ struct ext4_inode {
+ 	__le32  i_crtime;       /* File Creation time */
+ 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+ 	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
++	__le32	i_disk_tree_id; /* directory tree quota id */
+ };
+ 
+ struct move_extent {
+@@ -1112,6 +1113,7 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ #define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
+ #define EXT4_FEATURE_INCOMPAT_MMP               0x0100
+ #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
++#define EXT4_FEATURE_INCOMPAT_TREE_ID		0x0400 /* directory tree id */
+ 
+ #define EXT4_FEATURE_COMPAT_SUPP	EXT2_FEATURE_COMPAT_EXT_ATTR
+ #define EXT4_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1119,7 +1121,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ 					 EXT4_FEATURE_INCOMPAT_META_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_EXTENTS| \
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+-					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
++					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
++					 EXT4_FEATURE_INCOMPAT_TREE_ID)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1534,6 +1534,15 @@ set_qf_format:
+ 			set_opt(sbi->s_mount_opt, I_VERSION);
+ 			sb->s_flags |= MS_I_VERSION;
+ 			break;
++		case Opt_tree_id:
++			if (!(EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_TREE_ID) &&
++				EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
++					EXT4_FITS_IN_INODE(raw_inode, ei, i_disk_tree_id))) {
++				ext4_msg(sb, KERN_ERR, "tree_id is not supported");
++				return 0;
++			}
++			set_opt(sbi->s_mount_opt, TREE_ID);
++			break;
+ 		case Opt_nodelalloc:
+ 			clear_opt(sbi->s_mount_opt, DELALLOC);
+ 			break;
+-=-=-=-
+>>
+>> Cheers, Andreas
+>> --
+>> Andreas Dilger
+>> Sr. Staff Engineer, Lustre Group
+>> Sun Microsystems of Canada, Inc.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
