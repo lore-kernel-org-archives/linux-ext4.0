@@ -1,166 +1,147 @@
 From: scjody@sun.com
-Subject: [patch 2/5] [md] Add syncraid buffer & bio flags
-Date: Thu, 19 Nov 2009 16:22:43 -0500
-Message-ID: <20091119212358.875539573@sun.com>
+Subject: [patch 5/5] [md] Add SET_RESYNC_ALL and CLEAR_RESYNC_ALL ioctls.
+Date: Thu, 19 Nov 2009 16:22:46 -0500
+Message-ID: <20091119212407.911694324@sun.com>
 References: <20091119212241.283629302@sun.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; NAME=''md-add-bio-syncraid.patch
+Content-Type: TEXT/PLAIN; NAME=''md-add-syncall-ioctl.patch
 Content-Transfer-Encoding: 7BIT
 Cc: linux-kernel@vger.kernel.org, Andreas Dilger <adilger@sun.com>
 To: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35463 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755639AbZKSVXz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2009 16:23:55 -0500
-Content-disposition: inline; filename=md-add-bio-syncraid.patch
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756618AbZKSVYx@vger.kernel.org>
+Content-disposition: inline; filename=md-add-syncall-ioctl.patch
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Adds the BIO_SYNCRAID bio flag and the syncraid buffer flag.  These
-are used to request a resync of the stripe containing the data being read
-or written.
+This patch adds SET_RESYNC_ALL and CLEAR_RESYNC_ALL ioctls, needed for
+fsck of a filesystem using declared mode.
+
+SET_RESYNC_ALL instructs an MD block device to perform a resync of all
+stripes read or written until CLEAR_RESYNC_ALL is set.  The intended user
+is e2fsck, which can SET_RESYNC_ALL before journal replay (which includes
+reading from all blocks declared for write prior to a crash) and then
+CLEAR_RESYNC_ALL afterwards.
 
 Signed-off-by: Jody McIntyre <scjody@sun.com>
 
+Index: linux-2.6.18-128.7.1/drivers/md/md.c
+===================================================================
+--- linux-2.6.18-128.7.1.orig/drivers/md/md.c
++++ linux-2.6.18-128.7.1/drivers/md/md.c
+@@ -4484,6 +4484,24 @@ static int md_ioctl(struct inode *inode,
+ 			err = set_bitmap_file(mddev, (int)arg);
+ 			goto done_unlock;
+ 
++		case SET_RESYNC_ALL:
++			if (mddev->pers->set_resync_all == NULL) {
++				err = -EINVAL;
++				goto abort_unlock;
++			}
++
++			err = mddev->pers->set_resync_all(mddev, 1);
++			goto done_unlock;
++
++		case CLEAR_RESYNC_ALL:
++			if (mddev->pers->set_resync_all == NULL) {
++				err = -EINVAL;
++				goto abort_unlock;
++			}
++
++			err = mddev->pers->set_resync_all(mddev, 0);
++			goto done_unlock;
++
+ 		default:
+ 			err = -EINVAL;
+ 			goto abort_unlock;
 Index: linux-2.6.18-128.7.1/drivers/md/raid5.c
 ===================================================================
 --- linux-2.6.18-128.7.1.orig/drivers/md/raid5.c
 +++ linux-2.6.18-128.7.1/drivers/md/raid5.c
-@@ -1704,7 +1704,8 @@ static void handle_stripe5(struct stripe
- 		}
- 	}
- 	if (failed > 1 && syncing) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,0);
-+		if (!test_bit(STRIPE_RESYNC_REQ, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS, 0);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
- 		syncing = 0;
- 	}
-@@ -1941,7 +1942,8 @@ static void handle_stripe5(struct stripe
- 		}
- 	}
- 	if (syncing && locked == 0 && test_bit(STRIPE_INSYNC, &sh->state)) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,1);
-+		if (!test_bit(STRIPE_RESYNC_REQ, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS, 1);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
- 	}
- 
-@@ -2289,7 +2291,8 @@ static void handle_stripe6(struct stripe
- 		}
- 	}
- 	if (failed > 2 && syncing) {
--		md_done_sync(conf->mddev, STRIPE_SECTORS,0);
-+		if (!test_bit(STRIPE_RESYNC_REQ, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS, 0);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
- 		syncing = 0;
- 	}
-@@ -2589,6 +2592,8 @@ static void handle_stripe6(struct stripe
- 
- 	if (syncing && locked == 0 && test_bit(STRIPE_INSYNC, &sh->state)) {
- 		md_done_sync(conf->mddev, STRIPE_SECTORS,1);
-+		if (!test_bit(STRIPE_RESYNC_REQ, &sh->state))
-+			md_done_sync(conf->mddev, STRIPE_SECTORS, 1);
- 		clear_bit(STRIPE_SYNCING, &sh->state);
- 	}
- 
-@@ -2880,6 +2885,9 @@ static int make_request(request_queue_t 
- 	else
- 		atomic_inc(&conf->reads_in);
- 
-+	PRINTK("make_request on %llu, %s\n", bi->bi_sector,
-+	       ((rw == WRITE) ? "write" : "read"));
-+
- 	logical_sector = bi->bi_sector & ~((sector_t)STRIPE_SECTORS-1);
- 	last_sector = bi->bi_sector + (bi->bi_size>>9);
- 	bi->bi_next = NULL;
-@@ -3006,6 +3014,19 @@ retry:
+@@ -3013,7 +3013,7 @@ retry:
  			r_sector += sectors_per_chunk;
  		}
  		if (sh) {
-+			if (bio_flagged(bi, BIO_SYNCRAID)) {
-+				if (test_bit(STRIPE_RESYNC_REQ, &sh->state)) {
-+					PRINTK("SYNCRAID on %llu, already "
-+					       "resynced\n", bi->bi_sector);
-+				} else {
-+					PRINTK("SYNCRAID on %llu, "
-+					       "resyncing\n", bi->bi_sector);
-+					set_bit(STRIPE_SYNCING, &sh->state);
-+					set_bit(STRIPE_RESYNC_REQ, &sh->state);
-+					clear_bit(STRIPE_INSYNC, &sh->state);
-+				}
-+			}
+-			if (bio_flagged(bi, BIO_SYNCRAID)) {
++			if (bio_flagged(bi, BIO_SYNCRAID) || conf->resync_all) {
+ 				if (test_bit(STRIPE_RESYNC_REQ, &sh->state)) {
+ 					PRINTK("SYNCRAID on %llu, already resynced\n", bi->bi_sector);
+ 				} else {
+@@ -4049,6 +4049,15 @@ static void raid5_quiesce(mddev_t *mddev
+ 	}
+ }
+ 
++static int raid5_set_resync_all(mddev_t *mddev, int state)
++{
++	raid5_conf_t *conf = mddev_to_conf(mddev);
 +
- 			handle_stripe(sh, NULL, bios);
- 			release_stripe(sh);
- 			sh = NULL;
-@@ -3234,6 +3255,7 @@ static inline sector_t sync_request(mdde
- 	spin_lock(&sh->lock);
- 	set_bit(STRIPE_SYNCING, &sh->state);
- 	clear_bit(STRIPE_INSYNC, &sh->state);
-+	clear_bit(STRIPE_RESYNC_REQ, &sh->state);
- 	spin_unlock(&sh->lock);
++	conf->resync_all = state;
++
++	return 0;
++}
++
+ static struct mdk_personality raid6_personality =
+ {
+ 	.name		= "raid6",
+@@ -4065,6 +4074,7 @@ static struct mdk_personality raid6_pers
+ 	.sync_request	= sync_request,
+ 	.resize		= raid5_resize,
+ 	.quiesce	= raid5_quiesce,
++	.set_resync_all = raid5_set_resync_all,
+ };
+ static struct mdk_personality raid5_personality =
+ {
+@@ -4086,6 +4096,7 @@ static struct mdk_personality raid5_pers
+ 	.start_reshape  = raid5_start_reshape,
+ #endif
+ 	.quiesce	= raid5_quiesce,
++	.set_resync_all = raid5_set_resync_all,
+ };
  
- 	handle_stripe(sh, NULL, NULL);
-Index: linux-2.6.18-128.7.1/fs/buffer.c
+ static struct mdk_personality raid4_personality =
+@@ -4104,6 +4115,7 @@ static struct mdk_personality raid4_pers
+ 	.sync_request	= sync_request,
+ 	.resize		= raid5_resize,
+ 	.quiesce	= raid5_quiesce,
++	.set_resync_all = raid5_set_resync_all,
+ };
+ 
+ static int __init raid5_init(void)
+Index: linux-2.6.18-128.7.1/include/linux/raid/md_u.h
 ===================================================================
---- linux-2.6.18-128.7.1.orig/fs/buffer.c
-+++ linux-2.6.18-128.7.1/fs/buffer.c
-@@ -2861,6 +2861,8 @@ int submit_bh(int rw, struct buffer_head
+--- linux-2.6.18-128.7.1.orig/include/linux/raid/md_u.h
++++ linux-2.6.18-128.7.1/include/linux/raid/md_u.h
+@@ -45,6 +45,8 @@
+ #define STOP_ARRAY		_IO (MD_MAJOR, 0x32)
+ #define STOP_ARRAY_RO		_IO (MD_MAJOR, 0x33)
+ #define RESTART_ARRAY_RW	_IO (MD_MAJOR, 0x34)
++#define SET_RESYNC_ALL		_IO (MD_MAJOR, 0x35)
++#define CLEAR_RESYNC_ALL	_IO (MD_MAJOR, 0x36)
  
- 	if (buffer_fs_raidsync(bh))
- 		set_bit(BIO_FS_RAIDSYNC, &bio->bi_flags);
-+	if (buffer_syncraid(bh))
-+		set_bit(BIO_SYNCRAID, &bio->bi_flags);
- 
- 	bio_get(bio);
- 	submit_bio(rw, bio);
-Index: linux-2.6.18-128.7.1/include/linux/bio.h
-===================================================================
---- linux-2.6.18-128.7.1.orig/include/linux/bio.h
-+++ linux-2.6.18-128.7.1/include/linux/bio.h
-@@ -125,6 +125,7 @@ struct bio {
- #define BIO_USER_MAPPED 6	/* contains user pages */
- #define BIO_EOPNOTSUPP	7	/* not supported */
- #define BIO_FS_RAIDSYNC	8	/* fs is responsible for RAID parity resync */
-+#define BIO_SYNCRAID	9	/* perform RAID parity resync now */
- #define bio_flagged(bio, flag)	((bio)->bi_flags & (1 << (flag)))
- 
- /*
-Index: linux-2.6.18-128.7.1/include/linux/buffer_head.h
-===================================================================
---- linux-2.6.18-128.7.1.orig/include/linux/buffer_head.h
-+++ linux-2.6.18-128.7.1/include/linux/buffer_head.h
-@@ -33,6 +33,7 @@ enum bh_state_bits {
- 	BH_Ordered,	/* ordered write */
- 	BH_Eopnotsupp,	/* operation not supported (barrier) */
- 	BH_FS_Raidsync,	/* FS is responsible for RAID parity resyncs */
-+	BH_SyncRAID,	/* Perform RAID parity resync now */
- 	BH_PrivateStart,/* not a state bit, but the first bit available
- 			 * for private allocation by other entities
- 			 */
-@@ -126,6 +127,7 @@ BUFFER_FNS(Ordered, ordered)
- BUFFER_FNS(Eopnotsupp, eopnotsupp)
- BUFFER_FNS(Unwritten, unwritten)
- BUFFER_FNS(FS_Raidsync, fs_raidsync)
-+BUFFER_FNS(SyncRAID, syncraid)
- 
- #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
- #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
+ typedef struct mdu_version_s {
+ 	int major;
 Index: linux-2.6.18-128.7.1/include/linux/raid/raid5.h
 ===================================================================
 --- linux-2.6.18-128.7.1.orig/include/linux/raid/raid5.h
 +++ linux-2.6.18-128.7.1/include/linux/raid/raid5.h
-@@ -180,6 +180,8 @@ struct stripe_head {
- #define	STRIPE_EXPANDING	9
- #define	STRIPE_EXPAND_SOURCE	10
- #define	STRIPE_EXPAND_READY	11
-+#define	STRIPE_RESYNC_REQ	12
-+
- /*
-  * Plugging:
-  *
+@@ -241,6 +241,7 @@ struct raid5_private_data {
+ 
+ 	int			seq_flush, seq_write;
+ 	int			quiesce;
++	int			resync_all;
+ 
+ 	int			fullsync;  /* set to 1 if a full sync is needed,
+ 					    * (fresh device added).
+Index: linux-2.6.18-128.7.1/include/linux/raid/md_k.h
+===================================================================
+--- linux-2.6.18-128.7.1.orig/include/linux/raid/md_k.h
++++ linux-2.6.18-128.7.1/include/linux/raid/md_k.h
+@@ -283,6 +283,7 @@ struct mdk_personality
+ 	 * others - reserved
+ 	 */
+ 	void (*quiesce) (mddev_t *mddev, int state);
++	int (*set_resync_all) (mddev_t *mddev, int state);
+ };
+ 
+ 
 
 -- 
