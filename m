@@ -1,76 +1,68 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: make "norecovery" an alias for "noload"
-Date: Thu, 19 Nov 2009 16:12:33 +0100
-Message-ID: <20091119151233.GE24836@duck.suse.cz>
-References: <4B01D749.3030601@redhat.com>
+Subject: Re: [PATCH 1/2] ext2: clear uptodate flag on super block I/O error (v2)
+Date: Thu, 19 Nov 2009 16:19:53 +0100
+Message-ID: <20091119151953.GA2943@atrey.karlin.mff.cuni.cz>
+References: <20091117174617.285298261@vyatta.com> <20091117174647.315080808@vyatta.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Stephen Hemminger <shemminger@vyatta.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58326 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753587AbZKSPM2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Nov 2009 10:12:28 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:43425 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755158AbZKSPTr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2009 10:19:47 -0500
 Content-Disposition: inline
-In-Reply-To: <4B01D749.3030601@redhat.com>
+In-Reply-To: <20091117174647.315080808@vyatta.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-11-09 16:50:49, Eric Sandeen wrote:
-> Users on the list recently complained about differences across
-> filesystems w.r.t. how to mount without a journal replay.
+> This fixes a WARN backtrace in mark_buffer_dirty() that occurs during
+> unmount when a USB or floppy device is removed. 
+> The super block update from a previous operation has marked the buffer
+> as in error, and the flag has to be cleared before doing the update.
+> (Similar code already exists in ext4).
 > 
-> In the discussion it was noted that xfs's "norecovery" option is
-> perhaps more descriptively accurate than "noload," so let's make
-> that an alias for ext3.
-> 
-> Also show this status in /proc/mounts
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-  OK, provided ext4 will have the same change, I'm fine with the patch.
-So how is it with ext4?
+> Signed-off-by: Stephen Hemminger <shemminger@vyatta.com>
+  Although I agree with Nick that ultimate solution would be to stop
+clearing the uptodate flag, I think the change is fine in principle
+as a workaround for warning that only scares people.
+
+> --- a/fs/ext2/super.c	2009-11-17 09:13:21.346375999 -0800
+> +++ b/fs/ext2/super.c	2009-11-17 09:14:12.177002522 -0800
+> @@ -1099,11 +1099,24 @@ static void ext2_commit_super (struct su
+>  
+>  static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es)
+>  {
+> +	struct buffer_head *sbh = EXT2_SB(sb)->s_sbh;
+> +
+> +	if (buffer_write_io_error(sbh)) {
+> +		/*
+> +		 * This happens if USB or floppy device is yanked out.
+> +		 * Maybe user put device back in so warn and update again.
+> +		 */
+> +		printk(KERN_ERR
+> +		       "EXT2-fs: previous I/O error to superblock detected\n");
+> +		clear_buffer_write_io_error(sbh);
+> +		set_buffer_uptodate(sbh);
+  It's not much about puting the device back. It's really just about
+avoiding the warning in mark_buffer_dirty(). So I'd just silently
+set_buffer_uptodate and be done with it. For superblock we are darn sure
+that in memory copy is the one that has the latest data :)
+
+> +	}
+> +
+>  	es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
+>  	es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
+>  	es->s_wtime = cpu_to_le32(get_seconds());
+> -	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
+> -	sync_dirty_buffer(EXT2_SB(sb)->s_sbh);
+> +	mark_buffer_dirty(sbh);
+> +	sync_dirty_buffer(sbh);
+>  	sb->s_dirt = 0;
+>  }
 
 									Honza
-> ---
-> 
-> diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-> index 05d5cf1..8b8d973 100644
-> --- a/Documentation/filesystems/ext3.txt
-> +++ b/Documentation/filesystems/ext3.txt
-> @@ -33,7 +33,7 @@ journal_dev=devnum	When the external journal device's major/minor numbers
-> 			in devnum.
-> 
-> noload			Don't load the journal on mounting. Note that this forces
-> -			mount of inconsistent filesystem, which can lead to
-> +norecovery		mount of inconsistent filesystem, which can lead to
-> 			various problems.
-> 
-> data=journal		All data are committed into the journal prior to being
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 427496c..c14fb95 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -636,6 +636,9 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
-> 	if (test_opt(sb, DATA_ERR_ABORT))
-> 		seq_puts(seq, ",data_err=abort");
-> 
-> +	if (test_opt(sb, NOLOAD))
-> +		seq_puts(seq, ",norecovery");
-> +
-> 	ext3_show_quota_options(seq, sb);
-> 
-> 	return 0;
-> @@ -818,6 +821,7 @@ static const match_table_t tokens = {
-> 	{Opt_reservation, "reservation"},
-> 	{Opt_noreservation, "noreservation"},
-> 	{Opt_noload, "noload"},
-> +	{Opt_noload, "norecovery"},
-> 	{Opt_nobh, "nobh"},
-> 	{Opt_bh, "bh"},
-> 	{Opt_commit, "commit=%u"},
-> 
 -- 
 Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+SuSE CR Labs
