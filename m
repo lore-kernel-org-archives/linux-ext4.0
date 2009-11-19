@@ -1,63 +1,49 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: Don't update the superblock in ext3_statfs()
-Date: Thu, 19 Nov 2009 17:09:51 +0100
-Message-ID: <20091119160951.GF24836@duck.suse.cz>
-References: <4B01D38B.9000506@redhat.com>
+Subject: Re: [PATCH] ext3: make "norecovery" an alias for "noload"
+Date: Thu, 19 Nov 2009 17:10:45 +0100
+Message-ID: <20091119161045.GG24836@duck.suse.cz>
+References: <4B01D749.3030601@redhat.com>
+ <20091119151233.GE24836@duck.suse.cz>
+ <4B056AF8.3010604@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>,
+	ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:35690 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:35725 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757307AbZKSQJq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Nov 2009 11:09:46 -0500
+	id S1751966AbZKSQKj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Nov 2009 11:10:39 -0500
 Content-Disposition: inline
-In-Reply-To: <4B01D38B.9000506@redhat.com>
+In-Reply-To: <4B056AF8.3010604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-11-09 16:34:51, Eric Sandeen wrote:
-> commit a71ce8c6c9bf269b192f352ea555217815cf027e updated ext3_statfs()
-> to update the on-disk superblock counters, but modified this buffer
-> directly without any journaling of the change.  This is one of the
-> accesses that was causing the crc errors in journal replay as seen in
-> kernel.org bugzilla #14354.
+On Thu 19-11-09 09:57:44, Eric Sandeen wrote:
+> Jan Kara wrote:
+> > On Mon 16-11-09 16:50:49, Eric Sandeen wrote:
+> >> Users on the list recently complained about differences across
+> >> filesystems w.r.t. how to mount without a journal replay.
+> >>
+> >> In the discussion it was noted that xfs's "norecovery" option is
+> >> perhaps more descriptively accurate than "noload," so let's make
+> >> that an alias for ext3.
+> >>
+> >> Also show this status in /proc/mounts
+> >>
+> >> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> >   OK, provided ext4 will have the same change, I'm fine with the patch.
+> > So how is it with ext4?
 > 
-> The modifications were originally to keep the sb "more" in sync,
-> so that a readonly fsck of the device didn't flag this as an
-> error (as often), but apparently e2fsprogs deals with this differently
-> now, anyway.
+> I did send the same patch for ext4
 > 
-> Based on Ted's patch for ext4, which was in turn based on my
-> work on that bug and another preliminary patch...
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-  Thanks. Merged into my tree.
+> "[PATCH 2/2] ext4: make "norecovery" an alias for "noload""
+  Obviously I'm too lame at googling ;). OK, I've merged the patch to
+for_next branch.
 
-								Honza
-> ---
-> 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 427496c..ca3068f 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -2686,13 +2686,11 @@ static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf)
-> 	buf->f_bsize = sb->s_blocksize;
-> 	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - sbi->s_overhead_last;
-> 	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
-> -	es->s_free_blocks_count = cpu_to_le32(buf->f_bfree);
-> 	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
-> 	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
-> 		buf->f_bavail = 0;
-> 	buf->f_files = le32_to_cpu(es->s_inodes_count);
-> 	buf->f_ffree = percpu_counter_sum_positive(&sbi->s_freeinodes_counter);
-> -	es->s_free_inodes_count = cpu_to_le32(buf->f_ffree);
-> 	buf->f_namelen = EXT3_NAME_LEN;
-> 	fsid = le64_to_cpup((void *)es->s_uuid) ^
-> 	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
-> 
+									Honza
+
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
