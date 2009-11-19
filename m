@@ -1,83 +1,65 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [PATCH][BUG][RFC] ext4: Each meaning of the offset in
- ext4_check_dir_entry calling from some functions should be unified.
-Date: Thu, 19 Nov 2009 09:55:47 +0900
-Message-ID: <20091119095547.adfdfba0.toshi.okajima@jp.fujitsu.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] A request to reserve a "tree id" field on ext[34] inodes
+Date: Wed, 18 Nov 2009 22:33:52 -0800
+Message-ID: <BC3BF6F1-81BA-49A3-98BA-46A0F87D4A3D@sun.com>
+References: <4B02AD8B.2030202@openvz.org>
+ <0D1BE31B-34F9-40A1-8C7F-6A9FFF18DA8E@sun.com> <87lji4svcg.fsf@openvz.org>
+ <87skcb20ge.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, adilger@sun.com
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Pavel Emelyanov <xemul@openvz.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:33989 "EHLO
-	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932115AbZKSBNS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2009 20:13:18 -0500
-Received: from m6.gw.fujitsu.co.jp ([10.0.50.76])
-	by fgwmail5.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id nAJ1DMVH009103
-	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
-	Thu, 19 Nov 2009 10:13:22 +0900
-Received: from smail (m6 [127.0.0.1])
-	by outgoing.m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 0EB3D45DE4F
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2009 10:13:22 +0900 (JST)
-Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
-	by m6.gw.fujitsu.co.jp (Postfix) with ESMTP id D969545DE4C
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2009 10:13:21 +0900 (JST)
-Received: from s6.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
-	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 8DA741DB803A
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2009 10:13:21 +0900 (JST)
-Received: from m105.s.css.fujitsu.com (m105.s.css.fujitsu.com [10.249.87.105])
-	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 1AD461DB8043
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2009 10:13:21 +0900 (JST)
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:43971 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751723AbZKSGeF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2009 01:34:05 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nAJ6Y8Ig019887
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2009 22:34:08 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KTC00F00FIIBR00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 18 Nov 2009 22:34:08 -0800 (PST)
+In-reply-to: <87skcb20ge.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+On 2009-11-18, at 09:43, Dmitry Monakhov wrote:
+> In other point of view it may be too expensive reserve the last 4
+> bytes in EXT4_GOOD_OLD_INODE. At the same time store tree_id as xattr.
+> result in space wasting.
 
-This problem is originated from the one message which has two meanings.
-Meanings are: 
-- File offset
-  used by:
-   ext4_readdir, htree_dirblock_to_tree, search_dirblock, ext4_dx_find_entry,
-   empty_dir
-- Buffer offset
-  used by:
-   add_dirent_to_buf, ext4_delete_entry
+Since the xattr is stored inside the inode, and you are accessing this  
+from the kernel, it is using only 24 bytes of space used for your tree  
+ID (20 bytes ext4_xattr_entry, including 3-byte name, 4 bytes data).   
+It also has virtually no performance overhead because it is kept in  
+the inode itself.
 
-To solve this, there is the method how we change the meaning of add_dirent_to_buf() and 
-ext4_delete_entry() but it is not easy to change. But we can solve this problem easily
-if we unify the meanings into "Buffer offset". So, instead of "File Offset" meaning,
-we add the block number information to this message.
+If you consider that the use of tree_id is not likely to be commonly  
+used, then it would be "wasting" 4 bytes of space in everyone else's  
+inodes to reserve this field in the inode (whether in the old inode or  
+the larger ext4 inode).
 
---- Examples ---
-Original:
-EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in directory \
-#12: rec_len is too small for name_len - offset=12288, inode=216, rec_len=12,\
- name_len=11
+> But in fact new inode has room for space
+> reservation. We may store it like it is done for i_version_hi field
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -494,6 +494,7 @@ struct ext4_inode {
+> 	__le32  i_crtime;       /* File Creation time */
+> 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 |  
+> epoch) */
+> 	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
+> +	__le32	i_disk_tree_id; /* directory tree quota id */
+> };
 
-Change:
-EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in directory \
-#12: rec_len is too small for name_len - block_nr=78:offset=0, inode=216, \
-rec_len=12, name_len=11
 
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Cheers, Andreas
 --
- fs/ext4/dir.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-diff -Nurp linux-2.6.32-rc7.org/fs/ext4/dir.c linux-2.6.32-rc7/fs/ext4/dir.c
---- linux-2.6.32-rc7.org/fs/ext4/dir.c	2009-11-13 09:46:07.000000000 +0900
-+++ linux-2.6.32-rc7/fs/ext4/dir.c	2009-11-19 18:32:31.000000000 +0900
-@@ -84,9 +84,10 @@ int ext4_check_dir_entry(const char *fun
- 
- 	if (error_msg != NULL)
- 		ext4_error(dir->i_sb, function,
--			"bad entry in directory #%lu: %s - "
-+			"bad entry in directory #%lu: %s - block_nr=%llu:"
- 			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
--			dir->i_ino, error_msg, offset,
-+			dir->i_ino, error_msg, 
-+			(u64)bh->b_blocknr, (u32)(offset%bh->b_size),
- 			le32_to_cpu(de->inode),
- 			rlen, de->name_len);
- 	return error_msg == NULL ? 1 : 0;
