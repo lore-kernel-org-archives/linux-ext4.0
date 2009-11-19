@@ -1,53 +1,170 @@
 From: scjody@sun.com
-Subject: [patch 0/5] Journal guided resync and support
-Date: Thu, 19 Nov 2009 16:22:41 -0500
-Message-ID: <20091119212241.283629302@sun.com>
+Subject: [patch 1/5] [md] Add fs_raidsync buffer & bio flags
+Date: Thu, 19 Nov 2009 16:22:42 -0500
+Message-ID: <20091119212355.980768235@sun.com>
+References: <20091119212241.283629302@sun.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN
+Content-Type: TEXT/PLAIN; NAME=''md-add-fs-raidsync.patch
 Content-Transfer-Encoding: 7BIT
 Cc: linux-kernel@vger.kernel.org, Andreas Dilger <adilger@sun.com>
 To: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35456 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752373AbZKSVXt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2009 16:23:49 -0500
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:53932 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755638AbZKSVXz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2009 16:23:55 -0500
+Content-disposition: inline; filename=md-add-fs-raidsync.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an updated implementation of journal guided resync, intended to be
-suitable for production systems.  This feature addresses the problem with RAID
-arrays that take too long to resync - similar to the existing MD write-intent
-bitmap feature, we resync only the stripes that were undergoing writes at the
-time of the crash.  Unlike write-intent bitmaps, our testing shows very little
-performance degredation as a result of the feature - around 3-5% vs around 30%
-for bitmaps.
+Adds the BIO_FS_RAIDSYNC bio flag and the fs_raidsync buffer flag.  These
+are used to inform md that the filesystem takes responsibility for
+resynchronizing parity information after a system crash.
 
-This feature is based on work described in this paper:
-http://www.usenix.org/events/fast05/tech/denehy.html
+When this flag is set on a raid4/5/6 device, the write will not be recorded
+in the bitmap.
 
-As a summary, we introduce a new data write mode known as declared mode.  This
-is based on ordered mode except that a list of blocks to be written during the
-current transaction is added to the journal before the blocks themselves are
-written to the disk.  Then, if the system crashes, we can resync only those
-blocks during journal replay and skip the rest of the resync of the RAID array.
+Signed-off-by: Jody McIntyre <scjody@sun.com>
 
-The changes consist of patches to ext3, jbd, MD, and the raid456 personality.
-These patches are currently against the RHEL 5 kernel 2.6.18-128.7.1.  Porting
-to ext4/jbd2 and a more modern kernel is a TODO item.
+Index: linux-2.6.18-128.7.1/drivers/md/raid5.c
+===================================================================
+--- linux-2.6.18-128.7.1.orig/drivers/md/raid5.c
++++ linux-2.6.18-128.7.1/drivers/md/raid5.c
+@@ -1465,7 +1465,8 @@ static int add_stripe_bio(struct stripe_
+ 		(unsigned long long)bi->bi_sector,
+ 		(unsigned long long)sh->sector, dd_idx);
+ 
+-	if (conf->mddev->bitmap && firstwrite) {
++	if (conf->mddev->bitmap && firstwrite &&
++				!bio_flagged(bi, BIO_FS_RAIDSYNC)) {
+ 		bitmap_startwrite(conf->mddev->bitmap, sh->sector,
+ 				  STRIPE_SECTORS, 0);
+ 		sh->bm_seq = conf->seq_flush+1;
+@@ -1643,7 +1644,11 @@ static void handle_stripe5(struct stripe
+ 			/* fail all writes first */
+ 			bi = sh->dev[i].towrite;
+ 			sh->dev[i].towrite = NULL;
+-			if (bi) { to_write--; bitmap_end = 1; }
++			if (bi) {
++				to_write--;
++				if (!bio_flagged(bi, BIO_FS_RAIDSYNC))
++					bitmap_end = 1;
++			}
+ 
+ 			if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags))
+ 				wake_up(&conf->wait_for_overlap);
+@@ -1661,7 +1666,8 @@ static void handle_stripe5(struct stripe
+ 			/* and fail all 'written' */
+ 			bi = sh->dev[i].written;
+ 			sh->dev[i].written = NULL;
+-			if (bi) bitmap_end = 1;
++			if (bi && !bio_flagged(bi, BIO_FS_RAIDSYNC))
++				bitmap_end = 1;
+ 			while (bi && bi->bi_sector < sh->dev[i].sector + STRIPE_SECTORS) {
+ 				struct bio *bi2 = r5_next_bio(bi, sh->dev[i].sector);
+ 				clear_bit(BIO_UPTODATE, &bi->bi_flags);
+@@ -1736,11 +1742,14 @@ static void handle_stripe5(struct stripe
+ 					    md_write_end(conf->mddev);
+ 					    wbi->bi_next = return_bi;
+ 					    return_bi = wbi;
++					    if (!bio_flagged(wbi,
++							     BIO_FS_RAIDSYNC))
++						    bitmap_end = 1;
+ 				    }
+ 				    wbi = wbi2;
+ 			    }
+-			    if (dev->towrite == NULL)
+-				    bitmap_end = 1;
++			    if (dev->towrite != NULL)
++				    bitmap_end = 0;
+ 			    spin_unlock_irq(&conf->device_lock);
+ 			    if (bitmap_end)
+ 				    bitmap_endwrite(conf->mddev->bitmap, sh->sector,
+@@ -2220,7 +2229,11 @@ static void handle_stripe6(struct stripe
+ 			/* fail all writes first */
+ 			bi = sh->dev[i].towrite;
+ 			sh->dev[i].towrite = NULL;
+-			if (bi) { to_write--; bitmap_end = 1; }
++			if (bi) {
++				to_write--;
++				if (!bio_flagged(bi, BIO_FS_RAIDSYNC))
++					bitmap_end = 1;
++			}
+ 
+ 			if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags))
+ 				wake_up(&conf->wait_for_overlap);
+@@ -2238,7 +2251,8 @@ static void handle_stripe6(struct stripe
+ 			/* and fail all 'written' */
+ 			bi = sh->dev[i].written;
+ 			sh->dev[i].written = NULL;
+-			if (bi) bitmap_end = 1;
++			if (bi && !bio_flagged(bi, BIO_FS_RAIDSYNC))
++				bitmap_end = 1;
+ 			while (bi && bi->bi_sector < sh->dev[i].sector + STRIPE_SECTORS) {
+ 				struct bio *bi2 = r5_next_bio(bi, sh->dev[i].sector);
+ 				clear_bit(BIO_UPTODATE, &bi->bi_flags);
+@@ -2324,11 +2338,14 @@ static void handle_stripe6(struct stripe
+ 							md_write_end(conf->mddev);
+ 							wbi->bi_next = return_bi;
+ 							return_bi = wbi;
++							if (!bio_flagged(wbi,
++							       BIO_FS_RAIDSYNC))
++								bitmap_end = 1;
+ 						}
+ 						wbi = wbi2;
+ 					}
+-					if (dev->towrite == NULL)
+-						bitmap_end = 1;
++					if (dev->towrite != NULL)
++						bitmap_end = 0;
+ 					spin_unlock_irq(&conf->device_lock);
+ 					if (bitmap_end)
+ 						bitmap_endwrite(conf->mddev->bitmap, sh->sector,
+Index: linux-2.6.18-128.7.1/fs/buffer.c
+===================================================================
+--- linux-2.6.18-128.7.1.orig/fs/buffer.c
++++ linux-2.6.18-128.7.1/fs/buffer.c
+@@ -2859,6 +2859,9 @@ int submit_bh(int rw, struct buffer_head
+ 	bio->bi_end_io = end_bio_bh_io_sync;
+ 	bio->bi_private = bh;
+ 
++	if (buffer_fs_raidsync(bh))
++		set_bit(BIO_FS_RAIDSYNC, &bio->bi_flags);
++
+ 	bio_get(bio);
+ 	submit_bio(rw, bio);
+ 
+Index: linux-2.6.18-128.7.1/include/linux/bio.h
+===================================================================
+--- linux-2.6.18-128.7.1.orig/include/linux/bio.h
++++ linux-2.6.18-128.7.1/include/linux/bio.h
+@@ -124,6 +124,7 @@ struct bio {
+ #define BIO_BOUNCED	5	/* bio is a bounce bio */
+ #define BIO_USER_MAPPED 6	/* contains user pages */
+ #define BIO_EOPNOTSUPP	7	/* not supported */
++#define BIO_FS_RAIDSYNC	8	/* fs is responsible for RAID parity resync */
+ #define bio_flagged(bio, flag)	((bio)->bi_flags & (1 << (flag)))
+ 
+ /*
+Index: linux-2.6.18-128.7.1/include/linux/buffer_head.h
+===================================================================
+--- linux-2.6.18-128.7.1.orig/include/linux/buffer_head.h
++++ linux-2.6.18-128.7.1/include/linux/buffer_head.h
+@@ -32,6 +32,7 @@ enum bh_state_bits {
+ 	BH_Write_EIO,	/* I/O error on write */
+ 	BH_Ordered,	/* ordered write */
+ 	BH_Eopnotsupp,	/* operation not supported (barrier) */
++	BH_FS_Raidsync,	/* FS is responsible for RAID parity resyncs */
+ 	BH_PrivateStart,/* not a state bit, but the first bit available
+ 			 * for private allocation by other entities
+ 			 */
+@@ -124,6 +125,7 @@ BUFFER_FNS(Write_EIO, write_io_error)
+ BUFFER_FNS(Ordered, ordered)
+ BUFFER_FNS(Eopnotsupp, eopnotsupp)
+ BUFFER_FNS(Unwritten, unwritten)
++BUFFER_FNS(FS_Raidsync, fs_raidsync)
+ 
+ #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
+ #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
 
-Changes since the previous set of patches: I have addressed all review comments
-received.  Noteable is a design change based on Neil Brown's suggestions: the
-filesystem now sets a buffer flag (fs_raidsync) to inform MD that the
-filesystem is taking responsibility for resyncing parity on this stripe in
-the event of a system crash.  For RAID 4/5/6, setting this flag causes the
-write intent bitmap NOT to be updated for the write in question.  There is
-also a buffer flag (syncraid) used by jbd to resync parity.  Together these
-eliminate most of the need for ioctls, though one is still needed for e2fsck.
-
-Unfortunately, we have determined that these patches are NOT useful to Lustre.
-Therefore I will not be doing any more work on them.  I am sending them now in
-case they are useful as a starting point for someone else's work.
-
-Cheers,
-Jody
+-- 
