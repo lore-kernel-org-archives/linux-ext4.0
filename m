@@ -1,47 +1,31 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: norecovery option for ext3
-Date: Fri, 20 Nov 2009 09:46:18 -0600
-Message-ID: <4B06B9CA.1030502@redhat.com>
-References: <20091120122403.GD15422@duck.suse.cz>
+From: Francis Russell <francis+lkml@unchartedbackwaters.co.uk>
+Subject: WARNING: at =?UTF-8?Q?mm/page=5Falloc=2Ec=3A=31=38=30=35=20=5F=5Falloc=5F?=
+ =?UTF-8?Q?pages=5Fnodemask?=
+Date: Fri, 20 Nov 2009 16:55:26 +0000
+Message-ID: <6a152d42dba4f211dbc52a826bd813f7@imap.unchartedbackwaters.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28943 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752540AbZKTPqU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Nov 2009 10:46:20 -0500
-In-Reply-To: <20091120122403.GD15422@duck.suse.cz>
+Received: from smtp.unchartedbackwaters.co.uk ([78.110.170.111]:44236 "EHLO
+	smtp.unchartedbackwaters.co.uk" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754173AbZKTRBh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Nov 2009 12:01:37 -0500
+Received: from www.unchartedbackwaters.co.uk (xen.unchartedbackwaters.co.uk [78.110.170.111])
+	by smtp.unchartedbackwaters.co.uk (Postfix) with ESMTPSA id B8A83136B87
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2009 16:55:29 +0000 (GMT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
->   Hi,
-> 
->   I've tried to test noload/norecovery option of ext3 and I've found it
-> simply does not work. The filesystem does not even mount. There are two
-> problems:
->   1) the code checking for NOLOAD in ext3_fill_super is simply wrong
->      and ends up failing the mount whenever NOLOAD is set with a message
->      "ext3: No journal on filesystem on <dev>"
->   2) if one fixes the check, we end up oopsing a few lines below when
->      calling journal_check_available_features() with journal == NULL.
-> 
->   Given that nobody used the option (OK, some googling shows that somebody
-> tried to use it in *2.4.9* kernel and it didn't work even there - Stephen
-> Tweedie comments that it's an obsolete option meant for use during fs
-> development) and seeing how badly corrupted the filesystem is when you
-> don't replay the journal, I'd just remove the option. Any opinions?
-> 
-> 								Honza
+Hi there,
 
-Oh, sigh.  Sorry, didn't actually, er, test it, since I was just adding
-an alias for the option... bleah.
+I was wondering if the fix for bug 14620
+(http://bugzilla.kernel.org/show_bug.cgi?id=14620), which looks extremely
+similar to 14562 was going to make it into 2.6.32? As of 2.6.32-rc8, it
+still seems to exist.
 
-I think we should fix it; there are cases when you may want to mount that
-way, I think - for example, otherwise there is no way at all to mount
-a block device which is marked readonly...
+Many thanks,
 
--Eric
+Francis
