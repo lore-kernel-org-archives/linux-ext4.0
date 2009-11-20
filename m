@@ -1,29 +1,38 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/2] ext2: add wait flag support to sync_fs
-Date: Fri, 20 Nov 2009 05:36:22 -0500
-Message-ID: <20091120103622.GA29143@infradead.org>
-References: <20091117174617.285298261@vyatta.com> <20091117174647.402219318@vyatta.com> <20091119153419.GB2943@atrey.karlin.mff.cuni.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: norecovery option for ext3
+Date: Fri, 20 Nov 2009 13:24:03 +0100
+Message-ID: <20091120122403.GD15422@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Stephen Hemminger <shemminger@vyatta.com>,
-	linux-ext4@vger.kernel.org, hch@infradead.org
-To: Jan Kara <jack@suse.cz>
+Cc: sandeen@redhat.com, tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:45632 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774AbZKTKgR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2009 05:36:17 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:52954 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752967AbZKTMX6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Nov 2009 07:23:58 -0500
 Content-Disposition: inline
-In-Reply-To: <20091119153419.GB2943@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 19, 2009 at 04:34:19PM +0100, Jan Kara wrote:
->   BTW: Christoph, why did you choose to call ext2_sync_fs with wait == 1
-> from ext2_write_super()? I'd think (and looking into callsites seem to
-> confirm that) that ->write_super() was meant to be asynchronous...
+  Hi,
 
-No particular reason - the argument wasn't and still isn't used in ext2.
-And yes, now that ->sync_fs is mandatory ->write_super should be
-asynchronous.
+  I've tried to test noload/norecovery option of ext3 and I've found it
+simply does not work. The filesystem does not even mount. There are two
+problems:
+  1) the code checking for NOLOAD in ext3_fill_super is simply wrong
+     and ends up failing the mount whenever NOLOAD is set with a message
+     "ext3: No journal on filesystem on <dev>"
+  2) if one fixes the check, we end up oopsing a few lines below when
+     calling journal_check_available_features() with journal == NULL.
 
+  Given that nobody used the option (OK, some googling shows that somebody
+tried to use it in *2.4.9* kernel and it didn't work even there - Stephen
+Tweedie comments that it's an obsolete option meant for use during fs
+development) and seeing how badly corrupted the filesystem is when you
+don't replay the journal, I'd just remove the option. Any opinions?
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
