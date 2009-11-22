@@ -1,37 +1,37 @@
-From: Alexey Fisher <bug-track@fisher-privat.net>
-Subject: Re: [PATCH v2] Unify log messages in ext3
-Date: Sun, 22 Nov 2009 20:42:49 +0100
-Message-ID: <1258918969.4529.2.camel@zwerg>
-References: <4B087DEC.5010402@redhat.com>
-	 <1258918735-4496-1-git-send-email-bug-track@fisher-privat.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: i_version, NFSv4 change attribute
+Date: Sun, 22 Nov 2009 17:20:47 -0500
+Message-ID: <20091122222047.GB21944@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:47774 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1753234AbZKVTnI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Nov 2009 14:43:08 -0500
-In-Reply-To: <1258918735-4496-1-git-send-email-bug-track@fisher-privat.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Am Sonntag, den 22.11.2009, 20:38 +0100 schrieb Alexey Fisher:
-> make messages produced by ext3 more unified. It should be
-> easy to parse.
-> 
-> dmesg before patch:
-> [ 4893.684892] reservations ON
-> [ 4893.684896] xip option not supported
-> [ 4893.684964] EXT3-fs warning: maximal mount count reached, running
-> e2fsck is recommended
+Since c654b8a9cba6002aad1c01919e4928a79a4a6dcf, the NFS server has made
+use of ext4's i_version when available.
 
-I added some changes from Andis patch, so it up to date with git master.
-I hope this patch will not be lost ;)
-Regards,
-	Alexey
+However, the new i_version support is available only when the filesystem
+is mounted with the i_version mount option.  And the change attribute is
+required for completely correct NFSv4 operation, which we'd prefer to
+offer by default!
 
+I recall having a conversation with Ted T'so about ways to do this
+without affecting non-NFS-exported filesystems: maybe by providing some
+sort of persistant flag on the superblock which the nfsd code could turn
+on automatically if desired?
+
+But first it would be useful to know whether there is in fact any
+disadvantage to just having the i_version on all the time.  Jean Noel
+Cordenner did some tests a couple years ago:
+
+	http://www.bullopensource.org/ext4/change_attribute/index.html
+
+and didn't find any significant difference.  But I don't know if those
+results were convincing (I don't understand what we're looking for
+here); any suggestions for workloads that would exercise the worst
+cases?
+
+--b.
