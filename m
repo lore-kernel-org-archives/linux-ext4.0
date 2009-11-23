@@ -1,126 +1,79 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/4] ext4: fix race chown vs truncate
-Date: Mon, 23 Nov 2009 21:42:42 +0300
-Message-ID: <87pr79xeu5.fsf@openvz.org>
-References: <873a45ytwa.fsf@openvz.org>
+From: tytso@mit.edu
+Subject: Re: i_version, NFSv4 change attribute
+Date: Mon, 23 Nov 2009 13:51:05 -0500
+Message-ID: <20091123185105.GC2183@thunk.org>
+References: <20091122222047.GB21944@fieldses.org>
+ <20091123114831.GA2532@thunk.org>
+ <20091123164445.GB3292@fieldses.org>
+ <1258999879.8700.17.camel@localhost>
+ <20091123181951.GB5583@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:48721 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750891AbZKWSmi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 13:42:38 -0500
-Received: from dmon-lp ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KTK00D5ZS6P4B20@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Mon, 23 Nov 2009 21:47:16 +0300 (MSK)
-In-reply-to: <873a45ytwa.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20091123181951.GB5583@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
-> To prevent ext4_reservation vs dquot_reservation inconsistency, we have
-> to reorganize locking ordering like follows:
-> i_block_reservation_lock > dqptr_sem
-> This means what all functions which changes ext4 or quota reservation have
-> to hold i_block_reservation_lock.
-While investigating this issue i've considered other solution
+On Mon, Nov 23, 2009 at 01:19:51PM -0500, J. Bruce Fields wrote:
+> > The question is, though, why does the jbd2 machinery need to be engaged
+> > on _every_ write?
+> 
+> Is it?
+> 
+> I thought I remembered a journaling issue from previous discussions, but
+> Ted seemed concerned just about the overhead of an additional
+> spinlock, and looking at the code, the only test of I_VERSION that I can
+> see indeed is in ext4_mark_iloc_dirty(), and indeed just takes a
+> spinlock and updates the i_version.
 
-* Introduce i_block analog for generic reserved space management:
-We may introduce i_rsv_block field in generic inode, and protected
-it by i_lock(similar to i_block).
-Introduce inc/dec/set/get methods similar to inode_get_bytes,
-inode_sub_bytes.. . 
-This value is managed internally by quota code. Perform reservation
-management inside dquot_reserve_space, dquot_release_reservation
-without interfering with fs internals, as we do for i_blocks.
-IMHO this is best way because:
+There are two concerns.  One is the inode->i_lock overhead, which at
+the time when we added i_version, the atomic64 type wasn't added, so
+the only simple way it could have been implemented was by taking the
+spinlock.  This we can fix, and I think it's a no-brainer that we
+switch it to be an atomic64, especially for the most common Intel
+platforms.
 
-1)We don't have to hold i_block_reservation_lock while quota-op
-  which may lead to virtual performance penalty.
-2)This brings to well defined VFS interface for reserved space management.
+The second problem is the jbd2 machinery, which gets engaged when the
+inode changes, which means in the case of sys_write(), if i_version or
+i_mtime gets changed.  At the moment, if we are using a 256-byte inode
+with ext4, we will be updating i_mtime on every single write, and so
+when ext4_setattr(), which is called from notify_change() notices that
+i_mtime is changed, we are engaging the entire jbd2 machinery for
+every single write.  
 
-But I expect some problems from AlViro because only ext4 would use it by now.
-And off course this may lead to ext4_rsv quot_rsv inconsistency
-due to some bugs.
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/inode.c |   23 ++++++++++++++++++-----
->  1 files changed, 18 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 84863e6..c521c93 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1047,16 +1047,23 @@ cleanup:
->  out:
->  	return err;
->  }
-> +/*
-> + * Quota_transfer callback.
-> + * During quota transfer we have to transfer rsv-blocks from one dquot to
-> + * another. inode must be protected from concurrent reservation/reclamation.
-> + * Locking ordering for all space reservation code:
-> + *  i_block_reservation_lock > dqptr_sem
-> + * This is differ from i_block,i_lock locking ordering, but this is the
-> + * only possible way.
-> + * NOTE: Caller must hold i_block_reservation_lock.
-> + */
->  
->  qsize_t ext4_get_reserved_space(struct inode *inode)
->  {
->  	unsigned long long total;
->  
-> -	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
->  	total = EXT4_I(inode)->i_reserved_data_blocks +
->  		EXT4_I(inode)->i_reserved_meta_blocks;
-> -	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> -
->  	return (total << inode->i_blkbits);
->  }
->  /*
-> @@ -1131,6 +1138,8 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
->  	if (mdb_free)
->  		vfs_dq_release_reservation_block(inode, mdb_free);
->  
-> +	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> +
->  	/*
->  	 * If we have done all the pending block allocations and if
->  	 * there aren't any writers on the inode, we can discard the
-> @@ -1866,8 +1875,8 @@ repeat:
->  	}
->  
->  	if (ext4_claim_free_blocks(sbi, total)) {
-> -		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
->  		vfs_dq_release_reservation_block(inode, total);
-> +		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
->  		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
->  			yield();
->  			goto repeat;
-> @@ -1924,9 +1933,9 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
->  
->  	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
->  	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
-> -	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
->  
->  	vfs_dq_release_reservation_block(inode, release);
-> +	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
->  }
->  
->  static void ext4_da_page_release_reservation(struct page *page,
-> @@ -5436,7 +5445,11 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  			error = PTR_ERR(handle);
->  			goto err_out;
->  		}
-> +		/* i_block_reservation must being held in order to avoid races
-> +		 * with concurent block reservation. */
-> +		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
->  		error = vfs_dq_transfer(inode, attr) ? -EDQUOT : 0;
-> +		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
->  		if (error) {
->  			ext4_journal_stop(handle);
->  			return error;
+This is not true for a 128-byte inode, since in that case
+sb->s_time_gran is set to one second, so we would only be updating the
+inode and engaging the jbd2 machinery once a second.  This is true for
+ext3 and ext4 with 128-byte inodes.
+
+Now, all of this having been said, Feodra 11 and 12 have been using
+ext4 as the default filesystem, and for generic desktop usage, people
+haven't been screaming about the increased CPU overhead implied by
+engaging the jbd2 machinery on every sys_write().
+
+However, we have had a report that some enterprise database developers
+have noticed the increased overhead in ext4, and this is on our list
+of things that require some performance tuning.  Hence my comments
+about a mount option to adjust s_time_gran for the benefit of database
+workloads, and once we have that moun option, since enabling i_version
+would mean once again needing to update the inode at every single
+write(2) call, we would be back with the same problem.
+
+Maybe we can find a way to be more clever about doing some (but not
+all) of the jbd2 work on each sys_write(), and deferring as much as
+possible to the commit handling.  We need to do some investigating to
+see if that's possible.  Even if it isn't, though, my gut tells me
+that we will probably be able to enable i_version by default for
+desktop workloads, and tell database server folks that they should
+mount with the mount options "noi_version,time_gran=1s", or some such.
+
+I'd like to do some testing to confirm my intuition first, of course,
+but that's how I'm currently leaning.   Does that make sense?
+
+Regards,
+
+						- Ted
