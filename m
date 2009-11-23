@@ -1,129 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/8] ext4: fold ext4_journal_forget() into ext4_forget()
-Date: Sun, 22 Nov 2009 21:18:25 -0500
-Message-ID: <1258942710-31930-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 7/8] ext4: add check for wraparound in ext4_data_block_valid()
+Date: Sun, 22 Nov 2009 21:18:29 -0500
+Message-ID: <1258942710-31930-8-git-send-email-tytso@mit.edu>
 References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48723 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48725 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756096AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754065AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 22 Nov 2009 21:18:29 -0500
 In-Reply-To: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Convert the last two callers of ext4_journal_forget() to use
-ext4_forget() instead, and then fold ext4_journal_forget() into
-ext4_forget().  This reduces are code complexity and shortens our call
-stack.
-
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4_jbd2.c |   22 +++++-----------------
- fs/ext4/ext4_jbd2.h |    6 ------
- fs/ext4/inode.c     |   16 ++++++++++++++--
- 3 files changed, 19 insertions(+), 25 deletions(-)
+ fs/ext4/block_validity.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 92c88a8..b57e5c7 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -34,22 +34,6 @@ int __ext4_journal_get_write_access(const char *where, handle_t *handle,
- 	return err;
- }
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index dc79b75..4df8621 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -228,6 +228,7 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
+ 	struct rb_node *n = sbi->system_blks.rb_node;
  
--int __ext4_journal_forget(const char *where, handle_t *handle,
--				struct buffer_head *bh)
--{
--	int err = 0;
--
--	if (ext4_handle_valid(handle)) {
--		err = jbd2_journal_forget(handle, bh);
--		if (err)
--			ext4_journal_abort_handle(where, __func__, bh,
--						  handle, err);
--	}
--	else
--		bforget(bh);
--	return err;
--}
--
- /*
-  * The ext4 forget function must perform a revoke if we are freeing data
-  * which has been journaled.  Metadata (eg. indirect blocks) must be
-@@ -93,7 +77,11 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
- 	    (!is_metadata && !ext4_should_journal_data(inode))) {
- 		if (bh) {
- 			BUFFER_TRACE(bh, "call jbd2_journal_forget");
--			return __ext4_journal_forget(where, handle, bh);
-+			err = jbd2_journal_forget(handle, bh);
-+			if (err)
-+				ext4_journal_abort_handle(where, __func__, bh,
-+							  handle, err);
-+			return err;
- 		}
+ 	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
++	    (start_blk + count < start_blk) ||
+ 	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
  		return 0;
- 	}
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index f9fb4bb..84bc98a 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -127,10 +127,6 @@ int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
- int __ext4_journal_get_write_access(const char *where, handle_t *handle,
- 				struct buffer_head *bh);
- 
--/* When called with an invalid handle, this will still do a put on the BH */
--int __ext4_journal_forget(const char *where, handle_t *handle,
--				struct buffer_head *bh);
--
- int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
- 		  struct inode *inode, struct buffer_head *bh,
- 		  ext4_fsblk_t blocknr);
-@@ -150,8 +146,6 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
- 		      (block_nr))
- #define ext4_journal_get_create_access(handle, bh) \
- 	__ext4_journal_get_create_access(__func__, (handle), (bh))
--#define ext4_journal_forget(handle, bh) \
--	__ext4_journal_forget(__func__, (handle), (bh))
- #define ext4_handle_dirty_metadata(handle, inode, bh) \
- 	__ext4_handle_dirty_metadata(__func__, (handle), (inode), (bh))
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fa37f95..72c6943 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -767,7 +767,13 @@ failed:
- 	/* Allocation failed, free what we already allocated */
- 	for (i = 1; i <= n ; i++) {
- 		BUFFER_TRACE(branch[i].bh, "call jbd2_journal_forget");
--		ext4_journal_forget(handle, branch[i].bh);
-+		/* 
-+		 * Note: is_metadata is 0 because branch[i].bh is
-+		 * newly allocated, so there is no need to revoke the
-+		 * block.  If we do, it's harmless, but not necessary.
-+		 */
-+		ext4_forget(handle, 0, inode, branch[i].bh,
-+			    branch[i].bh->b_blocknr);
- 	}
- 	for (i = 0; i < indirect_blks; i++)
- 		ext4_free_blocks(handle, inode, new_blocks[i], 1, 0);
-@@ -852,7 +858,13 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
- err_out:
- 	for (i = 1; i <= num; i++) {
- 		BUFFER_TRACE(where[i].bh, "call jbd2_journal_forget");
--		ext4_journal_forget(handle, where[i].bh);
-+		/* 
-+		 * Note: is_metadata is 0 because branch[i].bh is
-+		 * newly allocated, so there is no need to revoke the
-+		 * block.  If we do, it's harmless, but not necessary.
-+		 */
-+		ext4_forget(handle, 0, inode, where[i].bh,
-+			    where[i].bh->b_blocknr);
- 		ext4_free_blocks(handle, inode,
- 					le32_to_cpu(where[i-1].key), 1, 0);
- 	}
+ 	while (n) {
 -- 
 1.6.5.216.g5288a.dirty
 
