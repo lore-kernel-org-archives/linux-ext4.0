@@ -1,40 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
- readonly
-Date: Mon, 23 Nov 2009 17:09:14 +0100
-Message-ID: <20091123160914.GG15679@duck.suse.cz>
-References: <20091123105440.GB15679@duck.suse.cz>
- <Pine.LNX.4.44L0.0911231004030.2958-100000@iolanthe.rowland.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Unify log messages in ext4
+Date: Mon, 23 Nov 2009 10:16:08 -0600
+Message-ID: <4B0AB548.5070608@redhat.com>
+References: <4B087DEC.5010402@redhat.com> <1258918735-4496-1-git-send-email-bug-track@fisher-privat.net> <20091123103658.GA15679@duck.suse.cz> <1258976736.4103.1.camel@zwerg> <20091123115513.GD15679@duck.suse.cz> <20091123141108.GC2532@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, tmhikaru@gmail.com,
-	linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
-	Jens Axboe <axboe@kernel.dk>, linux-scsi@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Alan Stern <stern@rowland.harvard.edu>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755549AbZKWQJN@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.44L0.0911231004030.2958-100000@iolanthe.rowland.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>,
+	Alexey Fisher <bug-track@fisher-privat.net>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54594 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754600AbZKWQQJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 11:16:09 -0500
+In-Reply-To: <20091123141108.GC2532@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 23-11-09 10:06:03, Alan Stern wrote:
-> On Mon, 23 Nov 2009, Jan Kara wrote:
+tytso@mit.edu wrote:
+> On Mon, Nov 23, 2009 at 12:55:14PM +0100, Jan Kara wrote:
+>> On Mon 23-11-09 12:45:36, Alexey Fisher wrote:
+>>> Am Montag, den 23.11.2009, 11:36 +0100 schrieb Jan Kara:
+>>>> Thanks for the patch. I've merged it into my tree just with the following
+>>>> typo fixes.
+>>> Thank you,
+>>> are there any ext4 patches around? Or this will be my next step. 
+>>   I'm not aware of them...
 > 
-> >   Yeah, from what you write, it looks like USB enclosure is at fault (or it
-> > could still be your USB controller but I doubt it).  It's still a bit
-> > bothering that the error reported by the drive was not properly propagated
-> > up to VFS. Either it's some block layer retry/ignore magic that I missed or
-> > we ignore errors from block layer in some place.
+> Ext4 is using ext4_msg() already.  Eric Sandeen added it a while ago,
+> and the idea to convert ext2 and ext4 to use ext2_msg() and ext3_msg()
+> came from ext4.
 > 
-> Is there any interest in tracking this down?  It's not hard to find out
-> what low-level errors are being reported and to generate them on demand
-> with an emulated USB disk drive.
-  Well, if you could provide me with the patch, I could try to track down
-why the errors aren't propagated... It would be interesting because if it's
-not some retry logic in block layer, it's a bug in VFS ;).
+> 					- Ted
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Actually, I think Andi originally sent it for ext3, and I motivated to
+do it for ext4; the ext3 patch from Andi got lost...
+
+-Eric
