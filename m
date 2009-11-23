@@ -1,68 +1,63 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 0/8] Clean up ext4's block free code paths
-Date: Sun, 22 Nov 2009 21:53:16 -0600
-Message-ID: <4B0A072C.5000305@redhat.com>
-References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+From: Alexey Fisher <bug-track@fisher-privat.net>
+Subject: norecovery option for ext3
+Date: Mon, 23 Nov 2009 08:26:53 +0100
+Message-ID: <1258961213.3526.7.camel@zwerg>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58979 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754229AbZKWDxQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Nov 2009 22:53:16 -0500
-In-Reply-To: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+Received: from mail.gmx.net ([213.165.64.20]:51209 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1752544AbZKWH0t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 02:26:49 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> This patch series cleans up functions involved with freeing blocks.  It
-> removes functions that are only called by a single caller and folds them
-> into their caller, and makes the code a little easier to read.  It also
-> reduces ext4's code foot print slightly (by 136 bytes).  
-> 
-> Finally, it fixes a bug in the extents migration function, which was
-> missing calls to ext4_forget() when it frees the indirect blocks after
-> converting an inode to using extents.  This avoids potential file system
-> corruption after a crash while converting an entire filesystem to use
-> extents via "chattr -R +e /mntpt".
 
-Have you double-checked stack usage before & after the series, just
-in case all the folding-in increased some stack footprints?
-
-Probably ok, but worth a double-check.
-
--Eric
-
-> 						- Ted
+> On Fri 20-11-09 11:56:15, Eric Sandeen wrote:
+> > Andreas Dilger wrote:
+> > > On 2009-11-20, at 07:46, Eric Sandeen wrote:
+> > >> Jan Kara wrote:
+> > >>>  I've tried to test noload/norecovery option of ext3 and I've found
+> > >>> it simply does not work. The filesystem does not even mount.
+> > > 
+> > >>>  Given that nobody used the option (OK, some googling shows that
+> > >>> somebody tried to use it in *2.4.9* kernel and it didn't work even
+> > >>> there - Stephen Tweedie comments that it's an obsolete option meant
+> > >>> for use during fs development) and seeing how badly corrupted the
+> > >>> filesystem is when you don't replay the journal, I'd just remove the
+> > >>> option. Any opinions?
+> > >>
+> > >> Oh, sigh.  Sorry, didn't actually, er, test it, since I was just
+> > >> adding an alias for the option... bleah.
+> > >>
+> > >> I think we should fix it; there are cases when you may want to mount
+> > >> that way, I think - for example, otherwise there is no way at all to
+> > >> mounta block device which is marked readonly...
+> > > 
+> > > 
+> > > Won't this require implementing "no journal" mode for ext3?  Seems like
+> > > a lot of effort, when ext4 does the same thing (i.e. they could just
+> > > mount the filesystem "-t ext4 -o norecovery" if they really, really need
+> > > to do that).
+> > 
+> > I don't see why it would need nojournal mode; you'd have to:
+> > 
+> > mount -o ro,norecovery
+> > 
+> > anyway, and if it's ro the journal should be non-operational anyway right?
+> > 
+> > (Jan, did you mount -o norecovery or -o ro,norecovery in your tests?)
+>   Actually, just -o norecovery but after the oops I've looked at the code
+> and concluded that -o ro won't help the oops anyway... But yes, fixing the
+> code in read-only mode should be possible.
 > 
-> Theodore Ts'o (8):
->   ext4: move ext4_forget() to ext4_jbd2.c
->   ext4: fold ext4_journal_revoke() into ext4_forget()
->   ext4: fold ext4_journal_forget() into ext4_forget()
->   ext4: fold ext4_free_blocks() and ext4_mb_free_blocks()
->   ext4: call ext4_forget() from ext4_free_blocks()
->   ext4: print i_mode in octal in ext4 tracepoints
->   ext4: add check for wraparound in ext4_data_block_valid()
->   ext4: use ext4_data_block_valid() in ext4_free_blocks()
-> 
->  fs/ext4/balloc.c            |   38 --------------
->  fs/ext4/block_validity.c    |    1 +
->  fs/ext4/ext4.h              |   15 +++--
->  fs/ext4/ext4_jbd2.c         |   82 ++++++++++++++++++++++---------
->  fs/ext4/ext4_jbd2.h         |   23 +++------
->  fs/ext4/extents.c           |   24 +++------
->  fs/ext4/inode.c             |  116 +++++++++++--------------------------------
->  fs/ext4/mballoc.c           |   61 ++++++++++++++++++-----
->  fs/ext4/migrate.c           |   23 ++++++---
->  fs/ext4/xattr.c             |    8 ++-
->  include/trace/events/ext4.h |   24 +++++----
->  11 files changed, 198 insertions(+), 217 deletions(-)
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 									Honza
+
+How about making norecovery be "ronorecovery,ro". So you need to set only one option, I think it will make some people (like me) happy.
+No body wont to use "norecovery,rw" except for some suicide reasons.
+
+regards,
+	Alexey
 
