@@ -1,43 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 8/8] ext4: use ext4_data_block_valid() in ext4_free_blocks()
-Date: Sun, 22 Nov 2009 21:18:30 -0500
-Message-ID: <1258942710-31930-9-git-send-email-tytso@mit.edu>
-References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 0/8] Clean up ext4's block free code paths
+Date: Sun, 22 Nov 2009 21:18:22 -0500
+Message-ID: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48726 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48721 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756068AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756084AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 22 Nov 2009 21:18:29 -0500
-In-Reply-To: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The block validity framework does a more comprehensive set of checks,
-and it saves object code space to use the ext4_data_block_valid() than
-the limited open-coded version that had been in ext4_free_blocks().
+This patch series cleans up functions involved with freeing blocks.  It
+removes functions that are only called by a single caller and folds them
+into their caller, and makes the code a little easier to read.  It also
+reduces ext4's code foot print slightly (by 136 bytes).  
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/mballoc.c |    4 +---
- 1 files changed, 1 insertions(+), 3 deletions(-)
+Finally, it fixes a bug in the extents migration function, which was
+missing calls to ext4_forget() when it frees the indirect blocks after
+converting an inode to using extents.  This avoids potential file system
+corruption after a crash while converting an entire filesystem to use
+extents via "chattr -R +e /mntpt".
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 78de5d3..ab2dad1 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4463,9 +4463,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	sbi = EXT4_SB(sb);
- 	es = EXT4_SB(sb)->s_es;
--	if (block < le32_to_cpu(es->s_first_data_block) ||
--	    block + count < block ||
--	    block + count > ext4_blocks_count(es)) {
-+	if (!ext4_data_block_valid(sbi, block, count)) {
- 		ext4_error(sb, __func__,
- 			    "Freeing blocks not in datazone - "
- 			    "block = %llu, count = %lu", block, count);
--- 
-1.6.5.216.g5288a.dirty
+						- Ted
+
+Theodore Ts'o (8):
+  ext4: move ext4_forget() to ext4_jbd2.c
+  ext4: fold ext4_journal_revoke() into ext4_forget()
+  ext4: fold ext4_journal_forget() into ext4_forget()
+  ext4: fold ext4_free_blocks() and ext4_mb_free_blocks()
+  ext4: call ext4_forget() from ext4_free_blocks()
+  ext4: print i_mode in octal in ext4 tracepoints
+  ext4: add check for wraparound in ext4_data_block_valid()
+  ext4: use ext4_data_block_valid() in ext4_free_blocks()
+
+ fs/ext4/balloc.c            |   38 --------------
+ fs/ext4/block_validity.c    |    1 +
+ fs/ext4/ext4.h              |   15 +++--
+ fs/ext4/ext4_jbd2.c         |   82 ++++++++++++++++++++++---------
+ fs/ext4/ext4_jbd2.h         |   23 +++------
+ fs/ext4/extents.c           |   24 +++------
+ fs/ext4/inode.c             |  116 +++++++++++--------------------------------
+ fs/ext4/mballoc.c           |   61 ++++++++++++++++++-----
+ fs/ext4/migrate.c           |   23 ++++++---
+ fs/ext4/xattr.c             |    8 ++-
+ include/trace/events/ext4.h |   24 +++++----
+ 11 files changed, 198 insertions(+), 217 deletions(-)
 
