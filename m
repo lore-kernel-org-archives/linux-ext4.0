@@ -1,362 +1,525 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: ext4+quota patch series
-Date: Mon, 23 Nov 2009 22:18:32 +0300
-Message-ID: <87ljhxxd6f.fsf@openvz.org>
-References: <87my2d5ctb.fsf@openvz.org> <4B0AD154.7070201@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 5/8] ext4: call ext4_forget() from ext4_free_blocks()
+Date: Mon, 23 Nov 2009 12:22:29 -0700
+Message-ID: <A70619A1-1E84-425A-956E-7C0DE156F046@sun.com>
+References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+ <1258942710-31930-6-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_CQMAURynE2kXayhHRlGmxw)"
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Curt Wohlgemuth <curtw@google.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:49721 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753866AbZKWTS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 14:18:29 -0500
-Received: from dmon-lp ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KTK00DU2TUF4B20@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Mon, 23 Nov 2009 22:23:07 +0300 (MSK)
-In-reply-to: <4B0AD154.7070201@redhat.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:32832 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753568AbZKWTWT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2009 14:22:19 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nANJMPkD021330
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2009 11:22:25 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KTK00I00TPPD300@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 23 Nov 2009 11:22:24 -0800 (PST)
+In-reply-to: <1258942710-31930-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On 2009-11-22, at 19:18, Theodore Ts'o wrote:
+> Add the facility for ext4_forget() to be called form
+> ext4_free_blocks().  This simplifies the code in a large number of
+> places, and centralizes most of the work of calling ext4_forget() into
+> a single place.
+>
+> Also fix a bug in the extents migration code; it wasn't calling
+> ext4_forget() when releasing the indirect blocks during the
+> conversion.
 
---Boundary_(ID_CQMAURynE2kXayhHRlGmxw)
-Content-type: TEXT/PLAIN
-Content-transfer-encoding: 7BIT
+Would this also solve Curt's problem, mentioned in "Bug in extent  
+zeroout: blocks not marked as new" where bforget was not being called  
+when the blocks are freed?
 
-Eric Sandeen <sandeen@redhat.com> writes:
->Can you share those quota tests?  I'd love to put them into the xfstests
->suite we've been using for ext4 as well.
+> As a result, if the system cashed during or shortly after the
+> extents migration, and the released indirect blocks get reused as
+> data blocks, the journal replay would corrupt the data blocks.
+> With this new patch, fixing this bug was as simple as adding the
+> EXT4_FREE_BLOCKS_FORGET flags to the call to ext4_free_blocks().
+>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+> fs/ext4/ext4.h              |   10 +++++-
+> fs/ext4/extents.c           |   24 ++++++---------
+> fs/ext4/inode.c             |   67 +++++++++++++++ 
+> +--------------------------
+> fs/ext4/mballoc.c           |   49 +++++++++++++++++++++++--------
+> fs/ext4/migrate.c           |   23 ++++++++++----
+> fs/ext4/xattr.c             |    8 +++--
+> include/trace/events/ext4.h |   16 ++++++----
+> 7 files changed, 109 insertions(+), 88 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 210e1b5..4cfc2f0 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -376,6 +376,12 @@ struct ext4_new_group_data {
+> 					 EXT4_GET_BLOCKS_DIO_CREATE_EXT)
+>
+> /*
+> + * Flags used by ext4_free_blocks
+> + */
+> +#define EXT4_FREE_BLOCKS_METADATA	0x0001
+> +#define EXT4_FREE_BLOCKS_FORGET		0x0002
+> +
+> +/*
+>  * ioctl commands
+>  */
+> #define	EXT4_IOC_GETFLAGS		FS_IOC_GETFLAGS
+> @@ -1384,8 +1390,8 @@ extern void ext4_discard_preallocations(struct  
+> inode *);
+> extern int __init init_ext4_mballoc(void);
+> extern void exit_ext4_mballoc(void);
+> extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+> -			     ext4_fsblk_t block, unsigned long count,
+> -			     int metadata);
+> +			     struct buffer_head *bh, ext4_fsblk_t block,
+> +			     unsigned long count, int flags);
+> extern int ext4_mb_add_groupinfo(struct super_block *sb,
+> 		ext4_group_t i, struct ext4_group_desc *desc);
+> extern int ext4_mb_get_buddy_cache_lock(struct super_block *,  
+> ext4_group_t);
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 74dcff8..2c4a932 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -1007,7 +1007,8 @@ cleanup:
+> 		for (i = 0; i < depth; i++) {
+> 			if (!ablocks[i])
+> 				continue;
+> -			ext4_free_blocks(handle, inode, ablocks[i], 1, 1);
+> +			ext4_free_blocks(handle, inode, 0, ablocks[i], 1,
+> +					 EXT4_FREE_BLOCKS_METADATA);
+> 		}
+> 	}
+> 	kfree(ablocks);
+> @@ -1957,7 +1958,6 @@ errout:
+> static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+> 			struct ext4_ext_path *path)
+> {
+> -	struct buffer_head *bh;
+> 	int err;
+> 	ext4_fsblk_t leaf;
+>
+> @@ -1973,9 +1973,8 @@ static int ext4_ext_rm_idx(handle_t *handle,  
+> struct inode *inode,
+> 	if (err)
+> 		return err;
+> 	ext_debug("index is empty, remove it, free block %llu\n", leaf);
+> -	bh = sb_find_get_block(inode->i_sb, leaf);
+> -	ext4_forget(handle, 1, inode, bh, leaf);
+> -	ext4_free_blocks(handle, inode, leaf, 1, 1);
+> +	ext4_free_blocks(handle, inode, 0, leaf, 1,
+> +			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
+> 	return err;
+> }
+>
+> @@ -2042,12 +2041,11 @@ static int ext4_remove_blocks(handle_t  
+> *handle, struct inode *inode,
+> 				struct ext4_extent *ex,
+> 				ext4_lblk_t from, ext4_lblk_t to)
+> {
+> -	struct buffer_head *bh;
+> 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
+> -	int i, metadata = 0;
+> +	int flags = EXT4_FREE_BLOCKS_FORGET;
+>
+> 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+> -		metadata = 1;
+> +		flags |= EXT4_FREE_BLOCKS_METADATA;
+> #ifdef EXTENTS_STATS
+> 	{
+> 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> @@ -2072,11 +2070,7 @@ static int ext4_remove_blocks(handle_t  
+> *handle, struct inode *inode,
+> 		num = le32_to_cpu(ex->ee_block) + ee_len - from;
+> 		start = ext_pblock(ex) + ee_len - num;
+> 		ext_debug("free last %u blocks starting %llu\n", num, start);
+> -		for (i = 0; i < num; i++) {
+> -			bh = sb_find_get_block(inode->i_sb, start + i);
+> -			ext4_forget(handle, metadata, inode, bh, start + i);
+> -		}
+> -		ext4_free_blocks(handle, inode, start, num, metadata);
+> +		ext4_free_blocks(handle, inode, 0, start, num, flags);
+> 	} else if (from == le32_to_cpu(ex->ee_block)
+> 		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
+> 		printk(KERN_INFO "strange request: removal %u-%u from %u:%u\n",
+> @@ -3319,8 +3313,8 @@ int ext4_ext_get_blocks(handle_t *handle,  
+> struct inode *inode,
+> 		/* not a good idea to call discard here directly,
+> 		 * but otherwise we'd need to call it every free() */
+> 		ext4_discard_preallocations(inode);
+> -		ext4_free_blocks(handle, inode, ext_pblock(&newex),
+> -					ext4_ext_get_actual_len(&newex), 0);
+> +		ext4_free_blocks(handle, inode, 0, ext_pblock(&newex),
+> +				 ext4_ext_get_actual_len(&newex), 0);
+> 		goto out2;
+> 	}
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 72c6943..3b28e1f 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -669,7 +669,7 @@ allocated:
+> 	return ret;
+> failed_out:
+> 	for (i = 0; i < index; i++)
+> -		ext4_free_blocks(handle, inode, new_blocks[i], 1, 0);
+> +		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
+> 	return ret;
+> }
+>
+> @@ -765,20 +765,20 @@ static int ext4_alloc_branch(handle_t *handle,  
+> struct inode *inode,
+> 	return err;
+> failed:
+> 	/* Allocation failed, free what we already allocated */
+> +	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, 0);
+> 	for (i = 1; i <= n ; i++) {
+> -		BUFFER_TRACE(branch[i].bh, "call jbd2_journal_forget");
+> 		/*
+> -		 * Note: is_metadata is 0 because branch[i].bh is
+> -		 * newly allocated, so there is no need to revoke the
+> -		 * block.  If we do, it's harmless, but not necessary.
+> +		 * branch[i].bh is newly allocated, so there is no
+> +		 * need to revoke the block, which is why we don't
+> +		 * need to set EXT4_FREE_BLOCKS_METADATA.
+> 		 */
+> -		ext4_forget(handle, 0, inode, branch[i].bh,
+> -			    branch[i].bh->b_blocknr);
+> +		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1,
+> +				 EXT4_FREE_BLOCKS_FORGET);
+> 	}
+> -	for (i = 0; i < indirect_blks; i++)
+> -		ext4_free_blocks(handle, inode, new_blocks[i], 1, 0);
+> +	for (i = n+1; i < indirect_blks; i++)
+> +		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
+>
+> -	ext4_free_blocks(handle, inode, new_blocks[i], num, 0);
+> +	ext4_free_blocks(handle, inode, 0, new_blocks[i], num, 0);
+>
+> 	return err;
+> }
+> @@ -857,18 +857,16 @@ static int ext4_splice_branch(handle_t  
+> *handle, struct inode *inode,
+>
+> err_out:
+> 	for (i = 1; i <= num; i++) {
+> -		BUFFER_TRACE(where[i].bh, "call jbd2_journal_forget");
+> 		/*
+> -		 * Note: is_metadata is 0 because branch[i].bh is
+> -		 * newly allocated, so there is no need to revoke the
+> -		 * block.  If we do, it's harmless, but not necessary.
+> +		 * branch[i].bh is newly allocated, so there is no
+> +		 * need to revoke the block, which is why we don't
+> +		 * need to set EXT4_FREE_BLOCKS_METADATA.
+> 		 */
+> -		ext4_forget(handle, 0, inode, where[i].bh,
+> -			    where[i].bh->b_blocknr);
+> -		ext4_free_blocks(handle, inode,
+> -					le32_to_cpu(where[i-1].key), 1, 0);
+> +		ext4_free_blocks(handle, inode, where[i].bh, 0, 1,
+> +				 EXT4_FREE_BLOCKS_FORGET);
+> 	}
+> -	ext4_free_blocks(handle, inode, le32_to_cpu(where[num].key), blks,  
+> 0);
+> +	ext4_free_blocks(handle, inode, 0, le32_to_cpu(where[num].key),
+> +			 blks, 0);
+>
+> 	return err;
+> }
+> @@ -4080,7 +4078,10 @@ static void ext4_clear_blocks(handle_t  
+> *handle, struct inode *inode,
+> 			      __le32 *last)
+> {
+> 	__le32 *p;
+> -	int	is_metadata = S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode);
+> +	int	flags = EXT4_FREE_BLOCKS_FORGET;
+> +
+> +	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+> +		flags |= EXT4_FREE_BLOCKS_METADATA;
+>
+> 	if (try_to_extend_transaction(handle, inode)) {
+> 		if (bh) {
+> @@ -4096,27 +4097,10 @@ static void ext4_clear_blocks(handle_t  
+> *handle, struct inode *inode,
+> 		}
+> 	}
+>
+> -	/*
+> -	 * Any buffers which are on the journal will be in memory. We
+> -	 * find them on the hash table so jbd2_journal_revoke() will
+> -	 * run jbd2_journal_forget() on them.  We've already detached
+> -	 * each block from the file, so bforget() in
+> -	 * jbd2_journal_forget() should be safe.
+> -	 *
+> -	 * AKPM: turn on bforget in jbd2_journal_forget()!!!
+> -	 */
+> -	for (p = first; p < last; p++) {
+> -		u32 nr = le32_to_cpu(*p);
+> -		if (nr) {
+> -			struct buffer_head *tbh;
+> -
+> -			*p = 0;
+> -			tbh = sb_find_get_block(inode->i_sb, nr);
+> -			ext4_forget(handle, is_metadata, inode, tbh, nr);
+> -		}
+> -	}
+> +	for (p = first; p < last; p++)
+> +		*p = 0;
+>
+> -	ext4_free_blocks(handle, inode, block_to_free, count, is_metadata);
+> +	ext4_free_blocks(handle, inode, 0, block_to_free, count, flags);
+> }
+>
+> /**
+> @@ -4304,7 +4288,8 @@ static void ext4_free_branches(handle_t  
+> *handle, struct inode *inode,
+> 					    blocks_for_truncate(inode));
+> 			}
+>
+> -			ext4_free_blocks(handle, inode, nr, 1, 1);
+> +			ext4_free_blocks(handle, inode, 0, nr, 1,
+> +					 EXT4_FREE_BLOCKS_METADATA);
+>
+> 			if (parent_bh) {
+> 				/*
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 0dca90b..78de5d3 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4436,8 +4436,8 @@ ext4_mb_free_metadata(handle_t *handle, struct  
+> ext4_buddy *e4b,
+>  * @metadata: 		Are these metadata blocks
+>  */
+> void ext4_free_blocks(handle_t *handle, struct inode *inode,
+> -		      ext4_fsblk_t block, unsigned long count,
+> -		      int metadata)
+> +		      struct buffer_head *bh, ext4_fsblk_t block,
+> +		      unsigned long count, int flags)
+> {
+> 	struct buffer_head *bitmap_bh = NULL;
+> 	struct super_block *sb = inode->i_sb;
+> @@ -4454,15 +4454,12 @@ void ext4_free_blocks(handle_t *handle,  
+> struct inode *inode,
+> 	int err = 0;
+> 	int ret;
+>
+> -	/*
+> -	 * We need to make sure we don't reuse the freed block until
+> -	 * after the transaction is committed, which we can do by
+> -	 * treating the block as metadata, below.  We make an
+> -	 * exception if the inode is to be written in writeback mode
+> -	 * since writeback mode has weak data consistency guarantees.
+> -	 */
+> -	if (!ext4_should_writeback_data(inode))
+> -		metadata = 1;
+> +	if (bh) {
+> +		if (block)
+> +			BUG_ON(block != bh->b_blocknr);
+> +		else
+> +			block = bh->b_blocknr;
+> +	}
+>
+> 	sbi = EXT4_SB(sb);
+> 	es = EXT4_SB(sb)->s_es;
+> @@ -4476,7 +4473,32 @@ void ext4_free_blocks(handle_t *handle,  
+> struct inode *inode,
+> 	}
+>
+> 	ext4_debug("freeing block %llu\n", block);
+> -	trace_ext4_free_blocks(inode, block, count, metadata);
+> +	trace_ext4_free_blocks(inode, block, count, flags);
+> +
+> +	if (flags & EXT4_FREE_BLOCKS_FORGET) {
+> +		struct buffer_head *tbh = bh;
+> +		int i;
+> +
+> +		BUG_ON(bh && (count > 1));
+> +
+> +		for (i = 0; i < count; i++) {
+> +			if (!bh)
+> +				tbh = sb_find_get_block(inode->i_sb,
+> +							block + i);
+> +			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
+> +				    inode, tbh, block + i);
+> +		}
+> +	}
+> +
+> +	/*
+> +	 * We need to make sure we don't reuse the freed block until
+> +	 * after the transaction is committed, which we can do by
+> +	 * treating the block as metadata, below.  We make an
+> +	 * exception if the inode is to be written in writeback mode
+> +	 * since writeback mode has weak data consistency guarantees.
+> +	 */
+> +	if (!ext4_should_writeback_data(inode))
+> +		flags |= EXT4_FREE_BLOCKS_METADATA;
+>
+> 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
+> 	if (ac) {
+> @@ -4552,7 +4574,8 @@ do_more:
+> 	err = ext4_mb_load_buddy(sb, block_group, &e4b);
+> 	if (err)
+> 		goto error_return;
+> -	if (metadata && ext4_handle_valid(handle)) {
+> +
+> +	if ((flags & EXT4_FREE_BLOCKS_METADATA) &&  
+> ext4_handle_valid(handle)) {
+> 		struct ext4_free_data *new_entry;
+> 		/*
+> 		 * blocks being freed are metadata. these blocks shouldn't
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index a93d5b8..d641e13 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -262,13 +262,17 @@ static int free_dind_blocks(handle_t *handle,
+> 	for (i = 0; i < max_entries; i++) {
+> 		if (tmp_idata[i]) {
+> 			extend_credit_for_blkdel(handle, inode);
+> -			ext4_free_blocks(handle, inode,
+> -					le32_to_cpu(tmp_idata[i]), 1, 1);
+> +			ext4_free_blocks(handle, inode, 0,
+> +					 le32_to_cpu(tmp_idata[i]), 1,
+> +					 EXT4_FREE_BLOCKS_METADATA |
+> +					 EXT4_FREE_BLOCKS_FORGET);
+> 		}
+> 	}
+> 	put_bh(bh);
+> 	extend_credit_for_blkdel(handle, inode);
+> -	ext4_free_blocks(handle, inode, le32_to_cpu(i_data), 1, 1);
+> +	ext4_free_blocks(handle, inode, 0, le32_to_cpu(i_data), 1,
+> +			 EXT4_FREE_BLOCKS_METADATA |
+> +			 EXT4_FREE_BLOCKS_FORGET);
+> 	return 0;
+> }
+>
+> @@ -297,7 +301,9 @@ static int free_tind_blocks(handle_t *handle,
+> 	}
+> 	put_bh(bh);
+> 	extend_credit_for_blkdel(handle, inode);
+> -	ext4_free_blocks(handle, inode, le32_to_cpu(i_data), 1, 1);
+> +	ext4_free_blocks(handle, inode, 0, le32_to_cpu(i_data), 1,
+> +			 EXT4_FREE_BLOCKS_METADATA |
+> +			 EXT4_FREE_BLOCKS_FORGET);
+> 	return 0;
+> }
+>
+> @@ -308,8 +314,10 @@ static int free_ind_block(handle_t *handle,  
+> struct inode *inode, __le32 *i_data)
+> 	/* ei->i_data[EXT4_IND_BLOCK] */
+> 	if (i_data[0]) {
+> 		extend_credit_for_blkdel(handle, inode);
+> -		ext4_free_blocks(handle, inode,
+> -				le32_to_cpu(i_data[0]), 1, 1);
+> +		ext4_free_blocks(handle, inode, 0,
+> +				le32_to_cpu(i_data[0]), 1,
+> +				 EXT4_FREE_BLOCKS_METADATA |
+> +				 EXT4_FREE_BLOCKS_FORGET);
+> 	}
+>
+> 	/* ei->i_data[EXT4_DIND_BLOCK] */
+> @@ -419,7 +427,8 @@ static int free_ext_idx(handle_t *handle, struct  
+> inode *inode,
+> 	}
+> 	put_bh(bh);
+> 	extend_credit_for_blkdel(handle, inode);
+> -	ext4_free_blocks(handle, inode, block, 1, 1);
+> +	ext4_free_blocks(handle, inode, 0, block, 1,
+> +			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
+> 	return retval;
+> }
+>
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 0257019..910bf9a 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -482,9 +482,10 @@ ext4_xattr_release_block(handle_t *handle,  
+> struct inode *inode,
+> 		ea_bdebug(bh, "refcount now=0; freeing");
+> 		if (ce)
+> 			mb_cache_entry_free(ce);
+> -		ext4_free_blocks(handle, inode, bh->b_blocknr, 1, 1);
+> 		get_bh(bh);
+> -		ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
+> +		ext4_free_blocks(handle, inode, bh, 0, 1,
+> +				 EXT4_FREE_BLOCKS_METADATA |
+> +				 EXT4_FREE_BLOCKS_FORGET);
+> 	} else {
+> 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
+> 		error = ext4_handle_dirty_metadata(handle, inode, bh);
+> @@ -832,7 +833,8 @@ inserted:
+> 			new_bh = sb_getblk(sb, block);
+> 			if (!new_bh) {
+> getblk_failed:
+> -				ext4_free_blocks(handle, inode, block, 1, 1);
+> +				ext4_free_blocks(handle, inode, 0, block, 1,
+> +						 EXT4_FREE_BLOCKS_METADATA);
+> 				error = -EIO;
+> 				goto cleanup;
+> 			}
+> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+> index b390e1f..74f628b 100644
+> --- a/include/trace/events/ext4.h
+> +++ b/include/trace/events/ext4.h
+> @@ -650,30 +650,32 @@ TRACE_EVENT(ext4_allocate_blocks,
+>
+> TRACE_EVENT(ext4_free_blocks,
+> 	TP_PROTO(struct inode *inode, __u64 block, unsigned long count,
+> -			int metadata),
+> +		 int flags),
+>
+> -	TP_ARGS(inode, block, count, metadata),
+> +	TP_ARGS(inode, block, count, flags),
+>
+> 	TP_STRUCT__entry(
+> 		__field(	dev_t,	dev			)
+> 		__field(	ino_t,	ino			)
+> +		__field(      umode_t, mode			)
+> 		__field(	__u64,	block			)
+> 		__field(	unsigned long,	count		)
+> -		__field(	int,	metadata		)
+> -
+> +		__field(	 int,	flags			)
+> 	),
+>
+> 	TP_fast_assign(
+> 		__entry->dev		= inode->i_sb->s_dev;
+> 		__entry->ino		= inode->i_ino;
+> +		__entry->mode		= inode->i_mode;
+> 		__entry->block		= block;
+> 		__entry->count		= count;
+> -		__entry->metadata	= metadata;
+> +		__entry->flags		= flags;
+> 	),
+>
+> -	TP_printk("dev %s ino %lu block %llu count %lu metadata %d",
+> +	TP_printk("dev %s ino %lu mode 0%o block %llu count %lu flags %d",
+> 		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino,
+> -		  __entry->block, __entry->count, __entry->metadata)
+> +		  __entry->mode, __entry->block, __entry->count,
+> +		  __entry->flags)
+> );
+>
+> TRACE_EVENT(ext4_sync_file,
+> -- 
+> 1.6.5.216.g5288a.dirty
 
-write-truncate-chown: test delalloc + quota_transfer
-I've written crappy quotactl for quota manipulation
-(which i use for ct-tree-quota development).Some times
-it more useful. See files attached.
 
-mkfs.ext4 /dev/sdb5 -b4096
-mount /dev/sdb5 /mnt -ogrpquota,usrquota
-quotacheck -cug /mnt
-# sync is necessary, because files may have reserved some blocks
-# which later lead to complain from claim_reserved_space
-# Probably we have print *huge* warning if we found
-# file with reserved blocks inodes traversing on quotaon 
-sync;sync;sync
-# turn on quota
-./quotactl --all --on --device=/dev/sdb5 --path /mnt
-# run test
-./write-truncate-chown /mnt/ 9999999999&
-# get quota report, print warn in case of incorrect quota.
-./quotactl --all --get --type 0 --device=/dev/sdb5 || echo "failed"
-# checkout dmesg
-dmesg
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-
---Boundary_(ID_CQMAURynE2kXayhHRlGmxw)
-Content-type: text/x-csrc; NAME=quotactl.c
-Content-transfer-encoding: 7BIT
-Content-disposition: inline; filename=quotactl.c
-
-/*
- * Disk quota reporting program.
- */
-#include <sys/types.h>
-#include <sys/param.h>
-#include <getopt.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pwd.h>
-#include <grp.h>
-#include <time.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
-#include <error.h>
-#include <linux/quota.h>
-#include <linux/dqblk_v1.h>
-#include <linux/dqblk_v2.h>
-
-enum options {
-	ID_FL  =  	0x1,
-	HELP_FL = 	0x2,
-	GET_FL = 	0x4,
-	SET_FL = 	0x8,
-	ALL_FL = 	0x10,
-	ON_FL =		0x20,
-	OFF_FL =	0x40,
-	TYPE_FL =	0x80,
-};
-unsigned flags = 0;
-char device[128];
-char path[128];
-int  id;
-int type;
-int warn = 0;
- void print_dqblk(int qid, struct if_dqblk *dqb)
- {
-	 printf("%6d   %10lld  %10lld %10lld,    %10lld %10lld %10lld\n",
-
-		 qid, dqb->dqb_curspace, dqb->dqb_bsoftlimit, dqb->dqb_bhardlimit,
-		 dqb->dqb_curinodes, dqb->dqb_isoftlimit, dqb->dqb_ihardlimit);
-	 if (((int64_t)dqb->dqb_curspace) < 0 ||
-		 ((int64_t)dqb->dqb_bsoftlimit) < 0 ||
-		 ((int64_t)dqb->dqb_bhardlimit) < 0 ||
-		 ((int64_t)dqb->dqb_curinodes) < 0 ||
-		 ((int64_t)dqb->dqb_isoftlimit) < 0 ||
-		 ((int64_t)dqb->dqb_ihardlimit) < 0 ) {
-		 printf ("WANR: Negative quota !!!");
-		 warn = qid + 1;
-	 }
- }
- int onoff_quota(int type, int on) {
-	 int beg = type;
-	 int end = type;
-	 int i, ret;
-	 char  *name[] = {"aquota.user", "aquota.group", "aquota.tree"};
-	 char p[1024];
-	 if (!(flags & TYPE_FL) && !(flags & ALL_FL)) {
-		 printf("Err --set with out --all or --type opt\n");
-		 exit(1);
-	 }
-	 if (flags & ALL_FL) {
-		 beg = 0;
-		 end = 2; /* MAXQUOTAS */
-	 }
-	 for (i = beg; i  <= end; i++) {
-		 snprintf(p, sizeof(p), "%s/%s", path, name[i]);
-		 ret = quotactl(QCMD(on ? Q_QUOTAON : Q_QUOTAOFF, i),
-			 device, QFMT_VFS_V0, p);
-		 if (ret)
-			 perror("quotactl");
-	 }
-	 return ret;
- }
-
-
-
- int show_quota(int start, int end)
- {
-	 struct if_dqblk dqb, sum_dqb;
-	 int i,found = 0;
-	 int ret;
-	 memset(&sum_dqb, 0, sizeof(sum_dqb));
-	 printf("    ID     curspace       soft        hard      curinodes      soft       hard\n");
-	 for (i = start; i < end; i++) {
-		 ret = quotactl(QCMD(Q_GETQUOTA, type),device, i, (char*)&dqb);
-		 if (ret && errno == ESRCH)
-			 continue;
-		 if (!dqb.dqb_curspace && !dqb.dqb_bsoftlimit &&
-			 !dqb.dqb_bhardlimit && !dqb.dqb_curinodes &&
-			 !dqb.dqb_isoftlimit && !dqb.dqb_ihardlimit)
-			 continue;
-		 if (ret) {
-			 perror ("quotactl");
-			 return 1;
-		 }
-		 print_dqblk(i, &dqb);
-		 found++;
-		 sum_dqb.dqb_curspace += dqb.dqb_curspace;
-		 sum_dqb.dqb_curinodes += dqb.dqb_curinodes;
-	 }
-	 printf("--------------------------------------------------------------------------------\n");
-	 print_dqblk(found, &sum_dqb);
-	 if (warn)
-		 printf("WARN!!  bad quota found id:%d \n", warn - 1);
-	 return warn;
- }
- int main(int argc, char **argv)
- {
-	 unsigned treeid = -1;
-	 gid_t gidset[NGROUPS], *gidsetp;
-	 int i, ret;
-	 int ngroups = 0;
-
-	 struct if_dqblk dqb;
-	 struct option long_opts[] = {
-		 { "help", 0, NULL, 'H' },
-		 { "path", 1, NULL, 'p'},
-		 { "get", 0, NULL, 'G' },
-		 { "set", 0, NULL, 'S' },
-		 { "on", 0, NULL, 'O'},
-		 { "off", 0, NULL, 'o'},
-		{ "device", 1, NULL, 'D'},
-		{ "bsoft", 1, NULL, 'b'},
-		{ "bhard",1, NULL, 'B'},
-		{ "curspace",1, NULL, 'c'},
-		{ "curinodes",1, NULL, 'C'},
-		{ "isoft",1, NULL, 'i'},
-		{ "ihard",2, NULL, 'I'},
-		{ "type",1, NULL, 'T'},
-		{ "all",0, NULL, 'a'},
-		{ "id",1, NULL, 'd'},
-		{ NULL, 0, NULL, 0 }
-	};
-	while ((ret = getopt_long(argc, argv, "HGSp:D:T:i:b:B:i:I:c:C:aOo", long_opts, NULL)) != -1) {
-		switch (ret) {
-		case 'H':
-			  flags |= HELP_FL;
-			  break;
-		case 'G':
-			  flags |= GET_FL;
-			  break;
-		case 'S':
-			  flags |= SET_FL;
-			  break;
-		case 'O':
-			  flags |= ON_FL;
-			  break;
-		case 'o':
-			flags |= OFF_FL;
-			break;
-		case 'p':
-			strcpy(path, optarg);
-			break;
-
-		case 'a':
-			  flags |= ALL_FL;
-			  break;
-		case 'D' :
-			strcpy(device ,optarg);
-			break;
-		case 'T' :
-			flags |= TYPE_FL;
-			type = atoi(optarg);
-			break;
-		case 'd' :
-			id = atoi(optarg);
-			flags |= ID_FL;
-			break;
-		case 'b' :
-			dqb.dqb_bsoftlimit= atol(optarg);
-			dqb.dqb_valid |= QIF_BLIMITS;
-			break;
-		case 'B' :
-			dqb.dqb_bhardlimit= atol(optarg);
-			dqb.dqb_valid |= QIF_BLIMITS;
-			break;
-		case 'i' :
-			dqb.dqb_isoftlimit= atol(optarg);
-			dqb.dqb_valid |= QIF_ILIMITS;
-			break;
-		case 'I' :
-			dqb.dqb_ihardlimit= atol(optarg);
-			dqb.dqb_valid |= QIF_ILIMITS;
-			break;
-		case 'c' :
-			dqb.dqb_curspace= atol(optarg);
-			dqb.dqb_valid |= QIF_SPACE;
-			break;
-		case 'C' :
-			dqb.dqb_curinodes= atol(optarg);
-			dqb.dqb_valid |= QIF_INODES;
-			break;
-
-		default:
-			printf("Unknown opt:%c\n", ret);
-			exit(1);
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (flags & (ON_FL |OFF_FL))
-		return onoff_quota(type, flags & ON_FL);
-
-	if (flags & SET_FL) {
-		if ((flags & (ID_FL| TYPE_FL)) != (ID_FL| TYPE_FL)) {
-			printf("Err --set with out --id opt\n");
-			exit(1);
-		}
-		if (!(dqb.dqb_valid & QIF_ALL)) {
-			printf("Err --set with bhard,bsoft,isoft,ihard "
-				 "curspace, curinodes opt\n");
-			exit(1);
-		}
-		ret = quotactl(QCMD(Q_SETQUOTA, type),device, id, (char*)&dqb);
-		if (ret) {
-			perror("quotactl");
-			return 1;
-		}
-
-	}
-	if (flags & GET_FL)
-		if (flags & ALL_FL)
-			return show_quota(0, 65535);
-		else
-			return show_quota(id, id + 1);
-	return 0;
-}
-
---Boundary_(ID_CQMAURynE2kXayhHRlGmxw)
-Content-type: text/x-csrc; NAME=write-truncate-chown.c
-Content-transfer-encoding: 7BIT
-Content-disposition: inline; filename=write-truncate-chown.c
-
-/*
- *  Write-truncate-chown testcase
- */
-#include <sys/types.h>
-#include <limits.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include "time.h"
-
-long long time_diff(struct timeval *tv1, struct timeval *tv2)
-{
-	long long diff = 0;
-	long long sec = 0;
-	diff = tv2->tv_usec - tv1->tv_usec;
-	sec += (tv2->tv_sec - tv1->tv_sec);
-	sec *= 1000000;
-	diff += sec;
-	return diff;
-}
-
-int main(int argc, char **argv)
-
-{
-	int num, i;
-	int ret = 0;
-	int fd;
-	char name[] = "test-write-truncate-chown";
-	uid_t uid, gid;
-	char buf[1024*1024];
-	struct timeval tv[2];
-	if (argc  <  2) {
-		printf("usage %s <path> <num_iter>\n", argv[0]);
-		return 1;
-	}
-	chdir(argv[1]);
-
-	if (argc == 2)
-		num = INT_MAX;
-	else
-		num = atoi(argv[2]);
-	fd = open(name, O_CREAT|O_RDWR, 0777);
-	uid = geteuid();
-	uid = getegid();
-	if (fd < 0)
-		goto out;
-
-	gettimeofday(tv, NULL);
-	for (i = 0; i < num; i+= 2) {
-		// Trigger quota transfer
-		ret |= fchown(fd, i % 65538, i % 65538);
-		// Trigger pages invalidate
-		ftruncate(fd, 0);
-		// Trigger quota transfer
-		ret |= fchown(fd, (i + 1) % 65538, (i+1) % 65538);
-		// Trigger allocation + space reservation
-		pwrite(fd, buf, sizeof(buf));
-	}
-	gettimeofday(tv+1, NULL);
-	ret |= unlink (name);
-	printf("%lld\n", time_diff(tv, tv+1));
-	if (ret) {
-out:
-		printf("WARN error happend during test\n");
-	}
-	return ret;
-}
-
---Boundary_(ID_CQMAURynE2kXayhHRlGmxw)--
