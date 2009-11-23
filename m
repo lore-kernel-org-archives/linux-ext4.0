@@ -1,55 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: i_version, NFSv4 change attribute
-Date: Mon, 23 Nov 2009 13:19:51 -0500
-Message-ID: <20091123181951.GB5583@fieldses.org>
-References: <20091122222047.GB21944@fieldses.org> <20091123114831.GA2532@thunk.org> <20091123164445.GB3292@fieldses.org> <1258999879.8700.17.camel@localhost>
+From: Alan Stern <stern@rowland.harvard.edu>
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
+ readonly
+Date: Mon, 23 Nov 2009 13:20:26 -0500 (EST)
+Message-ID: <Pine.LNX.4.44L0.0911231319060.2958-100000@iolanthe.rowland.org>
+References: <20091123160914.GG15679@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1258999879.8700.17.camel@localhost>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tmhikaru@gmail.com, <linux-kernel@vger.kernel.org>,
+	<linux-usb@vger.kernel.org>, Jens Axboe <axboe@kernel.dk>,
+	<linux-scsi@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from iolanthe.rowland.org ([192.131.102.54]:55388 "HELO
+	iolanthe.rowland.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753759AbZKWSU0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2009 13:20:26 -0500
+In-Reply-To: <20091123160914.GG15679@duck.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 23, 2009 at 01:11:19PM -0500, Trond Myklebust wrote:
-> On Mon, 2009-11-23 at 11:44 -0500, J. Bruce Fields wrote: 
-> > If the side we want to optimize is the modifications, I wonder if we
-> > could do all the i_version increments on *read* of i_version?:
+On Mon, 23 Nov 2009, Jan Kara wrote:
+
+> On Mon 23-11-09 10:06:03, Alan Stern wrote:
+> > On Mon, 23 Nov 2009, Jan Kara wrote:
 > > 
-> > 	- writes (and other inode modifications) set an "i_version_dirty"
-> > 	  flag.
-> > 	- reads of i_version clear the i_version_dirty flag, increment
-> > 	  i_version, and return the result.
+> > >   Yeah, from what you write, it looks like USB enclosure is at fault (or it
+> > > could still be your USB controller but I doubt it).  It's still a bit
+> > > bothering that the error reported by the drive was not properly propagated
+> > > up to VFS. Either it's some block layer retry/ignore magic that I missed or
+> > > we ignore errors from block layer in some place.
 > > 
-> > As long as the reader sees i_version_flag set only after it sees the
-> > write that caused it, I think it all works?
-> 
-> That probably won't make much of a difference to performance. Most NFSv4
-> clients will have every WRITE followed by a GETATTR operation in the
-> same compound, so your i_version_dirty flag will always immediately get
-> cleared.
+> > Is there any interest in tracking this down?  It's not hard to find out
+> > what low-level errors are being reported and to generate them on demand
+> > with an emulated USB disk drive.
+>   Well, if you could provide me with the patch, I could try to track down
+> why the errors aren't propagated... It would be interesting because if it's
+> not some retry logic in block layer, it's a bug in VFS ;).
 
-I was only thinking about non-NFS performance.
+I can't provide a patch without first knowing what the errors are.  The 
+way to find out is to use usbmon.  See Documentation/usb/usbmon.txt for 
+instructions.
 
-> The question is, though, why does the jbd2 machinery need to be engaged
-> on _every_ write?
+Alan Stern
 
-Is it?
-
-I thought I remembered a journaling issue from previous discussions, but
-Ted seemed concerned just about the overhead of an additional
-spinlock, and looking at the code, the only test of I_VERSION that I can
-see indeed is in ext4_mark_iloc_dirty(), and indeed just takes a
-spinlock and updates the i_version.
-
---b.
-
-> The NFS clients don't care if we lose an i_version count due to a
-> sudden server reboot, since that will trigger a rewrite of the dirty
-> data anyway once the server comes back up again.  As long as the
-> i_version is guaranteed to be written to stable storage on a
-> successful call to fsync(), then the NFS data integrity requirements
-> are fully satisfied.
