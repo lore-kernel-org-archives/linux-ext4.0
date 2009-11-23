@@ -1,167 +1,93 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 3/4] ext4: quota macros cleanup
-Date: Mon, 23 Nov 2009 21:33:04 +0300
-Message-ID: <87y6lxxfa7.fsf@openvz.org>
-References: <87my2d5ctb.fsf@openvz.org>
+From: tytso@mit.edu
+Subject: Re: i_version, NFSv4 change attribute
+Date: Mon, 23 Nov 2009 13:35:01 -0500
+Message-ID: <20091123183501.GB2183@thunk.org>
+References: <20091122222047.GB21944@fieldses.org>
+ <20091123114831.GA2532@thunk.org>
+ <20091123164445.GB3292@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:48461 "EHLO mail.2ka.mipt.ru"
+Received: from thunk.org ([69.25.196.29]:59862 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755392AbZKWSdA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 13:33:00 -0500
-Received: from dmon-lp ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KTK00DWDRQO4B10@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Mon, 23 Nov 2009 21:37:39 +0300 (MSK)
-In-reply-to: <87my2d5ctb.fsf@openvz.org>
+	id S1753719AbZKWSe7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 13:34:59 -0500
+Content-Disposition: inline
+In-Reply-To: <20091123164445.GB3292@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently all quota block reservation macros contains hard-coded "2"
-aka MAXQUOTAS value. This is no good because in some places it is not
-obvious to understand what does this digit represent. Let's introduce
-new macro with self descriptive name.
+On Mon, Nov 23, 2009 at 11:44:45AM -0500, J. Bruce Fields wrote:
+> 
+> Got it, thanks.  Is there an existing easy-to-setup workload I could
+> start with, or would it be sufficient to try the simplest possible code
+> that met the above description?  (E.g., fork a process for each cpu,
+> each just overwriting byte 0 as fast as possible, and count total writes
+> performed per second?)
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4_jbd2.h |    8 ++++++--
- fs/ext4/extents.c   |    2 +-
- fs/ext4/inode.c     |    2 +-
- fs/ext4/migrate.c   |    4 ++--
- fs/ext4/namei.c     |    8 ++++----
- 5 files changed, 14 insertions(+), 10 deletions(-)
+We were actually talking about this on the ext4 call today.  The
+problem is that there isn't a ready-made benchmark that will easily
+measure this.  A database benchmark will show up (and we may have some
+results from the DB2 folks indicating the cost of upgrading the
+timestamps with a nanosecond granuality), but these of course aren't
+easy to run.
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index a286598..404ab6c 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -49,7 +49,7 @@
- 
- #define EXT4_DATA_TRANS_BLOCKS(sb)	(EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + \
- 					 EXT4_XATTR_TRANS_BLOCKS - 2 + \
--					 2*EXT4_QUOTA_TRANS_BLOCKS(sb))
-+					 EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
- 
- /*
-  * Define the number of metadata blocks we need to account to modify data.
-@@ -57,7 +57,7 @@
-  * This include super block, inode block, quota blocks and xattr blocks
-  */
- #define EXT4_META_TRANS_BLOCKS(sb)	(EXT4_XATTR_TRANS_BLOCKS + \
--					2*EXT4_QUOTA_TRANS_BLOCKS(sb))
-+					EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
- 
- /* Delete operations potentially hit one directory's namespace plus an
-  * entire inode, plus arbitrary amounts of bitmap/indirection data.  Be
-@@ -92,6 +92,7 @@
-  * but inode, sb and group updates are done only once */
- #define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
- 		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
-+
- #define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
- 		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
- #else
-@@ -99,6 +100,9 @@
- #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
- #define EXT4_QUOTA_DEL_BLOCKS(sb) 0
- #endif
-+#define EXT4_MAXQUOTAS_TRANS_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_TRANS_BLOCKS(sb))
-+#define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
-+#define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
- 
- int
- ext4_mark_iloc_dirty(handle_t *handle,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 715264b..f73c3ff 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2167,7 +2167,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 			correct_index = 1;
- 			credits += (ext_depth(inode)) + 1;
- 		}
--		credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
-+		credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
- 
- 		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
- 		if (err)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c521c93..b166e90 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5439,7 +5439,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 
- 		/* (user+group)*(old+new) structure, inode write (sb,
- 		 * inode block, ? - but truncate inode update has it) */
--		handle = ext4_journal_start(inode, 2*(EXT4_QUOTA_INIT_BLOCKS(inode->i_sb)+
-+		handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
- 					EXT4_QUOTA_DEL_BLOCKS(inode->i_sb))+3);
- 		if (IS_ERR(handle)) {
- 			error = PTR_ERR(handle);
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index a93d5b8..8646149 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -238,7 +238,7 @@ static int extend_credit_for_blkdel(handle_t *handle, struct inode *inode)
- 	 * So allocate a credit of 3. We may update
- 	 * quota (user and group).
- 	 */
--	needed = 3 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
-+	needed = 3 + EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
- 
- 	if (ext4_journal_extend(handle, needed) != 0)
- 		retval = ext4_journal_restart(handle, needed);
-@@ -477,7 +477,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	handle = ext4_journal_start(inode,
- 					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
- 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--					2 * EXT4_QUOTA_INIT_BLOCKS(inode->i_sb)
-+					EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)
- 					+ 1);
- 	if (IS_ERR(handle)) {
- 		retval = PTR_ERR(handle);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index fde08c9..17a17e1 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1769,7 +1769,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, int mode,
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
- 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
-+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -1803,7 +1803,7 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
- 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
-+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -1840,7 +1840,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
- 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
-+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -2253,7 +2253,7 @@ static int ext4_symlink(struct inode *dir,
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
- 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 5 +
--					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
-+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
--- 
-1.6.0.4
+The simplest possible workload that you have proposed is the worst
+case, and I have no doubt that will show the contention on
+inode->i_lock from inode_inc_version(), and I bet we'll see a big
+improvement when we change inode->i_version to be an atomic64 type.
+It will probably also show the overhead of ext4_mark_inode_dirty()
+being called all the time.
 
+Perhaps a slightly fairer and more realistic benchmark would do a
+write to byte zero followed by an fsync(), and measures both the CPU
+time per write as well as the writes per second.  Either will do the
+job, though, and I'd recommend grabbing oprofile and lockstat
+measurement to see what bottlenecks we are hitting with that the
+workload.
+
+> If the side we want to optimize is the modifications, I wonder if we
+> could do all the i_version increments on *read* of i_version?:
+> 
+> 	- writes (and other inode modifications) set an "i_version_dirty"
+> 	  flag.
+> 	- reads of i_version clear the i_version_dirty flag, increment
+> 	  i_version, and return the result.
+> 
+> As long as the reader sees i_version_flag set only after it sees the
+> write that caused it, I think it all works?
+
+I can see two potential problems with that.  One is that this implies
+that the read needs to kick off a journal operation, which means that
+the act of reading i_version might cause the caller to sleep (not all
+the time, but in some cases, such as if we get unlucky and need to do
+a journal commit or checkpoint before we can update i_version).  I
+don't know if the NFSv4 server code would be happy with that!  
+
+The second problem is what happens if we crash before a read happens.
+
+On the ext4 call, Andreas suggested trying to do this work at commit
+time.  This would either mean that i_version would only get updated at
+the commit interval (default: 5 seconds), or that i_version might be
+updated more frequently than that, but we would defer as much as
+possible to the commit time, since it's already the case that if we
+crash before the commit happens, i_version could end up going
+backwards (since we may have returned i_version numbers that were
+never committed).
+
+I'm not entirely convinced how much this will actually help, since we
+have to reserve space in the transaction for the inode update, even if
+we don't do the copy to the journaled bufferheads on every
+sys_write(), since we will end up having to take various journal locks
+on every sys_write() anyway.  We'll have to code it up to see whether
+or not it helps, or how painful it is to actually implement.
+
+What I'm hoping we'll find is that for a typical desktop workload
+i_version updates don't really hurt, and we can enable it by default
+for desktop workloads.  My concern is that really with the database
+workloads, i_version updates may be especially hurtful especially for
+certain high dollar value (but rare) benchmarks, such as TPC-C/TPC-H.
+
+	     	    	       	     		      - Ted
