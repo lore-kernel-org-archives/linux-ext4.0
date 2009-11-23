@@ -1,85 +1,52 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] Unify log messages in ext3
-Date: Mon, 23 Nov 2009 11:36:58 +0100
-Message-ID: <20091123103658.GA15679@duck.suse.cz>
-References: <4B087DEC.5010402@redhat.com>
- <1258918735-4496-1-git-send-email-bug-track@fisher-privat.net>
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
+ readonly
+Date: Mon, 23 Nov 2009 11:54:40 +0100
+Message-ID: <20091123105440.GB15679@duck.suse.cz>
+References: <20091113050907.GA4965@roll>
+ <20091119160700.GC2943@atrey.karlin.mff.cuni.cz>
+ <20091120082359.GA29538@roll>
+ <20091120094641.GB15422@duck.suse.cz>
+ <20091123080919.GA3115@roll>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>
-To: Alexey Fisher <bug-track@fisher-privat.net>
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-usb@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+	linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org
+To: tmhikaru@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:44831 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:45245 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756649AbZKWKgx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 05:36:53 -0500
+	id S1756652AbZKWKyf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 05:54:35 -0500
 Content-Disposition: inline
-In-Reply-To: <1258918735-4496-1-git-send-email-bug-track@fisher-privat.net>
+In-Reply-To: <20091123080919.GA3115@roll>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Thanks for the patch. I've merged it into my tree just with the following
-typo fixes.
+  Hi,
 
-								Honza
+On Mon 23-11-09 03:09:19, tmhikaru@gmail.com wrote:
+> 	Okay, finally had some time to dismantle the machine in question and
+> inserted the backup drive without the enclosure. Now that I was able to get
+> smartctl to give me information on what was going on, it seems there's
+> nothing wrong with the drive itself (no remapped sectors, nothing prefail or
+> fail going wrong, drive's smart status is good) but it's had a history of
+> 406 (!!!) errors reported, the last five happening within the same second,
+> all of which seem (to my untrained eye) to imply a bad IDE cable. Which
+> means likely my USB enclosure is screwing up.
+> 
+> 	To be sure, I did some extended testing with it hooked up: Tried
+> doing a full and incremental backup of my machine with no errors reported,
+> as well as an offline and then immediately afterwards, long test via
+> smartctl. Nothing changed in the output.
+  Yeah, from what you write, it looks like USB enclosure is at fault (or it
+could still be your USB controller but I doubt it).  It's still a bit
+bothering that the error reported by the drive was not properly propagated
+up to VFS. Either it's some block layer retry/ignore magic that I missed or
+we ignore errors from block layer in some place.
 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 427496c..b1b6da8 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -1200,9 +1214,9 @@ set_qf_format:
->  			clear_opt(sbi->s_mount_opt, NOBH);
->  			break;
->  		default:
-> -			printk (KERN_ERR
-> -				"EXT3-fs: Unrecognized mount option \"%s\" "
-> -				"or missing value\n", p);
-> +			ext3_msg(sb, KERN_ERR,
-> +				"error: unrecognized mount option \"%s\" "
-> +				"or missing valuen", p);
-                                                ^^^ value
-> @@ -1290,22 +1306,20 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
->  
->  	ext3_commit_super(sb, es, 1);
->  	if (test_opt(sb, DEBUG))
-> -		printk(KERN_INFO "[EXT3 FS bs=%lu, gc=%lu, "
-> -				"bpg=%lu, ipg=%lu, mo=%04lx]\n",
-> +		ext3_msg(sb, KERN_INFO, "[bs=%lu, gc=%lu, "
-> +				"bpg=%lu, ipg=%lu, mo=%04lx]",
->  			sb->s_blocksize,
->  			sbi->s_groups_count,
->  			EXT3_BLOCKS_PER_GROUP(sb),
->  			EXT3_INODES_PER_GROUP(sb),
->  			sbi->s_mount_opt);
->  
-> -	printk(KERN_INFO "EXT3 FS on %s, ", sb->s_id);
->  	if (EXT3_SB(sb)->s_journal->j_inode == NULL) {
->  		char b[BDEVNAME_SIZE];
-> -
-> -		printk("external journal on %s\n",
-> +		ext3_msg(sb, KERN_INFO, "using externa journal on %s",
-                                                   ^^^ external
-
->  			bdevname(EXT3_SB(sb)->s_journal->j_dev, b));
->  	} else {
-> -		printk("internal journal\n");
-> +		ext3_msg(sb, KERN_INFO, "using internal journaln");
-                                                        ^^^^^ journal
-
-> @@ -1944,8 +1961,9 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
->  
->  	if (test_opt(sb, NOBH)) {
->  		if (!(test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_WRITEBACK_DATA)) {
-> -			printk(KERN_WARNING "EXT3-fs: Ignoring nobh option - "
-> -				"its supported only with writeback mode\n");
-> +			ext3_msg(sb, KERN_WARNING,
-> +				"warning: ignoring nobh option - "
-> +				"its supported only with writeback mode");
-                                 ^^^ it is
-
-										Honza
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
