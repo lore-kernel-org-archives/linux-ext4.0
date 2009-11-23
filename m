@@ -1,86 +1,80 @@
-From: tytso@mit.edu
-Subject: Re: Bug in extent zeroout: blocks not marked as new
-Date: Mon, 23 Nov 2009 14:50:49 -0500
-Message-ID: <20091123195049.GD2183@thunk.org>
-References: <6601abe90911231017q5cf424a4s4e6c788922c336c8@mail.gmail.com>
+From: tmhikaru-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem readonly
+Date: Mon, 23 Nov 2009 15:06:05 -0500
+Message-ID: <20091123200605.GA19446@roll>
+References: <20091123160914.GG15679@duck.suse.cz> <Pine.LNX.4.44L0.0911231319060.2958-100000@iolanthe.rowland.org> <20091123185449.GA11186@quack.suse.cz> <20091123195022.GA18510@roll>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34806 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756298AbZKWTuq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 14:50:46 -0500
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-usb-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Jens Axboe <axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org>, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-usb-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <6601abe90911231017q5cf424a4s4e6c788922c336c8@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20091123195022.GA18510@roll>
+Sender: linux-usb-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 23, 2009 at 10:17:46AM -0800, Curt Wohlgemuth wrote:
-> I believe I've found a bug in ext4's extent conversion design that results
-> in block corruption in inodes using previously freed up metadata blocks.
+On Mon, Nov 23, 2009 at 02:50:22PM -0500, tm@ wrote:
+> On Mon, Nov 23, 2009 at 07:54:50PM +0100, Jan Kara wrote:
+> > On Mon 23-11-09 13:20:26, Alan Stern wrote:
+> > > On Mon, 23 Nov 2009, Jan Kara wrote:
+> > > 
+> > > > On Mon 23-11-09 10:06:03, Alan Stern wrote:
+> > > > > On Mon, 23 Nov 2009, Jan Kara wrote:
+> > > > > 
+> > > > > >   Yeah, from what you write, it looks like USB enclosure is at fault (or it
+> > > > > > could still be your USB controller but I doubt it).  It's still a bit
+> > > > > > bothering that the error reported by the drive was not properly propagated
+> > > > > > up to VFS. Either it's some block layer retry/ignore magic that I missed or
+> > > > > > we ignore errors from block layer in some place.
+> > > > > 
+> > > > > Is there any interest in tracking this down?  It's not hard to find out
+> > > > > what low-level errors are being reported and to generate them on demand
+> > > > > with an emulated USB disk drive.
+> > > >   Well, if you could provide me with the patch, I could try to track down
+> > > > why the errors aren't propagated... It would be interesting because if it's
+> > > > not some retry logic in block layer, it's a bug in VFS ;).
+> > > 
+> > > I can't provide a patch without first knowing what the errors are.  The 
+> > > way to find out is to use usbmon.  See Documentation/usb/usbmon.txt for 
+> > > instructions.
+> >   Ah, OK. The problem manifests itself as an error in SATA communication
+> > (which in fact somehow happens over USB, but I don't really know the
+> > details of mass storage over USB) so debugging USB would become actual only
+> > if we found out it's really some bug in an usb stack. But so far the most
+> > probable is just an error somewhere between the USB controller in the
+> > enclosure and the drive itself. BTW: Is the data transferred over USB
+> > checksummed?
+> > 
+> > 									Honza
+> 	Mind that this is an ide hard drive in a usb enclosure, not sata.
+> The error reported is bizzare. I don't know if I'll be able to get the
+> enclosure to cause the error on demand, but before I try supergluing it,
+> I'll try to do whatever I need to do with usbmon so we can get the error
+> that's actually happening so you can do whatever you need to do to track it
+> down :)
 > 
-> (I've finally got around to understanding that the handling of old dirty
-> metadata blocks is ultimately handled on the allocating side, not on the
-> freeing side.  Although bforget() is called on freed up metadata blocks,
-> because bforget() doesn't lock the buffer before it clears the dirty bit,
-> there's a known race with the writeout path in __block_write_full_page().
-> I've seen this race, and seen a block that's had bforget() called on it be
-> written to disk.)
+> Tim McGrath
+Uhh, this could be a problem. CONFIG_USB_MON=y is set in my .config BUT,
+although I followed the directions and debugfs is mounted,
 
-Note that these problems are much rarer (and perhaps impossible) when
-journalling is enabled, because we don't allow any freed blocks to be
-reused until after a transaction commit --- this prevents blocks from
-getting overwritten, thus damaging existing files that don't end up
-getting deleted because the system cashed before the transaction could
-complete.
+root@roll:/home/tm# mount
+/dev/root on / type ext4 (rw,relatime,barrier=1,data=ordered,data_err=abort)
+proc on /proc type proc (rw)
+sysfs on /sys type sysfs (rw)
+usbfs on /proc/bus/usb type usbfs (rw)
+none_debugs on /sys/kernel/debug type debugfs (rw)
 
-As a result, blocks which are deleted can't get reused immediately,
-and this should defang the bforget() race that you mention.  Without
-journalling we don't have this protection, so this exposes us to the
-sorts of problems which you've been running into.
+I receive this message when I test if usbmon's directory exists:
 
-> The problem is that, during conversion of extents from uninitialized to
-> initialized, ext4 will at some point decide that the remaining uninitialized
-> extent is too small to split, and will just write zeroes for it, and mark it
-> as initialized.  This is fine -- until blocks from this "14-block tail
-> extent" are returned from ext4_ext_get_blocks().
-> 
-> The problem is that, since these blocks are not from an uninitialized
-> extent, the aren't marked as "new" -- i.e., set_buffer_new() is not called
-> on bh_result -- and the callers further up in the call stack don't call
-> unmap_underlying_metadata() on them.
+root@roll:/home/tm# ls /sys/kernel/debug/usbmon
+ls: cannot access /sys/kernel/debug/usbmon: No such file or directory
 
-OK, I'm confused.  The corruption is that you're having blocks that
-are all zeroes show up where they should be non-zero data, right?  But
-in what you are describing, you should have garbage from old metadata
-getting written over the newly initialized blocks --- garbage that
-would have been discarded if unmap_underlying_metadata() had been
-called.  But that's not what you're seeing.
+According to the kernel documentation usbmon should be loaded already. Help?
 
-Blocks from an uninitialized extent aren't new, because they've been
-around for a while, and they've been attached to the inode and
-allocated.  One thing we could do is call unmap_underlying_metadata
-when those uninitialized blocks are *allocated*, because that's when
-they their "allegiance" is transfered to the inode.  However, since we
-don't care about the contents of these uninitialized blocks your
-suggestion:
-
-> The other obvious solution is to call unmap_underlying_metadata() at the
-> time that we zeroout the blocks.
-
-Is is a good one.  We should also call unmap_underlying_metadata() for
-any blocks that are transitioning from uninitialized to initialized,
-just in case there were any recently-freed buffers that might be
-undergoing writeout.  So I agree this is a good thing to do, and it's
-probably a hole that we should plug.
-
-However, that doesn't explaining the corruption which you are seeing,
-which is zero blocks showing up where they shouldn't --- since the
-freed dirty metadata blocks that we would be zapping with
-unmap_underlying_metadata() are highly unlikely to be all zero's.
-
-Am I missing something?
-
-					- Ted
+Timothy McGrath
+--
+To unsubscribe from this list: send the line "unsubscribe linux-usb" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
