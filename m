@@ -1,68 +1,57 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Bug in extent zeroout: blocks not marked as new
-Date: Mon, 23 Nov 2009 14:45:38 -0700
-Message-ID: <99269303-4BAF-4977-A19E-EBF5BD7392DF@sun.com>
-References: <6601abe90911231017q5cf424a4s4e6c788922c336c8@mail.gmail.com>
- <20091123195049.GD2183@thunk.org>
- <1259011043.25937.29.camel@bobble.smo.corp.google.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/4] ext4: delalloc quota fixes
+Date: Tue, 24 Nov 2009 01:43:58 +0300
+Message-ID: <87bpissvyp.fsf@openvz.org>
+References: <877hthytz0.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Type: text/plain; CHARSET=US-ASCII
 Content-Transfer-Encoding: 7BIT
-Cc: tytso@mit.edu, Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Frank Mayhar <fmayhar@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:36984 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755589AbZKWVpe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2009 16:45:34 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nANLjer1008847
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2009 13:45:40 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KTL00D000EHSJ00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 23 Nov 2009 13:45:40 -0800 (PST)
-In-reply-to: <1259011043.25937.29.camel@bobble.smo.corp.google.com>
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:55588 "EHLO mail.2ka.mipt.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752349AbZKWWnx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 17:43:53 -0500
+Received: from dmon-lp ([unknown] [10.55.93.124])
+ by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
+ (built Apr 16 2009)) with ESMTPA id <0KTL00D9B3CTE510@mail.2ka.mipt.ru> for
+ linux-ext4@vger.kernel.org; Tue, 24 Nov 2009 01:48:32 +0300 (MSK)
+In-reply-to: <877hthytz0.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2009-11-23, at 14:17, Frank Mayhar wrote:
-> Finally, we have a question about the zero-out path:  Is there any
-> known, concrete improvement given by doing the zero-out as opposed  
-> to just continuing to split the extents?  At the moment, by the way,  
-> there is one definite problem: Since it doesn't try to do a merge  
-> left (which it should) it invariably leaves a 14-block extent  
-> fragment, thus increasing fragmentation of the file.  It's not a  
-> huge problem (since the extents are in fact contiguous) but it's  
-> there.
+Dmitry Monakhov <dmonakhov@openvz.org> writes:
+> @@ -1119,8 +1121,9 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+>  
+>  	/* update per-inode reservations */
+>  	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
+> -	EXT4_I(inode)->i_reserved_data_blocks -= used;
+> -	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+^^^^^^^^^^ OOps... i've just deleted spin_unlock, but it supposed to
+           be moved down. And appear again in second patch ;(
+           Seem what i've mistyped during patch splitting. Please ignore
+           this version, i'll send new version in a minute. 
 
-
-The intent is to avoid splitting the uninitialized extent further when  
-there is no longer any benefit to do so.  Writing out 8kB vs. 64kB is  
-in the noise these days, but splitting the extent is extra overhead  
-(larger extent tree, more lookups, etc).  If we were to continue  
-splitting it would leave smaller and smaller uninitialized extents.
-
-As you point out, the newly-initialized extent should be merged with  
-its left neighbor.  If we do the zero-out at the point where actually  
-writing zeroes is cost effective.  At that point there is no longer an  
-uninitialized extent to track, and it can be merged entirely with its  
-left neighbor and avoid any extra overhead.
-
-The other time we HAVE to zero out the uninitialized extent is if the  
-filesystem does not have any free blocks to add a new extent, so the  
-uninitialized extent is zeroed entirely and then converted to  
-initialized.
-
-Using 64kB as the cutoff for uninitialized extents is very reasonable  
-these days, though we may in fact want to make that dynamic based on  
-the superblock s_raid_stripe_width for SSDs with 128kB erase blocks  
-and/or avoiding read-modify-write within a single RAID stripe.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+> + 	EXT4_I(inode)->i_reserved_data_blocks -= used;
+> +	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used + mdb_claim);
+> +	vfs_dq_claim_block(inode, used + mdb_claim);
+>  
+>  	/*
+>  	 * free those over-booking quota for metadata blocks
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index bba1282..d4c52db 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2750,12 +2750,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+>  	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+>  		/* release all the reserved blocks if non delalloc */
+>  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
+> -	else {
+> -		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+> -						ac->ac_b_ex.fe_len);
+> -		/* convert reserved quota blocks to real quota blocks */
+> -		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
+> -	}
+>  
+>  	if (sbi->s_log_groups_per_flex) {
+>  		ext4_group_t flex_group = ext4_flex_group(sbi,
