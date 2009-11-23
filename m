@@ -1,36 +1,108 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 7/8] ext4: add check for wraparound in ext4_data_block_valid()
-Date: Sun, 22 Nov 2009 21:18:29 -0500
-Message-ID: <1258942710-31930-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/8] ext4: fold ext4_journal_revoke() into ext4_forget()
+Date: Sun, 22 Nov 2009 21:18:24 -0500
+Message-ID: <1258942710-31930-3-git-send-email-tytso@mit.edu>
 References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48725 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48715 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754065AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753460AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 22 Nov 2009 21:18:29 -0500
 In-Reply-To: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The only caller of ext4_journal_revoke() is ext4_forget(), so we can
+fold ext4_journal_revoke() into ext4_forget() to simplfy the code and
+shorten the call stack.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/block_validity.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/ext4/ext4_jbd2.c |   30 +++++++++++-------------------
+ fs/ext4/ext4_jbd2.h |   12 +-----------
+ 2 files changed, 12 insertions(+), 30 deletions(-)
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index dc79b75..4df8621 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -228,6 +228,7 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 	struct rb_node *n = sbi->system_blks.rb_node;
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 913f857..92c88a8 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -50,22 +50,6 @@ int __ext4_journal_forget(const char *where, handle_t *handle,
+ 	return err;
+ }
  
- 	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
-+	    (start_blk + count < start_blk) ||
- 	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
- 		return 0;
- 	while (n) {
--- 
-1.6.5.216.g5288a.dirty
-
+-int __ext4_journal_revoke(const char *where, handle_t *handle,
+-				ext4_fsblk_t blocknr, struct buffer_head *bh)
+-{
+-	int err = 0;
+-
+-	if (ext4_handle_valid(handle)) {
+-		err = jbd2_journal_revoke(handle, blocknr, bh);
+-		if (err)
+-			ext4_journal_abort_handle(where, __func__, bh,
+-						  handle, err);
+-	}
+-	else
+-		bforget(bh);
+-	return err;
+-}
+-
+ /*
+  * The ext4 forget function must perform a revoke if we are freeing data
+  * which has been journaled.  Metadata (eg. indirect blocks) must be
+@@ -94,6 +78,12 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+ 		  bh, is_metadata, inode->i_mode,
+ 		  test_opt(inode->i_sb, DATA_FLAGS));
+ 
++	/* In the no journal case, we can just do a bforget and return */
++	if (!ext4_handle_valid(handle)) {
++		bforget(bh);
++		return 0;
++	}
++
+ 	/* Never use the revoke function if we are doing full data
+ 	 * journaling: there is no need to, and a V1 superblock won't
+ 	 * support it.  Otherwise, only skip the revoke on un-journaled
+@@ -111,11 +101,13 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+ 	/*
+ 	 * data!=journal && (is_metadata || should_journal_data(inode))
+ 	 */
+-	BUFFER_TRACE(bh, "call ext4_journal_revoke");
+-	err = __ext4_journal_revoke(where, handle, blocknr, bh);
+-	if (err)
++	BUFFER_TRACE(bh, "call jbd2_journal_revoke");
++	err = jbd2_journal_revoke(handle, blocknr, bh);
++	if (err) {
++		ext4_journal_abort_handle(where, __func__, bh, handle, err);
+ 		ext4_abort(inode->i_sb, __func__,
+ 			   "error %d when attempting revoke", err);
++	}
+ 	BUFFER_TRACE(bh, "exit");
+ 	return err;
+ }
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index dc0b34a..f9fb4bb 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -116,12 +116,8 @@ int ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
+ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode);
+ 
+ /*
+- * Wrapper functions with which ext4 calls into JBD.  The intent here is
+- * to allow these to be turned into appropriate stubs so ext4 can control
+- * ext2 filesystems, so ext2+ext4 systems only nee one fs.  This work hasn't
+- * been done yet.
++ * Wrapper functions with which ext4 calls into JBD.
+  */
+-
+ void ext4_journal_abort_handle(const char *caller, const char *err_fn,
+ 		struct buffer_head *bh, handle_t *handle, int err);
+ 
+@@ -135,10 +131,6 @@ int __ext4_journal_get_write_access(const char *where, handle_t *handle,
+ int __ext4_journal_forget(const char *where, handle_t *handle,
+ 				struct buffer_head *bh);
+ 
+-/* When called with an invalid handle, this will still do a put on the BH */
+-int __ext4_journal_revoke(const char *where, handle_t *handle,
+-				ext4_fsblk_t blocknr, struct buffer_head *bh);
