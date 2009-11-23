@@ -1,56 +1,57 @@
-From: Duane Griffin <duaneg@dghda.com>
-Subject: Re: [PATCH 2/2] ext4: journal superblock modifications in
-	ext4_statfs()
-Date: Mon, 23 Nov 2009 14:40:52 +0000
-Message-ID: <e9e943910911230640v3ec7c15cs4514e7802200a004@mail.gmail.com>
-References: <4AF4A429.7090507@redhat.com>
-	 <6BDA2C94-6FA5-48EE-9E68-56BDFC4B558A@sun.com>
-	 <20091108214804.GC7592@mit.edu>
-	 <AB457F38-7E3A-43CE-B334-AE363BAE040C@sun.com>
-	 <20091115032941.GB4323@mit.edu>
-	 <F64B29C1-A90E-42F5-80CF-5704283D9A1B@sun.com>
-	 <20091119190846.GB2099@thunk.org>
-	 <e9e943910911230357r338bcb45ga6962c92d32fca4a@mail.gmail.com>
-	 <20091123142658.GE2532@thunk.org>
+From: tytso@mit.edu
+Subject: Re: [PATCH 0/8] Clean up ext4's block free code paths
+Date: Mon, 23 Nov 2009 09:46:29 -0500
+Message-ID: <20091123144629.GF2532@thunk.org>
+References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+ <4B0A072C.5000305@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andreas Dilger <andreas.dilger@lustre.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f213.google.com ([209.85.220.213]:53684 "EHLO
-	mail-fx0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754782AbZKWOkr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2009 09:40:47 -0500
-Received: by fxm5 with SMTP id 5so4684737fxm.28
-        for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2009 06:40:52 -0800 (PST)
-In-Reply-To: <20091123142658.GE2532@thunk.org>
+Received: from thunk.org ([69.25.196.29]:54064 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755229AbZKWOq1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 09:46:27 -0500
+Content-Disposition: inline
+In-Reply-To: <4B0A072C.5000305@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2009/11/23  <tytso@mit.edu>:
-> On Mon, Nov 23, 2009 at 11:57:44AM +0000, Duane Griffin wrote:
->> Unfortunately you can't just blindly give back the journalled block:
->> it may have been escaped. So you need to read in the block from the
->> journal, unescape it if required, then give it back.
->
-> Good point; this is going to make supporting a read-only mount that
-> doesn't replay the journal very difficult to implement for
-> data=journal mode, since it would mean intercepting the actual block
-> I/O read functions for data reads, which is outside of fs/ext4 in the
-> generic fs/ and mm/ functions.  Doing it for metadata blocks will be
-> annoying, but at least it's all inside fs/ext4.
+On Sun, Nov 22, 2009 at 09:53:16PM -0600, Eric Sandeen wrote:
+> 
+> Have you double-checked stack usage before & after the series, just
+> in case all the folding-in increased some stack footprints?
 
-Yes, that is the sticking point I got to with my last attempt at this :(
+The static stack footprints (on an x86) showed slight increases:
 
-I was kinda hoping that someone would have a bright idea that doesn't
-involve hacking an IO completion callback into get_block_t...
+Before:
+ext4_mb_free_blocks [vmlinux]:		124
+ext4_ext_truncate [vmlinux]:		100
 
->                                        - Ted
+After applying the patch series:
 
-Cheers,
-Duane.
+ext4_free_blocks [vmlinux]:		136
+ext4_ext_truncate [vmlinux]:		116
 
--- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+I was more concerned about the dynamic stack usage, so I ran xfstests
+QA and then re-running test #74 (fstest), which seems to be the one
+that uses the most stack.  The results are not fully consistent (which
+is why I manually re-ran #74 a few times to try to provoke the
+smallest possible stack space left), but the worse case stack usage I
+was able to find was:
+
+Before:
+
+fstest used greatest stack depth: 1084 bytes left
+
+After applying the patch series:
+
+fstest used greatest stack depth: 1024 bytes left
+
+So it's slightly worse, but hopefully not enough to push us over the
+edge.  I think I can move some stack variables into inner blocks in
+ext4_free_blocks() which should help, if we think this is a major
+problem.
+
+              	      	  	      	       - Ted
