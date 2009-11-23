@@ -1,48 +1,167 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 4/4] ext4: fix incorrect block reservation on quota transfer.
-Date: Mon, 23 Nov 2009 21:34:37 +0300
-Message-ID: <87tywlxf7m.fsf@openvz.org>
+Subject: [PATCH 3/4] ext4: quota macros cleanup
+Date: Mon, 23 Nov 2009 21:33:04 +0300
+Message-ID: <87y6lxxfa7.fsf@openvz.org>
 References: <87my2d5ctb.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; CHARSET=US-ASCII
 Content-Transfer-Encoding: 7BIT
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:48505 "EHLO mail.2ka.mipt.ru"
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:48461 "EHLO mail.2ka.mipt.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753235AbZKWSec (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 13:34:32 -0500
+	id S1755392AbZKWSdA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 13:33:00 -0500
 Received: from dmon-lp ([unknown] [10.55.93.124])
  by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KTK00DYIRT84B10@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Mon, 23 Nov 2009 21:39:11 +0300 (MSK)
+ (built Apr 16 2009)) with ESMTPA id <0KTK00DWDRQO4B10@mail.2ka.mipt.ru> for
+ linux-ext4@vger.kernel.org; Mon, 23 Nov 2009 21:37:39 +0300 (MSK)
 In-reply-to: <87my2d5ctb.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Inside ->setattr() call both ATTR_UID and ATTR_GID may be valid
-This means that we may end-up with transferring all quotas. Add
-we have to reserve QUOTA_DEL_BLOCKS for all quotas, as we do in
-case of QUOTA_INIT_BLOCKS.
+Currently all quota block reservation macros contains hard-coded "2"
+aka MAXQUOTAS value. This is no good because in some places it is not
+obvious to understand what does this digit represent. Let's introduce
+new macro with self descriptive name.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/ext4_jbd2.h |    8 ++++++--
+ fs/ext4/extents.c   |    2 +-
+ fs/ext4/inode.c     |    2 +-
+ fs/ext4/migrate.c   |    4 ++--
+ fs/ext4/namei.c     |    8 ++++----
+ 5 files changed, 14 insertions(+), 10 deletions(-)
 
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index a286598..404ab6c 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -49,7 +49,7 @@
+ 
+ #define EXT4_DATA_TRANS_BLOCKS(sb)	(EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + \
+ 					 EXT4_XATTR_TRANS_BLOCKS - 2 + \
+-					 2*EXT4_QUOTA_TRANS_BLOCKS(sb))
++					 EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
+ 
+ /*
+  * Define the number of metadata blocks we need to account to modify data.
+@@ -57,7 +57,7 @@
+  * This include super block, inode block, quota blocks and xattr blocks
+  */
+ #define EXT4_META_TRANS_BLOCKS(sb)	(EXT4_XATTR_TRANS_BLOCKS + \
+-					2*EXT4_QUOTA_TRANS_BLOCKS(sb))
++					EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
+ 
+ /* Delete operations potentially hit one directory's namespace plus an
+  * entire inode, plus arbitrary amounts of bitmap/indirection data.  Be
+@@ -92,6 +92,7 @@
+  * but inode, sb and group updates are done only once */
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+ 		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
++
+ #define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
+ 		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
+ #else
+@@ -99,6 +100,9 @@
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
+ #define EXT4_QUOTA_DEL_BLOCKS(sb) 0
+ #endif
++#define EXT4_MAXQUOTAS_TRANS_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_TRANS_BLOCKS(sb))
++#define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
++#define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+ 
+ int
+ ext4_mark_iloc_dirty(handle_t *handle,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 715264b..f73c3ff 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2167,7 +2167,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 			correct_index = 1;
+ 			credits += (ext_depth(inode)) + 1;
+ 		}
+-		credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
++		credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
+ 
+ 		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
+ 		if (err)
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b166e90..428336a 100644
+index c521c93..b166e90 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -5440,7 +5440,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+@@ -5439,7 +5439,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 
  		/* (user+group)*(old+new) structure, inode write (sb,
  		 * inode block, ? - but truncate inode update has it) */
- 		handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
--					EXT4_QUOTA_DEL_BLOCKS(inode->i_sb))+3);
-+					EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb))+3);
+-		handle = ext4_journal_start(inode, 2*(EXT4_QUOTA_INIT_BLOCKS(inode->i_sb)+
++		handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
+ 					EXT4_QUOTA_DEL_BLOCKS(inode->i_sb))+3);
  		if (IS_ERR(handle)) {
  			error = PTR_ERR(handle);
- 			goto err_out;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index a93d5b8..8646149 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -238,7 +238,7 @@ static int extend_credit_for_blkdel(handle_t *handle, struct inode *inode)
+ 	 * So allocate a credit of 3. We may update
+ 	 * quota (user and group).
+ 	 */
+-	needed = 3 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
++	needed = 3 + EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
+ 
+ 	if (ext4_journal_extend(handle, needed) != 0)
+ 		retval = ext4_journal_restart(handle, needed);
+@@ -477,7 +477,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	handle = ext4_journal_start(inode,
+ 					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					2 * EXT4_QUOTA_INIT_BLOCKS(inode->i_sb)
++					EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)
+ 					+ 1);
+ 	if (IS_ERR(handle)) {
+ 		retval = PTR_ERR(handle);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index fde08c9..17a17e1 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1769,7 +1769,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, int mode,
+ retry:
+ 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
++					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -1803,7 +1803,7 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+ retry:
+ 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
++					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -1840,7 +1840,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
+ retry:
+ 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
++					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2253,7 +2253,7 @@ static int ext4_symlink(struct inode *dir,
+ retry:
+ 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 5 +
+-					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
++					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
 -- 
 1.6.0.4
 
