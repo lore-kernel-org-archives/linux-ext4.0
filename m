@@ -1,201 +1,174 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/8] ext4: move ext4_forget() to ext4_jbd2.c
-Date: Sun, 22 Nov 2009 21:18:23 -0500
-Message-ID: <1258942710-31930-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/8] ext4: fold ext4_free_blocks() and ext4_mb_free_blocks()
+Date: Sun, 22 Nov 2009 21:18:26 -0500
+Message-ID: <1258942710-31930-5-git-send-email-tytso@mit.edu>
 References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48716 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48724 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756116AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756044AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 22 Nov 2009 21:18:29 -0500
 In-Reply-To: <1258942710-31930-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4_forget() function better belongs in ext4_jbd2.c.  This will
-allow us to do some cleanup of the ext4_journal_revoke() and
-ext4_journal_forget() functions, as well as giving us better error
-reporting since we can report the caller of ext4_forget() when things
-go wrong.
+ext4_mb_free_blocks() is only called by ext4_free_blocks(), and the
+latter function doesn't really do much.  So merge the two functions
+together, such that ext4_free_blocks() is now found in
+fs/ext4/mballoc.c.  This saves about 200 bytes of compiled text space.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h      |    2 -
- fs/ext4/ext4_jbd2.c |   56 +++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4_jbd2.h |    7 ++++++
- fs/ext4/inode.c     |   53 ------------------------------------------------
- 4 files changed, 63 insertions(+), 55 deletions(-)
+ fs/ext4/balloc.c  |   38 --------------------------------------
+ fs/ext4/ext4.h    |    7 +++----
+ fs/ext4/mballoc.c |   30 +++++++++++++++++++++++-------
+ 3 files changed, 26 insertions(+), 49 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index f3032c9..22bc743 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -499,44 +499,6 @@ error_return:
+ }
+ 
+ /**
+- * ext4_free_blocks() -- Free given blocks and update quota
+- * @handle:		handle for this transaction
+- * @inode:		inode
+- * @block:		start physical block to free
+- * @count:		number of blocks to count
+- * @metadata: 		Are these metadata blocks
+- */
+-void ext4_free_blocks(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t block, unsigned long count,
+-			int metadata)
+-{
+-	struct super_block *sb;
+-	unsigned long dquot_freed_blocks;
+-
+-	/* this isn't the right place to decide whether block is metadata
+-	 * inode.c/extents.c knows better, but for safety ... */
+-	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+-		metadata = 1;
+-
+-	/* We need to make sure we don't reuse
+-	 * block released untill the transaction commit.
+-	 * writeback mode have weak data consistency so
+-	 * don't force data as metadata when freeing block
+-	 * for writeback mode.
+-	 */
+-	if (metadata == 0 && !ext4_should_writeback_data(inode))
+-		metadata = 1;
+-
+-	sb = inode->i_sb;
+-
+-	ext4_mb_free_blocks(handle, inode, block, count,
+-			    metadata, &dquot_freed_blocks);
+-	if (dquot_freed_blocks)
+-		vfs_dq_free_block(inode, dquot_freed_blocks);
+-	return;
+-}
+-
+-/**
+  * ext4_has_free_blocks()
+  * @sbi:	in-core super block structure.
+  * @nblocks:	number of needed blocks
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 05ce38b..57c4e03 100644
+index 57c4e03..210e1b5 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1393,8 +1393,6 @@ extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
- extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
- 						ext4_group_t, int);
- /* inode.c */
--int ext4_forget(handle_t *handle, int is_metadata, struct inode *inode,
--		struct buffer_head *bh, ext4_fsblk_t blocknr);
- struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
- struct buffer_head *ext4_bread(handle_t *, struct inode *,
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 6a94099..913f857 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -4,6 +4,8 @@
- 
- #include "ext4_jbd2.h"
- 
-+#include <trace/events/ext4.h>
-+
- int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
- 				struct buffer_head *bh)
- {
-@@ -64,6 +66,60 @@ int __ext4_journal_revoke(const char *where, handle_t *handle,
- 	return err;
+@@ -1325,8 +1325,6 @@ extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
+ extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
+ extern int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
+-extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t block, unsigned long count, int metadata);
+ extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 				ext4_fsblk_t block, unsigned long count);
+ extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
+@@ -1385,8 +1383,9 @@ extern int ext4_mb_reserve_blocks(struct super_block *, int);
+ extern void ext4_discard_preallocations(struct inode *);
+ extern int __init init_ext4_mballoc(void);
+ extern void exit_ext4_mballoc(void);
+-extern void ext4_mb_free_blocks(handle_t *, struct inode *,
+-		ext4_fsblk_t, unsigned long, int, unsigned long *);
++extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
++			     ext4_fsblk_t block, unsigned long count,
++			     int metadata);
+ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6e5a23a..0dca90b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4427,18 +4427,24 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	return 0;
  }
  
-+/*
-+ * The ext4 forget function must perform a revoke if we are freeing data
-+ * which has been journaled.  Metadata (eg. indirect blocks) must be
-+ * revoked in all cases.
-+ *
-+ * "bh" may be NULL: a metadata block may have been freed from memory
-+ * but there may still be a record of it in the journal, and that record
-+ * still needs to be revoked.
-+ *
-+ * If the handle isn't valid we're not journaling, but we still need to
-+ * call into ext4_journal_revoke() to put the buffer head.
-+ */
-+int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
-+		  struct inode *inode, struct buffer_head *bh,
-+		  ext4_fsblk_t blocknr)
-+{
-+	int err;
-+
-+	might_sleep();
-+
-+	trace_ext4_forget(inode, is_metadata, blocknr);
-+	BUFFER_TRACE(bh, "enter");
-+
-+	jbd_debug(4, "forgetting bh %p: is_metadata = %d, mode %o, "
-+		  "data mode %x\n",
-+		  bh, is_metadata, inode->i_mode,
-+		  test_opt(inode->i_sb, DATA_FLAGS));
-+
-+	/* Never use the revoke function if we are doing full data
-+	 * journaling: there is no need to, and a V1 superblock won't
-+	 * support it.  Otherwise, only skip the revoke on un-journaled
-+	 * data blocks. */
-+
-+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
-+	    (!is_metadata && !ext4_should_journal_data(inode))) {
-+		if (bh) {
-+			BUFFER_TRACE(bh, "call jbd2_journal_forget");
-+			return __ext4_journal_forget(where, handle, bh);
-+		}
-+		return 0;
-+	}
-+
-+	/*
-+	 * data!=journal && (is_metadata || should_journal_data(inode))
+-/*
+- * Main entry point into mballoc to free blocks
++/**
++ * ext4_free_blocks() -- Free given blocks and update quota
++ * @handle:		handle for this transaction
++ * @inode:		inode
++ * @block:		start physical block to free
++ * @count:		number of blocks to count
++ * @metadata: 		Are these metadata blocks
+  */
+-void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t block, unsigned long count,
+-			int metadata, unsigned long *freed)
++void ext4_free_blocks(handle_t *handle, struct inode *inode,
++		      ext4_fsblk_t block, unsigned long count,
++		      int metadata)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_allocation_context *ac = NULL;
+ 	struct ext4_group_desc *gdp;
+ 	struct ext4_super_block *es;
++	unsigned long freed = 0;
+ 	unsigned int overflow;
+ 	ext4_grpblk_t bit;
+ 	struct buffer_head *gd_bh;
+@@ -4448,7 +4454,15 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	int err = 0;
+ 	int ret;
+ 
+-	*freed = 0;
++	/* 
++	 * We need to make sure we don't reuse the freed block until
++	 * after the transaction is committed, which we can do by
++	 * treating the block as metadata, below.  We make an
++	 * exception if the inode is to be written in writeback mode
++	 * since writeback mode has weak data consistency guarantees.
 +	 */
-+	BUFFER_TRACE(bh, "call ext4_journal_revoke");
-+	err = __ext4_journal_revoke(where, handle, blocknr, bh);
-+	if (err)
-+		ext4_abort(inode->i_sb, __func__,
-+			   "error %d when attempting revoke", err);
-+	BUFFER_TRACE(bh, "exit");
-+	return err;
-+}
-+
- int __ext4_journal_get_create_access(const char *where,
- 				handle_t *handle, struct buffer_head *bh)
- {
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index a286598..dc0b34a 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -139,6 +139,10 @@ int __ext4_journal_forget(const char *where, handle_t *handle,
- int __ext4_journal_revoke(const char *where, handle_t *handle,
- 				ext4_fsblk_t blocknr, struct buffer_head *bh);
++	if (!ext4_should_writeback_data(inode))
++		metadata = 1;
  
-+int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
-+		  struct inode *inode, struct buffer_head *bh,
-+		  ext4_fsblk_t blocknr);
-+
- int __ext4_journal_get_create_access(const char *where,
- 				handle_t *handle, struct buffer_head *bh);
+ 	sbi = EXT4_SB(sb);
+ 	es = EXT4_SB(sb)->s_es;
+@@ -4577,7 +4591,7 @@ do_more:
  
-@@ -151,6 +155,9 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
- 	__ext4_journal_get_write_access(__func__, (handle), (bh))
- #define ext4_journal_revoke(handle, blocknr, bh) \
- 	__ext4_journal_revoke(__func__, (handle), (blocknr), (bh))
-+#define ext4_forget(handle, is_metadata, inode, bh, block_nr) \
-+	__ext4_forget(__func__, (handle), (is_metadata), (inode), (bh),\
-+		      (block_nr))
- #define ext4_journal_get_create_access(handle, bh) \
- 	__ext4_journal_get_create_access(__func__, (handle), (bh))
- #define ext4_journal_forget(handle, bh) \
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3673ec7..fa37f95 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -71,59 +71,6 @@ static int ext4_inode_is_fast_symlink(struct inode *inode)
- }
+ 	ext4_mb_release_desc(&e4b);
  
- /*
-- * The ext4 forget function must perform a revoke if we are freeing data
-- * which has been journaled.  Metadata (eg. indirect blocks) must be
-- * revoked in all cases.
-- *
-- * "bh" may be NULL: a metadata block may have been freed from memory
-- * but there may still be a record of it in the journal, and that record
-- * still needs to be revoked.
-- *
-- * If the handle isn't valid we're not journaling, but we still need to
-- * call into ext4_journal_revoke() to put the buffer head.
-- */
--int ext4_forget(handle_t *handle, int is_metadata, struct inode *inode,
--		struct buffer_head *bh, ext4_fsblk_t blocknr)
--{
--	int err;
--
--	might_sleep();
--
--	trace_ext4_forget(inode, is_metadata, blocknr);
--	BUFFER_TRACE(bh, "enter");
--
--	jbd_debug(4, "forgetting bh %p: is_metadata = %d, mode %o, "
--		  "data mode %x\n",
--		  bh, is_metadata, inode->i_mode,
--		  test_opt(inode->i_sb, DATA_FLAGS));
--
--	/* Never use the revoke function if we are doing full data
--	 * journaling: there is no need to, and a V1 superblock won't
--	 * support it.  Otherwise, only skip the revoke on un-journaled
--	 * data blocks. */
--
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
--	    (!is_metadata && !ext4_should_journal_data(inode))) {
--		if (bh) {
--			BUFFER_TRACE(bh, "call jbd2_journal_forget");
--			return ext4_journal_forget(handle, bh);
--		}
--		return 0;
--	}
--
--	/*
--	 * data!=journal && (is_metadata || should_journal_data(inode))
--	 */
--	BUFFER_TRACE(bh, "call ext4_journal_revoke");
--	err = ext4_journal_revoke(handle, blocknr, bh);
--	if (err)
--		ext4_abort(inode->i_sb, __func__,
--			   "error %d when attempting revoke", err);
--	BUFFER_TRACE(bh, "exit");
--	return err;
--}
+-	*freed += count;
++	freed += count;
+ 
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+@@ -4597,6 +4611,8 @@ do_more:
+ 	}
+ 	sb->s_dirt = 1;
+ error_return:
++	if (freed)
++		vfs_dq_free_block(inode, freed);
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
+ 	if (ac)
+-- 
+1.6.5.216.g5288a.dirty
+
