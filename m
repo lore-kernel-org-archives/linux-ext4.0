@@ -1,52 +1,30 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
- readonly
-Date: Mon, 23 Nov 2009 11:54:40 +0100
-Message-ID: <20091123105440.GB15679@duck.suse.cz>
-References: <20091113050907.GA4965@roll>
- <20091119160700.GC2943@atrey.karlin.mff.cuni.cz>
- <20091120082359.GA29538@roll>
- <20091120094641.GB15422@duck.suse.cz>
- <20091123080919.GA3115@roll>
+From: Alexey Fisher <bug-track@fisher-privat.net>
+Subject: Unify log messages in ext4
+Date: Mon, 23 Nov 2009 12:45:36 +0100
+Message-ID: <1258976736.4103.1.camel@zwerg>
+References: <4B087DEC.5010402@redhat.com>
+	 <1258918735-4496-1-git-send-email-bug-track@fisher-privat.net>
+	 <20091123103658.GA15679@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-usb@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-	linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org
-To: tmhikaru@gmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:45245 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756652AbZKWKyf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 05:54:35 -0500
-Content-Disposition: inline
-In-Reply-To: <20091123080919.GA3115@roll>
+Received: from mail.gmx.net ([213.165.64.20]:50086 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1752588AbZKWLpf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Nov 2009 06:45:35 -0500
+In-Reply-To: <20091123103658.GA15679@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Am Montag, den 23.11.2009, 11:36 +0100 schrieb Jan Kara:
+> Thanks for the patch. I've merged it into my tree just with the following
+> typo fixes.
 
-On Mon 23-11-09 03:09:19, tmhikaru@gmail.com wrote:
-> 	Okay, finally had some time to dismantle the machine in question and
-> inserted the backup drive without the enclosure. Now that I was able to get
-> smartctl to give me information on what was going on, it seems there's
-> nothing wrong with the drive itself (no remapped sectors, nothing prefail or
-> fail going wrong, drive's smart status is good) but it's had a history of
-> 406 (!!!) errors reported, the last five happening within the same second,
-> all of which seem (to my untrained eye) to imply a bad IDE cable. Which
-> means likely my USB enclosure is screwing up.
-> 
-> 	To be sure, I did some extended testing with it hooked up: Tried
-> doing a full and incremental backup of my machine with no errors reported,
-> as well as an offline and then immediately afterwards, long test via
-> smartctl. Nothing changed in the output.
-  Yeah, from what you write, it looks like USB enclosure is at fault (or it
-could still be your USB controller but I doubt it).  It's still a bit
-bothering that the error reported by the drive was not properly propagated
-up to VFS. Either it's some block layer retry/ignore magic that I missed or
-we ignore errors from block layer in some place.
+Thank you,
+are there any ext4 patches around? Or this will be my next step. 
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
