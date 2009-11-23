@@ -1,37 +1,43 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: i_version, NFSv4 change attribute
-Date: Sun, 22 Nov 2009 17:20:47 -0500
-Message-ID: <20091122222047.GB21944@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 8/8] ext4: use ext4_data_block_valid() in ext4_free_blocks()
+Date: Sun, 22 Nov 2009 21:18:30 -0500
+Message-ID: <1258942710-31930-9-git-send-email-tytso@mit.edu>
+References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:48726 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756068AbZKWCS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 Nov 2009 21:18:29 -0500
+In-Reply-To: <1258942710-31930-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Since c654b8a9cba6002aad1c01919e4928a79a4a6dcf, the NFS server has made
-use of ext4's i_version when available.
+The block validity framework does a more comprehensive set of checks,
+and it saves object code space to use the ext4_data_block_valid() than
+the limited open-coded version that had been in ext4_free_blocks().
 
-However, the new i_version support is available only when the filesystem
-is mounted with the i_version mount option.  And the change attribute is
-required for completely correct NFSv4 operation, which we'd prefer to
-offer by default!
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-I recall having a conversation with Ted T'so about ways to do this
-without affecting non-NFS-exported filesystems: maybe by providing some
-sort of persistant flag on the superblock which the nfsd code could turn
-on automatically if desired?
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 78de5d3..ab2dad1 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4463,9 +4463,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	sbi = EXT4_SB(sb);
+ 	es = EXT4_SB(sb)->s_es;
+-	if (block < le32_to_cpu(es->s_first_data_block) ||
+-	    block + count < block ||
+-	    block + count > ext4_blocks_count(es)) {
++	if (!ext4_data_block_valid(sbi, block, count)) {
+ 		ext4_error(sb, __func__,
+ 			    "Freeing blocks not in datazone - "
+ 			    "block = %llu, count = %lu", block, count);
+-- 
+1.6.5.216.g5288a.dirty
 
-But first it would be useful to know whether there is in fact any
-disadvantage to just having the i_version on all the time.  Jean Noel
-Cordenner did some tests a couple years ago:
-
-	http://www.bullopensource.org/ext4/change_attribute/index.html
-
-and didn't find any significant difference.  But I don't know if those
-results were convincing (I don't understand what we're looking for
-here); any suggestions for workloads that would exercise the worst
-cases?
-
---b.
