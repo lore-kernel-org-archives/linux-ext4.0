@@ -1,57 +1,30 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 0/8] Clean up ext4's block free code paths
-Date: Mon, 23 Nov 2009 09:46:29 -0500
-Message-ID: <20091123144629.GF2532@thunk.org>
-References: <1258942710-31930-1-git-send-email-tytso@mit.edu>
- <4B0A072C.5000305@redhat.com>
+From: Alan Stern <stern@rowland.harvard.edu>
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
+ readonly
+Date: Mon, 23 Nov 2009 10:06:03 -0500 (EST)
+Message-ID: <Pine.LNX.4.44L0.0911231004030.2958-100000@iolanthe.rowland.org>
+References: <20091123105440.GB15679@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54064 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755229AbZKWOq1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Nov 2009 09:46:27 -0500
-Content-Disposition: inline
-In-Reply-To: <4B0A072C.5000305@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tmhikaru@gmail.com, <linux-kernel@vger.kernel.org>,
+	<linux-usb@vger.kernel.org>, Jens Axboe <axboe@kernel.dk>,
+	<linux-scsi@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755318AbZKWPF7@vger.kernel.org>
+In-Reply-To: <20091123105440.GB15679@duck.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Nov 22, 2009 at 09:53:16PM -0600, Eric Sandeen wrote:
-> 
-> Have you double-checked stack usage before & after the series, just
-> in case all the folding-in increased some stack footprints?
+On Mon, 23 Nov 2009, Jan Kara wrote:
 
-The static stack footprints (on an x86) showed slight increases:
+>   Yeah, from what you write, it looks like USB enclosure is at fault (or it
+> could still be your USB controller but I doubt it).  It's still a bit
+> bothering that the error reported by the drive was not properly propagated
+> up to VFS. Either it's some block layer retry/ignore magic that I missed or
+> we ignore errors from block layer in some place.
 
-Before:
-ext4_mb_free_blocks [vmlinux]:		124
-ext4_ext_truncate [vmlinux]:		100
+Is there any interest in tracking this down?  It's not hard to find out
+what low-level errors are being reported and to generate them on demand
+with an emulated USB disk drive.
 
-After applying the patch series:
-
-ext4_free_blocks [vmlinux]:		136
-ext4_ext_truncate [vmlinux]:		116
-
-I was more concerned about the dynamic stack usage, so I ran xfstests
-QA and then re-running test #74 (fstest), which seems to be the one
-that uses the most stack.  The results are not fully consistent (which
-is why I manually re-ran #74 a few times to try to provoke the
-smallest possible stack space left), but the worse case stack usage I
-was able to find was:
-
-Before:
-
-fstest used greatest stack depth: 1084 bytes left
-
-After applying the patch series:
-
-fstest used greatest stack depth: 1024 bytes left
-
-So it's slightly worse, but hopefully not enough to push us over the
-edge.  I think I can move some stack variables into inner blocks in
-ext4_free_blocks() which should help, if we think this is a major
-problem.
-
-              	      	  	      	       - Ted
+Alan Stern
