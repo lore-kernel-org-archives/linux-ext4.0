@@ -1,34 +1,37 @@
-From: =?UTF-8?B?7ZmN7IugIHNoaW4gaG9uZw==?= <hongshin@gmail.com>
-Subject: BUG? a suspected race bug at ext3_xattr_block_set()
-Date: Tue, 24 Nov 2009 20:27:41 +0900
-Message-ID: <2014bcab0911240327r68afb4a3r6e9cf238ce0df532@mail.gmail.com>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [patch 0/5] Journal guided resync and support
+Date: Tue, 24 Nov 2009 12:43:19 +0100
+Message-ID: <20091124114319.GA1397@ucw.cz>
+References: <20091119212241.283629302@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-raid@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Andreas Dilger <adilger@sun.com>
+To: scjody@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f180.google.com ([209.85.216.180]:33727 "EHLO
-	mail-px0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932668AbZKXL1f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2009 06:27:35 -0500
-Received: by pxi10 with SMTP id 10so4856715pxi.33
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2009 03:27:41 -0800 (PST)
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:55233 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757110AbZKXMCY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2009 07:02:24 -0500
+Content-Disposition: inline
+In-Reply-To: <20091119212241.283629302@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello.
-I am reporting a suspected data race bug from ext3/xattr.c in Linux 2.6.31.
+Hi!
 
-In ext3_xattr_block_set(), it accesses bs->bh->b_data
-while it does not hold lock_buffer(bs->bh).
+> This is an updated implementation of journal guided resync, intended to be
+> suitable for production systems.  This feature addresses the problem with RAID
+> arrays that take too long to resync - similar to the existing MD write-intent
+> bitmap feature, we resync only the stripes that were undergoing writes at the
+> time of the crash.  Unlike write-intent bitmaps, our testing shows very little
+> performance degredation as a result of the feature - around 3-5% vs around 30%
+> for bitmaps.
 
-However, there is no lock_buffer(bs->bh) and unlock_buffer(bs->bh)
-for guarding the access (at line 794).
-
-Due to the lack of synchronization, it seems that data race on
-bs->bh->b_data might be possible.
-
-Please examine the code to check whether it is problematic or not.
-Thank you.
-
-Sincerely
-Shin Hong
+Good. Now when fs know about raid and wise versa... perhaps it is time
+to journal surrounding data on stripe so that power fails do not
+destroy data on degraded raid5?
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
