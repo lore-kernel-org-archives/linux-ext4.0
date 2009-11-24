@@ -1,43 +1,34 @@
-From: Jan Kara <jack@suse.cz>
+From: Alan Stern <stern@rowland.harvard.edu>
 Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
  readonly
-Date: Tue, 24 Nov 2009 20:56:08 +0100
-Message-ID: <20091124195607.GC16662@quack.suse.cz>
-References: <4B0C1C20.2080901@panasas.com>
- <Pine.LNX.4.44L0.0911241418440.2881-100000@iolanthe.rowland.org>
+Date: Tue, 24 Nov 2009 15:13:01 -0500 (EST)
+Message-ID: <Pine.LNX.4.44L0.0911241510590.2881-100000@iolanthe.rowland.org>
+References: <20091124195607.GC16662@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Boaz Harrosh <bharrosh@panasas.com>,
-	tmhikaru@gmail.com,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Boaz Harrosh <bharrosh@panasas.com>, <tmhikaru@gmail.com>,
 	Kernel development list <linux-kernel@vger.kernel.org>,
 	USB list <linux-usb@vger.kernel.org>,
 	Jens Axboe <axboe@kernel.dk>,
 	SCSI development list <linux-scsi@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Alan Stern <stern@rowland.harvard.edu>
+	<linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.44L0.0911241418440.2881-100000@iolanthe.rowland.org>
+In-Reply-To: <20091124195607.GC16662@quack.suse.cz>
 Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 24-11-09 14:28:35, Alan Stern wrote:
-> On Tue, 24 Nov 2009, Jan Kara wrote:
-> 
-> >   My naive guess would be that those non-retried reads were actually
-> > readahead. That's not retried if I remember correctly. Later, when we
-> > really needed the data, we sent another read request...
-> 
-> That would be my guess too.  I don't know how to verify it, though.
-> 
-> If you're interested in pursuing this farther, I can show you how to 
-> generate equivalent errors on demand using an emulated USB drive.  
-> At this point it's not clear how much more one could learn by doing 
-> this, however.
-  After digging in block layer code, it's as we suspected:
-In case of host error DID_ERROR (which is our case), scsi request is
-retried iff it is not a FAILFAST request which is set if bio is doing
-readahead... So this is explained and everything behaves as it should.
-Thanks everybody involved :).
+On Tue, 24 Nov 2009, Jan Kara wrote:
 
-								Honza
+>   After digging in block layer code, it's as we suspected:
+> In case of host error DID_ERROR (which is our case), scsi request is
+> retried iff it is not a FAILFAST request which is set if bio is doing
+> readahead... So this is explained and everything behaves as it should.
+> Thanks everybody involved :).
+
+Okay, very good.  There remains the question of the disturbing error
+messages in the system log.  Should they be supressed for FAILFAST
+requests?
+
+Alan Stern
+
