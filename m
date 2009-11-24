@@ -1,53 +1,62 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [patch 0/5] Journal guided resync and support
-Date: Tue, 24 Nov 2009 11:51:34 -0700
-Message-ID: <856BC3CD-F483-4899-BCFE-0ACB59CED9BE@sun.com>
-References: <20091119212241.283629302@sun.com> <20091124114319.GA1397@ucw.cz>
+From: Alan Stern <stern@rowland.harvard.edu>
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
+ readonly
+Date: Tue, 24 Nov 2009 14:28:35 -0500 (EST)
+Message-ID: <Pine.LNX.4.44L0.0911241418440.2881-100000@iolanthe.rowland.org>
+References: <4B0C1C20.2080901@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: scjody@sun.com, linux-ext4@vger.kernel.org,
-	linux-raid@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tmhikaru@gmail.com,
+	Kernel development list <linux-kernel@vger.kernel.org>,
+	USB list <linux-usb@vger.kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	SCSI development list <linux-scsi@vger.kernel.org>,
+	<linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>, Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:39640 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933852AbZKXSvh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2009 13:51:37 -0500
-In-reply-to: <20091124114319.GA1397@ucw.cz>
+Received: from iolanthe.rowland.org ([192.131.102.54]:49236 "HELO
+	iolanthe.rowland.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757742AbZKXT2e (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2009 14:28:34 -0500
+In-Reply-To: <4B0C1C20.2080901@panasas.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2009-11-24, at 04:43, Pavel Machek wrote:
->> This is an updated implementation of journal guided resync,  
->> intended to be suitable for production systems.  This feature  
->> addresses the problem with RAID arrays that take too long to resync  
->> - similar to the existing MD write-intent bitmap feature, we resync  
->> only the stripes that were undergoing writes at the time of the  
->> crash.  Unlike write-intent bitmaps, our testing shows very little  
->> performance degredation as a result of the feature - around 3-5% vs  
->> around 30%
->> for bitmaps.
->
-> Good. Now when fs know about raid and wise versa... perhaps it is time
-> to journal surrounding data on stripe so that power fails do not
-> destroy data on degraded raid5?
+On Tue, 24 Nov 2009, Boaz Harrosh wrote:
+
+> > I would have expected the READ to be retried, but in these two cases 
+> > it wasn't.  The usbmon log contained five instances of this error 
+> > sequence; the other three were retried successfully.  I don't know what 
+> > the difference was.
+> > 
+> 
+> Perhaps the time it took to complete.
+> 
+> I have a very old IDE disk connected to a USB box here, and some bad sectors take ages
+> to return. One thing I wanted to investigate is why the complete Linux system is frozen
+> for minutes when I "cp" one of these bad-sectors and then every thing is back to normal.
+> It's just an inserted external box. Swap system and everything is on an another healthy HD.
+> As if the USB controller actually locks the PCI bus, or the interrupts are off for a long
+> while. (Or is it the BKL?)
+> 
+> Do you have time stamps on these?
+
+Yes.  Each of the unsuccessful reads, whether retried or not, lasted
+less than one millisecond.  So that's probably not the reason.
 
 
-That's an interesting idea.  I suspect this could be done more  
-efficiently by only journaling the parity block update, but there is  
-no way for the journal to address this block.
+On Tue, 24 Nov 2009, Jan Kara wrote:
 
-That said, unfortunately Jody has no more time to work on these  
-patches (due to data ordering requirements Lustre can't use them), and  
-while they are functionally complete for RHEL5 + ext3, they need to be  
-ported to 2.6.current and ext4 by someone or they will die a silent  
-death.
+>   My naive guess would be that those non-retried reads were actually
+> readahead. That's not retried if I remember correctly. Later, when we
+> really needed the data, we sent another read request...
 
+That would be my guess too.  I don't know how to verify it, though.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+If you're interested in pursuing this farther, I can show you how to 
+generate equivalent errors on demand using an emulated USB drive.  
+At this point it's not clear how much more one could learn by doing 
+this, however.
+
+Alan Stern
 
