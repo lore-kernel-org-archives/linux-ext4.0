@@ -1,80 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
- readonly
-Date: Tue, 24 Nov 2009 19:00:37 +0100
-Message-ID: <20091124180036.GB16662@quack.suse.cz>
-References: <20091123234234.GA22126@roll>
- <Pine.LNX.4.44L0.0911241111410.2881-100000@iolanthe.rowland.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [patch 0/5] Journal guided resync and support
+Date: Tue, 24 Nov 2009 11:51:34 -0700
+Message-ID: <856BC3CD-F483-4899-BCFE-0ACB59CED9BE@sun.com>
+References: <20091119212241.283629302@sun.com> <20091124114319.GA1397@ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tmhikaru@gmail.com, Jan Kara <jack@suse.cz>,
-	linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org,
-	Jens Axboe <axboe@kernel.dk>, linux-scsi@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Alan Stern <stern@rowland.harvard.edu>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: scjody@sun.com, linux-ext4@vger.kernel.org,
+	linux-raid@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50777 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933603AbZKXSAi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Nov 2009 13:00:38 -0500
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.44L0.0911241111410.2881-100000@iolanthe.rowland.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:39640 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933852AbZKXSvh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2009 13:51:37 -0500
+In-reply-to: <20091124114319.GA1397@ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 24-11-09 12:16:17, Alan Stern wrote:
-> On Mon, 23 Nov 2009 tmhikaru@gmail.com wrote:
-> 
-> > Thank you. I've gotten output of it screwing up, but it's a 62MB file. I
-> > don't think I'm allowed to send attachments here, nor do I know what I'm
-> > supposed to be looking for in this output. So, instead I'm putting the
-> > (compressed) file up on my home computer. If you've got suggestions for what
-> > I should use instead, let me know.
-> > 
-> > http://hikaru.no-ip.info:3000/1.mon.out.xz
-> > 
-> > Although I don't think you'll need it, I've included the dmesg output of
-> > what happened when I ran my backup script, just in case it helps at all.
-> 
-> Here's an annotated example of one of those hiccups:
-> 
-> f1aa1f00 2416018820 S Bo:1:003:1 -115 31 = 55534243 07050100 00100000 80000a28 000000ae ef000008 00000000 000000
-> f1aa1f00 2416018929 C Bo:1:003:1 0 31 >
-> 
-> The computer issued a READ command for 8 blocks (4096 bytes) starting
-> at block number 0x0000aeef = 44783.
-> 
-> d2588b00 2416019342 S Bi:1:003:2 -115 4096 <
-> d2588b00 2416019428 C Bi:1:003:2 -32 0
-> f1aa1f00 2416019435 S Co:1:003:0 s 02 01 0000 0082 0000 0
-> f1aa1f00 2416019554 C Co:1:003:0 0 0
-> 
-> The drive returned 0 bytes of data.
-> 
-> f1aa1f00 2416019560 S Bi:1:003:2 -115 13 <
-> f1aa1f00 2416019678 C Bi:1:003:2 0 13 = 55534253 07050100 00100000 00
-> 
-> And then it returned a status indicating no error but 4096 bytes
-> residue (i.e., incorrect or undelivered data).  This caused the
-> usb-storage driver to send the SCSI layer a result code of DID_ERROR
-> with no sense data.
-> 
-> > sd 0:0:0:0: [sda] Unhandled error code
-> > sd 0:0:0:0: [sda] Result: hostbyte=0x07 driverbyte=0x00
-> > end_request: I/O error, dev sda, sector 44783
-> 
-> The DID_ERROR code caused the SCSI layer to display this error message.  
-> 
-> > sd 0:0:0:0: [sda] Unhandled error code
-> > sd 0:0:0:0: [sda] Result: hostbyte=0x07 driverbyte=0x00
-> > end_request: I/O error, dev sda, sector 51823
-> 
-> I would have expected the READ to be retried, but in these two cases 
-> it wasn't.  The usbmon log contained five instances of this error 
-> sequence; the other three were retried successfully.  I don't know what 
-> the difference was.
-  My naive guess would be that those non-retried reads were actually
-readahead. That's not retried if I remember correctly. Later, when we
-really needed the data, we sent another read request...
+On 2009-11-24, at 04:43, Pavel Machek wrote:
+>> This is an updated implementation of journal guided resync,  
+>> intended to be suitable for production systems.  This feature  
+>> addresses the problem with RAID arrays that take too long to resync  
+>> - similar to the existing MD write-intent bitmap feature, we resync  
+>> only the stripes that were undergoing writes at the time of the  
+>> crash.  Unlike write-intent bitmaps, our testing shows very little  
+>> performance degredation as a result of the feature - around 3-5% vs  
+>> around 30%
+>> for bitmaps.
+>
+> Good. Now when fs know about raid and wise versa... perhaps it is time
+> to journal surrounding data on stripe so that power fails do not
+> destroy data on degraded raid5?
 
-								Honza
+
+That's an interesting idea.  I suspect this could be done more  
+efficiently by only journaling the parity block update, but there is  
+no way for the journal to address this block.
+
+That said, unfortunately Jody has no more time to work on these  
+patches (due to data ordering requirements Lustre can't use them), and  
+while they are functionally complete for RHEL5 + ext3, they need to be  
+ported to 2.6.current and ext4 by someone or they will die a silent  
+death.
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
