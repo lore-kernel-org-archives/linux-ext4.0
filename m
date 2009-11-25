@@ -1,50 +1,65 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 4/4] ext4: fix incorrect block reservation on quota transfer.
-Date: Wed, 25 Nov 2009 09:57:41 +0300
-Message-ID: <1259132261-16785-4-git-send-email-dmonakhov@openvz.org>
-References: <1259132261-16785-1-git-send-email-dmonakhov@openvz.org>
- <1259132261-16785-2-git-send-email-dmonakhov@openvz.org>
- <1259132261-16785-3-git-send-email-dmonakhov@openvz.org>
-Content-Transfer-Encoding: 7BIT
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:43482 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752259AbZKYG5k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Nov 2009 01:57:40 -0500
-Received: from localhost.localdomain ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- with ESMTPA id <0KTN00EZYKVQR060@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Wed, 25 Nov 2009 10:02:17 +0300 (MSK)
-In-reply-to: <1259132261-16785-3-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
+ readonly
+Date: Wed, 25 Nov 2009 09:42:41 +0100
+Message-ID: <20091125084240.GA549@quack.suse.cz>
+References: <20091124195607.GC16662@quack.suse.cz>
+ <Pine.LNX.4.44L0.0911241510590.2881-100000@iolanthe.rowland.org>
+ <20091124203944.GD16662@quack.suse.cz>
+ <20091124215044.GA20245@roll>
+ <20091124222334.GB20245@roll>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Alan Stern <stern@rowland.harvard.edu>,
+	Boaz Harrosh <bharrosh@panasas.com>,
+	Kernel development list <linux-kernel@vger.kernel.org>,
+	USB list <linux-usb@vger.kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	SCSI development list <linux-scsi@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: tmhikaru@gmail.com
+Return-path: <linux-scsi-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20091124222334.GB20245@roll>
+Sender: linux-scsi-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Inside ->setattr() call both ATTR_UID and ATTR_GID may be valid
-This means that we may end-up with transferring all quotas. Add
-we have to reserve QUOTA_DEL_BLOCKS for all quotas, as we do in
-case of QUOTA_INIT_BLOCKS.
+On Tue 24-11-09 17:23:34, tmhikaru@gmail.com wrote:
+> On Tue, Nov 24, 2009 at 04:50:44PM -0500, tmhikaru@gmail.com wrote:
+> > On Tue, Nov 24, 2009 at 09:39:44PM +0100, Jan Kara wrote:
+> > > On Tue 24-11-09 15:13:01, Alan Stern wrote:
+> > > > On Tue, 24 Nov 2009, Jan Kara wrote:
+> > > > 
+> > > > >   After digging in block layer code, it's as we suspected:
+> > > > > In case of host error DID_ERROR (which is our case), scsi request is
+> > > > > retried iff it is not a FAILFAST request which is set if bio is doing
+> > > > > readahead... So this is explained and everything behaves as it should.
+> > > > > Thanks everybody involved :).
+> > > > 
+> > > > Okay, very good.  There remains the question of the disturbing error
+> > > > messages in the system log.  Should they be supressed for FAILFAST
+> > > > requests?
+> > >   I think it's useful they are there because ultimately, something really
+> > > went wrong and you should better investigate. BTW, "end_request: I/O error"
+> > > messages are in the log even for requests where we retried and succeeded...
+> > > 
+> > > 								Honza
+> > 
+> > While I agree it is useful information, I think that if the error messages
+> > are going to be printed, you should *also* print that this is a NON FATAL
+> > error and that it's going to be retried. It'd help diagnosing the path it's
+> > following through the failure code IMHO as well as not making users
+> > completely freak out like I did in my case. It is *not* particularly obvious
+> > given the message printed to syslog what is going wrong or why.
+  Yeah, we might make it more obvious that read failed and whether or not
+we are going to retry. Just technically it's not so simple because a
+different layer prints messages about errors (generic block layer) and
+different (scsi disk driver) decides what to do (retry, don't retry, ...).
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> 	I should have asked since I'm here at the moment - do you need any
+> more information out of the buggy USB enclosure at the moment, or can I work
+> on trying to fix/replace it now?
+  No, feel free to do anything with it :). Thanks for your help with
+debugging this.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 211722b..d42e954 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5439,7 +5439,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 		/* (user+group)*(old+new) structure, inode write (sb,
- 		 * inode block, ? - but truncate inode update has it) */
- 		handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
--					EXT4_QUOTA_DEL_BLOCKS(inode->i_sb))+3);
-+					EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb))+3);
- 		if (IS_ERR(handle)) {
- 			error = PTR_ERR(handle);
- 			goto err_out;
--- 
-1.6.0.4
-
+									Honza
