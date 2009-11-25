@@ -1,66 +1,45 @@
-From: Alan Stern <stern@rowland.harvard.edu>
-Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem
- readonly
-Date: Wed, 25 Nov 2009 11:10:48 -0500 (EST)
-Message-ID: <Pine.LNX.4.44L0.0911251052020.2879-100000@iolanthe.rowland.org>
-References: <20091125084240.GA549@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/4] ext4: ext4_get_reserved_space() must return bytes
+ instead of blocks
+Date: Wed, 25 Nov 2009 10:32:46 -0600
+Message-ID: <4B0D5C2E.7000007@redhat.com>
+References: <1259132261-16785-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tmhikaru@gmail.com, Boaz Harrosh <bharrosh@panasas.com>,
-	Kernel development list <linux-kernel@vger.kernel.org>,
-	USB list <linux-usb@vger.kernel.org>,
-	Jens Axboe <axboe@kernel.dk>,
-	SCSI development list <linux-scsi@vger.kernel.org>,
-	<linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-In-Reply-To: <20091125084240.GA549@quack.suse.cz>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Mingming <cmm@us.ibm.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:27781 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752637AbZKYQcq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Nov 2009 11:32:46 -0500
+In-Reply-To: <1259132261-16785-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 25 Nov 2009, Jan Kara wrote:
+Dmitry Monakhov wrote:
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-> > > > > Okay, very good.  There remains the question of the disturbing error
-> > > > > messages in the system log.  Should they be supressed for FAILFAST
-> > > > > requests?
-> > > >   I think it's useful they are there because ultimately, something really
-> > > > went wrong and you should better investigate. BTW, "end_request: I/O error"
-> > > > messages are in the log even for requests where we retried and succeeded...
+Thanks,
 
-That isn't true.  Take a look at the dmesg log accompanying Tim's 
-usbmon log.  Although there were 5 read errors in the usbmon log, there 
-were only 2 I/O error messages in dmesg, corresponding to the 2 reads 
-that weren't retried successfully.
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-Personally, I think it makes little sense to print error messages in 
-the system log for commands where retries are disallowed.  Unless we go 
-ahead and print error messages for _all_ failures, including those 
-which are retried successfully.
-
-Perhaps a good compromise would be to set the REQ_QUIET flag in 
-req->cmd_flags for readaheads.  That would suppress the error messages 
-coming from the SCSI core.
-
->   Yeah, we might make it more obvious that read failed and whether or not
-> we are going to retry. Just technically it's not so simple because a
-> different layer prints messages about errors (generic block layer) and
-> different (scsi disk driver) decides what to do (retry, don't retry, ...).
-
-Actually the retry decisions (or many of them) are made by the SCSI 
-core, and that's also where some of those error messages come from.
-
-> > 	I should have asked since I'm here at the moment - do you need any
-> > more information out of the buggy USB enclosure at the moment, or can I work
-> > on trying to fix/replace it now?
->   No, feel free to do anything with it :). Thanks for your help with
-> debugging this.
-
-To clarify, the enclosure isn't really very buggy.  It _should_ have
-carried out the failed commands, or if it had a valid reason for not
-doing so then it _should_ have reported the reason.  Regardless, the
-errors that occurred were harmless because they went away when the
-commands were retried.  (Although if they weren't harmless, you
-wouldn't be able to tell just from reading the system log...)
-
-Alan Stern
+> ---
+>  fs/ext4/inode.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ab22297..cc4737e 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1057,7 +1057,7 @@ qsize_t ext4_get_reserved_space(struct inode *inode)
+>  		EXT4_I(inode)->i_reserved_meta_blocks;
+>  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+>  
+> -	return total;
+> +	return (total << inode->i_blkbits);
+>  }
+>  /*
+>   * Calculate the number of metadata blocks need to reserve
 
