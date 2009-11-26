@@ -1,54 +1,59 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: Report metadata errors during fsync
-Date: Thu, 26 Nov 2009 14:31:39 +0100
-Message-ID: <20091126133139.GB4834@quack.suse.cz>
-References: <1259144693-6732-1-git-send-email-jack@suse.cz>
- <20091125134858.97ca863d.akpm@linux-foundation.org>
- <537036C8-472F-4111-8B00-7A637A00845E@sun.com>
+From: "Leyendecker, Robert" <Robert.Leyendecker@lsi.com>
+Subject: RE: ext4: smp_processor_id() in preemptible
+Date: Thu, 26 Nov 2009 11:53:55 -0500
+Message-ID: <8C8865ED624BB94F8FE50259E2B5C5B304593DAB98@palmail03.lsi.com>
+References: <4AC9C4FD.7080606@klingt.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu, chris.mason@oracle.com
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60517 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751407AbZKZNbi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Nov 2009 08:31:38 -0500
-Content-Disposition: inline
-In-Reply-To: <537036C8-472F-4111-8B00-7A637A00845E@sun.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+To: Tim Blechmann <tim@klingt.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760188AbZKZQyD@vger.kernel.org>
+In-Reply-To: <4AC9C4FD.7080606@klingt.org>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 25-11-09 16:17:32, Andreas Dilger wrote:
-> On 2009-11-25, at 14:48, Andrew Morton wrote:
-> >On Wed, 25 Nov 2009 11:24:53 +0100
-> >Jan Kara <jack@suse.cz> wrote:
-> >>When an IO error happens while writing metadata buffers, we should
-> >>better report it and call ext2_error since the filesystem is probably
-> >>no longer consistent. Sometimes such IO errors happen while flushing
-> >>thread does background writeback, the buffer gets later evicted
-> >>from memory, and thus the only trace of the error remains as
-> >>AS_EIO bit
-> >>set in blockdevice's mapping. So we check this bit in ext2_fsync and
-> >>report the error although we cannot be really sure which buffer we
-> >>failed to write.
-> >
-> >So this doesn't cause significant changes in runtime behaviour unless
-> >the operator specified errors=remount-ro or errors=panic?
-> 
-> 
-> Debian, at least, always mounts filesystems with errors=remount-ro.
-> 
-> I _was_ thinking that this would cause errors for even regular file
-> data, but since it is the bdev mapping and regular files have their
-> own mappings any errors on the regular files should appear on a
-> different mapping (which is eventually returned via simple_fsync()).
->
-> The only errors returned from the bdev mapping should be metadata
-> errors, and we always want to call ext*_error() for those.
-  Exactly. Since ext2 handles also directories via page cache, even errors
-in directory blocks will not end up in block device's page cache.
-
-
-								Honza
+VGltLA0KDQpJIGhhdmUgc2ltaWxhciBjcmFzaCwgYnV0IHByb2JhYmx5IGRpZmZlcmVudCBjYXVz
+ZS12ZWN0b3IsIHBvc3RlZCBvbiB0aGlzIGxpc3QsIGZlZG9yYSBidWd6aWxsYSwgcnQtdXNlcnMg
+YnV0IG5vIHJlc3BvbnNlIHNvIGZhciBmcm9tIGFueW9uZS4gRGlkIHlvdSBmaW5kIGFueSB3b3Jr
+IGFyb3VuZD8gIEkgdHJpZWQgbG9va2luZyBhdCBzbXAgY29kZSBmb3IgaGludHMgb24gcHJvYmxl
+bSBpdCBsb29rcyBsaWtlIGluIG15IGNhc2UgaXQgY291bGQgYmUgdHJ5aW5nIHRvIHJlc2NoZWR1
+bGUgd29yayBvbiBkaWZmZXJlbnQgQ1BVIGF0IHRpbWUgb2YgY3Jhc2guIEhvd2V2ZXIsIEkgYWRt
+aXQgdGhhdCBJIGNvdWxkIGJlIHdheSwgd2F5IG9mZiBvbiB0aGF0IGNhdXNlLiBJbiBteSBjYXNl
+LCBpZiBJIGhhbW1lciBteSBuZXR3b3JrIGludGVyZmFjZSB3aXRoIHBhY2tldHMgd2hpbGUgYW5v
+dGhlciBhcHAgaXMgcmVhZGluZyBwYWNrZXRzLCBteSBob3N0IGxvY2tzIHVwIGFuZCBjbGllbnRz
+IGFyZSByZXBvcnRpbmcgZGVzdCB1bnJlYWNoYWJsZXMuIA0KDQpJIGRvbid0IHRoaW5rIEkgaGF2
+ZSB0aGUgcHJvYmxlbSBpbiBub24tcnQga2VybmVsLiBIYXZlIHlvdSB0cmllZCBib290aW5nIHdp
+dGhvdXQgc21wIHN1cHBvcnQ/DQoNCmh0dHA6Ly9sa21sLm9yZy9sa21sL2hlYWRlcnMvMjAwOS8x
+MS8yMy81NDgNCg0KLUJvYg0KDQoNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBG
+cm9tOiBsaW51eC1rZXJuZWwtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgta2Vy
+bmVsLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBUaW0gQmxlY2htYW5u
+DQo+IFNlbnQ6IE1vbmRheSwgT2N0b2JlciAwNSwgMjAwOSA1OjA2IEFNDQo+IFRvOiBsaW51eC1r
+ZXJuZWxAdmdlci5rZXJuZWwub3JnOyBsaW51eC1leHQ0QHZnZXIua2VybmVsLm9yZw0KPiBTdWJq
+ZWN0OiBleHQ0OiBzbXBfcHJvY2Vzc29yX2lkKCkgaW4gcHJlZW1wdGlibGUNCj4gDQo+IGhpIGFs
+bCwNCj4gDQo+IHVzaW5nIDIuNi4zMS4xIHdpdGggQ09ORklHX1BSRUVNUFQ9eSwgaSBnb3QgdGhl
+IGZvbGxvd2luZyBjYWxsIHRyYWNlcw0KPiBmcm9tIGV4dDQgcmVsYXRlZCBjb2RlLCB3aGVuIGRv
+aW5nIHNvbWUgaW8taGVhdnkgdGFza3M6DQo+IA0KPiBbMzA0NzcuMTI2MjAxXSBJTkZPOiB0YXNr
+IGdjb25mZC0yOjIyOTYgYmxvY2tlZCBmb3IgbW9yZSB0aGFuIDEyMA0KPiBzZWNvbmRzLg0KPiBb
+MzA0NzcuMTI2MjA1XSAiZWNobyAwID4gL3Byb2Mvc3lzL2tlcm5lbC9odW5nX3Rhc2tfdGltZW91
+dF9zZWNzIg0KPiBkaXNhYmxlcyB0aGlzIG1lc3NhZ2UuDQo+IFszMDQ3Ny4xMjYyMDhdIGdjb25m
+ZC0yICAgICAgRCBmZmZmODgwMDI4MDQzNmU4ICAgICAwICAyMjk2ICAgICAgMQ0KPiAweDAwMDAw
+MDAwDQo+IFszMDQ3Ny4xMjYyMTRdIEJVRzogdXNpbmcgc21wX3Byb2Nlc3Nvcl9pZCgpIGluIHBy
+ZWVtcHRpYmxlIFswMDAwMDAwMF0NCj4gY29kZToga2h1bmd0YXNrZC83MiBbMzA0NzcuMTI2MjIx
+XSBjYWxsZXIgaXMNCj4gc2hvd19zdGFja19sb2dfbHZsKzB4MzIvMHgxNzANCj4gWzMwNDc3LjEy
+NjIyNF0gUGlkOiA3MiwgY29tbToga2h1bmd0YXNrZCBUYWludGVkOiBQICAgICAgICAgICAyLjYu
+MzEuMQ0KPiAjMjkNCj4gWzMwNDc3LjEyNjIyN10gQ2FsbCBUcmFjZToNCj4gWzMwNDc3LjEyNjIz
+NF0gIFs8ZmZmZmZmZmY4MTI2Njg4MT5dIGRlYnVnX3NtcF9wcm9jZXNzb3JfaWQrMHhkMS8weGYw
+DQo+IFszMDQ3Ny4xMjYyMzhdICBbPGZmZmZmZmZmODEwMTRiNjI+XSBzaG93X3N0YWNrX2xvZ19s
+dmwrMHgzMi8weDE3MA0KPiBbMzA0NzcuMTI2MjQyXSAgWzxmZmZmZmZmZjgxNGY1N2MwPl0gPyBw
+cmludGsrMHgzYy8weDQ0IFszMDQ3Ny4xMjYyNDZdDQo+IFs8ZmZmZmZmZmY4MTAxNWUxNz5dIHNo
+b3dfc3RhY2srMHgxNy8weDIwIFszMDQ3Ny4xMjYyNTFdDQo+IFs8ZmZmZmZmZmY4MTA0NWI1Mj5d
+IHNjaGVkX3Nob3dfdGFzaysweDkyLzB4MTAwIFszMDQ3Ny4xMjYyNTZdDQo+IFs8ZmZmZmZmZmY4
+MTBhYjY2ZD5dIHdhdGNoZG9nKzB4MWZkLzB4MjQwIFszMDQ3Ny4xMjYyNjBdDQo+IFs8ZmZmZmZm
+ZmY4MTBhYjQ3MD5dID8gd2F0Y2hkb2crMHgwLzB4MjQwIFszMDQ3Ny4xMjYyNjRdDQo+IFs8ZmZm
+ZmZmZmY4MTA3MTIxNj5dIGt0aHJlYWQrMHhhNi8weGIwIFszMDQ3Ny4xMjYyNjhdDQo+IFs8ZmZm
+ZmZmZmY4MTAxMzAzYT5dIGNoaWxkX3JpcCsweGEvMHgyMCBbMzA0NzcuMTI2MjcyXQ0KPiBbPGZm
+ZmZmZmZmODEwNzExNzA+XSA/IGt0aHJlYWQrMHgwLzB4YjAgWzMwNDc3LjEyNjI3NV0NCj4gWzxm
+ZmZmZmZmZjgxMDEzMDMwPl0gPyBjaGlsZF9yaXArMHgwLzB4MjAgWzMwNDc3LjEyNjI3OF0NCg==
