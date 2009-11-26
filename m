@@ -1,96 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14696] New: EXT4-fs error (device dm-3):
- ext4_mb_release_inode_pa: free 777, pa_free 778
-Date: Thu, 26 Nov 2009 11:32:12 GMT
-Message-ID: <bug-14696-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: Report metadata errors during fsync
+Date: Thu, 26 Nov 2009 14:29:01 +0100
+Message-ID: <20091126132901.GA4834@quack.suse.cz>
+References: <1259144693-6732-1-git-send-email-jack@suse.cz>
+ <20091125134858.97ca863d.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	chris.mason@oracle.com
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:34082 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751008AbZKZLcG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Nov 2009 06:32:06 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nAQBWCer019188
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2009 11:32:12 GMT
+Received: from cantor.suse.de ([195.135.220.2]:36160 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759518AbZKZN3B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Nov 2009 08:29:01 -0500
+Content-Disposition: inline
+In-Reply-To: <20091125134858.97ca863d.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14696
+On Wed 25-11-09 13:48:58, Andrew Morton wrote:
+> On Wed, 25 Nov 2009 11:24:53 +0100
+> Jan Kara <jack@suse.cz> wrote:
+> 
+> > When an IO error happens while writing metadata buffers, we should better
+> > report it and call ext2_error since the filesystem is probably no longer
+> > consistent. Sometimes such IO errors happen while flushing thread does
+> > background writeback, the buffer gets later evicted from memory, and thus
+> > the only trace of the error remains as AS_EIO bit set in blockdevice's
+> > mapping. So we check this bit in ext2_fsync and report the error although
+> > we cannot be really sure which buffer we failed to write.
+> 
+> So this doesn't cause significant changes in runtime behaviour unless
+> the operator specified errors=remount-ro or errors=panic?
+  Yes, only log message in case errors=continue. OTOH errors=remount-ro is
+IMHO more common. But in case we detect metadata IO error (which is what
+I've added), calling ext2_error is desirable regardless of what it ends up
+doing.
 
-           Summary: EXT4-fs error (device dm-3): ext4_mb_release_inode_pa:
-                    free 777, pa_free 778
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.30.8
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: olel@ans.pl
-        Regression: No
-
-
-Two hours ago my database server stopped working. I turned out to be a problem
-with ext4:
-
-pa ffff88063643bd00: logic 1024, phys. 2677760, len 1024
-EXT4-fs error (device dm-3): ext4_mb_release_inode_pa: free 777, pa_free 778
-Aborting journal on device dm-3:8.
-Remounting filesystem read-only
-
-The problem was fixed by:
-
-# fsck /dev/VG0/sql
-fsck from util-linux-ng 2.16.1
-e2fsck 1.41.9 (22-Aug-2009)
-/dev/mapper/VG0-sql_tmp: recovering journal
-/dev/mapper/VG0-sql_tmp contains a file system with errors, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Deleted inode 66 has zero dtime.  Fix<y>? yes
-
-Inodes that were part of a corrupted orphan linked list found.  Fix<y>? yes
-
-Inode 67 was part of the orphaned inode list.  FIXED.
-Inode 68 was part of the orphaned inode list.  FIXED.
-Inode 69 was part of the orphaned inode list.  FIXED.
-Inode 2975 was part of the orphaned inode list.  FIXED.
-Deleted inode 3731 has zero dtime.  Fix<y>? yes
-
-Inode 3732 was part of the orphaned inode list.  FIXED.
-Inode 3733 was part of the orphaned inode list.  FIXED.
-Inode 3734 was part of the orphaned inode list.  FIXED.
-Inode 3735 was part of the orphaned inode list.  FIXED.
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -2678117
-Fix<y>? yes
-
-Inode bitmap differences:  -(66--69) -2975 -(3731--3735)
-Fix<y>? yes
-
-Free inodes count wrong for group #0 (4457, counted=4467).
-Fix<y>? yes
-
-Free inodes count wrong (2093400, counted=2093410).
-Fix<y>? yes
-
-
-/dev/mapper/VG0-sql_tmp: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/mapper/VG0-sql_tmp: 3742/2097152 files (19.4% non-contiguous),
-963461/8388608 blocks
-
-Before I started the fsck I had made a copy of that fs, so I'm still able to
-provide a dump if necessary.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+								Honza
