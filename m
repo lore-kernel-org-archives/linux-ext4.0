@@ -1,61 +1,96 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext2: Report metadata errors during fsync
-Date: Wed, 25 Nov 2009 16:17:32 -0700
-Message-ID: <537036C8-472F-4111-8B00-7A637A00845E@sun.com>
-References: <1259144693-6732-1-git-send-email-jack@suse.cz>
- <20091125134858.97ca863d.akpm@linux-foundation.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14696] New: EXT4-fs error (device dm-3):
+ ext4_mb_release_inode_pa: free 777, pa_free 778
+Date: Thu, 26 Nov 2009 11:32:12 GMT
+Message-ID: <bug-14696-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	chris.mason@oracle.com
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62638 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932917AbZKYXR2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Nov 2009 18:17:28 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nAPNHY5Q010819
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2009 15:17:34 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KTO00D00TRD5F00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 25 Nov 2009 15:17:34 -0800 (PST)
-In-reply-to: <20091125134858.97ca863d.akpm@linux-foundation.org>
+Received: from demeter.kernel.org ([140.211.167.39]:34082 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751008AbZKZLcG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Nov 2009 06:32:06 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nAQBWCer019188
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2009 11:32:12 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2009-11-25, at 14:48, Andrew Morton wrote:
-> On Wed, 25 Nov 2009 11:24:53 +0100
-> Jan Kara <jack@suse.cz> wrote:
->> When an IO error happens while writing metadata buffers, we should
->> better report it and call ext2_error since the filesystem is probably
->> no longer consistent. Sometimes such IO errors happen while flushing
->> thread does background writeback, the buffer gets later evicted  
->> from memory, and thus the only trace of the error remains as AS_EIO  
->> bit
->> set in blockdevice's mapping. So we check this bit in ext2_fsync and
->> report the error although we cannot be really sure which buffer we
->> failed to write.
->
-> So this doesn't cause significant changes in runtime behaviour unless
-> the operator specified errors=remount-ro or errors=panic?
+http://bugzilla.kernel.org/show_bug.cgi?id=14696
+
+           Summary: EXT4-fs error (device dm-3): ext4_mb_release_inode_pa:
+                    free 777, pa_free 778
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.30.8
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: olel@ans.pl
+        Regression: No
 
 
-Debian, at least, always mounts filesystems with errors=remount-ro.
+Two hours ago my database server stopped working. I turned out to be a problem
+with ext4:
 
-I _was_ thinking that this would cause errors for even regular file
-data, but since it is the bdev mapping and regular files have their
-own mappings any errors on the regular files should appear on a
-different mapping (which is eventually returned via simple_fsync()).
+pa ffff88063643bd00: logic 1024, phys. 2677760, len 1024
+EXT4-fs error (device dm-3): ext4_mb_release_inode_pa: free 777, pa_free 778
+Aborting journal on device dm-3:8.
+Remounting filesystem read-only
 
-The only errors returned from the bdev mapping should be metadata
-errors, and we always want to call ext*_error() for those.
+The problem was fixed by:
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+# fsck /dev/VG0/sql
+fsck from util-linux-ng 2.16.1
+e2fsck 1.41.9 (22-Aug-2009)
+/dev/mapper/VG0-sql_tmp: recovering journal
+/dev/mapper/VG0-sql_tmp contains a file system with errors, check forced.
+Pass 1: Checking inodes, blocks, and sizes
+Deleted inode 66 has zero dtime.  Fix<y>? yes
 
+Inodes that were part of a corrupted orphan linked list found.  Fix<y>? yes
+
+Inode 67 was part of the orphaned inode list.  FIXED.
+Inode 68 was part of the orphaned inode list.  FIXED.
+Inode 69 was part of the orphaned inode list.  FIXED.
+Inode 2975 was part of the orphaned inode list.  FIXED.
+Deleted inode 3731 has zero dtime.  Fix<y>? yes
+
+Inode 3732 was part of the orphaned inode list.  FIXED.
+Inode 3733 was part of the orphaned inode list.  FIXED.
+Inode 3734 was part of the orphaned inode list.  FIXED.
+Inode 3735 was part of the orphaned inode list.  FIXED.
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  -2678117
+Fix<y>? yes
+
+Inode bitmap differences:  -(66--69) -2975 -(3731--3735)
+Fix<y>? yes
+
+Free inodes count wrong for group #0 (4457, counted=4467).
+Fix<y>? yes
+
+Free inodes count wrong (2093400, counted=2093410).
+Fix<y>? yes
+
+
+/dev/mapper/VG0-sql_tmp: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/mapper/VG0-sql_tmp: 3742/2097152 files (19.4% non-contiguous),
+963461/8388608 blocks
+
+Before I started the fsck I had made a copy of that fs, so I'm still able to
+provide a dump if necessary.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
