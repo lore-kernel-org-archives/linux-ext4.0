@@ -1,59 +1,94 @@
-From: "Leyendecker, Robert" <Robert.Leyendecker@lsi.com>
-Subject: RE: ext4: smp_processor_id() in preemptible
-Date: Thu, 26 Nov 2009 11:53:55 -0500
-Message-ID: <8C8865ED624BB94F8FE50259E2B5C5B304593DAB98@palmail03.lsi.com>
-References: <4AC9C4FD.7080606@klingt.org>
+From: tmhikaru@gmail.com
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem readonly
+Date: Fri, 27 Nov 2009 04:43:39 -0500
+Message-ID: <20091127094339.GA9047@roll>
+References: <20091125084240.GA549@quack.suse.cz> <Pine.LNX.4.44L0.0911251052020.2879-100000@iolanthe.rowland.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-To: Tim Blechmann <tim@klingt.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760188AbZKZQyD@vger.kernel.org>
-In-Reply-To: <4AC9C4FD.7080606@klingt.org>
-Content-Language: en-US
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, tmhikaru@gmail.com,
+	Boaz Harrosh <bharrosh@panasas.com>,
+	Kernel development list <linux-kernel@vger.kernel.org>,
+	USB list <linux-usb@vger.kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	SCSI development list <linux-scsi@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Alan Stern <stern@rowland.harvard.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qy0-f192.google.com ([209.85.221.192]:61490 "EHLO
+	mail-qy0-f192.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754199AbZK0Jnk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Nov 2009 04:43:40 -0500
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.44L0.0911251052020.2879-100000@iolanthe.rowland.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-VGltLA0KDQpJIGhhdmUgc2ltaWxhciBjcmFzaCwgYnV0IHByb2JhYmx5IGRpZmZlcmVudCBjYXVz
-ZS12ZWN0b3IsIHBvc3RlZCBvbiB0aGlzIGxpc3QsIGZlZG9yYSBidWd6aWxsYSwgcnQtdXNlcnMg
-YnV0IG5vIHJlc3BvbnNlIHNvIGZhciBmcm9tIGFueW9uZS4gRGlkIHlvdSBmaW5kIGFueSB3b3Jr
-IGFyb3VuZD8gIEkgdHJpZWQgbG9va2luZyBhdCBzbXAgY29kZSBmb3IgaGludHMgb24gcHJvYmxl
-bSBpdCBsb29rcyBsaWtlIGluIG15IGNhc2UgaXQgY291bGQgYmUgdHJ5aW5nIHRvIHJlc2NoZWR1
-bGUgd29yayBvbiBkaWZmZXJlbnQgQ1BVIGF0IHRpbWUgb2YgY3Jhc2guIEhvd2V2ZXIsIEkgYWRt
-aXQgdGhhdCBJIGNvdWxkIGJlIHdheSwgd2F5IG9mZiBvbiB0aGF0IGNhdXNlLiBJbiBteSBjYXNl
-LCBpZiBJIGhhbW1lciBteSBuZXR3b3JrIGludGVyZmFjZSB3aXRoIHBhY2tldHMgd2hpbGUgYW5v
-dGhlciBhcHAgaXMgcmVhZGluZyBwYWNrZXRzLCBteSBob3N0IGxvY2tzIHVwIGFuZCBjbGllbnRz
-IGFyZSByZXBvcnRpbmcgZGVzdCB1bnJlYWNoYWJsZXMuIA0KDQpJIGRvbid0IHRoaW5rIEkgaGF2
-ZSB0aGUgcHJvYmxlbSBpbiBub24tcnQga2VybmVsLiBIYXZlIHlvdSB0cmllZCBib290aW5nIHdp
-dGhvdXQgc21wIHN1cHBvcnQ/DQoNCmh0dHA6Ly9sa21sLm9yZy9sa21sL2hlYWRlcnMvMjAwOS8x
-MS8yMy81NDgNCg0KLUJvYg0KDQoNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBG
-cm9tOiBsaW51eC1rZXJuZWwtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgta2Vy
-bmVsLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBUaW0gQmxlY2htYW5u
-DQo+IFNlbnQ6IE1vbmRheSwgT2N0b2JlciAwNSwgMjAwOSA1OjA2IEFNDQo+IFRvOiBsaW51eC1r
-ZXJuZWxAdmdlci5rZXJuZWwub3JnOyBsaW51eC1leHQ0QHZnZXIua2VybmVsLm9yZw0KPiBTdWJq
-ZWN0OiBleHQ0OiBzbXBfcHJvY2Vzc29yX2lkKCkgaW4gcHJlZW1wdGlibGUNCj4gDQo+IGhpIGFs
-bCwNCj4gDQo+IHVzaW5nIDIuNi4zMS4xIHdpdGggQ09ORklHX1BSRUVNUFQ9eSwgaSBnb3QgdGhl
-IGZvbGxvd2luZyBjYWxsIHRyYWNlcw0KPiBmcm9tIGV4dDQgcmVsYXRlZCBjb2RlLCB3aGVuIGRv
-aW5nIHNvbWUgaW8taGVhdnkgdGFza3M6DQo+IA0KPiBbMzA0NzcuMTI2MjAxXSBJTkZPOiB0YXNr
-IGdjb25mZC0yOjIyOTYgYmxvY2tlZCBmb3IgbW9yZSB0aGFuIDEyMA0KPiBzZWNvbmRzLg0KPiBb
-MzA0NzcuMTI2MjA1XSAiZWNobyAwID4gL3Byb2Mvc3lzL2tlcm5lbC9odW5nX3Rhc2tfdGltZW91
-dF9zZWNzIg0KPiBkaXNhYmxlcyB0aGlzIG1lc3NhZ2UuDQo+IFszMDQ3Ny4xMjYyMDhdIGdjb25m
-ZC0yICAgICAgRCBmZmZmODgwMDI4MDQzNmU4ICAgICAwICAyMjk2ICAgICAgMQ0KPiAweDAwMDAw
-MDAwDQo+IFszMDQ3Ny4xMjYyMTRdIEJVRzogdXNpbmcgc21wX3Byb2Nlc3Nvcl9pZCgpIGluIHBy
-ZWVtcHRpYmxlIFswMDAwMDAwMF0NCj4gY29kZToga2h1bmd0YXNrZC83MiBbMzA0NzcuMTI2MjIx
-XSBjYWxsZXIgaXMNCj4gc2hvd19zdGFja19sb2dfbHZsKzB4MzIvMHgxNzANCj4gWzMwNDc3LjEy
-NjIyNF0gUGlkOiA3MiwgY29tbToga2h1bmd0YXNrZCBUYWludGVkOiBQICAgICAgICAgICAyLjYu
-MzEuMQ0KPiAjMjkNCj4gWzMwNDc3LjEyNjIyN10gQ2FsbCBUcmFjZToNCj4gWzMwNDc3LjEyNjIz
-NF0gIFs8ZmZmZmZmZmY4MTI2Njg4MT5dIGRlYnVnX3NtcF9wcm9jZXNzb3JfaWQrMHhkMS8weGYw
-DQo+IFszMDQ3Ny4xMjYyMzhdICBbPGZmZmZmZmZmODEwMTRiNjI+XSBzaG93X3N0YWNrX2xvZ19s
-dmwrMHgzMi8weDE3MA0KPiBbMzA0NzcuMTI2MjQyXSAgWzxmZmZmZmZmZjgxNGY1N2MwPl0gPyBw
-cmludGsrMHgzYy8weDQ0IFszMDQ3Ny4xMjYyNDZdDQo+IFs8ZmZmZmZmZmY4MTAxNWUxNz5dIHNo
-b3dfc3RhY2srMHgxNy8weDIwIFszMDQ3Ny4xMjYyNTFdDQo+IFs8ZmZmZmZmZmY4MTA0NWI1Mj5d
-IHNjaGVkX3Nob3dfdGFzaysweDkyLzB4MTAwIFszMDQ3Ny4xMjYyNTZdDQo+IFs8ZmZmZmZmZmY4
-MTBhYjY2ZD5dIHdhdGNoZG9nKzB4MWZkLzB4MjQwIFszMDQ3Ny4xMjYyNjBdDQo+IFs8ZmZmZmZm
-ZmY4MTBhYjQ3MD5dID8gd2F0Y2hkb2crMHgwLzB4MjQwIFszMDQ3Ny4xMjYyNjRdDQo+IFs8ZmZm
-ZmZmZmY4MTA3MTIxNj5dIGt0aHJlYWQrMHhhNi8weGIwIFszMDQ3Ny4xMjYyNjhdDQo+IFs8ZmZm
-ZmZmZmY4MTAxMzAzYT5dIGNoaWxkX3JpcCsweGEvMHgyMCBbMzA0NzcuMTI2MjcyXQ0KPiBbPGZm
-ZmZmZmZmODEwNzExNzA+XSA/IGt0aHJlYWQrMHgwLzB4YjAgWzMwNDc3LjEyNjI3NV0NCj4gWzxm
-ZmZmZmZmZjgxMDEzMDMwPl0gPyBjaGlsZF9yaXArMHgwLzB4MjAgWzMwNDc3LjEyNjI3OF0NCg==
+On Wed, Nov 25, 2009 at 11:10:48AM -0500, Alan Stern wrote:
+> On Wed, 25 Nov 2009, Jan Kara wrote:
+> 
+> > > > > > Okay, very good.  There remains the question of the disturbing error
+> > > > > > messages in the system log.  Should they be supressed for FAILFAST
+> > > > > > requests?
+> > > > >   I think it's useful they are there because ultimately, something really
+> > > > > went wrong and you should better investigate. BTW, "end_request: I/O error"
+> > > > > messages are in the log even for requests where we retried and succeeded...
+> 
+> That isn't true.  Take a look at the dmesg log accompanying Tim's 
+> usbmon log.  Although there were 5 read errors in the usbmon log, there 
+> were only 2 I/O error messages in dmesg, corresponding to the 2 reads 
+> that weren't retried successfully.
+> 
+> Personally, I think it makes little sense to print error messages in 
+> the system log for commands where retries are disallowed.  Unless we go 
+> ahead and print error messages for _all_ failures, including those 
+> which are retried successfully.
+> 
+> Perhaps a good compromise would be to set the REQ_QUIET flag in 
+> req->cmd_flags for readaheads.  That would suppress the error messages 
+> coming from the SCSI core.
+> 
+> >   Yeah, we might make it more obvious that read failed and whether or not
+> > we are going to retry. Just technically it's not so simple because a
+> > different layer prints messages about errors (generic block layer) and
+> > different (scsi disk driver) decides what to do (retry, don't retry, ...).
+> 
+> Actually the retry decisions (or many of them) are made by the SCSI 
+> core, and that's also where some of those error messages come from.
+> 
+> > > 	I should have asked since I'm here at the moment - do you need any
+> > > more information out of the buggy USB enclosure at the moment, or can I work
+> > > on trying to fix/replace it now?
+> >   No, feel free to do anything with it :). Thanks for your help with
+> > debugging this.
+> 
+> To clarify, the enclosure isn't really very buggy.  It _should_ have
+> carried out the failed commands, or if it had a valid reason for not
+> doing so then it _should_ have reported the reason.  Regardless, the
+> errors that occurred were harmless because they went away when the
+> commands were retried.  (Although if they weren't harmless, you
+> wouldn't be able to tell just from reading the system log...)
+> 
+> Alan Stern
+
+Okay. Okay. Back up a moment here - Clarify a little. I have the filesystem
+set to remount readonly on errors. I have not seen any filesystem
+corruption or file corruption I could find. The filesystem *was* remounting
+readonly under 2.6.31.5, but has not since .6 came out. (and I reformatted
+and redid the entire backup under 2.6.31.6 without errors)
+
+How do I know when it has generated an actual failure that was not
+corrected?
+
+How do I know when errors have been detected but they were corrected?
+
+I'm guessing in the former, it'll remount ro, and in the latter it won't. Am
+I correct?
+
+I would like to save some money and not trash the usb enclosure... At the
+same time, I don't want to use an enclosure that's trashing my data.
+
+It is important to me to know exactly how the failure path operates. Please
+explain to me what I will see happen. - Not knowing is driving me nuts.
+
+Thank you,
+Tim McGrath
