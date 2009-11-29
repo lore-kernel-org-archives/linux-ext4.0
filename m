@@ -1,65 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/5] e2fsck: detect holes in extent-mapped directories
-Date: Sun, 29 Nov 2009 15:33:25 -0500
-Message-ID: <1259526809-23697-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/5] libext2fs: Fix SET_BMAP bugs in ext2fs_bmap() and ext2fs_bmap2()
+Date: Sun, 29 Nov 2009 15:33:26 -0500
+Message-ID: <1259526809-23697-2-git-send-email-tytso@mit.edu>
+References: <1259526809-23697-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35128 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35132 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752460AbZK2Udp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 29 Nov 2009 15:33:45 -0500
+	id S1752624AbZK2Ud4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 29 Nov 2009 15:33:56 -0500
+In-Reply-To: <1259526809-23697-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Directories are not allowed to be sparse; the code for scanning
-extent-mapped directories was not calling ext2fs_add_dir_block() for
-missing directory blocks, so we weren't catching this form of file
-system corruption.  Fix this.
+Don't byte-swap the block number when setting i_block[x], since the
+write_inode function will take of byte swapping the inode.
+
+The phys_blk parameter contains an input parameter in the SET_BMAP
+case, so it must be passed to ext2fs_bmap2() from the legacy function
+ext2fs_bmap().
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/pass1.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+ lib/ext2fs/bmap.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index d2021dd..a241c23 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1725,6 +1725,16 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 			}
- 			pb->fragmented = 1;
- 		}
-+		while (is_dir && ++pb->last_db_block < extent.e_lblk) {
-+			pctx->errcode = ext2fs_add_dir_block(ctx->fs->dblist,
-+							     pb->ino, 0,
-+							     pb->last_db_block);
-+			if (pctx->errcode) {
-+				pctx->blk = 0;
-+				pctx->num = pb->last_db_block;
-+				goto failed_add_dir_block;
-+			}
-+		}
- 		for (blk = extent.e_pblk, blockcnt = extent.e_lblk, i = 0;
- 		     i < extent.e_len;
- 		     blk++, blockcnt++, i++) {
-@@ -1735,6 +1745,7 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				if (pctx->errcode) {
- 					pctx->blk = blk;
- 					pctx->num = blockcnt;
-+				failed_add_dir_block:
- 					fix_problem(ctx, PR_1_ADD_DBLOCK, pctx);
- 					/* Should never get here */
- 					ctx->flags |= E2F_FLAG_ABORT;
-@@ -1742,6 +1753,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				}
- 			}
- 		}
-+		if (is_dir && extent.e_len > 0)
-+			pb->last_db_block = blockcnt - 1;
- 		pb->num_blocks += extent.e_len;
- 		pb->previous_block = extent.e_pblk + extent.e_len - 1;
- 		start_block = extent.e_lblk + extent.e_len - 1;
+diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+index 2a86439..933036b 100644
+--- a/lib/ext2fs/bmap.c
++++ b/lib/ext2fs/bmap.c
+@@ -214,9 +214,6 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 	if (block < EXT2_NDIR_BLOCKS) {
+ 		if (bmap_flags & BMAP_SET) {
+ 			b = *phys_blk;
+-#ifdef WORDS_BIGENDIAN
+-			b = ext2fs_swab32(b);
+-#endif
+ 			inode_bmap(inode, block) = b;
+ 			inode_dirty++;
+ 			goto done;
+@@ -325,7 +322,7 @@ errcode_t ext2fs_bmap(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 		      blk_t *phys_blk)
+ {
+ 	errcode_t ret;
+-	blk64_t	ret_blk;
++	blk64_t	ret_blk = *phys_blk;
+ 
+ 	ret = ext2fs_bmap2(fs, ino, inode, block_buf, bmap_flags, block,
+ 			    0, &ret_blk);
 -- 
 1.6.5.216.g5288a.dirty
 
