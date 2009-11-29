@@ -1,46 +1,33 @@
-From: "Leyendecker, Robert" <Robert.Leyendecker@lsi.com>
-Subject: RE: ext4: smp_processor_id() in preemptible
-Date: Sat, 28 Nov 2009 22:02:52 -0500
-Message-ID: <8C8865ED624BB94F8FE50259E2B5C5B304593DABB2@palmail03.lsi.com>
-References: <4AC9C4FD.7080606@klingt.org>
- <8C8865ED624BB94F8FE50259E2B5C5B304593DAB98@palmail03.lsi.com>
- <4B0FAAC6.30906@klingt.org>
+From: tmhikaru@gmail.com
+Subject: Re: Weird I/O errors with USB hard drive not remounting filesystem readonly
+Date: Sat, 28 Nov 2009 23:30:57 -0500
+Message-ID: <20091129043057.GA6131@roll>
+References: <20091127094339.GA9047@roll> <Pine.LNX.4.44L0.0911271248210.30903-100000@netrider.rowland.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Tim Blechmann <tim@klingt.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753918AbZK2DDC@vger.kernel.org>
-In-Reply-To: <4B0FAAC6.30906@klingt.org>
-Content-Language: en-US
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tmhikaru@gmail.com, Jan Kara <jack@suse.cz>,
+	Boaz Harrosh <bharrosh@panasas.com>,
+	Kernel development list <linux-kernel@vger.kernel.org>,
+	USB list <linux-usb@vger.kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	SCSI development list <linux-scsi@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Alan Stern <stern@rowland.harvard.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qy0-f194.google.com ([209.85.221.194]:58470 "EHLO
+	mail-qy0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753758AbZK2Ea6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2009 23:30:58 -0500
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.44L0.0911271248210.30903-100000@netrider.rowland.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVGltIEJsZWNobWFubiBb
-bWFpbHRvOnRpbUBrbGluZ3Qub3JnXQ0KPiBTZW50OiBGcmlkYXksIE5vdmVtYmVyIDI3LCAyMDA5
-IDQ6MzMgQU0NCj4gVG86IExleWVuZGVja2VyLCBSb2JlcnQNCj4gQ2M6IGxpbnV4LWtlcm5lbEB2
-Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJl
-OiBleHQ0OiBzbXBfcHJvY2Vzc29yX2lkKCkgaW4gcHJlZW1wdGlibGUNCj4gDQo+ID4gSSBoYXZl
-IHNpbWlsYXIgY3Jhc2gsIGJ1dCBwcm9iYWJseSBkaWZmZXJlbnQgY2F1c2UtdmVjdG9yLCBwb3N0
-ZWQgb24NCj4gdGhpcyBsaXN0LCBmZWRvcmEgYnVnemlsbGEsIHJ0LXVzZXJzIGJ1dCBubyByZXNw
-b25zZSBzbyBmYXIgZnJvbQ0KPiBhbnlvbmUuIERpZCB5b3UgZmluZCBhbnkgd29yayBhcm91bmQ/
-ICBJIHRyaWVkIGxvb2tpbmcgYXQgc21wIGNvZGUgZm9yDQo+IGhpbnRzIG9uIHByb2JsZW0gaXQg
-bG9va3MgbGlrZSBpbiBteSBjYXNlIGl0IGNvdWxkIGJlIHRyeWluZyB0bw0KPiByZXNjaGVkdWxl
-IHdvcmsgb24gZGlmZmVyZW50IENQVSBhdCB0aW1lIG9mIGNyYXNoLiBIb3dldmVyLCBJIGFkbWl0
-DQo+IHRoYXQgSSBjb3VsZCBiZSB3YXksIHdheSBvZmYgb24gdGhhdCBjYXVzZS4gSW4gbXkgY2Fz
-ZSwgaWYgSSBoYW1tZXIgbXkNCj4gbmV0d29yayBpbnRlcmZhY2Ugd2l0aCBwYWNrZXRzIHdoaWxl
-IGFub3RoZXIgYXBwIGlzIHJlYWRpbmcgcGFja2V0cywgbXkNCj4gaG9zdCBsb2NrcyB1cCBhbmQg
-Y2xpZW50cyBhcmUgcmVwb3J0aW5nIGRlc3QgdW5yZWFjaGFibGVzLg0KPiA+DQo+ID4gSSBkb24n
-dCB0aGluayBJIGhhdmUgdGhlIHByb2JsZW0gaW4gbm9uLXJ0IGtlcm5lbC4gSGF2ZSB5b3UgdHJp
-ZWQNCj4gYm9vdGluZyB3aXRob3V0IHNtcCBzdXBwb3J0Pw0KPiANCj4gaSBoYXZlbid0IHRyaWVk
-IHRvIHJlcHJvZHVjZSBpdCBzaW5jZSB0aGVuIC4uLiBpdCBvY2N1cnJlZCwgd2hlbiBpIHdhcw0K
-PiBkb2luZyBzb21lIGhlYXZ5IGlvIHRhc2tzIC4uLg0KPiANCj4gdGltDQo+IA0KPiAtLQ0KPiB0
-aW1Aa2xpbmd0Lm9yZw0KPiBodHRwOi8vdGltLmtsaW5ndC5vcmcNCj4gDQo+IE5vdGhpbmcgZXhp
-c3RzIHVudGlsIG9yIHVubGVzcyBpdCBpcyBvYnNlcnZlZC4gQW4gYXJ0aXN0IGlzIG1ha2luZw0K
-PiBzb21ldGhpbmcgZXhpc3QgYnkgb2JzZXJ2aW5nIGl0LiBBbmQgaGlzIGhvcGUgZm9yIG90aGVy
-IHBlb3BsZSBpcyB0aGF0DQo+IHRoZXkgd2lsbCBhbHNvIG1ha2UgaXQgZXhpc3QgYnkgb2JzZXJ2
-aW5nIGl0LiBJIGNhbGwgaXQgJ2NyZWF0aXZlDQo+IG9ic2VydmF0aW9uLicgQ3JlYXRpdmUgdmll
-d2luZy4NCj4gICBXaWxsaWFtIFMuIEJ1cnJvdWdocw0KDQpPSyAtIHRoYW5rcy4gSSdtIGFycml2
-aW5nIGhlcmUgdmlhIGhlYXZ5IG5ldHdvcmsgaW8sIHJlbGF0aXZlbHkgZWFzeSB0byByZXBybyBp
-biBteSBjYXNlLg0KDQotQm9iDQo=
+	Thank you for the time and effort you had to spend on this, all of
+you, I really appreciate all the hard work spent diagnosing my hardware
+issues as well as explaining what the various error messages were coming
+from.
+
+
+	Hope to see you next time,
+	Tim McGrath
