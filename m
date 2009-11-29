@@ -1,102 +1,48 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/5] e2fsck: Don't rehash directories which can fit in a single directory block
-Date: Sun, 29 Nov 2009 15:33:28 -0500
-Message-ID: <1259526809-23697-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/5] e2fsck: Try to update on-disk bitmap in e2fsck_get_alloc_block() callback
+Date: Sun, 29 Nov 2009 15:33:29 -0500
+Message-ID: <1259526809-23697-5-git-send-email-tytso@mit.edu>
 References: <1259526809-23697-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35140 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35146 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752765AbZK2UeR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 29 Nov 2009 15:34:17 -0500
+	id S1752823AbZK2Ue2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 29 Nov 2009 15:34:28 -0500
 In-Reply-To: <1259526809-23697-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The e2fsck_get_alloc_block() callback is used so that if the ext2fs
+library needs to allocate blocks internally (most notably by the
+extents functions), e2fsck's internal block usage map is consulted
+since it is the only thing that can be trusted during a large part of
+e2fsck's operation.
+
+Change it to update the on-disk bitmap if it is loaded.  This reduces
+the number of spurious differences found in pass #5.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/rehash.c         |   12 ++++++++++++
- tests/f_dup_de/expect.1 |   12 ++++++------
- tests/f_dup_de/expect.2 |    2 +-
- 3 files changed, 19 insertions(+), 7 deletions(-)
+ e2fsck/pass1.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 46d04e4..780742e 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -736,6 +736,7 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino)
- 		fd.compress = 1;
- 	fd.parent = 0;
- 
-+retry_nohash:
- 	/* Read in the entire directory into memory */
- 	retval = ext2fs_block_iterate2(fs, ino, 0, 0,
- 				       fill_dir_block, &fd);
-@@ -744,6 +745,17 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino)
- 		goto errout;
- 	}
- 
-+	/* 
-+	 * If the entries read are less than a block, then don't index
-+	 * the directory
-+	 */
-+	if (!fd.compress && (fd.dir_size < (fs->blocksize - 24))) {
-+		fd.compress = 1;
-+		fd.dir_size = 0;
-+		fd.num_array = 0;
-+		goto retry_nohash;
-+	}
-+
- #if 0
- 	printf("%d entries (%d bytes) found in inode %d\n",
- 	       fd.num_array, fd.dir_size, ino);
-diff --git a/tests/f_dup_de/expect.1 b/tests/f_dup_de/expect.1
-index 78545cc..e421547 100644
---- a/tests/f_dup_de/expect.1
-+++ b/tests/f_dup_de/expect.1
-@@ -5,24 +5,24 @@ Duplicate entry 'mailcap.dpkg-old' found.
- 
- Pass 3: Checking directory connectivity
- Pass 3A: Optimizing directories
--Duplicate entry 'mailcap.dpkg-old' in /etc (12) found.  Clear? yes
--
- Duplicate entry 'fstab' in /etc (12) found.  Clear? yes
- 
- Duplicate entry 'localtime' in /etc (12) found.  Clear? yes
- 
--Duplicate entry 'resolv.conf' in /etc (12) found.  Clear? yes
--
--Duplicate entry 'usb.permissions' in /etc (12) found.  Clear? yes
-+Duplicate entry 'mailcap.dpkg-old' in /etc (12) found.  Clear? yes
- 
- Duplicate entry 'modules.conf.old' in /etc (12) found.  Clear? yes
- 
- Entry 'modules.conf.old' in /etc (12) has a non-unique filename.
- Rename to modules.conf.o~0? yes
- 
-+Duplicate entry 'resolv.conf' in /etc (12) found.  Clear? yes
-+
-+Duplicate entry 'usb.permissions' in /etc (12) found.  Clear? yes
-+
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
- 
- test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
--test_filesys: 18/2048 files (5.6% non-contiguous), 325/330 blocks
-+test_filesys: 18/2048 files (5.6% non-contiguous), 324/330 blocks
- Exit status is 1
-diff --git a/tests/f_dup_de/expect.2 b/tests/f_dup_de/expect.2
-index e3accc6..4d680af 100644
---- a/tests/f_dup_de/expect.2
-+++ b/tests/f_dup_de/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 18/2048 files (5.6% non-contiguous), 325/330 blocks
-+test_filesys: 18/2048 files (5.6% non-contiguous), 324/330 blocks
- Exit status is 0
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index a241c23..0cb3fda 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2628,6 +2628,10 @@ static errcode_t e2fsck_get_alloc_block(ext2_filsys fs, blk64_t goal,
+ 					  ctx->block_found_map, &new_block);
+ 		if (retval)
+ 			return retval;
++		if (fs->block_map) {
++			ext2fs_mark_block_bitmap(fs->block_map, new_block);
++			ext2fs_mark_bb_dirty(fs);
++		}
+ 	} else {
+ 		if (!fs->block_map) {
+ 			retval = ext2fs_read_block_bitmap(fs);
 -- 
 1.6.5.216.g5288a.dirty
 
