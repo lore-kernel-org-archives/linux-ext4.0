@@ -1,44 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] filefrag: Fix a core dump on sparc32 platforms with 8k file systems
-Date: Sat, 28 Nov 2009 10:30:33 -0500
-Message-ID: <1259422233-14024-3-git-send-email-tytso@mit.edu>
-References: <20091128152750.GD6763@thunk.org>
-Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:48031 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751539AbZK1PbK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Nov 2009 10:31:10 -0500
-In-Reply-To: <20091128152750.GD6763@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Leyendecker, Robert" <Robert.Leyendecker@lsi.com>
+Subject: RE: ext4: smp_processor_id() in preemptible
+Date: Sat, 28 Nov 2009 22:02:52 -0500
+Message-ID: <8C8865ED624BB94F8FE50259E2B5C5B304593DABB2@palmail03.lsi.com>
+References: <4AC9C4FD.7080606@klingt.org>
+ <8C8865ED624BB94F8FE50259E2B5C5B304593DAB98@palmail03.lsi.com>
+ <4B0FAAC6.30906@klingt.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Tim Blechmann <tim@klingt.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753918AbZK2DDC@vger.kernel.org>
+In-Reply-To: <4B0FAAC6.30906@klingt.org>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 32-bit platforms where the file system block size is 8k or greater,
-the calculation bpib*bpib*bpib* will overflow a 32-bit calculation,
-leading to a divide by zero error.  Fix this.
-
-Thanks to Mikulas Patocka for pointing this out.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- misc/filefrag.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 11783fd..1611f90 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -341,7 +341,7 @@ static void frag_report(const char *filename)
- 				if (((i-EXT2_DIRECT-bpib) % (bpib*bpib)) == 0)
- 					last_block++;
- 				if (((i-EXT2_DIRECT-bpib-bpib*bpib) %
--							(bpib*bpib*bpib)) == 0)
-+				     (((__u64) bpib)*bpib*bpib)) == 0)
- 					last_block++;
- 			}
- 			rc = get_bmap(fd, i, &block);
--- 
-1.6.5.216.g5288a.dirty
-
+DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVGltIEJsZWNobWFubiBb
+bWFpbHRvOnRpbUBrbGluZ3Qub3JnXQ0KPiBTZW50OiBGcmlkYXksIE5vdmVtYmVyIDI3LCAyMDA5
+IDQ6MzMgQU0NCj4gVG86IExleWVuZGVja2VyLCBSb2JlcnQNCj4gQ2M6IGxpbnV4LWtlcm5lbEB2
+Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJl
+OiBleHQ0OiBzbXBfcHJvY2Vzc29yX2lkKCkgaW4gcHJlZW1wdGlibGUNCj4gDQo+ID4gSSBoYXZl
+IHNpbWlsYXIgY3Jhc2gsIGJ1dCBwcm9iYWJseSBkaWZmZXJlbnQgY2F1c2UtdmVjdG9yLCBwb3N0
+ZWQgb24NCj4gdGhpcyBsaXN0LCBmZWRvcmEgYnVnemlsbGEsIHJ0LXVzZXJzIGJ1dCBubyByZXNw
+b25zZSBzbyBmYXIgZnJvbQ0KPiBhbnlvbmUuIERpZCB5b3UgZmluZCBhbnkgd29yayBhcm91bmQ/
+ICBJIHRyaWVkIGxvb2tpbmcgYXQgc21wIGNvZGUgZm9yDQo+IGhpbnRzIG9uIHByb2JsZW0gaXQg
+bG9va3MgbGlrZSBpbiBteSBjYXNlIGl0IGNvdWxkIGJlIHRyeWluZyB0bw0KPiByZXNjaGVkdWxl
+IHdvcmsgb24gZGlmZmVyZW50IENQVSBhdCB0aW1lIG9mIGNyYXNoLiBIb3dldmVyLCBJIGFkbWl0
+DQo+IHRoYXQgSSBjb3VsZCBiZSB3YXksIHdheSBvZmYgb24gdGhhdCBjYXVzZS4gSW4gbXkgY2Fz
+ZSwgaWYgSSBoYW1tZXIgbXkNCj4gbmV0d29yayBpbnRlcmZhY2Ugd2l0aCBwYWNrZXRzIHdoaWxl
+IGFub3RoZXIgYXBwIGlzIHJlYWRpbmcgcGFja2V0cywgbXkNCj4gaG9zdCBsb2NrcyB1cCBhbmQg
+Y2xpZW50cyBhcmUgcmVwb3J0aW5nIGRlc3QgdW5yZWFjaGFibGVzLg0KPiA+DQo+ID4gSSBkb24n
+dCB0aGluayBJIGhhdmUgdGhlIHByb2JsZW0gaW4gbm9uLXJ0IGtlcm5lbC4gSGF2ZSB5b3UgdHJp
+ZWQNCj4gYm9vdGluZyB3aXRob3V0IHNtcCBzdXBwb3J0Pw0KPiANCj4gaSBoYXZlbid0IHRyaWVk
+IHRvIHJlcHJvZHVjZSBpdCBzaW5jZSB0aGVuIC4uLiBpdCBvY2N1cnJlZCwgd2hlbiBpIHdhcw0K
+PiBkb2luZyBzb21lIGhlYXZ5IGlvIHRhc2tzIC4uLg0KPiANCj4gdGltDQo+IA0KPiAtLQ0KPiB0
+aW1Aa2xpbmd0Lm9yZw0KPiBodHRwOi8vdGltLmtsaW5ndC5vcmcNCj4gDQo+IE5vdGhpbmcgZXhp
+c3RzIHVudGlsIG9yIHVubGVzcyBpdCBpcyBvYnNlcnZlZC4gQW4gYXJ0aXN0IGlzIG1ha2luZw0K
+PiBzb21ldGhpbmcgZXhpc3QgYnkgb2JzZXJ2aW5nIGl0LiBBbmQgaGlzIGhvcGUgZm9yIG90aGVy
+IHBlb3BsZSBpcyB0aGF0DQo+IHRoZXkgd2lsbCBhbHNvIG1ha2UgaXQgZXhpc3QgYnkgb2JzZXJ2
+aW5nIGl0LiBJIGNhbGwgaXQgJ2NyZWF0aXZlDQo+IG9ic2VydmF0aW9uLicgQ3JlYXRpdmUgdmll
+d2luZy4NCj4gICBXaWxsaWFtIFMuIEJ1cnJvdWdocw0KDQpPSyAtIHRoYW5rcy4gSSdtIGFycml2
+aW5nIGhlcmUgdmlhIGhlYXZ5IG5ldHdvcmsgaW8sIHJlbGF0aXZlbHkgZWFzeSB0byByZXBybyBp
+biBteSBjYXNlLg0KDQotQm9iDQo=
