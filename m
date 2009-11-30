@@ -1,89 +1,58 @@
-From: tytso@mit.edu
-Subject: Re: Patch on algorithm of place allocation for inode tables in
- mke2fs
-Date: Mon, 30 Nov 2009 12:32:00 -0500
-Message-ID: <20091130173200.GA4719@thunk.org>
-References: <41BA663C8B2F72499F48B0EF991C188E04770A2C74@RU-EXSTRCL1.ru.corp.acronis.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Please reserve INCOMPAT flags
+Date: Mon, 30 Nov 2009 12:15:11 -0700
+Message-ID: <853282DF-4A37-4677-9E4C-F7C26A00C890@sun.com>
+References: <20090906092546.GU4197@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54765 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752749AbZK3Sc2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Nov 2009 13:32:28 -0500
-Content-Disposition: inline
-In-Reply-To: <41BA663C8B2F72499F48B0EF991C188E04770A2C74@RU-EXSTRCL1.ru.corp.acronis.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:60950 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752831AbZK3TPN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Nov 2009 14:15:13 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nAUJFHVL000541
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Nov 2009 11:15:17 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KTX00F00S48QC00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 30 Nov 2009 11:15:17 -0800 (PST)
+In-reply-to: <20090906092546.GU4197@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 16, 2009 at 06:45:39PM +0400, Vyacheslav Dubeyko wrote:
-> Hi all:
-> 
-> Let's try to make raw partition with 8 Gb size by fdisk and then to
-> format it (for example, mkfs.ext4 -b 4096 -L ext4_4K_8G
-> /dev/sdb1). If we have 2098482 block count on volume with 4 Kb block
-> size and flex block group size as 16 then we will have 65 groups on
-> volume. The last group (that has 1329 blocks) will be the first and
-> sole group in last flex group. Current mke2fs code makes such
-> allocation scheme in last group: Block bitmap at 2097152 (+0), Inode
-> bitmap at 2097168 (+16), Inode table at 8626 - 9130. The inode table
-> of the last group will be placed at the volume begin because of we
-> can't allocate sufficient block count for all inode tables in flex
-> group.
+On 2009-09-06, at 03:25, Andreas Dilger wrote:
+> in addition to the data-in-dirent INCOMPAT flag Rahul sent the patches
+> for last week, I would like to ensure that we also have the INCOMPAT
+> flag for large EA-in-inode flag reserved.  This patch is going into
+> testing at one of our large customers, and I want to make sure that
+> we don't accidentally get a conflicting INCOMPAT flag assignment.
+>
+> #define EXT4_FEATURE_INCOMPAT_EA_INODE	0x0400
+> #define EXT4_FEATURE_INCOMPAT_DIRDATA   0x1000
+>
+> #define EXT4_EA_INODE_FL	0x00200000 /* Inode uses large EA */
 
-Hi Vyacheslav,
 
-My apologies for the delay in getting back to you; I've had a very
-intense travel schedule in October and November, and some things had
-fallen through the cracks.
+Hi Ted,
+I noticed Aneesh proposing to use the 0x0400 INCOMPAT flag for the  
+NFSv4 ACL support, but this conflicts with the large EA feature we had  
+previously discussed.  We now have a couple of customers using the  
+large EA feature at this point, and I wouldn't want to break their  
+filesystem as a result of an avoidable conflict.
 
-Thanks for pointing this out!  I've decided to use the following patch
-as a cleaner and simpler fix for the problem.  What it does is to use
-the true size for the inode table, instead of the expected size of the
-inode table should the file system get resized, to avoid the problem
-you've pointed out.
+I'll attach patches for this, which will hopefully make it easier, and  
+the patch tracking tool will keep this visible.
 
-Best regards,
+Aneesh, maybe you can use 0x0800 for the INCOMPAT_RICHACL?
 
-						- Ted
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-commit bbb60e4fefdd404d8d696369804b556b404bb0c1
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Nov 30 12:24:59 2009 -0500
-
-    libext2fs: Improve flex_bg inode table placement algorithm
-    
-    When trying to find the best place for the inode table in the last
-    flex block group, use the true size for the flex_bg's portion of the
-    inode table instead of the worst case required size of the inode table
-    fragment if the file system is resized.  This fixes a corner case
-    where if the size of the filesystem is just big enough that there is
-    only room for a single block group in the last flex_bg, and that
-    partial block group is too small for the full portion of the inode
-    table, the inode table is placed in the very first block group:
-    
-    Group 64: (Blocks 2097152-2099199) [INODE_UNINIT, ITABLE_ZEROED]
-      Checksum 0xd305, unused inodes 8080
-      Block bitmap at 2097152 (+0), Inode bitmap at 2097168 (+16)
-      Inode table at 8626-9130 (+4292878770)
-                     ^^^^^^^^^
-    
-    Thanks to Vyacheslav Dubeyko for pointing this out.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
-index 8547ad6..55e6174 100644
---- a/lib/ext2fs/alloc_tables.c
-+++ b/lib/ext2fs/alloc_tables.c
-@@ -181,6 +181,8 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
- 		blk_t prev_block = 0;
- 		if (group && fs->group_desc[group-1].bg_inode_table)
- 			prev_block = fs->group_desc[group-1].bg_inode_table;
-+		if (last_grp == fs->group_desc_count)
-+			rem_grps = last_grp - group;
- 		group_blk = flexbg_offset(fs, group, prev_block, bmap,
- 						 flexbg_size * 2,
- 						 fs->inode_blocks_per_group *
