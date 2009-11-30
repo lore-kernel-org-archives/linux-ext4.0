@@ -1,59 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext2: ext2_readdir comment about returns
-Date: Mon, 30 Nov 2009 12:17:56 +0100
-Message-ID: <20091130111755.GB4240@quack.suse.cz>
-References: <a229bc400911291530s51e1971do402e6441115d70ee@mail.gmail.com>
+From: tytso@mit.edu
+Subject: Re: Patch on algorithm of place allocation for inode tables in
+ mke2fs
+Date: Mon, 30 Nov 2009 12:32:00 -0500
+Message-ID: <20091130173200.GA4719@thunk.org>
+References: <41BA663C8B2F72499F48B0EF991C188E04770A2C74@RU-EXSTRCL1.ru.corp.acronis.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, Pavel Machek <pavel@suse.cz>,
-	Al Viro <viro@zeniv.linux.org.uk>, ronny.pretzsch@dfs.de,
-	Corentin Chary <corentin.chary@gmail.com>
-To: =?iso-8859-1?B?Suly6W15?= Cochoy <jeremy.cochoy@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753665AbZK3LR7@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:54765 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752749AbZK3Sc2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Nov 2009 13:32:28 -0500
 Content-Disposition: inline
-In-Reply-To: <a229bc400911291530s51e1971do402e6441115d70ee@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <41BA663C8B2F72499F48B0EF991C188E04770A2C74@RU-EXSTRCL1.ru.corp.acronis.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Fri, Oct 16, 2009 at 06:45:39PM +0400, Vyacheslav Dubeyko wrote:
+> Hi all:
+> 
+> Let's try to make raw partition with 8 Gb size by fdisk and then to
+> format it (for example, mkfs.ext4 -b 4096 -L ext4_4K_8G
+> /dev/sdb1). If we have 2098482 block count on volume with 4 Kb block
+> size and flex block group size as 16 then we will have 65 groups on
+> volume. The last group (that has 1329 blocks) will be the first and
+> sole group in last flex group. Current mke2fs code makes such
+> allocation scheme in last group: Block bitmap at 2097152 (+0), Inode
+> bitmap at 2097168 (+16), Inode table at 8626 - 9130. The inode table
+> of the last group will be placed at the volume begin because of we
+> can't allocate sufficient block count for all inode tables in flex
+> group.
 
-On Mon 30-11-09 00:30:55, J=E9r=E9my Cochoy wrote:
-> From:Jeremy Cochoy <jeremy.cochoy@gmail.com>
-> I submit a short correction about a comment in ext2/dir.c
->=20
-> (I've already send it but it wasn't the good patch format and i didn'=
-t
-> cc the right people.)
->=20
-> PS: Please excuse me if I make mistakes with the netiquette, it's my
-> first patch and i wich to send more useful patchs next time, without
-> hurting your eyes.
-  Thanks for the patch. I'd like to point you to the
-Documentation/SubmittingPatches document where is described how a prope=
-r
-patch submission should look like. Most importantly I miss a Signed-off=
--by
-line (item 12 in the document) - without it the patch cannot be merged.
-Also your description in the subject is inaccurate. In my opinion it sh=
-ould
-rather be:
-ext2: Fixup description of ext2_find_entry
-  Finally, it's easier to handle submitted patches with git tools when =
-the
-body of email looks like:
-Something I want in the changelog additionally to mail subject line
-(probably empty in your case).
----
-Something that I want to say but should not end up in the changelog.
+Hi Vyacheslav,
 
-Patch.
+My apologies for the delay in getting back to you; I've had a very
+intense travel schedule in October and November, and some things had
+fallen through the cracks.
 
-Seeing that you have probably generated your patch from git, git
-format-patch and git send-email are useful commands for submitting patc=
-hes
-via email.
+Thanks for pointing this out!  I've decided to use the following patch
+as a cleaner and simpler fix for the problem.  What it does is to use
+the true size for the inode table, instead of the expected size of the
+inode table should the file system get resized, to avoid the problem
+you've pointed out.
 
-								Honza
+Best regards,
+
+						- Ted
+
+commit bbb60e4fefdd404d8d696369804b556b404bb0c1
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Mon Nov 30 12:24:59 2009 -0500
+
+    libext2fs: Improve flex_bg inode table placement algorithm
+    
+    When trying to find the best place for the inode table in the last
+    flex block group, use the true size for the flex_bg's portion of the
+    inode table instead of the worst case required size of the inode table
+    fragment if the file system is resized.  This fixes a corner case
+    where if the size of the filesystem is just big enough that there is
+    only room for a single block group in the last flex_bg, and that
+    partial block group is too small for the full portion of the inode
+    table, the inode table is placed in the very first block group:
+    
+    Group 64: (Blocks 2097152-2099199) [INODE_UNINIT, ITABLE_ZEROED]
+      Checksum 0xd305, unused inodes 8080
+      Block bitmap at 2097152 (+0), Inode bitmap at 2097168 (+16)
+      Inode table at 8626-9130 (+4292878770)
+                     ^^^^^^^^^
+    
+    Thanks to Vyacheslav Dubeyko for pointing this out.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 8547ad6..55e6174 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -181,6 +181,8 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 		blk_t prev_block = 0;
+ 		if (group && fs->group_desc[group-1].bg_inode_table)
+ 			prev_block = fs->group_desc[group-1].bg_inode_table;
++		if (last_grp == fs->group_desc_count)
++			rem_grps = last_grp - group;
+ 		group_blk = flexbg_offset(fs, group, prev_block, bmap,
+ 						 flexbg_size * 2,
+ 						 fs->inode_blocks_per_group *
