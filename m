@@ -1,63 +1,59 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: Re: [PATCH 15/41] whiteout: ext2 whiteout support
-Date: Mon, 30 Nov 2009 02:45:40 -0500
-Message-ID: <200911300745.nAU7jecR022659@agora.fsl.cs.sunysb.edu>
-References: <1256152779-10054-16-git-send-email-vaurora@redhat.com>
-Cc: Jan Blunck <jblunck@suse.de>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Andy Whitcroft <apw@canonical.com>,
-	Scott James Remnant <scott@canonical.com>,
-	Sandu Popa Marius <sandupopamarius@gmail.com>,
-	Jan Rekorajski <baggins@sith.mimuw.edu.pl>,
-	"J. R. Okajima" <hooanon05@yahoo.co.jp>,
-	Arnd Bergmann <arnd@arndb.de>,
-	Vladimir Dronnikov <dronnikov@gmail.com>,
-	Felix Fietkau <nbd@openwrt.org>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754063AbZK3HqO@vger.kernel.org>
-In-reply-to: Your message of "Wed, 21 Oct 2009 12:19:13 PDT."
-             <1256152779-10054-16-git-send-email-vaurora@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fs/ext2: ext2_readdir comment about returns
+Date: Mon, 30 Nov 2009 12:17:56 +0100
+Message-ID: <20091130111755.GB4240@quack.suse.cz>
+References: <a229bc400911291530s51e1971do402e6441115d70ee@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>, Pavel Machek <pavel@suse.cz>,
+	Al Viro <viro@zeniv.linux.org.uk>, ronny.pretzsch@dfs.de,
+	Corentin Chary <corentin.chary@gmail.com>
+To: =?iso-8859-1?B?Suly6W15?= Cochoy <jeremy.cochoy@gmail.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753665AbZK3LR7@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <a229bc400911291530s51e1971do402e6441115d70ee@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In message <1256152779-10054-16-git-send-email-vaurora@redhat.com>, Valerie Aurora writes:
-> From: Jan Blunck <jblunck@suse.de>
-> 
-> This patch adds whiteout support to EXT2. A whiteout is an empty directory
-> entry (inode == 0) with the file type set to EXT2_FT_WHT. Therefore it
-> allocates space in directories. Due to being implemented as a filetype it is
-> necessary to have the EXT2_FEATURE_INCOMPAT_FILETYPE flag set.
-> 
-> XXX - Whiteouts could be implemented as special symbolic links
-> 
-> Signed-off-by: Jan Blunck <jblunck@suse.de>
-> Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-> Cc: Theodore Tso <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> ---
->  fs/ext2/dir.c           |   96 +++++++++++++++++++++++++++++++++++++++++++++--
->  fs/ext2/ext2.h          |    3 +
->  fs/ext2/inode.c         |   11 ++++-
->  fs/ext2/namei.c         |   65 ++++++++++++++++++++++++++++++-
->  fs/ext2/super.c         |    7 +++
->  include/linux/ext2_fs.h |    4 ++
->  6 files changed, 176 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-> index cb8ceff..d4628c0 100644
-> --- a/fs/ext2/dir.c
-> +++ b/fs/ext2/dir.c
-> @@ -219,7 +219,7 @@ static inline int ext2_match (int len, const char * const name,
->  {
->  	if (len != de->name_len)
->  		return 0;
-> -	if (!de->inode)
-> +	if (!de->inode && (de->file_type != EXT2_FT_WHT))
+  Hello,
 
-The extra parens around (de->file_type != EXT2_FT_WHT) don't hurt but are
-unnecessary.  Ditto in a couple of other places in this patch.
+On Mon 30-11-09 00:30:55, J=E9r=E9my Cochoy wrote:
+> From:Jeremy Cochoy <jeremy.cochoy@gmail.com>
+> I submit a short correction about a comment in ext2/dir.c
+>=20
+> (I've already send it but it wasn't the good patch format and i didn'=
+t
+> cc the right people.)
+>=20
+> PS: Please excuse me if I make mistakes with the netiquette, it's my
+> first patch and i wich to send more useful patchs next time, without
+> hurting your eyes.
+  Thanks for the patch. I'd like to point you to the
+Documentation/SubmittingPatches document where is described how a prope=
+r
+patch submission should look like. Most importantly I miss a Signed-off=
+-by
+line (item 12 in the document) - without it the patch cannot be merged.
+Also your description in the subject is inaccurate. In my opinion it sh=
+ould
+rather be:
+ext2: Fixup description of ext2_find_entry
+  Finally, it's easier to handle submitted patches with git tools when =
+the
+body of email looks like:
+Something I want in the changelog additionally to mail subject line
+(probably empty in your case).
+---
+Something that I want to say but should not end up in the changelog.
 
-Erez.
+Patch.
+
+Seeing that you have probably generated your patch from git, git
+format-patch and git send-email are useful commands for submitting patc=
+hes
+via email.
+
+								Honza
