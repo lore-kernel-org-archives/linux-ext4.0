@@ -1,98 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/4] ext4: Support for 64-bit quota format
-Date: Wed,  2 Dec 2009 21:52:11 +0100
-Message-ID: <1259787131-6218-5-git-send-email-jack@suse.cz>
-References: <1259787131-6218-1-git-send-email-jack@suse.cz>
-Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57246 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755403AbZLBUxC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Dec 2009 15:53:02 -0500
-In-Reply-To: <1259787131-6218-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: James Y Knight <foom@fuhm.net>
+Subject: Re: writev data loss bug in (at least) 2.6.31 and 2.6.32pre8 x86-64
+Date: Wed, 2 Dec 2009 16:24:01 -0500
+Message-ID: <A352FA76-1107-42CF-95D3-FE97D71EF7D9@fuhm.net>
+References: <1F5364AE-321E-44E9-8B0D-B8E17597A0DA@fuhm.net> <907888CC-F4B2-448F-8F48-B96A566D323B@fuhm.net> <1259667765.9614.19.camel@marge.simson.net> <20091201143558.GB12730@quack.suse.cz> <20091201160324.GA25873@quack.suse.cz>
+Mime-Version: 1.0 (Apple Message framework v1077)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Mike Galbraith <gleep@gmx.de>, LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, npiggin@suse.de
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754572AbZLBVYI@vger.kernel.org>
+In-Reply-To: <20091201160324.GA25873@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Add support for new 64-bit quota format. It is enough to add proper
-mount options handling. The rest is done by the generic code.
+On Dec 1, 2009, at 11:03 AM, Jan Kara wrote:
+> On Tue 01-12-09 15:35:59, Jan Kara wrote:
+>> On Tue 01-12-09 12:42:45, Mike Galbraith wrote:
+>>> I bisected it this morning.  Bisected cleanly to...
+>>> 
+>>> 9eaaa2d5759837402ec5eee13b2a97921808c3eb is the first bad commit
+>>  OK, I've debugged it. This commit is really at fault. The problem is
+>> following:
+>>  When using writev, the page we copy from is not paged in (while when we
+>> use ordinary write, it is paged in). This difference might be worth
+>> investigation on its own (as it is likely to heavily impact performance of
+>> writev) but is irrelevant for us now - we should handle this without data
+>> corruption anyway. Because the source page is not available, we pass 0 as
+>> the number of copied bytes to write_end and thus ext3_write_end decides to
+>> truncate the file to original size. This is perfectly fine. The problem is
+>> that we do this by ext3_truncate() which just frees corresponding block but
+>> does not unmap buffers. So we leave mapped buffers beyond i_size (they
+>> actually never were inside i_size) but the blocks they are mapped to are
+>> already free. The write is then retried (after mapping the page),
+>> block_write_begin() sees the buffer is mapped (although it is beyond
+>> i_size) and thus it does not call ext3_get_block() anymore. So as a result,
+>> data is written to a block that is no longer allocated to the file. Bummer
+>> - welcome filesystem corruption.
+>>  Ext4 also has this problem but delayed allocation mitigates the effect to
+>> an error in accounting of blocks reserved for delayed allocation and thus
+>> under normal circumstances nothing bad happens.
+>>  The question is how to solve this in the cleanest way. We can call
+>> vmtruncate() instead of ext3_truncate() as we used to do but Nick wants to
+>> get rid of that (that's why I originally changed the code to what it is
+>> now). So probably we could just manually call truncate_pagecache() instead.
+>> Nick, I think your truncate calling sequence patch set needs similar fix
+>> for all filesystems as well.
+>  The patch below fixes the issue for me...
 
-CC: tytso@mit.edu
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c |   30 ++++++++++++++++++++++++------
- 1 files changed, 24 insertions(+), 6 deletions(-)
+Thank you! I can confirm that the patch fixes the issue in my real application as well.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d4ca92a..10483fa 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -765,9 +765,22 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
- #if defined(CONFIG_QUOTA)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
--	if (sbi->s_jquota_fmt)
--		seq_printf(seq, ",jqfmt=%s",
--		(sbi->s_jquota_fmt == QFMT_VFS_OLD) ? "vfsold" : "vfsv0");
-+	if (sbi->s_jquota_fmt) {
-+		char *fmtname = "";
-+
-+		switch (sbi->s_jquota_fmt) {
-+		case QFMT_VFS_OLD:
-+			fmtname = "vfsold";
-+			break;
-+		case QFMT_VFS_V0:
-+			fmtname = "vfsv0";
-+			break;
-+		case QFMT_VFS_V1:
-+			fmtname = "vfsv1";
-+			break;
-+		}
-+		seq_printf(seq, ",jqfmt=%s", fmtname);
-+	}
- 
- 	if (sbi->s_qf_names[USRQUOTA])
- 		seq_printf(seq, ",usrjquota=%s", sbi->s_qf_names[USRQUOTA]);
-@@ -1074,9 +1087,9 @@ enum {
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
- 	Opt_data_err_abort, Opt_data_err_ignore,
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
--	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
--	Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err, Opt_resize,
--	Opt_usrquota, Opt_grpquota, Opt_i_version,
-+	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
-+	Opt_noquota, Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err,
-+	Opt_resize, Opt_usrquota, Opt_grpquota, Opt_i_version,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc,
- 	Opt_block_validity, Opt_noblock_validity,
- 	Opt_inode_readahead_blks, Opt_journal_ioprio
-@@ -1125,6 +1138,7 @@ static const match_table_t tokens = {
- 	{Opt_grpjquota, "grpjquota=%s"},
- 	{Opt_jqfmt_vfsold, "jqfmt=vfsold"},
- 	{Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
-+	{Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
- 	{Opt_grpquota, "grpquota"},
- 	{Opt_noquota, "noquota"},
- 	{Opt_quota, "quota"},
-@@ -1425,6 +1439,9 @@ clear_qf_name:
- 			goto set_qf_format;
- 		case Opt_jqfmt_vfsv0:
- 			qfmt = QFMT_VFS_V0;
-+			goto set_qf_format;
-+		case Opt_jqfmt_vfsv1:
-+			qfmt = QFMT_VFS_V1;
- set_qf_format:
- 			if (sb_any_quota_loaded(sb) &&
- 			    sbi->s_jquota_fmt != qfmt) {
-@@ -1467,6 +1484,7 @@ set_qf_format:
- 		case Opt_offgrpjquota:
- 		case Opt_jqfmt_vfsold:
- 		case Opt_jqfmt_vfsv0:
-+		case Opt_jqfmt_vfsv1:
- 			ext4_msg(sb, KERN_ERR,
- 				"journaled quota options not supported");
- 			break;
--- 
-1.6.4.2
-
+James
