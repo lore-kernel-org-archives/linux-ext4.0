@@ -1,194 +1,213 @@
-From: Subrata Modak <subrata@linux.vnet.ibm.com>
-Subject: Re: [LTP] writev data loss bug in (at least) 2.6.31 and 2.6.32pre8
-	x86-64
-Date: Thu, 03 Dec 2009 20:41:43 +0530
-Message-ID: <1259853108.5085.37.camel@subratamodak.linux.ibm.com>
-References: <1F5364AE-321E-44E9-8B0D-B8E17597A0DA@fuhm.net>
-	 <907888CC-F4B2-448F-8F48-B96A566D323B@fuhm.net>
-	 <1259667765.9614.19.camel@marge.simson.net>
-	 <20091201143558.GB12730@quack.suse.cz>
-	 <20091201160324.GA25873@quack.suse.cz>
-	 <7A65EEA3-78FD-49C3-B683-265B93F8AC96@sun.com>
-	 <20091202105354.f7137c98.rdunlap@xenotime.net>
-Reply-To: subrata@linux.vnet.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, ltp-list@lists.sourceforge.net,
-	Mike Galbraith <gleep@gmx.de>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	James Y Knight <foom@fuhm.net>, Jan Kara <jack@suse.cz>,
-	npiggin@suse.de
-To: Randy Dunlap <rdunlap@xenotime.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: Use slab allocator for sub-page sized allocations
+Date: Thu,  3 Dec 2009 18:45:31 -0500
+Message-ID: <1259883931-11508-1-git-send-email-tytso@mit.edu>
+References: <20091202201234.GG6278@thunk.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:37679 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756274AbZLCPM1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2009 10:12:27 -0500
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e34.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id nB3F7ANf030318
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Dec 2009 08:07:10 -0700
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB3FCRV2162076
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Dec 2009 08:12:28 -0700
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB392vhI023118
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Dec 2009 02:02:58 -0700
-In-Reply-To: <20091202105354.f7137c98.rdunlap@xenotime.net>
+Received: from thunk.org ([69.25.196.29]:43061 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755521AbZLDCnc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Dec 2009 21:43:32 -0500
+In-Reply-To: <20091202201234.GG6278@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2009-12-02 at 10:53 -0800, Randy Dunlap wrote: 
-> On Tue, 01 Dec 2009 15:02:04 -0700 Andreas Dilger wrote:
-> 
-> > On 2009-12-01, at 09:03, Jan Kara wrote:
-> > > On Tue 01-12-09 15:35:59, Jan Kara wrote:
-> > >> On Tue 01-12-09 12:42:45, Mike Galbraith wrote:
-> > >>> On Mon, 2009-11-30 at 19:48 -0500, James Y Knight wrote:
-> > >>>> On Nov 30, 2009, at 3:55 PM, James Y Knight wrote:
-> > >>>>> This test case is distilled from an actual application which  
-> > >>>>> doesn't even intentionally use writev: it just uses C++'s  
-> > >>>>> ofstream class to write data to a file. Unfortunately, that  
-> > >>>>> class smart and uses writev under the covers. Unfortunately, I  
-> > >>>>> guess nobody ever tests linux writev behavior, since it's broken  
-> > >>>>> _so_much_of_the_time_. I really am quite astounded to see such a  
-> > >>>>> bad track record for such a fundamental core system call....
-> > 
-> > I suspect an excellent way of exposing problems with the writev()  
-> > interface would be to wire it into fsx, which is commonly run as a  
-> > stress test for Linux.  I don't know if it would have caught this  
-> > case, but it definitely couldn't hurt to get more testing cycles for it.
-> 
-> Maybe someone from LTP would be interested in adding this test functionality
-> to fsx-linux ?
-> 
+Now that the SLUB seems to be fixed so that it respects the requested
+alignment, use kmem_cache_alloc() to allocator if the block size of
+the buffer heads to be allocated is less than the page size.
+Previously, we were using 16k page on a Power system for each buffer,
+even when the file system was using 1k or 4k block size.
 
-Sure Randy,
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+Address the concerns found in https://bugzilla.lustre.org/show_bug.cgi?id=19184
 
-We will do it.
+ fs/jbd2/journal.c    |  132 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |   11 +---
+ 2 files changed, 134 insertions(+), 9 deletions(-)
 
-Regards--
-Subrata
-
-> Source/test program is available at
-> http://marc.info/?l=linux-kernel&m=125961612418323&w=2
-> 
-> 
-> > >>  Ext4 also has this problem but delayed allocation mitigates the  
-> > >> effect to an error in accounting of blocks reserved for delayed  
-> > >> allocation and thus under normal circumstances nothing bad happens.
-> > 
-> > It looks like ext4 might still hit this problem, if delalloc is  
-> > disabled.  Could you please submit a similar patch for ext4 also.
-> > 
-> > >  The patch below fixes the issue for me...
-> > >
-> > > 									Honza
-> > >
-> > > From 1b2ad411dd86afbfdb3c5b0f913230e9f1f0b858 Mon Sep 17 00:00:00 2001
-> > > From: Jan Kara <jack@suse.cz>
-> > > Date: Tue, 1 Dec 2009 16:53:06 +0100
-> > > Subject: [PATCH] ext3: Fix data / filesystem corruption when write  
-> > > fails to copy data
-> > >
-> > > When ext3_write_begin fails after allocating some blocks or  
-> > > generic_perform_write fails to copy data to write, we truncate  
-> > > blocks already instantiated beyond i_size. Although these blocks  
-> > > were never inside i_size, we have to truncate pagecache of these  
-> > > blocks so that corresponding buffers get unmapped. Otherwise  
-> > > subsequent __block_prepare_write (called because we are retrying the  
-> > > write) will find the buffers mapped, not call ->get_block, and thus  
-> > > the page will be backed by already freed blocks leading to  
-> > > filesystem and data corruption.
-> > >
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > > fs/ext3/inode.c |   18 ++++++++++++++----
-> > > 1 files changed, 14 insertions(+), 4 deletions(-)
-> > >
-> > > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > > index 354ed3b..f9d6937 100644
-> > > --- a/fs/ext3/inode.c
-> > > +++ b/fs/ext3/inode.c
-> > > @@ -1151,6 +1151,16 @@ static int  
-> > > do_journal_get_write_access(handle_t *handle,
-> > > 	return ext3_journal_get_write_access(handle, bh);
-> > > }
-> > >
-> > > +/*
-> > > + * Truncate blocks that were not used by write. We have to truncate  
-> > > the
-> > > + * pagecache as well so that corresponding buffers get properly  
-> > > unmapped.
-> > > + */
-> > > +static void ext3_truncate_failed_write(struct inode *inode)
-> > > +{
-> > > +	truncate_inode_pages(inode->i_mapping, inode->i_size);
-> > > +	ext3_truncate(inode);
-> > > +}
-> > > +
-> > > static int ext3_write_begin(struct file *file, struct address_space  
-> > > *mapping,
-> > > 				loff_t pos, unsigned len, unsigned flags,
-> > > 				struct page **pagep, void **fsdata)
-> > > @@ -1209,7 +1219,7 @@ write_begin_failed:
-> > > 		unlock_page(page);
-> > > 		page_cache_release(page);
-> > > 		if (pos + len > inode->i_size)
-> > > -			ext3_truncate(inode);
-> > > +			ext3_truncate_failed_write(inode);
-> > > 	}
-> > > 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-> > > 		goto retry;
-> > > @@ -1304,7 +1314,7 @@ static int ext3_ordered_write_end(struct file  
-> > > *file,
-> > > 	page_cache_release(page);
-> > >
-> > > 	if (pos + len > inode->i_size)
-> > > -		ext3_truncate(inode);
-> > > +		ext3_truncate_failed_write(inode);
-> > > 	return ret ? ret : copied;
-> > > }
-> > >
-> > > @@ -1330,7 +1340,7 @@ static int ext3_writeback_write_end(struct  
-> > > file *file,
-> > > 	page_cache_release(page);
-> > >
-> > > 	if (pos + len > inode->i_size)
-> > > -		ext3_truncate(inode);
-> > > +		ext3_truncate_failed_write(inode);
-> > > 	return ret ? ret : copied;
-> > > }
-> > >
-> > > @@ -1383,7 +1393,7 @@ static int ext3_journalled_write_end(struct  
-> > > file *file,
-> > > 	page_cache_release(page);
-> > >
-> > > 	if (pos + len > inode->i_size)
-> > > -		ext3_truncate(inode);
-> > > +		ext3_truncate_failed_write(inode);
-> > > 	return ret ? ret : copied;
-> > > }
-> > >
-> > > -- 
-> > 
-> > Cheers, Andreas
-> > --
-> > Andreas Dilger
-> > Sr. Staff Engineer, Lustre Group
-> > Sun Microsystems of Canada, Inc.
-> 
-> 
-> ---
-> ~Randy
-> 
-> ------------------------------------------------------------------------------
-> Join us December 9, 2009 for the Red Hat Virtual Experience,
-> a free event focused on virtualization and cloud computing. 
-> Attend in-depth sessions from your desk. Your couch. Anywhere.
-> http://p.sf.net/sfu/redhat-sfdev2dev
-> _______________________________________________
-> Ltp-list mailing list
-> Ltp-list@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/ltp-list
-
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 3f473fa..5824353 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -39,6 +39,8 @@
+ #include <linux/seq_file.h>
+ #include <linux/math64.h>
+ #include <linux/hash.h>
++#include <linux/log2.h>
++#include <linux/vmalloc.h>
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/jbd2.h>
+@@ -92,6 +94,7 @@ EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+ 
+ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
++static int jbd2_journal_create_slab(size_t slab_size);
+ 
+ /*
+  * Helper function used to manage commit timeouts
+@@ -1247,6 +1250,13 @@ int jbd2_journal_load(journal_t *journal)
+ 		}
+ 	}
+ 
++	/*
++	 * Create a slab for this blocksize
++	 */
++	err = jbd2_journal_create_slab(be32_to_cpu(sb->s_blocksize));
++	if (err)
++		return err;
++
+ 	/* Let the recovery code check whether it needs to recover any
+ 	 * data from the journal. */
+ 	if (jbd2_journal_recover(journal))
+@@ -1806,6 +1816,127 @@ size_t journal_tag_bytes(journal_t *journal)
+ }
+ 
+ /*
++ * JBD memory management
++ *
++ * These functions are used to allocate block-sized chunks of memory
++ * used for making copies of buffer_head data.  Very often it will be
++ * page-sized chunks of data, but sometimes it will be in
++ * sub-page-size chunks.  (For example, 16k pages on Power systems
++ * with a 4k block file system.)  For blocks smaller than a page, we
++ * use a SLAB allocator.  There are slab caches for each block size,
++ * which are allocated at mount time, if necessary, and we only free
++ * (all of) the slab caches when/if the jbd2 module is unloaded.  For
++ * this reason we don't need to a mutex to protect access to
++ * jbd2_slab[] allocating or releasing memory; only in
++ * jbd2_journal_create_slab().
++ */
++#define JBD2_MAX_SLABS 8
++static struct kmem_cache *jbd2_slab[JBD2_MAX_SLABS];
++static DECLARE_MUTEX(jbd2_slab_create_sem);
++
++static const char *jbd2_slab_names[JBD2_MAX_SLABS] = {
++	"jbd2_1k", "jbd2_2k", "jbd2_4k", "jbd2_8k",
++	"jbd2_16k", "jbd2_32k", "jbd2_64k", "jbd2_128k"
++};
++
++
++static void jbd2_journal_destroy_slabs(void)
++{
++	int i;
++
++	for (i = 0; i < JBD2_MAX_SLABS; i++) {
++		if (jbd2_slab[i])
++			kmem_cache_destroy(jbd2_slab[i]);
++		jbd2_slab[i] = NULL;
++	}
++}
++
++static int jbd2_journal_create_slab(size_t size)
++{
++	int i = order_base_2(size) - 10;
++	size_t slab_size;
++
++	if (size == PAGE_SIZE)
++		return 0;
++
++	if (i >= JBD2_MAX_SLABS)
++		return -EINVAL;
++
++	if (unlikely(i < 0))
++		i = 0;
++	down(&jbd2_slab_create_sem);
++	if (jbd2_slab[i]) {
++		up(&jbd2_slab_create_sem);
++		return 0;	/* Already created */
++	}
++
++	slab_size = 1 << (i+10);
++	jbd2_slab[i] = kmem_cache_create(jbd2_slab_names[i], slab_size,
++					 slab_size, 0, NULL);
++	up(&jbd2_slab_create_sem);
++	if (!jbd2_slab[i]) {
++		printk(KERN_EMERG "JBD2: no memory for jbd2_slab cache\n");
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++static struct kmem_cache *get_slab(size_t size)
++{
++	int i = order_base_2(size) - 10;
++
++	BUG_ON(i >= JBD2_MAX_SLABS);
++	if (unlikely(i < 0))
++		i = 0;
++	BUG_ON(jbd2_slab[i] == 0);
++	return jbd2_slab[i];
++}
++
++void *jbd2_alloc(size_t size, gfp_t flags)
++{
++	void *ptr;
++
++	BUG_ON(size & (size-1)); /* Must be a power of 2 */
++
++	flags |= __GFP_REPEAT;
++	if (size == PAGE_SIZE)
++		ptr = (void *)__get_free_pages(flags, 0);
++	else if (size > PAGE_SIZE) {
++		int order = get_order(size);
++
++		if (order < 3)
++			ptr = (void *)__get_free_pages(flags, order);
++		else
++			ptr = vmalloc(size);
++	} else
++		ptr = kmem_cache_alloc(get_slab(size), flags);
++
++	/* Check alignment; SLUB has gotten this wrong in the past,
++	 * and this can lead to user data corruption! */
++	BUG_ON(((unsigned long) ptr) & (size-1));
++
++	return ptr;
++}
++
++void jbd2_free(void *ptr, size_t size)
++{
++	if (size == PAGE_SIZE) {
++		free_pages((unsigned long)ptr, 0);
++		return;
++	}
++	if (size > PAGE_SIZE) {
++		int order = get_order(size);
++
++		if (order < 3)
++			free_pages((unsigned long)ptr, order);
++		else
++			vfree(ptr);
++		return;
++	}
++	kmem_cache_free(get_slab(size), ptr);
++};
++
++/*
+  * Journal_head storage management
+  */
+ static struct kmem_cache *jbd2_journal_head_cache;
+@@ -2202,6 +2333,7 @@ static void jbd2_journal_destroy_caches(void)
+ 	jbd2_journal_destroy_revoke_caches();
+ 	jbd2_journal_destroy_jbd2_journal_head_cache();
+ 	jbd2_journal_destroy_handle_cache();
++	jbd2_journal_destroy_slabs();
+ }
+ 
+ static int __init journal_init(void)
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f1011f7..a7a8c7a 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -69,15 +69,8 @@ extern u8 jbd2_journal_enable_debug;
+ #define jbd_debug(f, a...)	/**/
+ #endif
+ 
+-static inline void *jbd2_alloc(size_t size, gfp_t flags)
+-{
+-	return (void *)__get_free_pages(flags, get_order(size));
+-}
