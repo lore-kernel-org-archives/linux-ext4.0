@@ -1,78 +1,87 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Remove blocks from inode prealloc list on failure
-Date: Fri, 4 Dec 2009 15:16:55 +0530
-Message-ID: <20091204094654.GB4272@skywalker.linux.vnet.ibm.com>
-References: <6601abe90912011017s41b74ed2nab4a45dc3f74825c@mail.gmail.com>
+Subject: Re: [PATCH] jbd: jbd-debug and jbd2-debug should be writable.
+Date: Fri, 4 Dec 2009 15:19:32 +0530
+Message-ID: <20091204094932.GC4272@skywalker.linux.vnet.ibm.com>
+References: <20091204031735.GN19635@kai-debian>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>
+To: "Yin, Kangkai" <kangkai.yin@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:42870 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753668AbZLDJr2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2009 04:47:28 -0500
-Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [202.81.31.246])
-	by e23smtp03.au.ibm.com (8.14.3/8.13.1) with ESMTP id nB49in6U030915
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Dec 2009 20:44:49 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB49hs9A1658998
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Dec 2009 20:43:55 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB49lWhS022142
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Dec 2009 20:47:32 +1100
+Received: from e23smtp05.au.ibm.com ([202.81.31.147]:46563 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754732AbZLDJtx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2009 04:49:53 -0500
 Content-Disposition: inline
-In-Reply-To: <6601abe90912011017s41b74ed2nab4a45dc3f74825c@mail.gmail.com>
+In-Reply-To: <20091204031735.GN19635@kai-debian>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 01, 2009 at 10:17:02AM -0800, Curt Wohlgemuth wrote:
-> This fixes a leak of blocks in an inode prealloc list if device failures
-> cause ext4_mb_mark_diskspace_used() to fail.
+On Fri, Dec 04, 2009 at 11:17:35AM +0800, Yin, Kangkai wrote:
+> Hi,
 > 
-> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+> Re-send since seems my mail was dropped by vger, because of my wrong
+> envelope_from..
+> 
+> ----
+> I was trying to enable the jbd debug option, and found that jbd-debug
+> in debugfs is read-only, shouldn't that be writable?
+> 
+> Found in both .31 stable kernel and .32 one.
+> 
+> Thanks,
+> Kangkai
+> 
+> From 492ec0453ca3458c68deaa6e308ca01acc0eca1f Mon Sep 17 00:00:00 2001
+> From: Yin Kangkai <kangkai.yin@intel.com>
+> Date: Thu, 3 Dec 2009 18:01:38 +0800
+> Subject: [PATCH] jbd: jbd-debug and jbd2-debug should be writable.
+> 
+> jbd-debug and jbd2-debug is currently read-only (S_IRUGO), which is not
+> correct. Make it writable so that we can start debuging.
+> 
+> Signed-off-by: Yin Kangkai <kangkai.yin@intel.com>
+
+Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+
 > ---
-> diff -uprN orig/fs/ext4/mballoc.c new/fs/ext4/mballoc.c
-> --- orig/fs/ext4/mballoc.c	2009-12-01 09:27:25.000000000 -0800
-> +++ new/fs/ext4/mballoc.c	2009-12-01 09:28:38.000000000 -0800
-> @@ -3011,6 +3011,22 @@ static void ext4_mb_collect_stats(struct
->  }
+>  fs/jbd/journal.c  |    2 +-
+>  fs/jbd2/journal.c |    3 ++-
+>  2 files changed, 3 insertions(+), 2 deletions(-)
 > 
->  /*
-> + * Called on failure; free up any blocks from the inode PA for this
-> + * context.
-> + */
-> +static void ext4_discard_inode_pa(struct ext4_allocation_context *ac)
-> +{
-> +	struct ext4_prealloc_space *pa = ac->ac_pa;
-> +	int len;
-> +
-> +	if (pa && pa->pa_type == MB_INODE_PA) {
-> +		len = ac->ac_b_ex.fe_len;
-> +		pa->pa_free += len;
-> +	}
-> +
-> +}
-
-Can you name it as discard allocated blocks and add a comment saying why
-we don't need it for MB_GROUP_PA ? Otherwise
-
-Acked-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-
-> +
-> +/*
->   * use blocks preallocated to inode
->   */
->  static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
-> @@ -4295,6 +4311,7 @@ repeat:
->  			ac->ac_status = AC_STATUS_CONTINUE;
->  			goto repeat;
->  		} else if (*errp) {
-> +			ext4_discard_inode_pa(ac);
->  			ac->ac_b_ex.fe_len = 0;
->  			ar->len = 0;
->  			ext4_mb_show_ac(ac);
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 4160afa..bd224ee 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -1913,7 +1913,7 @@ static void __init jbd_create_debugfs_entry(void)
+>  {
+>  	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
+>  	if (jbd_debugfs_dir)
+> -		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO,
+> +		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO | S_IWUSR,
+>  					       jbd_debugfs_dir,
+>  					       &journal_enable_debug);
+>  }
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index fed8538..3c41c5a 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -2103,7 +2103,8 @@ static void __init jbd2_create_debugfs_entry(void)
+>  {
+>  	jbd2_debugfs_dir = debugfs_create_dir("jbd2", NULL);
+>  	if (jbd2_debugfs_dir)
+> -		jbd2_debug = debugfs_create_u8(JBD2_DEBUG_NAME, S_IRUGO,
+> +		jbd2_debug = debugfs_create_u8(JBD2_DEBUG_NAME,
+> +					       S_IRUGO | S_IWUSR,
+>  					       jbd2_debugfs_dir,
+>  					       &jbd2_journal_enable_debug);
+>  }
+> -- 
+> 1.6.5
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
