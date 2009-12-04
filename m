@@ -1,213 +1,31 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: Use slab allocator for sub-page sized allocations
-Date: Thu,  3 Dec 2009 18:45:31 -0500
-Message-ID: <1259883931-11508-1-git-send-email-tytso@mit.edu>
-References: <20091202201234.GG6278@thunk.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: Remove blocks from inode prealloc list on failure
+Date: Thu, 3 Dec 2009 20:10:22 -0500
+Message-ID: <20091204011022.GI10985@thunk.org>
+References: <6601abe90912011017s41b74ed2nab4a45dc3f74825c@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:43061 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:43064 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755521AbZLDCnc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755546AbZLDCnc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 3 Dec 2009 21:43:32 -0500
-In-Reply-To: <20091202201234.GG6278@thunk.org>
+Content-Disposition: inline
+In-Reply-To: <6601abe90912011017s41b74ed2nab4a45dc3f74825c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now that the SLUB seems to be fixed so that it respects the requested
-alignment, use kmem_cache_alloc() to allocator if the block size of
-the buffer heads to be allocated is less than the page size.
-Previously, we were using 16k page on a Power system for each buffer,
-even when the file system was using 1k or 4k block size.
+On Tue, Dec 01, 2009 at 10:17:02AM -0800, Curt Wohlgemuth wrote:
+> This fixes a leak of blocks in an inode prealloc list if device failures
+> cause ext4_mb_mark_diskspace_used() to fail.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-Address the concerns found in https://bugzilla.lustre.org/show_bug.cgi?id=19184
+I was going to say that it didn't make sense for
+ext4_discard_inode_pa() should be its own function, but maybe we need
+function that returns blocks back to the either inode *or* the group
+preallocation list?  Otherwise right now it looks like we would also
+be potentially leaking blocks from the group preallocation list in
+case of a device failure?
 
- fs/jbd2/journal.c    |  132 ++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h |   11 +---
- 2 files changed, 134 insertions(+), 9 deletions(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 3f473fa..5824353 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -39,6 +39,8 @@
- #include <linux/seq_file.h>
- #include <linux/math64.h>
- #include <linux/hash.h>
-+#include <linux/log2.h>
-+#include <linux/vmalloc.h>
- 
- #define CREATE_TRACE_POINTS
- #include <trace/events/jbd2.h>
-@@ -92,6 +94,7 @@ EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
- 
- static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
- static void __journal_abort_soft (journal_t *journal, int errno);
-+static int jbd2_journal_create_slab(size_t slab_size);
- 
- /*
-  * Helper function used to manage commit timeouts
-@@ -1247,6 +1250,13 @@ int jbd2_journal_load(journal_t *journal)
- 		}
- 	}
- 
-+	/*
-+	 * Create a slab for this blocksize
-+	 */
-+	err = jbd2_journal_create_slab(be32_to_cpu(sb->s_blocksize));
-+	if (err)
-+		return err;
-+
- 	/* Let the recovery code check whether it needs to recover any
- 	 * data from the journal. */
- 	if (jbd2_journal_recover(journal))
-@@ -1806,6 +1816,127 @@ size_t journal_tag_bytes(journal_t *journal)
- }
- 
- /*
-+ * JBD memory management
-+ *
-+ * These functions are used to allocate block-sized chunks of memory
-+ * used for making copies of buffer_head data.  Very often it will be
-+ * page-sized chunks of data, but sometimes it will be in
-+ * sub-page-size chunks.  (For example, 16k pages on Power systems
-+ * with a 4k block file system.)  For blocks smaller than a page, we
-+ * use a SLAB allocator.  There are slab caches for each block size,
-+ * which are allocated at mount time, if necessary, and we only free
-+ * (all of) the slab caches when/if the jbd2 module is unloaded.  For
-+ * this reason we don't need to a mutex to protect access to
-+ * jbd2_slab[] allocating or releasing memory; only in
-+ * jbd2_journal_create_slab().
-+ */
-+#define JBD2_MAX_SLABS 8
-+static struct kmem_cache *jbd2_slab[JBD2_MAX_SLABS];
-+static DECLARE_MUTEX(jbd2_slab_create_sem);
-+
-+static const char *jbd2_slab_names[JBD2_MAX_SLABS] = {
-+	"jbd2_1k", "jbd2_2k", "jbd2_4k", "jbd2_8k",
-+	"jbd2_16k", "jbd2_32k", "jbd2_64k", "jbd2_128k"
-+};
-+
-+
-+static void jbd2_journal_destroy_slabs(void)
-+{
-+	int i;
-+
-+	for (i = 0; i < JBD2_MAX_SLABS; i++) {
-+		if (jbd2_slab[i])
-+			kmem_cache_destroy(jbd2_slab[i]);
-+		jbd2_slab[i] = NULL;
-+	}
-+}
-+
-+static int jbd2_journal_create_slab(size_t size)
-+{
-+	int i = order_base_2(size) - 10;
-+	size_t slab_size;
-+
-+	if (size == PAGE_SIZE)
-+		return 0;
-+
-+	if (i >= JBD2_MAX_SLABS)
-+		return -EINVAL;
-+
-+	if (unlikely(i < 0))
-+		i = 0;
-+	down(&jbd2_slab_create_sem);
-+	if (jbd2_slab[i]) {
-+		up(&jbd2_slab_create_sem);
-+		return 0;	/* Already created */
-+	}
-+
-+	slab_size = 1 << (i+10);
-+	jbd2_slab[i] = kmem_cache_create(jbd2_slab_names[i], slab_size,
-+					 slab_size, 0, NULL);
-+	up(&jbd2_slab_create_sem);
-+	if (!jbd2_slab[i]) {
-+		printk(KERN_EMERG "JBD2: no memory for jbd2_slab cache\n");
-+		return -ENOMEM;
-+	}
-+	return 0;
-+}
-+
-+static struct kmem_cache *get_slab(size_t size)
-+{
-+	int i = order_base_2(size) - 10;
-+
-+	BUG_ON(i >= JBD2_MAX_SLABS);
-+	if (unlikely(i < 0))
-+		i = 0;
-+	BUG_ON(jbd2_slab[i] == 0);
-+	return jbd2_slab[i];
-+}
-+
-+void *jbd2_alloc(size_t size, gfp_t flags)
-+{
-+	void *ptr;
-+
-+	BUG_ON(size & (size-1)); /* Must be a power of 2 */
-+
-+	flags |= __GFP_REPEAT;
-+	if (size == PAGE_SIZE)
-+		ptr = (void *)__get_free_pages(flags, 0);
-+	else if (size > PAGE_SIZE) {
-+		int order = get_order(size);
-+
-+		if (order < 3)
-+			ptr = (void *)__get_free_pages(flags, order);
-+		else
-+			ptr = vmalloc(size);
-+	} else
-+		ptr = kmem_cache_alloc(get_slab(size), flags);
-+
-+	/* Check alignment; SLUB has gotten this wrong in the past,
-+	 * and this can lead to user data corruption! */
-+	BUG_ON(((unsigned long) ptr) & (size-1));
-+
-+	return ptr;
-+}
-+
-+void jbd2_free(void *ptr, size_t size)
-+{
-+	if (size == PAGE_SIZE) {
-+		free_pages((unsigned long)ptr, 0);
-+		return;
-+	}
-+	if (size > PAGE_SIZE) {
-+		int order = get_order(size);
-+
-+		if (order < 3)
-+			free_pages((unsigned long)ptr, order);
-+		else
-+			vfree(ptr);
-+		return;
-+	}
-+	kmem_cache_free(get_slab(size), ptr);
-+};
-+
-+/*
-  * Journal_head storage management
-  */
- static struct kmem_cache *jbd2_journal_head_cache;
-@@ -2202,6 +2333,7 @@ static void jbd2_journal_destroy_caches(void)
- 	jbd2_journal_destroy_revoke_caches();
- 	jbd2_journal_destroy_jbd2_journal_head_cache();
- 	jbd2_journal_destroy_handle_cache();
-+	jbd2_journal_destroy_slabs();
- }
- 
- static int __init journal_init(void)
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index f1011f7..a7a8c7a 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -69,15 +69,8 @@ extern u8 jbd2_journal_enable_debug;
- #define jbd_debug(f, a...)	/**/
- #endif
- 
--static inline void *jbd2_alloc(size_t size, gfp_t flags)
--{
--	return (void *)__get_free_pages(flags, get_order(size));
--}
+					- Ted
