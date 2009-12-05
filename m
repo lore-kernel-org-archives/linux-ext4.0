@@ -1,61 +1,46 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Please reserve INCOMPAT flags
-Date: Sat, 5 Dec 2009 09:55:56 +0530
-Message-ID: <20091205042556.GA7426@skywalker.linux.vnet.ibm.com>
-References: <20090906092546.GU4197@webber.adilger.int>
- <853282DF-4A37-4677-9E4C-F7C26A00C890@sun.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 2/2] ext4: Use slab allocator for sub-page sized allocations
+Date: Sat, 05 Dec 2009 00:43:13 -0600
+Message-ID: <4B1A0101.4090605@redhat.com>
+References: <1259716451-26901-1-git-send-email-tytso@mit.edu> <1259716451-26901-2-git-send-email-tytso@mit.edu> <4B169B86.4040707@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:47574 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757669AbZLEE0B (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2009 23:26:01 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
-	by e23smtp01.au.ibm.com (8.14.3/8.13.1) with ESMTP id nB54OQJo011035
-	for <linux-ext4@vger.kernel.org>; Sat, 5 Dec 2009 15:24:26 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB54Q6cc1237176
-	for <linux-ext4@vger.kernel.org>; Sat, 5 Dec 2009 15:26:06 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB54Q5aH001269
-	for <linux-ext4@vger.kernel.org>; Sat, 5 Dec 2009 15:26:06 +1100
-Content-Disposition: inline
-In-Reply-To: <853282DF-4A37-4677-9E4C-F7C26A00C890@sun.com>
+Received: from mx1.redhat.com ([209.132.183.28]:26561 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751528AbZLEGnR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Dec 2009 01:43:17 -0500
+In-Reply-To: <4B169B86.4040707@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 30, 2009 at 12:15:11PM -0700, Andreas Dilger wrote:
-> On 2009-09-06, at 03:25, Andreas Dilger wrote:
-> >in addition to the data-in-dirent INCOMPAT flag Rahul sent the patches
-> >for last week, I would like to ensure that we also have the INCOMPAT
-> >flag for large EA-in-inode flag reserved.  This patch is going into
-> >testing at one of our large customers, and I want to make sure that
-> >we don't accidentally get a conflicting INCOMPAT flag assignment.
-> >
-> >#define EXT4_FEATURE_INCOMPAT_EA_INODE	0x0400
-> >#define EXT4_FEATURE_INCOMPAT_DIRDATA   0x1000
-> >
-> >#define EXT4_EA_INODE_FL	0x00200000 /* Inode uses large EA */
+Eric Sandeen wrote:
+> Theodore Ts'o wrote:
+>> Now that the SLUB seems to be fixed so that it respects the requested
+>> alignment, use kmem_cache_alloc() to allocator if the block size of
+>> the buffer heads to be allocated is less than the page size.
+>> Previously, we were using 16k page on a Power system for each buffer,
+>> even when the file system was using 1k or 4k block size.
 > 
+> So, this undoes commit c089d490dfbf53bc0893dc9ef57cf3ee6448314d
+> more or less, right:
 > 
-> Hi Ted,
-> I noticed Aneesh proposing to use the 0x0400 INCOMPAT flag for the
-> NFSv4 ACL support, but this conflicts with the large EA feature we
-> had previously discussed.  We now have a couple of customers using
-> the large EA feature at this point, and I wouldn't want to break
-> their filesystem as a result of an avoidable conflict.
+> JBD: Replace slab allocations with page allocations
 > 
-> I'll attach patches for this, which will hopefully make it easier,
-> and the patch tracking tool will keep this visible.
+> Author: Mingming Cao <cmm@us.ibm.com>
 > 
-> Aneesh, maybe you can use 0x0800 for the INCOMPAT_RICHACL?
+> JBD allocate memory for committed_data and frozen_data from slab. However
+> JBD should not pass slab pages down to the block layer.
+> Use page allocator pages instead. This will also prepare JBD for the large blocksize patchset.
 > 
-> 
+> Was alignment the only reason that commit went in?
 
-I have updated richacl patches to use 0x0800.
+Actually, Christoph reminded me that iscsi & co will not like this.
 
--aneesh
+See commit 1fa40b01ae4d1b00e366d4949edcc230f5cd6d99 for xfs moving
+in the opposite direction back in 2007...
+
+-Eric
