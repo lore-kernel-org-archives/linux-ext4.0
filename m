@@ -1,87 +1,61 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH][RFC] kjournald affinity patch
-Date: Fri, 04 Dec 2009 17:08:34 -0700
-Message-ID: <6CCA0618-5E60-42E2-B9B5-96B16185CB92@sun.com>
-References: <58E055D0-728A-473F-857A-AC4ED7BAE759@sun.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: Please reserve INCOMPAT flags
+Date: Sat, 5 Dec 2009 09:55:56 +0530
+Message-ID: <20091205042556.GA7426@skywalker.linux.vnet.ibm.com>
+References: <20090906092546.GU4197@webber.adilger.int>
+ <853282DF-4A37-4677-9E4C-F7C26A00C890@sun.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_dwFTMbb+6p1fsJYQF8RwKQ)"
-Cc: Johann Lombardi <johann@sun.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:38519 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932566AbZLEAIa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2009 19:08:30 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nB508acL009781
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Dec 2009 16:08:36 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KU500200KAAS700@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 04 Dec 2009 16:08:36 -0800 (PST)
-Received: from cabot-wlan.adilger.int ([unknown] [68.147.195.121])
- by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- with ESMTPSA id <0KU500NSMKEB3M80@fe-sfbay-10.sun.com> for
- linux-ext4@vger.kernel.org; Fri, 04 Dec 2009 16:08:36 -0800 (PST)
+Received: from e23smtp01.au.ibm.com ([202.81.31.143]:47574 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757669AbZLEE0B (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Dec 2009 23:26:01 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
+	by e23smtp01.au.ibm.com (8.14.3/8.13.1) with ESMTP id nB54OQJo011035
+	for <linux-ext4@vger.kernel.org>; Sat, 5 Dec 2009 15:24:26 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB54Q6cc1237176
+	for <linux-ext4@vger.kernel.org>; Sat, 5 Dec 2009 15:26:06 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB54Q5aH001269
+	for <linux-ext4@vger.kernel.org>; Sat, 5 Dec 2009 15:26:06 +1100
+Content-Disposition: inline
+In-Reply-To: <853282DF-4A37-4677-9E4C-F7C26A00C890@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Nov 30, 2009 at 12:15:11PM -0700, Andreas Dilger wrote:
+> On 2009-09-06, at 03:25, Andreas Dilger wrote:
+> >in addition to the data-in-dirent INCOMPAT flag Rahul sent the patches
+> >for last week, I would like to ensure that we also have the INCOMPAT
+> >flag for large EA-in-inode flag reserved.  This patch is going into
+> >testing at one of our large customers, and I want to make sure that
+> >we don't accidentally get a conflicting INCOMPAT flag assignment.
+> >
+> >#define EXT4_FEATURE_INCOMPAT_EA_INODE	0x0400
+> >#define EXT4_FEATURE_INCOMPAT_DIRDATA   0x1000
+> >
+> >#define EXT4_EA_INODE_FL	0x00200000 /* Inode uses large EA */
+> 
+> 
+> Hi Ted,
+> I noticed Aneesh proposing to use the 0x0400 INCOMPAT flag for the
+> NFSv4 ACL support, but this conflicts with the large EA feature we
+> had previously discussed.  We now have a couple of customers using
+> the large EA feature at this point, and I wouldn't want to break
+> their filesystem as a result of an avoidable conflict.
+> 
+> I'll attach patches for this, which will hopefully make it easier,
+> and the patch tracking tool will keep this visible.
+> 
+> Aneesh, maybe you can use 0x0800 for the INCOMPAT_RICHACL?
+> 
+> 
 
---Boundary_(ID_dwFTMbb+6p1fsJYQF8RwKQ)
-Content-type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-transfer-encoding: 7BIT
+I have updated richacl patches to use 0x0800.
 
-Per discussion on the ext4 concall, attached is a basic version of the  
-journal affinity patch against an older kernel (2.6.10) and ext3, but  
-looking at the patch it doesn't seem very dependent upon the ext3/ext4  
-version at all and can probably be .
-
-This defaults to enabling NUMA affinity if CONFIG_NUMA is enabled, so  
-per our discussion it probably needs a mount option that will enable  
-it only if specified.  We had discussed  
-"journal_affinity={off,on,node#}" or "={none,auto,node#}" as  
-possibilities.
-
-Original patch was developed by someone at Bull (possibly even Johann,  
-when he worked there), but I don't have the exact attribution.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
---Boundary_(ID_dwFTMbb+6p1fsJYQF8RwKQ)
-Content-type: application/octet-stream; name=kjournald-affinity.patch;
- x-unix-mode=0644
-Content-transfer-encoding: QUOTED-PRINTABLE
-Content-disposition: attachment; filename=kjournald-affinity.patch
-
---- linux-2.6.10.orig/fs/ext3/super.c=092004-12-24 22:35:28.000000000=
- +0100=0D=0A+++ linux-2.6.10/fs/ext3/super.c=092005-01-18 12:27:51.89=
-6529310 +0100=0D=0A@@ -1787,6 +1787,32 @@=0D=0A =09return NULL;=0D=
-=0A }=0D=0A =0D=0A+#ifdef CONFIG_NUMA=0D=0A+#include <linux/nodemask.=
-h>=0D=0A+#include <asm/topology.h>=0D=0A+static int journal_node_affi=
-nity =3D 0;=0D=0A+spinlock_t journal_node_affinity_lock =3D SPIN_LOCK=
-_UNLOCKED;=0D=0A+static void ext3_bind_journal_thread(journal_t *jour=
-nal)=0A+{=0D=0A+=09int i, node;=0D=0A+=0D=0A+=09spin_lock(&journal_no=
-de_affinity_lock);=0D=0A+=09for (i =3D 0; i < MAX_NUMNODES; i++) {=
-=0D=0A+=09=09node =3D (journal_node_affinity + i) % MAX_NUMNODES;=
-=0D=0A+=0D=0A+=09=09if (!nr_cpus_node(node) || !node_online(node))=
-=0D=0A+=09=09=09continue;=0D=0A+=0D=0A+=09=09set_cpus_allowed(journal=
-->j_task, node_to_cpumask(node));=0D=0A+=09=09journal_node_affinity =
-=3D (node + 1) % MAX_NUMNODES;=0D=0A+=09=09break;=0D=0A+=09}=0D=0A+=
-=09spin_unlock(&journal_node_affinity_lock);=0D=0A+}=0A+#else=0A+#def=
-ine ext3_bind_journal_thread(journal) do {} while(0)=0D=0A+#endif=
-=0D=0A+=0D=0A static int ext3_load_journal(struct super_block * sb,=
-=0D=0A =09=09=09     struct ext3_super_block * es)=0D=0A {=0D=0A@@ -1=
-852,6 +1875,8 @@=0D=0A =09=09return err;=0D=0A =09}=0D=0A =0D=0A+=
-=09ext3_bind_journal_thread(journal);=0D=0A+=0D=0A =09EXT3_SB(sb)->s_=
-journal =3D journal;=0D=0A =09ext3_clear_journal_err(sb, es);=0D=0A =
-=09return 0;=0D=0A@@ -1881,6 +1908,8 @@=0D=0A =09=09return -EIO;=0D=
-=0A =09}=0D=0A =0D=0A+=09ext3_bind_journal_thread(journal);=0D=0A+=
-=0D=0A =09EXT3_SB(sb)->s_journal =3D journal;=0D=0A =0D=0A =09ext3_up=
-date_dynamic_rev(sb);=0D=0A=
-
---Boundary_(ID_dwFTMbb+6p1fsJYQF8RwKQ)--
+-aneesh
