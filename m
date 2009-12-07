@@ -1,33 +1,32 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [Bug 14739] BUG: scheduling while atomic: nfsd/3369/0x00000002
-Date: Mon, 7 Dec 2009 22:39:33 +0530
-Message-ID: <20091207170933.GA16078@skywalker.linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14739] BUG: scheduling while atomic: nfsd/3369/0x00000002
+Date: Mon, 7 Dec 2009 17:09:43 GMT
+Message-ID: <200912071709.nB7H9hp9031149@demeter.kernel.org>
 References: <bug-14739-13602@http.bugzilla.kernel.org/>
- <200912051728.nB5HSDVn018680@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Mingming <cmm@us.ibm.com>
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp09.in.ibm.com ([122.248.162.9]:44404 "EHLO
-	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758120AbZLGRJc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2009 12:09:32 -0500
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp09.in.ibm.com (8.14.3/8.13.1) with ESMTP id nB7GlR2k005153
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 22:17:27 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB7H9buS3297500
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 22:39:37 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB7H9bxN027842
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 22:39:37 +0530
-Content-Disposition: inline
-In-Reply-To: <200912051728.nB5HSDVn018680@demeter.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:40367 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935434AbZLGRJg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2009 12:09:36 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nB7H9hf8031150
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 17:09:43 GMT
+In-Reply-To: <bug-14739-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 05, 2009 at 05:28:13PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+http://bugzilla.kernel.org/show_bug.cgi?id=14739
+
+
+
+
+
+--- Comment #2 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-12-07 17:09:41 ---
+On Sat, Dec 05, 2009 at 05:28:13PM +0000, bugzilla-daemon@bugzilla.kernel.org
+wrote:
 > http://bugzilla.kernel.org/show_bug.cgi?id=14739
 > 
 > 
@@ -58,3 +57,8 @@ spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
 
 Adding Mingming to CC:
 -aneesh
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
