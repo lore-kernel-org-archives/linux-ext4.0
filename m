@@ -1,39 +1,28 @@
-From: Roel Kluin <roel.kluin@gmail.com>
-Subject: [PATCH] ext4: PTR_ERR return of wrong pointer in setup_new_group_blocks()
-Date: Mon, 07 Dec 2009 14:51:47 +0100
-Message-ID: <4B1D0873.90004@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org,
+From: root <jeremy.cochoy@gmail.com>
+Subject: [PATCH] fix ext2 parse_options printk
+Date: Mon,  7 Dec 2009 15:01:00 +0100
+Message-ID: <1260194461-8937-1-git-send-email-jeremy.cochoy@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Manish Katiyar <mkatiyar@gmail.com>,
+	Jan Kara <jack@suse.cz>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>
+	Christoph Hellwig <hch@lst.de>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Corentin Chary <corentin.chary@gmail.com>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f213.google.com ([209.85.220.213]:46861 "EHLO
-	mail-fx0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934993AbZLGNud (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2009 08:50:33 -0500
+Received: from ey-out-2122.google.com ([74.125.78.24]:10148 "EHLO
+	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935088AbZLGNyR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2009 08:54:17 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Return the PTR_ERR of the correct pointer.
 
-Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
----
- fs/ext4/resize.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Hello,
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 3cfc343..3b2c554 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -247,7 +247,7 @@ static int setup_new_group_blocks(struct super_block *sb,
- 			goto exit_bh;
- 
- 		if (IS_ERR(gdb = bclean(handle, sb, block))) {
--			err = PTR_ERR(bh);
-+			err = PTR_ERR(gdb);
- 			goto exit_bh;
- 		}
- 		ext4_handle_dirty_metadata(handle, NULL, gdb);
+I added KERN_* prexif in some log message. I choose KERN_NOTICE for message who looks something the user might be warned, because it isn't really a warning but it's something he should know.
+I chose KERN_INFO for 2 elements which are what the user asked to be.
+
+Tell me if there is any problem with my choices (or i make any mistake while sending you this patch) or anything else :)
+
+Best regars,
