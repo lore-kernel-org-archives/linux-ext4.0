@@ -1,42 +1,48 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
-Date: Tue, 8 Dec 2009 11:47:42 GMT
-Message-ID: <200912081147.nB8BlgHT016885@demeter.kernel.org>
-References: <bug-14256-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Possible irq lock inversion dependency detected in JBD
+Date: Tue, 8 Dec 2009 16:13:32 +0100
+Message-ID: <20091208151332.GA3141@atrey.karlin.mff.cuni.cz>
+References: <4B0BD960.5040105@vlnb.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39297 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754094AbZLHLrf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Dec 2009 06:47:35 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nB8BlgXP016886
-	for <linux-ext4@vger.kernel.org>; Tue, 8 Dec 2009 11:47:42 GMT
-In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Vladislav Bolkhovitin <vst@vlnb.net>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755916AbZLHPN2@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4B0BD960.5040105@vlnb.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14256
+  Hello,
 
+> During testing I had the below trace from lockdep. After some googling seems
+> it wasn't reported. The complete trace attached, it's almost 800K uncompressed.
+> 
+> =========================================================
+> [ INFO: possible irq lock inversion dependency detected ]
+> 2.6.31-scst-dbg #3
+> ---------------------------------------------------------
+> kswapd0/290 just changed the state of lock:
+>  (jbd_handle){+.+.-.}, at: [<7826a6fa>] journal_start+0xd4/0x13a
+> but this lock took another, RECLAIM_FS-unsafe lock in the past:
+>  (&type->s_lock_key){+.+.+.}
+> 
+> and interrupts could create inverse lock ordering between them.
+> 
+> 
+> other info that might help us debug this:
+> no locks held by kswapd0/290.
+  Thanks for the report. If I'm reading the lockdep messages right, it
+complains that page reclaim can be run with sb->s_lock held but we also
+start a transaction in the page reclaim path and we take sb->s_lock after
+starting a transaction in some paths.
+  The warning seems to be false positive to me since we don't really
+acquire sb->s_lock in the reclaim path. It would be nice if we could
+get this sorted out but I don't see an easy way out of this...
 
-
-
-
---- Comment #13 from Mikael Pettersson <mikpe@it.uu.se>  2009-12-08 11:47:41 ---
-(In reply to comment #12)
-> Ah, I've noticed that Mikael was not on CC of this bug so he didn't see my
-> messages. Mikael, could you please try running the debugging patch from comment
-> #8/#9? Thanks.
-
-I'll test the debug patch this weekend, right now I'm away from the machines
-that trigger the problem.
-
-(Since I issued all my bug reports on LKML it never occurred to me to add a cc:
-to myself in this bugzilla entry. Sorry about that.)
+								Honza
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
