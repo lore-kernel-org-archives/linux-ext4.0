@@ -1,40 +1,43 @@
-From: tytso@mit.edu
-Subject: Re: writev corruption and 64-bit quota patches for 2.6.33-rc1?
-Date: Tue, 8 Dec 2009 16:21:09 -0500
-Message-ID: <20091208212109.GT27692@thunk.org>
-References: <20091208110043.GC4095@quack.suse.de>
+From: Jody McIntyre <scjody@sun.com>
+Subject: Re: [e2fsprogs] Implement resync of declared blocks for software	RAID
+Date: Tue, 08 Dec 2009 16:22:07 -0500
+Message-ID: <20091208212207.GA15105@clouds>
+References: <20091208183046.GH4508@clouds> <87bpi9xldw.fsf@basil.nowhere.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51078 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966439AbZLHVVI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Dec 2009 16:21:08 -0500
-Content-Disposition: inline
-In-Reply-To: <20091208110043.GC4095@quack.suse.de>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42783 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966258AbZLHVWO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Dec 2009 16:22:14 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id nB8LMIHb028496
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Dec 2009 13:22:20 -0800 (PST)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KUC00L00R4JMM00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 08 Dec 2009 13:22:18 -0800 (PST)
+In-reply-to: <87bpi9xldw.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 08, 2009 at 12:00:43PM +0100, Jan Kara wrote:
->   Hi Ted,
+On Tue, Dec 08, 2009 at 09:26:35PM +0100, Andi Kleen wrote:
+> Is this the only e2fsprogs patch needed for this feature, apart
+> from the kernel patches you posted?
+
+It's untested but yes, I think this is all that's needed.
+
+Cheers,
+Jody
+
+> Too bad you're not working on it anymore, I definitely liked
+> the idea.
 > 
->   do you plan on merging my fixes for writev filesystem corruption and
-> 64-bit quota patches? The writev patch is independent of any other patch
-> and should go in ASAP, 64-bit quota patch depends on generic quota code
-> change so either I can merge it or you can merge a bit later (it's a small
-> change for ext4).
-
-Why don't I take the writev patch, and let you merge the 64-bit quota
-patch along with the generic quota changes?  Does that make sense?
-
-The only thing that worries me a tiny bit is that there are some quota
-bug fixes which the OpenVZ folks have submitted, that I need to review
-and haven't gotten to yet, and there's a chance they may conflict with
-your 64-bit ext4 quota changes.  But I'm sure we can deal with any
-potential merge conflicts should they come up.
-
-Regards,
-
-	  		  	      	   - Ted
+> -Andi
+> 
+> -- 
+> ak@linux.intel.com -- Speaking for myself only.
