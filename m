@@ -1,31 +1,133 @@
-From: Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
-Subject: About reserve of blocks for "overflow extents" in ext4 metadata
-Date: Tue, 8 Dec 2009 13:03:28 +0300
-Message-ID: <41BA663C8B2F72499F48B0EF991C188E0478535CF5@RU-EXSTRCL1.ru.corp.acronis.com>
+From: Jan Kara <jack@suse.cz>
+Subject: writev corruption and 64-bit quota patches for 2.6.33-rc1?
+Date: Tue, 8 Dec 2009 12:00:43 +0100
+Message-ID: <20091208110043.GC4095@quack.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="xHFwDpU9dbj6ez1V"
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from edge1.acronis.com ([91.195.23.132]:37696 "EHLO
-	edge1.acronis.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753406AbZLHKMd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Dec 2009 05:12:33 -0500
-Content-Language: en-US
+Received: from cantor.suse.de ([195.135.220.2]:54568 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753632AbZLHLAn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Dec 2009 06:00:43 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
 
-I think that it make sense to has in ext4 metadata a reserve of blocks for "overflow extents" (it is the extents that to form extent's tree and it is placed in some blocks is described in i_block inode's field for a file). The reserve of blocks for "overflow extents" can be located (during operation of ext4 file system creation by mkfs) after inode table for every virtual (FLEX_BG) group by united aggregate of blocks. The size and placement of this reserve has to be described by free special inode.
+--xHFwDpU9dbj6ez1V
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-In my opinion, the reserve of blocks for "overflow extents" resolves such problems:
-1) In the case of ext4 volume's shrinking resize (especially, in the case of very fragmented volume) it can be very difficult to estimate possibility of successful resize because of existing mechanism of extents' tree layout on the volume. It is possible to encounter during resize the problem of free blocks' lack for rebuilding of extents' tree for replaced files. The reserve of blocks for "overflow extents" guarantee against encountering of such problem during resizes.
-2) The presence of the reserve of blocks for "overflow extents" means that all existing extents' trees of files will locate in one place. This fact and placement the reserve just after inode table will increase efficiency of operations with extents' trees, in my opinion.
-3) The localized layout of extents' trees of files means efficient journaling of this metadata, also.
+  Hi Ted,
 
-I think that the reserve of blocks for "overflow extents" can has such on-disk layout. The reserve is union of bitmap (that keeps knowledge about used and free blocks in reserve) and some number of blocks (used for extents' trees). All blocks has allocated for the reserve during volume creation has to set as used in block bitmap of group(s) that contains the reserve. The size in blocks of the reserve can be defined by: inode_counts * count_blocks_for_inode (count of blocks that make possible to form extents' tree with some average depth). The field i_block of special inode (that will describe the reserve) will have two extents: 1) the extent that describes placement and size of reserve's bitmap block(s); 2) the extent that describes placement and size of blocks used for trees' extents.
+  do you plan on merging my fixes for writev filesystem corruption and
+64-bit quota patches? The writev patch is independent of any other patch
+and should go in ASAP, 64-bit quota patch depends on generic quota code
+change so either I can merge it or you can merge a bit later (it's a small
+change for ext4).
+  The patches were sent as:
+http://marc.info/?l=linux-ext4&m=125978147226649&w=3
+(writev corruption fix - it has a minor whitespace bug so I'm attaching a
+version with that bug fixed)
+http://marc.info/?l=linux-ext4&m=125978717902673&w=3
+(64-bit quota support)
 
---
-Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
-Acronis
+
+								Honza
+
+--xHFwDpU9dbj6ez1V
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0002-ext4-Fix-data-filesystem-corruption-when-write-fails.patch"
+
+>From 8bd74d5ced949f276e51d770092bff576d42fa79 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 2 Dec 2009 20:05:23 +0100
+Subject: [PATCH 2/3] ext4: Fix data / filesystem corruption when write fails to copy data
+
+When ext4_write_begin fails after allocating some blocks or
+generic_perform_write fails to copy data to write, we truncate blocks already
+instantiated beyond i_size. Although these blocks were never inside i_size, we
+have to truncate pagecache of these blocks so that corresponding buffers get
+unmapped. Otherwise subsequent __block_prepare_write (called because we are
+retrying the write) will find the buffers mapped, not call ->get_block, and
+thus the page will be backed by already freed blocks leading to filesystem and
+data corruption.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c |   20 +++++++++++++++-----
+ 1 files changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2c8caa5..e802988 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1534,6 +1534,16 @@ static int do_journal_get_write_access(handle_t *handle,
+ 	return ext4_journal_get_write_access(handle, bh);
+ }
+ 
++/*
++ * Truncate blocks that were not used by write. We have to truncate the
++ * pagecache as well so that corresponding buffers get properly unmapped.
++ */
++static void ext4_truncate_failed_write(struct inode *inode)
++{
++	truncate_inode_pages(inode->i_mapping, inode->i_size);
++	ext4_truncate(inode);
++}
++
+ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 			    loff_t pos, unsigned len, unsigned flags,
+ 			    struct page **pagep, void **fsdata)
+@@ -1599,7 +1609,7 @@ retry:
+ 
+ 		ext4_journal_stop(handle);
+ 		if (pos + len > inode->i_size) {
+-			ext4_truncate(inode);
++			ext4_truncate_failed_write(inode);
+ 			/*
+ 			 * If truncate failed early the inode might
+ 			 * still be on the orphan list; we need to
+@@ -1709,7 +1719,7 @@ static int ext4_ordered_write_end(struct file *file,
+ 		ret = ret2;
+ 
+ 	if (pos + len > inode->i_size) {
+-		ext4_truncate(inode);
++		ext4_truncate_failed_write(inode);
+ 		/*
+ 		 * If truncate failed early the inode might still be
+ 		 * on the orphan list; we need to make sure the inode
+@@ -1751,7 +1761,7 @@ static int ext4_writeback_write_end(struct file *file,
+ 		ret = ret2;
+ 
+ 	if (pos + len > inode->i_size) {
+-		ext4_truncate(inode);
++		ext4_truncate_failed_write(inode);
+ 		/*
+ 		 * If truncate failed early the inode might still be
+ 		 * on the orphan list; we need to make sure the inode
+@@ -1814,7 +1824,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 	if (!ret)
+ 		ret = ret2;
+ 	if (pos + len > inode->i_size) {
+-		ext4_truncate(inode);
++		ext4_truncate_failed_write(inode);
+ 		/*
+ 		 * If truncate failed early the inode might still be
+ 		 * on the orphan list; we need to make sure the inode
+@@ -3091,7 +3101,7 @@ retry:
+ 		 * i_size_read because we hold i_mutex.
+ 		 */
+ 		if (pos + len > inode->i_size)
+-			ext4_truncate(inode);
++			ext4_truncate_failed_write(inode);
+ 	}
+ 
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+-- 
+1.6.4.2
+
+
+--xHFwDpU9dbj6ez1V--
