@@ -1,69 +1,84 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: About reserve of blocks for "overflow extents" in ext4 metadata
-Date: Tue, 08 Dec 2009 09:48:30 -0600
-Message-ID: <4B1E754E.6080505@redhat.com>
-References: <41BA663C8B2F72499F48B0EF991C188E0478535CF5@RU-EXSTRCL1.ru.corp.acronis.com>
+From: Iavor Stoev <iavor@icdsoft.com>
+Subject: Re: Ext4 MAX journal size ?
+Date: Tue, 08 Dec 2009 18:43:10 +0200
+Message-ID: <4B1E821E.4060809@icdsoft.com>
+References: <4B1D77B1.8090805@icdsoft.com> <3470552D-0538-4F6E-BEA4-E85C97148E87@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36977 "EHLO mx1.redhat.com"
+Received: from icdsoft.com ([64.14.68.165]:47559 "EHLO us.icdsoft.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755987AbZLHPsX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Dec 2009 10:48:23 -0500
-In-Reply-To: <41BA663C8B2F72499F48B0EF991C188E0478535CF5@RU-EXSTRCL1.ru.corp.acronis.com>
+	id S932609AbZLHQnD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Dec 2009 11:43:03 -0500
+In-Reply-To: <3470552D-0538-4F6E-BEA4-E85C97148E87@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Vyacheslav Dubeyko wrote:
-> Hello,
-> 
-> I think that it make sense to has in ext4 metadata a reserve of
-> blocks for "overflow extents" (it is the extents that to form
-> extent's tree and it is placed in some blocks is described in i_block
-> inode's field for a file). The reserve of blocks for "overflow
-> extents" can be located (during operation of ext4 file system
-> creation by mkfs) after inode table for every virtual (FLEX_BG) group
-> by united aggregate of blocks. The size and placement of this reserve
-> has to be described by free special inode.
-> 
-> In my opinion, the reserve of blocks for "overflow extents" resolves
-> such problems: 1) In the case of ext4 volume's shrinking resize
-> (especially, in the case of very fragmented volume) it can be very
-> difficult to estimate possibility of successful resize because of
-> existing mechanism of extents' tree layout on the volume. It is
-> possible to encounter during resize the problem of free blocks' lack
-> for rebuilding of extents' tree for replaced files. The reserve of
-> blocks for "overflow extents" guarantee against encountering of such
-> problem during resizes. 2) The presence of the reserve of blocks for
-> "overflow extents" means that all existing extents' trees of files
-> will locate in one place. This fact and placement the reserve just
-> after inode table will increase efficiency of operations with
-> extents' trees, in my opinion. 3) The localized layout of extents'
-> trees of files means efficient journaling of this metadata, also.
-> 
-> I think that the reserve of blocks for "overflow extents" can has
-> such on-disk layout. The reserve is union of bitmap (that keeps
-> knowledge about used and free blocks in reserve) and some number of
-> blocks (used for extents' trees). All blocks has allocated for the
-> reserve during volume creation has to set as used in block bitmap of
-> group(s) that contains the reserve. The size in blocks of the reserve
-> can be defined by: inode_counts * count_blocks_for_inode (count of
-> blocks that make possible to form extents' tree with some average
-> depth). The field i_block of special inode (that will describe the
-> reserve) will have two extents: 1) the extent that describes
-> placement and size of reserve's bitmap block(s); 2) the extent that
-> describes placement and size of blocks used for trees' extents.
+Hello Andreas,
 
-If I understand this correctly, then you would be pre-reserving
-all extent metadata blocks that are possible on the filesystem, in 
-the same way that we currently pre-provision inodes, at mkfs time?
+Thank you for your fast reply!
 
-What happens if we have a highly fragmented filesystem, and we 
-run out of these reserved "overflow extents" blocks?  And would
-overprovisioning waste more filesystem space as the inodes do
-today?
+We use this setup for our backup servers.
+We use rsync via SSH using hard links as backup technology; the backup 
+server is pulling the data from several servers.
 
--Eric
+The setup is 12x1TB disks in RAID6 128k stripe, using ext3 4k block + 
+lvm2 with the journal on Gigabyte I-RAM drive 1GB DDR400.
+The server has 8GB RAM.
+
+The journal mode is data.
+The journal size is 400MB.
+
+When we moved the journal on the external device we have gained like 20%
+performance improvement with our backup.
+I'm converting several servers to ext4 to see what will be the 
+performance improvement for our workload.
+
+Do you have any suggestions regarding the journal size and the overall 
+file system setup?
+
+Thank you again!
+
+Iavor
+
+
+Andreas Dilger wrote:
+> On 2009-12-07, at 14:46, Iavor Stoev wrote:
+>> I wonder if the Ext3's MAX journal size of 102,400 file system blocks
+>> has been increased in Ext4.
+>>
+>> I'm using 10TB 4k block Ext3 file system with external journal on 
+>> Gigabyte I-Ram drive and I'm planning a migration to Ext4 system.
+>> And I wonder if I can increase the journal size over 400MB.
+> 
+> 
+> Well, even with ext3 the maximum journal size was only for internal 
+> journals.  It was always possible to have larger external journal devices.
+> 
+> With ext4, the maximum journal size WAS increased, though this is in 
+> fact a mke2fs/tune2fs limit so it is also increased for new ext3 
+> filesystems.
+> 
+> Note that with large journals you are also consuming an equal amount of 
+> RAM as the size of the journal, so don't make it crazy big.  Having a 
+> journal on SSD is only really noticable for sync-happy workloads.  It 
+> isn't noticably better than using a regular disk for the external 
+> journal if you aren't doing a lot of syncs (e.g. NFS or email).
+> 
+> I've thought in the past that it might be an interesting hack to use a 
+> huge journal device (say 32GB) with data journaling, and then have the 
+> JBD layer get the data blocks from the journal for checkpointing to the 
+> filesystem instead of keeping the buffers pinned in RAM.  That would 
+> would allow blazing metadata workloads, zero seeking, and then 
+> checkpointing in bulk to the filesystem.  ... but unfortunately not 
+> something I have time to test out.
+> 
+> Cheers, Andreas
+> -- 
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
+
