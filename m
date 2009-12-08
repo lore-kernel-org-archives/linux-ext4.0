@@ -1,145 +1,179 @@
 From: Mingming <cmm@us.ibm.com>
-Subject: Re: [PATCH 1/4] ext4: delalloc quota fixes
-Date: Mon, 07 Dec 2009 16:00:33 -0800
-Message-ID: <1260230433.4206.81.camel@mingming-laptop>
-References: <877hthytz0.fsf@openvz.org>
-	 <1259017138-19165-1-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 3/4] ext4: quota macros cleanup
+Date: Mon, 07 Dec 2009 16:59:31 -0800
+Message-ID: <1260233971.4206.142.camel@mingming-laptop>
+References: <1259132261-16785-1-git-send-email-dmonakhov@openvz.org>
+	 <1259132261-16785-2-git-send-email-dmonakhov@openvz.org>
+	 <1259132261-16785-3-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:44058 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935217AbZLHAAy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2009 19:00:54 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e35.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id nB7NmUD7006008
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 16:48:30 -0700
+Received: from e32.co.us.ibm.com ([32.97.110.150]:36245 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965214AbZLHA7b (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2009 19:59:31 -0500
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by e32.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id nB80s3vp010871
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 17:54:03 -0700
 Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB800e9t096868
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 17:00:40 -0700
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id nB80xXvN154114
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 17:59:33 -0700
 Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB800ahD006459
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 17:00:36 -0700
-In-Reply-To: <1259017138-19165-1-git-send-email-dmonakhov@openvz.org>
+	by d03av02.boulder.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id nB80xWN4012157
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Dec 2009 17:59:33 -0700
+In-Reply-To: <1259132261-16785-3-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2009-11-24 at 01:58 +0300, Dmitry Monakhov wrote:
-> This patch fix most visible problems with delalloc+quota issues
-> - ext4_get_reserved_space() must return bytes instead of blocks.
-> - Claim allocated meta blocks. Do it as we do for data blocks
->   but delay it untill proper moment.
-> - Move space claiming to ext4_da_update_reserve_space()
->   Only here we do know what we are dealing with data or metadata
-> 
-
-Thanks for sending the first fix, I am actually surprisely to know the
-fix didn't get merged before, as Jan has pointed this out when he review
-the original patch and I have get this fixed...somehow the latest patch
-wasn't being picked at the end.
-
-here it is.
-http://marc.info/?l=linux-ext4&m=123185939602949&w=2
-
-
-About the second and third issue you are trying to fix here... I think
-the current code does what you want already.
-
-The current code does reserve quota for metadata blocks at
-ext4_da_update_reserve_space() already and delay the quota claim at the
-later time when metadata blocks are really allocated (via
-ext4_mb_mark_diskspace_used), extra reserved quota for metadata blocks
-will get freed at ext4_da_update_reserve_space().
-ext4_mb_mark_diskspace_used() is called for every block allocation
-including medatadata allocation, so we won't miss quota claim for
-metadata there.
-
-The reason that I keep all quota claim immediately at the block
-allocation time via ext4_mb_mark_diskspace_used() is to keep the block
-allocation space accounting/dirty/delayed block space accounting/quota
-accounting in the same place; Plus, when ext4_da_update_reserve_space()
-called, the number of blocks passed is the number of blocks mapped, may
-not necessarilly the the number of blocks just new allocated.
-
-cheers,
-Mingming
-
- put the space claiming under 
-> The most useful test case for delalloc+quota is concurent tasks
-> with write+truncate vs chown for a same file.
+On Wed, 2009-11-25 at 09:57 +0300, Dmitry Monakhov wrote:
+> Currently all quota block reservation macros contains hard-coded "2"
+> aka MAXQUOTAS value. This is no good because in some places it is not
+> obvious to understand what does this digit represent. Let's introduce
+> new macro with self descriptive name.
 > 
 > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+looks sane, MAXQUOTAS is either user or group quota.
+
+Acked-by: Mingming Cao <cmm@us.ibm.com>
+
 > ---
->  fs/ext4/inode.c   |   12 ++++++++----
->  fs/ext4/mballoc.c |    6 ------
->  2 files changed, 8 insertions(+), 10 deletions(-)
+>  fs/ext4/ext4_jbd2.h |    8 ++++++--
+>  fs/ext4/extents.c   |    2 +-
+>  fs/ext4/inode.c     |    2 +-
+>  fs/ext4/migrate.c   |    4 ++--
+>  fs/ext4/namei.c     |    8 ++++----
+>  5 files changed, 14 insertions(+), 10 deletions(-)
 > 
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index a286598..404ab6c 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -49,7 +49,7 @@
+> 
+>  #define EXT4_DATA_TRANS_BLOCKS(sb)	(EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + \
+>  					 EXT4_XATTR_TRANS_BLOCKS - 2 + \
+> -					 2*EXT4_QUOTA_TRANS_BLOCKS(sb))
+> +					 EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
+> 
+>  /*
+>   * Define the number of metadata blocks we need to account to modify data.
+> @@ -57,7 +57,7 @@
+>   * This include super block, inode block, quota blocks and xattr blocks
+>   */
+>  #define EXT4_META_TRANS_BLOCKS(sb)	(EXT4_XATTR_TRANS_BLOCKS + \
+> -					2*EXT4_QUOTA_TRANS_BLOCKS(sb))
+> +					EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
+> 
+>  /* Delete operations potentially hit one directory's namespace plus an
+>   * entire inode, plus arbitrary amounts of bitmap/indirection data.  Be
+> @@ -92,6 +92,7 @@
+>   * but inode, sb and group updates are done only once */
+>  #define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+>  		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
+> +
+>  #define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
+>  		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
+>  #else
+> @@ -99,6 +100,9 @@
+>  #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
+>  #define EXT4_QUOTA_DEL_BLOCKS(sb) 0
+>  #endif
+> +#define EXT4_MAXQUOTAS_TRANS_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_TRANS_BLOCKS(sb))
+> +#define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
+> +#define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+> 
+>  int
+>  ext4_mark_iloc_dirty(handle_t *handle,
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 715264b..f73c3ff 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2167,7 +2167,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+>  			correct_index = 1;
+>  			credits += (ext_depth(inode)) + 1;
+>  		}
+> -		credits += 2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
+> +		credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
+> 
+>  		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
+>  		if (err)
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ab22297..e642cdb 100644
+> index 979362d..211722b 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -1057,7 +1057,7 @@ qsize_t ext4_get_reserved_space(struct inode *inode)
->  		EXT4_I(inode)->i_reserved_meta_blocks;
->  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> @@ -5438,7 +5438,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
 > 
-> -	return total;
-> +	return (total << inode->i_blkbits);
->  }
-
-
-
->  /*
->   * Calculate the number of metadata blocks need to reserve
-> @@ -1096,7 +1096,7 @@ static int ext4_calc_metadata_amount(struct inode *inode, int blocks)
->  static void ext4_da_update_reserve_space(struct inode *inode, int used)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> -	int total, mdb, mdb_free;
-> +	int total, mdb, mdb_free, mdb_claim = 0;
+>  		/* (user+group)*(old+new) structure, inode write (sb,
+>  		 * inode block, ? - but truncate inode update has it) */
+> -		handle = ext4_journal_start(inode, 2*(EXT4_QUOTA_INIT_BLOCKS(inode->i_sb)+
+> +		handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
+>  					EXT4_QUOTA_DEL_BLOCKS(inode->i_sb))+3);
+>  		if (IS_ERR(handle)) {
+>  			error = PTR_ERR(handle);
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index a93d5b8..8646149 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -238,7 +238,7 @@ static int extend_credit_for_blkdel(handle_t *handle, struct inode *inode)
+>  	 * So allocate a credit of 3. We may update
+>  	 * quota (user and group).
+>  	 */
+> -	needed = 3 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
+> +	needed = 3 + EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
 > 
->  	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
->  	/* recalculate the number of metablocks still need to be reserved */
-> @@ -1109,7 +1109,9 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+>  	if (ext4_journal_extend(handle, needed) != 0)
+>  		retval = ext4_journal_restart(handle, needed);
+> @@ -477,7 +477,7 @@ int ext4_ext_migrate(struct inode *inode)
+>  	handle = ext4_journal_start(inode,
+>  					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
+>  					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+> -					2 * EXT4_QUOTA_INIT_BLOCKS(inode->i_sb)
+> +					EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)
+>  					+ 1);
+>  	if (IS_ERR(handle)) {
+>  		retval = PTR_ERR(handle);
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index fde08c9..17a17e1 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1769,7 +1769,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, int mode,
+>  retry:
+>  	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+>  					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+> -					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
+> +					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
 > 
->  	if (mdb_free) {
->  		/* Account for allocated meta_blocks */
-> -		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
-> +		mdb_claim = EXT4_I(inode)->i_allocated_meta_blocks;
-> +		BUG_ON(mdb_free < mdb_claim);
-> +		mdb_free -= mdb_claim;
+> @@ -1803,7 +1803,7 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+>  retry:
+>  	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+>  					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+> -					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
+> +					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
 > 
->  		/* update fs dirty blocks counter */
->  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
-> @@ -1119,7 +1121,9 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+> @@ -1840,7 +1840,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
+>  retry:
+>  	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+>  					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+> -					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
+> +					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
 > 
->  	/* update per-inode reservations */
->  	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
-> -	EXT4_I(inode)->i_reserved_data_blocks -= used;
-> + 	EXT4_I(inode)->i_reserved_data_blocks -= used;
-> +	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used + mdb_claim);
-> +	vfs_dq_claim_block(inode, used + mdb_claim);
->  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> @@ -2253,7 +2253,7 @@ static int ext4_symlink(struct inode *dir,
+>  retry:
+>  	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+>  					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 5 +
+> -					2*EXT4_QUOTA_INIT_BLOCKS(dir->i_sb));
+> +					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
 > 
->  	/*
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index bba1282..d4c52db 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2750,12 +2750,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
->  	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
->  		/* release all the reserved blocks if non delalloc */
->  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
-> -	else {
-> -		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-> -						ac->ac_b_ex.fe_len);
-> -		/* convert reserved quota blocks to real quota blocks */
-> -		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
-> -	}
-> 
->  	if (sbi->s_log_groups_per_flex) {
->  		ext4_group_t flex_group = ext4_flex_group(sbi,
 
 
