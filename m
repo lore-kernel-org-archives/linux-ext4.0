@@ -1,36 +1,41 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: Remove blocks from inode prealloc list on failure
-Date: Tue, 8 Dec 2009 22:21:11 -0500
-Message-ID: <20091209032111.GZ27692@thunk.org>
-References: <6601abe90912011017s41b74ed2nab4a45dc3f74825c@mail.gmail.com>
- <20091204094654.GB4272@skywalker.linux.vnet.ibm.com>
- <6601abe90912041114m37284332pd568e13ed5beee2b@mail.gmail.com>
+Subject: Re: [PATCH 4/4] ext4: Wait for proper transaction commit on fsync
+Date: Tue, 8 Dec 2009 22:51:20 -0500
+Message-ID: <20091209035120.GA27692@thunk.org>
+References: <1256647729-29834-1-git-send-email-jack@suse.cz>
+ <1256647729-29834-5-git-send-email-jack@suse.cz>
+ <20091116004641.GM4323@mit.edu>
+ <20091116104331.GB23231@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:40331 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:35686 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756037AbZLIDVL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Dec 2009 22:21:11 -0500
+	id S1756533AbZLIDvR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Dec 2009 22:51:17 -0500
 Content-Disposition: inline
-In-Reply-To: <6601abe90912041114m37284332pd568e13ed5beee2b@mail.gmail.com>
+In-Reply-To: <20091116104331.GB23231@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 04, 2009 at 11:14:40AM -0800, Curt Wohlgemuth wrote:
-> > Can you name it as discard allocated blocks and add a comment saying why
-> > we don't need it for MB_GROUP_PA ? Otherwise
-> >
-> > Acked-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> This fixes a leak of blocks in an inode prealloc list if device failures
-> cause ext4_mb_mark_diskspace_used() to fail.
-> 
-> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+On Mon, Nov 16, 2009 at 11:43:31AM +0100, Jan Kara wrote:
+> > Why do we need an atomic_t here at all?  It's not clear it's
+> > necessary.  What specific race are you worried about?
+>   Well, i_[data]sync_tid are set and read from several places which aren't
+> currently synchronized against each other and I din't want to introduce any
+> synchronization. So atomic_t seemed like a clean way of making clear that
+> loads / stores from those fields are atomic, regardless of architecture,
+> memory alignment or whatever insanity that might make us see just half
+> overwritten field.  On all archs where this means just plain stores / loads
+> (such as x86), there's no performance hit since the operations are
+> implemented as such.
 
-Added to the ext4 patch queue, thanks.
+Sorry for not responding to this one sooner, but see this URL:
 
-					- Ted
+http://digitalvampire.org/blog/index.php/2007/05/13/atomic-cargo-cults/
+
+							- Ted
+
+
