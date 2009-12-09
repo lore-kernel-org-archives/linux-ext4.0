@@ -1,77 +1,143 @@
-From: tytso@mit.edu
-Subject: Re: About reserve of blocks for "overflow extents" in ext4 metadata
-Date: Wed, 9 Dec 2009 10:31:40 -0500
-Message-ID: <20091209153140.GG27692@thunk.org>
-References: <41BA663C8B2F72499F48B0EF991C188E0478535CF5@RU-EXSTRCL1.ru.corp.acronis.com>
+From: saeed bishara <saeed.bishara@gmail.com>
+Subject: Re: [PATCH 1/3] ext3: Fix data / filesystem corruption when write
+	fails to copy data
+Date: Wed, 9 Dec 2009 17:42:12 +0200
+Message-ID: <c70ff3ad0912090742g3d35f364m11b6ae79e20893be@mail.gmail.com>
+References: <1259781409-31318-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44022 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754618AbZLIPbj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Dec 2009 10:31:39 -0500
-Content-Disposition: inline
-In-Reply-To: <41BA663C8B2F72499F48B0EF991C188E0478535CF5@RU-EXSTRCL1.ru.corp.acronis.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752817AbZLIPmJ@vger.kernel.org>
+In-Reply-To: <1259781409-31318-1-git-send-email-jack@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 08, 2009 at 01:03:28PM +0300, Vyacheslav Dubeyko wrote:
-> 1) In the case of ext4 volume's shrinking resize (especially, in the
-> case of very fragmented volume) it can be very difficult to estimate
-> possibility of successful resize because of existing mechanism of
-> extents' tree layout on the volume. It is possible to encounter
-> during resize the problem of free blocks' lack for rebuilding of
-> extents' tree for replaced files. The reserve of blocks for
-> "overflow extents" guarantee against encountering of such problem
-> during resizes.
+Hi,
+I came a cross data corruption bug when using ext3, this patch fixed
+it. the bug exists in 2.6.31 and 32.
+saeed
 
-I'm not sure how important it is to make fs shrink work "better",
-since most of the time, system administrators are more interested in
-growing file systems than shrinking file systems.  That's one of the
-reasons why we haven't spent more time trying to make e2resize smarter
-about avoiding fragmenting files while shrinking --- or perhaps even
-doing some defragmentation as part of the resize.  In some sense
-that's something that we should think about doing if people want to be
-using resizing as a common operation, as opposed to something rare
-that works but isn't very well optimized.  (I've always been a bit
-concerned with Fedora using it as a regular way of making ISO disks,
-since the a number of file inevitably ended up being fragmented, for
-ext3 or ext4 file systems, and seeks on CD's aren't exactly like that
-of HDD's or SDD's.)
 
-That being said, if the goal is to allow the shrink to succeed, we
-just need a pool of reserve blocks.  We do have something exactly like
-that for non-privileged users (the 5% reserve).  What you're talking
-about is adding more of a reserve, and perhaps one that gets used for
-the privileged users as well.  We could do that, but people are
-already annoyed about having 5% reserved.  Reserving more would not be
-popular.
-
-> 2) The presence of the reserve of blocks for "overflow extents"
-> means that all existing extents' trees of files will locate in one
-> place. This fact and placement the reserve just after inode table
-> will increase efficiency of operations with extents' trees, in my
-> opinion.
-
-We have this already.  Directory and extent tree blocks are currently
-preferentially allocated in the first block group of each flex_bg, and
-data file blocks are preferentially allocated outside of the first
-block group.  If the file system gets full, then extent tree blocks or
-data blocks can located anywhere, of course.
-
-Your idea seems to have a contradiction, though.  If you have a
-"reserve of blocks" and you aren't necessarily allocating enough space
-for the absolute worse case (which means reserving a *very* large
-number of blocks), but you are allocating them under normal
-circumstances, then there will be times when the reserve will be
-exhausted.  At that point, resize shrinking will be once again be
-problematic or not possible, and fragmentation loses wil be quite bad.
-
-> 3) The localized layout of extents' trees of files means efficient
-> journaling of this metadata, also.
-
-Um, how?  
-
-					- Ted
+On Wed, Dec 2, 2009 at 9:16 PM, Jan Kara <jack@suse.cz> wrote:
+> When ext3_write_begin fails after allocating some blocks or
+> generic_perform_write fails to copy data to write, we truncate blocks=
+ already
+> instantiated beyond i_size. Although these blocks were never inside i=
+_size, we
+> have to truncate pagecache of these blocks so that corresponding buff=
+ers get
+> unmapped. Otherwise subsequent __block_prepare_write (called because =
+we are
+> retrying the write) will find the buffers mapped, not call ->get_bloc=
+k, and
+> thus the page will be backed by already freed blocks leading to files=
+ystem and
+> data corruption.
+>
+> CC: linux-ext4@vger.kernel.org
+> Reported-by: James Y Knight <foom@fuhm.net>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+> =C2=A0fs/ext3/inode.c | =C2=A0 18 ++++++++++++++----
+> =C2=A01 files changed, 14 insertions(+), 4 deletions(-)
+>
+> I will take care of merging this patch. I'm just sending it for compl=
+eteness...
+>
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 354ed3b..f9d6937 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1151,6 +1151,16 @@ static int do_journal_get_write_access(handle_=
+t *handle,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ext3_journal_get_write_access(handl=
+e, bh);
+> =C2=A0}
+>
+> +/*
+> + * Truncate blocks that were not used by write. We have to truncate =
+the
+> + * pagecache as well so that corresponding buffers get properly unma=
+pped.
+> + */
+> +static void ext3_truncate_failed_write(struct inode *inode)
+> +{
+> + =C2=A0 =C2=A0 =C2=A0 truncate_inode_pages(inode->i_mapping, inode->=
+i_size);
+> + =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inode);
+> +}
+> +
+> =C2=A0static int ext3_write_begin(struct file *file, struct address_s=
+pace *mapping,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0loff_t pos, unsigned len, uns=
+igned flags,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct page **pagep, void **f=
+sdata)
+> @@ -1209,7 +1219,7 @@ write_begin_failed:
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unlock_page(pa=
+ge);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_rel=
+ease(page);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len =
+> inode->i_size)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 ext3_truncate(inode);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 ext3_truncate_failed_write(inode);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret =3D=3D -ENOSPC && ext3_should_retr=
+y_alloc(inode->i_sb, &retries))
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto retry;
+> @@ -1304,7 +1314,7 @@ static int ext3_ordered_write_end(struct file *=
+file,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_release(page);
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len > inode->i_size)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inod=
+e);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate_fail=
+ed_write(inode);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret ? ret : copied;
+> =C2=A0}
+>
+> @@ -1330,7 +1340,7 @@ static int ext3_writeback_write_end(struct file=
+ *file,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_release(page);
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len > inode->i_size)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inod=
+e);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate_fail=
+ed_write(inode);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret ? ret : copied;
+> =C2=A0}
+>
+> @@ -1383,7 +1393,7 @@ static int ext3_journalled_write_end(struct fil=
+e *file,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_release(page);
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len > inode->i_size)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inod=
+e);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate_fail=
+ed_write(inode);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret ? ret : copied;
+> =C2=A0}
+>
+> --
+> 1.6.4.2
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
+l" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
+ml
+> Please read the FAQ at =C2=A0http://www.tux.org/lkml/
+>
