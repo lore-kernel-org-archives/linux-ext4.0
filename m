@@ -1,143 +1,117 @@
-From: saeed bishara <saeed.bishara@gmail.com>
-Subject: Re: [PATCH 1/3] ext3: Fix data / filesystem corruption when write
-	fails to copy data
-Date: Wed, 9 Dec 2009 17:42:12 +0200
-Message-ID: <c70ff3ad0912090742g3d35f364m11b6ae79e20893be@mail.gmail.com>
-References: <1259781409-31318-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752817AbZLIPmJ@vger.kernel.org>
-In-Reply-To: <1259781409-31318-1-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for v2.6.33
+Date: Wed, 09 Dec 2009 11:10:41 -0500
+Message-ID: <E1NIP7h-0002Tv-AP@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:60742 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755820AbZLIQKo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Dec 2009 11:10:44 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-I came a cross data corruption bug when using ext3, this patch fixed
-it. the bug exists in 2.6.31 and 32.
-saeed
+Hi Linus,
 
+Please pull from:
 
-On Wed, Dec 2, 2009 at 9:16 PM, Jan Kara <jack@suse.cz> wrote:
-> When ext3_write_begin fails after allocating some blocks or
-> generic_perform_write fails to copy data to write, we truncate blocks=
- already
-> instantiated beyond i_size. Although these blocks were never inside i=
-_size, we
-> have to truncate pagecache of these blocks so that corresponding buff=
-ers get
-> unmapped. Otherwise subsequent __block_prepare_write (called because =
-we are
-> retrying the write) will find the buffers mapped, not call ->get_bloc=
-k, and
-> thus the page will be backed by already freed blocks leading to files=
-ystem and
-> data corruption.
->
-> CC: linux-ext4@vger.kernel.org
-> Reported-by: James Y Knight <foom@fuhm.net>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
-> =C2=A0fs/ext3/inode.c | =C2=A0 18 ++++++++++++++----
-> =C2=A01 files changed, 14 insertions(+), 4 deletions(-)
->
-> I will take care of merging this patch. I'm just sending it for compl=
-eteness...
->
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index 354ed3b..f9d6937 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1151,6 +1151,16 @@ static int do_journal_get_write_access(handle_=
-t *handle,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ext3_journal_get_write_access(handl=
-e, bh);
-> =C2=A0}
->
-> +/*
-> + * Truncate blocks that were not used by write. We have to truncate =
-the
-> + * pagecache as well so that corresponding buffers get properly unma=
-pped.
-> + */
-> +static void ext3_truncate_failed_write(struct inode *inode)
-> +{
-> + =C2=A0 =C2=A0 =C2=A0 truncate_inode_pages(inode->i_mapping, inode->=
-i_size);
-> + =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inode);
-> +}
-> +
-> =C2=A0static int ext3_write_begin(struct file *file, struct address_s=
-pace *mapping,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0loff_t pos, unsigned len, uns=
-igned flags,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct page **pagep, void **f=
-sdata)
-> @@ -1209,7 +1219,7 @@ write_begin_failed:
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unlock_page(pa=
-ge);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_rel=
-ease(page);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len =
-> inode->i_size)
-> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 ext3_truncate(inode);
-> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 ext3_truncate_failed_write(inode);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret =3D=3D -ENOSPC && ext3_should_retr=
-y_alloc(inode->i_sb, &retries))
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto retry;
-> @@ -1304,7 +1314,7 @@ static int ext3_ordered_write_end(struct file *=
-file,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_release(page);
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len > inode->i_size)
-> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inod=
-e);
-> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate_fail=
-ed_write(inode);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret ? ret : copied;
-> =C2=A0}
->
-> @@ -1330,7 +1340,7 @@ static int ext3_writeback_write_end(struct file=
- *file,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_release(page);
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len > inode->i_size)
-> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inod=
-e);
-> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate_fail=
-ed_write(inode);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret ? ret : copied;
-> =C2=A0}
->
-> @@ -1383,7 +1393,7 @@ static int ext3_journalled_write_end(struct fil=
-e *file,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0page_cache_release(page);
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (pos + len > inode->i_size)
-> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate(inod=
-e);
-> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext3_truncate_fail=
-ed_write(inode);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret ? ret : copied;
-> =C2=A0}
->
-> --
-> 1.6.4.2
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
-l" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
-> Please read the FAQ at =C2=A0http://www.tux.org/lkml/
->
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+
+to grab the following changes for v2.6.33.
+
+Lots of bug fixes, plus some cleanup work.
+
+Thanks!!
+
+                                                        - Ted
+
+ Documentation/filesystems/ext4.txt |   10 +-
+ fs/ext4/Kconfig                    |   10 ++
+ fs/ext4/balloc.c                   |   46 +-----
+ fs/ext4/block_validity.c           |    3 +-
+ fs/ext4/ext4.h                     |   23 ++-
+ fs/ext4/ext4_jbd2.c                |   82 ++++++++---
+ fs/ext4/ext4_jbd2.h                |   44 ++++---
+ fs/ext4/extents.c                  |   40 +++---
+ fs/ext4/fsync.c                    |   54 +++-----
+ fs/ext4/inode.c                    |  193 +++++++++++--------------
+ fs/ext4/ioctl.c                    |   29 +++--
+ fs/ext4/mballoc.c                  |  101 ++++++++++---
+ fs/ext4/migrate.c                  |   27 +++-
+ fs/ext4/move_extent.c              |  282 +++++++++++++++++-------------------
+ fs/ext4/namei.c                    |   38 ++---
+ fs/ext4/resize.c                   |    2 +-
+ fs/ext4/super.c                    |  118 +++++++++++----
+ fs/ext4/xattr.c                    |   15 +-
+ fs/jbd2/commit.c                   |    4 +
+ fs/jbd2/journal.c                  |   11 ++
+ include/trace/events/ext4.h        |   54 +++++--
+ 21 files changed, 674 insertions(+), 512 deletions(-)
+
+Akira Fujita (7):
+      ext4: fix the returned block count if EXT4_IOC_MOVE_EXT fails
+      ext4: fix lock order problem in ext4_move_extents()
+      ext4: fix possible recursive locking warning in EXT4_IOC_MOVE_EXT
+      ext4: fix spelling typos in move_extent.c
+      ext4: Fix double-free of blocks with EXT4_IOC_MOVE_EXT
+      ext4: move_extent_per_page() cleanup
+      ext4: Fix insufficient checks in EXT4_IOC_MOVE_EXT
+
+Curt Wohlgemuth (1):
+      ext4: remove blocks from inode prealloc list on failure
+
+Dmitry Monakhov (3):
+      ext4: ext4_get_reserved_space() must return bytes instead of blocks
+      ext4: quota macros cleanup
+      ext4: fix incorrect block reservation on quota transfer.
+
+Eric Sandeen (3):
+      ext4: journal all modifications in ext4_xattr_set_handle
+      ext4: make trim/discard optional (and off by default)
+      ext4: make "norecovery" an alias for "noload"
+
+Jan Kara (3):
+      ext4: fix error handling in ext4_ind_get_blocks()
+      ext4: Avoid data / filesystem corruption when write fails to copy data
+      ext4: Wait for proper transaction commit on fsync
+
+Josef Bacik (1):
+      ext4: wait for log to commit when umounting
+
+Julia Lawall (1):
+      ext4: fix i_flags access in ext4_da_writepages_trans_blocks()
+
+Kazuya Mio (1):
+      ext4: initialize moved_len before calling ext4_move_extents()
+
+Roel Kluin (1):
+      ext4: Return the PTR_ERR of the correct pointer in setup_new_group_blocks()
+
+Theodore Ts'o (21):
+      ext4: fix potential buffer head leak when add_dirent_to_buf() returns ENOSPC
+      ext4: avoid divide by zero when trying to mount a corrupted file system
+      ext4: plug a buffer_head leak in an error path of ext4_iget()
+      jbd2: don't wipe the journal on a failed journal checksum
+      ext4: remove failed journal checksum check
+      ext4: add tracepoint for ext4_forget()
+      ext4: make sure directory and symlink blocks are revoked
+      ext4: don't update the superblock in ext4_statfs()
+      ext4: fix uninit block bitmap initialization when s_meta_first_bg is non-zero
+      ext4: fix block validity checks so they work correctly with meta_bg
+      ext4: avoid issuing unnecessary barriers
+      ext4: move ext4_forget() to ext4_jbd2.c
+      ext4: fold ext4_journal_revoke() into ext4_forget()
+      ext4: fold ext4_journal_forget() into ext4_forget()
+      ext4: fold ext4_free_blocks() and ext4_mb_free_blocks()
+      ext4: call ext4_forget() from ext4_free_blocks()
+      ext4: print i_mode in octal in ext4 tracepoints
+      ext4: add check for wraparound in ext4_data_block_valid()
+      ext4: use ext4_data_block_valid() in ext4_free_blocks()
+      jbd2: Add ENOMEM checking in and for jbd2_journal_write_metadata_buffer()
+      ext4: Use ext4 file system driver for ext2/ext3 file system mounts
+
+Wu Fengguang (2):
+      ext4: remove encountered_congestion trace
+      ext4: remove unused parameter wbc from __ext4_journalled_writepage()
+
