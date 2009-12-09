@@ -1,36 +1,33 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14734] BUG: unable to handle kernel NULL pointer dereference at
- 0000000000000808
-Date: Wed, 9 Dec 2009 13:45:01 GMT
-Message-ID: <200912091345.nB9Dj1XI028153@demeter.kernel.org>
-References: <bug-14734-13602@http.bugzilla.kernel.org/>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/3] [RFC] vfs: add generic reserved space management
+ interface
+Date: Wed, 09 Dec 2009 17:24:59 +0300
+Message-ID: <877hswql6s.fsf@openvz.org>
+References: <1260324686-15863-1-git-send-email-dmonakhov@openvz.org>
+ <20091209104542.GA10500@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:56881 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755826AbZLINoz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Dec 2009 08:44:55 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nB9Dj1h9028154
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Dec 2009 13:45:01 GMT
-In-Reply-To: <bug-14734-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com,
+	jack@suse.cz, cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	Al Viro <viro@ZenIV.linux.org.uk>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20091209104542.GA10500@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14734
+Christoph Hellwig <hch@infradead.org> writes:
 
-
-
-
-
---- Comment #3 from stmcdermott@gmail.com  2009-12-09 13:45:01 ---
-I'll execute a memtest tonight.
-
-thanks
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> On Wed, Dec 09, 2009 at 05:11:24AM +0300, Dmitry Monakhov wrote:
+>> Add new field "i_rsv_blocks" to generic inode. This value is
+>> managed similar to i_blocks, i_bytes fileds (protected by i_lock).
+>> This generic interface will be used by generic quota code similar
+>> to i_blocks.
+>
+> Please don't bloat the VFS inode for this information.
+But almost all recent file systems using extends and delayed allocation.
+This means that we have to think about generic space reservation
+management quota interface. Otherwise each fs will invent it's own 
+callbacks. What do you think about hide it with CONFIG_QUOTA option?
+May be introduce new CONFIG_QUOTA_RESERVATION?
