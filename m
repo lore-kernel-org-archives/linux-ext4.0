@@ -1,130 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Fix potential fiemap deadlock (mmap_sem vs. i_data_sem)
-Date: Wed,  9 Dec 2009 22:25:36 -0500
-Message-ID: <1260415536-7993-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: tytso@mit.edu
+Subject: Re: [GIT PULL] ext4 updates for v2.6.33
+Date: Wed, 9 Dec 2009 22:38:53 -0500
+Message-ID: <20091210033853.GA7215@thunk.org>
+References: <E1NIP7h-0002Tv-AP@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35199 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:52311 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758876AbZLJDZa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Dec 2009 22:25:30 -0500
+	id S1759490AbZLJDir (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Dec 2009 22:38:47 -0500
+Content-Disposition: inline
+In-Reply-To: <E1NIP7h-0002Tv-AP@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix the following potential circular locking dependency between
-mm->mmap_sem and ei->i_data_sem:
+On Wed, Dec 09, 2009 at 11:10:41AM -0500, Theodore Ts'o wrote:
+> Hi Linus,
+> 
+> Please pull from:
+> 
+>         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+> 
+> to grab the following changes for v2.6.33.
+> 
+> Lots of bug fixes, plus some cleanup work.
+> 
 
-    =======================================================
-    [ INFO: possible circular locking dependency detected ]
-    2.6.32-04115-gec044c5 #37
-    -------------------------------------------------------
-    ureadahead/1855 is trying to acquire lock:
-     (&mm->mmap_sem){++++++}, at: [<ffffffff81107224>] might_fault+0x5c/0xac
+Hi Linus, it looks like you haven't pulled from the ext4 tree yet.
 
-    but task is already holding lock:
-     (&ei->i_data_sem){++++..}, at: [<ffffffff811be1fd>] ext4_fiemap+0x11b/0x159
+FYI, I've since added three more patches to the for_linus branch to
+fix a few more bugs:
 
-    which lock already depends on the new lock.
+Theodore Ts'o (3):
+      jbd2: Export jbd2_log_start_commit to fix ext4 build
+      ext4: Do not override ext2 or ext3 if built they are built as modules
+      ext4: Fix potential fiemap deadlock (mmap_sem vs. i_data_sem)
 
-    the existing dependency chain (in reverse order) is:
-
-    -> #1 (&ei->i_data_sem){++++..}:
-           [<ffffffff81099bfa>] __lock_acquire+0xb67/0xd0f
-           [<ffffffff81099e7e>] lock_acquire+0xdc/0x102
-           [<ffffffff81516633>] down_read+0x51/0x84
-           [<ffffffff811a2414>] ext4_get_blocks+0x50/0x2a5
-           [<ffffffff811a3453>] ext4_get_block+0xab/0xef
-           [<ffffffff81154f39>] do_mpage_readpage+0x198/0x48d
-           [<ffffffff81155360>] mpage_readpages+0xd0/0x114
-           [<ffffffff811a104b>] ext4_readpages+0x1d/0x1f
-           [<ffffffff810f8644>] __do_page_cache_readahead+0x12f/0x1bc
-           [<ffffffff810f86f2>] ra_submit+0x21/0x25
-           [<ffffffff810f0cfd>] filemap_fault+0x19f/0x32c
-           [<ffffffff81107b97>] __do_fault+0x55/0x3a2
-           [<ffffffff81109db0>] handle_mm_fault+0x327/0x734
-           [<ffffffff8151aaa9>] do_page_fault+0x292/0x2aa
-           [<ffffffff81518205>] page_fault+0x25/0x30
-           [<ffffffff812a34d8>] clear_user+0x38/0x3c
-           [<ffffffff81167e16>] padzero+0x20/0x31
-           [<ffffffff81168b47>] load_elf_binary+0x8bc/0x17ed
-           [<ffffffff81130e95>] search_binary_handler+0xc2/0x259
-           [<ffffffff81166d64>] load_script+0x1b8/0x1cc
-           [<ffffffff81130e95>] search_binary_handler+0xc2/0x259
-           [<ffffffff8113255f>] do_execve+0x1ce/0x2cf
-           [<ffffffff81027494>] sys_execve+0x43/0x5a
-           [<ffffffff8102918a>] stub_execve+0x6a/0xc0
-
-    -> #0 (&mm->mmap_sem){++++++}:
-           [<ffffffff81099aa4>] __lock_acquire+0xa11/0xd0f
-           [<ffffffff81099e7e>] lock_acquire+0xdc/0x102
-           [<ffffffff81107251>] might_fault+0x89/0xac
-           [<ffffffff81139382>] fiemap_fill_next_extent+0x95/0xda
-           [<ffffffff811bcb43>] ext4_ext_fiemap_cb+0x138/0x157
-           [<ffffffff811be069>] ext4_ext_walk_space+0x178/0x1f1
-           [<ffffffff811be21e>] ext4_fiemap+0x13c/0x159
-           [<ffffffff811390e6>] do_vfs_ioctl+0x348/0x4d6
-           [<ffffffff811392ca>] sys_ioctl+0x56/0x79
-           [<ffffffff81028cb2>] system_call_fastpath+0x16/0x1b
-
-    other info that might help us debug this:
-
-    1 lock held by ureadahead/1855:
-     #0:  (&ei->i_data_sem){++++..}, at: [<ffffffff811be1fd>] ext4_fiemap+0x11b/0x159
-
-    stack backtrace:
-    Pid: 1855, comm: ureadahead Not tainted 2.6.32-04115-gec044c5 #37
-    Call Trace:
-     [<ffffffff81098c70>] print_circular_bug+0xa8/0xb7
-     [<ffffffff81099aa4>] __lock_acquire+0xa11/0xd0f
-     [<ffffffff8102f229>] ? sched_clock+0x9/0xd
-     [<ffffffff81099e7e>] lock_acquire+0xdc/0x102
-     [<ffffffff81107224>] ? might_fault+0x5c/0xac
-     [<ffffffff81107251>] might_fault+0x89/0xac
-     [<ffffffff81107224>] ? might_fault+0x5c/0xac
-     [<ffffffff81124b44>] ? __kmalloc+0x13b/0x18c
-     [<ffffffff81139382>] fiemap_fill_next_extent+0x95/0xda
-     [<ffffffff811bcb43>] ext4_ext_fiemap_cb+0x138/0x157
-     [<ffffffff811bca0b>] ? ext4_ext_fiemap_cb+0x0/0x157
-     [<ffffffff811be069>] ext4_ext_walk_space+0x178/0x1f1
-     [<ffffffff811be21e>] ext4_fiemap+0x13c/0x159
-     [<ffffffff81107224>] ? might_fault+0x5c/0xac
-     [<ffffffff811390e6>] do_vfs_ioctl+0x348/0x4d6
-     [<ffffffff8129f6d0>] ? __up_read+0x8d/0x95
-     [<ffffffff81517fb5>] ? retint_swapgs+0x13/0x1b
-     [<ffffffff811392ca>] sys_ioctl+0x56/0x79
-     [<ffffffff81028cb2>] system_call_fastpath+0x16/0x1b
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
+ fs/ext4/Kconfig   |    2 +-
  fs/ext4/extents.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/super.c   |    4 ++--
+ fs/jbd2/journal.c |    1 +
+ 4 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 700206e..3a7928f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1762,7 +1762,9 @@ int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 	while (block < last && block != EXT_MAX_BLOCK) {
- 		num = last - block;
- 		/* find extent for this block */
-+		down_read(&EXT4_I(inode)->i_data_sem);
- 		path = ext4_ext_find_extent(inode, block, path);
-+		up_read(&EXT4_I(inode)->i_data_sem);
- 		if (IS_ERR(path)) {
- 			err = PTR_ERR(path);
- 			path = NULL;
-@@ -3724,10 +3726,8 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		 * Walk the extent tree gathering extent information.
- 		 * ext4_ext_fiemap_cb will push extents back to user.
- 		 */
--		down_read(&EXT4_I(inode)->i_data_sem);
- 		error = ext4_ext_walk_space(inode, start_blk, len_blks,
- 					  ext4_ext_fiemap_cb, fieinfo);
--		up_read(&EXT4_I(inode)->i_data_sem);
- 	}
- 
- 	return error;
--- 
-1.6.5.216.g5288a.dirty
-
+							- Ted
