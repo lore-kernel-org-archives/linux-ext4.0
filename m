@@ -1,99 +1,193 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch 4/5] ext2: convert to use the new truncate convention
-Date: Thu, 10 Dec 2009 11:20:18 +0100
-Message-ID: <20091210102017.GA3696@quack.suse.cz>
-References: <20091208083832.GA19823@wotan.suse.de>
- <20091208084209.GD19823@wotan.suse.de>
- <20091209145713.GD7044@quack.suse.cz>
- <20091210011103.GB9601@nick>
+Subject: Re: [PATCH 1/2] quota: decouple fs reserved space from quota
+ reservation. [V3]
+Date: Thu, 10 Dec 2009 16:02:04 +0100
+Message-ID: <20091210150203.GC3696@quack.suse.cz>
+References: <1260447952-6201-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Al Viro <viro@ZenIV.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Nick Piggin <npiggin@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com,
+	jack@suse.cz, cmm@us.ibm.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:54537 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754874AbZLKUpN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Dec 2009 15:45:13 -0500
 Content-Disposition: inline
-In-Reply-To: <20091210011103.GB9601@nick>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1260447952-6201-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 10-12-09 12:11:03, Nick Piggin wrote:
-> On Wed, Dec 09, 2009 at 03:57:13PM +0100, Jan Kara wrote:
-> > On Tue 08-12-09 09:42:09, Nick Piggin wrote:
-> > > I also have commented a possible bug in existing ext2 code, marked with XXX.
-> > > 
-> > > Cc: linux-ext4@vger.kernel.org
-> > > Cc: Christoph Hellwig <hch@lst.de>
-> > > Signed-off-by: Nick Piggin <npiggin@suse.de>
-> > ...
-> > > @@ -752,8 +764,8 @@ int __ext2_write_begin(struct file *file
-> > >  		loff_t pos, unsigned len, unsigned flags,
-> > >  		struct page **pagep, void **fsdata)
-> > >  {
-> > > -	return block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
-> > > -							ext2_get_block);
-> > > +	return block_write_begin_newtrunc(file, mapping, pos, len, flags,
-> > > +					pagep, fsdata, ext2_get_block);
-> > >  }
-> >   OK, but you should update the code in dir.c using __ext2_write_begin,
-> > shouldn't you?
+  Hi,
+
+On Thu 10-12-09 15:25:51, Dmitry Monakhov wrote:
+> Currently inode_reservation is managed by fs itself and this
+> reservation is transfered on dquot_transfer(). This means what
+> inode_reservation must always be in sync with
+> dquot->dq_dqb.dqb_rsvspace. Otherwise dquot_transfer() will result
+> in incorrect quota(WARN_ON in dquot_claim_reserved_space() will be
+> triggered)
+> This is not easy because of complex locking order issues
+> for example http://bugzilla.kernel.org/show_bug.cgi?id=14739
 > 
-> To trim off blocks past i_size on failure? Yes I guess it should.
-> In fact, the ext2_write_failed call could just go into here I think.
-> I'll take a look.
-  Yes, that would be probably the easiest.
-
-> > > +static int ext2_write_end(struct file *file, struct address_space *mapping,
-> > > +			loff_t pos, unsigned len, unsigned copied,
-> > > +			struct page *page, void *fsdata)
-> > > +{
-> > > +	int ret;
-> > > +
-> > > +	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
-> > > +	if (ret < len)
-> > > +		ext2_write_failed(mapping, pos + len);
-> > > +	return ret;
-> > >  }
-> >   OK, when doing this, please also update ext2_commit_chunk in dir.c...
+> The patch introduce quota reservation field for each fs-inode
+> (fs specific inode is used in order to prevent bloating generic
+> vfs inode). This reservation is managed by quota code internally
+> similar to i_blocks/i_bytes and may not be always in sync with
+> internal fs reservation.
 > 
-> I think commit_chunk is OK. Because block_write_end does not fail
-> and the only reason for checking failure here is in case of a short
-> copy (which won't happen in dir.c code).
-  Ah, right.
-
-> > > +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
-> > > +{
-> > > +	/*
-> > > +	 * XXX: it seems like a bug here that we don't allow
-> > > +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
-> > > +	 * review and fix this.
-> > > +	 *
-> > > +	 * Also would be nice to be able to handle IO errors and such,
-> > > +	 * but that's probably too much to ask.
-> > > +	 */
-> > > +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-> > > +	    S_ISLNK(inode->i_mode)))
-> > > +		return;
-> > > +	if (ext2_inode_is_fast_symlink(inode))
-> > > +		return;
-> > > +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-> > > +		return;
-> >   Yes, I'd remove IS_APPEND check from here.
+> Also perform some code rearrangement:
+> - Unify dquot_reserve_space() and dquot_reserve_space()
+> - Unify dquot_release_reserved_space() and dquot_free_space()
+> - Also this patch add missing warning update to release_rsv()
+>   dquot_release_reserved_space() must call flush_warnings() as
+>   dquot_free_space() does.
 > 
-> Didn't want to change that in this patch, but I'm happy for someone to
-> fix it (and in ext3/4 etc).
-  OK.
+> Changes from V1:
+> - move qutoa_reservation field from vfs_inode to fs_inode
+> - account reservation in bytes instead of blocks.
+  Thanks for looking into this! I have some comments to the patch below
+but generally I like it.
 
-> The checks probably should be done at a different level anyway: by the
-> time that this code gets called, the pagecache is truncated and i_size
-> modified anyway so it seems buggy if this made any difference.
-  It depends. The first if can be WARN_ON as well - we shouldn't really get
-different inode types here. For fast symlinks we have nothing to truncate
-so we want to immediately return doing nothing. For IMMUTABLE inode it is
-again a bug if we get to this function and for APPEND inode the only
-acceptable way to get here is the error recovery. We can clean that up
-when your patch series goes in.
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/quota/dquot.c      |  219 ++++++++++++++++++++++++++++---------------------
+>  include/linux/quota.h |    5 +-
+>  2 files changed, 127 insertions(+), 97 deletions(-)
+> 
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index 39b49c4..66221f8 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -1388,6 +1388,71 @@ void vfs_dq_drop(struct inode *inode)
+>  EXPORT_SYMBOL(vfs_dq_drop);
+>  
+>  /*
+> + * inode_reserved_space is managed internally by quota, and protected by
+> + * i_lock similar to i_blocks+i_bytes.
+> + */
+> +static qsize_t* inode_reserved_space(struct inode * inode)
+                 ^^ it should be "qsize_t *"
+> +{
+> +	/* Filesystem must explicitly define it's own method in order to use
+> +	 * quota reservation interface */
+> +	BUG_ON(!inode->i_sb->dq_op->get_reserved_space);
+> +	return inode->i_sb->dq_op->get_reserved_space(inode);
+> +}
+> +
+> +static void inode_add_rsv_space(struct inode *inode, qsize_t number)
+> +{
+> +	spin_lock(&inode->i_lock);
+> +	*inode_reserved_space(inode) += number;
+> +	spin_unlock(&inode->i_lock);
+> +}
+> +
+  Hmm, I think I have a better solution for this: Each inode will have a
+pointer to "inode features" table. That table will contain offsets of
+general structures (e.g. things needed for quotas) embedded inside
+fs-specific inode. That way we can later move similar structures out of
+general VFS inode to inodes of filesystems that need it. When a filesystem
+creates an inode, it fills in a proper pointer to the table... That should
+allow generic code access data in fs-specific part of inode structure,
+we don't have to add functions returning pointers, etc.
+  But for now I'd go with your solution since mine will require more
+widespread changes to quota code and we need to fix that bug.
+
+> +static void inode_claim_rsv_space(struct inode *inode, qsize_t number)
+> +{
+> +	spin_lock(&inode->i_lock);
+> +	*inode_reserved_space(inode) -= number;
+> +	inode->i_blocks += number >> 9;
+> +	number &= 511;
+> +	inode->i_bytes += number;
+> +	if (inode->i_bytes >= 512) {
+> +		inode->i_blocks++;
+> +		inode->i_bytes -= 512;
+> +	}
+> +	spin_unlock(&inode->i_lock);
+> +}
+  Please add variant of inode_add_bytes() which does not acquire
+inode->i_lock and use it here. I'd suggest __inode_add_bytes and rename
+__inode_add_bytes below to something more appropriate like
+inode_alloc_reserve_bytes or so.
+
+...
+> @@ -1426,64 +1506,32 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number,
+>  		else
+>  			dquot_incr_space(inode->i_dquot[cnt], number);
+>  	}
+> -	if (!reserve)
+> -		inode_add_bytes(inode, number);
+> -out_unlock:
+> -	spin_unlock(&dq_data_lock);
+> -	flush_warnings(inode->i_dquot, warntype);
+> -	return ret;
+> -}
+> -
+> -int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
+> -{
+> -	int cnt, ret = QUOTA_OK;
+> -
+> -	/*
+> -	 * First test before acquiring mutex - solves deadlocks when we
+> -	 * re-enter the quota code and are already holding the mutex
+> -	 */
+> -	if (IS_NOQUOTA(inode)) {
+> -		inode_add_bytes(inode, number);
+> -		goto out;
+> -	}
+> -
+> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> -	if (IS_NOQUOTA(inode)) {
+> -		inode_add_bytes(inode, number);
+> -		goto out_unlock;
+> -	}
+> -
+> -	ret = __dquot_alloc_space(inode, number, warn, 0);
+> -	if (ret == NO_QUOTA)
+> -		goto out_unlock;
+> +	__inode_add_bytes(inode, number, reserve);
+>  
+> +	if (reserve)
+> +		goto out_data_unlock;
+>  	/* Dirtify all the dquots - this can block when journalling */
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+>  		if (inode->i_dquot[cnt])
+>  			mark_dquot_dirty(inode->i_dquot[cnt]);
+> +out_data_unlock:
+> +	spin_unlock(&dq_data_lock);
+> +	flush_warnings(inode->i_dquot, warntype);
+  You have to unlock dq_data_lock before mark_dquot_dirty as it can sleep.
+
+>  out_unlock:
+>  	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  out:
+>  	return ret;
+>  }
+...
+> @@ -1854,6 +1882,7 @@ const struct dquot_operations dquot_operations = {
+>  	.write_info	= dquot_commit_info,
+>  	.alloc_dquot	= dquot_alloc,
+>  	.destroy_dquot	= dquot_destroy,
+> +
+>  };
+  I guess the above is a mistake...
+
+> diff --git a/include/linux/quota.h b/include/linux/quota.h
+> index 78c4889..40845f1 100644
+> --- a/include/linux/quota.h
+> +++ b/include/linux/quota.h
+> @@ -313,8 +313,9 @@ struct dquot_operations {
+>  	int (*claim_space) (struct inode *, qsize_t);
+>  	/* release rsved quota for delayed alloc */
+>  	void (*release_rsv) (struct inode *, qsize_t);
+> -	/* get reserved quota for delayed alloc */
+> -	qsize_t (*get_reserved_space) (struct inode *);
+> +	/* get reserved quota for delayed alloc, value returned is managed by
+> +	 * quota code only */
+> +	qsize_t* (*get_reserved_space) (struct inode *);
+  I think proper coding style is "qsize_t *(*get_reserved_space) (...)"
 
 									Honza
 -- 
