@@ -1,48 +1,88 @@
-From: tytso@mit.edu
-Subject: Re: [GIT PULL] ext4 updates for v2.6.33
-Date: Wed, 9 Dec 2009 22:38:53 -0500
-Message-ID: <20091210033853.GA7215@thunk.org>
-References: <E1NIP7h-0002Tv-AP@closure.thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 2/2] ext4: Convert to generic reserved quota's space
+ management.
+Date: Thu, 10 Dec 2009 15:15:43 +0300
+Message-ID: <87ljhbvxcg.fsf@openvz.org>
+References: <1260409447-4444-1-git-send-email-dmonakhov@openvz.org>
+ <1260409447-4444-2-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: aneesh.kumar@linux.vnet.ibm.com, jack@suse.cz, cmm@us.ibm.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52311 "EHLO thunker.thunk.org"
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:60986 "EHLO mail.2ka.mipt.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759490AbZLJDir (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Dec 2009 22:38:47 -0500
-Content-Disposition: inline
-In-Reply-To: <E1NIP7h-0002Tv-AP@closure.thunk.org>
+	id S932123AbZLJMPa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Dec 2009 07:15:30 -0500
+Received: from dmon-lp ([unknown] [10.55.93.124])
+ by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
+ (built Apr 16 2009)) with ESMTPA id <0KUF009UKRLWXE70@mail.2ka.mipt.ru> for
+ linux-ext4@vger.kernel.org; Thu, 10 Dec 2009 15:20:24 +0300 (MSK)
+In-reply-to: <1260409447-4444-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 09, 2009 at 11:10:41AM -0500, Theodore Ts'o wrote:
-> Hi Linus,
-> 
-> Please pull from:
-> 
->         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-> 
-> to grab the following changes for v2.6.33.
-> 
-> Lots of bug fixes, plus some cleanup work.
-> 
+Dmitry Monakhov <dmonakhov@openvz.org> writes:
 
-Hi Linus, it looks like you haven't pulled from the ext4 tree yet.
-
-FYI, I've since added three more patches to the for_linus branch to
-fix a few more bugs:
-
-Theodore Ts'o (3):
-      jbd2: Export jbd2_log_start_commit to fix ext4 build
-      ext4: Do not override ext2 or ext3 if built they are built as modules
-      ext4: Fix potential fiemap deadlock (mmap_sem vs. i_data_sem)
-
- fs/ext4/Kconfig   |    2 +-
- fs/ext4/extents.c |    4 ++--
- fs/ext4/super.c   |    4 ++--
- fs/jbd2/journal.c |    1 +
- 4 files changed, 6 insertions(+), 5 deletions(-)
-
-							- Ted
+> This patch solves write vs chown race condition.
+>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/ext4.h  |    6 +++++-
+>  fs/ext4/inode.c |   13 ++++---------
+>  2 files changed, 9 insertions(+), 10 deletions(-)
+Oops.. i've forgot to init EXT4_I(inode)->i_reserved_quota before usage.
+This is strange, but this wasn't triggered by my simple test :(
+Will send new version. 
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 26d3cf8..992cecd 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -705,6 +705,10 @@ struct ext4_inode_info {
+>  	struct list_head i_aio_dio_complete_list;
+>  	/* current io_end structure for async DIO write*/
+>  	ext4_io_end_t *cur_aio_dio;
+> +#ifdef CONFIG_QUOTA
+> +	/* quota space reservation, managed internally by quota code */
+> +	qsize_t i_reserved_quota;
+> +#endif
+>  };
+>  
+>  /*
+> @@ -1427,7 +1431,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+>  extern int ext4_block_truncate_page(handle_t *handle,
+>  		struct address_space *mapping, loff_t from);
+>  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+> -extern qsize_t ext4_get_reserved_space(struct inode *inode);
+> +extern qsize_t* ext4_get_reserved_space(struct inode *inode);
+>  extern int flush_aio_dio_completed_IO(struct inode *inode);
+>  /* ioctl.c */
+>  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f693768..d833e5a 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1048,17 +1048,12 @@ out:
+>  	return err;
+>  }
+>  
+> -qsize_t ext4_get_reserved_space(struct inode *inode)
+> +#ifdef CONFIG_QUOTA
+> +qsize_t* ext4_get_reserved_space(struct inode *inode)
+>  {
+> -	unsigned long long total;
+> -
+> -	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+> -	total = EXT4_I(inode)->i_reserved_data_blocks +
+> -		EXT4_I(inode)->i_reserved_meta_blocks;
+> -	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> -
+> -	return (total << inode->i_blkbits);
+> +	return &EXT4_I(inode)->i_reserved_quota;
+>  }
+> +#endif
+>  /*
+>   * Calculate the number of metadata blocks need to reserve
+>   * to allocate @blocks for non extent file based file
