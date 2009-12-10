@@ -1,415 +1,262 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] quota: decouple fs reserved space from quota reservation.
- [V3]
-Date: Thu, 10 Dec 2009 15:25:51 +0300
-Message-ID: <1260447952-6201-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH] ext4: Fix potential quota deadlock
+Date: Thu, 10 Dec 2009 16:31:45 +0300
+Message-ID: <1260451905-3746-1-git-send-email-dmonakhov@openvz.org>
 Content-Transfer-Encoding: 7BIT
-Cc: aneesh.kumar@linux.vnet.ibm.com, jack@suse.cz, cmm@us.ibm.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: cmm@us.ibm.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:61277 "EHLO mail.2ka.mipt.ru"
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:63203 "EHLO mail.2ka.mipt.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932786AbZLJMZk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Dec 2009 07:25:40 -0500
+	id S1758967AbZLJNbc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Dec 2009 08:31:32 -0500
 Received: from localhost.localdomain ([unknown] [10.55.93.124])
  by mail.2ka.mipt.ru
  (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- with ESMTPA id <0KUF00AG7S2U2I00@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Thu, 10 Dec 2009 15:30:33 +0300 (MSK)
+ with ESMTPA id <0KUF00AIMV4N2I30@mail.2ka.mipt.ru> for
+ linux-ext4@vger.kernel.org; Thu, 10 Dec 2009 16:36:26 +0300 (MSK)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently inode_reservation is managed by fs itself and this
-reservation is transfered on dquot_transfer(). This means what
-inode_reservation must always be in sync with
-dquot->dq_dqb.dqb_rsvspace. Otherwise dquot_transfer() will result
-in incorrect quota(WARN_ON in dquot_claim_reserved_space() will be
-triggered)
-This is not easy because of complex locking order issues
-for example http://bugzilla.kernel.org/show_bug.cgi?id=14739
+We have to delay vfs_dq_claim_space() until allocation context destruction.
+Currently we have following call-trace:
+ext4_mb_new_blocks()
+  /* task is already holding ac->alloc_semp */
+ ->ext4_mb_mark_diskspace_used
+    ->vfs_dq_claim_space()  /*  acquire dqptr_sem here. Possible deadlock */
+ ->ext4_mb_release_context() /* drop ac->alloc_semp here */
 
-The patch introduce quota reservation field for each fs-inode
-(fs specific inode is used in order to prevent bloating generic
-vfs inode). This reservation is managed by quota code internally
-similar to i_blocks/i_bytes and may not be always in sync with
-internal fs reservation.
+Let's move quota claiming to ext4_da_update_reserve_space()
+This movement already discussed and approved during discussion
+write() vs chown() race condition.
 
-Also perform some code rearrangement:
-- Unify dquot_reserve_space() and dquot_reserve_space()
-- Unify dquot_release_reserved_space() and dquot_free_space()
-- Also this patch add missing warning update to release_rsv()
-  dquot_release_reserved_space() must call flush_warnings() as
-  dquot_free_space() does.
+ =======================================================
+ [ INFO: possible circular locking dependency detected ]
+ 2.6.32-rc7 #18
+ -------------------------------------------------------
+ write-truncate-/3465 is trying to acquire lock:
+  (&s->s_dquot.dqptr_sem){++++..}, at: [<c025e73b>] dquot_claim_space+0x3b/0x1b0
 
-Changes from V1:
-- move qutoa_reservation field from vfs_inode to fs_inode
-- account reservation in bytes instead of blocks.
+ but task is already holding lock:
+  (&meta_group_info[i]->alloc_sem){++++..}, at: [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
+
+ which lock already depends on the new lock.
+
+
+ the existing dependency chain (in reverse order) is:
+
+ -> #3 (&meta_group_info[i]->alloc_sem){++++..}:
+        [<c017d04b>] __lock_acquire+0xd7b/0x1260
+        [<c017d5ea>] lock_acquire+0xba/0xd0
+        [<c0527191>] down_read+0x51/0x90
+        [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
+        [<c02d0c1c>] ext4_mb_free_blocks+0x46c/0x870
+        [<c029c9d3>] ext4_free_blocks+0x73/0x130
+        [<c02c8cfc>] ext4_ext_truncate+0x76c/0x8d0
+        [<c02a8087>] ext4_truncate+0x187/0x5e0
+        [<c01e0f7b>] vmtruncate+0x6b/0x70
+        [<c022ec02>] inode_setattr+0x62/0x190
+        [<c02a2d7a>] ext4_setattr+0x25a/0x370
+        [<c022ee81>] notify_change+0x151/0x340
+        [<c021349d>] do_truncate+0x6d/0xa0
+        [<c0221034>] may_open+0x1d4/0x200
+        [<c022412b>] do_filp_open+0x1eb/0x910
+        [<c021244d>] do_sys_open+0x6d/0x140
+        [<c021258e>] sys_open+0x2e/0x40
+        [<c0103100>] sysenter_do_call+0x12/0x32
+
+ -> #2 (&ei->i_data_sem){++++..}:
+        [<c017d04b>] __lock_acquire+0xd7b/0x1260
+        [<c017d5ea>] lock_acquire+0xba/0xd0
+        [<c0527191>] down_read+0x51/0x90
+        [<c02a5787>] ext4_get_blocks+0x47/0x450
+        [<c02a74c1>] ext4_getblk+0x61/0x1d0
+        [<c02a7a7f>] ext4_bread+0x1f/0xa0
+        [<c02bcddc>] ext4_quota_write+0x12c/0x310
+        [<c0262d23>] qtree_write_dquot+0x93/0x120
+        [<c0261708>] v2_write_dquot+0x28/0x30
+        [<c025d3fb>] dquot_commit+0xab/0xf0
+        [<c02be977>] ext4_write_dquot+0x77/0x90
+        [<c02be9bf>] ext4_mark_dquot_dirty+0x2f/0x50
+        [<c025e321>] dquot_alloc_inode+0x101/0x180
+        [<c029fec2>] ext4_new_inode+0x602/0xf00
+        [<c02ad789>] ext4_create+0x89/0x150
+        [<c0221ff2>] vfs_create+0xa2/0xc0
+        [<c02246e7>] do_filp_open+0x7a7/0x910
+        [<c021244d>] do_sys_open+0x6d/0x140
+        [<c021258e>] sys_open+0x2e/0x40
+        [<c0103100>] sysenter_do_call+0x12/0x32
+
+ -> #1 (&sb->s_type->i_mutex_key#7/4){+.+...}:
+        [<c017d04b>] __lock_acquire+0xd7b/0x1260
+        [<c017d5ea>] lock_acquire+0xba/0xd0
+        [<c0526505>] mutex_lock_nested+0x65/0x2d0
+        [<c0260c9d>] vfs_load_quota_inode+0x4bd/0x5a0
+        [<c02610af>] vfs_quota_on_path+0x5f/0x70
+        [<c02bc812>] ext4_quota_on+0x112/0x190
+        [<c026345a>] sys_quotactl+0x44a/0x8a0
+        [<c0103100>] sysenter_do_call+0x12/0x32
+
+ -> #0 (&s->s_dquot.dqptr_sem){++++..}:
+        [<c017d361>] __lock_acquire+0x1091/0x1260
+        [<c017d5ea>] lock_acquire+0xba/0xd0
+        [<c0527191>] down_read+0x51/0x90
+        [<c025e73b>] dquot_claim_space+0x3b/0x1b0
+        [<c02cb95f>] ext4_mb_mark_diskspace_used+0x36f/0x380
+        [<c02d210a>] ext4_mb_new_blocks+0x34a/0x530
+        [<c02c83fb>] ext4_ext_get_blocks+0x122b/0x13c0
+        [<c02a5966>] ext4_get_blocks+0x226/0x450
+        [<c02a5ff3>] mpage_da_map_blocks+0xc3/0xaa0
+        [<c02a6ed6>] ext4_da_writepages+0x506/0x790
+        [<c01de272>] do_writepages+0x22/0x50
+        [<c01d766d>] __filemap_fdatawrite_range+0x6d/0x80
+        [<c01d7b9b>] filemap_flush+0x2b/0x30
+        [<c02a40ac>] ext4_alloc_da_blocks+0x5c/0x60
+        [<c029e595>] ext4_release_file+0x75/0xb0
+        [<c0216b59>] __fput+0xf9/0x210
+        [<c0216c97>] fput+0x27/0x30
+        [<c02122dc>] filp_close+0x4c/0x80
+        [<c014510e>] put_files_struct+0x6e/0xd0
+        [<c01451b7>] exit_files+0x47/0x60
+        [<c0146a24>] do_exit+0x144/0x710
+        [<c0147028>] do_group_exit+0x38/0xa0
+        [<c0159abc>] get_signal_to_deliver+0x2ac/0x410
+        [<c0102849>] do_notify_resume+0xb9/0x890
+        [<c01032d2>] work_notifysig+0x13/0x21
+
+ other info that might help us debug this:
+
+ 3 locks held by write-truncate-/3465:
+  #0:  (jbd2_handle){+.+...}, at: [<c02e1f8f>] start_this_handle+0x38f/0x5c0
+  #1:  (&ei->i_data_sem){++++..}, at: [<c02a57f6>] ext4_get_blocks+0xb6/0x450
+  #2:  (&meta_group_info[i]->alloc_sem){++++..}, at: [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
+
+ stack backtrace:
+ Pid: 3465, comm: write-truncate- Not tainted 2.6.32-rc7 #18
+ Call Trace:
+  [<c0524cb3>] ? printk+0x1d/0x22
+  [<c017ac9a>] print_circular_bug+0xca/0xd0
+  [<c017d361>] __lock_acquire+0x1091/0x1260
+  [<c016bca2>] ? sched_clock_local+0xd2/0x170
+  [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
+  [<c017d5ea>] lock_acquire+0xba/0xd0
+  [<c025e73b>] ? dquot_claim_space+0x3b/0x1b0
+  [<c0527191>] down_read+0x51/0x90
+  [<c025e73b>] ? dquot_claim_space+0x3b/0x1b0
+  [<c025e73b>] dquot_claim_space+0x3b/0x1b0
+  [<c02cb95f>] ext4_mb_mark_diskspace_used+0x36f/0x380
+  [<c02d210a>] ext4_mb_new_blocks+0x34a/0x530
+  [<c02c601d>] ? ext4_ext_find_extent+0x25d/0x280
+  [<c02c83fb>] ext4_ext_get_blocks+0x122b/0x13c0
+  [<c016bca2>] ? sched_clock_local+0xd2/0x170
+  [<c016be60>] ? sched_clock_cpu+0x120/0x160
+  [<c016beef>] ? cpu_clock+0x4f/0x60
+  [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
+  [<c052712c>] ? down_write+0x8c/0xa0
+  [<c02a5966>] ext4_get_blocks+0x226/0x450
+  [<c016be60>] ? sched_clock_cpu+0x120/0x160
+  [<c016beef>] ? cpu_clock+0x4f/0x60
+  [<c017908b>] ? trace_hardirqs_off+0xb/0x10
+  [<c02a5ff3>] mpage_da_map_blocks+0xc3/0xaa0
+  [<c01d69cc>] ? find_get_pages_tag+0x16c/0x180
+  [<c01d6860>] ? find_get_pages_tag+0x0/0x180
+  [<c02a73bd>] ? __mpage_da_writepage+0x16d/0x1a0
+  [<c01dfc4e>] ? pagevec_lookup_tag+0x2e/0x40
+  [<c01ddf1b>] ? write_cache_pages+0xdb/0x3d0
+  [<c02a7250>] ? __mpage_da_writepage+0x0/0x1a0
+  [<c02a6ed6>] ext4_da_writepages+0x506/0x790
+  [<c016beef>] ? cpu_clock+0x4f/0x60
+  [<c016bca2>] ? sched_clock_local+0xd2/0x170
+  [<c016be60>] ? sched_clock_cpu+0x120/0x160
+  [<c016be60>] ? sched_clock_cpu+0x120/0x160
+  [<c02a69d0>] ? ext4_da_writepages+0x0/0x790
+  [<c01de272>] do_writepages+0x22/0x50
+  [<c01d766d>] __filemap_fdatawrite_range+0x6d/0x80
+  [<c01d7b9b>] filemap_flush+0x2b/0x30
+  [<c02a40ac>] ext4_alloc_da_blocks+0x5c/0x60
+  [<c029e595>] ext4_release_file+0x75/0xb0
+  [<c0216b59>] __fput+0xf9/0x210
+  [<c0216c97>] fput+0x27/0x30
+  [<c02122dc>] filp_close+0x4c/0x80
+  [<c014510e>] put_files_struct+0x6e/0xd0
+  [<c01451b7>] exit_files+0x47/0x60
+  [<c0146a24>] do_exit+0x144/0x710
+  [<c017b163>] ? lock_release_holdtime+0x33/0x210
+  [<c0528137>] ? _spin_unlock_irq+0x27/0x30
+  [<c0147028>] do_group_exit+0x38/0xa0
+  [<c017babb>] ? trace_hardirqs_on+0xb/0x10
+  [<c0159abc>] get_signal_to_deliver+0x2ac/0x410
+  [<c0102849>] do_notify_resume+0xb9/0x890
+  [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
+  [<c017b163>] ? lock_release_holdtime+0x33/0x210
+  [<c0165b50>] ? autoremove_wake_function+0x0/0x50
+  [<c017ba54>] ? trace_hardirqs_on_caller+0x134/0x190
+  [<c017babb>] ? trace_hardirqs_on+0xb/0x10
+  [<c0300ba4>] ? security_file_permission+0x14/0x20
+  [<c0215761>] ? vfs_write+0x131/0x190
+  [<c0214f50>] ? do_sync_write+0x0/0x120
+  [<c0103115>] ? sysenter_do_call+0x27/0x32
+  [<c01032d2>] work_notifysig+0x13/0x21
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/quota/dquot.c      |  219 ++++++++++++++++++++++++++++---------------------
- include/linux/quota.h |    5 +-
- 2 files changed, 127 insertions(+), 97 deletions(-)
+ fs/ext4/inode.c   |    9 +++++++--
+ fs/ext4/mballoc.c |    6 ------
+ 2 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 39b49c4..66221f8 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -1388,6 +1388,71 @@ void vfs_dq_drop(struct inode *inode)
- EXPORT_SYMBOL(vfs_dq_drop);
- 
- /*
-+ * inode_reserved_space is managed internally by quota, and protected by
-+ * i_lock similar to i_blocks+i_bytes.
-+ */
-+static qsize_t* inode_reserved_space(struct inode * inode)
-+{
-+	/* Filesystem must explicitly define it's own method in order to use
-+	 * quota reservation interface */
-+	BUG_ON(!inode->i_sb->dq_op->get_reserved_space);
-+	return inode->i_sb->dq_op->get_reserved_space(inode);
-+}
-+
-+static void inode_add_rsv_space(struct inode *inode, qsize_t number)
-+{
-+	spin_lock(&inode->i_lock);
-+	*inode_reserved_space(inode) += number;
-+	spin_unlock(&inode->i_lock);
-+}
-+
-+static void inode_claim_rsv_space(struct inode *inode, qsize_t number)
-+{
-+	spin_lock(&inode->i_lock);
-+	*inode_reserved_space(inode) -= number;
-+	inode->i_blocks += number >> 9;
-+	number &= 511;
-+	inode->i_bytes += number;
-+	if (inode->i_bytes >= 512) {
-+		inode->i_blocks++;
-+		inode->i_bytes -= 512;
-+	}
-+	spin_unlock(&inode->i_lock);
-+}
-+
-+static void inode_sub_rsv_space(struct inode *inode, qsize_t number)
-+{
-+	spin_lock(&inode->i_lock);
-+	*inode_reserved_space(inode) -= number;
-+	spin_unlock(&inode->i_lock);
-+}
-+
-+static qsize_t inode_get_rsv_space(struct inode *inode)
-+{
-+	qsize_t ret;
-+	spin_lock(&inode->i_lock);
-+	ret = *inode_reserved_space(inode);
-+	spin_unlock(&inode->i_lock);
-+	return ret;
-+}
-+
-+static void __inode_add_bytes(struct inode *inode, qsize_t number, int reserve)
-+{
-+	if (reserve)
-+		inode_add_rsv_space(inode, number);
-+	else
-+		inode_add_bytes(inode, number);
-+}
-+
-+static void __inode_sub_bytes(struct inode *inode, qsize_t number, int reserve)
-+{
-+	if (reserve)
-+		inode_sub_rsv_space(inode, number);
-+	else
-+		inode_sub_bytes(inode, number);
-+}
-+
-+/*
-  * Following four functions update i_blocks+i_bytes fields and
-  * quota information (together with appropriate checks)
-  * NOTE: We absolutely rely on the fact that caller dirties
-@@ -1405,6 +1470,21 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number,
- 	int cnt, ret = QUOTA_OK;
- 	char warntype[MAXQUOTAS];
- 
-+	/*
-+	 * First test before acquiring mutex - solves deadlocks when we
-+	 * re-enter the quota code and are already holding the mutex
-+	 */
-+	if (IS_NOQUOTA(inode)) {
-+		__inode_add_bytes(inode, number, reserve);
-+		goto out;
-+	}
-+
-+	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-+	if (IS_NOQUOTA(inode)) {
-+		__inode_add_bytes(inode, number, reserve);
-+		goto out_unlock;
-+	}
-+
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
- 		warntype[cnt] = QUOTA_NL_NOWARN;
- 
-@@ -1415,7 +1495,7 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number,
- 		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt)
- 		    == NO_QUOTA) {
- 			ret = NO_QUOTA;
--			goto out_unlock;
-+			goto out_data_unlock;
- 		}
- 	}
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-@@ -1426,64 +1506,32 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number,
- 		else
- 			dquot_incr_space(inode->i_dquot[cnt], number);
- 	}
--	if (!reserve)
--		inode_add_bytes(inode, number);
--out_unlock:
--	spin_unlock(&dq_data_lock);
--	flush_warnings(inode->i_dquot, warntype);
--	return ret;
--}
--
--int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
--{
--	int cnt, ret = QUOTA_OK;
--
--	/*
--	 * First test before acquiring mutex - solves deadlocks when we
--	 * re-enter the quota code and are already holding the mutex
--	 */
--	if (IS_NOQUOTA(inode)) {
--		inode_add_bytes(inode, number);
--		goto out;
--	}
--
--	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	if (IS_NOQUOTA(inode)) {
--		inode_add_bytes(inode, number);
--		goto out_unlock;
--	}
--
--	ret = __dquot_alloc_space(inode, number, warn, 0);
--	if (ret == NO_QUOTA)
--		goto out_unlock;
-+	__inode_add_bytes(inode, number, reserve);
- 
-+	if (reserve)
-+		goto out_data_unlock;
- 	/* Dirtify all the dquots - this can block when journalling */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
- 		if (inode->i_dquot[cnt])
- 			mark_dquot_dirty(inode->i_dquot[cnt]);
-+out_data_unlock:
-+	spin_unlock(&dq_data_lock);
-+	flush_warnings(inode->i_dquot, warntype);
- out_unlock:
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- out:
- 	return ret;
- }
-+
-+int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
-+{
-+	return __dquot_alloc_space(inode, number, warn, 0);
-+}
- EXPORT_SYMBOL(dquot_alloc_space);
- 
- int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f693768..6b87b33 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1096,7 +1096,7 @@ static int ext4_calc_metadata_amount(struct inode *inode, int blocks)
+ static void ext4_da_update_reserve_space(struct inode *inode, int used)
  {
--	int ret = QUOTA_OK;
--
--	if (IS_NOQUOTA(inode))
--		goto out;
--
--	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	if (IS_NOQUOTA(inode))
--		goto out_unlock;
--
--	ret = __dquot_alloc_space(inode, number, warn, 1);
--out_unlock:
--	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--out:
--	return ret;
-+	return __dquot_alloc_space(inode, number, warn, 1);
- }
- EXPORT_SYMBOL(dquot_reserve_space);
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-	int total, mdb, mdb_free;
++	int total, mdb, mdb_free, mdb_claim = 0;
  
-@@ -1540,14 +1588,14 @@ int dquot_claim_space(struct inode *inode, qsize_t number)
- 	int ret = QUOTA_OK;
+ 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	/* recalculate the number of metablocks still need to be reserved */
+@@ -1109,7 +1109,9 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
  
- 	if (IS_NOQUOTA(inode)) {
--		inode_add_bytes(inode, number);
-+		inode_claim_rsv_space(inode, number);
- 		goto out;
- 	}
+ 	if (mdb_free) {
+ 		/* Account for allocated meta_blocks */
+-		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
++		mdb_claim = EXT4_I(inode)->i_allocated_meta_blocks;
++		BUG_ON(mdb_free < mdb_claim);
++		mdb_free -= mdb_claim;
  
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	if (IS_NOQUOTA(inode))	{
- 		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--		inode_add_bytes(inode, number);
-+		inode_claim_rsv_space(inode, number);
- 		goto out;
- 	}
+ 		/* update fs dirty blocks counter */
+ 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
+@@ -1120,8 +1122,11 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+ 	/* update per-inode reservations */
+ 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
+ 	EXT4_I(inode)->i_reserved_data_blocks -= used;
++	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used + mdb_claim);
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
  
-@@ -1559,7 +1607,7 @@ int dquot_claim_space(struct inode *inode, qsize_t number)
- 							number);
- 	}
- 	/* Update inode bytes */
--	inode_add_bytes(inode, number);
-+	inode_claim_rsv_space(inode, number);
- 	spin_unlock(&dq_data_lock);
- 	/* Dirtify all the dquots - this can block when journalling */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
-@@ -1572,38 +1620,9 @@ out:
- EXPORT_SYMBOL(dquot_claim_space);
- 
- /*
-- * Release reserved quota space
-- */
--void dquot_release_reserved_space(struct inode *inode, qsize_t number)
--{
--	int cnt;
--
--	if (IS_NOQUOTA(inode))
--		goto out;
--
--	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	if (IS_NOQUOTA(inode))
--		goto out_unlock;
--
--	spin_lock(&dq_data_lock);
--	/* Release reserved dquots */
--	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
--		if (inode->i_dquot[cnt])
--			dquot_free_reserved_space(inode->i_dquot[cnt], number);
++	vfs_dq_claim_block(inode, used + mdb_claim);
++
+ 	/*
+ 	 * free those over-booking quota for metadata blocks
+ 	 */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index bba1282..d4c52db 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2750,12 +2750,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+ 		/* release all the reserved blocks if non delalloc */
+ 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
+-	else {
+-		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+-						ac->ac_b_ex.fe_len);
+-		/* convert reserved quota blocks to real quota blocks */
+-		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
 -	}
--	spin_unlock(&dq_data_lock);
--
--out_unlock:
--	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--out:
--	return;
--}
--EXPORT_SYMBOL(dquot_release_reserved_space);
--
--/*
-  * This operation can block, but only after everything is updated
-  */
--int dquot_free_space(struct inode *inode, qsize_t number)
-+int __dquot_free_space(struct inode *inode, qsize_t number, int reserve)
- {
- 	unsigned int cnt;
- 	char warntype[MAXQUOTAS];
-@@ -1612,7 +1631,7 @@ int dquot_free_space(struct inode *inode, qsize_t number)
-          * re-enter the quota code and are already holding the mutex */
- 	if (IS_NOQUOTA(inode)) {
- out_sub:
--		inode_sub_bytes(inode, number);
-+		__inode_sub_bytes(inode, number, reserve);
- 		return QUOTA_OK;
- 	}
  
-@@ -1627,21 +1646,43 @@ out_sub:
- 		if (!inode->i_dquot[cnt])
- 			continue;
- 		warntype[cnt] = info_bdq_free(inode->i_dquot[cnt], number);
--		dquot_decr_space(inode->i_dquot[cnt], number);
-+		if (reserve)
-+			dquot_free_reserved_space(inode->i_dquot[cnt], number);
-+		else
-+			dquot_decr_space(inode->i_dquot[cnt], number);
- 	}
--	inode_sub_bytes(inode, number);
-+	__inode_sub_bytes(inode, number, reserve);
- 	spin_unlock(&dq_data_lock);
-+
-+	if (reserve)
-+		goto out_unlock;
- 	/* Dirtify all the dquots - this can block when journalling */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
- 		if (inode->i_dquot[cnt])
- 			mark_dquot_dirty(inode->i_dquot[cnt]);
-+out_unlock:
- 	flush_warnings(inode->i_dquot, warntype);
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return QUOTA_OK;
- }
-+
-+int dquot_free_space(struct inode *inode, qsize_t number)
-+{
-+	return  __dquot_free_space(inode, number, 0);
-+}
- EXPORT_SYMBOL(dquot_free_space);
- 
- /*
-+ * Release reserved quota space
-+ */
-+void dquot_release_reserved_space(struct inode *inode, qsize_t number)
-+{
-+	return (void )__dquot_free_space(inode, number, 1);
-+
-+}
-+EXPORT_SYMBOL(dquot_release_reserved_space);
-+
-+/*
-  * This operation can block, but only after everything is updated
-  */
- int dquot_free_inode(const struct inode *inode, qsize_t number)
-@@ -1679,19 +1720,6 @@ int dquot_free_inode(const struct inode *inode, qsize_t number)
- EXPORT_SYMBOL(dquot_free_inode);
- 
- /*
-- * call back function, get reserved quota space from underlying fs
-- */
--qsize_t dquot_get_reserved_space(struct inode *inode)
--{
--	qsize_t reserved_space = 0;
--
--	if (sb_any_quota_active(inode->i_sb) &&
--	    inode->i_sb->dq_op->get_reserved_space)
--		reserved_space = inode->i_sb->dq_op->get_reserved_space(inode);
--	return reserved_space;
--}
--
--/*
-  * Transfer the number of inode and blocks from one diskquota to an other.
-  *
-  * This operation can block, but only after everything is updated
-@@ -1734,7 +1762,7 @@ int dquot_transfer(struct inode *inode, struct iattr *iattr)
- 	}
- 	spin_lock(&dq_data_lock);
- 	cur_space = inode_get_bytes(inode);
--	rsv_space = dquot_get_reserved_space(inode);
-+	rsv_space = inode_get_rsv_space(inode);
- 	space = cur_space + rsv_space;
- 	/* Build the transfer_from list and check the limits */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-@@ -1854,6 +1882,7 @@ const struct dquot_operations dquot_operations = {
- 	.write_info	= dquot_commit_info,
- 	.alloc_dquot	= dquot_alloc,
- 	.destroy_dquot	= dquot_destroy,
-+
- };
- 
- /*
-diff --git a/include/linux/quota.h b/include/linux/quota.h
-index 78c4889..40845f1 100644
---- a/include/linux/quota.h
-+++ b/include/linux/quota.h
-@@ -313,8 +313,9 @@ struct dquot_operations {
- 	int (*claim_space) (struct inode *, qsize_t);
- 	/* release rsved quota for delayed alloc */
- 	void (*release_rsv) (struct inode *, qsize_t);
--	/* get reserved quota for delayed alloc */
--	qsize_t (*get_reserved_space) (struct inode *);
-+	/* get reserved quota for delayed alloc, value returned is managed by
-+	 * quota code only */
-+	qsize_t* (*get_reserved_space) (struct inode *);
- };
- 
- /* Operations handling requests from userspace */
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
 -- 
 1.6.0.4
 
