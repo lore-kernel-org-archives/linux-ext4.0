@@ -1,73 +1,86 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: Convert to generic reserved quota's space management.
-Date: Thu, 10 Dec 2009 04:44:07 +0300
-Message-ID: <1260409447-4444-2-git-send-email-dmonakhov@openvz.org>
-References: <1260409447-4444-1-git-send-email-dmonakhov@openvz.org>
-Content-Transfer-Encoding: 7BIT
-Cc: aneesh.kumar@linux.vnet.ibm.com, jack@suse.cz, cmm@us.ibm.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:43582 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759381AbZLJBnz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Dec 2009 20:43:55 -0500
-Received: from localhost.localdomain ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- with ESMTPA id <0KUE0099WYD98370@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Thu, 10 Dec 2009 04:48:48 +0300 (MSK)
-In-reply-to: <1260409447-4444-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: [patch 4/5] ext2: convert to use the new truncate convention
+Date: Thu, 10 Dec 2009 12:11:03 +1100
+Message-ID: <20091210011103.GB9601@nick>
+References: <20091208083832.GA19823@wotan.suse.de> <20091208084209.GD19823@wotan.suse.de> <20091209145713.GD7044@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20091209145713.GD7044@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This patch solves write vs chown race condition.
+On Wed, Dec 09, 2009 at 03:57:13PM +0100, Jan Kara wrote:
+> On Tue 08-12-09 09:42:09, Nick Piggin wrote:
+> > I also have commented a possible bug in existing ext2 code, marked with XXX.
+> > 
+> > Cc: linux-ext4@vger.kernel.org
+> > Cc: Christoph Hellwig <hch@lst.de>
+> > Signed-off-by: Nick Piggin <npiggin@suse.de>
+> ...
+> > @@ -752,8 +764,8 @@ int __ext2_write_begin(struct file *file
+> >  		loff_t pos, unsigned len, unsigned flags,
+> >  		struct page **pagep, void **fsdata)
+> >  {
+> > -	return block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
+> > -							ext2_get_block);
+> > +	return block_write_begin_newtrunc(file, mapping, pos, len, flags,
+> > +					pagep, fsdata, ext2_get_block);
+> >  }
+>   OK, but you should update the code in dir.c using __ext2_write_begin,
+> shouldn't you?
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h  |    6 +++++-
- fs/ext4/inode.c |   13 ++++---------
- 2 files changed, 9 insertions(+), 10 deletions(-)
+To trim off blocks past i_size on failure? Yes I guess it should.
+In fact, the ext2_write_failed call could just go into here I think.
+I'll take a look.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 26d3cf8..992cecd 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -705,6 +705,10 @@ struct ext4_inode_info {
- 	struct list_head i_aio_dio_complete_list;
- 	/* current io_end structure for async DIO write*/
- 	ext4_io_end_t *cur_aio_dio;
-+#ifdef CONFIG_QUOTA
-+	/* quota space reservation, managed internally by quota code */
-+	qsize_t i_reserved_quota;
-+#endif
- };
+
+> > +static int ext2_write_end(struct file *file, struct address_space *mapping,
+> > +			loff_t pos, unsigned len, unsigned copied,
+> > +			struct page *page, void *fsdata)
+> > +{
+> > +	int ret;
+> > +
+> > +	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
+> > +	if (ret < len)
+> > +		ext2_write_failed(mapping, pos + len);
+> > +	return ret;
+> >  }
+>   OK, when doing this, please also update ext2_commit_chunk in dir.c...
+
+I think commit_chunk is OK. Because block_write_end does not fail
+and the only reason for checking failure here is in case of a short
+copy (which won't happen in dir.c code).
+
  
- /*
-@@ -1427,7 +1431,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
--extern qsize_t ext4_get_reserved_space(struct inode *inode);
-+extern qsize_t* ext4_get_reserved_space(struct inode *inode);
- extern int flush_aio_dio_completed_IO(struct inode *inode);
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f693768..d833e5a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1048,17 +1048,12 @@ out:
- 	return err;
- }
- 
--qsize_t ext4_get_reserved_space(struct inode *inode)
-+#ifdef CONFIG_QUOTA
-+qsize_t* ext4_get_reserved_space(struct inode *inode)
- {
--	unsigned long long total;
--
--	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
--	total = EXT4_I(inode)->i_reserved_data_blocks +
--		EXT4_I(inode)->i_reserved_meta_blocks;
--	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> > +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+> > +{
+> > +	/*
+> > +	 * XXX: it seems like a bug here that we don't allow
+> > +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
+> > +	 * review and fix this.
+> > +	 *
+> > +	 * Also would be nice to be able to handle IO errors and such,
+> > +	 * but that's probably too much to ask.
+> > +	 */
+> > +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+> > +	    S_ISLNK(inode->i_mode)))
+> > +		return;
+> > +	if (ext2_inode_is_fast_symlink(inode))
+> > +		return;
+> > +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> > +		return;
+>   Yes, I'd remove IS_APPEND check from here.
+
+Didn't want to change that in this patch, but I'm happy for someone to
+fix it (and in ext3/4 etc).
+
+The checks probably should be done at a different level anyway: by the
+time that this code gets called, the pagecache is truncated and i_size
+modified anyway so it seems buggy if this made any difference.
+
