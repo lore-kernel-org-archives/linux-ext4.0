@@ -1,138 +1,101 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PULL REQUEST] Quota, ext2, ext3 and some other changes for
- 2.6.33-rc1
-Date: Thu, 10 Dec 2009 15:08:27 +0100
-Message-ID: <20091210140826.GB3696@quack.suse.cz>
+Subject: Re: [patch 4/5] ext2: convert to use the new truncate convention
+Date: Thu, 10 Dec 2009 11:20:18 +0100
+Message-ID: <20091210102017.GA3696@quack.suse.cz>
+References: <20091208083832.GA19823@wotan.suse.de>
+ <20091208084209.GD19823@wotan.suse.de>
+ <20091209145713.GD7044@quack.suse.cz>
+ <20091210011103.GB9601@nick>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58698 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753055AbZLKUpM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Dec 2009 15:45:12 -0500
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Nick Piggin <npiggin@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20091210011103.GB9601@nick>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Thu 10-12-09 12:11:03, Nick Piggin wrote:
+> On Wed, Dec 09, 2009 at 03:57:13PM +0100, Jan Kara wrote:
+> > On Tue 08-12-09 09:42:09, Nick Piggin wrote:
+> > > I also have commented a possible bug in existing ext2 code, marked with XXX.
+> > > 
+> > > Cc: linux-ext4@vger.kernel.org
+> > > Cc: Christoph Hellwig <hch@lst.de>
+> > > Signed-off-by: Nick Piggin <npiggin@suse.de>
+> > ...
+> > > @@ -752,8 +764,8 @@ int __ext2_write_begin(struct file *file
+> > >  		loff_t pos, unsigned len, unsigned flags,
+> > >  		struct page **pagep, void **fsdata)
+> > >  {
+> > > -	return block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
+> > > -							ext2_get_block);
+> > > +	return block_write_begin_newtrunc(file, mapping, pos, len, flags,
+> > > +					pagep, fsdata, ext2_get_block);
+> > >  }
+> >   OK, but you should update the code in dir.c using __ext2_write_begin,
+> > shouldn't you?
+> 
+> To trim off blocks past i_size on failure? Yes I guess it should.
+> In fact, the ext2_write_failed call could just go into here I think.
+> I'll take a look.
+  Yes, that would be probably the easiest.
 
-  Hello Linus,
+> > > +static int ext2_write_end(struct file *file, struct address_space *mapping,
+> > > +			loff_t pos, unsigned len, unsigned copied,
+> > > +			struct page *page, void *fsdata)
+> > > +{
+> > > +	int ret;
+> > > +
+> > > +	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
+> > > +	if (ret < len)
+> > > +		ext2_write_failed(mapping, pos + len);
+> > > +	return ret;
+> > >  }
+> >   OK, when doing this, please also update ext2_commit_chunk in dir.c...
+> 
+> I think commit_chunk is OK. Because block_write_end does not fail
+> and the only reason for checking failure here is in case of a short
+> copy (which won't happen in dir.c code).
+  Ah, right.
 
-  could you please pull from
+> > > +static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+> > > +{
+> > > +	/*
+> > > +	 * XXX: it seems like a bug here that we don't allow
+> > > +	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
+> > > +	 * review and fix this.
+> > > +	 *
+> > > +	 * Also would be nice to be able to handle IO errors and such,
+> > > +	 * but that's probably too much to ask.
+> > > +	 */
+> > > +	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+> > > +	    S_ISLNK(inode->i_mode)))
+> > > +		return;
+> > > +	if (ext2_inode_is_fast_symlink(inode))
+> > > +		return;
+> > > +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> > > +		return;
+> >   Yes, I'd remove IS_APPEND check from here.
+> 
+> Didn't want to change that in this patch, but I'm happy for someone to
+> fix it (and in ext3/4 etc).
+  OK.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for=
-_linus
+> The checks probably should be done at a different level anyway: by the
+> time that this code gets called, the pagecache is truncated and i_size
+> modified anyway so it seems buggy if this made any difference.
+  It depends. The first if can be WARN_ON as well - we shouldn't really get
+different inode types here. For fast symlinks we have nothing to truncate
+so we want to immediately return doing nothing. For IMMUTABLE inode it is
+again a bug if we get to this function and for APPEND inode the only
+acceptable way to get here is the error recovery. We can clean that up
+when your patch series goes in.
 
-  to get:
-
-Alexey Dobriyan (1):
-      const: struct quota_format_ops
-
-Alexey Fisher (2):
-      ext2: Unify log messages in ext2
-      ext3: Unify log messages in ext3
-
-Christoph Hellwig (4):
-      vfs: Implement proper O_SYNC semantics
-      kill wait_on_page_writeback_range
-      afs: remove manual O_SYNC handling
-      ubifs: remove manual O_SYNC handling
-
-Eric Sandeen (3):
-      ext3: journal all modifications in ext3_xattr_set_handle
-      ext3: Don't update the superblock in ext3_statfs()
-      ext3: make "norecovery" an alias for "noload"
-
-Jan Blunck (1):
-      ext2: Explicitly assign values to on-disk enum of filetypes
-
-Jan Kara (7):
-      zisofs: Implement reading of compressed files when PAGE_CACHE_SIZ=
-E > compress block size
-      quota: Fix WARN_ON in lookup_one_len
-      quota: Move definition of QFMT_OCFS2 to linux/quota.h
-      quota: Implement quota format with 64-bit space and inode limits
-      ext3: Support for vfsv1 quota format
-      ext4: Support for 64-bit quota format
-      ext3: Fix data / filesystem corruption when write fails to copy d=
-ata
-
-J=E9r=E9my Cochoy (1):
-      ext2: fix comment in ext2_find_entry about return values
-
-Roel Kluin (1):
-      ext3: PTR_ERR return of wrong pointer in setup_new_group_blocks()
-
-Stephen Hemminger (1):
-      ext2: clear uptodate flag on super block I/O error
-
-The diffstat is
-
- Documentation/filesystems/ext3.txt |    4 +-
- Documentation/filesystems/vfs.txt  |    2 +-
- arch/alpha/include/asm/fcntl.h     |   19 +-
- arch/blackfin/include/asm/fcntl.h  |    2 -
- arch/mips/include/asm/fcntl.h      |   17 +-
- arch/mips/kernel/kspd.c            |    1 +
- arch/mips/loongson/common/mem.c    |    2 +-
- arch/mips/mm/cache.c               |    2 +-
- arch/parisc/include/asm/fcntl.h    |    5 +-
- arch/sparc/include/asm/fcntl.h     |   19 +-
- arch/x86/mm/pat.c                  |    3 +-
- drivers/char/mem.c                 |    6 +-
- drivers/usb/gadget/file_storage.c  |    2 +-
- fs/afs/write.c                     |    8 -
- fs/btrfs/file.c                    |    4 +-
- fs/cifs/dir.c                      |    3 +-
- fs/cifs/file.c                     |    6 +-
- fs/ext2/dir.c                      |    4 +-
- fs/ext2/ext2.h                     |    2 +-
- fs/ext2/inode.c                    |    6 +-
- fs/ext2/super.c                    |  184 ++++++++-----
- fs/ext2/xip.c                      |    5 +-
- fs/ext3/inode.c                    |   18 +-
- fs/ext3/resize.c                   |    2 +-
- fs/ext3/super.c                    |  468 +++++++++++++++++-----------=
----
- fs/ext3/xattr.c                    |    7 +-
- fs/ext4/super.c                    |   30 ++-
- fs/isofs/compress.c                |  533 +++++++++++++++++++---------=
---------
- fs/isofs/rock.c                    |    3 +-
- fs/jbd2/commit.c                   |    2 +-
- fs/namei.c                         |    9 +
- fs/nfs/file.c                      |    4 +-
- fs/nfs/write.c                     |    2 +-
- fs/ocfs2/file.c                    |    2 +-
- fs/ocfs2/quota.h                   |    4 -
- fs/ocfs2/quota_local.c             |    2 +-
- fs/quota/Kconfig                   |    8 +-
- fs/quota/dquot.c                   |    2 +
- fs/quota/quota_v1.c                |    2 +-
- fs/quota/quota_v2.c                |  167 +++++++++---
- fs/quota/quotaio_v2.h              |   19 +-
- fs/sync.c                          |   13 +-
- fs/ubifs/file.c                    |   13 +-
- fs/xfs/linux-2.6/xfs_lrw.c         |    2 +-
- include/asm-generic/fcntl.h        |   25 ++-
- include/linux/ext2_fs.h            |   16 +-
- include/linux/ext3_fs.h            |    2 +
- include/linux/fs.h                 |    2 -
- include/linux/quota.h              |    6 +-
- mm/filemap.c                       |   49 +---
- sound/core/rawmidi.c               |    2 +-
- 51 files changed, 1001 insertions(+), 719 deletions(-)
-
-							Thanks
-								Honza
---=20
+									Honza
+-- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
