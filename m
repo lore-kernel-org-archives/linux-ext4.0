@@ -1,68 +1,60 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: fix sleep inside spinlock issue aka #14739 V2
-Date: Thu, 10 Dec 2009 20:22:16 +0300
-Message-ID: <87bpi6zquv.fsf_-_@openvz.org>
-References: <1260409362-4349-1-git-send-email-dmonakhov@openvz.org>
- <20091210161553.GG26516@atrey.karlin.mff.cuni.cz>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: [PATCH] ext4: Ensure zeroout blocks have no dirty metadata
+Date: Thu, 10 Dec 2009 09:28:28 -0800
+Message-ID: <6601abe90912100928v747671dat489aeee5dabf2c03@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Jan Kara <jack@suse.cz>, cmm@us.ibm.com
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:37000 "EHLO mail.2ka.mipt.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761018AbZLJRWo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Dec 2009 12:22:44 -0500
-Received: from dmon-lp ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru (Sun Java(tm) System Messaging Server 7u2-7.02 64bit
- (built Apr 16 2009)) with ESMTPA id <0KUG00AB45SUAS10@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Thu, 10 Dec 2009 20:26:58 +0300 (MSK)
-In-reply-to: <20091210161553.GG26516@atrey.karlin.mff.cuni.cz>
+Received: from smtp-out.google.com ([216.239.33.17]:20440 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760744AbZLJR2Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2009 12:28:25 -0500
+Received: from kpbe12.cbf.corp.google.com (kpbe12.cbf.corp.google.com [172.25.105.76])
+	by smtp-out.google.com with ESMTP id nBAHST1h019871
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2009 17:28:30 GMT
+Received: from qw-out-1920.google.com (qwc5.prod.google.com [10.241.193.133])
+	by kpbe12.cbf.corp.google.com with ESMTP id nBAHRuK0012489
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2009 09:28:29 -0800
+Received: by qw-out-1920.google.com with SMTP id 5so11170qwc.34
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2009 09:28:28 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This fixes a bug in which new blocks returned from an extent created with
+ext4_ext_zeroout() can have dirty metadata still associated with them.
 
-drop i_block_reservation_lock before vfs_dq_reserve_block().
-this patch fix http://bugzilla.kernel.org/show_bug.cgi?id=14739
-
-changes from previous version:
- - simplify the patch according to Jan's comments
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+	Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 ---
- fs/ext4/inode.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 942e183..2327f7a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1851,6 +1851,7 @@ repeat:
- 
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
- 	total = md_needed + nrblocks;
-+	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 
- 	/*
- 	 * Make quota reservation here to prevent quota overflow
-@@ -1858,12 +1859,10 @@ repeat:
- 	 * time.
- 	 */
- 	if (vfs_dq_reserve_block(inode, total)) {
--		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		return -EDQUOT;
- 	}
- 
- 	if (ext4_claim_free_blocks(sbi, total)) {
--		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		vfs_dq_release_reservation_block(inode, total);
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
- 			yield();
-@@ -1871,10 +1870,11 @@ repeat:
+This is for the problem I reported on 23 Nov ("Bug in extent zeroout: blocks
+not marked as new").  I'm not seeing the corruption with this fix that I was
+seeing without it.
+
+diff -uprN orig/fs/ext4/extents.c new/fs/ext4/extents.c
+--- orig/fs/ext4/extents.c	2009-12-09 15:09:25.000000000 -0800
++++ new/fs/ext4/extents.c	2009-12-09 15:09:37.000000000 -0800
+@@ -2474,9 +2474,21 @@ static int ext4_ext_zeroout(struct inode
+ 		submit_bio(WRITE, bio);
+ 		wait_for_completion(&event);
+
+-		if (test_bit(BIO_UPTODATE, &bio->bi_flags))
++		/* On success, we need to insure all metadata associated
++		 * with each of these blocks is unmapped. */
++		if (test_bit(BIO_UPTODATE, &bio->bi_flags)) {
++			sector_t block = ee_pblock;
++
+ 			ret = 0;
+-		else {
++			done = 0;
++			while (done < len) {
++				unmap_underlying_metadata(inode->i_sb->s_bdev,
++							  block);
++
++				done++;
++				block++;
++			}
++		} else {
+ 			ret = -EIO;
+ 			break;
  		}
- 		return -ENOSPC;
- 	}
-+	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
- 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
