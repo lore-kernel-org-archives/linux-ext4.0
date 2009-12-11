@@ -1,8 +1,7 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/2] fs-writeback: Add helper function to start writeback
- if idle
-Date: Fri, 11 Dec 2009 17:05:13 -0600
-Message-ID: <4B22D029.5090304@redhat.com>
+Subject: [PATCH 2/2] ext4: flush delalloc blocks when space is low
+Date: Fri, 11 Dec 2009 17:07:04 -0600
+Message-ID: <4B22D098.3080600@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -12,61 +11,57 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4, at least, would like to start pushing on writeback if it starts
-to get close to ENOSPC when reserving worst-case blocks for delalloc
-writes.  Writing out delalloc data will convert those worst-case
-predictions into usually smaller actual usage, freeing up space
-before we hit ENOSPC based on this speculation.
+Creating many small files in rapid succession on a small
+filesystem can lead to spurious ENOSPC; on a 104MB filesystem:
 
-Thanks to Jens for the suggestion for the helper function,
-& the naming help.
+for i in `seq 1 22500`; do
+    echo -n > $SCRATCH_MNT/$i
+    echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX > $SCRATCH_MNT/$i
+done
 
-I've made the helper return status on whether writeback was
-started even though I don't plan to use it in the ext4 patch;
-it seems like it would be potentially useful to test this
-in some cases.
+leads to ENOSPC even though after a sync, 40% of the fs is free
+again.
+
+This is because we reserve worst-case metadata for delalloc writes,
+and when data is allocated that worst-case reservation is not
+usually needed.
+
+When freespace is low, kicking off an async writeback will start
+converting that worst-case space usage into something more realistic,
+almost always freeing up space to continue.
+
+This resolves the testcase for me, and survives all 4 generic
+ENOSPC tests in xfstests.
+
+We'll still need a hard synchronous sync to squeeze out the last bit,
+but this fixes things up to a large degree.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 9d5360c..bff5f77 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -1213,6 +1213,23 @@ void writeback_inodes_sb(struct super_block *sb)
- EXPORT_SYMBOL(writeback_inodes_sb);
- 
- /**
-+ * writeback_inodes_sb_if_idle	-	start writeback if none underway
-+ * @sb: the superblock
-+ *
-+ * Invoke writeback_inodes_sb if no writeback is currently underway.
-+ * Returns 1 if writeback was started, 0 if not.
-+ */
-+int writeback_inodes_sb_if_idle(struct super_block *sb)
-+{
-+	if (!writeback_in_progress(sb->s_bdi)) {
-+		writeback_inodes_sb(sb);
-+		return 1;
-+	} else
-+		return 0;
-+}
-+EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5c5bc5d..5b3f468 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3024,11 +3024,18 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 	if (2 * free_blocks < 3 * dirty_blocks ||
+ 		free_blocks < (dirty_blocks + EXT4_FREEBLOCKS_WATERMARK)) {
+ 		/*
+-		 * free block count is less that 150% of dirty blocks
+-		 * or free blocks is less that watermark
++		 * free block count is less than 150% of dirty blocks
++		 * or free blocks is less than watermark
+ 		 */
+ 		return 1;
+ 	}
++	/*
++	 * Even if we don't switch but are nearing capacity,
++	 * start pushing delalloc when 1/2 of free blocks are dirty.
++	 */
++	if (free_blocks < 2 * dirty_blocks)
++		writeback_inodes_sb_if_idle(sb);
 +
-+/**
-  * sync_inodes_sb	-	sync sb inode pages
-  * @sb: the superblock
-  *
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index 66ebddc..dc52482 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -69,6 +69,7 @@ struct writeback_control {
- struct bdi_writeback;
- int inode_wait(void *);
- void writeback_inodes_sb(struct super_block *);
-+int writeback_inodes_sb_if_idle(struct super_block *);
- void sync_inodes_sb(struct super_block *);
- void writeback_inodes_wbc(struct writeback_control *wbc);
- long wb_do_writeback(struct bdi_writeback *wb, int force_wait);
+ 	return 0;
+ }
+ 
 
