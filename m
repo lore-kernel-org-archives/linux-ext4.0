@@ -1,56 +1,72 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: Re: [PATCH] replaced BUG() with return
-	-EIO	from	ext4_ext_get_blocks
-Date: Fri, 11 Dec 2009 14:16:55 -0800
-Message-ID: <1260569815.21896.24.camel@bobble.smo.corp.google.com>
-References: <1260540418-11844-1-git-send-email-surbhi.palande@canonical.com>
-	 <1260554859.21896.8.camel@bobble.smo.corp.google.com>
-	 <4B22A572.5010201@redhat.com>
-	 <1260562923.21896.11.camel@bobble.smo.corp.google.com>
-	 <4B22C393.2090709@canonical.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 1/2] fs-writeback: Add helper function to start writeback
+ if idle
+Date: Fri, 11 Dec 2009 17:05:13 -0600
+Message-ID: <4B22D029.5090304@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: surbhi.palande@canonical.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:8266 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761531AbZLKWRM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Dec 2009 17:17:12 -0500
-In-Reply-To: <4B22C393.2090709@canonical.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 2009-12-12 at 00:11 +0200, Surbhi Palande wrote:
-> Hi Frank,
-> 
-> Frank Mayhar wrote:
-> > On Fri, 2009-12-11 at 14:02 -0600, Eric Sandeen wrote:
-> >   
-> >> My first thought was that this was a bandaid too, but I guess it can
-> >> come about due to on-disk corruption for any reason, so it should
-> >> be handled gracefully, and I suppose this approach seems fine.
-> >>     
-> >
-> > That's why we've been running with it, yes.
-> >
-> >   
-> >> Since this is catching on-disk corruption, though, it'd be better to call
-> >> ext4_error() and let the mount-time error-handling policy decide what to do.
-> >>
-> >> I like having more info but below seems awfully wordy ;)  Maybe the first
-> >> printk would suffice, and switching it to an ext4_error() would be best,
-> >> I think.
-> >>     
-> >
-> > Okay, I'll rework the patch a bit and resubmit it.
-> >   
-> Since I published this patch first against a reported upstream bug, I
-> will work on the comments and resubmit the patch!
+ext4, at least, would like to start pushing on writeback if it starts
+to get close to ENOSPC when reserving worst-case blocks for delalloc
+writes.  Writing out delalloc data will convert those worst-case
+predictions into usually smaller actual usage, freeing up space
+before we hit ENOSPC based on this speculation.
 
-Okay, go for it, thanks.
--- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
+Thanks to Jens for the suggestion for the helper function,
+& the naming help.
+
+I've made the helper return status on whether writeback was
+started even though I don't plan to use it in the ext4 patch;
+it seems like it would be potentially useful to test this
+in some cases.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 9d5360c..bff5f77 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -1213,6 +1213,23 @@ void writeback_inodes_sb(struct super_block *sb)
+ EXPORT_SYMBOL(writeback_inodes_sb);
+ 
+ /**
++ * writeback_inodes_sb_if_idle	-	start writeback if none underway
++ * @sb: the superblock
++ *
++ * Invoke writeback_inodes_sb if no writeback is currently underway.
++ * Returns 1 if writeback was started, 0 if not.
++ */
++int writeback_inodes_sb_if_idle(struct super_block *sb)
++{
++	if (!writeback_in_progress(sb->s_bdi)) {
++		writeback_inodes_sb(sb);
++		return 1;
++	} else
++		return 0;
++}
++EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
++
++/**
+  * sync_inodes_sb	-	sync sb inode pages
+  * @sb: the superblock
+  *
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index 66ebddc..dc52482 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -69,6 +69,7 @@ struct writeback_control {
+ struct bdi_writeback;
+ int inode_wait(void *);
+ void writeback_inodes_sb(struct super_block *);
++int writeback_inodes_sb_if_idle(struct super_block *);
+ void sync_inodes_sb(struct super_block *);
+ void writeback_inodes_wbc(struct writeback_control *wbc);
+ long wb_do_writeback(struct bdi_writeback *wb, int force_wait);
 
