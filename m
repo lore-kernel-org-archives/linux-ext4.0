@@ -1,69 +1,97 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Potential data consistency issue with ASYNC_COMMIT feature
-Date: Fri, 11 Dec 2009 10:01:08 -0600
-Message-ID: <4B226CC4.6020903@redhat.com>
-References: <FA695DF7-1D78-471A-A527-0079C045AF09@linuxhacker.ru> <6375EE02-90AB-442B-B079-E44D0D0FC346@linuxhacker.ru>
+From: Frank Mayhar <fmayhar@google.com>
+Subject: Re: [PATCH] replaced BUG() with return -EIO from
+	ext4_ext_get_blocks
+Date: Fri, 11 Dec 2009 10:07:39 -0800
+Message-ID: <1260554859.21896.8.camel@bobble.smo.corp.google.com>
+References: <1260540418-11844-1-git-send-email-surbhi.palande@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	Alex Zhuravlev <Alex.Zhuravlev@Sun.COM>,
-	Andreas Dilger <adilger@Sun.COM>
-To: Oleg Drokin <green@linuxhacker.ru>
+Cc: linux-ext4@vger.kernel.org
+To: Surbhi Palande <surbhi.palande@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63876 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933160AbZLKQBO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Dec 2009 11:01:14 -0500
-In-Reply-To: <6375EE02-90AB-442B-B079-E44D0D0FC346@linuxhacker.ru>
+Received: from smtp-out.google.com ([216.239.33.17]:6146 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756844AbZLKSHg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Dec 2009 13:07:36 -0500
+In-Reply-To: <1260540418-11844-1-git-send-email-surbhi.palande@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Oleg Drokin wrote:
-> Whoops, nevermind, it seems blkdev_issue_flush after commit does the barrier, I see it now.
-> It's just rhel5 kernel that is affected.
-
-rhel5 necessarily lags upstream, but updates will come.
-
-We still need to do a lot of actual real-world testing of 
-lost caches in -all- ext4 journaling modes, I think.
-
--Eric
-
-> On Dec 11, 2009, at 1:45 AM, Oleg Drokin wrote:
+On Fri, 2009-12-11 at 16:06 +0200, Surbhi Palande wrote:
+> This patch fixes the upstream bug# 14286. When the address of an extent
+> corresponding to a given block is NULL and the tree is being traversed for
+> fetching such an address, a -EIO should be reported instead of a BUG(). This
+> situation should normally not occur. However if it does, then the system
+> should be rendered usable.
 > 
->> Hello!
->>
->>   I think ext4 ASYNC_COMMIT feature is potentially pretty unsafe 
->>   when write-back cache is enabled on the device.
->>   Since no barriers are ever done with this feature even if
->>   the barriers are enabled, we might end up in the situation
->>   where we write the journal blocks, then commit block, they 
->>   hit the device write-back cache, after that actual metadata
->>   blocks would be allowed to go to disk and eventually they will.
->>
->>   In the end the device might decide to reorder some of the
->>   actual metadata updates in front of journal updates and
->>   if metadata updates will hit the disk and a power or other
->>   failure occurs after that, we have inconsistent filesystem
->>   as a result.
->>
->>   I do not see an easy way to remedy the problem in this case
->>   other than to insert empty barrier after the commit block
->>   and wait for it completion, but I think that would negate
->>   the entire gain from this feature. I wish we actually had
->>   real ordered writes implemented, not just barrier/FUA
->>   sent to the device before every ordered buffer.
->>
->>   Am I missing something?
->>
->>   Thanks.
->>
->> Bye,
->>    Oleg
+> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+> ---
+>  fs/ext4/extents.c |    7 ++++++-
+>  1 files changed, 6 insertions(+), 1 deletions(-)
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 3a7928f..51f87f3 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3190,7 +3190,12 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+>  	 * this situation is possible, though, _during_ tree modification;
+>  	 * this is why assert can't be put in ext4_ext_find_extent()
+>  	 */
+> -	BUG_ON(path[depth].p_ext == NULL && depth != 0);
+> +	if (path[depth].p_ext == NULL && depth != 0) {
+> +		err = -EIO;
+> +		printk(KERN_ERR "\n ext4 fs error in %s,%s,%s while reading a block ", \
+> +					__FILE__, __func__, __LINE__);
+> +		goto out2;
+> +	}
+>  	eh = path[depth].p_hdr;
+>  
+>  	ex = path[depth].p_ext;
+
+As it happens, I fixed this locally but, as I considered it a band-aid
+fix at the time, I never pushed it to you guys.  My version of the fix
+is below; it dumps more information before returning the EIO.  I don't
+have a strong preference between the two versions but I would like to
+see the commentary included and the extra information is often useful
+during debugging.
+
+Signed-off-by:  Frank Mayhar <fmayhar@google.com>
+
+ fs/ext4/extents.c |   18 +++++++++++++++++-
+ 1 files changed, 17 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index f7bdd55..7aa0bf6 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2859,8 +2859,24 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	 * consistent leaf must not be empty;
+ 	 * this situation is possible, though, _during_ tree modification;
+ 	 * this is why assert can't be put in ext4_ext_find_extent()
++	 *
++	 * We don't want to panic in this case, as it can lead to a crash
++	 * loop; instead we want to catch the error and abort.
+ 	 */
+-	BUG_ON(path[depth].p_ext == NULL && depth != 0);
++	if (path[depth].p_ext == NULL && depth != 0) {
++		printk(KERN_ERR
++		       "EXT4-fs (%s): corrupt extent node ino %lu iblock %d"
++		       " depth %d pblock %lld\n",
++		       inode->i_sb->s_id, inode->i_ino, iblock, depth,
++		       path[depth].p_block);
++		if (!path[depth].p_hdr)
++			path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
++		printk(KERN_ERR "EXT4-fs (%s): eh_entries %d eh_max %d\n",
++		       inode->i_sb->s_id, path[depth].p_hdr->eh_entries,
++		       path[depth].p_hdr->eh_max);
++		err = -EIO;
++		goto out2;
++	}
+ 	eh = path[depth].p_hdr;
+ 
+ 	ex = path[depth].p_ext;
+-- 
+Frank Mayhar <fmayhar@google.com>
+Google, Inc.
 
