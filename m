@@ -1,112 +1,55 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: Convert to generic reserved quota's space
- management. [V4]
-Date: Fri, 11 Dec 2009 05:41:45 +0300
-Message-ID: <1260499305-6806-2-git-send-email-dmonakhov@openvz.org>
-References: <1260499305-6806-1-git-send-email-dmonakhov@openvz.org>
-Content-Transfer-Encoding: 7BIT
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Oleg Drokin <green@linuxhacker.ru>
+Subject: Re: Potential data consistency issue with ASYNC_COMMIT feature
+Date: Fri, 11 Dec 2009 02:14:01 -0500
+Message-ID: <6375EE02-90AB-442B-B079-E44D0D0FC346@linuxhacker.ru>
+References: <FA695DF7-1D78-471A-A527-0079C045AF09@linuxhacker.ru>
+Mime-Version: 1.0 (Apple Message framework v1077)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Alex Zhuravlev <Alex.Zhuravlev@Sun.COM>,
+	Andreas Dilger <adilger@Sun.COM>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:52776 "EHLO mail.2ka.mipt.ru"
+Received: from linuxhacker.ru ([217.76.32.60]:33290 "EHLO fiona.linuxhacker.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762201AbZLKClc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Dec 2009 21:41:32 -0500
-Received: from localhost.localdomain ([unknown] [10.55.93.124])
- by mail.2ka.mipt.ru
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- with ESMTPA id <0KUG00A0XVPBNE40@mail.2ka.mipt.ru> for
- linux-ext4@vger.kernel.org; Fri, 11 Dec 2009 05:46:26 +0300 (MSK)
-In-reply-to: <1260499305-6806-1-git-send-email-dmonakhov@openvz.org>
+	id S934820AbZLKHOA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Dec 2009 02:14:00 -0500
+In-Reply-To: <FA695DF7-1D78-471A-A527-0079C045AF09@linuxhacker.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch fix write vs chown race condition.
+Whoops, nevermind, it seems blkdev_issue_flush after commit does the barrier, I see it now.
+It's just rhel5 kernel that is affected.
 
-Changes from V2:
- - add missed i_reserved_quota iniatilization.
+On Dec 11, 2009, at 1:45 AM, Oleg Drokin wrote:
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h  |    6 +++++-
- fs/ext4/inode.c |   16 +++++++---------
- fs/ext4/super.c |    3 +++
- 3 files changed, 15 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 26d3cf8..992cecd 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -705,6 +705,10 @@ struct ext4_inode_info {
- 	struct list_head i_aio_dio_complete_list;
- 	/* current io_end structure for async DIO write*/
- 	ext4_io_end_t *cur_aio_dio;
-+#ifdef CONFIG_QUOTA
-+	/* quota space reservation, managed internally by quota code */
-+	qsize_t i_reserved_quota;
-+#endif
- };
- 
- /*
-@@ -1427,7 +1431,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
--extern qsize_t ext4_get_reserved_space(struct inode *inode);
-+extern qsize_t* ext4_get_reserved_space(struct inode *inode);
- extern int flush_aio_dio_completed_IO(struct inode *inode);
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d99173a..78b32f9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1048,17 +1048,12 @@ out:
- 	return err;
- }
- 
--qsize_t ext4_get_reserved_space(struct inode *inode)
-+#ifdef CONFIG_QUOTA
-+qsize_t* ext4_get_reserved_space(struct inode *inode)
- {
--	unsigned long long total;
--
--	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
--	total = EXT4_I(inode)->i_reserved_data_blocks +
--		EXT4_I(inode)->i_reserved_meta_blocks;
--	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
--
--	return (total << inode->i_blkbits);
-+	return &EXT4_I(inode)->i_reserved_quota;
- }
-+#endif
- /*
-  * Calculate the number of metadata blocks need to reserve
-  * to allocate @blocks for non extent file based file
-@@ -5048,6 +5043,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
- 	inode->i_size = ext4_isize(raw_inode);
- 	ei->i_disksize = inode->i_size;
-+#ifdef CONFIG_QUOTA
-+	ei->i_reserved_quota = 0;
-+#endif
- 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
- 	ei->i_block_group = iloc.block_group;
- 	ei->i_last_alloc_group = ~0;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4c87d97..4697272 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -713,6 +713,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	spin_lock_init(&(ei->i_block_reservation_lock));
- 	INIT_LIST_HEAD(&ei->i_aio_dio_complete_list);
- 	ei->cur_aio_dio = NULL;
-+#ifdef CONFIG_QUOTA
-+	ei->i_reserved_quota = 0;
-+#endif
- 
- 	return &ei->vfs_inode;
- }
--- 
-1.6.0.4
+> Hello!
+> 
+>   I think ext4 ASYNC_COMMIT feature is potentially pretty unsafe 
+>   when write-back cache is enabled on the device.
+>   Since no barriers are ever done with this feature even if
+>   the barriers are enabled, we might end up in the situation
+>   where we write the journal blocks, then commit block, they 
+>   hit the device write-back cache, after that actual metadata
+>   blocks would be allowed to go to disk and eventually they will.
+> 
+>   In the end the device might decide to reorder some of the
+>   actual metadata updates in front of journal updates and
+>   if metadata updates will hit the disk and a power or other
+>   failure occurs after that, we have inconsistent filesystem
+>   as a result.
+> 
+>   I do not see an easy way to remedy the problem in this case
+>   other than to insert empty barrier after the commit block
+>   and wait for it completion, but I think that would negate
+>   the entire gain from this feature. I wish we actually had
+>   real ordered writes implemented, not just barrier/FUA
+>   sent to the device before every ordered buffer.
+> 
+>   Am I missing something?
+> 
+>   Thanks.
+> 
+> Bye,
+>    Oleg
 
