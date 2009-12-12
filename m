@@ -1,21 +1,19 @@
-From: rjevskiy@gmail.com
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: [PATCH 1/3] Add unlocked version of inode_add_bytes() function
-Date: Sat, 12 Dec 2009 19:19:45 +0300
-Message-ID: <1260634787-29370-1-git-send-email-rjevskiy@gmail.com>
+Date: Sat, 12 Dec 2009 19:38:51 +0300
+Message-ID: <1260635933-25464-1-git-send-email-dmonakhov@openvz.org>
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f227.google.com ([209.85.218.227]:63285 "HELO
+Received: from mail-bw0-f227.google.com ([209.85.218.227]:58421 "HELO
 	mail-bw0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750943AbZLMBjQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2009 20:39:16 -0500
-Received: by bwz27 with SMTP id 27so1360658bwz.21
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2009 17:39:13 -0800 (PST)
+	with SMTP id S934034AbZLMBop (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2009 20:44:45 -0500
+Received: by bwz27 with SMTP id 27so1361587bwz.21
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2009 17:44:43 -0800 (PST)
 CC: linux-fsdevel@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-From: Dmitry Monakhov <dmonakhov@openvz.org>
 
 Quota code requires unlocked version of this function. Off course
 we can just copy-paste the code, but copy-pasting is always an evil.
