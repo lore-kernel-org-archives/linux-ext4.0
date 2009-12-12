@@ -1,20 +1,20 @@
-From: rjevskiy@gmail.com
+From: Dmitry Monakhov <rjevskiy@gmail.com>
 Subject: [PATCH 2/3] quota: decouple fs reserved space from quota reservation. [V5]
-Date: Sat, 12 Dec 2009 19:28:12 +0300
-Message-ID: <1260635292-19241-1-git-send-email-mov@2ka.mipt.ru>
+Date: Sat, 12 Dec 2009 19:13:05 +0300
+Message-ID: <1260634386-23856-2-git-send-email-dmonakhov@openvz.org>
+References: <1260634386-23856-1-git-send-email-dmonakhov@openvz.org>
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f227.google.com ([209.85.218.227]:52856 "HELO
+Received: from mail-bw0-f227.google.com ([209.85.218.227]:46287 "HELO
 	mail-bw0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S934857AbZLMByQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2009 20:54:16 -0500
-Received: by bwz27 with SMTP id 27so1363157bwz.21
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2009 17:54:13 -0800 (PST)
+	with SMTP id S1754362AbZLMDDe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2009 22:03:34 -0500
+Received: by bwz27 with SMTP id 27so1374145bwz.21
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2009 19:03:32 -0800 (PST)
+In-Reply-To: <1260634386-23856-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-From: Dmitry Monakhov <dmonakhov@openvz.org>
 
 Currently inode_reservation is managed by fs itself and this
 reservation is transfered on dquot_transfer(). This means what
