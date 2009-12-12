@@ -1,70 +1,110 @@
-From: Dmitry Monakhov <rjevskiy@gmail.com>
-Subject: [PATCH 1/3] Add unlocked version of inode_add_bytes() function
-Date: Sat, 12 Dec 2009 19:13:04 +0300
-Message-ID: <1260634386-23856-1-git-send-email-dmonakhov@openvz.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 3/3] ext4: Convert to generic reserved quota's space management. [V5]
+Date: Sat, 12 Dec 2009 19:38:53 +0300
+Message-ID: <1260635933-25464-3-git-send-email-dmonakhov@openvz.org>
+References: <1260635933-25464-1-git-send-email-dmonakhov@openvz.org>
+ <1260635933-25464-2-git-send-email-dmonakhov@openvz.org>
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-bw0-f227.google.com ([209.85.218.227]:51815 "HELO
 	mail-bw0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S933323AbZLMBXp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2009 20:23:45 -0500
-Received: by bwz27 with SMTP id 27so1358073bwz.21
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2009 17:23:43 -0800 (PST)
-CC: linux-fsdevel@vger.kernel.org
+	with SMTP id S933163AbZLMBXs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Dec 2009 20:23:48 -0500
+Received: by mail-bw0-f227.google.com with SMTP id 27so1358073bwz.21
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Dec 2009 17:23:47 -0800 (PST)
+In-Reply-To: <1260635933-25464-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Quota code requires unlocked version of this function. Off course
-we can just copy-paste the code, but copy-pasting is always an evil.
+This patch fix write vs chown race condition.
+
+Changes from V4
+ - Coding style cleanup according to Jan's comment.
+Changes from V2:
+ - add missed i_reserved_quota iniatilization.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/stat.c          |   10 ++++++++--
- include/linux/fs.h |    1 +
- 2 files changed, 9 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h  |    6 +++++-
+ fs/ext4/inode.c |   16 +++++++---------
+ fs/ext4/super.c |    3 +++
+ 3 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/fs/stat.c b/fs/stat.c
-index 075694e..c4ecd52 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -401,9 +401,9 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, char __user *, filename,
- }
- #endif /* __ARCH_WANT_STAT64 */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 26d3cf8..708496f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -705,6 +705,10 @@ struct ext4_inode_info {
+ 	struct list_head i_aio_dio_complete_list;
+ 	/* current io_end structure for async DIO write*/
+ 	ext4_io_end_t *cur_aio_dio;
++#ifdef CONFIG_QUOTA
++	/* quota space reservation, managed internally by quota code */
++	qsize_t i_reserved_quota;
++#endif
+ };
  
--void inode_add_bytes(struct inode *inode, loff_t bytes)
-+/* Caller is here responsible for sufficient locking (ie. inode->i_lock) */
-+void __inode_add_bytes(struct inode *inode, loff_t bytes)
+ /*
+@@ -1427,7 +1431,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+-extern qsize_t ext4_get_reserved_space(struct inode *inode);
++extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int flush_aio_dio_completed_IO(struct inode *inode);
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d99173a..8254fe6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1048,17 +1048,12 @@ out:
+ 	return err;
+ }
+ 
+-qsize_t ext4_get_reserved_space(struct inode *inode)
++#ifdef CONFIG_QUOTA
++qsize_t *ext4_get_reserved_space(struct inode *inode)
  {
--	spin_lock(&inode->i_lock);
- 	inode->i_blocks += bytes >> 9;
- 	bytes &= 511;
- 	inode->i_bytes += bytes;
-@@ -411,6 +411,12 @@ void inode_add_bytes(struct inode *inode, loff_t bytes)
- 		inode->i_blocks++;
- 		inode->i_bytes -= 512;
- 	}
-+}
-+
-+void inode_add_bytes(struct inode *inode, loff_t bytes)
-+{
-+	spin_lock(&inode->i_lock);
-+	__inode_add_bytes(inode, bytes);
- 	spin_unlock(&inode->i_lock);
+-	unsigned long long total;
+-
+-	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-	total = EXT4_I(inode)->i_reserved_data_blocks +
+-		EXT4_I(inode)->i_reserved_meta_blocks;
+-	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+-
+-	return (total << inode->i_blkbits);
++	return &EXT4_I(inode)->i_reserved_quota;
  }
++#endif
+ /*
+  * Calculate the number of metadata blocks need to reserve
+  * to allocate @blocks for non extent file based file
+@@ -5048,6 +5043,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+ 	inode->i_size = ext4_isize(raw_inode);
+ 	ei->i_disksize = inode->i_size;
++#ifdef CONFIG_QUOTA
++	ei->i_reserved_quota = 0;
++#endif
+ 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
+ 	ei->i_block_group = iloc.block_group;
+ 	ei->i_last_alloc_group = ~0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4c87d97..4697272 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -713,6 +713,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
+ 	INIT_LIST_HEAD(&ei->i_aio_dio_complete_list);
+ 	ei->cur_aio_dio = NULL;
++#ifdef CONFIG_QUOTA
++	ei->i_reserved_quota = 0;
++#endif
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2620a8c..98ea200 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2314,6 +2314,7 @@ extern const struct inode_operations page_symlink_inode_operations;
- extern int generic_readlink(struct dentry *, char __user *, int);
- extern void generic_fillattr(struct inode *, struct kstat *);
- extern int vfs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
-+void __inode_add_bytes(struct inode *inode, loff_t bytes);
- void inode_add_bytes(struct inode *inode, loff_t bytes);
- void inode_sub_bytes(struct inode *inode, loff_t bytes);
- loff_t inode_get_bytes(struct inode *inode);
+ 	return &ei->vfs_inode;
+ }
 -- 
 1.6.0.4
 
