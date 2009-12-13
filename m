@@ -1,61 +1,92 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14696] EXT4-fs error (device dm-3): ext4_mb_release_inode_pa:
- free 777, pa_free 778
-Date: Sun, 13 Dec 2009 07:23:30 GMT
-Message-ID: <200912130723.nBD7NUOr028308@demeter.kernel.org>
-References: <bug-14696-13602@http.bugzilla.kernel.org/>
+From: Dmitry Monakhov <rjevskiy@gmail.com>
+Subject: Please ignore all my previous messges
+Date: Sun, 13 Dec 2009 11:25:43 +0300
+Message-ID: <c18d6aa20912130025w775d8dfvcbdd19507c30ce5f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:38779 "HELO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750770AbZLMHXb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Dec 2009 02:23:31 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nBD7NUR5028309
-	for <linux-ext4@vger.kernel.org>; Sun, 13 Dec 2009 07:23:30 GMT
-In-Reply-To: <bug-14696-13602@http.bugzilla.kernel.org/>
+Received: from mail-ew0-f219.google.com ([209.85.219.219]:47447 "HELO
+	mail-ew0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751668AbZLMIZq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Dec 2009 03:25:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14696
+Hello. I'm really sorry. My default smtp server was dead, so i've used
+alternative.
+This result in unexpected problems with mail delivery :(
+Please ignore my spam. Again sorry.
 
-
-
-
-
---- Comment #1 from Krzysztof Oledzki <olel@ans.pl>  2009-12-13 07:23:28 ---
-My fs has just crashed again:
-
-pa ffff88063643b410: logic 1024, phys. 8079360, len 1024
-EXT4-fs error (device dm-3): ext4_mb_release_inode_pa: free 1000, pa_free 1001
-Aborting journal on device dm-3:8.
-Remounting filesystem read-only
-
-# fsck -f /var/sql
-fsck from util-linux-ng 2.16.1
-e2fsck 1.41.9 (22-Aug-2009)
-/dev/mapper/VG0-sql: recovering journal
-Clearing orphaned inode 2975 (uid=60, gid=60, mode=0100600, size=0)
-Clearing orphaned inode 69 (uid=60, gid=60, mode=0100600, size=0)
-Clearing orphaned inode 68 (uid=60, gid=60, mode=0100600, size=0)
-Clearing orphaned inode 67 (uid=60, gid=60, mode=0100600, size=20)
-Clearing orphaned inode 66 (uid=60, gid=60, mode=0100600, size=0)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -8080068
-Fix<y>? yes
-
-
-/dev/mapper/VG0-sql: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/mapper/VG0-sql: 6099/2097152 files (22.8% non-contiguous), 1069002/8388608
-blocks
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+2009/12/12 Dmitry Monakhov <dmonakhov@openvz.org>:
+> Quota code requires unlocked version of this function. Off course
+> we can just copy-paste the code, but copy-pasting is always an evil.
+>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+> =C2=A0fs/stat.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0| =C2=A0 10 +++++++=
++--
+> =C2=A0include/linux/fs.h | =C2=A0 =C2=A01 +
+> =C2=A02 files changed, 9 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/stat.c b/fs/stat.c
+> index 075694e..c4ecd52 100644
+> --- a/fs/stat.c
+> +++ b/fs/stat.c
+> @@ -401,9 +401,9 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, char __user =
+*, filename,
+> =C2=A0}
+> =C2=A0#endif /* __ARCH_WANT_STAT64 */
+>
+> -void inode_add_bytes(struct inode *inode, loff_t bytes)
+> +/* Caller is here responsible for sufficient locking (ie. inode->i_l=
+ock) */
+> +void __inode_add_bytes(struct inode *inode, loff_t bytes)
+> =C2=A0{
+> - =C2=A0 =C2=A0 =C2=A0 spin_lock(&inode->i_lock);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0inode->i_blocks +=3D bytes >> 9;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0bytes &=3D 511;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0inode->i_bytes +=3D bytes;
+> @@ -411,6 +411,12 @@ void inode_add_bytes(struct inode *inode, loff_t=
+ bytes)
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0inode->i_block=
+s++;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0inode->i_bytes=
+ -=3D 512;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> +}
+> +
+> +void inode_add_bytes(struct inode *inode, loff_t bytes)
+> +{
+> + =C2=A0 =C2=A0 =C2=A0 spin_lock(&inode->i_lock);
+> + =C2=A0 =C2=A0 =C2=A0 __inode_add_bytes(inode, bytes);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0spin_unlock(&inode->i_lock);
+> =C2=A0}
+>
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 2620a8c..98ea200 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2314,6 +2314,7 @@ extern const struct inode_operations page_symli=
+nk_inode_operations;
+> =C2=A0extern int generic_readlink(struct dentry *, char __user *, int=
+);
+> =C2=A0extern void generic_fillattr(struct inode *, struct kstat *);
+> =C2=A0extern int vfs_getattr(struct vfsmount *, struct dentry *, stru=
+ct kstat *);
+> +void __inode_add_bytes(struct inode *inode, loff_t bytes);
+> =C2=A0void inode_add_bytes(struct inode *inode, loff_t bytes);
+> =C2=A0void inode_sub_bytes(struct inode *inode, loff_t bytes);
+> =C2=A0loff_t inode_get_bytes(struct inode *inode);
+> --
+> 1.6.0.4
+>
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
