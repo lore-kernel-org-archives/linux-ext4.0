@@ -1,38 +1,32 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH 6/6] ext4: remove unused #include <linux/version.h>
-Date: Mon, 14 Dec 2009 09:26:06 -0500
-Message-ID: <20091214142606.GA8905@thunk.org>
-References: <1260713198-1652-1-git-send-email-weiyi.huang@gmail.com>
+Subject: Re: [PATCH] Ext4: Don't ask about supporting ext2/3 in ext4 if
+ ext4 is not configured
+Date: Mon, 14 Dec 2009 09:30:00 -0500
+Message-ID: <20091214143000.GA4867@thunk.org>
+References: <20091214135546.10111.4495.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Huang Weiyi <weiyi.huang@gmail.com>
+Cc: torvalds@osdl.org, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41624 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:38181 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757424AbZLNO0K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Dec 2009 09:26:10 -0500
+	id S1757440AbZLNOaU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Dec 2009 09:30:20 -0500
 Content-Disposition: inline
-In-Reply-To: <1260713198-1652-1-git-send-email-weiyi.huang@gmail.com>
+In-Reply-To: <20091214135546.10111.4495.stgit@warthog.procyon.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Dec 13, 2009 at 10:06:38PM +0800, Huang Weiyi wrote:
-> Remove unused #include <linux/version.h>('s) in
->   fs/ext4/block_validity.c
+On Mon, Dec 14, 2009 at 01:55:46PM +0000, David Howells wrote:
+> Don't offer to build ext2/3 support into ext4 if ext4 itself is not configured
+> on.
 > 
-> Signed-off-by: Huang Weiyi <weiyi.huang@gmail.com>
-> ---
->  fs/ext4/block_validity.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
+> Signed-off-by: David Howells <dhowells@redhat.com>
 
-I was a tiny bit confused about why the subject line was 6/6; I assume
-there were other related patches for different subsystems for patches
-1-5?
+Whoops, nice catch.  Added to the ext4 patch queue, I'll make sure
+this gets pushed to Linus during the merge window.
 
-I noticed that there was also an unused version.h #include'd in
-fs/ext4/mballoc.h which I also removed at the same time.
-
-Applied to the ext4 patch queue, thanks.
-
-						- Ted
+     	  	    	  	     - Ted
