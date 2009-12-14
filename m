@@ -1,8 +1,8 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 3/4] ext3: Replace lock/unlock_super() with an explicit lock
- for the orphan list
-Date: Mon, 14 Dec 2009 13:00:30 -0600
-Message-ID: <4B268B4E.10100@redhat.com>
+Subject: [PATCH 4/4] ext3: Replace lock/unlock_super() with an explicit lock
+ for resizing
+Date: Mon, 14 Dec 2009 13:01:05 -0600
+Message-ID: <4B268B71.6020207@redhat.com>
 References: <4B268A3C.8060708@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -10,110 +10,171 @@ Content-Transfer-Encoding: 7bit
 Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25883 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64441 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757176AbZLNTA0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Dec 2009 14:00:26 -0500
+	id S932379AbZLNTBB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Dec 2009 14:01:01 -0500
 In-Reply-To: <4B268A3C.8060708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Theodore Ts'o <tytso@mit.edu>
 
-Use a separate lock to protect the orphan list, so we can stop
-overloading the use of lock_super().
+Use a separate lock to protect s_groups_count and the other block
+group descriptors which get changed via an on-line resize operation,
+so we can stop overloading the use of lock_super().
 
-Crossport of 3b9d4ed26680771295d904a6b83e88e620780893
+Crossport of 32ed5058ce90024efcd811254b4b1de0468099df
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/ext3/namei.c            |   20 +++++++++++---------
+ fs/ext3/resize.c           |   35 ++++++++++++++++++-----------------
  fs/ext3/super.c            |    1 +
  include/linux/ext3_fs_sb.h |    1 +
- 3 files changed, 13 insertions(+), 9 deletions(-)
+ 3 files changed, 20 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index aad6400..76d4c58 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -1920,7 +1920,7 @@ int ext3_orphan_add(handle_t *handle, struct inode *inode)
- 	struct ext3_iloc iloc;
- 	int err = 0, rc;
+diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
+index 8359e7b..57a5bc9 100644
+--- a/fs/ext3/resize.c
++++ b/fs/ext3/resize.c
+@@ -209,7 +209,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
  
 -	lock_super(sb);
-+	mutex_lock(&EXT3_SB(sb)->s_orphan_lock);
- 	if (!list_empty(&EXT3_I(inode)->i_orphan))
- 		goto out_unlock;
++	mutex_lock(&sbi->s_resize_lock);
+ 	if (input->group != sbi->s_groups_count) {
+ 		err = -EBUSY;
+ 		goto exit_journal;
+@@ -324,7 +324,7 @@ exit_bh:
+ 	brelse(bh);
  
-@@ -1929,9 +1929,13 @@ int ext3_orphan_add(handle_t *handle, struct inode *inode)
- 
- 	/* @@@ FIXME: Observation from aviro:
- 	 * I think I can trigger J_ASSERT in ext3_orphan_add().  We block
--	 * here (on lock_super()), so race with ext3_link() which might bump
-+	 * here (on s_orphan_lock), so race with ext3_link() which might bump
- 	 * ->i_nlink. For, say it, character device. Not a regular file,
- 	 * not a directory, not a symlink and ->i_nlink > 0.
-+	 *
-+	 * tytso, 4/25/2009: I'm not sure how that could happen;
-+	 * shouldn't the fs core protect us from these sort of
-+	 * unlink()/link() races?
- 	 */
- 	J_ASSERT ((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
- 		S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
-@@ -1968,7 +1972,7 @@ int ext3_orphan_add(handle_t *handle, struct inode *inode)
- 	jbd_debug(4, "orphan inode %lu will point to %d\n",
- 			inode->i_ino, NEXT_ORPHAN(inode));
- out_unlock:
+ exit_journal:
 -	unlock_super(sb);
-+	mutex_unlock(&EXT3_SB(sb)->s_orphan_lock);
- 	ext3_std_error(inode->i_sb, err);
- 	return err;
- }
-@@ -1986,11 +1990,9 @@ int ext3_orphan_del(handle_t *handle, struct inode *inode)
- 	struct ext3_iloc iloc;
- 	int err = 0;
++	mutex_unlock(&sbi->s_resize_lock);
+ 	if ((err2 = ext3_journal_stop(handle)) && !err)
+ 		err = err2;
  
--	lock_super(inode->i_sb);
--	if (list_empty(&ei->i_orphan)) {
--		unlock_super(inode->i_sb);
--		return 0;
--	}
-+	mutex_lock(&EXT3_SB(inode->i_sb)->s_orphan_lock);
-+	if (list_empty(&ei->i_orphan))
-+		goto out;
+@@ -662,11 +662,12 @@ exit_free:
+  * important part is that the new block and inode counts are in the backup
+  * superblocks, and the location of the new group metadata in the GDT backups.
+  *
+- * We do not need lock_super() for this, because these blocks are not
+- * otherwise touched by the filesystem code when it is mounted.  We don't
+- * need to worry about last changing from sbi->s_groups_count, because the
+- * worst that can happen is that we do not copy the full number of backups
+- * at this time.  The resize which changed s_groups_count will backup again.
++ * We do not need take the s_resize_lock for this, because these
++ * blocks are not otherwise touched by the filesystem code when it is
++ * mounted.  We don't need to worry about last changing from
++ * sbi->s_groups_count, because the worst that can happen is that we
++ * do not copy the full number of backups at this time.  The resize
++ * which changed s_groups_count will backup again.
+  */
+ static void update_backups(struct super_block *sb,
+ 			   int blk_off, char *data, int size)
+@@ -825,7 +826,7 @@ int ext3_group_add(struct super_block *sb, struct ext3_new_group_data *input)
+ 		goto exit_put;
+ 	}
  
- 	ino_next = NEXT_ORPHAN(inode);
- 	prev = ei->i_orphan.prev;
-@@ -2040,7 +2042,7 @@ int ext3_orphan_del(handle_t *handle, struct inode *inode)
- out_err:
- 	ext3_std_error(inode->i_sb, err);
- out:
--	unlock_super(inode->i_sb);
-+	mutex_unlock(&EXT3_SB(inode->i_sb)->s_orphan_lock);
- 	return err;
+-	lock_super(sb);
++	mutex_lock(&sbi->s_resize_lock);
+ 	if (input->group != sbi->s_groups_count) {
+ 		ext3_warning(sb, __func__,
+ 			     "multiple resizers run on filesystem!");
+@@ -856,7 +857,7 @@ int ext3_group_add(struct super_block *sb, struct ext3_new_group_data *input)
+ 	/*
+ 	 * OK, now we've set up the new group.  Time to make it active.
+ 	 *
+-	 * Current kernels don't lock all allocations via lock_super(),
++	 * We do not lock all allocations via s_resize_lock
+ 	 * so we have to be safe wrt. concurrent accesses the group
+ 	 * data.  So we need to be careful to set all of the relevant
+ 	 * group descriptor data etc. *before* we enable the group.
+@@ -900,12 +901,12 @@ int ext3_group_add(struct super_block *sb, struct ext3_new_group_data *input)
+ 	 *
+ 	 * The precise rules we use are:
+ 	 *
+-	 * * Writers of s_groups_count *must* hold lock_super
++	 * * Writers of s_groups_count *must* hold s_resize_lock
+ 	 * AND
+ 	 * * Writers must perform a smp_wmb() after updating all dependent
+ 	 *   data and before modifying the groups count
+ 	 *
+-	 * * Readers must hold lock_super() over the access
++	 * * Readers must hold s_resize_lock over the access
+ 	 * OR
+ 	 * * Readers must perform an smp_rmb() after reading the groups count
+ 	 *   and before reading any dependent data.
+@@ -936,7 +937,7 @@ int ext3_group_add(struct super_block *sb, struct ext3_new_group_data *input)
+ 	ext3_journal_dirty_metadata(handle, sbi->s_sbh);
  
- out_brelse:
+ exit_journal:
+-	unlock_super(sb);
++	mutex_unlock(&sbi->s_resize_lock);
+ 	if ((err2 = ext3_journal_stop(handle)) && !err)
+ 		err = err2;
+ 	if (!err) {
+@@ -973,7 +974,7 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+ 
+ 	/* We don't need to worry about locking wrt other resizers just
+ 	 * yet: we're going to revalidate es->s_blocks_count after
+-	 * taking lock_super() below. */
++	 * taking the s_resize_lock below. */
+ 	o_blocks_count = le32_to_cpu(es->s_blocks_count);
+ 	o_groups_count = EXT3_SB(sb)->s_groups_count;
+ 
+@@ -1045,11 +1046,11 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+ 		goto exit_put;
+ 	}
+ 
+-	lock_super(sb);
++	mutex_lock(&EXT3_SB(sb)->s_resize_lock);
+ 	if (o_blocks_count != le32_to_cpu(es->s_blocks_count)) {
+ 		ext3_warning(sb, __func__,
+ 			     "multiple resizers run on filesystem!");
+-		unlock_super(sb);
++		mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
+ 		ext3_journal_stop(handle);
+ 		err = -EBUSY;
+ 		goto exit_put;
+@@ -1059,13 +1060,13 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+ 						 EXT3_SB(sb)->s_sbh))) {
+ 		ext3_warning(sb, __func__,
+ 			     "error %d on journal write access", err);
+-		unlock_super(sb);
++		mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
+ 		ext3_journal_stop(handle);
+ 		goto exit_put;
+ 	}
+ 	es->s_blocks_count = cpu_to_le32(o_blocks_count + add);
+ 	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
+-	unlock_super(sb);
++	mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
+ 	ext3_debug("freeing blocks %lu through "E3FSBLK"\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	ext3_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
 diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 602b308..534557c 100644
+index 534557c..53d3c53 100644
 --- a/fs/ext3/super.c
 +++ b/fs/ext3/super.c
-@@ -1890,6 +1890,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	sb->dq_op = &ext3_quota_operations;
+@@ -1891,6 +1891,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
  #endif
  	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
-+	mutex_init(&sbi->s_orphan_lock);
+ 	mutex_init(&sbi->s_orphan_lock);
++	mutex_init(&sbi->s_resize_lock);
  
  	sb->s_root = NULL;
  
 diff --git a/include/linux/ext3_fs_sb.h b/include/linux/ext3_fs_sb.h
-index f07f34d..dd61d83 100644
+index dd61d83..258088a 100644
 --- a/include/linux/ext3_fs_sb.h
 +++ b/include/linux/ext3_fs_sb.h
-@@ -72,6 +72,7 @@ struct ext3_sb_info {
- 	struct inode * s_journal_inode;
+@@ -73,6 +73,7 @@ struct ext3_sb_info {
  	struct journal_s * s_journal;
  	struct list_head s_orphan;
-+	struct mutex s_orphan_lock;
+ 	struct mutex s_orphan_lock;
++	struct mutex s_resize_lock;
  	unsigned long s_commit_interval;
  	struct block_device *journal_bdev;
  #ifdef CONFIG_JBD_DEBUG
