@@ -1,45 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14286] kernel BUG at fs/ext4/extents.c:2863
-Date: Mon, 14 Dec 2009 15:39:35 GMT
-Message-ID: <200912141539.nBEFdZjq017464@demeter.kernel.org>
-References: <bug-14286-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/5] ext4: Convert to generic reserved quota's space
+ management. [V5]
+Date: Mon, 14 Dec 2009 18:26:13 +0100
+Message-ID: <20091214172613.GF4731@quack.suse.cz>
+References: <1260793276-8511-1-git-send-email-dmonakhov@openvz.org>
+ <1260793276-8511-2-git-send-email-dmonakhov@openvz.org>
+ <1260793276-8511-3-git-send-email-dmonakhov@openvz.org>
+ <20091214143551.GC4867@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52988 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754999AbZLNPjf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Dec 2009 10:39:35 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id nBEFdZOL017465
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2009 15:39:35 GMT
-In-Reply-To: <bug-14286-13602@http.bugzilla.kernel.org/>
+Received: from cantor2.suse.de ([195.135.220.15]:53705 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932305AbZLNRzu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Dec 2009 12:55:50 -0500
+Content-Disposition: inline
+In-Reply-To: <20091214143551.GC4867@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14286
+On Mon 14-12-09 09:35:51, tytso@mit.edu wrote:
+> On Mon, Dec 14, 2009 at 03:21:14PM +0300, Dmitry Monakhov wrote:
+> > This patch fix write vs chown race condition.
+> > 
+> > Changes from V4
+> >  - Coding style cleanup according to Jan's comment.
+> > Changes from V2:
+> >  - add missed i_reserved_quota iniatilization.
+> > 
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> 
+> Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> Jan, I assume you'll push this along with the other quota-related
+> changes out from your tree?  We have some ext4-related quota bugs that
+> I think may be related to this fix (and a bunch of distros are
+> planning on using 2.6.32), so if you could review this and get pushed
+> this patch series pushed out for 2.6.32 it would be appreciated,
+> thanks.
+  Yes, I'll push it via my tree and take care of pushing into 2.6.32 stable
+tree as well.
 
-
-Theodore Tso <tytso@mit.edu> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |ASSIGNED
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |tytso@mit.edu
-                   |g                           |
-
-
-
-
---- Comment #5 from Theodore Tso <tytso@mit.edu>  2009-12-14 15:39:32 ---
-Created an attachment (id=24181)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=24181)
-Patch to fix this problem
-
-Surbhi Palande has supplied the following patch to address this issue
-
+									Honza
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
