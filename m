@@ -1,35 +1,90 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Potential data consistency issue with ASYNC_COMMIT feature
-Date: Wed, 16 Dec 2009 21:33:03 +0100
-Message-ID: <20091216203303.GA28425@atrey.karlin.mff.cuni.cz>
-References: <FA695DF7-1D78-471A-A527-0079C045AF09@linuxhacker.ru> <6375EE02-90AB-442B-B079-E44D0D0FC346@linuxhacker.ru> <20091211205254.GH31139@thunk.org>
+Subject: Re: [PATCH 1/2] fs-writeback: Add helper function to start writeback if idle
+Date: Wed, 16 Dec 2009 21:44:09 +0100
+Message-ID: <20091216204409.GB28425@atrey.karlin.mff.cuni.cz>
+References: <4B22D029.5090304@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Oleg Drokin <green@linuxhacker.ru>, linux-ext4@vger.kernel.org,
-	Alex Zhuravlev <Alex.Zhuravlev@Sun.COM>,
-	Andreas Dilger <adilger@Sun.COM>
-To: tytso@mit.edu
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:60228 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:56157 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753992AbZLPUdH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Dec 2009 15:33:07 -0500
+	with ESMTP id S964844AbZLPUoK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Dec 2009 15:44:10 -0500
 Content-Disposition: inline
-In-Reply-To: <20091211205254.GH31139@thunk.org>
+In-Reply-To: <4B22D029.5090304@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> However, journal checksums failed horribly when we tried to enable
-> them by default during the last merge window, because of bugs in ext4
-> where we were modifying certain metadata blocks (in particular
-> superblock and xattr's) without journalling them.  (Note to self; we
-> need to back port those fixes to ext3; the lack of journalling in
-> xattr in particular could mean that in some cases we could lose some
-> updates that could affect SELINUX after a crash.)
-  Already done by Eric and merged ;): d965736b8cb42ae51ba9c3f13488035a98d025c6,
-b918397542388de75bd86c32fbfa820e5d629fa9.
+> ext4, at least, would like to start pushing on writeback if it starts
+> to get close to ENOSPC when reserving worst-case blocks for delalloc
+> writes.  Writing out delalloc data will convert those worst-case
+> predictions into usually smaller actual usage, freeing up space
+> before we hit ENOSPC based on this speculation.
+> 
+> Thanks to Jens for the suggestion for the helper function,
+> & the naming help.
+> 
+> I've made the helper return status on whether writeback was
+> started even though I don't plan to use it in the ext4 patch;
+> it seems like it would be potentially useful to test this
+> in some cases.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+  The patch looks good.
+Acked-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+> 
+> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> index 9d5360c..bff5f77 100644
+> --- a/fs/fs-writeback.c
+> +++ b/fs/fs-writeback.c
+> @@ -1213,6 +1213,23 @@ void writeback_inodes_sb(struct super_block *sb)
+>  EXPORT_SYMBOL(writeback_inodes_sb);
+>  
+>  /**
+> + * writeback_inodes_sb_if_idle	-	start writeback if none underway
+> + * @sb: the superblock
+> + *
+> + * Invoke writeback_inodes_sb if no writeback is currently underway.
+> + * Returns 1 if writeback was started, 0 if not.
+> + */
+> +int writeback_inodes_sb_if_idle(struct super_block *sb)
+> +{
+> +	if (!writeback_in_progress(sb->s_bdi)) {
+> +		writeback_inodes_sb(sb);
+> +		return 1;
+> +	} else
+> +		return 0;
+> +}
+> +EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+> +
+> +/**
+>   * sync_inodes_sb	-	sync sb inode pages
+>   * @sb: the superblock
+>   *
+> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+> index 66ebddc..dc52482 100644
+> --- a/include/linux/writeback.h
+> +++ b/include/linux/writeback.h
+> @@ -69,6 +69,7 @@ struct writeback_control {
+>  struct bdi_writeback;
+>  int inode_wait(void *);
+>  void writeback_inodes_sb(struct super_block *);
+> +int writeback_inodes_sb_if_idle(struct super_block *);
+>  void sync_inodes_sb(struct super_block *);
+>  void writeback_inodes_wbc(struct writeback_control *wbc);
+>  long wb_do_writeback(struct bdi_writeback *wb, int force_wait);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SuSE CR Labs
