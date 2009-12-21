@@ -1,65 +1,48 @@
-From: Liuwenyi <qingshenlwy@gmail.com>
-Subject: [PATCHv2 05/12]posix_acl: Add the check items
-Date: Mon, 21 Dec 2009 19:57:19 +0800
-Message-ID: <4B2F629F.1000401@gmail.com>
-Reply-To: qingshenlwy@gmail.com
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCHv2 00/12]posix_acl: Add the check items
+Date: Mon, 21 Dec 2009 13:36:54 +0100
+Message-ID: <20091221123654.GA9201__37381.0922181748$1261399205$gmane$org@lst.de>
+References: <4B2F6153.8010609@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
-To: tytso@mit.edu, adilger@sun.com, viro@zeniv.linux.org.uk,
-	jmorris@namei.org, joel.becker@oracle.com, serue@us.ibm.com,
-	hch@lst.de, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f171.google.com ([209.85.222.171]:36504 "EHLO
-	mail-pz0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753753AbZLULyM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Dec 2009 06:54:12 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger@sun.com, jack@suse.cz, neilb@suse.de, jeffm@suse.com,
+        bfields@fieldses.org, linux-mtd@lists.infradead.org,
+        onlyflyer@gmail.com, hch@lst.de, tiger.yang@oracle.com,
+        strongzgy@gmail.com, ffilzlnx@us.ibm.com, sandeen@sandeen.net,
+        jmorris@namei.org, cluster-devel@redhat.com, aelder@sgi.com,
+        cjb@laptop.org, bharrosh@panasas.com, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, xfs-masters@oss.sgi.com, viro@zeniv.linux.org.uk,
+        chris.mason@oracle.com, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, tytso@mit.edu, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, serue@us.ibm.com, dwmw2@infradead.orgã,
+        ocfs2-devel@oss.oracle.com
+To: Liuwenyi <qingshenlwy@gmail.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <4B2F6153.8010609@gmail.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-move the ACL validation check in to fs/posix_acl.c.
-Including nullpointer check and PTR_ERR check.
+I like taking these checks into posix_acl_valid, but I think the patch
+submission needs a bit more work.
 
----
-Signed-off-by: Liuwenyi <qingshenlwy@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: James Morris <jmorris@namei.org>
-Cc: Joel Becker <joel.becker@oracle.com>
-Cc: Serge Hallyn <serue@us.ibm.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+All the patches are extremly whitespace mangled.  And I don't think
+splitting them up makes a whole lot of sense, when we do API changes
+like this we usually fix up all callers.  So please try to fix your
+mailer, merged them all into one, and maybe also chose a more
+descriptive subject line, e.g.
 
----
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 8a2a29d..aeb41ca 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -430,13 +430,11 @@ ext4_xattr_set_acl(struct dentry *dentry, const
-char *name, const void *value,
-
-if (value) {
-acl = posix_acl_from_xattr(value, size);
-- if (IS_ERR(acl))
-- return PTR_ERR(acl);
-- else if (acl) {
-- error = posix_acl_valid(acl);
-- if (error)
-- goto release_and_out;
-- }
-+
-+ error = posix_acl_valid(acl);
-+ if (error)
-+ goto release_and_out;
-+
-} else
-acl = NULL;
+Subject: take checks for NULL and error pointers into posix_acl_valid()
 
 
--- 
-Best Regards,
-Liuwenyi
-
+And btw, at least the XFS change seems incorrect - previously we
+returned NULL acl pointer and this patch changes it to -EINVAL.
