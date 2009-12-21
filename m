@@ -1,29 +1,55 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: Add module aliases for ext2 and ext3
-Date: Mon, 21 Dec 2009 10:56:39 -0500
-Message-ID: <20091221155639.GI4887@thunk.org>
-References: <s5h6380lfr2.wl%tiwai@suse.de>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCHv2 00/12]posix_acl: Add the check items
+Date: Mon, 21 Dec 2009 13:36:54 +0100
+Message-ID: <20091221123654.GA9201__41342.0190722265$1261412983$gmane$org@lst.de>
+References: <4B2F6153.8010609@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Takashi Iwai <tiwai@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38746 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756109AbZLUP4n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Dec 2009 10:56:43 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@sun.com, jack@suse.cz, neilb@suse.de, jeffm@suse.com,
+        joel.becker@oracle.com, bfields@fieldses.org,
+        linux-mtd@lists.infradead.org, onlyflyer@gmail.com, hch@lst.de,
+        tiger.yang@oracle.com, strongzgy@gmail.com, ffilzlnx@us.ibm.com,
+        sandeen@sandeen.net, jmorris@namei.org, cluster-devel@redhat.com,
+        aelder@sgi.com, cjb@laptop.org, mfasheh@suse.com, bharrosh@panasas.com,
+        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+        xfs-masters@oss.sgi.com, viro@zeniv.linux.org.uk, swhiteho@redhat.com,
+        chris.mason@oracle.com, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, tytso@mit.edu, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, serue@us.ibm.com, dwmw2@infradead.orgã,
+        ocfs2-devel@oss.oracle.com
+To: Liuwenyi <qingshenlwy@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <s5h6380lfr2.wl%tiwai@suse.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4B2F6153.8010609@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 21, 2009 at 12:37:37PM +0100, Takashi Iwai wrote:
-> Add module aliases for ext2 and ext3 when CONFIG_EXT4_USE_FOR_EXT23 is
-> set.  This makes the existing user-space stuff like mkinitrd working
-> as is.
-> 
-> Signed-off-by: Takashi Iwai <tiwai@suse.de>
+I like taking these checks into posix_acl_valid, but I think the patch
+submission needs a bit more work.
 
-Thanks, added to the ext4 patch queue.
+All the patches are extremly whitespace mangled.  And I don't think
+splitting them up makes a whole lot of sense, when we do API changes
+like this we usually fix up all callers.  So please try to fix your
+mailer, merged them all into one, and maybe also chose a more
+descriptive subject line, e.g.
 
-						- Ted
+Subject: take checks for NULL and error pointers into posix_acl_valid()
+
+
+And btw, at least the XFS change seems incorrect - previously we
+returned NULL acl pointer and this patch changes it to -EINVAL.
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
