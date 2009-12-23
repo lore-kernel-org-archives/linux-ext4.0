@@ -1,15 +1,15 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/5] ext4: Fix potential quota deadlock
-Date: Wed, 23 Dec 2009 18:27:55 +0100
-Message-ID: <1261589276-1380-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/5] ext4: Convert to generic reserved quota's space management.
+Date: Wed, 23 Dec 2009 18:27:54 +0100
+Message-ID: <1261589276-1380-4-git-send-email-jack@suse.cz>
 References: <1261589276-1380-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
 	Dmitry Monakhov <dmonakhov@openvz.org>, Jan Kara <jack@suse.cz>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52964 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:52957 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754427AbZLWR2E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754398AbZLWR2E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 23 Dec 2009 12:28:04 -0500
 In-Reply-To: <1261589276-1380-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,244 +17,102 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-We have to delay vfs_dq_claim_space() until allocation context destruction.
-Currently we have following call-trace:
-ext4_mb_new_blocks()
-  /* task is already holding ac->alloc_semp */
- ->ext4_mb_mark_diskspace_used
-    ->vfs_dq_claim_space()  /*  acquire dqptr_sem here. Possible deadlock */
- ->ext4_mb_release_context() /* drop ac->alloc_semp here */
+This patch also fixes write vs chown race condition.
 
-Let's move quota claiming to ext4_da_update_reserve_space()
-
- =======================================================
- [ INFO: possible circular locking dependency detected ]
- 2.6.32-rc7 #18
- -------------------------------------------------------
- write-truncate-/3465 is trying to acquire lock:
-  (&s->s_dquot.dqptr_sem){++++..}, at: [<c025e73b>] dquot_claim_space+0x3b/0x1b0
-
- but task is already holding lock:
-  (&meta_group_info[i]->alloc_sem){++++..}, at: [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
-
- which lock already depends on the new lock.
-
- the existing dependency chain (in reverse order) is:
-
- -> #3 (&meta_group_info[i]->alloc_sem){++++..}:
-        [<c017d04b>] __lock_acquire+0xd7b/0x1260
-        [<c017d5ea>] lock_acquire+0xba/0xd0
-        [<c0527191>] down_read+0x51/0x90
-        [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
-        [<c02d0c1c>] ext4_mb_free_blocks+0x46c/0x870
-        [<c029c9d3>] ext4_free_blocks+0x73/0x130
-        [<c02c8cfc>] ext4_ext_truncate+0x76c/0x8d0
-        [<c02a8087>] ext4_truncate+0x187/0x5e0
-        [<c01e0f7b>] vmtruncate+0x6b/0x70
-        [<c022ec02>] inode_setattr+0x62/0x190
-        [<c02a2d7a>] ext4_setattr+0x25a/0x370
-        [<c022ee81>] notify_change+0x151/0x340
-        [<c021349d>] do_truncate+0x6d/0xa0
-        [<c0221034>] may_open+0x1d4/0x200
-        [<c022412b>] do_filp_open+0x1eb/0x910
-        [<c021244d>] do_sys_open+0x6d/0x140
-        [<c021258e>] sys_open+0x2e/0x40
-        [<c0103100>] sysenter_do_call+0x12/0x32
-
- -> #2 (&ei->i_data_sem){++++..}:
-        [<c017d04b>] __lock_acquire+0xd7b/0x1260
-        [<c017d5ea>] lock_acquire+0xba/0xd0
-        [<c0527191>] down_read+0x51/0x90
-        [<c02a5787>] ext4_get_blocks+0x47/0x450
-        [<c02a74c1>] ext4_getblk+0x61/0x1d0
-        [<c02a7a7f>] ext4_bread+0x1f/0xa0
-        [<c02bcddc>] ext4_quota_write+0x12c/0x310
-        [<c0262d23>] qtree_write_dquot+0x93/0x120
-        [<c0261708>] v2_write_dquot+0x28/0x30
-        [<c025d3fb>] dquot_commit+0xab/0xf0
-        [<c02be977>] ext4_write_dquot+0x77/0x90
-        [<c02be9bf>] ext4_mark_dquot_dirty+0x2f/0x50
-        [<c025e321>] dquot_alloc_inode+0x101/0x180
-        [<c029fec2>] ext4_new_inode+0x602/0xf00
-        [<c02ad789>] ext4_create+0x89/0x150
-        [<c0221ff2>] vfs_create+0xa2/0xc0
-        [<c02246e7>] do_filp_open+0x7a7/0x910
-        [<c021244d>] do_sys_open+0x6d/0x140
-        [<c021258e>] sys_open+0x2e/0x40
-        [<c0103100>] sysenter_do_call+0x12/0x32
-
- -> #1 (&sb->s_type->i_mutex_key#7/4){+.+...}:
-        [<c017d04b>] __lock_acquire+0xd7b/0x1260
-        [<c017d5ea>] lock_acquire+0xba/0xd0
-        [<c0526505>] mutex_lock_nested+0x65/0x2d0
-        [<c0260c9d>] vfs_load_quota_inode+0x4bd/0x5a0
-        [<c02610af>] vfs_quota_on_path+0x5f/0x70
-        [<c02bc812>] ext4_quota_on+0x112/0x190
-        [<c026345a>] sys_quotactl+0x44a/0x8a0
-        [<c0103100>] sysenter_do_call+0x12/0x32
-
- -> #0 (&s->s_dquot.dqptr_sem){++++..}:
-        [<c017d361>] __lock_acquire+0x1091/0x1260
-        [<c017d5ea>] lock_acquire+0xba/0xd0
-        [<c0527191>] down_read+0x51/0x90
-        [<c025e73b>] dquot_claim_space+0x3b/0x1b0
-        [<c02cb95f>] ext4_mb_mark_diskspace_used+0x36f/0x380
-        [<c02d210a>] ext4_mb_new_blocks+0x34a/0x530
-        [<c02c83fb>] ext4_ext_get_blocks+0x122b/0x13c0
-        [<c02a5966>] ext4_get_blocks+0x226/0x450
-        [<c02a5ff3>] mpage_da_map_blocks+0xc3/0xaa0
-        [<c02a6ed6>] ext4_da_writepages+0x506/0x790
-        [<c01de272>] do_writepages+0x22/0x50
-        [<c01d766d>] __filemap_fdatawrite_range+0x6d/0x80
-        [<c01d7b9b>] filemap_flush+0x2b/0x30
-        [<c02a40ac>] ext4_alloc_da_blocks+0x5c/0x60
-        [<c029e595>] ext4_release_file+0x75/0xb0
-        [<c0216b59>] __fput+0xf9/0x210
-        [<c0216c97>] fput+0x27/0x30
-        [<c02122dc>] filp_close+0x4c/0x80
-        [<c014510e>] put_files_struct+0x6e/0xd0
-        [<c01451b7>] exit_files+0x47/0x60
-        [<c0146a24>] do_exit+0x144/0x710
-        [<c0147028>] do_group_exit+0x38/0xa0
-        [<c0159abc>] get_signal_to_deliver+0x2ac/0x410
-        [<c0102849>] do_notify_resume+0xb9/0x890
-        [<c01032d2>] work_notifysig+0x13/0x21
-
- other info that might help us debug this:
-
- 3 locks held by write-truncate-/3465:
-  #0:  (jbd2_handle){+.+...}, at: [<c02e1f8f>] start_this_handle+0x38f/0x5c0
-  #1:  (&ei->i_data_sem){++++..}, at: [<c02a57f6>] ext4_get_blocks+0xb6/0x450
-  #2:  (&meta_group_info[i]->alloc_sem){++++..}, at: [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
-
- stack backtrace:
- Pid: 3465, comm: write-truncate- Not tainted 2.6.32-rc7 #18
- Call Trace:
-  [<c0524cb3>] ? printk+0x1d/0x22
-  [<c017ac9a>] print_circular_bug+0xca/0xd0
-  [<c017d361>] __lock_acquire+0x1091/0x1260
-  [<c016bca2>] ? sched_clock_local+0xd2/0x170
-  [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
-  [<c017d5ea>] lock_acquire+0xba/0xd0
-  [<c025e73b>] ? dquot_claim_space+0x3b/0x1b0
-  [<c0527191>] down_read+0x51/0x90
-  [<c025e73b>] ? dquot_claim_space+0x3b/0x1b0
-  [<c025e73b>] dquot_claim_space+0x3b/0x1b0
-  [<c02cb95f>] ext4_mb_mark_diskspace_used+0x36f/0x380
-  [<c02d210a>] ext4_mb_new_blocks+0x34a/0x530
-  [<c02c601d>] ? ext4_ext_find_extent+0x25d/0x280
-  [<c02c83fb>] ext4_ext_get_blocks+0x122b/0x13c0
-  [<c016bca2>] ? sched_clock_local+0xd2/0x170
-  [<c016be60>] ? sched_clock_cpu+0x120/0x160
-  [<c016beef>] ? cpu_clock+0x4f/0x60
-  [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
-  [<c052712c>] ? down_write+0x8c/0xa0
-  [<c02a5966>] ext4_get_blocks+0x226/0x450
-  [<c016be60>] ? sched_clock_cpu+0x120/0x160
-  [<c016beef>] ? cpu_clock+0x4f/0x60
-  [<c017908b>] ? trace_hardirqs_off+0xb/0x10
-  [<c02a5ff3>] mpage_da_map_blocks+0xc3/0xaa0
-  [<c01d69cc>] ? find_get_pages_tag+0x16c/0x180
-  [<c01d6860>] ? find_get_pages_tag+0x0/0x180
-  [<c02a73bd>] ? __mpage_da_writepage+0x16d/0x1a0
-  [<c01dfc4e>] ? pagevec_lookup_tag+0x2e/0x40
-  [<c01ddf1b>] ? write_cache_pages+0xdb/0x3d0
-  [<c02a7250>] ? __mpage_da_writepage+0x0/0x1a0
-  [<c02a6ed6>] ext4_da_writepages+0x506/0x790
-  [<c016beef>] ? cpu_clock+0x4f/0x60
-  [<c016bca2>] ? sched_clock_local+0xd2/0x170
-  [<c016be60>] ? sched_clock_cpu+0x120/0x160
-  [<c016be60>] ? sched_clock_cpu+0x120/0x160
-  [<c02a69d0>] ? ext4_da_writepages+0x0/0x790
-  [<c01de272>] do_writepages+0x22/0x50
-  [<c01d766d>] __filemap_fdatawrite_range+0x6d/0x80
-  [<c01d7b9b>] filemap_flush+0x2b/0x30
-  [<c02a40ac>] ext4_alloc_da_blocks+0x5c/0x60
-  [<c029e595>] ext4_release_file+0x75/0xb0
-  [<c0216b59>] __fput+0xf9/0x210
-  [<c0216c97>] fput+0x27/0x30
-  [<c02122dc>] filp_close+0x4c/0x80
-  [<c014510e>] put_files_struct+0x6e/0xd0
-  [<c01451b7>] exit_files+0x47/0x60
-  [<c0146a24>] do_exit+0x144/0x710
-  [<c017b163>] ? lock_release_holdtime+0x33/0x210
-  [<c0528137>] ? _spin_unlock_irq+0x27/0x30
-  [<c0147028>] do_group_exit+0x38/0xa0
-  [<c017babb>] ? trace_hardirqs_on+0xb/0x10
-  [<c0159abc>] get_signal_to_deliver+0x2ac/0x410
-  [<c0102849>] do_notify_resume+0xb9/0x890
-  [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
-  [<c017b163>] ? lock_release_holdtime+0x33/0x210
-  [<c0165b50>] ? autoremove_wake_function+0x0/0x50
-  [<c017ba54>] ? trace_hardirqs_on_caller+0x134/0x190
-  [<c017babb>] ? trace_hardirqs_on+0xb/0x10
-  [<c0300ba4>] ? security_file_permission+0x14/0x20
-  [<c0215761>] ? vfs_write+0x131/0x190
-  [<c0214f50>] ? do_sync_write+0x0/0x120
-  [<c0103115>] ? sysenter_do_call+0x27/0x32
-  [<c01032d2>] work_notifysig+0x13/0x21
-
-CC: Theodore Ts'o <tytso@mit.edu>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c   |    9 +++++++--
- fs/ext4/mballoc.c |    6 ------
- 2 files changed, 7 insertions(+), 8 deletions(-)
+ fs/ext4/ext4.h  |    6 +++++-
+ fs/ext4/inode.c |   17 ++++++++---------
+ fs/ext4/super.c |    5 +++++
+ 3 files changed, 18 insertions(+), 10 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9714db3..daff7d1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -653,6 +653,10 @@ struct ext4_inode_info {
+ 	__u16 i_extra_isize;
+ 
+ 	spinlock_t i_block_reservation_lock;
++#ifdef CONFIG_QUOTA
++	/* quota space reservation, managed internally by quota code */
++	qsize_t i_reserved_quota;
++#endif
+ };
+ 
+ /*
+@@ -1377,7 +1381,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+-extern qsize_t ext4_get_reserved_space(struct inode *inode);
++extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ 
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 620ccd5..9307f4b 100644
+index f9c642b..620ccd5 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1064,7 +1064,7 @@ static int ext4_calc_metadata_amount(struct inode *inode, int blocks)
- static void ext4_da_update_reserve_space(struct inode *inode, int used)
+@@ -1020,17 +1020,13 @@ out:
+ 	return err;
+ }
+ 
+-qsize_t ext4_get_reserved_space(struct inode *inode)
++#ifdef CONFIG_QUOTA
++qsize_t *ext4_get_reserved_space(struct inode *inode)
  {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	int total, mdb, mdb_free;
-+	int total, mdb, mdb_free, mdb_claim = 0;
- 
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	/* recalculate the number of metablocks still need to be reserved */
-@@ -1077,7 +1077,9 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
- 
- 	if (mdb_free) {
- 		/* Account for allocated meta_blocks */
--		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
-+		mdb_claim = EXT4_I(inode)->i_allocated_meta_blocks;
-+		BUG_ON(mdb_free < mdb_claim);
-+		mdb_free -= mdb_claim;
- 
- 		/* update fs dirty blocks counter */
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
-@@ -1088,8 +1090,11 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
- 	/* update per-inode reservations */
- 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
- 	EXT4_I(inode)->i_reserved_data_blocks -= used;
-+	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used + mdb_claim);
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 
-+	vfs_dq_claim_block(inode, used + mdb_claim);
+-	unsigned long long total;
+-
+-	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-	total = EXT4_I(inode)->i_reserved_data_blocks +
+-		EXT4_I(inode)->i_reserved_meta_blocks;
+-	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+-
+-	return total;
++	return &EXT4_I(inode)->i_reserved_quota;
+ }
++#endif
 +
- 	/*
- 	 * free those over-booking quota for metadata blocks
- 	 */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index cd25846..bb14b05 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3018,12 +3018,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
- 		/* release all the reserved blocks if non delalloc */
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
--	else {
--		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
--						ac->ac_b_ex.fe_len);
--		/* convert reserved quota blocks to real quota blocks */
--		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
--	}
+ /*
+  * Calculate the number of metadata blocks need to reserve
+  * to allocate @blocks for non extent file based file
+@@ -4369,6 +4365,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+ 	inode->i_size = ext4_isize(raw_inode);
+ 	ei->i_disksize = inode->i_size;
++#ifdef CONFIG_QUOTA
++	ei->i_reserved_quota = 0;
++#endif
+ 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
+ 	ei->i_block_group = iloc.block_group;
+ 	ei->i_last_alloc_group = ~0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8f4f079..f281c5d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -682,6 +682,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_allocated_meta_blocks = 0;
+ 	ei->i_delalloc_reserved_flag = 0;
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
++#ifdef CONFIG_QUOTA
++	ei->i_reserved_quota = 0;
++#endif
  
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
+ 	return &ei->vfs_inode;
+ }
+@@ -969,7 +972,9 @@ static struct dquot_operations ext4_quota_operations = {
+ 	.reserve_space	= dquot_reserve_space,
+ 	.claim_space	= dquot_claim_space,
+ 	.release_rsv	= dquot_release_reserved_space,
++#ifdef CONFIG_QUOTA
+ 	.get_reserved_space = ext4_get_reserved_space,
++#endif
+ 	.alloc_inode	= dquot_alloc_inode,
+ 	.free_space	= dquot_free_space,
+ 	.free_inode	= dquot_free_inode,
 -- 
 1.6.4.2
 
