@@ -1,63 +1,53 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bug 14843] New: WARNING: at mm/page_alloc.c at ext4 root mount
-Date: Tue, 22 Dec 2009 15:39:36 -0800
-Message-ID: <20091222153936.269e8153.akpm@linux-foundation.org>
-References: <bug-14843-27@http.bugzilla.kernel.org/>
+From: Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
+Subject: RE: About strange behaviour of ext4 allocation algorithm
+Date: Wed, 23 Dec 2009 13:52:48 +0300
+Message-ID: <41BA663C8B2F72499F48B0EF991C188E0478A366D3@RU-EXSTRCL1.ru.corp.acronis.com>
+References: <41BA663C8B2F72499F48B0EF991C188E047890DF84@RU-EXSTRCL1.ru.corp.acronis.com>
+ <E1904714-A014-422C-91BF-E39E736285CD@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:45840 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750892AbZLVXjj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Dec 2009 18:39:39 -0500
-Received: from imap1.linux-foundation.org (imap1.linux-foundation.org [140.211.169.55])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id nBMNdb2x011476
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Dec 2009 15:39:38 -0800
-Received: from akpm.mtv.corp.google.com (localhost [127.0.0.1])
-	by imap1.linux-foundation.org (8.13.5.20060308/8.13.5/Debian-3ubuntu1.1) with SMTP id nBMNdaNN031170
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Dec 2009 15:39:37 -0800
-In-Reply-To: <bug-14843-27@http.bugzilla.kernel.org/>
+Received: from edge1.acronis.com ([91.195.23.132]:19720 "EHLO
+	edge1.acronis.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753952AbZLWKxH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Dec 2009 05:53:07 -0500
+In-Reply-To: <E1904714-A014-422C-91BF-E39E736285CD@sun.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 19 Dec 2009 16:12:52 GMT
-bugzilla-daemon@bugzilla.kernel.org wrote:
+ 
 
-> http://bugzilla.kernel.org/show_bug.cgi?id=14843
-> 
->            Summary: WARNING: at mm/page_alloc.c at ext4 root mount
->            Product: Memory Management
->            Version: 2.5
->     Kernel Version: 2.6.33-rc1
->           Platform: All
->         OS/Version: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: Page Allocator
->         AssignedTo: akpm@linux-foundation.org
->         ReportedBy: casteyde.christian@free.fr
->         Regression: Yes
-> 
-> 
-> Kernel 2.6.33-rc1 64bits with kmemcheck and other debug options
-> Athlon64 3GHz single core
-> Acer Aspire 1511LMi
-> Bluewhite 64 13 (32 bits port of Slackware)
-> 
-> Since 2.6.33-rc1, I get the following warning at boot when the root ext4
-> filesystem is mounted:
-> kmemleak: Automatic memory scanning thread started
-> EXT3-fs (hda2): error: couldn't mount because of unsupported optional features
-> (240)
-> EXT2-fs (hda2): error: couldn't mount because of unsupported optional features
-> (240)
-> ------------[ cut here ]------------
-> WARNING: at mm/page_alloc.c:1220 get_page_from_freelist+0x6a4/0x6c0()
+> -----Original Message-----
+> From: Andreas.Dilger@sun.com [mailto:Andreas.Dilger@sun.com] On Behalf Of Andreas Dilger
+> Sent: Wednesday, December 23, 2009 1:25 AM
+> To: Dubeyko, Vyacheslav
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: About strange behaviour of ext4 allocation algorithm
+>
+> On 2009-12-22, at 03:42, Vyacheslav Dubeyko wrote:
+>> I think that I found some strange behaviour in ext4 allocation 
+>> algorithm. Maybe I wrong or use not actual code but such allocation 
+>> policy is strange from my point of view.
+>
+> What kernel version are you using?  I know Ted has looked into some allocation problems, specifically related to uninitialized groups, but I don't know 
+> when they were fixed.
 
-Can we please zap that __GFP_NOFAIL in journal_init_common()?
+I use kernel: 2.6.29.4-167.fc11.i686.PAE #1 SMP Wed May 27 17:28:22 EDT 2009 i686 i686 i386 GNU/Linux.
+
+>> First of all, I has created ext4 volume of 100 Mb in size (mkfs.ext4 
+>> -b 1024 -L ext4 /dev/sdb1).
+>
+> If you delete your file, without reformatting the filesystem, and then re-run the test, does it produce the same results?  If not, then it is likely you are 
+> seeing the problem with uninitialized groups that was fixed a month or two ago.
+
+After deletion of the file and re-run test (without reformatting the filesystem) I have slightly different extents' tree. Index block (depth of the tree = 1) has changed place and several extents has another sizes. But nature of the extents' sequence is the same.
+
+--
+Vyacheslav Dubeyko <Vyacheslav.Dubeyko@acronis.com>
+Acronis
+--
+
