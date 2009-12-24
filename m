@@ -1,75 +1,90 @@
-From: Teran McKinney <sega01@gmail.com>
+From: pg_jf2@jf2.for.sabi.co.UK (Peter Grandi)
 Subject: Re: benchmark results
-Date: Thu, 24 Dec 2009 12:59:20 +0000
-Message-ID: <b245135e0912240459j3ca92827sc69bb4665f60d8c3@mail.gmail.com>
+Date: Thu, 24 Dec 2009 13:05:39 +0000
+Message-ID: <19251.26403.762180.228181@tree.ty.sabi.co.uk>
 References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net,
-	ext-users <ext3-users@redhat.com>, linux-nilfs@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+	jfs-discussion@lists.sourceforge.net, ext-users <ext3-users@redhat.com>,
+	linu
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
 In-Reply-To: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
-Sender: reiserfs-devel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Which I/O scheduler are you using? Pretty sure that ReiserFS is a
-little less deadlocky with CFQ or another over deadline, but that
-deadline usually gives the best results for me (especially for JFS).
+> I've had the chance to use a testsystem here and couldn't
+> resist
 
-Thanks,
-Teran
+Unfortunately there seems to be an overproduction of rather
+meaningless file system "benchmarks"...
 
-On Thu, Dec 24, 2009 at 10:31, Christian Kujau <lists@nerdbynature.de> =
-wrote:
-> I've had the chance to use a testsystem here and couldn't resist runn=
-ing a
-> few benchmark programs on them: bonnie++, tiobench, dbench and a few
-> generic ones (cp/rm/tar/etc...) on ext{234}, btrfs, jfs, ufs, xfs, zf=
-s.
->
-> All with standard mkfs/mount options and +noatime for all of them.
->
-> Here are the results, no graphs - sorry:
-> =C2=A0 http://nerdbynature.de/benchmarks/v40z/2009-12-22/
->
-> Reiserfs is locking up during dbench, so I removed it from the
-> config, here are some earlier results:
->
-> =C2=A0 http://nerdbynature.de/benchmarks/v40z/2009-12-21/bonnie.html
->
-> Bonnie++ couldn't complete on nilfs2, only the generic tests
-> and tiobench were run. As nilfs2, ufs, zfs aren't supporting xattr, d=
-bench
-> could not be run on these filesystems.
->
+> running a few benchmark programs on them: bonnie++, tiobench,
+> dbench and a few generic ones (cp/rm/tar/etc...) on ext{234},
+> btrfs, jfs, ufs, xfs, zfs. All with standard mkfs/mount options
+> and +noatime for all of them.
+
+> Here are the results, no graphs - sorry: [ ... ]
+
+After having a glance, I suspect that your tests could be
+enormously improved, and doing so would reduce the pointlessness of
+the results.
+
+A couple of hints:
+
+* In the "generic" test the 'tar' test bandwidth is exactly the
+  same ("276.68 MB/s") for nearly all filesystems.
+
+* There are read transfer rates higher than the one reported by
+  'hdparm' which is "66.23 MB/sec" (comically enough *all* the
+  read transfer rates your "benchmarks" report are higher).
+
+BTW the use of Bonnie++ is also usually a symptom of a poor
+misunderstanding of file system benchmarking.
+
+On the plus side, test setup context is provided in the "env"
+directory, which is rare enough to be commendable.
+
 > Short summary, AFAICT:
-> =C2=A0 =C2=A0- btrfs, ext4 are the overall winners
-> =C2=A0 =C2=A0- xfs to, but creating/deleting many files was *very* sl=
-ow
-> =C2=A0 =C2=A0- if you need only fast but no cool features or journali=
-ng, ext2
-> =C2=A0 =C2=A0 =C2=A0is still a good choice :)
->
-> Thanks,
-> Christian.
-> --
-> BOFH excuse #84:
->
-> Someone is standing on the ethernet cable, causing a kink in the cabl=
-e
-> --
-> To unsubscribe from this list: send the line "unsubscribe reiserfs-de=
-vel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
->
---
-To unsubscribe from this list: send the line "unsubscribe reiserfs-deve=
-l" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>     - btrfs, ext4 are the overall winners
+>     - xfs to, but creating/deleting many files was *very* slow
+
+Maybe, and these conclusions are sort of plausible (but I prefer
+JFS and XFS for different reasons); however they are not supported
+by your results as they seem to me to lack much meaning, as what is
+being measured is far from clear, and in particular it does not
+seem to be the file system performance, or anyhow an aspect of
+filesystem performance that might relate to common usage.
+
+I think that it is rather better to run a few simple operations
+(like the "generic" test) properly (unlike the "generic" test), to
+give a feel for how well implemented are the basic operations of
+the file system design.
+
+Profiling a file system performance with a meaningful full scale
+benchmark is a rather difficult task requiring great intellectual
+fortitude and lots of time.
+
+>     - if you need only fast but no cool features or
+>       journaling, ext2 is still a good choice :)
+
+That is however a generally valid conclusion, but with a very,
+very important qualification: for freshly loaded filesystems.
+Also with several other important qualifications, but "freshly
+loaded" is a pet peeve of mine :-).
+
+------------------------------------------------------------------------------
+This SF.Net email is sponsored by the Verizon Developer Community
+Take advantage of Verizon's best-in-class app development support
+A streamlined, 14 day to market process makes app distribution fast and easy
+Join now and get one step closer to millions of Verizon customers
+http://p.sf.net/sfu/verizon-dev2dev 
