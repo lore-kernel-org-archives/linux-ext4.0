@@ -1,75 +1,70 @@
-From: tytso@mit.edu
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Thu, 24 Dec 2009 16:27:56 -0500
-Message-ID: <20091224212756.GM21594@thunk.org>
-References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
- <19251.26403.762180.228181@tree.ty.sabi.co.uk>
+From: Alexander Beregalov <a.beregalov@gmail.com>
+Subject: 2.6.33-rc1: kernel BUG at fs/ext4/inode.c:1063 (sparc)
+Date: Fri, 25 Dec 2009 01:28:34 +0300
+Message-ID: <a4423d670912241428n6917d2adsad887548612cf8ce@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net,
-	ext-users <ext3-users@redhat.com>, linux-nilfs@vger.kernel.org
-To: Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <19251.26403.762180.228181@tree.ty.sabi.co.uk>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ey-out-2122.google.com ([74.125.78.24]:26453 "EHLO
+	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755585AbZLXW2g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Dec 2009 17:28:36 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 24, 2009 at 01:05:39PM +0000, Peter Grandi wrote:
-> > I've had the chance to use a testsystem here and couldn't
-> > resist
-> 
-> Unfortunately there seems to be an overproduction of rather
-> meaningless file system "benchmarks"...
+Hi
 
-One of the problems is that very few people are interested in writing
-or maintaining file system benchmarks, except for file system
-developers --- but many of them are more interested in developing (and
-unfortunately, in some cases, promoting) their file systems than they
-are in doing a good job maintaining a good set of benchmarks.  Sad but
-true...
+Kernel is 2.6.33-rc1-00366-g2f99f5c
+Ext4 mounts ext3 filesystem
 
-> * In the "generic" test the 'tar' test bandwidth is exactly the
->   same ("276.68 MB/s") for nearly all filesystems.
-> 
-> * There are read transfer rates higher than the one reported by
->   'hdparm' which is "66.23 MB/sec" (comically enough *all* the
->   read transfer rates your "benchmarks" report are higher).
 
-If you don't do a "sync" after the tar, then in most cases you will be
-measuring the memory bandwidth, because data won't have been written
-to disk.  Worse yet, it tends to skew the results of the what happens
-afterwards (*especially* if you aren't running the steps of the
-benchmark in a script).
 
-> BTW the use of Bonnie++ is also usually a symptom of a poor
-> misunderstanding of file system benchmarking.
-
-Dbench is also a really nasty benchmark.  If it's tuned correctly, you
-are measuring memory bandwidth and the hard drive light will never go
-on.  :-) The main reason why it was interesting was that it and tbench
-was used to model a really bad industry benchmark, netbench, which at
-one point a number of years ago I/T managers used to decide which CIFS
-server they would buy[1].  So it was useful for Samba developers who were
-trying to do competitive benchmkars, but it's not a very accurate
-benchmark for measuring real-life file system workloads.
-
-[1] http://samba.org/ftp/tridge/dbench/README
-
-> On the plus side, test setup context is provided in the "env"
-> directory, which is rare enough to be commendable.
-
-Absolutely.  :-)
-
-Another good example of well done file system benchmarks can be found
-at http://btrfs.boxacle.net; it's done by someone who does performance
-benchmarks for a living.  Note that JFS and XFS come off much better
-on a number of the tests --- and that there is a *large* number amount
-of variation when you look at different simulated workloads and with a
-varying number of threads writing to the file system at the same time.
-
-Regards,
-
-	       	  	  	     	 - Ted
+kernel BUG at fs/ext4/inode.c:1063!
+              \|/ ____ \|/
+              "@'/ .. \`@"
+              /_| \__/ |_\
+                 \__U_/
+flush-8:0(1137): Kernel bad sw trap 5 [#1]
+TSTATE: 0000000080001603 TPC: 0000000000544fb4 TNPC: 0000000000544fb8
+Y: 00000000    Not tainted
+TPC: <ext4_get_blocks+0x3f4/0x400>
+g0: fffff800dc862fe0 g1: 0000000000000001 g2: 0000000000000001 g3:
+fffff800dc85f9c1
+g4: fffff800df305880 g5: 2e68006800002e68 g6: fffff800dc860000 g7:
+0000000000833e08
+o0: 00000000007b0cb8 o1: 0000000000000427 o2: 0000000000000040 o3:
+0000000000000040
+o4: fffff800dc8630a0 o5: 000000000000000d sp: fffff800dc8628d1 ret_pc:
+0000000000544fac
+RPC: <ext4_get_blocks+0x3ec/0x400>
+l0: 0000000000000002 l1: fffff800c2674000 l2: fffff800c26740d0 l3:
+0000000000000001
+l4: fffff800df39d2d0 l5: 00000000000003f9 l6: 0006000000000000 l7:
+0000000000001ffe
+i0: 0000000000000040 i1: fffff800c2674130 i2: 000000000000064c i3:
+fffff800c26745a8
+i4: fffff800dc863308 i5: 0000000000000003 i6: fffff800dc8629a1 i7:
+0000000000545380
+I7: <mpage_da_map_blocks+0x80/0x800>
+Disabling lock debugging due to kernel taint
+Caller[0000000000545380]: mpage_da_map_blocks+0x80/0x800
+Caller[00000000005461c0]: mpage_add_bh_to_extent+0x40/0x100
+Caller[000000000054642c]: __mpage_da_writepage+0x1ac/0x220
+Caller[00000000004a951c]: write_cache_pages+0x19c/0x380
+Caller[0000000000545d7c]: ext4_da_writepages+0x27c/0x680
+Caller[00000000004a978c]: do_writepages+0x2c/0x60
+Caller[00000000004f94cc]: writeback_single_inode+0xcc/0x3c0
+Caller[00000000004fa3d8]: writeback_inodes_wb+0x338/0x500
+Caller[00000000004fa6e8]: wb_writeback+0x148/0x220
+Caller[00000000004fab00]: wb_do_writeback+0x240/0x260
+Caller[00000000004fab8c]: bdi_writeback_task+0x6c/0xc0
+Caller[00000000004b6f50]: bdi_start_fn+0x70/0xe0
+Caller[000000000047030c]: kthread+0x6c/0x80
+Caller[000000000042bc9c]: kernel_thread+0x3c/0x60
+Caller[0000000000470408]: kthreadd+0xe8/0x160
+Instruction DUMP: 92102427  7ffb95a5  901220b8 <91d02005> 01000000
+01000000  9de3bf40  11002096  a4100018
+note: flush-8:0[1137] exited with preempt_count 1
