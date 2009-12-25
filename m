@@ -1,64 +1,43 @@
 From: tytso@mit.edu
 Subject: Re: [Jfs-discussion] benchmark results
-Date: Fri, 25 Dec 2009 11:11:46 -0500
-Message-ID: <20091225161146.GC32757@thunk.org>
+Date: Fri, 25 Dec 2009 11:14:53 -0500
+Message-ID: <20091225161453.GD32757@thunk.org>
 References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
  <19251.26403.762180.228181@tree.ty.sabi.co.uk>
  <20091224212756.GM21594@thunk.org>
- <20091224234631.GA1028@ioremap.net>
+ <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>, xfs@oss.sgi.com,
 	reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-btrfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
 	ext-users <ext3-users@redhat.com>, linux-nilfs@vger.kernel.org
-To: Evgeniy Polyakov <zbr@ioremap.net>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+To: Christian Kujau <lists@nerdbynature.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:59134 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754004AbZLYQPG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Dec 2009 11:15:06 -0500
 Content-Disposition: inline
-In-Reply-To: <20091224234631.GA1028@ioremap.net>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 25, 2009 at 02:46:31AM +0300, Evgeniy Polyakov wrote:
-> > [1] http://samba.org/ftp/tridge/dbench/README
+On Thu, Dec 24, 2009 at 05:52:34PM -0800, Christian Kujau wrote:
 > 
-> Was not able to resist to write a small notice, what no matter what, but
-> whatever benchmark is running, it _does_ show system behaviour in one
-> or another condition. And when system behaves rather badly, it is quite
-> a common comment, that benchmark was useless. But it did show that
-> system has a problem, even if rarely triggered one :)
+> Well, I do "sync" after each operation, so the data should be on disk, but 
+> that doesn't mean it'll clear the filesystem buffers - but this doesn't 
+> happen that often in the real world too. Also, all filesystem were tested 
+> equally (I hope), yet some filesystem perform better than another - even 
+> if all the content copied/tar'ed/removed would perfectly well fit into the 
+> machines RAM.
 
-If people are using benchmarks to improve file system, and a benchmark
-shows a problem, then trying to remedy the performance issue is a good
-thing to do, of course.  Sometimes, though the case which is
-demonstrated by a poor benchmark is an extremely rare corner case that
-doesn't accurately reflect common real-life workloads --- and if
-addressing it results in a tradeoff which degrades much more common
-real-life situations, then that would be a bad thing.
+Did you include the "sync" in part of what you timed?  Peter was quite
+right --- the fact that the measured bandwidth in your "cp" test is
+five times faster than the disk bandwidth as measured by hdparm, and
+many file systems had exactly the same bandwidth, makes me very
+suspicious that what was being measured was primarily memory bandwidth
+--- and not very useful when trying to measure file system
+performance.
 
-In situations where benchmarks are used competitively, it's rare that
-it's actually a *problem*.  Instead it's much more common that a
-developer is trying to prove that their file system is *better* to
-gullible users who think that a single one-dimentional number is
-enough for them to chose file system X over file system Y.
-
-For example, if I wanted to play that game and tell people that ext4
-is better, I'd might pick this graph:
-
-http://btrfs.boxacle.net/repository/single-disk/2.6.29-rc2/2.6.29-rc2/2.6.29-rc2_Mail_server_simulation._num_threads=32.html
-
-On the other hand, this one shows ext4 as the worst compared to all
-other file systems:
-
-http://btrfs.boxacle.net/repository/single-disk/2.6.29-rc2/2.6.29-rc2/2.6.29-rc2_Large_file_random_writes_odirect._num_threads=8.html
-
-Benchmarking, like statistics, can be extremely deceptive, and if
-people do things like carefully order a tar file so the files are
-optimal for a file system, it's fair to ask whether that's a common
-thing for people to be doing (either unpacking tarballs or unpacking
-tarballs whose files have been carefully ordered for a particular file
-systems).  When it's the only number used by a file system developer
-when trying to convince users they should use their file system, at
-least in my humble opinion it becomes murderously dishonest.
-
-						- Ted
+    	 	     	       	       	    - Ted
