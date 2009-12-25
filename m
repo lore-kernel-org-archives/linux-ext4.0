@@ -1,64 +1,47 @@
-From: Larry McVoy <lm@bitmover.com>
+From: tytso@mit.edu
 Subject: Re: [Jfs-discussion] benchmark results
-Date: Fri, 25 Dec 2009 08:22:38 -0800
-Message-ID: <20091225162238.GB19303@bitmover.com>
+Date: Fri, 25 Dec 2009 11:33:41 -0500
+Message-ID: <20091225163341.GE32757__23960.8821728782$1261758852$gmane$org@thunk.org>
 References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
-	<19251.26403.762180.228181@tree.ty.sabi.co.uk>
-	<20091224212756.GM21594@thunk.org>
-	<alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de>
-	<20091225161453.GD32757@thunk.org>
+ <19251.26403.762180.228181@tree.ty.sabi.co.uk>
+ <20091224212756.GM21594@thunk.org>
+ <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de>
+ <20091225161453.GD32757@thunk.org>
+ <20091225162238.GB19303@bitmover.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>,
-        reiserfs-devel@vger.kernel.org, ext-users <ext3-users@redhat.com>,
-        xfs@oss.sgi.com, linux-btrfs@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+To: Larry McVoy <lm@bitmover.com>,
+	Christian Kujau <lists@nerdbynature.de>,
+	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+	xfs@oss.sgi.com, reiserfs-devel@vger.kernel.
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:53226 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754004AbZLYQd6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Dec 2009 11:33:58 -0500
 Content-Disposition: inline
-In-Reply-To: <20091225161453.GD32757@thunk.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20091225162238.GB19303@bitmover.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 25, 2009 at 11:14:53AM -0500, tytso@mit.edu wrote:
-> On Thu, Dec 24, 2009 at 05:52:34PM -0800, Christian Kujau wrote:
-> > 
-> > Well, I do "sync" after each operation, so the data should be on disk, but 
-> > that doesn't mean it'll clear the filesystem buffers - but this doesn't 
-> > happen that often in the real world too. Also, all filesystem were tested 
-> > equally (I hope), yet some filesystem perform better than another - even 
-> > if all the content copied/tar'ed/removed would perfectly well fit into the 
-> > machines RAM.
+On Fri, Dec 25, 2009 at 08:22:38AM -0800, Larry McVoy wrote:
 > 
-> Did you include the "sync" in part of what you timed?  Peter was quite
-> right --- the fact that the measured bandwidth in your "cp" test is
-> five times faster than the disk bandwidth as measured by hdparm, and
-> many file systems had exactly the same bandwidth, makes me very
-> suspicious that what was being measured was primarily memory bandwidth
-> --- and not very useful when trying to measure file system
-> performance.
+> Dudes, sync() doesn't flush the fs cache, you have to unmount for that.
+> Once upon a time Linux had an ioctl() to flush the fs buffers, I used
+> it in lmbench.  
+> 
+> 	ioctl(fd, BLKFLSBUF, 0);
+> 
+> No idea if that is still supported, but sync() is a joke for benchmarking.
 
-Dudes, sync() doesn't flush the fs cache, you have to unmount for that.
-Once upon a time Linux had an ioctl() to flush the fs buffers, I used
-it in lmbench.  
+Depends on what you are trying to do (flush has multiple meanings, so
+using can be ambiguous).  BLKFLSBUF will write out any dirty buffers,
+*and* empty the buffer cache.  I use it when benchmarking e2fsck
+optimization.  It doesn't do anything for the page cache.  If you are
+measuring the time to write a file, using fsync() or sync() will
+include the time to actually write the data to disk.  It won't empty
+caches, though; if you are going to measure read as well as writes,
+then you'll probably want to do something like "echo 3 >
+/proc/sys/vm/drop-caches".
 
-	ioctl(fd, BLKFLSBUF, 0);
-
-No idea if that is still supported, but sync() is a joke for benchmarking.
--- 
----
-Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+						- Ted
