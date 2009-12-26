@@ -1,82 +1,79 @@
-From: tytso@mit.edu
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Sat, 26 Dec 2009 14:19:16 -0500
-Message-ID: <20091226191916.GI32757@thunk.org>
-References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
- <19251.26403.762180.228181@tree.ty.sabi.co.uk>
- <20091224212756.GM21594@thunk.org>
- <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de>
- <20091225161453.GD32757@thunk.org>
- <20091225162238.GB19303@bitmover.com>
- <alpine.DEB.2.01.0912251042540.3483@bogon.housecafe.de>
- <4B36333B.3030600@hp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christian Kujau <lists@nerdbynature.de>,
-	Larry McVoy <lm@bitmover.com>,
-	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-	xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
-	Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>,
-	ext-users <ext3-users@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org
-To: jim owens <jowens@hp.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4B36333B.3030600@hp.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for v2.6.33
+Date: Sat, 26 Dec 2009 15:37:37 -0500
+Message-ID: <E1NOdOL-0001s1-4J@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:33208 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750988AbZLZUhl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Dec 2009 15:37:41 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 26, 2009 at 11:00:59AM -0500, jim owens wrote:
-> Christian Kujau wrote:
->  
-> > I was using "sync" to make sure that the data "should" be on the disks 
-> 
-> Good, but not good enough for many tests... info sync
-> 
-> CONFORMING TO
->        POSIX.2
-> 
-> NOTES
->        On Linux, sync is only guaranteed to  schedule  the  dirty  blocks  for
->        writing;  it  can  actually take a short time before all the blocks are
->        finally written.
-> 
-> This is consistent with all the feels-like-unix OSes I have used.
+Hi Linus,
 
-Actually, Linux's sync does more than just schedule the writes; it has
-for quite some time:
+Please pull from:
 
-static void sync_filesystems(int wait)
-{
-	...
-}
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-SYSCALL_DEFINE0(sync)
-{
-	wakeup_flusher_threads(0);
-	sync_filesystems(0);
-	sync_filesystems(1);
-	if (unlikely(laptop_mode))
-	   laptop_sync_completion();
-	   return 0;
-}
+to grab the following bug fixes for v2.6.33.
 
-At least for ext3 and ext4, we will even do a device barrier operation
-as a restult of a call to sb->s_op->sync_fs() --- which is called by
-__sync_filesystem, which is called in turn by sync_filesystems().
-This isn't done for all file systems, though, as near as I can tell.
-(Ext2 at least doesn't.)
+Thanks!!
 
-But for quite some time, under Linux the sync(2) system call will wait
-for the blocks to be flushed out to HBA, although we currently don't
-wait for the blocks to have been committed to the platters (at least
-not for all file systems).   
+							- Ted
 
-Applications shouldn't depend on this, of course, since POSIX and
-other legacy Unix systems don't guarantee this.  But in terms of
-knowing what Linux does, the man page is a bit out of date.
+ Documentation/filesystems/ext4.txt |    2 +-
+ fs/ext4/Kconfig                    |    1 +
+ fs/ext4/block_validity.c           |    1 -
+ fs/ext4/extents.c                  |   31 ++++++++++++++++++++++++++++---
+ fs/ext4/fsync.c                    |   16 ++++++++++++++--
+ fs/ext4/inode.c                    |   14 ++++++++++----
+ fs/ext4/mballoc.h                  |    1 -
+ fs/ext4/super.c                    |    6 ++++--
+ fs/ext4/xattr.c                    |    2 ++
+ fs/fs-writeback.c                  |   17 +++++++++++++++++
+ fs/jbd2/checkpoint.c               |   15 +++++++++++++++
+ fs/jbd2/commit.c                   |   19 +++++++++++--------
+ fs/jbd2/journal.c                  |    5 +++--
+ include/linux/jbd2.h               |    1 +
+ include/linux/writeback.h          |    1 +
+ 15 files changed, 108 insertions(+), 24 deletions(-)
 
-Best regards,
+Andrew Morton (2):
+      ext4: fix unsigned long long printk warning in super.c
+      jbd2: don't use __GFP_NOFAIL in journal_init_common()
 
-					- Ted
+Curt Wohlgemuth (1):
+      ext4: Ensure zeroout blocks have no dirty metadata
+
+David Howells (1):
+      ext4: Don't ask about supporting ext2/3 in ext4 if ext4 is not configured
+
+Eric Sandeen (2):
+      fs-writeback: Add helper function to start writeback if idle
+      ext4: flush delalloc blocks when space is low
+
+Fang Wenqi (1):
+      ext4: Update documentation to correct the inode_readahead_blks option name
+
+Huang Weiyi (1):
+      ext4: remove unused #include <linux/version.h>
+
+Julia Lawall (1):
+      ext4: Eliminate potential double free on error path
+
+Richard Kennedy (1):
+      ext4: return correct wbc.nr_to_write in ext4_da_writepages
+
+Surbhi Palande (1):
+      ext4: replace BUG() with return -EIO in ext4_ext_get_blocks
+
+Theodore Ts'o (2):
+      ext4: add module aliases for ext2 and ext3
+      ext4, jbd2: Add barriers for file systems with exernal journals
+
+Yin, Kangkai (1):
+      jbd2: /sys/kernel/debug/jbd2/jbd2-debug should be writable.
 
