@@ -1,178 +1,214 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: [RFC PATCH 1/4] ext4: DIO get_block code cleanup
-Date: Sun, 27 Dec 2009 01:24:07 -0800
-Message-ID: <5df78e1d0912270124k4d20a1afgc2237fe9b29b24e9@mail.gmail.com>
-References: <5df78e1d0912151737v3be07575k638edf744e59ee2f@mail.gmail.com>
-	 <20091226070303.GH32757@thunk.org>
+From: Vikram Noel Ambrose <noel.ambrose@gmail.com>
+Subject: PROBLEM: Random deadlock - 2.6.33-rc2
+Date: Sun, 27 Dec 2009 12:26:33 -0500
+Message-ID: <4B3798C9.50704@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Michael Rubin <mrubin@google.com>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:39463 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750854AbZL0JYN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Dec 2009 04:24:13 -0500
-Received: from wpaz1.hot.corp.google.com (wpaz1.hot.corp.google.com [172.24.198.65])
-	by smtp-out.google.com with ESMTP id nBR9OAsp004874
-	for <linux-ext4@vger.kernel.org>; Sun, 27 Dec 2009 09:24:11 GMT
-Received: from pxi38 (pxi38.prod.google.com [10.243.27.38])
-	by wpaz1.hot.corp.google.com with ESMTP id nBR9O7ii012436
-	for <linux-ext4@vger.kernel.org>; Sun, 27 Dec 2009 01:24:09 -0800
-Received: by pxi38 with SMTP id 38so406225pxi.28
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Dec 2009 01:24:07 -0800 (PST)
-In-Reply-To: <20091226070303.GH32757@thunk.org>
+Received: from mail-qy0-f192.google.com ([209.85.221.192]:43448 "EHLO
+	mail-qy0-f192.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752580AbZL0R0h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Dec 2009 12:26:37 -0500
+Received: by qyk30 with SMTP id 30so4548082qyk.33
+        for <linux-ext4@vger.kernel.org>; Sun, 27 Dec 2009 09:26:37 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+My system freezes randomly within a few minutes after boot. I use EXT4, 
+LVM and RAID.
 
-Thanks a lot for the feedback on Christmas and happy holiday!
+Problem only started happening after moving to 2.6.33-rc2. The problem 
+does not exist in 2.6.32.
 
-On Fri, Dec 25, 2009 at 11:03 PM,  <tytso@mit.edu> wrote:
-> On Tue, Dec 15, 2009 at 05:37:53PM -0800, Jiaying Zhang wrote:
->> ext4: dio get_block code cleanup in prepare for it to be used by buf=
-fer write
->>
->> Renaming the dio block allocation flags, variables and functions
->> introduced in Mingming's "Direct IO for holes and fallocate"
->> patches so that they can be used by ext4 buffer write as well.
->>
->> Signed-off-by: Jiaying Zhang <jiayingz@google.com>
->
-> Hi Jiaying,
->
-> Merry Christmas!
->
-> Sorry, between trying to prepare patches for the 2.6.33 merge window,
-> and closing out my current position at the Linux Foundation, and the
-> resulting job transition, this has fallen through the cracks. =A0I've
-> started looking at your patch now. =A0 A couple of comments so far.
->
-> 1) The patches were white-space damaged, so applying them is a bit
-> difficult. =A0I gave up entirely on patch #4, which hopefully is a
-> mechnical only patch, but it's also one which is apparently only a
-> cleanup.
+Using Ubuntu-9.10 x86_64 userspace.
 
-Really sorry about this. I guess my email client turned tab into spaces=
-=2E
-The fourth patch is only code moving around. As you said, you can easil=
-y
-regenerate it later so I think we can just leave it out during the revi=
-ew.
+Various system information and error log below ->
 
->
-> Patch #1 had a combination of mechanical changes (i.e., naming of
-> variables and constants) as well as some non-mechnical changes.
-> Especially in the case of patch #4, when large chunks of code are
-> being moved around, the patch which mechnical changes is very likely
-> to break if other patches are applied (or reverted) compared to
-> whatever version the patch was based off of. =A0If the mechnical chan=
-ges
-> are separated out (and clearly described in the commits), then I can
-> easily regenerate the mechnical changes, and not worry about
-> accidentally dropping changes.
+Linux vikbox 2.6.33-rc2 #11 SMP Sat Dec 26 04:23:36 EST 2009 x86_64 
+GNU/Linux
+ 
+Gnu C                  4.4.1
+Gnu make               3.81
+binutils               2.20
+util-linux             2.16
+mount                  support
+module-init-tools      3.10
+e2fsprogs              1.41.9
+reiserfsprogs          3.6.21
+pcmciautils            014
+Linux C Library        2.10.1
+Dynamic linker (ldd)   2.10.1
+Procps                 3.2.8
+Net-tools              1.60
+Kbd                    1.15
+Sh-utils               7.4
+Modules Loaded         xt_tcpudp iptable_nat nf_nat nf_conntrack_ipv4 
+nf_conntrack nf_defrag_ipv4 binfmt_misc ppdev snd_hda_codec_atihdmi 
+snd_hda_codec_nvhdmi snd_hda_codec_via snd_hda_intel snd_hda_codec 
+snd_pcm_oss snd_hwdep snd_mixer_oss snd_seq_dummy snd_pcm snd_seq_oss 
+snd_seq_midi snd_rawmidi snd_seq_midi_event snd_seq snd_timer 
+snd_seq_device iptable_filter snd soundcore lp ip_tables snd_page_alloc 
+video i2c_nforce2 edac_core x_tables output parport joydev asus_atk0110 
+raid10 raid1 raid0 multipath linear raid456 async_raid6_recov async_pq 
+raid6_pq async_xor xor async_memcpy async_tx hid_logitech ff_memless 
+usbhid radeon ttm 8139too drm_kms_helper mii floppy forcedeth drm
 
-I intended to have the first patch only include the mechanical changes,
-but left some other changes in it after code rebase. I will move those
-changes to the second patch in the next version.
+Dec 27 12:11:37 vikbox kernel: [ 1236.105816] CPU 1
+Dec 27 12:11:37 vikbox kernel: [ 1236.105825] Pid: 1137, comm: 
+flush-252:3 Not tainted 2.6.33-rc2 #11 M4N78 PRO/System Product Name
+Dec 27 12:11:37 vikbox kernel: [ 1236.105833] RIP: 
+0010:[<ffffffff811bd176>]  [<ffffffff811bd176>] ext4_get_blocks+0x416/0x420
+Dec 27 12:11:37 vikbox kernel: [ 1236.105850] RSP: 
+0018:ffff8800634df8c0  EFLAGS: 00010297
+Dec 27 12:11:37 vikbox kernel: [ 1236.105855] RAX: 0000000000000002 RBX: 
+ffff8800634df970 RCX: 0000000000000154
+Dec 27 12:11:37 vikbox kernel: [ 1236.105860] RDX: 0000000000000000 RSI: 
+0000000000000003 RDI: 0000000000000153
+Dec 27 12:11:37 vikbox kernel: [ 1236.105866] RBP: ffff8800634df930 R08: 
+0000000000000000 R09: 0000000000000000
+Dec 27 12:11:37 vikbox kernel: [ 1236.105871] R10: 0000000000000004 R11: 
+0000000000000064 R12: 0000000000000004
+Dec 27 12:11:37 vikbox kernel: [ 1236.105876] R13: ffff8800169f3aa0 R14: 
+ffff8800169f3a00 R15: 0000000000000003
+Dec 27 12:11:37 vikbox kernel: [ 1236.105882] FS:  
+00007ffa2fd7f910(0000) GS:ffff880001e80000(0000) knlGS:0000000000000000
+Dec 27 12:11:37 vikbox kernel: [ 1236.105888] CS:  0010 DS: 0000 ES: 
+0000 CR0: 000000008005003b
+Dec 27 12:11:37 vikbox kernel: [ 1236.105893] CR2: 00007ffa32aabd87 CR3: 
+0000000079ffd000 CR4: 00000000000006e0
+Dec 27 12:11:37 vikbox kernel: [ 1236.105899] DR0: 0000000000000000 DR1: 
+0000000000000000 DR2: 0000000000000000
+Dec 27 12:11:37 vikbox kernel: [ 1236.105904] DR3: 0000000000000000 DR6: 
+00000000ffff0ff0 DR7: 0000000000000400
+Dec 27 12:11:37 vikbox kernel: [ 1236.105911] Process flush-252:3 (pid: 
+1137, threadinfo ffff8800634de000, task ffff88007c940000)
+Dec 27 12:11:37 vikbox kernel: [ 1236.105918]  ffff8800634df8d0 
+ffffffff8114ff10 ffff880076e73800 00000001634df960
+Dec 27 12:11:37 vikbox kernel: [ 1236.105927] <0> 0000000000016d54 
+000002a8634dfbe0 ffff8800169f3d68 ffff8800169f3a88
+Dec 27 12:11:37 vikbox kernel: [ 1236.105936] <0> ffff8800634df920 
+ffff8800634dfbe0 0000000000016d54 ffff8800634dfd70
+Dec 27 12:11:37 vikbox kernel: [ 1236.105958]  [<ffffffff8114ff10>] ? 
+block_write_full_page+0x10/0x20
+Dec 27 12:11:37 vikbox kernel: [ 1236.105967]  [<ffffffff811be3c7>] 
+mpage_da_map_blocks+0xa7/0x430
+Dec 27 12:11:37 vikbox kernel: [ 1236.105976]  [<ffffffff81266415>] ? 
+radix_tree_gang_lookup_tag_slot+0x95/0xe0
+Dec 27 12:11:37 vikbox kernel: [ 1236.105985]  [<ffffffff810dfa8b>] ? 
+find_get_pages_tag+0x3b/0x140
+Dec 27 12:11:37 vikbox kernel: [ 1236.105994]  [<ffffffff811bee7b>] 
+__mpage_da_writepage+0x3b/0x1a0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106003]  [<ffffffff810e7751>] 
+write_cache_pages+0x1c1/0x400
+Dec 27 12:11:37 vikbox kernel: [ 1236.106010]  [<ffffffff811bee40>] ? 
+__mpage_da_writepage+0x0/0x1a0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106019]  [<ffffffff811be9f9>] 
+ext4_da_writepages+0x2a9/0x620
+Dec 27 12:11:37 vikbox kernel: [ 1236.106028]  [<ffffffff810458d8>] ? 
+load_balance_fair+0x1e8/0x2b0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106036]  [<ffffffff810e79dc>] 
+do_writepages+0x1c/0x40
+Dec 27 12:11:37 vikbox kernel: [ 1236.106044]  [<ffffffff811477b9>] 
+writeback_single_inode+0xe9/0x3c0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106051]  [<ffffffff81147eff>] 
+writeback_inodes_wb+0x33f/0x500
+Dec 27 12:11:37 vikbox kernel: [ 1236.106059]  [<ffffffff811481d2>] 
+wb_writeback+0x112/0x1e0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106068]  [<ffffffff8106789e>] ? 
+try_to_del_timer_sync+0x6e/0xd0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106078]  [<ffffffff81503636>] ? 
+schedule_timeout+0x196/0x2f0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106085]  [<ffffffff811484fc>] 
+wb_do_writeback+0x18c/0x1a0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106092]  [<ffffffff8114855b>] 
+bdi_writeback_task+0x4b/0xd0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106100]  [<ffffffff810f7621>] 
+bdi_start_fn+0x81/0xf0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106106]  [<ffffffff810f75a0>] ? 
+bdi_start_fn+0x0/0xf0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106113]  [<ffffffff81075cae>] 
+kthread+0x8e/0xa0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106120]  [<ffffffff8100ad24>] 
+kernel_thread_helper+0x4/0x10
+Dec 27 12:11:37 vikbox kernel: [ 1236.106127]  [<ffffffff81075c20>] ? 
+kthread+0x0/0xa0
+Dec 27 12:11:37 vikbox kernel: [ 1236.106134]  [<ffffffff8100ad20>] ? 
+kernel_thread_helper+0x0/0x10
+Dec 27 12:11:37 vikbox kernel: [ 1236.106209]  RSP <ffff8800634df8c0>
+Dec 27 12:11:37 vikbox kernel: [ 1236.106215] ---[ end trace 
+0bc3de8ec206cc35 ]---
 
->
-> 2) In the first patch, in ext4_sync_file() in fs/ext4/fsync.c, the
-> call to flush_aio_dio_completed_IO() is renamed to
-> flush_completed_IO(). =A0But then in the second patch, a second call =
-to
-> flush_completed_IO() is added at the end of ext4_sync_file(). =A0That
-> doesn't look right to me.
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] CPU 1
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] Pid: 2514, comm: 
+transmission Tainted: G      D    2.6.33-rc2 #11 M4N78 PRO/System 
+Product Name
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] RIP: 
+0010:[<ffffffff8102f392>]  [<ffffffff8102f392>] __ticket_spin_lock+0x12/0x20
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] RSP: 
+0018:ffff88007c0cbe18  EFLAGS: 00000297
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] RAX: 0000000000005453 RBX: 
+ffff88007c0cbe18 RCX: 000000000000000c
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] RDX: ffff88007c0cbef8 RSI: 
+ffff88007c0cbef8 RDI: ffff8800169f3d68
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] RBP: ffffffff8100a8ce R08: 
+ffff88007c0cbdb8 R09: ffffffff81a49d90
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] R10: 0000000000000000 R11: 
+0000000000000246 R12: ffff88007994d0c0
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] R13: ffff88007c0cbd98 R14: 
+ffffffff81a49d90 R15: 00000000ffffff9c
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] FS:  
+00007f7fec2ab910(0000) GS:ffff880001e80000(0000) knlGS:0000000000000000
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] CS:  0010 DS: 0000 ES: 
+0000 CR0: 0000000080050033
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] CR2: 00007ffa32aabd87 CR3: 
+000000006feee000 CR4: 00000000000006e0
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] DR0: 0000000000000000 DR1: 
+0000000000000000 DR2: 0000000000000000
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] DR3: 0000000000000000 DR6: 
+00000000ffff0ff0 DR7: 0000000000000400
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] Process transmission (pid: 
+2514, threadinfo ffff88007c0ca000, task ffff880074ea96e0)
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  ffff88007c0cbe28 
+ffffffff81505259 ffff88007c0cbe58 ffffffff811ba025
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] <0> ffff88007994d0c0 
+ffff880036c80f00 ffff8800169f3aa0 ffff88007c0cbef8
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] <0> ffff88007c0cbe98 
+ffffffff8112ae4c ffff88005d8ce3d8 ffff880037575280
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff81505259>] ? 
+_raw_spin_lock+0x9/0x10
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff811ba025>] ? 
+ext4_getattr+0x45/0x90
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112ae4c>] ? 
+vfs_getattr+0x4c/0x80
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112aed8>] ? 
+vfs_fstatat+0x58/0x70
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff81461b3e>] ? 
+tcp_poll+0x2e/0x1b0
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112b016>] ? 
+vfs_stat+0x16/0x20
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112b03f>] ? 
+sys_newstat+0x1f/0x50
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff81009f02>] ? 
+system_call_fastpath+0x16/0x1b
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252] Call Trace:
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff81505259>] ? 
+_raw_spin_lock+0x9/0x10
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff811ba025>] ? 
+ext4_getattr+0x45/0x90
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112ae4c>] ? 
+vfs_getattr+0x4c/0x80
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112aed8>] ? 
+vfs_fstatat+0x58/0x70
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff81461b3e>] ? 
+tcp_poll+0x2e/0x1b0
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112b016>] ? 
+vfs_stat+0x16/0x20
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff8112b03f>] ? 
+sys_newstat+0x1f/0x50
+Dec 27 12:12:42 vikbox kernel: [ 1301.381252]  [<ffffffff81009f02>] ? 
+system_call_fastpath+0x16/0x1b
 
-The reason I added another flush_completed_IO() at the end of
-ext4_sync_file is to finish uninitialized-to-initialized extent convers=
-ion
-for any buffer writes that may be generated during sync_mapping_buffers=
-=2E
-The completed_io_list may not be empty at this time because
-ext4_end_io_buffer_write only queues io_end work that is processed
-by ext4_end_io_work later. Is there any problem that you think this
-change may introduce?
 
->
-> I need to look at the code more closely, which I will do later. =A0In
-> the mean time, I've added the first three patches which you sent to
-> the unstable portion of the ext4 patch queue. =A0When run against the
-> xfsqa regression test suite, it quickly shows a failure:
->
-> BUG: unable to handle kernel NULL pointer dereference at 00000004
-> IP: [<c0262b58>] __journal_remove_journal_head+0xf/0xcf
-> *pdpt =3D 0000000019b91001 *pde =3D 0000000000000000
-> Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-> last sysfs file:
-> Modules linked in:
->
-> Pid: 6536, comm: jbd2/sdb-8 Not tainted 2.6.32-06814-g26716e4 #225 /
-> EIP: 0060:[<c0262b58>] EFLAGS: 00010246 CPU: 0
-> EIP is at __journal_remove_journal_head+0xf/0xcf
-> EAX: de570e40 EBX: 00000000 ECX: 00000000 EDX: de570e40
-> ESI: de570e40 EDI: 00000002 EBP: d8a94e5c ESP: d8a94e54
-> =A0DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
-> Process jbd2/sdb-8 (pid: 6536, ti=3Dd8a94000 task=3Ddf3bbf90 task.ti=3D=
-d8a94000)
-> Stack:
-> =A0de570e40 de570e40 d8a94e68 c0262c87 d4b7c140 d8a94e8c c025fe4b 000=
-00001
-> <0> d8a94e9c d4b7c140 d8f630c0 00000000 cf6ba540 d8a94e9c d8a94eac c0=
-25fed9
-> <0> dbc50d80 dbc50d80 00000000 dc754800 00000000 dc754800 d8a94f5c c0=
-25e20a
-> Call Trace:
-> =A0[<c0262c87>] ? jbd2_journal_remove_journal_head+0x1e/0x2d
-> =A0[<c025fe4b>] ? journal_clean_one_cp_list+0x68/0xbd
-> =A0[<c025fed9>] ? __jbd2_journal_clean_checkpoint_list+0x39/0x7b
-> =A0[<c025e20a>] ? jbd2_journal_commit_transaction+0x2c5/0x1173
-> =A0[<c017bb17>] ? trace_hardirqs_off+0xb/0xd
-> =A0[<c01631ec>] ? try_to_del_timer_sync+0x5e/0x66
-> =A0[<c062eae5>] ? _spin_unlock_irqrestore+0x41/0x4d
-> =A0[<c017d019>] ? trace_hardirqs_on+0xb/0xd
-> =A0[<c01631ec>] ? try_to_del_timer_sync+0x5e/0x66
-> =A0[<c01635bb>] ? del_timer_sync+0x78/0x88
-> =A0[<c0263b66>] ? kjournald2+0x116/0x309
-> =A0[<c016d9b0>] ? autoremove_wake_function+0x0/0x34
-> =A0[<c0263a50>] ? kjournald2+0x0/0x309
-> =A0[<c016d785>] ? kthread+0x64/0x69
-> =A0[<c016d721>] ? kthread+0x0/0x69
-> =A0[<c012567b>] ? kernel_thread_helper+0x7/0x10
-> Code: f6 ff eb 15 89 d8 e8 97 91 f7 ff eb 0c e8 71 ff ff ff 89 da e8 =
-8c 3e f8 ff 5b 5d c3 55 89 e5 56 53 0f 1f 44 00 00 8b 58 24 89 c6 <83> =
-7b 04 00 79 04 0f 0b eb fe f0 ff 40 34 83 7b 04 00 0f 85 a1
-> EIP: [<c0262b58>] __journal_remove_journal_head+0xf/0xcf SS:ESP 0068:=
-d8a94e54
-> CR2: 0000000000000004
->
 
-=46rom the stack trace, the problem seems to be caused by
-the use of bh->b_private to hold end_io in my patch. I noticed
-that b_private is used by jdb2 to hold journal handle so the
-introduced change is disabled if the ext4 is mounted with
-data=3Djournal. As I understand, with data=3Dordered, any buffer
-heads held in the journal should be metadata. But I guess either
-this is not sure or there is some case where I also changed
-b_private field for metadata write.
-
-Jiaying
-
-> Removing your three patches makes the failure go away. =A0I'll analyz=
-e
-> this some more later this weekend.
->
-> Best regards,
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0- Ted
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
