@@ -1,84 +1,239 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Sun, 27 Dec 2009 17:24:05 -0800 (PST)
-Message-ID: <alpine.DEB.2.01.0912271707240.3483@bogon.housecafe.de>
-References: <19251.26403.762180.228181@tree.ty.sabi.co.uk> <20091224212756.GM21594@thunk.org> <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de> <20091225161453.GD32757@thunk.org> <20091225162238.GB19303@bitmover.com> <alpine.DEB.2.01.0912251042540.3483@bogon.housecafe.de>
- <4B36333B.3030600@hp.com> <4B365EBE.5050804@nerdbynature.de> <4B37BA76.7050403@hp.com> <alpine.DEB.2.01.0912271346240.3483@bogon.housecafe.de> <20091227223307.GA4429@thunk.org>
+From: tytso@mit.edu
+Subject: Re: 2.6.33-rc1: kernel BUG at fs/ext4/inode.c:1063 (sparc)
+Date: Sun, 27 Dec 2009 22:51:59 -0500
+Message-ID: <20091228035159.GC4429@thunk.org>
+References: <a4423d670912241428n6917d2adsad887548612cf8ce@mail.gmail.com>
+ <a4423d670912241449y2da43d5fi3e5a18c114b84178@mail.gmail.com>
+ <87hbrfdylc.fsf@openvz.org>
+ <a4423d670912251133u795338a4wd32d5cdef8c36c75@mail.gmail.com>
+ <87eimir4yk.fsf@openvz.org>
+ <a4423d670912271232y5bb928f7wb667ca71f1a93f8a@mail.gmail.com>
+ <20091227225216.GB4429@thunk.org>
+ <a4423d670912271502n13957e8boc168fdc75444dc09@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: jim owens <jowens@hp.com>, Larry McVoy <lm@bitmover.com>,
-	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-	xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
-	Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>,
-	ext-users <ext3-users@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>,
+	dmitry.torokhov@gmail.com, Jan Kara <jack@suse.cz>
+To: Alexander Beregalov <a.beregalov@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.9]:58655 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750913AbZL1BYn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Dec 2009 20:24:43 -0500
-In-Reply-To: <20091227223307.GA4429@thunk.org>
+Received: from thunk.org ([69.25.196.29]:36308 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750823AbZL1DwG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Dec 2009 22:52:06 -0500
+Content-Disposition: inline
+In-Reply-To: <a4423d670912271502n13957e8boc168fdc75444dc09@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 27 Dec 2009 at 17:33, tytso@mit.edu wrote:
-> Yes, but given many of the file systems have almost *exactly* the same
+kernel BUG at fs/ext4/inode.c:1063!
 
-"Almost" indeed - but curiously enough some filesystem are *not* the same, 
-although they should. Again: we have 8GB RAM, I'm copying ~3GB of data, so 
-why _are_ there differences? (Answer: because filesystems are different). 
-That's the only point of this test. Also note the disclaimer[0] I added to 
-the results page a few days ago.
+> >> Here is output of 2.6.33-rc2 plus Ted's patch
+> >>
+> >> EXT4-fs (sda1): inode #1387643: mdb_free (1) < mdb_claim (2) BUG
+> >
 
-> measurement is 5 times the disk bandwidith as measured by hdparm, it
-> makes me suspect that you are doing this:
-> /bin/time /bin/cp -r /source/tree /filesystem-under-test
-> sync
+OK, i've been able to reproduce the problem using xfsqa test #74
+(fstest) when an ext3 file system is mounted the ext4 file system
+driver.  I was then able to bisect it down to commit d21cd8f6, which
+was introduced between 2.6.33-rc1 and 2.6.33-rc2, as part of
+quota/ext4 patch series pushed by Jan.
 
-No, I'm not - see the test script[1] - I'm taking the time for cp/rm/tar 
-*and* sync. But even if I would only take the time *only* for say "cp", 
-not the sync part. Still, it would be a valid comparison across 
-filesystems (the same operation for every filesystem) also a not very 
-realistic one - because in the real world I *want* to make sure my data is 
-on the disk. But that's as far as I go in these tests, I'm not even 
-messing around with disk caches or HBA caches - that's not the scope of 
-these tests.
+I then tested v2.6.33-rc2 with commit d21cd8 reverted, and I was not
+able to replicate the BUG.  More investigation is needed, but if we
+compare the potential quota deadlock with the apparently
+fairly-easy-to-replicate BUG, if we can't find a better fix fairly
+quickly we should probably just revert this commit for now.
 
-> You might notice it if you include the "sync" in the timing, i.e.:
-> /bin/time /bin/sh -c "/bin/cp -r /source/tree /filesystem-under-test;/bin/sync"
+						- Ted
 
-Yes, that's exactly what the tests do.
+commit d21cd8f163ac44b15c465aab7306db931c606908
+Author:     Dmitry Monakhov <dmonakhov@openvz.org>
+AuthorDate: Thu Dec 10 03:31:45 2009 +0000
+Commit:     Jan Kara <jack@suse.cz>
+CommitDate: Wed Dec 23 13:44:12 2009 +0100
 
-> "/bin/cp" returns, then sure, do whatever you want.  But if you want
-> the tests to have meaning if, for example, you have 2GB of memory and
-> you are copying 8GB of data, 
+    ext4: Fix potential quota deadlock
+    
+    We have to delay vfs_dq_claim_space() until allocation context destruction.
+    Currently we have following call-trace:
+    ext4_mb_new_blocks()
+      /* task is already holding ac->alloc_semp */
+     ->ext4_mb_mark_diskspace_used
+        ->vfs_dq_claim_space()  /*  acquire dqptr_sem here. Possible deadlock */
+     ->ext4_mb_release_context() /* drop ac->alloc_semp here */
+    
+    Let's move quota claiming to ext4_da_update_reserve_space()
+    
+     =======================================================
+     [ INFO: possible circular locking dependency detected ]
+     2.6.32-rc7 #18
+     -------------------------------------------------------
+     write-truncate-/3465 is trying to acquire lock:
+      (&s->s_dquot.dqptr_sem){++++..}, at: [<c025e73b>] dquot_claim_space+0x3b/0x1b0
+    
+     but task is already holding lock:
+      (&meta_group_info[i]->alloc_sem){++++..}, at: [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
+    
+     which lock already depends on the new lock.
+    
+     the existing dependency chain (in reverse order) is:
+    
+     -> #3 (&meta_group_info[i]->alloc_sem){++++..}:
+            [<c017d04b>] __lock_acquire+0xd7b/0x1260
+            [<c017d5ea>] lock_acquire+0xba/0xd0
+            [<c0527191>] down_read+0x51/0x90
+            [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
+            [<c02d0c1c>] ext4_mb_free_blocks+0x46c/0x870
+            [<c029c9d3>] ext4_free_blocks+0x73/0x130
+            [<c02c8cfc>] ext4_ext_truncate+0x76c/0x8d0
+            [<c02a8087>] ext4_truncate+0x187/0x5e0
+            [<c01e0f7b>] vmtruncate+0x6b/0x70
+            [<c022ec02>] inode_setattr+0x62/0x190
+            [<c02a2d7a>] ext4_setattr+0x25a/0x370
+            [<c022ee81>] notify_change+0x151/0x340
+            [<c021349d>] do_truncate+0x6d/0xa0
+            [<c0221034>] may_open+0x1d4/0x200
+            [<c022412b>] do_filp_open+0x1eb/0x910
+            [<c021244d>] do_sys_open+0x6d/0x140
+            [<c021258e>] sys_open+0x2e/0x40
+            [<c0103100>] sysenter_do_call+0x12/0x32
+    
+     -> #2 (&ei->i_data_sem){++++..}:
+            [<c017d04b>] __lock_acquire+0xd7b/0x1260
+            [<c017d5ea>] lock_acquire+0xba/0xd0
+            [<c0527191>] down_read+0x51/0x90
+            [<c02a5787>] ext4_get_blocks+0x47/0x450
+            [<c02a74c1>] ext4_getblk+0x61/0x1d0
+            [<c02a7a7f>] ext4_bread+0x1f/0xa0
+            [<c02bcddc>] ext4_quota_write+0x12c/0x310
+            [<c0262d23>] qtree_write_dquot+0x93/0x120
+            [<c0261708>] v2_write_dquot+0x28/0x30
+            [<c025d3fb>] dquot_commit+0xab/0xf0
+            [<c02be977>] ext4_write_dquot+0x77/0x90
+            [<c02be9bf>] ext4_mark_dquot_dirty+0x2f/0x50
+            [<c025e321>] dquot_alloc_inode+0x101/0x180
+            [<c029fec2>] ext4_new_inode+0x602/0xf00
+            [<c02ad789>] ext4_create+0x89/0x150
+            [<c0221ff2>] vfs_create+0xa2/0xc0
+            [<c02246e7>] do_filp_open+0x7a7/0x910
+            [<c021244d>] do_sys_open+0x6d/0x140
+            [<c021258e>] sys_open+0x2e/0x40
+            [<c0103100>] sysenter_do_call+0x12/0x32
+    
+     -> #1 (&sb->s_type->i_mutex_key#7/4){+.+...}:
+            [<c017d04b>] __lock_acquire+0xd7b/0x1260
+            [<c017d5ea>] lock_acquire+0xba/0xd0
+            [<c0526505>] mutex_lock_nested+0x65/0x2d0
+            [<c0260c9d>] vfs_load_quota_inode+0x4bd/0x5a0
+            [<c02610af>] vfs_quota_on_path+0x5f/0x70
+            [<c02bc812>] ext4_quota_on+0x112/0x190
+            [<c026345a>] sys_quotactl+0x44a/0x8a0
+            [<c0103100>] sysenter_do_call+0x12/0x32
+    
+     -> #0 (&s->s_dquot.dqptr_sem){++++..}:
+            [<c017d361>] __lock_acquire+0x1091/0x1260
+            [<c017d5ea>] lock_acquire+0xba/0xd0
+            [<c0527191>] down_read+0x51/0x90
+            [<c025e73b>] dquot_claim_space+0x3b/0x1b0
+            [<c02cb95f>] ext4_mb_mark_diskspace_used+0x36f/0x380
+            [<c02d210a>] ext4_mb_new_blocks+0x34a/0x530
+            [<c02c83fb>] ext4_ext_get_blocks+0x122b/0x13c0
+            [<c02a5966>] ext4_get_blocks+0x226/0x450
+            [<c02a5ff3>] mpage_da_map_blocks+0xc3/0xaa0
+            [<c02a6ed6>] ext4_da_writepages+0x506/0x790
+            [<c01de272>] do_writepages+0x22/0x50
+            [<c01d766d>] __filemap_fdatawrite_range+0x6d/0x80
+            [<c01d7b9b>] filemap_flush+0x2b/0x30
+            [<c02a40ac>] ext4_alloc_da_blocks+0x5c/0x60
+            [<c029e595>] ext4_release_file+0x75/0xb0
+            [<c0216b59>] __fput+0xf9/0x210
+            [<c0216c97>] fput+0x27/0x30
+            [<c02122dc>] filp_close+0x4c/0x80
+            [<c014510e>] put_files_struct+0x6e/0xd0
+            [<c01451b7>] exit_files+0x47/0x60
+            [<c0146a24>] do_exit+0x144/0x710
+            [<c0147028>] do_group_exit+0x38/0xa0
+            [<c0159abc>] get_signal_to_deliver+0x2ac/0x410
+            [<c0102849>] do_notify_resume+0xb9/0x890
+            [<c01032d2>] work_notifysig+0x13/0x21
+    
+     other info that might help us debug this:
+    
+     3 locks held by write-truncate-/3465:
+      #0:  (jbd2_handle){+.+...}, at: [<c02e1f8f>] start_this_handle+0x38f/0x5c0
+      #1:  (&ei->i_data_sem){++++..}, at: [<c02a57f6>] ext4_get_blocks+0xb6/0x450
+      #2:  (&meta_group_info[i]->alloc_sem){++++..}, at: [<c02ce962>] ext4_mb_load_buddy+0xb2/0x370
+    
+     stack backtrace:
+     Pid: 3465, comm: write-truncate- Not tainted 2.6.32-rc7 #18
+     Call Trace:
+      [<c0524cb3>] ? printk+0x1d/0x22
+      [<c017ac9a>] print_circular_bug+0xca/0xd0
+      [<c017d361>] __lock_acquire+0x1091/0x1260
+      [<c016bca2>] ? sched_clock_local+0xd2/0x170
+      [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
+      [<c017d5ea>] lock_acquire+0xba/0xd0
+      [<c025e73b>] ? dquot_claim_space+0x3b/0x1b0
+      [<c0527191>] down_read+0x51/0x90
+      [<c025e73b>] ? dquot_claim_space+0x3b/0x1b0
+      [<c025e73b>] dquot_claim_space+0x3b/0x1b0
+      [<c02cb95f>] ext4_mb_mark_diskspace_used+0x36f/0x380
+      [<c02d210a>] ext4_mb_new_blocks+0x34a/0x530
+      [<c02c601d>] ? ext4_ext_find_extent+0x25d/0x280
+      [<c02c83fb>] ext4_ext_get_blocks+0x122b/0x13c0
+      [<c016bca2>] ? sched_clock_local+0xd2/0x170
+      [<c016be60>] ? sched_clock_cpu+0x120/0x160
+      [<c016beef>] ? cpu_clock+0x4f/0x60
+      [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
+      [<c052712c>] ? down_write+0x8c/0xa0
+      [<c02a5966>] ext4_get_blocks+0x226/0x450
+      [<c016be60>] ? sched_clock_cpu+0x120/0x160
+      [<c016beef>] ? cpu_clock+0x4f/0x60
+      [<c017908b>] ? trace_hardirqs_off+0xb/0x10
+      [<c02a5ff3>] mpage_da_map_blocks+0xc3/0xaa0
+      [<c01d69cc>] ? find_get_pages_tag+0x16c/0x180
+      [<c01d6860>] ? find_get_pages_tag+0x0/0x180
+      [<c02a73bd>] ? __mpage_da_writepage+0x16d/0x1a0
+      [<c01dfc4e>] ? pagevec_lookup_tag+0x2e/0x40
+      [<c01ddf1b>] ? write_cache_pages+0xdb/0x3d0
+      [<c02a7250>] ? __mpage_da_writepage+0x0/0x1a0
+      [<c02a6ed6>] ext4_da_writepages+0x506/0x790
+      [<c016beef>] ? cpu_clock+0x4f/0x60
+      [<c016bca2>] ? sched_clock_local+0xd2/0x170
+      [<c016be60>] ? sched_clock_cpu+0x120/0x160
+      [<c016be60>] ? sched_clock_cpu+0x120/0x160
+      [<c02a69d0>] ? ext4_da_writepages+0x0/0x790
+      [<c01de272>] do_writepages+0x22/0x50
+      [<c01d766d>] __filemap_fdatawrite_range+0x6d/0x80
+      [<c01d7b9b>] filemap_flush+0x2b/0x30
+      [<c02a40ac>] ext4_alloc_da_blocks+0x5c/0x60
+      [<c029e595>] ext4_release_file+0x75/0xb0
+      [<c0216b59>] __fput+0xf9/0x210
+      [<c0216c97>] fput+0x27/0x30
+      [<c02122dc>] filp_close+0x4c/0x80
+      [<c014510e>] put_files_struct+0x6e/0xd0
+      [<c01451b7>] exit_files+0x47/0x60
+      [<c0146a24>] do_exit+0x144/0x710
+      [<c017b163>] ? lock_release_holdtime+0x33/0x210
+      [<c0528137>] ? _spin_unlock_irq+0x27/0x30
+      [<c0147028>] do_group_exit+0x38/0xa0
+      [<c017babb>] ? trace_hardirqs_on+0xb/0x10
+      [<c0159abc>] get_signal_to_deliver+0x2ac/0x410
+      [<c0102849>] do_notify_resume+0xb9/0x890
+      [<c0178fd0>] ? trace_hardirqs_off_caller+0x20/0xd0
+      [<c017b163>] ? lock_release_holdtime+0x33/0x210
+      [<c0165b50>] ? autoremove_wake_function+0x0/0x50
+      [<c017ba54>] ? trace_hardirqs_on_caller+0x134/0x190
+      [<c017babb>] ? trace_hardirqs_on+0xb/0x10
+      [<c0300ba4>] ? security_file_permission+0x14/0x20
+      [<c0215761>] ? vfs_write+0x131/0x190
+      [<c0214f50>] ? do_sync_write+0x0/0x120
+      [<c0103115>] ? sysenter_do_call+0x27/0x32
+      [<c01032d2>] work_notifysig+0x13/0x21
+    
+    CC: Theodore Ts'o <tytso@mit.edu>
+    Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+    Signed-off-by: Jan Kara <jack@suse.cz>
 
-For the bonnie++ tests I chose a filesize (16GB) so that disk performance 
-will matter here. As the generic tests shuffle around much more smaller 
-data, no disk performance, but filesystem performance is measured (and 
-compared to other filesystems) - well aware of the fact that caches *Are* 
-being used. Why would I want to discard caches? My daily usage pattern 
-(opening webrowsers, terminal windows, spreadcheats deal with much smaller 
-datasets and I'm happy that Linux is so hungry for cache - yet some 
-filesystems do not seem to utilize this opportunity as good as others do. 
-That's the whole point of this particular test. But constantly explaining 
-my point over and over again I see what I have to do: I shall run the 
-generic tests again with much bigger datasets, so that disk-performance is 
-also reflected, as people do seem to care about this (I don't - I can 
-switch filesystems more easily than disks).
-
-> The bottom line is that it's very hard to do good comparisons that are
-> useful in the general case.
-
-And it's difficult to find out what's a "useful comparison" for the 
-general public :-)
-
-Christian.
-
-[0] http://nerdbynature.de/benchmarks/v40z/2009-12-22/
-[1] http://nerdbynature.de/benchmarks/v40z/2009-12-22/env/fs-bench.sh.txt
--- 
-BOFH excuse #292:
-
-We ran out of dial tone and we're and waiting for the phone company to deliver another bottle.
