@@ -1,77 +1,110 @@
-From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: Re: 2.6.33-rc1: kernel BUG at fs/ext4/inode.c:1063 (sparc)
-Date: Mon, 28 Dec 2009 02:02:52 +0300
-Message-ID: <a4423d670912271502n13957e8boc168fdc75444dc09@mail.gmail.com>
-References: <a4423d670912241428n6917d2adsad887548612cf8ce@mail.gmail.com>
-	 <a4423d670912241449y2da43d5fi3e5a18c114b84178@mail.gmail.com>
-	 <87hbrfdylc.fsf@openvz.org>
-	 <a4423d670912251133u795338a4wd32d5cdef8c36c75@mail.gmail.com>
-	 <87eimir4yk.fsf@openvz.org>
-	 <a4423d670912271232y5bb928f7wb667ca71f1a93f8a@mail.gmail.com>
-	 <20091227225216.GB4429@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14911] New: kernel BUG at fs/ext4/inode.c
+Date: Mon, 28 Dec 2009 00:56:52 GMT
+Message-ID: <bug-14911-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: tytso@mit.edu, Alexander Beregalov <a.beregalov@gmail.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.or
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f219.google.com ([209.85.219.219]:46537 "EHLO
-	mail-ew0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751420AbZL0XCy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Dec 2009 18:02:54 -0500
-In-Reply-To: <20091227225216.GB4429@thunk.org>
+Received: from demeter.kernel.org ([140.211.167.39]:48620 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751103AbZL1A4w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Dec 2009 19:56:52 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id nBS0uqRj026910
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Dec 2009 00:56:52 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2009/12/28  <tytso@mit.edu>:
-> On Sun, Dec 27, 2009 at 11:32:25PM +0300, Alexander Beregalov wrote:
->> >> I will try to crosscompile the kernel with Ted's patch on another host.
->>
->> Here is output of 2.6.33-rc2 plus Ted's patch
->>
->> EXT4-fs (sda1): inode #1387643: mdb_free (1) < mdb_claim (2) BUG
->
-> OK, can you give me the output of:
->
-> debugfs /dev/sda1
-> debugfs: stat <1387643>
-> debugfs: ncheck 1387643
-> debugfs: quit
+http://bugzilla.kernel.org/show_bug.cgi?id=14911
 
-Cleaning of CCache does not help.
-
-debugfs 1.41.9 (22-Aug-2009)
-debugfs:  stat <1387643>
-Inode: 1387643   Type: regular    Mode:  0644   Flags: 0x0
-Generation: 2004186252    Version: 0x00000000:00000001
-User:  1000   Group:  1003   Size: 11028803
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 21576
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x4b37d65c:04b0870a -- Mon Dec 28 00:49:16 2009
- atime: 0x4b37d65a:2803e3e5 -- Mon Dec 28 00:49:14 2009
- mtime: 0x4b37d65c:04b0870a -- Mon Dec 28 00:49:16 2009
-crtime: 0x5ad6374b:2803e3e5 -- Tue Apr 17 22:04:59 2018
-Size of extra inode fields: 28
-BLOCKS:
-(0-11):172032-172043, (IND):165412, (12-1035):172044-173067,
-(DIND):165380, (IND):165381, (1036-2047):173068-174079,
-(2048-2059):188416-188427, (IND):165414, (2060-2692):188428-189060
-TOTAL: 2697
-
-debugfs:  ncheck 1387643
-Inode   Pathname
-1387643 /home/alexb/linux-2.6/kernel/built-in.o
+           Summary: kernel BUG at fs/ext4/inode.c
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33-rc2
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: pl4nkton@googlemail.com
+        Regression: No
 
 
-~/linux-2.6 $ rm kernel/built-in.o
-~/linux-2.6 $ sync
-~/linux-2.6 $ kmake
-  CHK     include/linux/version.h
-  CHK     include/generated/utsrelease.h
-  CALL    scripts/checksyscalls.sh
-  CHK     include/generated/compile.h
-  LD      kernel/built-in.o
-  LD [M]  fs/btrfs/btrfs.o
-fs/btrfs/relocation.o: file not recognized: File truncated
+[ 5518.650885] ------------[ cut here ]------------
+[ 5518.650893] kernel BUG at fs/ext4/inode.c:1063!
+[ 5518.650897] invalid opcode: 0000 [#1] SMP 
+[ 5518.650904] last sysfs file:
+/sys/devices/pci0000:00/0000:00:0a.0/0000:04:00.0/class
+[ 5518.650909] CPU 0 
+[ 5518.650915] Pid: 1065, comm: flush-8:0 Tainted: G        W  2.6.33-rc2 #1
+M3A78-T/System Product Name
+[ 5518.650921] RIP: 0010:[<ffffffffa00a8b46>]  [<ffffffffa00a8b46>]
+ext4_get_blocks+0x426/0x430 [ext4]
+[ 5518.650939] RSP: 0018:ffff88011998b920  EFLAGS: 00010297
+[ 5518.650946] RAX: 00000000000000ca RBX: ffff88011998b9d0 RCX:
+0000000000000002
+[ 5518.650953] RDX: 0000000000000001 RSI: 00000000000000ca RDI:
+0000000000000153
+[ 5518.650959] RBP: ffff8800b428c0a0 R08: 0000000000000002 R09:
+ffffffff81486450
+[ 5518.650966] R10: 0000000000000102 R11: 0000000000000001 R12:
+0000000000000201
+[ 5518.650973] R13: ffff8800b428c000 R14: ffff8800b428c088 R15:
+00000000000109db
+[ 5518.650980] FS:  00007f1ed7a016f0(0000) GS:ffff880028200000(0000)
+knlGS:0000000000000000
+[ 5518.650990] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 5518.650996] CR2: 00007fec025b6230 CR3: 00000000b030f000 CR4:
+00000000000006f0
+[ 5518.651003] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+0000000000000000
+[ 5518.651010] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
+0000000000000400
+[ 5518.651017] Process flush-8:0 (pid: 1065, threadinfo ffff88011998a000, task
+ffff88011bbc9470)
+[ 5518.651027] Stack:
+[ 5518.651031]  ffffea0000506e10 ffffffff810eb4d8 ffff8800b428c0a0
+0000000000001000
+[ 5518.651042] <0> ffff880100000001 000000000003a346 ffff88011937fc00
+000000041998b9c0
+[ 5518.651059] <0> 0000000000000000 ffff88011998bc30 000000000003a346
+ffff88011998bd90
+[ 5518.651080] Call Trace:
+[ 5518.651089]  [<ffffffff810eb4d8>] ? __block_write_full_page+0x1f8/0x390
+[ 5518.651099]  [<ffffffffa00a9cfb>] ? mpage_da_map_blocks+0xbb/0x450 [ext4]
+[ 5518.651107]  [<ffffffff8115f933>] ?
+radix_tree_gang_lookup_tag_slot+0x93/0xf0
+[ 5518.651117]  [<ffffffff810895b3>] ? find_get_pages_tag+0x33/0x140
+[ 5518.651126]  [<ffffffffa00aa6da>] ? __mpage_da_writepage+0x3a/0x190 [ext4]
+[ 5518.651134]  [<ffffffff8108f697>] ? write_cache_pages+0x197/0x380
+[ 5518.651143]  [<ffffffffa00aa6a0>] ? __mpage_da_writepage+0x0/0x190 [ext4]
+[ 5518.651153]  [<ffffffffa00aa351>] ? ext4_da_writepages+0x2c1/0x550 [ext4]
+[ 5518.651161]  [<ffffffff81054734>] ? bit_waitqueue+0x14/0xc0
+[ 5518.651168]  [<ffffffff810e4171>] ? writeback_single_inode+0xe1/0x3b0
+[ 5518.651175]  [<ffffffff810e487d>] ? writeback_inodes_wb+0x32d/0x4d0
+[ 5518.651182]  [<ffffffff810e4b2d>] ? wb_writeback+0x10d/0x1d0
+[ 5518.651189]  [<ffffffff810e4e61>] ? wb_do_writeback+0x191/0x1a0
+[ 5518.651196]  [<ffffffff810492a0>] ? process_timeout+0x0/0x10
+[ 5518.651203]  [<ffffffff810e4ed2>] ? bdi_writeback_task+0x62/0xa0
+[ 5518.651210]  [<ffffffff8109b3f0>] ? bdi_start_fn+0x0/0xc0
+[ 5518.651217]  [<ffffffff8109b453>] ? bdi_start_fn+0x63/0xc0
+[ 5518.651223]  [<ffffffff8109b3f0>] ? bdi_start_fn+0x0/0xc0
+[ 5518.651230]  [<ffffffff810543be>] ? kthread+0x8e/0xa0
+[ 5518.651237]  [<ffffffff81003c24>] ? kernel_thread_helper+0x4/0x10
+[ 5518.651244]  [<ffffffff81054330>] ? kthread+0x0/0xa0
+[ 5518.651251]  [<ffffffff81003c20>] ? kernel_thread_helper+0x0/0x10
+[ 5518.651256] Code: ff ff 0f 1f 00 a8 08 66 0f 1f 44 00 00 0f 84 00 ff ff ff
+a8 20 0f 85 f8 fe ff ff 66 90 eb b9 0f 0b 0f 1f 40 00 eb fa 0f 0b eb fe <0f> 0b
+eb fe 66 0f 1f 44 00 00 48 83 ec 28 48 89 1c 24 48 89 6c 
+[ 5518.651399] RIP  [<ffffffffa00a8b46>] ext4_get_blocks+0x426/0x430 [ext4]
+[ 5518.651409]  RSP <ffff88011998b920>
+[ 5518.651636] ---[ end trace 0e4167af3a1b2fd2 ]---
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
