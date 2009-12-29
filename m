@@ -1,35 +1,52 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: Ensure zeroout blocks have no dirty metadata
-Date: Tue, 29 Dec 2009 13:53:18 -0500
-Message-ID: <20091229185318.GJ4429@thunk.org>
-References: <6601abe90912100928v747671dat489aeee5dabf2c03@mail.gmail.com>
- <20091218114946.GD9437@skywalker.linux.vnet.ibm.com>
- <6601abe90912290956s6837803ck76e8c36e96f225ae@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14936] kernel BUG at fs/ext4/inode.c:1063 if attempted to use
+ non-ext4 partition with ext4
+Date: Tue, 29 Dec 2009 21:54:30 GMT
+Message-ID: <200912292154.nBTLsU9Q024781@demeter.kernel.org>
+References: <bug-14936-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:46076 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752130AbZL2Sx0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Dec 2009 13:53:26 -0500
-Content-Disposition: inline
-In-Reply-To: <6601abe90912290956s6837803ck76e8c36e96f225ae@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:45577 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750992AbZL2Vyb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Dec 2009 16:54:31 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id nBTLsUXV024782
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Dec 2009 21:54:30 GMT
+In-Reply-To: <bug-14936-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 29, 2009 at 09:56:29AM -0800, Curt Wohlgemuth wrote:
+http://bugzilla.kernel.org/show_bug.cgi?id=14936
+
+
+
+
+
+--- Comment #4 from Rafael J. Wysocki <rjw@sisk.pl>  2009-12-29 21:54:30 ---
+On Tuesday 29 December 2009, tytso@mit.edu wrote:
+> On Tue, Dec 29, 2009 at 04:10:01PM +0100, Rafael J. Wysocki wrote:
+> > 
+> > Bug-Entry	: http://bugzilla.kernel.org/show_bug.cgi?id=14936
+> > Subject		: kernel BUG at fs/ext4/inode.c:1063 if attempted to use non-ext4 partition with ext4
+> > Submitter	: Gene Heskett <gene.heskett@verizon.net>
+> > Date		: 2009-12-26 14:13 (4 days old)
+> > References	: http://marc.info/?l=linux-kernel&m=126183682330809&w=4
+> > 		  http://marc.info/?l=linux-kernel&m=126169372613898&w=4
 > 
-> Thanks for pointing out the arithmetic problems in my patch.  Yours
-> below looks good to me.
+> Bisected to commit d21cd8, and reverting this commit seems to fix the
+> problem.  The problem appeared between -rc1 and -rc2.  It was a fix
+> that was pushed as part of a quota/ext4 fixes.  For more information:
+> 
+> http://marc.info/?l=linux-ext4&m=126197233225936&w=2
+> 
+> I will take a look at this to see if I can find an easy fix;
+> otherwise, we'll probably want to revert commit d21cd8 before -rc3.
 
-Hi Curt,
-
-Can you do me a favor and send out a full patch with Aneesh's
-correction?
-
-Thanks,
-
-					- Ted
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
