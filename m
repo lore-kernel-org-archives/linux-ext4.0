@@ -1,40 +1,53 @@
-From: Emmanuel Florac <eflorac@intellique.com>
-Subject: Re: benchmark results
-Date: Tue, 29 Dec 2009 12:27:44 +0100
-Message-ID: <20091229122744.40a4b707@galadriel.home>
-References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14936] New: kernel BUG at fs/ext4/inode.c:1063 if attempted to
+ use non-ext4 partition with ext4
+Date: Tue, 29 Dec 2009 13:01:11 GMT
+Message-ID: <bug-14936-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net,
-	ext-users <ext3-users@redhat.com>, linux-nilfs@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:51503 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750955AbZL2NBM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Dec 2009 08:01:12 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id nBTD1B3c015932
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Dec 2009 13:01:11 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Le Thu, 24 Dec 2009 02:31:10 -0800 (PST) vous =E9criviez:
+http://bugzilla.kernel.org/show_bug.cgi?id=14936
 
->     - btrfs, ext4 are the overall winners
->     - xfs to, but creating/deleting many files was *very* slow
+           Summary: kernel BUG at fs/ext4/inode.c:1063 if attempted to use
+                    non-ext4 partition with ext4
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33-rc2
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: rjw@sisk.pl
+            Blocks: 14885
+        Regression: Yes
 
-xfs is slow at file creation/deletion if you mount it with barriers on
-standard disk drives (not so with hardware RAID controllers).
 
---=20
------------------------------------------------------------------------=
--
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
------------------------------------------------------------------------=
--
---
-To unsubscribe from this list: send the line "unsubscribe reiserfs-deve=
-l" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Subject    : 2.6.33-rc2 allergic to amanda?
+Submitter  : Gene Heskett <gene.heskett@verizon.net>
+Date       : 2009-12-26 14:13
+References : http://marc.info/?l=linux-kernel&m=126183682330809&w=4
+Notify-Also : okias <d.okias@gmail.com>
+Notify-Also : Dmitry Torokhov <dmitry.torokhov@gmail.com>
+
+This entry is being used for tracking a regression from 2.6.32.  Please don't
+close it until the problem is fixed in the mainline.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
