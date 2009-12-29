@@ -1,91 +1,93 @@
-From: "Ben Castricum" <mail0912@bencastricum.nl>
-Subject: Kernel BUG 2.6.33-rc2
-Date: Tue, 29 Dec 2009 08:08:02 +0100
-Message-ID: <B1CA7293D55045EF86492E734D43A1E0@seven>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14911] kernel BUG at fs/ext4/inode.c
+Date: Tue, 29 Dec 2009 07:46:59 GMT
+Message-ID: <200912290746.nBT7kxwP024874@demeter.kernel.org>
+References: <bug-14911-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=response
-Content-Transfer-Encoding: 7bit
-To: <linux-kernel@vger.org>, <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.bencastricum.nl ([213.84.203.196]:43602 "EHLO
-	bencastricum.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750725AbZL2HNj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Dec 2009 02:13:39 -0500
+Received: from demeter.kernel.org ([140.211.167.39]:59662 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751700AbZL2HrA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Dec 2009 02:47:00 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id nBT7kxT9024876
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Dec 2009 07:46:59 GMT
+In-Reply-To: <bug-14911-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=14911
 
-I just seem to be hitting this bug since I upgraded to Slack 13 and started 
-using EXT4 yesterday. The file copy is between 2 EXT4 filesytems. I can 
-trigger this bug pretty reliable. After the bug occurs, systems seems to be 
-unusable and needs a reboot.
 
-my .config can be found at http://www.bencastricum.nl/.config (when the 
-system hasn't crashed)
+Artem Anisimov <aanisimov@inbox.ru> changed:
 
-I appreciate any suggestions.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |aanisimov@inbox.ru
 
-Ben
 
-------------[ cut here ]------------
-Kernel BUG at b01b70cd [verbose debug info unavailable]
-invalid opcode: 0000 [#1] SMP
-last sysfs file: /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-002e/cpu0_vid
-Modules linked in: af_packet ipt_MASQUERADE ipt_REJECT ipt_LOG xt_recent 
-xt_tcpudp xt_state iptable_filter nf_conntrack_ftp iptable_nat ip_tables 
-nf_nat x_tables nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 dm_mod lm85 
-hwmon_vid hwmon cdc_acm snd_intel8x0 snd_ac97_codec uhci_hcd ac97_bus 
-snd_pcm 8250_pnp tg3 8250 snd_timer firmware_class serial_core ehci_hcd snd 
-8139too soundcore usbcore libphy mii i2c_i801 snd_page_alloc sr_mod psmouse 
-nls_base cdrom sg
 
-Pid: 8035, comm: cp Not tainted 2.6.33-rc2 #340 085Ch/HP d530 SFF(PL110ES)
-EIP: 0060:[<b01b70cd>] EFLAGS: 00010297 CPU: 0
-EIP is at ext4_get_blocks+0x1e0/0x398
-EAX: 00000001 EBX: 00000004 ECX: cf5af6d0 EDX: f6d19090
-ESI: 00000002 EDI: cf5af6d0 EBP: b780fc44 ESP: b780fc0c
- DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-Process cp (pid: 8035, ti=b780f000 task=b78cc800 task.ti=b780f000)
+
+--- Comment #1 from Artem Anisimov <aanisimov@inbox.ru>  2009-12-29 07:46:56 ---
+I am experiencing a similar problem with ext4 (BUG at inode.c:1063) and I'd
+like to provide some more information on it.
+
+In my setup /boot partition is mounted read-only at startup. The error occurs
+when I remount it rw and try to copy a file to that partition.
+
+Stack trace that I get is, however, a bit different, so it's necessary to note
+that I use UP implementation of RCU (in my case mpage_da_map_blocks() is called
+from rcu_read_unlock()).
+
+Here is my stack trace and error message:
+
+kernel BUG at fs/ext4/inode.c:1063!
+invalid opcode: 0000 [#1] PREEMPT
+last sysfs file: /sys/devices/pci0000:00/0000:00:1e.0/0000:01:05.0/resource
+Modules linked in: ipw2200 libipw
+
+Pid: 2415, comm: flush-8:0 Not tainted 2.6.33-rc2 #2 M5A       /M5A
+EIP: 0060:[<c10a704c>] EFLAGS: 00010297 CPU: 0
+EIP is at ext4_get_blocks+0x19f/0x297
+EAX: 00000001 EBX: 00000002 ECX: 00000009 EDX: 00000006
+ESI: 00000009 EDI: d71e5d5c EBP: f6d20648 ESP: d71e5d18
+ DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+Process flush-8:0 (pid: 2415, ti=d71e4000 task=e5bfd130 task.ti=d71e4000)
 Stack:
- f6b32e80 0000000f cf5af748 cf5af738 00000001 e3001100 b780fcf5 f6bef800
-<0> 00000001 000001d9 00000040 00000040 0000000a b780fcf4 b780fd38 b01b761b
-<0> 0000010c 00000000 00000040 b780fcf4 0000000d b780fc88 b01e81db b780fea0
+ f6d206c8 00000040 000006fe 0000010c f6d206bc f69cf200 d71e5d5c e5bfd130
+<0> d71e5e88 f6e73000 c10a7236 00000040 d71e5d5c 0000000d 0000010c e234fa68
+<0> 00000000 00000060 0000000e d71e5d70 0000110d 00000400 0000005f f6d011c0
 Call Trace:
- [<b01b761b>] ? mpage_da_map_blocks+0xa2/0x71e
- [<b01e81db>] ? radix_tree_tag_set+0x55/0xa8
- [<b0159219>] ? __set_page_dirty_nobuffers+0xd1/0xdd
- [<b0153c03>] ? unlock_page+0x3e/0x41
- [<b01b6329>] ? ext4_writepage+0xeb/0x2a1
- [<b01e7e0d>] ? __lookup_tag+0x8d/0xe7
- [<b01e7edd>] ? radix_tree_gang_lookup_tag_slot+0x76/0x95
- [<b01536b2>] ? find_get_pages_tag+0x2b/0xdd
- [<b01b833b>] ? mpage_add_bh_to_extent+0x9d/0xb7
- [<b01b8462>] ? __mpage_da_writepage+0x10d/0x153
- [<b015884d>] ? write_cache_pages+0x158/0x214
- [<b01b8355>] ? __mpage_da_writepage+0x0/0x153
- [<b01b80e7>] ? ext4_da_writepages+0x450/0x607
- [<b011cf02>] ? __wake_up+0x31/0x3b
- [<b01d1551>] ? jbd2_journal_stop+0x22d/0x238
- [<b01d226d>] ? jbd2_journal_start+0x8c/0xb7
- [<b01bcedb>] ? ext4_orphan_del+0x16f/0x185
- [<b01b7c97>] ? ext4_da_writepages+0x0/0x607
- [<b015894c>] ? do_writepages+0x1c/0x28
- [<b015454c>] ? __filemap_fdatawrite_range+0x59/0x65
- [<b0154f95>] ? filemap_flush+0x15/0x17
- [<b01b6506>] ? ext4_alloc_da_blocks+0x27/0x29
- [<b01b1e48>] ? ext4_release_file+0x1c/0x85
- [<b0175f5a>] ? __fput+0xca/0x150
- [<b0175ff9>] ? fput+0x19/0x1b
- [<b0173964>] ? filp_close+0x48/0x52
- [<b01739d6>] ? sys_close+0x68/0x9f
- [<b02e0a7d>] ? syscall_call+0x7/0xb
-Code: e8 52 ee ff ff 89 c3 8b 87 14 02 00 00 39 c3 76 04 0f 0b eb fe 29 d8 
-89 45 e8 75 04 31 f6 eb 4d 8b b7 18 02 00 00 39 75 e8 7d 04 <0f> 0b eb fe 29 
-75 e8 8b 45 e8 99 f7 d8 83 d2 00 f7 da 89 45 c8
-EIP: [<b01b70cd>] ext4_get_blocks+0x1e0/0x398 SS:ESP 0068:b780fc0c
----[ end trace 95d6264240212785 ]---
-------------[ cut here ]------------
+ [<c10a7236>] ? mpage_da_map_blocks+0x74/0x2ab
+ [<c1044e59>] ? rcu_read_unlock+0x14/0x1e
+ [<c10456c5>] ? find_get_pages_tag+0x9b/0xb7
+ [<c10a78d1>] ? mpage_add_bh_to_extent+0x6f/0x86
+ [<c10a79b7>] ? __mpage_da_writepage+0xcf/0x10a
+ [<c104aa56>] ? write_cache_pages+0x16e/0x232
+ [<c10a78e8>] ? __mpage_da_writepage+0x0/0x10a
+ [<c10a76e1>] ? ext4_da_writepages+0x274/0x3f5
+ [<c104ab4b>] ? do_writepages+0x14/0x20
+ [<c107e5d2>] ? writeback_single_inode+0xca/0x260
+ [<c107ee39>] ? writeback_inodes_wb+0x337/0x3f1
+ [<c107efe2>] ? wb_writeback+0xef/0x14c
+ [<c1310827>] ? schedule+0x2af/0x2bf
+ [<c107f122>] ? wb_do_writeback+0x68/0x132
+ [<c107f20c>] ? bdi_writeback_task+0x20/0x7b
+ [<c10522a9>] ? bdi_start_fn+0x51/0xa0
+ [<c1052258>] ? bdi_start_fn+0x0/0xa0
+ [<c102a879>] ? kthread+0x5e/0x63
+ [<c102a81b>] ? kthread+0x0/0x63
+ [<c1002af6>] ? kernel_thread_helper+0x6/0x10
+Code: 08 89 c2 8b 04 24 e8 09 ed ff ff 89 c6 8b 85 f0 01 00 00 39 c6 76 04 0f
+0b eb fe 31 db 29 f0 74 35 8b 9d f4 01 00 00 39 d8 7d 04 <0f> 0b eb fe 89 c2 8b
+44 24 14 29 da 89 d1 c1 f9 1f 05 a8 00 00
+EIP: [<c10a704c>] ext4_get_blocks+0x19f/0x297 SS:ESP 0068:d71e5d18
+---[ end trace 5e36b9d9dd2f2ce5 ]---
+note: flush-8:0[2415] exited with preempt_count 1
 
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
