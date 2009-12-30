@@ -1,60 +1,42 @@
-From: tytso@mit.edu
-Subject: Re: 2.6.33-rc1: kernel BUG at fs/ext4/inode.c:1063 (sparc)
-Date: Wed, 30 Dec 2009 12:48:49 -0500
-Message-ID: <20091230174849.GN4429@thunk.org>
-References: <a4423d670912241449y2da43d5fi3e5a18c114b84178@mail.gmail.com>
- <87hbrfdylc.fsf@openvz.org>
- <a4423d670912251133u795338a4wd32d5cdef8c36c75@mail.gmail.com>
- <87eimir4yk.fsf@openvz.org>
- <a4423d670912271232y5bb928f7wb667ca71f1a93f8a@mail.gmail.com>
- <20091227225216.GB4429@thunk.org>
- <a4423d670912271502n13957e8boc168fdc75444dc09@mail.gmail.com>
- <20091228035159.GC4429@thunk.org>
- <20091230053720.GK4429@thunk.org>
- <87k4w4vbvy.fsf@openvz.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 updates for v2.6.33
+Date: Wed, 30 Dec 2009 12:51:11 -0800 (PST)
+Message-ID: <alpine.LFD.2.00.0912301249520.11961@localhost.localdomain>
+References: <E1NOdOL-0001s1-4J@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Beregalov <a.beregalov@gmail.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>,
-	dmitry.torokhov@gmail.com, Jan Kara <jack@suse.cz>,
-	aanisimov@inbox.ru, pl4nkton@googlemail.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:45459 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752163AbZL3Rsv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Dec 2009 12:48:51 -0500
-Content-Disposition: inline
-In-Reply-To: <87k4w4vbvy.fsf@openvz.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52092 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753500AbZL3UvP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Dec 2009 15:51:15 -0500
+In-Reply-To: <E1NOdOL-0001s1-4J@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 30, 2009 at 04:18:09PM +0300, Dmitry Monakhov wrote:
+
+
+On Sat, 26 Dec 2009, Theodore Ts'o wrote:
 > 
-> IMHO we may drop i_allocated_meta_block in ext4_release_file()
-> But while looking in to this function i've found another question
-> about locking
-> static int ext4_release_file(struct inode *inode, struct file *filp)
-> {
-> 	if (EXT4_I(inode)->i_state & EXT4_STATE_DA_ALLOC_CLOSE) {
-> 		ext4_alloc_da_blocks(inode);
-> 		EXT4_I(inode)->i_state &= ~EXT4_STATE_DA_ALLOC_CLOSE;
-> <<< Seems what i_state modification must being protected by i_mutex,
->  but currently caller don't have to hold it.
+> Please pull from:
+> 
+>         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+> 
+> to grab the following bug fixes for v2.6.33.
 
-(I'm answering this in a separate message since it really is a
-separate question).
+I don't get the diffstat you claim, so I'm unpulling. I've got a lot of 
+extra work in fs/ext4/inode.c, and fewer lines in fs/ext4/extents.c, for a 
+total of
 
-Yeah, that looks like a problem --- and it exists in more than just
-this one place.  Unfortunately using i_mutex to protect updates to
-i_state is a bit heavyweight.  What I'm thinking about doing is
-converting all of the references the i_state flags to use set_bit,
-clear_bit, and test_bit, since this will allow us to safely and
-cleanly set/clear/test individual bits.
+  15 files changed, 189 insertions(+), 94 deletions(-)
 
-A quick audit of ext3 seems to show this is potentially a problem with
-ext3 as well (specifically, in fs/ext3/xattr.c's use of
-EXT3_STATE_XATTR).
+instead of you claimed
 
-						- Ted
+>  15 files changed, 108 insertions(+), 24 deletions(-)
+
+Hmm?
+
+		Linus
