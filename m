@@ -1,41 +1,26 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14936] kernel BUG at fs/ext4/inode.c:1063 if attempted to use
- non-ext4 partition with ext4
-Date: Thu, 31 Dec 2009 19:28:43 GMT
-Message-ID: <200912311928.nBVJShhw007091@demeter.kernel.org>
-References: <bug-14936-13602@http.bugzilla.kernel.org/>
+From: "Hot Ruby Royale" <hxskbhymluuh@cz-online.com>
+Subject: =?iso-8859-1?Q?1_timme_att_vinna_s=E5_mycket_pengar_som_m=F6jligt_under?=
+Date: Thu, 31 Dec 2009 14:59:25 +0100
+Message-ID: <000901ca8a21$76716fe0$00426158@hdjsyvay>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: <bozarthkas@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:48948 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752934AbZLaT2o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Dec 2009 14:28:44 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id nBVJShTh007092
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Dec 2009 19:28:43 GMT
-In-Reply-To: <bug-14936-13602@http.bugzilla.kernel.org/>
+Received: from mx2.halloma.com ([87.240.72.14]:46699 "EHLO mx2.halloma.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750722AbZLaTqR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Dec 2009 14:46:17 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14936
+Mjukvaran de anv=E4nder =E4r b=E4st p=E5 marknaden, ljudet, grafiken=A0=
+ - allt. Den tar dig till en ny v=E4rld!
 
+http://www.casinoroyallive.net/sv/
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-         Resolution|PATCH_ALREADY_AVAILABLE     |CODE_FIX
-
-
-
-
---- Comment #8 from Rafael J. Wysocki <rjw@sisk.pl>  2009-12-31 19:28:41 ---
-Fixed by commit 0637c6f4135f592f094207c7c21e7c0fc5557834 .
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
