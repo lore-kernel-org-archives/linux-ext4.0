@@ -1,97 +1,59 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: fsstress-induced corruption reproduced
-Date: Thu, 31 Dec 2009 10:50:27 -0500
-Message-ID: <E1NQNIB-0006gT-1r@closure.thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14936] kernel BUG at fs/ext4/inode.c:1063 if attempted to use
+ non-ext4 partition with ext4
+Date: Thu, 31 Dec 2009 18:20:45 GMT
+Message-ID: <200912311820.nBVIKj93032686@demeter.kernel.org>
+References: <bug-14936-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51470 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752528AbZLaPuc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Dec 2009 10:50:32 -0500
+Received: from demeter.kernel.org ([140.211.167.39]:48590 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753017AbZLaSUq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Dec 2009 13:20:46 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id nBVIKjk9032687
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Dec 2009 18:20:45 GMT
+In-Reply-To: <bug-14936-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-One of the things which has been annoying me for a while now is a
-hard-to-reproduce xfsqa failure in test #13 (fsstress), which causes the
-a test failure because the file system found to be inconsistent:
+http://bugzilla.kernel.org/show_bug.cgi?id=14936
 
-Inode NNN, i_blocks is X, should be Y.
 
-I finally reproduced it; the problem happens when we fallocate() a
-region of the file which we had recently written, and which is still in
-the page cache marked as delayed allocation blocks.  When we finally
-write those blocks out, since they are marked BH_Delay,
-ext4_get_blocks() calls ext4_da_update_reserve_space(), which ends up
-bumping i_blocks a second time and charging the blocks against the
-user's quota a second time.  Oops.
 
-Fortunately the fsck problem is one that will be fixed with a preen (and
-if quota is enabled, a quotacheck), so it's not super serious, but we
-should fix it when we have a chance.  If anyone has time to look at it,
-please let me know.  Otherwise, I'll put it on my todo list.  I don't
-consider seriously urgent since the case is highly unlikely to occur in
-real life, and it doesn't have any security implications; the worst an
-attacker could do is end up charging excesss quota to herself.
 
-I've included a simple reproduction case below; if you run this program,
-it will create a file "test-file" in the current working directory which
-will appear to be 32k, even though it is really only 16k long, and if
-you then unmount the test file system and run e2fsck -p on it, you will get
-the error message:
 
-Inode XXX, i_blocks is 64, should be 32.  FIXED.
+--- Comment #7 from Rafael J. Wysocki <rjw@sisk.pl>  2009-12-31 18:20:42 ---
+On Thursday 31 December 2009, tytso@mit.edu wrote:
+> On Wed, Dec 30, 2009 at 10:52:12PM +0100, Rafael J. Wysocki wrote:
+> > > I'm working on a fix, and have a proposed patch.  See the thread on
+> > > linux-ext4 here:
+> > > 
+> > > http://marc.info/?l=linux-kernel&m=126219515024315&w=2
+> > > 
+> > > This patch also fixes the dq_claim_space kerneloops problem as
+> > > well....
+> > 
+> > Thanks, I've added your patch to the Bugzilla entry.
+> 
+> This patch has been merged to mainline.  I'm working on improving
+> things so that we don't lose performance by unnecessarily forcing
+> delalloc blocks out to disk when the (wildly overestimated) number of
+> required metadata blocks approaches the user's remaining quota or
+> remaining free space on disk, but the fundamental fix is in mainline.
+> 
+> (The performance hit was something I knew about when I pushed the
+> patch to Linus, but after discussing things with Eric Sandeen, we
+> figured that for users who were converting from ext3, which didn't
+> have delayed allocation support at all, even with the performance hit
+> when the user approached the quota limit, ext4 with delalloc+quota was
+> still better than ext3 --- and I wanted a fix in mainline ASAP.
+> Fortunately, it's not going to be that hard make the required metadata
+> much more accurate.)
 
-	       	     	    	     	     - Ted
-
-#define _GNU_SOURCE
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <fcntl.h>
-
-#define BUFSIZE 1024
-
-int main(int argc, char **argv)
-{
-	int	i, fd, ret;
-	char	buf[BUFSIZE];
-
-	fd = open("test-file", O_RDWR|O_CREAT|O_TRUNC, 0644);
-	if (fd < 0) {
-		perror("open");
-		exit(1);
-	}
-	memset(&buf, 0, BUFSIZE);
-	for (i=0; i < 16; i++) {
-		ret = write(fd, &buf, BUFSIZE);
-		if (ret < 0) {
-			perror("write");
-			exit(1);
-		}
-		if (ret != BUFSIZE) {
-			fprintf(stderr, "Write return expected %d, got %d\n",
-				BUFSIZE, ret);
-			exit(1);
-		}
-	}
-	ret = fallocate(fd, 0, 0, 16384);
-	if (ret < 0) {
-		perror("fallocate");
-		exit(1);
-	}
-	ret = fsync(fd);
-	if (ret < 0) {
-		perror("fsync");
-		exit(1);
-	}
-	ret = close(fd);
-	if (ret < 0) {
-		perror("close");
-		exit(1);
-	}
-	exit(0);
-}
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
