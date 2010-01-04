@@ -1,74 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14972] [regression] msync() call on ext4 causes disk thrashing
-Date: Mon, 4 Jan 2010 03:35:24 GMT
-Message-ID: <201001040335.o043ZOrW020607@demeter.kernel.org>
-References: <bug-14972-13602@http.bugzilla.kernel.org/>
+From: Tvrtko Ursulin <tvrtko@ursulin.net>
+Subject: Re: [2.6.33-rc2] kernel BUG at fs/ext4/inode.c:1063!
+Date: Mon, 4 Jan 2010 08:14:06 +0000
+Message-ID: <201001040814.07013.tvrtko@ursulin.net>
+References: <201001031638.57331.tvrtko@ursulin.net> <20100104010836.GA4527@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:36330 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751658Ab0ADDfZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Jan 2010 22:35:25 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o043ZOTK020608
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Jan 2010 03:35:24 GMT
-In-Reply-To: <bug-14972-13602@http.bugzilla.kernel.org/>
+Received: from mk-outboundfilter-3.mail.uk.tiscali.com ([212.74.114.23]:59212
+	"EHLO mk-outboundfilter-3.mail.uk.tiscali.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753219Ab0ADIOL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jan 2010 03:14:11 -0500
+In-Reply-To: <20100104010836.GA4527@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14972
-
-
-Eric Sandeen <sandeen@redhat.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sandeen@redhat.com
-
-
-
-
---- Comment #10 from Eric Sandeen <sandeen@redhat.com>  2010-01-04 03:35:22 ---
-(In reply to comment #9)
-> grep BLK.*TRACE /usr/src/linux/.config
+On Monday 04 Jan 2010 01:08:36 tytso@mit.edu wrote:
+> On Sun, Jan 03, 2010 at 04:38:57PM +0000, Tvrtko Ursulin wrote:
+> > As much as it was visible, all writeout stopped after this happened so I
+> > could only capture it with the camera. Please see the attachment.
 > 
-> CONFIG_BLK_DEV_IO_TRACE=y
+> This is a known bug.  The the latest mainline version of Linux (I
+> think 2.6.33-rc2-git4 includes the necessary patch) will no longer
+> BUG.  There are two more patches which I'm about to push to Linus that
+> are necessary to fix up a typo and some potential undesirable side
+> effects of the initial fix of the problem.  If you want to get all of
+> the fixes, pull in the changes from:
 > 
-> Yes, I'm running under root. SeLinux is disabled in the kernel. I've no idea
-> what to do :(
+>         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+>  for_linus
 
-Drop the echos.  Just mounting debugfs & running blktrace will suffice:
+Was it triggered by no free space? Later I realised that may be what happened 
+when this triggered. I was writing out a large file which may filled the 
+filesystem. After reboot file in question had zero size, due to journal replay I 
+think, but given the amount of free space on the filesystem I think it might 
+have used all space while writing out.
 
-[root@inode ~]# mount -t debugfs none /sys/kernel/debug/
-[root@inode ~]# blktrace /dev/sda
-^C=== sda ===
-  CPU  0:                    0 events,        0 KiB data
-  CPU  1:                    1 events,        1 KiB data
-  Total:                     1 events (dropped 0),        1 KiB data
+If this is related I will wait for -rc3 and just make sure I don't run out of 
+space. :) (So far I avoided starting to build git trees etc)
 
-but if you do this first:
-
-[root@inode ~]# echo blk > /sys/kernel/debug/tracing/current_tracer
-[root@inode ~]# echo 1 > /sys/block/sda/sda3/trace/enable
-
-you get the -EBUSY:
-
-[root@inode ~]# blktrace /dev/sda
-BLKTRACESETUP(2) /dev/sda failed: 16/Device or resource busy
-Thread 1 failed open /sys/kernel/debug/block/(null)/trace1: 2/No such file or
-directory
-Thread 0 failed open /sys/kernel/debug/block/(null)/trace0: 2/No such file or
-directory
-FAILED to start thread on CPU 0: 1/Operation not permitted
-FAILED to start thread on CPU 1: 1/Operation not permitted
-
-It's not related to selinux.
-
--Eric
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Tvrtko
