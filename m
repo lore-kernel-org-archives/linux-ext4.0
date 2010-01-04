@@ -1,65 +1,118 @@
-From: Michael Rubin <mrubin@google.com>
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Mon, 4 Jan 2010 10:57:49 -0800
-Message-ID: <532480951001041057w3ad8d1dfy361ced0346ebaaa4__35393.752976279$1262631524$gmane$org@mail.gmail.com>
-References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de>
-	<19251.26403.762180.228181@tree.ty.sabi.co.uk> <20091224212756.GM21594@thunk.org>
-	<20091224234631.GA1028@ioremap.net> <20091225161146.GC32757@thunk.org>
-	<20100104162748.GA11932@think>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fsstress-induced corruption reproduced
+Date: Mon, 04 Jan 2010 14:13:24 -0600
+Message-ID: <4B424BE4.3030605@redhat.com>
+References: <E1NQNIB-0006gT-1r@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: Chris Mason <chris.mason@oracle.com>, tytso@mit.edu,
-	Evgeniy Polyakov <zbr@ioremap.net>,
-	Peter Grandi <pg_jf2@jf2.for.sabi.co.uk>, xfs@oss.sgi.com,
-	reiserfs-devel@vger.kernel.org, lin
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:40718 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753721Ab0ADS6N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jan 2010 13:58:13 -0500
-In-Reply-To: <20100104162748.GA11932@think>
+Received: from mx1.redhat.com ([209.132.183.28]:11710 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753991Ab0ADUN1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Jan 2010 15:13:27 -0500
+In-Reply-To: <E1NQNIB-0006gT-1r@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Google is currently in the middle of upgrading from ext2 to a more up
-to date file system. We ended up choosing ext4. This thread touches
-upon many of the issues we wrestled with, so I thought it would be
-interesting to share. We should be sending out more details soon.
+Theodore Ts'o wrote:
+> One of the things which has been annoying me for a while now is a
+> hard-to-reproduce xfsqa failure in test #13 (fsstress), which causes the
+> a test failure because the file system found to be inconsistent:
+> 
+> Inode NNN, i_blocks is X, should be Y.
 
-The driving performance reason to upgrade is that while ext2 had been "good
-enough" for a very long time the metadata arrangement on a stale file
-system was leading to what we call "read inflation". This is where we
-end up doing many seeks to read one block of data. In general latency
-from poor block allocation was causing performance hiccups.
+Interesting, this apparently has gotten much worse since 2.6.32.
 
-We spent a lot of time with unix standard benchmarks (dbench, compile
-bench, et al) on xfs, ext4, jfs to try to see which one was going to
-perform the best. In the end we mostly ended up using the benchmarks
-to validate our assumptions and do functional testing. Larry is
-completely right IMHO. These benchmarks were instrumental in helping
-us understand how the file systems worked in controlled situations and
-gain confidence from our customers.
+I wrote an xfstests reproducer, and couldn't hit it on .32; hit it right
+off on 2.6.33-rc2.
 
-For our workloads we saw ext4 and xfs as "close enough" in performance
-in the areas we cared about. The fact that we had a much smoother
-upgrade path with ext4 clinched the deal. The only upgrade option we
-have is online. ext4 is already moving the bottleneck away from the
-storage stack for some of our most intensive applications.
+Probably should find out why ;) I'll go take a look.
 
-It was not until we moved from benchmarks to customer workload that we
-were able to make detailed performance comparisons and find bugs in
-our implementation.
+-Eric
 
-"Iterate often" seems to be the winning strategy for SW dev. But when
-it involves rebooting a cloud of systems and making a one way
-conversion of their data it can get messy. That said I see benchmarks
-as tools to build confidence before running traffic on redundant live
-systems.
+> I finally reproduced it; the problem happens when we fallocate() a
+> region of the file which we had recently written, and which is still in
+> the page cache marked as delayed allocation blocks.  When we finally
+> write those blocks out, since they are marked BH_Delay,
+> ext4_get_blocks() calls ext4_da_update_reserve_space(), which ends up
+> bumping i_blocks a second time and charging the blocks against the
+> user's quota a second time.  Oops.
+> 
+> Fortunately the fsck problem is one that will be fixed with a preen (and
+> if quota is enabled, a quotacheck), so it's not super serious, but we
+> should fix it when we have a chance.  If anyone has time to look at it,
+> please let me know.  Otherwise, I'll put it on my todo list.  I don't
+> consider seriously urgent since the case is highly unlikely to occur in
+> real life, and it doesn't have any security implications; the worst an
+> attacker could do is end up charging excesss quota to herself.
+> 
+> I've included a simple reproduction case below; if you run this program,
+> it will create a file "test-file" in the current working directory which
+> will appear to be 32k, even though it is really only 16k long, and if
+> you then unmount the test file system and run e2fsck -p on it, you will get
+> the error message:
+> 
+> Inode XXX, i_blocks is 64, should be 32.  FIXED.
+> 
+> 	       	     	    	     	     - Ted
+> 
+> #define _GNU_SOURCE
+> 
+> #include <stdio.h>
+> #include <stdlib.h>
+> #include <unistd.h>
+> #include <string.h>
+> #include <sys/types.h>
+> #include <fcntl.h>
+> #include <fcntl.h>
+> 
+> #define BUFSIZE 1024
+> 
+> int main(int argc, char **argv)
+> {
+> 	int	i, fd, ret;
+> 	char	buf[BUFSIZE];
+> 
+> 	fd = open("test-file", O_RDWR|O_CREAT|O_TRUNC, 0644);
+> 	if (fd < 0) {
+> 		perror("open");
+> 		exit(1);
+> 	}
+> 	memset(&buf, 0, BUFSIZE);
+> 	for (i=0; i < 16; i++) {
+> 		ret = write(fd, &buf, BUFSIZE);
+> 		if (ret < 0) {
+> 			perror("write");
+> 			exit(1);
+> 		}
+> 		if (ret != BUFSIZE) {
+> 			fprintf(stderr, "Write return expected %d, got %d\n",
+> 				BUFSIZE, ret);
+> 			exit(1);
+> 		}
+> 	}
+> 	ret = fallocate(fd, 0, 0, 16384);
+> 	if (ret < 0) {
+> 		perror("fallocate");
+> 		exit(1);
+> 	}
+> 	ret = fsync(fd);
+> 	if (ret < 0) {
+> 		perror("fsync");
+> 		exit(1);
+> 	}
+> 	ret = close(fd);
+> 	if (ret < 0) {
+> 		perror("close");
+> 		exit(1);
+> 	}
+> 	exit(0);
+> }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-mrubin
-
-PS for some reason "dbench" holds mythical power over many folks I
-have met. They just believe it's the most trusted and standard
-benchmark for file systems. In my experience it often acts as a random
-number generator. It has found some bugs in our code as it exercises
-the VFS layer very well.
