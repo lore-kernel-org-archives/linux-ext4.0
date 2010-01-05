@@ -1,176 +1,76 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4/quota lockdep complaint: false positive?
-Date: Tue, 5 Jan 2010 01:15:42 +0100
-Message-ID: <20100105001542.GC3252@quack.suse.cz>
-References: <E1NOc16-0003pi-BQ@closure.thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [Jfs-discussion] benchmark results
+Date: Tue, 5 Jan 2010 11:41:17 +1100
+Message-ID: <20100105004117.GP13802@discord.disaster>
+References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de> <19251.26403.762180.228181@tree.ty.sabi.co.uk> <20091224212756.GM21594@thunk.org> <20091224234631.GA1028@ioremap.net> <20091225161146.GC32757@thunk.org> <20100104162748.GA11932@think>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+To: Chris Mason <chris.mason@oracle.com>, tytso@mit.edu,
+	Evgeniy Polyakov <zbr@ioremap.net>,
+	Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>, xfs@oss.sgi.com,
+	reiserfs-devel@vger.kernel.org, lin
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55272 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753563Ab0AEAPl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Jan 2010 19:15:41 -0500
+Received: from bld-mail13.adl6.internode.on.net ([150.101.137.98]:44699 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752218Ab0AEA6G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jan 2010 19:58:06 -0500
 Content-Disposition: inline
-In-Reply-To: <E1NOc16-0003pi-BQ@closure.thunk.org>
+In-Reply-To: <20100104162748.GA11932@think>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+On Mon, Jan 04, 2010 at 11:27:48AM -0500, Chris Mason wrote:
+> On Fri, Dec 25, 2009 at 11:11:46AM -0500, tytso@mit.edu wrote:
+> > On Fri, Dec 25, 2009 at 02:46:31AM +0300, Evgeniy Polyakov wrote:
+> > > > [1] http://samba.org/ftp/tridge/dbench/README
+> > > 
+> > > Was not able to resist to write a small notice, what no matter what, but
+> > > whatever benchmark is running, it _does_ show system behaviour in one
+> > > or another condition. And when system behaves rather badly, it is quite
+> > > a common comment, that benchmark was useless. But it did show that
+> > > system has a problem, even if rarely triggered one :)
+> > 
+> > If people are using benchmarks to improve file system, and a benchmark
+> > shows a problem, then trying to remedy the performance issue is a good
+> > thing to do, of course.  Sometimes, though the case which is
+> > demonstrated by a poor benchmark is an extremely rare corner case that
+> > doesn't accurately reflect common real-life workloads --- and if
+> > addressing it results in a tradeoff which degrades much more common
+> > real-life situations, then that would be a bad thing.
+> > 
+> > In situations where benchmarks are used competitively, it's rare that
+> > it's actually a *problem*.  Instead it's much more common that a
+> > developer is trying to prove that their file system is *better* to
+> > gullible users who think that a single one-dimentional number is
+> > enough for them to chose file system X over file system Y.
+> 
+> [ Look at all this email from my vacation...sorry for the delay ]
+> 
+> It's important that people take benchmarks from filesystem developers
+> with a big grain of salt, which is one reason the boxacle.net results
+> are so nice.  Steve more than willing to take patches and experiment to
+> improve a given FS results, but his business is a fair representation of
+> performance and it shows.
 
-On Sat 26-12-09 14:09:32, Theodore Ts'o wrote:
-> While running the xfsqa regression test suite, lockdep triggered the
-> following complaint, as shown below.
-> 
-> I *think* it is a false positive, since the issue involves chown
-> triggering a write to the quota file; and during the write, we are
-> extending the quota file, which means grabbing i_data_sem while we have
-> already grabbed the inode mutex for the quota file.
-> 
-> The potential circular locking dependency that lockdep is complaining
-> occurs only when we are mounting the filesystem, and reading from the
-> quota file; and at that point we wouldn't be writing other files and
-> needing to update quota file as aresult.  So I don't think this is a
-> problem in practice, but (1) i'd like a second opinion, and (2) I'm not
-> sure what's the best way to make lockdep happy.
-  I think it's false positive as well. There are only two places which
-really have the dqptr_sem -> i_mutex/4 dependency. One happens during
-quotaon and one during quotaoff and both at a time when there are no dquot
-structures active.
-  Another reason why the deadlock cannot really happen is that when we
-are holding i_data_sem of quota file we do not ever acquire dqptr_sem
-(because of IS_NOQUOTA check in quota functions) - lockdep established the
-dependency before the file was marked as quota file...
-  So the question is how to silence the lockdep warning in a clean way. One
-way would be to introduce a separate locking subclass for i_data_sem of
-quota files but IMHO that would look ugly in the code - we'd have to call
-down_write/read_nested if IS_NOQUOTA is true for the inode when acquiring
-i_data_sem. Another solution (although mostly accidental) would be to break
-the dqptr_sem->i_mutex/4 dependency happening during quotaon/quotaoff. I'll
-have a look at it tomorrow and see how hard that would be.
+Just looking at the results there, I notice that the RAID system XFS
+mailserver results dropped by an order of magnitude between
+2.6.29-rc2 and 2.6.31. The single disk results are pretty
+much identical across the two kernels.
 
-								Honza
- 
-> =======================================================
-> [ INFO: possible circular locking dependency detected ]
-> 2.6.32-06811-ge47eb9c #226
-> -------------------------------------------------------
-> chown/9834 is trying to acquire lock:
->  (&ei->i_data_sem){++++..}, at: [<c0238af2>] ext4_get_blocks+0x37/0x2d4
-> 
-> but task is already holding lock:
->  (&sb->s_type->i_mutex_key#12/4){+.+...}, at: [<c0245618>] ext4_quota_write+0xb9/0x263
-> 
-> which lock already depends on the new lock.
-> 
-> 
-> the existing dependency chain (in reverse order) is:
-> 
-> -> #2 (&sb->s_type->i_mutex_key#12/4){+.+...}:
->        [<c017e0d2>] __lock_acquire+0xa16/0xb75
->        [<c017e2c4>] lock_acquire+0x93/0xb1
->        [<c062d75b>] __mutex_lock_common+0x32/0x314
->        [<c062daea>] mutex_lock_nested+0x35/0x3d
->        [<c021be29>] vfs_load_quota_inode+0x172/0x40a
->        [<c021c365>] vfs_quota_on_path+0x44/0x4d
->        [<c02451e5>] ext4_quota_on+0x122/0x171
->        [<c0220588>] do_quotactl+0xdb/0x3da
->        [<c0220b04>] sys_quotactl+0x27d/0x29d
->        [<c062f06d>] syscall_call+0x7/0xb
-> 
-> -> #1 (&s->s_dquot.dqptr_sem){++++..}:
->        [<c017e0d2>] __lock_acquire+0xa16/0xb75
->        [<c017e2c4>] lock_acquire+0x93/0xb1
->        [<c062dd61>] down_read+0x39/0x76
->        [<c021ca5e>] dquot_release_reserved_space+0x2d/0x91
->        [<c023524d>] vfs_dq_release_reservation_block+0x49/0x55
->        [<c0238d03>] ext4_get_blocks+0x248/0x2d4
->        [<c0238ea8>] mpage_da_map_blocks+0x86/0x347
->        [<c0239417>] ext4_da_writepages+0x2ae/0x452
->        [<c01c461c>] do_writepages+0x1c/0x29
->        [<c0200f22>] writeback_single_inode+0xd9/0x293
->        [<c0201f80>] write_inode_now+0x80/0xc8
->        [<c021bdbc>] vfs_load_quota_inode+0x105/0x40a
->        [<c021c365>] vfs_quota_on_path+0x44/0x4d
->        [<c02451e5>] ext4_quota_on+0x122/0x171
->        [<c0220588>] do_quotactl+0xdb/0x3da
->        [<c0220b04>] sys_quotactl+0x27d/0x29d
->        [<c062f06d>] syscall_call+0x7/0xb
-> 
-> -> #0 (&ei->i_data_sem){++++..}:
->        [<c017dfd4>] __lock_acquire+0x918/0xb75
->        [<c017e2c4>] lock_acquire+0x93/0xb1
->        [<c062dd61>] down_read+0x39/0x76
->        [<c0238af2>] ext4_get_blocks+0x37/0x2d4
->        [<c0239885>] ext4_getblk+0x56/0x141
->        [<c0239988>] ext4_bread+0x18/0x59
->        [<c024564c>] ext4_quota_write+0xed/0x263
->        [<c021f425>] write_blk+0x33/0x3b
->        [<c021ffc6>] do_insert_tree+0x1eb/0x2bd
->        [<c0220033>] do_insert_tree+0x258/0x2bd
->        [<c0220033>] do_insert_tree+0x258/0x2bd
->        [<c0220033>] do_insert_tree+0x258/0x2bd
->        [<c02200f7>] qtree_write_dquot+0x5f/0x118
->        [<c021ecb8>] v2_write_dquot+0x25/0x27
->        [<c021ba9a>] dquot_acquire+0x89/0xde
->        [<c0246b40>] ext4_acquire_dquot+0x64/0x7e
->        [<c021dbbb>] dqget+0x29d/0x2d9
->        [<c021e07e>] dquot_transfer+0x89/0x508
->        [<c021bc9c>] vfs_dq_transfer+0x64/0x7f
->        [<c0236d46>] ext4_setattr+0xa4/0x2c0
->        [<c01fac16>] notify_change+0x164/0x2aa
->        [<c01e8825>] chown_common+0x68/0x7a
->        [<c01e88eb>] sys_fchownat+0x57/0x72
->        [<c062f06d>] syscall_call+0x7/0xb
-> 
-> other info that might help us debug this:
-> 
-> 5 locks held by chown/9834:
->  #0:  (&sb->s_type->i_mutex_key#12){+.+.+.}, at: [<c01e881a>] chown_common+0x5d/0x7a
->  #1:  (jbd2_handle){+.+...}, at: [<c025d7c8>] start_this_handle+0x42d/0x478
->  #2:  (&dquot->dq_lock){+.+...}, at: [<c021ba36>] dquot_acquire+0x25/0xde
->  #3:  (&s->s_dquot.dqio_mutex){+.+...}, at: [<c021ba46>] dquot_acquire+0x35/0xde
->  #4:  (&sb->s_type->i_mutex_key#12/4){+.+...}, at: [<c0245618>] ext4_quota_write+0xb9/0x263
-> 
-> stack backtrace:
-> Pid: 9834, comm: chown Not tainted 2.6.32-06811-ge47eb9c #226
-> Call Trace:
->  [<c062c548>] ? printk+0x14/0x16
->  [<c017d38e>] print_circular_bug+0x8a/0x96
->  [<c017dfd4>] __lock_acquire+0x918/0xb75
->  [<c017e2c4>] lock_acquire+0x93/0xb1
->  [<c0238af2>] ? ext4_get_blocks+0x37/0x2d4
->  [<c062dd61>] down_read+0x39/0x76
->  [<c0238af2>] ? ext4_get_blocks+0x37/0x2d4
->  [<c0238af2>] ext4_get_blocks+0x37/0x2d4
->  [<c017cb93>] ? mark_lock+0x1e/0x1d9
->  [<c0239885>] ext4_getblk+0x56/0x141
->  [<c062da33>] ? __mutex_lock_common+0x30a/0x314
->  [<c0239988>] ext4_bread+0x18/0x59
->  [<c062daea>] ? mutex_lock_nested+0x35/0x3d
->  [<c024564c>] ext4_quota_write+0xed/0x263
->  [<c021f425>] write_blk+0x33/0x3b
->  [<c021ffc6>] do_insert_tree+0x1eb/0x2bd
->  [<c0220033>] do_insert_tree+0x258/0x2bd
->  [<c0220033>] do_insert_tree+0x258/0x2bd
->  [<c0220033>] do_insert_tree+0x258/0x2bd
->  [<c02200f7>] qtree_write_dquot+0x5f/0x118
->  [<c021f752>] ? qtree_read_dquot+0x62/0x1bb
->  [<c021ecb8>] v2_write_dquot+0x25/0x27
->  [<c021ba9a>] dquot_acquire+0x89/0xde
->  [<c0246b40>] ext4_acquire_dquot+0x64/0x7e
->  [<c021dbbb>] dqget+0x29d/0x2d9
->  [<c021e07e>] dquot_transfer+0x89/0x508
->  [<c062e8e3>] ? _spin_unlock+0x22/0x25
->  [<c021d318>] ? dqput+0x1de/0x1f3
->  [<c021bc9c>] vfs_dq_transfer+0x64/0x7f
->  [<c0236d46>] ext4_setattr+0xa4/0x2c0
->  [<c01fac16>] notify_change+0x164/0x2aa
->  [<c01e8825>] chown_common+0x68/0x7a
->  [<c01e88eb>] sys_fchownat+0x57/0x72
->  [<c062f06d>] syscall_call+0x7/0xb
-> 
+IIRC, in 2.6.31 RAID0 started passing barriers through so I suspect
+this is the issue. However, seeing as dmesg is not collected by
+the scripts after the run and the output of the mounttab does
+not show default options, I cannot tell if this is the case. This
+might be worth checking by running XFS with the "nobarrier" mount
+option....
+
+FWIW, is it possible to get these benchmarks run on each filesystem for
+each kernel release so ext/xfs/btrfs all get some regular basic
+performance regression test coverage?
+
+Cheers,
+
+Dave.
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
