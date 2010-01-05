@@ -1,82 +1,99 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: fsstress-induced corruption reproduced
-Date: Tue, 05 Jan 2010 08:40:49 -0600
-Message-ID: <4B434F71.5080708@redhat.com>
-References: <E1NQNIB-0006gT-1r@closure.thunk.org> <4B424BE4.3030605@redhat.com> <4B427507.40004@redhat.com> <20100105061728.GA7868@skywalker.linux.vnet.ibm.com>
+From: Steven Pratt <slpratt@austin.ibm.com>
+Subject: Re: [Jfs-discussion] benchmark results
+Date: Tue, 05 Jan 2010 09:31:00 -0600
+Message-ID: <4B435B34.20003@austin.ibm.com>
+References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de> <19251.26403.762180.228181@tree.ty.sabi.co.uk> <20091224212756.GM21594@thunk.org> <20091224234631.GA1028@ioremap.net> <20091225161146.GC32757@thunk.org> <20100104162748.GA11932@think> <20100105004117.GP13802@discord.disaster>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51098 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753709Ab0AEOk6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jan 2010 09:40:58 -0500
-In-Reply-To: <20100105061728.GA7868@skywalker.linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Chris Mason <chris.mason@oracle.com>, tytso@mit.edu,
+	Evgeniy Polyakov <zbr@ioremap.net>,
+	Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>, xfs@oss.sgi.com,
+	reiserfs-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
+	ext-users <ext3-users@redhat.com>, linux-nilfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+In-Reply-To: <20100105004117.GP13802@discord.disaster>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Aneesh Kumar K.V wrote:
-> On Mon, Jan 04, 2010 at 05:08:55PM -0600, Eric Sandeen wrote:
->> Eric Sandeen wrote:
->>> Theodore Ts'o wrote:
->>>> One of the things which has been annoying me for a while now is a
->>>> hard-to-reproduce xfsqa failure in test #13 (fsstress), which causes the
->>>> a test failure because the file system found to be inconsistent:
->>>>
->>>> Inode NNN, i_blocks is X, should be Y.
->>> Interesting, this apparently has gotten much worse since 2.6.32.
+Dave Chinner wrote:
+> On Mon, Jan 04, 2010 at 11:27:48AM -0500, Chris Mason wrote:
+>   
+>> On Fri, Dec 25, 2009 at 11:11:46AM -0500, tytso@mit.edu wrote:
+>>     
+>>> On Fri, Dec 25, 2009 at 02:46:31AM +0300, Evgeniy Polyakov wrote:
+>>>       
+>>>>> [1] http://samba.org/ftp/tridge/dbench/README
+>>>>>           
+>>>> Was not able to resist to write a small notice, what no matter what, but
+>>>> whatever benchmark is running, it _does_ show system behaviour in one
+>>>> or another condition. And when system behaves rather badly, it is quite
+>>>> a common comment, that benchmark was useless. But it did show that
+>>>> system has a problem, even if rarely triggered one :)
+>>>>         
+>>> If people are using benchmarks to improve file system, and a benchmark
+>>> shows a problem, then trying to remedy the performance issue is a good
+>>> thing to do, of course.  Sometimes, though the case which is
+>>> demonstrated by a poor benchmark is an extremely rare corner case that
+>>> doesn't accurately reflect common real-life workloads --- and if
+>>> addressing it results in a tradeoff which degrades much more common
+>>> real-life situations, then that would be a bad thing.
 >>>
->>> I wrote an xfstests reproducer, and couldn't hit it on .32; hit it right
->>> off on 2.6.33-rc2.
->>>
->>> Probably should find out why ;) I'll go take a look.
->> commit d21cd8f163ac44b15c465aab7306db931c606908
->> Author: Dmitry Monakhov <dmonakhov@openvz.org>
->> Date:   Thu Dec 10 03:31:45 2009 +0000
+>>> In situations where benchmarks are used competitively, it's rare that
+>>> it's actually a *problem*.  Instead it's much more common that a
+>>> developer is trying to prove that their file system is *better* to
+>>> gullible users who think that a single one-dimentional number is
+>>> enough for them to chose file system X over file system Y.
+>>>       
+>> [ Look at all this email from my vacation...sorry for the delay ]
 >>
->>     ext4: Fix potential quota deadlock
->>
->> seems to be the culprit.
->>
->> (unfortunately this means that the error we saw before is something
->> -else- to be fixed, yet)  Anyway ...
->>
->> This is because we used to do this in ext4_mb_mark_diskspace_used() :
->>
->>         /*
->>          * Now reduce the dirty block count also. Should not go negative
->>          */
->>         if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
->>                 /* release all the reserved blocks if non delalloc */
->>                 percpu_counter_sub(&sbi->s_dirtyblocks_counter,
->> reserv_blks);
->>         else {
->>                 percpu_counter_sub(&sbi->s_dirtyblocks_counter,
->>                                                 ac->ac_b_ex.fe_len);
->>                 /* convert reserved quota blocks to real quota blocks */
->>                 vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
->> 	}
->>
->> i.e. the vfs_dq_claim_block was conditional based on
->> EXT4_MB_DELALLOC_RESERVED... and the testcase did not go that way,
->> because we had already preallocated the blocks.
->>
->> But with the above quota deadlock commit it's not unconditional
->> anymore in ext4_da_update_reserve_space and we always call
->> vfs_dq_claim_block which over-accounts.
->>
-> 
-> It is still conditional right ? We call ext4_da_update_reserve_space
-> only if EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE  is set . That will
-> happen only in case of delayed allocation. I guess the problem is
-> same as what Ted stated. But i am not sure why we are able to reproduce
-> it much easily on 2.6.33-rc2.
-> 
+>> It's important that people take benchmarks from filesystem developers
+>> with a big grain of salt, which is one reason the boxacle.net results
+>> are so nice.  Steve more than willing to take patches and experiment to
+>> improve a given FS results, but his business is a fair representation of
+>> performance and it shows.
+>>     
+>
+> Just looking at the results there, I notice that the RAID system XFS
+> mailserver results dropped by an order of magnitude between
+> 2.6.29-rc2 and 2.6.31. The single disk results are pretty
+> much identical across the two kernels.
+>
+> IIRC, in 2.6.31 RAID0 started passing barriers through so I suspect
+> this is the issue. However, seeing as dmesg is not collected by
+> the scripts after the run and the output of the mounttab does
+> not show default options, I cannot tell if this is the case. 
+Well the dmesg collection is done by the actual benchmark run which 
+occurs after the mount command is issued, so if you are looking for 
+dmesg related to mounting the xfs volume, it should be in the dmesg we 
+did collect.  If dmesg actually formatted timestamps, this would be 
+easier to see.  It seems that nothing from xfs is ending up in dmesg 
+since we are running xfs with different threads counts in order without 
+reboot, so the dmesg for 16 thread xfs is run right after 1 thread xfs, 
+but the dmesg show ext3 as the last thing, so safe to say no output from 
+xfs is ending up in dmesg at all.
 
-Well, I'll take another look.  But back out the above commit and I think
-you'll see that it changed things to make it 100% reproducible.
 
--Eric
+> This
+> might be worth checking by running XFS with the "nobarrier" mount
+> option....
+>   
+I could give that a try for you.
+
+> FWIW, is it possible to get these benchmarks run on each filesystem for
+> each kernel release so ext/xfs/btrfs all get some regular basic
+> performance regression test coverage?
+>   
+Possible yes.  Just need to find the time to do the runs, and more 
+importantly postprocess the data in some meaningful way.  I'll see what 
+I can do.
+
+Steve
+
+> Cheers,
+>
+> Dave.
+>   
 
