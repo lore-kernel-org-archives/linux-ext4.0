@@ -1,39 +1,130 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] jbd: jbd-debug and jbd2-debug should be writable.
-Date: Tue, 5 Jan 2010 11:35:36 -0500
-Message-ID: <20100105163536.GC5457@thunk.org>
-References: <20091204031735.GN19635@kai-debian>
- <20091204094932.GC4272@skywalker.linux.vnet.ibm.com>
- <20091225204859.GG32757@thunk.org>
- <20100104222614.GB3252@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fsstress-induced corruption reproduced
+Date: Tue, 05 Jan 2010 17:37:57 -0600
+Message-ID: <4B43CD55.1050904@redhat.com>
+References: <E1NQNIB-0006gT-1r@closure.thunk.org> <4B424BE4.3030605@redhat.com> <4B427507.40004@redhat.com> <20100105061728.GA7868@skywalker.linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Yin, Kangkai" <kangkai.yin@intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47519 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19288 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751741Ab0AEQfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jan 2010 11:35:51 -0500
-Content-Disposition: inline
-In-Reply-To: <20100104222614.GB3252@quack.suse.cz>
+	id S1750756Ab0AEXiB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jan 2010 18:38:01 -0500
+In-Reply-To: <20100105061728.GA7868@skywalker.linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 04, 2010 at 11:26:14PM +0100, Jan Kara wrote:
-> On Fri 25-12-09 15:48:59, tytso@mit.edu wrote:
-> > The ext4 portion has been added to the ext4 patch queue.
-> > 
-> > Jan, you want to add this to the ext3 tree?
->   Thanks for the notification. Actually, I've already sent the original
-> patch to Linus and that was for both jbd and jbd2. The patch was so trivial
-> I thought it's not worth splitting it up. I'm sorry if it caused any
-> trouble to you.
+Aneesh Kumar K.V wrote:
+> On Mon, Jan 04, 2010 at 05:08:55PM -0600, Eric Sandeen wrote:
+>   
+>> Eric Sandeen wrote:
+>>     
+>>> Theodore Ts'o wrote:
+>>>       
+>>>> One of the things which has been annoying me for a while now is a
+>>>> hard-to-reproduce xfsqa failure in test #13 (fsstress), which causes the
+>>>> a test failure because the file system found to be inconsistent:
+>>>>
+>>>> Inode NNN, i_blocks is X, should be Y.
+>>>>         
+>>> Interesting, this apparently has gotten much worse since 2.6.32.
+>>>
+>>> I wrote an xfstests reproducer, and couldn't hit it on .32; hit it right
+>>> off on 2.6.33-rc2.
+>>>
+>>> Probably should find out why ;) I'll go take a look.
+>>>       
+>> commit d21cd8f163ac44b15c465aab7306db931c606908
+>> Author: Dmitry Monakhov <dmonakhov@openvz.org>
+>> Date:   Thu Dec 10 03:31:45 2009 +0000
+>>
+>>     ext4: Fix potential quota deadlock
+>>
+>> seems to be the culprit.
+>>
+>> (unfortunately this means that the error we saw before is something
+>> -else- to be fixed, yet)  Anyway ...
+>>
+>> This is because we used to do this in ext4_mb_mark_diskspace_used() :
+>>
+>>         /*
+>>          * Now reduce the dirty block count also. Should not go negative
+>>          */
+>>         if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+>>                 /* release all the reserved blocks if non delalloc */
+>>                 percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+>> reserv_blks);
+>>         else {
+>>                 percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+>>                                                 ac->ac_b_ex.fe_len);
+>>                 /* convert reserved quota blocks to real quota blocks */
+>>                 vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
+>> 	}
+>>
+>> i.e. the vfs_dq_claim_block was conditional based on
+>> EXT4_MB_DELALLOC_RESERVED... and the testcase did not go that way,
+>> because we had already preallocated the blocks.
+>>
+>> But with the above quota deadlock commit it's not unconditional
+>> anymore in ext4_da_update_reserve_space and we always call
+>> vfs_dq_claim_block which over-accounts.
+>>
+>>     
+>
+> It is still conditional right ? We call ext4_da_update_reserve_space
+> only if EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE  is set . That will
+> happen only in case of delayed allocation. I guess the problem is
+> same as what Ted stated. But i am not sure why we are able to reproduce
+> it much easily on 2.6.33-rc2.
+>
+>   
+Maybe something like this works:
 
-No worries, I hadn't realized it had already been sent up to Linus.
+Index: linux-2.6/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/inode.c
++++ linux-2.6/fs/ext4/inode.c
+@@ -1203,6 +1203,7 @@ int ext4_get_blocks(handle_t *handle, st
+ 		    int flags)
+ {
+ 	int retval;
++	int was_unwritten;
+ 
+ 	clear_buffer_mapped(bh);
+ 	clear_buffer_unwritten(bh);
+@@ -1253,9 +1254,13 @@ int ext4_get_blocks(handle_t *handle, st
+ 	 * part of the uninitialized extent to be an initialized
+ 	 * extent.  This is because we need to avoid the combination
+ 	 * of BH_Unwritten and BH_Mapped flags being simultaneously
+-	 * set on the buffer_head.
++	 * set on the buffer_head.  However, if it was unwritten we
++	 * don't want to update reserved space later.
+ 	 */
+-	clear_buffer_unwritten(bh);
++	if (buffer_unwritten(bh)) {
++		was_unwritten = 1;
++		clear_buffer_unwritten(bh);
++	}
+ 
+ 	/*
+ 	 * New blocks allocate and/or writing to uninitialized extent
+@@ -1301,7 +1306,8 @@ int ext4_get_blocks(handle_t *handle, st
+ 	 * Update reserved blocks/metadata blocks after successful
+ 	 * block allocation which had been deferred till now.
+ 	 */
+-	if ((retval > 0) && (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
++	if ((retval > 0) && !was_unwritten &&
++	    (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
+ 		ext4_da_update_reserve_space(inode, retval);
+ 
+ 	up_write((&EXT4_I(inode)->i_data_sem));
 
-   	      	     	      	     - Ted
+but that might leave the previous reservations hanging around from
+prior to the fallocate ...
+
+-Eric
+
+
