@@ -1,76 +1,129 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Tue, 5 Jan 2010 11:41:17 +1100
-Message-ID: <20100105004117.GP13802@discord.disaster>
-References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de> <19251.26403.762180.228181@tree.ty.sabi.co.uk> <20091224212756.GM21594@thunk.org> <20091224234631.GA1028@ioremap.net> <20091225161146.GC32757@thunk.org> <20100104162748.GA11932@think>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: fsstress-induced corruption reproduced
+Date: Tue, 5 Jan 2010 11:47:28 +0530
+Message-ID: <20100105061728.GA7868@skywalker.linux.vnet.ibm.com>
+References: <E1NQNIB-0006gT-1r@closure.thunk.org>
+ <4B424BE4.3030605@redhat.com>
+ <4B427507.40004@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Chris Mason <chris.mason@oracle.com>, tytso@mit.edu,
-	Evgeniy Polyakov <zbr@ioremap.net>,
-	Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>, xfs@oss.sgi.com,
-	reiserfs-devel@vger.kernel.org, lin
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bld-mail13.adl6.internode.on.net ([150.101.137.98]:44699 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752218Ab0AEA6G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jan 2010 19:58:06 -0500
+Received: from e28smtp05.in.ibm.com ([122.248.162.5]:41813 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751086Ab0AEGRe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jan 2010 01:17:34 -0500
+Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
+	by e28smtp05.in.ibm.com (8.14.3/8.13.1) with ESMTP id o056HUqm024288
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jan 2010 11:47:30 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o056HUfY2244768
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jan 2010 11:47:30 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o056HUY9015511
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jan 2010 11:47:30 +0530
 Content-Disposition: inline
-In-Reply-To: <20100104162748.GA11932@think>
+In-Reply-To: <4B427507.40004@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 04, 2010 at 11:27:48AM -0500, Chris Mason wrote:
-> On Fri, Dec 25, 2009 at 11:11:46AM -0500, tytso@mit.edu wrote:
-> > On Fri, Dec 25, 2009 at 02:46:31AM +0300, Evgeniy Polyakov wrote:
-> > > > [1] http://samba.org/ftp/tridge/dbench/README
-> > > 
-> > > Was not able to resist to write a small notice, what no matter what, but
-> > > whatever benchmark is running, it _does_ show system behaviour in one
-> > > or another condition. And when system behaves rather badly, it is quite
-> > > a common comment, that benchmark was useless. But it did show that
-> > > system has a problem, even if rarely triggered one :)
+On Mon, Jan 04, 2010 at 05:08:55PM -0600, Eric Sandeen wrote:
+> Eric Sandeen wrote:
+> > Theodore Ts'o wrote:
+> >> One of the things which has been annoying me for a while now is a
+> >> hard-to-reproduce xfsqa failure in test #13 (fsstress), which causes the
+> >> a test failure because the file system found to be inconsistent:
+> >>
+> >> Inode NNN, i_blocks is X, should be Y.
 > > 
-> > If people are using benchmarks to improve file system, and a benchmark
-> > shows a problem, then trying to remedy the performance issue is a good
-> > thing to do, of course.  Sometimes, though the case which is
-> > demonstrated by a poor benchmark is an extremely rare corner case that
-> > doesn't accurately reflect common real-life workloads --- and if
-> > addressing it results in a tradeoff which degrades much more common
-> > real-life situations, then that would be a bad thing.
+> > Interesting, this apparently has gotten much worse since 2.6.32.
 > > 
-> > In situations where benchmarks are used competitively, it's rare that
-> > it's actually a *problem*.  Instead it's much more common that a
-> > developer is trying to prove that their file system is *better* to
-> > gullible users who think that a single one-dimentional number is
-> > enough for them to chose file system X over file system Y.
+> > I wrote an xfstests reproducer, and couldn't hit it on .32; hit it right
+> > off on 2.6.33-rc2.
+> > 
+> > Probably should find out why ;) I'll go take a look.
 > 
-> [ Look at all this email from my vacation...sorry for the delay ]
+> commit d21cd8f163ac44b15c465aab7306db931c606908
+> Author: Dmitry Monakhov <dmonakhov@openvz.org>
+> Date:   Thu Dec 10 03:31:45 2009 +0000
 > 
-> It's important that people take benchmarks from filesystem developers
-> with a big grain of salt, which is one reason the boxacle.net results
-> are so nice.  Steve more than willing to take patches and experiment to
-> improve a given FS results, but his business is a fair representation of
-> performance and it shows.
+>     ext4: Fix potential quota deadlock
+> 
+> seems to be the culprit.
+> 
+> (unfortunately this means that the error we saw before is something
+> -else- to be fixed, yet)  Anyway ...
+> 
+> This is because we used to do this in ext4_mb_mark_diskspace_used() :
+> 
+>         /*
+>          * Now reduce the dirty block count also. Should not go negative
+>          */
+>         if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+>                 /* release all the reserved blocks if non delalloc */
+>                 percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+> reserv_blks);
+>         else {
+>                 percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+>                                                 ac->ac_b_ex.fe_len);
+>                 /* convert reserved quota blocks to real quota blocks */
+>                 vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
+> 	}
+> 
+> i.e. the vfs_dq_claim_block was conditional based on
+> EXT4_MB_DELALLOC_RESERVED... and the testcase did not go that way,
+> because we had already preallocated the blocks.
+> 
+> But with the above quota deadlock commit it's not unconditional
+> anymore in ext4_da_update_reserve_space and we always call
+> vfs_dq_claim_block which over-accounts.
+> 
 
-Just looking at the results there, I notice that the RAID system XFS
-mailserver results dropped by an order of magnitude between
-2.6.29-rc2 and 2.6.31. The single disk results are pretty
-much identical across the two kernels.
+It is still conditional right ? We call ext4_da_update_reserve_space
+only if EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE  is set . That will
+happen only in case of delayed allocation. I guess the problem is
+same as what Ted stated. But i am not sure why we are able to reproduce
+it much easily on 2.6.33-rc2.
 
-IIRC, in 2.6.31 RAID0 started passing barriers through so I suspect
-this is the issue. However, seeing as dmesg is not collected by
-the scripts after the run and the output of the mounttab does
-not show default options, I cannot tell if this is the case. This
-might be worth checking by running XFS with the "nobarrier" mount
-option....
 
-FWIW, is it possible to get these benchmarks run on each filesystem for
-each kernel release so ext/xfs/btrfs all get some regular basic
-performance regression test coverage?
+> Of course with the above commit, we have no allocation context in
+> ext4_da_update_reserve_space... that's all long gone so we can't key
+> on that anymore.
+> 
+> However, I think the following change will fix it; I'll run it through
+> xfstests later on and be sure nothing else regresses.
+> 
+> -Eric
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 5352db1..28cd8d8 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1257,9 +1257,10 @@ int ext4_get_blocks(handle_t *handle, struct
+> inode *inode, sector_t block,
+>          * if the caller is from delayed allocation writeout path
+>          * we have already reserved fs blocks for allocation
+>          * let the underlying get_block() function know to
+> -        * avoid double accounting
+> +        * avoid double accounting.  Ditto for prealloc blocks.
+>          */
+> -       if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+> +       if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ||
+> +           flags & EXT4_GET_BLOCKS_UNINIT_EXT)
+>                 EXT4_I(inode)->i_delalloc_reserved_flag = 1;
+>         /*
+>          * We need to check for EXT4 here because migrate
+> 
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+But we need to do quota update during fallocate call. Doing the above
+will result we not doing that. We would will also get block accounting
+wrong because we now won't be doing ext4_claim_free_blocks for fallocate.
+
+I guess what we need is to make sure that if we have any buffer_head mapping
+the same block range allocated via fallocate and if they are marked BH_Delay
+we need to clear the delay flag and update the block reservation. Later during
+writepage we will find these buffer_heads mapped/non-delay and will do the right thing.
+
+-aneesh
