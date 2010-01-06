@@ -1,215 +1,255 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4/quota lockdep complaint: false positive?
-Date: Wed, 6 Jan 2010 21:42:25 +0100
-Message-ID: <20100106204225.GC22781@quack.suse.cz>
-References: <E1NOc16-0003pi-BQ@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext3: Use bitops to read/modify EXT3_I(inode)->i_state
+Date: Wed,  6 Jan 2010 22:27:35 +0100
+Message-ID: <1262813255-4755-1-git-send-email-jack@suse.cz>
+Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50061 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43611 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932283Ab0AFUmZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jan 2010 15:42:25 -0500
-Content-Disposition: inline
-In-Reply-To: <E1NOc16-0003pi-BQ@closure.thunk.org>
+	id S1756024Ab0AFV1h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jan 2010 16:27:37 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Ted,
-
-On Sat 26-12-09 14:09:32, Theodore Ts'o wrote:
-> 
-> While running the xfsqa regression test suite, lockdep triggered the
-> following complaint, as shown below.
-> 
-> I *think* it is a false positive, since the issue involves chown
-> triggering a write to the quota file; and during the write, we are
-> extending the quota file, which means grabbing i_data_sem while we have
-> already grabbed the inode mutex for the quota file.
-> 
-> The potential circular locking dependency that lockdep is complaining
-> occurs only when we are mounting the filesystem, and reading from the
-> quota file; and at that point we wouldn't be writing other files and
-> needing to update quota file as aresult.  So I don't think this is a
-> problem in practice, but (1) i'd like a second opinion, and (2) I'm not
-> sure what's the best way to make lockdep happy.
-> 
-> Jan, what do you think?
-  The patch below should silence the lockdep warning.
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
----
-
->From 815e4d46ad7e56d41096116f5a6927903658551f Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 6 Jan 2010 17:20:35 +0100
-Subject: [PATCH] quota: Cleanup S_NOQUOTA handling
-
-Cleanup handling of S_NOQUOTA inode flag and document it a bit. The flag
-does not have to be set under dqptr_sem. Only functions modifying inode's
-dquot pointers have to check the flag under dqptr_sem before going forward
-with the modification. This way we are sure that we cannot add new dquot
-pointers to the inode which is just becoming a quota file.
-
-The good thing about this cleanup is that there are no more places in quota
-code which enforce i_mutex vs. dqptr_sem lock ordering (in particular that
-dqptr_sem -> i_mutex of quota file). This should silence some (false) lockdep
-warnings with ext4 + quota and generally make life of some filesystems easier.
+At several places we modify EXT3_I(inode)->i_state without holding i_mutex
+(ext3_release_file, ext3_bmap, ext3_journalled_writepage, ext3_do_update_inode,
+...). These modifications are racy and we can lose updates to i_state. So
+convert handling of i_state to use bitops which are atomic.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/quota/dquot.c |   47 +++++++++++------------------------------------
- 1 files changed, 11 insertions(+), 36 deletions(-)
+ fs/ext3/file.c            |    4 ++--
+ fs/ext3/inode.c           |   18 +++++++++---------
+ fs/ext3/xattr.c           |   14 +++++++-------
+ include/linux/ext3_fs.h   |   33 +++++++++++++++++++++++++--------
+ include/linux/ext3_fs_i.h |    2 +-
+ 5 files changed, 44 insertions(+), 27 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index dea86ab..b4693f2 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -100,9 +100,13 @@
-  *
-  * Any operation working on dquots via inode pointers must hold dqptr_sem.  If
-  * operation is just reading pointers from inode (or not using them at all) the
-- * read lock is enough. If pointers are altered function must hold write lock
-- * (these locking rules also apply for S_NOQUOTA flag in the inode - note that
-- * for altering the flag i_mutex is also needed).
-+ * read lock is enough. If pointers are altered function must hold write lock.
-+ * Special care needs to be taken about S_NOQUOTA inode flag (marking that
-+ * inode is a quota file). Functions adding pointers from inode to dquots have
-+ * to check this flag under dqptr_sem and then (if S_NOQUOTA is not set) they
-+ * have to do all pointer modifications before dropping dqptr_sem. This makes
-+ * sure they cannot race with quotaon which first sets S_NOQUOTA flag and
-+ * then drops all pointers to dquots from an inode.
-  *
-  * Each dquot has its dq_lock mutex. Locked dquots might not be referenced
-  * from inodes (dquot_alloc_space() and such don't check the dq_lock).
-@@ -1275,7 +1279,6 @@ int dquot_initialize(struct inode *inode, int type)
+ Ted, I can create a similar patch for ext4 if you wish...
+
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index 388bbdf..a86d330 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -33,9 +33,9 @@
+  */
+ static int ext3_release_file (struct inode * inode, struct file * filp)
+ {
+-	if (EXT3_I(inode)->i_state & EXT3_STATE_FLUSH_ON_CLOSE) {
++	if (ext3_test_inode_state(inode, EXT3_STATE_FLUSH_ON_CLOSE)) {
+ 		filemap_flush(inode->i_mapping);
+-		EXT3_I(inode)->i_state &= ~EXT3_STATE_FLUSH_ON_CLOSE;
++		ext3_clear_inode_state(inode, EXT3_STATE_FLUSH_ON_CLOSE);
+ 	}
+ 	/* if we are the last writer on the inode, drop the block reservation */
+ 	if ((filp->f_mode & FMODE_WRITE) &&
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 455e6e6..44b5338 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1378,7 +1378,7 @@ static int ext3_journalled_write_end(struct file *file,
+ 	 */
+ 	if (pos + len > inode->i_size && ext3_can_truncate(inode))
+ 		ext3_orphan_add(handle, inode);
+-	EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
++	ext3_set_inode_state(inode, EXT3_STATE_JDATA);
+ 	if (inode->i_size > EXT3_I(inode)->i_disksize) {
+ 		EXT3_I(inode)->i_disksize = inode->i_size;
+ 		ret2 = ext3_mark_inode_dirty(handle, inode);
+@@ -1417,7 +1417,7 @@ static sector_t ext3_bmap(struct address_space *mapping, sector_t block)
+ 	journal_t *journal;
+ 	int err;
+ 
+-	if (EXT3_I(inode)->i_state & EXT3_STATE_JDATA) {
++	if (ext3_test_inode_state(inode, EXT3_STATE_JDATA)) {
+ 		/*
+ 		 * This is a REALLY heavyweight approach, but the use of
+ 		 * bmap on dirty files is expected to be extremely rare:
+@@ -1436,7 +1436,7 @@ static sector_t ext3_bmap(struct address_space *mapping, sector_t block)
+ 		 * everything they get.
+ 		 */
+ 
+-		EXT3_I(inode)->i_state &= ~EXT3_STATE_JDATA;
++		ext3_clear_inode_state(inode, EXT3_STATE_JDATA);
+ 		journal = EXT3_JOURNAL(inode);
+ 		journal_lock_updates(journal);
+ 		err = journal_flush(journal);
+@@ -1670,7 +1670,7 @@ static int ext3_journalled_writepage(struct page *page,
+ 				PAGE_CACHE_SIZE, NULL, write_end_fn);
+ 		if (ret == 0)
+ 			ret = err;
+-		EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
++		ext3_set_inode_state(inode, EXT3_STATE_JDATA);
+ 		unlock_page(page);
+ 	} else {
+ 		/*
+@@ -2402,7 +2402,7 @@ void ext3_truncate(struct inode *inode)
+ 		goto out_notrans;
+ 
+ 	if (inode->i_size == 0 && ext3_should_writeback_data(inode))
+-		ei->i_state |= EXT3_STATE_FLUSH_ON_CLOSE;
++		ext3_set_inode_state(inode, EXT3_STATE_FLUSH_ON_CLOSE);
+ 
+ 	/*
+ 	 * We have to lock the EOF page here, because lock_page() nests
+@@ -2721,7 +2721,7 @@ int ext3_get_inode_loc(struct inode *inode, struct ext3_iloc *iloc)
+ {
+ 	/* We have all inode data except xattrs in memory here. */
+ 	return __ext3_get_inode_loc(inode, iloc,
+-		!(EXT3_I(inode)->i_state & EXT3_STATE_XATTR));
++		!ext3_test_inode_state(inode, EXT3_STATE_XATTR));
+ }
+ 
+ void ext3_set_inode_flags(struct inode *inode)
+@@ -2893,7 +2893,7 @@ struct inode *ext3_iget(struct super_block *sb, unsigned long ino)
+ 					EXT3_GOOD_OLD_INODE_SIZE +
+ 					ei->i_extra_isize;
+ 			if (*magic == cpu_to_le32(EXT3_XATTR_MAGIC))
+-				 ei->i_state |= EXT3_STATE_XATTR;
++				 ext3_set_inode_state(inode, EXT3_STATE_XATTR);
+ 		}
+ 	} else
+ 		ei->i_extra_isize = 0;
+@@ -2955,7 +2955,7 @@ again:
+ 
+ 	/* For fields not not tracking in the in-memory inode,
+ 	 * initialise them to zero for new inodes. */
+-	if (ei->i_state & EXT3_STATE_NEW)
++	if (ext3_test_inode_state(inode, EXT3_STATE_NEW))
+ 		memset(raw_inode, 0, EXT3_SB(inode->i_sb)->s_inode_size);
+ 
+ 	ext3_get_inode_flags(ei);
+@@ -3052,7 +3052,7 @@ again:
+ 	rc = ext3_journal_dirty_metadata(handle, bh);
+ 	if (!err)
+ 		err = rc;
+-	ei->i_state &= ~EXT3_STATE_NEW;
++	ext3_clear_inode_state(inode, EXT3_STATE_NEW);
+ 
+ 	atomic_set(&ei->i_sync_tid, handle->h_transaction->t_tid);
+ out_brelse:
+diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+index 66895cc..2d2fb2a 100644
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -274,7 +274,7 @@ ext3_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
+ 	void *end;
+ 	int error;
+ 
+-	if (!(EXT3_I(inode)->i_state & EXT3_STATE_XATTR))
++	if (!ext3_test_inode_state(inode, EXT3_STATE_XATTR))
+ 		return -ENODATA;
+ 	error = ext3_get_inode_loc(inode, &iloc);
+ 	if (error)
+@@ -403,7 +403,7 @@ ext3_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+ 	void *end;
+ 	int error;
+ 
+-	if (!(EXT3_I(inode)->i_state & EXT3_STATE_XATTR))
++	if (!ext3_test_inode_state(inode, EXT3_STATE_XATTR))
+ 		return 0;
+ 	error = ext3_get_inode_loc(inode, &iloc);
+ 	if (error)
+@@ -882,7 +882,7 @@ ext3_xattr_ibody_find(struct inode *inode, struct ext3_xattr_info *i,
+ 	is->s.base = is->s.first = IFIRST(header);
+ 	is->s.here = is->s.first;
+ 	is->s.end = (void *)raw_inode + EXT3_SB(inode->i_sb)->s_inode_size;
+-	if (EXT3_I(inode)->i_state & EXT3_STATE_XATTR) {
++	if (ext3_test_inode_state(inode, EXT3_STATE_XATTR)) {
+ 		error = ext3_xattr_check_names(IFIRST(header), is->s.end);
+ 		if (error)
+ 			return error;
+@@ -914,10 +914,10 @@ ext3_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 	header = IHDR(inode, ext3_raw_inode(&is->iloc));
+ 	if (!IS_LAST_ENTRY(s->first)) {
+ 		header->h_magic = cpu_to_le32(EXT3_XATTR_MAGIC);
+-		EXT3_I(inode)->i_state |= EXT3_STATE_XATTR;
++		ext3_set_inode_state(inode, EXT3_STATE_XATTR);
+ 	} else {
+ 		header->h_magic = cpu_to_le32(0);
+-		EXT3_I(inode)->i_state &= ~EXT3_STATE_XATTR;
++		ext3_clear_inode_state(inode, EXT3_STATE_XATTR);
+ 	}
+ 	return 0;
+ }
+@@ -967,10 +967,10 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	if (error)
+ 		goto cleanup;
+ 
+-	if (EXT3_I(inode)->i_state & EXT3_STATE_NEW) {
++	if (ext3_test_inode_state(inode, EXT3_STATE_NEW)) {
+ 		struct ext3_inode *raw_inode = ext3_raw_inode(&is.iloc);
+ 		memset(raw_inode, 0, EXT3_SB(inode->i_sb)->s_inode_size);
+-		EXT3_I(inode)->i_state &= ~EXT3_STATE_NEW;
++		ext3_clear_inode_state(inode, EXT3_STATE_NEW);
  	}
  
- 	down_write(&sb_dqopt(sb)->dqptr_sem);
--	/* Having dqptr_sem we know NOQUOTA flags can't be altered... */
- 	if (IS_NOQUOTA(inode))
- 		goto out_err;
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-@@ -1428,11 +1431,6 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number,
- 	}
+ 	error = ext3_xattr_ibody_find(inode, &i, &is);
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 6b04903..e6590f8 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -202,14 +202,6 @@ static inline __u32 ext3_mask_flags(umode_t mode, __u32 flags)
+ 		return flags & EXT3_OTHER_FLMASK;
+ }
  
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	if (IS_NOQUOTA(inode)) {
--		inode_incr_space(inode, number, reserve);
--		goto out_unlock;
--	}
+-/*
+- * Inode dynamic state flags
+- */
+-#define EXT3_STATE_JDATA		0x00000001 /* journaled data exists */
+-#define EXT3_STATE_NEW			0x00000002 /* inode is newly created */
+-#define EXT3_STATE_XATTR		0x00000004 /* has in-inode xattrs */
+-#define EXT3_STATE_FLUSH_ON_CLOSE	0x00000008
 -
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
- 		warntype[cnt] = QUOTA_NL_NOWARN;
+ /* Used to pass group descriptor data when online resize is done */
+ struct ext3_new_group_input {
+ 	__u32 group;            /* Group number for this data */
+@@ -560,6 +552,31 @@ static inline int ext3_valid_inum(struct super_block *sb, unsigned long ino)
+ 		(ino >= EXT3_FIRST_INO(sb) &&
+ 		 ino <= le32_to_cpu(EXT3_SB(sb)->s_es->s_inodes_count));
+ }
++
++/*
++ * Inode dynamic state flags
++ */
++enum {
++	EXT3_STATE_JDATA,		/* journaled data exists */
++	EXT3_STATE_NEW,			/* inode is newly created */
++	EXT3_STATE_XATTR,		/* has in-inode xattrs */
++	EXT3_STATE_FLUSH_ON_CLOSE,	/* flush dirty pages on close */
++};
++
++static inline int ext3_test_inode_state(struct inode *inode, int bit)
++{
++	return test_bit(bit, &EXT3_I(inode)->i_state);
++}
++
++static inline void ext3_set_inode_state(struct inode *inode, int bit)
++{
++	set_bit(bit, &EXT3_I(inode)->i_state);
++}
++
++static inline void ext3_clear_inode_state(struct inode *inode, int bit)
++{
++	clear_bit(bit, &EXT3_I(inode)->i_state);
++}
+ #else
+ /* Assume that user mode programs are passing in an ext3fs superblock, not
+  * a kernel struct super_block.  This will allow us to call the feature-test
+diff --git a/include/linux/ext3_fs_i.h b/include/linux/ext3_fs_i.h
+index 93e7428..7679acd 100644
+--- a/include/linux/ext3_fs_i.h
++++ b/include/linux/ext3_fs_i.h
+@@ -87,7 +87,7 @@ struct ext3_inode_info {
+ 	 * near to their parent directory's inode.
+ 	 */
+ 	__u32	i_block_group;
+-	__u32	i_state;		/* Dynamic state flags for ext3 */
++	unsigned long	i_state;	/* Dynamic state flags for ext3 */
  
-@@ -1463,7 +1461,6 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number,
- 	mark_all_dquot_dirty(inode->i_dquot);
- out_flush_warn:
- 	flush_warnings(inode->i_dquot, warntype);
--out_unlock:
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- out:
- 	return ret;
-@@ -1496,10 +1493,6 @@ int dquot_alloc_inode(const struct inode *inode, qsize_t number)
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
- 		warntype[cnt] = QUOTA_NL_NOWARN;
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	if (IS_NOQUOTA(inode)) {
--		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--		return QUOTA_OK;
--	}
- 	spin_lock(&dq_data_lock);
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
- 		if (!inode->i_dquot[cnt])
-@@ -1536,12 +1529,6 @@ int dquot_claim_space(struct inode *inode, qsize_t number)
- 	}
- 
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	if (IS_NOQUOTA(inode))	{
--		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--		inode_claim_rsv_space(inode, number);
--		goto out;
--	}
--
- 	spin_lock(&dq_data_lock);
- 	/* Claim reserved quotas to allocated quotas */
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-@@ -1570,17 +1557,11 @@ int __dquot_free_space(struct inode *inode, qsize_t number, int reserve)
- 	/* First test before acquiring mutex - solves deadlocks when we
-          * re-enter the quota code and are already holding the mutex */
- 	if (IS_NOQUOTA(inode)) {
--out_sub:
- 		inode_decr_space(inode, number, reserve);
- 		return QUOTA_OK;
- 	}
- 
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	/* Now recheck reliably when holding dqptr_sem */
--	if (IS_NOQUOTA(inode)) {
--		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--		goto out_sub;
--	}
- 	spin_lock(&dq_data_lock);
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
- 		if (!inode->i_dquot[cnt])
-@@ -1633,11 +1614,6 @@ int dquot_free_inode(const struct inode *inode, qsize_t number)
- 		return QUOTA_OK;
- 
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	/* Now recheck reliably when holding dqptr_sem */
--	if (IS_NOQUOTA(inode)) {
--		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--		return QUOTA_OK;
--	}
- 	spin_lock(&dq_data_lock);
- 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
- 		if (!inode->i_dquot[cnt])
-@@ -1689,7 +1665,6 @@ int dquot_transfer(struct inode *inode, struct iattr *iattr)
- 					      GRPQUOTA);
- 
- 	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
--	/* Now recheck reliably when holding dqptr_sem */
- 	if (IS_NOQUOTA(inode)) {	/* File without quota accounting? */
- 		up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 		goto put_all;
-@@ -2007,13 +1982,15 @@ static int vfs_load_quota_inode(struct inode *inode, int type, int format_id,
- 		/* We don't want quota and atime on quota files (deadlocks
- 		 * possible) Also nobody should write to the file - we use
- 		 * special IO operations which ignore the immutable bit. */
--		down_write(&dqopt->dqptr_sem);
- 		mutex_lock_nested(&inode->i_mutex, I_MUTEX_QUOTA);
- 		oldflags = inode->i_flags & (S_NOATIME | S_IMMUTABLE |
- 					     S_NOQUOTA);
- 		inode->i_flags |= S_NOQUOTA | S_NOATIME | S_IMMUTABLE;
- 		mutex_unlock(&inode->i_mutex);
--		up_write(&dqopt->dqptr_sem);
-+		/*
-+		 * When S_NOQUOTA is set, remove dquot references as no more
-+		 * references can be added
-+		 */
- 		sb->dq_op->drop(inode);
- 	}
- 
-@@ -2050,14 +2027,12 @@ out_file_init:
- 	iput(inode);
- out_lock:
- 	if (oldflags != -1) {
--		down_write(&dqopt->dqptr_sem);
- 		mutex_lock_nested(&inode->i_mutex, I_MUTEX_QUOTA);
- 		/* Set the flags back (in the case of accidental quotaon()
- 		 * on a wrong file we don't want to mess up the flags) */
- 		inode->i_flags &= ~(S_NOATIME | S_NOQUOTA | S_IMMUTABLE);
- 		inode->i_flags |= oldflags;
- 		mutex_unlock(&inode->i_mutex);
--		up_write(&dqopt->dqptr_sem);
- 	}
- 	mutex_unlock(&dqopt->dqonoff_mutex);
- out_fmt:
+ 	/* block reservation info */
+ 	struct ext3_block_alloc_info *i_block_alloc_info;
 -- 
 1.6.4.2
 
