@@ -1,153 +1,223 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Add block validity check when truncating indirect block mapped inodes
-Date: Fri,  8 Jan 2010 02:49:59 -0500
-Message-ID: <1262936999-27039-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Michal Novotny <minovotn@redhat.com>
+Subject: [PATCH] extend e2fsprogs functionality to add EXT2_FLAG_DIRECT option
+Date: Fri, 08 Jan 2010 10:36:50 +0100
+Message-ID: <4B46FCB2.1090308@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------020101060509020304080309"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36562 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:30787 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751112Ab0AHHuF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jan 2010 02:50:05 -0500
+	id S1751298Ab0AHJhP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Jan 2010 04:37:15 -0500
+Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o089bFKp011197
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Jan 2010 04:37:15 -0500
+Received: from mig-laptop.englab.brq.redhat.com (vpn-8-135.rdu.redhat.com [10.11.8.135])
+	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o089bDnc030901
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Jan 2010 04:37:14 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add checks to ext4_free_branches() to make sure a block number found
-in an indirect block are valid before trying to free it.  If a bad
-block number is found, stop freeing the indirect block immediately,
-since the file system is corrupt and we will need to run fsck anyway.
-This also avoids spamming the logs, and specifically avoids
-driver-level "attempt to access beyond end of device" errors obscure
-what is really going on.
+This is a multi-part message in MIME format.
+--------------020101060509020304080309
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-If you get *really*, *really*, *really* unlucky, without this patch, a
-supposed indirect block containing garbage might contain a reference
-to a primary block group descriptor, in which case
-ext4_free_branches() could end up zero'ing out a block group
-descriptor block, and if then one of the block bitmaps for a block
-group described by that bg descriptor block is not in memory, and is
-read in by ext4_read_block_bitmap().  This function calls
-ext4_valid_block_bitmap(), which assumes that bg_inode_table() was
-validated at mount time and hasn't been modified since.  Since this
-assumption is no longer valid, it's possible for the value
-(ext4_inode_table(sb, desc) - group_first_block) to go negative, which
-will cause ext4_find_next_zero_bit() to trigger a kernel GPF.
+This patch extends functionality of e{2|4}fsprogs to add 
+EXT2_FLAG_DIRECT flag to be passed to ext2fs_open2() function. This 
+internally calls open() function with O_DIRECT and handles the memory 
+alignment for both read and write operations.
+In some cases direct access to devices is necessary and that was the 
+main reason for this patch to be done.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    |    1 +
- fs/ext4/inode.c   |   39 ++++++++++++++++++++++++++++++---------
- fs/ext4/mballoc.c |    7 ++++---
- 3 files changed, 35 insertions(+), 12 deletions(-)
+The main reason why this was done is that pygrub (used by xen 
+virtualization user-space package, it's a python version of grub for 
+paravirtualized guests) sometimes uses outdated version of grub.conf 
+file. Modifications to xen package were *not* enough because e2fsprogs 
+doesn't open the files directly. That's why I added EXT2_FLAG_DIRECT 
+support to make read/write operations work directly when passed. It's 
+been tested with pygrub like mentioned above for read operation and it's 
+working fine.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index af7b626..8fcf8f6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -380,6 +380,7 @@ struct ext4_new_group_data {
-  */
- #define EXT4_FREE_BLOCKS_METADATA	0x0001
- #define EXT4_FREE_BLOCKS_FORGET		0x0002
-+#define EXT4_FREE_BLOCKS_VALIDATED	0x0004
+Signed-off-by: Michal Novotny <minovotn@redhat.com>
+
+--------------020101060509020304080309
+Content-Type: text/x-patch;
+ name="mig-e4fsprogs-direct-read-write.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="mig-e4fsprogs-direct-read-write.patch"
+
+Author: Michal Novotny <minovotn@redhat.com>
+Date:   Wed Dec 23 11:25:40 2009 +0200
+
+    extend e{2|4}fsprogs functionality to add EXT2_FLAG_DIRECT option
+    
+    This patch extends functionality of e{2|4}fsprogs to add EXT2_FLAG_DIRECT
+    flag to be passed to ext2fs_open2() function. This internally calls open()
+    function with O_DIRECT and handles the memory alignment for both read and
+    write operations.
+    In some cases direct access to devices is necessary and that was the main
+    reason for this patch to be done.
+    
+    Signed-off-by: Michal Novotny <minovotn@redhat.com>
+
+diff -up e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h.opendirect e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h
+--- e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h.opendirect	2009-12-23 10:04:05.000000000 +0100
++++ e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h	2009-12-23 10:04:05.000000000 +0100
+@@ -172,6 +172,7 @@ typedef struct ext2_file *ext2_file_t;
+ #define EXT2_FLAG_EXCLUSIVE		0x4000
+ #define EXT2_FLAG_SOFTSUPP_FEATURES	0x8000
+ #define EXT2_FLAG_NOFREE_ON_ERROR	0x10000
++#define EXT2_FLAG_DIRECT		0x20000
  
  /*
-  * ioctl commands
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c818972..eb78dec 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4108,18 +4108,27 @@ no_top:
-  * We release `count' blocks on disk, but (last - first) may be greater
-  * than `count' because there can be holes in there.
-  */
--static void ext4_clear_blocks(handle_t *handle, struct inode *inode,
--			      struct buffer_head *bh,
--			      ext4_fsblk_t block_to_free,
--			      unsigned long count, __le32 *first,
--			      __le32 *last)
-+static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
-+			     struct buffer_head *bh,
-+			     ext4_fsblk_t block_to_free,
-+			     unsigned long count, __le32 *first,
-+			     __le32 *last)
- {
- 	__le32 *p;
--	int	flags = EXT4_FREE_BLOCKS_FORGET;
-+	int	flags = EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_VALIDATED;
+  * Special flag in the ext2 inode i_flag field that means that this is
+diff -up e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h.opendirect e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h
+--- e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h.opendirect	2009-08-23 04:44:35.000000000 +0200
++++ e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h	2009-12-23 10:04:05.000000000 +0100
+@@ -29,6 +29,7 @@ typedef struct struct_io_channel *io_cha
+ typedef struct struct_io_stats *io_stats;
  
- 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
- 		flags |= EXT4_FREE_BLOCKS_METADATA;
+ #define CHANNEL_FLAGS_WRITETHROUGH	0x01
++#define CHANNEL_FLAGS_DIRECT		0x02
  
-+	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), block_to_free,
-+				   count)) {
-+		ext4_error(inode->i_sb, __func__, "inode #%lu: "
-+			   "attempt to clear blocks %llu len %d, invalid",
-+			   inode->i_ino, (unsigned long long) block_to_free,
-+			   count);
-+		return 1;
+ struct struct_io_channel {
+ 	errcode_t	magic;
+@@ -88,6 +89,7 @@ struct struct_io_manager {
+ 
+ #define IO_FLAG_RW		0x0001
+ #define IO_FLAG_EXCLUSIVE	0x0002
++#define IO_FLAG_DIRECT		0x0004
+ 
+ /*
+  * Convenience functions....
+diff -up e2fsprogs-1.41.9/lib/ext2fs/openfs.c.opendirect e2fsprogs-1.41.9/lib/ext2fs/openfs.c
+--- e2fsprogs-1.41.9/lib/ext2fs/openfs.c.opendirect	2009-08-23 04:44:35.000000000 +0200
++++ e2fsprogs-1.41.9/lib/ext2fs/openfs.c	2009-12-23 10:04:05.000000000 +0100
+@@ -121,6 +121,8 @@ errcode_t ext2fs_open2(const char *name,
+ 		io_flags |= IO_FLAG_RW;
+ 	if (flags & EXT2_FLAG_EXCLUSIVE)
+ 		io_flags |= IO_FLAG_EXCLUSIVE;
++	if (flags & EXT2_FLAG_DIRECT)
++		io_flags |= IO_FLAG_DIRECT;
+ 	retval = manager->open(fs->device_name, io_flags, &fs->io);
+ 	if (retval)
+ 		goto cleanup;
+@@ -296,6 +298,7 @@ errcode_t ext2fs_open2(const char *name,
+        }
+ 	fs->desc_blocks = ext2fs_div_ceil(fs->group_desc_count,
+ 					  EXT2_DESC_PER_BLOCK(fs->super));
++
+ 	retval = ext2fs_get_array(fs->desc_blocks, fs->blocksize,
+ 				&fs->group_desc);
+ 	if (retval)
+diff -up e2fsprogs-1.41.9/lib/ext2fs/unix_io.c.opendirect e2fsprogs-1.41.9/lib/ext2fs/unix_io.c
+--- e2fsprogs-1.41.9/lib/ext2fs/unix_io.c.opendirect	2009-08-13 03:39:57.000000000 +0200
++++ e2fsprogs-1.41.9/lib/ext2fs/unix_io.c	2009-12-23 10:16:26.000000000 +0100
+@@ -17,6 +17,7 @@
+ 
+ #define _LARGEFILE_SOURCE
+ #define _LARGEFILE64_SOURCE
++#define _GNU_SOURCE
+ 
+ #include <stdio.h>
+ #include <string.h>
+@@ -163,15 +164,37 @@ static errcode_t raw_read_blk(io_channel
+ 	ssize_t		size;
+ 	ext2_loff_t	location;
+ 	int		actual = 0;
++	int		memret;
++	void		*aligned_buffer;
++	long		pagesize;
+ 
+ 	size = (count < 0) ? -count : count * channel->block_size;
++
+ 	data->io_stats.bytes_read += size;
+ 	location = ((ext2_loff_t) block * channel->block_size) + data->offset;
+ 	if (ext2fs_llseek(data->dev, location, SEEK_SET) != location) {
+ 		retval = errno ? errno : EXT2_ET_LLSEEK_FAILED;
+ 		goto error_out;
+ 	}
+-	actual = read(data->dev, buf, size);
++
++	if (channel->flags & CHANNEL_FLAGS_DIRECT) {
++		pagesize = sysconf(_SC_PAGE_SIZE);
++		if (pagesize < 0)
++			goto error_out;
++
++		memret = posix_memalign(&aligned_buffer, pagesize, size);
++		if (memret != 0) {
++			errno = memret;
++			goto error_out;
++		}
++		actual = read(data->dev, aligned_buffer, size);
++		if (actual > 0)
++			memcpy(buf, aligned_buffer, size);
++		free(aligned_buffer);
 +	}
++	else
++		actual = read(data->dev, buf, size);
 +
- 	if (try_to_extend_transaction(handle, inode)) {
- 		if (bh) {
- 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-@@ -4138,6 +4147,7 @@ static void ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 		*p = 0;
+ 	if (actual != size) {
+ 		if (actual < 0)
+ 			actual = 0;
+@@ -252,6 +275,9 @@ static errcode_t raw_write_blk(io_channe
+ 	ext2_loff_t	location;
+ 	int		actual = 0;
+ 	errcode_t	retval;
++        int		memret;
++        void		*aligned_buffer;
++        long		pagesize;
  
- 	ext4_free_blocks(handle, inode, 0, block_to_free, count, flags);
-+	return 0;
- }
- 
- /**
-@@ -4193,9 +4203,10 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
- 			} else if (nr == block_to_free + count) {
- 				count++;
- 			} else {
--				ext4_clear_blocks(handle, inode, this_bh,
--						  block_to_free,
--						  count, block_to_free_p, p);
-+				if (ext4_clear_blocks(handle, inode, this_bh,
-+						      block_to_free, count,
-+						      block_to_free_p, p))
-+					break;
- 				block_to_free = nr;
- 				block_to_free_p = p;
- 				count = 1;
-@@ -4259,6 +4270,16 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			if (!nr)
- 				continue;		/* A hole */
- 
-+			if (!ext4_data_block_valid(EXT4_SB(inode->i_sb),
-+						   nr, 1)) {
-+				ext4_error(inode->i_sb, __func__,
-+					   "indirect mapped block in inode "
-+					   "#%lu invalid (level %d, blk #%lu)",
-+					   inode->i_ino, depth,
-+					   (unsigned long) nr);
-+				break;
-+			}
-+
- 			/* Go read the buffer for the next level down */
- 			bh = sb_bread(inode->i_sb, nr);
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d34afad..d129c10 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4476,10 +4476,11 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	sbi = EXT4_SB(sb);
- 	es = EXT4_SB(sb)->s_es;
--	if (!ext4_data_block_valid(sbi, block, count)) {
-+	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
-+	    !ext4_data_block_valid(sbi, block, count)) {
- 		ext4_error(sb, __func__,
--			    "Freeing blocks not in datazone - "
--			    "block = %llu, count = %lu", block, count);
-+			   "Freeing blocks not in datazone - "
-+			   "block = %llu, count = %lu", block, count);
- 		goto error_return;
+ 	if (count == 1)
+ 		size = channel->block_size;
+@@ -269,7 +295,23 @@ static errcode_t raw_write_blk(io_channe
+ 		goto error_out;
  	}
  
--- 
-1.6.5.216.g5288a.dirty
+-	actual = write(data->dev, buf, size);
++	if (channel->flags & CHANNEL_FLAGS_DIRECT) {
++		pagesize = sysconf(_SC_PAGE_SIZE);
++		if (pagesize < 0)
++			goto error_out;
++
++		memret = posix_memalign(&aligned_buffer, pagesize, size);
++		if (memret != 0) {
++			errno = memret;
++			goto error_out;
++		}
++		memcpy(aligned_buffer, buf, size);
++		actual = write(data->dev, aligned_buffer, size);
++		free(aligned_buffer);
++	}
++	else
++		actual = write(data->dev, buf, size);
++
+ 	if (actual != size) {
+ 		retval = EXT2_ET_SHORT_WRITE;
+ 		goto error_out;
+@@ -443,6 +485,9 @@ static errcode_t unix_open(const char *n
+ 	io->write_error = 0;
+ 	io->refcount = 1;
+ 
++	if (flags & IO_FLAG_DIRECT)
++		io->flags = CHANNEL_FLAGS_DIRECT;
++
+ 	memset(data, 0, sizeof(struct unix_private_data));
+ 	data->magic = EXT2_ET_MAGIC_UNIX_IO_CHANNEL;
+ 	data->io_stats.num_fields = 2;
+@@ -453,6 +498,8 @@ static errcode_t unix_open(const char *n
+ 	open_flags = (flags & IO_FLAG_RW) ? O_RDWR : O_RDONLY;
+ 	if (flags & IO_FLAG_EXCLUSIVE)
+ 		open_flags |= O_EXCL;
++        if (flags & IO_FLAG_DIRECT)
++                open_flags |= O_DIRECT;
+ #ifdef HAVE_OPEN64
+ 	data->dev = open64(io->name, open_flags);
+ #else
 
+--------------020101060509020304080309--
