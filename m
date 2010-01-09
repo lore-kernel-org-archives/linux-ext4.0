@@ -1,223 +1,101 @@
-From: Michal Novotny <minovotn@redhat.com>
-Subject: [PATCH] extend e2fsprogs functionality to add EXT2_FLAG_DIRECT option
-Date: Fri, 08 Jan 2010 10:36:50 +0100
-Message-ID: <4B46FCB2.1090308@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15018] New: ext4 backtraces out of nowhere
+Date: Sat, 9 Jan 2010 19:01:09 GMT
+Message-ID: <bug-15018-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020101060509020304080309"
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30787 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751298Ab0AHJhP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jan 2010 04:37:15 -0500
-Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o089bFKp011197
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Jan 2010 04:37:15 -0500
-Received: from mig-laptop.englab.brq.redhat.com (vpn-8-135.rdu.redhat.com [10.11.8.135])
-	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o089bDnc030901
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Jan 2010 04:37:14 -0500
+Received: from demeter.kernel.org ([140.211.167.39]:51674 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751309Ab0AITBK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Jan 2010 14:01:10 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o09J19Kl005631
+	for <linux-ext4@vger.kernel.org>; Sat, 9 Jan 2010 19:01:09 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------020101060509020304080309
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+http://bugzilla.kernel.org/show_bug.cgi?id=15018
 
-This patch extends functionality of e{2|4}fsprogs to add 
-EXT2_FLAG_DIRECT flag to be passed to ext2fs_open2() function. This 
-internally calls open() function with O_DIRECT and handles the memory 
-alignment for both read and write operations.
-In some cases direct access to devices is necessary and that was the 
-main reason for this patch to be done.
+           Summary: ext4 backtraces out of nowhere
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33-rc3
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: sgunderson@bigfoot.com
+        Regression: No
 
-The main reason why this was done is that pygrub (used by xen 
-virtualization user-space package, it's a python version of grub for 
-paravirtualized guests) sometimes uses outdated version of grub.conf 
-file. Modifications to xen package were *not* enough because e2fsprogs 
-doesn't open the files directly. That's why I added EXT2_FLAG_DIRECT 
-support to make read/write operations work directly when passed. It's 
-been tested with pygrub like mentioned above for read operation and it's 
-working fine.
 
-Signed-off-by: Michal Novotny <minovotn@redhat.com>
+Hi,
 
---------------020101060509020304080309
-Content-Type: text/x-patch;
- name="mig-e4fsprogs-direct-read-write.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="mig-e4fsprogs-direct-read-write.patch"
+While doing an rsync to an ext4 filesystem, suddenly the above showed up in my
+dmesg:
 
-Author: Michal Novotny <minovotn@redhat.com>
-Date:   Wed Dec 23 11:25:40 2009 +0200
+Jan  9 15:55:20 pannekake kernel: [61568.551238] Pid: 28573, comm: rsync Not
+tainted 2.6.33-rc3 #2
+Jan  9 15:55:20 pannekake kernel: [61568.557085] Call Trace:
+Jan  9 15:55:20 pannekake kernel: [61568.559623]  [<ffffffffa0253aa1>]
+ext4_write_inode+0x4d/0xc7 [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.566074]  [<ffffffff810dabe7>]
+writeback_single_inode+0x125/0x2df
+Jan  9 15:55:20 pannekake kernel: [61568.572563]  [<ffffffff810dae48>]
+write_inode_now+0x78/0xba
+Jan  9 15:55:20 pannekake kernel: [61568.578287]  [<ffffffffa0255b2d>]
+ext4_da_get_block_prep+0x28b/0x36e [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.585367]  [<ffffffff810e1b69>]
+__block_prepare_write+0x1f3/0x3c0
+Jan  9 15:55:20 pannekake kernel: [61568.591792]  [<ffffffffa02558a2>] ?
+ext4_da_get_block_prep+0x0/0x36e [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.598903]  [<ffffffff810e1eb1>]
+block_write_begin+0x80/0xcf
+Jan  9 15:55:20 pannekake kernel: [61568.604840]  [<ffffffffa02587be>]
+ext4_da_write_begin+0x196/0x218 [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.611683]  [<ffffffffa02558a2>] ?
+ext4_da_get_block_prep+0x0/0x36e [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.618803]  [<ffffffff810911c1>] ?
+iov_iter_copy_from_user_atomic+0x84/0xf6
+Jan  9 15:55:20 pannekake kernel: [61568.626052]  [<ffffffff8109133f>]
+generic_file_buffered_write+0x10c/0x230
+Jan  9 15:55:20 pannekake kernel: [61568.632961]  [<ffffffffa025375b>] ?
+ext4_dirty_inode+0x40/0x45 [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.639536]  [<ffffffff81092b9c>]
+__generic_file_aio_write+0x347/0x37b
+Jan  9 15:55:20 pannekake kernel: [61568.646245]  [<ffffffff81302709>] ?
+__mutex_lock_slowpath+0x22d/0x23c
+Jan  9 15:55:20 pannekake kernel: [61568.652819]  [<ffffffff81092c2b>]
+generic_file_aio_write+0x5b/0xa2
+Jan  9 15:55:20 pannekake kernel: [61568.659194]  [<ffffffffa024fa93>]
+ext4_file_write+0x8e/0x97 [ext4]
+Jan  9 15:55:20 pannekake kernel: [61568.665577]  [<ffffffff810bfbc8>]
+do_sync_write+0xc0/0x106
+Jan  9 15:55:20 pannekake kernel: [61568.671195]  [<ffffffff810cdb68>] ?
+poll_select_copy_remaining+0xc5/0xe9
+Jan  9 15:55:20 pannekake kernel: [61568.678015]  [<ffffffff81125b50>] ?
+security_file_permission+0x11/0x13
+Jan  9 15:55:20 pannekake kernel: [61568.684678]  [<ffffffff810c04df>]
+vfs_write+0xae/0x14a
+Jan  9 15:55:20 pannekake kernel: [61568.689954]  [<ffffffff810c063f>]
+sys_write+0x47/0x6e
+Jan  9 15:55:20 pannekake kernel: [61568.695111]  [<ffffffff81001feb>]
+system_call_fastpath+0x16/0x1b
 
-    extend e{2|4}fsprogs functionality to add EXT2_FLAG_DIRECT option
-    
-    This patch extends functionality of e{2|4}fsprogs to add EXT2_FLAG_DIRECT
-    flag to be passed to ext2fs_open2() function. This internally calls open()
-    function with O_DIRECT and handles the memory alignment for both read and
-    write operations.
-    In some cases direct access to devices is necessary and that was the main
-    reason for this patch to be done.
-    
-    Signed-off-by: Michal Novotny <minovotn@redhat.com>
+It showed up again ~20 minutes later, and since then I haven't seen it. I'm a
+bit puzzled since I don't actually see any error messages (just the backtrace),
+and I'm not able to find any ill effects except for the traceback, but I guess
+it still shouldn't happen.
 
-diff -up e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h.opendirect e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h
---- e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h.opendirect	2009-12-23 10:04:05.000000000 +0100
-+++ e2fsprogs-1.41.9/lib/ext2fs/ext2fs.h	2009-12-23 10:04:05.000000000 +0100
-@@ -172,6 +172,7 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_FLAG_EXCLUSIVE		0x4000
- #define EXT2_FLAG_SOFTSUPP_FEATURES	0x8000
- #define EXT2_FLAG_NOFREE_ON_ERROR	0x10000
-+#define EXT2_FLAG_DIRECT		0x20000
- 
- /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-diff -up e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h.opendirect e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h
---- e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h.opendirect	2009-08-23 04:44:35.000000000 +0200
-+++ e2fsprogs-1.41.9/lib/ext2fs/ext2_io.h	2009-12-23 10:04:05.000000000 +0100
-@@ -29,6 +29,7 @@ typedef struct struct_io_channel *io_cha
- typedef struct struct_io_stats *io_stats;
- 
- #define CHANNEL_FLAGS_WRITETHROUGH	0x01
-+#define CHANNEL_FLAGS_DIRECT		0x02
- 
- struct struct_io_channel {
- 	errcode_t	magic;
-@@ -88,6 +89,7 @@ struct struct_io_manager {
- 
- #define IO_FLAG_RW		0x0001
- #define IO_FLAG_EXCLUSIVE	0x0002
-+#define IO_FLAG_DIRECT		0x0004
- 
- /*
-  * Convenience functions....
-diff -up e2fsprogs-1.41.9/lib/ext2fs/openfs.c.opendirect e2fsprogs-1.41.9/lib/ext2fs/openfs.c
---- e2fsprogs-1.41.9/lib/ext2fs/openfs.c.opendirect	2009-08-23 04:44:35.000000000 +0200
-+++ e2fsprogs-1.41.9/lib/ext2fs/openfs.c	2009-12-23 10:04:05.000000000 +0100
-@@ -121,6 +121,8 @@ errcode_t ext2fs_open2(const char *name,
- 		io_flags |= IO_FLAG_RW;
- 	if (flags & EXT2_FLAG_EXCLUSIVE)
- 		io_flags |= IO_FLAG_EXCLUSIVE;
-+	if (flags & EXT2_FLAG_DIRECT)
-+		io_flags |= IO_FLAG_DIRECT;
- 	retval = manager->open(fs->device_name, io_flags, &fs->io);
- 	if (retval)
- 		goto cleanup;
-@@ -296,6 +298,7 @@ errcode_t ext2fs_open2(const char *name,
-        }
- 	fs->desc_blocks = ext2fs_div_ceil(fs->group_desc_count,
- 					  EXT2_DESC_PER_BLOCK(fs->super));
-+
- 	retval = ext2fs_get_array(fs->desc_blocks, fs->blocksize,
- 				&fs->group_desc);
- 	if (retval)
-diff -up e2fsprogs-1.41.9/lib/ext2fs/unix_io.c.opendirect e2fsprogs-1.41.9/lib/ext2fs/unix_io.c
---- e2fsprogs-1.41.9/lib/ext2fs/unix_io.c.opendirect	2009-08-13 03:39:57.000000000 +0200
-+++ e2fsprogs-1.41.9/lib/ext2fs/unix_io.c	2009-12-23 10:16:26.000000000 +0100
-@@ -17,6 +17,7 @@
- 
- #define _LARGEFILE_SOURCE
- #define _LARGEFILE64_SOURCE
-+#define _GNU_SOURCE
- 
- #include <stdio.h>
- #include <string.h>
-@@ -163,15 +164,37 @@ static errcode_t raw_read_blk(io_channel
- 	ssize_t		size;
- 	ext2_loff_t	location;
- 	int		actual = 0;
-+	int		memret;
-+	void		*aligned_buffer;
-+	long		pagesize;
- 
- 	size = (count < 0) ? -count : count * channel->block_size;
-+
- 	data->io_stats.bytes_read += size;
- 	location = ((ext2_loff_t) block * channel->block_size) + data->offset;
- 	if (ext2fs_llseek(data->dev, location, SEEK_SET) != location) {
- 		retval = errno ? errno : EXT2_ET_LLSEEK_FAILED;
- 		goto error_out;
- 	}
--	actual = read(data->dev, buf, size);
-+
-+	if (channel->flags & CHANNEL_FLAGS_DIRECT) {
-+		pagesize = sysconf(_SC_PAGE_SIZE);
-+		if (pagesize < 0)
-+			goto error_out;
-+
-+		memret = posix_memalign(&aligned_buffer, pagesize, size);
-+		if (memret != 0) {
-+			errno = memret;
-+			goto error_out;
-+		}
-+		actual = read(data->dev, aligned_buffer, size);
-+		if (actual > 0)
-+			memcpy(buf, aligned_buffer, size);
-+		free(aligned_buffer);
-+	}
-+	else
-+		actual = read(data->dev, buf, size);
-+
- 	if (actual != size) {
- 		if (actual < 0)
- 			actual = 0;
-@@ -252,6 +275,9 @@ static errcode_t raw_write_blk(io_channe
- 	ext2_loff_t	location;
- 	int		actual = 0;
- 	errcode_t	retval;
-+        int		memret;
-+        void		*aligned_buffer;
-+        long		pagesize;
- 
- 	if (count == 1)
- 		size = channel->block_size;
-@@ -269,7 +295,23 @@ static errcode_t raw_write_blk(io_channe
- 		goto error_out;
- 	}
- 
--	actual = write(data->dev, buf, size);
-+	if (channel->flags & CHANNEL_FLAGS_DIRECT) {
-+		pagesize = sysconf(_SC_PAGE_SIZE);
-+		if (pagesize < 0)
-+			goto error_out;
-+
-+		memret = posix_memalign(&aligned_buffer, pagesize, size);
-+		if (memret != 0) {
-+			errno = memret;
-+			goto error_out;
-+		}
-+		memcpy(aligned_buffer, buf, size);
-+		actual = write(data->dev, aligned_buffer, size);
-+		free(aligned_buffer);
-+	}
-+	else
-+		actual = write(data->dev, buf, size);
-+
- 	if (actual != size) {
- 		retval = EXT2_ET_SHORT_WRITE;
- 		goto error_out;
-@@ -443,6 +485,9 @@ static errcode_t unix_open(const char *n
- 	io->write_error = 0;
- 	io->refcount = 1;
- 
-+	if (flags & IO_FLAG_DIRECT)
-+		io->flags = CHANNEL_FLAGS_DIRECT;
-+
- 	memset(data, 0, sizeof(struct unix_private_data));
- 	data->magic = EXT2_ET_MAGIC_UNIX_IO_CHANNEL;
- 	data->io_stats.num_fields = 2;
-@@ -453,6 +498,8 @@ static errcode_t unix_open(const char *n
- 	open_flags = (flags & IO_FLAG_RW) ? O_RDWR : O_RDONLY;
- 	if (flags & IO_FLAG_EXCLUSIVE)
- 		open_flags |= O_EXCL;
-+        if (flags & IO_FLAG_DIRECT)
-+                open_flags |= O_DIRECT;
- #ifdef HAVE_OPEN64
- 	data->dev = open64(io->name, open_flags);
- #else
+FWIW, the ext4 is on an LVM whose one of the component RAID-5s was resyncing at
+the time. I don't know if that is relevant or not.
 
---------------020101060509020304080309--
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
