@@ -1,41 +1,54 @@
-From: Larry McVoy <lm@bitmover.com>
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Sun, 10 Jan 2010 17:32:51 -0800
-Message-ID: <20100111013251.GA8233@bitmover.com>
-References: <alpine.DEB.2.01.0912240205510.3483@bogon.housecafe.de> <19251.26403.762180.228181@tree.ty.sabi.co.uk> <20091224212756.GM21594@thunk.org> <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de> <20091225161453.GD32757@thunk.org> <20091225162238.GB19303@bitmover.com> <AAA45328-6BEA-465C-B999-C99D45FC56FF@shobe.info>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Size of journal?
+Date: Sun, 10 Jan 2010 23:06:16 -0600
+Message-ID: <4B4AB1C8.3050601@redhat.com>
+References: <4B4A228F.4000205@att.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Larry McVoy <lm@bitmover.com>, tytso@mit.edu,
-	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-	Christian Kujau <lists@nerdbynature.de>,
-	linux-ext4@vger.kernel.org,
-	Peter Grandi <pg_jf2@jf2.for.sabi.co.UK>,
-	reiserfs-devel@vger.kernel.org, ext-users <ext3-users@redhat.com>,
-	xfs@oss.sgi.com, linux-btrfs@vger.kernel.org
-To: Casey Allen Shobe <casey@shobe.info>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Jeff Layton <laytonjb@att.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipcop.bitmover.com ([192.132.92.15]:60441 "EHLO
-	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750909Ab0AKBcw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Jan 2010 20:32:52 -0500
-Content-Disposition: inline
-In-Reply-To: <AAA45328-6BEA-465C-B999-C99D45FC56FF@shobe.info>
+Received: from mx1.redhat.com ([209.132.183.28]:39550 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751292Ab0AKFGU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jan 2010 00:06:20 -0500
+In-Reply-To: <4B4A228F.4000205@att.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 10, 2010 at 08:03:04PM -0500, Casey Allen Shobe wrote:
-> On Dec 25, 2009, at 11:22 AM, Larry McVoy wrote:
->> Dudes, sync() doesn't flush the fs cache, you have to unmount for  
->> that.
->> Once upon a time Linux had an ioctl() to flush the fs buffers, I used
->> it in lmbench.
->
->
-> You do not need to unmount - 2.6.16+ have a mechanism in /proc to flush 
-> caches.  See http://linux-mm.org/Drop_Caches
+Jeff Layton wrote:
+> Good afternoon!
+> 
+> I was wondering what the default journal size is for ext4
+> when it's built on a single partition? Or does it vary in size
+> as needed?
+> 
+> TIA!
+> 
+> Jeff
 
-Cool, but I tend to come at problems from a cross platform point of view.
-Aix no hable /proc :)
--- 
----
-Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
+See figure_journal_size() in mke2fs.c.  It's called w/ size == -1
+if no other size is specified on the commandline so that goes
+to ext2fs_default_journal_size(), which is pretty straightforward
+in its scaling with nr of filesystem blocks:
+
+/*
+ * Find a reasonable journal file size (in blocks) given the number of blocks
+ * in the filesystem.  For very small filesystems, it is not reasonable to
+ * have a journal that fills more than half of the filesystem.
+ */
+int ext2fs_default_journal_size(__u64 blocks)
+{
+        if (blocks < 2048)
+                return -1;
+        if (blocks < 32768)
+                return (1024);
+        if (blocks < 256*1024)
+                return (4096);
+        if (blocks < 512*1024)
+                return (8192);
+        if (blocks < 1024*1024)
+                return (16384);
+        return 32768;
+}
