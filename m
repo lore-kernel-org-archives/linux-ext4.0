@@ -1,39 +1,34 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
-Date: Tue, 12 Jan 2010 16:03:33 GMT
-Message-ID: <201001121603.o0CG3XFP025344@demeter.kernel.org>
-References: <bug-14256-13602@http.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] extend e2fsprogs functionality to add EXT2_FLAG_DIRECT
+	option
+Date: Tue, 12 Jan 2010 11:38:28 -0500
+Message-ID: <20100112163828.GA14633@infradead.org>
+References: <4B46FCB2.1090308@redhat.com> <4B4B84E2.1050508@redhat.com> <4B4C54DC.4040006@redhat.com> <4B4C6429.6090803@redhat.com> <4B4C67F5.1020009@redhat.com> <20100112122319.GA20596@infradead.org> <4B4C6B70.1050205@redhat.com> <20100112124600.GA7151@infradead.org> <4B4C7297.5030905@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Michal Novotny <minovotn@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:33556 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751029Ab0ALQDe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2010 11:03:34 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0CG3Xxf025345
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jan 2010 16:03:33 GMT
-In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Received: from bombadil.infradead.org ([18.85.46.34]:37389 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751160Ab0ALQi3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2010 11:38:29 -0500
+Content-Disposition: inline
+In-Reply-To: <4B4C7297.5030905@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14256
+Ok, I looked at the issue.  The problem is that the Xen backend drivers
+are (as expected) utterly braindead and submit bios directly from the
+virtualization backed without using proper abstractions and thus
+bypassing all the cache coherency features in the fileystems (the block
+device nodes are just another mini-filesystem in that respect).  So
+when you first have buffered access in the host pages may stay in cache
+and get overwritten directly on disk by a Xen guest, and once the guest
+is down the host may still use the now stale cached data.
 
-
-
-
-
---- Comment #20 from Jan Kara <jack@suse.cz>  2010-01-12 16:03:29 ---
-OK, now "make -k check" have been doing something for a reasonable time but I
-don't see problems with orphan files you see. Only at the end there are a few
-ld-linux-... processes hanging so that I cannot umount the filesystem (I have
-to kill them to umount the filesystem) - do you also observe such processes?
-
-Also if you can still reproduce the problem - could you please find which test
-does exactly cause the problem so that I can concentrate on it? Thanks.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+I would recommend to migrate your cutomers to KVM which uses the proper
+abtractions and thus doesn't have this problem.  There's a reason after
+all why all the Xen dom0 mess never got merged to mainline.
