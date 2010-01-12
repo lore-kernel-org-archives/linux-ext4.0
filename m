@@ -1,155 +1,61 @@
-From: Chris Lee <cslee-list@cybericom.co.uk>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] extend e2fsprogs functionality to add EXT2_FLAG_DIRECT
  option
-Date: Tue, 12 Jan 2010 14:33:34 +0000
-Message-ID: <4B4C883E.7050600@cybericom.co.uk>
-References: <4B46FCB2.1090308@redhat.com> <4B4B84E2.1050508@redhat.com> <4B4C54DC.4040006@redhat.com> <4B4C6429.6090803@redhat.com> <4B4C67F5.1020009@redhat.com> <20100112122319.GA20596@infradead.org> <4B4C6B70.1050205@redhat.com> <20100112124600.GA7151@infradead.org> <4B4C7297.5030905@redhat.com> <4B4C736B.6080403@redhat.com> <4B4C7547.8020309@redhat.com> <4B4C77CA.3020007@redhat.com> <4B4C794E.5040507@redhat.com> <4B4C7A2F.40308@redhat.com>
+Date: Tue, 12 Jan 2010 09:16:20 -0600
+Message-ID: <4B4C9244.2050704@redhat.com>
+References: <4B46FCB2.1090308@redhat.com> <4B4B84E2.1050508@redhat.com> <4B4C54DC.4040006@redhat.com> <4B4C6429.6090803@redhat.com> <4B4C67F5.1020009@redhat.com> <20100112122319.GA20596@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-ext4@vger.kernel.org
-To: Michal Novotny <minovotn@redhat.com>
+Cc: Michal Novotny <minovotn@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mk-outboundfilter-5-a-2.mail.uk.tiscali.com ([212.74.114.4]:36003
-	"EHLO mk-outboundfilter-5-a-2.mail.uk.tiscali.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43878 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752558Ab0ALOnY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jan 2010 09:43:24 -0500
-In-Reply-To: <4B4C7A2F.40308@redhat.com>
+	id S1751629Ab0ALPQa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jan 2010 10:16:30 -0500
+In-Reply-To: <20100112122319.GA20596@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Christoph Hellwig wrote:
+> On Tue, Jan 12, 2010 at 01:15:49PM +0100, Michal Novotny wrote:
+>> I don't really know if I see your point but the thing here is that there  
+>> was no way to open a file directly (ie. using O_DIRECT). The direct  
+>> write support has been added only to make it possible to use both read  
+>> and write directly. The main reason to create this patch was to add  
+>> direct read support and flush capability won't help me at all. I am  
+>> working in Red Hat, Virtualization team on Xen so I am really not that  
+>> much familiar with file systems but what I needed was an option to read  
+>> the data directly (using O_DIRECT) in e2fsprogs. One bug was about  
+>> pygrub (Python version of GRUB of Xen PV guests that is internally using  
+>> e2fsprogs functionality to access data on ext2/3/4 partition to boot the  
+>> PV guests) uses outdated/cached data so some modifications were  
+>> necessary to open everything directly...
+> 
+> So to get things staigt:  you're using e2fsprogs to manipulate a life
+> filesystem and thing using O_DIRECT saves your ass?  I think you need to
+> rething your model of operation fundamentally in that case. 
+> 
 
+Christoph - 
 
-Michal Novotny wrote:
-> On 01/12/2010 02:29 PM, Ric Wheeler wrote:
->> On 01/12/2010 08:23 AM, Michal Novotny wrote:
->>> On 01/12/2010 02:12 PM, Michal Novotny wrote:
->>>> On 01/12/2010 02:04 PM, Ric Wheeler wrote:
->>>>> On 01/12/2010 08:01 AM, Michal Novotny wrote:
->>>>>> On 01/12/2010 01:46 PM, Christoph Hellwig wrote:
->>>>>>> On Tue, Jan 12, 2010 at 01:30:40PM +0100, Michal Novotny wrote:
->>>>>>>> Not really, pygrub doesn't do any manipulation with file system 
->>>>>>>> and
->>>>>>>> also, it's not working on a life file system. It's called 
->>>>>>>> before the
->>>>>>>> guest boots up to read information about grub.conf/initrd and
->>>>>>>> kernel for
->>>>>>>> PV guest and after this is read and selected in pygrub then the
->>>>>>>> guest is
->>>>>>>> booted using the kernel and initrd extracted from the image (after
->>>>>>>> which
->>>>>>>> the file is closed). Once again, nothing uses write support and it
->>>>>>>> was
->>>>>>>> added just to make it use O_DIRECT for both read and write 
->>>>>>>> operations
->>>>>>>> but only pygrub uses only read support and O_DIRECT passed here is
->>>>>>>> the
->>>>>>>> only way to make it use non-cached data.
->>>>>>> So what caches get in the way? From the above it seems the 
->>>>>>> situation
->>>>>>> is the following:
->>>>>>>
->>>>>>> - filesystem N is a guest filesystem. It's not usually mounted 
->>>>>>> on the
->>>>>>> host, except for initial setup long time ago
->>>>>>
->>>>>> Yes, it is really a guest file system. This is not mounted in the 
->>>>>> host
->>>>>> and the reason is to get actual version of grub.conf, initrd and 
->>>>>> kernel
->>>>>> to be booted...
->>>>>>
->>>>>>> - before booting a guest your "pygrub" tools needs to read files on
->>>>>>> it, and it's doing so using e2fsprogs
->>>>>>
->>>>>> Correct.
->>>>>>
->>>>>>> - once the guest is life it uses the extN kernel driver to 
->>>>>>> access the
->>>>>>> filesystem
->>>>>>
->>>>>> That's right. So this is no longer pygrub responsibility...
->>>>>>
->>>>>>> nowhere in this cycle you should have any stale cached data. The
->>>>>>> kernel
->>>>>>> always makes sure to write back data on umount/reboot, as does
->>>>>>> e2fsprogs
->>>>>>> if actually used to write data (which you said is not the case
->>>>>>> anyway).
->>>>>>
->>>>>> In fact I was unable to run into those problems myself but
->>>>>> reporter/customer did.
->>>>>>
->>>>>>> The only data that may be in the cache are unmodified data from 
->>>>>>> reads
->>>>>>> on the block device from either e2fsprogs or a suboptimal virtual
->>>>>>> block
->>>>>>> device implementation, but these can't cause any problems.
->>>>>> Michal
->>>>>
->>>>> If the guest is the only one (when running) that installs a new
->>>>> grub.conf file and kernel and it shuts down properly, you should be
->>>>> good. It if does not shut down cleanly, it could have a stale
->>>>> grub.conf file (or worse, a partially written one), but using
->>>>> O_DIRECT to bypass the file system cache should not help.
->>>>>
->>>>> If we cannot reproduce this failure, sounds like we need to go back
->>>>> and get a better understanding of what the customer saw?
->>>>>
->>>>> ric
->>>>>
->>>> That's right. I am going write an e-mail regarding this information to
->>>> the reproducer if this bug and tell him that I need more information
->>>> about what's happening at the customer side.
->>>>
->>> One more thing to point out, let's have a look at:
->>> https://bugzilla.redhat.com/show_bug.cgi?id=466681#c15 .This is about
->>> workaround to drop caches to be added to pygrub in the host machine
->>> using this command:
->>>
->>> echo 1> /proc/sys/vm/drop_caches
->>>
->>> So this really looks like the caching issue if it's working fine after
->>> dropping the caches. That may be the reason why this could be fine with
->>> this patch present in e2fsprogs.
->>>
->>> Michal
->>
->> That BZ has a pretty long and twisted history, but after a quick 
->> read, I still don't see why a cleanly shutdown guest would have 
->> issues with caching that using O_DIRECT on read would help.
->>
->> We will need to dig into a bit more...
->>
->> ric
->>
-> I am not saying we don't  need to dig a little bit more, we surely do 
-> but unfortunately I am waiting for information from reporter. But I am 
-> also thinking that this O_DIRECT functionality support to bypass 
-> caches could be useful...
->
-> Thanks,
-> Michal
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-I can not see where the cache could cause this problem but is it 
-possible that it is in the Host file system rather than than the guest 
-where it is causing a problem; If a guest shuts down  it writes to it's 
-file system and all is good only it's file system is a file on another 
-file system. So the cache looking after those writes as managed by the 
-hyper visor or whatever could hold that data un-flushed for whatever reason.
-But when the guest starts up it should get the cached or most recent 
-version, this should not be stale data unless more than one guest is 
-using this file system and they are overwriting each others files, then 
-a cached version might be newer and different from what is expected and 
-the on disk version might be the old and expected version.
-End user needs to provide more information.
+It's my understanding that nobody is doing concurrent access.
 
-Chris.
- 
+If the host reads the block device via pygrub to boot the guest,
+the guest while running updates the same device when installing
+a new kernel (either through the fs, or by writing to the bdev;
+probably the former...), and then the guest shuts down - is there
+something which will sync the host's cache (cached from the
+prior read) with the updates from the guest?
+
+I don't know nearly enough about how the virt IO goes ...
+
+But if access is sequential between host & guest, I'd hope that
+this would all just work.
+
+If that is all supposed to work, then maybe the description of the
+data flow (as Ric asked for) is not correct.
+
+-Eric
