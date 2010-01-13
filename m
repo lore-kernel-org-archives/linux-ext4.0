@@ -1,45 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
-Date: Wed, 13 Jan 2010 00:34:00 GMT
-Message-ID: <201001130034.o0D0Y0nJ009956@demeter.kernel.org>
-References: <bug-14256-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4 crash? on rsyn action
+Date: Wed, 13 Jan 2010 10:57:08 +0100
+Message-ID: <20100113095708.GA3255@quack.suse.cz>
+References: <4B4B8AB8.5040907@zackbummfertig.de>
+ <20100112194414.GB24833@atrey.karlin.mff.cuni.cz>
+ <4B4D048D.1000306@zackbummfertig.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
+To: Marko Weber <weber@zackbummfertig.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:51455 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752150Ab0AMAeC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2010 19:34:02 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0D0Y0pg009957
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jan 2010 00:34:00 GMT
-In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Received: from cantor2.suse.de ([195.135.220.15]:39339 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752696Ab0AMJ5H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Jan 2010 04:57:07 -0500
+Content-Disposition: inline
+In-Reply-To: <4B4D048D.1000306@zackbummfertig.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14256
+  Hi Marko,
 
+On Wed 13-01-10 00:23:57, Marko Weber wrote:
+> heres my vmlinux file.
+  What you've sent me is a vmlinuz file ('z' in the end instead of 'x')
+and gdb cannot work with that. If you use self-compiled kernel, vmlinux
+file (from which vmlinuz is created) is in the root of the directory where
+you compile the kernel.
+  I've now realized that you might have ext4/jbd2 compiled as a module. In
+that case, sending me those two modules should be enough. Thanks.
 
+> Am 12.01.2010 20:44, schrieb Jan Kara:
+> >If you can send your vmlinux file, we
+> >can find out where exactly in jbd2_journal_commit_transaction we wait.
 
-
-
---- Comment #24 from carlos.velasco@nimastelecom.com  2010-01-13 00:34:00 ---
-Found. It is the test "tst-mutexpi9".
-
-eglibc-2.10.1/nptl# GCONV_PATH=/compile/eglibc-build/iconvdata LC_ALL=C    
-/compile/eglibc-build/elf/ld-linux-x86-64.so.2 --library-path
-/compile/eglibc-build:/compile/eglibc-build/math:/compile/eglibc-build/elf:/compile/eglibc-build/dlfcn:/compile/eglibc-build/nss:/compile/eglibc-build/nis:/compile/eglibc-build/rt:/compile/eglibc-build/resolv:/compile/eglibc-build/crypt:/compile/eglibc-build/nptl
-/compile/eglibc-build/nptl/tst-mutexpi9  >
-/compile/eglibc-build/nptl/tst-mutexpi9.out
-
-eglibc-2.10.1/nptl# umount /tmp
-Segmentation fault
-
-eglibc-2.10.1/nptl# cat /compile/eglibc-build/nptl/tst-mutexpi9.out
-going to fork now
-
+								Honza
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
