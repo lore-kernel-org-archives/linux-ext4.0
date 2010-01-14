@@ -1,63 +1,112 @@
-From: Mike Mestnik <cheako911@gmail.com>
-Subject: Re: How to use mkfs.ext4 "stride=" on RAID correctly?
-Date: Wed, 13 Jan 2010 18:58:46 -0600
-Message-ID: <fa7b26051001131658ya96c3b0ieb6010c6fba389c4@mail.gmail.com>
-References: <fa7b26051001131612h482845dalf3446e5fce5f3639@mail.gmail.com>
-	 <fa7b26051001131613jc61e20fu5e4d0ccee86d6b16@mail.gmail.com>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: [PATCH] ext3: prevent reread after write IO error
+Date: Thu, 14 Jan 2010 15:12:09 +0900
+Message-ID: <4B4EB5B9.4020809@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Nick Piggin <npiggin@suse.de>, dle-develop@lists.sourceforge.net,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f209.google.com ([209.85.219.209]:58557 "EHLO
-	mail-ew0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752043Ab0ANA6r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jan 2010 19:58:47 -0500
-Received: by ewy1 with SMTP id 1so316252ewy.28
-        for <linux-ext4@vger.kernel.org>; Wed, 13 Jan 2010 16:58:46 -0800 (PST)
-In-Reply-To: <fa7b26051001131613jc61e20fu5e4d0ccee86d6b16@mail.gmail.com>
+Received: from mailx.hitachi.co.jp ([133.145.228.49]:51941 "EHLO
+	mailx.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751244Ab0ANGa0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2010 01:30:26 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 13, 2010 at 6:13 PM, Mike Mestnik <cheako@visi.com> wrote:
-> What should this value be? =A0From what I gather it should be the len=
-gth
-> of data stored on a single disk for each RAID level block. =A0If that=
-'s
-> the case how is it that two given data blocks are calculated to be on
-> separate drives? =A0It seams to me that the stripe-width is also
-> essential in this regard, but the man page does not reflect this.
->
-> For example let's say that stride=3D1, then which of the following
-> blocks are not on the same drive as 1: 8 9 10?
-> The answer is dependent on the number data disks, like so.
-> Where x =3D n - 1 or n depending on the RAID type.
-> if x =3D 2 then 9
-> if x =3D 3 then 8 and 10
-> if x =3D 5 then 8 and 9
->
-Wait!!
-I got this all wrong, one would need all of x, n, and stride to
-successfully determine the disk used for a given stride.
+This patch fixes the similar bug fixed by commit 95450f5a.
 
-Seams to me mkfs is missing some parameters.  What about [-g
-blocks-per-group]...
+If a directory is modified, its data block is journaled as metadata
+and finally written back to the right place.  Now, we assume a
+transient write erorr happens on that writeback.  Uptodate flag of
+the buffer is cleared by write error, so next access on the buffer
+causes a reread from disk.  This means it breaks the filesystems
+consistency.
 
-http://tldp.org/HOWTO/Software-RAID-0.4x-HOWTO-8.html
+To prevent old directory data from being reread, this patch set
+uptodate flag again in the case of after write error before issuing
+the read operation.  The write error on the directory's data block
+is detected at the time of journal checkpointing or discarded if a
+rewrite by another modification succeeds, so no problem.
 
-> There is no way to make this calculation with out knowing x, further
-> more calculating x based of of both stride and stripe-width is round
-> about... =A0Why not simply ask for x, the number of data disks and ha=
-ve
-> stripe-width be the value that is calculated, as stride might not go
-> into stripe-width evenly leaving you with a headache.
->
-> Did I locate a bug?
->
-> Is there a better forum for this discussion?
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I tested this patch by using fault injection approach.
+
+By the way, I think the right fix is to keep uptodate flag on write
+error, but it gives a big impact.  We have to confirm whether
+over 200 buffer_uptodate's are used for real uptodate check or write
+error check.  For now, I adopt the quick-fix solution.
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+---
+ fs/ext3/inode.c |   13 +++++++++++++
+ fs/ext3/namei.c |   15 ++++++++++++++-
+ 2 files changed, 27 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 455e6e6..17c7a5f 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1077,10 +1077,23 @@ struct buffer_head *ext3_bread(handle_t *handle, struct inode *inode,
+ 		return bh;
+ 	if (buffer_uptodate(bh))
+ 		return bh;
++
++	/*
++	 * uptodate flag may have been cleared by a previous (transient)
++	 * write IO error.  In this case, we don't want to re-read its
++	 * old on-disk data.  Actually the buffer has the latest data,
++	 * so set uptodate flag again.
++	 */
++	if (buffer_write_io_error(bh)) {
++		set_buffer_uptodate(bh);
++		return bh;
++	}
++
+ 	ll_rw_block(READ_META, 1, &bh);
+ 	wait_on_buffer(bh);
+ 	if (buffer_uptodate(bh))
+ 		return bh;
++
+ 	put_bh(bh);
+ 	*err = -EIO;
+ 	return NULL;
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 7b0e44f..2f18797 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -909,7 +909,20 @@ restart:
+ 				num++;
+ 				bh = ext3_getblk(NULL, dir, b++, 0, &err);
+ 				bh_use[ra_max] = bh;
+-				if (bh)
++				if (!bh || buffer_uptodate(bh))
++					continue;
++
++				/*
++				 * uptodate flag may have been cleared by a
++				 * previous (transient) write IO error.  In
++				 * this case, we don't want to re-read its
++				 * old on-disk data.  Actually the buffer
++				 * has the latest data, so set uptodate flag
++				 * again.
++				 */
++				if (buffer_write_io_error(bh))
++					set_buffer_uptodate(bh);
++				else
+ 					ll_rw_block(READ_META, 1, &bh);
+ 			}
+ 		}
+-- 
+1.6.0.3
+
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
+
+
