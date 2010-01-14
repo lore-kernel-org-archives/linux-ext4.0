@@ -1,54 +1,54 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [REPOST][PATCH][RFC] vfs: add message print mechanism for the
-	mount/umount into the VFS layer
-Date: Thu, 14 Jan 2010 08:14:48 +0000
-Message-ID: <20100114081448.GI19799@ZenIV.linux.org.uk>
-References: <20100114154837.734fff60.toshi.okajima@jp.fujitsu.com>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: [PATCH] ext3: prevent reread after write IO error
+Date: Thu, 14 Jan 2010 18:05:32 +0900
+Message-ID: <4B4EDE5C.8040600@hitachi.com>
+References: <4B4EB5B9.4020809@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100114154837.734fff60.toshi.okajima@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Nick Piggin <npiggin@suse.de>,
+	dle-develop@lists.sourceforge.net,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:49068 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755682Ab0ANJFm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2010 04:05:42 -0500
+In-Reply-To: <4B4EB5B9.4020809@hitachi.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 14, 2010 at 03:48:37PM +0900, Toshiyuki Okajima wrote:
-> Hi. 
-> 
-> Now, on the VFS-layer any messages aren't printed at mount/umount time 
-> (when the operation normally terminates).
-> But there are some filesystems which print their own specific messages at those
-> times.
-> 
-> For the purpose of the system management and so on, users (especially, 
-> enterprise users) want to observe their system operations from the system logs.
-> We may manage to observe some filesystems' operations (mount/umount) from the 
-> logs. But the filesystems of which we can observe the operations are not all.
-> 
-> Therefore to achieve the observations for all filesystems is to add the common
-> message mechanism into the VFS layer. If any filesystems' specific messages at 
-> mount/umount time are added into this, we can distinguish more easily each 
-> message among the system logs for our systems' observations. 
-> 
-> This patch provides the following:
-> - message output of common format from VFS at mount/umount time
-> - the functions of printing the filesystem's specific information at 
->   mount/umount time
- 
-I am not going to apply that.  For one thing, printk is improper mechanism
-for "observing [normal] operations".  Vague references to "enterprise
-users" wanting that do not constitute a valid rationale.
+Hi,
 
-What's more, there is absolutely no point in taking care to have mount(2)
-spew something in log when explicitly asked to do so; caller can bloody
-well do it itself.  From userland.  And on umount side your logics is
-simply b0rken, since the presence of report depends on the order of vfsmount
-demise in case when there are several vfsmounts over given superblock.
+Hidehiro Kawai wrote:
 
-I can see a value in having something e.g. in /proc that would report the
-list of active filesystems (or active filesystems of given type).  poll()able,
-a-la /proc/mounts.  Format of such thing would have to be considered
-carefully, but at least it's something that might make sense.
+> This patch fixes the similar bug fixed by commit 95450f5a.
+> 
+> If a directory is modified, its data block is journaled as metadata
+> and finally written back to the right place.  Now, we assume a
+> transient write erorr happens on that writeback.  Uptodate flag of
+> the buffer is cleared by write error, so next access on the buffer
+> causes a reread from disk.  This means it breaks the filesystems
+> consistency.
+
+After sending this patch, I noticed that I have to deal with
+the bh_uptodate_or_lock() case as well.  Actually, I confirmed
+a data block sharing happens between two inodes. Allocate a new
+block, then modified bitmap goes to the fs, but it fails due to
+a transient IO error.  Next access on the bitmap buffer cause a
+reread from disk.  As a result, the allocated block becomes 
+a FREE block!  So this block can be shared by different two inodes.
+
+I'll send the revised version later.
+
+Thanks,
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
+
