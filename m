@@ -1,44 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -V2] ext4: unmap the underlying metadata when allocating
- blocks via fallocate
-Date: Thu, 14 Jan 2010 13:31:56 -0600
-Message-ID: <4B4F712C.3070902@redhat.com>
-References: <1262805762-6862-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>	<1262805762-6862-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>	<4B4F4DB7.1070501@redhat.com> <87wrzklesd.fsf@linux.vnet.ibm.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: Question about ext4 online defrag test case
+Date: Thu, 14 Jan 2010 16:04:01 -0500
+Message-ID: <87f94c371001141304n18bcd208kd97f08646d37d1e2@mail.gmail.com>
+References: <4B4EEF94.5000902@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>,
+	Sandeep K Sinha <sandeepksinha@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1208 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757486Ab0ANTcL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jan 2010 14:32:11 -0500
-In-Reply-To: <87wrzklesd.fsf@linux.vnet.ibm.com>
+Received: from mail-iw0-f194.google.com ([209.85.223.194]:59780 "EHLO
+	mail-iw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755696Ab0ANVEC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2010 16:04:02 -0500
+Received: by iwn32 with SMTP id 32so65761iwn.33
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Jan 2010 13:04:02 -0800 (PST)
+In-Reply-To: <4B4EEF94.5000902@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K. V wrote:
-> On Thu, 14 Jan 2010 11:00:39 -0600, Eric Sandeen <sandeen@redhat.com> wrote:
->> Aneesh Kumar K.V wrote:
->>> This become important when we are running with nojournal mode. We
->>> may end up allocating recently freed metablocks for fallocate. We
->>> want to make sure we unmap the old mapping so that when we convert
->>> the fallocated uninitialized extent to initialized extent we don't
->>> have the old mapping around. Leaving the old mapping can cause
->>> file system corruption
->>>
->>> Now that we unmap old metadata blocks we need not return blocks
->>> allocated from fallocate area as new.
->> With this, unmap_underlying_metadata_blocks is no longer used
->> and can be removed I guess.
->>
-> 
-> Yes. Updated patch below
+On Thu, Jan 14, 2010 at 5:19 AM, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
+> Hi Ted,
+>
+>> E2defrag should hopefully be releasable in Karmic+1.
+>> There are still a lot of bugs that are still being fixed in the defrag
+>> code,
+>> some of which could cause data loss. They work fine
+>> if the system isn't under stress, sure, but acid test is to make sure
+>> things work OK even when the system is under memory pressure and
+>> swapping heavily, or when the file is being actively modified at the point
+>> where the defrag takes place.
+>
+> I found your comment about ext4 online defrag on Ubuntu BBS by accident.
+> https://bugs.launchpad.net/ubuntu/+source/e2fsprogs/+bug/321528
+>
+> I would like to address this problem so I ran e4defrag on the system
+> which was under memory pressure. But unfortunately I could not find the bug.
+> If you have already known how to reproduce this kind of problem,
+> could you teach me how?
+>
+> Regards,
+> Akira Fujita
 
-Ok, with the latest versions of these 3 patches, fsstress / 013
-is working here, modulo the blocks-past-eof-from-fallocate problem
-that remains.
+Sandeep, I've added you and I to this thread since oshm is using the
+same ext4_move_extents ioctl as E2defrag.
 
-Thanks,
--Eric
+Also, the above highlights the need for us to test ohsm relocates with
+data updates in progress.  Also with memory pressure which I had not
+really thought about before.
+
+We can discuss that on the ohsm list if needed.
+
+Greg
