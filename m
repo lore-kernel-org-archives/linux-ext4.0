@@ -1,108 +1,172 @@
-From: Michal Novotny <minovotn@redhat.com>
-Subject: Re: [PATCH] extend e2fsprogs functionality to add EXT2_FLAG_DIRECT
- option
-Date: Thu, 14 Jan 2010 14:46:33 +0100
-Message-ID: <4B4F2039.8080605@redhat.com>
-References: <4B46FCB2.1090308@redhat.com> <4B4B84E2.1050508@redhat.com> <4B4C54DC.4040006@redhat.com> <4B4C6429.6090803@redhat.com> <4B4C67F5.1020009@redhat.com> <20100112122319.GA20596@infradead.org> <4B4C6B70.1050205@redhat.com> <20100112124600.GA7151@infradead.org> <4B4C7297.5030905@redhat.com> <20100112163828.GA14633@infradead.org> <4B4CA6A9.3030401@redhat.com> <4B4CA868.2080204@redhat.com> <4B4CA916.7060405@redhat.com> <4B4CA9A6.1080608@redhat.com> <4B4CAA84.5060603@redhat.com> <4B4CAAB7.5030008@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: prevent reread after write IO error v2
+Date: Thu, 14 Jan 2010 15:18:04 +0100
+Message-ID: <20100114141803.GB3146@quack.suse.cz>
+References: <4B4EB5B9.4020809@hitachi.com>
+ <4B4EDE5C.8040600@hitachi.com>
+ <4B4EEE86.7080807@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>,
+	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Nick Piggin <npiggin@suse.de>,
+	dle-develop@lists.sourceforge.net,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27491 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:32819 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756693Ab0ANNrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jan 2010 08:47:02 -0500
-In-Reply-To: <4B4CAAB7.5030008@redhat.com>
+	id S1756782Ab0ANOSI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jan 2010 09:18:08 -0500
+Content-Disposition: inline
+In-Reply-To: <4B4EEE86.7080807@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/12/2010 06:00 PM, Michal Novotny wrote:
-> On 01/12/2010 05:59 PM, Ric Wheeler wrote:
->> On 01/12/2010 11:56 AM, Eric Sandeen wrote:
->>> Michal Novotny wrote:
->>>> On 01/12/2010 05:50 PM, Ric Wheeler wrote:
->>>>> On 01/12/2010 11:43 AM, Michal Novotny wrote:
->>>>>> On 01/12/2010 05:38 PM, Christoph Hellwig wrote:
->>>>>>> Ok, I looked at the issue. The problem is that the Xen backend 
->>>>>>> drivers
->>>>>>> are (as expected) utterly braindead and submit bios directly 
->>>>>>> from the
->>>>>>> virtualization backed without using proper abstractions and thus
->>>>>>> bypassing all the cache coherency features in the fileystems 
->>>>>>> (the block
->>>>>>> device nodes are just another mini-filesystem in that respect). So
->>>>>>> when you first have buffered access in the host pages may stay 
->>>>>>> in cache
->>>>>>> and get overwritten directly on disk by a Xen guest, and once 
->>>>>>> the guest
->>>>>>> is down the host may still use the now stale cached data.
->>>>>>>
->>>>>>> I would recommend to migrate your cutomers to KVM which uses the 
->>>>>>> proper
->>>>>>> abtractions and thus doesn't have this problem. There's a reason 
->>>>>>> after
->>>>>>> all why all the Xen dom0 mess never got merged to mainline.
->>>>>> So, do you think the problem is in the Xen backend drivers and to 
->>>>>> make
->>>>>> it working right in Xen the driver fix is needed?
->>>>>
->>>>> If XEN drivers by pass the normal IO and FS stack on the host, then I
->>>>> can understand why the hack to e2fsprogs works but it does not seem
->>>>> like a good fix.
->>>>>
->>>>> Specifically, the data will continue to be cached (and if dirty, 
->>>>> might
->>>>> be written back to the storage eventually).
->>>>>
->>>>> If we need a work around, you need to drop VM caches for that device
->>>>> before you update the guest's files and possibly again afterwards 
->>>>> (and
->>>>> make sure that nothing pulls the data into cache during the 
->>>>> operation).
->>>>>
->>>>> Basically, this sounds like the backend drivers are doing something
->>>>> really, really dangerous....
->>>>>
->>>>> ric
->>>>>
->>>> Ok, so you think this is not good to do this patch for e2fsprogs for
->>>> direct access support? The only things we could do now is to fix the
->>>> backend drivers or create a workaround to drop caches? I need to 
->>>> discuss
->>>> this further with guys in my team...
->>>
->>> I do think that patching it up in e2fsprogs is unnecessarily invasive;
->>> it's fixing it at the wrong spot.
->>>
->>> Any block dev IO from the host is dangerous; fixing it only in 
->>> e2fsprogs
->>> for this one case doesn't seem like the right course of action.
->>>
->>> -Eric
->>
->> It actually could produce some nastier issues where it would work a 
->> bit, the bad data gets flushed back to the backing store and then 
->> your O_DIRECT read would be broken.
->>
->> Also, for normal users of e2fsprogs, they should never bypass the 
->> cache...
->>
->> ric
-> Ok, good to know the normal users should never bypass the cache. That 
-> way this seems to be some kind of kernel bug...
->
-Hi,
-finally, after discussing this with several people we decided it's 
-better to solve it in kernel path since Xen is using some weird IO path 
-like mentioned. Since this patch is about using O_DIRECT in e2fsprogs 
-which I've been told that normal e2fsprogs user should never do I'd like 
-to thanks you all for your help and tell you to ignore this patch since 
-we're going to solve it some other way, ie. fix this in the kernel itself.
+On Thu 14-01-10 19:14:30, Hidehiro Kawai wrote:
+> This patch fixes the similar bug fixed by commit 95450f5a.
+> 
+> If a directory is modified, its data block is journaled as metadata
+> and finally written back to the right place.  Now, we assume a
+> transient write erorr happens on that writeback.  Uptodate flag of
+> the buffer is cleared by write error, so next access on the buffer
+> causes a reread from disk.  This means it breaks the filesystems
+> consistency.
+> 
+> To prevent old directory data from being reread, this patch set
+> uptodate flag again in the case of after write error before issuing
+> the read operation.  The write error on the directory's data block
+> is detected at the time of journal checkpointing or discarded if a
+> rewrite by another modification succeeds, so no problem.
+> 
+> Similarly, this kind of consistency breakage can be caused by
+> a transient write error on a bitmap block.
+  Good catch, that's indeed a problem.
 
-Thanks for your help!
+> I tested this patch by using fault injection approach.
+> 
+> By the way, I think the right fix is to keep uptodate flag on write
+> error, but it gives a big impact.  We have to confirm whether
+> over 200 buffer_uptodate's are used for real uptodate check or write
+> error check.  For now, I adopt the quick-fix solution.
+  Yes that needs to be solved. I also looked into it and it's too much work
+to do it in a one big sweep. But I think we could do the conversion
+filesystem by filesystem - see below.
+  Admittedly, I don't like your solution very much. It looks strange to
+check write_io_error when *reading* the buffer and I'm afraid we could
+introduce bugs e.g. by clearing write_io_error bit so that ext3_bread would
+then fail to detect the error condition or by some other code deciding to
+read the buffer from disk via other function than just ext3_bread. So I
+think it would be much better to set back uptodate flag shortly after the
+failed write or not clear it at all.
+  Now here's how I think we could achieve that without having to change all
+other filesystems: We could create a new superblock flag which would mean
+that "this filesystem handles write_io_error and doesn't want to clear
+uptodate flag". Filesystems with this capability would set this flag when
+calling get_sb_bdev. And if write IO fails we check this flag
+(via bh->b_bdev->bd_super->s_flags) and clear / not clear uptodate flag
+accordingly. What do you think?
+  I know it's more work than your quick fix but it should fix all these
+problems for ext3 once for all and it would be much cleaner...
 
-Michal
+									Honza
+> 
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+> ---
+>  fs/ext3/balloc.c |   12 ++++++++++++
+>  fs/ext3/inode.c  |   13 +++++++++++++
+>  fs/ext3/namei.c  |   15 ++++++++++++++-
+>  3 files changed, 39 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> index 27967f9..5dc5ccf 100644
+> --- a/fs/ext3/balloc.c
+> +++ b/fs/ext3/balloc.c
+> @@ -156,6 +156,18 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+>  	if (likely(bh_uptodate_or_lock(bh)))
+>  		return bh;
+>  
+> +	/*
+> +	 * uptodate flag may have been cleared by a previous (transient)
+> +	 * write IO error.  In this case, we don't want to reread its
+> +	 * old on-disk data.  Actually the buffer has the latest data,
+> +	 * so set uptodate flag again.
+> +	 */
+> +	if (buffer_write_io_error(bh)) {
+> +		set_buffer_uptodate(bh);
+> +		unlock_buffer(bh);
+> +		return bh;
+> +	}
+> +
+>  	if (bh_submit_read(bh) < 0) {
+>  		brelse(bh);
+>  		ext3_error(sb, __func__,
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 455e6e6..67d7849 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1077,10 +1077,23 @@ struct buffer_head *ext3_bread(handle_t *handle, struct inode *inode,
+>  		return bh;
+>  	if (buffer_uptodate(bh))
+>  		return bh;
+> +
+> +	/*
+> +	 * uptodate flag may have been cleared by a previous (transient)
+> +	 * write IO error.  In this case, we don't want to reread its
+> +	 * old on-disk data.  Actually the buffer has the latest data,
+> +	 * so set uptodate flag again.
+> +	 */
+> +	if (buffer_write_io_error(bh)) {
+> +		set_buffer_uptodate(bh);
+> +		return bh;
+> +	}
+> +
+>  	ll_rw_block(READ_META, 1, &bh);
+>  	wait_on_buffer(bh);
+>  	if (buffer_uptodate(bh))
+>  		return bh;
+> +
+>  	put_bh(bh);
+>  	*err = -EIO;
+>  	return NULL;
+> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> index 7b0e44f..7ed8e45 100644
+> --- a/fs/ext3/namei.c
+> +++ b/fs/ext3/namei.c
+> @@ -909,7 +909,20 @@ restart:
+>  				num++;
+>  				bh = ext3_getblk(NULL, dir, b++, 0, &err);
+>  				bh_use[ra_max] = bh;
+> -				if (bh)
+> +				if (!bh || buffer_uptodate(bh))
+> +					continue;
+> +
+> +				/*
+> +				 * uptodate flag may have been cleared by a
+> +				 * previous (transient) write IO error.  In
+> +				 * this case, we don't want to reread its
+> +				 * old on-disk data.  Actually the buffer
+> +				 * has the latest data, so set uptodate flag
+> +				 * again.
+> +				 */
+> +				if (buffer_write_io_error(bh))
+> +					set_buffer_uptodate(bh);
+> +				else
+>  					ll_rw_block(READ_META, 1, &bh);
+>  			}
+>  		}
+> -- 
+> 1.6.0.3
+> 
+> 
+> 
+> -- 
+> Hidehiro Kawai
+> Hitachi, Systems Development Laboratory
+> Linux Technology Center
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
