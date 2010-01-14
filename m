@@ -1,41 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15025] Oops in ext4 driver
-Date: Wed, 13 Jan 2010 22:16:05 GMT
-Message-ID: <201001132216.o0DMG5mK014497@demeter.kernel.org>
-References: <bug-15025-13602@http.bugzilla.kernel.org/>
+From: Mike Mestnik <cheako911@gmail.com>
+Subject: How to use mkfs.ext4 "stride=" on RAID correctly?
+Date: Wed, 13 Jan 2010 18:12:13 -0600
+Message-ID: <fa7b26051001131612h482845dalf3446e5fce5f3639@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52821 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756589Ab0AMWQG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jan 2010 17:16:06 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0DMG5u7014498
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jan 2010 22:16:05 GMT
-In-Reply-To: <bug-15025-13602@http.bugzilla.kernel.org/>
+Received: from mail-ew0-f209.google.com ([209.85.219.209]:43499 "EHLO
+	mail-ew0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755014Ab0ANAMQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jan 2010 19:12:16 -0500
+Received: by ewy1 with SMTP id 1so269197ewy.28
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Jan 2010 16:12:14 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15025
+What should this value be?  From what I gather it should be the length
+of data stored on a single disk for each RAID level block.  If that's
+the case how is it that two given data blocks are calculated to be on
+separate drives?  It seams to me that the stripe-width is also
+essential in this regard, but the man page does not reflect this.
 
+For example let's say that stride=1, then which of the following
+blocks are not on the same drive as 1: 8 9 10?
+The answer is dependent on the number data disks, like so.
+Where x = n - 1 or n depending on the RAID type.
+if x = 2 then 9
+if x = 3 then 8 and 10
+if x = 5 then 8 and 9
 
+There is no way to make this calculation with out knowing x, further
+more calculating x based of of both stride and stripe-width is round
+about...  Why not simply ask for x, the number of data disks and have
+stripe-width be the value that is calculated, as stride might not go
+into stripe-width evenly leaving you with a headache.
 
+Did I locate a bug?
 
-
---- Comment #2 from Steinar H. Gunderson <sgunderson@bigfoot.com>  2010-01-13 22:16:04 ---
-On Wed, Jan 13, 2010 at 10:09:32PM +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
-> --- Comment #1 from Rafael J. Wysocki <rjw@sisk.pl>  2010-01-13 22:09:30 ---
-> Since you marked it as a regression, what was the last working kernel?
-
-I upgraded from 2.6.32-rc5, where I didn't see this issue. 2.6.32.3 works
-fine on the same machine and filesystem.
-
-/* Steinar */
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Is there a better forum for this discussion?
