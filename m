@@ -1,62 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v4 0/3] dioread_nolock patch
-Date: Fri, 15 Jan 2010 14:17:31 -0600
-Message-ID: <4B50CD5B.9050804@redhat.com>
-References: <1263583812-21355-1-git-send-email-tytso@mit.edu> <4B50C78D.2000807@redhat.com> <20100115201521.GE7256@thunk.org>
+From: Edward Shishkin <edward.shishkin@gmail.com>
+Subject: Re: [Jfs-discussion] benchmark results
+Date: Fri, 15 Jan 2010 22:42:38 +0100
+Message-ID: <4B50E14E.5050204__28237.8983371474$1263591917$gmane$org@gmail.com>
+References: <20091224212756.GM21594@thunk.org> <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de> <20091225161453.GD32757@thunk.org> <20091225162238.GB19303@bitmover.com> <alpine.DEB.2.01.0912251042540.3483@bogon.housecafe.de> <4B36333B.3030600@hp.com> <4B365EBE.5050804@nerdbynature.de> <4B37BA76.7050403@hp.com> <alpine.DEB.2.01.0912271346240.3483@bogon.housecafe.de> <20091227223307.GA4429@thunk.org> <20091228140855.GD10982@bitmover.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+To: Larry McVoy <lm@bitmover.com>, tytso@mit.edu,
+	Christian Kujau <lists@nerdbynature.de>,
+	jim owens <jowens@hp.com>,
+	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+	x
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12139 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16826 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758205Ab0AOURh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Jan 2010 15:17:37 -0500
-In-Reply-To: <20100115201521.GE7256@thunk.org>
+	id S1758452Ab0AOVpB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Jan 2010 16:45:01 -0500
+In-Reply-To: <20091228140855.GD10982@bitmover.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu wrote:
-> On Fri, Jan 15, 2010 at 01:52:45PM -0600, Eric Sandeen wrote:
->> At least as far as that last bit goes, simply having the extents
->> feature is not sufficient; we allow both formats of files to exist
->> on a filesystem with the extents feature turned on.
-> 
-> ... and I guess someone could be appending to a legacy file when the
-> system crashes.  I suppose we can at least exempt extent files from
-> ordered mode handling.
-> 
->> As to the general idea I'll have to give it more thought. :)
-> 
-> Yeah, and we need to do a lot of performance and functional testing.
-> Jiaying has done a lot of testing of this in the past couple of
-> months, but more testing, especially power fail testing, is definitely
-> a good thing.  I also want to do power fail testing for journal
-> checksums and async commits so we can turn that feature on by default,
-> since with those features enabled, it almost doubles fs_mark
-> performance.  (Async commit is now badly named, what it does is
-> reduces the number of write barriers needed from two per commit to
-> just one.  But we do need to test it some more...)
 
-At one point google was planning to devise a power-fail test
-harness.  Any news on that?
+> When things didn't match up that was a clue that either
+>
+>     - the benchmark was broken
+>     - the code was broken
+>   
+[...]
 
-> This was more of a statement of intentions than a "we'll turn this on
-> by default in 2.3.34".  I figure we'll merge first, and then change
-> the default later, and still later we'll simplify the code paths by
-> removing the old code path.
-> 
-> Speaking of which, something more to think about --- does anybody
-> still care about nobh mode?  It was necessary to preserve lowmem for
-> 32-bit kernels with lots of memory, and it was mainly useful for
-> database workloads.  But with 64-bit kernels, it's not clear the
-> tradeoffs of not caching the block number are really worth it any
-> more.  What would people think about potentially dropping the nobh
-> option and write paths from ext4?
+I would carry out an object-oriented dualism here.
 
-I have no special love for it personally, and I don't run into
-fedora users or red hat customers using it, as far as I know.
 
--Eric
+[1] methods (kernel module) ---- [2] objects (formatted partition)
 
+ |                                |
+ |                                |
+
+[3] benchmarks ----------------- [4] user-space utilities (fsck)
+
+
+User-space utilities investigate "object corruptions",
+whereas benchmarks investigate "software corruptions"
+(including bugs in source code, broken design, etc, etc..)
+
+It is clear that "software" can be "corrupted" by a larger
+number of ways than "objects". Indeed, it is known that
+dual space V* (of all linear functions over V) is a much
+more complex object than V.
+
+So benchmark is a process which takes a set of methods
+(we consider only "software" benchmarks) and puts numerical
+values populated with a special (the worst) value CRASH.
+
+Three main categories of benchmarks using:
+
+1) Internal testing
+
+An engineer makes optimizations in a file system (e.g. for a
+customer) via choosing functions or plugins as winners in
+a set of internal (local) "nominations".
+
+2) Business plans
+
+A system administrator chooses a "winner" in some (global)
+"nomination" of file systems in accordance with internal
+business-plans.
+
+3) Flame and politics
+
+Someone presents a "nomination" (usually with the "winner"
+among restricted number of nominated members) to the public
+while nobody asked him to do it.
