@@ -1,131 +1,101 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [REPOST][RFC][PATCH] ext4: unify each meaning of the offset in
- ext4_check_dir_entry calling from some functions.
-Date: Fri, 15 Jan 2010 12:40:01 +0900
-Message-ID: <20100115124001.873ebf14.toshi.okajima@jp.fujitsu.com>
-References: <20100114155739.99150559.toshi.okajima@jp.fujitsu.com>
-	<F9B87217-D6BA-4BF6-BD13-1B960DB4B20C@sun.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [REPOST][PATCH][RFC] vfs: add message print mechanism for the
+ mount/umount into the VFS layer
+Date: Thu, 14 Jan 2010 23:36:25 -0500
+Message-ID: <5E9FF033-5FD5-42B4-985B-C241F45746C1@sun.com>
+References: <20100114154837.734fff60.toshi.okajima@jp.fujitsu.com>
+ <20100114081448.GI19799@ZenIV.linux.org.uk>
+ <D69F3C0C-FC4A-4866-98BD-DE9558250A0B@sun.com>
+ <20100115012421.GA28498@discord.disaster>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
+	"James C. Browne" <browne@cs.utexas.edu>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:39528 "EHLO
-	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755445Ab0AOEAF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2010 23:00:05 -0500
-Received: from m3.gw.fujitsu.co.jp ([10.0.50.73])
-	by fgwmail5.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o0F400H5011982
-	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
-	Fri, 15 Jan 2010 13:00:01 +0900
-Received: from smail (m3 [127.0.0.1])
-	by outgoing.m3.gw.fujitsu.co.jp (Postfix) with ESMTP id 0BCA945DE53
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 13:00:00 +0900 (JST)
-Received: from s3.gw.fujitsu.co.jp (s3.gw.fujitsu.co.jp [10.0.50.93])
-	by m3.gw.fujitsu.co.jp (Postfix) with ESMTP id CEF1F45DE52
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 12:59:59 +0900 (JST)
-Received: from s3.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
-	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 8D181E08001
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 12:59:59 +0900 (JST)
-Received: from ml14.s.css.fujitsu.com (ml14.s.css.fujitsu.com [10.249.87.104])
-	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 2DCBA1DB803E
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 12:59:59 +0900 (JST)
-In-Reply-To: <F9B87217-D6BA-4BF6-BD13-1B960DB4B20C@sun.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35574 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751674Ab0AOEga (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jan 2010 23:36:30 -0500
+In-reply-to: <20100115012421.GA28498@discord.disaster>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas, thanks for your comment.
+On 2010-01-14, at 20:24, Dave Chinner wrote:
+> On Thu, Jan 14, 2010 at 10:33:42AM -0500, Andreas Dilger wrote:
+>> Sure, it is _possible_ to do this, but you miss the fact that there  
+>> are
+>> many system monitoring tools that already scrape /var/log/messages  
+>> and
+>> integrate with event managers.  What you are suggesting is that every
+>> such tool implement an extra, completely ad-hoc mechanism just for
+>> monitoring the mount/unmount of filesystems on Linux.  That doesn't  
+>> make
+>> sense.
+>
+> We already report various events through a netlink interface, but not
+> to the log files (e.g. quota warnings), so those system monitoring
+> tools are already going to be missing interesting information.
+>
+> Using log files for system event notification used to be the only
+> way to communicate such events. Now we have much more advanced and
+> efficient mechanisms for notifications so I think we should use
+> them.
+>
+> FWIW, having a general event channel for reporting filesystem events  
+> like
+> mount, enospc, corruption, etc makes a lot of sense to me.
+> Especially from the point of view that they can be also be tied into
+> automated filesystem test harnesses easily....
 
-On Thu, 14 Jan 2010 10:18:53 -0500
-Andreas Dilger <adilger@sun.com> wrote:
 
-> > --- Examples ---
-> > Error message which is changed by this patch:
-> > EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in  
-> > directory
-> > #12: rec_len is too small for name_len - block_nr=78:offset=0,  
-> > inode=216,
-> > rec_len=12, name_len=11
-> 
-> I personally would prefer to see "block=78, offset=0" instead of the  
-> above.
-OK. I change it.
+I agree, of course, that /var/log/messages is an inefficient channel for
+reporting status information from the kernel.
 
-> 
-> > @@ -84,9 +84,10 @@ int ext4_check_dir_entry(const char *fun
-> >
-> > 	if (error_msg != NULL)
-> > 		ext4_error(dir->i_sb, function,
-> > +			"bad entry in directory #%lu: %s - block_nr=%llu:"
-> > 			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
-> > +			dir->i_ino, error_msg,
-> > +			(u64)bh->b_blocknr, (u32)(offset%bh->b_size),
-> 
-> 
+However, there are many reasons why it still makes sense to do this:
+- it is in plain text format.  I can't recall the number of times
+   people were proposing crazy schemes to have a text interface to the
+   kernel (via /sys/blah, or /debugfs/blah) for things that are much
+   better suited to an ioctl, since they are largely handled by binaries
+   (applications), yet in the case where we have an existing plain-text
+   interface (dmesg and /var/log/messages) that are meant (at least
+   partly) for human consumption we are proposing a binary interface
+- every system monitoring tool in existence has a /var/log/messages
+   scraping interface, because this is the lowest common denominator,
+   but I'd suspect that few/none have a netlink interface, or if they
+   do it probably can't be easily added to by a user
 
-> One problem here is that "(u64)" is not necessarily a "long long".  On  
-> some 64-bit platforms it will be a "long" and this will generate a  
-> compiler warning.  Better to use "(unsigned long long)", and you may  
-> as well use "(unsigned)" for the offset value.
-I understand. (u64 doesn't always mean "unsigned long long int")
+If we are going to propose adding a binary interface for kernel status
+notification, then we should discuss a proper interface for such that
+is a real improvement over what we have today.  Things like having
+proper error message numbers, error levels, subsystem identifiers,
+timestamps, name=value status fields, not doing printf formatting in
+the kernel, etc.
 
-I apply your all comment, and then I remake a patch.
+There are several major HPC sites that I know of that would LOVE to add
+something like that, because they need to process the logs for thousands
+of nodes in a cluster, and have people to work on it.  If there is  
+interest
+in the upstream kernel maintainers (i.e. Linus, Andrew) for reformatting
+the printk() messages in the kernel to using a new binary interface  
+(with
+the option to format and dump them to the console for compatibility),
+then great, I'm all for it.
 
-Regards, 
-Toshiyuki Okajima
----
-Subject: [PATCH] ext4: unify each meaning of the offset in ext4_check_dir_entry calling from some functions.
+However, it is doesn't make sense to me to suggest that people add  
+random
+binary status messages to netlink at random times without any kind of
+planning or coordination, since it will just result in a mishmash of
+ad-hoc messages, tools, etc, that will be far worse than what we have
+today instead of improving what exists in /var/log/messages today.
 
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-"offset" of the error message of ext4_check_dir_entry() might change the
-meaning by the caller. There are 2 meanings:
-- "File offset"
-  called by:
-   ext4_readdir, htree_dirblock_to_tree, search_dirblock, ext4_dx_find_entry,
-   empty_dir
-- "Buffer offset"
-  called by:
-   add_dirent_to_buf, ext4_delete_entry
-
-The best way to solve this problem is to change the meaning of 
-"Buffer offset" into "File offset" but it is not easy.
-However, we can solve this problem easily if we unify the meanings into 
-"Buffer offset". So, instead of "File Offset" meaning, we add the block number 
-information to this message.
-
---- Examples ---
-Original error message:
-EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in directory \
-#12: rec_len is too small for name_len - offset=12288, inode=216, rec_len=12,\
- name_len=11
-
-Error message which is changed by this patch:
-EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in directory \
-#12: rec_len is too small for name_len - block=78, offset=0, inode=216, \
-rec_len=12, name_len=11
-
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
----
- fs/ext4/dir.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 9dc9316..65da7e5 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -84,9 +84,11 @@ int ext4_check_dir_entry(const char *function, struct inode *dir,
- 
- 	if (error_msg != NULL)
- 		ext4_error(dir->i_sb, function,
--			"bad entry in directory #%lu: %s - "
-+			"bad entry in directory #%lu: %s - block=%llu, "
- 			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
--			dir->i_ino, error_msg, offset,
-+			dir->i_ino, error_msg, 
-+			(unsigned long long)bh->b_blocknr, 
-+			(unsigned)(offset%bh->b_size),
- 			le32_to_cpu(de->inode),
- 			rlen, de->name_len);
- 	return error_msg == NULL ? 1 : 0;
