@@ -1,73 +1,64 @@
-From: Edward Shishkin <edward.shishkin@gmail.com>
-Subject: Re: [Jfs-discussion] benchmark results
-Date: Fri, 15 Jan 2010 22:42:38 +0100
-Message-ID: <4B50E14E.5050204__28237.8983371474$1263591917$gmane$org@gmail.com>
-References: <20091224212756.GM21594@thunk.org> <alpine.DEB.2.01.0912241739160.3483@bogon.housecafe.de> <20091225161453.GD32757@thunk.org> <20091225162238.GB19303@bitmover.com> <alpine.DEB.2.01.0912251042540.3483@bogon.housecafe.de> <4B36333B.3030600@hp.com> <4B365EBE.5050804@nerdbynature.de> <4B37BA76.7050403@hp.com> <alpine.DEB.2.01.0912271346240.3483@bogon.housecafe.de> <20091227223307.GA4429@thunk.org> <20091228140855.GD10982@bitmover.com>
+From: Michael Rubin <mrubin@google.com>
+Subject: Re: [PATCH v4 0/3] dioread_nolock patch
+Date: Fri, 15 Jan 2010 13:47:26 -0800
+Message-ID: <532480951001151347w2f1bf2b2j34bb88b58a766f9c@mail.gmail.com>
+References: <1263583812-21355-1-git-send-email-tytso@mit.edu>
+	<4B50C78D.2000807@redhat.com> <20100115201521.GE7256@thunk.org>
+	<4B50CD5B.9050804@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Larry McVoy <lm@bitmover.com>, tytso@mit.edu,
-	Christian Kujau <lists@nerdbynature.de>,
-	jim owens <jowens@hp.com>,
-	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-	x
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>,
+	Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:16826 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758452Ab0AOVpB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Jan 2010 16:45:01 -0500
-In-Reply-To: <20091228140855.GD10982@bitmover.com>
+Received: from smtp-out.google.com ([216.239.33.17]:55588 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751743Ab0AOVrv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jan 2010 16:47:51 -0500
+Received: from spaceape23.eur.corp.google.com (spaceape23.eur.corp.google.com [172.28.16.75])
+	by smtp-out.google.com with ESMTP id o0FLlntZ009068
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 21:47:49 GMT
+Received: from qyk2 (qyk2.prod.google.com [10.241.83.130])
+	by spaceape23.eur.corp.google.com with ESMTP id o0FLlmKo014379
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 13:47:48 -0800
+Received: by qyk2 with SMTP id 2so683229qyk.6
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 13:47:48 -0800 (PST)
+In-Reply-To: <4B50CD5B.9050804@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Jan 15, 2010 at 12:17 PM, Eric Sandeen <sandeen@redhat.com> wro=
+te:
+> tytso@mit.edu wrote:
+> At one point google was planning to devise a power-fail test
+> harness. =A0Any news on that?
 
-> When things didn't match up that was a clue that either
->
->     - the benchmark was broken
->     - the code was broken
->   
-[...]
+We completed the tests. But there is good news and bad news. The good
+news is that we were able to shake out a lot of bugs in the no journal
+case (which have already been submitted upstream). We now can fairly
+quickly and easily drive a lot of traffic to a system and then cut the
+power, issue a panic or other event.
 
-I would carry out an object-oriented dualism here.
+The bad news is that I was hoping to use open source tools to drive
+the traffic. The goal would be to allow everyone to reproduce the
+experiment. We got a little short handed on resources and ended up
+using Google closed source workloads instead. This was mostly since we
+were in a rush and able to get the network traffic up in one day with
+those tools.
 
+I was holding back on publishing the results since I was hoping we
+would be able to generate traffic in a more open manner. But if you
+are interested in the results anyway then give me or some one on the
+team a day or two to dig them up.
 
-[1] methods (kernel module) ---- [2] objects (formatted partition)
+In any case we have powerfail testing as part of our validation and
+once Jiayingz is satisfied with the patch we will be running those
+tests.
 
- |                                |
- |                                |
-
-[3] benchmarks ----------------- [4] user-space utilities (fsck)
-
-
-User-space utilities investigate "object corruptions",
-whereas benchmarks investigate "software corruptions"
-(including bugs in source code, broken design, etc, etc..)
-
-It is clear that "software" can be "corrupted" by a larger
-number of ways than "objects". Indeed, it is known that
-dual space V* (of all linear functions over V) is a much
-more complex object than V.
-
-So benchmark is a process which takes a set of methods
-(we consider only "software" benchmarks) and puts numerical
-values populated with a special (the worst) value CRASH.
-
-Three main categories of benchmarks using:
-
-1) Internal testing
-
-An engineer makes optimizations in a file system (e.g. for a
-customer) via choosing functions or plugins as winners in
-a set of internal (local) "nominations".
-
-2) Business plans
-
-A system administrator chooses a "winner" in some (global)
-"nomination" of file systems in accordance with internal
-business-plans.
-
-3) Flame and politics
-
-Someone presents a "nomination" (usually with the "winner"
-among restricted number of nominated members) to the public
-while nobody asked him to do it.
+mrubin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
