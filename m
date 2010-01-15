@@ -1,60 +1,91 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: [PATCH] ext3: prevent reread after write IO error v2
-Date: Fri, 15 Jan 2010 19:38:38 +0900
-Message-ID: <4B5045AE.9080604@hitachi.com>
-References: <4B4EB5B9.4020809@hitachi.com> <4B4EDE5C.8040600@hitachi.com> <4B4EEE86.7080807@hitachi.com> <20100114141803.GB3146@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [REPOST][PATCH][RFC] vfs: add message print mechanism for the
+	mount/umount into the VFS layer
+Date: Fri, 15 Jan 2010 22:02:20 +1100
+Message-ID: <20100115110220.GG28498@discord.disaster>
+References: <20100114154837.734fff60.toshi.okajima@jp.fujitsu.com> <20100114081448.GI19799@ZenIV.linux.org.uk> <D69F3C0C-FC4A-4866-98BD-DE9558250A0B@sun.com> <20100115012421.GA28498@discord.disaster> <5E9FF033-5FD5-42B4-985B-C241F45746C1@sun.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger@sun.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, Nick Piggin <npiggin@suse.de>,
-	dle-develop@lists.sourceforge.net,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Jan Kara <jack@suse.cz>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
+	"James C. Browne" <browne@cs.utexas.edu>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail7.hitachi.co.jp ([133.145.228.42]:48466 "EHLO
-	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751001Ab0AOKit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jan 2010 05:38:49 -0500
-In-Reply-To: <20100114141803.GB3146@quack.suse.cz>
+Received: from bld-mail14.adl6.internode.on.net ([150.101.137.99]:35855 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751456Ab0AOLCm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jan 2010 06:02:42 -0500
+Content-Disposition: inline
+In-Reply-To: <5E9FF033-5FD5-42B4-985B-C241F45746C1@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
+On Thu, Jan 14, 2010 at 11:36:25PM -0500, Andreas Dilger wrote:
+> On 2010-01-14, at 20:24, Dave Chinner wrote:
+>> On Thu, Jan 14, 2010 at 10:33:42AM -0500, Andreas Dilger wrote:
+>>> Sure, it is _possible_ to do this, but you miss the fact that there  
+>>> are
+>>> many system monitoring tools that already scrape /var/log/messages  
+>>> and
+>>> integrate with event managers.  What you are suggesting is that every
+>>> such tool implement an extra, completely ad-hoc mechanism just for
+>>> monitoring the mount/unmount of filesystems on Linux.  That doesn't  
+>>> make
+>>> sense.
+>>
+>> We already report various events through a netlink interface, but not
+>> to the log files (e.g. quota warnings), so those system monitoring
+>> tools are already going to be missing interesting information.
+>>
+>> Using log files for system event notification used to be the only
+>> way to communicate such events. Now we have much more advanced and
+>> efficient mechanisms for notifications so I think we should use
+>> them.
+....
+> However, there are many reasons why it still makes sense to do this:
+> - it is in plain text format.  I can't recall the number of times
+>   people were proposing crazy schemes to have a text interface to the
+>   kernel (via /sys/blah, or /debugfs/blah) for things that are much
+>   better suited to an ioctl, since they are largely handled by binaries
+>   (applications), yet in the case where we have an existing plain-text
+>   interface (dmesg and /var/log/messages) that are meant (at least
+>   partly) for human consumption we are proposing a binary interface
+> - every system monitoring tool in existence has a /var/log/messages
+>   scraping interface, because this is the lowest common denominator,
+>   but I'd suspect that few/none have a netlink interface, or if they
+>   do it probably can't be easily added to by a user
 
->>By the way, I think the right fix is to keep uptodate flag on write
->>error, but it gives a big impact.  We have to confirm whether
->>over 200 buffer_uptodate's are used for real uptodate check or write
->>error check.  For now, I adopt the quick-fix solution.
-> 
->   Yes that needs to be solved. I also looked into it and it's too much work
-> to do it in a one big sweep. But I think we could do the conversion
-> filesystem by filesystem - see below.
->   Admittedly, I don't like your solution very much. It looks strange to
-> check write_io_error when *reading* the buffer and I'm afraid we could
-> introduce bugs e.g. by clearing write_io_error bit so that ext3_bread would
-> then fail to detect the error condition or by some other code deciding to
-> read the buffer from disk via other function than just ext3_bread. So I
-> think it would be much better to set back uptodate flag shortly after the
-> failed write or not clear it at all.
->   Now here's how I think we could achieve that without having to change all
-> other filesystems: We could create a new superblock flag which would mean
-> that "this filesystem handles write_io_error and doesn't want to clear
-> uptodate flag". Filesystems with this capability would set this flag when
-> calling get_sb_bdev. And if write IO fails we check this flag
-> (via bh->b_bdev->bd_super->s_flags) and clear / not clear uptodate flag
-> accordingly. What do you think?
+A daemon that captures the events from netlink and writes them to
+syslog is all that is needed to support log file scraping
+monitoring tools. The message they scrape does not have to come from
+the kernel...
 
-Thanks for your comment!
+> If we are going to propose adding a binary interface for kernel status
+> notification, then we should discuss a proper interface for such that
+> is a real improvement over what we have today.  Things like having
+> proper error message numbers, error levels, subsystem identifiers,
+> timestamps, name=value status fields, not doing printf formatting in
+> the kernel, etc.
 
-Your suggestion is what I wanted to do ultimately, and it seems
-to go well.  I'll send a rivised patch later.
+Event notifications don't need this sort of complexity - classifying
+an event is something for the userspace side of the notification -
+it is the policy part of the equation.  Different applications will
+do this differently. e.g. system monitoring might write it to syslog
+for the scraper to read, while a desktop subsystem might deliver it
+to a taskbar notification mechanism to generate a usre visible popup
+message.
 
-Best regards,
+IMO, using printk() for such notifications provides none of the
+flexibility that modern systems require, but events can easily be
+used to support legacy methods of event reporting. Hence it seems to
+me like a no brainer to use events rather than printk for all new
+notifications....
+
+Cheers,
+
+Dave.
 -- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
-
+Dave Chinner
+david@fromorbit.com
