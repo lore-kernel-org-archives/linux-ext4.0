@@ -1,90 +1,79 @@
-From: SandeepKsinha <sandeepksinha@gmail.com>
-Subject: Re: Question about ext4 online defrag test case
-Date: Fri, 15 Jan 2010 19:11:28 +0530
-Message-ID: <37d33d831001150541o1b674580u14719e72e3ad8e78@mail.gmail.com>
-References: <4B4EEF94.5000902@rs.jp.nec.com>
-	 <87f94c371001141304n18bcd208kd97f08646d37d1e2@mail.gmail.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: How to use mkfs.ext4 "stride=" on RAID correctly?
+Date: Fri, 15 Jan 2010 12:51:31 -0500
+Message-ID: <4B50AB23.8050300@redhat.com>
+References: <fa7b26051001131612h482845dalf3446e5fce5f3639@mail.gmail.com>	 <fa7b26051001131613jc61e20fu5e4d0ccee86d6b16@mail.gmail.com> <fa7b26051001131658ya96c3b0ieb6010c6fba389c4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
-	Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, "Martin K. Petersen" <mkp@mkp.net>
+To: Mike Mestnik <cheako911@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f227.google.com ([209.85.218.227]:38481 "EHLO
-	mail-bw0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753641Ab0AONla convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jan 2010 08:41:30 -0500
-Received: by bwz27 with SMTP id 27so546232bwz.21
-        for <linux-ext4@vger.kernel.org>; Fri, 15 Jan 2010 05:41:28 -0800 (PST)
-In-Reply-To: <87f94c371001141304n18bcd208kd97f08646d37d1e2@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:17292 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752438Ab0AORvR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Jan 2010 12:51:17 -0500
+In-Reply-To: <fa7b26051001131658ya96c3b0ieb6010c6fba389c4@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 15, 2010 at 2:34 AM, Greg Freemyer <greg.freemyer@gmail.com=
-> wrote:
-> On Thu, Jan 14, 2010 at 5:19 AM, Akira Fujita <a-fujita@rs.jp.nec.com=
-> wrote:
->> Hi Ted,
+On 01/13/2010 07:58 PM, Mike Mestnik wrote:
+> On Wed, Jan 13, 2010 at 6:13 PM, Mike Mestnik<cheako@visi.com>  wrote:
+>    
+>> What should this value be?  From what I gather it should be the length
+>> of data stored on a single disk for each RAID level block.  If that's
+>> the case how is it that two given data blocks are calculated to be on
+>> separate drives?  It seams to me that the stripe-width is also
+>> essential in this regard, but the man page does not reflect this.
 >>
->>> E2defrag should hopefully be releasable in Karmic+1.
->>> There are still a lot of bugs that are still being fixed in the def=
-rag
->>> code,
->>> some of which could cause data loss. They work fine
->>> if the system isn't under stress, sure, but acid test is to make su=
-re
->>> things work OK even when the system is under memory pressure and
->>> swapping heavily, or when the file is being actively modified at th=
-e point
->>> where the defrag takes place.
+>> For example let's say that stride=1, then which of the following
+>> blocks are not on the same drive as 1: 8 9 10?
+>> The answer is dependent on the number data disks, like so.
+>> Where x = n - 1 or n depending on the RAID type.
+>> if x = 2 then 9
+>> if x = 3 then 8 and 10
+>> if x = 5 then 8 and 9
 >>
->> I found your comment about ext4 online defrag on Ubuntu BBS by accid=
-ent.
->> https://bugs.launchpad.net/ubuntu/+source/e2fsprogs/+bug/321528
+>>      
+> Wait!!
+> I got this all wrong, one would need all of x, n, and stride to
+> successfully determine the disk used for a given stride.
+>
+> Seams to me mkfs is missing some parameters.  What about [-g
+> blocks-per-group]...
+>
+> http://tldp.org/HOWTO/Software-RAID-0.4x-HOWTO-8.html
+>
+>    
+
+Hi Mike,
+
+Recent changes upstream export alignment and optimal IO size for you (at 
+least for software RAID/dm devices) and for some external arrays if the 
+vendor exports the information in a standard way.
+
+Martin was the lead on that & work has been ongoing to add support up 
+the tool chain.
+
+Hopefully, this will get easier to do so we all don't have to work out 
+the numbers each time we build on RAID :-)
+
+Ric
+
+>> There is no way to make this calculation with out knowing x, further
+>> more calculating x based of of both stride and stripe-width is round
+>> about...  Why not simply ask for x, the number of data disks and have
+>> stripe-width be the value that is calculated, as stride might not go
+>> into stripe-width evenly leaving you with a headache.
 >>
->> I would like to address this problem so I ran e4defrag on the system
->> which was under memory pressure. But unfortunately I could not find =
-the bug.
->> If you have already known how to reproduce this kind of problem,
->> could you teach me how?
+>> Did I locate a bug?
 >>
->> Regards,
->> Akira Fujita
->
-> Sandeep, I've added you and I to this thread since oshm is using the
-> same ext4_move_extents ioctl as E2defrag.
->
-> Also, the above highlights the need for us to test ohsm relocates wit=
-h
-> data updates in progress. =A0Also with memory pressure which I had no=
-t
-> really thought about before.
->
+>> Is there a better forum for this discussion?
+>>
+>>      
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>    
 
-We have been testing ext4_move_extent through OHSM relocation till now.
-Also, we have been testing it on real-world data
-(http://edrm.net/activities/projects/data-set).
-
-But yes we surely need to test then on a system under memory pressure.
-
-> We can discuss that on the ohsm list if needed.
->
-> Greg
->
-
---=20
-Regards,
-Sandeep
-OHSM Team
-https://sourceforge.net/projects/ohsm/
-
-
-=93To learn is to change. Education is a process that changes the learn=
-er.=94
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
