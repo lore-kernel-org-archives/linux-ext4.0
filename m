@@ -1,48 +1,49 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [REPOST][PATCH][RFC] vfs: add message print mechanism for the
- mount/umount into the VFS layer
-Date: Fri, 15 Jan 2010 13:43:42 -0500
-Message-ID: <4B50B75E.1050802@redhat.com>
-References: <20100114154837.734fff60.toshi.okajima@jp.fujitsu.com> <20100114081448.GI19799@ZenIV.linux.org.uk> <D69F3C0C-FC4A-4866-98BD-DE9558250A0B@sun.com> <20100115012421.GA28498@discord.disaster> <20100115180722.GD3482@shell>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>,
-	Andreas Dilger <adilger@sun.com>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	tytso@mit.edu, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Matthew Wilcox <willy@linux.intel.com>
-To: Valerie Aurora <vaurora@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH v4 0/3] dioread_nolock patch
+Date: Fri, 15 Jan 2010 14:30:09 -0500
+Message-ID: <1263583812-21355-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22168 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:60036 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751899Ab0AOSng (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Jan 2010 13:43:36 -0500
-In-Reply-To: <20100115180722.GD3482@shell>
+	id S1751610Ab0AOTaS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Jan 2010 14:30:18 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/15/2010 01:07 PM, Valerie Aurora wrote:
-> On Fri, Jan 15, 2010 at 12:24:21PM +1100, Dave Chinner wrote:
->    
->> FWIW, having a general event channel for reporting filesystem events like
->> mount, enospc, corruption, etc makes a lot of sense to me.
->> Especially from the point of view that they can be also be tied into
->> automated filesystem test harnesses easily....
->>      
-> Mmm, yummy!  Is this perhaps a topic for the next file systems workshop?
->
-> (When _is_ the next file systems workshop?)
->
-> -VAL
->    
+I've worked with Jiaying to ready this patch for submission.
 
-I think that the current plan is to have it next to the LinuxCon event 
-in Boston in early August....
+It's currently a mount option for maximum safety, but after we do some
+benchmarking to make sure it doesn't degrade performance for buffered
+writes, we may want to make this the default.  Once really nice side
+effect of this patch is that it effectively gives us "guarded mode" by
+default, since the blocks are marked as uninitialized and only converted
+to be initialized when the I/O has completed for both buffered and
+direct I/O writes now.  This means that we could possibly change the
+default mode to be data=writeback if the extents feature is enabled,
+since data=ordered would only needed for safety when writing new
+old-style indirect blocks.
 
-The VM people are looking to do a mini-summit there as well and we were 
-talking about getting together with them during part of the time,
+The plan is to merge this for 2.6.34.  I've looked this over pretty
+carefully, but another pair of eyes would be appreciated, especially if
+we make this the default.  Beyond the advantages of being able to use
+data=writeback, I believe this should be a major win for database
+workloads.
 
-Ric
+					- Ted
+
+Theodore Ts'o (3):
+  ext4: mechanical change on dio get_block code in prepare for it to be
+    used by buffer write
+  ext4: use ext4_get_block_write in buffer write
+  ext4: Use direct_IO_no_locking in ext4 dio read.
+
+ fs/ext4/ext4.h      |   28 +++++---
+ fs/ext4/ext4_jbd2.h |   24 +++++++
+ fs/ext4/extents.c   |   36 +++++-----
+ fs/ext4/fsync.c     |    2 +-
+ fs/ext4/inode.c     |  192 +++++++++++++++++++++++++++++++++-----------------
+ fs/ext4/super.c     |   32 +++++++--
+ 6 files changed, 217 insertions(+), 97 deletions(-)
 
