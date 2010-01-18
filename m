@@ -1,134 +1,90 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: [PATCH v4 2/3] ext4: use ext4_get_block_write in buffer write
-Date: Sun, 17 Jan 2010 21:25:53 -0800
-Message-ID: <5df78e1d1001172125j35bb2925o235c5380ee551d03@mail.gmail.com>
-References: <1263583812-21355-1-git-send-email-tytso@mit.edu>
-	 <1263583812-21355-3-git-send-email-tytso@mit.edu>
-	 <87zl4c24o5.fsf@linux.vnet.ibm.com>
+From: Nick Piggin <npiggin@suse.de>
+Subject: IO error semantics
+Date: Mon, 18 Jan 2010 17:05:18 +1100
+Message-ID: <20100118060518.GA9151@laptop>
+References: <4B4EB5B9.4020809@hitachi.com>
+ <4B4EDE5C.8040600@hitachi.com>
+ <4B4EEE86.7080807@hitachi.com>
+ <20100114141803.GB3146@quack.suse.cz>
+ <20100118051847.GA8678@laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:51987 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750790Ab0ARFZ5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 00:25:57 -0500
-Received: from spaceape23.eur.corp.google.com (spaceape23.eur.corp.google.com [172.28.16.75])
-	by smtp-out.google.com with ESMTP id o0I5PutC016677
-	for <linux-ext4@vger.kernel.org>; Sun, 17 Jan 2010 21:25:56 -0800
-Received: from pwj12 (pwj12.prod.google.com [10.241.219.76])
-	by spaceape23.eur.corp.google.com with ESMTP id o0I5PsP8001940
-	for <linux-ext4@vger.kernel.org>; Sun, 17 Jan 2010 21:25:54 -0800
-Received: by pwj12 with SMTP id 12so1552400pwj.28
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Jan 2010 21:25:53 -0800 (PST)
-In-Reply-To: <87zl4c24o5.fsf@linux.vnet.ibm.com>
+Received: from cantor2.suse.de ([195.135.220.15]:34034 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750722Ab0ARGFX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Jan 2010 01:05:23 -0500
+Content-Disposition: inline
+In-Reply-To: <20100118051847.GA8678@laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I agree that unwritten flag would be a better choice. I was thinking
-to use it at the beginning but found it would be tricky to get it work.
-See e.g. the unwritten flag usage in the current ext4_get_block.
-I guess at some time later, we should clean up the buffer head
-flag usage.
+On Mon, Jan 18, 2010 at 04:18:47PM +1100, Nick Piggin wrote:
+> We also need to remove some ClearPageUptodate calls I think (similar
+> issues), so keep those in mind too. Unfortunately it looks like there
+> are also a lot of filesystem specific tests of PageUptodate... but you
+> could also move those under the new compatibility s_flag.
+> 
+> I don't know of a really good way to inject and test filesystem errors.
+> Make request failures causes most fs to quickly go readonly or have
+> bigger problems. If you're careful like try to only fail read IOs for
+> data, or only fail write IOs not involved in integrity or journal
+> operations, then test programs just tend to abort pretty quickly. Does
+> anyone know of anything more systematic?
 
-Jiaying
+This might be a good time to bring up IO error behaviour again. I got
+into some debates I think on Andi's hwpoison thread a while back, but
+probably not appropriate thread to find a real solution to this.
 
-On Sun, Jan 17, 2010 at 6:21 AM, Aneesh Kumar K. V
-<aneesh.kumar@linux.vnet.ibm.com> wrote:
->
-> On Fri, 15 Jan 2010 14:30:11 -0500, "Theodore Ts'o" <tytso@mit.edu> w=
-rote:
-> > Allocate uninitialized extent before ext4 buffer write and
-> > convert the extent to initialized after io completes.
-> > The purpose is to make sure an extent can only be marked
-> > initialized after it has been written with new data so
-> > we can safely drop the i_mutex lock in ext4 DIO read without
-> > exposing stale data. This helps to improve multi-thread DIO
-> > read performance on high-speed disks.
-> >
-> > Skip the nobh and data=3Djournal mount cases to make things simple =
-for now.
-> >
-> > Signed-off-by: Jiaying Zhang <jiayingz@google.com>
-> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> > ---
-> > =A0fs/ext4/ext4.h =A0 =A0 =A0| =A0 12 +++++-
-> > =A0fs/ext4/ext4_jbd2.h | =A0 24 ++++++++++++
-> > =A0fs/ext4/extents.c =A0 | =A0 22 ++++++-----
-> > =A0fs/ext4/inode.c =A0 =A0 | =A0105 +++++++++++++++++++++++++++++++=
-+++++++++----------
-> > =A0fs/ext4/super.c =A0 =A0 | =A0 30 +++++++++++++--
-> > =A05 files changed, 157 insertions(+), 36 deletions(-)
-> >
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index b1dcbb7..b8b4887 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -134,6 +134,7 @@ struct mpage_da_data {
-> > =A0 =A0 =A0 int retval;
-> > =A0};
-> > =A0#define =A0 =A0 =A0EXT4_IO_UNWRITTEN =A0 =A0 =A0 0x1
-> > +#define =A0 =A0 =A0EXT4_IO_WRITTEN =A0 =A0 =A0 =A0 0x2
-> > =A0typedef struct ext4_io_end {
-> > =A0 =A0 =A0 struct list_head =A0 =A0 =A0 =A0list; =A0 =A0 =A0 =A0 =A0=
- /* per-file finished AIO list */
-> > =A0 =A0 =A0 struct inode =A0 =A0 =A0 =A0 =A0 =A0*inode; =A0 =A0 =A0=
- =A0 /* file being written to */
-> > @@ -370,7 +371,7 @@ struct ext4_new_group_data {
-> > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
-> > =A0 =A0 =A0 /* Convert extent to initialized after IO complete */
-> > =A0#define EXT4_GET_BLOCKS_IO_CONVERT_EXT =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- (EXT4_GET_BLOCKS_CONVERT|\
-> > - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0EXT4_GET_BLOCKS_IO_CREATE_EXT)
-> > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
-> >
-> > =A0/*
-> > =A0 * Flags used by ext4_free_blocks
-> > @@ -761,6 +762,7 @@ struct ext4_inode_info {
-> > =A0#define EXT4_MOUNT_QUOTA =A0 =A0 =A0 =A0 =A0 =A0 0x80000 /* Some=
- quota option set */
-> > =A0#define EXT4_MOUNT_USRQUOTA =A0 =A0 =A0 =A0 =A00x100000 /* "old"=
- user quota */
-> > =A0#define EXT4_MOUNT_GRPQUOTA =A0 =A0 =A0 =A0 =A00x200000 /* "old"=
- group quota */
-> > +#define EXT4_MOUNT_DIOREAD_NOLOCK =A0 =A00x400000 /* Enable suppor=
-t for dio read nolocking */
-> > =A0#define EXT4_MOUNT_JOURNAL_CHECKSUM =A00x800000 /* Journal check=
-sums */
-> > =A0#define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT =A0 =A0 =A00x1000000 /* =
-Journal Async Commit */
-> > =A0#define EXT4_MOUNT_I_VERSION =A0 =A0 =A0 =A0 =A0 =A00x2000000 /*=
- i_version support */
-> > @@ -1774,6 +1776,14 @@ static inline void set_bitmap_uptodate(struc=
-t buffer_head *bh)
-> > =A0 =A0 =A0 set_bit(BH_BITMAP_UPTODATE, &(bh)->b_state);
-> > =A0}
-> >
-> > +/* BH_Uninit flag: blocks are allocated but uninitialized on disk =
-*/
-> > +enum ext4_state_bits {
-> > + =A0 =A0 BH_Uninit =A0 =A0 =A0 /* blocks are allocated but uniniti=
-alized on disk */
-> > + =A0 =A0 =A0 =3D BH_JBDPrivateStart,
-> > +};
-> > +
-> > +BUFFER_FNS(Uninit, uninit)
-> > +
->
->
-> I asked this in the last post. Why we need a new buffer head flag ?
-> Why can't we use the unwritten flag ?
->
-> -aneesh
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The problem we have now is that IO error semantics are not well defined.
+It is hard to even enumerate all the issues.
+
+read IOs
+  how to retry? appropriate defaults should happen at the block layer I
+  think. Should retry behaviour be tunable by the mm/fs, or should that
+  be coded explicitly as submission retry loops? Either way does imply
+  there is either similar defaults for all types (or maybe classes) of
+  drivers, or some way to query/set this.
+
+  It would be nice to be able to set fs/driver behaviour from userspace
+  too, in a generic (not driver or fs specific way). But defaults should
+  be reasonable and similar between all, I guess.
+
+write IOs
+  This is more interesting. How to handle write IO errors. In my opinion
+  we must not invalidate the data before an IO error is returned to
+  somebody (whether it be fsync or a synchronous write syscall). Any
+  earlier and the app just gets RAW consistency randomly violated. And I
+  think it is important to treat IO errors as transparently as possible
+  until the error can be detected.
+
+  I happen to think that actually we should go further and not
+  invalidate the data at all. This makes implementation simpler, and
+  also allows us to retry writes like we can retry reads. It's also
+  problematic to throw out errors at that point because *sync syscalls
+  coming from elsewhere could result in loss of error reporting (think,
+  sys_sync).
+
+  If we go this way, we probably need another syscall and fs helper call
+  to invalidate the dirty data when we give up on retries. truncate_range
+  probably not appropriate because it is much harder to implement and
+  maybe we want to try to get at the most recent data that is on disk.
+
+  Also do we need to think about O_SYNC or -o sync type of writes that
+  are implemented via writeback cache? We could invalidate the dirtied
+  cache ASAP, which would leave a window where a concurrent read can see
+  first new, then old data. It would also kind of break the above scheme
+  in case the pagecache was already dirty via a descriptor without
+  O_SYNC. It might just make sense to leave the pagecache dirty. Either
+  way it should be documented I think.
+
+Do we even care enough to bother thinking about this now? (serious question)
+
