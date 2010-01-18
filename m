@@ -1,46 +1,62 @@
-From: Anton Altaparmakov <aia21@cam.ac.uk>
-Subject: Re: IO error semantics
-Date: Mon, 18 Jan 2010 23:33:10 +0000
-Message-ID: <D65C918F-8CCD-4626-BA84-FD0410A5E81F@cam.ac.uk>
-References: <4B4EB5B9.4020809@hitachi.com> <4B4EDE5C.8040600@hitachi.com> <4B4EEE86.7080807@hitachi.com> <20100114141803.GB3146@quack.suse.cz> <20100118051847.GA8678@laptop> <20100118060518.GA9151@laptop> <20100118122437.GF7264@discord.disaster> <20100118140039.GA13909@laptop>
-Mime-Version: 1.0 (Apple Message framework v1077)
+From: Jan Kara <jack@suse.cz>
+Subject: Re: 2.6.33-rc4-mmotm0113 - ext3 throws warning..
+Date: Tue, 19 Jan 2010 00:33:52 +0100
+Message-ID: <20100118233352.GA6352@atrey.karlin.mff.cuni.cz>
+References: <20914.1263776885@localhost>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
+Cc: Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger@sun.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>,
-	linux-fsdevel@vger.kernel.org
-To: Nick Piggin <npiggin@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ppsw-6.csi.cam.ac.uk ([131.111.8.136]:35212 "EHLO
-	ppsw-6.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751547Ab0ARXdy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 18:33:54 -0500
-In-Reply-To: <20100118140039.GA13909@laptop>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Valdis.Kletnieks@vt.edu
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754925Ab0ARXeI@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20914.1263776885@localhost>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+  Hi,
 
-On 18 Jan 2010, at 14:00, Nick Piggin wrote:
-> For write errors, you could also do block re-allocation, which would be fun.
+> Took a power hit earlier in the day, laptop rode it out, external 500G SUB
+> drive didn't. Several hours later I finally do something that references
+> the filesystem on the external drive, and I get:
+> 
+> [312252.610201] EXT3-fs error (device sdb2): ext3_get_inode_loc: unable to read inode block - inode=5964029, block=23855121
+> [312252.610740] ------------[ cut here ]------------
+> [312252.610759] WARNING: at fs/buffer.c:1181 mark_buffer_dirty+0x65/0xdd()
+> [312252.610768] Hardware name: Latitude E6500                  
+> [312252.610776] Modules linked in: ppp_async sunrpc usb_storage [last unloaded: microcode]
+> [312252.610808] Pid: 2256, comm: ls Not tainted 2.6.33-rc4-mmotm0113 #1
+> [312252.610816] Call Trace:
+> [312252.610836]  [<ffffffff81038ac1>] warn_slowpath_common+0x77/0x8f
+> [312252.610849]  [<ffffffff81038ae8>] warn_slowpath_null+0xf/0x11
+> [312252.610862]  [<ffffffff810fdb40>] mark_buffer_dirty+0x65/0xdd
+> [312252.610875]  [<ffffffff81147997>] ext3_commit_super.clone.0+0x54/0x64
+> [312252.610889]  [<ffffffff81147a37>] ext3_handle_error+0x90/0xb7
+> [312252.610902]  [<ffffffff81147dd7>] ext3_error+0x76/0x81
+> [312252.610918]  [<ffffffff8113e9e4>] __ext3_get_inode_loc+0x261/0x287
+> [312252.610932]  [<ffffffff8113ea24>] ext3_get_inode_loc+0x1a/0x1c
+> [312252.610945]  [<ffffffff8113ea4e>] ext3_reserve_inode_write+0x28/0x82
+> [312252.610958]  [<ffffffff8113eae0>] ext3_mark_inode_dirty+0x38/0x55
+> [312252.610971]  [<ffffffff8113ec40>] ext3_dirty_inode+0x6a/0x81
+> [312252.610986]  [<ffffffff810f7b04>] __mark_inode_dirty+0x2f/0x14c
+> [312252.610999]  [<ffffffff810ede7b>] touch_atime+0x102/0x125
+> [312252.611014]  [<ffffffff810e902c>] ? filldir+0x0/0xcb
+> [312252.611027]  [<ffffffff810e9270>] vfs_readdir+0x8a/0xb1
+> [312252.611040]  [<ffffffff810e9427>] sys_getdents+0xa6/0xf8
+> [312252.611057]  [<ffffffff810023ab>] system_call_fastpath+0x16/0x1b
+> [312252.611067] ---[ end trace e506d3eb52cbaab0 ]---
+> [312252.611138] EXT3-fs (sdb2): error in ext3_reserve_inode_write: IO failure
+> [312257.701924] journal_bmap: journal block not found at offset 84 on sdb2
+> [312257.701937] Aborting journal on device sdb2.
+> 
+> It was totally in its rights to abort the journal. The WARNING, not so much?
+  Yeah, this is a known problem that buffer_uptodate flag gets cleared
+on IO error and so if we ever try to mark that buffer dirty again, we
+get this warning... It's harmless but annoying I agree.
 
-Yes it would.  (-:
-
-FWIW, Windows does this with Microsoft's NTFS driver.  When a write fails due to a bad block, the block is marked as bad (recorded in the bad cluster list and marked as allocated in the in-use bitmap so no-one tries to allocate it), a new block is allocated, inode metadata is updated to reflect the change in the logical to physical block map of the file the block belongs to, and the write is then re-tried to its new location.
-
-I have never bothered implementing it in NTFS on Linux partially because there doesn't seem any obvious way to do it inside the file system.  I think the VFS and/or the block layer would have to offer help there in some way.  What I mean for example is that if ->writepage fails then the failure is only detected inside the asynchronous i/o completion handler at which point the page is not locked any more, it is marked as being under writeback, and we are in IRQ context (or something) and thus it is not easy to see how we can from there get to doing all the above needed actions that require memory allocations, disk i/o, etc...  I suppose a separate thread could do it where we just schedule the work to be done.  But problem with that is that that work later on might fail so we can't simply pr
- etend the block was written successfully yet we do not want to report an error or the upper layers would pick it up even though we hopefully will correct it in due course...
-
-Best regards,
-
-	Anton
+								Honza
 -- 
-Anton Altaparmakov <aia21 at cam.ac.uk> (replace at with @)
-Unix Support, Computing Service, University of Cambridge, CB2 3QH, UK
-Linux NTFS maintainer, http://www.linux-ntfs.org/
-
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
