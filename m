@@ -1,58 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14830] When other IO is running sync times go to 10 to 20
- minutes
-Date: Mon, 18 Jan 2010 23:58:11 GMT
-Message-ID: <201001182358.o0INwBkc011745@demeter.kernel.org>
-References: <bug-14830-13602@http.bugzilla.kernel.org/>
+From: Nix <nix@esperi.org.uk>
+Subject: 2.6.32+: ext4 direct-io kernel thread invasion
+Date: Mon, 18 Jan 2010 23:40:23 +0000
+Message-ID: <87y6jv9e3c.fsf@spindle.srvr.nix>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:59149 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754067Ab0ARX6M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 18:58:12 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0INwBjb011746
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Jan 2010 23:58:11 GMT
-In-Reply-To: <bug-14830-13602@http.bugzilla.kernel.org/>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:43943 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752248Ab0ASARH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 19:17:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14830
+So I upgraded one of my servers to 2.6.32 recently. It's got twelve ext4
+filesystems on it, right now, and has direct I/O enabled because I have
+one program that wants to do direct I/O to one of those filesystems on
+rare occasions, and because you never know but someone might install
+something else that wants to do direct I/O.
 
+But what did I find in 2.6.32 but a new set of per-CPU, per-sb
+workqueues whose raison d'etre appears to be something related to direct
+I/O. Per-CPU, per-sb, that's a lot. Their full name is apparently
+'ext4-dio-unwritten', apparently something to do with writing extents
+for direct I/O-written blocks. But, boyoboy are there a lot of them:
 
+nix@spindle 9 /home/nix% ps -fC ext4-dio-unwrit | wc -l
+97
 
+Now kernel threads are all very well --- it's obvious that e.g. a per-sb
+journal flushing thread is worthwhile --- but *ninety-seven* kernel
+threads for something like direct I/O, which in all but very unusual
+high-end Oracle workloads is going to be a small proportion of I/O, is
+just *insane*. And as core count goes up it's just going to get more
+insane. Even my readonly-mounted filesystems seem to have some.
 
-
---- Comment #3 from Michael Godfrey <godfrey@isl.stanford.edu>  2010-01-18 23:58:09 ---
->This problem prevents production use of systems using this kernel.
-
->evokes a question: Do you have a kernel which behaved better for you? Which
->one?
-
-Yes.  RHEL5.4 does not show this problem.  It is the production
-system that works in this environment.
-
-The response above is disappointing.  Is sync response of 20 minutes,
-including several task timeouts to be considered "normal?"
-
->If you think the time is inappropriately long, we can have a look at it
->but for that we'd need much more details like amount and nature of data writen
->(many small files vs a few large ones), time it takes sync to complete, speed
->of disks for sequential IO...
-
-I am sorry to have to tell you that in this environment we do not
-deal in exclusively small or large files, we actually have quite a
-few of both. When an rsync which transfers about 50GB of files of
-various sizes is running, the hung condition is continuous until the rsync
-completes.  This is just a pretty typical load.  You could try it
-yourself.  No special sizes of files are required.  I think I
-mentioned that the ext4 LVM is a RAID 50 3ware 9650SE-8LPML,
-with 8 2T drives.  Its throughput for reading and writing is good
-when the system is not locked up.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Do these threads really have to be per-CPU? Can't they default to
+something much less aggressive, and then people with massive beefy
+Oracle installations can up the number of these threads? (Dynamically
+tuning their numbers according to the workload would be ideal: the
+slow-work infrastructure can do this, IIRC, spawning new threads when
+needed.)
