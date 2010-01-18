@@ -1,201 +1,134 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: [PATCH] ext3: prevent reread after write IO error v2
-Date: Mon, 18 Jan 2010 16:18:47 +1100
-Message-ID: <20100118051847.GA8678@laptop>
-References: <4B4EB5B9.4020809@hitachi.com>
- <4B4EDE5C.8040600@hitachi.com>
- <4B4EEE86.7080807@hitachi.com>
- <20100114141803.GB3146@quack.suse.cz>
+From: Jiaying Zhang <jiayingz@google.com>
+Subject: Re: [PATCH v4 2/3] ext4: use ext4_get_block_write in buffer write
+Date: Sun, 17 Jan 2010 21:25:53 -0800
+Message-ID: <5df78e1d1001172125j35bb2925o235c5380ee551d03@mail.gmail.com>
+References: <1263583812-21355-1-git-send-email-tytso@mit.edu>
+	 <1263583812-21355-3-git-send-email-tytso@mit.edu>
+	 <87zl4c24o5.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	dle-develop@lists.sourceforge.net,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>,
-	linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33266 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750842Ab0ARFSx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Jan 2010 00:18:53 -0500
-Content-Disposition: inline
-In-Reply-To: <20100114141803.GB3146@quack.suse.cz>
+Received: from smtp-out.google.com ([216.239.44.51]:51987 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750790Ab0ARFZ5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 00:25:57 -0500
+Received: from spaceape23.eur.corp.google.com (spaceape23.eur.corp.google.com [172.28.16.75])
+	by smtp-out.google.com with ESMTP id o0I5PutC016677
+	for <linux-ext4@vger.kernel.org>; Sun, 17 Jan 2010 21:25:56 -0800
+Received: from pwj12 (pwj12.prod.google.com [10.241.219.76])
+	by spaceape23.eur.corp.google.com with ESMTP id o0I5PsP8001940
+	for <linux-ext4@vger.kernel.org>; Sun, 17 Jan 2010 21:25:54 -0800
+Received: by pwj12 with SMTP id 12so1552400pwj.28
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Jan 2010 21:25:53 -0800 (PST)
+In-Reply-To: <87zl4c24o5.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 14, 2010 at 03:18:04PM +0100, Jan Kara wrote:
-> On Thu 14-01-10 19:14:30, Hidehiro Kawai wrote:
-> > This patch fixes the similar bug fixed by commit 95450f5a.
-> > 
-> > If a directory is modified, its data block is journaled as metadata
-> > and finally written back to the right place.  Now, we assume a
-> > transient write erorr happens on that writeback.  Uptodate flag of
-> > the buffer is cleared by write error, so next access on the buffer
-> > causes a reread from disk.  This means it breaks the filesystems
-> > consistency.
-> > 
-> > To prevent old directory data from being reread, this patch set
-> > uptodate flag again in the case of after write error before issuing
-> > the read operation.  The write error on the directory's data block
-> > is detected at the time of journal checkpointing or discarded if a
-> > rewrite by another modification succeeds, so no problem.
-> > 
-> > Similarly, this kind of consistency breakage can be caused by
-> > a transient write error on a bitmap block.
->   Good catch, that's indeed a problem.
-> 
-> > I tested this patch by using fault injection approach.
-> > 
-> > By the way, I think the right fix is to keep uptodate flag on write
-> > error, but it gives a big impact.  We have to confirm whether
-> > over 200 buffer_uptodate's are used for real uptodate check or write
-> > error check.  For now, I adopt the quick-fix solution.
->   Yes that needs to be solved. I also looked into it and it's too much work
-> to do it in a one big sweep. But I think we could do the conversion
-> filesystem by filesystem - see below.
+I agree that unwritten flag would be a better choice. I was thinking
+to use it at the beginning but found it would be tricky to get it work.
+See e.g. the unwritten flag usage in the current ext4_get_block.
+I guess at some time later, we should clean up the buffer head
+flag usage.
 
-Yes this is something I've had problems with as well, although I never
-properly solved the issue with auditing / back compatibility with
-filesystems. So it is good to see people working on a real solution :)
+Jiaying
 
-Clearing uptodate flag on write errors is a really nasty thing to do. It
-means that failed writeback cannot be retried, can also break application
-consistency for data blocks, similarly to filesystem consistency for
-metadata blocks, and might even cause oopses and weird problems when
-!uptodate pages/buffers are not expected, mmapped pages, for example, or
-by breaking consistency between PageUptodate and buffer_uptodate.
-
-
->   Admittedly, I don't like your solution very much. It looks strange to
-> check write_io_error when *reading* the buffer and I'm afraid we could
-> introduce bugs e.g. by clearing write_io_error bit so that ext3_bread would
-> then fail to detect the error condition or by some other code deciding to
-> read the buffer from disk via other function than just ext3_bread. So I
-> think it would be much better to set back uptodate flag shortly after the
-> failed write or not clear it at all.
->   Now here's how I think we could achieve that without having to change all
-> other filesystems: We could create a new superblock flag which would mean
-> that "this filesystem handles write_io_error and doesn't want to clear
-> uptodate flag". Filesystems with this capability would set this flag when
-> calling get_sb_bdev. And if write IO fails we check this flag
-> (via bh->b_bdev->bd_super->s_flags) and clear / not clear uptodate flag
-> accordingly. What do you think?
->   I know it's more work than your quick fix but it should fix all these
-> problems for ext3 once for all and it would be much cleaner...
-
-I agree, and this sounds like a decent solution.
-
-We also need to remove some ClearPageUptodate calls I think (similar
-issues), so keep those in mind too. Unfortunately it looks like there
-are also a lot of filesystem specific tests of PageUptodate... but you
-could also move those under the new compatibility s_flag.
-
-I don't know of a really good way to inject and test filesystem errors.
-Make request failures causes most fs to quickly go readonly or have
-bigger problems. If you're careful like try to only fail read IOs for
-data, or only fail write IOs not involved in integrity or journal
-operations, then test programs just tend to abort pretty quickly. Does
-anyone know of anything more systematic?
-
-
-> > Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+On Sun, Jan 17, 2010 at 6:21 AM, Aneesh Kumar K. V
+<aneesh.kumar@linux.vnet.ibm.com> wrote:
+>
+> On Fri, 15 Jan 2010 14:30:11 -0500, "Theodore Ts'o" <tytso@mit.edu> w=
+rote:
+> > Allocate uninitialized extent before ext4 buffer write and
+> > convert the extent to initialized after io completes.
+> > The purpose is to make sure an extent can only be marked
+> > initialized after it has been written with new data so
+> > we can safely drop the i_mutex lock in ext4 DIO read without
+> > exposing stale data. This helps to improve multi-thread DIO
+> > read performance on high-speed disks.
+> >
+> > Skip the nobh and data=3Djournal mount cases to make things simple =
+for now.
+> >
+> > Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > > ---
-> >  fs/ext3/balloc.c |   12 ++++++++++++
-> >  fs/ext3/inode.c  |   13 +++++++++++++
-> >  fs/ext3/namei.c  |   15 ++++++++++++++-
-> >  3 files changed, 39 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> > index 27967f9..5dc5ccf 100644
-> > --- a/fs/ext3/balloc.c
-> > +++ b/fs/ext3/balloc.c
-> > @@ -156,6 +156,18 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
-> >  	if (likely(bh_uptodate_or_lock(bh)))
-> >  		return bh;
-> >  
-> > +	/*
-> > +	 * uptodate flag may have been cleared by a previous (transient)
-> > +	 * write IO error.  In this case, we don't want to reread its
-> > +	 * old on-disk data.  Actually the buffer has the latest data,
-> > +	 * so set uptodate flag again.
-> > +	 */
-> > +	if (buffer_write_io_error(bh)) {
-> > +		set_buffer_uptodate(bh);
-> > +		unlock_buffer(bh);
-> > +		return bh;
-> > +	}
+> > =A0fs/ext4/ext4.h =A0 =A0 =A0| =A0 12 +++++-
+> > =A0fs/ext4/ext4_jbd2.h | =A0 24 ++++++++++++
+> > =A0fs/ext4/extents.c =A0 | =A0 22 ++++++-----
+> > =A0fs/ext4/inode.c =A0 =A0 | =A0105 +++++++++++++++++++++++++++++++=
++++++++++----------
+> > =A0fs/ext4/super.c =A0 =A0 | =A0 30 +++++++++++++--
+> > =A05 files changed, 157 insertions(+), 36 deletions(-)
+> >
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index b1dcbb7..b8b4887 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -134,6 +134,7 @@ struct mpage_da_data {
+> > =A0 =A0 =A0 int retval;
+> > =A0};
+> > =A0#define =A0 =A0 =A0EXT4_IO_UNWRITTEN =A0 =A0 =A0 0x1
+> > +#define =A0 =A0 =A0EXT4_IO_WRITTEN =A0 =A0 =A0 =A0 0x2
+> > =A0typedef struct ext4_io_end {
+> > =A0 =A0 =A0 struct list_head =A0 =A0 =A0 =A0list; =A0 =A0 =A0 =A0 =A0=
+ /* per-file finished AIO list */
+> > =A0 =A0 =A0 struct inode =A0 =A0 =A0 =A0 =A0 =A0*inode; =A0 =A0 =A0=
+ =A0 /* file being written to */
+> > @@ -370,7 +371,7 @@ struct ext4_new_group_data {
+> > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
+> > =A0 =A0 =A0 /* Convert extent to initialized after IO complete */
+> > =A0#define EXT4_GET_BLOCKS_IO_CONVERT_EXT =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ (EXT4_GET_BLOCKS_CONVERT|\
+> > - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0EXT4_GET_BLOCKS_IO_CREATE_EXT)
+> > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
+> >
+> > =A0/*
+> > =A0 * Flags used by ext4_free_blocks
+> > @@ -761,6 +762,7 @@ struct ext4_inode_info {
+> > =A0#define EXT4_MOUNT_QUOTA =A0 =A0 =A0 =A0 =A0 =A0 0x80000 /* Some=
+ quota option set */
+> > =A0#define EXT4_MOUNT_USRQUOTA =A0 =A0 =A0 =A0 =A00x100000 /* "old"=
+ user quota */
+> > =A0#define EXT4_MOUNT_GRPQUOTA =A0 =A0 =A0 =A0 =A00x200000 /* "old"=
+ group quota */
+> > +#define EXT4_MOUNT_DIOREAD_NOLOCK =A0 =A00x400000 /* Enable suppor=
+t for dio read nolocking */
+> > =A0#define EXT4_MOUNT_JOURNAL_CHECKSUM =A00x800000 /* Journal check=
+sums */
+> > =A0#define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT =A0 =A0 =A00x1000000 /* =
+Journal Async Commit */
+> > =A0#define EXT4_MOUNT_I_VERSION =A0 =A0 =A0 =A0 =A0 =A00x2000000 /*=
+ i_version support */
+> > @@ -1774,6 +1776,14 @@ static inline void set_bitmap_uptodate(struc=
+t buffer_head *bh)
+> > =A0 =A0 =A0 set_bit(BH_BITMAP_UPTODATE, &(bh)->b_state);
+> > =A0}
+> >
+> > +/* BH_Uninit flag: blocks are allocated but uninitialized on disk =
+*/
+> > +enum ext4_state_bits {
+> > + =A0 =A0 BH_Uninit =A0 =A0 =A0 /* blocks are allocated but uniniti=
+alized on disk */
+> > + =A0 =A0 =A0 =3D BH_JBDPrivateStart,
+> > +};
 > > +
-> >  	if (bh_submit_read(bh) < 0) {
-> >  		brelse(bh);
-> >  		ext3_error(sb, __func__,
-> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > index 455e6e6..67d7849 100644
-> > --- a/fs/ext3/inode.c
-> > +++ b/fs/ext3/inode.c
-> > @@ -1077,10 +1077,23 @@ struct buffer_head *ext3_bread(handle_t *handle, struct inode *inode,
-> >  		return bh;
-> >  	if (buffer_uptodate(bh))
-> >  		return bh;
+> > +BUFFER_FNS(Uninit, uninit)
 > > +
-> > +	/*
-> > +	 * uptodate flag may have been cleared by a previous (transient)
-> > +	 * write IO error.  In this case, we don't want to reread its
-> > +	 * old on-disk data.  Actually the buffer has the latest data,
-> > +	 * so set uptodate flag again.
-> > +	 */
-> > +	if (buffer_write_io_error(bh)) {
-> > +		set_buffer_uptodate(bh);
-> > +		return bh;
-> > +	}
-> > +
-> >  	ll_rw_block(READ_META, 1, &bh);
-> >  	wait_on_buffer(bh);
-> >  	if (buffer_uptodate(bh))
-> >  		return bh;
-> > +
-> >  	put_bh(bh);
-> >  	*err = -EIO;
-> >  	return NULL;
-> > diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> > index 7b0e44f..7ed8e45 100644
-> > --- a/fs/ext3/namei.c
-> > +++ b/fs/ext3/namei.c
-> > @@ -909,7 +909,20 @@ restart:
-> >  				num++;
-> >  				bh = ext3_getblk(NULL, dir, b++, 0, &err);
-> >  				bh_use[ra_max] = bh;
-> > -				if (bh)
-> > +				if (!bh || buffer_uptodate(bh))
-> > +					continue;
-> > +
-> > +				/*
-> > +				 * uptodate flag may have been cleared by a
-> > +				 * previous (transient) write IO error.  In
-> > +				 * this case, we don't want to reread its
-> > +				 * old on-disk data.  Actually the buffer
-> > +				 * has the latest data, so set uptodate flag
-> > +				 * again.
-> > +				 */
-> > +				if (buffer_write_io_error(bh))
-> > +					set_buffer_uptodate(bh);
-> > +				else
-> >  					ll_rw_block(READ_META, 1, &bh);
-> >  			}
-> >  		}
-> > -- 
-> > 1.6.0.3
-> > 
-> > 
-> > 
-> > -- 
-> > Hidehiro Kawai
-> > Hitachi, Systems Development Laboratory
-> > Linux Technology Center
-> > 
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+>
+>
+> I asked this in the last post. Why we need a new buffer head flag ?
+> Why can't we use the unwritten flag ?
+>
+> -aneesh
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
