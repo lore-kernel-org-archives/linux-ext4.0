@@ -1,108 +1,71 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH] e4defrag : Open the source file for e4defrag in read
-	write mode to avoid failures from EXT4_IOC_EXT_MOVE
-Date: Tue, 19 Jan 2010 10:10:54 +0530
-Message-ID: <ea11fea31001182040o855c362j1da8fcdc24c5dfe9@mail.gmail.com>
-References: <ea11fea31001182021m66f82afei1750a9e92b53e047@mail.gmail.com>
-	<4B55370B.4060801@rs.jp.nec.com>
+From: Chris Lee <cslee-list@cybericom.co.uk>
+Subject: Re: [Bug 14830] When other IO is running sync times go to 10 to 20
+ minutes
+Date: Tue, 19 Jan 2010 17:24:23 +0000
+Message-ID: <4B55EAC7.3080004@cybericom.co.uk>
+References: <bug-14830-13602@http.bugzilla.kernel.org/> <201001182358.o0INwBkc011745@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f197.google.com ([209.85.223.197]:39134 "EHLO
-	mail-iw0-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754774Ab0ASElP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 23:41:15 -0500
-Received: by iwn35 with SMTP id 35so2603560iwn.4
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Jan 2010 20:41:14 -0800 (PST)
-In-Reply-To: <4B55370B.4060801@rs.jp.nec.com>
+Received: from mk-outboundfilter-4.mail.uk.tiscali.com ([212.74.114.32]:36206
+	"EHLO mk-outboundfilter-4.mail.uk.tiscali.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752881Ab0ASRYk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Jan 2010 12:24:40 -0500
+In-Reply-To: <201001182358.o0INwBkc011745@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/1/19 Akira Fujita <a-fujita@rs.jp.nec.com>:
->
-> Hi Manish,
->
-> (2010/01/19 13:21), Manish Katiyar wrote:
->> Hi Akira,
->>
->> I am consistently getting -EBADF while trying out e4defrag and it
->> fails with below error.
->>
->> /home/mkatiyar/e2fs-git/e2fsprogs/misc> =A0./e4defrag -v /tmp/ohsm/m=
-ntdir/f1
->> ext4 defragmentation for /tmp/ohsm/mntdir/f1
->> [1/1]/tmp/ohsm/mntdir/f1: =A0 =A0 =A0 0%
->> =A0 =A0 =A0 Failed to defrag:Bad file descriptor =A0 =A0[ NG ]
->> =A0 Success: =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0[0/1]
->>
->> Below patch fixes the issue for me, though I am not sure if this is
->> the right fix to open the source file in readwrite mode or fix the
->> ext4 ioctl part.
->>
->
-> Patch looks good to me.
-> # I send same patch to Ted last month, but it is not on linux-ext4, s=
-orry.
->
-> By commit 4a58579b9e4e2a35d57e6c9c8483e52f6f1b7fd6 of Linus' kernel t=
-ree,
-> rw mode check was added to EXT4_IOC_MOVE_EXTENT.
-> But command patch which corresponds to this change
-> has not been merged into e2fsprogs.
-> So this change is needed to run e4defrag command on current Linux ker=
-nel.
-
-Ohh okie... Thanks a lot for the prompt response :-)
-
-Thanks -
-Manish
-
->
-> Regards,
-> Akira Fujita
->
->
->> Open the source file in read write mode to avoid failures from EXT4_=
-IOC_EXT_MOVE
->>
->> Signed-off-by: Manish Katiyar<mkatiyar@gmail.com>
->> ---
->> =A0 misc/e4defrag.c | =A0 =A02 +-
->> =A0 1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
->> index 82e3868..424e0ca 100644
->> --- a/misc/e4defrag.c
->> +++ b/misc/e4defrag.c
->> @@ -1605,7 +1605,7 @@ static int file_defrag(const char *file, const
->> struct stat64 *buf,
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->> =A0 =A0 =A0 }
->>
->> - =A0 =A0 fd =3D open64(file, O_RDONLY);
->> + =A0 =A0 fd =3D open64(file, O_RDWR);
->> =A0 =A0 =A0 if (fd< =A00) {
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (mode_flag& =A0DETAIL) {
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 PRINT_FILE_NAME(file);
->
->
->
 
 
+bugzilla-daemon@bugzilla.kernel.org wrote:
+> http://bugzilla.kernel.org/show_bug.cgi?id=14830
+>
+>
+>
+>
+>
+> --- Comment #3 from Michael Godfrey <godfrey@isl.stanford.edu>  2010-01-18 23:58:09 ---
+>   
+>> This problem prevents production use of systems using this kernel.
+>>     
+>
+>   
+>> evokes a question: Do you have a kernel which behaved better for you? Which
+>> one?
+>>     
+>
+> Yes.  RHEL5.4 does not show this problem.  It is the production
+> system that works in this environment.
+>
+> The response above is disappointing.  Is sync response of 20 minutes,
+> including several task timeouts to be considered "normal?"
+>
+>   
+>> If you think the time is inappropriately long, we can have a look at it
+>> but for that we'd need much more details like amount and nature of data writen
+>> (many small files vs a few large ones), time it takes sync to complete, speed
+>> of disks for sequential IO...
+>>     
+>
+> I am sorry to have to tell you that in this environment we do not
+> deal in exclusively small or large files, we actually have quite a
+> few of both. When an rsync which transfers about 50GB of files of
+> various sizes is running, the hung condition is continuous until the rsync
+> completes.  This is just a pretty typical load.  You could try it
+> yourself.  No special sizes of files are required.  I think I
+> mentioned that the ext4 LVM is a RAID 50 3ware 9650SE-8LPML,
+> with 8 2T drives.  Its throughput for reading and writing is good
+> when the system is not locked up.
+>
+>   
+Is it possible that it is something allong the lines of what is 
+described at this link:
+http://notemagnet.blogspot.com/2008/08/linux-write-cache-mystery.html
 
---=20
-Thanks -
-Manish
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-[$\*.^ -- I miss being one of them
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If so a runtime adjustment might help you out.
+
+Chris.
