@@ -1,44 +1,66 @@
-From: Nix <nix@esperi.org.uk>
-Subject: 2.6.32+: ext4 direct-io kernel thread invasion
-Date: Mon, 18 Jan 2010 23:40:23 +0000
-Message-ID: <87y6jv9e3c.fsf@spindle.srvr.nix>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: [PATCH] e4defrag : Open the source file for e4defrag in read write
+	mode to avoid failures from EXT4_IOC_EXT_MOVE
+Date: Tue, 19 Jan 2010 09:51:08 +0530
+Message-ID: <ea11fea31001182021m66f82afei1750a9e92b53e047@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>
-To: linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:43943 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752248Ab0ASARH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 19:17:07 -0500
+Received: from mail-iw0-f197.google.com ([209.85.223.197]:51769 "EHLO
+	mail-iw0-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753391Ab0ASEV3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jan 2010 23:21:29 -0500
+Received: by iwn35 with SMTP id 35so2593670iwn.4
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Jan 2010 20:21:28 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-So I upgraded one of my servers to 2.6.32 recently. It's got twelve ext4
-filesystems on it, right now, and has direct I/O enabled because I have
-one program that wants to do direct I/O to one of those filesystems on
-rare occasions, and because you never know but someone might install
-something else that wants to do direct I/O.
+Hi Akira,
 
-But what did I find in 2.6.32 but a new set of per-CPU, per-sb
-workqueues whose raison d'etre appears to be something related to direct
-I/O. Per-CPU, per-sb, that's a lot. Their full name is apparently
-'ext4-dio-unwritten', apparently something to do with writing extents
-for direct I/O-written blocks. But, boyoboy are there a lot of them:
+I am consistently getting -EBADF while trying out e4defrag and it
+fails with below error.
 
-nix@spindle 9 /home/nix% ps -fC ext4-dio-unwrit | wc -l
-97
+/home/mkatiyar/e2fs-git/e2fsprogs/misc> ./e4defrag -v /tmp/ohsm/mntdir/f1
+ext4 defragmentation for /tmp/ohsm/mntdir/f1
+[1/1]/tmp/ohsm/mntdir/f1:	  0%
+	Failed to defrag:Bad file descriptor	[ NG ]
+ Success:			[0/1]
 
-Now kernel threads are all very well --- it's obvious that e.g. a per-sb
-journal flushing thread is worthwhile --- but *ninety-seven* kernel
-threads for something like direct I/O, which in all but very unusual
-high-end Oracle workloads is going to be a small proportion of I/O, is
-just *insane*. And as core count goes up it's just going to get more
-insane. Even my readonly-mounted filesystems seem to have some.
+Below patch fixes the issue for me, though I am not sure if this is
+the right fix to open the source file in readwrite mode or fix the
+ext4 ioctl part.
 
-Do these threads really have to be per-CPU? Can't they default to
-something much less aggressive, and then people with massive beefy
-Oracle installations can up the number of these threads? (Dynamically
-tuning their numbers according to the workload would be ideal: the
-slow-work infrastructure can do this, IIRC, spawning new threads when
-needed.)
+
+Open the source file in read write mode to avoid failures from EXT4_IOC_EXT_MOVE
+
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+---
+ misc/e4defrag.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 82e3868..424e0ca 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -1605,7 +1605,7 @@ static int file_defrag(const char *file, const
+struct stat64 *buf,
+ 		return 0;
+ 	}
+
+-	fd = open64(file, O_RDONLY);
++	fd = open64(file, O_RDWR);
+ 	if (fd < 0) {
+ 		if (mode_flag & DETAIL) {
+ 			PRINT_FILE_NAME(file);
+-- 
+1.6.3.3
+
+
+-- 
+Thanks -
+Manish
+==================================
+[$\*.^ -- I miss being one of them
+==================================
