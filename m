@@ -1,37 +1,64 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
-Date: Wed, 20 Jan 2010 20:09:09 GMT
-Message-ID: <201001202009.o0KK99IH031140@demeter.kernel.org>
-References: <bug-14256-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] default max mount count to unused
+Date: Wed, 20 Jan 2010 16:37:25 -0600
+Message-ID: <4B5785A5.2010505@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Bill Nottingham <notting@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:44522 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754286Ab0ATUJJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2010 15:09:09 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0KK99JY031141
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2010 20:09:09 GMT
-In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:19050 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750976Ab0ATWh1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jan 2010 17:37:27 -0500
+Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o0KMbRW6024739
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2010 17:37:27 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14256
+From: Bill Nottingham <notting@redhat.com>
 
+Anaconda has been setting the max mount count on the root fs
+to -1 (unused) for ages.
 
+I (Eric) tend to agree that using mount count as a proxy for potential
+for corruption seems odd.  And waiting for fsck on a reboot just because
+it's number 20 (or so) is painful.  Can we just turn it off by default?
 
+I wouldn't mind killing the periodic check as well, but consider
+this a trial balloon.  :)
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+--- 
 
---- Comment #35 from Darren Hart <dvhltc@us.ibm.com>  2010-01-20 20:09:08 ---
-The fault path inode count problem appears to be fixed in 2.6.33-rc3 where the
-fault logic is rewritten and and we properly account for both references taken
-by queue_lock as well as get_futex_key(). Since Jan in comment #26 said he can
-reproduce on 2.6.33-rc3, this isn't likely to be the path that caused the
-problem. I'll continue to look.
+diff --git a/doc/libext2fs.texinfo b/doc/libext2fs.texinfo
+index 19899bc..a0439bf 100644
+--- a/doc/libext2fs.texinfo
++++ b/doc/libext2fs.texinfo
+@@ -319,7 +319,8 @@ skip the filesystem check if the number of times that the filesystem has
+ been mounted is less than @code{s_max_mnt_count} and if the interval
+ between the last time a filesystem check was performed and the current
+ time is less than @code{s_checkinterval} (see below).  The default value
+-of @code{s_max_mnt_count} is 20.
++of @code{s_max_mnt_count} is -1 (which means that this check is not
++done).
+ 
+ @item s_checkinterval
+ This field defines the minimal interval between filesystem checks.  See
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 114b001..b98d6e8 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -484,7 +484,7 @@ struct ext2_inode_large {
+ /*
+  * Maximal mount counts between two filesystem checks
+  */
+-#define EXT2_DFL_MAX_MNT_COUNT		20	/* Allow 20 mounts */
++#define EXT2_DFL_MAX_MNT_COUNT		-1	/* Don't use mount check */
+ #define EXT2_DFL_CHECKINTERVAL		0	/* Don't use interval check */
+ 
+ /*
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
