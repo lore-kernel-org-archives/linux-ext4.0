@@ -1,195 +1,349 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: [PATCH V2] Add flag to files with blocks intentionally past EOF
-Date: Thu, 21 Jan 2010 12:32:04 -0800
-Message-ID: <5df78e1d1001211232n1aab06dav3cbb54461d29bafa@mail.gmail.com>
-References: <4B5627EF.3080804@redhat.com> <4B58963E.4080007@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] default max mount count to unused
+Date: Thu, 21 Jan 2010 17:22:55 -0700
+Message-ID: <F348497E-C9B1-49D3-920B-5AF98CBDDD98@sun.com>
+References: <4B5785A5.2010505@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="Boundary_(ID_w9koj9YTzxX57id0hGYqFg)"
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Bill Nottingham <notting@redhat.com>,
+	Alasdair G Kergon <agk@redhat.com>,
+	LVM Mailing List <linux-lvm@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:59288 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751431Ab0AUUcI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2010 15:32:08 -0500
-Received: from spaceape23.eur.corp.google.com (spaceape23.eur.corp.google.com [172.28.16.75])
-	by smtp-out.google.com with ESMTP id o0LKW6th022919
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2010 20:32:07 GMT
-Received: from pwj10 (pwj10.prod.google.com [10.241.219.74])
-	by spaceape23.eur.corp.google.com with ESMTP id o0LKW48D010118
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2010 12:32:05 -0800
-Received: by pwj10 with SMTP id 10so287589pwj.6
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2010 12:32:04 -0800 (PST)
-In-Reply-To: <4B58963E.4080007@redhat.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42409 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755365Ab0AVAXE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2010 19:23:04 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o0M0N1Pi027324
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2010 16:23:01 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KWM00F00GYEL600@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
+ 21 Jan 2010 16:23:01 -0800 (PST)
+In-reply-to: <4B5785A5.2010505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric,
 
-Thank you very much for bringing the patch up-to-date and improving it!
-I have been thinking to re-sync it and send it again but was pulled awa=
-y
-but other things.
+--Boundary_(ID_w9koj9YTzxX57id0hGYqFg)
+Content-type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-transfer-encoding: 7BIT
 
-The patch looks good. I think it is ok to drop the ioctl support at thi=
-s
-time. We can add it later if there are users need that feature.
+On 2010-01-20, at 15:37, Eric Sandeen wrote:
+> From: Bill Nottingham <notting@redhat.com>
+>
+> Anaconda has been setting the max mount count on the root fs
+> to -1 (unused) for ages.
+>
+> I (Eric) tend to agree that using mount count as a proxy for potential
+> for corruption seems odd.  And waiting for fsck on a reboot just  
+> because
+> it's number 20 (or so) is painful.  Can we just turn it off by  
+> default?
+>
+> I wouldn't mind killing the periodic check as well, but consider
+> this a trial balloon.  :)
 
-Jiaying
+Rather than disabling the mount-count check, it would make a lot of  
+sense to rather enable background checking via LVM snapshots, as  
+described in:
 
-On Thu, Jan 21, 2010 at 10:00 AM, Eric Sandeen <sandeen@redhat.com> wro=
-te:
->
-> From: Jiaying Zhang <jiayingz@google.com>
->
-> fallocate() may potentially instantiate blocks past EOF, depending
-> on the flags used when it is called.
->
-> e2fsck currently has a test for blocks past i_size, and it
-> sometimes trips up - noticeably on xfstests 013 which runs fsstress.
->
-> This patch from Jiayang does fix it up - it (along with
-> e2fsprogs updates and other patches recently from Aneesh) has
-> survived many fsstress runs in a row.
->
->
-> (Eric Sandeen: removed ioctl interface and minor cleanups)
->
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 874d169..1f6b936 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -284,6 +284,7 @@ struct flex_groups {
-> =A0#define EXT4_TOPDIR_FL =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 0x00020000 =
-/* Top of directory hierarchies*/
-> =A0#define EXT4_HUGE_FILE_FL =A0 =A0 =A0 =A0 =A0 =A0 =A0 0x00040000 /=
-* Set to each huge file */
-> =A0#define EXT4_EXTENTS_FL =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A00x00080000 /* Inode uses extents */
-> +#define EXT4_EOFBLOCKS_FL =A0 =A0 =A0 =A0 =A0 =A0 =A00x00400000 /* B=
-locks allocated beyond EOF */
-> =A0#define EXT4_RESERVED_FL =A0 =A0 =A0 =A0 =A0 =A0 =A0 0x80000000 /*=
- reserved for ext4 lib */
->
-> =A0#define EXT4_FL_USER_VISIBLE =A0 =A0 =A0 =A0 =A0 0x000BDFFF /* Use=
-r visible flags */
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 765a482..95e94ae 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3185,7 +3185,7 @@ int ext4_ext_get_blocks(handle_t *handle, struc=
-t inode *inode,
-> =A0{
-> =A0 =A0 =A0 =A0struct ext4_ext_path *path =3D NULL;
-> =A0 =A0 =A0 =A0struct ext4_extent_header *eh;
-> - =A0 =A0 =A0 struct ext4_extent newex, *ex;
-> + =A0 =A0 =A0 struct ext4_extent newex, *ex, *last_ex;
-> =A0 =A0 =A0 =A0ext4_fsblk_t newblock;
-> =A0 =A0 =A0 =A0int err =3D 0, depth, ret, cache_type;
-> =A0 =A0 =A0 =A0unsigned int allocated =3D 0;
-> @@ -3366,6 +3366,19 @@ int ext4_ext_get_blocks(handle_t *handle, stru=
-ct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0EXT4_STATE_DIO_UNWRITTEN;;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0}
-> +
-> + =A0 =A0 =A0 if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL=
-)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (eh->eh_entries) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 last_ex =3D EXT_LAST_EX=
-TENT(eh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (iblock + ar.len > l=
-e32_to_cpu(last_ex->ee_block)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 + ext4_ext_get_actual_len(last_ex))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_I(=
-inode)->i_flags &=3D ~EXT4_EOFBLOCKS_FL;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 } else {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 WARN_ON(eh->eh_entries =
-=3D=3D 0);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_error(inode->i_sb,=
- __func__,
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "inode#=
-%lu, eh->eh_entries =3D 0!", inode->i_ino);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> + =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0err =3D ext4_ext_insert_extent(handle, inode, path, &n=
-ewex, flags);
-> =A0 =A0 =A0 =A0if (err) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* free data blocks we just allocated =
-*/
-> @@ -3499,6 +3512,13 @@ static void ext4_falloc_update_inode(struct in=
-ode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0i_size_write(inode, ne=
-w_size);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (new_size > EXT4_I(inode)->i_disksi=
-ze)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ext4_update_i_disksize=
-(inode, new_size);
-> + =A0 =A0 =A0 } else {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* Mark that we allocate beyond EOF s=
-o the subsequent truncate
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* can proceed even if the new size i=
-s the same as i_size.
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (new_size > i_size_read(inode))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_I(inode)->i_flags =
-|=3D EXT4_EOFBLOCKS_FL;
-> =A0 =A0 =A0 =A0}
->
-> =A0}
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index cbf56da..f5802e9 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4429,6 +4429,8 @@ void ext4_truncate(struct inode *inode)
-> =A0 =A0 =A0 =A0if (!ext4_can_truncate(inode))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
->
-> + =A0 =A0 =A0 EXT4_I(inode)->i_flags &=3D ~EXT4_EOFBLOCKS_FL;
-> +
-> =A0 =A0 =A0 =A0if (inode->i_size =3D=3D 0 && !test_opt(inode->i_sb, N=
-O_AUTO_DA_ALLOC))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ei->i_state |=3D EXT4_STATE_DA_ALLOC_C=
-LOSE;
->
-> @@ -5284,7 +5286,9 @@ int ext4_setattr(struct dentry *dentry, struct =
-iattr *attr)
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0if (S_ISREG(inode->i_mode) &&
-> - =A0 =A0 =A0 =A0 =A0 attr->ia_valid & ATTR_SIZE && attr->ia_size < i=
-node->i_size) {
-> + =A0 =A0 =A0 =A0 =A0 attr->ia_valid & ATTR_SIZE &&
-> + =A0 =A0 =A0 =A0 =A0 (attr->ia_size < inode->i_size ||
-> + =A0 =A0 =A0 =A0 =A0 =A0(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)=
-)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0handle_t *handle;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0handle =3D ext4_journal_start(inode, 3=
-);
-> @@ -5315,6 +5319,9 @@ int ext4_setattr(struct dentry *dentry, struct =
-iattr *attr)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto e=
-rr_out;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* ext4_truncate will clear the flag */
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if ((EXT4_I(inode)->i_flags & EXT4_EOFB=
-LOCKS_FL))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_truncate(inode);
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0rc =3D inode_setattr(inode, attr);
->
+https://www.redhat.com/archives/ext3-users/2008-February/msg00004.html
+
+I've attached an updated version of this script and its config file.   
+I've run a fair amount of testing on the script and it seems to do the  
+right thing, and started running it from my /etc/cron.weekly to give  
+it some further ongoing testing.
+
+Since virtually all new distros use LVM devices, this makes a lot of  
+sense to configure by default, rather than leaving filesystems to bit- 
+rot in silence by turning off the periodic checking.  This also avoids  
+the "all devices check after 6 months" problem for servers that reboot  
+only rarely, because the filesystems get a periodic check and reset  
+the check timestamp/interval so they will never need checking at boot  
+time unless there is an error.
+
+
+Alasdair, any chance you can include this script into the LVM package?
+
+Ted, this should really be added to e2fsprogs, and the e2croncheck  
+script removed.  The existing e2croncheck script is broken in a number  
+of ways (e.g. the force check timestamp 19000101 is invalid, the email  
+reporting doesn't work because "$RPT-EMAIL" is never set) and is less  
+functional in other ways (it doesn't remove stale snapshots in case of  
+an interrupted script, it doesn't check multiple LVs, etc).
+
+Cheers, Andreas
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
+--Boundary_(ID_w9koj9YTzxX57id0hGYqFg)
+Content-type: application/octet-stream; name=lvcheck; x-unix-mode=0644
+Content-transfer-encoding: BASE64
+Content-disposition: attachment; filename=lvcheck
+
+IyEvYmluL2Jhc2gNCiMgbHZjaGVjaywgdmVyc2lvbiAxLjENCiMgTWFpbnRhaW5l
+cjogQnJ5YW4gS2FkemJhbiA8YnJ5YW4ua2FkemJhbkBpcy1hLWdlZWsubmV0Pg0K
+DQojIE90aGVyIGNyZWRpdHM6DQojIENvbmNlcHQgYW5kIG9yaWdpbmFsIHNjcmlw
+dCBieSBUaGVvZG9yZSBUc28gPHR5dC4uLkBtaXQuZWR1Pg0KIyBvbl9hY19wb3dl
+ciBpcyBtb3N0bHkgZnJvbSBEZWJpYW4ncyBwb3dlcm1nbXQtYmFzZSBwYWNrYWdl
+DQojIExvdHMgb2YgaGVscCAoaWRlYXMsIGluaXRpYWwgWEZTL0pGUyBzdXBwb3J0
+LCBldGMuKSBmcm9tDQojIEFuZHJlYXMgRGlsZ2VyIDxhZGlsZ2VyQHN1bi5jb20+
+DQojIEJldHRlciBYRlMgc3VwcG9ydCBmcm9tIEVyaWMgU2FuZGVlbiA8c2FuZGVl
+bkByZWRoYXQuY29tPg0KDQojIFJlbGVhc2VkIHVuZGVyIHRoZSBHTlUgR2VuZXJh
+bCBQdWJsaWMgTGljZW5zZSwgZWl0aGVyIHZlcnNpb24gMiBvcg0KIyAoYXQgeW91
+ciBvcHRpb24pIGFueSBsYXRlciB2ZXJzaW9uLg0KDQojIE92ZXJ2aWV3Og0KIyBS
+dW4gdGhpcyBmcm9tIGNyb24gcGVyaW9kaWNhbGx5IChlLmcuIG9uY2UgcGVyIHdl
+ZWspLiBJZiB0aGUgbWFjaGluZQ0KIyBpcyBvbiBBQyBwb3dlciwgaXQgd2lsbCBy
+dW4gdGhlIGNoZWNrczsgb3RoZXJ3aXNlIHRoZXkgd2lsbCBhbGwgYmUNCiMgc2tp
+cHBlZC4gKElmIHRoZSBzY3JpcHQgY2FuJ3QgdGVsbCB3aGV0aGVyIHRoZSBtYWNo
+aW5lIGlzIG9uIEFDIHBvd2VyLA0KIyBpdCB3aWxsIHVzZSBhIHNldHRpbmcgaW4g
+dGhlIGNvbmZpZ3VyYXRpb24gZmlsZSAoL2V0Yy9sdmNoZWNrLmNvbmYpIHRvDQoj
+IGRlY2lkZSB3aGV0aGVyIHRvIGNvbnRpbnVlIHdpdGggdGhlIGNoZWNrcywgb3Ig
+YWJvcnQuKQ0KIw0KIyBUaGUgc2NyaXB0IHdpbGwgdGhlbiBkZWNpZGUgd2hpY2gg
+bG9naWNhbCB2b2x1bWVzIGFyZSBhY3RpdmUsIGFuZCBjYW4NCiMgdGhlcmVmb3Jl
+IGJlIGNoZWNrZWQgdmlhIGFuIExWTSBzbmFwc2hvdC4gRWFjaCBvZiB0aGVzZSBM
+VnMgd2lsbCBiZQ0KIyBxdWVyaWVkIHRvIGZpbmQgaXRzIGxhc3QtY2hlY2sgZGF5
+LCBhbmQgaWYgdGhhdCB3YXMgbW9yZSB0aGFuICRJTlRFUlZBTA0KIyBkYXlzIGFn
+byAod2hlcmUgSU5URVJWQUwgaXMgc2V0IGluIHRoZSBjb25maWd1cmF0aW9uIGZp
+bGUgYXMgd2VsbCksIG9yDQojIGlmIHRoZSBsYXN0LWNoZWNrIGRheSBjYW4ndCBi
+ZSBkZXRlcm1pbmVkLCB0aGVuIHRoZSBzY3JpcHQgd2lsbCB0YWtlIGFuDQojIExW
+TSBzbmFwc2hvdCBvZiB0aGF0IExWIGFuZCBydW4gZnNjayBvbiB0aGUgc25hcHNo
+b3QuIFRoZSBzbmFwc2hvdCB3aWxsDQojIGJlIHNldCB0byB1c2UgMS81MDAgdGhl
+IHNwYWNlIG9mIHRoZSBzb3VyY2UgTFYuIEFmdGVyIGZzY2sgZmluaXNoZXMsDQoj
+IHRoZSBzbmFwc2hvdCBpcyBkZXN0cm95ZWQuIChTbmFwc2hvdHMgYXJlIGNoZWNr
+ZWQgc2VyaWFsbHkuKQ0KIw0KIyBBbnkgTFYgdGhhdCBwYXNzZXMgZnNjayBzaG91
+bGQgaGF2ZSBpdHMgbGFzdC1jaGVjayB0aW1lIHVwZGF0ZWQgKGluDQojIHRoZSBy
+ZWFsIHN1cGVyYmxvY2ssIG5vdCB0aGUgc25hcHNob3QncyBzdXBlcmJsb2NrKTsg
+YW55IExWIHdob3NlDQojIGZzY2sgZmFpbHMgd2lsbCBzZW5kIGFuIGVtYWlsIG5v
+dGlmaWNhdGlvbiB0byBhIGNvbmZpZ3VyYWJsZSB1c2VyDQojICgkRU1BSUwpLiBU
+aGlzICRFTUFJTCBzZXR0aW5nIGlzIG9wdGlvbmFsLCBidXQgaXRzIHVzZSBpcyBo
+aWdobHkNCiMgcmVjb21tZW5kZWQsIHNpbmNlIGlmIGFueSBMViBmYWlscywgaXQg
+d2lsbCBuZWVkIHRvIGJlIGNoZWNrZWQNCiMgbWFudWFsbHksIG9mZmxpbmUuIFJl
+bGV2YW50IG1lc3NhZ2VzIGFyZSBhbHNvIHNlbnQgdG8gc3lzbG9nLg0KDQojIFNl
+dCBkZWZhdWx0IHZhbHVlcyBmb3IgY29uZmlndXJhdGlvbiBwYXJhbXMuIENoYW5n
+ZXMgdG8gdGhlc2UgdmFsdWVzIHdpbGwNCiMgYmUgb3ZlcndyaXR0ZW4gb24gYW4g
+dXBncmFkZSEgVG8gY2hhbmdlIHRoZXNlIHZhbHVlcywgZWRpdCAvZXRjL2x2Y2hl
+Y2suY29uZi4NCkVNQUlMPSdyb290Jw0KSU5URVJWQUw9MzANCkFDX1VOS05PV049
+IkNPTlRJTlVFIg0KTUlOU05BUD0yNTYNCk1JTkZSRUU9MA0KDQpbICIkMSIgPT0g
+Ii1uIiBdICYmIE5PQ0hFQ0s9ImVjaG8iDQoNCiMgcHVsbCBpbiBjb25maWd1cmF0
+aW9uIC0tIG92ZXJ3cml0ZSB0aGUgZGVmYXVsdHMgYWJvdmUgaWYgdGhlIGZpbGUg
+ZXhpc3RzDQpbIC1yIC9ldGMvbHZjaGVjay5jb25mIF0gJiYgLiAvZXRjL2x2Y2hl
+Y2suY29uZg0KQ0hFQ0tQQVRIPSQoZGlybmFtZSAiJDAiIHwgc2VkIC1lICdzOi9z
+KmJpbjo6JykNClsgLXIgJENIRUNLUEFUSC9ldGMvbHZjaGVjay5jb25mIF0gJiYg
+LiAkQ0hFQ0tQQVRIL2V0Yy9sdmNoZWNrLmNvbmYNCg0KIyBzZW5kICQyIHRvIHN5
+c2xvZywgd2l0aCBzZXZlcml0eSAkMQ0KIyBzZXZlcml0aWVzIGFyZSBlbWVyZy9h
+bGVydC9jcml0L2Vyci93YXJuaW5nL25vdGljZS9pbmZvL2RlYnVnDQpmdW5jdGlv
+biBsb2coKSB7DQoJbG9jYWwgc2V2PSIkMSINCglsb2NhbCBtc2c9IiQyIg0KCWxv
+Y2FsIGFyZz0NCg0KCSMgbG9nIHdhcm5pbmctb3ItaGlnaGVyIG1lc3NhZ2VzIHRv
+IHN0ZGVyciBhcyB3ZWxsDQoJY2FzZSAkc2V2IGluDQoJZW1lcmd8YWxlcnR8Y3Jp
+dHxlcnJ8d2FybmluZykNCgkJYXJnPS1zDQoJCTs7DQoJaW5mb3xkZWJ1ZykNCgkJ
+Og0KCQk7Ow0KCSopDQoJCWVjaG8gImVycm9yOiB1bmtub3duIGxvZyBzZXZlcml0
+eSAnJHNldiciDQoJCTs7DQoJZXNhYw0KDQoJWyAiJE5PQ0hFQ0siIF0gfHwgbG9n
+Z2VyIC10IGx2Y2hlY2sgJGFyZyAtcCB1c2VyLiIkc2V2IiAtLSAiJG1zZyINCn0N
+Cg0KIyBkZXRlcm1pbmUgd2hldGhlciB0aGUgbWFjaGluZSBpcyBvbiBBQyBwb3dl
+cg0KZnVuY3Rpb24gb25fYWNfcG93ZXIoKSB7DQoJbG9jYWwgYW55X2tub3duPW5v
+DQoNCgkjIHRyeSBzeXNmcyBwb3dlciBjbGFzcyBmaXJzdA0KCWlmIFsgLWQgL3N5
+cy9jbGFzcy9wb3dlcl9zdXBwbHkgXTsgdGhlbg0KCQlmb3IgcHN1IGluIC9zeXMv
+Y2xhc3MvcG93ZXJfc3VwcGx5Lyo7IGRvDQoJCQlpZiBbIC1yICIkcHN1L3R5cGUi
+IF07IHRoZW4NCgkJICAgICAgIAkJdHlwZT0kKGNhdCAiJHBzdS90eXBlIikNCg0K
+CQkJCSMgaWdub3JlIGJhdHRlcmllcw0KCQkJCVsgIiR0eXBlIiA9ICJCYXR0ZXJ5
+IiBdICYmIGNvbnRpbnVlDQoNCgkJCQlvbmxpbmU9JChjYXQgIiRwc3Uvb25saW5l
+IikNCg0KCQkJCVsgIiRvbmxpbmUiID0gMSBdICYmIHJldHVybiAwDQoJCQkJWyAi
+JG9ubGluZSIgPSAwIF0gJiYgYW55X2tub3duPXllcw0KCQkJZmkNCgkJZG9uZQ0K
+DQoJCVsgIiRhbnlfa25vd24iID0gInllcyIgXSAmJiByZXR1cm4gMQ0KCWZpDQoN
+CgkjIGVsc2UgZmFsbCBiYWNrIHRvIEFDIGFkYXB0ZXJzIGluIC9wcm9jDQoJaWYg
+WyAtZCAvcHJvYy9hY3BpL2FjX2FkYXB0ZXIgXTsgdGhlbg0KCQlmb3IgYWMgaW4g
+L3Byb2MvYWNwaS9hY19hZGFwdGVyLyo7IGRvDQoJCQlpZiBbIC1yICIkYWMvc3Rh
+dGUiIF07IHRoZW4NCgkJCQlncmVwIC1xIG9uLWxpbmUgIiRhYy9zdGF0ZSIgJiYg
+cmV0dXJuIDANCgkJCQlncmVwIC1xIG9mZi1saW5lICIkYWMvc3RhdGUiICYmIGFu
+eV9rbm93bj15ZXMNCgkJCWVsaWYgWyAtciAiJGFjL3N0YXR1cyIgXTsgdGhlbg0K
+CQkJCWdyZXAgLXEgb24tbGluZSAiJGFjL3N0YXR1cyIgJiYgcmV0dXJuIDANCgkJ
+CQlncmVwIC1xIG9mZi1saW5lICIkYWMvc3RhdHVzIiAmJiBhbnlfa25vd249eWVz
+DQoJCQlmaQ0KCQlkb25lDQoNCgkJWyAiJGFueV9rbm93biIgPSAieWVzIiBdICYm
+IHJldHVybiAxDQoJZmkNCg0KCWlmIFsgIiRBQ19VTktOT1dOIiA9PSAiQ09OVElO
+VUUiIF07IHRoZW4NCgkJcmV0dXJuIDAJIyBhc3N1bWUgb24gQUMgcG93ZXINCgll
+bGlmIFsgIiRBQ19VTktOT1dOIiA9PSAiQUJPUlQiIF07IHRoZW4NCgkJcmV0dXJu
+IDEJIyBhc3N1bWUgb24gYmF0dGVyeQ0KCWVsc2UNCgkJbG9nIGVyciAiSW52YWxp
+ZCB2YWx1ZSBmb3IgQUNfVU5LTk9XTiBpbiB0aGUgY29uZmlnIGZpbGUiDQoJCWV4
+aXQgMQ0KCWZpDQp9DQoNCiMgYXR0ZW1wdCB0byBmb3JjZSBhIGNoZWNrIG9mICQx
+IG9uIHRoZSBuZXh0IHJlYm9vdA0KZnVuY3Rpb24gdHJ5X2ZvcmNlX2NoZWNrKCkg
+ew0KCWxvY2FsIGRldj0iJDEiDQoJbG9jYWwgZnN0eXBlPSIkMiINCg0KCWNhc2Ug
+IiRmc3R5cGUiIGluDQoJZXh0MnxleHQzfGV4dDQpDQoJCXR1bmUyZnMgLUMgMTYw
+MDAgIiRkZXYiDQoJCTs7DQoJeGZzKQ0KCQkjIFhGUyBkb2VzIG5vdCBlbmZvcmNl
+IGNoZWNrIGludGVydmFsczsgbGV0IGVtYWlsIHN1ZmZpY2UuDQoJCTs7DQoJKikN
+CgkJbG9nIHdhcm5pbmcgIiRkZXY6IGRvbid0IGtub3cgaG93IHRvIGZvcmNlIGEg
+Y2hlY2sgb24gJGZzdHlwZS4iDQoJCTs7DQoJZXNhYw0KfQ0KDQojIGF0dGVtcHQg
+dG8gc2V0IHRoZSBsYXN0LWNoZWNrIHRpbWUgb24gJDEgdG8gbm93LCBhbmQgdGhl
+IG1vdW50IGNvdW50IHRvIDAuDQpmdW5jdGlvbiB0cnlfZGVsYXlfY2hlY2tzKCkg
+ew0KCWxvY2FsIGRldj0iJDEiDQoJbG9jYWwgZnN0eXBlPSIkMiINCg0KCWNhc2Ug
+IiRmc3R5cGUiIGluDQoJZXh0MnxleHQzfGV4dDQpDQoJCXR1bmUyZnMgLUMgMCAt
+VCBub3cgIiRkZXYiDQoJCTs7DQoJeGZzKQ0KCQkjIFhGUyBkb2VzIG5vdCBlbmZv
+cmNlIGNoZWNrIGludGVydmFsczsgbm90aGluZyB0byBkZWxheQ0KCQk7Ow0KCSop
+DQoJCWxvZyBpbmZvICIkZGV2OiBkb24ndCBrbm93IGhvdyB0byBkZWxheSBjaGVj
+ayBvbiAkZnN0eXBlLiINCgkJOzsNCgllc2FjDQp9DQoNCiMgcHJpbnQgdGhlIGRh
+dGUgdGhhdCAkMSB3YXMgbGFzdCBjaGVja2VkLCBpbiBhIGZvcm1hdCB0aGF0IGRh
+dGUoMSkgd2lsbA0KIyBhY2NlcHQsIG9yICJVbmtub3duIiBpZiB3ZSBkb24ndCBr
+bm93IGhvdyB0byBmaW5kIHRoYXQgZGF0ZS4NCmZ1bmN0aW9uIHRyeV9nZXRfY2hl
+Y2tfZGF0ZSgpIHsNCglsb2NhbCBkZXY9IiQxIg0KCWxvY2FsIGZzdHlwZT0iJDIi
+DQoNCgljYXNlICIkZnN0eXBlIiBpbg0KCWV4dDJ8ZXh0M3xleHQ0KQ0KCQlkdW1w
+ZTJmcyAtaCAiJGRldiIgMj4vZGV2L251bGwgfCBncmVwICdMYXN0IGNoZWNrZWQ6
+JyB8DQoJCQlzZWQgLWUgJ3MvTGFzdCBjaGVja2VkOltbOnNwYWNlOl1dKi8vJw0K
+CQk7Ow0KCSopDQoJCSMgWEZTIGRvZXMgbm90IHNhdmUgdGhlIGxhc3QtY2hlY2tl
+ZCBkYXRlIA0KCQkjIFRPRE86IGFkZCBzdXBwb3J0IGZvciB2YXJpb3VzIG90aGVy
+IEZTZXMNCgkJZWNobyAiVW5rbm93biINCgkJOzsNCgllc2FjDQp9DQoNCiMgZG8g
+YW55IGV4dHJhIGNoZWNrcyBmb3IgZmlsZXN5c3RlbSB0eXBlICQyLCBvbiBkZXZp
+Y2UgJDENCmZ1bmN0aW9uIHNob3VsZF9zdGlsbF9jaGVjaygpIHsNCglsb2NhbCBk
+ZXY9IiQxIg0KCWxvY2FsIGZzdHlwZT0iJDIiDQoNCgljYXNlICIkZnN0eXBlIiBp
+bg0KCWV4dDJ8ZXh0M3xleHQ0KQ0KCQlpZiB0dW5lMmZzIC1sICIkZGV2IiB8IGdy
+ZXAgLXEgIkpvdXJuYWwgZGV2aWNlIjsgdGhlbg0KCQkJbG9nIHdhcm5pbmcgInNr
+aXAgJGRldjogdXNpbmcgZXh0ZXJuYWwgam91cm5hbC4iDQoJCQlyZXR1cm4gMQ0K
+CQlmaQ0KCQk7Ow0KCWpiZCopDQoJCWxvZyBkZWJ1ZyAic2tpcCAkZGV2OiB1c2lu
+ZyBleHRlcm5hbCBqb3VybmFsLiINCgkJcmV0dXJuIDENCgkJOzsNCglzd2FwKQ0K
+CQlsb2cgZGVidWcgInNraXAgJGRldjogaXMgYSBzd2FwIGRldmljZS4iDQoJCXJl
+dHVybiAxDQoJCTs7DQoJKikNCgkJbG9nIHdhcm5pbmcgInNraXAgJGRldjogY2Fu
+J3QgY2hlY2sgJGZzdHlwZSBwYXNzaXZlbHk6IGFzc3VtaW5nIE9LLiINCgkJOzsN
+Cgllc2FjDQoNCglyZXR1cm4gMA0KfQ0KDQojIGNoZWNrIHRoZSBGUyBvbiAkMSBw
+YXNzaXZlbHksIHNhdmluZyBvdXRwdXQgdG8gJDMuDQpmdW5jdGlvbiBwZXJmb3Jt
+X2NoZWNrKCkgew0KCWxvY2FsIGRldj0iJDEiDQoJbG9jYWwgZnN0eXBlPSIkMiIN
+Cglsb2NhbCBlcnJsb2c9IiQzIg0KDQoJY2FzZSAiJGZzdHlwZSIgaW4NCglleHQy
+fGV4dDN8ZXh0NCkNCgkJIyBmaXJzdCBjbGVhciB0aGUgb3JwaGFuZWQtaW5vZGUg
+bGlzdCwgdG8gYXZvaWQgdW5uZWNlc3NhcnkgRlMNCgkJIyBjaGFuZ2VzIGluIHRo
+ZSBuZXh0IHN0ZXAgKHdoaWNoIHdvdWxkIGNhdXNlIGFuICJlcnJvciIgZXhpdA0K
+CQkjIGZyb20gZTJmc2NrKS4gLUMgMCBpcyBwcmVzZW50IGZvciBjYXNlcyB3aGVy
+ZSB0aGUgc2NyaXB0IGlzDQoJCSMgcnVuIGludGVyYWN0aXZlbHkgKGxvZ3NhdmUg
+LXMgc3RyaXBzIG91dCB0aGUgcHJvZ3Jlc3MgYmFyKS4NCgkJIyBpZ25vcmUgdGhl
+IHJldHVybiBzdGF0dXMgb2YgdGhpcyBlMmZzY2ssIGFzIGl0IGRvZXNuJ3QgbWF0
+dGVyLg0KCQkkTk9DSEVDSyBuaWNlIGxvZ3NhdmUgLWFzICIkZXJybG9nIiBlMmZz
+Y2sgLXAgLUMgMCAiJGRldiINCg0KCQkjIHRoZW4gZG8gdGhlIHJlYWwgY2hlY2s7
+IC15IGlzIGhlcmUgdG8gZ2l2ZSBtb3JlIGluZm8gb24gYW55DQoJCSMgZXJyb3Jz
+IHRoYXQgbWF5IGJlIHByZXNlbnQgb24gdGhlIEZTLCBpbiB0aGUgbG9nIGZpbGUu
+IHRoZQ0KCQkjIHNuYXBzaG90IGlzIHdyaXRhYmxlLCBzbyBpdCBzaG91bGRuJ3Qg
+YnJlYWsgYW55dGhpbmcgaWYNCgkJIyBlMmZzY2sgY2hhbmdlcyBpdC4NCgkJJE5P
+Q0hFQ0sgbmljZSBsb2dzYXZlIC1hcyAiJGVycmxvZyIgZTJmc2NrIC1meSAtQyAw
+ICIkZGV2Ig0KCQlyZXR1cm4gJD8NCgkJOzsNCglyZWlzZXJmcykNCgkJZWNobyBZ
+ZXMgfCAkTk9DSEVDSyBuaWNlIGxvZ3NhdmUgLWFzICIkZXJybG9nIiBmc2NrLnJl
+aXNlcmZzIC0tY2hlY2sgIiRkZXYiDQoJCSMgYXBwYXJlbnRseSBjYW4ndCBmYWls
+PyBsZXQncyBob3BlIG5vdC4uLg0KCQlyZXR1cm4gMA0KCQk7Ow0KCXhmcykNCgkJ
+JE5PQ0hFQ0sgbmljZSBsb2dzYXZlIC1hcyAiJGVycmxvZyIgeGZzX3JlcGFpciAt
+biAiJGRldiINCgkJcmV0dXJuICQ/DQoJCTs7DQoJamZzKQ0KCQkkTk9DSEVDSyBu
+aWNlIGxvZ3NhdmUgLWFzICIkZXJybG9nIiBmc2NrLmpmcyAtZm4gIiRkZXYiDQoJ
+CXJldHVybiAkPw0KCQk7Ow0KCWVzYWMNCn0NCg0KIyBkbyBldmVyeXRoaW5nIG5l
+ZWRlZCB0byBjaGVjayBhbmQgcmVzZXQgZGF0ZXMgYW5kIGNvdW50ZXJzIG9uIC9k
+ZXYvJDEvJDIuDQpmdW5jdGlvbiBjaGVja19mcygpIHsNCglsb2NhbCB2Zz0iJDEi
+DQoJbG9jYWwgbHY9IiQyIg0KCWxvY2FsIGZzdHlwZT0iJDMiDQoJbG9jYWwgc25h
+cHNpemU9IiQ0IiAjIGluIHVuaXRzIG9mIE1CDQoNCglsb2NhbCBsdmRldj0iL2Rl
+di8kdmcvJGx2Ig0KCWxvY2FsIGVycmxvZz0iL3Zhci9sb2cvbHZjaGVjay8kdmct
+JGx2LSQoZGF0ZSArJVklbSVkKSINCglsb2NhbCBzbmFwbHZiYXNlPSIkbHYtbHZj
+aGVjay10ZW1wIg0KCWxvY2FsIHNuYXBsdj0iJHNuYXBsdmJhc2UtJChkYXRlICsn
+JVklbSVkJykiDQoNCgkjIGNsZWFuIHVwIGFueSBsZWZ0LW92ZXIgc25hcHNob3Qg
+TFZzDQoJZm9yIGx2dGVtcCBpbiAvZGV2LyR2Zy8kc25hcGx2YmFzZSo7IGRvDQoJ
+CWlmIFsgLWUgIiRsdnRlbXAiIF07IHRoZW4NCgkJCSMgQXNzdW1lIHNjcmlwdCB3
+b24ndCBydW4gbW9yZSB0aGFuIG9uZSBhdCBhIHRpbWU/DQoJCQlsb2cgd2Fybmlu
+ZyAic3RhbGUgJGx2dGVtcDogdHJ5aW5nIHRvIHJlbW92ZSBvbGQgc25hcHNob3Qu
+Ig0KDQoJCQlpZiAhIGx2cmVtb3ZlIC1mICIkbHZ0ZW1wIjsgdGhlbg0KCQkJCWxv
+ZyBlcnIgImVycm9yICRsdnRlbXA6IGNvdWxkIG5vdCBkZWxldGUuIg0KCQkJCXJl
+dHVybiAxDQoJCQlmaQ0KCQlmaQ0KCWRvbmUNCg0KCSMgc2VlIHdoZXRoZXIgRlMg
+bmVlZHMgYW55IGV4dHJhIGNoZWNrcyB0aGF0IG1pZ2h0IGRpc3F1YWxpZnkgaXQN
+CglzaG91bGRfc3RpbGxfY2hlY2sgIiRsdmRldiIgIiRmc3R5cGUiIHx8IHJldHVy
+biAwDQoNCgkjIGdldCB0aGUgbGFzdCBjaGVjayB0aW1lDQoJY2hlY2tfZGF0ZT0k
+KHRyeV9nZXRfY2hlY2tfZGF0ZSAiJGx2ZGV2IiAiJGZzdHlwZSIpDQoNCgkjIGlm
+IHRoZSBkYXRlIGlzIHVua25vd24sIHJ1biBmc2NrIGV2ZXJ5IHRpbWUgdGhlIHNj
+cmlwdCBydW5zLiBzaWdoLg0KCWlmIFsgIiRjaGVja19kYXRlIiAhPSAiVW5rbm93
+biIgXTsgdGhlbg0KCQkjIGFkZCAkSU5URVJWQUwgZGF5cywgYW5kIHRocm93IGF3
+YXkgdGhlIHRpbWUgcG9ydGlvbg0KCQljaGVja19kYXk9JChkYXRlIC0tZGF0ZT0i
+JGNoZWNrX2RhdGUgJElOVEVSVkFMIGRheXMiICsnJVklbSVkJykNCg0KCQkjIGdl
+dCB0b2RheSdzIGRhdGUsIGFuZCBza2lwIHRoZSBjaGVjayBpZiBpdCdzIG5vdCB3
+aXRoaW4gdGhlIGludGVydmFsDQoJCXRvZGF5PSQoZGF0ZSArJyVZJW0lZCcpDQoJ
+CWlmIFsgJGNoZWNrX2RheSAtZ3QgJHRvZGF5IF07IHRoZW4NCgkJCWxvZyBkZWJ1
+ZyAic2tpcCAkbHZkZXY6IGp1c3QgY2hlY2tlZCBvbiAkY2hlY2tfZGF0ZS4iDQoJ
+CQlyZXR1cm4gMA0KCQlmaQ0KCWZpDQoNCgkjIGNyZWF0ZSBuZXcgc25hcHNob3Qg
+TFYNCglsdmNyZWF0ZSAtcyAtTCAiJHNuYXBzaXplIk0gLW4gIiRzbmFwbHYiICIk
+dmcvJGx2Ig0KDQoJaWYgcGVyZm9ybV9jaGVjayAiL2Rldi8kdmcvJHNuYXBsdiIg
+IiRmc3R5cGUiICIkZXJybG9nIjsgdGhlbg0KCQlsb2cgaW5mbyAiJGx2ZGV2OiBC
+YWNrZ3JvdW5kIGNoZWNrIHN1Y2NlZWRlZC4iDQoJCVsgLXogIiROT0NIRUNLIiBd
+ICYmIHRyeV9kZWxheV9jaGVja3MgIiRsdmRldiIgIiRmc3R5cGUiDQoJZWxzZQ0K
+CQlsb2cgZXJyICJlcnJvciAkbHZkZXY6IEJhY2tncm91bmQgY2hlY2sgZmFpbGVk
+ISBSdW4gb2ZmbGluZSEiDQoJCVsgLXogIiROT0NIRUNLIiBdICYmIHRyeV9mb3Jj
+ZV9jaGVjayAiJGx2ZGV2IiAiJGZzdHlwZSINCg0KCQlpZiBbICIkRU1BSUwiIC1h
+IC16ICIkTk9DSEVDSyIgXTsgdGhlbg0KCQkJbWFpbCAtcyAiRnNjayAkbHZkZXYg
+ZmFpbGVkIiAkRU1BSUwgPCAkZXJybG9nDQoJCWZpDQoJZmkNCg0KCWx2cmVtb3Zl
+IC1mICIkdmcvJHNuYXBsdiINCn0NCg0KIyBjaGVjayB3aGV0aGVyIHRoZSBtYWNo
+aW5lIGlzIG9uIEFDIHBvd2VyOiBpZiBub3QsIHNraXAgZnNjaw0Kb25fYWNfcG93
+ZXIgfHwgZXhpdCAwDQoNCiMgcGFyc2UgdXAgbHZzY2FuIG91dHB1dA0KbHZzY2Fu
+IDI+JjEgfCBncmVwIEFDVElWRSB8IGF3ayAne3ByaW50ICQyO30nIHwgd2hpbGUg
+cmVhZCBERVY7IGRvDQoJIyByZW1vdmUgdGhlIHNpbmdsZSBxdW90ZXMgYXJvdW5k
+IHRoZSBkZXZpY2UgbmFtZQ0KCURFVj0kKGVjaG8gIiRERVYiIHwgdHIgLWQgXCcp
+DQoJaWYgWyAhIC1iICIkREVWIiBdOyB0aGVuDQoJCWlmIFsgISAtZSAiJERFViIg
+XTsgdGhlbg0KCQkJbG9nIGluZm8gInNraXAgJERFVjogbm8gbG9uZ2VyIGV4aXN0
+cy4iDQoJCWVsc2UNCgkJCWxvZyBpbmZvICJza2lwICRERVY6IG5vdCBhIGJsb2Nr
+IGRldmljZS4iDQoJCWZpDQoJCWNvbnRpbnVlDQoJZmkNCg0KCSMgZ2V0IHRoZSBG
+UyB0eXBlOiBibGtpZCBwcmludHMgVFlQRT0iYmxhaCINCglGU1RZUEU9JChibGtp
+ZCAtcyBUWVBFICIkREVWIiB8IGN1dCAtZCc9JyAtZjIgfCB0ciAtZCBcIlwgKQ0K
+CWlmIFsgLXogIiRGU1RZUEUiIF07IHRoZW4NCgkJbG9nIGluZm8gInNraXAgJERF
+VjogY2FuJ3QgZGV0ZXJtaW5lIGRldmljZSB0eXBlLiINCgkJY29udGludWUNCglm
+aQ0KDQoJIyBnZXQgdGhlIHZvbHVtZSBncm91cCBhbmQgbG9naWNhbCB2b2x1bWUg
+bmFtZXMNCglWRz0kKGVjaG8gJChsdnMgLS1ub2hlYWRpbmdzIC1vIHZnX25hbWUg
+IiRERVYiKSkNCglMVj0kKGVjaG8gJChsdnMgLS1ub2hlYWRpbmdzIC1vIGx2X25h
+bWUgIiRERVYiKSkNCg0KCSMgZ2V0IHRoZSBmcmVlIHNwYWNlIGFuZCBMViBzaXpl
+IChpbiBtZWdzKSwgZ3Vlc3MgYXQgdGhlIHNuYXBzaG90IHNpemUsDQoJIyBhbmQg
+c2VlIGhvdyBtdWNoIHRoZSBhZG1pbiB3aWxsIGxldCB1cyB1c2UgKGtlZXBpbmcg
+TUlORlJFRSBhdmFpbGFibGUpDQoJU1BBQ0U9JChsdnMgLS1ub2hlYWRpbmdzIC0t
+dW5pdHMgTSAtbyB2Z19mcmVlICIkREVWInxjdXQgLWQuIC1mMSkNCglTSVpFPSQo
+bHZzIC0tbm9oZWFkaW5ncyAtLXVuaXRzIE0gLW8gbHZfc2l6ZSAiJERFViJ8Y3V0
+IC1kLiAgLWYxKQ0KCVNOQVBTSVpFPSQoKCRTSVpFIC8gNTAwKSkNCglBVkFJTD0k
+KCgkU1BBQ0UgLSAkTUlORlJFRSkpDQoNCgkjIGlmIHdlIGRvbid0IGV2ZW4gaGF2
+ZSBNSU5TTkFQIHNwYWNlIGF2YWlsYWJsZSwgc2tpcCB0aGUgTFYNCglpZiBbICIk
+TUlOU05BUCIgLWd0ICIkQVZBSUwiIC1vICIkQVZBSUwiIC1sZSAwIF07IHRoZW4N
+CgkJbG9nIHdhcm5pbmcgInNraXAgJERFVjogbmVlZCAke01JTlNOQVB9TSBmcmVl
+IHNwYWNlIGluIHZvbHVtZSBncm91cC4iDQoJCWNvbnRpbnVlDQoJZmkNCg0KCSMg
+bWFrZSBzbmFwc2hvdCBsYXJnZSBlbm91Z2ggdG8gaGFuZGxlIGUuZy4gam91cm5h
+bCBhbmQgb3RoZXIgdXBkYXRlcw0KCVsgIiRTTkFQU0laRSIgLWx0ICIkTUlOU05B
+UCIgXSAmJiBTTkFQU0laRT0iJE1JTlNOQVAiDQoNCgkjIGxpbWl0IHNuYXBzaG90
+IHRvIGF2YWlsYWJsZSBzcGFjZSAoVkcgc3BhY2UgbWludXMgbWluLWZyZWUpDQoJ
+WyAiJFNOQVBTSVpFIiAtZ3QgIiRBVkFJTCIgXSAmJiBTTkFQU0laRT0iJEFWQUlM
+Ig0KDQoJIyBkb24ndCBuZWVkIHRvIGNoZWNrIFNOQVBTSVpFIGFnYWluOiBNSU5T
+TkFQIDw9IEFWQUlMLCBNSU5TTkFQIDw9IFNOQVBTSVpFLA0KCSMgYW5kIFNOQVBT
+SVpFIDw9IEFWQUlMLCBjb21iaW5lZCwgbWVhbnMgU05BUFNJWkUgbXVzdCBiZSBi
+ZXR3ZWVuIE1JTlNOQVANCgkjIGFuZCBBVkFJTCwgd2hpY2ggaXMgd2hhdCB3ZSBu
+ZWVkIC0tIGFzc3VtaW5nIEFWQUlMID4gMA0KDQoJY2hlY2tfZnMgIiRWRyIgIiRM
+ViIgIiRGU1RZUEUiICIkU05BUFNJWkUiDQpkb25lIA0K
+
+--Boundary_(ID_w9koj9YTzxX57id0hGYqFg)
+Content-type: application/octet-stream; name=lvcheck.conf; x-unix-mode=0644
+Content-transfer-encoding: BASE64
+Content-disposition: attachment; filename=lvcheck.conf
+
+IyEvYmluL3NoDQojIGx2Y2hlY2sgY29uZmlndXJhdGlvbiBmaWxlDQoNCiMgVGhp
+cyBmaWxlIGZvbGxvd3MgdGhlIHBhdHRlcm4gb2Ygc3NoZF9jb25maWc6DQojIGRl
+ZmF1bHQgdmFsdWVzIGFyZSBzaG93biBoZXJlLCBjb21tZW50ZWQtb3V0Lg0KDQoj
+IEVNQUlMOiBBZGRyZXNzIHRvIHNlbmQgZmFpbHVyZSBub3RpZmljYXRpb25zIHRv
+LiBJZiBlbXB0eSwgZmFpbHVyZQ0KIyBub3RpZmljYXRpb25zIHdpbGwgbm90IGJl
+IHNlbnQuDQojRU1BSUw9J3Jvb3QnDQoNCiMgSU5URVJWQUw6IERheXMgdG8gd2Fp
+dCBiZXR3ZWVuIGNoZWNrcy4gQWxsIExWcyB1c2UgdGhlIHNhbWUgSU5URVJWQUws
+DQojIGJ1dCB0aGUgImRheXMgc2luY2UgbGFzdCBjaGVjayIgdmFsdWUgY2FuIGJl
+IGRpZmZlcmVudCBwZXIgTFYsIHNpbmNlDQojIHRoYXQgdmFsdWUgaXMgc3RvcmVk
+IGluIHRoZSBmaWxlc3lzdGVtIHN1cGVyYmxvY2suDQojSU5URVJWQUw9MzANCg0K
+IyBBQ19VTktOT1dOOiBXaGV0aGVyIHRvIHJ1biB0aGUgZnNjay4qIGNoZWNrcyBp
+ZiB0aGUgc2NyaXB0IGNhbid0IGRldGVybWluZQ0KIyB3aGV0aGVyIHRoZSBtYWNo
+aW5lIGlzIG9uIEFDIHBvd2VyLiBMYXB0b3AgdXNlcnMgd2lsbCB3YW50IHRvIHNl
+dCB0aGlzIHRvDQojIEFCT1JULCB3aGlsZSBzZXJ2ZXIgYW5kIGRlc2t0b3AgdXNl
+cnMgd2lsbCBwcm9iYWJseSB3YW50IHRvIHNldCB0aGlzIHRvDQojIENPTlRJTlVF
+LiAgVGhvc2UgYXJlIHRoZSBvbmx5IHR3byB2YWxpZCB2YWx1ZXMuDQojQUNfVU5L
+Tk9XTj0iQ09OVElOVUUiDQoNCiMgTUlOU05BUDogTWluaW11bSBzbmFwc2hvdCBz
+aXplIHRvIHRha2UsIGluIG1lZ2FieXRlcy4gVGhlIGRlZmF1bHQgc2l6ZSBpcw0K
+IyAxLzUwMCB0aGUgc2l6ZSBvZiB0aGUgbG9naWNhbCB2b2x1bWUsIGJ1dCBpZiB0
+aGF0IGlzIGxlc3MgdGhhbiBNSU5TTkFQLCB0aGUNCiMgc2NyaXB0IHdpbGwgdXNl
+IE1JTlNOQVAgaW5zdGVhZC4gVGhpcyBzaG91bGQgYmUgbGFyZ2UgZW5vdWdoIHRv
+IGhhbmRsZSBlLmcuDQojIGpvdXJuYWwgdXBkYXRlcywgYW5kIG90aGVyIGRpc2sg
+Y2hhbmdlcyB0aGF0IHJlcXVpcmUgKHNlbWktKWNvbnN0YW50IHNwYWNlLg0KI01J
+TlNOQVA9MjU2DQoNCiMgTUlORlJFRTogTWluaW11bSBhbW91bnQgb2Ygc3BhY2Ug
+KGluIG1lZ2FieXRlcykgdG8ga2VlcCBmcmVlIGluIGVhY2ggdm9sdW1lDQojIGdy
+b3VwIHdoZW4gY3JlYXRpbmcgc25hcHNob3RzLg0KI01JTkZSRUU9MA0K
+
+--Boundary_(ID_w9koj9YTzxX57id0hGYqFg)--
