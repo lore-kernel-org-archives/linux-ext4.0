@@ -1,30 +1,21 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15025] Oops in ext4 driver
-Date: Sun, 24 Jan 2010 23:07:24 GMT
-Message-ID: <201001242307.o0ON7Ovw013696@demeter.kernel.org>
-References: <bug-15025-13602@http.bugzilla.kernel.org/>
+From: "Rafael J. Wysocki" <rjw-KKrjLPT3xs0@public.gmane.org>
+Subject: Re: [Bug #15025] Oops in ext4 driver
+Date: Mon, 25 Jan 2010 00:09:34 +0100
+Message-ID: <201001250009.34529.rjw@sisk.pl>
+References: <md-TZL3UUvL.A.FiE.xJMXLB@chimera> <hE3x9c-4KZM.A.IRG.kKMXLB@chimera> <20100124224330.GA2230@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39370 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750845Ab0AXXHY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Jan 2010 18:07:24 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0ON7OKt013697
-	for <linux-ext4@vger.kernel.org>; Sun, 24 Jan 2010 23:07:24 GMT
-In-Reply-To: <bug-15025-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20100124224330.GA2230-6Z/AllhyZU4@public.gmane.org>
+Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15025
-
-
-
-
-
---- Comment #3 from Rafael J. Wysocki <rjw@sisk.pl>  2010-01-24 23:07:23 ---
 On Sunday 24 January 2010, Steinar H. Gunderson wrote:
 > On Sun, Jan 24, 2010 at 11:04:35PM +0100, Rafael J. Wysocki wrote:
 > > The following bug entry is on the current list of known regressions
@@ -34,7 +25,7 @@ On Sunday 24 January 2010, Steinar H. Gunderson wrote:
 > I'm not using 2.6.33 anymore since this bug is a showstopper to me (it's on a
 > production system), so I'm unable to check if it's fixed or not.
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Well, in that case I'll have to close it as 'unreproducible', because no one
+else seems to be able to reproduce it.
+
+Rafael
