@@ -1,40 +1,46 @@
-From: tytso@mit.edu
-Subject: Re: Please reserve INCOMPAT flags
-Date: Sun, 24 Jan 2010 14:48:39 -0500
-Message-ID: <20100124194839.GB4372@thunk.org>
-References: <20090906092546.GU4197@webber.adilger.int>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH] fs: fix filesystem_sync vs write race on rw=>ro remount
+Date: Sun, 24 Jan 2010 19:53:09 +0000
+Message-ID: <20100124195309.GX19799@ZenIV.linux.org.uk>
+References: <87sk9vd92c.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39638 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752058Ab0AXTst (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 Jan 2010 14:48:49 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:42379 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751027Ab0AXTxL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Jan 2010 14:53:11 -0500
 Content-Disposition: inline
-In-Reply-To: <20090906092546.GU4197@webber.adilger.int>
+In-Reply-To: <87sk9vd92c.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 06, 2009 at 11:25:46AM +0200, Andreas Dilger wrote:
-> Ted,
-> in addition to the data-in-dirent INCOMPAT flag Rahul sent the patches
-> for last week, I would like to ensure that we also have the INCOMPAT
-> flag for large EA-in-inode flag reserved.  This patch is going into
-> testing at one of our large customers, and I want to make sure that
-> we don't accidentally get a conflicting INCOMPAT flag assignment.
+On Sun, Jan 24, 2010 at 02:41:15PM +0300, Dmitry Monakhov wrote:
+> Currently on rw=>ro remount we have following race
+> | mount /mnt -oremount,ro | write-task |
+> |-------------------------+------------|
+> |                         | open(RDWR) |
+> | shrink_dcache_sb(sb);   |            |
+> | sync_filesystem(sb);    |            |
+> |                         | write()    |
+> |                         | close()    |
+> | fs_may_remount_ro(sb)   |            |
+> | sb->s_flags = new_flags |            |
+> Later writeback or sync() will result in error due to MS_RDONLY flag
+> In case of ext4 this result in jbd2_start failure on writeback
+> ext4_da_writepages: jbd2_start: 1024 pages, ino 1431; err -30 
+> In fact all others are affected by this error but it is not visible
+> because the skip s_flags check on writeback. For example ext3 check
+> (s_flags & MS_RDONLY) only if page has no buffers during journal start.
 > 
-> #define EXT4_FEATURE_INCOMPAT_EA_INODE	0x0400
-> #define EXT4_FEATURE_INCOMPAT_DIRDATA   0x1000
-> 
-> #define EXT4_EA_INODE_FL	0x00200000 /* Inode used for large EA */
-> 
+> In order to prevent the race we have to block new writers before
+> fs_may_remount_ro() and sync_filesystem(). Let's introduce new
+> sb->s_flags MS_RO_REMOUNT flag for this purpose. But suddenly we have
+> no available space in MS_XXX bits, let's share this bit with MS_REMOUNT.
+> This is possible because MS_REMOUNT used only for passing arguments
+> from flags to sys_mount() and never used in sb->s_flags.
 
-Reserving... but stupid question, do you know if anyone is currently
-using the inode flag 0x00100000?  I want to make sure that's properly
-documented and reserved.
-
-Thanks,
-
-							- Ted
+It's not a solution.  You get an _attempted_ remount ro making writes
+fail, even if it's going to be unsuccessful.  No go...
