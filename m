@@ -1,71 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] mke2fs: fix up topo complaints on regular files
-Date: Sat, 23 Jan 2010 21:50:45 -0600
-Message-ID: <4B5BC395.2050805@redhat.com>
+From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+Subject: Re: 2.6.32.4 - still getting ext4 related crashes
+Date: Sun, 24 Jan 2010 08:19:43 +0100
+Message-ID: <20100124071943.GA4407@nik-comp.linuxbox.cz>
+References: <20100122085035.GA5020@nik-nb2.linuxbox.cz>
+ <20100122213827.GH21263@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="1yeeQ81UyVL57Vl7"
+Cc: Nikola Ciprich <extmaillist@linuxbox.cz>,
+	ext4 maillist <linux-ext4@vger.kernel.org>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24039 "EHLO mx1.redhat.com"
+Received: from gwu.lbox.cz ([62.245.111.132]:39837 "EHLO gwu.lbox.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751650Ab0AXDut (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Jan 2010 22:50:49 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o0O3ombq021235
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Sat, 23 Jan 2010 22:50:49 -0500
-Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o0O3oi6u006941
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 23 Jan 2010 22:50:48 -0500
+	id S932069Ab0AXHT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Jan 2010 02:19:29 -0500
+Content-Disposition: inline
+In-Reply-To: <20100122213827.GH21263@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-mkfsing a plain file would lead to a warning about being unable
-to determine geometry; we should just skip the topology-getting
-if we see that we have a regular file.
 
-This was breaking "make check" but I had missed it since I
-inadvertently stopped running the checks during the Fedora
-RPM build.
+--1yeeQ81UyVL57Vl7
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Also, add a newline to the warning.
+Hi,
+yes, I can reproduce it reliably, I'll give it a try tomorrow and
+report.
+have a nice day.
+nik
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+> I think this problem has been solved in 2.6.33-rc3+, but it's a bunch
+> of patches that need to be backported into the stable branch.  Can you
+> reproduce this failure reliably?  Would you be willing to try
+> 2.6.33-rc5 and letting me know if you can reproduce it?
+>=20
+> Many thanks,
+>=20
+> 					- Ted
+>=20
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 94b4c81..81b34ab 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -47,6 +47,7 @@ extern int optind;
- #endif
- #include <sys/ioctl.h>
- #include <sys/types.h>
-+#include <sys/stat.h>
- #include <libgen.h>
- #include <limits.h>
- #include <blkid/blkid.h>
-@@ -1035,6 +1036,11 @@ static int ext2fs_get_device_geometry(const char *file,
- 	blkid_topology tp;
- 	unsigned long min_io;
- 	unsigned long opt_io;
-+	struct stat statbuf;
-+
-+	/* Nothing to do for a regular file */
-+	if (!stat(file, &statbuf) && S_ISREG(statbuf.st_mode))
-+		return 0;
- 
- 	pr = blkid_new_probe_from_filename(file);
- 	if (!pr)
-@@ -1630,7 +1636,7 @@ got_size:
- 	retval = ext2fs_get_device_geometry(device_name, &fs_param);
- 	if (retval < 0) {
- 		fprintf(stderr,
--			_("warning: Unable to get device geometry for %s"),
-+			_("warning: Unable to get device geometry for %s\n"),
- 			device_name);
- 	} else if (retval) {
- 		printf(_("%s alignment is offset by %lu bytes.\n"),
+--=20
+-------------------------------------
+Nikola CIPRICH
+LinuxBox.cz, s.r.o.
+28. rijna 168, 709 01 Ostrava
 
+tel.:   +420 596 603 142
+fax:    +420 596 621 273
+mobil:  +420 777 093 799
+
+www.linuxbox.cz
+
+mobil servis: +420 737 238 656
+email servis: servis@linuxbox.cz
+-------------------------------------
+
+--1yeeQ81UyVL57Vl7
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.5 (GNU/Linux)
+
+iD8DBQFLW/SP3xdJJrLygV4RAixrAKDm4if1WIrnFjnON223wyQxII8ZEwCeJBMp
+F3fhz8FHmZMLdG3yqHTmtpM=
+=rydp
+-----END PGP SIGNATURE-----
+
+--1yeeQ81UyVL57Vl7--
