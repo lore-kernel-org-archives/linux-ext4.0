@@ -1,52 +1,40 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: Motion to nuke FS_DIRECTIO_FL
-Date: Mon, 25 Jan 2010 09:31:27 +0000
-Message-ID: <1264411887.2449.3.camel@localhost>
-References: <20090906092546.GU4197@webber.adilger.int>
-	 <20100124194839.GB4372@thunk.org>
-	 <E1520682-CD9F-445E-AF33-D5FCDABA1FF8@sun.com>
-	 <20100125080610.GD4372@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
+Date: Mon, 25 Jan 2010 10:29:03 GMT
+Message-ID: <201001251029.o0PAT3lf005480@demeter.kernel.org>
+References: <bug-14256-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100125080610.GD4372@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:49106 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751537Ab0AYK3G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jan 2010 05:29:06 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0PAT3MU005481
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jan 2010 10:29:03 GMT
+In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-
-On Mon, 2010-01-25 at 03:06 -0500, tytso@mit.edu wrote:
-> On Sun, Jan 24, 2010 at 11:18:47PM -0700, Andreas Dilger wrote:
-> > 
-> > It doesn't seem that ext2/3/4 are using the 0x00100000 value itself,
-> > but it seems the VFS is using this value for FS_DIRECTIO_FL.  Should
-> > we reserve this in the ext4 flags also, to avoid collisions?  I'm
-> > not sure what that flag is for, possibly to force all IO to the file
-> > to be uncached?
-> 
-> Hmm, absolutely nothing seems to use FS_DIRECTIO_FL; it looks like it
-> was introduced by GFS2 in commit 128e5eba in 2006 and then dropped in
-> commit c9f6a6bb in 2008, but we never killed the FS_DIRECTIO_FL flag
-> itself in include/linux/fs.h.
-> 
-> The summary line for c9f6a6bb is a bit amusing:
-> 
->     [GFS2] Remove support for unused and pointless flag
-> 
-> Heh.
-> 
-> Sounds like we should just kill it.  Any objections?
-> 
-> 					- Ted
-No. Sounds good to me. It was never used with GFS2 and it a left-over
-from GFS1 which had a flag allowing all "normal" I/O to be turned into
-O_DIRECT I/O depending on an inode flag. The idea failed due to
-alignment restrictions of course and nobody actually used it,
-
-Steve.
+http://bugzilla.kernel.org/show_bug.cgi?id=14256
 
 
+
+
+
+--- Comment #43 from Mikael Pettersson <mikpe@it.uu.se>  2010-01-25 10:28:58 ---
+Please clarify exactly what you do to trigger the busy /.
+
+Did you run the glibc test suite or the specific tst-mutex9 program?
+If so, then without the futex_lock_pi() patch you wouldn't even get to a normal
+shutdown due to the oops, so the busy / may be normal and caused by something
+else.
+
+Also, does the busy / prevent the shutdown from succeeding?
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
