@@ -1,31 +1,40 @@
-From: "Rafael J. Wysocki" <rjw-KKrjLPT3xs0@public.gmane.org>
-Subject: Re: [Bug #15025] Oops in ext4 driver
-Date: Mon, 25 Jan 2010 00:09:34 +0100
-Message-ID: <201001250009.34529.rjw@sisk.pl>
-References: <md-TZL3UUvL.A.FiE.xJMXLB@chimera> <hE3x9c-4KZM.A.IRG.kKMXLB@chimera> <20100124224330.GA2230@uio.no>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
+Date: Mon, 25 Jan 2010 01:37:34 GMT
+Message-ID: <201001250137.o0P1bYii032083@demeter.kernel.org>
+References: <bug-14256-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
-Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20100124224330.GA2230-6Z/AllhyZU4@public.gmane.org>
-Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:51780 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751027Ab0AYBhf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Jan 2010 20:37:35 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0P1bYmD032084
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jan 2010 01:37:34 GMT
+In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sunday 24 January 2010, Steinar H. Gunderson wrote:
-> On Sun, Jan 24, 2010 at 11:04:35PM +0100, Rafael J. Wysocki wrote:
-> > The following bug entry is on the current list of known regressions
-> > from 2.6.32.  Please verify if it still should be listed and let me know
-> > (either way).
-> 
-> I'm not using 2.6.33 anymore since this bug is a showstopper to me (it's on a
-> production system), so I'm unable to check if it's fixed or not.
+http://bugzilla.kernel.org/show_bug.cgi?id=14256
 
-Well, in that case I'll have to close it as 'unreproducible', because no one
-else seems to be able to reproduce it.
 
-Rafael
+
+
+
+--- Comment #42 from carlos.velasco@nimastelecom.com  2010-01-25 01:37:33 ---
+Same problem using 2.6.33-rc5 with the patch.
+
+Unmounting all other currently mounted file systems...
+umount: /: device is busy.
+        (In some cases useful info about processes that use
+         the device is found by lsof(8) or fuser(1))
+
+I don't know why but this only happens with the patch applied.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
