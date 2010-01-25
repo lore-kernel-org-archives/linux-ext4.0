@@ -1,40 +1,25 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14256] kernel BUG at fs/ext3/super.c:435
-Date: Mon, 25 Jan 2010 01:37:34 GMT
-Message-ID: <201001250137.o0P1bYii032083@demeter.kernel.org>
-References: <bug-14256-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: dingdinghua <dingdinghua@nrchpc.ac.cn>
+Subject: [PATCH 0/2]fix an assertion in jbd/jbd2
+Date: Mon, 25 Jan 2010 11:45:02 +0800
+Message-ID: <1264391104-10950-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+Cc: dingdinghua <dingdinghua@nrchpc.ac.cn>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:51780 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751027Ab0AYBhf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Jan 2010 20:37:35 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0P1bYmD032084
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Jan 2010 01:37:34 GMT
-In-Reply-To: <bug-14256-13602@http.bugzilla.kernel.org/>
+Received: from [159.226.39.252] ([159.226.39.252]:34356 "EHLO bwstor.com.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751373Ab0AYEMi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Jan 2010 23:12:38 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=14256
+the patch set is build on linus-git tree.
+Two small fixs in journal_commit_transaction, jbd2_journal_commit_transaction
 
+dingdinghua (2):
+  Jbd: fix an assertion, jh->b_transaction should be
+  Jbd2: fix an assertion, jh->b_transaction should be
 
+ fs/jbd/commit.c  |    3 +--
+ fs/jbd2/commit.c |    3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-
-
---- Comment #42 from carlos.velasco@nimastelecom.com  2010-01-25 01:37:33 ---
-Same problem using 2.6.33-rc5 with the patch.
-
-Unmounting all other currently mounted file systems...
-umount: /: device is busy.
-        (In some cases useful info about processes that use
-         the device is found by lsof(8) or fuser(1))
-
-I don't know why but this only happens with the patch applied.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
