@@ -1,52 +1,52 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH -V2] ext4: unmap the underlying metadata when
- allocating blocks via fallocate
-Date: Mon, 25 Jan 2010 04:02:43 -0500
-Message-ID: <20100125090243.GA28459@thunk.org>
-References: <1262805762-6862-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1262805762-6862-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <4B4F4DB7.1070501@redhat.com>
- <87wrzklesd.fsf@linux.vnet.ibm.com>
- <20100124182445.GA4372@thunk.org>
- <87k4v6py3e.fsf@linux.vnet.ibm.com>
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: Motion to nuke FS_DIRECTIO_FL
+Date: Mon, 25 Jan 2010 09:31:27 +0000
+Message-ID: <1264411887.2449.3.camel@localhost>
+References: <20090906092546.GU4197@webber.adilger.int>
+	 <20100124194839.GB4372@thunk.org>
+	 <E1520682-CD9F-445E-AF33-D5FCDABA1FF8@sun.com>
+	 <20100125080610.GD4372@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51607 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751125Ab0AYJCy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Jan 2010 04:02:54 -0500
-Content-Disposition: inline
-In-Reply-To: <87k4v6py3e.fsf@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20100125080610.GD4372@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 25, 2010 at 10:42:05AM +0530, Aneesh Kumar K. V wrote:
-> My goal was to see if we can drop the BH_New flag when returning
-> preallocated blocks. But now i look at it again i guess you don't need
-> to take this patch. We cannot unmap underlying meta data during
-> fallocate because even if we remove the old mapping for the blocks,
-> we could reboot and later somebody(e2fsprogs) can directly read the blocks
-> and create a bh with old data. So i guess we should be doing
-> unmap_underlying_blocks when we are returning blocks to userspace or
-> when we actually zero out blocks.
+Hi,
 
-OK, so I'll drop this patch from the patch queue, and will do a full
-test run (XFSQA -g auto using both 1k and 4k block sizes) of the
-following patches:
+On Mon, 2010-01-25 at 03:06 -0500, tytso@mit.edu wrote:
+> On Sun, Jan 24, 2010 at 11:18:47PM -0700, Andreas Dilger wrote:
+> > 
+> > It doesn't seem that ext2/3/4 are using the 0x00100000 value itself,
+> > but it seems the VFS is using this value for FS_DIRECTIO_FL.  Should
+> > we reserve this in the ext4 flags also, to avoid collisions?  I'm
+> > not sure what that flag is for, possibly to force all IO to the file
+> > to be uncached?
+> 
+> Hmm, absolutely nothing seems to use FS_DIRECTIO_FL; it looks like it
+> was introduced by GFS2 in commit 128e5eba in 2006 and then dropped in
+> commit c9f6a6bb in 2008, but we never killed the FS_DIRECTIO_FL flag
+> itself in include/linux/fs.h.
+> 
+> The summary line for c9f6a6bb is a bit amusing:
+> 
+>     [GFS2] Remove support for unused and pointless flag
+> 
+> Heh.
+> 
+> Sounds like we should just kill it.  Any objections?
+> 
+> 					- Ted
+No. Sounds good to me. It was never used with GFS2 and it a left-over
+from GFS1 which had a flag allowing all "normal" I/O to be turned into
+O_DIRECT I/O depending on an inode flag. The idea failed due to
+alignment restrictions of course and nobody actually used it,
 
-Aneesh Kumar K.V (3):
-      ext4: Handle -EDQUOT error on write
-      ext4: Fix quota accounting error with fallocate
-      ext4: Drop EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE flag
+Steve.
 
-Of all of the patches in the ext4 patch queue, these seem to be the
-ones which need to be urgently pushed to Linus before 2.6.33.
 
-Any objections, or nominations for other patches that should go in
-before 2.6.33, please speak up now...
-
-						- Ted
