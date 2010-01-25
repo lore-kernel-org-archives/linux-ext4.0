@@ -1,54 +1,68 @@
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2] ext4: unmap the underlying metadata when allocating
- blocks via fallocate
-Date: Mon, 25 Jan 2010 23:51:06 +0530
-Message-ID: <87hbqaoxkd.fsf@linux.vnet.ibm.com>
-References: <1262805762-6862-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<1262805762-6862-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<4B4F4DB7.1070501@redhat.com> <87wrzklesd.fsf@linux.vnet.ibm.com>
-	<20100124182445.GA4372@thunk.org> <87k4v6py3e.fsf@linux.vnet.ibm.com>
-	<20100125090243.GA28459@thunk.org> <4B5DBC15.9030004@redhat.com>
-	<20100125175512.GC28459@thunk.org>
+From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+Subject: Re: ext4_fiemap gives 0 extents for files smaller than a block
+ (patch included)
+Date: Mon, 25 Jan 2010 20:04:24 +0100
+Message-ID: <1264446264.27189.3.camel@michlmayr>
+References: <1257360161.22057.16.camel@michlmayr>
+	 <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: tytso@mit.edu, Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: 474597@bugs.launchpad.net, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:52159 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751248Ab0AYSVS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jan 2010 13:21:18 -0500
-Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
-	by e23smtp01.au.ibm.com (8.14.3/8.13.1) with ESMTP id o0PIJN2o019038
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jan 2010 05:19:23 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o0PIGQtG1503330
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jan 2010 05:16:26 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o0PILG70000759
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jan 2010 05:21:16 +1100
-In-Reply-To: <20100125175512.GC28459@thunk.org>
+Received: from gv-out-0910.google.com ([216.239.58.190]:3404 "EHLO
+	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754237Ab0AYTE3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jan 2010 14:04:29 -0500
+In-Reply-To: <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 25 Jan 2010 12:55:12 -0500, tytso@mit.edu wrote:
-> On Mon, Jan 25, 2010 at 09:43:17AM -0600, Eric Sandeen wrote:
-> > > Aneesh Kumar K.V (3):
-> > >       ext4: Handle -EDQUOT error on write
-> > >       ext4: Fix quota accounting error with fallocate
-> > >       ext4: Drop EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE flag
-> > 
-> > You may wish to add the patch from Jiaying (via me) as well, to handle
-> > the blocks-past-eof case, if it's had sufficient review.
+Do you have any news on this bug?
+
+Will you apply the patch? Do you not plan to apply the patch?
+Do you need an update of the patch?
+
+Regards
+Leonard
+
+Am Mittwoch, den 04.11.2009, 12:44 -0700 schrieb Andreas Dilger:
+> On 2009-11-04, at 11:42, Leonard Michlmayr wrote:
+> > Fiemap (ioctl) does not return any extents for small files on ext4.
+> > (fm_start=0, fm_length=filesize)
+> >
+> > File affected: fs/ext4/extents.c
+> >
+> > I found the reason of the bug: wrong rounding. It will not only affect
+> > small files, but any request that overlaps an extent boundary by less
+> > that blocksize.
 > 
-> I'm going to merge it, but I only want to push regressions to Linus at
-> this stage.  We can add the blocks-past-EOF for the next merge window,
-> and mark it for merging via -stable, but it's really late for
-> non-regression bug fixes at this point.
-
-I guess we can push i_size corruption with blocks past EOF in this merge
-window. The other part of the patch get/set flags via chattr can be
-pushed for the next merge window.
-
--aneesh
+> >
+> > @@ -3700,7 +3701,8 @@
+> >  		start_blk = start >> inode->i_sb->s_blocksize_bits;
+> > -		len_blks = len >> inode->i_sb->s_blocksize_bits;
+> > +		end_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
+> > +		len_blks = end_blk - start_blk + 1;
+> 
+> I don't think this is quite correct either.  For example, if blocksize  
+> is 1024
+> and start is 1023 (start_blk = 0) and len is 2 (end = 1024, end_blk =  
+> 1) then
+> len_blks = 2 which is too much.
+> 
+> I think the right calculation here is:
+> 
+>                    end_blk = (start + len + inode->i_sb->s_blocksize -  
+> 1) >>
+>                              inode->i_sb->s_blocksize_bits;
+>                    len_blks = end_blk - start_blk;
+> 
+> I'm also wondering (unrelated to this bug) why inode->i_sb- 
+>  >s_blocksize_bits
+> is used instead of inode->i_blkbits?  That is probably worth a  
+> separate cleanup
+> patch.
+...
 
