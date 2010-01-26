@@ -1,60 +1,46 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: ext4 quota tests?
-Date: Tue, 26 Jan 2010 19:35:00 +0100
-Message-ID: <20100126183500.GJ3187@quack.suse.cz>
+Date: Tue, 26 Jan 2010 19:51:13 +0100
+Message-ID: <20100126185113.GK3187@quack.suse.cz>
 References: <6601abe91001260931i39328e77kfe984834275c1282@mail.gmail.com>
+ <4B5F32FE.5050800@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: Curt Wohlgemuth <curtw@google.com>, Jan Kara <jack@suse.cz>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59352 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:59712 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753829Ab0AZSey (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jan 2010 13:34:54 -0500
+	id S1753226Ab0AZSvF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jan 2010 13:51:05 -0500
 Content-Disposition: inline
-In-Reply-To: <6601abe91001260931i39328e77kfe984834275c1282@mail.gmail.com>
+In-Reply-To: <4B5F32FE.5050800@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Curt,
+On Tue 26-01-10 12:22:54, Eric Sandeen wrote:
+> Curt Wohlgemuth wrote:
+> > Hi Jan:
+> > 
+> > I heard from the ext4 conference call yesterday that you might have
+> > some quota tests that would be useful.  Can you give me a pointer to
+> > where I might find them?
+> > 
+> > Thanks,
+> > Curt
+> 
+> I'm the one who suggested that Jan -might- have some quota test
+> infrastructure, but I don't know for sure.  :)
+> 
+> Jan, we'd love to pull anything you might have into xfstests if
+> we can, I think.
+  Yes, that would be a good idea. As I wrote to Curt, I don't have anything
+generally usable. But for example extending fsstress and fsx tests with
+quota checking should be pretty straightforward. And the tar test I have
+described could be added as well.
 
-On Tue 26-01-10 09:31:24, Curt Wohlgemuth wrote:
-> I heard from the ext4 conference call yesterday that you might have
-> some quota tests that would be useful.  Can you give me a pointer to
-> where I might find them?
-  Hum, I have some scripts I use for testing of quota but it's nothing
-too clever. What exactly would you like to test? What generally needs to be
-tested from filesystem POV (since I guess that's what you're interested in)
-is whether quota accounting matches the real usage. So what I do is:
-
-run the load I want to check
-quotaoff -vu $mntpoint
-repquota -u $mntpoint | sed -ne '6,$p' | tr -s ' ' | sort >before_check
-quotacheck -vu $mntpoint
-repquota -u $mntpoint | sed -ne '6,$p' | tr -s ' ' | sort >after_check
-diff before_check after_check >/dev/null || echo "Quota usage differs!"
-
-For "load I want to check" I usually use fsstress, fsx-linux or similar
-programs.
-
-Oh, and when I want to be nasty, I also test load like:
-as root do:
-  while true; do
-    BLOCKLIMIT=$minblimit+$((RANDOM%($maxblimit-$minblimit)))
-    INODELIMIT=$minilimit+$((RANDOM%($maxilimit-$minilimit)))
-    setquota -u testuser 0 $BLOCKLIMIT 0 $INODELIMIT $mntpoint
-    sleep 1
-  done
-
-as testuser do:
-  while true; do tar xzf some_larger_archive.tar.gz; rm -rf archive; done
-
-Possibly you might also want to run 'sync' in parallel once in a while to
-make the mix more interesting. The point is to test whether allocation
-failure paths work right...
-
-								Honza
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
