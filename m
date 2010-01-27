@@ -1,35 +1,59 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: ext4_da_block_invalidatepages() question
-Date: Wed, 27 Jan 2010 20:34:24 +0800
-Message-ID: <20100127123424.GA5062@localhost>
-References: <20100126133608.GC25407@localhost> <20100126153222.GI3187@quack.suse.cz> <20100127015339.GA8132@localhost> <20100127122528.GB3149@quack.suse.cz>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: [Bug 14830] When other IO is running sync times go to 10 to 20 minutes
+Date: Wed, 27 Jan 2010 14:06:25 +0100
+Message-ID: <20100127130625.GQ7517@skl-net.de>
+References: <bug-14830-13602@http.bugzilla.kernel.org/> <201001251119.o0PBJDXw012169@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="w1A23YewkF9s+fLd"
+Cc: linux-ext4@vger.kernel.org
+To: Michael Godfrey <godfrey@isl.stanford.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:1536 "EHLO mga02.intel.com"
+Received: from systemlinux.org ([83.151.29.59]:50535 "EHLO m18s25.vlinux.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752799Ab0A0Mee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Jan 2010 07:34:34 -0500
+	id S1753140Ab0A0NiH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jan 2010 08:38:07 -0500
 Content-Disposition: inline
-In-Reply-To: <20100127122528.GB3149@quack.suse.cz>
+In-Reply-To: <201001251119.o0PBJDXw012169@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 27, 2010 at 04:25:28AM -0800, Jan Kara wrote:
-> On Wed 27-01-10 09:53:39, Wu Fengguang wrote:
 
-> > The patch includes a cleanup and a bug fix, both looks OK to me.
-> > But if we can split it, the bug fix would be good candidate for
-> > the stable kernel?
->   I don't think we want to push this to -stable kernel. As I wrote, this
-> code is called only in case user is going to loose written data which is a
-> bug on it's own so loosing a few page references is nothing compared to
-> that.
+--w1A23YewkF9s+fLd
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Ah OK. Thanks for the patch.
+On 11:19, bugzilla-daemon@bugzilla.kernel.org wrote:
+> After kill -9 of the sync run it took about 20 minutes before=20
+> it died.
 
-Cheers,
-Fengguang
+I was seeing similar behaviour on one of our servers, and changing
+the io scheduler to noop fixed things for me. So it seems to be an
+issue with cfq which is somehow triggered by ext4 but not by ext3.
+
+To change the IO scheduler, just execute
+
+	echo noop > /sys/block/sda/queue/scheduler
+
+(replace sda if necessary).
+
+Just my 2 cents
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--w1A23YewkF9s+fLd
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFLYDpQWto1QDEAkw8RApAIAJsEnMS90FWnAJQjrsfhbe1KHn67CwCbB2nv
+D8z/SEivUOQHaW9hAZp3fA4=
+=y8KV
+-----END PGP SIGNATURE-----
+
+--w1A23YewkF9s+fLd--
