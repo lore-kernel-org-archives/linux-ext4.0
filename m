@@ -1,35 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15018] ext4 backtraces out of nowhere
-Date: Tue, 26 Jan 2010 23:20:21 GMT
-Message-ID: <201001262320.o0QNKLM5025101@demeter.kernel.org>
-References: <bug-15018-13602@http.bugzilla.kernel.org/>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: ext4_da_block_invalidatepages() question
+Date: Wed, 27 Jan 2010 09:53:39 +0800
+Message-ID: <20100127015339.GA8132@localhost>
+References: <20100126133608.GC25407@localhost> <20100126153222.GI3187@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"tytso@mit.edu" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:34449 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753135Ab0AZXUV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jan 2010 18:20:21 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.2) with ESMTP id o0QNKL1D025102
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jan 2010 23:20:21 GMT
-In-Reply-To: <bug-15018-13602@http.bugzilla.kernel.org/>
+Received: from mga01.intel.com ([192.55.52.88]:55154 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752539Ab0A0CjI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jan 2010 21:39:08 -0500
+Content-Disposition: inline
+In-Reply-To: <20100126153222.GI3187@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15018
+On Tue, Jan 26, 2010 at 08:32:22AM -0700, Jan Kara wrote:
 
+> @@ -2127,17 +2127,16 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+>  			break;
+>  		for (i = 0; i < nr_pages; i++) {
+>  			struct page *page = pvec.pages[i];
+> -			index = page->index;
+> -			if (index > end)
+> +			if (page->index > end)
+>  				break;
+> -			index++;
+> -
+>  			BUG_ON(!PageLocked(page));
+>  			BUG_ON(PageWriteback(page));
+>  			block_invalidatepage(page, 0);
+>  			ClearPageUptodate(page);
+>  			unlock_page(page);
+>  		}
+> +		index = pvec.pages[nr_pages - 1]->index + 1;
+> +		pagevec_release(&pvec);
+>  	}
+>  	return;
+>  }
 
+The patch includes a cleanup and a bug fix, both looks OK to me.
+But if we can split it, the bug fix would be good candidate for
+the stable kernel?
 
-
-
---- Comment #5 from Jan Kara <jack@suse.cz>  2010-01-26 23:20:19 ---
-Created an attachment (id=24739)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=24739)
-Patch fixing deadlock in ext4_da_reserve_space
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks,
+Fengguang
