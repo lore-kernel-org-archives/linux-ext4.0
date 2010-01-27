@@ -1,53 +1,51 @@
-From: =?GB2312?B?tqG2qLuq?= <dingdinghua85@gmail.com>
-Subject: Re: journal forget may introduce buffer aliasing problem?
-Date: Wed, 27 Jan 2010 13:58:54 +0800
-Message-ID: <7bb361261001262158q37fe060br93c751c1152c5738@mail.gmail.com>
-References: <7bb361261001261944v7b5d698bn9da51d1f418c1594@mail.gmail.com>
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [Bug 15018] ext4 backtraces out of nowhere
+Date: Wed, 27 Jan 2010 15:16:30 +0530
+Message-ID: <87636nj2x5.fsf@linux.vnet.ibm.com>
+References: <bug-15018-13602@http.bugzilla.kernel.org/>
+	<201001262319.o0QNJNp0024737@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f186.google.com ([209.85.223.186]:42823 "EHLO
-	mail-iw0-f186.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751229Ab0A0F6z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jan 2010 00:58:55 -0500
-Received: by iwn16 with SMTP id 16so806883iwn.5
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Jan 2010 21:58:54 -0800 (PST)
-In-Reply-To: <7bb361261001261944v7b5d698bn9da51d1f418c1594@mail.gmail.com>
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:38013 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753343Ab0A0Jqh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jan 2010 04:46:37 -0500
+Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [202.81.31.246])
+	by e23smtp03.au.ibm.com (8.14.3/8.13.1) with ESMTP id o0R9hdEF017437
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Jan 2010 20:43:39 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o0R9fk6L1622072
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Jan 2010 20:41:47 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o0R9kZfu025370
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Jan 2010 20:46:35 +1100
+In-Reply-To: <201001262319.o0QNJNp0024737@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Oops, I haven't seen unmap_underlying_metadata code in __block_prepare_=
-write
-so just forget this mail, sorry.
+On Tue, 26 Jan 2010 23:19:23 GMT, bugzilla-daemon@bugzilla.kernel.org wrote:
+> http://bugzilla.kernel.org/show_bug.cgi?id=15018
+> 
+> 
+> 
+> 
+> 
+> --- Comment #4 from Jan Kara <jack@suse.cz>  2010-01-26 23:19:18 ---
+> Hmm, I don't like the code in ext4_da_reserve_space even after your patch - the
+> retries are duplicated with the ones from ext4_da_write_begin and calling
+> write_inode_now from ext4_da_write_begin doesn't make too much sense either -
+> why not write all inodes with delayed allocation if we want to write something?
+> 
+> Actually, instead of retrying delayed allocation, I think it makes more sense
+> to just fall back to normal allocation. Attached patch does that and it also
+> allows me to completely fill user's quota.
+> 
 
-2010/1/27 =B6=A1=B6=A8=BB=AA <dingdinghua85@gmail.com>:
-> Hi all:
->       The following is my analysis(if wrong, please point it out),
-> may be I can send a patch out if it's a bug.
->       If buffer_head belongs to comitting transaction,
-> jbd2_journal_forget do nothing except discard it from running
-> transaction. So this buffer will happily be inserted
-> into committing_transaction's checkpoint list and do write-back work,
-> then this buffer may be re-used as data-block, then there are two
-> buffer_heads maps to the same block, buffer aliasing occurs, and we
-> can't control the writeback order of the two buffer heads, fs may be
-> inconsistent.
->      The same thing will happen if buffer_head doesn't belongs to
-> running or committing transaction, but lays in checkpoint list.
->
-> --
-> =B6=A1=B6=A8=BB=AA
->
+Switching to non delayed allocation may not guarantee that we succeed in block
+allocation. For quota we really need to flush this inode. Even if we
+flush other inodes of other user we may still get a quota error
 
+-aneesh
 
-
---=20
-=B6=A1=B6=A8=BB=AA
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
