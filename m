@@ -1,56 +1,70 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Possible ext4 data corruption with large files and async I/O
-Date: Fri, 29 Jan 2010 12:18:14 -0600
-Message-ID: <4B632666.1080002@redhat.com>
-References: <4B62F688.70404@vectorwise.com>
+Subject: [PATCH] fix type of "offset" in ext4_io_end
+Date: Fri, 29 Jan 2010 12:24:04 -0600
+Message-ID: <4B6327C4.4000100@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Giel de Nijs <giel@vectorwise.com>
+Cc: Giel de Nijs <giel@vectorwise.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9392 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22464 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750974Ab0A2SSR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jan 2010 13:18:17 -0500
-In-Reply-To: <4B62F688.70404@vectorwise.com>
+	id S1752088Ab0A2SYJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Jan 2010 13:24:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Giel de Nijs wrote:
-> Dear ext4 devs,
-> 
-> Today I hit a situation where seemingly blocks did not get written to
-> disk. I've narrowed it down to the following test case.
-> 
-> Running Fedora Core 12 with kernel 2.6.31.9-174.fc12.x86_64, both on an
-> i7 920 and a Core2 Q6600, I executed the following steps:
-> 
-> - create a file
-> - with kernel async i/o, write a 512kb (haven't tried other sizes) block
-> to an offset >4GB, effectively creating a large sparse file
-> - again with async i/o, write a 512kb block to an offset smaller than
-> the previous write, but >4GB
-> - wait for the kernel async i/o to tell you the writes have succeeded
-> 
-> Now, looking at the file, the second write never seems to have happened.
-> When doing this on the same machines on ext3, the behavior is as expected.
-> 
-> As far as I can tell (from the bigger program that triggered this), all
-> writes >4GB but < EOF to a sparse file with async i/o aren't executed.
-> When creating a large file first (i.e., with dd), everything does work
-> as expected.
-> 
-> Attached is some C code that triggers this bug for me.
-> 
-> If you need more information or want me to test some more things, please
-> do ask.
-> 
-> Thanks,
-> Giel de Nijs
-> VectorWise
-> 
+The "offset" member in ext4_io_end holds bytes, not
+blocks, so ext4_lblk_t is wrong - and too small (u32)
 
-Ok, got it, will send a patch - thanks.
+This caused the testcase "Possible ext4 data corruption
+with large files and async I/O" sent by Giel to fail when it
+wrapped around to 0.
 
--Eric
+Also fix up the type of arguments to
+ext4_convert_unwritten_extents(), it gets ssize_t from
+ext4_end_aio_dio_nolock() and ext4_ext_direct_IO()
+
+Reported-by: Giel de Nijs <giel@vectorwise.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d0a2afb..4a825c1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -139,8 +139,8 @@ typedef struct ext4_io_end {
+ 	struct inode		*inode;		/* file being written to */
+ 	unsigned int		flag;		/* unwritten or not */
+ 	int			error;		/* I/O error code */
+-	ext4_lblk_t		offset;		/* offset in the file */
+-	size_t			size;		/* size of the extent */
++	loff_t			offset;		/* offset in the file */
++	ssize_t			size;		/* size of the extent */
+ 	struct work_struct	work;		/* data work queue */
+ } ext4_io_end_t;
+ 
+@@ -1740,7 +1740,7 @@ extern void ext4_ext_release(struct super_block *);
+ extern long ext4_fallocate(struct inode *inode, int mode, loff_t offset,
+ 			  loff_t len);
+ extern int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+-			  loff_t len);
++			  ssize_t len);
+ extern int ext4_get_blocks(handle_t *handle, struct inode *inode,
+ 			   sector_t block, unsigned int max_blocks,
+ 			   struct buffer_head *bh, int flags);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 8b8bae4..9333dc9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3547,7 +3547,7 @@ retry:
+  * Returns 0 on success.
+  */
+ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+-				    loff_t len)
++				    ssize_t len)
+ {
+ 	handle_t *handle;
+ 	ext4_lblk_t block;
+
