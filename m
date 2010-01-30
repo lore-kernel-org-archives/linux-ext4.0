@@ -1,45 +1,63 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH V2] fix type of "offset" in ext4_io_end
-Date: Fri, 29 Jan 2010 15:32:04 -0500
-Message-ID: <20100129203204.GE2209@localhost.localdomain>
-References: <4B6327C4.4000100@redhat.com> <4B6344E7.9050503@redhat.com>
+From: "kyle" <kylewong@southa.com>
+Subject: need help with getting into a corrupted sub directory
+Date: Sat, 30 Jan 2010 14:07:50 +0800
+Message-ID: <004d01caa172$8d846c10$6401a8c0@kyle>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Giel de Nijs <giel@vectorwise.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain;
+	format=flowed;
+	charset="big5";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30033 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753098Ab0A2UcU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jan 2010 15:32:20 -0500
-Content-Disposition: inline
-In-Reply-To: <4B6344E7.9050503@redhat.com>
+Received: from xylophone.i-cable.com ([203.83.115.99]:58622 "HELO
+	xylophone.i-cable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751320Ab0A3GOg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jan 2010 01:14:36 -0500
+Received: from kyle (cm203-168-245-60.hkcable.com.hk [203.168.245.60])
+	by xenon.i-cable.com (8.13.5/8.13.5) with SMTP id o0U67puZ009701
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jan 2010 14:07:52 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 29, 2010 at 02:28:23PM -0600, Eric Sandeen wrote:
-> The "offset" member in ext4_io_end holds bytes, not
-> blocks, so ext4_lblk_t is wrong - and too small (u32)
-> 
-> This caused the testcase "Possible ext4 data corruption
-> with large files and async I/O" sent by Giel to fail when it
-> wrapped around to 0.
-> 
-> Also fix up the type of arguments to
-> ext4_convert_unwritten_extents(), it gets ssize_t from
-> ext4_end_aio_dio_nolock() and ext4_ext_direct_IO()
-> 
-> Reported-by: Giel de Nijs <giel@vectorwise.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> V2: Post-review Josef spotted another size_t in ext4_end_aio_dio_nolock()
-> 
+Hi,
 
-Reviewed-by: Josef Back <josef@redhat.com>
+I have a ext3 filesystem created inside a problematic seagate ST3500320AS
+drive. The drive will just shut itself down automatically whenever it hits
+any read error. Only way to wake it up it to cold power off / on the
+computer.
 
-probably should have said something before replying to the last email :).
-Thanks,
+Now, my ext3 fs is /dev/sde2
 
-Josef
+I can mount it without any error:
+mount /dev/sde2 /tmp
+
+then, I can 'cd' into /tmp to get a sub directory listing.
+let's says there's
+
+Hello
+World
+users
+public
+
+now when I do 'ls public',  I get:
+EXT3-fs error (device sde2): ext3_get_inode_loc: unable to read inode
+block - inode: 26181633, block=26181634
+ls: cannot access /tmp/public: Input/output error
+
+'sde' will disappeared from the system, need power off / on can get it back.
+
+After cold boot, I know there's a subdirectory called "EL" inside "public",
+if I do a 'ls public/EL',
+I get:
+EXT3-fs error (device sde2): ext3_get_inode_loc: unable to read inode
+block - inode: 26181633, block=26181634
+ls: cannot access /tmp/public/EL: Input/output error
+
+Is there any way I can get into subdirectory of "public" without the need of
+read inode block 26181633/26181634 ?
+Is it still possible to get a full subdirectory listing of "public" ?
+
+Thanks a lot,
+kyle
+
