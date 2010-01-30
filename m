@@ -1,68 +1,53 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: need help with getting into a corrupted sub directory
-Date: Sat, 30 Jan 2010 00:24:09 -0700
-Message-ID: <27FC5E2E-2F85-478A-95F2-1B9ED9D07690@sun.com>
-References: <004d01caa172$8d846c10$6401a8c0@kyle>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] xfstests: 223 - test file alignment on stripe geometry
+Date: Sat, 30 Jan 2010 05:52:36 -0500
+Message-ID: <20100130105236.GA18286@infradead.org>
+References: <4B621529.20708@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: kyle <kylewong@southa.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:36231 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750919Ab0A3HYN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jan 2010 02:24:13 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o0U7OAwC021588
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jan 2010 23:24:10 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KX100H00TKQGM00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 29 Jan 2010 23:24:10 -0800 (PST)
-In-reply-to: <004d01caa172$8d846c10$6401a8c0@kyle>
+Received: from bombadil.infradead.org ([18.85.46.34]:51306 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751295Ab0A3Kwi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jan 2010 05:52:38 -0500
+Content-Disposition: inline
+In-Reply-To: <4B621529.20708@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-01-29, at 23:07, kyle wrote:
-> I have a ext3 filesystem created inside a problematic seagate  
-> ST3500320AS
-> drive. The drive will just shut itself down automatically whenever  
-> it hits
-> any read error. Only way to wake it up it to cold power off / on the
-> computer.
+> +# real QA test starts here
+> +_supported_fs xfs ext4
 
-Strange, I had to do the same for a friend, and I think it was the  
-same drive.
-You should put it into a USB enclosure - it speeds things up a lot.
+I'd make this generic and just do the notrun in scratch_mkfs_geom for
+non-supported filesystems.
 
-> 'sde' will disappeared from the system, need power off / on can get  
-> it back.
+> +scratch_mkfs_geom()
+> +{
 
-To get most of the data off the dying drive, use rsync -v, and create  
-a list
-of files to exclude, when you detect they cause the drive to die.
+And I'd throw this one into common.rc.
 
-> After cold boot, I know there's a subdirectory called "EL" inside  
-> "public",
-> if I do a 'ls public/EL',
-> I get:
-> EXT3-fs error (device sde2): ext3_get_inode_loc: unable to read inode
-> block - inode: 26181633, block=26181634
-> ls: cannot access /tmp/public/EL: Input/output error
->
-> Is there any way I can get into subdirectory of "public" without the  
-> need of
-> read inode block 26181633/26181634 ?
-> Is it still possible to get a full subdirectory listing of "public" ?
+> +=== Testing size 1073745920 falloc on 128k stripe ===
+> +SCRATCH_MNT/file-1073745920-falloc: well-aligned
+> diff --git a/common.rc b/common.rc
+> index 6424871..97513cc 100644
+> --- a/common.rc
+> +++ b/common.rc
+> @@ -292,7 +292,7 @@ _scratch_mkfs()
+>          $MKFS_UDF_PROG $MKFS_OPTIONS $* $SCRATCH_DEV > /dev/null
+>  	;;
+>      *)
+> -	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV > /dev/null
+> +	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
 
+Hmm, doesn't this change break other testcase?  Anyway needs some
+rationale in the changelog.
 
-debugfs is your friend.  It can open and list a directory by inode  
-number, and dump the files to another filesystem.
+> index 0000000..fa005b2
+> --- /dev/null
+> +++ b/src/fibmap.c
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+This is a bit misnamed as it's not a generic fibmap tool but rather
+a specific tool comparing the bmap to the sunit alignment.
