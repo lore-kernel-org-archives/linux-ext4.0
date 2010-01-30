@@ -1,41 +1,53 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH V2] fix type of "offset" in ext4_io_end
-Date: Sat, 30 Jan 2010 12:34:58 -0500
-Message-ID: <20100130173458.GB788@thunk.org>
-References: <4B6327C4.4000100@redhat.com>
- <4B6344E7.9050503@redhat.com>
+Subject: Re: need help with getting into a corrupted sub directory
+Date: Sat, 30 Jan 2010 12:44:04 -0500
+Message-ID: <20100130174404.GC788@thunk.org>
+References: <004d01caa172$8d846c10$6401a8c0@kyle>
+ <27FC5E2E-2F85-478A-95F2-1B9ED9D07690@sun.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Giel de Nijs <giel@vectorwise.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: kyle <kylewong@southa.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46440 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:39092 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750946Ab0A3RfC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 30 Jan 2010 12:35:02 -0500
+	id S1752600Ab0A3RoJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 30 Jan 2010 12:44:09 -0500
 Content-Disposition: inline
-In-Reply-To: <4B6344E7.9050503@redhat.com>
+In-Reply-To: <27FC5E2E-2F85-478A-95F2-1B9ED9D07690@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 29, 2010 at 02:28:23PM -0600, Eric Sandeen wrote:
-> The "offset" member in ext4_io_end holds bytes, not
-> blocks, so ext4_lblk_t is wrong - and too small (u32)
+On Sat, Jan 30, 2010 at 12:24:09AM -0700, Andreas Dilger wrote:
+> On 2010-01-29, at 23:07, kyle wrote:
+> >I have a ext3 filesystem created inside a problematic seagate
+> >ST3500320AS
+> >drive. The drive will just shut itself down automatically whenever
+> >it hits
+> >any read error. Only way to wake it up it to cold power off / on the
+> >computer.
 > 
-> This caused the testcase "Possible ext4 data corruption
-> with large files and async I/O" sent by Giel to fail when it
-> wrapped around to 0.
+> Strange, I had to do the same for a friend, and I think it was the
+> same drive.
+> You should put it into a USB enclosure - it speeds things up a lot.
 > 
-> Also fix up the type of arguments to
-> ext4_convert_unwritten_extents(), it gets ssize_t from
-> ext4_end_aio_dio_nolock() and ext4_ext_direct_IO()
+> >'sde' will disappeared from the system, need power off / on can
+> >get it back.
 > 
-> Reported-by: Giel de Nijs <giel@vectorwise.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
+> To get most of the data off the dying drive, use rsync -v, and
+> create a list
+> of files to exclude, when you detect they cause the drive to die.
 
-This looks important enough (and low risk enough) to push to Linus
-before the next merge window.   Comments?
+An image copy of the disk will tend to recover more than accessing the
+disk via the file system.  I haven't run across the failure mode where
+accessing a certain magic block causes the disk to die and require a
+power cycle, but in that case what I'd probably do is enhance the
+dd_rescue program to take a list of block numbers which it should skip
+over....
+
+This will require some programming, but it's probably the best way to
+recover the most amount of data.  (Oh, and afterwards someone should
+send the changes back to Kurt Garloff, since it would be a very useful
+enhancement to dd_rescue.)
 
 						- Ted
