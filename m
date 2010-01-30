@@ -1,53 +1,81 @@
-From: tytso@mit.edu
-Subject: Re: need help with getting into a corrupted sub directory
-Date: Sat, 30 Jan 2010 12:44:04 -0500
-Message-ID: <20100130174404.GC788@thunk.org>
-References: <004d01caa172$8d846c10$6401a8c0@kyle>
- <27FC5E2E-2F85-478A-95F2-1B9ED9D07690@sun.com>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH] xfstests 224: test aio hole-fill at 4g
+Date: Sat, 30 Jan 2010 12:31:26 -0600
+Message-ID: <4B647AFE.5000507@sandeen.net>
+References: <4B633F9A.8000404@sandeen.net> <20100130105501.GA22909@infradead.org> <4B645B0D.205@sandeen.net> <20100130172502.GA788@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: kyle <kylewong@southa.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>, Giel de Nijs <giel@vectorwise.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39092 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752600Ab0A3RoJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 30 Jan 2010 12:44:09 -0500
-Content-Disposition: inline
-In-Reply-To: <27FC5E2E-2F85-478A-95F2-1B9ED9D07690@sun.com>
+Received: from 64-131-60-146.usfamily.net ([64.131.60.146]:58395 "EHLO
+	mail.sandeen.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751553Ab0A3Sb1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jan 2010 13:31:27 -0500
+In-Reply-To: <20100130172502.GA788@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 30, 2010 at 12:24:09AM -0700, Andreas Dilger wrote:
-> On 2010-01-29, at 23:07, kyle wrote:
-> >I have a ext3 filesystem created inside a problematic seagate
-> >ST3500320AS
-> >drive. The drive will just shut itself down automatically whenever
-> >it hits
-> >any read error. Only way to wake it up it to cold power off / on the
-> >computer.
+tytso@mit.edu wrote:
+> On Sat, Jan 30, 2010 at 10:15:09AM -0600, Eric Sandeen wrote:
+>>> me on a 32-bit machine.  The patch below fixes it up, but it seems like
+>>> we should rather add a variant of that code as aio_read/write commands
+>>> to xfs_io instead of adding a new test program.
+>> ok, that's probably better - again, though, it takes at least a release
+>> cycle before most folks can test it.  But I guess that's not the end of
+>> the world.
 > 
-> Strange, I had to do the same for a friend, and I think it was the
-> same drive.
-> You should put it into a USB enclosure - it speeds things up a lot.
+> Stupid question --- who uses xfs_io besides xfstests?  Any chance we
+> could consider dropping in some version of xfs_io into xfstests, or
+> actually moving it into xfstests from xfsprogs if xfstests is the
+> exclusive user of that program?  I've been trying to get more people
+> to use xfstests, since it would be good if more companies and more
+> projects were using it --- and one of the things that makes it hard is
+> all of the dependencies that it has.  If there was some way we could
+> gradually make xfstests more self-contained, it would certainly be
+> nice.
 > 
-> >'sde' will disappeared from the system, need power off / on can
-> >get it back.
-> 
-> To get most of the data off the dying drive, use rsync -v, and
-> create a list
-> of files to exclude, when you detect they cause the drive to die.
+> 						- Ted
 
-An image copy of the disk will tend to recover more than accessing the
-disk via the file system.  I haven't run across the failure mode where
-accessing a certain magic block causes the disk to die and require a
-power cycle, but in that case what I'd probably do is enhance the
-dd_rescue program to take a list of block numbers which it should skip
-over....
+These are the deps that I know xfstests has, to build and to run:
 
-This will require some programming, but it's probably the best way to
-recover the most amount of data.  (Oh, and afterwards someone should
-send the changes back to Kurt Garloff, since it would be a very useful
-enhancement to dd_rescue.)
+BuildRequires:  autoconf, libtool, xfsprogs-devel, e2fsprogs-devel
+BuildRequires:  libacl-devel, libattr-devel, libaio-devel
 
-						- Ted
+Requires:       bash, xfsprogs, xfsdump, perl, acl, attr, bind-utils
+Requires:       bc, indent, quota
+
+which isn't so bad...
+(and tests are just skipped if xfsdump isn't there)
+
+I'm not sure an xfsprogs dependency is so onerous; plenty has depended
+on e2fsprogs through the years and we've lived with that ;)  But
+the lag time for xfsprogs to use released xfs_io functionality is a
+bit of a bummer.
+
+But I guess I don't have a great answer for who else uses xfs_io:
+
+xfs_io(8)                                            xfs_io(8)
+
+NAME
+       xfs_io - debug the I/O path of an XFS filesystem
+
+SYNOPSIS
+       xfs_io [ -adFfmrRstx ] [ -c cmd ] ... [ -p prog ] file
+
+DESCRIPTION
+       xfs_io  is a debugging tool like xfs_db(8), but is aimed
+       at examining the regular file I/O paths rather than  the
+       raw  XFS  volume  itself. 
+
+I guess it's not really advertised as a generic tool, and it's
+in the sbin path...
+
+I guess I could live with it either way - I suppose my main concern
+is that xfstests is a mess to package for a distro, and I really like
+easy access to xfs_io for my own use outside of xfstests.
+
+-Eric
