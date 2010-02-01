@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 17/23] vfs: Add new MS_ACL and MS_RICHACL flag
-Date: Mon,  1 Feb 2010 11:04:59 +0530
-Message-ID: <1265002505-8387-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 09/23] ext4: Add posix acl to rich acl mapping
+Date: Mon,  1 Feb 2010 11:04:51 +0530
+Message-ID: <1265002505-8387-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1265002505-8387-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org
@@ -9,107 +9,197 @@ To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
 	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
 	staubach@redhat.com, bfields@citi.umich.edu, jlayton@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:60722 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751241Ab0BAFfY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Feb 2010 00:35:24 -0500
+Received: from e28smtp09.in.ibm.com ([122.248.162.9]:52764 "EHLO
+	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751411Ab0BAFfX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Feb 2010 00:35:23 -0500
 In-Reply-To: <1265002505-8387-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ADD MS_ACL and MS_RICHACL flag which can be used to
-indicate whether richacl is enabled or not. This will
-help nfsd to use the right acl mapping when storing
-NFSv4 ACL to disk
+If we have richacl format enabled on ext4 we don't return the posix acl
+value stored in the inode. This ensures that we only follow one acl model
+when enabled. In our case if we have richacl format enabled we always
+enforce richacl mode. But we also need to obey the posix acl restrictions
+placed on the inode. For this we map the posix acls to richacl format
+and use richacl to validate access permissions. We can also use this
+to migrate posix acl to rich acl by doing a --get followed by a --set
+using richacl tools. We have ACL4_POSIX_MAPPED flag set to indicate that
+the richacl values returned is derived out of posix acl. This gives the
+user a chance to validate the mapping before migrating to richacl format.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/namei.c         |    9 ++++++---
- include/linux/fs.h |    9 +++++++--
- 2 files changed, 13 insertions(+), 5 deletions(-)
+ fs/ext4/acl.c     |   14 ++++++---
+ fs/ext4/acl.h     |    1 +
+ fs/ext4/richacl.c |   73 +++++++++++++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 75 insertions(+), 13 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 2a1a1d6..ecc7476 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -471,6 +471,9 @@ static int exec_permission(struct inode *inode)
- 			goto ok;
- 		return ret;
- 	}
-+	/*
-+	 * Do the basic POSIX ACL permission checks.
-+	 */
- 	ret = acl_permission_check(inode, MAY_EXEC, inode->i_op->check_acl);
- 	if (!ret)
- 		goto ok;
-@@ -1573,7 +1576,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
- 	int error;
- 	struct dentry *dir = nd->path.dentry;
- 
--	if (!IS_POSIXACL(dir->d_inode))
-+	if (!IS_ACL(dir->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
- 	if (error)
-@@ -2065,7 +2068,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
- 		error = PTR_ERR(dentry);
- 		goto out_unlock;
- 	}
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = may_mknod(mode);
- 	if (error)
-@@ -2143,7 +2146,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
- 	if (IS_ERR(dentry))
- 		goto out_unlock;
- 
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2191464..2ff6114 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -197,7 +197,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_ACL		(1<<16)	/* VFS does not apply the umask */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -206,6 +206,8 @@ struct inodes_stat_t {
- #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
- #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
-+#define MS_POSIXACL	(MS_ACL | 1<<25)/* Default ACL is POSIX ACL */
-+#define MS_RICHACL	(MS_ACL | 1<<26)/* VFS uses richacl to check access */
- #define MS_ACTIVE	(1<<30)
- #define MS_NOUSER	(1<<31)
- 
-@@ -247,6 +249,7 @@ struct inodes_stat_t {
-  * flags, so these have to be checked separately. -- rmk@arm.uk.linux.org
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 5f09df4..e17e1a9 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -152,8 +152,10 @@ fail:
+  * Inode operation get_posix_acl().
+  *
+  * inode->i_mutex: don't care
++ * We don't check whether posix acl is enabled or not.
++ * Caller should make sure of that.
   */
- #define __IS_FLG(inode,flg) ((inode)->i_sb->s_flags & (flg))
-+#define __IS_EXFLG(inode,flg) (((inode)->i_sb->s_flags & (flg)) == (flg))
+-static struct posix_acl *
++struct posix_acl *
+ ext4_get_acl(struct inode *inode, int type)
+ {
+ 	int name_index;
+@@ -161,9 +163,6 @@ ext4_get_acl(struct inode *inode, int type)
+ 	struct posix_acl *acl;
+ 	int retval;
  
- #define IS_RDONLY(inode) ((inode)->i_sb->s_flags & MS_RDONLY)
- #define IS_SYNC(inode)		(__IS_FLG(inode, MS_SYNCHRONOUS) || \
-@@ -260,7 +263,9 @@ struct inodes_stat_t {
- #define IS_NOQUOTA(inode)	((inode)->i_flags & S_NOQUOTA)
- #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
--#define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_ACL)
-+#define IS_POSIXACL(inode)	__IS_EXFLG(inode, MS_POSIXACL)
-+#define IS_RICHACL(inode)	__IS_EXFLG(inode, MS_RICHACL)
+-	if (!posix_acl_enabled(inode->i_sb))
+-		return NULL;
+-
+ 	acl = get_cached_acl(inode, type);
+ 	if (acl != ACL_NOT_CACHED)
+ 		return acl;
+@@ -261,7 +260,12 @@ ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+ int
+ ext4_check_acl(struct inode *inode, int mask)
+ {
+-	struct posix_acl *acl = ext4_get_acl(inode, ACL_TYPE_ACCESS);
++	struct posix_acl *acl;
++
++	if (!posix_acl_enabled(inode->i_sb))
++		return -EAGAIN;
++
++	acl = ext4_get_acl(inode, ACL_TYPE_ACCESS);
  
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+ 	if (IS_ERR(acl))
+ 		return PTR_ERR(acl);
+diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
+index 9d843d5..3e47cf3 100644
+--- a/fs/ext4/acl.h
++++ b/fs/ext4/acl.h
+@@ -57,6 +57,7 @@ static inline int ext4_acl_count(size_t size)
+ extern int ext4_check_acl(struct inode *, int);
+ extern int ext4_acl_chmod(struct inode *);
+ extern int ext4_init_acl(handle_t *, struct inode *, struct inode *);
++extern struct posix_acl *ext4_get_acl(struct inode *inode, int type);
+ 
+ #else  /* CONFIG_EXT4_FS_POSIX_ACL */
+ #include <linux/sched.h>
+diff --git a/fs/ext4/richacl.c b/fs/ext4/richacl.c
+index 1c78086..a8702c7 100644
+--- a/fs/ext4/richacl.c
++++ b/fs/ext4/richacl.c
+@@ -20,6 +20,7 @@
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+ #include "richacl.h"
++#include "acl.h"
+ 
+ static inline struct richacl *
+ ext4_iget_richacl(struct inode *inode)
+@@ -47,13 +48,60 @@ ext4_iset_richacl(struct inode *inode, struct richacl *acl)
+ 	spin_unlock(&inode->i_lock);
+ }
+ 
++static int ext4_map_pacl_to_richacl(struct inode *inode,
++				struct richacl **richacl)
++{
++	int retval = 0;
++	struct posix_acl *pacl = NULL, *dpacl = NULL;
++
++	*richacl  = NULL;
++	pacl = ext4_get_acl(inode, ACL_TYPE_ACCESS);
++	if (IS_ERR(pacl))
++		return PTR_ERR(pacl);
++
++
++	if (S_ISDIR(inode->i_mode)) {
++		dpacl = ext4_get_acl(inode, ACL_TYPE_DEFAULT);
++		if (IS_ERR(dpacl)) {
++			/* we need to fail for all errors
++			 * we will continue only with NULL dpacl
++			 * which is ENODATA on dpacl
++			 */
++			posix_acl_release(pacl);
++			return PTR_ERR(dpacl);
++		}
++	}
++
++	if (pacl == NULL && dpacl != NULL) {
++		/*
++		 * We have a default acl list. So derive the access acl
++		 * list from the mode so that we get a richacl that
++		 * include mode bits
++		 */
++		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
++	}
++
++	if (pacl == NULL && dpacl == NULL)
++		return -ENODATA;
++
++	*richacl = map_posix_to_richacl(inode, pacl, dpacl);
++
++	if (IS_ERR(*richacl)) {
++		retval  = PTR_ERR(*richacl);
++		*richacl = NULL;
++	}
++	posix_acl_release(pacl);
++	posix_acl_release(dpacl);
++	return retval;
++}
++
+ static struct richacl *
+ ext4_get_richacl(struct inode *inode)
+ {
+ 	const int name_index = EXT4_XATTR_INDEX_RICHACL;
+ 	void *value = NULL;
+ 	struct richacl *acl;
+-	int retval;
++	int retval = 0;
+ 
+ 	if (!richacl_enabled(inode->i_sb))
+ 		return NULL;
+@@ -61,22 +109,31 @@ ext4_get_richacl(struct inode *inode)
+ 	acl = ext4_iget_richacl(inode);
+ 	if (acl != EXT4_RICHACL_NOT_CACHED)
+ 		return acl;
++
+ 	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
+ 	if (retval > 0) {
+ 		value = kmalloc(retval, GFP_KERNEL);
+ 		if (!value)
+ 			return ERR_PTR(-ENOMEM);
+ 		retval = ext4_xattr_get(inode, name_index, "", value, retval);
++		if (retval > 0) {
++			acl = richacl_from_xattr(value, retval);
++			if (acl == ERR_PTR(-EINVAL))
++				acl = ERR_PTR(-EIO);
++		}
++		kfree(value);
++	} else if (retval == -ENODATA) {
++		/*
++		 * Check whether we have posix acl stored.
++		 * If so convert them to richacl
++		 */
++		retval = ext4_map_pacl_to_richacl(inode, &acl);
+ 	}
+-	if (retval > 0) {
+-		acl = richacl_from_xattr(value, retval);
+-		if (acl == ERR_PTR(-EINVAL))
+-			acl = ERR_PTR(-EIO);
+-	} else if (retval == -ENODATA || retval == -ENOSYS)
++
++	if (retval == -ENODATA || retval == -ENOSYS)
+ 		acl = NULL;
+-	else
++	else if (retval < 0)
+ 		acl = ERR_PTR(retval);
+-	kfree(value);
+ 
+ 	if (!IS_ERR(acl))
+ 		ext4_iset_richacl(inode, acl);
 -- 
 1.7.0.rc0.48.gdace5
 
