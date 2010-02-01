@@ -1,180 +1,81 @@
-From: Brad Boyer <flar@allandria.com>
-Subject: Re: [PATCH 03/23] vfs: rich ACL in-memory representation and manipulation
-Date: Sun, 31 Jan 2010 23:28:52 -0800
-Message-ID: <20100201072852.GA17309@cynthia.pants.nu>
-References: <1265002505-8387-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1265002505-8387-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: <paul.chavent@fnac.net>
+Subject: What represent 646345728 bytes
+Date: Mon,  1 Feb 2010 15:08:24 +0100 (CET)
+Message-ID: <7618835.18201265033304935.JavaMail.www@wsfrf1112>
+Reply-To: <paul.chavent@fnac.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
-	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
-	staubach@redhat.com, bfields@citi.umich.edu, jlayton@redhat.com,
-	linux-fsdevel@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [76.245.85.235] ([76.245.85.235]:38998 "EHLO cynthia.pants.nu"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751845Ab0BAIFW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Feb 2010 03:05:22 -0500
-Content-Disposition: inline
-In-Reply-To: <1265002505-8387-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp21.services.sfr.fr ([93.17.128.1]:61326 "EHLO
+	smtp21.services.sfr.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754649Ab0BAOOM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Feb 2010 09:14:12 -0500
+Received: from smtp11.services.sfr.fr (msfrf1101 [10.18.24.51])
+	by msfrf2120.sfr.fr (SMTP Server) with ESMTP id 20FF47003129
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2010 15:11:27 +0100 (CET)
+Received: from filter.sfr.fr (localhost [127.0.0.1])
+	by msfrf1101.sfr.fr (SMTP Server) with ESMTP id 029BA17000091
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2010 15:08:25 +0100 (CET)
+Received: from wsfrf1112 (wsfrf1112 [10.18.24.26])
+	by msfrf1101.sfr.fr (SMTP Server) with ESMTP id E613D17000087
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2010 15:08:24 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi
 
-I have one suggestion about this part of the code.
+I'am writing an application that write a stream of pictures of fixed si=
+ze on a disk.
 
-On Mon, Feb 01, 2010 at 11:04:45AM +0530, Aneesh Kumar K.V wrote:
+My app run on a self integrated gnu/linux (based on a 2.6.31.6-rt19 ker=
+nel).
 
-<snip>
+My media is formated with
 
-> +/*
-> + * ACL entries that have ACE4_SPECIAL_WHO set in ace->e_flags use the
-> + * pointer values of these constants in ace->u.e_who to avoid massive
-> + * amounts of string comparisons.
-> + */
-> +
-> +const char richace_owner_who[]	  = "OWNER@";
-> +EXPORT_SYMBOL_GPL(richace_owner_who);
-> +const char richace_group_who[]	  = "GROUP@";
-> +EXPORT_SYMBOL_GPL(richace_group_who);
-> +const char richace_everyone_who[] = "EVERYONE@";
-> +EXPORT_SYMBOL_GPL(richace_everyone_who);
+# mke2fs -t ext4 -L DATA -O large_file,^has_journal,extent -v /dev/sda3
+[...]
 
-<snip>
+And it is mounted with=20
 
-> +/*
-> + * richace_is_same_who  -  do both acl entries refer to the same identifier?
-> + */
-> +int
-> +richace_is_same_who(const struct richace *a, const struct richace *b)
-> +{
-> +#define WHO_FLAGS (ACE4_SPECIAL_WHO | ACE4_IDENTIFIER_GROUP)
-> +	if ((a->e_flags & WHO_FLAGS) != (b->e_flags & WHO_FLAGS))
-> +		return 0;
-> +	if (a->e_flags & ACE4_SPECIAL_WHO)
-> +		return a->u.e_who == b->u.e_who;
-> +	else
-> +		return a->u.e_id == b->u.e_id;
-> +#undef WHO_FLAGS
-> +}
-> +
-> +/**
-> + * richacl_set_who  -  set a special who value
-> + * @ace:	acl entry
-> + * @who:	who value to use
-> + */
-> +int
-> +richace_set_who(struct richace *ace, const char *who)
-> +{
-> +	if (!strcmp(who, richace_owner_who))
-> +		who = richace_owner_who;
-> +	else if (!strcmp(who, richace_group_who))
-> +		who = richace_group_who;
-> +	else if (!strcmp(who, richace_everyone_who))
-> +		who = richace_everyone_who;
-> +	else
-> +		return -EINVAL;
-> +
-> +	ace->u.e_who = who;
-> +	ace->e_flags |= ACE4_SPECIAL_WHO;
-> +	ace->e_flags &= ~ACE4_IDENTIFIER_GROUP;
-> +	return 0;
-> +}
-> +EXPORT_SYMBOL_GPL(richace_set_who);
-> +
-> +/**
-> + * richacl_allowed_to_who  -  mask flags allowed to a specific who value
-> + *
-> + * Computes the mask values allowed to a specific who value, taking
-> + * EVERYONE@ entries into account.
-> + */
-> +static unsigned int
-> +richacl_allowed_to_who(struct richacl *acl, struct richace *who)
-> +{
-> +	struct richace *ace;
-> +	unsigned int allowed = 0;
-> +
-> +	richacl_for_each_entry_reverse(ace, acl) {
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_same_who(ace, who) ||
-> +		    richace_is_everyone(ace)) {
-> +			if (richace_is_allow(ace))
-> +				allowed |= ace->e_mask;
-> +			else if (richace_is_deny(ace))
-> +				allowed &= ~ace->e_mask;
-> +		}
-> +	}
-> +	return allowed;
-> +}
+# mount -t ext4 /dev/sda3 /var/data/
+EXT4-fs (sda3): no journal
+EXT4-fs (sda3): delayed allocation enabled
+EXT4-fs: file extents enabled
+EXT4-fs: mballoc enabled
+EXT4-fs (sda3): mounted filesystem without journal
 
-<snip>
+My app opens the file with "O_WRONLY | O_CREAT | O_TRUNC | O_SYNC | O_D=
+IRECT" flags.
 
-> +struct richace {
-> +	unsigned short	e_type;
-> +	unsigned short	e_flags;
-> +	unsigned int	e_mask;
-> +	union {
-> +		unsigned int	e_id;
-> +		const char	*e_who;
-> +	} u;
-> +};
+Each write takes ~4.2ms for 304K (it is very good since it is the write=
+ bandwidth of my hard drive). There is a write every 100ms.
 
-<snip>
+But every exactly 646345728 bytes, the write takes ~46ms.
 
-> +/* Special e_who identifiers: we use these pointer values in comparisons
-> +   instead of strcmp for efficiency. */
-> +
-> +extern const char richace_owner_who[];
-> +extern const char richace_group_who[];
-> +extern const char richace_everyone_who[];
-> +
-> +static inline int
-> +richace_is_owner(const struct richace *ace)
-> +{
-> +	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
-> +	       ace->u.e_who == richace_owner_who;
-> +}
-> +
-> +static inline int
-> +richace_is_group(const struct richace *ace)
-> +{
-> +	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
-> +	       ace->u.e_who == richace_group_who;
-> +}
-> +
-> +static inline int
-> +richace_is_everyone(const struct richace *ace)
-> +{
-> +	return (ace->e_flags & ACE4_SPECIAL_WHO) &&
-> +	       ace->u.e_who == richace_everyone_who;
-> +}
-> +
-> +static inline int
-> +richace_is_unix_id(const struct richace *ace)
-> +{
-> +	return !(ace->e_flags & ACE4_SPECIAL_WHO);
-> +}
+I had the same problem with ext2 but every ~620M (the amount wasn't so =
+constant).
 
-Wouldn't it make more sense to just store some small numeric value
-in ace->u.e_who rather than a pointer? It seems to me that the
-savings of storing and comparing an integer type would more than
-make up for the slight overhead of needing to lookup a pointer
-in the places where the code must handle an external representation.
-I know there is really only a difference on 64-bit systems, but my
-impression has been that most people are going that way. In particular,
-the struct richace would go to 12 bytes with 4-byte alignment from
-16 bytes with 8-byte alignment on an architecture with 8-byte pointers.
-Plus doing an integer instead of a pointer should eliminate the need
-to export the constant pointer values. Even in 32-bit, there are a
-few odd architectures (like m68k) that have separate address and
-data registers, so using an integer may have some benefits there
-due to the fact that the instruction set treats them differently.
+Also i tryed to "posix_fallocate" with (eg 2G), and the first write ove=
+rhead comes at this limit. I would like to avoid to preallocate.
 
-I know you mentioned that you didn't originally write this code, but
-it seems a logical change to me.
+I suppose it is a kind of block allocation issue. But i would like to h=
+ave your opinion :
+=C2=A0- what is exatcly this amount of bytes ?
+=C2=A0- can i do something for having a "constant" write time from the =
+user space point of view ?
+=C2=A0- is it a "probem" only for me ?
 
-	Brad Boyer
-	flar@allandria.com
+Thank you for your reading.
 
+Paul.
+
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
