@@ -1,81 +1,91 @@
-From: <paul.chavent@fnac.net>
-Subject: What represent 646345728 bytes
-Date: Mon,  1 Feb 2010 15:08:24 +0100 (CET)
-Message-ID: <7618835.18201265033304935.JavaMail.www@wsfrf1112>
-Reply-To: <paul.chavent@fnac.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: What represent 646345728 bytes
+Date: Mon, 01 Feb 2010 09:06:12 -0600
+Message-ID: <4B66EDE4.6000204@redhat.com>
+References: <7618835.18201265033304935.JavaMail.www@wsfrf1112>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: paul.chavent@fnac.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp21.services.sfr.fr ([93.17.128.1]:61326 "EHLO
-	smtp21.services.sfr.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754649Ab0BAOOM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Feb 2010 09:14:12 -0500
-Received: from smtp11.services.sfr.fr (msfrf1101 [10.18.24.51])
-	by msfrf2120.sfr.fr (SMTP Server) with ESMTP id 20FF47003129
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2010 15:11:27 +0100 (CET)
-Received: from filter.sfr.fr (localhost [127.0.0.1])
-	by msfrf1101.sfr.fr (SMTP Server) with ESMTP id 029BA17000091
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2010 15:08:25 +0100 (CET)
-Received: from wsfrf1112 (wsfrf1112 [10.18.24.26])
-	by msfrf1101.sfr.fr (SMTP Server) with ESMTP id E613D17000087
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Feb 2010 15:08:24 +0100 (CET)
+Received: from mx1.redhat.com ([209.132.183.28]:21780 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755210Ab0BAPGT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Feb 2010 10:06:19 -0500
+In-Reply-To: <7618835.18201265033304935.JavaMail.www@wsfrf1112>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi
+paul.chavent@fnac.net wrote:
+> Hi
+> 
+> I'am writing an application that write a stream of pictures of fixed
+> size on a disk.
+> 
+> My app run on a self integrated gnu/linux (based on a 2.6.31.6-rt19
+> kernel).
+> 
+> My media is formated with
+> 
+> # mke2fs -t ext4 -L DATA -O large_file,^has_journal,extent -v
+> /dev/sda3 [...]
+> 
+> And it is mounted with
+> 
+> # mount -t ext4 /dev/sda3 /var/data/ EXT4-fs (sda3): no journal 
+> EXT4-fs (sda3): delayed allocation enabled EXT4-fs: file extents
+> enabled EXT4-fs: mballoc enabled EXT4-fs (sda3): mounted filesystem
+> without journal
+> 
+> My app opens the file with "O_WRONLY | O_CREAT | O_TRUNC | O_SYNC |
+> O_DIRECT" flags.
+> 
+> Each write takes ~4.2ms for 304K (it is very good since it is the
+> write bandwidth of my hard drive). There is a write every 100ms.
 
-I'am writing an application that write a stream of pictures of fixed si=
-ze on a disk.
+So you are doing streaming writes in 304k chunks?  Or each file
+gets 304K?  It sounds like you are writing multiple 304k pictures
+to a single file, right?
 
-My app run on a self integrated gnu/linux (based on a 2.6.31.6-rt19 ker=
-nel).
+> But every exactly 646345728 bytes, the write takes ~46ms.
 
-My media is formated with
+Do you mean every 304K written to the fs, or to the file?
 
-# mke2fs -t ext4 -L DATA -O large_file,^has_journal,extent -v /dev/sda3
-[...]
+304k doesn't divide evenly into 646345728 bytes so I'm not sure...
 
-And it is mounted with=20
+> I had the same problem with ext2 but every ~620M (the amount wasn't
+> so constant).
+> 
+> Also i tryed to "posix_fallocate" with (eg 2G), and the first write
+> overhead comes at this limit. I would like to avoid to preallocate.
 
-# mount -t ext4 /dev/sda3 /var/data/
-EXT4-fs (sda3): no journal
-EXT4-fs (sda3): delayed allocation enabled
-EXT4-fs: file extents enabled
-EXT4-fs: mballoc enabled
-EXT4-fs (sda3): mounted filesystem without journal
+Preallocation -should- be helpful in general, so if it's not ...
 
-My app opens the file with "O_WRONLY | O_CREAT | O_TRUNC | O_SYNC | O_D=
-IRECT" flags.
+> I suppose it is a kind of block allocation issue. But i would like to
+> have your opinion : - what is exatcly this amount of bytes ? - can i
+> do something for having a "constant" write time from the user space
+> point of view ? - is it a "probem" only for me ?
 
-Each write takes ~4.2ms for 304K (it is very good since it is the write=
- bandwidth of my hard drive). There is a write every 100ms.
+It might be interesting to know what the geometry of your filesystem is,
+dumpe2fs -h would provide that.  Also if you could mock up a testcase
+that demonstrates the behavior, it would help in debugging.
 
-But every exactly 646345728 bytes, the write takes ~46ms.
+Actually... as a first step I would redo the test yourself with
+-O ^uninit_bg at mkfs time to see if the bitmap init is causing the
+delay.
 
-I had the same problem with ext2 but every ~620M (the amount wasn't so =
-constant).
+-Eric
 
-Also i tryed to "posix_fallocate" with (eg 2G), and the first write ove=
-rhead comes at this limit. I would like to avoid to preallocate.
+> Thank you for your reading.
+> 
+> Paul.
+> 
+> 
+> 
+> 
+> -- To unsubscribe from this list: send the line "unsubscribe
+> linux-ext4" in the body of a message to majordomo@vger.kernel.org 
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I suppose it is a kind of block allocation issue. But i would like to h=
-ave your opinion :
-=C2=A0- what is exatcly this amount of bytes ?
-=C2=A0- can i do something for having a "constant" write time from the =
-user space point of view ?
-=C2=A0- is it a "probem" only for me ?
-
-Thank you for your reading.
-
-Paul.
-
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  
