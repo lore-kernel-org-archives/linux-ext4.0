@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 20/23] nfsd: Apply NFSv4acl to posix acl mapping only if MS_POSIXACL is set
-Date: Mon,  1 Feb 2010 11:05:02 +0530
-Message-ID: <1265002505-8387-21-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 23/23] nfsd: Add support for saving richacl
+Date: Mon,  1 Feb 2010 11:05:05 +0530
+Message-ID: <1265002505-8387-24-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1265002505-8387-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org
@@ -13,156 +13,79 @@ In-Reply-To: <1265002505-8387-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We should be doing NFSv4 acl to POSIX acl mapping only if
-MS_POSIXACL flag is set in the superblock.
+With this patch nfsd will check whether the exported filesystem
+use richacl format. If yes nfsd will map NFSv4 acl to richacl
+and save the acl in richacl format ondisk. NFSv4 acl can be
+better mapped to richacl format without loosing information.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfsd/vfs.c |   87 ++++++++++++++++++++++++++++++++++++++-------------------
- 1 files changed, 58 insertions(+), 29 deletions(-)
+ fs/nfsd/vfs.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 46 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c194793..3046ecd 100644
+index ce727a5..a1e5895 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
-@@ -476,31 +476,18 @@ out:
- 	return error;
- }
- 
--__be32
--nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
--    struct nfs4_acl *acl)
-+static __be32
-+nfsd4_set_posix_acl(struct dentry *dentry,
-+		struct nfs4_acl *acl, unsigned int flags)
- {
--	__be32 error;
- 	int host_error;
--	struct dentry *dentry;
--	struct inode *inode;
-+	struct inode *inode = dentry->d_inode;
- 	struct posix_acl *pacl = NULL, *dpacl = NULL;
--	unsigned int flags = 0;
--
--	/* Get inode */
--	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
--	if (error)
--		return error;
--
--	dentry = fhp->fh_dentry;
--	inode = dentry->d_inode;
--	if (S_ISDIR(inode->i_mode))
--		flags = NFS4_ACL_DIR;
- 
- 	host_error = nfs4_acl_nfsv4_to_posix(acl, &pacl, &dpacl, flags);
--	if (host_error == -EINVAL) {
-+	if (host_error == -EINVAL)
- 		return nfserr_attrnotsupp;
--	} else if (host_error < 0)
-+	else if (host_error < 0)
- 		goto out_nfserr;
- 
- 	host_error = set_nfsv4_acl_one(dentry, pacl, POSIX_ACL_XATTR_ACCESS);
-@@ -520,6 +507,33 @@ out_nfserr:
+@@ -508,6 +508,50 @@ out_nfserr:
  		return nfserrno(host_error);
  }
  
-+__be32
-+nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+    struct nfs4_acl *acl)
++static int
++__set_richacl(struct dentry *dentry, struct richacl *racl)
 +{
-+	__be32 error;
-+	struct dentry *dentry;
-+	struct inode *inode;
-+	unsigned int flags = 0;
++	size_t buflen;
++	char *buf = NULL;
++	int error = 0;
 +
-+	/* Get inode */
-+	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
-+	if (error)
-+		return error;
++	buflen = richacl_xattr_size(racl);
++	buf = kmalloc(buflen, GFP_KERNEL);
++	error = -ENOMEM;
++	if (buf == NULL)
++		goto out;
 +
-+	dentry = fhp->fh_dentry;
-+	inode = dentry->d_inode;
-+	if (S_ISDIR(inode->i_mode))
-+		flags = NFS4_ACL_DIR;
-+
-+	if (IS_POSIXACL(inode))
-+		error = nfsd4_set_posix_acl(dentry, acl, flags);
-+	else
-+		error = nfserr_attrnotsupp;
-+
++	richacl_to_xattr(racl, buf);
++	error = vfs_setxattr(dentry, RICHACL_XATTR, buf, buflen, 0);
++out:
++	kfree(buf);
 +	return error;
 +}
 +
- static struct posix_acl *
- _get_posix_acl(struct dentry *dentry, char *key)
- {
-@@ -538,19 +552,19 @@ _get_posix_acl(struct dentry *dentry, char *key)
- 	return pacl;
- }
- 
--int
--nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_acl **acl)
-+static struct nfs4_acl *
-+nfsd4_get_posix_acl(struct dentry *dentry)
- {
-+	struct nfs4_acl *acl;
-+	unsigned int flags = 0;
- 	struct inode *inode = dentry->d_inode;
--	int error = 0;
- 	struct posix_acl *pacl = NULL, *dpacl = NULL;
--	unsigned int flags = 0;
- 
- 	pacl = _get_posix_acl(dentry, POSIX_ACL_XATTR_ACCESS);
- 	if (IS_ERR(pacl) && PTR_ERR(pacl) == -ENODATA)
- 		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
- 	if (IS_ERR(pacl)) {
--		error = PTR_ERR(pacl);
-+		acl  = ERR_PTR(PTR_ERR(pacl));
- 		pacl = NULL;
- 		goto out;
- 	}
-@@ -560,21 +574,36 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
- 		if (IS_ERR(dpacl) && PTR_ERR(dpacl) == -ENODATA)
- 			dpacl = NULL;
- 		else if (IS_ERR(dpacl)) {
--			error = PTR_ERR(dpacl);
-+			acl  = ERR_PTR(PTR_ERR(dpacl));
- 			dpacl = NULL;
- 			goto out;
- 		}
- 		flags = NFS4_ACL_DIR;
- 	}
- 
--	*acl = nfs4_acl_posix_to_nfsv4(pacl, dpacl, flags);
-+	acl = nfs4_acl_posix_to_nfsv4(pacl, dpacl, flags);
-+ out:
-+	posix_acl_release(pacl);
-+	posix_acl_release(dpacl);
-+	return acl;
++static __be32
++nfsd4_set_richacl(struct dentry *dentry, struct nfs4_acl *acl)
++{
++	int host_error;
++	struct richacl *racl;
++
++	host_error = nfs4_acl_nfsv4_to_richacl(acl, &racl);
++	if (host_error == -EINVAL)
++		return nfserr_attrnotsupp;
++	else if (host_error < 0)
++		goto out_nfserr;
++
++	host_error = __set_richacl(dentry, racl);
++	if (host_error < 0)
++		goto out_release;
++out_release:
++	richacl_put(racl);
++out_nfserr:
++	if (host_error == -EOPNOTSUPP)
++		return nfserr_attrnotsupp;
++	else
++		return nfserrno(host_error);
 +}
 +
-+int
-+nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_acl **acl)
-+{
-+	int error = 0;
-+	struct inode *inode = dentry->d_inode;
-+
-+	if (IS_POSIXACL(inode))
-+		*acl = nfsd4_get_posix_acl(dentry);
-+	else {
-+		*acl = NULL;
-+		error = -EOPNOTSUPP;
-+	}
- 	if (IS_ERR(*acl)) {
- 		error = PTR_ERR(*acl);
- 		*acl = NULL;
- 	}
-- out:
--	posix_acl_release(pacl);
--	posix_acl_release(dpacl);
- 	return error;
- }
+ __be32
+ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
+     struct nfs4_acl *acl)
+@@ -529,6 +573,8 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 
+ 	if (IS_POSIXACL(inode))
+ 		error = nfsd4_set_posix_acl(dentry, acl, flags);
++	else if (IS_RICHACL(inode))
++		error = nfsd4_set_richacl(dentry, acl);
+ 	else
+ 		error = nfserr_attrnotsupp;
  
 -- 
 1.7.0.rc0.48.gdace5
