@@ -1,42 +1,51 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: fix delalloc retry loop logic
-Date: Wed, 03 Feb 2010 21:39:30 +0300
-Message-ID: <87zl3qrwnx.fsf@openvz.org>
+Subject: [PATCH 2/2] ext4: fix delalloc retry loop logic v2
+Date: Wed, 03 Feb 2010 22:07:03 +0300
+Message-ID: <87sk9irve0.fsf@openvz.org>
+References: <87zl3qrwnx.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=-="
 Cc: tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:39114 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756878Ab0BCSjq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2010 13:39:46 -0500
-Received: by bwz19 with SMTP id 19so352559bwz.28
-        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2010 10:39:43 -0800 (PST)
+Received: from mail-fx0-f215.google.com ([209.85.220.215]:57302 "EHLO
+	mail-fx0-f215.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755838Ab0BCTHH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2010 14:07:07 -0500
+Received: by fxm7 with SMTP id 7so1943393fxm.28
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2010 11:07:05 -0800 (PST)
+In-Reply-To: <87zl3qrwnx.fsf@openvz.org> (Dmitry Monakhov's message of "Wed,
+	03 Feb 2010 21:39:30 +0300")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 --=-=-=
 
-Theodore please review this patch ASAP, currently ext4+quota is 
-fatally broken due to your patch. Christmas holidays when you
-submit your patch is not good time for good review, IMHO
-i was too lazy to review it carefully.
-Testcase is trivial it is enough just hit a quota barrier.
-dmon$ set-quota-limit /mnt id=dmon --bsoft=1000 --bsoft=1000
-dmon$ dd if=/dev/zefo of=/mnt/file 
+Dmitry Monakhov <dmonakhov@openvz.org> writes:
 
-kernel BUG at fs/jbd2/transaction.c:1027!
-
+> Theodore please review this patch ASAP, currently ext4+quota is 
+> fatally broken due to your patch. Christmas holidays when you
+> submit your patch is not good time for good review, IMHO
+> i was too lazy to review it carefully.
+> Testcase is trivial it is enough just hit a quota barrier.
+> dmon$ set-quota-limit /mnt id=dmon --bsoft=1000 --bsoft=1000
+> dmon$ dd if=/dev/zefo of=/mnt/file 
+>
+> kernel BUG at fs/jbd2/transaction.c:1027!
+OOps, i'm sorry. seems that i've send wrong patch version
+the only difference is follows:
+-	dqretry = (ret == -EDQUOT) || EXT4_I(inode)->i_reserved_meta_blocks;
++	dqretry = (ret == -EDQUOT) && EXT4_I(inode)->i_reserved_meta_blocks;
+Correct version attached.
 
 --=-=-=
 Content-Disposition: inline;
- filename=0002-ext4-fix-delalloc-retry-loop-logic.patch
+ filename=0002-ext4-fix-delalloc-retry-loop-logic-v2.patch
 
->From d66a56204ec7f79947423411972c460133e36ae5 Mon Sep 17 00:00:00 2001
+>From 3dd53f88470fdc4ec3f06da34cfc760fa8359be8 Mon Sep 17 00:00:00 2001
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Date: Wed, 3 Feb 2010 18:24:13 +0300
-Subject: [PATCH 2/2] ext4: fix delalloc retry loop logic
+Date: Wed, 3 Feb 2010 22:03:17 +0300
+Subject: [PATCH 2/2] ext4: fix delalloc retry loop logic -v2
 
 Current delalloc write path is broken:
 ext4_da_write_begin()
@@ -59,7 +68,7 @@ Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
  1 files changed, 18 insertions(+), 23 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2d3fe4d..022ce18 100644
+index 2d3fe4d..bd9e573 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
 @@ -1815,7 +1815,6 @@ static int ext4_journalled_write_end(struct file *file,
@@ -123,7 +132,7 @@ index 2d3fe4d..022ce18 100644
 -	if (!(flags & EXT4_AOP_FLAG_NORETRY) &&
 -		ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
 -		goto retry;
-+	dqretry = (ret == -EDQUOT) || EXT4_I(inode)->i_reserved_meta_blocks;
++	dqretry = (ret == -EDQUOT) && EXT4_I(inode)->i_reserved_meta_blocks;
 +	if ( !(flags & EXT4_AOP_FLAG_NORETRY) &&
 +		(ret == -ENOSPC || dqretry) &&
 +		ext4_should_retry_alloc(inode->i_sb, &retries)) {
