@@ -1,70 +1,88 @@
-From: "Michael S. Tsirkin" <mst@redhat.com>
-Subject: 2.6.33-rc6: ext4 triggers warning about high order allocations
-Date: Wed, 3 Feb 2010 08:08:55 +0200
-Message-ID: <20100203060854.GA12489@redhat.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: [PATCH][BUG][TAKE2] ext4: unify each meaning of the offset in
+ ext4_check_dir_entry calling from some functions.
+Date: Wed, 3 Feb 2010 16:13:48 +0900
+Message-ID: <20100203161348.0bf98d58.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751732Ab0BCGMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Feb 2010 01:12:10 -0500
-Content-Disposition: inline
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:44799 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753174Ab0BCHmX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2010 02:42:23 -0500
+Received: from m4.gw.fujitsu.co.jp ([10.0.50.74])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o137gLbC010436
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Wed, 3 Feb 2010 16:42:21 +0900
+Received: from smail (m4 [127.0.0.1])
+	by outgoing.m4.gw.fujitsu.co.jp (Postfix) with ESMTP id 94A7745DE7A
+	for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2010 16:42:21 +0900 (JST)
+Received: from s4.gw.fujitsu.co.jp (s4.gw.fujitsu.co.jp [10.0.50.94])
+	by m4.gw.fujitsu.co.jp (Postfix) with ESMTP id 3465345DE7C
+	for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2010 16:42:21 +0900 (JST)
+Received: from s4.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s4.gw.fujitsu.co.jp (Postfix) with ESMTP id A86571DB803E
+	for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2010 16:42:20 +0900 (JST)
+Received: from m107.s.css.fujitsu.com (m107.s.css.fujitsu.com [10.249.87.107])
+	by s4.gw.fujitsu.co.jp (Postfix) with ESMTP id 4ED04E18009
+	for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2010 16:42:20 +0900 (JST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
-I got this warning at boot with 2.6.33-rc6:
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-[   12.374168] ------------[ cut here ]------------
-[   12.375798] WARNING: at mm/page_alloc.c:1813 __alloc_pages_nodemask+0x180/0x666()
-[   12.377401] Hardware name: 2241B48
-[   12.378984] Modules linked in: [last unloaded: scsi_wait_scan]
-[   12.380593] Pid: 1, comm: init Not tainted 2.6.33-rc6-aa-nopat #50
-[   12.382194] Call Trace:
-[   12.383781]  [<ffffffff810b6b3e>] ? __alloc_pages_nodemask+0x180/0x666
-[   12.385390]  [<ffffffff81041cda>] warn_slowpath_common+0x77/0xa4
-[   12.386996]  [<ffffffff81041d16>] warn_slowpath_null+0xf/0x11
-[   12.388577]  [<ffffffff810b6b3e>] __alloc_pages_nodemask+0x180/0x666
-[   12.390168]  [<ffffffff81036a9b>] ? finish_task_switch+0x4b/0xb1
-[   12.391758]  [<ffffffff810b7036>] __get_free_pages+0x12/0x4f
-[   12.393354]  [<ffffffff810de892>] __kmalloc+0x42/0x116
-[   12.394934]  [<ffffffff812405bf>] match_number+0x35/0x98
-[   12.396493]  [<ffffffff8124064d>] match_int+0xb/0xd
-[   12.398045]  [<ffffffff81169c8c>] parse_options+0x5fe/0x733
-[   12.399594]  [<ffffffff811058c3>] ? __wait_on_buffer+0x1f/0x21
-[   12.401157]  [<ffffffff8116a2dc>] ext4_fill_super+0x373/0x2070
-[   12.402696]  [<ffffffff8123ede2>] ? snprintf+0x59/0x5b
-[   12.404229]  [<ffffffff815cb293>] ? _raw_spin_unlock_irq+0x24/0x2f
-[   12.405764]  [<ffffffff815cae1a>] ? __down_write+0xb/0xd
-[   12.407293]  [<ffffffff810e68fe>] get_sb_bdev+0x12a/0x175
-[   12.408815]  [<ffffffff81169f69>] ? ext4_fill_super+0x0/0x2070
-[   12.410336]  [<ffffffff81167b7f>] ext4_get_sb+0x13/0x15
-[   12.411843]  [<ffffffff810e64e5>] vfs_kern_mount+0x9d/0x158
-[   12.413355]  [<ffffffff810e65fd>] do_kern_mount+0x47/0xe7
-[   12.414859]  [<ffffffff810fbdf3>] do_mount+0x780/0x7f9
-[   12.416362]  [<ffffffff810b7036>] ? __get_free_pages+0x12/0x4f
-[   12.417855]  [<ffffffff81119838>] compat_sys_mount+0x1ee/0x227
-[   12.419339]  [<ffffffff810e2594>] ? do_sys_open+0xf5/0x104
-[   12.420831]  [<ffffffff8102b112>] ia32_sysret+0x0/0x5
-[   12.422307] ---[ end trace f5edc87c0d05d4ad ]---
-[   12.425039] EXT4-fs (sda8): INFO: recovery required on readonly filesystem
-[   12.426552] EXT4-fs (sda8): write access will be enabled during recovery
-[   14.342227] EXT4-fs (sda8): orphan cleanup on readonly fs
-[   14.343756] EXT4-fs (sda8): ext4_orphan_cleanup: deleting unreferenced inode 54847
-[   14.343818] EXT4-fs (sda8): ext4_orphan_cleanup: deleting unreferenced inode 54846
-[   14.343830] EXT4-fs (sda8): 2 orphan inodes deleted
-[   14.345342] EXT4-fs (sda8): recovery complete
-[   14.761956] EXT4-fs (sda8): mounted filesystem with ordered data mode
+"offset" of the error message of ext4_check_dir_entry() might change the
+meaning by the caller. There are 2 meanings:
+- "File offset"
+  called by:
+   ext4_readdir, htree_dirblock_to_tree, search_dirblock, ext4_dx_find_entry,
+   empty_dir
+- "Buffer offset"
+  called by:
+   add_dirent_to_buf, ext4_delete_entry
 
+The best way to solve this problem is to change the meaning of
+"Buffer offset" into "File offset" but it is not easy.
+However, we can solve this problem easily if we unify the meanings into
+"Buffer offset". So, instead of "File Offset" meaning, we add the block number
+information to this message.
 
-I have not noticed this warning previously on the same kernel, so it's not
-easily reproducible.  The system functions fine after this: __GFP_NOWARN
-missing somewhere?
+--- Examples ---
+Original error message:
+ EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in directory \
+ #12: rec_len is too small for name_len - offset=12288, inode=216, rec_len=12,\
+  name_len=11
 
-Thanks,
+Error message which is changed by this patch:
+ EXT4-fs error (device loop0): htree_dirblock_to_tree: bad entry in directory \
+ #12: rec_len is too small for name_len - block=78, offset=0, inode=216, \
+ rec_len=12, name_len=11
 
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+---
+ fs/ext4/dir.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 9dc9316..65da7e5 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -84,9 +84,11 @@ int ext4_check_dir_entry(const char *function, struct inode *dir,
+ 
+ 	if (error_msg != NULL)
+ 		ext4_error(dir->i_sb, function,
+-			"bad entry in directory #%lu: %s - "
++			"bad entry in directory #%lu: %s - block=%llu, "
+ 			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
+-			dir->i_ino, error_msg, offset,
++			dir->i_ino, error_msg, 
++			(unsigned long long)bh->b_blocknr, 
++			(unsigned)(offset%bh->b_size),
+ 			le32_to_cpu(de->inode),
+ 			rlen, de->name_len);
+ 	return error_msg == NULL ? 1 : 0;
 -- 
-MST
+1.5.5.6
