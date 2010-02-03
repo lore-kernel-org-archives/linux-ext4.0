@@ -1,101 +1,149 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] ext4: Do not allow retry alloc loop under open transaction
-Date: Wed, 03 Feb 2010 21:27:31 +0300
-Message-ID: <874olytbpe.fsf@openvz.org>
+Subject: [PATCH 2/2] ext4: fix delalloc retry loop logic
+Date: Wed, 03 Feb 2010 21:39:30 +0300
+Message-ID: <87zl3qrwnx.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/mixed; boundary="=-=-="
 Cc: tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:36940 "EHLO
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:39114 "EHLO
 	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755459Ab0BCS3W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2010 13:29:22 -0500
-Received: by bwz19 with SMTP id 19so339303bwz.28
-        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2010 10:29:20 -0800 (PST)
+	with ESMTP id S1756878Ab0BCSjq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2010 13:39:46 -0500
+Received: by bwz19 with SMTP id 19so352559bwz.28
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2010 10:39:43 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+--=-=-=
 
-Some times we call ->write_begin() with opened journal
-but write_begin() may internally call ext4_should_retry_alloc()
-in case of ENOSPC, which result in deadlock.
-This patch introduce new AOP_FLAG which should be tested on retry
-alloc path.
+Theodore please review this patch ASAP, currently ext4+quota is 
+fatally broken due to your patch. Christmas holidays when you
+submit your patch is not good time for good review, IMHO
+i was too lazy to review it carefully.
+Testcase is trivial it is enough just hit a quota barrier.
+dmon$ set-quota-limit /mnt id=dmon --bsoft=1000 --bsoft=1000
+dmon$ dd if=/dev/zefo of=/mnt/file 
+
+kernel BUG at fs/jbd2/transaction.c:1027!
+
+
+--=-=-=
+Content-Disposition: inline;
+ filename=0002-ext4-fix-delalloc-retry-loop-logic.patch
+
+>From d66a56204ec7f79947423411972c460133e36ae5 Mon Sep 17 00:00:00 2001
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Date: Wed, 3 Feb 2010 18:24:13 +0300
+Subject: [PATCH 2/2] ext4: fix delalloc retry loop logic
+
+Current delalloc write path is broken:
+ext4_da_write_begin()
+  ext4_journal_start(inode, 1);  -> current->journal != NULL
+  block_write_begin
+    ext4_da_get_block_prep()
+      ext4_da_reserve_space()
+        ext4_should_retry_alloc() -> deadlock
+	write_inode_now() -> BUG_ON due to lack of journal credits
+
+Bug was partly introduced by following commit:
+  0637c6f4135f592f094207c7c21e7c0fc5557834
+  ext4: Patch up how we claim metadata blocks for quota purposes
+In order to preserve retry logic and eliminate bugs we have to
+move retry loop to ext4_da_write_begin()
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/ext4.h        |    5 +++++
- fs/ext4/inode.c       |    6 ++++--
- fs/ext4/move_extent.c |    2 +-
- include/linux/fs.h    |    1 +
- 4 files changed, 11 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c |   41 ++++++++++++++++++-----------------------
+ 1 files changed, 18 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index af7b626..0efb224 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -792,6 +792,11 @@ struct ext4_inode_info {
- #define EXT4_DFL_CHECKINTERVAL		0	/* Don't use interval check */
- 
- /*
-+ * Address space flags.
-+ */
-+#define EXT4_AOP_FLAG_NORETRY	AOP_FLAG_LAST	/* Do not allow to fail in to
-+						   retry alloc loop */
-+/*
-  * Behaviour when detecting errors
-  */
- #define EXT4_ERRORS_CONTINUE		1	/* Continue execution */
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c818972..2d3fe4d 100644
+index 2d3fe4d..022ce18 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1593,7 +1593,8 @@ retry:
- 		}
- 	}
+@@ -1815,7 +1815,6 @@ static int ext4_journalled_write_end(struct file *file,
+  */
+ static int ext4_da_reserve_space(struct inode *inode, sector_t lblock)
+ {
+-	int retries = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	unsigned long md_needed, md_reserved;
+@@ -1825,7 +1824,6 @@ static int ext4_da_reserve_space(struct inode *inode, sector_t lblock)
+ 	 * in order to allocate nrblocks
+ 	 * worse case is one extent per block
+ 	 */
+-repeat:
+ 	spin_lock(&ei->i_block_reservation_lock);
+ 	md_reserved = ei->i_reserved_meta_blocks;
+ 	md_needed = ext4_calc_metadata_amount(inode, lblock);
+@@ -1836,27 +1834,11 @@ repeat:
+ 	 * later. Real quota accounting is done at pages writeout
+ 	 * time.
+ 	 */
+-	if (vfs_dq_reserve_block(inode, md_needed + 1)) {
+-		/* 
+-		 * We tend to badly over-estimate the amount of
+-		 * metadata blocks which are needed, so if we have
+-		 * reserved any metadata blocks, try to force out the
+-		 * inode and see if we have any better luck.
+-		 */
+-		if (md_reserved && retries++ <= 3)
+-			goto retry;
++	if (vfs_dq_reserve_block(inode, md_needed + 1))
+ 		return -EDQUOT;
+-	}
  
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+	if (!(flags & EXT4_AOP_FLAG_NORETRY) && ret == -ENOSPC &&
-+		ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
- out:
- 	return ret;
-@@ -3089,7 +3090,8 @@ retry:
+ 	if (ext4_claim_free_blocks(sbi, md_needed + 1)) {
+ 		vfs_dq_release_reservation_block(inode, md_needed + 1);
+-		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+-		retry:
+-			if (md_reserved)
+-				write_inode_now(inode, (retries == 3));
+-			yield();
+-			goto repeat;
+-		}
+ 		return -ENOSPC;
+ 	}
+ 	spin_lock(&ei->i_block_reservation_lock);
+@@ -3033,7 +3015,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 			       loff_t pos, unsigned len, unsigned flags,
+ 			       struct page **pagep, void **fsdata)
+ {
+-	int ret, retries = 0;
++	int ret, dqretry, retries = 0;
+ 	struct page *page;
+ 	pgoff_t index;
+ 	unsigned from, to;
+@@ -3090,9 +3072,22 @@ retry:
  			ext4_truncate_failed_write(inode);
  	}
  
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+	if (!(flags & EXT4_AOP_FLAG_NORETRY) &&
-+		ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
+-	if (!(flags & EXT4_AOP_FLAG_NORETRY) &&
+-		ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+-		goto retry;
++	dqretry = (ret == -EDQUOT) || EXT4_I(inode)->i_reserved_meta_blocks;
++	if ( !(flags & EXT4_AOP_FLAG_NORETRY) &&
++		(ret == -ENOSPC || dqretry) &&
++		ext4_should_retry_alloc(inode->i_sb, &retries)) {
++		if (dqretry) {
++			/*
++			 * We tend to badly over-estimate the amount of
++			 * metadata blocks which are needed, so if we have
++			 * reserved any metadata blocks, try to force out the
++			 * inode and see if we have any better luck.
++			 */
++			write_inode_now(inode, (retries == 3));
++		}
++		yield();
++ 		goto retry;
++	}
  out:
  	return ret;
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 82c415b..f894382 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -796,7 +796,7 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	ext4_lblk_t orig_blk_offset;
- 	long long offs = orig_page_offset << PAGE_CACHE_SHIFT;
- 	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
--	unsigned int w_flags = 0;
-+	unsigned int w_flags = EXT4_AOP_FLAG_NORETRY;
- 	unsigned int tmp_data_size, data_size, replaced_size;
- 	void *fsdata;
- 	int i, jblocks;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b1bcb27..6f68707 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -504,6 +504,7 @@ enum positive_aop_returns {
- #define AOP_FLAG_NOFS			0x0004 /* used by filesystem to direct
- 						* helper code (eg buffer layer)
- 						* to clear GFP_FS from alloc */
-+#define AOP_FLAG_LAST			0x0008 /* First unused private flag */
- 
- /*
-  * oh the beauties of C type declarations.
+ }
 -- 
 1.6.3.3
 
+
+--=-=-=--
