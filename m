@@ -1,60 +1,101 @@
-From: "Michael S. Tsirkin" <mst@redhat.com>
-Subject: Re: 2.6.33-rc6: ext4 triggers warning about high order allocations
-Date: Wed, 3 Feb 2010 19:58:36 +0200
-Message-ID: <20100203175836.GA16907@redhat.com>
-References: <20100203060854.GA12489@redhat.com> <4B69AB60.5070609@redhat.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/2] ext4: Do not allow retry alloc loop under open transaction
+Date: Wed, 03 Feb 2010 21:27:31 +0300
+Message-ID: <874olytbpe.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23317 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932761Ab0BCSBv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Feb 2010 13:01:51 -0500
-Content-Disposition: inline
-In-Reply-To: <4B69AB60.5070609@redhat.com>
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:36940 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755459Ab0BCS3W (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2010 13:29:22 -0500
+Received: by bwz19 with SMTP id 19so339303bwz.28
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2010 10:29:20 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 03, 2010 at 10:59:12AM -0600, Eric Sandeen wrote:
-> Michael S. Tsirkin wrote:
-> > Hi!
-> > I got this warning at boot with 2.6.33-rc6:
-> > 
-> > [   12.374168] ------------[ cut here ]------------
-> > [   12.375798] WARNING: at mm/page_alloc.c:1813 __alloc_pages_nodemask+0x180/0x666()
-> > [   12.377401] Hardware name: 2241B48
-> > [   12.378984] Modules linked in: [last unloaded: scsi_wait_scan]
-> > [   12.380593] Pid: 1, comm: init Not tainted 2.6.33-rc6-aa-nopat #50
-> > [   12.382194] Call Trace:
-> > [   12.383781]  [<ffffffff810b6b3e>] ? __alloc_pages_nodemask+0x180/0x666
-> > [   12.385390]  [<ffffffff81041cda>] warn_slowpath_common+0x77/0xa4
-> > [   12.386996]  [<ffffffff81041d16>] warn_slowpath_null+0xf/0x11
-> > [   12.388577]  [<ffffffff810b6b3e>] __alloc_pages_nodemask+0x180/0x666
-> > [   12.390168]  [<ffffffff81036a9b>] ? finish_task_switch+0x4b/0xb1
-> > [   12.391758]  [<ffffffff810b7036>] __get_free_pages+0x12/0x4f
-> > [   12.393354]  [<ffffffff810de892>] __kmalloc+0x42/0x116
-> > [   12.394934]  [<ffffffff812405bf>] match_number+0x35/0x98
-> > [   12.396493]  [<ffffffff8124064d>] match_int+0xb/0xd
-> > [   12.398045]  [<ffffffff81169c8c>] parse_options+0x5fe/0x733
-> > [   12.399594]  [<ffffffff811058c3>] ? __wait_on_buffer+0x1f/0x21
-> > [   12.401157]  [<ffffffff8116a2dc>] ext4_fill_super+0x373/0x2070
-> 
-> Are you mounting with any interesting options?
-> 
-> -Eric
 
-Hmm yes:
+Some times we call ->write_begin() with opened journal
+but write_begin() may internally call ext4_should_retry_alloc()
+in case of ENOSPC, which result in deadlock.
+This patch introduce new AOP_FLAG which should be tested on retry
+alloc path.
 
-UUID=4670fcf0-09a8-4011-bf25-6e5e97f263c6 /                       ext4
-relatime,errors=remount-ro,auto_da_alloc,commit=300,journal_ioprio=7
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/ext4.h        |    5 +++++
+ fs/ext4/inode.c       |    6 ++++--
+ fs/ext4/move_extent.c |    2 +-
+ include/linux/fs.h    |    1 +
+ 4 files changed, 11 insertions(+), 3 deletions(-)
 
-UUID=ca47e5ef-0d7a-4471-ace9-bd19295a5da6 /home                   ext4
-relatime,errors=remount-ro,auto_da_alloc,commit=300        1 2
-
-Also I set data=ordered as default in my kernel config.
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index af7b626..0efb224 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -792,6 +792,11 @@ struct ext4_inode_info {
+ #define EXT4_DFL_CHECKINTERVAL		0	/* Don't use interval check */
+ 
+ /*
++ * Address space flags.
++ */
++#define EXT4_AOP_FLAG_NORETRY	AOP_FLAG_LAST	/* Do not allow to fail in to
++						   retry alloc loop */
++/*
+  * Behaviour when detecting errors
+  */
+ #define EXT4_ERRORS_CONTINUE		1	/* Continue execution */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c818972..2d3fe4d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1593,7 +1593,8 @@ retry:
+ 		}
+ 	}
+ 
+-	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++	if (!(flags & EXT4_AOP_FLAG_NORETRY) && ret == -ENOSPC &&
++		ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
+ 	return ret;
+@@ -3089,7 +3090,8 @@ retry:
+ 			ext4_truncate_failed_write(inode);
+ 	}
+ 
+-	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++	if (!(flags & EXT4_AOP_FLAG_NORETRY) &&
++		ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
+ 	return ret;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 82c415b..f894382 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -796,7 +796,7 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	ext4_lblk_t orig_blk_offset;
+ 	long long offs = orig_page_offset << PAGE_CACHE_SHIFT;
+ 	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
+-	unsigned int w_flags = 0;
++	unsigned int w_flags = EXT4_AOP_FLAG_NORETRY;
+ 	unsigned int tmp_data_size, data_size, replaced_size;
+ 	void *fsdata;
+ 	int i, jblocks;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b1bcb27..6f68707 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -504,6 +504,7 @@ enum positive_aop_returns {
+ #define AOP_FLAG_NOFS			0x0004 /* used by filesystem to direct
+ 						* helper code (eg buffer layer)
+ 						* to clear GFP_FS from alloc */
++#define AOP_FLAG_LAST			0x0008 /* First unused private flag */
+ 
+ /*
+  * oh the beauties of C type declarations.
 -- 
-MST
+1.6.3.3
+
