@@ -1,55 +1,134 @@
-From: tytso@mit.edu
-Subject: Re: mount ext2/3 as ext4 - no changes to ext2/3 fs structures?
-Date: Wed, 3 Feb 2010 16:08:28 -0500
-Message-ID: <20100203210828.GH16384@thunk.org>
-References: <88FF0BDF-9F6F-4A2D-A236-C388BFFA145D@kupper.org>
- <532480951001312154g1c927b31xe0181cc301b5a28d@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] handle optional-arg mount options better
+Date: Wed, 03 Feb 2010 15:13:30 -0600
+Message-ID: <4B69E6FA.20901@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Thomas Kupper <thomas@kupper.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Michael Rubin <mrubin@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54107 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:2689 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932932Ab0BCVIl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Feb 2010 16:08:41 -0500
-Content-Disposition: inline
-In-Reply-To: <532480951001312154g1c927b31xe0181cc301b5a28d@mail.gmail.com>
+	id S1756634Ab0BCVNc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Feb 2010 16:13:32 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o13LDWCh023234
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Feb 2010 16:13:32 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o13LDUnf028268
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Feb 2010 16:13:31 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 31, 2010 at 09:54:27PM -0800, Michael Rubin wrote:
-> On Sun, Jan 31, 2010 at 2:31 PM, Thomas Kupper <thomas@kupper.org> wrote:
-> > Consider the following scenario: Assume I have a partition
-> > formated with ext2 on a computer with some 2.4.x kernel. Now I
-> > mount this ext2 partition on another computer as ext4 using a
-> > 2.6.29+ kernel. After that I take the disk back to the older
-> > computer and mount the ext2 on the 2.4.x kernel with the ext2
-> > driver.
-> 
-> I have seen this work as long as you don't add the "extents" or other
-> ext4 specific mount options. Our kernels are not quite as up to date
-> as 2.6.29 and we have not done extensive testing with that kernel. Not
-> sure anyone has tested this case thoroughly.
+We have 2 mount options, "barrier" and "auto_da_alloc"
+which may or may not take a 1/0 argument.  This is confusing
+the parser, it seems, because if we pass it without an
+arg, it still tries to match_int for the arg, which
+is uninitialized, and match_number uses those uninit from/to
+values to do a kmalloc, resulting in potentially noisy
+failures.
 
-Yep, it's a supported feature that mounting a file system previously
-intended for ext2 or ext3 on ext4 shouldn't cause it to become
-unmountable elsewhere.
+I think just defining _arg variants of the tokens and
+handling them separately is the simplest fix.
 
-Note however that the "extents" ext4 mount options has gone away; if
-you want to enable extents on kernels, the supported way to do this
-is:
+Reported-by: Michael S. Tsirkin <mst@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-tune2fs -O extents /dev/sda1
+(I'll send one for ext3 as well if this looks good on review)
 
-Once you do this (and you can do this on a live-mounted ext4
-filesystem and it will take effect immediately), any new inodes that
-are created will be extent-mapped.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index da184f4..f7d4f06 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1096,7 +1096,8 @@ enum {
+ 	Opt_resgid, Opt_resuid, Opt_sb, Opt_err_cont, Opt_err_panic, Opt_err_ro,
+ 	Opt_nouid32, Opt_debug, Opt_oldalloc, Opt_orlov,
+ 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
+-	Opt_auto_da_alloc, Opt_noauto_da_alloc, Opt_noload, Opt_nobh, Opt_bh,
++	Opt_auto_da_alloc_arg, Opt_auto_da_alloc, Opt_noauto_da_alloc,
++	Opt_noload, Opt_nobh, Opt_bh,
+ 	Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
+ 	Opt_journal_update, Opt_journal_dev,
+ 	Opt_journal_checksum, Opt_journal_async_commit,
+@@ -1104,8 +1105,8 @@ enum {
+ 	Opt_data_err_abort, Opt_data_err_ignore,
+ 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+ 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
+-	Opt_noquota, Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err,
+-	Opt_resize, Opt_usrquota, Opt_grpquota, Opt_i_version,
++	Opt_noquota, Opt_ignore, Opt_barrier_arg, Opt_barrier, Opt_nobarrier,
++	Opt_err, Opt_resize, Opt_usrquota, Opt_grpquota, Opt_i_version,
+ 	Opt_stripe, Opt_delalloc, Opt_nodelalloc,
+ 	Opt_block_validity, Opt_noblock_validity,
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+@@ -1161,7 +1162,7 @@ static const match_table_t tokens = {
+ 	{Opt_noquota, "noquota"},
+ 	{Opt_quota, "quota"},
+ 	{Opt_usrquota, "usrquota"},
+-	{Opt_barrier, "barrier=%u"},
++	{Opt_barrier_arg, "barrier=%u"},
+ 	{Opt_barrier, "barrier"},
+ 	{Opt_nobarrier, "nobarrier"},
+ 	{Opt_i_version, "i_version"},
+@@ -1173,7 +1174,7 @@ static const match_table_t tokens = {
+ 	{Opt_noblock_validity, "noblock_validity"},
+ 	{Opt_inode_readahead_blks, "inode_readahead_blks=%u"},
+ 	{Opt_journal_ioprio, "journal_ioprio=%u"},
+-	{Opt_auto_da_alloc, "auto_da_alloc=%u"},
++	{Opt_auto_da_alloc_arg, "auto_da_alloc=%u"},
+ 	{Opt_auto_da_alloc, "auto_da_alloc"},
+ 	{Opt_noauto_da_alloc, "noauto_da_alloc"},
+ 	{Opt_discard, "discard"},
+@@ -1514,10 +1515,7 @@ set_qf_format:
+ 		case Opt_abort:
+ 			sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
+ 			break;
+-		case Opt_nobarrier:
+-			clear_opt(sbi->s_mount_opt, BARRIER);
+-			break;
+-		case Opt_barrier:
++		case Opt_barrier_arg:
+ 			if (match_int(&args[0], &option)) {
+ 				set_opt(sbi->s_mount_opt, BARRIER);
+ 				break;
+@@ -1527,6 +1525,12 @@ set_qf_format:
+ 			else
+ 				clear_opt(sbi->s_mount_opt, BARRIER);
+ 			break;
++		case Opt_nobarrier:
++			clear_opt(sbi->s_mount_opt, BARRIER);
++			break;
++		case Opt_barrier:
++			set_opt(sbi->s_mount_opt, BARRIER);
++			break;
+ 		case Opt_ignore:
+ 			break;
+ 		case Opt_resize:
+@@ -1590,10 +1594,7 @@ set_qf_format:
+ 			*journal_ioprio = IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE,
+ 							    option);
+ 			break;
+-		case Opt_noauto_da_alloc:
+-			set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
+-			break;
+-		case Opt_auto_da_alloc:
++		case Opt_auto_da_alloc_arg:
+ 			if (match_int(&args[0], &option)) {
+ 				clear_opt(sbi->s_mount_opt, NO_AUTO_DA_ALLOC);
+ 				break;
+@@ -1603,6 +1604,12 @@ set_qf_format:
+ 			else
+ 				set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
+ 			break;
++		case Opt_noauto_da_alloc:
++			set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
++			break;
++		case Opt_auto_da_alloc:
++			clear_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
++			break;
+ 		case Opt_discard:
+ 			set_opt(sbi->s_mount_opt, DISCARD);
+ 			break;
 
-We currently don't have a way of converting extent-mapped inodes back
-to the legacy indirect block mapping scheme (a patch to do an off-line
-conversion wouldn't be _that_ hard; patches gratefully accepted), so
-this is currently a one-way conversion.
-
-						- Ted
