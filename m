@@ -1,38 +1,25 @@
-From: Roel Kluin <roel.kluin@gmail.com>
-Subject: [PATCH] ext4: ext4_xattr_ibody_set() error ignored in ext4_expand_extra_isize_ea()
-Date: Thu, 04 Feb 2010 17:11:27 +0100
-Message-ID: <4B6AF1AF.3010008@gmail.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH 2/2] ext4: fix delalloc retry loop logic v2
+Date: Thu, 4 Feb 2010 14:45:59 -0500
+Message-ID: <20100204194559.GL25885@thunk.org>
+References: <87zl3qrwnx.fsf@openvz.org>
+ <87sk9irve0.fsf@openvz.org>
+ <87y6j9qlwq.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f228.google.com ([209.85.219.228]:39426 "EHLO
-	mail-ew0-f228.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933176Ab0BDQFk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Feb 2010 11:05:40 -0500
+Received: from THUNK.ORG ([69.25.196.29]:45608 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932572Ab0BDTqG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Feb 2010 14:46:06 -0500
+Content-Disposition: inline
+In-Reply-To: <87y6j9qlwq.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The error handling was missing.
+Dmitry, what version were you testing when you ran into the problem
+that you reported?  Annesh's patch hit mainline just before 2.6.33-rc6.
 
-Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
----
-Is this needed?
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index f3a2f7e..b77930c 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1302,6 +1302,8 @@ retry:
- 
- 		/* Remove the chosen entry from the inode */
- 		error = ext4_xattr_ibody_set(handle, inode, &i, is);
-+		if (error)
-+			goto cleanup;
- 
- 		entry = IFIRST(header);
- 		if (entry_size + EXT4_XATTR_SIZE(size) >= new_extra_isize)
+     	 	    	     	       - Ted
