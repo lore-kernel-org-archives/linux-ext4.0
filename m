@@ -1,47 +1,38 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/2] ext4: Do not allow retry alloc loop under open transaction
-Date: Thu, 04 Feb 2010 15:06:31 +0300
-Message-ID: <877hqtdx2w.fsf@openvz.org>
-References: <874olytbpe.fsf@openvz.org> <87wrytqlji.fsf@linux.vnet.ibm.com>
+From: Roel Kluin <roel.kluin@gmail.com>
+Subject: [PATCH] ext4: ext4_xattr_ibody_set() error ignored in ext4_expand_extra_isize_ea()
+Date: Thu, 04 Feb 2010 17:11:27 +0100
+Message-ID: <4B6AF1AF.3010008@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:39010 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932085Ab0BDMGh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Feb 2010 07:06:37 -0500
-Received: by bwz19 with SMTP id 19so198181bwz.28
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Feb 2010 04:06:35 -0800 (PST)
-In-Reply-To: <87wrytqlji.fsf@linux.vnet.ibm.com> (Aneesh Kumar K. V.'s message
-	of "Thu, 04 Feb 2010 17:07:21 +0530")
+Received: from mail-ew0-f228.google.com ([209.85.219.228]:39426 "EHLO
+	mail-ew0-f228.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933176Ab0BDQFk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Feb 2010 11:05:40 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> writes:
+The error handling was missing.
 
-> On Wed, 03 Feb 2010 21:27:31 +0300, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
->> 
->> Some times we call ->write_begin() with opened journal
->> but write_begin() may internally call ext4_should_retry_alloc()
->> in case of ENOSPC, which result in deadlock.
->> This patch introduce new AOP_FLAG which should be tested on retry
->> alloc path.
->> 
->
-> Can you explain this further. We do a journal_stop before
-> ext4_should_retry_alloc. So not sure about the deadlock.
-move_extent_per_page
- ext4_journal_start  -> current->journal_info != NULL
- ->write_begin
-    ext4_journal_start
-    ext4_journal_stop
-    ext4_should_retry_alloc : here current->journal_info != NULL
+Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+---
+Is this needed?
 
-Sorry i've missed the fact that ext4_should_retry_alloc() check 
-for current->journal_info and skip running transaction in that case.
-Seems what this check was added long time ago, but i miss it.
-So this patch is useless.
->
-> -aneesh
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index f3a2f7e..b77930c 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1302,6 +1302,8 @@ retry:
+ 
+ 		/* Remove the chosen entry from the inode */
+ 		error = ext4_xattr_ibody_set(handle, inode, &i, is);
++		if (error)
++			goto cleanup;
+ 
+ 		entry = IFIRST(header);
+ 		if (entry_size + EXT4_XATTR_SIZE(size) >= new_extra_isize)
