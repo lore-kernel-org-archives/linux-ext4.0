@@ -1,108 +1,51 @@
-From: dingdinghua <dingdinghua@nrchpc.ac.cn>
-Subject: [RESEND PATCH] Jbd2: delay discarding buffers in journal_unmap_buffer
-Date: Fri,  5 Feb 2010 15:47:51 +0800
-Message-ID: <1265356071-30515-1-git-send-email-dingdinghua@nrchpc.ac.cn>
-Cc: jack@suse.cz, dingdinghua <dingdinghua@nrchpc.ac.cn>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15231] New: BUG: soft lockup - CPU#3 stuck for 61s
+Date: Fri, 5 Feb 2010 09:38:19 GMT
+Message-ID: <bug-15231-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [159.226.39.252] ([159.226.39.252]:54008 "EHLO bwstor.com.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752620Ab0BEINl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Feb 2010 03:13:41 -0500
+Received: from demeter.kernel.org ([140.211.167.39]:58588 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932865Ab0BEJiV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Feb 2010 04:38:21 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o159cJAq005422
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 5 Feb 2010 09:38:20 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Delay discarding buffers in journal_unmap_buffer until
-we know that "add to orphan" operation has definitely been
-committed, otherwise the log space of committing transation
-may be freed and reused before truncate get committed, updates
-may get lost if crash happens.
----
- fs/jbd2/commit.c      |   10 +++++-----
- fs/jbd2/transaction.c |   33 +++++++++++++++++++++------------
- 2 files changed, 26 insertions(+), 17 deletions(-)
+http://bugzilla.kernel.org/show_bug.cgi?id=15231
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 1bc74b6..aabff6a 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -930,12 +930,12 @@ restart_loop:
- 		/* A buffer which has been freed while still being
- 		 * journaled by a previous transaction may end up still
- 		 * being dirty here, but we want to avoid writing back
--		 * that buffer in the future now that the last use has
--		 * been committed.  That's not only a performance gain,
--		 * it also stops aliasing problems if the buffer is left
--		 * behind for writeback and gets reallocated for another
-+		 * that buffer in the future after the "add to orphan"
-+		 * operation been committed,  That's not only a performance
-+                 * gain, it also stops aliasing problems if the buffer is
-+		 * left behind for writeback and gets reallocated for another
- 		 * use in a different page. */
--		if (buffer_freed(bh)) {
-+		if (buffer_freed(bh) && !jh->b_next_transaction) {
- 			clear_buffer_freed(bh);
- 			clear_buffer_jbddirty(bh);
- 		}
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a051270..6e2971d 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1783,16 +1783,20 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
- 	} else if (transaction == journal->j_committing_transaction) {
- 		JBUFFER_TRACE(jh, "on committing transaction");
- 		/*
--		 * If it is committing, we simply cannot touch it.  We
--		 * can remove it's next_transaction pointer from the
--		 * running transaction if that is set, but nothing
--		 * else. */
-+		 * We don't know the transaction which "add to orphan" handle
-+		 * belongs to, there are three cases:
-+		 * (1) it's a transaction which has been committed
-+		 * (2) it's the committing transaction
-+		 * (3) it's the running transaction
-+		 * We can't clear the BH_jbddirty bit and discard the buffer
-+		 * before "add to orphan" has been committed, just
-+		 * be conservative, if running transaction exists and buffer
-+		 * has been dirtied(may be by previous transaction), wait until
-+		 * running transaction complete commit and do the discard work.
-+		 */
- 		set_buffer_freed(bh);
--		if (jh->b_next_transaction) {
--			J_ASSERT(jh->b_next_transaction ==
--					journal->j_running_transaction);
--			jh->b_next_transaction = NULL;
--		}
-+		if (journal->j_running_transaction && buffer_jbddirty(bh))
-+			jh->b_next_transaction = journal->j_running_transaction;
- 		jbd2_journal_put_journal_head(jh);
- 		spin_unlock(&journal->j_list_lock);
- 		jbd_unlock_bh_state(bh);
-@@ -1969,7 +1973,7 @@ void jbd2_journal_file_buffer(struct journal_head *jh,
-  */
- void __jbd2_journal_refile_buffer(struct journal_head *jh)
- {
--	int was_dirty;
-+	int was_dirty, jlist;
- 	struct buffer_head *bh = jh2bh(jh);
- 
- 	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
-@@ -1991,8 +1995,13 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
- 	__jbd2_journal_temp_unlink_buffer(jh);
- 	jh->b_transaction = jh->b_next_transaction;
- 	jh->b_next_transaction = NULL;
--	__jbd2_journal_file_buffer(jh, jh->b_transaction,
--				jh->b_modified ? BJ_Metadata : BJ_Reserved);
-+	if (buffer_freed(bh))
-+		jlist = BJ_Forget;
-+	else if (jh->b_modified)
-+		jlist = BJ_Metadata;
-+	else
-+		jlist = BJ_Reserved;
-+	__jbd2_journal_file_buffer(jh, jh->b_transaction, jlist);
- 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
- 
- 	if (was_dirty)
+           Summary: BUG: soft lockup - CPU#3 stuck for 61s
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.32.7
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: franco@fugro-fsi.com.au
+        Regression: No
+
+
+We recently deployed 9 NFS servers running Linux kernel 2.6.32.7. Each server
+exports 4 13TB EXT4 filesystems. During the first 24 hous of testing using
+simple sequential reads and writes, 2 of the 9 systems hung with "BUG: soft
+lockup - CPU#3 stuck for 61s".
+
+We downgraded the kernel version to 2.6.32.2 and have not had the same problem
+after a further 24 hours of testing.
+
+Message file attached.
+
 -- 
-1.5.5.6
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
