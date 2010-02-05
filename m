@@ -1,110 +1,46 @@
-From: Christoph Egger <siccegge@stud.informatik.uni-erlangen.de>
-Subject: [PATCH] obsolete config in kernel source (BUFFER_DEBUG)
-Date: Fri, 5 Feb 2010 14:13:33 +0100
-Message-ID: <20100205131333.GB6540@faui49.informatik.uni-erlangen.de>
+From: tytso@mit.edu
+Subject: Re: [PATCH V2] fix type of "offset" in ext4_io_end
+Date: Fri, 5 Feb 2010 08:37:51 -0500
+Message-ID: <20100205133751.GO25885@thunk.org>
+References: <4B6327C4.4000100@redhat.com>
+ <4B6344E7.9050503@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: vamos@i4.informatik.uni-erlangen.de
-To: linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Kazuo Moriwaka <moriwaka@redhat.com>,
-	H Hartley Sweet
+Cc: ext4 development <linux-ext4@vger.kernel.org>, fmayhar@google.com,
+	Giel de Nijs <giel@vectorwise.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from faui40.informatik.uni-erlangen.de ([131.188.34.40]:56856 "EHLO
-	faui40.informatik.uni-erlangen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753432Ab0BENNU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Feb 2010 08:13:20 -0500
+Received: from thunk.org ([69.25.196.29]:53591 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756001Ab0BENhy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Feb 2010 08:37:54 -0500
 Content-Disposition: inline
+In-Reply-To: <4B6344E7.9050503@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all!
+On Fri, Jan 29, 2010 at 02:28:23PM -0600, Eric Sandeen wrote:
+> The "offset" member in ext4_io_end holds bytes, not
+> blocks, so ext4_lblk_t is wrong - and too small (u32)
+> 
+> This caused the testcase "Possible ext4 data corruption
+> with large files and async I/O" sent by Giel to fail when it
+> wrapped around to 0.
+> 
+> Also fix up the type of arguments to
+> ext4_convert_unwritten_extents(), it gets ssize_t from
+> ext4_end_aio_dio_nolock() and ext4_ext_direct_IO()
+> 
+> Reported-by: Giel de Nijs <giel@vectorwise.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-	As part of the VAMOS[0] research project at the University of
-Erlangen we're checking referential integrity between kernel KConfig
-options and in-code Conditional blocks.
+So I was going to submit this patch to Linus, but the last two times
+I've run xfsqa ("xfsqa -g quick" and "xfsqa -g auto"), test #126 has
+failed.  If I run the test stand-alone, it passes.  It's a bit of a
+head-scratcher.  I'm currently backing out the patch and trying to do
+an xfsqa -g auto run to make sure this was something that had crept in
+before applying this patch, so this may very well not be this patch
+--- I certainly can't see anything wrong with it.  But I thought I
+would give a heads up....
 
-	With some commit somewhere around 2.4.15 the last hint of
-CONFIG_BUFFER_DEBUG (apart from the 2 occurences this patch addresses)
--- some documentation -- was removed from the kernel source. However
-this one piece of code made it till today. Time to go forward and
-remove it?
-
-	Please keep me informed of this patch getting confirmed /
-merged so we can keep track of it.
-
-Regards
-
-	Christoph Egger
-
-[0] http://vamos1.informatik.uni-erlangen.de/
-
-----
->From cb255f19dc90e027c2f903e24c16d1f179bac67e Mon Sep 17 00:00:00 2001
-From: Christoph Egger <siccegge@stud.informatik.uni-erlangen.de>
-Date: Fri, 5 Feb 2010 13:08:06 +0100
-Subject: [PATCH] remove references to BUFFER_DEBUG
-
-CONFIG_BUFFER_DEBUG seems to have been removed from the documentation
-somewhere around 2.4.15 and seemingly hasn't been available even
-longer. It is, however, still referenced at one place from the jbd
-code (one is a copy of the other header). Time to clean it up
-
-Signed-off-by: Christoph Egger <siccegge@stud.informatik.uni-erlangen.de>
----
- include/linux/jbd.h  |   11 -----------
- include/linux/jbd2.h |   11 -----------
- 2 files changed, 0 insertions(+), 22 deletions(-)
-
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index 331530c..f3aa59c 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -246,19 +246,8 @@ typedef struct journal_superblock_s
- 
- #define J_ASSERT(assert)	BUG_ON(!(assert))
- 
--#if defined(CONFIG_BUFFER_DEBUG)
--void buffer_assertion_failure(struct buffer_head *bh);
--#define J_ASSERT_BH(bh, expr)						\
--	do {								\
--		if (!(expr))						\
--			buffer_assertion_failure(bh);			\
--		J_ASSERT(expr);						\
--	} while (0)
--#define J_ASSERT_JH(jh, expr)	J_ASSERT_BH(jh2bh(jh), expr)
--#else
- #define J_ASSERT_BH(bh, expr)	J_ASSERT(expr)
- #define J_ASSERT_JH(jh, expr)	J_ASSERT(expr)
--#endif
- 
- #if defined(JBD_PARANOID_IOFAIL)
- #define J_EXPECT(expr, why...)		J_ASSERT(expr)
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 638ce45..4cf6191 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -284,19 +284,8 @@ typedef struct journal_superblock_s
- 
- #define J_ASSERT(assert)	BUG_ON(!(assert))
- 
--#if defined(CONFIG_BUFFER_DEBUG)
--void buffer_assertion_failure(struct buffer_head *bh);
--#define J_ASSERT_BH(bh, expr)						\
--	do {								\
--		if (!(expr))						\
--			buffer_assertion_failure(bh);			\
--		J_ASSERT(expr);						\
--	} while (0)
--#define J_ASSERT_JH(jh, expr)	J_ASSERT_BH(jh2bh(jh), expr)
--#else
- #define J_ASSERT_BH(bh, expr)	J_ASSERT(expr)
- #define J_ASSERT_JH(jh, expr)	J_ASSERT(expr)
--#endif
- 
- #if defined(JBD2_PARANOID_IOFAIL)
- #define J_EXPECT(expr, why...)		J_ASSERT(expr)
--- 
-1.6.3.3
-
+      	     	       	       	      	   	- Ted
