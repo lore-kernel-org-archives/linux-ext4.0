@@ -1,184 +1,228 @@
 From: marcus.husar@rose.uni-heidelberg.de
-Subject: [PATCH 4/4][2.6.32-stable] ext4: Fix quota accounting error with
-	fallocate
-Date: Sat, 06 Feb 2010 17:41:32 +0100
-Message-ID: <20100206174132.f7lkaprm144wsgwc@wwwmail.urz.uni-heidelberg.de>
+Subject: [PATCH 1/4][2.6.32-stable] ext4: Prepare for backporting first
+	quota patch
+Date: Sat, 06 Feb 2010 17:33:49 +0100
+Message-ID: <20100206173349.8ukmzch57xccokwo@wwwmail.urz.uni-heidelberg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII;
 	DelSp=Yes	format=flowed
 Content-Transfer-Encoding: 7BIT
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay.uni-heidelberg.de ([129.206.100.212]:46476 "EHLO
-	relay.uni-heidelberg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753952Ab0BFRUZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Feb 2010 12:20:25 -0500
+Received: from relay2.uni-heidelberg.de ([129.206.210.211]:46120 "EHLO
+	relay2.uni-heidelberg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755617Ab0BFRcR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Feb 2010 12:32:17 -0500
 Received: from ix.urz.uni-heidelberg.de (cyrus-portal.urz.uni-heidelberg.de [129.206.100.176])
-	by relay.uni-heidelberg.de (8.14.1/8.14.1) with ESMTP id o16GfXcY027106
+	by relay2.uni-heidelberg.de (8.13.8/8.13.8) with ESMTP id o16GafWI001347
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 17:41:33 +0100
+	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 17:36:41 +0100
 Received: from wwwmail.urz.uni-heidelberg.de (wwwmail.urz.uni-heidelberg.de [129.206.100.145])
-	by ix.urz.uni-heidelberg.de (8.13.8/8.13.8) with ESMTP id o16GfWDi031906
+	by ix.urz.uni-heidelberg.de (8.13.8/8.13.8) with ESMTP id o16GXnmm030219
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 17:41:32 +0100
+	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 17:33:49 +0100
 Received: from wwwmail.urz.uni-heidelberg.de (localhost.localdomain [127.0.0.1])
-	by wwwmail.urz.uni-heidelberg.de (8.13.1/8.13.1) with ESMTP id o16GfWc1020522
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 17:41:32 +0100
+	by wwwmail.urz.uni-heidelberg.de (8.13.1/8.13.1) with ESMTP id o16GXnCO019306
+	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 17:33:49 +0100
 Received: (from apache@localhost)
-	by wwwmail.urz.uni-heidelberg.de (8.13.1/8.13.1/Submit) id o16GfWtD020521
-	for linux-ext4@vger.kernel.org; Sat, 6 Feb 2010 17:41:32 +0100
+	by wwwmail.urz.uni-heidelberg.de (8.13.1/8.13.1/Submit) id o16GXnbO019305
+	for linux-ext4@vger.kernel.org; Sat, 6 Feb 2010 17:33:49 +0100
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a backport of 5f634d064c709ea02c3cdaa850a08323a4a4bf28 that
-applies cleanly on top of patch 3 of this patchset.
+Hi all,
 
-ext4: Fix quota accounting error with fallocate
+this patch series serves the purpose to solve problems with quota
+support of ext4 in the stable tree of kernel 2.6.32. If the changes  
+are not too extensive it would be great if you could send them over to  
+Greg Kroah-Hartman. All patches apply cleanly, compile and have been  
+tested with quota support enabled.
 
-When we fallocate a region of the file which we had recently written,
-and which is still in the page cache marked as delayed allocated blocks
-we need to make sure we don't do the quota update on writepage path.
-This is because the needed quota updated would have already be done
-by fallocate.
+Aneesh Kumar has posted two patches to improve quota support that have  
+been applied to 2.6.33-rc.  Patch 2 and 4 are backports of these  
+patches on top of
+2.6.32.7. Patch 1 and 3 are necessary to be able to backport Aneeshs patches.
+Changes to some functions between 2.6.32.7 and 2.6.33-rc were to many.  
+  So patch 1 and 3 adapt some functions from 2.6.33-rc3  
+(74d2e4f8d79ae0c4b6ec027958d5b18058662eea, parent of patch 2 and
+1db913823c0f8360fccbd24ca67eb073966a5ffd, parent of patch 4) to
+2.6.32.7.
+
+Adapt ext4_da_reserve_space, ext4_calc_metadata_amount,
+ext4_indirect_calc_metadata_amount from 2.6.33-rc3 to apply on top of
+2.6.32.7.  Do also a small adjustment to ext4_da_get_block_prep.
 
 Signed-off-by: Marcus Husar <marcus.husar@rose.uni-heidelberg.de>
 ---
-     ext4.h    |    2 ++
-     extents.c |   21 +++++++++++++++++++++
-     inode.c   |   44 +++++++++++++++++++++++++++++++-------------
-     3 files changed, 54 insertions(+), 13 deletions(-)
+     ext4.h  |    2 +
+     inode.c |   88 ++++++++++++++++++++++++++++++++----------------------
+     2 files changed, 55 insertions(+), 35 deletions(-)
 
 diff -uprN a/fs/ext4/ext4.h b/fs/ext4/ext4.h
---- a/fs/ext4/ext4.h	2010-02-05 10:05:39.088239000 +0100
-+++ b/fs/ext4/ext4.h	2010-02-06 12:11:56.600219566 +0100
-@@ -1440,6 +1440,8 @@ extern int ext4_block_truncate_page(hand
-     extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct
-vm_fault *vmf);
-     extern qsize_t *ext4_get_reserved_space(struct inode *inode);
-     extern int flush_aio_dio_completed_IO(struct inode *inode);
-+extern void ext4_da_update_reserve_space(struct inode *inode,
-+					int used, int quota_claim);
-     /* ioctl.c */
-     extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-     extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
-diff -uprN a/fs/ext4/extents.c b/fs/ext4/extents.c
---- a/fs/ext4/extents.c	2010-02-06 11:43:34.636221000 +0100
-+++ b/fs/ext4/extents.c	2010-02-06 12:16:51.620226519 +0100
-@@ -3123,7 +3123,19 @@ out:
-     		unmap_underlying_metadata_blocks(inode->i_sb->s_bdev,
-     						newblock + max_blocks,
-     						allocated - max_blocks);
-+		allocated = max_blocks;
-     	}
-+
-+	/*
-+	 * If we have done fallocate with the offset that is already
-+	 * delayed allocated, we would have block reservation
-+	 * and quota reservation done in the delayed write path.
-+	 * But fallocate would have already updated quota and block
-+	 * count for this offset. So cancel these reservation
-+	 */
-+	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
-+		ext4_da_update_reserve_space(inode, allocated, 0);
-+
-     map_out:
-     	set_buffer_mapped(bh_result);
-     out1:
-@@ -3353,9 +3365,18 @@ int ext4_ext_get_blocks(handle_t *handle
-     	/* previous routine could use block we allocated */
-     	newblock = ext_pblock(&newex);
-     	allocated = ext4_ext_get_actual_len(&newex);
-+	if (allocated > max_blocks)
-+		allocated = max_blocks;
-     	set_buffer_new(bh_result);
+--- a/fs/ext4/ext4.h	2010-02-05 09:11:41.900599000 +0100
++++ b/fs/ext4/ext4.h	2010-02-05 10:05:39.088239463 +0100
+@@ -693,6 +693,8 @@ struct ext4_inode_info {
+     	unsigned int i_reserved_meta_blocks;
+     	unsigned int i_allocated_meta_blocks;
+     	unsigned short i_delalloc_reserved_flag;
++	sector_t i_da_metadata_calc_last_lblock;
++	int i_da_metadata_calc_len;
 
-     	/*
-+	 * Update reserved blocks/metadata blocks after successful
-+	 * block allocation which had been deferred till now.
-+	 */
-+	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
-+		ext4_da_update_reserve_space(inode, allocated, 1);
-+
-+	/*
-     	 * Cache the extent and update transaction to commit on fdatasync only
-     	 * when it is _not_ an uninitialized extent.
-     	 */
+     	/* on-disk additional length */
+     	__u16 i_extra_isize;
 diff -uprN a/fs/ext4/inode.c b/fs/ext4/inode.c
---- a/fs/ext4/inode.c	2010-02-06 11:45:59.188218000 +0100
-+++ b/fs/ext4/inode.c	2010-02-06 12:25:26.736219057 +0100
-@@ -1095,11 +1095,12 @@ static int ext4_calc_metadata_amount(str
-      * Called with i_data_sem down, which is important since we can call
-      * ext4_discard_preallocations() from here.
+--- a/fs/ext4/inode.c	2010-02-05 09:11:41.941245000 +0100
++++ b/fs/ext4/inode.c	2010-02-05 09:55:16.068240477 +0100
+@@ -1051,38 +1051,44 @@ qsize_t *ext4_get_reserved_space(struct
+     	return &EXT4_I(inode)->i_reserved_quota;
+     }
+     #endif
++
+     /*
+      * Calculate the number of metadata blocks need to reserve
+- * to allocate @blocks for non extent file based file
++ * to allocate a new block at @lblocks for non extent file based file
       */
--static void ext4_da_update_reserve_space(struct inode *inode, int used)
-+void ext4_da_update_reserve_space(struct inode *inode,
-+				int used, int quota_claim)
+-static int ext4_indirect_calc_metadata_amount(struct inode *inode,
+int blocks)
++static int ext4_indirect_calc_metadata_amount(struct inode *inode,
++					sector_t lblock)
      {
-     	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-     	struct ext4_inode_info *ei = EXT4_I(inode);
--	int mdb_free = 0;
-+	int mdb_free = 0, allocated_meta_blocks = 0;
+-	int icap = EXT4_ADDR_PER_BLOCK(inode->i_sb);
+-	int ind_blks, dind_blks, tind_blks;
+-
+-	/* number of new indirect blocks needed */
+-	ind_blks = (blocks + icap - 1) / icap;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	int dind_mask = EXT4_ADDR_PER_BLOCK(inode->i_sb) - 1;
++	int blk_bits;
 
-     	spin_lock(&ei->i_block_reservation_lock);
-     	if (unlikely(used > ei->i_reserved_data_blocks)) {
-@@ -1115,6 +1116,7 @@ static void ext4_da_update_reserve_space
-     	ei->i_reserved_data_blocks -= used;
-     	used += ei->i_allocated_meta_blocks;
-     	ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks;
-+	allocated_meta_blocks = ei->i_allocated_meta_blocks;
-     	ei->i_allocated_meta_blocks = 0;
-     	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used);
+-	dind_blks = (ind_blks + icap - 1) / icap;
++	if (lblock < EXT4_NDIR_BLOCKS)
++		return 0;
 
-@@ -1132,9 +1134,23 @@ static void ext4_da_update_reserve_space
-     	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+-	tind_blks = 1;
++	lblock -= EXT4_NDIR_BLOCKS;
 
-     	/* Update quota subsystem */
--	vfs_dq_claim_block(inode, used);
--	if (mdb_free)
--		vfs_dq_release_reservation_block(inode, mdb_free);
-+	if (quota_claim) {
-+		vfs_dq_claim_block(inode, used);
-+		if (mdb_free)
-+			vfs_dq_release_reservation_block(inode, mdb_free);
-+	} else {
-+		/*
-+		 * We did fallocate with an offset that is already delayed
-+		 * allocated. So on delayed allocated writeback we should
-+		 * not update the quota for allocated blocks. But then
-+		 * converting an fallocate region to initialized region would
-+		 * have caused a metadata allocation. So claim quota for
-+		 * that
-+		 */
-+		if (allocated_meta_blocks)
-+			vfs_dq_claim_block(inode, allocated_meta_blocks);
-+		vfs_dq_release_reservation_block(inode, mdb_free + used);
+-	return ind_blks + dind_blks + tind_blks;
++	if (ei->i_da_metadata_calc_len &&
++		(lblock & dind_mask) == ei->i_da_metadata_calc_last_lblock) {
++		ei->i_da_metadata_calc_len++;
++		return 0;
 +	}
++	ei->i_da_metadata_calc_last_lblock = lblock & dind_mask;
++	ei->i_da_metadata_calc_len = 1;
++	blk_bits = roundup_pow_of_two(lblock + 1);
++	return (blk_bits / EXT4_ADDR_PER_BLOCK_BITS(inode->i_sb)) + 1;
+     }
+
+     /*
+      * Calculate the number of metadata blocks need to reserve
+- * to allocate given number of blocks
++ * to allocate a block located at @lblock
+      */
+-static int ext4_calc_metadata_amount(struct inode *inode, int blocks)
++static int ext4_calc_metadata_amount(struct inode *inode, sector_t lblock)
+     {
+-	if (!blocks)
+-		return 0;
+-
+     	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
+-		return ext4_ext_calc_metadata_amount(inode, blocks);
++		return ext4_ext_calc_metadata_amount(inode, lblock);
+
+-	return ext4_indirect_calc_metadata_amount(inode, blocks);
++	return ext4_indirect_calc_metadata_amount(inode, lblock);
+     }
+
+     static void ext4_da_update_reserve_space(struct inode *inode, int used)
+@@ -1834,11 +1840,15 @@ static int ext4_journalled_write_end(str
+     	return ret ? ret : copied;
+     }
+
+-static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
++/*
++ * Reserve a single block located at lblock
++ */
++static int ext4_da_reserve_space(struct inode *inode, sector_t lblock)
+     {
+     	int retries = 0;
+     	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-	unsigned long md_needed, mdblocks, total = 0;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	unsigned long md_needed, md_reserved;
 
      	/*
-     	 * If we have done all the pending block allocations and if
-@@ -1334,18 +1350,20 @@ int ext4_get_blocks(handle_t *handle, st
-     			 */
-     			EXT4_I(inode)->i_state &= ~EXT4_STATE_EXT_MIGRATE;
-     		}
--	}
+     	 * recalculate the amount of metadata blocks to reserve
+@@ -1846,35 +1856,43 @@ static int ext4_da_reserve_space(struct
+     	 * worse case is one extent per block
+     	 */
+     repeat:
+-	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
+-	mdblocks = ext4_calc_metadata_amount(inode, total);
+-	BUG_ON(mdblocks < EXT4_I(inode)->i_reserved_meta_blocks);
+-
+-	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
+-	total = md_needed + nrblocks;
+-	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++	spin_lock(&ei->i_block_reservation_lock);
++	md_reserved = ei->i_reserved_meta_blocks;
++	md_needed = ext4_calc_metadata_amount(inode, lblock);
++	spin_unlock(&ei->i_block_reservation_lock);
 
+     	/*
+     	 * Make quota reservation here to prevent quota overflow
+     	 * later. Real quota accounting is done at pages writeout
+     	 * time.
+     	 */
+-	if (vfs_dq_reserve_block(inode, total))
++	if (vfs_dq_reserve_block(inode, md_needed + 1)) {
 +		/*
-+		 * Update reserved blocks/metadata blocks after successful
-+		 * block allocation which had been deferred till now. We don't
-+		 * support fallocate for non extent files. So we can update
-+		 * reserve space here.
++		 * We tend to badly over-estimate the amount of
++		 * metadata blocks which are needed, so if we have
++		 * reserved any metadata blocks, try to force out the
++		 * inode and see if we have any better luck.
 +		 */
-+		if ((retval > 0) &&
-+			(flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
-+			ext4_da_update_reserve_space(inode, retval, 1);
++		if (md_reserved && retries++ <= 3)
++			goto retry;
+     		return -EDQUOT;
 +	}
-     	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-     		EXT4_I(inode)->i_delalloc_reserved_flag = 0;
 
--	/*
--	 * Update reserved blocks/metadata blocks after successful
--	 * block allocation which had been deferred till now.
--	 */
--	if ((retval > 0) && (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
--		ext4_da_update_reserve_space(inode, retval);
+-	if (ext4_claim_free_blocks(sbi, total)) {
+-		vfs_dq_release_reservation_block(inode, total);
++	if (ext4_claim_free_blocks(sbi, md_needed + 1)) {
++		vfs_dq_release_reservation_block(inode, md_needed + 1);
+     		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
++		retry:
++			if (md_reserved)
++				write_inode_now(inode, (retries == 3));
+     			yield();
+     			goto repeat;
+     		}
+     		return -ENOSPC;
+     	}
+-	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+-	EXT4_I(inode)->i_reserved_meta_blocks += md_needed;
+-	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++	spin_lock(&ei->i_block_reservation_lock);
++	ei->i_reserved_data_blocks++;
++	ei->i_reserved_meta_blocks += md_needed;
++	spin_unlock(&ei->i_block_reservation_lock);
+
+     	return 0;       /* success */
+     }
+@@ -2530,7 +2548,7 @@ static int ext4_da_get_block_prep(struct
+     		 * XXX: __block_prepare_write() unmaps passed block,
+     		 * is it OK?
+     		 */
+-		ret = ext4_da_reserve_space(inode, 1);
++		ret = ext4_da_reserve_space(inode, iblock);
+     		if (ret)
+     			/* not enough space to reserve */
+     			return ret;
+
+
+
