@@ -1,183 +1,122 @@
-From: marcus.husar@rose.uni-heidelberg.de
-Subject: Re: [PATCH 1/4][2.6.32-stable] ext4: Prepare for backporting first
-	quota patch
-Date: Sat, 06 Feb 2010 20:00:21 +0100
-Message-ID: <20100206200021.temprma80wk8sco4@wwwmail.urz.uni-heidelberg.de>
+From: "Michael S. Tsirkin" <mst@redhat.com>
+Subject: Re: 2.6.33-rc6: ext4 triggers warning about high order allocations
+Date: Sun, 7 Feb 2010 14:30:33 +0200
+Message-ID: <20100207123032.GA3220@redhat.com>
+References: <20100203060854.GA12489@redhat.com> <4B69AB60.5070609@redhat.com> <20100203175836.GA16907@redhat.com> <4B69CCE4.3000904@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
-	DelSp=Yes	format=flowed
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay2.uni-heidelberg.de ([129.206.210.211]:60422 "EHLO
-	relay2.uni-heidelberg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932441Ab0BFTAY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Feb 2010 14:00:24 -0500
-Received: from ix.urz.uni-heidelberg.de (cyrus-portal.urz.uni-heidelberg.de [129.206.100.176])
-	by relay2.uni-heidelberg.de (8.13.8/8.13.8) with ESMTP id o16J0P7W009382
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 20:00:25 +0100
-Received: from wwwmail.urz.uni-heidelberg.de (wwwmail.urz.uni-heidelberg.de [129.206.100.145])
-	by ix.urz.uni-heidelberg.de (8.13.8/8.13.8) with ESMTP id o16J0Mme020225
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 20:00:22 +0100
-Received: from wwwmail.urz.uni-heidelberg.de (localhost.localdomain [127.0.0.1])
-	by wwwmail.urz.uni-heidelberg.de (8.13.1/8.13.1) with ESMTP id o16J0Mcm009230
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Feb 2010 20:00:22 +0100
-Received: (from apache@localhost)
-	by wwwmail.urz.uni-heidelberg.de (8.13.1/8.13.1/Submit) id o16J0LCM009228
-	for linux-ext4@vger.kernel.org; Sat, 6 Feb 2010 20:00:21 +0100
+Received: from mx1.redhat.com ([209.132.183.28]:13377 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754780Ab0BGMdt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Feb 2010 07:33:49 -0500
 Content-Disposition: inline
+In-Reply-To: <4B69CCE4.3000904@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi again,
+On Wed, Feb 03, 2010 at 01:22:12PM -0600, Eric Sandeen wrote:
+> Michael S. Tsirkin wrote:
+> > On Wed, Feb 03, 2010 at 10:59:12AM -0600, Eric Sandeen wrote:
+> >> Michael S. Tsirkin wrote:
+> >>> Hi!
+> >>> I got this warning at boot with 2.6.33-rc6:
+> >>>
+> >>> [   12.374168] ------------[ cut here ]------------
+> >>> [   12.375798] WARNING: at mm/page_alloc.c:1813 __alloc_pages_nodemask+0x180/0x666()
+> >>> [   12.377401] Hardware name: 2241B48
+> >>> [   12.378984] Modules linked in: [last unloaded: scsi_wait_scan]
+> >>> [   12.380593] Pid: 1, comm: init Not tainted 2.6.33-rc6-aa-nopat #50
+> >>> [   12.382194] Call Trace:
+> >>> [   12.383781]  [<ffffffff810b6b3e>] ? __alloc_pages_nodemask+0x180/0x666
+> >>> [   12.385390]  [<ffffffff81041cda>] warn_slowpath_common+0x77/0xa4
+> >>> [   12.386996]  [<ffffffff81041d16>] warn_slowpath_null+0xf/0x11
+> >>> [   12.388577]  [<ffffffff810b6b3e>] __alloc_pages_nodemask+0x180/0x666
+> >>> [   12.390168]  [<ffffffff81036a9b>] ? finish_task_switch+0x4b/0xb1
+> >>> [   12.391758]  [<ffffffff810b7036>] __get_free_pages+0x12/0x4f
+> >>> [   12.393354]  [<ffffffff810de892>] __kmalloc+0x42/0x116
+> >>> [   12.394934]  [<ffffffff812405bf>] match_number+0x35/0x98
+> >>> [   12.396493]  [<ffffffff8124064d>] match_int+0xb/0xd
+> >>> [   12.398045]  [<ffffffff81169c8c>] parse_options+0x5fe/0x733
+> >>> [   12.399594]  [<ffffffff811058c3>] ? __wait_on_buffer+0x1f/0x21
+> >>> [   12.401157]  [<ffffffff8116a2dc>] ext4_fill_super+0x373/0x2070
+> >> Are you mounting with any interesting options?
+> >>
+> >> -Eric
+> > 
+> > Hmm yes:
+> > 
+> > UUID=4670fcf0-09a8-4011-bf25-6e5e97f263c6 /                       ext4
+> > relatime,errors=remount-ro,auto_da_alloc,commit=300,journal_ioprio=7
+>                              ^^^^
+> 
+> it's the auto_da_alloc option, which optionally takes a =X argument.
+> I think someone changed match_one() and broke it;
 
-before I sent my patches out I have done a lot of testing. Everything  
-seemed to work fine. But an aideupdate started by a cron-job revealed  
-that the patches even introduce two new bugs. At least I have never  
-hit these bugs before. There were no identical traces in the logfiles  
-of the last year.
+patch?
 
-Perhaps they are also to be found in 2.6.33-rc. I'll do more testing  
-and try it another time again.
-
-Sincerely yours,
-Marcus
-
-First trace:
-Feb  6 19:02:11 pauling kernel: [17124.290892] ------------[ cut here  
-]------------
-Feb  6 19:02:11 pauling kernel: [17124.290901] WARNING: at  
-fs/quota/dquot.c:964
-dquot_claim_space+0x98/0x131()
-Feb  6 19:02:11 pauling kernel: [17124.290904] Hardware name: GA-MA790FX-DQ6
-Feb  6 19:02:11 pauling kernel: [17124.290908] Pid: 10823, comm: mv  
-Tainted: G        W
-2.6.32.7-2-amd64 #1
-Feb  6 19:02:11 pauling kernel: [17124.290911] Call Trace:
-Feb  6 19:02:11 pauling kernel: [17124.290918]  [<ffffffff81485258>] ?
-__down_read+0x15/0x9d
-Feb  6 19:02:11 pauling kernel: [17124.290922]  [<ffffffff810f6c74>] ?
-dquot_claim_space+0x98/0x131
-Feb  6 19:02:11 pauling kernel: [17124.290927]  [<ffffffff81058f04>] ?
-warn_slowpath_common+0x72/0x9e
-Feb  6 19:02:11 pauling kernel: [17124.290931]  [<ffffffff810f6c74>] ?
-dquot_claim_space+0x98/0x131
-Feb  6 19:02:11 pauling kernel: [17124.290935]  [<ffffffff81148b48>] ?
-ext4_mb_mark_diskspace_used+0x37e/0x433
-Feb  6 19:02:11 pauling kernel: [17124.290939]  [<ffffffff8114b51d>] ?
-ext4_mb_new_blocks+0x1d1/0x3aa
-Feb  6 19:02:11 pauling kernel: [17124.290944]  [<ffffffff81144da3>] ?
-ext4_ext_get_blocks+0x141d/0x1702
-Feb  6 19:02:11 pauling kernel: [17124.290948]  [<ffffffff81142797>] ?
-ext4_ext_find_extent+0x4b/0x285
-Feb  6 19:02:11 pauling kernel: [17124.290952]  [<ffffffff811321b4>] ?
-ext4_get_blocks+0x15a/0x23d
-Feb  6 19:02:11 pauling kernel: [17124.290956]  [<ffffffff81132644>] ?
-mpage_da_map_blocks+0xa4/0x5a1
-Feb  6 19:02:11 pauling kernel: [17124.290960]  [<ffffffff8109971a>] ?
-pagevec_lookup_tag+0x1a/0x21
-Feb  6 19:02:11 pauling kernel: [17124.290963]  [<ffffffff810983bc>] ?
-write_cache_pages+0x162/0x322
-Feb  6 19:02:11 pauling kernel: [17124.290967]  [<ffffffff8113320c>] ?
-__mpage_da_writepage+0x0/0x146
-Feb  6 19:02:11 pauling kernel: [17124.290971]  [<ffffffff81132fd4>] ?
-ext4_da_writepages+0x493/0x62a
-Feb  6 19:02:11 pauling kernel: [17124.290980]  [<ffffffff81069f7f>] ?
-bit_waitqueue+0x10/0xa0
-Feb  6 19:02:11 pauling kernel: [17124.290985]  [<ffffffff810929b1>] ?
-__filemap_fdatawrite_range+0x4b/0x54
-Feb  6 19:02:11 pauling kernel: [17124.290989]  [<ffffffff81139007>] ?
-ext4_rename+0x758/0x790
-Feb  6 19:02:11 pauling kernel: [17124.290994]  [<ffffffff810c9adc>] ?
-vfs_rename+0x2a4/0x4b3
-Feb  6 19:02:11 pauling kernel: [17124.290998]  [<ffffffff810c887b>] ?
-__lookup_hash+0x4e/0x11f
-Feb  6 19:02:11 pauling kernel: [17124.291002]  [<ffffffff810cb766>] ?
-sys_renameat+0x16d/0x1e9
-Feb  6 19:02:11 pauling kernel: [17124.291005]  [<ffffffff810a616c>] ?
-handle_mm_fault+0x368/0x72e
-Feb  6 19:02:11 pauling kernel: [17124.291010]  [<ffffffff810435cd>] ?
-do_page_fault+0x1e5/0x1fa
-Feb  6 19:02:11 pauling kernel: [17124.291014]  [<ffffffff81088feb>] ?
-audit_syscall_entry+0x15b/0x186
-Feb  6 19:02:11 pauling kernel: [17124.291019]  [<ffffffff811fab3e>] ?  
-__up_read+0x13/0x8d
-Feb  6 19:02:11 pauling kernel: [17124.291022]  [<ffffffff8102986b>] ?
-system_call_fastpath+0x16/0x1b
-Feb  6 19:02:11 pauling kernel: [17124.291025] ---[ end trace  
-64137460f91d3829 ]---
+> auto_da_alloc is
+> the default anyway, so you can just drop this for now.
+> 
+> -Eric
 
 
-Second trace:
-Feb  6 19:02:33 pauling kernel: [17146.000977] ------------[ cut here  
-]------------
-Feb  6 19:02:33 pauling kernel: [17146.000984] WARNING: at  
-fs/quota/dquot.c:964
-dquot_claim_space+0xc1/0x131()
-Feb  6 19:02:33 pauling kernel: [17146.000991] Hardware name: GA-MA790FX-DQ6
-Feb  6 19:02:33 pauling kernel: [17146.000996] Pid: 10238, comm:  
-flush-251:1 Tainted: G
-      W  2.6.32.7-2-amd64 #1
-Feb  6 19:02:33 pauling kernel: [17146.001002] Call Trace:
-Feb  6 19:02:33 pauling kernel: [17146.001008]  [<ffffffff81485258>] ?
-__down_read+0x15/0x9d
-Feb  6 19:02:33 pauling kernel: [17146.001019]  [<ffffffff810f6c9d>] ?
-dquot_claim_space+0xc1/0x131
-Feb  6 19:02:33 pauling kernel: [17146.001031]  [<ffffffff81058f04>] ?
-warn_slowpath_common+0x72/0x9e
-Feb  6 19:02:33 pauling kernel: [17146.001042]  [<ffffffff810f6c9d>] ?
-dquot_claim_space+0xc1/0x131
-Feb  6 19:02:33 pauling kernel: [17146.001049]  [<ffffffff81131efe>] ?
-ext4_da_update_reserve_space+0x167/0x2c3
-Feb  6 19:02:33 pauling kernel: [17146.001058]  [<ffffffff81144ef6>] ?
-ext4_ext_get_blocks+0x1570/0x1702
-Feb  6 19:02:33 pauling kernel: [17146.001067]  [<ffffffff81336a70>] ?
-get_active_stripe+0x44d/0x542
-Feb  6 19:02:33 pauling kernel: [17146.001078]  [<ffffffff81333dd8>] ?
-release_stripe+0x30/0x44
-Feb  6 19:02:33 pauling kernel: [17146.001088]  [<ffffffff811321b4>] ?
-ext4_get_blocks+0x15a/0x23d
-Feb  6 19:02:33 pauling kernel: [17146.001097]  [<ffffffff8134a40d>] ?
-__split_and_process_bio+0x55a/0x569
-Feb  6 19:02:33 pauling kernel: [17146.001104]  [<ffffffff81132644>] ?
-mpage_da_map_blocks+0xa4/0x5a1
-Feb  6 19:02:33 pauling kernel: [17146.001111]  [<ffffffff8109971a>] ?
-pagevec_lookup_tag+0x1a/0x21
-Feb  6 19:02:33 pauling kernel: [17146.001118]  [<ffffffff810983bc>] ?
-write_cache_pages+0x162/0x322
-Feb  6 19:02:33 pauling kernel: [17146.001127]  [<ffffffff8113320c>] ?
-__mpage_da_writepage+0x0/0x146
-Feb  6 19:02:33 pauling kernel: [17146.001136]  [<ffffffff81132fd4>] ?
-ext4_da_writepages+0x493/0x62a
-Feb  6 19:02:33 pauling kernel: [17146.001148]  [<ffffffff8104ae76>] ?
-scale_rt_power+0x1f/0x64
-Feb  6 19:02:33 pauling kernel: [17146.001155]  [<ffffffff810da654>] ?
-writeback_single_inode+0xe6/0x2d9
-Feb  6 19:02:33 pauling kernel: [17146.001166]  [<ffffffff810db2c5>] ?
-writeback_inodes_wb+0x421/0x4fa
-Feb  6 19:02:33 pauling kernel: [17146.001173]  [<ffffffff810db4ca>] ?
-wb_writeback+0x12c/0x1aa
-Feb  6 19:02:33 pauling kernel: [17146.001182]  [<ffffffff810db72e>] ?
-wb_do_writeback+0x145/0x15b
-Feb  6 19:02:33 pauling kernel: [17146.001190]  [<ffffffff810db76e>] ?
-bdi_writeback_task+0x2a/0x85
-Feb  6 19:02:33 pauling kernel: [17146.001197]  [<ffffffff810a2c0a>] ?
-bdi_start_fn+0x0/0xca
-Feb  6 19:02:33 pauling kernel: [17146.001203]  [<ffffffff810a2c7a>] ?
-bdi_start_fn+0x70/0xca
-Feb  6 19:02:33 pauling kernel: [17146.001209]  [<ffffffff810a2c0a>] ?
-bdi_start_fn+0x0/0xca
-Feb  6 19:02:33 pauling kernel: [17146.001216]  [<ffffffff81069ddb>] ?  
-kthread+0x79/0x81
-Feb  6 19:02:33 pauling kernel: [17146.001225]  [<ffffffff8102a7fa>] ?  
-child_rip+0xa/0x20
-Feb  6 19:02:33 pauling kernel: [17146.001232]  [<ffffffff81069d62>] ?  
-kthread+0x0/0x81
-Feb  6 19:02:33 pauling kernel: [17146.001243]  [<ffffffff8102a7f0>] ?  
-child_rip+0x0/0x20
-Feb  6 19:02:33 pauling kernel: [17146.001247] ---[ end trace  
-64137460f91d389c ]---
-Feb  6 19:02:33 pauling kernel: [17146.105248] ------------[ cut here  
-]------------
+I have removed auto_da_alloc option, but still see a warning at boot:
+
+[   11.281241] ------------[ cut here ]------------
+[   11.282879] WARNING: at mm/page_alloc.c:1813 __alloc_pages_nodemask+0x180/0x666()
+[   11.284526] Hardware name: 2241B48
+[   11.286144] Modules linked in: [last unloaded: scsi_wait_scan]
+[   11.287747] Pid: 1, comm: init Not tainted 2.6.33-rc7-mst #55
+[   11.289308] Call Trace:
+[   11.290907]  [<ffffffff810b6f4a>] ? __alloc_pages_nodemask+0x180/0x666
+[   11.292488]  [<ffffffff8104200a>] warn_slowpath_common+0x77/0xa4
+[   11.294075]  [<ffffffff81042046>] warn_slowpath_null+0xf/0x11
+[   11.295627]  [<ffffffff810b6f4a>] __alloc_pages_nodemask+0x180/0x666
+[   11.297226]  [<ffffffff81036d9b>] ? finish_task_switch+0x4b/0xb1
+[   11.298806]  [<ffffffff810b7442>] __get_free_pages+0x12/0x4f
+[   11.300366]  [<ffffffff810e0e7a>] __kmalloc+0x42/0x116
+[   11.301938]  [<ffffffff81242cff>] match_number+0x35/0x98
+[   11.303457]  [<ffffffff81242d8d>] match_int+0xb/0xd
+[   11.304991]  [<ffffffff8116c290>] parse_options+0x5fe/0x733
+[   11.306940]  [<ffffffff81107ea7>] ? __wait_on_buffer+0x1f/0x21
+[   11.308434]  [<ffffffff8116c8e0>] ext4_fill_super+0x373/0x2070
+[   11.309938]  [<ffffffff8124152a>] ? snprintf+0x59/0x5b
+[   11.311397]  [<ffffffff815cd94b>] ? _raw_spin_unlock_irq+0x24/0x2f
+[   11.312894]  [<ffffffff8110c9b6>] ? __blkdev_get+0x29e/0x35a
+[   11.314332]  [<ffffffff815cd4d2>] ? __down_write+0xb/0xd
+[   11.315804]  [<ffffffff810e8ef6>] get_sb_bdev+0x12a/0x175
+[   11.317241]  [<ffffffff8116c56d>] ? ext4_fill_super+0x0/0x2070
+[   11.319166]  [<ffffffff8116a183>] ext4_get_sb+0x13/0x15
+[   11.320640]  [<ffffffff810e8add>] vfs_kern_mount+0x9d/0x158
+[   11.322078]  [<ffffffff810e8bf5>] do_kern_mount+0x47/0xe7
+[   11.323510]  [<ffffffff810fe3d7>] do_mount+0x780/0x7f9
+[   11.324953]  [<ffffffff810b7442>] ? __get_free_pages+0x12/0x4f
+[   11.326368]  [<ffffffff8111be24>] compat_sys_mount+0x1ee/0x227
+[   11.327795]  [<ffffffff810e4b8c>] ? do_sys_open+0xf5/0x104
+[   11.329186]  [<ffffffff8102b412>] ia32_sysret+0x0/0x5
+[   11.330598] ---[ end trace 8395227ad9785fe1 ]---
+
+my mount options:
+
+
+/dev/sda8 on / type ext4 (rw,relatime,errors=remount-ro,commit=300,journal_ioprio=7)
+proc on /proc type proc (rw)
+sysfs on /sys type sysfs (rw)
+devpts on /dev/pts type devpts (rw,gid=5,mode=620)
+/dev/sda7 on /boot type ext3 (rw,relatime,errors=remount-ro)
+/dev/sda9 on /home type ext4 (rw,relatime,errors=remount-ro,commit=300,journal_ioprio=7)
+tmpfs on /dev/shm type tmpfs (rw)
+/dev/sda1 on /mnt/ubuntu type ext3 (rw,relatime,errors=remount-ro)
+/dev/sda6 on /mnt/ubuntu/home type ext3 (rw,relatime)
+sysfs on /mnt/ubuntu/sys type sysfs (rw)
+proc on /mnt/ubuntu/proc type proc (rw)
+none on /sys/kernel/debug type debugfs (rw)
+none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+gvfs-fuse-daemon on /home/mst/.gvfs type fuse.gvfs-fuse-daemon (rw,nosuid,nodev,user=mst)
+
+-- 
+MST
