@@ -1,61 +1,65 @@
-From: tytso@mit.edu
-Subject: Re: e2fsprogs segfaults during make check
-Date: Mon, 8 Feb 2010 07:16:19 -0500
-Message-ID: <20100208121619.GF4494@thunk.org>
-References: <1265614286.3882.16.camel@metis>
+From: Surbhi Palande <surbhi.palande@canonical.com>
+Subject: Re: ext4_fiemap gives 0 extents for files smaller than a block (patch
+ included)
+Date: Mon, 08 Feb 2010 15:54:27 +0200
+Message-ID: <4B701793.9010005@canonical.com>
+References: <1257360161.22057.16.camel@michlmayr>	 <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com> <1257371050.13852.28.camel@michlmayr>
+Reply-To: surbhi.palande@canonical.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 <linux-ext4@vger.kernel.org>, adilger@Sun.COM
-To: Girish Shilamkar <Girish.Shilamkar@Sun.COM>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	474597@bugs.launchpad.net
+To: Leonard Michlmayr <leonard.michlmayr@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:33638 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750804Ab0BHMQX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Feb 2010 07:16:23 -0500
-Content-Disposition: inline
-In-Reply-To: <1265614286.3882.16.camel@metis>
+Received: from adelie.canonical.com ([91.189.90.139]:32927 "EHLO
+	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751763Ab0BHNyc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Feb 2010 08:54:32 -0500
+In-Reply-To: <1257371050.13852.28.camel@michlmayr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 08, 2010 at 01:01:26PM +0530, Girish Shilamkar wrote:
-> Hello,
->      I found a problem while creating e2fsprogs rpms. Few of the tests
-> fail with segfault during make check. The tests are d_loaddump, f_dup4,
-> f_imagic_fs and r_resize_inode. This failure is only seen on rhel5,
-> x86_64. 
->       On further searching I found that this error can reproduced when
-> e2fsprogs is configured with shared elf libraries. For example,
-> configure --enable-elf-shlibs, make; make check 
-> And this problem is seen from 1.41.7 version onwards.
+Leonard Michlmayr wrote:
+> Thank you for your reply.
 > 
-> Any ideas/comments ?
+>>> @@ -3700,7 +3701,8 @@
+>>>  		start_blk = start >> inode->i_sb->s_blocksize_bits;
+>>> -		len_blks = len >> inode->i_sb->s_blocksize_bits;
+>>> +		end_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
+>>> +		len_blks = end_blk - start_blk + 1;
+>> I don't think this is quite correct either.  For example, if blocksize  
+>> is 1024
+>> and start is 1023 (start_blk = 0) and len is 2 (end = 1024, end_blk =  
+>> 1) then
+>> len_blks = 2 which is too much.
+> 
+> I think that len_blks = 2 is the correct value, because the requested
+> region extends into 2 blocks (namely 0 and 1). If both blocks are in two
+> separate extents, then ext4_ext_walk_space should report 2 extents. (If
+> it's the same extent, only 1 will be reported anyways)
+> 
+>> I think the right calculation here is:
+>>
+>>                    end_blk = (start + len + inode->i_sb->s_blocksize - 1) >>
+>>                              inode->i_sb->s_blocksize_bits;
+>>                    len_blks = end_blk - start_blk;
+>>
+> 
+> This is exactly the same (provided that len > 0). You can convince
+> yourself easily that ((blocksize + x) >> blocksize_bits == x >>
+> blocksize_bits + 1) for any positive x, because the lower bits of
+> blocksize are all 0. (Your calculation would handle the case len == 0
+> right, if that was allowed.)
+> 
+> Regards
+> Leonard
 
-Well, I run "make check" all the time during the course of my
-development, so it must be something unique with RHEL5.
+I was wondering if there is any update on the status of this patch.
+Thanks !
 
-#1) Does it show up if you just unpack a source tree, and do a
- "configure; make; make check" run in RHEL 5?
+Warm Regards,
+Surbhi.
 
-#2)  In the build directory, cd to tests, and then run the command:
 
-   (. $(srcdir)/tests/test_config; debugfs)
-
-.. and see if you get a core dump.  (Replace $(srcdir) with the top
-level source tree directory.  If you are building in the source tree,
-you can just do "(. test_config ; debugfs)"; if you are building with
-the build directory located in a "build" subdirectory under the source
-tree, you could do "(. ../tests/test_config ; debugfs)", etc.
-
-If you do get a core dump, run it under gdb and get a stack trace,
-and/or see if anything is showing up in stderr that might be help
-explain what's going on.
-
-#3) Try downloading:
-
-    http://master.kernel.org/~tytso/e2fsprogs_1.41.10-rc1.tar.gz
-
-... and see if you can see the problem there.
-
-Thanks,
-
-					- Ted
