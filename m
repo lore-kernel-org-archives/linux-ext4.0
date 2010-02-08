@@ -1,198 +1,107 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 02/11] ext4: trivial quota cleanup
-Date: Mon, 08 Feb 2010 16:28:04 +0300
-Message-ID: <1265635693-12182-3-git-send-email-dmonakhov@openvz.org>
-References: <1265635693-12182-1-git-send-email-dmonakhov@openvz.org>
- <1265635693-12182-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 00/11] [RFC] Introduce subtree quota support This patch set
+ introduce subtree and subtree-quota support for ext4
+Date: Mon, 08 Feb 2010 16:28:02 +0300
+Message-ID: <1265635693-12182-1-git-send-email-dmonakhov@openvz.org>
 Content-Transfer-Encoding: 7BIT
 Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.2ka.mipt.ru ([194.85.80.4]:33218 "EHLO mail.2ka.mipt.ru"
+Received: from mail.2ka.mipt.ru ([194.85.80.4]:33220 "EHLO mail.2ka.mipt.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752462Ab0BHO20 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752496Ab0BHO20 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 8 Feb 2010 09:28:26 -0500
 Received: from localhost.localdomain ([unknown] [195.214.232.10])
  by mail.2ka.mipt.ru
  (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
  with ESMTPA id <0KXI0097MZ0I9F10@mail.2ka.mipt.ru> for
  linux-ext4@vger.kernel.org; Mon, 08 Feb 2010 16:34:01 +0300 (MSK)
-In-reply-to: <1265635693-12182-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The patch is aimed to reorganize and simplify quota code a bit.
-Quota code is itself complex enouth, but we can make it more readable
-in some places:
-- Move quota option parsing to separate functions.
-- Simplify old-quota and journaled-quota mix check.
+A subtree of a directory tree T is a tree consisting of a directory
+(the subtree root) in T and all of its descendants in T.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/super.c |  122 ++++++++++++++++++++++++++++++------------------------
- 1 files changed, 68 insertions(+), 54 deletions(-)
+Subtree assumptions:
+* Each inode has subtree id.
+* Subtree id is inherent from parent directory
+* Inode can not belongs to different subtree
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a247673..4fd8cfb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1213,6 +1213,63 @@ static ext4_fsblk_t get_sb_block(void **data)
- 
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- 
-+#ifdef CONFIG_QUOTA
-+static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	char *qname;
-+
-+	if (sb_any_quota_loaded(sb) &&
-+		!sbi->s_qf_names[qtype]) {
-+		ext4_msg(sb, KERN_ERR,
-+			"Cannot change journaled "
-+			"quota options when quota turned on");
-+		return 0;
-+	}
-+	qname = match_strdup(args);
-+	if (!qname) {
-+		ext4_msg(sb, KERN_ERR,
-+			"Not enough memory for storing quotafile name");
-+		return 0;
-+	}
-+	if (sbi->s_qf_names[qtype] &&
-+		strcmp(sbi->s_qf_names[qtype], qname)) {
-+		ext4_msg(sb, KERN_ERR,
-+			"%s quota file already specified", QTYPE2NAME(qtype));
-+		kfree(qname);
-+		return 0;
-+	}
-+	sbi->s_qf_names[qtype] = qname;
-+	if (strchr(sbi->s_qf_names[qtype], '/')) {
-+		ext4_msg(sb, KERN_ERR,
-+			"quotafile must be on filesystem root");
-+		kfree(sbi->s_qf_names[qtype]);
-+		sbi->s_qf_names[qtype] = NULL;
-+		return 0;
-+	}
-+	set_opt(sbi->s_mount_opt, QUOTA);
-+	return 1;
-+}
-+
-+static int clear_qf_name(struct super_block *sb, int qtype) {
-+
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	if (sb_any_quota_loaded(sb) &&
-+		sbi->s_qf_names[qtype]) {
-+		ext4_msg(sb, KERN_ERR, "Cannot change journaled quota options"
-+			" when quota turned on");
-+		return 0;
-+	}
-+	/*
-+	 * The space will be released later when all options are confirmed
-+	 * to be correct
-+	 */
-+	sbi->s_qf_names[qtype] = NULL;
-+	return 1;
-+}
-+#endif
-+
- static int parse_options(char *options, struct super_block *sb,
- 			 unsigned long *journal_devnum,
- 			 unsigned int *journal_ioprio,
-@@ -1224,8 +1281,7 @@ static int parse_options(char *options, struct super_block *sb,
- 	int data_opt = 0;
- 	int option;
- #ifdef CONFIG_QUOTA
--	int qtype, qfmt;
--	char *qname;
-+	int qfmt;
- #endif
- 
- 	if (!options)
-@@ -1403,63 +1459,22 @@ static int parse_options(char *options, struct super_block *sb,
- 			break;
- #ifdef CONFIG_QUOTA
- 		case Opt_usrjquota:
--			qtype = USRQUOTA;
--			goto set_qf_name;
--		case Opt_grpjquota:
--			qtype = GRPQUOTA;
--set_qf_name:
--			if (sb_any_quota_loaded(sb) &&
--			    !sbi->s_qf_names[qtype]) {
--				ext4_msg(sb, KERN_ERR,
--				       "Cannot change journaled "
--				       "quota options when quota turned on");
--				return 0;
--			}
--			qname = match_strdup(&args[0]);
--			if (!qname) {
--				ext4_msg(sb, KERN_ERR,
--					"Not enough memory for "
--					"storing quotafile name");
-+			if (!set_qf_name(sb, USRQUOTA, &args[0]))
- 				return 0;
--			}
--			if (sbi->s_qf_names[qtype] &&
--			    strcmp(sbi->s_qf_names[qtype], qname)) {
--				ext4_msg(sb, KERN_ERR,
--					"%s quota file already "
--					"specified", QTYPE2NAME(qtype));
--				kfree(qname);
--				return 0;
--			}
--			sbi->s_qf_names[qtype] = qname;
--			if (strchr(sbi->s_qf_names[qtype], '/')) {
--				ext4_msg(sb, KERN_ERR,
--					"quotafile must be on "
--					"filesystem root");
--				kfree(sbi->s_qf_names[qtype]);
--				sbi->s_qf_names[qtype] = NULL;
-+			break;
-+		case Opt_grpjquota:
-+			if (!set_qf_name(sb, GRPQUOTA, &args[0]))
- 				return 0;
--			}
--			set_opt(sbi->s_mount_opt, QUOTA);
- 			break;
- 		case Opt_offusrjquota:
--			qtype = USRQUOTA;
--			goto clear_qf_name;
-+			if (!clear_qf_name(sb, USRQUOTA))
-+				return 0;
-+			break;
- 		case Opt_offgrpjquota:
--			qtype = GRPQUOTA;
--clear_qf_name:
--			if (sb_any_quota_loaded(sb) &&
--			    sbi->s_qf_names[qtype]) {
--				ext4_msg(sb, KERN_ERR, "Cannot change "
--					"journaled quota options when "
--					"quota turned on");
-+			if (!clear_qf_name(sb, GRPQUOTA))
- 				return 0;
--			}
--			/*
--			 * The space will be released later when all options
--			 * are confirmed to be correct
--			 */
--			sbi->s_qf_names[qtype] = NULL;
- 			break;
-+
- 		case Opt_jqfmt_vfsold:
- 			qfmt = QFMT_VFS_OLD;
- 			goto set_qf_format;
-@@ -1636,8 +1651,7 @@ set_qf_format:
- 		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
- 			clear_opt(sbi->s_mount_opt, GRPQUOTA);
- 
--		if ((sbi->s_qf_names[USRQUOTA] && test_opt(sb, GRPQUOTA)) ||
--			(sbi->s_qf_names[GRPQUOTA] && test_opt(sb, USRQUOTA))) {
-+		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
- 			ext4_msg(sb, KERN_ERR, "old and new quota "
- 					"format mixing");
- 			return 0;
--- 
-1.6.3.3
+Subtree with id == 0 has special meaning. It may contains roots of
+other subtrees (this feature is used for cross subtree renames)
+This feature has much in common with XFS project_id.
 
+In fact subtrees support may be implemented in generic vfs layer (may be
+sometimes it will be)
+
+There are many usecases for such subtrees
+
+1) Choroot environment or Containers on common file-system
+   administrator creates a subtree,and setup quota
+   #mkdir chroot-env
+   #chattr -Q ${subtree_id} chroot-env
+   #tar jxf /tmp/fedora-x86_64.tar.bz2 -C chroot-env
+   #### as soon as subtree id inherented from parent untared content
+   #### automatically belongs to ${subtree_id}
+   #quotactl --type=subtree --id=${subtree_id} --bsoft=1000000 --bhard=1000000
+   ###
+   #chroot chroot-env /bin/bash
+2) NFS quota on server side
+   Administrator perform exactly the same stages, but instead of chroot
+   hi just export result subtree to nfs server
+
+
+One may imagine it's own usecase.
+
+Usually we already have some content which we want to see as subtree
+In this case we have to in-depth traverse it from the subtree root.
+add_to_subtree(dir, subtree_id) /* in-depth  tree traversal */
+{
+	while(de = getdents(dir)) {
+	     if (IS_DIR(de))
+		    add_to_subtree(de, subtree_id)
+             else
+	            set_subtree_id(de, subtree);
+       }
+       set_subtree_id(de, subtree);
+}
+It is possible to manipulate subtree content
+
+For example we have following hierarchy
+/root/subtree-1/a/b/c/d/e/f/g
+/root/subtree-2/dir/
+want rename /root/subtree-1/a to /root/subtree-2/dir/AA
+first we have to move "a" to default tree "root"
+ #rename /root/subtree-1/a /root/a-1
+Then we have assign to default subtree. Do it in width traverse order
+Because otherwise this result in subtree assumptions violation.
+ #walk_in_width(/root/AA, 0 /* default subtree */)
+Then  assign target subtree_id
+ #walk_in_depth(/root/AA, 2)
+Ok now all content from /root/a-1 belongs to subtree_id == 2 so it is possible
+rename it in to target place
+ #rename /root/a-1 /root/subtree-2/dir/AA
+
+If you still reading this then i'll give comment about patch set organization
+
+## Patch set prepared against ext4.git:next
+## Following two patches already acceped by Jan Kara,
+## but not yet in ext4 tree
+##
+ext4-mount-flags-manipulation-cleanup.patch
+ext4-trivial-quota-cleanup.patch
+## Following for patches perform necessety generic quota changes
+## in order to new quota type
+quota-sb_quota-state-flags-cleanup.patch
+quota-generalize-quota-transfer-interface.patch
+quota-introduce-get_id-callback.patch
+quota-add-generic-subtree-quota-support.patch
+## ext4 is so feature rich so there is no enouth space to store
+## all it's mount flags
+ext4-enlarge-mount-option-field.patch
+## subtree support for ext4
+ext4-introduce-subtree-logic.patch
+ext4-subtree-add-kconfig-options.patch
+ext4-add-subtree-support.patch
+## subtree quota support for ext3
+ext4-add-subtree-quota-support.patch
