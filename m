@@ -1,54 +1,56 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] obsolete config in kernel source (BUFFER_DEBUG)
-Date: Mon, 8 Feb 2010 10:50:31 -0500
-Message-ID: <20100208155031.GK4494@thunk.org>
-References: <20100205131333.GB6540@faui49.informatik.uni-erlangen.de>
- <20100208135629.GD4321@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: e2fsprogs segfaults during make check
+Date: Mon, 08 Feb 2010 09:57:57 -0600
+Message-ID: <4B703485.9070301@redhat.com>
+References: <1265614286.3882.16.camel@metis> <20100208121619.GF4494@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Egger <siccegge@stud.informatik.uni-erlangen.de>,
-	linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Kazuo Moriwaka <moriwaka@redhat.com>,
-	H Hartley Sweeten <hsweeten@visionengravers.com>,
-	Joel Becker <joel.becker@oracle.com>,
-	linux-ext4@vger.kernel.org, vamos@i4.informatik.uni-erlangen.de
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
+	Ext4 <linux-ext4@vger.kernel.org>, adilger@Sun.COM
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33122 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57511 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752676Ab0BHPvT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Feb 2010 10:51:19 -0500
-Content-Disposition: inline
-In-Reply-To: <20100208135629.GD4321@quack.suse.cz>
+	id S1752558Ab0BHP6D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Feb 2010 10:58:03 -0500
+In-Reply-To: <20100208121619.GF4494@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 08, 2010 at 02:56:29PM +0100, Jan Kara wrote:
-> On Fri 05-02-10 14:13:33, Christoph Egger wrote:
-> > Hi all!
-> > 
-> > 	As part of the VAMOS[0] research project at the University of
-> > Erlangen we're checking referential integrity between kernel KConfig
-> > options and in-code Conditional blocks.
-> > 
-> > 	With some commit somewhere around 2.4.15 the last hint of
-> > CONFIG_BUFFER_DEBUG (apart from the 2 occurences this patch addresses)
-> > -- some documentation -- was removed from the kernel source. However
-> > this one piece of code made it till today. Time to go forward and
-> > remove it?
-> > 
-> > 	Please keep me informed of this patch getting confirmed /
-> > merged so we can keep track of it.
->   Thanks, the patch looks good. I've merged it into my linux-fs tree and
-> will send it to Linus in the next merge window.
+tytso@mit.edu wrote:
+> On Mon, Feb 08, 2010 at 01:01:26PM +0530, Girish Shilamkar wrote:
+>> Hello,
+>>      I found a problem while creating e2fsprogs rpms. Few of the tests
+>> fail with segfault during make check. The tests are d_loaddump, f_dup4,
+>> f_imagic_fs and r_resize_inode. This failure is only seen on rhel5,
+>> x86_64. 
+>>       On further searching I found that this error can reproduced when
+>> e2fsprogs is configured with shared elf libraries. For example,
+>> configure --enable-elf-shlibs, make; make check 
+>> And this problem is seen from 1.41.7 version onwards.
+>>
+>> Any ideas/comments ?
+> 
+> Well, I run "make check" all the time during the course of my
+> development, so it must be something unique with RHEL5.
 
-I don't have an objection with removing this, but does anyone have the
-latest version of akpm's buffer debugging patches?
+FWIW, it was make check segfaulting that led me to run valgrind
+and find that array problem.
 
-I *think* what happened is that akpm forward ported the removed buffer
-debugging patches, or maybe rewrote it from scratch, but for whatever
-reason they never made back into mainline.  Maybe they were too ugly
-to live in mainline, but they have been really handy on occasion.
+It's probably the flags that rpm builds with by default, doing
+a better job at catching this sort of thing?
 
-   	   	     	      	   	       - Ted
+Girish Shilamkar wrote:
+
+>> #3) Try downloading:
+>> > 
+>> >     http://master.kernel.org/~tytso/e2fsprogs_1.41.10-rc1.tar.gz
+>> > 
+>> > ... and see if you can see the problem there.
+> The problem is not seen for this version. Any tentative dates for 1.41.10 release ?
+
+I'm guessing the problem was fixed by the resize2fs array
+indexing patch.
+
+-Eric
