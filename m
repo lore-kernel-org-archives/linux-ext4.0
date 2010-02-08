@@ -1,24 +1,27 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] libext2fs: try to get physical sector size first in ext2fs_get_device_sectsize()
-Date: Mon, 08 Feb 2010 16:31:19 -0600
-Message-ID: <4B7090B7.4060708@redhat.com>
+Subject: [PATCH V2] mke2fs: account for physical as well as logical sector
+ size
+Date: Mon, 08 Feb 2010 16:33:47 -0600
+Message-ID: <4B70914B.3000102@redhat.com>
+References: <4B7090B7.4060708@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20235 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:61891 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751042Ab0BHWbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Feb 2010 17:31:23 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o18MVNBM013289
+	id S1752046Ab0BHWdv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Feb 2010 17:33:51 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o18MXoGJ013962
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Feb 2010 17:31:23 -0500
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Feb 2010 17:33:51 -0500
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o18MVJDq009688
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o18MXlYU018120
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Feb 2010 17:31:22 -0500
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Feb 2010 17:33:50 -0500
+In-Reply-To: <4B7090B7.4060708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -39,6 +42,7 @@ logic in mke2fs to enforce the above rules.
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
+(V2: just forgot to update the subject after changing the patch)
 
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
 index 213a819..9c06048 100644
@@ -215,4 +219,9 @@ index 94b4c81..1a1307b 100644
  	}
  
  	if (inode_ratio == 0) {
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
