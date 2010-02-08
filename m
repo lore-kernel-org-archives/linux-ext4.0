@@ -1,65 +1,47 @@
-From: Surbhi Palande <surbhi.palande@canonical.com>
-Subject: Re: ext4_fiemap gives 0 extents for files smaller than a block (patch
- included)
-Date: Mon, 08 Feb 2010 15:54:27 +0200
-Message-ID: <4B701793.9010005@canonical.com>
-References: <1257360161.22057.16.camel@michlmayr>	 <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com> <1257371050.13852.28.camel@michlmayr>
-Reply-To: surbhi.palande@canonical.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] obsolete config in kernel source (BUFFER_DEBUG)
+Date: Mon, 8 Feb 2010 14:56:29 +0100
+Message-ID: <20100208135629.GD4321@quack.suse.cz>
+References: <20100205131333.GB6540@faui49.informatik.uni-erlangen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	474597@bugs.launchpad.net
-To: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	Kazuo Moriwaka <moriwaka@redhat.com>,
+	H Hartley Sweeten <hsweeten@visionengravers.com>,
+	Joel Becker <joel.becker@oracle.com>,
+	linux-ext4@vger.kernel.org, vamos@i4.informatik.uni-erlangen.de
+To: Christoph Egger <siccegge@stud.informatik.uni-erlangen.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:32927 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751763Ab0BHNyc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Feb 2010 08:54:32 -0500
-In-Reply-To: <1257371050.13852.28.camel@michlmayr>
+Received: from cantor.suse.de ([195.135.220.2]:39526 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752074Ab0BHN4W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Feb 2010 08:56:22 -0500
+Content-Disposition: inline
+In-Reply-To: <20100205131333.GB6540@faui49.informatik.uni-erlangen.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Leonard Michlmayr wrote:
-> Thank you for your reply.
+On Fri 05-02-10 14:13:33, Christoph Egger wrote:
+> Hi all!
 > 
->>> @@ -3700,7 +3701,8 @@
->>>  		start_blk = start >> inode->i_sb->s_blocksize_bits;
->>> -		len_blks = len >> inode->i_sb->s_blocksize_bits;
->>> +		end_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
->>> +		len_blks = end_blk - start_blk + 1;
->> I don't think this is quite correct either.  For example, if blocksize  
->> is 1024
->> and start is 1023 (start_blk = 0) and len is 2 (end = 1024, end_blk =  
->> 1) then
->> len_blks = 2 which is too much.
+> 	As part of the VAMOS[0] research project at the University of
+> Erlangen we're checking referential integrity between kernel KConfig
+> options and in-code Conditional blocks.
 > 
-> I think that len_blks = 2 is the correct value, because the requested
-> region extends into 2 blocks (namely 0 and 1). If both blocks are in two
-> separate extents, then ext4_ext_walk_space should report 2 extents. (If
-> it's the same extent, only 1 will be reported anyways)
+> 	With some commit somewhere around 2.4.15 the last hint of
+> CONFIG_BUFFER_DEBUG (apart from the 2 occurences this patch addresses)
+> -- some documentation -- was removed from the kernel source. However
+> this one piece of code made it till today. Time to go forward and
+> remove it?
 > 
->> I think the right calculation here is:
->>
->>                    end_blk = (start + len + inode->i_sb->s_blocksize - 1) >>
->>                              inode->i_sb->s_blocksize_bits;
->>                    len_blks = end_blk - start_blk;
->>
-> 
-> This is exactly the same (provided that len > 0). You can convince
-> yourself easily that ((blocksize + x) >> blocksize_bits == x >>
-> blocksize_bits + 1) for any positive x, because the lower bits of
-> blocksize are all 0. (Your calculation would handle the case len == 0
-> right, if that was allowed.)
-> 
-> Regards
-> Leonard
+> 	Please keep me informed of this patch getting confirmed /
+> merged so we can keep track of it.
+  Thanks, the patch looks good. I've merged it into my linux-fs tree and
+will send it to Linus in the next merge window.
 
-I was wondering if there is any update on the status of this patch.
-Thanks !
-
-Warm Regards,
-Surbhi.
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
