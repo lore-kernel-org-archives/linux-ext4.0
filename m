@@ -1,42 +1,96 @@
-From: Chris Puttick <cputtick@gmail.com>
-Subject: Practical partition/volume size limitation
-Date: Tue, 9 Feb 2010 18:32:12 +0000
-Message-ID: <388f7e1a1002091032p633a7db4of269cccd4a8142bc@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] xfstests: optionally run all tests under quota
+Date: Tue, 09 Feb 2010 13:26:31 -0600
+Message-ID: <4B71B6E7.1000203@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f193.google.com ([209.85.210.193]:63132 "EHLO
-	mail-yx0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751004Ab0BIScO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Feb 2010 13:32:14 -0500
-Received: by yxe31 with SMTP id 31so7074730yxe.21
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Feb 2010 10:32:14 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:22133 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751672Ab0BIT0f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Feb 2010 14:26:35 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all
+This patch might be a little heavy handed, but it seems to
+work; if you set USE_QUOTA=1 in your environment, all
+tests should be run with quota on and enabled.
 
-Sorry to intrude and please feel free to redirect me to another more
-appropriate list or alternative source (which I have been unable to
-find). We're considering a large-scale filestore deployment (starting
-with 32TB, single volume) and some team members have concerns about
-the practical scalability of ext4 e.g. time to run fsck.
+This will hopefully help shake out some of the ext4
+quota problems, although one needs to keep an eye
+on the console to see whether warnings scroll by.
 
-So some questions :)
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Are there any examples of organisations running ext4 with large-scale
-filestores? What sort of sizes? What issues, if any, have been
-encountered? And if not ext4, what else (assuming a Linux preference)?
+diff --git a/common.rc b/common.rc
+index 6424871..4fde921 100644
+--- a/common.rc
++++ b/common.rc
+@@ -64,6 +64,9 @@ _mount_opts()
+     *)
+ 	;;
+     esac
++    if [ ! -z "$USE_QUOTA" ]; then
++	export MOUNT_OPTIONS="$MOUNT_OPTIONS -o usrquota,grpquota"
++    fi
+ }
+ 
+ _mkfs_opts()
+@@ -161,6 +164,10 @@ _test_options()
+     type=$1
+     TEST_OPTIONS=""
+ 
++    if [ ! -z "$USE_QUOTA" ]; then
++	TEST_OPTIONS="-o usrquota,grpquota"
++    fi
++
+     if [ "$FSTYP" != "xfs" ]; then
+         return
+     fi
+@@ -202,6 +209,25 @@ _mount_ops_filter()
+ 
+ }
+ 
++_setup_quota()
++{
++    mountpoint=$1
++    if [ ! -z "$USE_QUOTA" ]; then
++	case $FSTYP in
++	xfs)
++	    ;;
++	ext*|reiserfs)
++	    quotaoff $mountpoint &>/dev/null
++	    quotacheck -u -g $mountpoint
++	    quotaon $mountpoint
++	    ;;
++	*)
++	    _fail "Don't know how to turn on quota on $FSTYP"
++	    ;;
++	esac
++    fi
++}
++
+ _scratch_mount_options()
+ {
+     _scratch_options mount
+@@ -212,6 +238,7 @@ _scratch_mount_options()
+ _scratch_mount()
+ {
+     _mount -t $FSTYP `_scratch_mount_options $*`
++    _setup_quota $SCRATCH_MNT
+ }
+ 
+ _scratch_unmount()
+@@ -229,6 +256,7 @@ _test_mount()
+ {
+     _test_options mount
+     _mount -t $FSTYP $TEST_OPTIONS $TEST_FS_MOUNT_OPTS $* $TEST_DEV $TEST_DIR
++    _setup_quota $TEST_DIR
+ }
+ 
+ _scratch_mkfs_options()
 
-Thanks in advance.
-
-Chris Puttick
-
--- 
-My employers website: http://thehumanjourney.net - opinions in this
-email are however very much my own and may not reflect that of my
-current employer, past employers, associates, friends, family, pets etc..
-
-Documents attached to this email may be in ISO 26300 format:
-http://iso26300.info
