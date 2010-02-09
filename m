@@ -1,35 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15074] Problem with quota on ext4
-Date: Tue, 9 Feb 2010 16:02:39 GMT
-Message-ID: <201002091602.o19G2dZs004175@demeter.kernel.org>
-References: <bug-15074-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Help on Implementation of EXT3 type Ordered Mode in EXT4
+Date: Tue, 9 Feb 2010 17:05:22 +0100
+Message-ID: <20100209160522.GE15318@atrey.karlin.mff.cuni.cz>
+References: <loom.20100204T064311-880@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Kailas Joshi <kailas.joshi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:41761 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754519Ab0BIQCk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Feb 2010 11:02:40 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o19G2d6k004177
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Feb 2010 16:02:39 GMT
-In-Reply-To: <bug-15074-13602@http.bugzilla.kernel.org/>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:60970 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754411Ab0BIQFY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Feb 2010 11:05:24 -0500
+Content-Disposition: inline
+In-Reply-To: <loom.20100204T064311-880@post.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15074
+  Hi,
 
+> I recently found that in EXT4 with delayed block the Ordered mode does not
+> bahave same as in EXT3.
+> I found a patch for this at http://lwn.net/Articles/324023/, but it has some
+> journal block estimation problem resulting into deadlock.
+> 
+> I would like to know if it has been solved.
+> If not, is it possible to solve it? What are the complexities involved?
+  It has not been solved. The problem is that to commit data on transaction
+commit (which is what data=ordered mode has historically done), you have to
+allocate space for these blocks. But that allocation needs to modify a
+filesystem and thus journal more blocks... And that is tricky - we would have
+to reserve space in the current transaction for allocation of delayed data.  So
+it gets a bit messy...
+  Why exactly do you need the old data=ordered guarantees?
 
-
-
-
---- Comment #5 from Fabio Fantoni <fantonifabio@tiscali.it>  2010-02-09 16:02:15 ---
-yes 2.6.33-rc6, the warning on quota active (journaling support on ext4 not
-active) not help? if necessary on next install i post details message
+									Honza
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
