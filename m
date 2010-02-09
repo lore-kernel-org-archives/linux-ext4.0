@@ -1,7 +1,7 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: [PATCH 08/11] ext4: introduce subtree logic
-Date: Tue, 09 Feb 2010 12:29:29 +0300
-Message-ID: <878wb2pxja.fsf@openvz.org>
+Date: Tue, 09 Feb 2010 13:06:22 +0300
+Message-ID: <874olqpvtt.fsf@openvz.org>
 References: <1265635693-12182-1-git-send-email-dmonakhov@openvz.org>
 	<1265635693-12182-2-git-send-email-dmonakhov@openvz.org>
 	<1265635693-12182-3-git-send-email-dmonakhov@openvz.org>
@@ -11,70 +11,111 @@ References: <1265635693-12182-1-git-send-email-dmonakhov@openvz.org>
 	<1265635693-12182-7-git-send-email-dmonakhov@openvz.org>
 	<1265635693-12182-8-git-send-email-dmonakhov@openvz.org>
 	<1265635693-12182-9-git-send-email-dmonakhov@openvz.org>
-	<494905CF-659F-4F8E-ACB3-D0030CE69B6C@sun.com>
+	<87f94c371002081554k3e4d6019q332602fea344ccc9@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	OHSM-DEV <ohsm-devel@lists.sourceforge.net>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:43779 "EHLO
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:41330 "EHLO
 	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751288Ab0BIJ3e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Feb 2010 04:29:34 -0500
-Received: by bwz19 with SMTP id 19so602961bwz.28
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Feb 2010 01:29:33 -0800 (PST)
-In-Reply-To: <494905CF-659F-4F8E-ACB3-D0030CE69B6C@sun.com> (Andreas Dilger's
-	message of "Mon, 08 Feb 2010 17:49:51 -0700")
+	with ESMTP id S1751499Ab0BIKG0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Feb 2010 05:06:26 -0500
+Received: by bwz19 with SMTP id 19so631540bwz.28
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Feb 2010 02:06:24 -0800 (PST)
+In-Reply-To: <87f94c371002081554k3e4d6019q332602fea344ccc9@mail.gmail.com>
+	(Greg Freemyer's message of "Mon, 8 Feb 2010 18:54:37 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger <adilger@sun.com> writes:
+Greg Freemyer <greg.freemyer@gmail.com> writes:
 
-> On 2010-02-08, at 06:28, Dmitry Monakhov wrote:
->>  A subtree of a directory tree T is a tree consisting of a directory
->>  (the subtree root) in T and all of its descendants in T.
+> On Mon, Feb 8, 2010 at 8:28 AM, Dmitry Monakhov <dmonakhov@openvz.org=
+> wrote:
+>> * Abstract
+>> =C2=A0A subtree of a directory tree T is a tree consisting of a dire=
+ctory
+>> =C2=A0(the subtree root) in T and all of its descendants in T.
 >>
->>  Subtree feature allows to create an isolated (from user point of
->> view)
->>  trees.
+>> =C2=A0Subtree feature allows to create an isolated (from user point =
+of view)
+>> =C2=A0trees.
 >>
->>  Subtree assumptions:
->>  (1) Each inode has subtree id. This id is persistently stored inside
->>      inode (xattr, usually inside ibody)
->>  (2) Subtree id is inherent from parent directory
->>  (3) Inode can not belongs to different subtree
->>      Otherwise changes in one subtree result in changes in other
->> subtree
->>      which contradict to isolation criteria.
+>> =C2=A0Subtree assumptions:
+>> =C2=A0(1) Each inode has subtree id. This id is persistently stored =
+inside
+>> =C2=A0 =C2=A0 =C2=A0inode (xattr, usually inside ibody)
+>> =C2=A0(2) Subtree id is inherent from parent directory
+>> =C2=A0(3) Inode can not belongs to different subtree
+>> =C2=A0 =C2=A0 =C2=A0Otherwise changes in one subtree result in chang=
+es in other subtree
+>> =C2=A0 =C2=A0 =C2=A0which contradict to isolation criteria.
 >>
->>  This feature is similar to project-id in XFS. One may assign some
->> id to
->>  a subtree. Each entry from the subtree may be accounted in directory
->>  subtree quota. Will appear in later patches.
+>> =C2=A0This feature is similar to project-id in XFS. One may assign s=
+ome id to
+>> =C2=A0a subtree. Each entry from the subtree may be accounted in dir=
+ectory
+>> =C2=A0subtree quota. Will appear in later patches.
 >>
 >> * Disk layout
->>  Subtree id is stored on disk inside xattr usually inside ibody.
->>  Xattr is used only as a data storage, It has not user visiable xattr
->>  interface.
+>> =C2=A0Subtree id is stored on disk inside xattr usually inside ibody=
+=2E
+>> =C2=A0Xattr is used only as a data storage, It has not user visiable=
+ xattr
+>> =C2=A0interface.
+>>
+>> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 >
+> Dmitry,
 >
-> Presumably this would need e2fsck support, in order to ensure that
-> inodes in a given directory have the same subtree ID as the parent
-> directory.
-Yes i'm working on this, I've already prepared ioctl support
-for chattr/lsattr.
-> Also, how are the subtree IDs generated, to ensure that they are
-> unique between subtrees?
-This is user responsibility. There is possible situation where 
-set of subtrees may has same ID. The main idea it that each of
-such subtrees is a *full* subtree (it includes all nodes starting
-from the subtree root)
-About isolation: currently there is a discussion about this feature
-some people state that subtrees may exist without a isolation
-requirement. Let's wait where it goes.
+> I think the idea of subtrees is useful, but I'm curious about other
+> use cases than just quota.
 >
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
+> At first glance you are attempting to create a generic subtree
+> functionality for ext4, but criteria 3) above says a inode can only b=
+e
+> in one subtree at a time.
+Theoretically this is possible, but this dramatically complicate things
+Just think about this. If inode belongs to different subtrees then
+it must have several tree-dquota objects attached to it. This means
+that quota require great quota redesign.=20
+Obviously i don't know any use case for this feature. do you know any?
+IMHO isolated subtrees has well defined use-cases. Wat's why two
+independent teams (xfs-team and openvz) implemented this feature
+in semantically identical way.
+>
+> Thus if quota utilizes subtrees and another future feature were to us=
+e
+> subtrees and the layout of the subtree details were not identical,
+> they would collide.  Thus with the current patch you can only have on=
+e
+> subtree dependent feature at a time for a given filesystem.
+>
+> It seems you need something along the lines of a subtree name space
+> etc. in order to allow orthogonal service users to create orthogonal
+> subtrees.
+>
+> Also, I can envision use cases where you have subtrees within subtree=
+s.
+>
+> Envision a projects folder that forms one subtree, but one specific
+> project within that folder needs to be in its own subtree.  If I read
+> your patch description right, that is not allowed because only
+> directories of subtree 0 are allowed to contain diverging subtrees.
+Default tree (ID =3D=3D 0) is just analog of common space.
+where other subrees exist. It is used for subtree manipulation.
+>
+> ie.  A directory of subtree 0 can contain a directory of subtrees 1
+> and 2, but a directory of subtree 10 is not allowed to contain
+> subtrees 11 and 12.
+>
+> Just food for thought.
+>
+> Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
