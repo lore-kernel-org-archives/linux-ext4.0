@@ -1,42 +1,42 @@
-From: Tejun Heo <htejun@gmail.com>
-Subject: Re: 2.6.33-rc6 crashes on resume
-Date: Tue, 09 Feb 2010 12:32:42 +0900
-Message-ID: <4B70D75A.7010600@gmail.com>
-References: <4B70982F.8090208@roadwarrior3.tmr.com> <201002090016.18027.rjw@sisk.pl>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
+Date: Tue, 9 Feb 2010 03:52:50 GMT
+Message-ID: <201002090352.o193qo8S003976@demeter.kernel.org>
+References: <bug-15231-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
-Content-Transfer-Encoding: 7bit
-Cc: davidsen@tmr.com, linux-kernel@vger.kernel.org,
-	pm list <linux-pm@lists.linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: "Rafael J. Wysocki" <rjw@sisk.pl>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <201002090016.18027.rjw@sisk.pl>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:46782 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753217Ab0BIDwv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Feb 2010 22:52:51 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o193qoCl003977
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Feb 2010 03:52:50 GMT
+In-Reply-To: <bug-15231-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/09/2010 08:16 AM, Rafael J. Wysocki wrote:
-> On Tuesday 09 February 2010, Bill Davidsen wrote:
->> Pretty simple to reproduce, boot, suspend, press shift
->>
->> Acer Aspire 1681, Celeron, 2.6.33-rc6. Trace and config attached.
-> 
-> This looks suspicious:
-> 
-> Feb  8 17:32:47 roadwarrior3 kernel: ata2.00: ACPI cmd 03/42:00:00:00:a0:ef (CFA REQUEST EXTENDED ERROR) rejected by device (Stat=0x51 Err=0x04)
-> Feb  8 17:32:47 roadwarrior3 kernel: sd 0:0:0:0: [sda] Starting disk
-> Feb  8 17:32:47 roadwarrior3 kernel: ata2.00: ACPI cmd 00/0c:00:00:00:a0:ef (NOP) rejected by device (Stat=0x51 Err=0x04)
-> Feb  8 17:32:47 roadwarrior3 kernel: ata2.00: configured for UDMA/33
-> Feb  8 17:32:47 roadwarrior3 kernel: firewire_core: rediscovered device fw0
-> Feb  8 17:32:47 roadwarrior3 kernel: ata1.00: ACPI cmd 03/45:00:00:00:a0:ef (CFA REQUEST EXTENDED ERROR) rejected by device (Stat=0x51 Err=0x04)
-> Feb  8 17:32:47 roadwarrior3 kernel: ata1.00: ACPI cmd 00/0c:00:00:00:a0:ef (NOP) rejected by device (Stat=0x51 Err=0x04)
-> Feb  8 17:32:47 roadwarrior3 kernel: ata1.00: configured for UDMA/100
+http://bugzilla.kernel.org/show_bug.cgi?id=15231
 
-These aren't harmful in themselves.  It just means that the device
-failed commands BIOS requested via ACPI.  Just in case, does
-"libata.noacpi=1" make any difference to the oops?
 
-Thanks.
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+
+
+
+--- Comment #5 from Theodore Tso <tytso@mit.edu>  2010-02-09 03:52:45 ---
+OK, so the dump in comment #3 and #4 are a completely different issue.  It's
+not even clear it's an ext4 issue.  (An oops in fs/inode.c is quite different
+from an oops in fs/ext4/inode.c).
 
 -- 
-tejun
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
