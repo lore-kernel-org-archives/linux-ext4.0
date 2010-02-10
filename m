@@ -1,39 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15074] Problem with quota on ext4
-Date: Wed, 10 Feb 2010 19:17:20 GMT
-Message-ID: <201002101917.o1AJHKlf002680@demeter.kernel.org>
-References: <bug-15074-13602@http.bugzilla.kernel.org/>
+From: tytso@mit.edu
+Subject: Re: ext5
+Date: Wed, 10 Feb 2010 16:50:28 -0500
+Message-ID: <20100210215028.GD739@thunk.org>
+References: <fe37fadb578fb9a3df9c878f8b9e9c3e@remailer.privacy.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Anonymous Remailer (austria)" <mixmaster@remailer.privacy.at>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52052 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432Ab0BJTRV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Feb 2010 14:17:21 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1AJHL8S002681
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Feb 2010 19:17:21 GMT
-In-Reply-To: <bug-15074-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:57706 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754036Ab0BJVue (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Feb 2010 16:50:34 -0500
+Content-Disposition: inline
+In-Reply-To: <fe37fadb578fb9a3df9c878f8b9e9c3e@remailer.privacy.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15074
+On Wed, Feb 10, 2010 at 12:40:05AM +0100, Anonymous Remailer (austria) wrote:
+> 
+> will there be ext5? ext4 works just fine so far. but it could be
+> even more faster. otherwise i have to jump to btrfs (when it's
+> done).
 
+We currently don't have any plans for an "ext5".  There might be some
+new features that might gradually trickle into ext4; for example
+there's someone who I may be mentoring who is interested in working on
+an idea I've had to add read-only compression to ext4.  (Actually, the
+design I've sketched out makes 90% of the work be file system
+independent, so it's something that could be retrofitted into other
+filesystems: xfs, btrfs, etc.)
 
+The benchmarks I've seen don't show that btrfs is that much faster;
+for some workloads its faster, for others its slower.  Of course,
+there may be some file system tuning that still remains to be done,
+both for btrfs and ext4, that may change the performance numbers
+slightly.
 
+The main reason why I suspect people will be interested in btrfs is to
+because of some of its features (i.e., file system level snapshots,
+data level checksums, etc.) that are unlikely to show up in ext4.  I
+also suspect that btrfs will take a while to mature, as all file
+systems do.  ZFS for example took good five years to development, and
+perhaps another 3-4 before people started really trusting it for
+critical production uses.
 
+Regards,
 
---- Comment #14 from Dmitri Monakhov <dmonakhov@openvz.org>  2010-02-10 19:17:05 ---
-Ok. Agree. There is only semantic difference between both patches.
-But your definitely clear. 
-
-BTW: i've tried to count total reservation in add_dquot_ref() in order to
-give user a picture about amount of the leakage he has.
-Because leackage of 500Mb look really scary :)
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
