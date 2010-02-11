@@ -1,54 +1,40 @@
-From: tytso@mit.edu
-Subject: Re: ext5
-Date: Wed, 10 Feb 2010 23:30:29 -0500
-Message-ID: <20100211043029.GE739@thunk.org>
-References: <fe37fadb578fb9a3df9c878f8b9e9c3e@remailer.privacy.at>
- <20100210215028.GD739@thunk.org>
- <ea11fea31002101938y7bd5d6f4u5f7cdda972ea72e2@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
+Date: Thu, 11 Feb 2010 04:48:10 GMT
+Message-ID: <201002110448.o1B4mAoh014607@demeter.kernel.org>
+References: <bug-15231-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Anonymous Remailer (austria)" <mixmaster@remailer.privacy.at>,
-	linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60622 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754182Ab0BKEah (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Feb 2010 23:30:37 -0500
-Content-Disposition: inline
-In-Reply-To: <ea11fea31002101938y7bd5d6f4u5f7cdda972ea72e2@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:42188 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750804Ab0BKEsL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Feb 2010 23:48:11 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1B4mAl7014608
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 04:48:10 GMT
+In-Reply-To: <bug-15231-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 11, 2010 at 09:08:36AM +0530, Manish Katiyar wrote:
-> 
-> Is this design somewhere on net so that we can read/lookup it up ?
-
-Not yet, but the basic idea is to do the compression in userspace,
-using libz with regular resync points every 64k or 128k of
-uncompressed data.  An array, indexed by each fixed-block of
-uncompressed data, is located at the beginning of the file indicating
-where each compressed block begins.  The file is stored on-disk
-written by the installer in a compressed format, and then the
-installer flips an attribute bit which marks the file as containing
-compressed data, and which also makes the file immutable.  (Any
-attempt to open the file read/write will result in an error.)
-
-The advantage of this scheme is that it minimizes in-kernel
-complexity, since the kernel doesn't have to deal with compressing
-data, and it means we can use a simpler format which is more efficient
-from a compression standpoint since we don't have to deal with random
-access writes.
-
-Another advantage of this scheme is that it's relatively easy to do
-the bulk of the work in a file system-independent layer.  Some minor
-work would be needed to interface the attribute bit and the mmap
-reading function into each client filesystem, but it should be
-possible to isolate 95% of the work into a filesystem independent
-layer, and then make this something which multiple file systems could
-take advantage of --- not just ext3 and ext4, but also xfs, btrfs,
-etc.
-
-						- Ted
+http://bugzilla.kernel.org/show_bug.cgi?id=15231
 
 
+
+
+
+--- Comment #12 from Theodore Tso <tytso@mit.edu>  2010-02-11 04:47:31 ---
+So the "kernel BUG at fs/inode.c:1343!" failure was showing up on both 2.6.32.2
+and 2.6.32.7, right?   Do you know when it first started showing up?
+
+The kernel stack trace indicates that it's coming from releasing one the nfs
+kernel thread's network sockets, when the TCP connection is broken or something
+else goes wrong.   I don't think it's ext4 related at all; it looks like an NFS
+server issue.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
