@@ -1,40 +1,63 @@
-From: tytso@mit.edu
-Subject: Re: E2fsprogs 1.41.10 has been released
-Date: Thu, 11 Feb 2010 11:54:14 -0500
-Message-ID: <20100211165414.GJ739@thunk.org>
-References: <E1NfLwx-00062Q-AX@closure.thunk.org>
+From: Ron Johnson <ron.l.johnson@cox.net>
+Subject: Re: ext5
+Date: Thu, 11 Feb 2010 10:49:33 -0600
+Message-ID: <4B74351D.5010308@cox.net>
+References: <20100211064433.GF739@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33638 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755507Ab0BKQyR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Feb 2010 11:54:17 -0500
-Content-Disposition: inline
-In-Reply-To: <E1NfLwx-00062Q-AX@closure.thunk.org>
+Received: from eastrmpop107.cox.net ([68.230.240.49]:35750 "EHLO
+	eastrmpop107.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752801Ab0BKQ5k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 11:57:40 -0500
+Received: from eastrmimpo03.cox.net ([68.1.16.126])
+          by eastrmmtao105.cox.net
+          (InterMail vM.8.00.01.00 201-2244-105-20090324) with ESMTP
+          id <20100211164935.OJEI29464.eastrmmtao105.cox.net@eastrmimpo03.cox.net>
+          for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 11:49:35 -0500
+In-Reply-To: <20100211064433.GF739@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 10, 2010 at 06:26:27PM -0500, Theodore Ts'o wrote:
-> Since Sourceforge has changed its File Release System, and no longer has
-> a way of making announcements when a new release has gone out (and I
-> don't know how many people were using it), I'll just make a quick
-> announcement here.
+On 2010-02-11 00:44, tytso@mit.edu wrote:
+> On Wed, Feb 10, 2010 at 11:18:21PM -0600, Ron Johnson wrote:
+>>> We currently don't have any plans for an "ext5".  There might be some
+>>> new features that might gradually trickle into ext4; for example
+>>> there's someone who I may be mentoring who is interested in working on
+>>> an idea I've had to add read-only compression to ext4.  (Actually, the
+>>> design I've sketched out makes 90% of the work be file system
+>>> independent, so it's something that could be retrofitted into other
+>>> filesystems: xfs, btrfs, etc.)
+>> I guess that means every file on the fs?
 > 
-> E2fsprogs 1.41.10 has been released.  It can be found in the usual
-> places (ftp.kernel.org, sourceforge), and of course in the e2fsprogs git
-> repositories.
+> No, I mean per-file compression, but a compressed file is immutable.
+> This is basically what Mac OS X has recently added, and while I
+> haven't looked at their implementation, Apple being one of those
+> closed source companies and all, I wouldn't be surprised if they did
+> things the same way.
+> 
+>> Windows-like per-file compression would be darned useful in certain
+>> circumstances.  Big mbox files, for example.
+> 
+> The problem with mbox files is that some mail readers try to smart
+> about how they modify them to avoid needing to rewrite the whole mbox
+> file; mutt will seak to the middle of the file, write to the end of
+> the file, and then trim off any excess space by using the truncate
+> system call.  This is *hard* to support if the mbox file is
+> compressed; you can do it using a stacker-style compression technique,
+> but it's not as efficient, and it has a lot of complexity in the
+> kernel.
 
-So Frank has pointed out to me that I screwed up the version.h file:
+I guess that's how Windows does it?
 
-#define E2FSPROGS_DATE "10-Feb-2009"
+> The idea with read-only compressed files is that they are useful for
+> large executables or large static files, where compressing them means
+> that it takes less time to read them off of an HDD.
 
-*Sigh*
+Sure.  Anything is better than nothing!
 
-It's probably not worth spinning a new tar file, and confusing people
-with two tarballs with different MD5 checksums, but if folks want to
-fix this before releasing RPM's, et. al., please feel free to make the
-obvious 's/2009/2010/' change.
-
-						- Ted
+-- 
+"Hell hath no fury like the vast robot armies of a woman scorned."
+Walt
