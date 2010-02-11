@@ -1,63 +1,42 @@
-From: Ron Johnson <ron.l.johnson@cox.net>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: ext5
-Date: Thu, 11 Feb 2010 10:49:33 -0600
-Message-ID: <4B74351D.5010308@cox.net>
-References: <20100211064433.GF739@thunk.org>
+Date: Thu, 11 Feb 2010 18:55:58 +0100
+Message-ID: <20100211175557.GA27418@atrey.karlin.mff.cuni.cz>
+References: <fe37fadb578fb9a3df9c878f8b9e9c3e@remailer.privacy.at> <20100210215028.GD739@thunk.org> <ea11fea31002101938y7bd5d6f4u5f7cdda972ea72e2@mail.gmail.com> <20100211043029.GE739@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Manish Katiyar <mkatiyar@gmail.com>,
+	"Anonymous Remailer (austria)" <mixmaster@remailer.privacy.at>,
+	linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eastrmpop107.cox.net ([68.230.240.49]:35750 "EHLO
-	eastrmpop107.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752801Ab0BKQ5k (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 11:57:40 -0500
-Received: from eastrmimpo03.cox.net ([68.1.16.126])
-          by eastrmmtao105.cox.net
-          (InterMail vM.8.00.01.00 201-2244-105-20090324) with ESMTP
-          id <20100211164935.OJEI29464.eastrmmtao105.cox.net@eastrmimpo03.cox.net>
-          for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 11:49:35 -0500
-In-Reply-To: <20100211064433.GF739@thunk.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:60372 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756406Ab0BKRz7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 12:55:59 -0500
+Content-Disposition: inline
+In-Reply-To: <20100211043029.GE739@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-02-11 00:44, tytso@mit.edu wrote:
-> On Wed, Feb 10, 2010 at 11:18:21PM -0600, Ron Johnson wrote:
->>> We currently don't have any plans for an "ext5".  There might be some
->>> new features that might gradually trickle into ext4; for example
->>> there's someone who I may be mentoring who is interested in working on
->>> an idea I've had to add read-only compression to ext4.  (Actually, the
->>> design I've sketched out makes 90% of the work be file system
->>> independent, so it's something that could be retrofitted into other
->>> filesystems: xfs, btrfs, etc.)
->> I guess that means every file on the fs?
+> On Thu, Feb 11, 2010 at 09:08:36AM +0530, Manish Katiyar wrote:
+> > 
+> > Is this design somewhere on net so that we can read/lookup it up ?
 > 
-> No, I mean per-file compression, but a compressed file is immutable.
-> This is basically what Mac OS X has recently added, and while I
-> haven't looked at their implementation, Apple being one of those
-> closed source companies and all, I wouldn't be surprised if they did
-> things the same way.
-> 
->> Windows-like per-file compression would be darned useful in certain
->> circumstances.  Big mbox files, for example.
-> 
-> The problem with mbox files is that some mail readers try to smart
-> about how they modify them to avoid needing to rewrite the whole mbox
-> file; mutt will seak to the middle of the file, write to the end of
-> the file, and then trim off any excess space by using the truncate
-> system call.  This is *hard* to support if the mbox file is
-> compressed; you can do it using a stacker-style compression technique,
-> but it's not as efficient, and it has a lot of complexity in the
-> kernel.
+> Not yet, but the basic idea is to do the compression in userspace,
+> using libz with regular resync points every 64k or 128k of
+> uncompressed data.  An array, indexed by each fixed-block of
+> uncompressed data, is located at the beginning of the file indicating
+> where each compressed block begins.  The file is stored on-disk
+> written by the installer in a compressed format, and then the
+> installer flips an attribute bit which marks the file as containing
+> compressed data, and which also makes the file immutable.  (Any
+> attempt to open the file read/write will result in an error.)
+  From the first reading, this sounds like what zisofs is doing.
+The reading part is already implemented in kernel in fs/isofs/compress.c
+so that might be lifted to a generic level and used for ext4 as well..
 
-I guess that's how Windows does it?
-
-> The idea with read-only compressed files is that they are useful for
-> large executables or large static files, where compressing them means
-> that it takes less time to read them off of an HDD.
-
-Sure.  Anything is better than nothing!
-
+								Honza
 -- 
-"Hell hath no fury like the vast robot armies of a woman scorned."
-Walt
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
