@@ -1,36 +1,45 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
-Date: Thu, 11 Feb 2010 05:13:04 GMT
-Message-ID: <201002110513.o1B5D4Ax019089@demeter.kernel.org>
-References: <bug-15231-13602@http.bugzilla.kernel.org/>
+From: Ron Johnson <ron.l.johnson@cox.net>
+Subject: Re: ext5
+Date: Wed, 10 Feb 2010 23:18:21 -0600
+Message-ID: <4B73931D.5000302@cox.net>
+References: <20100210215028.GD739@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:57636 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750783Ab0BKFNI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 00:13:08 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1B5D5kb019107
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 05:13:05 GMT
-In-Reply-To: <bug-15231-13602@http.bugzilla.kernel.org/>
+Received: from eastrmmtao103.cox.net ([68.230.240.9]:55394 "EHLO
+	eastrmmtao103.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897Ab0BKFSW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 00:18:22 -0500
+Received: from eastrmimpo01.cox.net ([68.1.16.119])
+          by eastrmmtao103.cox.net
+          (InterMail vM.8.00.01.00 201-2244-105-20090324) with ESMTP
+          id <20100211051822.OQHR3222.eastrmmtao103.cox.net@eastrmimpo01.cox.net>
+          for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 00:18:22 -0500
+In-Reply-To: <20100210215028.GD739@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15231
+On 2010-02-10 15:50, tytso@mit.edu wrote:
+> On Wed, Feb 10, 2010 at 12:40:05AM +0100, Anonymous Remailer (austria) wrote:
+>> will there be ext5? ext4 works just fine so far. but it could be
+>> even more faster. otherwise i have to jump to btrfs (when it's
+>> done).
+> 
+> We currently don't have any plans for an "ext5".  There might be some
+> new features that might gradually trickle into ext4; for example
+> there's someone who I may be mentoring who is interested in working on
+> an idea I've had to add read-only compression to ext4.  (Actually, the
+> design I've sketched out makes 90% of the work be file system
+> independent, so it's something that could be retrofitted into other
+> filesystems: xfs, btrfs, etc.)
 
+I guess that means every file on the fs?
 
-
-
-
---- Comment #13 from Franco Broi <franco@fugro-fsi.com.au>  2010-02-11 05:12:23 ---
-
-I've only seen this bug starting with 2.6.32.2. I haven't tried anyting between
-this version and 2.6.32.7.
+Windows-like per-file compression would be darned useful in certain 
+circumstances.  Big mbox files, for example.
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+"Hell hath no fury like the vast robot armies of a woman scorned."
+Walt
