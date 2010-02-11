@@ -1,35 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
-Date: Thu, 11 Feb 2010 05:22:35 GMT
-Message-ID: <201002110522.o1B5MZiQ032385@demeter.kernel.org>
-References: <bug-15231-13602@http.bugzilla.kernel.org/>
+From: tytso@mit.edu
+Subject: Re: ext5
+Date: Thu, 11 Feb 2010 01:44:33 -0500
+Message-ID: <20100211064433.GF739@thunk.org>
+References: <20100210215028.GD739@thunk.org>
+ <4B73931D.5000302@cox.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Ron Johnson <ron.l.johnson@cox.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:43125 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750832Ab0BKFWg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 00:22:36 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1B5MZoc032388
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 05:22:35 GMT
-In-Reply-To: <bug-15231-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:54564 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751650Ab0BKGoh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Feb 2010 01:44:37 -0500
+Content-Disposition: inline
+In-Reply-To: <4B73931D.5000302@cox.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15231
+On Wed, Feb 10, 2010 at 11:18:21PM -0600, Ron Johnson wrote:
+> >We currently don't have any plans for an "ext5".  There might be some
+> >new features that might gradually trickle into ext4; for example
+> >there's someone who I may be mentoring who is interested in working on
+> >an idea I've had to add read-only compression to ext4.  (Actually, the
+> >design I've sketched out makes 90% of the work be file system
+> >independent, so it's something that could be retrofitted into other
+> >filesystems: xfs, btrfs, etc.)
+> 
+> I guess that means every file on the fs?
 
+No, I mean per-file compression, but a compressed file is immutable.
+This is basically what Mac OS X has recently added, and while I
+haven't looked at their implementation, Apple being one of those
+closed source companies and all, I wouldn't be surprised if they did
+things the same way.
 
+> Windows-like per-file compression would be darned useful in certain
+> circumstances.  Big mbox files, for example.
 
+The problem with mbox files is that some mail readers try to smart
+about how they modify them to avoid needing to rewrite the whole mbox
+file; mutt will seak to the middle of the file, write to the end of
+the file, and then trim off any excess space by using the truncate
+system call.  This is *hard* to support if the mbox file is
+compressed; you can do it using a stacker-style compression technique,
+but it's not as efficient, and it has a lot of complexity in the
+kernel.
 
+The idea with read-only compressed files is that they are useful for
+large executables or large static files, where compressing them means
+that it takes less time to read them off of an HDD.
 
---- Comment #14 from Franco Broi <franco@fugro-fsi.com.au>  2010-02-11 05:22:19 ---
-
-Sorry, yes, the above errors were with the patched 2.6.32.7 kernel.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+     	      	   	   	     	    - Ted
