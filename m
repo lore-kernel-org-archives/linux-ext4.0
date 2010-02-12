@@ -1,189 +1,99 @@
-From: Nikola Ciprich <extmaillist@linuxbox.cz>
-Subject: Re: E2fsprogs 1.41.10 has been released
-Date: Fri, 12 Feb 2010 07:22:31 +0100
-Message-ID: <20100212062231.GA30897@develbox.linuxbox.cz>
-References: <E1NfLwx-00062Q-AX@closure.thunk.org>
-Mime-Version: 1.0
+From: Rusty Conover <rconover@infogears.com>
+Subject: Re: OOPS BUG at fs/ext4/inode.c:1853
+Date: Fri, 12 Feb 2010 07:51:34 -0500
+Message-ID: <472BEE5F-AAA3-49F3-8D78-77D4A1A5873A@infogears.com>
+References: <7897FA4C-4600-4872-A003-BBB6B099785D@infogears.com> <20100203025422.GC16384@thunk.org> <D4C80345-358A-4065-9591-2B25F1E5C71E@infogears.com>
+Mime-Version: 1.0 (Apple Message framework v1077)
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, nikola.ciprich@linuxbox.cz
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:58435 "EHLO gwu.lbox.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751716Ab0BLGWR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Feb 2010 01:22:17 -0500
-Content-Disposition: inline
-In-Reply-To: <E1NfLwx-00062Q-AX@closure.thunk.org>
+Received: from mail.infogears.com ([69.51.90.143]:44858 "EHLO
+	mail.infogears.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751088Ab0BLMvi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Feb 2010 07:51:38 -0500
+In-Reply-To: <D4C80345-358A-4065-9591-2B25F1E5C71E@infogears.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Theo,
-just one small note, I don't see it tagged in the git... ?
-n.
 
-On Wed, Feb 10, 2010 at 06:26:27PM -0500, Theodore Ts'o wrote:
-> Since Sourceforge has changed its File Release System, and no longer has
-> a way of making announcements when a new release has gone out (and I
-> don't know how many people were using it), I'll just make a quick
-> announcement here.
-> 
-> E2fsprogs 1.41.10 has been released.  It can be found in the usual
-> places (ftp.kernel.org, sourceforge), and of course in the e2fsprogs git
-> repositories.
-> 
-> 						- Ted
-> 
-> E2fsprogs 1.41.10 (February 7, 2010)
-> ====================================
-> 
-> Fix resize2fs bug which causes it to access invalid memory.
-> 
-> Add libss support for libreadline.so.6.
->     
-> Fix e2fsck's check for extent-mapped directory with an incorrect file
-> type.
-> 
-> Add new e2fsck.conf configuration option, default/broken_system_clock
-> to support systems with broken CMOS hardware clocks.  Also, since too
-> many distributions seem to have broken virtualization scripts now,
-> e2fsck will by default accept dates which are off by up to 24 hours by
-> default.  (Addresses Debian Bugs: #559776, #557636)
-> 
-> Fix a bug where mke2fs may not use the best placement of the inode
-> table when there is only room for a single block group in the last
-> flex_bg.
-> 
-> E2fsck is now smarter when it needs to allocate blocks in the course
-> of fixing file system problems.  This reduces the number of spurious
-> differences found in pass #5.
-> 
-> E2fsck will no longer rehash directories which fit in a single
-> directory block.
-> 
-> E2fsck now correctly handles holes in extent-mapped directories (i.e.,
-> sparse directories which use extents).
-> 
-> Fix big-endian problems with ext2fs_bmap() and ext2fs_bmap2().
-> 
-> Fix a bug in filefrag where on platforms which can allow file systems
-> with 8k blocks, that it doesn't core dump when it sees a file system
-> with 8k block sizes.  (Thanks to Mikulas Patocka for pointing this
-> out.)
-> 
-> E2fsck will correctly fix directories that are have an inaccurate
-> i_size as well as other problems in a single pass, instead of
-> requiring two e2fsck runs before the file system is fully fixed.
-> 
-> Fix e2fsck so it will correctly find and detect duplicate directory
-> entries for non-indexed directories.  ( Addresses Sourceforge Bug:
-> #2862551)
->     
-> Mke2fs will use BLKDISCARD to pre-discard all blocks on an SSD or
-> thinly-provisioned storage device.  This can be disabled using the -K
-> option.
-> 
-> Enhance libext2fs so it works around bug in Linux version 2.6.19
-> and earlier where the /proc/swaps file was missing the header on
-> the first line.
-> 
-> Fix bug in Linux version 2.6.19 and earlier where the /proc/swaps file
-> was missing the header on the first line.
-> 
-> Fix some big-endian bugs in e2fsck and libext2fs.
-> 
-> Fix resize2fs so it works correctly on file systems with external
-> journals instead of failing early with the error "Illegal inode
-> number".
-> 
-> Fix libss so that it does not seg fault when using a readline library
-> which does not supply a readline_shutdown() function.
-> 
-> Updated dumpe2fs's usage message so it correctly gives the right
-> arguments summary for "-o superblock=<num>" and "-o blocksize=<num>".
-> (Addresses Launchpad Bug: #448099)
->    
-> Teach libext2fs to ignore the high 32 bits of the i_blocks field
-> when huge_file file system feature is set, but the inode does not
-> have the HUGE_FILE_FL flag set.
-> 
-> Fix e2fsck's handling of 64-bit i_blocks fields.
-> 
-> E2fsck will now print "Illegal indirect block", "Illegal
-> double-indirect block", etc., instead of "Illegal block #-1" or
-> "Illegal block #-2", etc.  This makes it easier for users to
-> understand what has gone wrong.  (Addresses SourceForge Bug: #2871782)
-> 
-> Mke2fs now will obtain get device topology information from blkid and
-> use it to populate the superblock stride and stripe sizes.  It will
-> also warn if the block device is misaligned
-> 
-> Fix file descriptor leaks in fsck and debugfs.  (Addresses Novell Bug:
-> ##524526)
-> 
-> Fix the libext2fs library code to round up the bitmap size to a 4-byte
-> boundary, to prevent spurious seg faults caused by the x86
-> architecture.  This doesn't affect Linux systems, but was a major
-> problem on a number of *BSD systems.  (Addresses Sourceforge Bug:
-> #2328708)
-> 
-> Fix resize2fs's minimum size required for a file system so it doesn't
-> fail when "resize2fs -M" is run.  (Addresses RedHat Bugzilla: #519131)
->     
-> Dumpe2fs now prints summary information about the contents of the
-> journal.
->     
-> Avoid printing scary error messages when e2fsck starts running
-> problems on low-memory systems, as it tends to panic and mislead the
-> user.  (Addresses Debian Bug: #509529)
-> 
-> Fix blkid's modules.dep parser so it handles compressed (.ko.gz)
-> modules files.  (Address Red Hat Bug: #518572)
->     
-> Fix tune2fs so it can add a journal when an extent-enabled file system
-> is mounted.  (Addresses Launchpad bug: #416648)
-> 
-> Update Czech, Indonesian, Polish and Vietnamese translations (from the
-> Translation Project).
->     
-> Update/clarify man pages.  (Addresses Sourceforge Bug: #2822186)
-> 
-> Fixed various Debian packaging issues --- see debian/changelog for
-> details.  (Addresses Debian Bugs: #540111)
-> 
-> Programmer's Notes
-> ------------------
-> 
-> The configure script supports the --with-cc, --with-ccopts, and
-> --with-ldopts options.  Instead, the more standard use of CC=,
-> CCFLAGS=, and LDFLAGS= in the configure command line is used instead.
-> Also, --with-ld, which never worked, was also removed.
-> (Addresses Sourceforge Bug: #2843248)
-> 
-> The in-tree header files are only used if the in-tree uuid or blkid
-> libraries are used.  Otherwise, use the system-provided uuid or blkid
-> header files if using the system-provided libraries.
-> 
-> Fix some build failures caused by --disable-* configure options.
-> 
-> Work around a bug in autoconf 2.64.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> On Tue, Feb 02, 2010 at 08:25:44PM -0500, Rusty Conover wrote:
+>>> Hi,
+>>> 
+>>> Here is a kernel oops using the latest fedora 12 kernel.  Machine is
+>>> a Intel(R) Xeon(R) CPU E5430 @ 2.66GHz, running in 32bit mode,
+>>> normal SATA disks.  Filesystem was created in fedora 10, and machine
+>>> upgraded via yum to Fedora 12.  Is reproducible using "stress-1.0.2"
+>>> from http://weather.ou.edu/~apw/projects/stress/
+>> 
+>> Thanks for the bug report!
 > 
 
--- 
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28. rijna 168, 709 01 Ostrava
 
-tel.:   +420 596 603 142
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-www.linuxbox.cz
+Hi All,
 
-mobil servis: +420 737 238 656
-email servis: servis@linuxbox.cz
--------------------------------------
+We did a full raid resync, with e2fsck and was still able to get another OOPS after about a week of running "stress".
+
+Unfortunately this report didn't get everything, but hopefully its still helpful.
+
+The kernel version is the same as Fedora 12 hasn't yet released an update.
+
+Thanks,
+
+Rusty
+
+
+------------[ cut here ]------------ 
+invalid opcode: 0000 [#1] SMP 
+last sysfs file: /sys/devices/pci0000:00/0000:00:1f.3/i2c-adapter/i2c-0/0-002f/beep_enable 
+Process stress (pid: 15814, ti=e8a16000 task=e99a0cc0 task.ti=e8a16000) 
+Stack: 
+Call Trace: 
+ESI: 00000000 EDI: f0bef6a0 EBP: e8a17c90 ESP: e8a17c58 
+DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068 
+Process stress (pid: 15814, ti=e8a16000 task=e99a0cc0 task.ti=e8a16000) 
+Stack: 
+d5d747c0 d5d747c0 f6796c00 ffff0000 ffffffff 00000000 f0bef8dc f0bef6a0 
+<0> 00000000 f0bef728 00000000 00018904 00000000 c8df8280 e8a17ce0 c04e4b1a 
+<0> d5d747c0 00000001 e8a17cd4 d5d747c0 f0bef728 00001000 00000000 00000000 
+Call Trace: 
+[<c04e4b1a>] ? __block_prepare_write+0x11b/0x26d 
+[<c04e4de0>] ? block_write_begin+0x73/0xd8 
+[<c0527986>] ? ext4_da_get_block_prep+0x0/0x246 
+[<c049bc1f>] ? add_to_page_cache_lru+0x4f/0x58 
+[<c05276d1>] ? ext4_da_write_begin+0x1c8/0x252 
+[<c0527986>] ? ext4_da_get_block_prep+0x0/0x246 
+[<c049c497>] ? generic_file_buffered_write+0xd4/0x263 
+[<c049ca64>] ? __generic_file_aio_write_nolock+0x258/0x289 
+[<c049cd5e>] ? generic_file_aio_write+0x5f/0xb0 
+[<c051f809>] ? ext4_file_write+0xa3/0x11a 
+[<c04c8ae1>] ? do_sync_write+0xae/0xe9 
+[<c056f065>] ? file_has_perm+0x89/0xa3 
+[<c0450db9>] ? autoremove_wake_function+0x0/0x34 
+[<c056f355>] ? selinux_file_permission+0x49/0x4d 
+[<c056867f>] ? security_file_permission+0x14/0x16 
+[<c04c8ca2>] ? rw_verify_area+0x9d/0xc0 
+[<c04c8a33>] ? do_sync_write+0x0/0xe9 
+[<c04c907c>] ? vfs_write+0x85/0xe4 
+[<c04cf7ee>] ? path_put+0x1a/0x1d 
+[<c04c9179>] ? sys_write+0x40/0x62 
+[<c0408fbb>] ? sysenter_do_call+0x12/0x28 
+Code: 00 89 45 e0 8b 45 e0 e8 45 34 25 00 8b 4d e4 8b 45 ec 8b 91 2c 02 00 00 42 e8 7 
+ d0 73 04 <0f> 0b eb fe 29 d0 89 45 dc 8b 45 e0 f0 fe 00 8b 55 ec 31 f6 8b  
+EIP: [<c0527a75>] ext4_da_get_block_prep+0xef/0x246 SS:ESP 0068:e8a17c58 
+---[ end trace 7449c5aa814e4d05 ]---
+
+--
+Rusty Conover
+rconover@infogears.com
+InfoGears Inc / GearBuyer.com / FootwearBuyer.com / BabyGearBuyer.com
+http://www.gearbuyer.com
+http://www.footwearbuyer.com
+http://www.babygearbuyer.com
+
+
+
+
+
+
+
