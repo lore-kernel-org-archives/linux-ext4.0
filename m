@@ -1,66 +1,66 @@
-From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
-Subject: [PATCH 2.6.32.7] ext4: number of blocks for fiemap
-Date: Fri, 12 Feb 2010 19:42:16 +0100
-Message-ID: <1266000136.4310.36.camel@michlmayr>
-References: <1257360161.22057.16.camel@michlmayr>
-	 <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com>
-	 <1257371050.13852.28.camel@michlmayr>  <4B701793.9010005@canonical.com>
+From: tytso@mit.edu
+Subject: Re: Help on Implementation of EXT3 type Ordered Mode in EXT4
+Date: Fri, 12 Feb 2010 15:07:26 -0500
+Message-ID: <20100212200726.GD5337@thunk.org>
+References: <loom.20100204T064311-880@post.gmane.org>
+ <20100209160522.GE15318@atrey.karlin.mff.cuni.cz>
+ <20100209174145.GU4494@thunk.org>
+ <38f6fb7d1002102301x278c3ddt153f570dd1423074@mail.gmail.com>
+ <38f6fb7d1002102332v3482ef49xb2afd5931c5eb2ad@mail.gmail.com>
+ <20100211195624.GM739@thunk.org>
+ <38f6fb7d1002111922i4ae6131w6b5cce79344efc63@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: surbhi.palande@canonical.com, linux-kernel@vger.kernel.org,
-	474597@bugs.launchpad.net
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Jiaying Zhang <jiayingz@google.com>
+To: Kailas Joshi <kailas.joshi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f220.google.com ([209.85.220.220]:55190 "EHLO
-	mail-fx0-f220.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752811Ab0BLSmX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Feb 2010 13:42:23 -0500
-In-Reply-To: <4B701793.9010005@canonical.com>
+Received: from THUNK.ORG ([69.25.196.29]:54233 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757088Ab0BLUH3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Feb 2010 15:07:29 -0500
+Content-Disposition: inline
+In-Reply-To: <38f6fb7d1002111922i4ae6131w6b5cce79344efc63@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Problem:
-fs/ext4/extents.c:ext4_fiemap rounds the length of the requested range
-down to blocksize. This is not the true number of blocks that cover the
-requested region. This problem is especially impressive if the user
-requests only the first byte of a file: not a single extent will be
-reported.
+On Fri, Feb 12, 2010 at 08:52:15AM +0530, Kailas Joshi wrote:
+> Won't this get fixed by performing early reservations as mentioned in
+> my scheme? We are reserving required credits in the path of write
+> system call and these will be kept reserved until transaction commit.
+> So, the journal space for allocation at commit will be guaranteed.
 
-Solution:
-Calculate the last byte of the region and round to blocksize. Then get
-the number of blocks by subtracting last_blk - start_blk and adding 1
-for the first block. (The variable last_blk is introduced just for
-easier reading.) This patch will fix this.
+Yes, if you account for these separately.  One challenge is
+over-estimating the needed credits will be tricky.  If we go down this
+path, be sure that the bonnie style write(fd, &ch, 1) in a tight loop
+doesn't end up reserving a separate set of credits for each write
+system call to the same block.  (It can be done; if the DA block is
+already instantiated, you can assume that credits have already been
+reserved.)
 
-I already suggested this patch some time ago, this is the same patch for
-a more recent kernel version.
+> Sorry, I didn't understand why processes need to be suspended.
+> In my scheme, I am issuing magic handle only after locking the current
+> transaction.  AFAIK after the transaction is locked, it can receive the
+> block journaling requests for already created handles(in our case, for
+> already reserved journal space), and the new concurrent requests for
+> journal_start() will go to the new current transaction. Since, the
+> credits for locked transaction are fixed (by means of early
+> reservations) we can know whether journal has enough space for the new
+> journal_start(). So, as long as journal has enough space available,
+> new processes need now be stalled.
 
-Signed-off-by: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+But while you are modifying blocks that need to go into the journal
+via the locked (old) transaction, it's not safe to start a new
+transaction and start issuing handles against the new transaction.
 
-diff -rup linux-2.6.32.7/fs/ext4/extents.c linux-2.6.32.7-lm/fs/ext4/extents.c
---- linux-2.6.32.7/fs/ext4/extents.c	2010-01-29 00:06:20.000000000 +0100
-+++ linux-2.6.32.7-lm/fs/ext4/extents.c	2010-02-11 21:26:40.000000000 +0100
-@@ -3711,6 +3711,7 @@ int ext4_fiemap(struct inode *inode, str
- 		__u64 start, __u64 len)
- {
- 	ext4_lblk_t start_blk;
-+	ext4_lblk_t last_blk;
- 	ext4_lblk_t len_blks;
- 	int error = 0;
- 
-@@ -3726,7 +3727,9 @@ int ext4_fiemap(struct inode *inode, str
- 		error = ext4_xattr_fiemap(inode, fieinfo);
- 	} else {
- 		start_blk = start >> inode->i_sb->s_blocksize_bits;
--		len_blks = len >> inode->i_sb->s_blocksize_bits;
-+		/* the last byte in the range is (start + len - 1) */
-+		last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
-+		len_blks = last_blk - start_blk + 1;
- 
- 		/*
- 		 * Walk the extent tree gathering extent information.
+Just to give one example, suppose we need to update the extent
+allocation tree for an inode in the locked/committing transaction as
+the delayed allocation blocks are being resolved --- and in another
+process, that inode is getting truncated or unlinked, which also needs
+to modify the extent allocation tree?  Hilarty ensues, unless you use
+a block all attempts to create a new handle (practically speaking, by
+blocking all attempts to start a new transaction), until this new
+delayed allocation resolution phase which you have proposed is
+complete.
 
-
-
-
+							- Ted
