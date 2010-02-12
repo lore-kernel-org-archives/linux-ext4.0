@@ -1,37 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
-Date: Fri, 12 Feb 2010 03:29:51 GMT
-Message-ID: <201002120329.o1C3TpY6012888@demeter.kernel.org>
-References: <bug-15231-13602@http.bugzilla.kernel.org/>
+From: Ron Johnson <ron.l.johnson@cox.net>
+Subject: Re: ext5
+Date: Thu, 11 Feb 2010 22:47:15 -0600
+Message-ID: <4B74DD53.3080308@cox.net>
+References: <20100210215028.GD739@thunk.org> <4B73931D.5000302@cox.net>	<20100211064433.GF739@thunk.org> <874olnih62.fsf@frosties.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:53606 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755913Ab0BLD3w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 22:29:52 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1C3TpJW012889
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Feb 2010 03:29:51 GMT
-In-Reply-To: <bug-15231-13602@http.bugzilla.kernel.org/>
+Received: from eastrmmtao102.cox.net ([68.230.240.8]:34813 "EHLO
+	eastrmmtao102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756082Ab0BLErQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Feb 2010 23:47:16 -0500
+Received: from eastrmimpo02.cox.net ([68.1.16.120])
+          by eastrmmtao102.cox.net
+          (InterMail vM.8.00.01.00 201-2244-105-20090324) with ESMTP
+          id <20100212044716.YEGN13474.eastrmmtao102.cox.net@eastrmimpo02.cox.net>
+          for <linux-ext4@vger.kernel.org>; Thu, 11 Feb 2010 23:47:16 -0500
+In-Reply-To: <874olnih62.fsf@frosties.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15231
+On 2010-02-11 15:41, Goswin von Brederlow wrote:
+> tytso@mit.edu writes:
+>> The idea with read-only compressed files is that they are useful for
+>> large executables or large static files, where compressing them means
+>> that it takes less time to read them off of an HDD.
+> 
+> Or when you only have so much flash.
 
-
-
-
-
---- Comment #15 from Franco Broi <franco@fugro-fsi.com.au>  2010-02-12 03:29:45 ---
-
-It looks like the patch has worked, thanks.
-
-Got a few more of the fs/inode.c:1343! errors though.
+Isn't that what squashfs is for?
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+"Hell hath no fury like the vast robot armies of a woman scorned."
+Walt
