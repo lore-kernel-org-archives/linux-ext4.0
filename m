@@ -1,29 +1,35 @@
-From: James Cloos <cloos@jhcloos.com>
-Subject: Re: [Regression] Filesystem I/O is CPU-bound in rc7 and rc8
-Date: Sun, 14 Feb 2010 11:40:10 -0500
-Message-ID: <m3eiknbwjh.fsf@lugabout.jhcloos.org>
-References: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
+From: tytso@mit.edu
+Subject: Re: Extents in spare files on ext4 not being merged
+Date: Sun, 14 Feb 2010 13:03:39 -0500
+Message-ID: <20100214180339.GH5337@thunk.org>
+References: <b3f268591002140550x746b96aeo3c7a017ac4ecf993@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net
-To: linux-kernel@vger.kernel.org
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Jari Sundell <sundell.software@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <m3pr48bjfg.fsf@lugabout.jhcloos.org> (James Cloos's message of
-	"Sat, 13 Feb 2010 22:11:07 -0500")
+Content-Disposition: inline
+In-Reply-To: <b3f268591002140550x746b96aeo3c7a017ac4ecf993@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I forgot to say:
+On Sun, Feb 14, 2010 at 10:50:45PM +0900, Jari Sundell wrote:
+> http://libtorrent.rakshasa.no/ticket/460#comment:49
+> 
+> Some users of rtorrent reported very high number of extents for files
+> despite the use of posix_fallocate/fallocate on ext4. (3000+ for 250MB
+> file, ) A test program showed that the file was contiguous on disk
+> despite the high number of extents reported by filefrag. (Not sure
+> what kernel versions they used)
 
-# CONFIG_SMP is not set
-CONFIG_TREE_PREEMPT_RCU=y
-# CONFIG_PREEMPT_NONE is not set
-# CONFIG_PREEMPT_VOLUNTARY is not set
-CONFIG_PREEMPT=y
-# CONFIG_DEBUG_PREEMPT is not set
-# CONFIG_PREEMPT_TRACER is not set
+Yeah, it's a known problem.  The main problem is that we are only
+checking to see merge both to the left and the right of the extent
+tree when converting an extent from uninitialzied to initialized.
 
--JimC
--- 
-James Cloos <cloos@jhcloos.com>         OpenPGP: 1024D/ED7DAEA6
+I've cc'ed the linux-ext4 list in the hopes someone is motivated to
+fix this long-standing shortcoming.  Unless someone starts working
+quickly, it's not likely it will make this upcoming merge window, but
+we can hope....
+
+						- Ted
