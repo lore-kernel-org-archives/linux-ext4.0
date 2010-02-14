@@ -1,35 +1,50 @@
-From: tytso@mit.edu
-Subject: Re: Extents in spare files on ext4 not being merged
-Date: Sun, 14 Feb 2010 13:03:39 -0500
-Message-ID: <20100214180339.GH5337@thunk.org>
-References: <b3f268591002140550x746b96aeo3c7a017ac4ecf993@mail.gmail.com>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: [Regression] Filesystem I/O is CPU-bound in rc7 and rc8
+Date: Mon, 15 Feb 2010 00:12:25 +0100
+Message-ID: <201002150012.25572.rjw@sisk.pl>
+References: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Jari Sundell <sundell.software@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <b3f268591002140550x746b96aeo3c7a017ac4ecf993@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	jfs-discussion@lists.sourceforge.net
+To: James Cloos <cloos@jhcloos.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Feb 14, 2010 at 10:50:45PM +0900, Jari Sundell wrote:
-> http://libtorrent.rakshasa.no/ticket/460#comment:49
+On Sunday 14 February 2010, James Cloos wrote:
+> Sometime between rc6 and rc7 all filesystem I/O started using 100% CPU,
+> usually on the order of 60% sys, 40% user.
 > 
-> Some users of rtorrent reported very high number of extents for files
-> despite the use of posix_fallocate/fallocate on ext4. (3000+ for 250MB
-> file, ) A test program showed that the file was contiguous on disk
-> despite the high number of extents reported by filefrag. (Not sure
-> what kernel versions they used)
+> I've tried this with each of ext4, jfs and btrfs filesystems.  All show
+> the same issue.
+> 
+> Using dd(1) to read from the block specials directly works as well and
+> as fast as it always has; only reading or writing to mounted filesystems
+> is affected.
+> 
+> Box is 32-bit x86, PentiumIII-M; drives are ide using libata.
+> 
+> If the btrfs fs is mounted, the slowdown is enought to trigger the
+> hung_task call trace (120s) on the btrfs-transac process.
+> 
+> But the regression is just as apparent when only jfs and ext4 are mounted.
+> 
+> The only filesystems I've found which avoid the regression are tmpfs and
+> devtmpfs.
+> 
+> I didn't have time to write up a report when I noticed this in rc7 but
+> had to boot back into rc6 for work.
+> 
+> Some of the commits since rc7 looked like they might have addressed this
+> regression, but it persists in rc8.
 
-Yeah, it's a known problem.  The main problem is that we are only
-checking to see merge both to the left and the right of the extent
-tree when converting an extent from uninitialzied to initialized.
+I have created the bug entry at http://bugzilla.kernel.org/show_bug.cgi?id=15306
+for your report.
 
-I've cc'ed the linux-ext4 list in the hopes someone is motivated to
-fix this long-standing shortcoming.  Unless someone starts working
-quickly, it's not likely it will make this upcoming merge window, but
-we can hope....
-
-						- Ted
+Thanks,
+Rafael
