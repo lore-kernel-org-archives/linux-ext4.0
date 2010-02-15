@@ -1,50 +1,91 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [Regression] Filesystem I/O is CPU-bound in rc7 and rc8
-Date: Mon, 15 Feb 2010 10:45:16 -0500
-Message-ID: <20100215154516.GB11057@think>
-References: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
+From: tytso@mit.edu
+Subject: Re: [PATCH] handle optional-arg mount options better
+Date: Mon, 15 Feb 2010 11:01:50 -0500
+Message-ID: <20100215160150.GJ5337@thunk.org>
+References: <4B69E6FA.20901@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net
-To: James Cloos <cloos@jhcloos.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:31925 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752572Ab0BOPrW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Feb 2010 10:47:22 -0500
+Received: from THUNK.ORG ([69.25.196.29]:60340 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751429Ab0BOQBw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Feb 2010 11:01:52 -0500
 Content-Disposition: inline
-In-Reply-To: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
+In-Reply-To: <4B69E6FA.20901@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 13, 2010 at 10:11:07PM -0500, James Cloos wrote:
-> Sometime between rc6 and rc7 all filesystem I/O started using 100% CPU,
-> usually on the order of 60% sys, 40% user.
+On Wed, Feb 03, 2010 at 03:13:30PM -0600, Eric Sandeen wrote:
+> We have 2 mount options, "barrier" and "auto_da_alloc"
+> which may or may not take a 1/0 argument.  This is confusing
+> the parser, it seems, because if we pass it without an
+> arg, it still tries to match_int for the arg, which
+> is uninitialized, and match_number uses those uninit from/to
+> values to do a kmalloc, resulting in potentially noisy
+> failures.
 > 
-> I've tried this with each of ext4, jfs and btrfs filesystems.  All show
-> the same issue.
+> I think just defining _arg variants of the tokens and
+> handling them separately is the simplest fix.
 > 
-> Using dd(1) to read from the block specials directly works as well and
-> as fast as it always has; only reading or writing to mounted filesystems
-> is affected.
-> 
-> Box is 32-bit x86, PentiumIII-M; drives are ide using libata.
-> 
-> If the btrfs fs is mounted, the slowdown is enought to trigger the
-> hung_task call trace (120s) on the btrfs-transac process.
-> 
-> But the regression is just as apparent when only jfs and ext4 are mounted.
-> 
-> The only filesystems I've found which avoid the regression are tmpfs and
-> devtmpfs.
+> Reported-by: Michael S. Tsirkin <mst@redhat.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
 
-Could you please hit sysrq-l a few times during the high CPU usage and
-send us the results?  Also, please send along the full dd command line
-you are using and how much ram your system has.
+This fix works just as well, and doesn't require _arg and _no_arg
+versions of the token tags.
 
-(Even better would be running perf record <your dd command line>, if
-you're willing to setup perf)
+As long as we initialize arg[0], things should work correctly.  They
+work correctly even without !args[0].from check, but I added that just
+in case the implementation of the match_token library function changes
+in the future.
 
-Thanks!
+						- Ted
+
+commit 1e6276ea260bcd37284f4387c435239919fbc628
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Mon Feb 15 11:00:12 2010 -0500
+
+    ext4: Fix optional-arg mount options
+    
+    We have 2 mount options, "barrier" and "auto_da_alloc" which may or
+    may not take a 1/0 argument.  This causes the ext4 superblock mount
+    code to subtract uninitialized pointers and pass the result to
+    kmalloc, which results in very noisy failures.
+    
+    Reported-by: Michael S. Tsirkin <mst@redhat.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 735c20d..7e9a7ea 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1229,6 +1229,7 @@ static int parse_options(char *options, struct super_block *sb,
+ 		if (!*p)
+ 			continue;
+ 
++		args[0].to = args[0].from = 0;
+ 		token = match_token(p, tokens, args);
+ 		switch (token) {
+ 		case Opt_bsd_df:
+@@ -1518,7 +1519,7 @@ set_qf_format:
+ 			clear_opt(sbi->s_mount_opt, BARRIER);
+ 			break;
+ 		case Opt_barrier:
+-			if (match_int(&args[0], &option)) {
++			if (!args[0].from || match_int(&args[0], &option)) {
+ 				set_opt(sbi->s_mount_opt, BARRIER);
+ 				break;
+ 			}
+@@ -1594,7 +1595,7 @@ set_qf_format:
+ 			set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
+ 			break;
+ 		case Opt_auto_da_alloc:
+-			if (match_int(&args[0], &option)) {
++			if (!args[0].from || match_int(&args[0], &option)) {
+ 				clear_opt(sbi->s_mount_opt, NO_AUTO_DA_ALLOC);
+ 				break;
+ 			}
+
+
