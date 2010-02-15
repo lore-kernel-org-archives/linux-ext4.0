@@ -1,52 +1,44 @@
 From: tytso@mit.edu
-Subject: Re: resize2fs memory footprint
-Date: Mon, 15 Feb 2010 16:50:12 -0500
-Message-ID: <20100215215012.GO5337@thunk.org>
-References: <4B78FE19.5040208@miray.de>
+Subject: Re: [PATCH 2.6.32.7] ext4: number of blocks for fiemap
+Date: Mon, 15 Feb 2010 17:01:34 -0500
+Message-ID: <20100215220134.GP5337@thunk.org>
+References: <1257360161.22057.16.camel@michlmayr>
+ <372739E0-41AD-4DEC-9187-1396BE5894BD@sun.com>
+ <1257371050.13852.28.camel@michlmayr>
+ <4B701793.9010005@canonical.com>
+ <1266000136.4310.36.camel@michlmayr>
+ <4D0CB743-94B6-49AB-B838-BCDD2EC8C3ED@sun.com>
+ <1266016801.27587.13.camel@michlmayr>
+ <20100215195001.GN5337@thunk.org>
+ <4B79AF7F.2030209@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ulrich Bauer <u.bauer@miray.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:50886 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932217Ab0BOVuP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Feb 2010 16:50:15 -0500
+Cc: Leonard Michlmayr <leonard.michlmayr@gmail.com>,
+	Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org Mailinglist"
+	<linux-kernel@vger.kernel.org>, 474597@bugs.launchpad.net
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4B78FE19.5040208@miray.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4B79AF7F.2030209@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 15, 2010 at 08:56:09AM +0100, Ulrich Bauer wrote:
-> A quick observation of
-> resize2fs' source revealed that the latest git tree already has a
-> bitmap interface that allows for different implementations of the
-> bitmap manipulation algorithms. To solve the memory usage problem,
-> two solutions seem to be feasible:
+On Mon, Feb 15, 2010 at 02:33:03PM -0600, Eric Sandeen wrote:
+> tytso@mit.edu wrote:
+> > Sorry for the delay in attending to this patch.  This is what I've
+> > added to the ext4 patch queue.
+> > 
+> > 						- Ted
+> > 
+> > commit 7f9aeb212e41ea20f61061d51ad11ee2449853f1
+> > Author: Theodore Ts'o <tytso@mit.edu>
+> > Date:   Mon Feb 15 14:48:32 2010 -0500
 > 
-> - For the huge bitmaps that already exist on the volume, we could
-> create a disk-backed bitmap implementation that would only cache a
-> small working set of the entire bitmap. My guess is that we can
-> implement this efficiently enough to not loose too much performance.
-> - For the all-zero bitmaps, we could implement a dummy bitmap that
-> forces all bits to zero and spawns a real bitmap as soon as any bits
-> are set to one. An alternative would be a tree-based aproach that
-> works especially well when the bitmap is just sparsely set.
+> Ted, it looks like perhaps you accidentally reassigned authorship for
+> this patch?
 
-What I would recommend is a run-length encoded tree-based approached.
-This should work well regardless of whether the bitmap is sparsely set
-or not, because most of the time blocks are allocated contiguously.
+Oops, I forgot the fix the ownership when I applied the patch.  Fixed.
 
-> I'd be glad if one of the developers involved in the ext4
-> development could tell me if these thoughts make sense and if yes,
-> are there any plans to incorporate these approaches into the ext
-> library anytime soon or does it make sense if I would have a deeper
-> look into these issues and implement them? Thanks in advance for any
-> thoughts about this.
-
-There are plans to incorporate the RLE tree-based implementation, but
-it's been relatively low on the priority list given all of the other
-things.  If you'd be interested in implementing it, that would be
-great.
-
-							- Ted
+      	       	       	   	     - Ted
