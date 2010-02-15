@@ -1,31 +1,40 @@
 From: tytso@mit.edu
-Subject: Re: move __func__ into a macro for ext4_warning, ext4_error
-Date: Mon, 15 Feb 2010 14:20:07 -0500
-Message-ID: <20100215192007.GA5003@thunk.org>
-References: <4B58AA0C.4040602@redhat.com>
+Subject: Re: [PATCH] ext4: ext4_xattr_ibody_set() error ignored in
+ ext4_expand_extra_isize_ea()
+Date: Mon, 15 Feb 2010 14:28:49 -0500
+Message-ID: <20100215192849.GM5337@thunk.org>
+References: <4B6AF1AF.3010008@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Roel Kluin <roel.kluin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59809 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33702 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756031Ab0BOTUN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Feb 2010 14:20:13 -0500
+	id S1756031Ab0BOT2w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Feb 2010 14:28:52 -0500
 Content-Disposition: inline
-In-Reply-To: <4B58AA0C.4040602@redhat.com>
+In-Reply-To: <4B6AF1AF.3010008@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 21, 2010 at 09:25:00AM -0000, Eric Sandeen wrote:
-> Just a pet peeve of mine; we had a mishash of calls with either __func__
-> or "function_name" and the latter tends to get out of sync.
+On Thu, Feb 04, 2010 at 05:11:27PM +0100, Roel Kluin wrote:
+> The error handling was missing.
 > 
-> I think it's easier to just hide the __func__ in a macro, and it'll
-> be consistent from then on.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+> ---
+> Is this needed?
 
-Thanks, applied to the ext4 patch queue.
+Yep, it's added, thanks.  I'm not entirely right the error handling is
+completely correct in this function; in particular, if we fail after
+this point in the function, and we've already changed the status of
+EXT4_STATE_XATTR flag, but then we fail due to some error (maybe an
+I/O error), it's not clear the cleanup section is properly unwinding
+all of the side effects made so far in this function.
 
-						- Ted
+Still, adding the error check clearly makes the code better than it
+was before, so I've added it to the ext4 patch queue.
+
+    	       	    	     	    - Ted
