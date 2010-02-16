@@ -1,170 +1,118 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] Jbd2: delay discarding buffers in journal_unmap_buffer
-Date: Tue, 16 Feb 2010 20:39:57 +0100
-Message-ID: <20100216193957.GG3153@quack.suse.cz>
-References: <1265432063-5806-1-git-send-email-dingdinghua@nrchpc.ac.cn>
- <20100208160332.GF4321@quack.suse.cz>
- <20100216014521.GR5337@thunk.org>
- <20100216193304.GF3153@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, dingdinghua <dingdinghua@nrchpc.ac.cn>,
-	linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Fix BUG_ON at fs/buffer.c:652 in no journal mode
+Date: Tue, 16 Feb 2010 15:25:58 -0500
+Message-ID: <1266351958-26138-1-git-send-email-tytso@mit.edu>
+Cc: Curt Wohlgemuth <curtw@google.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43557 "EHLO mx2.suse.de"
+Received: from thunk.org ([69.25.196.29]:57243 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933228Ab0BPTju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Feb 2010 14:39:50 -0500
-Content-Disposition: inline
-In-Reply-To: <20100216193304.GF3153@quack.suse.cz>
+	id S932665Ab0BPU0A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Feb 2010 15:26:00 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 16-02-10 20:33:05, Jan Kara wrote:
-> On Mon 15-02-10 20:45:21, tytso@mit.edu wrote:
-> > On Mon, Feb 08, 2010 at 05:03:33PM +0100, Jan Kara wrote:
-> > > On Sat 06-02-10 12:54:23, dingdinghua wrote:
-> > > > Delay discarding buffers in journal_unmap_buffer until
-> > > > we know that "add to orphan" operation has definitely been
-> > > > committed, otherwise the log space of committing transation
-> > > > may be freed and reused before truncate get committed, updates
-> > > > may get lost if crash happens.
-> > > > 
-> > > > Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
-> > >   Thanks for the patch. Just two remarks to the comments below...
-> > 
-> > Here's the version I've applied to the ext4 patch queue, which
-> > includes Jan's suggested changes to the comments.
->   Thanks for summing it up. The patch looks good.
-> Acked-by: Jan Kara <jack@suse.cz>
-> 
->   I'm going to backport the patch to JBD now.
-  OK, the backport is below. I've added it to my tree.
+From: Curt Wohlgemuth <curtw@google.com>
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Calls to ext4_handle_dirty_metadata should only pass in an inode
+pointer for inode-specific metadata, and not for shared metadata
+blocks such as inode table blocks, block group descriptors, the
+superblock, etc.
+
+The BUG_ON can get tripped when updating a special device (such as a
+block device) that is opened (so that i_mapping is set in
+fs/block_dev.c) and the file system is mounted in no journal mode.
+
+Addresses-Google-Bug: #2404870
+
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
+ fs/ext4/ext4_jbd2.c |    2 +-
+ fs/ext4/ialloc.c    |    2 +-
+ fs/ext4/inode.c     |    6 +++---
+ fs/ext4/namei.c     |    4 ++--
+ 4 files changed, 7 insertions(+), 7 deletions(-)
 
->From 63b4e55561560adf8a9c735f9feffbbf7d3978e2 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 16 Feb 2010 20:37:12 +0100
-Subject: [PATCH] jbd: Delay discarding buffers in journal_unmap_buffer
-
-Delay discarding buffers in journal_unmap_buffer until
-we know that "add to orphan" operation has definitely been
-committed, otherwise the log space of committing transation
-may be freed and reused before truncate get committed, updates
-may get lost if crash happens.
-
-This patch is a backport of JBD2 fix by dingdinghua <dingdinghua@nrchpc.ac.cn>.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd/commit.c      |   10 +++++-----
- fs/jbd/transaction.c |   43 +++++++++++++++++++++++++++++++------------
- 2 files changed, 36 insertions(+), 17 deletions(-)
-
-diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-index 4bd8825..2c90e3e 100644
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -862,12 +862,12 @@ restart_loop:
- 		/* A buffer which has been freed while still being
- 		 * journaled by a previous transaction may end up still
- 		 * being dirty here, but we want to avoid writing back
--		 * that buffer in the future now that the last use has
--		 * been committed.  That's not only a performance gain,
--		 * it also stops aliasing problems if the buffer is left
--		 * behind for writeback and gets reallocated for another
-+		 * that buffer in the future after the "add to orphan"
-+		 * operation been committed,  That's not only a performance
-+		 * gain, it also stops aliasing problems if the buffer is
-+		 * left behind for writeback and gets reallocated for another
- 		 * use in a different page. */
--		if (buffer_freed(bh)) {
-+		if (buffer_freed(bh) && !jh->b_next_transaction) {
- 			clear_buffer_freed(bh);
- 			clear_buffer_jbddirty(bh);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 2f407c4..53d2764 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -125,7 +125,7 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+ 			ext4_journal_abort_handle(where, __func__, bh,
+ 						  handle, err);
+ 	} else {
+-		if (inode && bh)
++		if (inode)
+ 			mark_buffer_dirty_inode(bh, inode);
+ 		else
+ 			mark_buffer_dirty(bh);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index e4aaf61..004c9da 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -898,7 +898,7 @@ repeat_in_this_group:
+ 				BUFFER_TRACE(inode_bitmap_bh,
+ 					"call ext4_handle_dirty_metadata");
+ 				err = ext4_handle_dirty_metadata(handle,
+-								 inode,
++								 NULL,
+ 							inode_bitmap_bh);
+ 				if (err)
+ 					goto fail;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 536067b..ecac8c5 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5120,7 +5120,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+ 			sb->s_dirt = 1;
+ 			ext4_handle_sync(handle);
+-			err = ext4_handle_dirty_metadata(handle, inode,
++			err = ext4_handle_dirty_metadata(handle, NULL,
+ 					EXT4_SB(sb)->s_sbh);
  		}
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 006f9ad..99e9fea 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -1864,6 +1864,21 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
- 	if (!jh)
- 		goto zap_buffer_no_jh;
+ 	}
+@@ -5149,7 +5149,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	}
  
-+	/*
-+	 * We cannot remove the buffer from checkpoint lists until the
-+	 * transaction adding inode to orphan list (let's call it T)
-+	 * is committed.  Otherwise if the transaction changing the
-+	 * buffer would be cleaned from the journal before T is
-+	 * committed, a crash will cause that the correct contents of
-+	 * the buffer will be lost.  On the other hand we have to
-+	 * clear the buffer dirty bit at latest at the moment when the
-+	 * transaction marking the buffer as freed in the filesystem
-+	 * structures is committed because from that moment on the
-+	 * buffer can be reallocated and used by a different page.
-+	 * Since the block hasn't been freed yet but the inode has
-+	 * already been added to orphan list, it is safe for us to add
-+	 * the buffer to BJ_Forget list of the newest transaction.
-+	 */
- 	transaction = jh->b_transaction;
- 	if (transaction == NULL) {
- 		/* First case: not on any transaction.  If it
-@@ -1929,16 +1944,15 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
- 			goto zap_buffer;
+ 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+-	rc = ext4_handle_dirty_metadata(handle, inode, bh);
++	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
+ 	if (!err)
+ 		err = rc;
+ 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
+@@ -5701,7 +5701,7 @@ static int ext4_pin_inode(handle_t *handle, struct inode *inode)
+ 			err = jbd2_journal_get_write_access(handle, iloc.bh);
+ 			if (!err)
+ 				err = ext4_handle_dirty_metadata(handle,
+-								 inode,
++								 NULL,
+ 								 iloc.bh);
+ 			brelse(iloc.bh);
  		}
- 		/*
--		 * If it is committing, we simply cannot touch it.  We
--		 * can remove it's next_transaction pointer from the
--		 * running transaction if that is set, but nothing
--		 * else. */
-+		 * The buffer is committing, we simply cannot touch
-+		 * it. So we just set j_next_transaction to the
-+		 * running transaction (if there is one) and mark
-+		 * buffer as freed so that commit code knows it should
-+		 * clear dirty bits when it is done with the buffer.
-+		 */
- 		set_buffer_freed(bh);
--		if (jh->b_next_transaction) {
--			J_ASSERT(jh->b_next_transaction ==
--					journal->j_running_transaction);
--			jh->b_next_transaction = NULL;
--		}
-+		if (journal->j_running_transaction && buffer_jbddirty(bh))
-+			jh->b_next_transaction = journal->j_running_transaction;
- 		journal_put_journal_head(jh);
- 		spin_unlock(&journal->j_list_lock);
- 		jbd_unlock_bh_state(bh);
-@@ -2120,7 +2134,7 @@ void journal_file_buffer(struct journal_head *jh,
-  */
- void __journal_refile_buffer(struct journal_head *jh)
- {
--	int was_dirty;
-+	int was_dirty, jlist;
- 	struct buffer_head *bh = jh2bh(jh);
- 
- 	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
-@@ -2142,8 +2156,13 @@ void __journal_refile_buffer(struct journal_head *jh)
- 	__journal_temp_unlink_buffer(jh);
- 	jh->b_transaction = jh->b_next_transaction;
- 	jh->b_next_transaction = NULL;
--	__journal_file_buffer(jh, jh->b_transaction,
--				jh->b_modified ? BJ_Metadata : BJ_Reserved);
-+	if (buffer_freed(bh))
-+		jlist = BJ_Forget;
-+	else if (jh->b_modified)
-+		jlist = BJ_Metadata;
-+	else
-+		jlist = BJ_Reserved;
-+	__journal_file_buffer(jh, jh->b_transaction, jlist);
- 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
- 
- 	if (was_dirty)
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index bd2dc0b..a13948f 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2017,7 +2017,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	/* Insert this inode at the head of the on-disk orphan list... */
+ 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+ 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+-	err = ext4_handle_dirty_metadata(handle, inode, EXT4_SB(sb)->s_sbh);
++	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
+ 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	if (!err)
+ 		err = rc;
+@@ -2089,7 +2089,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 		if (err)
+ 			goto out_brelse;
+ 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
+-		err = ext4_handle_dirty_metadata(handle, inode, sbi->s_sbh);
++		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
+ 	} else {
+ 		struct ext4_iloc iloc2;
+ 		struct inode *i_prev =
 -- 
-1.6.4.2
+1.6.6.1.1.g974db.dirty
 
