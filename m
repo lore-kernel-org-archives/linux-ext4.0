@@ -1,99 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH V2] ext4: handle optional-arg mount options better
-Date: Mon, 15 Feb 2010 21:23:38 -0600
-Message-ID: <4B7A0FBA.1010506@redhat.com>
-References: <4B69E6FA.20901@redhat.com> <20100215160150.GJ5337@thunk.org> <4B79BA90.3060703@redhat.com> <20100216011944.GQ5337@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
+Date: Tue, 16 Feb 2010 06:45:36 GMT
+Message-ID: <201002160645.o1G6jaPT023296@demeter.kernel.org>
+References: <bug-15231-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49719 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932527Ab0BPDXn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Feb 2010 22:23:43 -0500
-In-Reply-To: <20100216011944.GQ5337@thunk.org>
+Received: from demeter.kernel.org ([140.211.167.39]:58311 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753438Ab0BPGpg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Feb 2010 01:45:36 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1G6jaxU023297
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Feb 2010 06:45:36 GMT
+In-Reply-To: <bug-15231-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu wrote:
-> Ok, how about this, for even more explicit?
-> 
-> 						- Ted
+http://bugzilla.kernel.org/show_bug.cgi?id=15231
 
-Sure, that looks even better.  Who knew args parsing was so hard ;)
 
--Eric
 
-> commit 15121c18a22ae483279f76dc9e554334b800d0f7
-> Author: Eric Sandeen <sandeen@redhat.com>
-> Date:   Mon Feb 15 20:17:55 2010 -0500
-> 
->     ext4: Fix optional-arg mount options
->     
->     We have 2 mount options, "barrier" and "auto_da_alloc" which may or
->     may not take a 1/0 argument.  This causes the ext4 superblock mount
->     code to subtract uninitialized pointers and pass the result to
->     kmalloc, which results in very noisy failures.
->     
->     Per Ted's suggestion, initialize the args struct so that
->     we know whether match_token() found an argument for the
->     option, and skip match_int() if not.
->     
->     Also, return error (0) from parse_options if we thought
->     we found an argument, but match_int() Fails.
->     
->     Reported-by: Michael S. Tsirkin <mst@redhat.com>
->     Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 735c20d..68a55df 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1229,6 +1229,11 @@ static int parse_options(char *options, struct super_block *sb,
->  		if (!*p)
->  			continue;
->  
-> +		/*
-> +		 * Initialize args struct so we know whether arg was
-> +		 * found; some options take optional arguments.
-> +		 */
-> +		args[0].to = args[0].from = 0;
->  		token = match_token(p, tokens, args);
->  		switch (token) {
->  		case Opt_bsd_df:
-> @@ -1518,10 +1523,11 @@ set_qf_format:
->  			clear_opt(sbi->s_mount_opt, BARRIER);
->  			break;
->  		case Opt_barrier:
-> -			if (match_int(&args[0], &option)) {
-> -				set_opt(sbi->s_mount_opt, BARRIER);
-> -				break;
-> -			}
-> +			if (args[0].from) {
-> +				if (match_int(&args[0], &option))
-> +					return 0;
-> +			} else
-> +				option = 1;	/* No argument, default to 1 */
->  			if (option)
->  				set_opt(sbi->s_mount_opt, BARRIER);
->  			else
-> @@ -1594,10 +1600,11 @@ set_qf_format:
->  			set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
->  			break;
->  		case Opt_auto_da_alloc:
-> -			if (match_int(&args[0], &option)) {
-> -				clear_opt(sbi->s_mount_opt, NO_AUTO_DA_ALLOC);
-> -				break;
-> -			}
-> +			if (args[0].from) {
-> +				if (match_int(&args[0], &option))
-> +					return 0;
-> +			} else
-> +				option = 1;	/* No argument, default to 1 */
->  			if (option)
->  				clear_opt(sbi->s_mount_opt, NO_AUTO_DA_ALLOC);
->  			else
 
+
+--- Comment #18 from Franco Broi <franco@fugro-fsi.com.au>  2010-02-16 06:45:27 ---
+
+Trashing, hmmm bit of a Freudian slip! Of course I meant thrashing...
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
