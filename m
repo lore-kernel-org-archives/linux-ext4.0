@@ -1,118 +1,38 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Fix BUG_ON at fs/buffer.c:652 in no journal mode
-Date: Tue, 16 Feb 2010 15:25:58 -0500
-Message-ID: <1266351958-26138-1-git-send-email-tytso@mit.edu>
-Cc: Curt Wohlgemuth <curtw@google.com>, "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15025] Oops in ext4 driver
+Date: Tue, 16 Feb 2010 21:00:20 GMT
+Message-ID: <201002162100.o1GL0KIe004180@demeter.kernel.org>
+References: <bug-15025-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57243 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932665Ab0BPU0A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Feb 2010 15:26:00 -0500
+Received: from demeter.kernel.org ([140.211.167.39]:58199 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933309Ab0BPVAX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Feb 2010 16:00:23 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1GL0LKI004182
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Feb 2010 21:00:21 GMT
+In-Reply-To: <bug-15025-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+http://bugzilla.kernel.org/show_bug.cgi?id=15025
 
-Calls to ext4_handle_dirty_metadata should only pass in an inode
-pointer for inode-specific metadata, and not for shared metadata
-blocks such as inode table blocks, block group descriptors, the
-superblock, etc.
 
-The BUG_ON can get tripped when updating a special device (such as a
-block device) that is opened (so that i_mapping is set in
-fs/block_dev.c) and the file system is mounted in no journal mode.
+Rafael J. Wysocki <rjw@sisk.pl> changed:
 
-Addresses-Google-Bug: #2404870
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|                            |CODE_FIX
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4_jbd2.c |    2 +-
- fs/ext4/ialloc.c    |    2 +-
- fs/ext4/inode.c     |    6 +++---
- fs/ext4/namei.c     |    4 ++--
- 4 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 2f407c4..53d2764 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -125,7 +125,7 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
- 			ext4_journal_abort_handle(where, __func__, bh,
- 						  handle, err);
- 	} else {
--		if (inode && bh)
-+		if (inode)
- 			mark_buffer_dirty_inode(bh, inode);
- 		else
- 			mark_buffer_dirty(bh);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index e4aaf61..004c9da 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -898,7 +898,7 @@ repeat_in_this_group:
- 				BUFFER_TRACE(inode_bitmap_bh,
- 					"call ext4_handle_dirty_metadata");
- 				err = ext4_handle_dirty_metadata(handle,
--								 inode,
-+								 NULL,
- 							inode_bitmap_bh);
- 				if (err)
- 					goto fail;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 536067b..ecac8c5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5120,7 +5120,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
- 			sb->s_dirt = 1;
- 			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_metadata(handle, inode,
-+			err = ext4_handle_dirty_metadata(handle, NULL,
- 					EXT4_SB(sb)->s_sbh);
- 		}
- 	}
-@@ -5149,7 +5149,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 	}
- 
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--	rc = ext4_handle_dirty_metadata(handle, inode, bh);
-+	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
- 		err = rc;
- 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
-@@ -5701,7 +5701,7 @@ static int ext4_pin_inode(handle_t *handle, struct inode *inode)
- 			err = jbd2_journal_get_write_access(handle, iloc.bh);
- 			if (!err)
- 				err = ext4_handle_dirty_metadata(handle,
--								 inode,
-+								 NULL,
- 								 iloc.bh);
- 			brelse(iloc.bh);
- 		}
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index bd2dc0b..a13948f 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2017,7 +2017,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	/* Insert this inode at the head of the on-disk orphan list... */
- 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
- 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
--	err = ext4_handle_dirty_metadata(handle, inode, EXT4_SB(sb)->s_sbh);
-+	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
- 		err = rc;
-@@ -2089,7 +2089,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- 		if (err)
- 			goto out_brelse;
- 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
--		err = ext4_handle_dirty_metadata(handle, inode, sbi->s_sbh);
-+		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
- 	} else {
- 		struct ext4_iloc iloc2;
- 		struct inode *i_prev =
+
+
 -- 
-1.6.6.1.1.g974db.dirty
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
