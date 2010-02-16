@@ -1,44 +1,41 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] mk2fs lazy_journal_init option
-Date: Tue, 16 Feb 2010 17:21:32 -0600
-Message-ID: <4B7B287C.2030105@redhat.com>
-References: <13A447AA-31C7-4E02-8752-DFF75EA31C2E@sun.com> <7095A240-FB57-4C33-8EE8-33D88B500319@sun.com> <4B7B2619.8060106@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15025] Oops in ext4 driver
+Date: Tue, 16 Feb 2010 23:57:08 GMT
+Message-ID: <201002162357.o1GNv8mB025193@demeter.kernel.org>
+References: <bug-15025-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Shuichi Ihara <ihara@sun.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58512 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933279Ab0BPXVh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Feb 2010 18:21:37 -0500
-In-Reply-To: <4B7B2619.8060106@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:41683 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933636Ab0BPX5L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Feb 2010 18:57:11 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1GNv8jd025195
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Feb 2010 23:57:08 GMT
+In-Reply-To: <bug-15025-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
+http://bugzilla.kernel.org/show_bug.cgi?id=15025
 
-> Haven't dug all the way through it but I think this is another
-> in the saga of blk_t vs. blk64_t.  This seems to fix (?) it:
-> 
-> --- a/lib/ext2fs/mkjournal.c
-> +++ b/lib/ext2fs/mkjournal.c
-> @@ -218,7 +218,7 @@ struct mkjournal_struct {
->  };
-> 
->  static int mkjournal_proc(ext2_filsys  fs,
-> -                          blk_t        *blocknr,
-> +                          blk64_t      *blocknr,
->                            e2_blkcnt_t  blockcnt,
->                            blk_t        ref_block EXT2FS_ATTR((unused)),
->                            int          ref_offset EXT2FS_ATTR((unused)),
-> 
-> though I doubt that is correct/complete.
 
-Humm my git tree is not what I thought it was, the above might be a
-wild goose chase, sorry.
+Steinar H. Gunderson <sgunderson@bigfoot.com> changed:
 
--Eric
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+         Resolution|CODE_FIX                    |UNREPRODUCIBLE
+
+
+
+
+--- Comment #9 from Steinar H. Gunderson <sgunderson@bigfoot.com>  2010-02-16 23:56:59 ---
+Dmitry: That seems impossible, as I'm not using quota on the machine in
+question (it's not even compiled into the kernel).
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
