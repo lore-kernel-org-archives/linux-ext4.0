@@ -1,95 +1,149 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH V2] ext4: handle optional-arg mount options better
-Date: Mon, 15 Feb 2010 20:19:44 -0500
-Message-ID: <20100216011944.GQ5337@thunk.org>
-References: <4B69E6FA.20901@redhat.com>
- <20100215160150.GJ5337@thunk.org>
- <4B79BA90.3060703@redhat.com>
+Subject: Re: [PATCH] Jbd2: delay discarding buffers in journal_unmap_buffer
+Date: Mon, 15 Feb 2010 20:45:21 -0500
+Message-ID: <20100216014521.GR5337@thunk.org>
+References: <1265432063-5806-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+ <20100208160332.GF4321@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: dingdinghua <dingdinghua@nrchpc.ac.cn>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51639 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:58960 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932437Ab0BPBTq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Feb 2010 20:19:46 -0500
+	id S932455Ab0BPBp1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Feb 2010 20:45:27 -0500
 Content-Disposition: inline
-In-Reply-To: <4B79BA90.3060703@redhat.com>
+In-Reply-To: <20100208160332.GF4321@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ok, how about this, for even more explicit?
+On Mon, Feb 08, 2010 at 05:03:33PM +0100, Jan Kara wrote:
+> On Sat 06-02-10 12:54:23, dingdinghua wrote:
+> > Delay discarding buffers in journal_unmap_buffer until
+> > we know that "add to orphan" operation has definitely been
+> > committed, otherwise the log space of committing transation
+> > may be freed and reused before truncate get committed, updates
+> > may get lost if crash happens.
+> > 
+> > Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
+>   Thanks for the patch. Just two remarks to the comments below...
+
+Here's the version I've applied to the ext4 patch queue, which
+includes Jan's suggested changes to the comments.
 
 						- Ted
 
-commit 15121c18a22ae483279f76dc9e554334b800d0f7
-Author: Eric Sandeen <sandeen@redhat.com>
-Date:   Mon Feb 15 20:17:55 2010 -0500
+commit 20ca286ad19b76483a79b44c5172feeaad02065b
+Author: dingdinghua <dingdinghua@nrchpc.ac.cn>
+Date:   Mon Feb 15 16:35:42 2010 -0500
 
-    ext4: Fix optional-arg mount options
+    jbd2: delay discarding buffers in journal_unmap_buffer
     
-    We have 2 mount options, "barrier" and "auto_da_alloc" which may or
-    may not take a 1/0 argument.  This causes the ext4 superblock mount
-    code to subtract uninitialized pointers and pass the result to
-    kmalloc, which results in very noisy failures.
+    Delay discarding buffers in journal_unmap_buffer until
+    we know that "add to orphan" operation has definitely been
+    committed, otherwise the log space of committing transation
+    may be freed and reused before truncate get committed, updates
+    may get lost if crash happens.
     
-    Per Ted's suggestion, initialize the args struct so that
-    we know whether match_token() found an argument for the
-    option, and skip match_int() if not.
-    
-    Also, return error (0) from parse_options if we thought
-    we found an argument, but match_int() Fails.
-    
-    Reported-by: Michael S. Tsirkin <mst@redhat.com>
-    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+    Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 735c20d..68a55df 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1229,6 +1229,11 @@ static int parse_options(char *options, struct super_block *sb,
- 		if (!*p)
- 			continue;
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 1bc74b6..3ee211e 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -930,12 +930,12 @@ restart_loop:
+ 		/* A buffer which has been freed while still being
+ 		 * journaled by a previous transaction may end up still
+ 		 * being dirty here, but we want to avoid writing back
+-		 * that buffer in the future now that the last use has
+-		 * been committed.  That's not only a performance gain,
+-		 * it also stops aliasing problems if the buffer is left
+-		 * behind for writeback and gets reallocated for another
++		 * that buffer in the future after the "add to orphan"
++		 * operation been committed,  That's not only a performance
++		 * gain, it also stops aliasing problems if the buffer is
++		 * left behind for writeback and gets reallocated for another
+ 		 * use in a different page. */
+-		if (buffer_freed(bh)) {
++		if (buffer_freed(bh) && !jh->b_next_transaction) {
+ 			clear_buffer_freed(bh);
+ 			clear_buffer_jbddirty(bh);
+ 		}
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a051270..bfc70f5 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1727,6 +1727,21 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 	if (!jh)
+ 		goto zap_buffer_no_jh;
  
-+		/*
-+		 * Initialize args struct so we know whether arg was
-+		 * found; some options take optional arguments.
++	/*
++	 * We cannot remove the buffer from checkpoint lists until the
++	 * transaction adding inode to orphan list (let's call it T)
++	 * is committed.  Otherwise if the transaction changing the
++	 * buffer would be cleaned from the journal before T is
++	 * committed, a crash will cause that the correct contents of
++	 * the buffer will be lost.  On the other hand we have to
++	 * clear the buffer dirty bit at latest at the moment when the
++	 * transaction marking the buffer as freed in the filesystem
++	 * structures is committed because from that moment on the
++	 * buffer can be reallocated and used by a different page.
++	 * Since the block hasn't been freed yet but the inode has
++	 * already been added to orphan list, it is safe for us to add
++	 * the buffer to BJ_Forget list of the newest transaction.
++	 */
+ 	transaction = jh->b_transaction;
+ 	if (transaction == NULL) {
+ 		/* First case: not on any transaction.  If it
+@@ -1783,16 +1798,15 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 	} else if (transaction == journal->j_committing_transaction) {
+ 		JBUFFER_TRACE(jh, "on committing transaction");
+ 		/*
+-		 * If it is committing, we simply cannot touch it.  We
+-		 * can remove it's next_transaction pointer from the
+-		 * running transaction if that is set, but nothing
+-		 * else. */
++		 * The buffer is committing, we simply cannot touch
++		 * it. So we just set j_next_transaction to the
++		 * running transaction (if there is one) and mark
++		 * buffer as freed so that commit code knows it should
++		 * clear dirty bits when it is done with the buffer.
 +		 */
-+		args[0].to = args[0].from = 0;
- 		token = match_token(p, tokens, args);
- 		switch (token) {
- 		case Opt_bsd_df:
-@@ -1518,10 +1523,11 @@ set_qf_format:
- 			clear_opt(sbi->s_mount_opt, BARRIER);
- 			break;
- 		case Opt_barrier:
--			if (match_int(&args[0], &option)) {
--				set_opt(sbi->s_mount_opt, BARRIER);
--				break;
--			}
-+			if (args[0].from) {
-+				if (match_int(&args[0], &option))
-+					return 0;
-+			} else
-+				option = 1;	/* No argument, default to 1 */
- 			if (option)
- 				set_opt(sbi->s_mount_opt, BARRIER);
- 			else
-@@ -1594,10 +1600,11 @@ set_qf_format:
- 			set_opt(sbi->s_mount_opt,NO_AUTO_DA_ALLOC);
- 			break;
- 		case Opt_auto_da_alloc:
--			if (match_int(&args[0], &option)) {
--				clear_opt(sbi->s_mount_opt, NO_AUTO_DA_ALLOC);
--				break;
--			}
-+			if (args[0].from) {
-+				if (match_int(&args[0], &option))
-+					return 0;
-+			} else
-+				option = 1;	/* No argument, default to 1 */
- 			if (option)
- 				clear_opt(sbi->s_mount_opt, NO_AUTO_DA_ALLOC);
- 			else
+ 		set_buffer_freed(bh);
+-		if (jh->b_next_transaction) {
+-			J_ASSERT(jh->b_next_transaction ==
+-					journal->j_running_transaction);
+-			jh->b_next_transaction = NULL;
+-		}
++		if (journal->j_running_transaction && buffer_jbddirty(bh))
++			jh->b_next_transaction = journal->j_running_transaction;
+ 		jbd2_journal_put_journal_head(jh);
+ 		spin_unlock(&journal->j_list_lock);
+ 		jbd_unlock_bh_state(bh);
+@@ -1969,7 +1983,7 @@ void jbd2_journal_file_buffer(struct journal_head *jh,
+  */
+ void __jbd2_journal_refile_buffer(struct journal_head *jh)
+ {
+-	int was_dirty;
++	int was_dirty, jlist;
+ 	struct buffer_head *bh = jh2bh(jh);
+ 
+ 	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
+@@ -1991,8 +2005,13 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
+ 	__jbd2_journal_temp_unlink_buffer(jh);
+ 	jh->b_transaction = jh->b_next_transaction;
+ 	jh->b_next_transaction = NULL;
+-	__jbd2_journal_file_buffer(jh, jh->b_transaction,
+-				jh->b_modified ? BJ_Metadata : BJ_Reserved);
++	if (buffer_freed(bh))
++		jlist = BJ_Forget;
++	else if (jh->b_modified)
++		jlist = BJ_Metadata;
++	else
++		jlist = BJ_Reserved;
++	__jbd2_journal_file_buffer(jh, jh->b_transaction, jlist);
+ 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
+ 
+ 	if (was_dirty)
