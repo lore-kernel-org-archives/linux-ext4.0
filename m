@@ -1,40 +1,111 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15025] Oops in ext4 driver
-Date: Tue, 16 Feb 2010 21:00:39 GMT
-Message-ID: <201002162100.o1GL0dSa004275@demeter.kernel.org>
-References: <bug-15025-13602@http.bugzilla.kernel.org/>
+From: Andreas Dilger <adilger@sun.com>
+Subject: [PATCH] fix blkid zfs probe
+Date: Tue, 16 Feb 2010 14:06:00 -0700
+Message-ID: <8D237493-E4DD-46E3-90A2-3177D62C7D68@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed; boundary="Boundary_(ID_On+1i8DRjx/EjgZfEOVOUQ)"
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:58219 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933294Ab0BPVAj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Feb 2010 16:00:39 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1GL0dO8004278
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Feb 2010 21:00:39 GMT
-In-Reply-To: <bug-15025-13602@http.bugzilla.kernel.org/>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63060 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933303Ab0BPVGI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Feb 2010 16:06:08 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o1GL62gt006576
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Feb 2010 13:06:06 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KXY00800D9JL700@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 16 Feb 2010 13:06:02 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15025
 
+--Boundary_(ID_On+1i8DRjx/EjgZfEOVOUQ)
+Content-type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-transfer-encoding: 7BIT
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
+The ZFS probe code in e2fsprogs libblkid does not work for newly- 
+formatted ZFS filesystems.  Add a more robust checking method for ZFS  
+filesystems.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+"make check" still passes with the existing lib/blkid/tests/ 
+zfs.img.bz2 image, so no change is needed there.
 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
+--Boundary_(ID_On+1i8DRjx/EjgZfEOVOUQ)
+Content-type: application/octet-stream; name=e2fsprogs-blkid-zfs.patch;
+ x-unix-mode=0644
+Content-transfer-encoding: BASE64
+Content-disposition: attachment; filename=e2fsprogs-blkid-zfs.patch
 
+Rml4IHRoZSBaRlMgZGV2aWNlIGRldGVjdGlvbiBieSBsb29raW5nIGF0IG11bHRp
+cGxlIHViZXJibG9ja3MgdG8gc2VlIGlmDQphbnkgYXJlIHByZXNlbnQsIHJhdGhl
+ciB0aGFuIGxvb2tpbmcgZm9yIHRoZSBaRlMgYm9vdCBibG9jayB3aGljaCBpcyBu
+b3QNCmFsd2F5cyBwcmVzZW50Lg0KDQpUaGVyZSBtYXkgYmUgdXAgdG8gMTI4IHVi
+ZXJibG9ja3MsIGJ1dCB0aGUgZmlyc3QgNCBhcmUgbm90IHdyaXR0ZW4gdG8gZGlz
+aw0Kb24gYSBuZXdseS1mb3JtYXR0ZWQgZmlsZXN5c3RlbSBzbyBjaGVjayBzZXZl
+cmFsIG9mIHRoZW0gYXQgZGlmZmVyZW50DQpvZmZzZXRzIHdpdGhpbiB0aGUgdWJl
+cmJsb2NrIGFycmF5Lg0KDQpTaWduZWQtb2ZmLWJ5OiBBbmRyZWFzIERpbGdlciA8
+YWRpbGdlckBzdW4uY29tPg0KDQpJbmRleDogZTJmc3Byb2dzLTEuNDEuNC9saWIv
+YmxraWQvcHJvYmUuaA0KPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0tIGUyZnNwcm9n
+cy0xLjQxLjQub3JpZy9saWIvYmxraWQvcHJvYmUuaA0KKysrIGUyZnNwcm9ncy0x
+LjQxLjQvbGliL2Jsa2lkL3Byb2JlLmgNCkBAIC0xOTMsNiArMTkzLDE2IEBAIHN0
+cnVjdCBqZnNfc3VwZXJfYmxvY2sgew0KIAl1bnNpZ25lZCBjaGFyCWpzX2xvZ3V1
+aWRbMTZdOw0KIH07DQogDQorI2RlZmluZSBVQkVSQkxPQ0tfTUFHSUMgICAgICAg
+ICAweDAwYmFiMTBjICAgICAgICAgICAgICAvKiBvby1iYS1ibG9jISAgKi8NCitz
+dHJ1Y3QgemZzX3ViZXJibG9jayB7DQorCV9fdTY0CQl1Yl9tYWdpYzsJLyogVUJF
+UkJMT0NLX01BR0lDCQkqLw0KKwlfX3U2NAkJdWJfdmVyc2lvbjsJLyogWkZTX1ZF
+UlNJT04JCQkqLw0KKwlfX3U2NAkJdWJfdHhnOwkJLyogdHhnIG9mIGxhc3Qgc3lu
+YwkJKi8NCisJX191NjQJCXViX2d1aWRfc3VtOwkvKiBzdW0gb2YgYWxsIHZkZXYg
+Z3VpZHMJKi8NCisJX191NjQJCXViX3RpbWVzdGFtcDsJLyogVVRDIHRpbWUgb2Yg
+bGFzdCBzeW5jCSovDQorCWNoYXIJCXViX3Jvb3RicDsJLyogTU9TIG9ianNldF9w
+aHlzX3QJCSovDQorfTsNCisNCiBzdHJ1Y3Qgcm9tZnNfc3VwZXJfYmxvY2sgew0K
+IAl1bnNpZ25lZCBjaGFyCXJvc19tYWdpY1s4XTsNCiAJX191MzIJCXJvc19kdW1t
+eTFbMl07DQpJbmRleDogZTJmc3Byb2dzLTEuNDEuNC9saWIvYmxraWQvcHJvYmUu
+Yw0KPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PQ0KLS0tIGUyZnNwcm9ncy0xLjQxLjQub3Jp
+Zy9saWIvYmxraWQvcHJvYmUuYw0KKysrIGUyZnNwcm9ncy0xLjQxLjQvbGliL2Js
+a2lkL3Byb2JlLmMNCkBAIC0xMzU5LDEwICsxMzU5LDE5IEBAIHN0YXRpYyBzdHJ1
+Y3QgYmxraWRfbWFnaWMgdHlwZV9hcnJheVtdID0NCiAgIHsgImlzbzk2NjAiLAkz
+MiwJIDEsICA1LCAiQ0QwMDEiLAkJcHJvYmVfaXNvOTY2MCB9LA0KICAgeyAiaXNv
+OTY2MCIsCTMyLAkgOSwgIDUsICJDRFJPTSIsCQlwcm9iZV9pc285NjYwIH0sDQog
+ICB7ICJqZnMiLAkzMiwJIDAsICA0LCAiSkZTMSIsCQkJcHJvYmVfamZzIH0sDQot
+ICB7ICJ6ZnMiLCAgICAgICA4LAkgMCwgIDgsICJcMFwwXHgwMlx4ZjVceGIwXHgw
+N1x4YjFceDBjIiwgcHJvYmVfemZzIH0sDQotICB7ICJ6ZnMiLCAgICAgICA4LAkg
+MCwgIDgsICJceDBjXHhiMVx4MDdceGIwXHhmNVx4MDJcMFwwIiwgcHJvYmVfemZz
+IH0sDQotICB7ICJ6ZnMiLCAgICAgMjY0LAkgMCwgIDgsICJcMFwwXHgwMlx4ZjVc
+eGIwXHgwN1x4YjFceDBjIiwgcHJvYmVfemZzIH0sDQotICB7ICJ6ZnMiLCAgICAg
+MjY0LAkgMCwgIDgsICJceDBjXHhiMVx4MDdceGIwXHhmNVx4MDJcMFwwIiwgcHJv
+YmVfemZzIH0sDQorICAvKiBaRlMgaGFzIDEyOCByb290IGJsb2NrcyAoIzQgaXMg
+dGhlIGZpcnN0IHVzZWQpLCBjaGVjayBvbmx5IDYgb2YgdGhlbSAqLw0KKyAgeyAi
+emZzIiwgICAgIDEyOCwJIDAsICA4LCAiXDBcMFwwXDBcMFx4YmFceGIxXHgwYyIs
+cHJvYmVfemZzIH0sDQorICB7ICJ6ZnMiLCAgICAgMTI4LAkgMCwgIDgsICJceDBj
+XHhiMVx4YmFcMFwwXDBcMFwwIixwcm9iZV96ZnMgfSwNCisgIHsgInpmcyIsICAg
+ICAxMzIsCSAwLCAgOCwgIlwwXDBcMFwwXDBceGJhXHhiMVx4MGMiLHByb2JlX3pm
+cyB9LA0KKyAgeyAiemZzIiwgICAgIDEzMiwJIDAsICA4LCAiXHgwY1x4YjFceGJh
+XDBcMFwwXDBcMCIscHJvYmVfemZzIH0sDQorICB7ICJ6ZnMiLCAgICAgMTM2LAkg
+MCwgIDgsICJcMFwwXDBcMFwwXHhiYVx4YjFceDBjIixwcm9iZV96ZnMgfSwNCisg
+IHsgInpmcyIsICAgICAxMzYsCSAwLCAgOCwgIlx4MGNceGIxXHhiYVwwXDBcMFww
+XDAiLHByb2JlX3pmcyB9LA0KKyAgeyAiemZzIiwgICAgIDM4NCwJIDAsICA4LCAi
+XDBcMFwwXDBcMFx4YmFceGIxXHgwYyIscHJvYmVfemZzIH0sDQorICB7ICJ6ZnMi
+LCAgICAgMzg0LAkgMCwgIDgsICJceDBjXHhiMVx4YmFcMFwwXDBcMFwwIixwcm9i
+ZV96ZnMgfSwNCisgIHsgInpmcyIsICAgICAzODgsCSAwLCAgOCwgIlwwXDBcMFww
+XDBceGJhXHhiMVx4MGMiLHByb2JlX3pmcyB9LA0KKyAgeyAiemZzIiwgICAgIDM4
+OCwJIDAsICA4LCAiXHgwY1x4YjFceGJhXDBcMFwwXDBcMCIscHJvYmVfemZzIH0s
+DQorICB7ICJ6ZnMiLCAgICAgMzkyLAkgMCwgIDgsICJcMFwwXDBcMFwwXHhiYVx4
+YjFceDBjIixwcm9iZV96ZnMgfSwNCisgIHsgInpmcyIsICAgICAzOTIsCSAwLCAg
+OCwgIlx4MGNceGIxXHhiYVwwXDBcMFwwXDAiLHByb2JlX3pmcyB9LA0KICAgeyAi
+aGZzcGx1cyIsCSAxLAkgMCwgIDIsICJCRCIsCQkJcHJvYmVfaGZzcGx1cyB9LA0K
+ICAgeyAiaGZzcGx1cyIsCSAxLAkgMCwgIDIsICJIKyIsCQkJcHJvYmVfaGZzcGx1
+cyB9LA0KICAgeyAiaGZzcGx1cyIsCSAxLAkgMCwgIDIsICJIWCIsCQkJcHJvYmVf
+aGZzcGx1cyB9LA0K
 
---- Comment #8 from Rafael J. Wysocki <rjw@sisk.pl>  2010-02-16 21:00:35 ---
-Thanks, closing.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--Boundary_(ID_On+1i8DRjx/EjgZfEOVOUQ)--
