@@ -1,51 +1,160 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] do you want jbd2 interface of ext3?
-Date: Tue, 16 Feb 2010 19:54:52 +0100
-Message-ID: <20100216185452.GE3153@quack.suse.cz>
-References: <20100216164123.b10b00e5.toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH] Jbd2: delay discarding buffers in journal_unmap_buffer
+Date: Tue, 16 Feb 2010 20:33:05 +0100
+Message-ID: <20100216193304.GF3153@quack.suse.cz>
+References: <1265432063-5806-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+ <20100208160332.GF4321@quack.suse.cz>
+ <20100216014521.GR5337@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, adilger@sun.com, jack@suse.cz,
+Cc: Jan Kara <jack@suse.cz>, dingdinghua <dingdinghua@nrchpc.ac.cn>,
 	linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42010 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:59405 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755514Ab0BPSyo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Feb 2010 13:54:44 -0500
+	id S932872Ab0BPTc5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Feb 2010 14:32:57 -0500
 Content-Disposition: inline
-In-Reply-To: <20100216164123.b10b00e5.toshi.okajima@jp.fujitsu.com>
+In-Reply-To: <20100216014521.GR5337@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Mon 15-02-10 20:45:21, tytso@mit.edu wrote:
+> On Mon, Feb 08, 2010 at 05:03:33PM +0100, Jan Kara wrote:
+> > On Sat 06-02-10 12:54:23, dingdinghua wrote:
+> > > Delay discarding buffers in journal_unmap_buffer until
+> > > we know that "add to orphan" operation has definitely been
+> > > committed, otherwise the log space of committing transation
+> > > may be freed and reused before truncate get committed, updates
+> > > may get lost if crash happens.
+> > > 
+> > > Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
+> >   Thanks for the patch. Just two remarks to the comments below...
+> 
+> Here's the version I've applied to the ext4 patch queue, which
+> includes Jan's suggested changes to the comments.
+  Thanks for summing it up. The patch looks good.
+Acked-by: Jan Kara <jack@suse.cz>
 
-On Tue 16-02-10 16:41:23, Toshiyuki Okajima wrote:
-> I will try to change the journaling interface of ext3 from jbd into jbd2.
-> 
-> jbd2 has new features from jbd. For example, it includes the integrity 
-> improvement features. The body of ext3 is already enough quality. If ext3 
-> changes the journaling interface from jbd into jbd2, ext3 filesystem with jbd2
-> interface may get better integrity than with the jbd interface.
-> (jbd2 is aggressively being developed now, so I think we are glad if we can 
-> get the effect of the development of jbd2 for ext3.)
-> 
-> And ext3 is as de facto standard filesystem, so jbd2 component will be used 
-> by more people than now if ext3 has the jbd2 interface. If many people used 
-> the jbd2 interface of ext3, the jbd2 component would get more chances to 
-> improve the quality and performance and so on. 
-> 
-> Besides, ext3 is now the only user of jbd. 
-> (ocfs2 which was the user of jbd is now the user of jbd2.)
-> 
-> Do you want the jbd2 interface of ext3?
-> If you want the jbd2 interface, I will try to implement one.
-  Yes, as Ted pointed out, the main reason why we have a separate codebase for
-ext3 and ext4 and similarly jbd and jbd2 is that we didn't want the changes
-in ext4/jbd2 to influence (and possibly destabilize) ext3 filesystem. So
-switching ext3 to jbd2 would be directly against this logic...
+  I'm going to backport the patch to JBD now.
 
 								Honza
+
+
+> commit 20ca286ad19b76483a79b44c5172feeaad02065b
+> Author: dingdinghua <dingdinghua@nrchpc.ac.cn>
+> Date:   Mon Feb 15 16:35:42 2010 -0500
+> 
+>     jbd2: delay discarding buffers in journal_unmap_buffer
+>     
+>     Delay discarding buffers in journal_unmap_buffer until
+>     we know that "add to orphan" operation has definitely been
+>     committed, otherwise the log space of committing transation
+>     may be freed and reused before truncate get committed, updates
+>     may get lost if crash happens.
+>     
+>     Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 1bc74b6..3ee211e 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -930,12 +930,12 @@ restart_loop:
+>  		/* A buffer which has been freed while still being
+>  		 * journaled by a previous transaction may end up still
+>  		 * being dirty here, but we want to avoid writing back
+> -		 * that buffer in the future now that the last use has
+> -		 * been committed.  That's not only a performance gain,
+> -		 * it also stops aliasing problems if the buffer is left
+> -		 * behind for writeback and gets reallocated for another
+> +		 * that buffer in the future after the "add to orphan"
+> +		 * operation been committed,  That's not only a performance
+> +		 * gain, it also stops aliasing problems if the buffer is
+> +		 * left behind for writeback and gets reallocated for another
+>  		 * use in a different page. */
+> -		if (buffer_freed(bh)) {
+> +		if (buffer_freed(bh) && !jh->b_next_transaction) {
+>  			clear_buffer_freed(bh);
+>  			clear_buffer_jbddirty(bh);
+>  		}
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index a051270..bfc70f5 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1727,6 +1727,21 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+>  	if (!jh)
+>  		goto zap_buffer_no_jh;
+>  
+> +	/*
+> +	 * We cannot remove the buffer from checkpoint lists until the
+> +	 * transaction adding inode to orphan list (let's call it T)
+> +	 * is committed.  Otherwise if the transaction changing the
+> +	 * buffer would be cleaned from the journal before T is
+> +	 * committed, a crash will cause that the correct contents of
+> +	 * the buffer will be lost.  On the other hand we have to
+> +	 * clear the buffer dirty bit at latest at the moment when the
+> +	 * transaction marking the buffer as freed in the filesystem
+> +	 * structures is committed because from that moment on the
+> +	 * buffer can be reallocated and used by a different page.
+> +	 * Since the block hasn't been freed yet but the inode has
+> +	 * already been added to orphan list, it is safe for us to add
+> +	 * the buffer to BJ_Forget list of the newest transaction.
+> +	 */
+>  	transaction = jh->b_transaction;
+>  	if (transaction == NULL) {
+>  		/* First case: not on any transaction.  If it
+> @@ -1783,16 +1798,15 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+>  	} else if (transaction == journal->j_committing_transaction) {
+>  		JBUFFER_TRACE(jh, "on committing transaction");
+>  		/*
+> -		 * If it is committing, we simply cannot touch it.  We
+> -		 * can remove it's next_transaction pointer from the
+> -		 * running transaction if that is set, but nothing
+> -		 * else. */
+> +		 * The buffer is committing, we simply cannot touch
+> +		 * it. So we just set j_next_transaction to the
+> +		 * running transaction (if there is one) and mark
+> +		 * buffer as freed so that commit code knows it should
+> +		 * clear dirty bits when it is done with the buffer.
+> +		 */
+>  		set_buffer_freed(bh);
+> -		if (jh->b_next_transaction) {
+> -			J_ASSERT(jh->b_next_transaction ==
+> -					journal->j_running_transaction);
+> -			jh->b_next_transaction = NULL;
+> -		}
+> +		if (journal->j_running_transaction && buffer_jbddirty(bh))
+> +			jh->b_next_transaction = journal->j_running_transaction;
+>  		jbd2_journal_put_journal_head(jh);
+>  		spin_unlock(&journal->j_list_lock);
+>  		jbd_unlock_bh_state(bh);
+> @@ -1969,7 +1983,7 @@ void jbd2_journal_file_buffer(struct journal_head *jh,
+>   */
+>  void __jbd2_journal_refile_buffer(struct journal_head *jh)
+>  {
+> -	int was_dirty;
+> +	int was_dirty, jlist;
+>  	struct buffer_head *bh = jh2bh(jh);
+>  
+>  	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
+> @@ -1991,8 +2005,13 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
+>  	__jbd2_journal_temp_unlink_buffer(jh);
+>  	jh->b_transaction = jh->b_next_transaction;
+>  	jh->b_next_transaction = NULL;
+> -	__jbd2_journal_file_buffer(jh, jh->b_transaction,
+> -				jh->b_modified ? BJ_Metadata : BJ_Reserved);
+> +	if (buffer_freed(bh))
+> +		jlist = BJ_Forget;
+> +	else if (jh->b_modified)
+> +		jlist = BJ_Metadata;
+> +	else
+> +		jlist = BJ_Reserved;
+> +	__jbd2_journal_file_buffer(jh, jh->b_transaction, jlist);
+>  	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
+>  
+>  	if (was_dirty)
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
