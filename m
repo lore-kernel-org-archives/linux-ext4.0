@@ -1,50 +1,33 @@
-From: number9652 <number9652@yahoo.com>
-Subject: Re: [PATCH] mk2fs lazy_journal_init option
-Date: Fri, 19 Feb 2010 11:53:54 -0800 (PST)
-Message-ID: <127958.57045.qm@web43516.mail.sp1.yahoo.com>
+From: Dave Airlie <airlied@gmail.com>
+Subject: Re: [Regression] Filesystem I/O is CPU-bound in rc7 and rc8
+Date: Sat, 20 Feb 2010 07:02:23 +1000
+Message-ID: <21d7e9971002191302s76111f6fyd986c51b66e214ae@mail.gmail.com>
+References: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
+	 <20100215154516.GB11057@think> <m3d403632g.fsf@lugabout.jhcloos.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Shuichi Ihara <ihara@sun.com>
-To: Andreas Dilger <adilger@sun.com>, Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-kernel@vger.kernel.org, Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net
+To: James Cloos <cloos@jhcloos.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from n73.bullet.mail.sp1.yahoo.com ([98.136.44.191]:37548 "HELO
-	n73.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753894Ab0BSTxy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Feb 2010 14:53:54 -0500
+Received: from mail-yx0-f200.google.com ([209.85.210.200]:37814 "EHLO
+	mail-yx0-f200.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756101Ab0BSVCY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Feb 2010 16:02:24 -0500
+In-Reply-To: <m3d403632g.fsf@lugabout.jhcloos.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I hope you decide to continue unconditionally zeroing the journal at mkfs time.
+On Thu, Feb 18, 2010 at 6:04 AM, James Cloos <cloos@jhcloos.com> wrote:
+> While getting re-aquainted with perf, and after upgrading to the current
+> version, I see that do_page_fault, unmap_vmas, get_page_from_freelist,
+> handle_mm_fault, __do_fault and T.1339 tend to get the most time when the
+> kernel is spinning.
 
-In this case, block_iterate2 was being used to create a file, but when the file became big enough to have an extent leaf, ext2fs_get_extent was returning an extent when it shouldn't have been.  That caused ext2fs_block_iterate2 to go wrong, eventually calling mkjournal_proc millions of times more than it needed to (during which it would immediately return).  A patch which resolves this is below.  It shows normal mkfs times for me with a 512 MB journal and passes make check.
+dmesg? lspci -vv?
 
-Signed-off-by Nic Case <number9652@yahoo.com>
+We have an AGP related issue with WC/UC paging that might be related,
+but I'd need more info.
 
---- lib/ext2fs/extent-orig.c    2010-02-05 08:58:41.000000000 -0600
-+++ lib/ext2fs/extent.c 2010-02-19 13:37:32.000000000 -0600
-@@ -307,16 +307,12 @@
-                                op = EXT2_EXTENT_DOWN;
-                        } else if (path->left > 0)
-                                op = EXT2_EXTENT_NEXT_SIB;
--                       else if (handle->level > 0)
--                               op = EXT2_EXTENT_UP;
-                        else
-                                return EXT2_ET_EXTENT_NO_NEXT;
-                } else {
-                        /* leaf node */
-                        if (path->left > 0)
-                                op = EXT2_EXTENT_NEXT_SIB;
--                       else if (handle->level > 0)
--                               op = EXT2_EXTENT_UP;
-                        else
-                                return EXT2_ET_EXTENT_NO_NEXT;
-                }
-
-
-
-
-      
-
+Dave.
