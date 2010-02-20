@@ -1,44 +1,54 @@
-From: Michael Rubin <mrubin@google.com>
-Subject: Re: [PATCH v4 0/3] dioread_nolock patch
-Date: Fri, 19 Feb 2010 16:56:39 -0800
-Message-ID: <532480951002191656m17ce0880n75cedd0534689365@mail.gmail.com>
-References: <1263583812-21355-1-git-send-email-tytso@mit.edu>
-	<4B50C78D.2000807@redhat.com> <20100115201521.GE7256@thunk.org>
-	<4B50CD5B.9050804@redhat.com> <532480951001151347w2f1bf2b2j34bb88b58a766f9c@mail.gmail.com>
-	<20100122204715.GA6781@shell>
+From: James Cloos <cloos@jhcloos.com>
+Subject: Re: [Regression] Filesystem I/O is CPU-bound in rc7 and rc8
+Date: Sat, 20 Feb 2010 10:59:31 -0500
+Message-ID: <m3fx4vnbic.fsf@lugabout.jhcloos.org>
+References: <m3pr48bjfg.fsf@lugabout.jhcloos.org>
+	<20100215154516.GB11057@think> <m3d403632g.fsf@lugabout.jhcloos.org>
+	<21d7e9971002191302s76111f6fyd986c51b66e214ae@mail.gmail.com>
+	<m3wry8nbyl.fsf@lugabout.jhcloos.org>
+	<21d7e9971002191403tdc16bf9h5ebf6b48fec95d6a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Jiaying Zhang <jiayingz@google.com>, tytso@mit.edu,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Valerie Aurora <vaurora@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:39873 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756434Ab0BTA5G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Feb 2010 19:57:06 -0500
-Received: from kpbe18.cbf.corp.google.com (kpbe18.cbf.corp.google.com [172.25.105.82])
-	by smtp-out.google.com with ESMTP id o1K0v2GT016827
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2010 16:57:03 -0800
-Received: from fxm1 (fxm1.prod.google.com [10.184.13.1])
-	by kpbe18.cbf.corp.google.com with ESMTP id o1K0v1Q6027647
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2010 16:57:01 -0800
-Received: by fxm1 with SMTP id 1so781679fxm.15
-        for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2010 16:57:00 -0800 (PST)
-In-Reply-To: <20100122204715.GA6781@shell>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org, Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net
+To: Dave Airlie <airlied@gmail.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <21d7e9971002191403tdc16bf9h5ebf6b48fec95d6a@mail.gmail.com>
+	(Dave Airlie's message of "Sat, 20 Feb 2010 08:03:57 +1000")
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 22, 2010 at 12:47 PM, Valerie Aurora <vaurora@redhat.com> wrote:
-> Don't let the perfect be the enemy of the good. :) I'd love to see
-> what you've got now, even if you have to leave out the closed part of it.
->
+>>>>> "Dave" =3D=3D Dave Airlie <airlied@gmail.com> writes:
 
-We are currently reviewing a paper to send out this data.
-Sorry to take so long but we have been very busy with the ext4 upgrade.
-We plan on publishing other papers about our experiences with ext4
-this summer also.
-Out of curiosity is there anything anyone is curious about in the file
-system space?
+>>=20
+>> OK. =A0I do use radeon kms (r100).
 
-mrubin
+Dave> I've just sent a pull req to Linus
+Dave> http://bugzilla.kernel.org/show_bug.cgi?id=3D15328
+Dave> this
+
+Dave> http://bugzilla.kernel.org/attachment.cgi?id=3D25107
+Dave> patch.
+
+I'll give that a try as soon as I can schedule a reboot.
+
+Dave> The relevant piece of dmesg is at the top ;-), where
+Dave> it states if you have PAT support or not, but I
+Dave> suspect if you try this patch it'll fix it.
+
+Oh.  I thought you were referring to errors....
+
+Anyway, no, the p3m does not support PAT:
+
+[    0.000000] PAT not supported by CPU.
+
+-JimC
+--=20
+James Cloos <cloos@jhcloos.com>         OpenPGP: 1024D/ED7DAEA6
+--
+To unsubscribe from this list: send the line "unsubscribe linux-btrfs" =
+in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
