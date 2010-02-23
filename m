@@ -1,109 +1,76 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [ANNOUNCE] Online Hierarchical Storage Manager (OHSM v1.2)
-Date: Tue, 23 Feb 2010 10:14:08 +0300
-Message-ID: <878wakl8zj.fsf@openvz.org>
-References: <ea11fea31002222148u4abe8235q4bb7ef855044b508@mail.gmail.com>
+From: Camille Moncelier <pix@devlife.org>
+Subject: Re: [ext3] Changes to block device after an ext3 mount point has been
+	remounted readonly
+Date: Tue, 23 Feb 2010 09:42:39 +0100
+Message-ID: <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
+References: <baaef4711002180845n29561ccif451fae62e49e520@mail.gmail.com>
+	<9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com> <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
+	<20100222223252.GA13882@atrey.karlin.mff.cuni.cz> <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
+	<16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: OHSM-DEV <ohsm-devel@lists.sourceforge.net>,
-	kernelnewbies <kernelnewbies@nl.linux.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-fsdevel@vger.kernel.org,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:63392 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751016Ab0BWHOO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Feb 2010 02:14:14 -0500
-Received: by bwz1 with SMTP id 1so703568bwz.21
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Feb 2010 23:14:13 -0800 (PST)
-In-Reply-To: <ea11fea31002222148u4abe8235q4bb7ef855044b508@mail.gmail.com>
-	(Manish Katiyar's message of "Tue, 23 Feb 2010 08:48:13 +0300")
+Received: from mail-fx0-f219.google.com ([209.85.220.219]:54981 "EHLO
+	mail-fx0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751223Ab0BWInB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Feb 2010 03:43:01 -0500
+In-Reply-To: <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Manish Katiyar <mkatiyar@gmail.com> writes:
+The fact is that I've been able to reproduce the problem on LVM block
+devices, and sd* block devices so it's definitely not a loop device
+specific problem.
 
-> Hello all,
->    We are pleased to announce the first official functional release of Online
-> Hierarchical Storage Manager (OHSM v1.2).  This is a RFC release and
-> not yet aimed at mainline inclusion.
+By the way, I tried several other things other than "echo s
+>/proc/sysrq_trigger" I tried multiple sync followed with a one minute
+"sleep",
+
+"echo 3 >/proc/sys/vm/drop_caches" seems to lower the chances of "hash
+changes" but doesn't stops them.
+
+On Tue, Feb 23, 2010 at 12:09 AM, Andreas Dilger <adilger@sun.com> wrot=
+e:
+> On 2010-02-22, at 16:05, Jan Kara wrote:
+>>
+>> =A0Hmm, and apparently there is some subtlety in the loopback device=
+ code
+>> because even when I use sync(1), the first and second images sometim=
+es
+>> differ (although it's much rarer). But I see a commit block of the
+>> transaction =A0already in the first image (the commit block is writt=
+en last)
+>> but the contents of the transaction is present only in the second im=
+age.
 >
-> OHSM is a tool to manage and move data across various class of storage.
-> It can help users to selectively place and move data across tiers such
-> as SSD, Raid 10, Raid 6 based on the attributes of the data. OHSM
-> supports background movement of data
-> without any visible change in a files namespace to users and user applications.
-It does sounds like btrfs multy-device support. Can you please
-what it the differance?
-> OHSM is built as an external module with recompilation required for
-> ext4. The current version of OHSM is based upon kernel 2.6.32.2
 >
-> This release includes 3 core kernel patches:
+> It has never been safe to run ext3 on top of a loop device, because t=
+he loop
+> device does not preserve ordering, and I'm not sure whether it proper=
+ly
+> passes barriers either.
 >
-> 1) An initial ext4 patch to adjust ext4's block allocation to use a
-> preferred block range per Ted
-> Tso's Dec 2008 write-up
-> (http://markmail.org/message/qp7zjhhdzxum7rfn).  This patch is not
-> ohsm specific.
-> 2) A ohsm specific ext4 patch to provide callouts to the ohsm module.
-> 3) The ohsm module itself
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
 >
-> The source code for OHSM v1.2 is freely distributable under GPL.
-> The latest stable OHSM v1.2 is available at :
-> http://sourceforge.net/projects/ohsm/files/OHSMv1.2.tar.gz/download
-> Sources are available as git repository at :
-> git://ohsm.git.sourceforge.net/gitroot/ohsm/ohsm
 >
-> The following list describes the features of OHSM
-> * Support for Ext4.
-> * File System callouts
-> * Policy based File Migration
-> * Per inode information maintainer in user xattr area
-> * XML based policy files
-> * Support for RAID
-> * DTD based XML validation
-> - Automatic Relocation engine
-> * Selective Relocation of mountpoint/Subdirectories
-> * Selection Relocation based on specific rule
-> * File Placement based on:
->  + UID
->  + GID
->  +  File Type
->  + Directory Name
-> * File Migration based on
->  + UID
->  + GID
->  + FILE SIZE
->  + ACCESS AGE
->  + MODIFICATION AGE
->  - File Access Temperatue
->  - File I/O Temperature
-> +
-> (*=current features, -= on our todo list, +=support already present)
->
-> Here are some simple examples :-
-> $ ohsm enable sample/ohsm.xml
-> OHSM enabled successfully on '/tmp/mnt'
->
-> $ ohsm relocate -m /tmp/mnt
-> Relocation performed successfully.
->
-> $ ohsm status /tmp/mnt
-> OHSM is enabled on '/tmp/mnt'
->
-> $ ohsm disable /tmp/mnt
-> OHSM disabled successfully on '/tmp/mnt'
->
-> $ ohsm
-> Usage: ohsm subcommand [optstring ..] [parameters ..]
->      Subcommands :
->               enable  - Enable OHSM
->               disable - Disable OHSM
->               status  - Show status of OHSM
->               relocate -Trigger relocation on filesystem
->               update  - Update OHSM instance parameters
->               help     -Show usage
->
-> *Note* that the code for OHSM is still in early stages
-> Feedback, bug reports and patches, as always, are welcomed.
-> (ohsm-devel@lists.sourceforge.net)
+
+
+
+--=20
+Camille Moncelier
+http://devlife.org/
+
+If Java had true garbage collection, most programs would
+delete themselves upon execution.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
