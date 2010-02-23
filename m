@@ -1,40 +1,50 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [ext3] Changes to block device after an ext3 mount point has	been
- remounted readonly
-Date: Mon, 22 Feb 2010 16:09:17 -0700
-Message-ID: <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
-References: <baaef4711002180845n29561ccif451fae62e49e520@mail.gmail.com>
- <9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com>
- <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
- <20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
- <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Camille Moncelier <pix@devlife.org>, linux-fsdevel@vger.kernel.org,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: Fix bug which can cause e2fsck -fD to corrupt non-indexed directories
+Date: Tue, 23 Feb 2010 00:43:41 -0500
+Message-ID: <1266903821-20800-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:41496 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751126Ab0BWFnq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Feb 2010 00:43:46 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-02-22, at 16:05, Jan Kara wrote:
->  Hmm, and apparently there is some subtlety in the loopback device  
-> code because even when I use sync(1), the first and second images  
-> sometimes differ (although it's much rarer). But I see a commit  
-> block of the transaction  already in the first image (the commit  
-> block is written last) but the contents of the transaction is  
-> present only in the second image.
+E2fsprogs 1.41.10 introduced a regression (in commit b71e018) where
+e2fsck -fD can corrupt non-indexed directories when are exists one or
+more file names which alphabetically sort before ".".  This can happen
+with ext2 filesystems or for small directories (take less than a
+block) which contain filenames that begin with a space or some other
+punctuation mark.
 
+Fix this by making sure we never reorder the '.' or '..' entry in the
+directory, since they must be first.
 
-It has never been safe to run ext3 on top of a loop device, because  
-the loop device does not preserve ordering, and I'm not sure whether  
-it properly passes barriers either.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ e2fsck/rehash.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+index 780742e..ceb8543 100644
+--- a/e2fsck/rehash.c
++++ b/e2fsck/rehash.c
+@@ -763,7 +763,12 @@ retry_nohash:
+ 
+ 	/* Sort the list */
+ resort:
+-	qsort(fd.harray, fd.num_array, sizeof(struct hash_entry), hash_cmp);
++	if (fd.compress)
++		qsort(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
++		      hash_cmp);
++	else
++		qsort(fd.harray, fd.num_array, sizeof(struct hash_entry),
++		      hash_cmp);
+ 
+ 	/*
+ 	 * Look for duplicates
+-- 
+1.6.6.1.1.g974db.dirty
 
