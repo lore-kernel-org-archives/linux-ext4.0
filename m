@@ -1,55 +1,56 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext4: deprecate obsoleted mount options
-Date: Mon, 22 Feb 2010 17:28:12 -0700
-Message-ID: <57C5D8FD-F729-4C01-8485-6E76E7D2BDE6@sun.com>
-References: <1266431353-8549-1-git-send-email-dmonakhov@openvz.org>
- <1266432013-9241-3-git-send-email-dmonakhov@openvz.org>
- <E5AA2C0B-42FA-4025-A155-7ACD02EDE261@sun.com>
- <20100218205218.GL5337@thunk.org> <87d401jnml.fsf_-_@openvz.org>
+Subject: Re: [PATCH v4 0/3] dioread_nolock patch
+Date: Mon, 22 Feb 2010 17:36:20 -0700
+Message-ID: <ADD1602D-8D39-4329-9089-A19F7164B0B7@sun.com>
+References: <1263583812-21355-1-git-send-email-tytso@mit.edu>
+ <4B50C78D.2000807@redhat.com> <20100115201521.GE7256@thunk.org>
+ <4B50CD5B.9050804@redhat.com>
+ <532480951001151347w2f1bf2b2j34bb88b58a766f9c@mail.gmail.com>
+ <20100122204715.GA6781@shell>
+ <532480951002191656m17ce0880n75cedd0534689365@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
 Content-Transfer-Encoding: 7BIT
-Cc: tytso@mit.edu, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Valerie Aurora <vaurora@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Jiaying Zhang <jiayingz@google.com>, tytso@mit.edu,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Michael Rubin <mrubin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56953 "EHLO
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56973 "EHLO
 	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753360Ab0BWQyI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Feb 2010 11:54:08 -0500
-In-reply-to: <87d401jnml.fsf_-_@openvz.org>
+	with ESMTP id S1753355Ab0BWQyf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Feb 2010 11:54:35 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o1NGsZ7q015516
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Feb 2010 08:54:35 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KYA00N00ZFX0O00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 23 Feb 2010 08:54:35 -0800 (PST)
+In-reply-to: <532480951002191656m17ce0880n75cedd0534689365@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-02-19, at 07:39, Dmitry Monakhov wrote:
-> This patch deprecate some obsoleted functions.
-> It is not obvious what should we do in case of deprecated options on  
-> mount.
-> Just printk and continue or fail the mount, i've implemented the  
-> last one.
-> BTW: Do we need similar patch for e2fslib?
+On 2010-02-19, at 17:56, Michael Rubin wrote:
+> On Fri, Jan 22, 2010 at 12:47 PM, Valerie Aurora  
+> <vaurora@redhat.com> wrote:
+>> Don't let the perfect be the enemy of the good. :) I'd love to see
+>> what you've got now, even if you have to leave out the closed part  
+>> of it.
+>
+> We are currently reviewing a paper to send out this data.
+> Sorry to take so long but we have been very busy with the ext4  
+> upgrade.
+> We plan on publishing other papers about our experiences with ext4
+> this summer also.
+> Out of curiosity is there anything anyone is curious about in the file
+> system space?
 
-I think deprecating an option is not the same as removing it  
-entirely.  Even though I don't think these options are in wide usage,  
-I'd still prefer to add a printk() to the parsing code first, leave it  
-for a year, then remove them entirely after that.
 
-> #define EXT4_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov  
-> allocator */
-> -#define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's  
-> group */
-> #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
-> #define EXT4_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
-> #define EXT4_MOUNT_ERRORS_RO		0x00020	/* Remount fs ro on errors */
-> #define EXT4_MOUNT_ERRORS_PANIC		0x00040	/* Panic on errors */
-> -#define EXT4_MOUNT_MINIX_DF		0x00080	/* Mimics the Minix statfs */
-> #define EXT4_MOUNT_NOLOAD		0x00100	/* Don't use existing journal*/
-> #define EXT4_MOUNT_DATA_FLAGS		0x00C00	/* Mode for data writes: */
-> #define EXT4_MOUNT_JOURNAL_DATA		0x00400	/* Write data to journal */
-
-I'd prefer to leave a comment like "/* was EXT4_MOUNT_GRPID -  
-2010/02/21 */" so that it is clear that these values were previously  
-in use, and should not be re-used until other options are exhausted...
+What are you asking for, in particular.  I'd of course be interested  
+to know if you have numbers for bandwidth/latency improvements for  
+ext4, e2fsck time improvements (if the system is doing this), etc.
 
 Cheers, Andreas
 --
