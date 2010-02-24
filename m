@@ -1,197 +1,96 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH] warning fixups for e2fsprogs-1.41.10
-Date: Wed, 24 Feb 2010 14:35:31 -0700
-Message-ID: <26E8A0C6-F95A-475E-9031-B294F29BEE14@sun.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [ext3] Changes to block device after an ext3 mount point has
+ been remounted readonly
+Date: Wed, 24 Feb 2010 22:36:17 +0100
+Message-ID: <20100224213617.GA3097@quack.suse.cz>
+References: <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
+ <20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
+ <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
+ <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
+ <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
+ <20100223135531.GA7699@atrey.karlin.mff.cuni.cz>
+ <877hq2tyg8.fsf@openvz.org>
+ <4B855A97.4010702@redhat.com>
+ <20100224170506.GN3687@quack.suse.cz>
+ <87eikao896.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_6OHGvi9NS1fWjYW3WWqKtg)"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:61743 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757975Ab0BXVfh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Feb 2010 16:35:37 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o1OLZa0w021252
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2010 13:35:36 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KYD00D007Z4JL00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 24 Feb 2010 13:35:36 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	Camille Moncelier <pix@devlife.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87eikao896.fsf@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed 24-02-10 20:26:13, Dmitry Monakhov wrote:
+> Jan Kara <jack@suse.cz> writes:
+> > On Wed 24-02-10 10:57:59, Eric Sandeen wrote:
+> >> Dmitry Monakhov wrote:
+> >> > Jan Kara <jack@suse.cz> writes:
+> >> >>> The fact is that I've been able to reproduce the problem on LVM block
+> >> >>> devices, and sd* block devices so it's definitely not a loop device
+> >> >>> specific problem.
+> >> >>>
+> >> >>> By the way, I tried several other things other than "echo s
+> >> >>>> /proc/sysrq_trigger" I tried multiple sync followed with a one minute
+> >> >>> "sleep",
+> >> >>>
+> >> >>> "echo 3 >/proc/sys/vm/drop_caches" seems to lower the chances of "hash
+> >> >>> changes" but doesn't stops them.
+> >> >>   Strange. When I use sync(1) in your script and use /dev/sda5 instead of a
+> >> >> /dev/loop0, I cannot reproduce the problem (was running the script for
+> >> >> something like an hour).
+> >> > Theoretically some pages may exist after rw=>ro remount
+> >> > because of generic race between write/sync, And they will be written
+> >> > in by writepage if page already has buffers. This not happen in ext4
+> >> > because. Each time it try to perform writepages it try to start_journal
+> >> > and this result in EROFS.
+> >> > The race bug will be closed some day but new one may appear again.
+> >> > 
+> >> > Let's be honest and change ext3 writepage like follows:
+> >> > - check ROFS flag inside write page
+> >> > - dump writepage's errors.
+> >> > 
+> >> > 
+> >> 
+> >> sounds like the wrong approach to me, we really need to fix the root
+> >> cause and make remount,ro finish the job, I think.
+> Off course, but still. This is just a sanity check. Similar check
+> in ext4 help me to find the generic issue. Off course it have to
+> be guarded by unlikely() statement.
+  Well I think that something like
 
---Boundary_(ID_6OHGvi9NS1fWjYW3WWqKtg)
-Content-type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-transfer-encoding: 7BIT
+  WARN_ON_ONCE(IS_RDONLY(inode));
 
-Attached is a patch that fixes a number of compile warnings hit during  
-building e2fsprogs-1.41.10.  A few unused variable removals, and  
-signed/unsigned pointers.  The only possibly controversial fixup is  
-the initialization of rec_len = 0 in copy_dir_entries().  It wasn't  
-totally obvious to me what to initialize it to (or if it even  
-matters), but 0 seems reasonable, and is better than random garbage.
+  in the beginning of every ext3 writepage implementation would be totally
+sufficient for catching such bugs. Plus it has the advantage that it won't
+loose user's data if possible. So I'll take patch in this direction.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
---Boundary_(ID_6OHGvi9NS1fWjYW3WWqKtg)
-Content-type: application/octet-stream; name=e2fsprogs-misc.patch;
- x-unix-mode=0644
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=e2fsprogs-misc.patch
-
-Rml4ZXMgYSBudW1iZXIgb2YgY29tcGlsZSB3YXJuaW5ncyBoaXQgZHVyaW5nIGJ1
-aWxkaW5nIGUyZnNwcm9ncy0xLjQxLjEwLiAgQQ0KZmV3IHVudXNlZCB2YXJpYWJs
-ZSByZW1vdmFscywgYW5kIHNpZ25lZC91bnNpZ25lZCBwb2ludGVycy4gIFRoZSBv
-bmx5IHBvc3NpYmx5DQpjb250cm92ZXJzaWFsIGZpeHVwIGlzIHRoZSBpbml0aWFs
-aXphdGlvbiBvZiByZWNfbGVuID0gMCBpbiBjb3B5X2Rpcl9lbnRyaWVzKCkuDQpJ
-dCB3YXNuJ3QgdG90YWxseSBvYnZpb3VzIHRvIG1lIHdoYXQgdG8gaW5pdGlhbGl6
-ZSBpdCB0byAob3IgaWYgaXQgZXZlbiBtYXR0ZXJzKSwNCmJ1dCAwIHNlZW1zIHJl
-YXNvbmFibGUsIGFuZCBpcyBiZXR0ZXIgdGhhbiByYW5kb20gZ2FyYmFnZS4NCg0K
-U2lnbmVkLW9mZi1ieTogQW5kcmVhcyBEaWxnZXIgPGFkaWxnZXJAc3VuLmNvbT4N
-Cg0KSW5kZXg6IGUyZnNwcm9ncy0xLjQxLjEwL2xpYi9ibGtpZC9wcm9iZS5jDQo9
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09DQotLS0gZTJmc3Byb2dzLTEuNDEuMTAub3JpZy9s
-aWIvYmxraWQvcHJvYmUuYw0KKysrIGUyZnNwcm9ncy0xLjQxLjEwL2xpYi9ibGtp
-ZC9wcm9iZS5jDQpAQCAtMTI5Niw3ICsxMjk2LDggQEAgc3RhdGljIGludCBwcm9i
-ZV9oZnNwbHVzKHN0cnVjdCBibGtpZF9wcg0KIAkJcmV0dXJuIDA7DQogDQogCWxh
-YmVsX2xlbiA9IGJsa2lkX2JlMTYoa2V5LT51bmljb2RlX2xlbikgKiAyOw0KLQl1
-bmljb2RlXzE2YmVfdG9fdXRmOChsYWJlbCwgc2l6ZW9mKGxhYmVsKSwga2V5LT51
-bmljb2RlLCBsYWJlbF9sZW4pOw0KKwl1bmljb2RlXzE2YmVfdG9fdXRmOCgodW5z
-aWduZWQgY2hhciAqKWxhYmVsLCBzaXplb2YobGFiZWwpLA0KKwkJCSAgICAga2V5
-LT51bmljb2RlLCBsYWJlbF9sZW4pOw0KIAlibGtpZF9zZXRfdGFnKHByb2JlLT5k
-ZXYsICJMQUJFTCIsIGxhYmVsLCAwKTsNCiAJcmV0dXJuIDA7DQogfQ0KSW5kZXg6
-IGUyZnNwcm9ncy0xLjQxLjEwL2xpYi9ibGtpZC9wcm9iZS5oDQo9PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09DQotLS0gZTJmc3Byb2dzLTEuNDEuMTAub3JpZy9saWIvYmxraWQv
-cHJvYmUuaA0KKysrIGUyZnNwcm9ncy0xLjQxLjEwL2xpYi9ibGtpZC9wcm9iZS5o
-DQpAQCAtNTE5LDcgKzUxOSw3IEBAIHN0cnVjdCBoZnNfbWRiIHsNCiAgICAgICAg
-IF9fdTMyICAgICAgICBueHRfY25pZDsNCiAgICAgICAgIF9fdTE2ICAgICAgICBm
-cmVlX2JrczsNCiAgICAgICAgIF9fdTggICAgICAgICBsYWJlbF9sZW47DQotICAg
-ICAgICBfX3U4ICAgICAgICAgbGFiZWxbMjddOw0KKyAgICAgICAgY2hhciAgICAg
-ICAgIGxhYmVsWzI3XTsNCiAgICAgICAgIF9fdTMyICAgICAgICB2b2xfYmt1cDsN
-CiAgICAgICAgIF9fdTE2ICAgICAgICB2b2xfc2VxX251bTsNCiAgICAgICAgIF9f
-dTMyICAgICAgICB3cl9jbnQ7DQpJbmRleDogZTJmc3Byb2dzLTEuNDEuMTAvbGli
-L2V4dDJmcy9jc3VtLmMNCj09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCi0tLSBlMmZzcHJv
-Z3MtMS40MS4xMC5vcmlnL2xpYi9leHQyZnMvY3N1bS5jDQorKysgZTJmc3Byb2dz
-LTEuNDEuMTAvbGliL2V4dDJmcy9jc3VtLmMNCkBAIC0xNjYsNyArMTY2LDcgQEAg
-dm9pZCBwcmludF9jc3VtKGNvbnN0IGNoYXIgKm1zZywgZXh0Ml9maQ0KIAljcmMy
-ID0gZXh0MmZzX2NyYzE2KGNyYzEsICZzd2FiZ3JvdXAsIHNpemVvZihzd2FiZ3Jv
-dXApKTsNCiAJY3JjMyA9IGV4dDJmc19jcmMxNihjcmMyLCBkZXNjLA0KIAkJCSAg
-ICBvZmZzZXRvZihzdHJ1Y3QgZXh0Ml9ncm91cF9kZXNjLCBiZ19jaGVja3N1bSkp
-Ow0KLQlwcmludGYoIiVzOiBVVUlEICUwMTZMeCUwMTZMeCglMDR4KSwgZ3JwICV1
-KCUwNHgpOiAlMDR4PSUwNHhcbiIsDQorCXByaW50ZigiJXM6IFVVSUQgJTAxNmxs
-eCUwMTZsbHgoJTA0eCksIGdycCAldSglMDR4KTogJTA0eD0lMDR4XG4iLA0KIAkg
-ICAgICAgbXNnLCAqKGxvbmcgbG9uZyAqKSZzYi0+c191dWlkLCAqKGxvbmcgbG9u
-ZyAqKSZzYi0+c191dWlkWzhdLA0KIAkgICAgICAgY3JjMSwgZ3JvdXAsIGNyYzIs
-IGNyYzMsIGV4dDJmc19ncm91cF9kZXNjX2NzdW0oZnMsIGdyb3VwKSk7DQogfQ0K
-SW5kZXg6IGUyZnNwcm9ncy0xLjQxLjEwL21pc2MvYmFkYmxvY2tzLmMNCj09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT0NCi0tLSBlMmZzcHJvZ3MtMS40MS4xMC5vcmlnL21pc2Mv
-YmFkYmxvY2tzLmMNCisrKyBlMmZzcHJvZ3MtMS40MS4xMC9taXNjL2JhZGJsb2Nr
-cy5jDQpAQCAtOTgxLDcgKzk4MSw3IEBAIGludCBtYWluIChpbnQgYXJnYywgY2hh
-ciAqKiBhcmd2KQ0KIAlGSUxFICogaW4gPSBOVUxMOw0KIAlpbnQgYmxvY2tfc2l6
-ZSA9IDEwMjQ7DQogCXVuc2lnbmVkIGludCBibG9ja3NfYXRfb25jZSA9IDY0Ow0K
-LQlibGtfdCBsYXN0X2Jsb2NrLCBmaXJzdF9ibG9jazsNCisJdW5zaWduZWQgbG9u
-ZyBsYXN0X2Jsb2NrLCBmaXJzdF9ibG9jazsNCiAJaW50IG51bV9wYXNzZXMgPSAw
-Ow0KIAlpbnQgcGFzc2VzX2NsZWFuID0gMDsNCiAJaW50IGRldjsNCkBAIC0xMTE2
-LDkgKzExMTYsMTAgQEAgaW50IG1haW4gKGludCBhcmdjLCBjaGFyICoqIGFyZ3Yp
-DQogCQl1c2FnZSgpOw0KIAlkZXZpY2VfbmFtZSA9IGFyZ3Zbb3B0aW5kKytdOw0K
-IAlpZiAob3B0aW5kID4gYXJnYyAtIDEpIHsNCisJCWJsa190IGRldmljZV9zaXpl
-Ow0KIAkJZXJyY29kZSA9IGV4dDJmc19nZXRfZGV2aWNlX3NpemUoZGV2aWNlX25h
-bWUsDQogCQkJCQkJIGJsb2NrX3NpemUsDQotCQkJCQkJICZsYXN0X2Jsb2NrKTsN
-CisJCQkJCQkgJmRldmljZV9zaXplKTsNCiAJCWlmIChlcnJjb2RlID09IEVYVDJf
-RVRfVU5JTVBMRU1FTlRFRCkgew0KIAkJCWNvbV9lcnIocHJvZ3JhbV9uYW1lLCAw
-LA0KIAkJCQlfKCJDb3VsZG4ndCBkZXRlcm1pbmUgZGV2aWNlIHNpemU7IHlvdSAi
-DQpAQCAtMTEzMCw2ICsxMTMxLDcgQEAgaW50IG1haW4gKGludCBhcmdjLCBjaGFy
-ICoqIGFyZ3YpDQogCQkJCV8oIndoaWxlIHRyeWluZyB0byBkZXRlcm1pbmUgZGV2
-aWNlIHNpemUiKSk7DQogCQkJZXhpdCgxKTsNCiAJCX0NCisJCWxhc3RfYmxvY2sg
-PSBkZXZpY2Vfc2l6ZTsNCiAJfSBlbHNlIHsNCiAJCWVycm5vID0gMDsNCiAJCWxh
-c3RfYmxvY2sgPSBwYXJzZV91aW50KGFyZ3Zbb3B0aW5kXSwgXygibGFzdCBibG9j
-ayIpKTsNCkluZGV4OiBlMmZzcHJvZ3MtMS40MS4xMC9taXNjL3R1bmUyZnMuYw0K
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PQ0KLS0tIGUyZnNwcm9ncy0xLjQxLjEwLm9yaWcv
-bWlzYy90dW5lMmZzLmMNCisrKyBlMmZzcHJvZ3MtMS40MS4xMC9taXNjL3R1bmUy
-ZnMuYw0KQEAgLTEwNDQsNyArMTA0NCw3IEBAIHN0YXRpYyBpbnQgbW92ZV9ibG9j
-ayhleHQyX2ZpbHN5cyBmcywgZXgNCiB7DQogDQogCWNoYXIgKmJ1ZjsNCi0JZGdy
-cF90IGdyb3VwOw0KKwlkZ3JwX3QgZ3JvdXAgPSAwOw0KIAllcnJjb2RlX3QgcmV0
-dmFsOw0KIAlpbnQgbWV0YV9kYXRhID0gMDsNCiAJYmxrX3QgYmxrLCBuZXdfYmxr
-LCBnb2FsOw0KSW5kZXg6IGUyZnNwcm9ncy0xLjQxLjEwL2UyZnNjay9tZXNzYWdl
-LmMNCj09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT0NCi0tLSBlMmZzcHJvZ3MtMS40MS4xMC5v
-cmlnL2UyZnNjay9tZXNzYWdlLmMNCisrKyBlMmZzcHJvZ3MtMS40MS4xMC9lMmZz
-Y2svbWVzc2FnZS5jDQpAQCAtMjYzLDcgKzI2Myw2IEBAIHN0YXRpYyBfSU5MSU5F
-XyB2b2lkIGV4cGFuZF9pbm9kZV9leHByZXMNCiB7DQogCXN0cnVjdCBleHQyX2lu
-b2RlCSppbm9kZTsNCiAJc3RydWN0IGV4dDJfaW5vZGVfbGFyZ2UJKmxhcmdlX2lu
-b2RlOw0KLQl0aW1lX3QJCQl0Ow0KIA0KIAlpZiAoIWN0eCB8fCAhY3R4LT5pbm9k
-ZSkNCiAJCWdvdG8gbm9faW5vZGU7DQpAQCAtMjkzLDcgKzI5Miw3IEBAIHN0YXRp
-YyBfSU5MSU5FXyB2b2lkIGV4cGFuZF9pbm9kZV9leHByZXMNCiAJCWJyZWFrOw0K
-IAljYXNlICdiJzoNCiAJCWlmIChmcy0+c3VwZXItPnNfZmVhdHVyZV9yb19jb21w
-YXQgJg0KLQkJICAgIEVYVDRfRkVBVFVSRV9ST19DT01QQVRfSFVHRV9GSUxFKSAN
-CisJCSAgICBFWFQ0X0ZFQVRVUkVfUk9fQ09NUEFUX0hVR0VfRklMRSkNCiAJCQlw
-cmludGYoIiVsbHUiLCBpbm9kZS0+aV9ibG9ja3MgKw0KIAkJCSAgICAgICAoKChs
-b25nIGxvbmcpIGlub2RlLT5vc2QyLmxpbnV4Mi5sX2lfYmxvY2tzX2hpKQ0KIAkJ
-CQk8PCAzMikpOw0KSW5kZXg6IGUyZnNwcm9ncy0xLjQxLjEwL2UyZnNjay9wYXNz
-MS5jDQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09DQotLS0gZTJmc3Byb2dzLTEuNDEuMTAu
-b3JpZy9lMmZzY2svcGFzczEuYw0KKysrIGUyZnNwcm9ncy0xLjQxLjEwL2UyZnNj
-ay9wYXNzMS5jDQpAQCAtNDAxLDExICs0MDEsMTAgQEAgc3RhdGljIHZvaWQgY2hl
-Y2tfaXNfcmVhbGx5X2RpcihlMmZzY2tfdA0KIAkJCQljaGFyICpidWYpDQogew0K
-IAlzdHJ1Y3QgZXh0Ml9pbm9kZSAqaW5vZGUgPSBwY3R4LT5pbm9kZTsNCi0Jc3Ry
-dWN0IGV4dDJfZGlyX2VudHJ5IAkqZGlyZW50Ow0KKwlzdHJ1Y3QgZXh0Ml9kaXJf
-ZW50cnkJKmRpcmVudDsNCiAJY29uc3QgY2hhcgkJKm9sZF9vcDsNCiAJZXJyY29k
-ZV90CQlyZXR2YWw7DQogCWJsa190CQkJYmxrOw0KLQlibGs2NF90CQkJZmlyc3Rf
-ZGlyX2JsazsNCiAJdW5zaWduZWQgaW50CQlpLCByZWNfbGVuLCBub3RfZGV2aWNl
-ID0gMDsNCiAJaW50CQkJZXh0ZW50X2ZzOw0KIA0KQEAgLTQyMCwxNCArNDE5LDE0
-IEBAIHN0YXRpYyB2b2lkIGNoZWNrX2lzX3JlYWxseV9kaXIoZTJmc2NrX3QNCiAJ
-ICAgIExJTlVYX1NfSVNMTksoaW5vZGUtPmlfbW9kZSkgfHwgaW5vZGUtPmlfYmxv
-Y2tbMF0gPT0gMCkNCiAJCXJldHVybjsNCiANCi0JLyogDQorCS8qDQogCSAqIENo
-ZWNrIHRoZSBibG9jayBudW1iZXJzIGluIHRoZSBpX2Jsb2NrIGFycmF5IGZvciB2
-YWxpZGl0eToNCiAJICogemVybyBibG9ja3MgYXJlIHNraXBwZWQgKGJ1dCB0aGUg
-Zmlyc3Qgb25lIGNhbm5vdCBiZSB6ZXJvIC0NCiAJICogc2VlIGFib3ZlKSwgb3Ro
-ZXIgYmxvY2tzIGFyZSBjaGVja2VkIGFnYWluc3QgdGhlIGZpcnN0IGFuZA0KIAkg
-KiBtYXggZGF0YSBibG9ja3MgKGZyb20gdGhlIHRoZSBzdXBlcmJsb2NrKSBhbmQg
-YWdhaW5zdCB0aGUNCiAJICogYmxvY2sgYml0bWFwLiBBbnkgaW52YWxpZCBibG9j
-ayBmb3VuZCBtZWFucyB0aGlzIGNhbm5vdCBiZQ0KIAkgKiBhIGRpcmVjdG9yeS4N
-Ci0JICogDQorCSAqDQogCSAqIElmIHRoZXJlIGFyZSBub24temVybyBibG9ja3Mg
-cGFzdCB0aGUgZm91cnRoIGVudHJ5LCB0aGVuDQogCSAqIHRoaXMgY2Fubm90IGJl
-IGEgZGV2aWNlIGZpbGU6IHdlIHJlbWVtYmVyIHRoYXQgZm9yIHRoZSBuZXh0DQog
-CSAqIGNoZWNrLg0KQEAgLTQzNyw3ICs0MzYsOCBAQCBzdGF0aWMgdm9pZCBjaGVj
-a19pc19yZWFsbHlfZGlyKGUyZnNja190DQogCSAqIHdpdGggaXQuDQogCSAqLw0K
-IA0KLQlleHRlbnRfZnMgPSAoY3R4LT5mcy0+c3VwZXItPnNfZmVhdHVyZV9pbmNv
-bXBhdCAmIEVYVDNfRkVBVFVSRV9JTkNPTVBBVF9FWFRFTlRTKTsNCisJZXh0ZW50
-X2ZzID0gKGN0eC0+ZnMtPnN1cGVyLT5zX2ZlYXR1cmVfaW5jb21wYXQgJg0KKwkJ
-ICAgICBFWFQzX0ZFQVRVUkVfSU5DT01QQVRfRVhURU5UUyk7DQogCWlmIChleHRl
-bnRfZnMgJiYgKGlub2RlLT5pX2ZsYWdzICYgRVhUNF9FWFRFTlRTX0ZMKSkgew0K
-IAkJLyogZXh0ZW50IG1hcHBlZCAqLw0KIAkJaWYgIChleHQyZnNfYm1hcChjdHgt
-PmZzLCBwY3R4LT5pbm8sIGlub2RlLCAwLCAwLCAwLA0KSW5kZXg6IGUyZnNwcm9n
-cy0xLjQxLjEwL2UyZnNjay9yZWhhc2guYw0KPT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0K
-LS0tIGUyZnNwcm9ncy0xLjQxLjEwLm9yaWcvZTJmc2NrL3JlaGFzaC5jDQorKysg
-ZTJmc3Byb2dzLTEuNDEuMTAvZTJmc2NrL3JlaGFzaC5jDQpAQCAtMzk4LDEwICsz
-OTgsMTAgQEAgc3RhdGljIGVycmNvZGVfdCBjb3B5X2Rpcl9lbnRyaWVzKGUyZnNj
-aw0KIAkJCQkgIHN0cnVjdCBmaWxsX2Rpcl9zdHJ1Y3QgKmZkLA0KIAkJCQkgIHN0
-cnVjdCBvdXRfZGlyICpvdXRkaXIpDQogew0KLQlleHQyX2ZpbHN5cyAJCWZzID0g
-Y3R4LT5mczsNCisJZXh0Ml9maWxzeXMJCWZzID0gY3R4LT5mczsNCiAJZXJyY29k
-ZV90CQlyZXR2YWw7DQogCWNoYXIJCQkqYmxvY2tfc3RhcnQ7DQotCXN0cnVjdCBo
-YXNoX2VudHJ5IAkqZW50Ow0KKwlzdHJ1Y3QgaGFzaF9lbnRyeQkqZW50Ow0KIAlz
-dHJ1Y3QgZXh0Ml9kaXJfZW50cnkJKmRpcmVudDsNCiAJdW5zaWduZWQgaW50CQly
-ZWNfbGVuLCBwcmV2X3JlY19sZW47DQogCWludAkJCWksIGxlZnQ7DQpAQCAtNDMw
-LDEyICs0MzAsMTMgQEAgc3RhdGljIGVycmNvZGVfdCBjb3B5X2Rpcl9lbnRyaWVz
-KGUyZnNjaw0KIAkJcmV0dXJuIHJldHZhbDsNCiAJZGlyZW50ID0gKHN0cnVjdCBl
-eHQyX2Rpcl9lbnRyeSAqKSBibG9ja19zdGFydDsNCiAJcHJldl9yZWNfbGVuID0g
-MDsNCisJcmVjX2xlbiA9IDA7DQogCWxlZnQgPSBmcy0+YmxvY2tzaXplOw0KIAlz
-bGFjayA9IGZkLT5jb21wcmVzcyA/IDEyIDoNCiAJCShmcy0+YmxvY2tzaXplICog
-Y3R4LT5odHJlZV9zbGFja19wZXJjZW50YWdlKS8xMDA7DQogCWlmIChzbGFjayA8
-IDEyKQ0KIAkJc2xhY2sgPSAxMjsNCi0JZm9yIChpPTA7IGkgPCBmZC0+bnVtX2Fy
-cmF5OyBpKyspIHsNCisJZm9yIChpID0gMDsgaSA8IGZkLT5udW1fYXJyYXk7IGkr
-Kykgew0KIAkJZW50ID0gZmQtPmhhcnJheSArIGk7DQogCQlpZiAoZW50LT5kaXIt
-Pmlub2RlID09IDApDQogCQkJY29udGludWU7DQo=
-
---Boundary_(ID_6OHGvi9NS1fWjYW3WWqKtg)--
+> >> Throwing away writes which an application already thinks are completed
+> >> just because remount,ro didn't keep up sounds like a bad idea.  I think
+> >> I would much rather have the write complete shortly after the readonly
+> >> transition, if I had to choose...
+> >   Well, my opinion is that VFS should take care about the rw->ro transition
+> > so that it isn't racy...
+> No, My patch just try to nail the RO semantics in to writepage.
+> Since other places are already guarded by start_journal, writepage is
+> the only one which may has weakness.
+> About ENOSPC/EDQUOT spam. It may be not bad to print a error message
+> for crazy person who use mmap for space file.
+  I'm sorry but I disagree. We set the error in the mapping and return the
+error in case user calls fsync() on the file. Now I agree that most
+applications will just miss that but that's no excuse for us writing such
+messages in the system log. The user just got what he told the system to
+do.
+  And yes, we could be nicer to applications by making sure at page-fault
+time that we have space for the mmaped write. I actually have patches for
+that but they are stuck in the queue behind Nick's
+truncate-calling-sequence rewrite.
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
