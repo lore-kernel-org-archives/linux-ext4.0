@@ -1,48 +1,184 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] e2fsck: Fix bug which can cause e2fsck -fD to corrupt
- non-indexed directories
-Date: Wed, 24 Feb 2010 10:11:03 -0500
-Message-ID: <20100224151103.GB5166@thunk.org>
-References: <1266903821-20800-1-git-send-email-tytso@mit.edu>
- <56B4B314-CBF3-495B-96BD-FCD524D539DA@sun.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [ext3] Changes to block device after an ext3 mount point has been remounted readonly
+Date: Wed, 24 Feb 2010 19:01:27 +0300
+Message-ID: <877hq2tyg8.fsf@openvz.org>
+References: <baaef4711002180845n29561ccif451fae62e49e520@mail.gmail.com>
+	<9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com>
+	<baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
+	<20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
+	<20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
+	<16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
+	<baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
+	<20100223135531.GA7699@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: Camille Moncelier <pix@devlife.org>,
+	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44125 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753623Ab0BXPLH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Feb 2010 10:11:07 -0500
-Content-Disposition: inline
-In-Reply-To: <56B4B314-CBF3-495B-96BD-FCD524D539DA@sun.com>
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:49570 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756703Ab0BXQBc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Feb 2010 11:01:32 -0500
+In-Reply-To: <20100223135531.GA7699@atrey.karlin.mff.cuni.cz> (Jan Kara's
+	message of "Tue, 23 Feb 2010 16:55:31 +0300")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 24, 2010 at 01:25:16AM -0700, Andreas Dilger wrote:
-> Do you have a regression test for this case?  e2fsck itself will
-> detect the corruption ("." and ".." not at the start of the
-> directory) after the fact, but I guess it means that there are no
-> existing tests where there is a directory entry that sorts before
-> "." or it would have been noticed earlier.
+--=-=-=
 
-Yes, I'll add a regression test; binary files just don't work well in
-patch sets, so I tend to put those in separate commits, for ease in
-cherry picking.  Basically it's just a 100k ext2 filesystem with a
-directory which happens to contain a name that begins with a open
-parenthesis, i.e., "(oops)".
+Jan Kara <jack@suse.cz> writes:
 
-> Have you pulled this release from Sourceforge and any downstream
-> releases already (Debian, FC, etc)?  It seems like a pretty serious
-> problem, even though "-fD" is likely not run very often.
+>> The fact is that I've been able to reproduce the problem on LVM block
+>> devices, and sd* block devices so it's definitely not a loop device
+>> specific problem.
+>> 
+>> By the way, I tried several other things other than "echo s
+>> >/proc/sysrq_trigger" I tried multiple sync followed with a one minute
+>> "sleep",
+>> 
+>> "echo 3 >/proc/sys/vm/drop_caches" seems to lower the chances of "hash
+>> changes" but doesn't stops them.
+>   Strange. When I use sync(1) in your script and use /dev/sda5 instead of a
+> /dev/loop0, I cannot reproduce the problem (was running the script for
+> something like an hour).
+Theoretically some pages may exist after rw=>ro remount
+because of generic race between write/sync, And they will be written
+in by writepage if page already has buffers. This not happen in ext4
+because. Each time it try to perform writepages it try to start_journal
+and this result in EROFS.
+The race bug will be closed some day but new one may appear again.
 
-I was just going to accelerate getting 1.41.11 out the door, as
-opposed to going to the effort of trying to deprecate 1.41.10.  In the
-case of Debian, and Ubuntu, it's too late already since 1.41.10 has
-already propagated out to bleeding-edge users.  So the only way to
-pull it back would be to get a new release out the door, quickly...
+Let's be honest and change ext3 writepage like follows:
+- check ROFS flag inside write page
+- dump writepage's errors.
 
-I guess I can easily enough pull it from kernel.org and make
-1.41.9 the default release to download on sourceforge.net.
 
-       	   	   	      	       	  - Ted
+--=-=-=
+Content-Disposition: inline;
+ filename=0001-ext3-add-sanity-checks-to-writeback.patch
+
+>From a7cadf8017626cd80fcd8ea5a0e4deff4f63e02e Mon Sep 17 00:00:00 2001
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Date: Wed, 24 Feb 2010 18:17:58 +0300
+Subject: [PATCH] ext3: add sanity checks to writeback
+
+There is theoretical possibility to perform writepage on
+RO superblock. Add explicit check for what case.
+
+In fact writepage may fail by a number of reasons.
+This is really rare case but sill may result in data loss.
+At least we have to dump a error message.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext3/inode.c |   40 +++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 35 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 455e6e6..cf0e3aa 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1536,6 +1536,11 @@ static int ext3_ordered_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+ 
++	if (inode->i_sb->s_flags & MS_RDONLY) {
++		err = -EROFS;
++		goto out_fail;
++	}
++
+ 	if (!page_has_buffers(page)) {
+ 		create_empty_buffers(page, inode->i_sb->s_blocksize,
+ 				(1 << BH_Dirty)|(1 << BH_Uptodate));
+@@ -1546,7 +1551,8 @@ static int ext3_ordered_writepage(struct page *page,
+ 				       NULL, buffer_unmapped)) {
+ 			/* Provide NULL get_block() to catch bugs if buffers
+ 			 * weren't really mapped */
+-			return block_write_full_page(page, NULL, wbc);
++			ret = block_write_full_page(page, NULL, wbc);
++			goto out;
+ 		}
+ 	}
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+@@ -1584,12 +1590,17 @@ static int ext3_ordered_writepage(struct page *page,
+ 	err = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = err;
++out:
++	if (ret)
++		ext3_msg(inode->i_sb, KERN_CRIT, "%s: failed "
++			"%ld pages, ino %lu; err %d\n", __func__,
++			wbc->nr_to_write, inode->i_ino, ret);
+ 	return ret;
+ 
+ out_fail:
+ 	redirty_page_for_writepage(wbc, page);
+ 	unlock_page(page);
+-	return ret;
++	goto out;
+ }
+ 
+ static int ext3_writeback_writepage(struct page *page,
+@@ -1603,12 +1614,18 @@ static int ext3_writeback_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+ 
++	if (inode->i_sb->s_flags & MS_RDONLY) {
++		err = -EROFS;
++		goto out_fail;
++	}
++
+ 	if (page_has_buffers(page)) {
+ 		if (!walk_page_buffers(NULL, page_buffers(page), 0,
+ 				      PAGE_CACHE_SIZE, NULL, buffer_unmapped)) {
+ 			/* Provide NULL get_block() to catch bugs if buffers
+ 			 * weren't really mapped */
+-			return block_write_full_page(page, NULL, wbc);
++			ret = block_write_full_page(page, NULL, wbc);
++			goto out;
+ 		}
+ 	}
+ 
+@@ -1626,12 +1643,17 @@ static int ext3_writeback_writepage(struct page *page,
+ 	err = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = err;
++out:
++	if (ret)
++		ext3_msg(inode->i_sb, KERN_CRIT, "%s: failed "
++			"%ld pages, ino %lu; err %d\n", __func__,
++			wbc->nr_to_write, inode->i_ino, ret);
+ 	return ret;
+ 
+ out_fail:
+ 	redirty_page_for_writepage(wbc, page);
+ 	unlock_page(page);
+-	return ret;
++	goto out;
+ }
+ 
+ static int ext3_journalled_writepage(struct page *page,
+@@ -1645,6 +1667,11 @@ static int ext3_journalled_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto no_write;
+ 
++	if (inode->i_sb->s_flags & MS_RDONLY) {
++		err = -EROFS;
++		goto no_write;
++	}
++
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+@@ -1684,8 +1711,11 @@ static int ext3_journalled_writepage(struct page *page,
+ 	if (!ret)
+ 		ret = err;
+ out:
++	if (ret)
++		ext3_msg(inode->i_sb, KERN_CRIT, "%s: failed "
++			"%ld pages, ino %lu; err %d\n", __func__,
++			wbc->nr_to_write, inode->i_ino, ret);
+ 	return ret;
+--=-=-=--
