@@ -1,100 +1,77 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] e2fsck: Fix bug which can cause e2fsck -fD to corrupt
- non-indexed directories
-Date: Wed, 24 Feb 2010 01:25:16 -0700
-Message-ID: <56B4B314-CBF3-495B-96BD-FCD524D539DA@sun.com>
-References: <1266903821-20800-1-git-send-email-tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH, RFC] ext4: don't use quota reservation for speculative
+	metadata blocks
+Date: Wed, 24 Feb 2010 14:29:47 +0100
+Message-ID: <20100224132947.GA18470@atrey.karlin.mff.cuni.cz>
+References: <4B846241.7050205@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:38535 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754671Ab0BXIZT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Feb 2010 03:25:19 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o1O8PIhU001700
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2010 00:25:18 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KYC0010078ZZX00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 24 Feb 2010 00:25:18 -0800 (PST)
-In-reply-to: <1266903821-20800-1-git-send-email-tytso@mit.edu>
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:38781 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1757029Ab0BXN3t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Feb 2010 08:29:49 -0500
+Content-Disposition: inline
+In-Reply-To: <4B846241.7050205@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-02-22, at 22:43, Theodore Ts'o wrote:
-> E2fsprogs 1.41.10 introduced a regression (in commit b71e018) where
-> e2fsck -fD can corrupt non-indexed directories when are exists one or
-> more file names which alphabetically sort before ".".  This can happen
-> with ext2 filesystems or for small directories (take less than a
-> block) which contain filenames that begin with a space or some other
-> punctuation mark.
->
-> Fix this by making sure we never reorder the '.' or '..' entry in the
-> directory, since they must be first.
+> Because we can badly over-reserve metadata when we
+> calculate worst-case, it complicates things for quota, since
+> we must reserve and then claim later, retry on EDQUOT, etc.
+> Quota is also a generally smaller pool than fs free blocks,
+> so this over-reservation hurts more, and more often.
+  Yes, it's kind of nasty...
 
-Ted, thanks for getting this out so fast.  We were just building our  
-release based on 1.41.10 and are able to add this in.
+> I'm of the opinion that it's not the worst thing to allow
+> metadata to push a user slightly over quota, if we can simplify
+> the code by doing so.
+  Well, the code simplification isn't be such a big deal in this particular
+case at least for me - the false failures / warnings seem like a worse
+problem to me.
 
-Do you have a regression test for this case?  e2fsck itself will  
-detect the corruption ("." and ".." not at the start of the directory)  
-after the fact, but I guess it means that there are no existing tests  
-where there is a directory entry that sorts before "." or it would  
-have been noticed earlier.
+> In the longer run I'd like to even consider not charging
+> speculative metadata against the superblock counters, and use
+> a reserved space pool similar to what XFS does, but this change
+> could maybe stand on its own, too.
+  This is going to be tough because you just cannot afford to fail
+an allocation as soon as you've accepted data to write. So you have to
+do some computations anyway to make sure you can always find space
+for metadata.
 
-Looking at the ASCII characters before "." it seems that CVS "old  
-version" files with a leading ".#", "(", and "%gconf.xml" would  
-probably be the most likely cause of problems.
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 22bc743..e11e5b0 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -604,13 +604,14 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+>  	ret = ext4_mb_new_blocks(handle, &ar, errp);
+>  	if (count)
+>  		*count = ar.len;
+> -
+>  	/*
+> -	 * Account for the allocated meta blocks
+> +	 * Account for the allocated meta blocks.  We will never
+> +	 * fail EDQUOT for metdata, but we do account for it.
+>  	 */
+>  	if (!(*errp) && EXT4_I(inode)->i_delalloc_reserved_flag) {
+>  		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+>  		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+> +		vfs_dq_alloc_block(inode, ar.len);
+  This won't work - vfs_dq_alloc_block just refuses to allocate blocks
+if you'd go over limit. You probably have to introduce new flag to
+the function to don't do limit checks... BTW: Christoph Hellwig and Dmitry
+are doing some quota cleanups which change the interface so it'd be better
+if you based quota patches on top of my linux-fs-2.6 tree.
+  Also you shouldn't call vfs_dq_alloc_block inside a spinlock since it
+can sleep.
 
-In any case, I can reproduce this easily on my filesystem with my mp3  
-collection (on a backup, fortunately).  Unfortunately, it seems that  
-re-running e2fsck after such a corruption causes all (thousands) of  
-the entries that were sorted to the beginning of the directory to be  
-deleted, and moved into /lost+found.
+  Otherwise the patch looks fine, although all the counter stuff looks messy
+so I'm not so sure I didn't miss some subtlety.
 
-Have you pulled this release from Sourceforge and any downstream  
-releases already (Debian, FC, etc)?  It seems like a pretty serious  
-problem, even though "-fD" is likely not run very often.
-
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
-> e2fsck/rehash.c |    7 ++++++-
-> 1 files changed, 6 insertions(+), 1 deletions(-)
->
-> diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-> index 780742e..ceb8543 100644
-> --- a/e2fsck/rehash.c
-> +++ b/e2fsck/rehash.c
-> @@ -763,7 +763,12 @@ retry_nohash:
->
-> 	/* Sort the list */
-> resort:
-> -	qsort(fd.harray, fd.num_array, sizeof(struct hash_entry), hash_cmp);
-> +	if (fd.compress)
-> +		qsort(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
-> +		      hash_cmp);
-> +	else
-> +		qsort(fd.harray, fd.num_array, sizeof(struct hash_entry),
-> +		      hash_cmp);
->
-> 	/*
-> 	 * Look for duplicates
-> -- 
-> 1.6.6.1.1.g974db.dirty
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux- 
-> ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
