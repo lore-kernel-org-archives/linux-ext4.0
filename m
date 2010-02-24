@@ -1,53 +1,60 @@
-From: Camille Moncelier <pix@devlife.org>
-Subject: Re: [ext3] Changes to block device after an ext3 mount point has been
-	remounted readonly
-Date: Wed, 24 Feb 2010 17:26:37 +0100
-Message-ID: <baaef4711002240826t1b447662yf66c980dea1d9d00@mail.gmail.com>
-References: <baaef4711002180845n29561ccif451fae62e49e520@mail.gmail.com>
-	<9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com> <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
-	<20100222223252.GA13882@atrey.karlin.mff.cuni.cz> <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
-	<16F918FB-F45D-478E-9358-550BB39E277E@sun.com> <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
-	<20100223135531.GA7699@atrey.karlin.mff.cuni.cz> <877hq2tyg8.fsf@openvz.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsck: Fix bug which can cause e2fsck -fD to corrupt
+ non-indexed directories
+Date: Wed, 24 Feb 2010 10:28:33 -0600
+Message-ID: <4B8553B1.8020606@redhat.com>
+References: <1266903821-20800-1-git-send-email-tytso@mit.edu> <56B4B314-CBF3-495B-96BD-FCD524D539DA@sun.com> <20100224151103.GB5166@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jan Kara <jack@suse.cz>
-To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <877hq2tyg8.fsf@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9970 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752816Ab0BXQ2k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Feb 2010 11:28:40 -0500
+In-Reply-To: <20100224151103.GB5166@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> Theoretically some pages may exist after rw=>ro remount
-> because of generic race between write/sync, And they will be written
-> in by writepage if page already has buffers. This not happen in ext4
-> because. Each time it try to perform writepages it try to start_journal
-> and this result in EROFS.
-> The race bug will be closed some day but new one may appear again.
->
-> Let's be honest and change ext3 writepage like follows:
-> - check ROFS flag inside write page
-> - dump writepage's errors.
->
->
-I think I don't understand correctly your patch. For me it seems that
-when an ext3 filesystem is remounted ro, some data may not have been
-written to disk right ?
+tytso@mit.edu wrote:
+> On Wed, Feb 24, 2010 at 01:25:16AM -0700, Andreas Dilger wrote:
+>> Do you have a regression test for this case?  e2fsck itself will
+>> detect the corruption ("." and ".." not at the start of the
+>> directory) after the fact, but I guess it means that there are no
+>> existing tests where there is a directory entry that sorts before
+>> "." or it would have been noticed earlier.
+> 
+> Yes, I'll add a regression test; binary files just don't work well in
+> patch sets, so I tend to put those in separate commits, for ease in
+> cherry picking.  Basically it's just a 100k ext2 filesystem with a
+> directory which happens to contain a name that begins with a open
+> parenthesis, i.e., "(oops)".
+> 
+>> Have you pulled this release from Sourceforge and any downstream
+>> releases already (Debian, FC, etc)?  It seems like a pretty serious
+>> problem, even though "-fD" is likely not run very often.
+> 
+> I was just going to accelerate getting 1.41.11 out the door, as
+> opposed to going to the effort of trying to deprecate 1.41.10.  In the
+> case of Debian, and Ubuntu, it's too late already since 1.41.10 has
+> already propagated out to bleeding-edge users. 
 
-But as far as I understand some writes are performed on the journal on
-remount-ro, before the ro flag is set. So if writepage comes to play
-and write data to disk it my have to update the journal again, no ? If
-not it would mean that the journal would reference data that aren't
-available on disk ?
+Ditto for fedora, but I pushed this patch to rawhide yesterday, thanks.
 
-Last question, would it be hard to implement a patch that trigger
-writepage and wait for completion when remounting read-only (I have no
-expertise on filesystems in general, but I tried my best to understand
-the ext3 driver)
+-Eric
 
--- 
-Camille Moncelier
-http://devlife.org/
+> So the only way to
+> pull it back would be to get a new release out the door, quickly...
+> 
+> I guess I can easily enough pull it from kernel.org and make
+> 1.41.9 the default release to download on sourceforge.net.
+> 
+>        	   	   	      	       	  - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-If Java had true garbage collection, most programs would
-delete themselves upon execution.
