@@ -1,82 +1,38 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [ext3] Changes to block device after an ext3 mount point has
- been remounted readonly
-Date: Wed, 24 Feb 2010 18:05:06 +0100
-Message-ID: <20100224170506.GN3687@quack.suse.cz>
-References: <baaef4711002180845n29561ccif451fae62e49e520@mail.gmail.com>
- <9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com>
- <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
- <20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
- <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
- <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
- <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
- <20100223135531.GA7699@atrey.karlin.mff.cuni.cz>
- <877hq2tyg8.fsf@openvz.org>
- <4B855A97.4010702@redhat.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH 1/2] Jbd: fix an assertion, jh->b_transaction should be
+Date: Wed, 24 Feb 2010 12:12:15 -0500
+Message-ID: <20100224171215.GH5166@thunk.org>
+References: <1264391104-10950-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+ <1264391104-10950-2-git-send-email-dingdinghua@nrchpc.ac.cn>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, Jan Kara <jack@suse.cz>,
-	Camille Moncelier <pix@devlife.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: dingdinghua <dingdinghua@nrchpc.ac.cn>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:51065 "EHLO mx1.suse.de"
+Received: from thunk.org ([69.25.196.29]:53592 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757298Ab0BXRE7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Feb 2010 12:04:59 -0500
+	id S1755063Ab0BXRMR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Feb 2010 12:12:17 -0500
 Content-Disposition: inline
-In-Reply-To: <4B855A97.4010702@redhat.com>
+In-Reply-To: <1264391104-10950-2-git-send-email-dingdinghua@nrchpc.ac.cn>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 24-02-10 10:57:59, Eric Sandeen wrote:
-> Dmitry Monakhov wrote:
-> > Jan Kara <jack@suse.cz> writes:
-> >>> The fact is that I've been able to reproduce the problem on LVM block
-> >>> devices, and sd* block devices so it's definitely not a loop device
-> >>> specific problem.
-> >>>
-> >>> By the way, I tried several other things other than "echo s
-> >>>> /proc/sysrq_trigger" I tried multiple sync followed with a one minute
-> >>> "sleep",
-> >>>
-> >>> "echo 3 >/proc/sys/vm/drop_caches" seems to lower the chances of "hash
-> >>> changes" but doesn't stops them.
-> >>   Strange. When I use sync(1) in your script and use /dev/sda5 instead of a
-> >> /dev/loop0, I cannot reproduce the problem (was running the script for
-> >> something like an hour).
-> > Theoretically some pages may exist after rw=>ro remount
-> > because of generic race between write/sync, And they will be written
-> > in by writepage if page already has buffers. This not happen in ext4
-> > because. Each time it try to perform writepages it try to start_journal
-> > and this result in EROFS.
-> > The race bug will be closed some day but new one may appear again.
-> > 
-> > Let's be honest and change ext3 writepage like follows:
-> > - check ROFS flag inside write page
-> > - dump writepage's errors.
-> > 
-> > 
+On Mon, Jan 25, 2010 at 11:45:03AM +0800, dingdinghua wrote:
+> ---
+>  fs/jbd/commit.c |    3 +--
+>  1 files changed, 1 insertions(+), 2 deletions(-)
 > 
-> sounds like the wrong approach to me, we really need to fix the root
-> cause and make remount,ro finish the job, I think.
-> 
-> Throwing away writes which an application already thinks are completed
-> just because remount,ro didn't keep up sounds like a bad idea.  I think
-> I would much rather have the write complete shortly after the readonly
-> transition, if I had to choose...
-  Well, my opinion is that VFS should take care about the rw->ro transition
-so that it isn't racy...
 
-> I haven't looked at these paths at all but just hand-wavily,
-> remount,ro should follow pretty much the same path as freeze,
-> I think.  And if freeze isn't getting everything on-disk we have
-> an even bigger problem.
-  With freeze you can still keep dirty data in cache until the filesystem
-unfreezes so it's a different situation from rw->ro transition.
+I've changed the commit message to read:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+jbd2: clean up an assertion in jbd2_journal_commit_transaction()
+
+commit_transaction has the same value as journal->j_running_transaction,
+so we can simplify the assert statement.
+
+This is a pretty simple patch, but I wanted to give you credit, so I
+assumed that you had meant to add a Signed-off-by: line but just
+forgot.  Please let me know if this was not your intention!
+
+	 	       	       	    - Ted
