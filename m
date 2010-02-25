@@ -1,83 +1,88 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH] fix dblist size accounting (was Re: Invalid superblock after
- e2fsck)
-Date: Thu, 25 Feb 2010 11:05:48 -0700
-Message-ID: <392E3076-B50A-48D7-A4D3-8E03F7AE4574@sun.com>
-References: <1266753077.6554.24.camel@x61s> <4B82EEA9.8050402@redhat.com>
- <76957c4508f13d87ccfd919d88399180@localhost> <4B83F137.8030600@redhat.com>
- <1266945068.5772.19.camel@x61s>
+From: Nikola Ciprich <extmaillist@linuxbox.cz>
+Subject: 2.6.32.9 ext4 related hangups?
+Date: Thu, 25 Feb 2010 19:37:11 +0100
+Message-ID: <20100225183711.GE30897@develbox.linuxbox.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_ltXp2f2Ij+yfC+1nRBiR1g)"
-Cc: Eric Sandeen <sandeen@redhat.com>, ext3-users@redhat.com,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: =?ISO-8859-1?Q?Albert_Sellar=E8s?= <whats@wekk.net>,
-	"Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: nikola.ciprich@linuxbox.cz
+To: ext4 devel list <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58298 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933187Ab0BYSFx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Feb 2010 13:05:53 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o1PI5mPb016660
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Feb 2010 10:05:53 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KYE00200SE18Z00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
- 25 Feb 2010 10:05:48 -0800 (PST)
-In-reply-to: <1266945068.5772.19.camel@x61s>
+Received: from gwu.lbox.cz ([62.245.111.132]:60082 "EHLO gwu.lbox.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932838Ab0BYSgl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Feb 2010 13:36:41 -0500
+Received: from linuxbox.linuxbox.cz (server.linuxbox.cz [10.76.66.10])
+	by gwu.lbox.cz (Sendmail) with ESMTP id o1PIadCN026420
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Feb 2010 19:36:39 +0100
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
+after lots of NFS related troubles, 2.6.32 seems to finally to get to usable
+state for me. since 2.6.32.9-rc1, it works much better, but we're still getting
+occasional hangups, and following traces:
 
---Boundary_(ID_ltXp2f2Ij+yfC+1nRBiR1g)
-Content-type: text/plain; delsp=yes; format=flowed; charset=ISO-8859-1
-Content-transfer-encoding: QUOTED-PRINTABLE
+[109921.032043] INFO: task jbd2/dm-7-8:4338 blocked for more than 120 seconds.
+[109921.032048] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[109921.032052] jbd2/dm-7-8   D ffff880001e13940     0  4338      2 0x00000080
+[109921.032059]  ffff880071ddbce0 0000000000000046 ffff880071ddbca8 ffffffff8106e9a5
+[109921.032066]  ffff880000000000 ffff880071f1a7e0 ffff880071f1a720 ffff88007ac7a720
+[109921.032073]  ffff880071f1aad8 ffff880071c0e230 0000000101a1aca0 ffffffff00000002
+[109921.032080] Call Trace:
+[109921.032091]  [<ffffffff8106e9a5>] ? prepare_to_wait+0x25/0x80
+[109921.032104]  [<ffffffffa05f6c1a>] jbd2_journal_commit_transaction+0x1ea/0x1890 [jbd2]
+[109921.032111]  [<ffffffff8105e036>] ? lock_timer_base+0x36/0x70
+[109921.032134]  [<ffffffff8106e770>] ? autoremove_wake_function+0x0/0x40
+[109921.032140]  [<ffffffff8105e0b4>] ? try_to_del_timer_sync+0x44/0x100
+[109921.032150]  [<ffffffffa05fdbea>] kjournald2+0xba/0x240 [jbd2]
+[109921.032154]  [<ffffffff8106e770>] ? autoremove_wake_function+0x0/0x40
+[109921.032163]  [<ffffffffa05fdb30>] ? kjournald2+0x0/0x240 [jbd2]
+[109921.032167]  [<ffffffff8106e62e>] kthread+0x8e/0xa0
+[109921.032173]  [<ffffffff8100c35a>] child_rip+0xa/0x20
+[109921.032178]  [<ffffffff8106e5a0>] ? kthread+0x0/0xa0
+[109921.032182]  [<ffffffff8100c350>] ? child_rip+0x0/0x20
+[109921.032186] no locks held by jbd2/dm-7-8/4338.
+[260041.032035] INFO: task jbd2/dm-7-8:4338 blocked for more than 120 seconds.
+[260041.032040] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[260041.032044] jbd2/dm-7-8   D ffff880028db0c00     0  4338      2 0x00000080
+[260041.032051]  ffff880071ddbce0 0000000000000046 0000000000000000 ffffffff8106e9a5
+[260041.032058]  ffff880000000000 ffff880071f1a7e0 ffff880071f1a720 ffff88007f8ace40
+[260041.032065]  ffff880071f1aad8 ffff880071c0e230 0000000103de36f0 0000000000000002
+[260041.032072] Call Trace:
+[260041.032083]  [<ffffffff8106e9a5>] ? prepare_to_wait+0x25/0x80
+[260041.032096]  [<ffffffffa05f6c1a>] jbd2_journal_commit_transaction+0x1ea/0x1890 [jbd2]
+[260041.032103]  [<ffffffff8105e036>] ? lock_timer_base+0x36/0x70
+[260041.032108]  [<ffffffff8106e770>] ? autoremove_wake_function+0x0/0x40
+[260041.032114]  [<ffffffff8105e0b4>] ? try_to_del_timer_sync+0x44/0x100
+[260041.032123]  [<ffffffffa05fdbea>] kjournald2+0xba/0x240 [jbd2]
+[260041.032128]  [<ffffffff8106e770>] ? autoremove_wake_function+0x0/0x40
+[260041.032136]  [<ffffffffa05fdb30>] ? kjournald2+0x0/0x240 [jbd2]
+[260041.032141]  [<ffffffff8106e62e>] kthread+0x8e/0xa0
+[260041.032147]  [<ffffffff8100c35a>] child_rip+0xa/0x20
+[260041.032152]  [<ffffffff8106e5a0>] ? kthread+0x0/0xa0
+[260041.032156]  [<ffffffff8100c350>] ? child_rip+0x0/0x20
+[260041.032160] no locks held by jbd2/dm-7-8/4338.
 
-On 2010-02-23, at 10:11, Albert Sellar=E8s wrote:
-> I already tried to check the filesystem with last e2fsprogs version
-> (1.41.10) but with this version I did get a segfault.
->
-> I opened a bug with all the information [1]
->
-> Thank you!
->
-> [1]
-> http://sourceforge.net/tracker/?func=3Ddetail&aid=3D2956459&group_i=
-d=3D2406&atid=3D102406
+Seems to me that it's either ext4, or jbd2 related.
+Any opinions somebody?
+thanks a lot in advance
+br
+nik
 
-I'm not sure if it is related, but I noticed that the above bug is =
-=20
-segfaulting in ext2fs_add_dir_block(), and I have a patch in my tree =
-=20
-that fixes the block dblist accounting in the case that realloc() =
-=20
-fails its allocation.  I'm just in the process of sending out all of =
-=20
-the patches I've accumulated, so I may as well send this one now.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+-- 
+-------------------------------------
+Ing. Nikola CIPRICH
+LinuxBox.cz, s.r.o.
+28. rijna 168, 709 01 Ostrava
 
---Boundary_(ID_ltXp2f2Ij+yfC+1nRBiR1g)
-Content-type: application/octet-stream; name=e2fsprogs-dblist.patch;
- x-unix-mode=0644
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=e2fsprogs-dblist.patch
+tel.:   +420 596 603 142
+fax:    +420 596 621 273
+mobil:  +420 777 093 799
+www.linuxbox.cz
 
-Rml4IGRibGlzdCBzaXplIGFjY291bnRpbmcgaW4gdGhlIGNhc2Ugd2hlcmUgZXh0
-MmZzX3Jlc2l6ZV9tZW0oKSBmYWlscw0KdG8gYWxsb2NhdGUgYSBsYXJnZXIgYnVm
-ZmVyLg0KDQpJbmRleDogZTJmc3Byb2dzLTEuNDEuMTAvbGliL2V4dDJmcy9kYmxp
-c3QuYw0KPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0tIGUyZnNwcm9ncy0xLjQxLjEw
-Lm9yaWcvbGliL2V4dDJmcy9kYmxpc3QuYw0KKysrIGUyZnNwcm9ncy0xLjQxLjEw
-L2xpYi9leHQyZnMvZGJsaXN0LmMNCkBAIC0xNjksNyArMTY5LDcgQEAgZXJyY29k
-ZV90IGV4dDJmc19hZGRfZGlyX2Jsb2NrKGV4dDJfZGJsaQ0KIAkJCQkJICAgc2l6
-ZW9mKHN0cnVjdCBleHQyX2RiX2VudHJ5KSwNCiAJCQkJCSAgICZkYmxpc3QtPmxp
-c3QpOw0KIAkJaWYgKHJldHZhbCkgew0KLQkJCWRibGlzdC0+c2l6ZSAtPSAxMDA7
-DQorCQkJZGJsaXN0LT5zaXplID0gb2xkX3NpemUgLyBzaXplb2Yoc3RydWN0IGV4
-dDJfZGJfZW50cnkpOw0KIAkJCXJldHVybiByZXR2YWw7DQogCQl9DQogCX0NCg==
-
---Boundary_(ID_ltXp2f2Ij+yfC+1nRBiR1g)--
+mobil servis: +420 737 238 656
+email servis: servis@linuxbox.cz
+-------------------------------------
