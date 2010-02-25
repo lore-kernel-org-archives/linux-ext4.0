@@ -1,61 +1,66 @@
-From: =?GB2312?B?tqG2qLuq?= <dingdinghua85@gmail.com>
-Subject: Re: [PATCH 1/2] Jbd: fix an assertion, jh->b_transaction should be
-Date: Thu, 25 Feb 2010 09:11:12 +0800
-Message-ID: <7bb361261002241711g7174c9aiaf6b5852e6b21ffa@mail.gmail.com>
-References: <1264391104-10950-1-git-send-email-dingdinghua@nrchpc.ac.cn>
-	 <1264391104-10950-2-git-send-email-dingdinghua@nrchpc.ac.cn>
-	 <20100224171215.GH5166@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15391] New: EXT4_USE_FOR_EXT23 causes ext4 partition to be
+ mounted as ext2
+Date: Thu, 25 Feb 2010 03:05:29 GMT
+Message-ID: <bug-15391-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.26]:54692 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758640Ab0BYBLN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Feb 2010 20:11:13 -0500
-Received: by qw-out-2122.google.com with SMTP id 8so1051156qwh.37
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2010 17:11:12 -0800 (PST)
-In-Reply-To: <20100224171215.GH5166@thunk.org>
+Received: from demeter.kernel.org ([140.211.167.39]:51013 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758729Ab0BYDFa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Feb 2010 22:05:30 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o1P35TfL015960
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Feb 2010 03:05:29 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks a lot. I forgot the comment and the sign-off issue.
+http://bugzilla.kernel.org/show_bug.cgi?id=15391
 
-2010/2/25  <tytso@mit.edu>:
-> On Mon, Jan 25, 2010 at 11:45:03AM +0800, dingdinghua wrote:
->> ---
->>  fs/jbd/commit.c |    3 +--
->>  1 files changed, 1 insertions(+), 2 deletions(-)
->>
->
-> I've changed the commit message to read:
->
-> jbd2: clean up an assertion in jbd2_journal_commit_transaction()
->
-> commit_transaction has the same value as journal->j_running_transacti=
-on,
-> so we can simplify the assert statement.
->
-> This is a pretty simple patch, but I wanted to give you credit, so I
-> assumed that you had meant to add a Signed-off-by: line but just
-> forgot.  Please let me know if this was not your intention!
->
->                                    - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+           Summary: EXT4_USE_FOR_EXT23 causes ext4 partition to be mounted
+                    as ext2
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: alecm@gmx.com
+        Regression: No
 
 
+After setting "Use ext4 for ext2/ext3 file systems" and rebooting, my root
+filesystem gets mounted as ext2. When the option is disabled, everything works
+as expected.
 
---=20
-=B6=A1=B6=A8=BB=AA
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Here are some relevant output:
+
+$ grep ext[24] /etc/fstab
+/dev/sda1       /boot  ext2    noauto,noatime      1 2
+/dev/sda5       /      ext4    noatime             0 1
+
+$ mount | grep ext[24]
+/dev/root on / type ext2 (rw,noatime,barrier=1,data=ordered)
+/dev/sda1 on /boot type ext2 (rw,noatime)
+
+$ dmesg | grep -i ext[24]
+EXT4-fs (sda5): mounted filesystem with ordered data mode
+VFS: Mounted root (ext2 filesystem) readonly on device 259:131072.
+EXT4-fs (sda1): mounted filesystem without journal
+
+$ uname -a
+Linux tux 2.6.33 #1 SMP PREEMPT Wed Feb 24 16:00:09 EST 2010 x86_64 Intel(R)
+Core(TM)2 CPU T5300 @ 1.73GHz GenuineIntel GNU/Linux
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
