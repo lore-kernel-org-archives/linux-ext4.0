@@ -1,96 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [ext3] Changes to block device after an ext3 mount point has
- been remounted readonly
-Date: Wed, 24 Feb 2010 22:36:17 +0100
-Message-ID: <20100224213617.GA3097@quack.suse.cz>
-References: <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
- <20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
- <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
- <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
- <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
- <20100223135531.GA7699@atrey.karlin.mff.cuni.cz>
- <877hq2tyg8.fsf@openvz.org>
- <4B855A97.4010702@redhat.com>
- <20100224170506.GN3687@quack.suse.cz>
- <87eikao896.fsf@openvz.org>
+From: =?GB2312?B?tqG2qLuq?= <dingdinghua85@gmail.com>
+Subject: Re: [PATCH 1/2] Jbd: fix an assertion, jh->b_transaction should be
+Date: Thu, 25 Feb 2010 09:11:12 +0800
+Message-ID: <7bb361261002241711g7174c9aiaf6b5852e6b21ffa@mail.gmail.com>
+References: <1264391104-10950-1-git-send-email-dingdinghua@nrchpc.ac.cn>
+	 <1264391104-10950-2-git-send-email-dingdinghua@nrchpc.ac.cn>
+	 <20100224171215.GH5166@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Camille Moncelier <pix@devlife.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <87eikao896.fsf@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from qw-out-2122.google.com ([74.125.92.26]:54692 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758640Ab0BYBLN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Feb 2010 20:11:13 -0500
+Received: by qw-out-2122.google.com with SMTP id 8so1051156qwh.37
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2010 17:11:12 -0800 (PST)
+In-Reply-To: <20100224171215.GH5166@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 24-02-10 20:26:13, Dmitry Monakhov wrote:
-> Jan Kara <jack@suse.cz> writes:
-> > On Wed 24-02-10 10:57:59, Eric Sandeen wrote:
-> >> Dmitry Monakhov wrote:
-> >> > Jan Kara <jack@suse.cz> writes:
-> >> >>> The fact is that I've been able to reproduce the problem on LVM block
-> >> >>> devices, and sd* block devices so it's definitely not a loop device
-> >> >>> specific problem.
-> >> >>>
-> >> >>> By the way, I tried several other things other than "echo s
-> >> >>>> /proc/sysrq_trigger" I tried multiple sync followed with a one minute
-> >> >>> "sleep",
-> >> >>>
-> >> >>> "echo 3 >/proc/sys/vm/drop_caches" seems to lower the chances of "hash
-> >> >>> changes" but doesn't stops them.
-> >> >>   Strange. When I use sync(1) in your script and use /dev/sda5 instead of a
-> >> >> /dev/loop0, I cannot reproduce the problem (was running the script for
-> >> >> something like an hour).
-> >> > Theoretically some pages may exist after rw=>ro remount
-> >> > because of generic race between write/sync, And they will be written
-> >> > in by writepage if page already has buffers. This not happen in ext4
-> >> > because. Each time it try to perform writepages it try to start_journal
-> >> > and this result in EROFS.
-> >> > The race bug will be closed some day but new one may appear again.
-> >> > 
-> >> > Let's be honest and change ext3 writepage like follows:
-> >> > - check ROFS flag inside write page
-> >> > - dump writepage's errors.
-> >> > 
-> >> > 
-> >> 
-> >> sounds like the wrong approach to me, we really need to fix the root
-> >> cause and make remount,ro finish the job, I think.
-> Off course, but still. This is just a sanity check. Similar check
-> in ext4 help me to find the generic issue. Off course it have to
-> be guarded by unlikely() statement.
-  Well I think that something like
+Thanks a lot. I forgot the comment and the sign-off issue.
 
-  WARN_ON_ONCE(IS_RDONLY(inode));
+2010/2/25  <tytso@mit.edu>:
+> On Mon, Jan 25, 2010 at 11:45:03AM +0800, dingdinghua wrote:
+>> ---
+>>  fs/jbd/commit.c |    3 +--
+>>  1 files changed, 1 insertions(+), 2 deletions(-)
+>>
+>
+> I've changed the commit message to read:
+>
+> jbd2: clean up an assertion in jbd2_journal_commit_transaction()
+>
+> commit_transaction has the same value as journal->j_running_transacti=
+on,
+> so we can simplify the assert statement.
+>
+> This is a pretty simple patch, but I wanted to give you credit, so I
+> assumed that you had meant to add a Signed-off-by: line but just
+> forgot.  Please let me know if this was not your intention!
+>
+>                                    - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-  in the beginning of every ext3 writepage implementation would be totally
-sufficient for catching such bugs. Plus it has the advantage that it won't
-loose user's data if possible. So I'll take patch in this direction.
 
-> >> Throwing away writes which an application already thinks are completed
-> >> just because remount,ro didn't keep up sounds like a bad idea.  I think
-> >> I would much rather have the write complete shortly after the readonly
-> >> transition, if I had to choose...
-> >   Well, my opinion is that VFS should take care about the rw->ro transition
-> > so that it isn't racy...
-> No, My patch just try to nail the RO semantics in to writepage.
-> Since other places are already guarded by start_journal, writepage is
-> the only one which may has weakness.
-> About ENOSPC/EDQUOT spam. It may be not bad to print a error message
-> for crazy person who use mmap for space file.
-  I'm sorry but I disagree. We set the error in the mapping and return the
-error in case user calls fsync() on the file. Now I agree that most
-applications will just miss that but that's no excuse for us writing such
-messages in the system log. The user just got what he told the system to
-do.
-  And yes, we could be nicer to applications by making sure at page-fault
-time that we have space for the mmaped write. I actually have patches for
-that but they are stuck in the queue behind Nick's
-truncate-calling-sequence rewrite.
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
+--=20
+=B6=A1=B6=A8=BB=AA
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
