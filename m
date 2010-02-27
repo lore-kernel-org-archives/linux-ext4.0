@@ -1,7 +1,7 @@
 From: "Jayson R. King" <dev@jaysonking.com>
-Subject: [03/11] ext4: Make sure all the block allocation paths reserve blocks
-Date: Sat, 27 Feb 2010 00:32:26 -0600
-Message-ID: <4B88BC7A.4020005@jaysonking.com>
+Subject: [09/11] vfs: Add no_nrwrite_index_update writeback control flag
+Date: Sat, 27 Feb 2010 00:33:15 -0600
+Message-ID: <4B88BCAB.7000205@jaysonking.com>
 References: <4B88BA1B.4050500@jaysonking.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -15,220 +15,91 @@ To: LKML <linux-kernel@vger.kernel.org>,
 	Stable team <stable@kernel.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bosmailout07.eigbox.net ([66.96.187.7]:50444 "EHLO
+Received: from bosmailout07.eigbox.net ([66.96.187.7]:48415 "EHLO
 	bosmailout07.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967882Ab0B0HXN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:23:13 -0500
+	with ESMTP id S967854Ab0B0HXj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:23:39 -0500
 In-Reply-To: <4B88BA1B.4050500@jaysonking.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Thu Oct 9 10:56:23 2008 -0400
-Subject: ext4: Make sure all the block allocation paths reserve blocks
+Date: Thu Oct 16 10:09:17 2008 -0400
+Subject: vfs: Add no_nrwrite_index_update writeback control flag
 
-commit a30d542a0035b886ffaafd0057ced0a2b28c3a4f upstream.
+commit 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 upstream.
 
-With delayed allocation we need to make sure block are reserved before
-we attempt to allocate them. Otherwise we get block allocation failure
-(ENOSPC) during writepages which cannot be handled. This would mean
-silent data loss (We do a printk stating data will be lost). This patch
-updates the DIO and fallocate code path to do block reservation before
-block allocation. This is needed to make sure parallel DIO and fallocate
-request doesn't take block out of delayed reserve space.
-
-When free blocks count go below a threshold we switch to a slow patch
-which looks at other CPU's accumulated percpu counter values.
+If no_nrwrite_index_update is set we don't update nr_to_write and
+address space writeback_index in write_cache_pages.  This change
+enables a file system to skip these updates in write_cache_pages and do
+them in the writepages() callback.  This patch will be followed by an
+ext4 patch that make use of these new flags.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-fsdevel@vger.kernel.org
+[dev@jaysonking.com: Modified the patch to account for subsequent changes in mainline being cherry-picked earlier for 2.6.27.y.]
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 
 ---
- fs/ext4/balloc.c  |   58 +++++++++++++++++++++++++++++++-------------
- fs/ext4/ext4.h    |   13 +++++++++
- fs/ext4/inode.c   |    5 ---
- fs/ext4/mballoc.c |   23 +++++++++--------
- 4 files changed, 69 insertions(+), 30 deletions(-)
+ include/linux/writeback.h |    9 +++++++++
+ mm/page-writeback.c       |   14 +++++++++-----
+ 2 files changed, 18 insertions(+), 5 deletions(-)
 
-diff -urNp linux-2.6.27.orig/fs/ext4/balloc.c linux-2.6.27/fs/ext4/balloc.c
---- linux-2.6.27.orig/fs/ext4/balloc.c	2010-02-26 14:19:37.651252924 -0600
-+++ linux-2.6.27/fs/ext4/balloc.c	2010-02-26 14:20:04.172252779 -0600
-@@ -1754,6 +1754,32 @@ out:
+diff -urNp linux-2.6.27.orig/include/linux/writeback.h linux-2.6.27/include/linux/writeback.h
+--- linux-2.6.27.orig/include/linux/writeback.h	2010-02-26 14:26:43.084252730 -0600
++++ linux-2.6.27/include/linux/writeback.h	2010-02-26 14:26:48.468252521 -0600
+@@ -62,6 +62,15 @@ struct writeback_control {
+ 	unsigned for_writepages:1;	/* This is a writepages() call */
+ 	unsigned range_cyclic:1;	/* range_start is cyclic */
+ 	unsigned more_io:1;		/* more io to be dispatched */
++	/*
++	 * write_cache_pages() won't update wbc->nr_to_write and
++	 * mapping->writeback_index if no_nrwrite_index_update
++	 * is set.  write_cache_pages() may write more than we
++	 * requested and we want to make sure nr_to_write and
++	 * writeback_index are updated in a consistent manner
++	 * so we use a single control to update them
++	 */
++	unsigned no_nrwrite_index_update:1;
+ };
+ 
+ /*
+diff -urNp linux-2.6.27.orig/mm/page-writeback.c linux-2.6.27/mm/page-writeback.c
+--- linux-2.6.27.orig/mm/page-writeback.c	2010-02-26 14:26:43.085252646 -0600
++++ linux-2.6.27/mm/page-writeback.c	2010-02-26 14:26:48.469252852 -0600
+@@ -878,6 +878,7 @@ int write_cache_pages(struct address_spa
+ 	pgoff_t done_index;
+ 	int cycled;
+ 	int range_whole = 0;
++	long nr_to_write = wbc->nr_to_write;
+ 
+ 	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 		wbc->encountered_congestion = 1;
+@@ -985,9 +986,9 @@ continue_unlock:
+ 				}
+  			}
+ 
+-			if (wbc->nr_to_write > 0) {
+-				wbc->nr_to_write--;
+-				if (wbc->nr_to_write == 0 &&
++			if (nr_to_write > 0) {
++				nr_to_write--;
++				if (nr_to_write == 0 &&
+ 				    wbc->sync_mode == WB_SYNC_NONE) {
+ 					/*
+ 					 * We stop writing back only if we are
+@@ -1024,8 +1025,11 @@ continue_unlock:
+ 		end = writeback_index - 1;
+ 		goto retry;
+ 	}
+-	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+-		mapping->writeback_index = done_index;
++	if (!wbc->no_nrwrite_index_update) {
++		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
++			mapping->writeback_index = done_index;
++		wbc->nr_to_write = nr_to_write;
++	}
+ 
  	return ret;
  }
- 
-+int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-+						ext4_fsblk_t nblocks)
-+{
-+	s64 free_blocks;
-+	ext4_fsblk_t root_blocks = 0;
-+	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
-+
-+	free_blocks = percpu_counter_read(fbc);
-+
-+	if (!capable(CAP_SYS_RESOURCE) &&
-+		sbi->s_resuid != current->fsuid &&
-+		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
-+		root_blocks = ext4_r_blocks_count(sbi->s_es);
-+
-+	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
-+		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
-+
-+	if (free_blocks < (root_blocks + nblocks))
-+		/* we don't have free space */
-+		return -ENOSPC;
-+
-+	/* reduce fs free blocks counter */
-+	percpu_counter_sub(fbc, nblocks);
-+	return 0;
-+}
-+
- /**
-  * ext4_has_free_blocks()
-  * @sbi:	in-core super block structure.
-@@ -1775,18 +1801,17 @@ ext4_fsblk_t ext4_has_free_blocks(struct
- 		sbi->s_resuid != current->fsuid &&
- 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
- 		root_blocks = ext4_r_blocks_count(sbi->s_es);
--#ifdef CONFIG_SMP
--	if (free_blocks - root_blocks < FBC_BATCH)
--		free_blocks =
--			percpu_counter_sum(&sbi->s_freeblocks_counter);
--#endif
-+
-+	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
-+		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
-+
- 	if (free_blocks <= root_blocks)
- 		/* we don't have free space */
- 		return 0;
- 	if (free_blocks - root_blocks < nblocks)
- 		return free_blocks - root_blocks;
- 	return nblocks;
-- }
-+}
- 
- 
- /**
-@@ -1865,14 +1890,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		*count = ext4_has_free_blocks(sbi, *count);
--	}
--	if (*count == 0) {
--		*errp = -ENOSPC;
--		return 0;	/*return with ENOSPC error */
-+		if (ext4_claim_free_blocks(sbi, *count)) {
-+			*errp = -ENOSPC;
-+			return 0;	/*return with ENOSPC error */
-+		}
- 	}
--	num = *count;
--
- 	/*
- 	 * Check quota for allocation of this block.
- 	 */
-@@ -2067,9 +2089,13 @@ allocated:
- 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
- 	spin_unlock(sb_bgl_lock(sbi, group_no));
--	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
--		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
--
-+	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
-+		/*
-+		 * we allocated less blocks than we
-+		 * claimed. Add the difference back.
-+		 */
-+		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
-+	}
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
- 		spin_lock(sb_bgl_lock(sbi, flex_group));
-diff -urNp linux-2.6.27.orig/fs/ext4/ext4.h linux-2.6.27/fs/ext4/ext4.h
---- linux-2.6.27.orig/fs/ext4/ext4.h	2010-02-26 14:10:41.167252303 -0600
-+++ linux-2.6.27/fs/ext4/ext4.h	2010-02-26 14:20:04.172252779 -0600
-@@ -1015,6 +1015,8 @@ extern ext4_fsblk_t ext4_new_blocks(hand
- 					unsigned long *count, int *errp);
- extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp);
-+extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-+						ext4_fsblk_t nblocks);
- extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
- 						ext4_fsblk_t nblocks);
- extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
-@@ -1245,6 +1247,17 @@ do {								\
- 		__ext4_std_error((sb), __func__, (errno));	\
- } while (0)
- 
-+#ifdef CONFIG_SMP
-+/* Each CPU can accumulate FBC_BATCH blocks in their local
-+ * counters. So we need to make sure we have free blocks more
-+ * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
-+ */
-+#define EXT4_FREEBLOCKS_WATERMARK (4 * (FBC_BATCH * nr_cpu_ids))
-+#else
-+#define EXT4_FREEBLOCKS_WATERMARK 0
-+#endif
-+
-+
- /*
-  * Inodes and files operations
-  */
-diff -urNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
---- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:15:33.187252503 -0600
-+++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:20:04.173252623 -0600
-@@ -1564,13 +1564,10 @@ static int ext4_da_reserve_space(struct 
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
- 	total = md_needed + nrblocks;
- 
--	if (ext4_has_free_blocks(sbi, total) < total) {
-+	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		return -ENOSPC;
- 	}
--	/* reduce fs free blocks counter */
--	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
--
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
- 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
- 
-diff -urNp linux-2.6.27.orig/fs/ext4/mballoc.c linux-2.6.27/fs/ext4/mballoc.c
---- linux-2.6.27.orig/fs/ext4/mballoc.c	2010-02-26 14:10:41.169252348 -0600
-+++ linux-2.6.27/fs/ext4/mballoc.c	2010-02-26 14:20:04.174252546 -0600
-@@ -3194,9 +3194,15 @@ ext4_mb_mark_diskspace_used(struct ext4_
- 	 * at write_begin() time for delayed allocation
- 	 * do not double accounting
- 	 */
--	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
--		percpu_counter_sub(&sbi->s_freeblocks_counter,
--					ac->ac_b_ex.fe_len);
-+	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
-+			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
-+		/*
-+		 * we allocated less blocks than we calimed
-+		 * Add the difference back
-+		 */
-+		percpu_counter_add(&sbi->s_freeblocks_counter,
-+				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
-+	}
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
-@@ -4649,14 +4655,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		ar->len = ext4_has_free_blocks(sbi, ar->len);
--	}
--
--	if (ar->len == 0) {
--		*errp = -ENOSPC;
--		return 0;
-+		if (ext4_claim_free_blocks(sbi, ar->len)) {
-+			*errp = -ENOSPC;
-+			return 0;
-+		}
- 	}
