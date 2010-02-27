@@ -1,7 +1,7 @@
 From: "Jayson R. King" <dev@jaysonking.com>
-Subject: [08/11] vfs: Remove the range_cont writeback mode.
-Date: Sat, 27 Feb 2010 00:33:08 -0600
-Message-ID: <4B88BCA4.5040201@jaysonking.com>
+Subject: [03/11] ext4: Make sure all the block allocation paths reserve blocks
+Date: Sat, 27 Feb 2010 00:32:26 -0600
+Message-ID: <4B88BC7A.4020005@jaysonking.com>
 References: <4B88BA1B.4050500@jaysonking.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -15,54 +15,220 @@ To: LKML <linux-kernel@vger.kernel.org>,
 	Stable team <stable@kernel.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bosmailout12.eigbox.net ([66.96.189.12]:44199 "EHLO
-	bosmailout12.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967841Ab0B0HXH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:23:07 -0500
+Received: from bosmailout07.eigbox.net ([66.96.187.7]:50444 "EHLO
+	bosmailout07.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967882Ab0B0HXN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:23:13 -0500
 In-Reply-To: <4B88BA1B.4050500@jaysonking.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Tue Oct 14 09:21:02 2008 -0400
-Subject: vfs: Remove the range_cont writeback mode.
+Date: Thu Oct 9 10:56:23 2008 -0400
+Subject: ext4: Make sure all the block allocation paths reserve blocks
 
-commit 74baaaaec8b4f22e1ae279f5ecca4ff705b28912 upstream.
+commit a30d542a0035b886ffaafd0057ced0a2b28c3a4f upstream.
 
-Ext4 was the only user of range_cont writeback mode and ext4 switched
-to a different method. So remove the range_cont mode which is not used
-in the kernel.
+With delayed allocation we need to make sure block are reserved before
+we attempt to allocate them. Otherwise we get block allocation failure
+(ENOSPC) during writepages which cannot be handled. This would mean
+silent data loss (We do a printk stating data will be lost). This patch
+updates the DIO and fallocate code path to do block reservation before
+block allocation. This is needed to make sure parallel DIO and fallocate
+request doesn't take block out of delayed reserve space.
+
+When free blocks count go below a threshold we switch to a slow patch
+which looks at other CPU's accumulated percpu counter values.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-CC: linux-fsdevel@vger.kernel.org
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 
 ---
- include/linux/writeback.h |    1 -
- mm/page-writeback.c       |    2 --
- 2 files changed, 3 deletions(-)
+ fs/ext4/balloc.c  |   58 +++++++++++++++++++++++++++++++-------------
+ fs/ext4/ext4.h    |   13 +++++++++
+ fs/ext4/inode.c   |    5 ---
+ fs/ext4/mballoc.c |   23 +++++++++--------
+ 4 files changed, 69 insertions(+), 30 deletions(-)
 
-diff -urNp linux-2.6.27.orig/include/linux/writeback.h linux-2.6.27/include/linux/writeback.h
---- linux-2.6.27.orig/include/linux/writeback.h	2010-02-26 14:10:42.106252410 -0600
-+++ linux-2.6.27/include/linux/writeback.h	2010-02-26 14:25:58.868253029 -0600
-@@ -62,7 +62,6 @@ struct writeback_control {
- 	unsigned for_writepages:1;	/* This is a writepages() call */
- 	unsigned range_cyclic:1;	/* range_start is cyclic */
- 	unsigned more_io:1;		/* more io to be dispatched */
--	unsigned range_cont:1;
- };
- 
- /*
-diff -urNp linux-2.6.27.orig/mm/page-writeback.c linux-2.6.27/mm/page-writeback.c
---- linux-2.6.27.orig/mm/page-writeback.c	2010-02-26 14:10:42.197252340 -0600
-+++ linux-2.6.27/mm/page-writeback.c	2010-02-26 14:25:58.869252611 -0600
-@@ -1027,8 +1027,6 @@ continue_unlock:
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		mapping->writeback_index = done_index;
- 
--	if (wbc->range_cont)
--		wbc->range_start = index << PAGE_CACHE_SHIFT;
+diff -urNp linux-2.6.27.orig/fs/ext4/balloc.c linux-2.6.27/fs/ext4/balloc.c
+--- linux-2.6.27.orig/fs/ext4/balloc.c	2010-02-26 14:19:37.651252924 -0600
++++ linux-2.6.27/fs/ext4/balloc.c	2010-02-26 14:20:04.172252779 -0600
+@@ -1754,6 +1754,32 @@ out:
  	return ret;
  }
- EXPORT_SYMBOL(write_cache_pages);
+ 
++int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++						ext4_fsblk_t nblocks)
++{
++	s64 free_blocks;
++	ext4_fsblk_t root_blocks = 0;
++	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++
++	free_blocks = percpu_counter_read(fbc);
++
++	if (!capable(CAP_SYS_RESOURCE) &&
++		sbi->s_resuid != current->fsuid &&
++		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
++		root_blocks = ext4_r_blocks_count(sbi->s_es);
++
++	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
++		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
++
++	if (free_blocks < (root_blocks + nblocks))
++		/* we don't have free space */
++		return -ENOSPC;
++
++	/* reduce fs free blocks counter */
++	percpu_counter_sub(fbc, nblocks);
++	return 0;
++}
++
+ /**
+  * ext4_has_free_blocks()
+  * @sbi:	in-core super block structure.
+@@ -1775,18 +1801,17 @@ ext4_fsblk_t ext4_has_free_blocks(struct
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
+-#ifdef CONFIG_SMP
+-	if (free_blocks - root_blocks < FBC_BATCH)
+-		free_blocks =
+-			percpu_counter_sum(&sbi->s_freeblocks_counter);
+-#endif
++
++	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
++		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
++
+ 	if (free_blocks <= root_blocks)
+ 		/* we don't have free space */
+ 		return 0;
+ 	if (free_blocks - root_blocks < nblocks)
+ 		return free_blocks - root_blocks;
+ 	return nblocks;
+- }
++}
+ 
+ 
+ /**
+@@ -1865,14 +1890,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		*count = ext4_has_free_blocks(sbi, *count);
+-	}
+-	if (*count == 0) {
+-		*errp = -ENOSPC;
+-		return 0;	/*return with ENOSPC error */
++		if (ext4_claim_free_blocks(sbi, *count)) {
++			*errp = -ENOSPC;
++			return 0;	/*return with ENOSPC error */
++		}
+ 	}
+-	num = *count;
+-
+ 	/*
+ 	 * Check quota for allocation of this block.
+ 	 */
+@@ -2067,9 +2089,13 @@ allocated:
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
+-		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+-
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
++		/*
++		 * we allocated less blocks than we
++		 * claimed. Add the difference back.
++		 */
++		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
++	}
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+ 		spin_lock(sb_bgl_lock(sbi, flex_group));
+diff -urNp linux-2.6.27.orig/fs/ext4/ext4.h linux-2.6.27/fs/ext4/ext4.h
+--- linux-2.6.27.orig/fs/ext4/ext4.h	2010-02-26 14:10:41.167252303 -0600
++++ linux-2.6.27/fs/ext4/ext4.h	2010-02-26 14:20:04.172252779 -0600
+@@ -1015,6 +1015,8 @@ extern ext4_fsblk_t ext4_new_blocks(hand
+ 					unsigned long *count, int *errp);
+ extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
++extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++						ext4_fsblk_t nblocks);
+ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks);
+ extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
+@@ -1245,6 +1247,17 @@ do {								\
+ 		__ext4_std_error((sb), __func__, (errno));	\
+ } while (0)
+ 
++#ifdef CONFIG_SMP
++/* Each CPU can accumulate FBC_BATCH blocks in their local
++ * counters. So we need to make sure we have free blocks more
++ * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
++ */
++#define EXT4_FREEBLOCKS_WATERMARK (4 * (FBC_BATCH * nr_cpu_ids))
++#else
++#define EXT4_FREEBLOCKS_WATERMARK 0
++#endif
++
++
+ /*
+  * Inodes and files operations
+  */
+diff -urNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
+--- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:15:33.187252503 -0600
++++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:20:04.173252623 -0600
+@@ -1564,13 +1564,10 @@ static int ext4_da_reserve_space(struct 
+ 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
+ 	total = md_needed + nrblocks;
+ 
+-	if (ext4_has_free_blocks(sbi, total) < total) {
++	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		return -ENOSPC;
+ 	}
+-	/* reduce fs free blocks counter */
+-	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
+-
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+ 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
+ 
+diff -urNp linux-2.6.27.orig/fs/ext4/mballoc.c linux-2.6.27/fs/ext4/mballoc.c
+--- linux-2.6.27.orig/fs/ext4/mballoc.c	2010-02-26 14:10:41.169252348 -0600
++++ linux-2.6.27/fs/ext4/mballoc.c	2010-02-26 14:20:04.174252546 -0600
+@@ -3194,9 +3194,15 @@ ext4_mb_mark_diskspace_used(struct ext4_
+ 	 * at write_begin() time for delayed allocation
+ 	 * do not double accounting
+ 	 */
+-	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+-		percpu_counter_sub(&sbi->s_freeblocks_counter,
+-					ac->ac_b_ex.fe_len);
++	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
++			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
++		/*
++		 * we allocated less blocks than we calimed
++		 * Add the difference back
++		 */
++		percpu_counter_add(&sbi->s_freeblocks_counter,
++				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
++	}
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
+@@ -4649,14 +4655,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		ar->len = ext4_has_free_blocks(sbi, ar->len);
+-	}
+-
+-	if (ar->len == 0) {
+-		*errp = -ENOSPC;
+-		return 0;
++		if (ext4_claim_free_blocks(sbi, ar->len)) {
++			*errp = -ENOSPC;
++			return 0;
++		}
+ 	}
