@@ -1,7 +1,7 @@
 From: "Jayson R. King" <dev@jaysonking.com>
-Subject: [06/11] ext4: Retry block allocation if we have free blocks left
-Date: Sat, 27 Feb 2010 00:32:53 -0600
-Message-ID: <4B88BC95.9080406@jaysonking.com>
+Subject: [07/11] ext4: Use tag dirty lookup during mpage_da_submit_io
+Date: Sat, 27 Feb 2010 00:33:00 -0600
+Message-ID: <4B88BC9C.50502@jaysonking.com>
 References: <4B88BA1B.4050500@jaysonking.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -15,186 +15,102 @@ To: LKML <linux-kernel@vger.kernel.org>,
 	Stable team <stable@kernel.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bosmailout12.eigbox.net ([66.96.189.12]:35195 "EHLO
-	bosmailout12.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754285Ab0B0HWn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:22:43 -0500
+Received: from bosmailout15.eigbox.net ([66.96.187.15]:33922 "EHLO
+	bosmailout15.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967850Ab0B0HWq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:22:46 -0500
 In-Reply-To: <4B88BA1B.4050500@jaysonking.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Mon Sep 8 23:05:34 2008 -0400
-Subject: ext4: Retry block allocation if we have free blocks left
+Date: Tue Oct 14 09:20:19 2008 -0400
+Subject: ext4: Use tag dirty lookup during mpage_da_submit_io
 
-commit df22291ff0fde0d350cf15dac3e5cc33ac528875 upstream.
+commit af6f029d3836eb7264cd3fbb13a6baf0e5fdb5ea upstream.
 
-When we truncate files, the meta-data blocks released are not reused
-untill we commit the truncate transaction.  That means delayed get_block
-request will return ENOSPC even if we have free blocks left.  Force a
-journal commit and retry block allocation if we get ENOSPC with free
-blocks left.
+This enables us to drop the range_cont writeback mode
+use from ext4_da_writepages.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 
 ---
- fs/ext4/inode.c |   81 ++++++++++++++++++++++++++++++++--------------
- 1 file changed, 57 insertions(+), 24 deletions(-)
+ fs/ext4/inode.c |   30 +++++++++++++-----------------
+ 1 file changed, 13 insertions(+), 17 deletions(-)
 
 diff -urNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
---- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:23:46.597252740 -0600
-+++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:24:08.405252691 -0600
-@@ -1661,6 +1661,7 @@ struct mpage_da_data {
- 	struct writeback_control *wbc;
- 	int io_done;
- 	long pages_written;
-+	int retval;
- };
+--- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:24:53.269252744 -0600
++++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:25:01.277252724 -0600
+@@ -1699,17 +1699,23 @@ static int mpage_da_submit_io(struct mpa
  
- /*
-@@ -1858,6 +1859,24 @@ static void ext4_da_block_invalidatepage
- 	return;
- }
+ 	pagevec_init(&pvec, 0);
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		/*
++		 * We can use PAGECACHE_TAG_DIRTY lookup here because
++		 * even though we have cleared the dirty flag on the page
++		 * We still keep the page in the radix tree with tag
++		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
++		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
++		 * which is called via the below writepage callback.
++		 */
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++					PAGECACHE_TAG_DIRTY,
++					min(end - index,
++					(pgoff_t)PAGEVEC_SIZE-1) + 1);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
  
-+static void ext4_print_free_blocks(struct inode *inode)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	printk(KERN_EMERG "Total free blocks count %lld\n",
-+			ext4_count_free_blocks(inode->i_sb));
-+	printk(KERN_EMERG "Free/Dirty block details\n");
-+	printk(KERN_EMERG "free_blocks=%lld\n",
-+			percpu_counter_sum(&sbi->s_freeblocks_counter));
-+	printk(KERN_EMERG "dirty_blocks=%lld\n",
-+			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
-+	printk(KERN_EMERG "Block reservation details\n");
-+	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
-+			EXT4_I(inode)->i_reserved_data_blocks);
-+	printk(KERN_EMERG "i_reserved_meta_blocks=%lu\n",
-+			EXT4_I(inode)->i_reserved_meta_blocks);
-+	return;
-+}
-+
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1872,7 +1891,7 @@ static int  mpage_da_map_blocks(struct m
- 	int err = 0;
- 	struct buffer_head new;
- 	struct buffer_head *lbh = &mpd->lbh;
--	sector_t next = lbh->b_blocknr;
-+	sector_t next;
+-			index = page->index;
+-			if (index > end)
+-				break;
+-			index++;
+-
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
  
- 	/*
- 	 * We consider only non-mapped and non-allocated blocks
-@@ -1882,6 +1901,7 @@ static int  mpage_da_map_blocks(struct m
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
- 	new.b_size = lbh->b_size;
-+	next = lbh->b_blocknr;
- 	/*
- 	 * If we didn't accumulate anything
- 	 * to write simply return
-@@ -1898,6 +1918,13 @@ static int  mpage_da_map_blocks(struct m
- 		 */
- 		if (err == -EAGAIN)
- 			return 0;
-+
-+		if (err == -ENOSPC &&
-+				ext4_count_free_blocks(mpd->inode->i_sb)) {
-+			mpd->retval = err;
-+			return 0;
-+		}
-+
- 		/*
- 		 * get block failure will cause us
- 		 * to loop in writepages. Because
-@@ -1915,8 +1942,7 @@ static int  mpage_da_map_blocks(struct m
- 		printk(KERN_EMERG "This should not happen.!! "
- 					"Data will be lost\n");
- 		if (err == -ENOSPC) {
--			printk(KERN_CRIT "Total free blocks count %lld\n",
--				ext4_count_free_blocks(mpd->inode->i_sb));
-+			ext4_print_free_blocks(mpd->inode);
- 		}
- 		/* invlaidate all the pages */
- 		ext4_da_block_invalidatepages(mpd, next,
-@@ -2141,39 +2167,36 @@ static int __mpage_da_writepage(struct p
-  */
- static int mpage_da_writepages(struct address_space *mapping,
- 			       struct writeback_control *wbc,
--			       get_block_t get_block)
-+			       struct mpage_da_data *mpd)
+@@ -2442,7 +2448,6 @@ static int ext4_da_writepages(struct add
+ 			      struct writeback_control *wbc)
  {
--	struct mpage_da_data mpd;
- 	long to_write;
- 	int ret;
- 
--	if (!get_block)
-+	if (!mpd->get_block)
- 		return generic_writepages(mapping, wbc);
- 
--	mpd.wbc = wbc;
--	mpd.inode = mapping->host;
--	mpd.lbh.b_size = 0;
--	mpd.lbh.b_state = 0;
--	mpd.lbh.b_blocknr = 0;
--	mpd.first_page = 0;
--	mpd.next_page = 0;
--	mpd.get_block = get_block;
--	mpd.io_done = 0;
--	mpd.pages_written = 0;
-+	mpd->lbh.b_size = 0;
-+	mpd->lbh.b_state = 0;
-+	mpd->lbh.b_blocknr = 0;
-+	mpd->first_page = 0;
-+	mpd->next_page = 0;
-+	mpd->io_done = 0;
-+	mpd->pages_written = 0;
-+	mpd->retval = 0;
- 
- 	to_write = wbc->nr_to_write;
- 
--	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
-+	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
- 
- 	/*
- 	 * Handle last extent of pages
- 	 */
--	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--		if (mpage_da_map_blocks(&mpd) == 0)
--			mpage_da_submit_io(&mpd);
-+	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
-+		if (mpage_da_map_blocks(mpd) == 0)
-+			mpage_da_submit_io(mpd);
+ 	handle_t *handle = NULL;
+-	loff_t range_start = 0;
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+@@ -2481,14 +2486,7 @@ static int ext4_da_writepages(struct add
+ 		wbc->nr_to_write = sbi->s_mb_stream_request;
  	}
  
--	wbc->nr_to_write = to_write - mpd.pages_written;
-+	wbc->nr_to_write = to_write - mpd->pages_written;
+-	if (!wbc->range_cyclic)
+-		/*
+-		 * If range_cyclic is not set force range_cont
+-		 * and save the old writeback_index
+-		 */
+-		wbc->range_cont = 1;
+ 
+-	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
+ 
+ 	mpd.wbc = wbc;
+@@ -2559,9 +2557,8 @@ restart_loop:
+ 		wbc->nr_to_write = to_write;
+ 	}
+ 
+-	if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
++	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+ 		/* We skipped pages in this loop */
+-		wbc->range_start = range_start;
+ 		wbc->nr_to_write = to_write +
+ 				wbc->pages_skipped - pages_skipped;
+ 		wbc->pages_skipped = pages_skipped;
+@@ -2570,7 +2567,6 @@ restart_loop:
+ 
+ out_writepages:
+ 	wbc->nr_to_write = to_write - nr_to_writebump;
+-	wbc->range_start = range_start;
  	return ret;
  }
  
-@@ -2420,6 +2443,7 @@ static int ext4_da_writepages(struct add
- {
- 	handle_t *handle = NULL;
- 	loff_t range_start = 0;
-+	struct mpage_da_data mpd;
- 	struct inode *inode = mapping->host;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	long to_write, pages_skipped = 0;
-@@ -2467,6 +2491,9 @@ static int ext4_da_writepages(struct add
- 	range_start =  wbc->range_start;
- 	pages_skipped = wbc->pages_skipped;
- 
-+	mpd.wbc = wbc;
-+	mpd.inode = mapping->host;
-+
- restart_loop:
- 	to_write = wbc->nr_to_write;
- 	while (!ret && to_write > 0) {
-@@ -2502,11 +2529,17 @@ restart_loop:
- 				goto out_writepages;
- 			}
- 		}
