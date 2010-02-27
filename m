@@ -1,42 +1,184 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: EXT4 is ~2X as slow as XFS (593MB/s vs 304MB/s) for writes?
-Date: Fri, 26 Feb 2010 19:28:40 -0600
-Message-ID: <4B887548.50508@redhat.com>
-References: <alpine.DEB.2.00.1002261922010.8247@p34.internal.lan> <4B886CA1.9050906@redhat.com> <alpine.DEB.2.00.1002262006000.8247@p34.internal.lan> <4B887160.2090606@redhat.com>
+From: "Jayson R. King" <dev@jaysonking.com>
+Subject: [01/11] ext4: invalidate pages if delalloc block allocation fails.
+Date: Sat, 27 Feb 2010 00:32:01 -0600
+Message-ID: <4B88BC61.9030704@jaysonking.com>
+References: <4B88BA1B.4050500@jaysonking.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Alan Piszcz <ap@solarrain.com>
-To: Justin Piszcz <jpiszcz@lucidpixels.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4632 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966806Ab0B0B2r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Feb 2010 20:28:47 -0500
-In-Reply-To: <4B887160.2090606@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jayson King <dev@jaysonking.com>
+To: LKML <linux-kernel@vger.kernel.org>,
+	Stable team <stable@kernel.org>,
+	Greg Kroah-Hartman <gregkh@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <4B88BA1B.4050500@jaysonking.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> Justin Piszcz wrote:
-> ...
-> 
->>> Were the filesystems created to align with raid geometry?
->> Only default options were used except the mount options.  If that is the
->> culprit, I have some more testing to do, thanks, will look into it.
->>
->>> mkfs.xfs has done that forever; mkfs.ext4 only will do so (automatically)
->>> with recent kernel+e2fsprogs.
->> How recent?
-> 
-> You're recent enough.  :)
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date: Tue Aug 19 21:08:18 2008 -0400
+Subject: ext4: invalidate pages if delalloc block allocation fails.
 
-Oh, you need very recent util-linux-ng as well, and use libblkid from there
-with:
+commit c4a0c46ec92c194c873232b88debce4e1a448483 upstream.
 
-[e2fsprogs] # ./configure --disable-libblkid
+We are a bit agressive in invalidating all the pages. But
+it is ok because we really don't know why the block allocation
+failed and it is better to come of the writeback path
+so that user can look for more info.
 
-Otherwise you can just feed mkfs.ext4 stripe & stride manually.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jayson R. King <dev@jaysonking.com>
 
--Eric
+---
+ fs/ext4/inode.c |   85 +++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 73 insertions(+), 12 deletions(-)
+
+diff -urNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
+--- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:10:41.168252288 -0600
++++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:14:55.379252600 -0600
+@@ -1821,6 +1821,39 @@ static inline void __unmap_underlying_bl
+ 		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
+ }
+ 
++static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
++					sector_t logical, long blk_cnt)
++{
++	int nr_pages, i;
++	pgoff_t index, end;
++	struct pagevec pvec;
++	struct inode *inode = mpd->inode;
++	struct address_space *mapping = inode->i_mapping;
++
++	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
++	end   = (logical + blk_cnt - 1) >>
++				(PAGE_CACHE_SHIFT - inode->i_blkbits);
++	while (index <= end) {
++		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		if (nr_pages == 0)
++			break;
++		for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
++			index = page->index;
++			if (index > end)
++				break;
++			index++;
++
++			BUG_ON(!PageLocked(page));
++			BUG_ON(PageWriteback(page));
++			block_invalidatepage(page, 0);
++			ClearPageUptodate(page);
++			unlock_page(page);
++		}
++	}
++	return;
++}
++
+ /*
+  * mpage_da_map_blocks - go through given space
+  *
+@@ -1830,7 +1863,7 @@ static inline void __unmap_underlying_bl
+  * The function skips space we know is already mapped to disk blocks.
+  *
+  */
+-static void mpage_da_map_blocks(struct mpage_da_data *mpd)
++static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ {
+ 	int err = 0;
+ 	struct buffer_head *lbh = &mpd->lbh;
+@@ -1841,7 +1874,7 @@ static void mpage_da_map_blocks(struct m
+ 	 * We consider only non-mapped and non-allocated blocks
+ 	 */
+ 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
+-		return;
++		return 0;
+ 
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+@@ -1852,10 +1885,38 @@ static void mpage_da_map_blocks(struct m
+ 	 * to write simply return
+ 	 */
+ 	if (!new.b_size)
+-		return;
++		return 0;
+ 	err = mpd->get_block(mpd->inode, next, &new, 1);
+-	if (err)
+-		return;
++	if (err) {
++
++		/* If get block returns with error
++		 * we simply return. Later writepage
++		 * will redirty the page and writepages
++		 * will find the dirty page again
++		 */
++		if (err == -EAGAIN)
++			return 0;
++		/*
++		 * get block failure will cause us
++		 * to loop in writepages. Because
++		 * a_ops->writepage won't be able to
++		 * make progress. The page will be redirtied
++		 * by writepage and writepages will again
++		 * try to write the same.
++		 */
++		printk(KERN_EMERG "%s block allocation failed for inode %lu "
++				  "at logical offset %llu with max blocks "
++				  "%zd with error %d\n",
++				  __func__, mpd->inode->i_ino,
++				  (unsigned long long)next,
++				  lbh->b_size >> mpd->inode->i_blkbits, err);
++		printk(KERN_EMERG "This should not happen.!! "
++					"Data will be lost\n");
++		/* invlaidate all the pages */
++		ext4_da_block_invalidatepages(mpd, next,
++				lbh->b_size >> mpd->inode->i_blkbits);
++		return err;
++	}
+ 	BUG_ON(new.b_size == 0);
+ 
+ 	if (buffer_new(&new))
+@@ -1868,7 +1929,7 @@ static void mpage_da_map_blocks(struct m
+ 	if (buffer_delay(lbh) || buffer_unwritten(lbh))
+ 		mpage_put_bnr_to_bhs(mpd, next, &new);
+ 
+-	return;
++	return 0;
+ }
+ 
+ #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
+@@ -1937,8 +1998,8 @@ flush_it:
+ 	 * We couldn't merge the block to our extent, so we
+ 	 * need to flush current  extent and start new one
+ 	 */
+-	mpage_da_map_blocks(mpd);
+-	mpage_da_submit_io(mpd);
++	if (mpage_da_map_blocks(mpd) == 0)
++		mpage_da_submit_io(mpd);
+ 	mpd->io_done = 1;
+ 	return;
+ }
+@@ -1980,8 +2041,8 @@ static int __mpage_da_writepage(struct p
+ 		 * and start IO on them using writepage()
+ 		 */
+ 		if (mpd->next_page != mpd->first_page) {
+-			mpage_da_map_blocks(mpd);
+-			mpage_da_submit_io(mpd);
++			if (mpage_da_map_blocks(mpd) == 0)
++				mpage_da_submit_io(mpd);
+ 			/*
+ 			 * skip rest of the page in the page_vec
+ 			 */
+@@ -2102,8 +2163,8 @@ static int mpage_da_writepages(struct ad
+ 	 * Handle last extent of pages
+ 	 */
+ 	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
+-		mpage_da_map_blocks(&mpd);
+-		mpage_da_submit_io(&mpd);
++		if (mpage_da_map_blocks(&mpd) == 0)
++			mpage_da_submit_io(&mpd);
+ 	}
+ 
+ 	wbc->nr_to_write = to_write - mpd.pages_written;
