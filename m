@@ -1,7 +1,7 @@
 From: "Jayson R. King" <dev@jaysonking.com>
-Subject: [01/11] ext4: invalidate pages if delalloc block allocation fails.
-Date: Sat, 27 Feb 2010 00:32:01 -0600
-Message-ID: <4B88BC61.9030704@jaysonking.com>
+Subject: [02/11] percpu counter: clean up percpu_counter_sum_and_set()
+Date: Sat, 27 Feb 2010 00:32:19 -0600
+Message-ID: <4B88BC73.8030900@jaysonking.com>
 References: <4B88BA1B.4050500@jaysonking.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -14,171 +14,111 @@ Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 To: LKML <linux-kernel@vger.kernel.org>,
 	Stable team <stable@kernel.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bosmailout01.eigbox.net ([66.96.188.1]:38433 "EHLO
+	bosmailout01.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753881Ab0B0HV5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:21:57 -0500
 In-Reply-To: <4B88BA1B.4050500@jaysonking.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Tue Aug 19 21:08:18 2008 -0400
-Subject: ext4: invalidate pages if delalloc block allocation fails.
+From: Mingming Cao <cmm@us.ibm.com>
+Date: Thu Oct 9 12:50:59 2008 -0400
+Subject: percpu counter: clean up percpu_counter_sum_and_set()
 
-commit c4a0c46ec92c194c873232b88debce4e1a448483 upstream.
+commit 1f7c14c62ce63805f9574664a6c6de3633d4a354 upstream.
 
-We are a bit agressive in invalidating all the pages. But
-it is ok because we really don't know why the block allocation
-failed and it is better to come of the writeback path
-so that user can look for more info.
+percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
+the former updates the global counter after accounting.  Since we are
+taking the fbc->lock to calculate the precise value of the counter in
+percpu_counter_sum() anyway, it should simply set fbc->count too, as the
+percpu_counter_sum_and_set() does.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+This patch merges these two interfaces into one.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 
 ---
- fs/ext4/inode.c |   85 +++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 73 insertions(+), 12 deletions(-)
+ fs/ext4/balloc.c               |    2 +-
+ include/linux/percpu_counter.h |   12 +++---------
+ lib/percpu_counter.c           |    8 +++-----
+ 3 files changed, 7 insertions(+), 15 deletions(-)
 
-diff -urNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
---- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:10:41.168252288 -0600
-+++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:14:55.379252600 -0600
-@@ -1821,6 +1821,39 @@ static inline void __unmap_underlying_bl
- 		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
- }
+diff -urNp linux-2.6.27.orig/fs/ext4/balloc.c linux-2.6.27/fs/ext4/balloc.c
+--- linux-2.6.27.orig/fs/ext4/balloc.c	2010-02-26 14:10:41.167252303 -0600
++++ linux-2.6.27/fs/ext4/balloc.c	2010-02-26 14:18:30.811252658 -0600
+@@ -1778,7 +1778,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct
+ #ifdef CONFIG_SMP
+ 	if (free_blocks - root_blocks < FBC_BATCH)
+ 		free_blocks =
+-			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
++			percpu_counter_sum(&sbi->s_freeblocks_counter);
+ #endif
+ 	if (free_blocks <= root_blocks)
+ 		/* we don't have free space */
+diff -urNp linux-2.6.27.orig/include/linux/percpu_counter.h linux-2.6.27/include/linux/percpu_counter.h
+--- linux-2.6.27.orig/include/linux/percpu_counter.h	2010-02-26 14:10:41.961252665 -0600
++++ linux-2.6.27/include/linux/percpu_counter.h	2010-02-26 14:18:30.811252658 -0600
+@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
+ void percpu_counter_destroy(struct percpu_counter *fbc);
+ void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
++s64 __percpu_counter_sum(struct percpu_counter *fbc);
  
-+static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
-+					sector_t logical, long blk_cnt)
-+{
-+	int nr_pages, i;
-+	pgoff_t index, end;
-+	struct pagevec pvec;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
-+
-+	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	end   = (logical + blk_cnt - 1) >>
-+				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	while (index <= end) {
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
-+			block_invalidatepage(page, 0);
-+			ClearPageUptodate(page);
-+			unlock_page(page);
-+		}
-+	}
-+	return;
-+}
-+
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1830,7 +1863,7 @@ static inline void __unmap_underlying_bl
-  * The function skips space we know is already mapped to disk blocks.
-  *
-  */
--static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
  {
- 	int err = 0;
- 	struct buffer_head *lbh = &mpd->lbh;
-@@ -1841,7 +1874,7 @@ static void mpage_da_map_blocks(struct m
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
--		return;
-+		return 0;
+@@ -44,19 +44,13 @@ static inline void percpu_counter_add(st
  
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
-@@ -1852,10 +1885,38 @@ static void mpage_da_map_blocks(struct m
- 	 * to write simply return
- 	 */
- 	if (!new.b_size)
--		return;
-+		return 0;
- 	err = mpd->get_block(mpd->inode, next, &new, 1);
--	if (err)
--		return;
-+	if (err) {
-+
-+		/* If get block returns with error
-+		 * we simply return. Later writepage
-+		 * will redirty the page and writepages
-+		 * will find the dirty page again
-+		 */
-+		if (err == -EAGAIN)
-+			return 0;
-+		/*
-+		 * get block failure will cause us
-+		 * to loop in writepages. Because
-+		 * a_ops->writepage won't be able to
-+		 * make progress. The page will be redirtied
-+		 * by writepage and writepages will again
-+		 * try to write the same.
-+		 */
-+		printk(KERN_EMERG "%s block allocation failed for inode %lu "
-+				  "at logical offset %llu with max blocks "
-+				  "%zd with error %d\n",
-+				  __func__, mpd->inode->i_ino,
-+				  (unsigned long long)next,
-+				  lbh->b_size >> mpd->inode->i_blkbits, err);
-+		printk(KERN_EMERG "This should not happen.!! "
-+					"Data will be lost\n");
-+		/* invlaidate all the pages */
-+		ext4_da_block_invalidatepages(mpd, next,
-+				lbh->b_size >> mpd->inode->i_blkbits);
-+		return err;
-+	}
- 	BUG_ON(new.b_size == 0);
- 
- 	if (buffer_new(&new))
-@@ -1868,7 +1929,7 @@ static void mpage_da_map_blocks(struct m
- 	if (buffer_delay(lbh) || buffer_unwritten(lbh))
- 		mpage_put_bnr_to_bhs(mpd, next, &new);
- 
--	return;
-+	return 0;
+ static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+ {
+-	s64 ret = __percpu_counter_sum(fbc, 0);
++	s64 ret = __percpu_counter_sum(fbc);
+ 	return ret < 0 ? 0 : ret;
  }
  
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
-@@ -1937,8 +1998,8 @@ flush_it:
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	mpage_da_map_blocks(mpd);
--	mpage_da_submit_io(mpd);
-+	if (mpage_da_map_blocks(mpd) == 0)
-+		mpage_da_submit_io(mpd);
- 	mpd->io_done = 1;
- 	return;
+-static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
+-{
+-	return __percpu_counter_sum(fbc, 1);
+-}
+-
+-
+ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+ {
+-	return __percpu_counter_sum(fbc, 0);
++	return __percpu_counter_sum(fbc);
  }
-@@ -1980,8 +2041,8 @@ static int __mpage_da_writepage(struct p
- 		 * and start IO on them using writepage()
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			mpage_da_map_blocks(mpd);
--			mpage_da_submit_io(mpd);
-+			if (mpage_da_map_blocks(mpd) == 0)
-+				mpage_da_submit_io(mpd);
- 			/*
- 			 * skip rest of the page in the page_vec
- 			 */
-@@ -2102,8 +2163,8 @@ static int mpage_da_writepages(struct ad
- 	 * Handle last extent of pages
- 	 */
- 	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--		mpage_da_map_blocks(&mpd);
--		mpage_da_submit_io(&mpd);
-+		if (mpage_da_map_blocks(&mpd) == 0)
-+			mpage_da_submit_io(&mpd);
+ 
+ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+diff -urNp linux-2.6.27.orig/lib/percpu_counter.c linux-2.6.27/lib/percpu_counter.c
+--- linux-2.6.27.orig/lib/percpu_counter.c	2010-02-26 14:10:42.176252671 -0600
++++ linux-2.6.27/lib/percpu_counter.c	2010-02-26 14:18:30.811252658 -0600
+@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
+  * Add up all the per-cpu counts, return the result.  This is a more accurate
+  * but much slower version of percpu_counter_read_positive()
+  */
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
++s64 __percpu_counter_sum(struct percpu_counter *fbc)
+ {
+ 	s64 ret;
+ 	int cpu;
+@@ -62,11 +62,9 @@ s64 __percpu_counter_sum(struct percpu_c
+ 	for_each_online_cpu(cpu) {
+ 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+ 		ret += *pcount;
+-		if (set)
+-			*pcount = 0;
++		*pcount = 0;
  	}
+-	if (set)
+-		fbc->count = ret;
++	fbc->count = ret;
  
- 	wbc->nr_to_write = to_write - mpd.pages_written;
+ 	spin_unlock(&fbc->lock);
+ 	return ret;
