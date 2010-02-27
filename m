@@ -1,69 +1,96 @@
-From: "Jayson R. King" <dev@jaysonking.com>
-Subject: [00/11] fix ext4 deadlock on 2.6.27.y
-Date: Sat, 27 Feb 2010 00:22:19 -0600
-Message-ID: <4B88BA1B.4050500@jaysonking.com>
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+Subject: Re: EXT4 is ~2X as slow as XFS (593MB/s vs 304MB/s) for writes?
+Date: Sat, 27 Feb 2010 05:14:50 -0500 (EST)
+Message-ID: <alpine.DEB.2.00.1002270513280.17433@p34.internal.lan>
+References: <alpine.DEB.2.00.1002261922010.8247@p34.internal.lan> <4B886CA1.9050906@redhat.com> <alpine.DEB.2.00.1002262006000.8247@p34.internal.lan> <4B887160.2090606@redhat.com> <4B887548.50508@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jayson King <dev@jaysonking.com>
-To: LKML <linux-kernel@vger.kernel.org>,
-	Stable team <stable@kernel.org>,
-	Greg Kroah-Hartman <gregkh@suse.de>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Alan Piszcz <ap@solarrain.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bosmailout07.eigbox.net ([66.96.187.7]:35167 "EHLO
-	bosmailout07.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967832Ab0B0HZU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:25:20 -0500
+Received: from lucidpixels.com ([75.144.35.66]:35706 "EHLO lucidpixels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S968123Ab0B0KOw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 27 Feb 2010 05:14:52 -0500
+In-Reply-To: <4B887548.50508@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Greetings,
 
-Using the kernel 2.6.27.45 with an ext4 filesystem, the same deadlock as
-was reported earlier in kernel bugzilla #12579 can occur. Simply running
-"dbench 500" on an ext4 filesystem can cause the deadlock in one to two
-minutes.
 
-In later stable kernels, the deadlock was fixed by commit 2acf2c26
-("ext4: Implement range_cyclic in ext4_da_writepages instead of
-write_cache_pages"). I can confirm that the same commit fixes the
-deadlock on 2.6.27.y. However, as the code in ext4_da_writepages is
-different in 2.6.27.y than in later kernels, it was necessary to add
-some other mainline patches before 2acf2c26.
+On Fri, 26 Feb 2010, Eric Sandeen wrote:
 
-Alltogether, I've added 11 mainline patches including 2acf2c26 to my
-local 2.6.27.y kernel, and confirmed that the deadlock is fixed only
-when the patch 2acf2c26 is applied.
+> Eric Sandeen wrote:
+>
+> Oh, you need very recent util-linux-ng as well, and use libblkid from there
+> with:
+>
+> [e2fsprogs] # ./configure --disable-libblkid
+>
+> Otherwise you can just feed mkfs.ext4 stripe & stride manually.
+>
+> -Eric
+>
 
-The 11 patches are:
+Hi,
 
-Aneesh Kumar K.V (10):
-      ext4: invalidate pages if delalloc block allocation fails.
-      ext4: Make sure all the block allocation paths reserve blocks
-      ext4: Add percpu dirty block accounting.
-      ext4: Retry block reservation
-      ext4: Retry block allocation if we have free blocks left
-      ext4: Use tag dirty lookup during mpage_da_submit_io
-      vfs: Remove the range_cont writeback mode.
-      vfs: Add no_nrwrite_index_update writeback control flag
-      ext4: Fix file fragmentation during large file write.
-      ext4: Implement range_cyclic in ext4_da_writepages instead of write_cache_pages
+Even when set, there is still poor performance:
 
-Mingming Cao (1):
-      percpu counter: clean up percpu_counter_sum_and_set()
+http://busybox.net/~aldot/mkfs_stride.html
+Raid Level: 0
+Number of Physical Disks: 11
+RAID chunk size (in KiB): 1024
+number of filesystem blocks (in KiB)
+mkfs.ext4 -b 4096 -E stride=256,stripe-width=2816
 
-All will be posted in a reply to this message, in the order that they apply.
+p63:~# /usr/bin/time mkfs.ext4 -b 4096 -E stride=256,stripe-width=2816 /dev/md0
+mke2fs 1.41.10 (10-Feb-2009)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=256 blocks, Stripe width=2816 blocks
+335765504 inodes, 1343055824 blocks
+67152791 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=4294967296
+40987 block groups
+32768 blocks per group, 32768 fragments per group
+8192 inodes per group
+Superblock backups stored on blocks:
+         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+         102400000, 214990848, 512000000, 550731776, 644972544
 
-I think these patches should be committed to stable 2.6.27.y.
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
 
-Most of these patches applied cleanly to 2.6.27.45 with no changes other
-than some context lines, but two of the patches needed some very slight
-modifications. I'll note the changes that I made to them above my
-signed-off line for each.
+This filesystem will be automatically checked every 38 mounts or
+180 days, whichever comes first.  Use tune2fs -c or -i to override.
+p63:~#
 
-Jayson
+p63:~# mount /dev/md0 /r1 -o nobarrier,data=writeback
+p63:/r1# dd if=/dev/zero of=file bs=1M count=10240
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB) copied, 39.3674 s, 273 MB/s
+p63:/r1#
+
+Still very slow?
+
+Let's try with some optimizations:
+p63:/r1#  mount /dev/md0 /r1 -o noatime,barrier=0,data=writeback,nobh,commit=100,nouser_xattr,nodelalloc,max_batch_time=0^C
+
+Still not anywhere near 500-600MiB/s of XFS:
+p63:/r1# dd if=/dev/zero of=file bs=1M count=10240
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB) copied, 30.4824 s, 352 MB/s
+p63:/r1#
+
+Am I doing something wrong/is there a flag I am missing that will speed it
+up?  Or is this performance for sequential writes on EXT4?
+
+Justin.
 
