@@ -1,9 +1,7 @@
 From: "Jayson R. King" <dev@jaysonking.com>
-Subject: [11/11] ext4: Implement range_cyclic in ext4_da_writepages instead
- of write_cache_pages
-Date: Sat, 27 Feb 2010 00:33:30 -0600
-Message-ID: <4B88BCBA.5050509@jaysonking.com>
-References: <4B88BA1B.4050500@jaysonking.com>
+Subject: [00/11] fix ext4 deadlock on 2.6.27.y
+Date: Sat, 27 Feb 2010 00:22:19 -0600
+Message-ID: <4B88BA1B.4050500@jaysonking.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -16,106 +14,56 @@ To: LKML <linux-kernel@vger.kernel.org>,
 	Stable team <stable@kernel.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bosmailout16.eigbox.net ([66.96.187.16]:33735 "EHLO
-	bosmailout16.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967906Ab0B0HX0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:23:26 -0500
-In-Reply-To: <4B88BA1B.4050500@jaysonking.com>
+Received: from bosmailout07.eigbox.net ([66.96.187.7]:35167 "EHLO
+	bosmailout07.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967832Ab0B0HZU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Feb 2010 02:25:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Sat Feb 14 10:42:58 2009 -0500
-Subject: ext4: Implement range_cyclic in ext4_da_writepages instead of write_cache_pages
+Greetings,
 
-commit 2acf2c261b823d9d9ed954f348b97620297a36b5 upstream.
+Using the kernel 2.6.27.45 with an ext4 filesystem, the same deadlock as
+was reported earlier in kernel bugzilla #12579 can occur. Simply running
+"dbench 500" on an ext4 filesystem can cause the deadlock in one to two
+minutes.
 
-With delayed allocation we lock the page in write_cache_pages() and
-try to build an in memory extent of contiguous blocks.  This is needed
-so that we can get large contiguous blocks request.  If range_cyclic
-mode is enabled, write_cache_pages() will loop back to the 0 index if
-no I/O has been done yet, and try to start writing from the beginning
-of the range.  That causes an attempt to take the page lock of lower
-index page while holding the page lock of higher index page, which can
-cause a dead lock with another writeback thread.
+In later stable kernels, the deadlock was fixed by commit 2acf2c26
+("ext4: Implement range_cyclic in ext4_da_writepages instead of
+write_cache_pages"). I can confirm that the same commit fixes the
+deadlock on 2.6.27.y. However, as the code in ext4_da_writepages is
+different in 2.6.27.y than in later kernels, it was necessary to add
+some other mainline patches before 2acf2c26.
 
-The solution is to implement the range_cyclic behavior in
-ext4_da_writepages() instead.
+Alltogether, I've added 11 mainline patches including 2acf2c26 to my
+local 2.6.27.y kernel, and confirmed that the deadlock is fixed only
+when the patch 2acf2c26 is applied.
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12579
+The 11 patches are:
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Jayson R. King <dev@jaysonking.com>
+Aneesh Kumar K.V (10):
+      ext4: invalidate pages if delalloc block allocation fails.
+      ext4: Make sure all the block allocation paths reserve blocks
+      ext4: Add percpu dirty block accounting.
+      ext4: Retry block reservation
+      ext4: Retry block allocation if we have free blocks left
+      ext4: Use tag dirty lookup during mpage_da_submit_io
+      vfs: Remove the range_cont writeback mode.
+      vfs: Add no_nrwrite_index_update writeback control flag
+      ext4: Fix file fragmentation during large file write.
+      ext4: Implement range_cyclic in ext4_da_writepages instead of write_cache_pages
 
----
- fs/ext4/inode.c |   21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
+Mingming Cao (1):
+      percpu counter: clean up percpu_counter_sum_and_set()
 
-diff -urNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
---- linux-2.6.27.orig/fs/ext4/inode.c	2010-02-26 14:28:11.222252883 -0600
-+++ linux-2.6.27/fs/ext4/inode.c	2010-02-26 14:28:16.190252556 -0600
-@@ -2456,6 +2456,7 @@ static int ext4_da_writepages(struct add
- 	struct inode *inode = mapping->host;
- 	int no_nrwrite_index_update;
- 	long pages_written = 0, pages_skipped;
-+	int range_cyclic, cycled = 1, io_done = 0;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
- 
-@@ -2493,9 +2494,15 @@ static int ext4_da_writepages(struct add
- 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
- 		range_whole = 1;
- 
--	if (wbc->range_cyclic)
-+	range_cyclic = wbc->range_cyclic;
-+	if (wbc->range_cyclic) {
- 		index = mapping->writeback_index;
--	else
-+		if (index)
-+			cycled = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = LLONG_MAX;
-+		wbc->range_cyclic = 0;
-+	} else
- 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
- 
- 	mpd.wbc = wbc;
-@@ -2509,6 +2516,7 @@ static int ext4_da_writepages(struct add
- 	wbc->no_nrwrite_index_update = 1;
- 	pages_skipped = wbc->pages_skipped;
- 
-+retry:
- 	while (!ret && wbc->nr_to_write > 0) {
- 
- 		/*
-@@ -2563,6 +2571,7 @@ static int ext4_da_writepages(struct add
- 			pages_written += mpd.pages_written;
- 			wbc->pages_skipped = pages_skipped;
- 			ret = 0;
-+			io_done = 1;
- 		} else if (wbc->nr_to_write)
- 			/*
- 			 * There is no more writeout needed
-@@ -2571,6 +2580,13 @@ static int ext4_da_writepages(struct add
- 			 */
- 			break;
- 	}
-+	if (!io_done && !cycled) {
-+		cycled = 1;
-+		index = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = mapping->writeback_index - 1;
-+		goto retry;
-+	}
- 	if (pages_skipped != wbc->pages_skipped)
- 		printk(KERN_EMERG "This should not happen leaving %s "
- 				"with nr_to_write = %ld ret = %d\n",
-@@ -2578,6 +2594,7 @@ static int ext4_da_writepages(struct add
- 
- 	/* Update index */
- 	index += pages_written;
-+	wbc->range_cyclic = range_cyclic;
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		/*
- 		 * set the writeback_index so that range_cyclic
+All will be posted in a reply to this message, in the order that they apply.
+
+I think these patches should be committed to stable 2.6.27.y.
+
+Most of these patches applied cleanly to 2.6.27.45 with no changes other
+than some context lines, but two of the patches needed some very slight
+modifications. I'll note the changes that I made to them above my
+signed-off line for each.
+
+Jayson
+
