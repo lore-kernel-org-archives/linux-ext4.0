@@ -1,61 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Bad ext4 sync performance on 16 TB GPT partition
-Date: Fri, 26 Feb 2010 11:49:54 -0600
-Message-ID: <4B8809C2.2000300@redhat.com>
-References: <alpine.LNX.2.00.1002260926140.18232@wong.science-computing.de> <87ljegb4ow.fsf@openvz.org> <alpine.LNX.2.00.1002261546380.18232@wong.science-computing.de>
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+Subject: EXT4 is ~2X as slow as XFS (593MB/s vs 304MB/s) for writes?
+Date: Fri, 26 Feb 2010 19:31:02 -0500 (EST)
+Message-ID: <alpine.DEB.2.00.1002261922010.8247@p34.internal.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Karsten Weiss <K.Weiss@science-computing.de>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: Alan Piszcz <ap@solarrain.com>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54564 "EHLO mx1.redhat.com"
+Received: from lucidpixels.com ([75.144.35.66]:48063 "EHLO lucidpixels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965499Ab0BZRuC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Feb 2010 12:50:02 -0500
-In-Reply-To: <alpine.LNX.2.00.1002261546380.18232@wong.science-computing.de>
+	id S966662Ab0B0AbH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Feb 2010 19:31:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Karsten Weiss wrote:
-> Hi Dmitry!
-> 
-> On Fri, 26 Feb 2010, Dmitry Monakhov wrote:
-> 
+Hello,
 
-...
+Is it possible to 'optimize' ext4 so it is as fast as XFS for writes?
+I see about half the performance as XFS for sequential writes.
 
->>> * I did not try a vanilla kernel so far.
->> IMHO It would be really good to know vanilla kernel's stats.
-> 
-> I did a quick&dirty compilation of vanilla kernel 2.6.33 and repeated the 
-> test:
-> 
-> # /usr/bin/time bash -c "dd if=/dev/zero of=/mnt/large/10GB bs=1M count=10000 && sync"
-> 10000+0 records in
-> 10000+0 records out
-> 10485760000 bytes (10 GB) copied, 50.044 seconds, 210 MB/s
-> 0.01user 13.76system 1:04.75elapsed 21%CPU (0avgtext+0avgdata 6224maxresident)k
-> 0inputs+0outputs (0major+1049minor)pagefaults 0swaps
-> 
-> => The problem shows only with the CentOS / Red Hat 5.4 kernels (including 
-> RH's test kernel 2.6.18-190.el5). Aadmittedly ext4 is only a technology 
-> preview in 5.4...
-> 
-> I've also tried the latest CentOS 5.3 kernel-2.6.18-128.7.1.el5 but 
-> couldn't mount the device (with -t ext4dev).
-> 
-> 2.6.18-164.el5 (the initial CentOS 5.4 kernel) has the bug, too.
-> 
-> I'm willing to test patches if somebody wants to debug the problem.
+I have checked the doc and tried several options, a few of which are shown
+below (I have also tried the commit/journal_async/etc options but none of 
+them get the write speeds anywhere near XFS)?
 
-Ok, that's interesting.  We've not had bona-fide RHEL customers report
-the problem, but then maybe it hasn't been tested this way.
+Sure 'dd' is not a real benchmark, etc, etc, but with 10Gbps between 2 
+hosts I get 550MiB/s+ on reads from EXT4 but only 100-200MiB/s write.
 
-2.6.18-178.el5 and beyond is based on the 2.6.32 codebase for ext4.
+When it was XFS I used to get 400-600MiB/s for writes for the same RAID 
+volume.
 
-Testing generic 2.6.32 might also be interesting as a datapoint,
-if you're willing.
+How do I 'speed' up ext4?  Is it possible?
 
--Eric
+raid0_11 disks: (XFS)
+# /dev/md0        /r1             xfs     noatime         0       1
+p63:/r1# dd if=/dev/zero of=bigfile1 bs=1M count=10240
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB) copied, 18.1021 s, 593 MB/s
+p63:/r1#
+
+raid0_11 disks: (EXT4)
+# /dev/md0        /r1             ext4     noatime         0       1
+# dd if=/dev/zero of=file bs=1M count=10240
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB) copied, 35.3741 s, 304 MB/s
+p63:/r1#
+
+Other tests (ext4)
+p63:~# mount /dev/md0 /r1 -o data=writeback
+p63:~# cd /r1
+p63:/r1# dd if=/dev/zero of=file bs=1M count=10240
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB) copied, 39.8746 s, 269 MB/s
+p63:/r1#
+
+p63:~# mount /dev/md0 /r1 -o data=writeback,nobarrier
+p63:/r1# dd if=/dev/zero of=file bs=1M count=10240
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB) copied, 40.0656 s, 268 MB/s
+
+Justin.
