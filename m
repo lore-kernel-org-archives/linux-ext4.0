@@ -1,85 +1,85 @@
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: Re: mdadm software raid + ext4, capped at ~350MiB/s
- limitation/bug?
-Date: Sat, 27 Feb 2010 16:30:39 -0500 (EST)
-Message-ID: <alpine.DEB.2.00.1002271624480.12663@p34.internal.lan>
-References: <alpine.DEB.2.00.1002270840410.27192@p34.internal.lan> <20100228080100.092c24c2@notabene.brown>
+From: Bill Davidsen <davidsen@tmr.com>
+Subject: Re: mdadm software raid + ext4, capped at ~350MiB/s limitation/bug?
+Date: Sat, 27 Feb 2010 19:09:46 -0500
+Message-ID: <4B89B44A.70005@tmr.com>
+References: <alpine.DEB.2.00.1002270840410.27192@p34.internal.lan> <20100228080100.092c24c2@notabene.brown> <alpine.DEB.2.00.1002271624480.12663@p34.internal.lan>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-kernel@vger.kernel.org, linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Alan Piszcz <ap@solarrain.com>
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20100228080100.092c24c2@notabene.brown>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Neil Brown <neilb@suse.de>, linux-kernel@vger.kernel.org,
+	linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Alan Piszcz <ap@solarrain.com>
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.tmr.com ([64.65.253.246]:47377 "EHLO partygirl.tmr.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030928Ab0B1AJz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 27 Feb 2010 19:09:55 -0500
+In-Reply-To: <alpine.DEB.2.00.1002271624480.12663@p34.internal.lan>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-On Sun, 28 Feb 2010, Neil Brown wrote:
-
-> On Sat, 27 Feb 2010 08:47:48 -0500 (EST)
-> Justin Piszcz <jpiszcz@lucidpixels.com> wrote:
+Justin Piszcz wrote:
 >
->> Hello,
+>
+> On Sun, 28 Feb 2010, Neil Brown wrote:
+>
+>> On Sat, 27 Feb 2010 08:47:48 -0500 (EST)
+>> Justin Piszcz <jpiszcz@lucidpixels.com> wrote:
 >>
->> I have two separate systems and with ext4 I cannot get speeds greater than
->> ~350MiB/s when using ext4 as the filesystem on top of a raid5 or raid0.
->> It appears to be a bug with ext4 (or its just that ext4 is slower for this
->> test)?
+>>> Hello,
+>>>
+>>> I have two separate systems and with ext4 I cannot get speeds 
+>>> greater than
+>>> ~350MiB/s when using ext4 as the filesystem on top of a raid5 or raid0.
+>>> It appears to be a bug with ext4 (or its just that ext4 is slower 
+>>> for this
+>>> test)?
+>>>
+>>> Each system runs 2.6.33 x86_64.
 >>
->> Each system runs 2.6.33 x86_64.
+>> Could be related to the recent implementation of IO barriers in md.
+>> Can you try mounting your filesystem with
+>>   -o barrier=0
+>>
+>> and see how that changes the result.
+>>
+>> NeilBrown
 >
-> Could be related to the recent implementation of IO barriers in md.
-> Can you try mounting your filesystem with
->   -o barrier=0
+> Hi Neil,
 >
-> and see how that changes the result.
+> Thanks for the suggestion, it has been used here:
+> http://lkml.org/lkml/2010/2/27/66
 >
-> NeilBrown
+> Looks like an EXT4 issue as XFS does ~600MiB/s..?
+>
+> Its strange though, on a single hard disk, I get approximately the 
+> same speed for XFS and EXT4, but when it comes to scaling across 
+> multiple disks,
+> in RAID-0 or RAID-5 (tested), there is a performance problem as it hits a
+> performance problem at ~350MiB/s.  I tried multiple chunk sizes but 
+> nothing
+> seemed to made a difference (whether 64KiB or 1024KiB), XFS performs at
+> 500-600MiB/s no matter what and EXT4 does not exceed ~350MiB/s.
+>
+> Is there anyone on any of the lists that gets > 350MiB/s on a mdadm/sw 
+> raid
+> with EXT4?
+>
+> A single raw disk, no partitions:
+> p63:~# dd if=/dev/zero of=/dev/sdm bs=1M count=10240
+> 10240+0 records in
+> 10240+0 records out
+> 10737418240 bytes (11 GB) copied, 92.4249 s, 116 MB/s
 
-Hi Neil,
+I hate to say it, but I don't think this measures anything useful. When 
+I was doing similar things I got great variabilty in my results until I 
+learned about the fdatasync option so you measure the actual speed to 
+the destination and not the disk cache. After that my results were far 
+slower and reproducible.
 
-Thanks for the suggestion, it has been used here:
-http://lkml.org/lkml/2010/2/27/66
+-- 
+Bill Davidsen <davidsen@tmr.com>
+  "We can't solve today's problems by using the same thinking we
+   used in creating them." - Einstein
 
-Looks like an EXT4 issue as XFS does ~600MiB/s..?
-
-Its strange though, on a single hard disk, I get approximately the same 
-speed for XFS and EXT4, but when it comes to scaling across multiple disks,
-in RAID-0 or RAID-5 (tested), there is a performance problem as it hits a
-performance problem at ~350MiB/s.  I tried multiple chunk sizes but nothing
-seemed to made a difference (whether 64KiB or 1024KiB), XFS performs at
-500-600MiB/s no matter what and EXT4 does not exceed ~350MiB/s.
-
-Is there anyone on any of the lists that gets > 350MiB/s on a mdadm/sw raid
-with EXT4?
-
-A single raw disk, no partitions:
-p63:~# dd if=/dev/zero of=/dev/sdm bs=1M count=10240
-10240+0 records in
-10240+0 records out
-10737418240 bytes (11 GB) copied, 92.4249 s, 116 MB/s
-
-A single raw disk formatted with XFS, no partitions:
-p63:~# mkfs.xfs /dev/sdm > /dev/null 2>&1 
-p63:~# mount /dev/sdm -o nobarrier,noatime /r1
-p63:/r1# dd if=/dev/zero of=file bs=1M count=10240
-10240+0 records in
-10240+0 records out
-10737418240 bytes (11 GB) copied, 85.7782 s, 125 MB/s
-
-A single raw disk formatted with EXT4, no partitions:
-p63:~# mkfs.ext4 /dev/sdm > /dev/null 2>&1
-p63:~# mount /dev/sdm -o nobarrier,noatime /r1
-p63:/r1# dd if=/dev/zero of=file bs=1M count=10240
-10737418240 bytes (11 GB) copied, 85.1501 s, 126 MB/s
-p63:/r1#
-
-EXT2 vs. EXT3 vs. EXT4
-http://lkml.org/lkml/2010/2/27/77
-
-XFS tests: (550-600MiB/s)
-http://linux.derkeiler.com/Mailing-Lists/Kernel/2010-02/msg10572.html
-
-Justin.
