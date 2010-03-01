@@ -1,69 +1,51 @@
-From: Karsten Weiss <K.Weiss@science-computing.de>
-Subject: Re: Bad ext4 sync performance on 16 TB GPT partition
-Date: Mon, 1 Mar 2010 09:57:31 +0100 (CET)
-Message-ID: <alpine.LNX.2.00.1003010908360.26560@wong.science-computing.de>
-References: <alpine.LNX.2.00.1002260926140.18232@wong.science-computing.de> <87ljegb4ow.fsf@openvz.org> <alpine.LNX.2.00.1002261546380.18232@wong.science-computing.de> <4B8809C2.2000300@redhat.com>
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+Subject: Re: EXT4 is ~2X as slow as XFS (593MB/s vs 304MB/s) for writes?
+Date: Mon, 1 Mar 2010 04:21:03 -0500 (EST)
+Message-ID: <alpine.DEB.2.00.1003010419090.20072@p34.internal.lan>
+References: <alpine.DEB.2.00.1002261922010.8247@p34.internal.lan> <4B886CA1.9050906@redhat.com> <alpine.DEB.2.00.1002262006000.8247@p34.internal.lan> <4B887160.2090606@redhat.com> <4B887548.50508@redhat.com> <alpine.DEB.2.00.1002270513280.17433@p34.internal.lan>
+ <alpine.DEB.2.00.1002270550330.17433@p34.internal.lan> <alpine.DEB.2.00.1002270607020.17433@p34.internal.lan> <alpine.DEB.2.00.1002270634200.17433@p34.internal.lan> <20100228054240.GE14646@thunk.org> <alpine.DEB.2.00.1002280628550.22822@p34.internal.lan>
+ <832C6227-BF34-43C2-8768-1308C00AB17F@sun.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: tytso@mit.edu, Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Alan Piszcz <ap@solarrain.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.belwue.de ([129.143.2.15]:64698 "EHLO smtp2.belwue.de"
+Received: from lucidpixels.com ([75.144.35.66]:39402 "EHLO lucidpixels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750696Ab0CAJMg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Mar 2010 04:12:36 -0500
-Received: from mx3.science-computing.de (mx3.science-computing.de [193.197.16.20])
-	by smtp2.belwue.de with ESMTP id o218vcVJ008138
-	for <linux-ext4@vger.kernel.org>; Mon, 1 Mar 2010 09:57:39 +0100 (MET)
-	env-from (prvs=6691a5a41=K.Weiss@science-computing.de)
-In-Reply-To: <4B8809C2.2000300@redhat.com>
+	id S1750739Ab0CAJVG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Mar 2010 04:21:06 -0500
+In-Reply-To: <832C6227-BF34-43C2-8768-1308C00AB17F@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric,
 
-On Fri, 26 Feb 2010, Eric Sandeen wrote:
 
-> > => The problem shows only with the CentOS / Red Hat 5.4 kernels (including 
-> > RH's test kernel 2.6.18-190.el5). Aadmittedly ext4 is only a technology 
-> > preview in 5.4...
-> > 
-> > I've also tried the latest CentOS 5.3 kernel-2.6.18-128.7.1.el5 but 
-> > couldn't mount the device (with -t ext4dev).
-> > 
-> > 2.6.18-164.el5 (the initial CentOS 5.4 kernel) has the bug, too.
-> > 
-> > I'm willing to test patches if somebody wants to debug the problem.
-> 
-> Ok, that's interesting.  We've not had bona-fide RHEL customers report
-> the problem, but then maybe it hasn't been tested this way.
+On Mon, 1 Mar 2010, Andreas Dilger wrote:
 
-I think so because, as I mentioned, the issue can be reproduced with the 
-RH test kernel 2.6.18-190.el5 x86_64 (http://people.redhat.com/jwilson/el5/),
-too.
+> On 2010-02-28, at 07:55, Justin Piszcz wrote:
+>> === CREATE RAID-0 WITH 11 DISKS
+>
+>
+> Have you tried testing with "nice" numbers of disks in your RAID set (e.g. 8 
+> disks for RAID-0, 9 for RAID-5, 10 for RAID-6)?  The mballoc code is really 
+> much better tuned for power-of-two sized allocations.
 
-> 2.6.18-178.el5 and beyond is based on the 2.6.32 codebase for ext4.
-> 
-> Testing generic 2.6.32 might also be interesting as a datapoint,
-> if you're willing.
+Hi,
 
-Sorry for the delay, here's the (good) 2.6.32 result:
+Yes, the second system (RAID-5) has 8 disks and it shows the same 
+performance problems with ext4 and not XFS (as shown from previous 
+e-mail), where XFS usually got 500-600MiB/s for writes.
 
-# /usr/bin/time bash -c "dd if=/dev/zero of=/mnt/large/10GB bs=1M count=10000 && sync"
-10000+0 records in
-10000+0 records out
-10485760000 bytes (10 GB) copied, 46.3369 seconds, 226 MB/s
-0.00user 14.17system 0:59.53elapsed 23%CPU (0avgtext+0avgdata 6224maxresident)k
-0inputs+0outputs (0major+1045minor)pagefaults 0swaps
+http://groups.google.com/group/linux.kernel/browse_thread/thread/e7b189bcaa2c1cb4/ad6c2a54b678cf5f?show_docid=ad6c2a54b678cf5f&pli=1
 
-To summarize:
+For the RAID-5 (from earlier testing):  <- This one has 8 disks.
+-o data=writeback,nobarrier: 
+10737418240 bytes (11 GB) copied, 48.7335 s, 220 MB/s 
+-o data=writeback,nobarrier,nodelalloc: 
+10737418240 bytes (11 GB) copied, 30.5425 s, 352 MB/s 
+An increase of 132MiB/s.
 
-Bad:  2.6.18-164.el5 (CentOS)
-Bad:  2.6.18-164.11.1el5 (CentOS)
-Bad:  2.6.18-190.el5 (RH)
-Good: 2.6.32
-Good: 2.6.33
+Justin.
 
--- 
-Karsten Weiss
