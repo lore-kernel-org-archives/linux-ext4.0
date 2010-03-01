@@ -1,69 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Bad ext4 sync performance on 16 TB GPT partition
-Date: Mon, 01 Mar 2010 10:22:06 -0600
-Message-ID: <4B8BE9AE.5080601@redhat.com>
-References: <alpine.LNX.2.00.1002260926140.18232@wong.science-computing.de> <87ljegb4ow.fsf@openvz.org> <alpine.LNX.2.00.1002261546380.18232@wong.science-computing.de> <4B8809C2.2000300@redhat.com> <alpine.LNX.2.00.1003010908360.26560@wong.science-computing.de>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15420] New: EXT4_USE_FOR_EXT23 causes wrong free space
+ calculation on ext2 and ext3
+Date: Mon, 1 Mar 2010 18:18:34 GMT
+Message-ID: <bug-15420-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Karsten Weiss <K.Weiss@science-computing.de>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12722 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750998Ab0CAQWR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Mar 2010 11:22:17 -0500
-In-Reply-To: <alpine.LNX.2.00.1003010908360.26560@wong.science-computing.de>
+Received: from demeter.kernel.org ([140.211.167.39]:34603 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750885Ab0CASSh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Mar 2010 13:18:37 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o21IIYh0026044
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 1 Mar 2010 18:18:35 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Karsten Weiss wrote:
-> Hi Eric,
-> 
-> On Fri, 26 Feb 2010, Eric Sandeen wrote:
-> 
->>> => The problem shows only with the CentOS / Red Hat 5.4 kernels (including 
->>> RH's test kernel 2.6.18-190.el5). Aadmittedly ext4 is only a technology 
->>> preview in 5.4...
->>>
->>> I've also tried the latest CentOS 5.3 kernel-2.6.18-128.7.1.el5 but 
->>> couldn't mount the device (with -t ext4dev).
->>>
->>> 2.6.18-164.el5 (the initial CentOS 5.4 kernel) has the bug, too.
->>>
->>> I'm willing to test patches if somebody wants to debug the problem.
->> Ok, that's interesting.  We've not had bona-fide RHEL customers report
->> the problem, but then maybe it hasn't been tested this way.
-> 
-> I think so because, as I mentioned, the issue can be reproduced with the 
-> RH test kernel 2.6.18-190.el5 x86_64 (http://people.redhat.com/jwilson/el5/),
-> too.
-> 
->> 2.6.18-178.el5 and beyond is based on the 2.6.32 codebase for ext4.
->>
->> Testing generic 2.6.32 might also be interesting as a datapoint,
->> if you're willing.
-> 
-> Sorry for the delay, here's the (good) 2.6.32 result:
-> 
-> # /usr/bin/time bash -c "dd if=/dev/zero of=/mnt/large/10GB bs=1M count=10000 && sync"
-> 10000+0 records in
-> 10000+0 records out
-> 10485760000 bytes (10 GB) copied, 46.3369 seconds, 226 MB/s
-> 0.00user 14.17system 0:59.53elapsed 23%CPU (0avgtext+0avgdata 6224maxresident)k
-> 0inputs+0outputs (0major+1045minor)pagefaults 0swaps
-> 
-> To summarize:
-> 
-> Bad:  2.6.18-164.el5 (CentOS)
-> Bad:  2.6.18-164.11.1el5 (CentOS)
-> Bad:  2.6.18-190.el5 (RH)
-> Good: 2.6.32
-> Good: 2.6.33
-> 
+http://bugzilla.kernel.org/show_bug.cgi?id=15420
 
-Thanks, I'll have to investigate that.  I guess something may have gotten lost
-in translation in the 2.6.32->2.6.18 backport.....
+           Summary: EXT4_USE_FOR_EXT23 causes wrong free space calculation
+                    on ext2 and ext3
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: thomas@archlinux.org
+        Regression: No
 
--Eric
+
+When enabling the EXT4_USE_FOR_EXT23 option in 2.6.33. The free space
+calculation on ext2 and ext3 becomes incorrect. Steps to reproduce:
+
+1) Create ext2 or ext3 file system with mkfs
+2) Mount it on a kernel with EXT4_USE_FOR_EXT23 enabled
+3) Launch "watch -n1 df -h /path/to/mountpoint" in another terminal
+4) Download a file with wget
+
+The "used space" on the ext2/3 will now increase by about 500MB per second.
+Once you stop the download and type "sync" (or wait for a while), the values
+shown for free/used space return to expected values. This is always
+reproducible.
+
+We can reproduce this on x86_32 and x86_64 with the Arch Linux distribution
+kernel, as well as my own personal Core2-optimized 64 Bit kernel.
+
+.config x86_32:
+http://repos.archlinux.org/wsvn/packages/kernel26/trunk/config?rev=70484
+.config x86_64:
+http://repos.archlinux.org/wsvn/packages/kernel26/trunk/config.x86_64?rev=70484
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
