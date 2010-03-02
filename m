@@ -1,42 +1,60 @@
-From: Nic Case <number9652@yahoo.com>
-Subject: Re: [PATCH] mk2fs lazy_journal_init option
-Date: Tue, 2 Mar 2010 11:36:21 -0800 (PST)
-Message-ID: <78588.52120.qm@web43507.mail.sp1.yahoo.com>
-References: <5B7315EF-A0AC-4C57-A0D4-DC0B071F87B8@sun.com>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [ext3] Changes to block device after an ext3 mount point has
+ been remounted readonly
+Date: Tue, 2 Mar 2010 15:10:36 -0800
+Message-ID: <20100302231036.GD11860@mail.oracle.com>
+References: <9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com>
+ <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
+ <20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
+ <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
+ <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
+ <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
+ <20100223135531.GA7699@atrey.karlin.mff.cuni.cz>
+ <877hq2tyg8.fsf@openvz.org>
+ <20100224165646.GL3687@quack.suse.cz>
+ <20100302093431.GB5106@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
+	Camille Moncelier <pix@devlife.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	ext4 development <linux-ext4@vger.kernel.org>,
-	Shuichi Ihara <ihara@sun.com>
-To: Andreas Dilger <adilger@sun.com>
+	viro@zeniv.linux.org.uk
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from n62.bullet.mail.sp1.yahoo.com ([98.136.44.35]:35162 "HELO
-	n62.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751779Ab0CBTgW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Mar 2010 14:36:22 -0500
-In-Reply-To: <5B7315EF-A0AC-4C57-A0D4-DC0B071F87B8@sun.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:34500 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753116Ab0CBXKw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Mar 2010 18:10:52 -0500
+Content-Disposition: inline
+In-Reply-To: <20100302093431.GB5106@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---- On Tue, 2/23/10, Andreas Dilger wrote:
-> I haven't looked at this from a logic POV, but I tested
-> this with a 1GB journal and it ran the same time
-> with/without specifying "-O extents" (10s vs. 650s without
-> this patch).  I also ran our additional e2fsck extents
-> tests without errors, and on a couple of my extent-based
-> filesystems.
+On Tue, Mar 02, 2010 at 10:34:31AM +0100, Christoph Hellwig wrote:
+> No, there is nothing.  We really do need a multi-stage remount read-only
+> process:
+> 
+>  1) stop any writes from userland, that is opening new files writeable
+>  2) stop any periodic writeback from the VM or filesystem-internal
+>  3) write out all filesystem data and metadata
+>  4) mark the filesystem fully read-only
 
-Thanks for testing this patch, but after looking at it again,
-it is clear it is not the right thing to do.  If there are at
-least two levels of the extent tree with more than one entry,
-iterating through with EXTENT_NEXT will return NO_EXTENT before
-reaching the end of the file.  I sent another patch to the ext4
-mailing list (with ext2fs_extent_get in the title) that I believe
-is the right way to fix the problem.
+	If you can code this up in a happily accessible way, we can use
+it in ocfs2 to handle some error cases without puking.  That would make
+us very happy.  Specifically, we haven't yet taken the time to audit how
+we would ensure step (2).
 
-Nic
+Joel
 
+-- 
 
+"Reader, suppose you were and idiot.  And suppose you were a member of
+ Congress.  But I repeat myself."
+	- Mark Twain
 
-      
-
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
