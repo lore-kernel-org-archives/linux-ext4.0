@@ -1,75 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 18/28] ext4: Fix fencepost error in chosing choosing group vs file preallocation.
-Date: Tue,  2 Mar 2010 13:18:35 -0500
-Message-ID: <1267553925-6308-19-git-send-email-tytso@mit.edu>
+Subject: [PATCH 17/28] jbd2: clean up an assertion in jbd2_journal_commit_transaction()
+Date: Tue,  2 Mar 2010 13:18:34 -0500
+Message-ID: <1267553925-6308-18-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Tao Ma <tao.ma@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: dingdinghua <dingdinghua@nrchpc.ac.cn>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43061 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43076 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753402Ab0CBSS4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:56 -0500
+	id S1753408Ab0CBSS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:18:58 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <tao.ma@oracle.com>
+From: dingdinghua <dingdinghua@nrchpc.ac.cn>
 
-The ext4 multiblock allocator decides whether to use group or file
-preallocation based on the file size.  When the file size reaches
-s_mb_stream_request (default is 16 blocks), it changes to use a
-file-specific preallocation. This is cool, but it has a tiny problem.
+commit_transaction has the same value as journal->j_running_transaction,
+so we can simplify the assert statement.
 
-See a simple script:
-mkfs.ext4 -b 1024 /dev/sda8 1000000
-mount -t ext4 -o nodelalloc /dev/sda8 /mnt/ext4
-for((i=0;i<5;i++))
-do
-cat /mnt/4096>>/mnt/ext4/a	#4096 is a file with 4096 characters.
-cat /mnt/4096>>/mnt/ext4/b
-done
-debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
-
-And you get
-BLOCKS:
-(0-14):8705-8719, (15):2356, (16-19):8465-8468
-
-So there are 3 extents, a bit strange for the lonely 15th logical
-block.  As we write to the 16 blocks, we choose file preallocation in
-ext4_mb_group_or_file, but in ext4_mb_normalize_request, we meet with
-the 16*1024 range, so no preallocation will be carried. file b then
-reserves the space after '2356', so when when write 16, we start from
-another part.
-
-This patch just change the check in ext4_mb_group_or_file, so
-that for the lonely 15 we will still use group preallocation.
-After the patch, we will get:
-debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
-BLOCKS:
-(0-15):8705-8720, (16-19):8465-8468
-
-Looks more sane. Thanks.
-
-Signed-off-by: Tao Ma <tao.ma@oracle.com>
+Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/jbd2/commit.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 415e11f..72d5ceb 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3935,7 +3935,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3ee211e..671da7f 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -883,8 +883,7 @@ restart_loop:
+ 		spin_unlock(&journal->j_list_lock);
+ 		bh = jh2bh(jh);
+ 		jbd_lock_bh_state(bh);
+-		J_ASSERT_JH(jh,	jh->b_transaction == commit_transaction ||
+-			jh->b_transaction == journal->j_running_transaction);
++		J_ASSERT_JH(jh,	jh->b_transaction == commit_transaction);
  
- 	/* don't use group allocation for large files */
- 	size = max(size, isize);
--	if (size >= sbi->s_mb_stream_request) {
-+	if (size > sbi->s_mb_stream_request) {
- 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
- 		return;
- 	}
+ 		/*
+ 		 * If there is undo-protected committed data against
 -- 
 1.6.6.1.1.g974db.dirty
 
