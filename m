@@ -1,1213 +1,409 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 09/28] ext4: move __func__ into a macro for ext4_warning, ext4_error
-Date: Tue,  2 Mar 2010 13:18:26 -0500
-Message-ID: <1267553925-6308-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH 24/28] ext4: mechanical change on dio get_block code in prepare for it to be used by buffer write
+Date: Tue,  2 Mar 2010 13:18:41 -0500
+Message-ID: <1267553925-6308-25-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Jiaying Zhang <jiayingz@google.com>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43027 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43044 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753293Ab0CBSSx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:53 -0500
+	id S1753415Ab0CBSSz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:18:55 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+Renaming the dio block allocation flags, variables, and functions
+introduced in Mingming's "Direct IO for holes and fallocate"
+patches so that they can be used by ext4 buffer write as well.
+Also changed the related function comments accordingly to cover
+both direct write and buffer wirte cases.
 
-Just a pet peeve of mine; we had a mishash of calls with either __func__
-or "function_name" and the latter tends to get out of sync.
-
-I think it's easier to just hide the __func__ in a macro, and it'll
-be consistent from then on.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Jiaying Zhang <jiayingz@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c      |   29 +++++---------
- fs/ext4/dir.c         |    4 +-
- fs/ext4/ext4.h        |    7 ++-
- fs/ext4/ext4_jbd2.c   |    2 +-
- fs/ext4/extents.c     |    9 ++--
- fs/ext4/ialloc.c      |   27 ++++---------
- fs/ext4/inode.c       |   43 +++++++++------------
- fs/ext4/mballoc.c     |   27 +++++--------
- fs/ext4/move_extent.c |   12 +++---
- fs/ext4/namei.c       |   51 ++++++++++--------------
- fs/ext4/resize.c      |  102 ++++++++++++++++++------------------------------
- fs/ext4/super.c       |   11 ++---
- fs/ext4/xattr.c       |   32 +++++++---------
- 13 files changed, 146 insertions(+), 210 deletions(-)
+ fs/ext4/ext4.h    |   18 ++++++------
+ fs/ext4/extents.c |   24 +++++++-------
+ fs/ext4/fsync.c   |    2 +-
+ fs/ext4/inode.c   |   84 ++++++++++++++++++++++++-----------------------------
+ fs/ext4/super.c   |    2 +-
+ 5 files changed, 61 insertions(+), 69 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 22bc743..720061a 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -97,8 +97,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		/* If checksum is bad mark all blocks used to prevent allocation
- 		 * essentially implementing a per-group read-only flag. */
- 		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
--			ext4_error(sb, __func__,
--				  "Checksum bad for group %u", block_group);
-+			ext4_error(sb, "Checksum bad for group %u",
-+					block_group);
- 			ext4_free_blks_set(sb, gdp, 0);
- 			ext4_free_inodes_set(sb, gdp, 0);
- 			ext4_itable_unused_set(sb, gdp, 0);
-@@ -210,10 +210,8 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (block_group >= ngroups) {
--		ext4_error(sb, "ext4_get_group_desc",
--			   "block_group >= groups_count - "
--			   "block_group = %u, groups_count = %u",
--			   block_group, ngroups);
-+		ext4_error(sb, "block_group >= groups_count - block_group = %u,"
-+			   " groups_count = %u", block_group, ngroups);
- 
- 		return NULL;
- 	}
-@@ -221,8 +219,7 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 	group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
- 	offset = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
- 	if (!sbi->s_group_desc[group_desc]) {
--		ext4_error(sb, "ext4_get_group_desc",
--			   "Group descriptor not loaded - "
-+		ext4_error(sb, "Group descriptor not loaded - "
- 			   "block_group = %u, group_desc = %u, desc = %u",
- 			   block_group, group_desc, offset);
- 		return NULL;
-@@ -282,9 +279,7 @@ static int ext4_valid_block_bitmap(struct super_block *sb,
- 		return 1;
- 
- err_out:
--	ext4_error(sb, __func__,
--			"Invalid block bitmap - "
--			"block_group = %d, block = %llu",
-+	ext4_error(sb, "Invalid block bitmap - block_group = %d, block = %llu",
- 			block_group, bitmap_blk);
- 	return 0;
- }
-@@ -311,8 +306,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	bitmap_blk = ext4_block_bitmap(sb, desc);
- 	bh = sb_getblk(sb, bitmap_blk);
- 	if (unlikely(!bh)) {
--		ext4_error(sb, __func__,
--			    "Cannot read block bitmap - "
-+		ext4_error(sb, "Cannot read block bitmap - "
- 			    "block_group = %u, block_bitmap = %llu",
- 			    block_group, bitmap_blk);
- 		return NULL;
-@@ -354,8 +348,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	set_bitmap_uptodate(bh);
- 	if (bh_submit_read(bh) < 0) {
- 		put_bh(bh);
--		ext4_error(sb, __func__,
--			    "Cannot read block bitmap - "
-+		ext4_error(sb, "Cannot read block bitmap - "
- 			    "block_group = %u, block_bitmap = %llu",
- 			    block_group, bitmap_blk);
- 		return NULL;
-@@ -419,8 +412,7 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
- 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
- 		     sbi->s_itb_per_group)) {
--		ext4_error(sb, __func__,
--			   "Adding blocks in system zones - "
-+		ext4_error(sb, "Adding blocks in system zones - "
- 			   "Block = %llu, count = %lu",
- 			   block, count);
- 		goto error_return;
-@@ -453,8 +445,7 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 		BUFFER_TRACE(bitmap_bh, "clear bit");
- 		if (!ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
- 						bit + i, bitmap_bh->b_data)) {
--			ext4_error(sb, __func__,
--				   "bit already cleared for block %llu",
-+			ext4_error(sb, "bit already cleared for block %llu",
- 				   (ext4_fsblk_t)(block + i));
- 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
- 		} else {
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 9dc9316..0e0bef3 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -83,7 +83,7 @@ int ext4_check_dir_entry(const char *function, struct inode *dir,
- 		error_msg = "inode out of bounds";
- 
- 	if (error_msg != NULL)
--		ext4_error(dir->i_sb, function,
-+		__ext4_error(dir->i_sb, function,
- 			"bad entry in directory #%lu: %s - "
- 			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
- 			dir->i_ino, error_msg, offset,
-@@ -150,7 +150,7 @@ static int ext4_readdir(struct file *filp,
- 		 */
- 		if (!bh) {
- 			if (!dir_has_error) {
--				ext4_error(sb, __func__, "directory #%lu "
-+				ext4_error(sb, "directory #%lu "
- 					   "contains a hole at offset %Lu",
- 					   inode->i_ino,
- 					   (unsigned long long) filp->f_pos);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 61cf3b3..509437f 100644
+index 74664ca..c831a58 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1486,13 +1486,16 @@ extern int ext4_group_extend(struct super_block *sb,
- 				ext4_fsblk_t n_blocks_count);
+@@ -133,7 +133,7 @@ struct mpage_da_data {
+ 	int pages_written;
+ 	int retval;
+ };
+-#define	DIO_AIO_UNWRITTEN	0x1
++#define	EXT4_IO_UNWRITTEN	0x1
+ typedef struct ext4_io_end {
+ 	struct list_head	list;		/* per-file finished AIO list */
+ 	struct inode		*inode;		/* file being written to */
+@@ -355,13 +355,13 @@ struct ext4_new_group_data {
+ 	/* caller is from the direct IO path, request to creation of an
+ 	unitialized extents if not allocated, split the uninitialized
+ 	extent if blocks has been preallocated already*/
+-#define EXT4_GET_BLOCKS_DIO			0x0008
++#define EXT4_GET_BLOCKS_PRE_IO			0x0008
+ #define EXT4_GET_BLOCKS_CONVERT			0x0010
+-#define EXT4_GET_BLOCKS_DIO_CREATE_EXT		(EXT4_GET_BLOCKS_DIO|\
++#define EXT4_GET_BLOCKS_IO_CREATE_EXT		(EXT4_GET_BLOCKS_PRE_IO|\
+ 					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
+-	/* Convert extent to initialized after direct IO complete */
+-#define EXT4_GET_BLOCKS_DIO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
+-					 EXT4_GET_BLOCKS_DIO_CREATE_EXT)
++	/* Convert extent to initialized after IO complete */
++#define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
++					 EXT4_GET_BLOCKS_IO_CREATE_EXT)
  
- /* super.c */
--extern void ext4_error(struct super_block *, const char *, const char *, ...)
-+extern void __ext4_error(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
-+#define ext4_error(sb, message...)	__ext4_error(sb, __func__, ## message)
- extern void __ext4_std_error(struct super_block *, const char *, int);
- extern void ext4_abort(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
--extern void ext4_warning(struct super_block *, const char *, const char *, ...)
-+extern void __ext4_warning(struct super_block *, const char *,
-+			  const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
-+#define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, ## message)
- extern void ext4_msg(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
- extern void ext4_grp_locked_error(struct super_block *, ext4_group_t,
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index b57e5c7..2f407c4 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -132,7 +132,7 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
- 		if (inode && inode_needs_sync(inode)) {
- 			sync_dirty_buffer(bh);
- 			if (buffer_req(bh) && !buffer_uptodate(bh)) {
--				ext4_error(inode->i_sb, __func__,
-+				ext4_error(inode->i_sb,
- 					   "IO error syncing inode, "
- 					   "inode=%lu, block=%llu",
- 					   inode->i_ino,
+ /*
+  * Flags used by ext4_free_blocks
+@@ -700,8 +700,8 @@ struct ext4_inode_info {
+ 	qsize_t i_reserved_quota;
+ #endif
+ 
+-	/* completed async DIOs that might need unwritten extents handling */
+-	struct list_head i_aio_dio_complete_list;
++	/* completed IOs that might need unwritten extents handling */
++	struct list_head i_completed_io_list;
+ 	/* current io_end structure for async DIO write*/
+ 	ext4_io_end_t *cur_aio_dio;
+ 
+@@ -1461,7 +1461,7 @@ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+-extern int flush_aio_dio_completed_IO(struct inode *inode);
++extern int flush_completed_IO(struct inode *inode);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+ 					int used, int quota_claim);
+ /* ioctl.c */
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 5461615..bd80891 100644
+index e0e2009..f6ea4a2 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -440,7 +440,7 @@ static int __ext4_ext_check(const char *function, struct inode *inode,
- 	return 0;
+@@ -1619,7 +1619,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	BUG_ON(path[depth].p_hdr == NULL);
  
- corrupted:
--	ext4_error(inode->i_sb, function,
-+	__ext4_error(inode->i_sb, function,
- 			"bad header/extent in inode #%lu: %s - magic %x, "
- 			"entries %u, max %u(%u), depth %u(%u)",
- 			inode->i_ino, error_msg, le16_to_cpu(eh->eh_magic),
-@@ -1538,8 +1538,9 @@ int ext4_ext_try_to_merge(struct inode *inode,
- 		merge_done = 1;
- 		WARN_ON(eh->eh_entries == 0);
- 		if (!eh->eh_entries)
--			ext4_error(inode->i_sb, "ext4_ext_try_to_merge",
--			   "inode#%lu, eh->eh_entries = 0!", inode->i_ino);
-+			ext4_error(inode->i_sb,
-+				   "inode#%lu, eh->eh_entries = 0!",
-+				   inode->i_ino);
+ 	/* try to insert block into found extent and return */
+-	if (ex && (flag != EXT4_GET_BLOCKS_DIO_CREATE_EXT)
++	if (ex && (flag != EXT4_GET_BLOCKS_PRE_IO)
+ 		&& ext4_can_extents_be_merged(inode, ex, newext)) {
+ 		ext_debug("append [%d]%d block to %d:[%d]%d (from %llu)\n",
+ 				ext4_ext_is_uninitialized(newext),
+@@ -1740,7 +1740,7 @@ has_space:
+ 
+ merge:
+ 	/* try to merge extents to the right */
+-	if (flag != EXT4_GET_BLOCKS_DIO_CREATE_EXT)
++	if (flag != EXT4_GET_BLOCKS_PRE_IO)
+ 		ext4_ext_try_to_merge(inode, path, nearex);
+ 
+ 	/* try to merge extents to the left */
+@@ -2984,7 +2984,7 @@ fix_extent_len:
+ 	ext4_ext_dirty(handle, inode, path + depth);
+ 	return err;
+ }
+-static int ext4_convert_unwritten_extents_dio(handle_t *handle,
++static int ext4_convert_unwritten_extents_endio(handle_t *handle,
+ 					      struct inode *inode,
+ 					      struct ext4_ext_path *path)
+ {
+@@ -3064,8 +3064,8 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 		  flags, allocated);
+ 	ext4_ext_show_leaf(inode, path);
+ 
+-	/* DIO get_block() before submit the IO, split the extent */
+-	if (flags == EXT4_GET_BLOCKS_DIO_CREATE_EXT) {
++	/* get_block() before submit the IO, split the extent */
++	if (flags == EXT4_GET_BLOCKS_PRE_IO) {
+ 		ret = ext4_split_unwritten_extents(handle,
+ 						inode, path, iblock,
+ 						max_blocks, flags);
+@@ -3075,14 +3075,14 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 		 * completed
+ 		 */
+ 		if (io)
+-			io->flag = DIO_AIO_UNWRITTEN;
++			io->flag = EXT4_IO_UNWRITTEN;
+ 		else
+ 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+ 		goto out;
  	}
+-	/* async DIO end_io complete, convert the filled extent to written */
+-	if (flags == EXT4_GET_BLOCKS_DIO_CONVERT_EXT) {
+-		ret = ext4_convert_unwritten_extents_dio(handle, inode,
++	/* IO end_io complete, convert the filled extent to written */
++	if (flags == EXT4_GET_BLOCKS_CONVERT) {
++		ret = ext4_convert_unwritten_extents_endio(handle, inode,
+ 							path);
+ 		if (ret >= 0)
+ 			ext4_update_inode_fsync_trans(handle, inode, 1);
+@@ -3359,9 +3359,9 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 		 * For non asycn direct IO case, flag the inode state
+ 		 * that we need to perform convertion when IO is done.
+ 		 */
+-		if (flags == EXT4_GET_BLOCKS_DIO_CREATE_EXT) {
++		if (flags == EXT4_GET_BLOCKS_PRE_IO) {
+ 			if (io)
+-				io->flag = DIO_AIO_UNWRITTEN;
++				io->flag = EXT4_IO_UNWRITTEN;
+ 			else
+ 				ext4_set_inode_state(inode,
+ 						     EXT4_STATE_DIO_UNWRITTEN);
+@@ -3656,7 +3656,7 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+ 		map_bh.b_state = 0;
+ 		ret = ext4_get_blocks(handle, inode, block,
+ 				      max_blocks, &map_bh,
+-				      EXT4_GET_BLOCKS_DIO_CONVERT_EXT);
++				      EXT4_GET_BLOCKS_IO_CONVERT_EXT);
+ 		if (ret <= 0) {
+ 			WARN_ON(ret <= 0);
+ 			printk(KERN_ERR "%s: ext4_ext_get_blocks "
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 98bd140..0d0c323 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -63,7 +63,7 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+ 	if (inode->i_sb->s_flags & MS_RDONLY)
+ 		return 0;
  
- 	return merge_done;
-@@ -3238,7 +3239,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	 * this is why assert can't be put in ext4_ext_find_extent()
- 	 */
- 	if (path[depth].p_ext == NULL && depth != 0) {
--		ext4_error(inode->i_sb, __func__, "bad extent address "
-+		ext4_error(inode->i_sb, "bad extent address "
- 			   "inode: %lu, iblock: %d, depth: %d",
- 			   inode->i_ino, iblock, depth);
- 		err = -EIO;
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 2fab5ad..e4aaf61 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -76,8 +76,7 @@ unsigned ext4_init_inode_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	/* If checksum is bad mark all blocks and inodes use to prevent
- 	 * allocation, essentially implementing a per-group read-only flag. */
- 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
--		ext4_error(sb, __func__, "Checksum bad for group %u",
--			   block_group);
-+		ext4_error(sb, "Checksum bad for group %u", block_group);
- 		ext4_free_blks_set(sb, gdp, 0);
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
-@@ -111,8 +110,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	bitmap_blk = ext4_inode_bitmap(sb, desc);
- 	bh = sb_getblk(sb, bitmap_blk);
- 	if (unlikely(!bh)) {
--		ext4_error(sb, __func__,
--			    "Cannot read inode bitmap - "
-+		ext4_error(sb, "Cannot read inode bitmap - "
- 			    "block_group = %u, inode_bitmap = %llu",
- 			    block_group, bitmap_blk);
- 		return NULL;
-@@ -153,8 +151,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	set_bitmap_uptodate(bh);
- 	if (bh_submit_read(bh) < 0) {
- 		put_bh(bh);
--		ext4_error(sb, __func__,
--			    "Cannot read inode bitmap - "
-+		ext4_error(sb, "Cannot read inode bitmap - "
- 			    "block_group = %u, inode_bitmap = %llu",
- 			    block_group, bitmap_blk);
- 		return NULL;
-@@ -229,8 +226,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 
- 	es = EXT4_SB(sb)->s_es;
- 	if (ino < EXT4_FIRST_INO(sb) || ino > le32_to_cpu(es->s_inodes_count)) {
--		ext4_error(sb, "ext4_free_inode",
--			   "reserved or nonexistent inode %lu", ino);
-+		ext4_error(sb, "reserved or nonexistent inode %lu", ino);
- 		goto error_return;
- 	}
- 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
-@@ -248,8 +244,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	cleared = ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
- 					bit, bitmap_bh->b_data);
- 	if (!cleared)
--		ext4_error(sb, "ext4_free_inode",
--			   "bit already cleared for inode %lu", ino);
-+		ext4_error(sb, "bit already cleared for inode %lu", ino);
- 	else {
- 		gdp = ext4_get_group_desc(sb, block_group, &bh2);
- 
-@@ -736,8 +731,7 @@ static int ext4_claim_inode(struct super_block *sb,
- 	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
- 			ino > EXT4_INODES_PER_GROUP(sb)) {
- 		ext4_unlock_group(sb, group);
--		ext4_error(sb, __func__,
--			   "reserved inode or inode > inodes count - "
-+		ext4_error(sb, "reserved inode or inode > inodes count - "
- 			   "block_group = %u, inode=%lu", group,
- 			   ino + group * EXT4_INODES_PER_GROUP(sb));
- 		return 1;
-@@ -1099,8 +1093,7 @@ struct inode *ext4_orphan_get(struct super_block *sb, unsigned long ino)
- 
- 	/* Error cases - e2fsck has already cleaned up for us */
- 	if (ino > max_ino) {
--		ext4_warning(sb, __func__,
--			     "bad orphan ino %lu!  e2fsck was run?", ino);
-+		ext4_warning(sb, "bad orphan ino %lu!  e2fsck was run?", ino);
- 		goto error;
- 	}
- 
-@@ -1108,8 +1101,7 @@ struct inode *ext4_orphan_get(struct super_block *sb, unsigned long ino)
- 	bit = (ino - 1) % EXT4_INODES_PER_GROUP(sb);
- 	bitmap_bh = ext4_read_inode_bitmap(sb, block_group);
- 	if (!bitmap_bh) {
--		ext4_warning(sb, __func__,
--			     "inode bitmap error for orphan %lu", ino);
-+		ext4_warning(sb, "inode bitmap error for orphan %lu", ino);
- 		goto error;
- 	}
- 
-@@ -1141,8 +1133,7 @@ iget_failed:
- 	err = PTR_ERR(inode);
- 	inode = NULL;
- bad_orphan:
--	ext4_warning(sb, __func__,
--		     "bad orphan inode %lu!  e2fsck was run?", ino);
-+	ext4_warning(sb, "bad orphan inode %lu!  e2fsck was run?", ino);
- 	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
- 	       bit, (unsigned long long)bitmap_bh->b_blocknr,
- 	       ext4_test_bit(bit, bitmap_bh->b_data));
+-	ret = flush_aio_dio_completed_IO(inode);
++	ret = flush_completed_IO(inode);
+ 	if (ret < 0)
+ 		return ret;
+ 	
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3e53011..536067b 100644
+index 427f469..28f116b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -194,7 +194,7 @@ void ext4_delete_inode(struct inode *inode)
- 	inode->i_size = 0;
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	if (err) {
--		ext4_warning(inode->i_sb, __func__,
-+		ext4_warning(inode->i_sb,
- 			     "couldn't mark inode dirty (err %d)", err);
- 		goto stop_handle;
- 	}
-@@ -212,7 +212,7 @@ void ext4_delete_inode(struct inode *inode)
- 		if (err > 0)
- 			err = ext4_journal_restart(handle, 3);
- 		if (err != 0) {
--			ext4_warning(inode->i_sb, __func__,
-+			ext4_warning(inode->i_sb,
- 				     "couldn't extend journal (err %d)", err);
- 		stop_handle:
- 			ext4_journal_stop(handle);
-@@ -323,8 +323,7 @@ static int ext4_block_to_path(struct inode *inode,
- 		offsets[n++] = i_block & (ptrs - 1);
- 		final = ptrs;
- 	} else {
--		ext4_warning(inode->i_sb, "ext4_block_to_path",
--			     "block %lu > max in inode %lu",
-+		ext4_warning(inode->i_sb, "block %lu > max in inode %lu",
- 			     i_block + direct_blocks +
- 			     indirect_blocks + double_blocks, inode->i_ino);
- 	}
-@@ -344,7 +343,7 @@ static int __ext4_check_blockref(const char *function, struct inode *inode,
- 		if (blk &&
- 		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
- 						    blk, 1))) {
--			ext4_error(inode->i_sb, function,
-+			__ext4_error(inode->i_sb, function,
- 				   "invalid block reference %u "
- 				   "in inode #%lu", blk, inode->i_ino);
- 			return -EIO;
-@@ -1125,7 +1124,7 @@ static int check_block_validity(struct inode *inode, const char *msg,
- 				sector_t logical, sector_t phys, int len)
+@@ -3468,7 +3468,7 @@ out:
+ 	return ret;
+ }
+ 
+-static int ext4_get_block_dio_write(struct inode *inode, sector_t iblock,
++static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 		   struct buffer_head *bh_result, int create)
  {
- 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), phys, len)) {
--		ext4_error(inode->i_sb, msg,
-+		__ext4_error(inode->i_sb, msg,
- 			   "inode #%lu logical block %llu mapped to %llu "
- 			   "(size %d)", inode->i_ino,
- 			   (unsigned long long) logical,
-@@ -4147,7 +4146,7 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 	handle_t *handle = NULL;
+@@ -3476,28 +3476,14 @@ static int ext4_get_block_dio_write(struct inode *inode, sector_t iblock,
+ 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+ 	int dio_credits;
  
- 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), block_to_free,
- 				   count)) {
--		ext4_error(inode->i_sb, __func__, "inode #%lu: "
-+		ext4_error(inode->i_sb, "inode #%lu: "
- 			   "attempt to clear blocks %llu len %lu, invalid",
- 			   inode->i_ino, (unsigned long long) block_to_free,
- 			   count);
-@@ -4255,7 +4254,7 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
- 		if ((EXT4_JOURNAL(inode) == NULL) || bh2jh(this_bh))
- 			ext4_handle_dirty_metadata(handle, inode, this_bh);
- 		else
--			ext4_error(inode->i_sb, __func__,
-+			ext4_error(inode->i_sb,
- 				   "circular indirect block detected, "
- 				   "inode=%lu, block=%llu",
- 				   inode->i_ino,
-@@ -4297,7 +4296,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+-	ext4_debug("ext4_get_block_dio_write: inode %lu, create flag %d\n",
++	ext4_debug("ext4_get_block_write: inode %lu, create flag %d\n",
+ 		   inode->i_ino, create);
+ 	/*
+-	 * DIO VFS code passes create = 0 flag for write to
+-	 * the middle of file. It does this to avoid block
+-	 * allocation for holes, to prevent expose stale data
+-	 * out when there is parallel buffered read (which does
+-	 * not hold the i_mutex lock) while direct IO write has
+-	 * not completed. DIO request on holes finally falls back
+-	 * to buffered IO for this reason.
+-	 *
+-	 * For ext4 extent based file, since we support fallocate,
+-	 * new allocated extent as uninitialized, for holes, we
+-	 * could fallocate blocks for holes, thus parallel
+-	 * buffered IO read will zero out the page when read on
+-	 * a hole while parallel DIO write to the hole has not completed.
+-	 *
+-	 * when we come here, we know it's a direct IO write to
+-	 * to the middle of file (<i_size)
+-	 * so it's safe to override the create flag from VFS.
++	 * ext4_get_block in prepare for a DIO write or buffer write.
++	 * We allocate an uinitialized extent if blocks haven't been allocated.
++	 * The extent will be converted to initialized after IO complete.
+ 	 */
+-	create = EXT4_GET_BLOCKS_DIO_CREATE_EXT;
++	create = EXT4_GET_BLOCKS_IO_CREATE_EXT;
  
- 			if (!ext4_data_block_valid(EXT4_SB(inode->i_sb),
- 						   nr, 1)) {
--				ext4_error(inode->i_sb, __func__,
-+				ext4_error(inode->i_sb,
- 					   "indirect mapped block in inode "
- 					   "#%lu invalid (level %d, blk #%lu)",
- 					   inode->i_ino, depth,
-@@ -4313,7 +4312,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			 * (should be rare).
- 			 */
- 			if (!bh) {
--				ext4_error(inode->i_sb, "ext4_free_branches",
-+				ext4_error(inode->i_sb,
- 					   "Read failure, inode=%lu, block=%llu",
- 					   inode->i_ino, nr);
- 				continue;
-@@ -4628,9 +4627,8 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	if (max_blocks > DIO_MAX_BLOCKS)
+ 		max_blocks = DIO_MAX_BLOCKS;
+@@ -3524,19 +3510,20 @@ static void ext4_free_io_end(ext4_io_end_t *io)
+ 	iput(io->inode);
+ 	kfree(io);
+ }
+-static void dump_aio_dio_list(struct inode * inode)
++
++static void dump_completed_IO(struct inode * inode)
+ {
+ #ifdef	EXT4_DEBUG
+ 	struct list_head *cur, *before, *after;
+ 	ext4_io_end_t *io, *io0, *io1;
  
- 	bh = sb_getblk(sb, block);
- 	if (!bh) {
--		ext4_error(sb, "ext4_get_inode_loc", "unable to read "
--			   "inode block - inode=%lu, block=%llu",
--			   inode->i_ino, block);
-+		ext4_error(sb, "unable to read inode block - "
-+			   "inode=%lu, block=%llu", inode->i_ino, block);
- 		return -EIO;
- 	}
- 	if (!buffer_uptodate(bh)) {
-@@ -4728,9 +4726,8 @@ make_io:
- 		submit_bh(READ_META, bh);
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
--			ext4_error(sb, __func__,
--				   "unable to read inode block - inode=%lu, "
--				   "block=%llu", inode->i_ino, block);
-+			ext4_error(sb, "unable to read inode block - inode=%lu,"
-+				   " block=%llu", inode->i_ino, block);
- 			brelse(bh);
- 			return -EIO;
- 		}
-@@ -4941,8 +4938,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	ret = 0;
- 	if (ei->i_file_acl &&
- 	    !ext4_data_block_valid(EXT4_SB(sb), ei->i_file_acl, 1)) {
--		ext4_error(sb, __func__,
--			   "bad extended attribute block %llu in inode #%lu",
-+		ext4_error(sb, "bad extended attribute block %llu inode #%lu",
- 			   ei->i_file_acl, inode->i_ino);
- 		ret = -EIO;
- 		goto bad_inode;
-@@ -4988,8 +4984,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
- 	} else {
- 		ret = -EIO;
--		ext4_error(inode->i_sb, __func__,
--			   "bogus i_mode (%o) for inode=%lu",
-+		ext4_error(inode->i_sb, "bogus i_mode (%o) for inode=%lu",
- 			   inode->i_mode, inode->i_ino);
- 		goto bad_inode;
- 	}
-@@ -5228,10 +5223,8 @@ int ext4_write_inode(struct inode *inode, int wait)
- 		if (wait)
- 			sync_dirty_buffer(iloc.bh);
- 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
--			ext4_error(inode->i_sb, __func__,
--				   "IO error syncing inode, "
--				   "inode=%lu, block=%llu",
--				   inode->i_ino,
-+			ext4_error(inode->i_sb, "IO error syncing inode, "
-+				   "inode=%lu, block=%llu", inode->i_ino,
- 				   (unsigned long long)iloc.bh->b_blocknr);
- 			err = -EIO;
- 		}
-@@ -5644,7 +5637,7 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- 						     EXT4_STATE_NO_EXPAND);
- 				if (mnt_count !=
- 					le16_to_cpu(sbi->s_es->s_mnt_count)) {
--					ext4_warning(inode->i_sb, __func__,
-+					ext4_warning(inode->i_sb,
- 					"Unable to expand inode %lu. Delete"
- 					" some EAs or run e2fsck.",
- 					inode->i_ino);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d129c10..415e11f 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2709,8 +2709,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 
- 	len = ac->ac_b_ex.fe_len;
- 	if (!ext4_data_block_valid(sbi, block, len)) {
--		ext4_error(sb, __func__,
--			   "Allocating blocks %llu-%llu which overlap "
-+		ext4_error(sb, "Allocating blocks %llu-%llu which overlap "
- 			   "fs metadata\n", block, block+len);
- 		/* File system mounted not to panic on error
- 		 * Fix the bitmap and repeat the block allocation
-@@ -3623,15 +3622,13 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 
- 	bitmap_bh = ext4_read_block_bitmap(sb, group);
- 	if (bitmap_bh == NULL) {
--		ext4_error(sb, __func__, "Error in reading block "
--				"bitmap for %u", group);
-+		ext4_error(sb, "Error reading block bitmap for %u", group);
- 		return 0;
+-	if (list_empty(&EXT4_I(inode)->i_aio_dio_complete_list)){
+-		ext4_debug("inode %lu aio dio list is empty\n", inode->i_ino);
++	if (list_empty(&EXT4_I(inode)->i_completed_io_list)){
++		ext4_debug("inode %lu completed_io list is empty\n", inode->i_ino);
+ 		return;
  	}
  
- 	err = ext4_mb_load_buddy(sb, group, &e4b);
- 	if (err) {
--		ext4_error(sb, __func__, "Error in loading buddy "
--				"information for %u", group);
-+		ext4_error(sb, "Error loading buddy information for %u", group);
- 		put_bh(bitmap_bh);
- 		return 0;
- 	}
-@@ -3804,15 +3801,15 @@ repeat:
- 
- 		err = ext4_mb_load_buddy(sb, group, &e4b);
- 		if (err) {
--			ext4_error(sb, __func__, "Error in loading buddy "
--					"information for %u", group);
-+			ext4_error(sb, "Error loading buddy information for %u",
-+					group);
- 			continue;
- 		}
- 
- 		bitmap_bh = ext4_read_block_bitmap(sb, group);
- 		if (bitmap_bh == NULL) {
--			ext4_error(sb, __func__, "Error in reading block "
--					"bitmap for %u", group);
-+			ext4_error(sb, "Error reading block bitmap for %u",
-+					group);
- 			ext4_mb_release_desc(&e4b);
- 			continue;
- 		}
-@@ -4077,8 +4074,8 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 
- 		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
- 		if (ext4_mb_load_buddy(sb, group, &e4b)) {
--			ext4_error(sb, __func__, "Error in loading buddy "
--					"information for %u", group);
-+			ext4_error(sb, "Error loading buddy information for %u",
-+					group);
- 			continue;
- 		}
- 		ext4_lock_group(sb, group);
-@@ -4478,8 +4475,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	es = EXT4_SB(sb)->s_es;
- 	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
- 	    !ext4_data_block_valid(sbi, block, count)) {
--		ext4_error(sb, __func__,
--			   "Freeing blocks not in datazone - "
-+		ext4_error(sb, "Freeing blocks not in datazone - "
- 			   "block = %llu, count = %lu", block, count);
- 		goto error_return;
- 	}
-@@ -4548,8 +4544,7 @@ do_more:
- 	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
- 		      EXT4_SB(sb)->s_itb_per_group)) {
- 
--		ext4_error(sb, __func__,
--			   "Freeing blocks in system zone - "
-+		ext4_error(sb, "Freeing blocks in system zone - "
- 			   "Block = %llu, count = %lu", block, count);
- 		/* err = 0. ext4_std_error should be a no op */
- 		goto error_return;
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 82c415b..1654eb8 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -152,12 +152,12 @@ mext_check_null_inode(struct inode *inode1, struct inode *inode2,
+-	ext4_debug("Dump inode %lu aio_dio_completed_IO list \n", inode->i_ino);
+-	list_for_each_entry(io, &EXT4_I(inode)->i_aio_dio_complete_list, list){
++	ext4_debug("Dump inode %lu completed_io list \n", inode->i_ino);
++	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list){
+ 		cur = &io->list;
+ 		before = cur->prev;
+ 		io0 = container_of(before, ext4_io_end_t, list);
+@@ -3552,21 +3539,21 @@ static void dump_aio_dio_list(struct inode * inode)
+ /*
+  * check a range of space and convert unwritten extents to written.
+  */
+-static int ext4_end_aio_dio_nolock(ext4_io_end_t *io)
++static int ext4_end_io_nolock(ext4_io_end_t *io)
+ {
+ 	struct inode *inode = io->inode;
+ 	loff_t offset = io->offset;
+ 	ssize_t size = io->size;
  	int ret = 0;
  
- 	if (inode1 == NULL) {
--		ext4_error(inode2->i_sb, function,
-+		__ext4_error(inode2->i_sb, function,
- 			"Both inodes should not be NULL: "
- 			"inode1 NULL inode2 %lu", inode2->i_ino);
- 		ret = -EIO;
- 	} else if (inode2 == NULL) {
--		ext4_error(inode1->i_sb, function,
-+		__ext4_error(inode1->i_sb, function,
- 			"Both inodes should not be NULL: "
- 			"inode1 %lu inode2 NULL", inode1->i_ino);
- 		ret = -EIO;
-@@ -526,7 +526,7 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
- 	 * new_ext       |-------|
- 	 */
- 	if (le32_to_cpu(oext->ee_block) + oext_alen - 1 < new_ext_end) {
--		ext4_error(orig_inode->i_sb, __func__,
-+		ext4_error(orig_inode->i_sb,
- 			"new_ext_end(%u) should be less than or equal to "
- 			"oext->ee_block(%u) + oext_alen(%d) - 1",
- 			new_ext_end, le32_to_cpu(oext->ee_block),
-@@ -689,12 +689,12 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
- 	while (1) {
- 		/* The extent for donor must be found. */
- 		if (!dext) {
--			ext4_error(donor_inode->i_sb, __func__,
-+			ext4_error(donor_inode->i_sb,
- 				   "The extent for donor must be found");
- 			*err = -EIO;
- 			goto out;
- 		} else if (donor_off != le32_to_cpu(tmp_dext.ee_block)) {
--			ext4_error(donor_inode->i_sb, __func__,
-+			ext4_error(donor_inode->i_sb,
- 				"Donor offset(%u) and the first block of donor "
- 				"extent(%u) should be equal",
- 				donor_off,
-@@ -1351,7 +1351,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			if (ret1 < 0)
- 				break;
- 			if (*moved_len > len) {
--				ext4_error(orig_inode->i_sb, __func__,
-+				ext4_error(orig_inode->i_sb,
- 					"We replaced blocks too much! "
- 					"sum of replaced: %llu requested: %llu",
- 					*moved_len, len);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 17a17e1..bd2dc0b 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -383,8 +383,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 	if (root->info.hash_version != DX_HASH_TEA &&
- 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
- 	    root->info.hash_version != DX_HASH_LEGACY) {
--		ext4_warning(dir->i_sb, __func__,
--			     "Unrecognised inode hash code %d",
-+		ext4_warning(dir->i_sb, "Unrecognised inode hash code %d",
- 			     root->info.hash_version);
- 		brelse(bh);
- 		*err = ERR_BAD_DX_DIR;
-@@ -399,8 +398,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 	hash = hinfo->hash;
+-	ext4_debug("end_aio_dio_onlock: io 0x%p from inode %lu,list->next 0x%p,"
++	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
+ 		   "list->prev 0x%p\n",
+ 	           io, inode->i_ino, io->list.next, io->list.prev);
  
- 	if (root->info.unused_flags & 1) {
--		ext4_warning(dir->i_sb, __func__,
--			     "Unimplemented inode hash flags: %#06x",
-+		ext4_warning(dir->i_sb, "Unimplemented inode hash flags: %#06x",
- 			     root->info.unused_flags);
- 		brelse(bh);
- 		*err = ERR_BAD_DX_DIR;
-@@ -408,8 +406,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 	if (list_empty(&io->list))
+ 		return ret;
+ 
+-	if (io->flag != DIO_AIO_UNWRITTEN)
++	if (io->flag != EXT4_IO_UNWRITTEN)
+ 		return ret;
+ 
+ 	if (offset + size <= i_size_read(inode))
+@@ -3584,17 +3571,18 @@ static int ext4_end_aio_dio_nolock(ext4_io_end_t *io)
+ 	io->flag = 0;
+ 	return ret;
+ }
++
+ /*
+  * work on completed aio dio IO, to convert unwritten extents to extents
+  */
+-static void ext4_end_aio_dio_work(struct work_struct *work)
++static void ext4_end_io_work(struct work_struct *work)
+ {
+ 	ext4_io_end_t *io  = container_of(work, ext4_io_end_t, work);
+ 	struct inode *inode = io->inode;
+ 	int ret = 0;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	ret = ext4_end_aio_dio_nolock(io);
++	ret = ext4_end_io_nolock(io);
+ 	if (ret >= 0) {
+ 		if (!list_empty(&io->list))
+ 			list_del_init(&io->list);
+@@ -3602,32 +3590,35 @@ static void ext4_end_aio_dio_work(struct work_struct *work)
  	}
+ 	mutex_unlock(&inode->i_mutex);
+ }
++
+ /*
+  * This function is called from ext4_sync_file().
+  *
+- * When AIO DIO IO is completed, the work to convert unwritten
+- * extents to written is queued on workqueue but may not get immediately
++ * When IO is completed, the work to convert unwritten extents to
++ * written is queued on workqueue but may not get immediately
+  * scheduled. When fsync is called, we need to ensure the
+  * conversion is complete before fsync returns.
+- * The inode keeps track of a list of completed AIO from DIO path
+- * that might needs to do the conversion. This function walks through
+- * the list and convert the related unwritten extents to written.
++ * The inode keeps track of a list of pending/completed IO that
++ * might needs to do the conversion. This function walks through
++ * the list and convert the related unwritten extents for completed IO
++ * to written.
++ * The function return the number of pending IOs on success.
+  */
+-int flush_aio_dio_completed_IO(struct inode *inode)
++int flush_completed_IO(struct inode *inode)
+ {
+ 	ext4_io_end_t *io;
+ 	int ret = 0;
+ 	int ret2 = 0;
  
- 	if ((indirect = root->info.indirect_levels) > 1) {
--		ext4_warning(dir->i_sb, __func__,
--			     "Unimplemented inode hash depth: %#06x",
-+		ext4_warning(dir->i_sb, "Unimplemented inode hash depth: %#06x",
- 			     root->info.indirect_levels);
- 		brelse(bh);
- 		*err = ERR_BAD_DX_DIR;
-@@ -421,8 +418,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+-	if (list_empty(&EXT4_I(inode)->i_aio_dio_complete_list))
++	if (list_empty(&EXT4_I(inode)->i_completed_io_list))
+ 		return ret;
  
- 	if (dx_get_limit(entries) != dx_root_limit(dir,
- 						   root->info.info_length)) {
--		ext4_warning(dir->i_sb, __func__,
--			     "dx entry: limit != root limit");
-+		ext4_warning(dir->i_sb, "dx entry: limit != root limit");
- 		brelse(bh);
- 		*err = ERR_BAD_DX_DIR;
- 		goto fail;
-@@ -433,7 +429,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 	{
- 		count = dx_get_count(entries);
- 		if (!count || count > dx_get_limit(entries)) {
--			ext4_warning(dir->i_sb, __func__,
-+			ext4_warning(dir->i_sb,
- 				     "dx entry: no count or count > limit");
- 			brelse(bh);
- 			*err = ERR_BAD_DX_DIR;
-@@ -478,7 +474,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
- 		if (dx_get_limit(entries) != dx_node_limit (dir)) {
--			ext4_warning(dir->i_sb, __func__,
-+			ext4_warning(dir->i_sb,
- 				     "dx entry: limit != node limit");
- 			brelse(bh);
- 			*err = ERR_BAD_DX_DIR;
-@@ -494,7 +490,7 @@ fail2:
- 	}
- fail:
- 	if (*err == ERR_BAD_DX_DIR)
--		ext4_warning(dir->i_sb, __func__,
-+		ext4_warning(dir->i_sb,
- 			     "Corrupt dir inode %ld, running e2fsck is "
- 			     "recommended.", dir->i_ino);
- 	return NULL;
-@@ -947,9 +943,8 @@ restart:
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
- 			/* read error, skip block & hope for the best */
--			ext4_error(sb, __func__, "reading directory #%lu "
--				   "offset %lu", dir->i_ino,
--				   (unsigned long)block);
-+			ext4_error(sb, "reading directory #%lu offset %lu",
-+				   dir->i_ino, (unsigned long)block);
- 			brelse(bh);
- 			goto next;
- 		}
-@@ -1041,7 +1036,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
- 		retval = ext4_htree_next_block(dir, hash, frame,
- 					       frames, NULL);
- 		if (retval < 0) {
--			ext4_warning(sb, __func__,
-+			ext4_warning(sb,
- 			     "error reading index page in directory #%lu",
- 			     dir->i_ino);
- 			*err = retval;
-@@ -1071,14 +1066,13 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
- 		__u32 ino = le32_to_cpu(de->inode);
- 		brelse(bh);
- 		if (!ext4_valid_inum(dir->i_sb, ino)) {
--			ext4_error(dir->i_sb, "ext4_lookup",
--				   "bad inode number: %u", ino);
-+			ext4_error(dir->i_sb, "bad inode number: %u", ino);
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext4_iget(dir->i_sb, ino);
- 		if (unlikely(IS_ERR(inode))) {
- 			if (PTR_ERR(inode) == -ESTALE) {
--				ext4_error(dir->i_sb, __func__,
-+				ext4_error(dir->i_sb,
- 						"deleted inode referenced: %u",
- 						ino);
- 				return ERR_PTR(-EIO);
-@@ -1110,7 +1104,7 @@ struct dentry *ext4_get_parent(struct dentry *child)
- 	brelse(bh);
- 
- 	if (!ext4_valid_inum(child->d_inode->i_sb, ino)) {
--		ext4_error(child->d_inode->i_sb, "ext4_get_parent",
-+		ext4_error(child->d_inode->i_sb,
- 			   "bad inode number: %u", ino);
- 		return ERR_PTR(-EIO);
- 	}
-@@ -1410,7 +1404,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	de = (struct ext4_dir_entry_2 *)((char *)fde +
- 		ext4_rec_len_from_disk(fde->rec_len, blocksize));
- 	if ((char *) de >= (((char *) root) + blocksize)) {
--		ext4_error(dir->i_sb, __func__,
-+		ext4_error(dir->i_sb,
- 			   "invalid rec_len for '..' in inode %lu",
- 			   dir->i_ino);
- 		brelse(bh);
-@@ -1575,8 +1569,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 
- 		if (levels && (dx_get_count(frames->entries) ==
- 			       dx_get_limit(frames->entries))) {
--			ext4_warning(sb, __func__,
--				     "Directory index full!");
-+			ext4_warning(sb, "Directory index full!");
- 			err = -ENOSPC;
- 			goto cleanup;
- 		}
-@@ -1916,11 +1909,11 @@ static int empty_dir(struct inode *inode)
- 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
- 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
- 		if (err)
--			ext4_error(inode->i_sb, __func__,
-+			ext4_error(inode->i_sb,
- 				   "error %d reading directory #%lu offset 0",
- 				   err, inode->i_ino);
+-	dump_aio_dio_list(inode);
+-	while (!list_empty(&EXT4_I(inode)->i_aio_dio_complete_list)){
+-		io = list_entry(EXT4_I(inode)->i_aio_dio_complete_list.next,
++	dump_completed_IO(inode);
++	while (!list_empty(&EXT4_I(inode)->i_completed_io_list)){
++		io = list_entry(EXT4_I(inode)->i_completed_io_list.next,
+ 				ext4_io_end_t, list);
+ 		/*
+-		 * Calling ext4_end_aio_dio_nolock() to convert completed
++		 * Calling ext4_end_io_nolock() to convert completed
+ 		 * IO to written.
+ 		 *
+ 		 * When ext4_sync_file() is called, run_queue() may already
+@@ -3640,7 +3631,7 @@ int flush_aio_dio_completed_IO(struct inode *inode)
+ 		 * avoid double converting from both fsync and background work
+ 		 * queue work.
+ 		 */
+-		ret = ext4_end_aio_dio_nolock(io);
++		ret = ext4_end_io_nolock(io);
+ 		if (ret < 0)
+ 			ret2 = ret;
  		else
--			ext4_warning(inode->i_sb, __func__,
-+			ext4_warning(inode->i_sb,
- 				     "bad directory (dir #%lu) - no data block",
- 				     inode->i_ino);
- 		return 1;
-@@ -1931,7 +1924,7 @@ static int empty_dir(struct inode *inode)
- 			!le32_to_cpu(de1->inode) ||
- 			strcmp(".", de->name) ||
- 			strcmp("..", de1->name)) {
--		ext4_warning(inode->i_sb, "empty_dir",
-+		ext4_warning(inode->i_sb,
- 			     "bad directory (dir #%lu) - no `.' or `..'",
- 			     inode->i_ino);
- 		brelse(bh);
-@@ -1949,7 +1942,7 @@ static int empty_dir(struct inode *inode)
- 				offset >> EXT4_BLOCK_SIZE_BITS(sb), 0, &err);
- 			if (!bh) {
- 				if (err)
--					ext4_error(sb, __func__,
-+					ext4_error(sb,
- 						   "error %d reading directory"
- 						   " #%lu offset %u",
- 						   err, inode->i_ino, offset);
-@@ -2163,7 +2156,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	if (retval)
- 		goto end_rmdir;
- 	if (!EXT4_DIR_LINK_EMPTY(inode))
--		ext4_warning(inode->i_sb, "ext4_rmdir",
-+		ext4_warning(inode->i_sb,
- 			     "empty directory has too many links (%d)",
- 			     inode->i_nlink);
- 	inode->i_version++;
-@@ -2215,7 +2208,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 		goto end_unlink;
- 
- 	if (!inode->i_nlink) {
--		ext4_warning(inode->i_sb, "ext4_unlink",
-+		ext4_warning(inode->i_sb,
- 			     "Deleting nonexistent file (%lu), %d",
- 			     inode->i_ino, inode->i_nlink);
- 		inode->i_nlink = 1;
-@@ -2462,7 +2455,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		}
- 	}
- 	if (retval) {
--		ext4_warning(old_dir->i_sb, "ext4_rename",
-+		ext4_warning(old_dir->i_sb,
- 				"Deleting old file (%lu), %d, error=%d",
- 				old_dir->i_ino, old_dir->i_nlink, retval);
- 	}
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 3b2c554..5692c48 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -48,65 +48,54 @@ static int verify_group_input(struct super_block *sb,
- 
- 	ext4_get_group_no_and_offset(sb, start, NULL, &offset);
- 	if (group != sbi->s_groups_count)
--		ext4_warning(sb, __func__,
--			     "Cannot add at group %u (only %u groups)",
-+		ext4_warning(sb, "Cannot add at group %u (only %u groups)",
- 			     input->group, sbi->s_groups_count);
- 	else if (offset != 0)
--			ext4_warning(sb, __func__, "Last group not full");
-+			ext4_warning(sb, "Last group not full");
- 	else if (input->reserved_blocks > input->blocks_count / 5)
--		ext4_warning(sb, __func__, "Reserved blocks too high (%u)",
-+		ext4_warning(sb, "Reserved blocks too high (%u)",
- 			     input->reserved_blocks);
- 	else if (free_blocks_count < 0)
--		ext4_warning(sb, __func__, "Bad blocks count %u",
-+		ext4_warning(sb, "Bad blocks count %u",
- 			     input->blocks_count);
- 	else if (!(bh = sb_bread(sb, end - 1)))
--		ext4_warning(sb, __func__,
--			     "Cannot read last block (%llu)",
-+		ext4_warning(sb, "Cannot read last block (%llu)",
- 			     end - 1);
- 	else if (outside(input->block_bitmap, start, end))
--		ext4_warning(sb, __func__,
--			     "Block bitmap not in group (block %llu)",
-+		ext4_warning(sb, "Block bitmap not in group (block %llu)",
- 			     (unsigned long long)input->block_bitmap);
- 	else if (outside(input->inode_bitmap, start, end))
--		ext4_warning(sb, __func__,
--			     "Inode bitmap not in group (block %llu)",
-+		ext4_warning(sb, "Inode bitmap not in group (block %llu)",
- 			     (unsigned long long)input->inode_bitmap);
- 	else if (outside(input->inode_table, start, end) ||
- 		 outside(itend - 1, start, end))
--		ext4_warning(sb, __func__,
--			     "Inode table not in group (blocks %llu-%llu)",
-+		ext4_warning(sb, "Inode table not in group (blocks %llu-%llu)",
- 			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (input->inode_bitmap == input->block_bitmap)
--		ext4_warning(sb, __func__,
--			     "Block bitmap same as inode bitmap (%llu)",
-+		ext4_warning(sb, "Block bitmap same as inode bitmap (%llu)",
- 			     (unsigned long long)input->block_bitmap);
- 	else if (inside(input->block_bitmap, input->inode_table, itend))
--		ext4_warning(sb, __func__,
--			     "Block bitmap (%llu) in inode table (%llu-%llu)",
-+		ext4_warning(sb, "Block bitmap (%llu) in inode table "
-+			     "(%llu-%llu)",
- 			     (unsigned long long)input->block_bitmap,
- 			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (inside(input->inode_bitmap, input->inode_table, itend))
--		ext4_warning(sb, __func__,
--			     "Inode bitmap (%llu) in inode table (%llu-%llu)",
-+		ext4_warning(sb, "Inode bitmap (%llu) in inode table "
-+			     "(%llu-%llu)",
- 			     (unsigned long long)input->inode_bitmap,
- 			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (inside(input->block_bitmap, start, metaend))
--		ext4_warning(sb, __func__,
--			     "Block bitmap (%llu) in GDT table"
--			     " (%llu-%llu)",
-+		ext4_warning(sb, "Block bitmap (%llu) in GDT table (%llu-%llu)",
- 			     (unsigned long long)input->block_bitmap,
- 			     start, metaend - 1);
- 	else if (inside(input->inode_bitmap, start, metaend))
--		ext4_warning(sb, __func__,
--			     "Inode bitmap (%llu) in GDT table"
--			     " (%llu-%llu)",
-+		ext4_warning(sb, "Inode bitmap (%llu) in GDT table (%llu-%llu)",
- 			     (unsigned long long)input->inode_bitmap,
- 			     start, metaend - 1);
- 	else if (inside(input->inode_table, start, metaend) ||
- 		 inside(itend - 1, start, metaend))
--		ext4_warning(sb, __func__,
--			     "Inode table (%llu-%llu) overlaps"
--			     "GDT table (%llu-%llu)",
-+		ext4_warning(sb, "Inode table (%llu-%llu) overlaps GDT table "
-+			     "(%llu-%llu)",
- 			     (unsigned long long)input->inode_table,
- 			     itend - 1, start, metaend - 1);
- 	else
-@@ -364,8 +353,7 @@ static int verify_reserved_gdb(struct super_block *sb,
- 	while ((grp = ext4_list_backups(sb, &three, &five, &seven)) < end) {
- 		if (le32_to_cpu(*p++) !=
- 		    grp * EXT4_BLOCKS_PER_GROUP(sb) + blk){
--			ext4_warning(sb, __func__,
--				     "reserved GDT %llu"
-+			ext4_warning(sb, "reserved GDT %llu"
- 				     " missing grp %d (%llu)",
- 				     blk, grp,
- 				     grp *
-@@ -420,8 +408,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
-          */
- 	if (EXT4_SB(sb)->s_sbh->b_blocknr !=
- 	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) {
--		ext4_warning(sb, __func__,
--			"won't resize using backup superblock at %llu",
-+		ext4_warning(sb, "won't resize using backup superblock at %llu",
- 			(unsigned long long)EXT4_SB(sb)->s_sbh->b_blocknr);
- 		return -EPERM;
- 	}
-@@ -444,8 +431,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 
- 	data = (__le32 *)dind->b_data;
- 	if (le32_to_cpu(data[gdb_num % EXT4_ADDR_PER_BLOCK(sb)]) != gdblock) {
--		ext4_warning(sb, __func__,
--			     "new group %u GDT block %llu not reserved",
-+		ext4_warning(sb, "new group %u GDT block %llu not reserved",
- 			     input->group, gdblock);
- 		err = -EINVAL;
- 		goto exit_dind;
-@@ -468,7 +454,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 			GFP_NOFS);
- 	if (!n_group_desc) {
- 		err = -ENOMEM;
--		ext4_warning(sb, __func__,
-+		ext4_warning(sb,
- 			      "not enough memory for %lu groups", gdb_num + 1);
- 		goto exit_inode;
- 	}
-@@ -567,8 +553,7 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
- 	/* Get each reserved primary GDT block and verify it holds backups */
- 	for (res = 0; res < reserved_gdb; res++, blk++) {
- 		if (le32_to_cpu(*data) != blk) {
--			ext4_warning(sb, __func__,
--				     "reserved block %llu"
-+			ext4_warning(sb, "reserved block %llu"
- 				     " not at offset %ld",
- 				     blk,
- 				     (long)(data - (__le32 *)dind->b_data));
-@@ -713,8 +698,7 @@ static void update_backups(struct super_block *sb,
- 	 */
- exit_err:
- 	if (err) {
--		ext4_warning(sb, __func__,
--			     "can't update backup for group %u (err %d), "
-+		ext4_warning(sb, "can't update backup for group %u (err %d), "
- 			     "forcing fsck on next reboot", group, err);
- 		sbi->s_mount_state &= ~EXT4_VALID_FS;
- 		sbi->s_es->s_state &= cpu_to_le16(~EXT4_VALID_FS);
-@@ -753,20 +737,19 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 
- 	if (gdb_off == 0 && !EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
--		ext4_warning(sb, __func__,
--			     "Can't resize non-sparse filesystem further");
-+		ext4_warning(sb, "Can't resize non-sparse filesystem further");
- 		return -EPERM;
+@@ -3662,7 +3653,7 @@ static ext4_io_end_t *ext4_init_io_end (struct inode *inode)
+ 		io->offset = 0;
+ 		io->size = 0;
+ 		io->error = 0;
+-		INIT_WORK(&io->work, ext4_end_aio_dio_work);
++		INIT_WORK(&io->work, ext4_end_io_work);
+ 		INIT_LIST_HEAD(&io->list);
  	}
  
- 	if (ext4_blocks_count(es) + input->blocks_count <
- 	    ext4_blocks_count(es)) {
--		ext4_warning(sb, __func__, "blocks_count overflow");
-+		ext4_warning(sb, "blocks_count overflow");
- 		return -EINVAL;
- 	}
+@@ -3685,7 +3676,7 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 		  size);
  
- 	if (le32_to_cpu(es->s_inodes_count) + EXT4_INODES_PER_GROUP(sb) <
- 	    le32_to_cpu(es->s_inodes_count)) {
--		ext4_warning(sb, __func__, "inodes_count overflow");
-+		ext4_warning(sb, "inodes_count overflow");
- 		return -EINVAL;
- 	}
+ 	/* if not aio dio with unwritten extents, just free io and return */
+-	if (io_end->flag != DIO_AIO_UNWRITTEN){
++	if (io_end->flag != EXT4_IO_UNWRITTEN){
+ 		ext4_free_io_end(io_end);
+ 		iocb->private = NULL;
+ 		return;
+@@ -3700,9 +3691,10 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
  
-@@ -774,14 +757,13 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 		if (!EXT4_HAS_COMPAT_FEATURE(sb,
- 					     EXT4_FEATURE_COMPAT_RESIZE_INODE)
- 		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
--			ext4_warning(sb, __func__,
-+			ext4_warning(sb,
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
- 		}
- 		inode = ext4_iget(sb, EXT4_RESIZE_INO);
- 		if (IS_ERR(inode)) {
--			ext4_warning(sb, __func__,
--				     "Error opening resize inode");
-+			ext4_warning(sb, "Error opening resize inode");
- 			return PTR_ERR(inode);
- 		}
- 	}
-@@ -810,8 +792,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 
- 	mutex_lock(&sbi->s_resize_lock);
- 	if (input->group != sbi->s_groups_count) {
--		ext4_warning(sb, __func__,
--			     "multiple resizers run on filesystem!");
-+		ext4_warning(sb, "multiple resizers run on filesystem!");
- 		err = -EBUSY;
- 		goto exit_journal;
- 	}
-@@ -997,13 +978,12 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 			" too large to resize to %llu blocks safely\n",
- 			sb->s_id, n_blocks_count);
- 		if (sizeof(sector_t) < 8)
--			ext4_warning(sb, __func__, "CONFIG_LBDAF not enabled");
-+			ext4_warning(sb, "CONFIG_LBDAF not enabled");
- 		return -EINVAL;
- 	}
- 
- 	if (n_blocks_count < o_blocks_count) {
--		ext4_warning(sb, __func__,
--			     "can't shrink FS - resize aborted");
-+		ext4_warning(sb, "can't shrink FS - resize aborted");
- 		return -EBUSY;
- 	}
- 
-@@ -1011,15 +991,14 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	ext4_get_group_no_and_offset(sb, o_blocks_count, &group, &last);
- 
- 	if (last == 0) {
--		ext4_warning(sb, __func__,
--			     "need to use ext2online to resize further");
-+		ext4_warning(sb, "need to use ext2online to resize further");
- 		return -EPERM;
- 	}
- 
- 	add = EXT4_BLOCKS_PER_GROUP(sb) - last;
- 
- 	if (o_blocks_count + add < o_blocks_count) {
--		ext4_warning(sb, __func__, "blocks_count overflow");
-+		ext4_warning(sb, "blocks_count overflow");
- 		return -EINVAL;
- 	}
- 
-@@ -1027,16 +1006,13 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 		add = n_blocks_count - o_blocks_count;
- 
- 	if (o_blocks_count + add < n_blocks_count)
--		ext4_warning(sb, __func__,
--			     "will only finish group (%llu"
--			     " blocks, %u new)",
-+		ext4_warning(sb, "will only finish group (%llu blocks, %u new)",
- 			     o_blocks_count + add, add);
- 
- 	/* See if the device is actually as big as what was requested */
- 	bh = sb_bread(sb, o_blocks_count + add - 1);
- 	if (!bh) {
--		ext4_warning(sb, __func__,
--			     "can't read last block, resize aborted");
-+		ext4_warning(sb, "can't read last block, resize aborted");
- 		return -ENOSPC;
- 	}
- 	brelse(bh);
-@@ -1047,14 +1023,13 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	handle = ext4_journal_start_sb(sb, 3);
- 	if (IS_ERR(handle)) {
- 		err = PTR_ERR(handle);
--		ext4_warning(sb, __func__, "error %d on journal start", err);
-+		ext4_warning(sb, "error %d on journal start", err);
- 		goto exit_put;
- 	}
- 
- 	mutex_lock(&EXT4_SB(sb)->s_resize_lock);
- 	if (o_blocks_count != ext4_blocks_count(es)) {
--		ext4_warning(sb, __func__,
--			     "multiple resizers run on filesystem!");
-+		ext4_warning(sb, "multiple resizers run on filesystem!");
- 		mutex_unlock(&EXT4_SB(sb)->s_resize_lock);
- 		ext4_journal_stop(handle);
- 		err = -EBUSY;
-@@ -1063,8 +1038,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 
- 	if ((err = ext4_journal_get_write_access(handle,
- 						 EXT4_SB(sb)->s_sbh))) {
--		ext4_warning(sb, __func__,
--			     "error %d on journal write access", err);
-+		ext4_warning(sb, "error %d on journal write access", err);
- 		mutex_unlock(&EXT4_SB(sb)->s_resize_lock);
- 		ext4_journal_stop(handle);
- 		goto exit_put;
+ 	/* Add the io_end to per-inode completed aio dio list*/
+ 	list_add_tail(&io_end->list,
+-		 &EXT4_I(io_end->inode)->i_aio_dio_complete_list);
++		 &EXT4_I(io_end->inode)->i_completed_io_list);
+ 	iocb->private = NULL;
+ }
++
+ /*
+  * For ext4 extent files, ext4 will do direct-io write to holes,
+  * preallocated extents, and those write extend the file, no need to
+@@ -3772,7 +3764,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 		ret = blockdev_direct_IO(rw, iocb, inode,
+ 					 inode->i_sb->s_bdev, iov,
+ 					 offset, nr_segs,
+-					 ext4_get_block_dio_write,
++					 ext4_get_block_write,
+ 					 ext4_end_io_dio);
+ 		if (iocb->private)
+ 			EXT4_I(inode)->cur_aio_dio = NULL;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 68a55df..1c85bb6 100644
+index c832508..dc7a97e 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -333,7 +333,7 @@ static void ext4_handle_error(struct super_block *sb)
- 			sb->s_id);
- }
- 
--void ext4_error(struct super_block *sb, const char *function,
-+void __ext4_error(struct super_block *sb, const char *function,
- 		const char *fmt, ...)
- {
- 	va_list args;
-@@ -450,7 +450,7 @@ void ext4_msg (struct super_block * sb, const char *prefix,
- 	va_end(args);
- }
- 
--void ext4_warning(struct super_block *sb, const char *function,
-+void __ext4_warning(struct super_block *sb, const char *function,
- 		  const char *fmt, ...)
- {
- 	va_list args;
-@@ -507,7 +507,7 @@ void ext4_update_dynamic_rev(struct super_block *sb)
- 	if (le32_to_cpu(es->s_rev_level) > EXT4_GOOD_OLD_REV)
- 		return;
- 
--	ext4_warning(sb, __func__,
-+	ext4_warning(sb,
- 		     "updating to rev %d because of new feature flag, "
- 		     "running e2fsck is recommended",
- 		     EXT4_DYNAMIC_REV);
-@@ -3367,10 +3367,9 @@ static void ext4_clear_journal_err(struct super_block *sb,
- 		char nbuf[16];
- 
- 		errstr = ext4_decode_error(sb, j_errno, nbuf);
--		ext4_warning(sb, __func__, "Filesystem error recorded "
-+		ext4_warning(sb, "Filesystem error recorded "
- 			     "from previous mount: %s", errstr);
--		ext4_warning(sb, __func__, "Marking fs in need of "
--			     "filesystem check.");
-+		ext4_warning(sb, "Marking fs in need of filesystem check.");
- 
- 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index c619a7e..627c98a 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -227,7 +227,8 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
- 	if (ext4_xattr_check_block(bh)) {
--bad_block:	ext4_error(inode->i_sb, __func__,
-+bad_block:
-+		ext4_error(inode->i_sb,
- 			   "inode %lu: bad block %llu", inode->i_ino,
- 			   EXT4_I(inode)->i_file_acl);
- 		error = -EIO;
-@@ -371,7 +372,7 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
- 	if (ext4_xattr_check_block(bh)) {
--		ext4_error(inode->i_sb, __func__,
-+		ext4_error(inode->i_sb,
- 			   "inode %lu: bad block %llu", inode->i_ino,
- 			   EXT4_I(inode)->i_file_acl);
- 		error = -EIO;
-@@ -665,9 +666,8 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
- 			atomic_read(&(bs->bh->b_count)),
- 			le32_to_cpu(BHDR(bs->bh)->h_refcount));
- 		if (ext4_xattr_check_block(bs->bh)) {
--			ext4_error(sb, __func__,
--				"inode %lu: bad block %llu", inode->i_ino,
--				EXT4_I(inode)->i_file_acl);
-+			ext4_error(sb, "inode %lu: bad block %llu",
-+				   inode->i_ino, EXT4_I(inode)->i_file_acl);
- 			error = -EIO;
- 			goto cleanup;
- 		}
-@@ -880,9 +880,8 @@ cleanup_dquot:
- 	goto cleanup;
- 
- bad_block:
--	ext4_error(inode->i_sb, __func__,
--		   "inode %lu: bad block %llu", inode->i_ino,
--		   EXT4_I(inode)->i_file_acl);
-+	ext4_error(inode->i_sb, "inode %lu: bad block %llu",
-+		   inode->i_ino, EXT4_I(inode)->i_file_acl);
- 	goto cleanup;
- 
- #undef header
-@@ -1195,9 +1194,8 @@ retry:
- 		if (!bh)
- 			goto cleanup;
- 		if (ext4_xattr_check_block(bh)) {
--			ext4_error(inode->i_sb, __func__,
--				"inode %lu: bad block %llu", inode->i_ino,
--				EXT4_I(inode)->i_file_acl);
-+			ext4_error(inode->i_sb, "inode %lu: bad block %llu",
-+				   inode->i_ino, EXT4_I(inode)->i_file_acl);
- 			error = -EIO;
- 			goto cleanup;
- 		}
-@@ -1372,16 +1370,14 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode)
- 		goto cleanup;
- 	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
- 	if (!bh) {
--		ext4_error(inode->i_sb, __func__,
--			"inode %lu: block %llu read error", inode->i_ino,
--			EXT4_I(inode)->i_file_acl);
-+		ext4_error(inode->i_sb, "inode %lu: block %llu read error",
-+			   inode->i_ino, EXT4_I(inode)->i_file_acl);
- 		goto cleanup;
- 	}
- 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
- 	    BHDR(bh)->h_blocks != cpu_to_le32(1)) {
--		ext4_error(inode->i_sb, __func__,
--			"inode %lu: bad block %llu", inode->i_ino,
--			EXT4_I(inode)->i_file_acl);
-+		ext4_error(inode->i_sb, "inode %lu: bad block %llu",
-+			   inode->i_ino, EXT4_I(inode)->i_file_acl);
- 		goto cleanup;
- 	}
- 	ext4_xattr_release_block(handle, inode, bh);
-@@ -1506,7 +1502,7 @@ again:
- 		}
- 		bh = sb_bread(inode->i_sb, ce->e_block);
- 		if (!bh) {
--			ext4_error(inode->i_sb, __func__,
-+			ext4_error(inode->i_sb,
- 				"inode %lu: block %lu read error",
- 				inode->i_ino, (unsigned long) ce->e_block);
- 		} else if (le32_to_cpu(BHDR(bh)->h_refcount) >=
+@@ -708,7 +708,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ #ifdef CONFIG_QUOTA
+ 	ei->i_reserved_quota = 0;
+ #endif
+-	INIT_LIST_HEAD(&ei->i_aio_dio_complete_list);
++	INIT_LIST_HEAD(&ei->i_completed_io_list);
+ 	ei->cur_aio_dio = NULL;
+ 	ei->i_sync_tid = 0;
+ 	ei->i_datasync_tid = 0;
 -- 
 1.6.6.1.1.g974db.dirty
 
