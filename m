@@ -1,162 +1,122 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 14/28] ext4: Add flag to files with blocks intentionally past EOF
-Date: Tue,  2 Mar 2010 13:18:31 -0500
-Message-ID: <1267553925-6308-15-git-send-email-tytso@mit.edu>
+Subject: [PATCH 15/28] ext4: mount flags manipulation cleanup
+Date: Tue,  2 Mar 2010 13:18:32 -0500
+Message-ID: <1267553925-6308-16-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Jiaying Zhang <jiayingz@google.com>,
-	Eric Sandeen <sandeen@redhat.com>,
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43069 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43095 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753462Ab0CBSS4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:56 -0500
+	id S1753610Ab0CBSS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:18:59 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jiaying Zhang <jiayingz@google.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-fallocate() may potentially instantiate blocks past EOF, depending
-on the flags used when it is called.
+Replace intermediate EXT4_MOUNT_XXX flags manipulation to
+corresponding macro.
 
-e2fsck currently has a test for blocks past i_size, and it
-sometimes trips up - noticeably on xfstests 013 which runs fsstress.
-
-This patch from Jiayang does fix it up - it (along with
-e2fsprogs updates and other patches recently from Aneesh) has
-survived many fsstress runs in a row.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Acked-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    5 +++--
- fs/ext4/extents.c |   22 +++++++++++++++++++++-
- fs/ext4/inode.c   |    9 ++++++++-
- fs/ext4/ioctl.c   |    9 +++++++++
- 4 files changed, 41 insertions(+), 4 deletions(-)
+ fs/ext4/super.c |   31 +++++++++++++------------------
+ 1 files changed, 13 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 509437f..74664ca 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -285,10 +285,11 @@ struct flex_groups {
- #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
- #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
- #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
-+#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1c85bb6..7e8b1b4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -796,10 +796,10 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+ 	if (sbi->s_qf_names[GRPQUOTA])
+ 		seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
  
--#define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
+-	if (sbi->s_mount_opt & EXT4_MOUNT_USRQUOTA)
++	if (test_opt(sb, USRQUOTA))
+ 		seq_puts(seq, ",usrquota");
  
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bc9860f..e0e2009 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3186,7 +3186,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_extent_header *eh;
--	struct ext4_extent newex, *ex;
-+	struct ext4_extent newex, *ex, *last_ex;
- 	ext4_fsblk_t newblock;
- 	int err = 0, depth, ret, cache_type;
- 	unsigned int allocated = 0;
-@@ -3367,6 +3367,19 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 						     EXT4_STATE_DIO_UNWRITTEN);
- 		}
- 	}
-+
-+	if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)) {
-+		if (eh->eh_entries) {
-+			last_ex = EXT_LAST_EXTENT(eh);
-+			if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
-+					    + ext4_ext_get_actual_len(last_ex))
-+				EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
-+		} else {
-+			WARN_ON(eh->eh_entries == 0);
-+			ext4_error(inode->i_sb, __func__,
-+				"inode#%lu, eh->eh_entries = 0!", inode->i_ino);
-+			}
-+	}
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err) {
- 		/* free data blocks we just allocated */
-@@ -3500,6 +3513,13 @@ static void ext4_falloc_update_inode(struct inode *inode,
- 			i_size_write(inode, new_size);
- 		if (new_size > EXT4_I(inode)->i_disksize)
- 			ext4_update_i_disksize(inode, new_size);
-+	} else {
-+		/*
-+		 * Mark that we allocate beyond EOF so the subsequent truncate
-+		 * can proceed even if the new size is the same as i_size.
-+		 */
-+		if (new_size > i_size_read(inode))
-+			EXT4_I(inode)->i_flags |= EXT4_EOFBLOCKS_FL;
- 	}
- 
+-	if (sbi->s_mount_opt & EXT4_MOUNT_GRPQUOTA)
++	if (test_opt(sb, GRPQUOTA))
+ 		seq_puts(seq, ",grpquota");
+ #endif
  }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ecac8c5..edb7edc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4456,6 +4456,8 @@ void ext4_truncate(struct inode *inode)
- 	if (!ext4_can_truncate(inode))
- 		return;
- 
-+	EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
-+
- 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
- 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
- 
-@@ -5305,7 +5307,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	}
- 
- 	if (S_ISREG(inode->i_mode) &&
--	    attr->ia_valid & ATTR_SIZE && attr->ia_size < inode->i_size) {
-+	    attr->ia_valid & ATTR_SIZE &&
-+	    (attr->ia_size < inode->i_size ||
-+	     (EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL))) {
- 		handle_t *handle;
- 
- 		handle = ext4_journal_start(inode, 3);
-@@ -5336,6 +5340,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				goto err_out;
+@@ -1383,14 +1383,13 @@ static int parse_options(char *options, struct super_block *sb,
+ 			data_opt = EXT4_MOUNT_WRITEBACK_DATA;
+ 		datacheck:
+ 			if (is_remount) {
+-				if ((sbi->s_mount_opt & EXT4_MOUNT_DATA_FLAGS)
+-						!= data_opt) {
++				if (test_opt(sb, DATA_FLAGS) != data_opt) {
+ 					ext4_msg(sb, KERN_ERR,
+ 						"Cannot change data mode on remount");
+ 					return 0;
+ 				}
+ 			} else {
+-				sbi->s_mount_opt &= ~EXT4_MOUNT_DATA_FLAGS;
++				clear_opt(sbi->s_mount_opt, DATA_FLAGS);
+ 				sbi->s_mount_opt |= data_opt;
  			}
- 		}
-+		/* ext4_truncate will clear the flag */
-+		if ((EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL))
-+			ext4_truncate(inode);
+ 			break;
+@@ -1625,18 +1624,14 @@ set_qf_format:
  	}
+ #ifdef CONFIG_QUOTA
+ 	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+-		if ((sbi->s_mount_opt & EXT4_MOUNT_USRQUOTA) &&
+-		     sbi->s_qf_names[USRQUOTA])
++		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+ 			clear_opt(sbi->s_mount_opt, USRQUOTA);
  
- 	rc = inode_setattr(inode, attr);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index b63d193..2220feb 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -92,6 +92,15 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			flags &= ~EXT4_EXTENTS_FL;
- 		}
+-		if ((sbi->s_mount_opt & EXT4_MOUNT_GRPQUOTA) &&
+-		     sbi->s_qf_names[GRPQUOTA])
++		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+ 			clear_opt(sbi->s_mount_opt, GRPQUOTA);
  
-+		if (flags & EXT4_EOFBLOCKS_FL) {
-+			/* we don't support adding EOFBLOCKS flag */
-+			if (!(oldflags & EXT4_EOFBLOCKS_FL)) {
-+				err = -EOPNOTSUPP;
-+				goto flags_out;
-+			}
-+		} else if (oldflags & EXT4_EOFBLOCKS_FL)
-+			ext4_truncate(inode);
-+
- 		handle = ext4_journal_start(inode, 1);
- 		if (IS_ERR(handle)) {
- 			err = PTR_ERR(handle);
+-		if ((sbi->s_qf_names[USRQUOTA] &&
+-				(sbi->s_mount_opt & EXT4_MOUNT_GRPQUOTA)) ||
+-		    (sbi->s_qf_names[GRPQUOTA] &&
+-				(sbi->s_mount_opt & EXT4_MOUNT_USRQUOTA))) {
++		if ((sbi->s_qf_names[USRQUOTA] && test_opt(sb, GRPQUOTA)) ||
++			(sbi->s_qf_names[GRPQUOTA] && test_opt(sb, USRQUOTA))) {
+ 			ext4_msg(sb, KERN_ERR, "old and new quota "
+ 					"format mixing");
+ 			return 0;
+@@ -2452,11 +2447,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sbi->s_mount_opt, POSIX_ACL);
+ #endif
+ 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+-		sbi->s_mount_opt |= EXT4_MOUNT_JOURNAL_DATA;
++		set_opt(sbi->s_mount_opt, JOURNAL_DATA);
+ 	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_ORDERED)
+-		sbi->s_mount_opt |= EXT4_MOUNT_ORDERED_DATA;
++		set_opt(sbi->s_mount_opt, ORDERED_DATA);
+ 	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_WBACK)
+-		sbi->s_mount_opt |= EXT4_MOUNT_WRITEBACK_DATA;
++		set_opt(sbi->s_mount_opt, WRITEBACK_DATA);
+ 
+ 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_PANIC)
+ 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
+@@ -2484,7 +2479,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		((sbi->s_mount_opt & EXT4_MOUNT_POSIX_ACL) ? MS_POSIXACL : 0);
++		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -3520,7 +3515,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		ext4_abort(sb, __func__, "Abort forced by user");
+ 
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		((sbi->s_mount_opt & EXT4_MOUNT_POSIX_ACL) ? MS_POSIXACL : 0);
++		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+ 
+ 	es = sbi->s_es;
+ 
 -- 
 1.6.6.1.1.g974db.dirty
 
