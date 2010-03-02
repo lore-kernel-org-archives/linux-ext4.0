@@ -1,133 +1,197 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 12/28] jbd2: delay discarding buffers in journal_unmap_buffer
-Date: Tue,  2 Mar 2010 13:18:29 -0500
-Message-ID: <1267553925-6308-13-git-send-email-tytso@mit.edu>
+Subject: [PATCH 16/28] ext4: trivial quota cleanup
+Date: Tue,  2 Mar 2010 13:18:33 -0500
+Message-ID: <1267553925-6308-17-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: dingdinghua <dingdinghua@nrchpc.ac.cn>,
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43085 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43080 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753518Ab0CBSS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753570Ab0CBSS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 2 Mar 2010 13:18:58 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: dingdinghua <dingdinghua@nrchpc.ac.cn>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-Delay discarding buffers in journal_unmap_buffer until
-we know that "add to orphan" operation has definitely been
-committed, otherwise the log space of committing transation
-may be freed and reused before truncate get committed, updates
-may get lost if crash happens.
+The patch is aimed to reorganize and simplify quota code a bit.
+Quota code is itself complex enough, but we can make it more readable
+in some places:
+- Move quota option parsing to separate functions.
+- Simplify old-quota and journaled-quota mix check.
 
-Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Acked-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/jbd2/commit.c      |   10 +++++-----
- fs/jbd2/transaction.c |   43 +++++++++++++++++++++++++++++++------------
- 2 files changed, 36 insertions(+), 17 deletions(-)
+ fs/ext4/super.c |  123 +++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 69 insertions(+), 54 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 1bc74b6..3ee211e 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -930,12 +930,12 @@ restart_loop:
- 		/* A buffer which has been freed while still being
- 		 * journaled by a previous transaction may end up still
- 		 * being dirty here, but we want to avoid writing back
--		 * that buffer in the future now that the last use has
--		 * been committed.  That's not only a performance gain,
--		 * it also stops aliasing problems if the buffer is left
--		 * behind for writeback and gets reallocated for another
-+		 * that buffer in the future after the "add to orphan"
-+		 * operation been committed,  That's not only a performance
-+		 * gain, it also stops aliasing problems if the buffer is
-+		 * left behind for writeback and gets reallocated for another
- 		 * use in a different page. */
--		if (buffer_freed(bh)) {
-+		if (buffer_freed(bh) && !jh->b_next_transaction) {
- 			clear_buffer_freed(bh);
- 			clear_buffer_jbddirty(bh);
- 		}
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a051270..bfc70f5 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1727,6 +1727,21 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
- 	if (!jh)
- 		goto zap_buffer_no_jh;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7e8b1b4..79937e9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1206,6 +1206,64 @@ static ext4_fsblk_t get_sb_block(void **data)
  
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ 
++#ifdef CONFIG_QUOTA
++static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	char *qname;
++
++	if (sb_any_quota_loaded(sb) &&
++		!sbi->s_qf_names[qtype]) {
++		ext4_msg(sb, KERN_ERR,
++			"Cannot change journaled "
++			"quota options when quota turned on");
++		return 0;
++	}
++	qname = match_strdup(args);
++	if (!qname) {
++		ext4_msg(sb, KERN_ERR,
++			"Not enough memory for storing quotafile name");
++		return 0;
++	}
++	if (sbi->s_qf_names[qtype] &&
++		strcmp(sbi->s_qf_names[qtype], qname)) {
++		ext4_msg(sb, KERN_ERR,
++			"%s quota file already specified", QTYPE2NAME(qtype));
++		kfree(qname);
++		return 0;
++	}
++	sbi->s_qf_names[qtype] = qname;
++	if (strchr(sbi->s_qf_names[qtype], '/')) {
++		ext4_msg(sb, KERN_ERR,
++			"quotafile must be on filesystem root");
++		kfree(sbi->s_qf_names[qtype]);
++		sbi->s_qf_names[qtype] = NULL;
++		return 0;
++	}
++	set_opt(sbi->s_mount_opt, QUOTA);
++	return 1;
++}
++
++static int clear_qf_name(struct super_block *sb, int qtype)
++{
++
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (sb_any_quota_loaded(sb) &&
++		sbi->s_qf_names[qtype]) {
++		ext4_msg(sb, KERN_ERR, "Cannot change journaled quota options"
++			" when quota turned on");
++		return 0;
++	}
 +	/*
-+	 * We cannot remove the buffer from checkpoint lists until the
-+	 * transaction adding inode to orphan list (let's call it T)
-+	 * is committed.  Otherwise if the transaction changing the
-+	 * buffer would be cleaned from the journal before T is
-+	 * committed, a crash will cause that the correct contents of
-+	 * the buffer will be lost.  On the other hand we have to
-+	 * clear the buffer dirty bit at latest at the moment when the
-+	 * transaction marking the buffer as freed in the filesystem
-+	 * structures is committed because from that moment on the
-+	 * buffer can be reallocated and used by a different page.
-+	 * Since the block hasn't been freed yet but the inode has
-+	 * already been added to orphan list, it is safe for us to add
-+	 * the buffer to BJ_Forget list of the newest transaction.
++	 * The space will be released later when all options are confirmed
++	 * to be correct
 +	 */
- 	transaction = jh->b_transaction;
- 	if (transaction == NULL) {
- 		/* First case: not on any transaction.  If it
-@@ -1783,16 +1798,15 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
- 	} else if (transaction == journal->j_committing_transaction) {
- 		JBUFFER_TRACE(jh, "on committing transaction");
- 		/*
--		 * If it is committing, we simply cannot touch it.  We
--		 * can remove it's next_transaction pointer from the
--		 * running transaction if that is set, but nothing
--		 * else. */
-+		 * The buffer is committing, we simply cannot touch
-+		 * it. So we just set j_next_transaction to the
-+		 * running transaction (if there is one) and mark
-+		 * buffer as freed so that commit code knows it should
-+		 * clear dirty bits when it is done with the buffer.
-+		 */
- 		set_buffer_freed(bh);
--		if (jh->b_next_transaction) {
--			J_ASSERT(jh->b_next_transaction ==
--					journal->j_running_transaction);
--			jh->b_next_transaction = NULL;
--		}
-+		if (journal->j_running_transaction && buffer_jbddirty(bh))
-+			jh->b_next_transaction = journal->j_running_transaction;
- 		jbd2_journal_put_journal_head(jh);
- 		spin_unlock(&journal->j_list_lock);
- 		jbd_unlock_bh_state(bh);
-@@ -1969,7 +1983,7 @@ void jbd2_journal_file_buffer(struct journal_head *jh,
-  */
- void __jbd2_journal_refile_buffer(struct journal_head *jh)
- {
--	int was_dirty;
-+	int was_dirty, jlist;
- 	struct buffer_head *bh = jh2bh(jh);
++	sbi->s_qf_names[qtype] = NULL;
++	return 1;
++}
++#endif
++
+ static int parse_options(char *options, struct super_block *sb,
+ 			 unsigned long *journal_devnum,
+ 			 unsigned int *journal_ioprio,
+@@ -1217,8 +1275,7 @@ static int parse_options(char *options, struct super_block *sb,
+ 	int data_opt = 0;
+ 	int option;
+ #ifdef CONFIG_QUOTA
+-	int qtype, qfmt;
+-	char *qname;
++	int qfmt;
+ #endif
  
- 	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
-@@ -1991,8 +2005,13 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
- 	__jbd2_journal_temp_unlink_buffer(jh);
- 	jh->b_transaction = jh->b_next_transaction;
- 	jh->b_next_transaction = NULL;
--	__jbd2_journal_file_buffer(jh, jh->b_transaction,
--				jh->b_modified ? BJ_Metadata : BJ_Reserved);
-+	if (buffer_freed(bh))
-+		jlist = BJ_Forget;
-+	else if (jh->b_modified)
-+		jlist = BJ_Metadata;
-+	else
-+		jlist = BJ_Reserved;
-+	__jbd2_journal_file_buffer(jh, jh->b_transaction, jlist);
- 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
+ 	if (!options)
+@@ -1401,63 +1458,22 @@ static int parse_options(char *options, struct super_block *sb,
+ 			break;
+ #ifdef CONFIG_QUOTA
+ 		case Opt_usrjquota:
+-			qtype = USRQUOTA;
+-			goto set_qf_name;
+-		case Opt_grpjquota:
+-			qtype = GRPQUOTA;
+-set_qf_name:
+-			if (sb_any_quota_loaded(sb) &&
+-			    !sbi->s_qf_names[qtype]) {
+-				ext4_msg(sb, KERN_ERR,
+-				       "Cannot change journaled "
+-				       "quota options when quota turned on");
++			if (!set_qf_name(sb, USRQUOTA, &args[0]))
+ 				return 0;
+-			}
+-			qname = match_strdup(&args[0]);
+-			if (!qname) {
+-				ext4_msg(sb, KERN_ERR,
+-					"Not enough memory for "
+-					"storing quotafile name");
+-				return 0;
+-			}
+-			if (sbi->s_qf_names[qtype] &&
+-			    strcmp(sbi->s_qf_names[qtype], qname)) {
+-				ext4_msg(sb, KERN_ERR,
+-					"%s quota file already "
+-					"specified", QTYPE2NAME(qtype));
+-				kfree(qname);
+-				return 0;
+-			}
+-			sbi->s_qf_names[qtype] = qname;
+-			if (strchr(sbi->s_qf_names[qtype], '/')) {
+-				ext4_msg(sb, KERN_ERR,
+-					"quotafile must be on "
+-					"filesystem root");
+-				kfree(sbi->s_qf_names[qtype]);
+-				sbi->s_qf_names[qtype] = NULL;
++			break;
++		case Opt_grpjquota:
++			if (!set_qf_name(sb, GRPQUOTA, &args[0]))
+ 				return 0;
+-			}
+-			set_opt(sbi->s_mount_opt, QUOTA);
+ 			break;
+ 		case Opt_offusrjquota:
+-			qtype = USRQUOTA;
+-			goto clear_qf_name;
++			if (!clear_qf_name(sb, USRQUOTA))
++				return 0;
++			break;
+ 		case Opt_offgrpjquota:
+-			qtype = GRPQUOTA;
+-clear_qf_name:
+-			if (sb_any_quota_loaded(sb) &&
+-			    sbi->s_qf_names[qtype]) {
+-				ext4_msg(sb, KERN_ERR, "Cannot change "
+-					"journaled quota options when "
+-					"quota turned on");
++			if (!clear_qf_name(sb, GRPQUOTA))
+ 				return 0;
+-			}
+-			/*
+-			 * The space will be released later when all options
+-			 * are confirmed to be correct
+-			 */
+-			sbi->s_qf_names[qtype] = NULL;
+ 			break;
++
+ 		case Opt_jqfmt_vfsold:
+ 			qfmt = QFMT_VFS_OLD;
+ 			goto set_qf_format;
+@@ -1630,8 +1646,7 @@ set_qf_format:
+ 		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+ 			clear_opt(sbi->s_mount_opt, GRPQUOTA);
  
- 	if (was_dirty)
+-		if ((sbi->s_qf_names[USRQUOTA] && test_opt(sb, GRPQUOTA)) ||
+-			(sbi->s_qf_names[GRPQUOTA] && test_opt(sb, USRQUOTA))) {
++		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
+ 			ext4_msg(sb, KERN_ERR, "old and new quota "
+ 					"format mixing");
+ 			return 0;
 -- 
 1.6.6.1.1.g974db.dirty
 
