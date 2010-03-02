@@ -1,45 +1,93 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 1/2] ext4: quota_write cross block boundary behaviour
-Date: Tue, 2 Mar 2010 08:15:32 -0500
-Message-ID: <20100302131532.GF6077@thunk.org>
-References: <1266338022-24298-1-git-send-email-dmonakhov@openvz.org>
- <20100216184654.GD3153@quack.suse.cz>
- <878wab6p3s.fsf@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [ext3] Changes to block device after an ext3 mount point has
+ been remounted readonly
+Date: Tue, 2 Mar 2010 14:26:43 +0100
+Message-ID: <20100302132643.GB3829@quack.suse.cz>
+References: <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com>
+ <20100222223252.GA13882@atrey.karlin.mff.cuni.cz>
+ <20100222230552.GB13882@atrey.karlin.mff.cuni.cz>
+ <16F918FB-F45D-478E-9358-550BB39E277E@sun.com>
+ <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com>
+ <20100223135531.GA7699@atrey.karlin.mff.cuni.cz>
+ <877hq2tyg8.fsf@openvz.org>
+ <20100224165646.GL3687@quack.suse.cz>
+ <20100302093431.GB5106@lst.de>
+ <874okz6nzj.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>,
+	Camille Moncelier <pix@devlife.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	viro@zeniv.linux.org.uk
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:45978 "EHLO thunker.thunk.org"
+Received: from cantor.suse.de ([195.135.220.2]:47773 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752237Ab0CBNPe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 08:15:34 -0500
+	id S1752362Ab0CBN0e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 08:26:34 -0500
 Content-Disposition: inline
-In-Reply-To: <878wab6p3s.fsf@openvz.org>
+In-Reply-To: <874okz6nzj.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 02, 2010 at 12:37:43PM +0300, Dmitry Monakhov wrote:
-> Jan Kara <jack@suse.cz> writes:
-> 
-> > On Tue 16-02-10 19:33:41, Dmitry Monakhov wrote:
-> >> We always assume what dquot update result in changes in one data block
-> >> But ext4_quota_write() function may handle cross block boundary writes
-> >> In fact if this ever happen it will result in incorrect journal credits
-> >> reservation. And later bug_on triggering. As soon this never happen the
-> >> boundary cross loop is NOOP. In order to make things straight
-> >> let's remove this loop and assert cross boundary condition.
-> >> 
-> >> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> >   Yeah, originally I thought it might be useful to support a possibility of
-> > multiblock writes but in the end we never needed it and currently e.g. OCFS2
-> > would already BUG on that so yes, this is a good simplification.
-> >   Acked-by: Jan Kara <jack@suse.cz>
+On Tue 02-03-10 13:01:52, Dmitry Monakhov wrote:
+> Christoph Hellwig <hch@lst.de> writes:
+> >>   Al, Christoph, do I miss something or there is really nothing which
+> >> prevents a process from opening a file after the fs_may_remount_ro() check
+> >> in do_remount_sb()?
 > >
-> >   I've merged the ext3 version of the patch into my tree. Ted, will you
-> > merge this ext4 cleanup please?
-> Ted please take a look at the patch.
+> > No, there is nothing.  We really do need a multi-stage remount read-only
+> > process:
+> >
+> >  1) stop any writes from userland, that is opening new files writeable
+> This is not quite good idea because sync may take really long time,
+> #fsstress -p32 -d /mnt/TEST -l9999999 -n99999999 -z -f creat=100 -f write=100
+> #sleep 60;
+> #killall -9 fsstress
+> #time mount mnt -oremount,ro
+> it take several minutes to complete.
+> And at the end it may fail but other reason.
+  Two points here:
+1) Current writeback code has a bug that while we are umounting/remounting,
+sync_filesystem() just degrades to doing all writeback in sync mode
+(because any non-sync writeback fails to get s_umount sem for reading
+and thus skips all the inodes of the superblock). This has considerable
+impact on the speed of sync during umount / remount.
 
-Sorry, I had lost track of this patch.  I've added it to the ext4 patch queue.
+2) IMHO it's not bad to block all opens for writing during remounting RO
+(and thus also during the sync). It's not a performance issue (remounting
+RO does not happen often), it won't confuse any application or so even if
+we later decide we cannot really finish remounting. Surely we'd have to
+come up with a better waiting scheme than just cpu_relax() in
+mnt_want_write() but that shouldn't be hard. The only thing I'm slightly
+worried about is whether we won't hit some locking issues (i.e., caller
+of mnt_want_write holding some lock needed to finish remount...).
 
-       	     	  	   		- Ted
+> >  2) stop any periodic writeback from the VM or filesystem-internal
+> >  3) write out all filesystem data and metadata
+> >  4) mark the filesystem fully read-only
+> 
+> I've tried to sole the issue in lightly another way
+> Please take a look on this 
+> http://marc.info/?l=linux-fsdevel&m=126723036525624&w=2
+> 1) Mark fs as GOING_TO_REMOUNT
+> 2) any new writer will clear this flag
+>    This allow us to not block 
+> 3) check flag before fssync and after and return EBUSY in this case. 
+> 4) At this time we may to block writers (this is absent in my patch)
+>    It is acceptable to block writers at this time because later stages
+>    doesn't take too long.
+> 5) perform fs-specific remount method.
+> 6) Marks filesystem as MS_RDONLY.
+  I like my solution more since in my solution, admin does not have go
+hunting for an application which keeps touching the filesystem while he is
+trying to remount it read only (currently, using lsof is usually enough but
+after your changes, running something like "while true; do touch /mnt/;
+done" has much larger window to stop remounting RO).
+  But in principle your solution is acceptable for me as well.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
