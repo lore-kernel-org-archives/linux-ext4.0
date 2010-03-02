@@ -1,83 +1,48 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH][BUG][TAKE2] ext4: unify each meaning of the offset in
- ext4_check_dir_entry calling from some functions.
-Date: Tue, 2 Mar 2010 00:22:57 -0500
-Message-ID: <20100302052257.GE6077@thunk.org>
-References: <20100203161348.0bf98d58.toshi.okajima@jp.fujitsu.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [ext3] Changes to block device after an ext3 mount point has been remounted readonly
+Date: Tue, 2 Mar 2010 10:34:31 +0100
+Message-ID: <20100302093431.GB5106@lst.de>
+References: <baaef4711002180845n29561ccif451fae62e49e520@mail.gmail.com> <9F53CAF8-B6B4-40EB-89FA-CD6779D17DBE@sun.com> <baaef4711002182338g17e42a7dpa47242dd334a27c2@mail.gmail.com> <20100222223252.GA13882@atrey.karlin.mff.cuni.cz> <20100222230552.GB13882@atrey.karlin.mff.cuni.cz> <16F918FB-F45D-478E-9358-550BB39E277E@sun.com> <baaef4711002230042p3d6fa7fam5a80174269773d48@mail.gmail.com> <20100223135531.GA7699@atrey.karlin.mff.cuni.cz> <877hq2tyg8.fsf@openvz.org> <20100224165646.GL3687@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger@sun.com, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Camille Moncelier <pix@devlife.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>, hch@lst.de,
+	viro@zeniv.linux.org.uk
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52285 "EHLO thunker.thunk.org"
+Received: from verein.lst.de ([213.95.11.210]:40160 "EHLO verein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751419Ab0CBFXA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 00:23:00 -0500
+	id S1751853Ab0CBJfZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 04:35:25 -0500
 Content-Disposition: inline
-In-Reply-To: <20100203161348.0bf98d58.toshi.okajima@jp.fujitsu.com>
+In-Reply-To: <20100224165646.GL3687@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 03, 2010 at 04:13:48PM +0900, Toshiyuki Okajima wrote:
-> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> 
-> "offset" of the error message of ext4_check_dir_entry() might change the
-> meaning by the caller. There are 2 meanings:
-> - "File offset"
->   called by:
->    ext4_readdir, htree_dirblock_to_tree, search_dirblock, ext4_dx_find_entry,
->    empty_dir
-> - "Buffer offset"
->   called by:
->    add_dirent_to_buf, ext4_delete_entry
-> 
-> The best way to solve this problem is to change the meaning of
-> "Buffer offset" into "File offset" but it is not easy.
+On Wed, Feb 24, 2010 at 05:56:46PM +0100, Jan Kara wrote:
+>   OK, I see that in theory a process can open file for writing after
+> fs_may_remount_ro() before MS_RDONLY flag gets set. That could be really
+> nasty.
 
-It would be desirable for this to be made consistent, but a physical
-block number plus the buffer offset is actually much less useful for
-someone trying to find the bad directory entry.
+Not just in theory, but also in practice.  We can easily hit this under
+load with XFS.
 
-So what I've checked into the ext4 patch queue prints both the
-physical block nubmer and the relative offset, as well as the
-passed-in offset which in many cases is the file offset.
+> But by no means we should solve this VFS problem by spilling error
+> messages from the filesystem.
 
-	  	       	       	     	- Ted
+Exactly.
 
-commit e5a2233178ebf8b6538dc19a0dcf721d11590ea0
-Author: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Date:   Tue Mar 2 00:21:35 2010 -0500
+>   Al, Christoph, do I miss something or there is really nothing which
+> prevents a process from opening a file after the fs_may_remount_ro() check
+> in do_remount_sb()?
 
-    ext4: make "offset" consistent in ext4_check_dir_entry()
-    
-    The callers of ext4_check_dir_entry() usually pass in the "file
-    offset" (ext4_readdir, htree_dirblock_to_tree, search_dirblock,
-    ext4_dx_find_entry, empty_dir), but a few callers (add_dirent_to_buf,
-    ext4_delete_entry) only pass in the buffer offset.
-    
-    To accomodate those last two (which would be hard to fix otherwise),
-    this patch changes ext4_check_dir_entry() to print the physical block
-    number and the relative offset as well as the passed-in offset.
-    
-    Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+No, there is nothing.  We really do need a multi-stage remount read-only
+process:
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 0e0bef3..29857dd 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -84,9 +84,11 @@ int ext4_check_dir_entry(const char *function, struct inode *dir,
- 
- 	if (error_msg != NULL)
- 		__ext4_error(dir->i_sb, function,
--			"bad entry in directory #%lu: %s - "
--			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
--			dir->i_ino, error_msg, offset,
-+			"bad entry in directory #%lu: %s - block=%llu"
-+			"offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
-+			dir->i_ino, error_msg, 
-+			(unsigned long long) bh->b_blocknr,     
-+			(unsigned) (offset%bh->b_size), offset,
- 			le32_to_cpu(de->inode),
- 			rlen, de->name_len);
- 	return error_msg == NULL ? 1 : 0;
+ 1) stop any writes from userland, that is opening new files writeable
+ 2) stop any periodic writeback from the VM or filesystem-internal
+ 3) write out all filesystem data and metadata
+ 4) mark the filesystem fully read-only
+
