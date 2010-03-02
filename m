@@ -1,62 +1,162 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 11/28] ext4: correctly calculate number of blocks for fiemap
-Date: Tue,  2 Mar 2010 13:18:28 -0500
-Message-ID: <1267553925-6308-12-git-send-email-tytso@mit.edu>
+Subject: [PATCH 14/28] ext4: Add flag to files with blocks intentionally past EOF
+Date: Tue,  2 Mar 2010 13:18:31 -0500
+Message-ID: <1267553925-6308-15-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Leonard Michlmayr <leonard.michlmayr@gmail.com>,
+Cc: Jiaying Zhang <jiayingz@google.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43086 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43069 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753406Ab0CBSS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:58 -0500
+	id S1753462Ab0CBSS4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:18:56 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+From: Jiaying Zhang <jiayingz@google.com>
 
-ext4_fiemap() rounds the length of the requested range down to
-blocksize, which is is not the true number of blocks that cover the
-requested region.  This problem is especially impressive if the user
-requests only the first byte of a file: not a single extent will be
-reported.
+fallocate() may potentially instantiate blocks past EOF, depending
+on the flags used when it is called.
 
-We fix this by calculating the last block of the region and then
-subtract to find the number of blocks in the extents.
+e2fsck currently has a test for blocks past i_size, and it
+sometimes trips up - noticeably on xfstests 013 which runs fsstress.
 
-Signed-off-by: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+This patch from Jiayang does fix it up - it (along with
+e2fsprogs updates and other patches recently from Aneesh) has
+survived many fsstress runs in a row.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Jiaying Zhang <jiayingz@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h    |    5 +++--
+ fs/ext4/extents.c |   22 +++++++++++++++++++++-
+ fs/ext4/inode.c   |    9 ++++++++-
+ fs/ext4/ioctl.c   |    9 +++++++++
+ 4 files changed, 41 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 509437f..74664ca 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -285,10 +285,11 @@ struct flex_groups {
+ #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+ #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+ #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
++#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+-#define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+-#define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
++#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
++#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
+ 
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bd80891..bc9860f 100644
+index bc9860f..e0e2009 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3768,7 +3768,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		__u64 start, __u64 len)
+@@ -3186,7 +3186,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
  {
- 	ext4_lblk_t start_blk;
--	ext4_lblk_t len_blks;
- 	int error = 0;
- 
- 	/* fallback to generic here if not in extents fmt */
-@@ -3782,8 +3781,11 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
- 		error = ext4_xattr_fiemap(inode, fieinfo);
- 	} else {
-+		ext4_lblk_t last_blk, len_blks;
+ 	struct ext4_ext_path *path = NULL;
+ 	struct ext4_extent_header *eh;
+-	struct ext4_extent newex, *ex;
++	struct ext4_extent newex, *ex, *last_ex;
+ 	ext4_fsblk_t newblock;
+ 	int err = 0, depth, ret, cache_type;
+ 	unsigned int allocated = 0;
+@@ -3367,6 +3367,19 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 						     EXT4_STATE_DIO_UNWRITTEN);
+ 		}
+ 	}
 +
- 		start_blk = start >> inode->i_sb->s_blocksize_bits;
--		len_blks = len >> inode->i_sb->s_blocksize_bits;
-+		last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
-+		len_blks = last_blk - start_blk + 1;
++	if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)) {
++		if (eh->eh_entries) {
++			last_ex = EXT_LAST_EXTENT(eh);
++			if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
++					    + ext4_ext_get_actual_len(last_ex))
++				EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
++		} else {
++			WARN_ON(eh->eh_entries == 0);
++			ext4_error(inode->i_sb, __func__,
++				"inode#%lu, eh->eh_entries = 0!", inode->i_ino);
++			}
++	}
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+ 	if (err) {
+ 		/* free data blocks we just allocated */
+@@ -3500,6 +3513,13 @@ static void ext4_falloc_update_inode(struct inode *inode,
+ 			i_size_write(inode, new_size);
+ 		if (new_size > EXT4_I(inode)->i_disksize)
+ 			ext4_update_i_disksize(inode, new_size);
++	} else {
++		/*
++		 * Mark that we allocate beyond EOF so the subsequent truncate
++		 * can proceed even if the new size is the same as i_size.
++		 */
++		if (new_size > i_size_read(inode))
++			EXT4_I(inode)->i_flags |= EXT4_EOFBLOCKS_FL;
+ 	}
  
- 		/*
- 		 * Walk the extent tree gathering extent information.
+ }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ecac8c5..edb7edc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4456,6 +4456,8 @@ void ext4_truncate(struct inode *inode)
+ 	if (!ext4_can_truncate(inode))
+ 		return;
+ 
++	EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
++
+ 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
+ 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
+ 
+@@ -5305,7 +5307,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	}
+ 
+ 	if (S_ISREG(inode->i_mode) &&
+-	    attr->ia_valid & ATTR_SIZE && attr->ia_size < inode->i_size) {
++	    attr->ia_valid & ATTR_SIZE &&
++	    (attr->ia_size < inode->i_size ||
++	     (EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL))) {
+ 		handle_t *handle;
+ 
+ 		handle = ext4_journal_start(inode, 3);
+@@ -5336,6 +5340,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				goto err_out;
+ 			}
+ 		}
++		/* ext4_truncate will clear the flag */
++		if ((EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL))
++			ext4_truncate(inode);
+ 	}
+ 
+ 	rc = inode_setattr(inode, attr);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index b63d193..2220feb 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -92,6 +92,15 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 			flags &= ~EXT4_EXTENTS_FL;
+ 		}
+ 
++		if (flags & EXT4_EOFBLOCKS_FL) {
++			/* we don't support adding EOFBLOCKS flag */
++			if (!(oldflags & EXT4_EOFBLOCKS_FL)) {
++				err = -EOPNOTSUPP;
++				goto flags_out;
++			}
++		} else if (oldflags & EXT4_EOFBLOCKS_FL)
++			ext4_truncate(inode);
++
+ 		handle = ext4_journal_start(inode, 1);
+ 		if (IS_ERR(handle)) {
+ 			err = PTR_ERR(handle);
 -- 
 1.6.6.1.1.g974db.dirty
 
