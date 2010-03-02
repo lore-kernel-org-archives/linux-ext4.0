@@ -1,45 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 26/28] ext4: Use direct_IO_no_locking in ext4 dio read.
-Date: Tue,  2 Mar 2010 13:18:43 -0500
-Message-ID: <1267553925-6308-27-git-send-email-tytso@mit.edu>
+From: tytso@mit.edu
+Subject: Re: [PATCH 00/28] Ext4 patch queue for the 2.6.34 merge window.
+Date: Tue, 2 Mar 2010 13:26:18 -0500
+Message-ID: <20100302182618.GA6602@thunk.org>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jiaying Zhang <jiayingz@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: jiayingz@google.com
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43043 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:53126 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753449Ab0CBSSy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:54 -0500
+	id S1754114Ab0CBS0T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:26:19 -0500
+Content-Disposition: inline
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Jiaying Zhang <jiayingz@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |    9 ++++++++-
- 1 files changed, 8 insertions(+), 1 deletions(-)
+On Tue, Mar 02, 2010 at 01:18:17PM -0500, Theodore Ts'o wrote:
+> This is what I have queued up to send to Linus for the 2.6.34 merge
+> window.  It's in the ext4 patch queue and in the ext4 tree (everything
+> between origin and next).  I'm currently doing final testing and plan to
+> ship it to Linus in the next day or two.
+> 
+> If you think something is missing or should be dropped for this list, or
+> see something wrong, please let me know ASAP.  Thanks!!
+> 
+>     	      	     	    	   - Ted
+> 
+> Theodore Ts'o (9):
+>   ext4: mechanical change on dio get_block code in prepare for it to be
+>     used by buffer write
+>   ext4: use ext4_get_block_write in buffer write
+>   ext4: Use direct_IO_no_locking in ext4 dio read.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ae7adf2..576bbe2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3440,7 +3440,14 @@ static ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
- 	}
- 
- retry:
--	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
-+	if (rw == READ && ext4_should_dioread_nolock(inode))
-+		ret = blockdev_direct_IO_no_locking(rw, iocb, inode,
-+				 inode->i_sb->s_bdev, iov,
-+				 offset, nr_segs,
-+				 ext4_get_block, NULL);
-+	else
-+		ret = blockdev_direct_IO(rw, iocb, inode,
-+				 inode->i_sb->s_bdev, iov,
- 				 offset, nr_segs,
- 				 ext4_get_block, NULL);
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
--- 
-1.6.6.1.1.g974db.dirty
+This should be properly credited to Jiaying Zhang.  Oops.  I'll fix
+this before pushing...
 
+					- Ted
