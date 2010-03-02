@@ -1,39 +1,56 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 10/28] ext4: add missing error checking to ext4_expand_extra_isize_ea()
-Date: Tue,  2 Mar 2010 13:18:27 -0500
-Message-ID: <1267553925-6308-11-git-send-email-tytso@mit.edu>
+Subject: [PATCH 23/28] ext4: make "offset" consistent in ext4_check_dir_entry()
+Date: Tue,  2 Mar 2010 13:18:40 -0500
+Message-ID: <1267553925-6308-24-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Roel Kluin <roel.kluin@gmail.com>
+Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43090 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43068 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753604Ab0CBSS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:59 -0500
+	id S1753478Ab0CBSS4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:18:56 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Roel Kluin <roel.kluin@gmail.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+The callers of ext4_check_dir_entry() usually pass in the "file
+offset" (ext4_readdir, htree_dirblock_to_tree, search_dirblock,
+ext4_dx_find_entry, empty_dir), but a few callers (add_dirent_to_buf,
+ext4_delete_entry) only pass in the buffer offset.
+
+To accomodate those last two (which would be hard to fix otherwise),
+this patch changes ext4_check_dir_entry() to print the physical block
+number and the relative offset as well as the passed-in offset.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/xattr.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/dir.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 627c98a..efc16a4 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1300,6 +1300,8 @@ retry:
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 0e0bef3..29857dd 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -84,9 +84,11 @@ int ext4_check_dir_entry(const char *function, struct inode *dir,
  
- 		/* Remove the chosen entry from the inode */
- 		error = ext4_xattr_ibody_set(handle, inode, &i, is);
-+		if (error)
-+			goto cleanup;
- 
- 		entry = IFIRST(header);
- 		if (entry_size + EXT4_XATTR_SIZE(size) >= new_extra_isize)
+ 	if (error_msg != NULL)
+ 		__ext4_error(dir->i_sb, function,
+-			"bad entry in directory #%lu: %s - "
+-			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
+-			dir->i_ino, error_msg, offset,
++			"bad entry in directory #%lu: %s - block=%llu"
++			"offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
++			dir->i_ino, error_msg, 
++			(unsigned long long) bh->b_blocknr,     
++			(unsigned) (offset%bh->b_size), offset,
+ 			le32_to_cpu(de->inode),
+ 			rlen, de->name_len);
+ 	return error_msg == NULL ? 1 : 0;
 -- 
 1.6.6.1.1.g974db.dirty
 
