@@ -1,120 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 13/28] ext4: Fix BUG_ON at fs/buffer.c:652 in no journal mode
-Date: Tue,  2 Mar 2010 13:18:30 -0500
-Message-ID: <1267553925-6308-14-git-send-email-tytso@mit.edu>
+Subject: [PATCH 18/28] ext4: Fix fencepost error in chosing choosing group vs file preallocation.
+Date: Tue,  2 Mar 2010 13:18:35 -0500
+Message-ID: <1267553925-6308-19-git-send-email-tytso@mit.edu>
 References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-Cc: Curt Wohlgemuth <curtw@google.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: Tao Ma <tao.ma@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43092 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43061 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753600Ab0CBSS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Mar 2010 13:18:59 -0500
+	id S1753402Ab0CBSS4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:18:56 -0500
 In-Reply-To: <1267553925-6308-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+From: Tao Ma <tao.ma@oracle.com>
 
-Calls to ext4_handle_dirty_metadata should only pass in an inode
-pointer for inode-specific metadata, and not for shared metadata
-blocks such as inode table blocks, block group descriptors, the
-superblock, etc.
+The ext4 multiblock allocator decides whether to use group or file
+preallocation based on the file size.  When the file size reaches
+s_mb_stream_request (default is 16 blocks), it changes to use a
+file-specific preallocation. This is cool, but it has a tiny problem.
 
-The BUG_ON can get tripped when updating a special device (such as a
-block device) that is opened (so that i_mapping is set in
-fs/block_dev.c) and the file system is mounted in no journal mode.
+See a simple script:
+mkfs.ext4 -b 1024 /dev/sda8 1000000
+mount -t ext4 -o nodelalloc /dev/sda8 /mnt/ext4
+for((i=0;i<5;i++))
+do
+cat /mnt/4096>>/mnt/ext4/a	#4096 is a file with 4096 characters.
+cat /mnt/4096>>/mnt/ext4/b
+done
+debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
 
-Addresses-Google-Bug: #2404870
+And you get
+BLOCKS:
+(0-14):8705-8719, (15):2356, (16-19):8465-8468
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+So there are 3 extents, a bit strange for the lonely 15th logical
+block.  As we write to the 16 blocks, we choose file preallocation in
+ext4_mb_group_or_file, but in ext4_mb_normalize_request, we meet with
+the 16*1024 range, so no preallocation will be carried. file b then
+reserves the space after '2356', so when when write 16, we start from
+another part.
+
+This patch just change the check in ext4_mb_group_or_file, so
+that for the lonely 15 we will still use group preallocation.
+After the patch, we will get:
+debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
+BLOCKS:
+(0-15):8705-8720, (16-19):8465-8468
+
+Looks more sane. Thanks.
+
+Signed-off-by: Tao Ma <tao.ma@oracle.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4_jbd2.c |    2 +-
- fs/ext4/ialloc.c    |    2 +-
- fs/ext4/inode.c     |    6 +++---
- fs/ext4/namei.c     |    4 ++--
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 2f407c4..53d2764 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -125,7 +125,7 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
- 			ext4_journal_abort_handle(where, __func__, bh,
- 						  handle, err);
- 	} else {
--		if (inode && bh)
-+		if (inode)
- 			mark_buffer_dirty_inode(bh, inode);
- 		else
- 			mark_buffer_dirty(bh);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index e4aaf61..004c9da 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -898,7 +898,7 @@ repeat_in_this_group:
- 				BUFFER_TRACE(inode_bitmap_bh,
- 					"call ext4_handle_dirty_metadata");
- 				err = ext4_handle_dirty_metadata(handle,
--								 inode,
-+								 NULL,
- 							inode_bitmap_bh);
- 				if (err)
- 					goto fail;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 536067b..ecac8c5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5120,7 +5120,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
- 			sb->s_dirt = 1;
- 			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_metadata(handle, inode,
-+			err = ext4_handle_dirty_metadata(handle, NULL,
- 					EXT4_SB(sb)->s_sbh);
- 		}
- 	}
-@@ -5149,7 +5149,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 	}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 415e11f..72d5ceb 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3935,7 +3935,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
  
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--	rc = ext4_handle_dirty_metadata(handle, inode, bh);
-+	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
- 		err = rc;
- 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
-@@ -5701,7 +5701,7 @@ static int ext4_pin_inode(handle_t *handle, struct inode *inode)
- 			err = jbd2_journal_get_write_access(handle, iloc.bh);
- 			if (!err)
- 				err = ext4_handle_dirty_metadata(handle,
--								 inode,
-+								 NULL,
- 								 iloc.bh);
- 			brelse(iloc.bh);
- 		}
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index bd2dc0b..a13948f 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2017,7 +2017,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	/* Insert this inode at the head of the on-disk orphan list... */
- 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
- 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
--	err = ext4_handle_dirty_metadata(handle, inode, EXT4_SB(sb)->s_sbh);
-+	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
- 		err = rc;
-@@ -2089,7 +2089,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- 		if (err)
- 			goto out_brelse;
- 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
--		err = ext4_handle_dirty_metadata(handle, inode, sbi->s_sbh);
-+		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
- 	} else {
- 		struct ext4_iloc iloc2;
- 		struct inode *i_prev =
+ 	/* don't use group allocation for large files */
+ 	size = max(size, isize);
+-	if (size >= sbi->s_mb_stream_request) {
++	if (size > sbi->s_mb_stream_request) {
+ 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
+ 		return;
+ 	}
 -- 
 1.6.6.1.1.g974db.dirty
 
