@@ -1,40 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] [RESEND] ext4: Release page references acquired in ext4_da_block_invalidatepages
-Date: Wed,  3 Mar 2010 14:54:07 +0100
-Message-ID: <1267624447-19923-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52995 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754292Ab0CCNyA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Mar 2010 08:54:00 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [LSF/VM TOPIC] Re: [Lsf10-pc] Rich-acl discussion for Linus Storage and Filesystem
+ summit
+Date: Wed, 03 Mar 2010 19:39:06 +0530
+Message-ID: <878wa9o5tp.fsf@linux.vnet.ibm.com>
+References: <87hboypy6v.fsf@linux.vnet.ibm.com>
+	<1267542978.3099.68.camel@localhost.localdomain>
+	<1267607061.15025.11.camel@mulgrave.site>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: lsf10-pc@lists.linuxfoundation.org,
+	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"Ext4 Developers List" <linux-ext4@vger.kernel.org>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1267607061.15025.11.camel@mulgrave.site>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-We forget to release page references we acquire in
-ext4_da_block_invalidatepages.  Luckily, this function gets called only if we
-are not able to allocate blocks for delay-allocated data so that function
-should better never be called.
+On Wed, 03 Mar 2010 14:34:21 +0530, James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
+> On Tue, 2010-03-02 at 10:16 -0500, Trond Myklebust wrote:
+> > On Tue, 2010-03-02 at 20:28 +0530, Aneesh Kumar K.V wrote: 
+> > > Hi,
+> > > 
+> > > Suggestion for discussion at LSF summit:
+> > > 
+> > > Rich-acl patches posted at 
+> > > http://article.gmane.org/gmane.comp.file-systems.ext4/17414 helps in
+> > > defining a new acl format for Linux that can interoperate better with
+> > > NFSv4 acl and CIFS acl. I would like have a discussion on the new acl
+> > 
+> > What about NTFS?
+> > 
+> > > format, rules regarding how to handle file mode changes and acl
+> > > values. Also how to handle uid to nfs name@domain mapping
+> > > 
+> > > -aneesh
+> > 
+> > I very much second this proposal. We've been spinning our wheels on the
+> > issue of support for non-posix draft acls for far too long.
+> 
+> So could we take the proposal to the relevant list to see who else wants
+> to talk about it and whether any of the ground work can be covered
+> beforehand?
+> 
 
-Also cleanup handling of index variable.
+Adding fsdevel, ext4 list. samba will also be interested, but that is
+subscriber only list
 
-Reported-by: Wu Fengguang <fengguang.wu@intel.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c818972..1680007 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2127,17 +2127,16 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
- 			break;
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
--			index = page->index;
--			if (index > end)
-+			if (page->index > end)
- 				break;
--			index++;
+-aneesh
