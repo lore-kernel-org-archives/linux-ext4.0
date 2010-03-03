@@ -1,45 +1,74 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [PATCH 2/3] ext4: Fix the NULL reference in double_down_write_data_sem()
-Date: Wed, 03 Mar 2010 15:49:37 +0900
-Message-ID: <4B8E0681.10102@rs.jp.nec.com>
+Subject: [PATCH 3/3] ext4: Code cleanup for EXT4_IOC_MOVE_EXT ioctl
+Date: Wed, 03 Mar 2010 15:49:44 +0900
+Message-ID: <4B8E0688.9000601@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57247 "EHLO
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57333 "EHLO
 	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753109Ab0CCGu4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Mar 2010 01:50:56 -0500
+	with ESMTP id S1753109Ab0CCGvO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Mar 2010 01:51:14 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: Fix the NULL reference in double_down_write_data_sem()
+ext4: Code cleanup for EXT4_IOC_MOVE_EXT ioctl
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-If EXT4_IOC_MOVE_EXT ioctl is called with NULL donor_fd,
-fget() in ext4_ioctl() gets inappropriate file structure for donor.
-Therefore the NULL reference occurs in double_down_write_data_sem().
+a) Fix sparse warning in ext4_ioctl()
+b) Remove unneeded variable in mext_leaf_block()
+c) Fix spelling typo in mext_check_arguments()
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 ---
-  fs/ext4/move_extent.c |   16 ++++++++--------
-  1 files changed, 8 insertions(+), 8 deletions(-)
+  fs/ext4/ioctl.c       |    3 ++-
+  fs/ext4/move_extent.c |    4 +---
+  2 files changed, 3 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 406758b..6f8b4fd 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -270,7 +270,8 @@ setversion_out:
+  		if (me.moved_len > 0)
+  			file_remove_suid(donor_filp);
+
+-		if (copy_to_user((struct move_extent *)arg, &me, sizeof(me)))
++		if (copy_to_user((struct move_extent __user *)arg, &me,
++							sizeof(me)))
+  			err = -EFAULT;
+  mext_out:
+  		fput(donor_filp);
 diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 9eca1c0..7e99f4e 100644
+index 7e99f4e..aa5fe28 100644
 --- a/fs/ext4/move_extent.c
 +++ b/fs/ext4/move_extent.c
-@@ -953,14 +953,6 @@ mext_check_arguments(struct inode *orig_inode,
-  	unsigned int blkbits = orig_inode->i_blkbits;
-  	unsigned int blocksize = 1 << blkbits;
+@@ -477,7 +477,6 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
+  	struct ext4_extent *oext, *o_start, *o_end, *prev_ext;
+  	struct ext4_extent new_ext, start_ext, end_ext;
+  	ext4_lblk_t new_ext_end;
+-	ext4_fsblk_t new_phys_end;
+  	int oext_alen, new_ext_alen, end_ext_alen;
+  	int depth = ext_depth(orig_inode);
+  	int ret;
+@@ -491,7 +490,6 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
+  	new_ext.ee_len = dext->ee_len;
+  	new_ext_alen = ext4_ext_get_actual_len(&new_ext);
+  	new_ext_end = le32_to_cpu(new_ext.ee_block) + new_ext_alen - 1;
+-	new_phys_end = ext_pblock(&new_ext) + new_ext_alen - 1;
 
--	/* Regular file check */
--	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
--		ext4_debug("ext4 move extent: The argument files should be "
--			"regular file [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
+  	/*
+  	 * Case: original extent is first
+@@ -932,7 +930,7 @@ out2:
+  }
+
+  /**
+- * mext_check_argumants - Check whether move extent can be done
++ * mext_check_arguments - Check whether move extent can be done
+   *
+   * @orig_inode:		original inode
+   * @donor_inode:	donor inode
