@@ -1,50 +1,76 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 0/5] RFC: introduce extended inode owner identifier v5
-Date: Thu,  4 Mar 2010 21:34:32 +0300
-Message-ID: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 1/5] vfs: Add additional owner identifier
+Date: Thu,  4 Mar 2010 21:34:33 +0300
+Message-ID: <1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
+References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
 Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:46597 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755090Ab0CDSeu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 13:34:50 -0500
+In-Reply-To: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is next generation of attempt to add extended inode identifier.
-Again i've change the name of the identified, but this is the last
-time, i promise.
-Now it's called similar to XFS project_id feature, in fact both
-features are almost equal.
+This patch add project inode identifier. Project ID may be used as
+auxiliary owner specifier in addition to standard uid/gid.
 
-*Feature description*
-1) Inode may has a project identifier which has same meaning as uid/gid.
-2) Id is stored in inode's xattr named "system.project_id"
-3) Id is inherent from parent inode on creation.
-4) This id is cached in memory inode structure vfs_inode->i_prjid
-   This field it restricted by CONFIG_PROJECT_ID. So no wasting
-   of memory happens.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/Kconfig            |    7 +++++++
+ include/linux/fs.h    |    4 ++++
+ include/linux/xattr.h |    3 +++
+ 3 files changed, 14 insertions(+), 0 deletions(-)
 
-5) Since id is cached in memory it may be used for different purposes
-   such as:
-5A) Implement additional quota id space orthogonal to uid/gid. This is
-    useful in managing quota for some filesystem hierarchy(chroot or
-    container over bindmount)
-5B) Export dedicated fs hierarchy to nfsd (only inode which has some
-    project_id will be accessible via nfsd)
-
-6) It is possible to create isolated inode subtree.
-   (2 AlViro) please do not blame isolation feature before you read
-          the isolation patch description, and then please wellcome.
-
-*User interface *
-Project id is managed via generic xattr interface "system.project_id"
-
-PATCH SET TOC:
-1) generic projectid support
-2) generic project quota support
-3) ext4 project support implementation
- 3A) ext4: generic project support
- 3B) ext4: project isolation support
- 3C) ext4: project quota support
-
-Patch agains linux-next-20100304
-The patchset survived basic stress testing.
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 5f85b59..23957c0 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -54,6 +54,13 @@ config FILE_LOCKING
+ 	  This option enables standard file locking support, required
+           for filesystems like NFS and for the flock() system
+           call. Disabling this option saves about 11k.
++config PROJECT_ID
++	bool "Enable project inode identifier"
++	default y
++	help
++	  This option enables project inode identifier. Project ID
++	  may be used as auxiliary owner specifier in addition to
++	  standard uid/gid.
+ 
+ source "fs/notify/Kconfig"
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 30eee24..0218906 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -753,6 +753,10 @@ struct inode {
+ #ifdef CONFIG_QUOTA
+ 	struct dquot		*i_dquot[MAXQUOTAS];
+ #endif
++#ifdef CONFIG_PROJECT_ID
++	/* Project id, protected by i_mutex similar to i_uid/i_gid */
++	__u32 			i_prjid;
++#endif
+ 	struct list_head	i_devices;
+ 	union {
+ 		struct pipe_inode_info	*i_pipe;
+diff --git a/include/linux/xattr.h b/include/linux/xattr.h
+index fb9b7e6..9d85a4b 100644
+--- a/include/linux/xattr.h
++++ b/include/linux/xattr.h
+@@ -33,6 +33,9 @@
+ #define XATTR_USER_PREFIX "user."
+ #define XATTR_USER_PREFIX_LEN (sizeof (XATTR_USER_PREFIX) - 1)
+ 
++#define XATTR_PRJID "system.project_id"
++#define XATTR_PRJID_LEN (sizeof (XATTR_PRJID))
++
+ struct inode;
+ struct dentry;
+ 
+-- 
+1.6.6
 
