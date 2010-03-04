@@ -1,58 +1,28 @@
-From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
-Subject: Re: [PATCH 11/28] ext4: correctly calculate number of blocks for
- fiemap
-Date: Thu, 04 Mar 2010 22:44:58 +0100
-Message-ID: <1267739098.4204.12.camel@michlmayr>
-References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-	 <1267553925-6308-12-git-send-email-tytso@mit.edu>
-	 <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org>
-	 <4B8F47C6.9060408@rs.jp.nec.com>
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+Subject: dump/restore not supported for ext4
+Date: Thu, 4 Mar 2010 17:05:56 -0500 (EST)
+Message-ID: <alpine.DEB.2.00.1003041704230.17723@p34.internal.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>, tytso@mit.edu
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f218.google.com ([209.85.218.218]:63067 "EHLO
-	mail-bw0-f218.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751394Ab0CDVvq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 16:51:46 -0500
-Received: by bwz10 with SMTP id 10so2319931bwz.2
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Mar 2010 13:51:45 -0800 (PST)
-In-Reply-To: <4B8F47C6.9060408@rs.jp.nec.com>
+Received: from lucidpixels.com ([75.144.35.66]:42462 "EHLO lucidpixels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755435Ab0CDWF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Mar 2010 17:05:57 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Akira Fujita:
-> <kernel-space>
-> fs/ioctl.c ioctl_fimap():
-> 
-> filemap_check_ranges():
-> 	len(~0ULL)
-> 	new_len(4398046511103 = s_maxbytes)  <--- Because 'len > s_maxbytes'
-> 
-> fs/ext4/extents.c ext4_fiemap():
-> 	last_blk = start(0) + len(4398046511103) - 1 >> s_blocksize_bits(11)
-> 	         = 4294967295 (0xFFFFFFFF)
-> 	len_blks = 4294967295 + 1 (0xFFFFFFFF + 0x00000001)
-> 		 = 4294967296 (0x100000000)  <--- _OVERFLOW!!_
-> 	
-> ext4_ext_walk_space():
-> 	num = 0
-> 
-> This overflow leads to incorrect output like the below,
-> even though 2 extents exist.
-> 
+Hi,
 
-Thank you for pointing this out. I had not checked s_maxbytes.
-Appearently s_maxbytes can be 1<<(32 + s_blocksize_bits) - 1. Therefore
-the number of blocks in a file cannot be stored in a 32bit integer.
+I should have researched it more:
 
-I have a patch that should fix it for fiemap. I have just compiled it
-and I will do some testing and double checking tomorrow. I will send a
-separate email with the patch.
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=511651
+https://lists.ubuntu.com/archives/universe-bugs/2009-June/098729.html
 
-regards
-Leonard
+Looks like it's broken, I agree with the reporters, dump should abort if 
+it is dealing with an ext4 filesystem, since you cannot restore data from 
+an ext4 dump.
 
-
+Justin.
