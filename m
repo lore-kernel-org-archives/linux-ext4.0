@@ -1,31 +1,26 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH 11/28] ext4: correctly calculate number of blocks for
  fiemap
-Date: Thu, 04 Mar 2010 17:47:56 -0600
-Message-ID: <4B9046AC.4090003@redhat.com>
-References: <1267553925-6308-1-git-send-email-tytso@mit.edu> <1267553925-6308-12-git-send-email-tytso@mit.edu> <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org> <4B8F47C6.9060408@rs.jp.nec.com> <20100304220805.GF15028@thunk.org>
+Date: Thu, 04 Mar 2010 17:38:50 -0600
+Message-ID: <4B90448A.2030609@redhat.com>
+References: <1267553925-6308-1-git-send-email-tytso@mit.edu>	 <1267553925-6308-12-git-send-email-tytso@mit.edu>	 <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org>	 <4B8F47C6.9060408@rs.jp.nec.com> <1267739098.4204.12.camel@michlmayr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
-	Leonard Michlmayr <leonard.michlmayr@gmail.com>,
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, tytso@mit.edu,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+To: Leonard Michlmayr <leonard.michlmayr@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33644 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59678 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756873Ab0CDXsF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Mar 2010 18:48:05 -0500
-In-Reply-To: <20100304220805.GF15028@thunk.org>
+	id S1756848Ab0CDXjB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Mar 2010 18:39:01 -0500
+In-Reply-To: <1267739098.4204.12.camel@michlmayr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu wrote:
-> On Thu, Mar 04, 2010 at 02:40:22PM +0900, Akira Fujita wrote:
->> <user-space>
->> filefrag:
->> 	fiemap->fm_start(0) fiemap->fm_length(~0ULL)
->>
+Leonard Michlmayr wrote:
+> Akira Fujita:
 >> <kernel-space>
 >> fs/ioctl.c ioctl_fimap():
 >>
@@ -44,69 +39,38 @@ tytso@mit.edu wrote:
 >>
 >> This overflow leads to incorrect output like the below,
 >> even though 2 extents exist.
+>>
 > 
-> Akira-san,
-> 
-> Thank you for your clear explanation; you're absolutely correct.  I've
-> replaced the patch with the following, which I think is a bit clearer.
-> I've tested to make sure it does the right thing, including a number
-> of corner cases.
+> Thank you for pointing this out. I had not checked s_maxbytes.
+> Appearently s_maxbytes can be 1<<(32 + s_blocksize_bits) - 1. Therefore
+> the number of blocks in a file cannot be stored in a 32bit integer.
 
-Ted, I think those testcases you used would be great xfstests candidates,
-hint hint.  :)
+For extent-based files it had better be....
+
+struct ext4_extent {
+        __le32  ee_block;       /* first logical block extent covers */
+        __le16  ee_len;         /* number of blocks covered by extent */
+
+The start block can't be more than 32 bits; this essentially limits
+the file size / maximum logical block to 2^32 blocks right?
+
+s_maxbytes comes out to 17592186044415
+
+2^32 4k blocks is 17592186044416 bytes, or max byte offset 17592186044415
+
+What am I missing?  (confusion between max byte count and max
+byte offset, perhaps?)
 
 -Eric
 
-> Regards,
+> I have a patch that should fix it for fiemap. I have just compiled it
+> and I will do some testing and double checking tomorrow. I will send a
+> separate email with the patch.
 > 
-> 					- Ted
+> regards
+> Leonard
 > 
-> commit aca92ff6f57c000d1b4523e383c8bd6b8269b8b1
-> Author: Leonard Michlmayr <leonard.michlmayr@gmail.com>
-> Date:   Thu Mar 4 17:07:28 2010 -0500
 > 
->     ext4: correctly calculate number of blocks for fiemap
->     
->     ext4_fiemap() rounds the length of the requested range down to
->     blocksize, which is is not the true number of blocks that cover the
->     requested region.  This problem is especially impressive if the user
->     requests only the first byte of a file: not a single extent will be
->     reported.
->     
->     We fix this by calculating the last block of the region and then
->     subtract to find the number of blocks in the extents.
->     
->     Signed-off-by: Leonard Michlmayr <leonard.michlmayr@gmail.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index bd80891..7d54850 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3768,7 +3768,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  		__u64 start, __u64 len)
->  {
->  	ext4_lblk_t start_blk;
-> -	ext4_lblk_t len_blks;
->  	int error = 0;
->  
->  	/* fallback to generic here if not in extents fmt */
-> @@ -3782,8 +3781,14 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
->  		error = ext4_xattr_fiemap(inode, fieinfo);
->  	} else {
-> +		ext4_lblk_t len_blks;
-> +		__u64 last_blk;
-> +
->  		start_blk = start >> inode->i_sb->s_blocksize_bits;
-> -		len_blks = len >> inode->i_sb->s_blocksize_bits;
-> +		last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
-> +		if (last_blk >= EXT_MAX_BLOCK)
-> +			last_blk = EXT_MAX_BLOCK-1;
-> +		len_blks = ((ext4_lblk_t) last_blk) - start_blk + 1;
->  
->  		/*
->  		 * Walk the extent tree gathering extent information.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
