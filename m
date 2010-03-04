@@ -1,210 +1,47 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 5/5] ext4: add project quota support
-Date: Thu,  4 Mar 2010 21:34:37 +0300
-Message-ID: <1267727677-11956-6-git-send-email-dmonakhov@openvz.org>
-References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-3-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-4-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-5-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-fsdevel@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/5] ext4: add isolated project support
+Date: Thu, 4 Mar 2010 21:07:00 +0100
+Message-ID: <20100304200700.GA6092@atrey.karlin.mff.cuni.cz>
+References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org> <1267727677-11956-2-git-send-email-dmonakhov@openvz.org> <1267727677-11956-3-git-send-email-dmonakhov@openvz.org> <1267727677-11956-4-git-send-email-dmonakhov@openvz.org> <1267727677-11956-5-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:46597 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755367Ab0CDSe4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 13:34:56 -0500
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:60234 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932149Ab0CDUHD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 15:07:03 -0500
+Content-Disposition: inline
 In-Reply-To: <1267727677-11956-5-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Both regular and journaled quota are supported.
+  Hi,
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h  |    1 +
- fs/ext4/super.c |   64 ++++++++++++++++++++++++++++++++++++++++++++++++-------
- 2 files changed, 57 insertions(+), 8 deletions(-)
+> PROJECT_ISOLATION
+> This feature allows to create an isolated project subtrees.
+> Isolation means what:
+>   1) directory subtree has no common inodes (no hadlinks across subtrees)
+>   2) All descendants belongs to the same subtree.
+> 
+> Project subtree's isolation assumptions:
+>   1)Inode can not belongs to different subtree trees
+>     Otherwise changes in one subtree result in changes in other subtree
+>     which contradict to isolation criteria.
+  Just a curious question:
+Do you really need this subtree separation in your envisioned containers
+usecase? Because there I imagine you have one project_id per container,
+containers form disjoint subtrees (at least their writeable parts) and
+each file & directory has this project_id set and you forbid to manipulate
+project id's from inside the container (otherwise you'd have problems with
+enforcing quota limits I guess).
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8fc8257..2d775d0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -745,6 +745,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_ERRORS_PANIC		0x00040	/* Panic on errors */
- #define EXT4_MOUNT_MINIX_DF		0x00080	/* Mimics the Minix statfs */
- #define EXT4_MOUNT_NOLOAD		0x00100	/* Don't use existing journal*/
-+#define EXT4_MOUNT_PRJQUOTA		0x00200 /* Project quota support */
- #define EXT4_MOUNT_DATA_FLAGS		0x00C00	/* Mode for data writes: */
- #define EXT4_MOUNT_JOURNAL_DATA		0x00400	/* Write data to journal */
- #define EXT4_MOUNT_ORDERED_DATA		0x00800	/* Flush data before commit */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 92b0662..d023e80 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -833,11 +833,18 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
- 	if (sbi->s_qf_names[GRPQUOTA])
- 		seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
- 
-+	if (sbi->s_qf_names[PRJQUOTA])
-+		seq_printf(seq, ",prjjquota=%s", sbi->s_qf_names[PRJQUOTA]);
-+
- 	if (test_opt(sb, USRQUOTA))
- 		seq_puts(seq, ",usrquota");
- 
- 	if (test_opt(sb, GRPQUOTA))
- 		seq_puts(seq, ",grpquota");
-+
-+	if (test_opt(sb, PRJQUOTA))
-+		seq_puts(seq, ",prjquota");
-+
- #endif
- }
- 
-@@ -1041,8 +1048,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
- }
- 
- #ifdef CONFIG_QUOTA
--#define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
--#define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
-+static char *quotatypes[] = INITQFNAMES;
-+#define QTYPE2NAME(t) (quotatypes[t])
- 
- static int ext4_write_dquot(struct dquot *dquot);
- static int ext4_acquire_dquot(struct dquot *dquot);
-@@ -1148,10 +1155,11 @@ enum {
- 	Opt_journal_checksum, Opt_journal_async_commit,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
- 	Opt_data_err_abort, Opt_data_err_ignore,
--	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-+	Opt_usrjquota, Opt_grpjquota, Opt_prjjquota, Opt_offusrjquota,
-+	Opt_offgrpjquota, Opt_offprjjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
- 	Opt_noquota, Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err,
--	Opt_resize, Opt_usrquota, Opt_grpquota, Opt_i_version,
-+	Opt_resize, Opt_usrquota, Opt_grpquota,  Opt_prjquota, Opt_i_version,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc,
- 	Opt_block_validity, Opt_noblock_validity,
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
-@@ -1201,10 +1209,13 @@ static const match_table_t tokens = {
- 	{Opt_usrjquota, "usrjquota=%s"},
- 	{Opt_offgrpjquota, "grpjquota="},
- 	{Opt_grpjquota, "grpjquota=%s"},
-+	{Opt_offprjjquota, "prjjquota="},
-+	{Opt_prjjquota, "prjjquota=%s"},
- 	{Opt_jqfmt_vfsold, "jqfmt=vfsold"},
- 	{Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
- 	{Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
- 	{Opt_grpquota, "grpquota"},
-+	{Opt_prjquota, "prjquota"},
- 	{Opt_noquota, "noquota"},
- 	{Opt_quota, "quota"},
- 	{Opt_usrquota, "usrquota"},
-@@ -1525,6 +1536,16 @@ static int parse_options(char *options, struct super_block *sb,
- 			if (!set_qf_name(sb, GRPQUOTA, &args[0]))
- 				return 0;
- 			break;
-+
-+		case Opt_prjjquota:
-+#ifdef CONFIG_PROJECT_ID
-+			if (!set_qf_name(sb, PRJQUOTA, &args[0]))
-+				return 0;
-+#else
-+			ext4_msg(sb, KERN_ERR,
-+				"project quota options not supported");
-+#endif
-+			break;
- 		case Opt_offusrjquota:
- 			if (!clear_qf_name(sb, USRQUOTA))
- 				return 0;
-@@ -1533,7 +1554,15 @@ static int parse_options(char *options, struct super_block *sb,
- 			if (!clear_qf_name(sb, GRPQUOTA))
- 				return 0;
- 			break;
--
-+		case Opt_offprjjquota:
-+#ifdef CONFIG_PROJECT_ID
-+			if (!clear_qf_name(sb, PRJQUOTA))
-+				return 0;
-+#else
-+			ext4_msg(sb, KERN_ERR,
-+				"project quota options not supported");
-+#endif
-+			break;
- 		case Opt_jqfmt_vfsold:
- 			qfmt = QFMT_VFS_OLD;
- 			goto set_qf_format;
-@@ -1561,6 +1590,15 @@ set_qf_format:
- 			set_opt(sbi->s_mount_opt, QUOTA);
- 			set_opt(sbi->s_mount_opt, GRPQUOTA);
- 			break;
-+		case Opt_prjquota:
-+#ifdef CONFIG_PROJECT_ID
-+			set_opt(sbi->s_mount_opt, QUOTA);
-+			set_opt(sbi->s_mount_opt, PRJQUOTA);
-+#else
-+			ext4_msg(sb, KERN_ERR,
-+				"project quota options not supported");
-+#endif
-+			break;
- 		case Opt_noquota:
- 			if (sb_any_quota_loaded(sb)) {
- 				ext4_msg(sb, KERN_ERR, "Cannot change quota "
-@@ -1570,18 +1608,22 @@ set_qf_format:
- 			clear_opt(sbi->s_mount_opt, QUOTA);
- 			clear_opt(sbi->s_mount_opt, USRQUOTA);
- 			clear_opt(sbi->s_mount_opt, GRPQUOTA);
-+			clear_opt(sbi->s_mount_opt, PRJQUOTA);
- 			break;
- #else
- 		case Opt_quota:
- 		case Opt_usrquota:
- 		case Opt_grpquota:
-+		case Opt_prjquota:
- 			ext4_msg(sb, KERN_ERR,
- 				"quota options not supported");
- 			break;
- 		case Opt_usrjquota:
- 		case Opt_grpjquota:
-+		case Opt_prjjquota:
- 		case Opt_offusrjquota:
- 		case Opt_offgrpjquota:
-+		case Opt_offprjjquota:
- 		case Opt_jqfmt_vfsold:
- 		case Opt_jqfmt_vfsv0:
- 		case Opt_jqfmt_vfsv1:
-@@ -1711,14 +1753,19 @@ set_qf_format:
- 		}
- 	}
- #ifdef CONFIG_QUOTA
--	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
-+	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA] ||
-+		sbi->s_qf_names[PRJQUOTA]) {
- 		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
- 			clear_opt(sbi->s_mount_opt, USRQUOTA);
- 
- 		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
- 			clear_opt(sbi->s_mount_opt, GRPQUOTA);
- 
--		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
-+		if (test_opt(sb, PRJQUOTA) && sbi->s_qf_names[PRJQUOTA])
-+			clear_opt(sbi->s_mount_opt, PRJQUOTA);
-+
-+		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA) ||
-+			test_opt(sb, PRJQUOTA)) {
- 			ext4_msg(sb, KERN_ERR, "old and new quota "
- 					"format mixing");
- 			return 0;
-@@ -3878,7 +3925,8 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot)
- {
- 	/* Are we journaling quotas? */
- 	if (EXT4_SB(dquot->dq_sb)->s_qf_names[USRQUOTA] ||
--	    EXT4_SB(dquot->dq_sb)->s_qf_names[GRPQUOTA]) {
-+	    EXT4_SB(dquot->dq_sb)->s_qf_names[GRPQUOTA] ||
-+	    EXT4_SB(dquot->dq_sb)->s_qf_names[PRJQUOTA]) {
- 		dquot_mark_dquot_dirty(dquot);
- 		return ext4_write_dquot(dquot);
- 	} else {
+And when project_id is a per-inode property, quota has no problems with it
+(is well defined) even without subtree separation. So is this subtree
+separation really needed?
+
+								Honza
 -- 
-1.6.6
-
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
