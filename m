@@ -1,75 +1,110 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/5] vfs: Add additional owner identifier
-Date: Thu,  4 Mar 2010 21:34:33 +0300
-Message-ID: <1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/5] quota: Implement project id support for generic quota
+Date: Thu,  4 Mar 2010 21:34:34 +0300
+Message-ID: <1267727677-11956-3-git-send-email-dmonakhov@openvz.org>
 References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
+ <1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
 Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:46597 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755090Ab0CDSeu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 13:34:50 -0500
-In-Reply-To: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This patch add project inode identifier. Project ID may be used as
-auxiliary owner specifier in addition to standard uid/gid.
+Since all preparation code are already in quota-tree,
+So this patch is really small.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/Kconfig            |    7 +++++++
- include/linux/fs.h    |    4 ++++
- include/linux/xattr.h |    3 +++
- 3 files changed, 14 insertions(+), 0 deletions(-)
+ fs/quota/dquot.c      |   12 ++++++++++++
+ fs/quota/quotaio_v2.h |    6 ++++--
+ include/linux/quota.h |   12 +++++++++++-
+ 3 files changed, 27 insertions(+), 3 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 5f85b59..23957c0 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -54,6 +54,13 @@ config FILE_LOCKING
- 	  This option enables standard file locking support, required
-           for filesystems like NFS and for the flock() system
-           call. Disabling this option saves about 11k.
-+config PROJECT_ID
-+	bool "Enable project inode identifier"
-+	default y
-+	help
-+	  This option enables project inode identifier. Project ID
-+	  may be used as auxiliary owner specifier in addition to
-+	  standard uid/gid.
- 
- source "fs/notify/Kconfig"
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 30eee24..0218906 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -753,6 +753,10 @@ struct inode {
- #ifdef CONFIG_QUOTA
- 	struct dquot		*i_dquot[MAXQUOTAS];
- #endif
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 10d021d..3c4838f 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1090,6 +1090,11 @@ static int need_print_warning(struct dquot *dquot)
+ 			return current_fsuid() == dquot->dq_id;
+ 		case GRPQUOTA:
+ 			return in_group_p(dquot->dq_id);
++		case PRJQUOTA:
++			/* XXX: Currently there is no way to understand
++			   which project_id this task belonges to, So print
++			   a warn message unconditionally. -dmon */
++			return 1;
+ 	}
+ 	return 0;
+ }
+@@ -1322,6 +1327,13 @@ int dquot_initialize(struct inode *inode, int type)
+ 		case GRPQUOTA:
+ 			id = inode->i_gid;
+ 			break;
++		case PRJQUOTA:
 +#ifdef CONFIG_PROJECT_ID
-+	/* Project id, protected by i_mutex similar to i_uid/i_gid */
-+	__u32 			i_prjid;
++			id = inode->i_prjid;
++#else
++			BUG_ON(sb_has_quota_loaded(inode->i_sb, PRJQUOTA));
 +#endif
- 	struct list_head	i_devices;
- 	union {
- 		struct pipe_inode_info	*i_pipe;
-diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-index fb9b7e6..9d85a4b 100644
---- a/include/linux/xattr.h
-+++ b/include/linux/xattr.h
-@@ -33,6 +33,9 @@
- #define XATTR_USER_PREFIX "user."
- #define XATTR_USER_PREFIX_LEN (sizeof (XATTR_USER_PREFIX) - 1)
++			break;
+ 		}
+ 		got[cnt] = dqget(sb, id, cnt);
+ 	}
+diff --git a/fs/quota/quotaio_v2.h b/fs/quota/quotaio_v2.h
+index f1966b4..bfab9df 100644
+--- a/fs/quota/quotaio_v2.h
++++ b/fs/quota/quotaio_v2.h
+@@ -13,12 +13,14 @@
+  */
+ #define V2_INITQMAGICS {\
+ 	0xd9c01f11,	/* USRQUOTA */\
+-	0xd9c01927	/* GRPQUOTA */\
++	0xd9c01927,	/* GRPQUOTA */\
++	0xd9c03f14	/* PRJQUOTA */\
+ }
  
-+#define XATTR_PRJID "system.project_id"
-+#define XATTR_PRJID_LEN (sizeof (XATTR_PRJID))
+ #define V2_INITQVERSIONS {\
+ 	1,		/* USRQUOTA */\
+-	1		/* GRPQUOTA */\
++	1,		/* GRPQUOTA */	\
++	1		/* PRJQUOTA */\
+ }
+ 
+ /* First generic header */
+diff --git a/include/linux/quota.h b/include/linux/quota.h
+index edf34f2..514435f 100644
+--- a/include/linux/quota.h
++++ b/include/linux/quota.h
+@@ -36,18 +36,28 @@
+ #include <linux/errno.h>
+ #include <linux/types.h>
+ 
+-#define __DQUOT_VERSION__	"dquot_6.5.2"
++#define __DQUOT_VERSION__	"dquot_6.6.0"
+ 
++#ifdef CONFIG_PROJECT_ID
++#define MAXQUOTAS 3
++#else
+ #define MAXQUOTAS 2
++#endif
 +
- struct inode;
- struct dentry;
+ #define USRQUOTA  0		/* element used for user quotas */
+ #define GRPQUOTA  1		/* element used for group quotas */
+ 
++#ifdef CONFIG_PROJECT_ID
++#define PRJQUOTA  2		/* element used for project quotas */
++#endif
++
+ /*
+  * Definitions for the default names of the quotas files.
+  */
+ #define INITQFNAMES { \
+ 	"user",    /* USRQUOTA */ \
+ 	"group",   /* GRPQUOTA */ \
++	"project",  /* RPJQUOTA */	\
+ 	"undefined", \
+ };
  
 -- 
 1.6.6
