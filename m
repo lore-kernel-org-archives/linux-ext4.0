@@ -1,75 +1,69 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 11/28] ext4: correctly calculate number of blocks for
- fiemap
-Date: Thu, 04 Mar 2010 14:40:22 +0900
-Message-ID: <4B8F47C6.9060408@rs.jp.nec.com>
-References: <1267553925-6308-1-git-send-email-tytso@mit.edu> <1267553925-6308-12-git-send-email-tytso@mit.edu> <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 1/3] ext4: Fix insertion point of extent in
+	mext_insert_across_blocks()
+Date: Thu, 4 Mar 2010 00:50:33 -0500
+Message-ID: <87f94c371003032150q64046db9h815d4cb630bb7a12@mail.gmail.com>
+References: <4B8E0679.8060706@rs.jp.nec.com> <20100304012508.GD3530@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu, Leonard Michlmayr <leonard.michlmayr@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	OHSM-DEV <ohsm-devel@lists.sourceforge.net>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:45769 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751817Ab0CDFly (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 00:41:54 -0500
-In-Reply-To: <20100303175217.GA3530@thunk.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:55923 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750745Ab0CDFuf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 00:50:35 -0500
+Received: by gwb15 with SMTP id 15so1068822gwb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Mar 2010 21:50:34 -0800 (PST)
+In-Reply-To: <20100304012508.GD3530@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+>
+> P.S. =A0Here's another random idea for how we might aggressively test
+> the EXT4_IOC_MOVE_EXT ioctl: (1) create an empty filesystem, (2)
+> create a tool which randomly sets 50% of the bits in the block
+> allocation bitmap, marking them as in use, and making the free space
+> look very badly fragmented. =A0(3) write a large number of files into
+> the filesystem. =A0(4) calculate the checksums for all of the files.
+> (5) run e2fsck on the filesystem to fix up the block allocation
+> bitmap. =A0(6) defrag all of the files on the filesystem. =A0(7) use
+> e2fsck to make sure the filesystem is still consistent. =A0(8) calcul=
+ate
+> the checksums for all of the files to make sure they still contain
+> their original data.
 
-(2010/03/04 2:52), tytso@mit.edu wrote:
-> On Wed, Mar 03, 2010 at 04:47:28PM +0900, Akira Fujita wrote:
->>
->> In 1KB block size, the overflow occurs at above line.
->> Since last_blk is set 0xffffffff when len is equal to s_maxbytes.
->> Therefore ext4_fiemap() can not get correct extent information
->> with 0 length.  How about adding this change?
-> 
-> What do you think _is_ the correct thing to do when length is 0?  As
-> Leonard has already pointed out, fiemap_check_ranges() already filters
-> out the length=0 case.
+Even that does not address issues with files in use during defrag.
 
-/mnt/mp1/file1
- ext logical physical expected length flags
-   0       0    49153            8192
-   1    8192    77825    57344   2048 eof
+ie. Defrag'ing a mysql database file while in use seems like an
+important test case that is missing above.
 
-For example, we do filefrag command for a above file (file1).
-FS_IOC_FIEMAP tries to get whole extents information of file1,
-so the output has to be 2 extents.
-In this case, fm_length (requested block length) is passed
-from the user-space to the kernel-space, as follows:
+Also, one issue with repetitive testing via the e4defrag tool, is you
+only end up moving everything once and then in theory extra passes
+have little to do.
 
-<user-space>
-filefrag:
-	fiemap->fm_start(0) fiemap->fm_length(~0ULL)
+The ohsm project has written a userspace "relocate" tool that calls
+ext4_ioc_move_ext() to move files around on the filesystem.
 
-<kernel-space>
-fs/ioctl.c ioctl_fimap():
+In the absense of any ext4 ohsm kernel patches the blocks allocated to
+the donor file would just use the normal block allocators.  Therefore
+it should be relatively easy to introduce an effect of just randomly
+using ext4_ioc_move_ext() to change out the underlying blocks.  It
+maybe a useful in building up a test suite for ext4_ioc_move_ext().
 
-filemap_check_ranges():
-	len(~0ULL)
-	new_len(4398046511103 = s_maxbytes)  <--- Because 'len > s_maxbytes'
+In addition, for static files such as you describe above, we plan to
+use the 60 GB or so of real world public domain data at
+http://edrm.net/activities/projects/dataset as potential well known /
+well defined real world data.  That data already has published MD5
+values available, so data corruption at any point in the process
+should be readily identifiable.
 
-fs/ext4/extents.c ext4_fiemap():
-	last_blk = start(0) + len(4398046511103) - 1 >> s_blocksize_bits(11)
-	         = 4294967295 (0xFFFFFFFF)
-	len_blks = 4294967295 + 1 (0xFFFFFFFF + 0x00000001)
-		 = 4294967296 (0x100000000)  <--- _OVERFLOW!!_
-	
-ext4_ext_walk_space():
-	num = 0
-
-This overflow leads to incorrect output like the below,
-even though 2 extents exist.
-
-[root@bsd086 akira]# filefrag -v  /mnt/mp1/file1
-Filesystem type is: ef53
-File size of /mnt/mp1/file1 is 10485760 (10240 blocks, blocksize 1024)
- ext logical physical expected length flags
-/mnt/mp1/file6: 1 extent found
-
-Regards,
-Akira Fujita
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
