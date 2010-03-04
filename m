@@ -1,28 +1,49 @@
 From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: dump/restore not supported for ext4
-Date: Thu, 4 Mar 2010 17:05:56 -0500 (EST)
-Message-ID: <alpine.DEB.2.00.1003041704230.17723@p34.internal.lan>
+Subject: Re: dumpe2fs/dump/restore not working correctly for ext4?
+Date: Thu, 4 Mar 2010 16:22:38 -0500 (EST)
+Message-ID: <alpine.DEB.2.00.1003041621550.17723@p34.internal.lan>
+References: <alpine.DEB.2.00.1003041000140.18322@p34.internal.lan>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-ext4@vger.kernel.org, Alan Piszcz <ap@solarrain.com>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lucidpixels.com ([75.144.35.66]:42462 "EHLO lucidpixels.com"
+Received: from lucidpixels.com ([75.144.35.66]:41932 "EHLO lucidpixels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755435Ab0CDWF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Mar 2010 17:05:57 -0500
+	id S1753243Ab0CDVWj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Mar 2010 16:22:39 -0500
+In-Reply-To: <alpine.DEB.2.00.1003041000140.18322@p34.internal.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
 
-I should have researched it more:
 
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=511651
-https://lists.ubuntu.com/archives/universe-bugs/2009-June/098729.html
+On Thu, 4 Mar 2010, Justin Piszcz wrote:
 
-Looks like it's broken, I agree with the reporters, dump should abort if 
-it is dealing with an ext4 filesystem, since you cannot restore data from 
-an ext4 dump.
+> Hi,
+>
+> I need to look into this more obviously and try other dumps etc, but I even 
+> tried extracting a single (smaller) directory and it also segfaulted, has 
+> dump been tested properly with ext4?
+>
+> # restore -f ../p34-root-2010-03-02.ext4dump -r .
+> Segmentation fault (core dumped)
+
+And from another day:
+
+p34:/x2/bup/p34/2010-03-01/d# restore -f ../p34-root-2010-03-01.ext4dump 
+-r .
+Segmentation fault (core dumped)
+p34:/x2/bup/p34/2010-03-01/d# ls
+a/      core.restore.18181  l2/          nfs/             sbin/     var/
+app@    dev/                lib/         opt/             selinux/  x@
+appc@   etc/                lib64@       proc/            sys/      x2@
+bin/    home/               lost+found/  r1/              tmp/      x3@
+boot/   initrd/             media/       restoresymtable  usr/      x4@
+cdrom@  l1/                 mnt/         root/            vapp@     x5@
+p34:/x2/bup/p34/2010-03-01/d#
+
+Does anyone use dump/restore with ext4?
 
 Justin.
+
