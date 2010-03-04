@@ -1,34 +1,33 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] [RESEND] ext4: Release page references acquired in
- ext4_da_block_invalidatepages
-Date: Wed, 3 Mar 2010 23:51:18 -0500
-Message-ID: <20100304045118.GF3530@thunk.org>
-References: <1267624447-19923-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 3/3] ext4: consolidate in_range() definisions
+Date: Thu, 4 Mar 2010 00:19:54 -0500
+Message-ID: <20100304051954.GA15028@thunk.org>
+References: <1267627246-12863-1-git-send-email-akinobu.mita@gmail.com>
+ <1267627246-12863-3-git-send-email-akinobu.mita@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>
+To: Akinobu Mita <akinobu.mita@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:55609 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:46908 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751954Ab0CDEvU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Mar 2010 23:51:20 -0500
+	id S1750718Ab0CDFT5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Mar 2010 00:19:57 -0500
 Content-Disposition: inline
-In-Reply-To: <1267624447-19923-1-git-send-email-jack@suse.cz>
+In-Reply-To: <1267627246-12863-3-git-send-email-akinobu.mita@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 03, 2010 at 02:54:07PM +0100, Jan Kara wrote:
-> We forget to release page references we acquire in
-> ext4_da_block_invalidatepages.  Luckily, this function gets called only if we
-> are not able to allocate blocks for delay-allocated data so that function
-> should better never be called.
+On Wed, Mar 03, 2010 at 11:40:46PM +0900, Akinobu Mita wrote:
+> There are same in_range() macro definisions in mballoc.h and
+> balloc.c. This consolidates these in_range() definisions and
+> use it in extents.c, too
 > 
-> Also cleanup handling of index variable.
-> 
-> Reported-by: Wu Fengguang <fengguang.wu@intel.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> Cc: Andreas Dilger <adilger@sun.com>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
 
-Added to the ext4 patch queue, thanks.
+I've added all three to the ext4 patch queue, thanks.
 
-				- Ted
+     	       	     	    	 - Ted
