@@ -1,31 +1,58 @@
-From: tytso@mit.edu
-Subject: Re: dumpe2fs/dump/restore not working correctly for ext4?
-Date: Thu, 4 Mar 2010 17:17:28 -0500
-Message-ID: <20100304221728.GH15028@thunk.org>
-References: <alpine.DEB.2.00.1003041000140.18322@p34.internal.lan>
+From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+Subject: Re: [PATCH 11/28] ext4: correctly calculate number of blocks for
+ fiemap
+Date: Thu, 04 Mar 2010 22:44:58 +0100
+Message-ID: <1267739098.4204.12.camel@michlmayr>
+References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
+	 <1267553925-6308-12-git-send-email-tytso@mit.edu>
+	 <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org>
+	 <4B8F47C6.9060408@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Alan Piszcz <ap@solarrain.com>
-To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40827 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755755Ab0CDWRc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Mar 2010 17:17:32 -0500
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1003041000140.18322@p34.internal.lan>
+Received: from mail-bw0-f218.google.com ([209.85.218.218]:63067 "EHLO
+	mail-bw0-f218.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751394Ab0CDVvq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 16:51:46 -0500
+Received: by bwz10 with SMTP id 10so2319931bwz.2
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Mar 2010 13:51:45 -0800 (PST)
+In-Reply-To: <4B8F47C6.9060408@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 04, 2010 at 10:19:57AM -0500, Justin Piszcz wrote:
-> Hi,
+Akira Fujita:
+> <kernel-space>
+> fs/ioctl.c ioctl_fimap():
 > 
-> I need to look into this more obviously and try other dumps etc, but
-> I even tried extracting a single (smaller) directory and it also
-> segfaulted, has dump been tested properly with ext4?
+> filemap_check_ranges():
+> 	len(~0ULL)
+> 	new_len(4398046511103 = s_maxbytes)  <--- Because 'len > s_maxbytes'
+> 
+> fs/ext4/extents.c ext4_fiemap():
+> 	last_blk = start(0) + len(4398046511103) - 1 >> s_blocksize_bits(11)
+> 	         = 4294967295 (0xFFFFFFFF)
+> 	len_blks = 4294967295 + 1 (0xFFFFFFFF + 0x00000001)
+> 		 = 4294967296 (0x100000000)  <--- _OVERFLOW!!_
+> 	
+> ext4_ext_walk_space():
+> 	num = 0
+> 
+> This overflow leads to incorrect output like the below,
+> even though 2 extents exist.
+> 
 
-Was dump/restore statically or dynamically linked?  And with which
-version of libext2fs from e2fsprogs?
+Thank you for pointing this out. I had not checked s_maxbytes.
+Appearently s_maxbytes can be 1<<(32 + s_blocksize_bits) - 1. Therefore
+the number of blocks in a file cannot be stored in a 32bit integer.
 
-						- Ted
+I have a patch that should fix it for fiemap. I have just compiled it
+and I will do some testing and double checking tomorrow. I will send a
+separate email with the patch.
+
+regards
+Leonard
+
+
