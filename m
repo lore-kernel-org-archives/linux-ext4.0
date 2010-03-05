@@ -1,116 +1,88 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 1/3] ext4: Fix insertion point of extent in
- mext_insert_across_blocks()
-Date: Fri, 5 Mar 2010 11:10:08 -0500
-Message-ID: <20100305161008.GB6000@thunk.org>
-References: <4B8E0679.8060706@rs.jp.nec.com>
- <20100304012508.GD3530@thunk.org>
- <4B90BEA9.9020208@rs.jp.nec.com>
+From: Bdale Garbee <bdale@gag.com>
+Subject: Re: dump/restore not supported for ext4
+Date: Fri, 05 Mar 2010 09:21:31 -0700
+Message-ID: <87lje620z8.fsf@gag.com>
+References: <alpine.DEB.2.00.1003041704230.17723@p34.internal.lan>
+	<4B90A366.9080201@gmail.com>
+	<alpine.DEB.2.00.1003050412260.17723@p34.internal.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:37361 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753062Ab0CEQKK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Mar 2010 11:10:10 -0500
-Content-Disposition: inline
-In-Reply-To: <4B90BEA9.9020208@rs.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	stelian@popies.net, Alan Piszcz <ap@solarrain.com>, tytso@mit.edu,
+	Eric Sandeen <sandeen@redhat.com>, debian-gcc@lists.debian.org
+To: Justin Piszcz <jpiszcz@lucidpixels.com>, Gertjan van Wingerde
+	<gwingerde@gmail.com>
+Return-path: <bounce-debian-gcc=debian-gcc=m.gmane.org@lists.debian.org>
+In-Reply-To: <alpine.DEB.2.00.1003050412260.17723@p34.internal.lan>
+Resent-Message-ID: <tbwltH-USSB.A.eI.r-SkLB@liszt>
+List-Post: <mailto:debian-gcc@lists.debian.org>
+List-Help: <mailto:debian-gcc-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-gcc-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-gcc-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 05, 2010 at 05:19:53PM +0900, Akira Fujita wrote:
-> 
-> Sounds interesting.
-> It seems to be able to try easily except (2).
-> I think that we can mark block bitmap as in use with debugfs (do_setb).
-> Do you have another better idea for the tool you mentioned at (2)?
+--=-=-=
+Content-Transfer-Encoding: quoted-printable
 
-The libext2fs library is very powerful.  :-)
+On Fri, 5 Mar 2010 09:27:52 -0500 (EST), Justin Piszcz <jpiszcz@lucidpixels=
+.com> wrote:
+> I tried the following package in sid:
+> http://http.us.debian.org/debian/pool/main/d/dump/dump_0.4b42-2_amd64.deb
+>=20
+> Why Debian does not include this in testing is beyond me..??
 
-Here's a quicky program I whipped up fairly quickly.  The code that
-actually messes with the block bitmap is in the for loop; the rest is
-just generic setup.  Feel free to reuse this program as a framework
-for other times when you want to quickly create a program to do
-something programmatic where debugfs isn't quite powerful enough for
-your needs.
+I just looked and it appears that this version of dump has never been
+successfully built on mips or mipsel, which blocks it from being
+promoted to testing. Checking the autobuilder build logs, it looks like
+the root cause may be a toolchain problem, though it's an error message
+I've never seen before.=20
 
-I have considered trying to integrate tcl into debugfs, so that you
-could do this in thing more easily in debugfs directly, but it's so
-easy to write throwaway C programs that I've never bothered.
+https://buildd.debian.org/fetch.cgi?&pkg=3Ddump&ver=3D0.4b42-2&arch=3Dmips&=
+stamp=3D1259085131&file=3Dlog
 
-Regards,
+Chasing down that error message, it looks like this is indeed believed
+to a toolchain issue, fixed by:
 
-       	 		  	  - Ted
+http://gcc.gnu.org/ml/gcc-patches/2009-09/msg02070.html
 
-/*
- * fill-bitmap.c --- Program which writes marks roughly half of the 
- *     blocks in the filesystem as being in use.
- *
- * Compile via: cc -o fill-bitmap fill-bitmap.c -lext2fs -lcom_err
- *
- * Copyright 2010 by Theodore Ts'o.
- *
- * %Begin-Header%
- * This file may be redistributed under the terms of the GNU Public
- * License.
- * %End-Header%
- */
+I don't know, offhand, if this patch is reflected in the current Debian
+gcc packages.  If so, then perhaps I just need to request that the mips
+and mipsel autobuilders retry the builds?  CC'ing the debian-gcc team
+for advice.
 
-#include <ext2fs/ext2_fs.h>
-#include <ext2fs/ext2fs.h>
-#include <et/com_err.h>
-#include <stdlib.h>
+> BTW: The man page needs to be fixed in dump as well then (in the new
+> version)
 
-char *program_name;
+Thanks for noticing those!  I've made those changes in my git repo for
+the next Debian package upload.  Hopefully Stelian will also fix those
+in his next release, I see you've copied him on this.
 
-static void usage(void)
-{
-	fprintf(stderr, "Usage: %s device\n", program_name);
-	exit (1);
-}
+> Quite nice!
 
-int main (int argc, char ** argv)
-{
-	errcode_t retval;
-	ext2_filsys fs;
-	char *device_name;
-	blk_t blk;
+Thanks for testing this so thoroughly.  I myself back up two servers
+with ext4 file systems using amanda and dump quite happily.
 
-	add_error_table(&et_ext2_error_table);
-	if (argc != 2)
-		usage();
-	program_name = argv[0];
-	device_name = argv[1];
+Bdale
 
-	retval = ext2fs_open (device_name, EXT2_FLAG_RW, 0, 0,
-			      unix_io_manager, &fs);
-        if (retval) {
-		com_err(program_name, retval, "while trying to open %s",
-			device_name);
-		exit(1);
-	}
+--=-=-=
+Content-Type: application/pgp-signature
 
-	retval = ext2fs_read_bitmaps(fs);
-	if (retval) {
-		com_err(program_name, retval, "while reading bitmaps");
-		exit(1);
-	}
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
 
-	for (blk = fs->super->s_first_data_block;
-	     blk < fs->super->s_blocks_count; blk++) {
-		if (ext2fs_test_block_bitmap(fs->block_map, blk))
-			continue;
-
-		if (random() & 1)
-			continue;
-
-		ext2fs_mark_block_bitmap(fs->block_map, blk);
-		ext2fs_block_alloc_stats(fs, blk, 1);
-	}
-
-	ext2fs_close(fs);
-	remove_error_table(&et_ext2_error_table);
-	exit (0);
-}
+iQIVAwUBS5EvizqTYZbAldlBAQrByRAAvkqNCuwSbd9tnAtIMK+yRm596DVXNsB6
+Vk3g09IhNF/zaR6o970NkRLCypPhJpFDaDiZNsNKYfVD/+dlwe9XCx/d3+2jewyz
+bNhsWfZ/9iTPLRQfE/J56NchwAADhWYJfCOil8EJ5m2eUaj/ABcl7Rpc9o/i4Kcr
+UEgfwQimbeifheFJce4/7mcscdcggVfGajttRzBVIpm2FlPdGs+o0G2gHNkz124I
+MjlF9kQ3rlq7JNp8gWwZQmNIAwzaajsi/a2u3fv7w9XjKJpO6gcqw3js3vI1sQ/W
+32yceoBajNuhSbBU1KM3TP5bDr+79w99qkgQfaMu/8cKlXjU+s4TbST1Zu9VtpKi
+gPaK6tbYkSmKY58JRe8gZJFoyhA/gRRgIHkR2SZ/iSXWipER3J3lk8cCuNHU8tyV
+fjbuwKLRX4MXWeyCBYs4lf59YGiGFSzClzNNFy4DpWbHY7aGuIRK1t+mzpvQ4kqB
+U2jzHfMeRb8JXXzMNEkHek/XDHKkmmRejbsQCg+RKrzmrbU/lt8w5DZL2yU5mrq2
+3KxrVPtQgD+Tt4kQa5KXZTHDArXrP7QzbMrXKaRHEJZzghaZVHofnIfzsL5W1/pX
+S9/9R45A0e3G1skx4SS8fcl17oyp4afFpi4wosFa8z7V2AguHhb3SJ2/XYjz6Kdk
+Oqy3ubmPLUM=
+=KTOj
+-----END PGP SIGNATURE-----
+--=-=-=--
