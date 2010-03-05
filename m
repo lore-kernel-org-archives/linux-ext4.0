@@ -1,88 +1,60 @@
-From: Bdale Garbee <bdale@gag.com>
-Subject: Re: dump/restore not supported for ext4
-Date: Fri, 05 Mar 2010 09:21:31 -0700
-Message-ID: <87lje620z8.fsf@gag.com>
-References: <alpine.DEB.2.00.1003041704230.17723@p34.internal.lan>
-	<4B90A366.9080201@gmail.com>
-	<alpine.DEB.2.00.1003050412260.17723@p34.internal.lan>
+From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+Subject: Re: [PATCH 11/28] ext4: correctly calculate number of blocks for
+	fiemap
+Date: Fri, 5 Mar 2010 17:46:58 +0100
+Message-ID: <35b92b761003050846s55ac931dv93571c6b33c7b6f9@mail.gmail.com>
+References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
+	 <1267553925-6308-12-git-send-email-tytso@mit.edu>
+	 <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org>
+	 <4B8F47C6.9060408@rs.jp.nec.com> <1267739098.4204.12.camel@michlmayr>
+	 <4B90448A.2030609@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha512; protocol="application/pgp-signature"
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	stelian@popies.net, Alan Piszcz <ap@solarrain.com>, tytso@mit.edu,
-	Eric Sandeen <sandeen@redhat.com>, debian-gcc@lists.debian.org
-To: Justin Piszcz <jpiszcz@lucidpixels.com>, Gertjan van Wingerde
-	<gwingerde@gmail.com>
-Return-path: <bounce-debian-gcc=debian-gcc=m.gmane.org@lists.debian.org>
-In-Reply-To: <alpine.DEB.2.00.1003050412260.17723@p34.internal.lan>
-Resent-Message-ID: <tbwltH-USSB.A.eI.r-SkLB@liszt>
-List-Post: <mailto:debian-gcc@lists.debian.org>
-List-Help: <mailto:debian-gcc-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-gcc-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-gcc-request@lists.debian.org?subject=unsubscribe>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-fx0-f219.google.com ([209.85.220.219]:35452 "EHLO
+	mail-fx0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752635Ab0CEQrB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Mar 2010 11:47:01 -0500
+Received: by fxm19 with SMTP id 19so4327932fxm.21
+        for <linux-ext4@vger.kernel.org>; Fri, 05 Mar 2010 08:47:00 -0800 (PST)
+In-Reply-To: <4B90448A.2030609@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Transfer-Encoding: quoted-printable
+2010/3/5 Eric Sandeen <sandeen@redhat.com>
+>
+> > Thank you for pointing this out. I had not checked s_maxbytes.
+> > Appearently s_maxbytes can be 1<<(32 + s_blocksize_bits) - 1. There=
+fore
+> > the number of blocks in a file cannot be stored in a 32bit integer.
+>
+> For extent-based files it had better be....
+>
+> struct ext4_extent {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0__le32 =C2=A0ee_block; =C2=A0 =C2=A0 =C2=A0=
+ /* first logical block extent covers */
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0__le16 =C2=A0ee_len; =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 /* number of blocks covered by extent */
+>
+> The start block can't be more than 32 bits; this essentially limits
+> the file size / maximum logical block to 2^32 blocks right?
+>
+> s_maxbytes comes out to 17592186044415
+>
+> 2^32 4k blocks is 17592186044416 bytes, or max byte offset 1759218604=
+4415
+>
+> What am I missing? =C2=A0(confusion between max byte count and max
+> byte offset, perhaps?)
+>
 
-On Fri, 5 Mar 2010 09:27:52 -0500 (EST), Justin Piszcz <jpiszcz@lucidpixels=
-.com> wrote:
-> I tried the following package in sid:
-> http://http.us.debian.org/debian/pool/main/d/dump/dump_0.4b42-2_amd64.deb
->=20
-> Why Debian does not include this in testing is beyond me..??
-
-I just looked and it appears that this version of dump has never been
-successfully built on mips or mipsel, which blocks it from being
-promoted to testing. Checking the autobuilder build logs, it looks like
-the root cause may be a toolchain problem, though it's an error message
-I've never seen before.=20
-
-https://buildd.debian.org/fetch.cgi?&pkg=3Ddump&ver=3D0.4b42-2&arch=3Dmips&=
-stamp=3D1259085131&file=3Dlog
-
-Chasing down that error message, it looks like this is indeed believed
-to a toolchain issue, fixed by:
-
-http://gcc.gnu.org/ml/gcc-patches/2009-09/msg02070.html
-
-I don't know, offhand, if this patch is reflected in the current Debian
-gcc packages.  If so, then perhaps I just need to request that the mips
-and mipsel autobuilders retry the builds?  CC'ing the debian-gcc team
-for advice.
-
-> BTW: The man page needs to be fixed in dump as well then (in the new
-> version)
-
-Thanks for noticing those!  I've made those changes in my git repo for
-the next Debian package upload.  Hopefully Stelian will also fix those
-in his next release, I see you've copied him on this.
-
-> Quite nice!
-
-Thanks for testing this so thoroughly.  I myself back up two servers
-with ext4 file systems using amanda and dump quite happily.
-
-Bdale
-
---=-=-=
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iQIVAwUBS5EvizqTYZbAldlBAQrByRAAvkqNCuwSbd9tnAtIMK+yRm596DVXNsB6
-Vk3g09IhNF/zaR6o970NkRLCypPhJpFDaDiZNsNKYfVD/+dlwe9XCx/d3+2jewyz
-bNhsWfZ/9iTPLRQfE/J56NchwAADhWYJfCOil8EJ5m2eUaj/ABcl7Rpc9o/i4Kcr
-UEgfwQimbeifheFJce4/7mcscdcggVfGajttRzBVIpm2FlPdGs+o0G2gHNkz124I
-MjlF9kQ3rlq7JNp8gWwZQmNIAwzaajsi/a2u3fv7w9XjKJpO6gcqw3js3vI1sQ/W
-32yceoBajNuhSbBU1KM3TP5bDr+79w99qkgQfaMu/8cKlXjU+s4TbST1Zu9VtpKi
-gPaK6tbYkSmKY58JRe8gZJFoyhA/gRRgIHkR2SZ/iSXWipER3J3lk8cCuNHU8tyV
-fjbuwKLRX4MXWeyCBYs4lf59YGiGFSzClzNNFy4DpWbHY7aGuIRK1t+mzpvQ4kqB
-U2jzHfMeRb8JXXzMNEkHek/XDHKkmmRejbsQCg+RKrzmrbU/lt8w5DZL2yU5mrq2
-3KxrVPtQgD+Tt4kQa5KXZTHDArXrP7QzbMrXKaRHEJZzghaZVHofnIfzsL5W1/pX
-S9/9R45A0e3G1skx4SS8fcl17oyp4afFpi4wosFa8z7V2AguHhb3SJ2/XYjz6Kdk
-Oqy3ubmPLUM=
-=KTOj
------END PGP SIGNATURE-----
---=-=-=--
+Yes.=C2=A0The block offset has the maximum value 1<<32 - 1.
+However the number of blocks may be 1<<32.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
