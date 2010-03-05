@@ -1,150 +1,166 @@
-From: Leonard Michlmayr <leonard.michlmayr@gmail.com>
-Subject: [incomplete PATCH] ext4: avoid overflow in fiemap
-Date: Thu, 04 Mar 2010 23:28:35 +0100
-Message-ID: <1267741715.13886.4.camel@michlmayr>
-References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-	 <1267553925-6308-12-git-send-email-tytso@mit.edu>
-	 <4B8E1410.1010107@rs.jp.nec.com> <20100303175217.GA3530@thunk.org>
-	 <4B8F47C6.9060408@rs.jp.nec.com>  <1267739098.4204.12.camel@michlmayr>
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] Quota cleanups & fixes and ext3 fixes for 2.6.34-rc1
+Date: Fri, 5 Mar 2010 01:33:04 +0100
+Message-ID: <20100305003304.GE4887@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f219.google.com ([209.85.220.219]:37927 "EHLO
-	mail-fx0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754009Ab0CDW2j (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Mar 2010 17:28:39 -0500
-Received: by fxm19 with SMTP id 19so3424661fxm.21
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Mar 2010 14:28:38 -0800 (PST)
-In-Reply-To: <1267739098.4204.12.camel@michlmayr>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+	dushistov@mail.ru, joel.becker@oracle.com,
+	shaggy@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-A __u32 cannot hold the maximum number of blocks in a file. This may
-lead to an overflow if a fiemap request has length = s_maxbytes.
+  Hello Linus,
 
-I still get a segfault, I have to go through it again. This is just for
-your information. I will work on it tomorrow.
+  could you please pull from
 
-The patch is to be applied after/at the end of the ext4 patch queue.
-Appearently only fiemap uses ext4_ext_walk_space(). Therefore I changed
-the semantics of the ext4_ext_walk_space() call. I hope this does not
-introduce a new problem.
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
 
-In the case that 1<<32 blocks are requested, but there are no allocated
-extents, I return two gaps because, the length of a gap in the
-ext4_ext_cache is a __u32 again.
+  You'll get lots of quota cleanups from Christoph which touch filesystems
+all over the place but it's just function renaming and moving quota calls
+from VFS into filesystems themselves.
 
-Regards
-Leonard 
+  The shortlog and diffstat are below:
 
-Signed-off-by: Leonard Michlmayr <leonard.michlmayr@gmail.com>
+Christoph Egger (1):
+      jbd[2]: remove references to BUFFER_DEBUG
 
-diff -puar linux-2.6.33-ted/fs/ext4/extents.c linux-2.6.33-lm/fs/ext4/extents.c
---- linux-2.6.33-ted/fs/ext4/extents.c	2010-03-04 21:08:00.000000000 +0100
-+++ linux-2.6.33-lm/fs/ext4/extents.c	2010-03-04 22:50:54.000000000 +0100
-@@ -1853,21 +1853,21 @@ cleanup:
- }
- 
- int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
--			ext4_lblk_t num, ext_prepare_callback func,
-+			ext4_lblk_t last, ext_prepare_callback func,
- 			void *cbdata)
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_ext_cache cbex;
- 	struct ext4_extent *ex;
- 	ext4_lblk_t next, start = 0, end = 0;
--	ext4_lblk_t last = block + num;
- 	int depth, exists, err = 0;
- 
- 	BUG_ON(func == NULL);
- 	BUG_ON(inode == NULL);
- 
--	while (block < last && block != EXT_MAX_BLOCK) {
--		num = last - block;
-+	while (block <= last && block != EXT_MAX_BLOCK) {
-+		/* num is one less than the number of blocks */
-+		ext4_lblk_t num = last - block;
- 		/* find extent for this block */
- 		down_read(&EXT4_I(inode)->i_data_sem);
- 		path = ext4_ext_find_extent(inode, block, path);
-@@ -1893,10 +1893,12 @@ int ext4_ext_walk_space(struct inode *in
- 			 * all requested space */
- 			start = block;
- 			end = block + num;
-+			if (end - start >= EXT_MAX_BLOCK)
-+				end = EXT_MAX_BLOCK - 1;
- 		} else if (le32_to_cpu(ex->ee_block) > block) {
- 			/* need to allocate space before found extent */
- 			start = block;
--			end = le32_to_cpu(ex->ee_block);
-+			end = le32_to_cpu(ex->ee_block) - 1;
- 			if (block + num < end)
- 				end = block + num;
- 		} else if (block >= le32_to_cpu(ex->ee_block)
-@@ -1904,8 +1906,11 @@ int ext4_ext_walk_space(struct inode *in
- 			/* need to allocate space after found extent */
- 			start = block;
- 			end = block + num;
-+			if (end - start >= EXT_MAX_BLOCK)
-+				end = EXT_MAX_BLOCK - 1;
-+			BUG_ON(next == 0);
- 			if (end >= next)
--				end = next;
-+				end = next - 1;
- 		} else if (block >= le32_to_cpu(ex->ee_block)) {
- 			/*
- 			 * some part of requested space is covered
-@@ -1913,7 +1918,7 @@ int ext4_ext_walk_space(struct inode *in
- 			 */
- 			start = block;
- 			end = le32_to_cpu(ex->ee_block)
--				+ ext4_ext_get_actual_len(ex);
-+				+ (ext4_ext_get_actual_len(ex) - 1);
- 			if (block + num < end)
- 				end = block + num;
- 			exists = 1;
-@@ -1924,7 +1929,7 @@ int ext4_ext_walk_space(struct inode *in
- 
- 		if (!exists) {
- 			cbex.ec_block = start;
--			cbex.ec_len = end - start;
-+			cbex.ec_len = end - start + 1;
- 			cbex.ec_start = 0;
- 			cbex.ec_type = EXT4_EXT_CACHE_GAP;
- 		} else {
-@@ -3894,7 +3899,6 @@ static int ext4_xattr_fiemap(struct inod
- int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		__u64 start, __u64 len)
- {
--	ext4_lblk_t start_blk;
- 	int error = 0;
- 
- 	/* fallback to generic here if not in extents fmt */
-@@ -3908,17 +3912,16 @@ int ext4_fiemap(struct inode *inode, str
- 	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
- 		error = ext4_xattr_fiemap(inode, fieinfo);
- 	} else {
--		ext4_lblk_t last_blk, len_blks;
-+		ext4_lblk_t start_blk, last_blk;
- 
- 		start_blk = start >> inode->i_sb->s_blocksize_bits;
--		last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
--		len_blks = last_blk - start_blk + 1;
-+		last_blk = (len - 1 + start) >> inode->i_sb->s_blocksize_bits;
- 
- 		/*
- 		 * Walk the extent tree gathering extent information.
- 		 * ext4_ext_fiemap_cb will push extents back to user.
- 		 */
--		error = ext4_ext_walk_space(inode, start_blk, len_blks,
-+		error = ext4_ext_walk_space(inode, start_blk, last_blk,
- 					  ext4_ext_fiemap_cb, fieinfo);
- 	}
- 
+Christoph Hellwig (19):
+      quota: split do_quotactl
+      quota: clean up checks for supported quota methods
+      quota: special case Q_SYNC without device name
+      quota: simplify permission checking
+      quota: clean up Q_XQUOTASYNC
+      quota: move code from sync_quota_sb into vfs_quota_sync
+      quota: remove invalid optimization from quota_sync_all
+      quota: split out netlink notification support from quota.c
+      quota: split out compat_sys_quotactl support from quota.c
+      quota: drop permission checks from xfs_fs_set_xstate/xfs_fs_set_xquota
+      dquot: cleanup space allocation / freeing routines
+      dquot: cleanup inode allocation / freeing routines
+      dquot: move dquot transfer responsibility into the filesystem
+      dquot: cleanup dquot transfer routine
+      dquot: move dquot drop responsibility into the filesystem
+      dquot: cleanup dquot drop routine
+      dquot: move dquot initialization responsibility into the filesystem
+      dquot: cleanup dquot initialize routine
+      quota: stop using QUOTA_OK / NO_QUOTA
 
+Dmitry Monakhov (7):
+      ext3: mount flags manipulation cleanup
+      ext3: trivial quota cleanup
+      quota: manage reserved space when quota is not active [v2]
+      ext3: quota_write cross block boundary behaviour
+      quota: sb_quota state flags cleanup
+      quota: generalize quota transfer interface
+      ext3: add writepage sanity checks
 
+Jan Kara (6):
+      quota: Cleanup S_NOQUOTA handling
+      ext3: Use bitops to read/modify EXT3_I(inode)->i_state
+      quota: Fix warning when a delayed write happens before quota is enabled
+      jbd: Delay discarding buffers in journal_unmap_buffer
+      quota: Properly invalidate caches even for filesystems with blocksize < pagesize
+      ext3: Truncate allocated blocks if direct IO write fails to update i_size
 
+The diffstat is
+
+ Documentation/filesystems/Locking |   18 -
+ drivers/staging/pohmelfs/inode.c  |    2 +-
+ fs/attr.c                         |   11 +-
+ fs/ext2/balloc.c                  |   12 +-
+ fs/ext2/file.c                    |    5 +-
+ fs/ext2/ialloc.c                  |   14 +-
+ fs/ext2/inode.c                   |    7 +-
+ fs/ext2/namei.c                   |   51 ++-
+ fs/ext2/super.c                   |    2 +
+ fs/ext2/xattr.c                   |   10 +-
+ fs/ext3/balloc.c                  |   11 +-
+ fs/ext3/file.c                    |    7 +-
+ fs/ext3/ialloc.c                  |   16 +-
+ fs/ext3/inode.c                   |   41 ++-
+ fs/ext3/namei.c                   |   24 +-
+ fs/ext3/super.c                   |  246 ++++++------
+ fs/ext3/xattr.c                   |   22 +-
+ fs/ext4/file.c                    |    3 +-
+ fs/ext4/ialloc.c                  |   16 +-
+ fs/ext4/inode.c                   |   27 +-
+ fs/ext4/mballoc.c                 |    6 +-
+ fs/ext4/namei.c                   |   23 +-
+ fs/ext4/super.c                   |   15 +-
+ fs/ext4/xattr.c                   |    8 +-
+ fs/gfs2/quota.c                   |    9 +-
+ fs/gfs2/quota.h                   |    2 +-
+ fs/gfs2/super.c                   |    2 +-
+ fs/gfs2/sys.c                     |    2 +-
+ fs/inode.c                        |    4 -
+ fs/jbd/commit.c                   |   10 +-
+ fs/jbd/transaction.c              |   43 ++-
+ fs/jfs/acl.c                      |   26 +--
+ fs/jfs/file.c                     |   31 ++-
+ fs/jfs/inode.c                    |    9 +-
+ fs/jfs/jfs_acl.h                  |    7 +-
+ fs/jfs/jfs_dtree.c                |   28 +-
+ fs/jfs/jfs_extent.c               |   16 +-
+ fs/jfs/jfs_inode.c                |    8 +-
+ fs/jfs/jfs_inode.h                |    1 +
+ fs/jfs/jfs_xtree.c                |   21 +-
+ fs/jfs/namei.c                    |   23 +-
+ fs/jfs/super.c                    |    6 +
+ fs/jfs/xattr.c                    |   17 +-
+ fs/namei.c                        |   16 -
+ fs/nfsd/vfs.c                     |    4 -
+ fs/ocfs2/alloc.c                  |   13 +-
+ fs/ocfs2/aops.c                   |   11 +-
+ fs/ocfs2/dir.c                    |   37 +-
+ fs/ocfs2/file.c                   |   20 +-
+ fs/ocfs2/inode.c                  |    6 +-
+ fs/ocfs2/namei.c                  |   52 ++--
+ fs/ocfs2/quota_global.c           |    7 -
+ fs/ocfs2/refcounttree.c           |    2 +-
+ fs/open.c                         |    5 +-
+ fs/quota/Kconfig                  |    5 +
+ fs/quota/Makefile                 |    2 +
+ fs/quota/compat.c                 |  118 ++++++
+ fs/quota/dquot.c                  |  412 +++++++++++----------
+ fs/quota/netlink.c                |   95 +++++
+ fs/quota/quota.c                  |  735 ++++++++++++-------------------------
+ fs/reiserfs/bitmap.c              |   10 +-
+ fs/reiserfs/file.c                |    2 +-
+ fs/reiserfs/inode.c               |   20 +-
+ fs/reiserfs/namei.c               |   23 +-
+ fs/reiserfs/stree.c               |   20 +-
+ fs/reiserfs/super.c               |   15 +-
+ fs/reiserfs/xattr.c               |    4 -
+ fs/sync.c                         |   14 +-
+ fs/udf/balloc.c                   |   35 +-
+ fs/udf/file.c                     |   28 ++-
+ fs/udf/ialloc.c                   |   14 +-
+ fs/udf/inode.c                    |    6 +
+ fs/udf/namei.c                    |   17 +
+ fs/ufs/balloc.c                   |   24 +-
+ fs/ufs/file.c                     |    3 +-
+ fs/ufs/ialloc.c                   |   11 +-
+ fs/ufs/inode.c                    |    4 +
+ fs/ufs/namei.c                    |   18 +
+ fs/ufs/super.c                    |    6 +
+ fs/ufs/truncate.c                 |   10 +
+ fs/xfs/linux-2.6/xfs_quotaops.c   |   19 -
+ include/linux/ext3_fs.h           |   33 ++-
+ include/linux/ext3_fs_i.h         |    2 +-
+ include/linux/jbd.h               |   11 -
+ include/linux/jbd2.h              |   11 -
+ include/linux/quota.h             |   33 +--
+ include/linux/quotaops.h          |  304 +++++-----------
+ 87 files changed, 1554 insertions(+), 1545 deletions(-)
+ create mode 100644 fs/quota/compat.c
+ create mode 100644 fs/quota/netlink.c
+
+							Thanks
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
