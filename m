@@ -1,512 +1,309 @@
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 27/28] ext4: Convert BUG_ON checks to use ext4_error()
- instead
-Date: Sat, 06 Mar 2010 18:33:48 +0530
-Message-ID: <87r5nxsitn.fsf@linux.vnet.ibm.com>
-References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-	<1267553925-6308-28-git-send-email-tytso@mit.edu>
+From: Paul Chavent <paul.chavent@fnac.net>
+Subject: Constant access (write) time.
+Date: Sat, 06 Mar 2010 23:02:53 +0100
+Message-ID: <4B92D10D.8070805@fnac.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Frank Mayhar <fmayhar@google.com>, "Theodore Ts'o" <tytso@mit.edu>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: multipart/mixed;
+ boundary="------------020504000300030607030505"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp05.au.ibm.com ([202.81.31.147]:38566 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750813Ab0CFND5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Mar 2010 08:03:57 -0500
-Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [202.81.31.246])
-	by e23smtp05.au.ibm.com (8.14.3/8.13.1) with ESMTP id o26D0MjD001757
-	for <linux-ext4@vger.kernel.org>; Sun, 7 Mar 2010 00:00:22 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o26CwGt01032402
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Mar 2010 23:58:16 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o26D3rPB008190
-	for <linux-ext4@vger.kernel.org>; Sun, 7 Mar 2010 00:03:54 +1100
-In-Reply-To: <1267553925-6308-28-git-send-email-tytso@mit.edu>
+Received: from smtp1-g21.free.fr ([212.27.42.1]:34790 "EHLO smtp1-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751834Ab0CFV6V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 6 Mar 2010 16:58:21 -0500
+Received: from smtp1-g21.free.fr (localhost [127.0.0.1])
+	by smtp1-g21.free.fr (Postfix) with ESMTP id 058569400AD
+	for <linux-ext4@vger.kernel.org>; Sat,  6 Mar 2010 22:58:15 +0100 (CET)
+Received: from [192.168.2.99] (laf31-5-82-235-130-199.fbx.proxad.net [82.235.130.199])
+	by smtp1-g21.free.fr (Postfix) with ESMTP id 9507F940101
+	for <linux-ext4@vger.kernel.org>; Sat,  6 Mar 2010 22:58:12 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue,  2 Mar 2010 13:18:44 -0500, "Theodore Ts'o" <tytso@mit.edu> wrote:
-> From: Frank Mayhar <fmayhar@google.com>
-> 
-> Convert a bunch of BUG_ONs to emit a ext4_error() message and return
-> EIO.  This is a first pass and most notably does _not_ cover
-> mballoc.c, which is a morass of void functions.
-> 
-> Signed-off-by: Frank Mayhar <fmayhar@google.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h    |   10 +++
->  fs/ext4/extents.c |  189 +++++++++++++++++++++++++++++++++++++++++------------
->  fs/ext4/inode.c   |   18 +++++-
->  fs/ext4/super.c   |   36 ++++++++++
->  4 files changed, 209 insertions(+), 44 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 79c067e..350c3a2 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -53,6 +53,12 @@
->  #define ext4_debug(f, a...)	do {} while (0)
->  #endif
-> 
-> +#define EXT4_ERROR_INODE(inode, fmt, a...) \
-> +	ext4_error_inode(__func__, (inode), (fmt), ## a);
-> +
-> +#define EXT4_ERROR_FILE(file, fmt, a...)	\
-> +	ext4_error_file(__func__, (file), (fmt), ## a);
-> +
+This is a multi-part message in MIME format.
+--------------020504000300030607030505
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Hello.
+
+I'm writing a real-time application that have to stream pictures to a SSD.
+
+The pictures are 640x480x1 pnm that are stored in one tar file. I have one picture every 100ms.
+
+I decided to code a "write" thread that open a file on an ext4 filesystem created with :
+# mke2fs -t ext4 -L DATA -O large_file,^has_journal,extent -v
+
+It is mounted with :
+# mount -t ext4 /dev/sda3 /var/data/
+
+My file descriptor is open with these flags :
+O_WRONLY | O_CREAT | O_TRUNC | O_SYNC | O_DIRECT
+
+I use a noop io scheduler.
+
+The problem is that the access (write) time (from a userspace point of view) is not constant. I join you a piece of code that reproduce the problem.
+
+This leads me to ask the following questions : the solution to this problem is
+
+(1) the kernel make such a job that the write time seems constant from a userspace point of view
+
+(2) the userspace thread haven't a constant execution time but is bounded to a maximum
+
+(3) the userspace thread have a constant execution time but use an other userspace thread by calling aio_write
 
 
-I guess ext4_error and ext4_warning are now not taking __func__. So we
-to be consistant with thos i this this can be in lower case eventhough
-they are #defines.
+In all case, the job (some block allocation i guess) have to be done. But i suppose that if it is done anticipatory by the kernel it can be preemted by realtime task and it is better.
+
+In the third solution we can preempt the aio thread, but the allocation isn't anticipated.
 
 
->  /* data type for block offset of block group */
->  typedef int ext4_grpblk_t;
-> 
-> @@ -1492,6 +1498,10 @@ extern int ext4_group_extend(struct super_block *sb,
->  extern void __ext4_error(struct super_block *, const char *, const char *, ...)
->  	__attribute__ ((format (printf, 3, 4)));
->  #define ext4_error(sb, message...)	__ext4_error(sb, __func__, ## message)
-> +extern void ext4_error_inode(const char *, struct inode *, const char *, ...)
-> +	__attribute__ ((format (printf, 3, 4)));
-> +extern void ext4_error_file(const char *, struct file *, const char *, ...)
-> +	__attribute__ ((format (printf, 3, 4)));
->  extern void __ext4_std_error(struct super_block *, const char *, int);
->  extern void ext4_abort(struct super_block *, const char *, const char *, ...)
->  	__attribute__ ((format (printf, 3, 4)));
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 202667b..45dad87 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -703,7 +703,12 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
->  		}
->  		eh = ext_block_hdr(bh);
->  		ppos++;
-> -		BUG_ON(ppos > depth);
-> +		if (unlikely(ppos > depth)) {
-> +			put_bh(bh);
-> +			EXT4_ERROR_INODE(inode,
-> +					 "ppos %d > depth %d", ppos, depth);
-> +			goto err;
-> +		}
->  		path[ppos].p_bh = bh;
->  		path[ppos].p_hdr = eh;
->  		i--;
-> @@ -749,7 +754,12 @@ int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
->  	if (err)
->  		return err;
-> 
-> -	BUG_ON(logical == le32_to_cpu(curp->p_idx->ei_block));
-> +	if (unlikely(logical == le32_to_cpu(curp->p_idx->ei_block))) {
-> +		EXT4_ERROR_INODE(inode,
-> +				 "logical %d == ei_block %d!",
-> +				 logical, le32_to_cpu(curp->p_idx->ei_block));
-> +		return -EIO;
-> +	}
->  	len = EXT_MAX_INDEX(curp->p_hdr) - curp->p_idx;
->  	if (logical > le32_to_cpu(curp->p_idx->ei_block)) {
->  		/* insert after */
-> @@ -779,9 +789,17 @@ int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
->  	ext4_idx_store_pblock(ix, ptr);
->  	le16_add_cpu(&curp->p_hdr->eh_entries, 1);
-> 
-> -	BUG_ON(le16_to_cpu(curp->p_hdr->eh_entries)
-> -			     > le16_to_cpu(curp->p_hdr->eh_max));
-> -	BUG_ON(ix > EXT_LAST_INDEX(curp->p_hdr));
-> +	if (unlikely(le16_to_cpu(curp->p_hdr->eh_entries)
-> +			     > le16_to_cpu(curp->p_hdr->eh_max))) {
-> +		EXT4_ERROR_INODE(inode,
-> +				 "logical %d == ei_block %d!",
-> +				 logical, le32_to_cpu(curp->p_idx->ei_block));
-> +		return -EIO;
-> +	}
-> +	if (unlikely(ix > EXT_LAST_INDEX(curp->p_hdr))) {
-> +		EXT4_ERROR_INODE(inode, "ix > EXT_LAST_INDEX!");
-> +		return -EIO;
-> +	}
-> 
->  	err = ext4_ext_dirty(handle, inode, curp);
->  	ext4_std_error(inode->i_sb, err);
-> @@ -819,7 +837,10 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
-> 
->  	/* if current leaf will be split, then we should use
->  	 * border from split point */
-> -	BUG_ON(path[depth].p_ext > EXT_MAX_EXTENT(path[depth].p_hdr));
-> +	if (unlikely(path[depth].p_ext > EXT_MAX_EXTENT(path[depth].p_hdr))) {
-> +		EXT4_ERROR_INODE(inode, "p_ext > EXT_MAX_EXTENT!");
-> +		return -EIO;
-> +	}
->  	if (path[depth].p_ext != EXT_MAX_EXTENT(path[depth].p_hdr)) {
->  		border = path[depth].p_ext[1].ee_block;
->  		ext_debug("leaf will be split."
-> @@ -860,7 +881,11 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
-> 
->  	/* initialize new leaf */
->  	newblock = ablocks[--a];
-> -	BUG_ON(newblock == 0);
-> +	if (unlikely(newblock == 0)) {
-> +		EXT4_ERROR_INODE(inode, "newblock == 0!");
-> +		err = -EIO;
-> +		goto cleanup;
-> +	}
->  	bh = sb_getblk(inode->i_sb, newblock);
->  	if (!bh) {
->  		err = -EIO;
-> @@ -880,7 +905,14 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
->  	ex = EXT_FIRST_EXTENT(neh);
-> 
->  	/* move remainder of path[depth] to the new leaf */
-> -	BUG_ON(path[depth].p_hdr->eh_entries != path[depth].p_hdr->eh_max);
-> +	if (unlikely(path[depth].p_hdr->eh_entries !=
-> +		     path[depth].p_hdr->eh_max)) {
-> +		EXT4_ERROR_INODE(inode, "eh_entries %d != eh_max %d!",
-> +				 path[depth].p_hdr->eh_entries,
-> +				 path[depth].p_hdr->eh_max);
-> +		err = -EIO;
-> +		goto cleanup;
-> +	}
->  	/* start copy from next extent */
->  	/* TODO: we could do it by single memmove */
->  	m = 0;
-> @@ -927,7 +959,11 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
-> 
->  	/* create intermediate indexes */
->  	k = depth - at - 1;
-> -	BUG_ON(k < 0);
-> +	if (unlikely(k < 0)) {
-> +		EXT4_ERROR_INODE(inode, "k %d < 0!", k);
-> +		err = -EIO;
-> +		goto cleanup;
-> +	}
->  	if (k)
->  		ext_debug("create %d intermediate indices\n", k);
->  	/* insert new index into current index block */
-> @@ -964,8 +1000,14 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
-> 
->  		ext_debug("cur 0x%p, last 0x%p\n", path[i].p_idx,
->  				EXT_MAX_INDEX(path[i].p_hdr));
-> -		BUG_ON(EXT_MAX_INDEX(path[i].p_hdr) !=
-> -				EXT_LAST_INDEX(path[i].p_hdr));
-> +		if (unlikely(EXT_MAX_INDEX(path[i].p_hdr) !=
-> +					EXT_LAST_INDEX(path[i].p_hdr))) {
-> +			EXT4_ERROR_INODE(inode,
-> +					 "EXT_MAX_INDEX != EXT_LAST_INDEX ee_block %d!",
-> +					 le32_to_cpu(path[i].p_ext->ee_block));
-> +			err = -EIO;
-> +			goto cleanup;
-> +		}
->  		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
->  			ext_debug("%d: move %d:%llu in new index %llu\n", i,
->  					le32_to_cpu(path[i].p_idx->ei_block),
-> @@ -1203,7 +1245,10 @@ ext4_ext_search_left(struct inode *inode, struct ext4_ext_path *path,
->  	struct ext4_extent *ex;
->  	int depth, ee_len;
-> 
-> -	BUG_ON(path == NULL);
-> +	if (unlikely(path == NULL)) {
-> +		EXT4_ERROR_INODE(inode, "path == NULL *logical %d!", *logical);
-> +		return -EIO;
-> +	}
->  	depth = path->p_depth;
->  	*phys = 0;
-> 
-> @@ -1217,15 +1262,33 @@ ext4_ext_search_left(struct inode *inode, struct ext4_ext_path *path,
->  	ex = path[depth].p_ext;
->  	ee_len = ext4_ext_get_actual_len(ex);
->  	if (*logical < le32_to_cpu(ex->ee_block)) {
-> -		BUG_ON(EXT_FIRST_EXTENT(path[depth].p_hdr) != ex);
-> +		if (unlikely(EXT_FIRST_EXTENT(path[depth].p_hdr) != ex)) {
-> +			EXT4_ERROR_INODE(inode,
-> +					 "EXT_FIRST_EXTENT != ex *logical %d ee_block %d!",
-> +					 *logical, le32_to_cpu(ex->ee_block));
-> +			return -EIO;
-> +		}
->  		while (--depth >= 0) {
->  			ix = path[depth].p_idx;
-> -			BUG_ON(ix != EXT_FIRST_INDEX(path[depth].p_hdr));
-> +			if (unlikely(ix != EXT_FIRST_INDEX(path[depth].p_hdr))) {
-> +				EXT4_ERROR_INODE(inode,
-> +				  "ix (%d) != EXT_FIRST_INDEX (%d) (depth %d)!",
-> +				  ix != NULL ? ix->ei_block : 0,
-> +				  EXT_FIRST_INDEX(path[depth].p_hdr) != NULL ?
-> +				    EXT_FIRST_INDEX(path[depth].p_hdr)->ei_block : 0,
-> +				  depth);
-> +				return -EIO;
-> +			}
->  		}
->  		return 0;
->  	}
-> 
-> -	BUG_ON(*logical < (le32_to_cpu(ex->ee_block) + ee_len));
-> +	if (unlikely(*logical < (le32_to_cpu(ex->ee_block) + ee_len))) {
-> +		EXT4_ERROR_INODE(inode,
-> +				 "logical %d < ee_block %d + ee_len %d!",
-> +				 *logical, le32_to_cpu(ex->ee_block), ee_len);
-> +		return -EIO;
-> +	}
-> 
->  	*logical = le32_to_cpu(ex->ee_block) + ee_len - 1;
->  	*phys = ext_pblock(ex) + ee_len - 1;
-> @@ -1251,7 +1314,10 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
->  	int depth;	/* Note, NOT eh_depth; depth from top of tree */
->  	int ee_len;
-> 
-> -	BUG_ON(path == NULL);
-> +	if (unlikely(path == NULL)) {
-> +		EXT4_ERROR_INODE(inode, "path == NULL *logical %d!", *logical);
-> +		return -EIO;
-> +	}
->  	depth = path->p_depth;
->  	*phys = 0;
-> 
-> @@ -1265,17 +1331,32 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
->  	ex = path[depth].p_ext;
->  	ee_len = ext4_ext_get_actual_len(ex);
->  	if (*logical < le32_to_cpu(ex->ee_block)) {
-> -		BUG_ON(EXT_FIRST_EXTENT(path[depth].p_hdr) != ex);
-> +		if (unlikely(EXT_FIRST_EXTENT(path[depth].p_hdr) != ex)) {
-> +			EXT4_ERROR_INODE(inode,
-> +					 "first_extent(path[%d].p_hdr) != ex",
-> +					 depth);
-> +			return -EIO;
-> +		}
->  		while (--depth >= 0) {
->  			ix = path[depth].p_idx;
-> -			BUG_ON(ix != EXT_FIRST_INDEX(path[depth].p_hdr));
-> +			if (unlikely(ix != EXT_FIRST_INDEX(path[depth].p_hdr))) {
-> +				EXT4_ERROR_INODE(inode,
-> +						 "ix != EXT_FIRST_INDEX *logical %d!",
-> +						 *logical);
-> +				return -EIO;
-> +			}
->  		}
->  		*logical = le32_to_cpu(ex->ee_block);
->  		*phys = ext_pblock(ex);
->  		return 0;
->  	}
-> 
-> -	BUG_ON(*logical < (le32_to_cpu(ex->ee_block) + ee_len));
-> +	if (unlikely(*logical < (le32_to_cpu(ex->ee_block) + ee_len))) {
-> +		EXT4_ERROR_INODE(inode,
-> +				 "logical %d < ee_block %d + ee_len %d!",
-> +				 *logical, le32_to_cpu(ex->ee_block), ee_len);
-> +		return -EIO;
-> +	}
-> 
->  	if (ex != EXT_LAST_EXTENT(path[depth].p_hdr)) {
->  		/* next allocated block in this leaf */
-> @@ -1414,8 +1495,12 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
-> 
->  	eh = path[depth].p_hdr;
->  	ex = path[depth].p_ext;
-> -	BUG_ON(ex == NULL);
-> -	BUG_ON(eh == NULL);
-> +
-> +	if (unlikely(ex == NULL || eh == NULL)) {
-> +		EXT4_ERROR_INODE(inode,
-> +				 "ex %p == NULL or eh %p == NULL", ex, eh);
-> +		return -EIO;
-> +	}
-> 
->  	if (depth == 0) {
->  		/* there is no tree at all */
-> @@ -1613,10 +1698,16 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
->  	ext4_lblk_t next;
->  	unsigned uninitialized = 0;
-> 
-> -	BUG_ON(ext4_ext_get_actual_len(newext) == 0);
-> +	if (unlikely(ext4_ext_get_actual_len(newext) == 0)) {
-> +		EXT4_ERROR_INODE(inode, "ext4_ext_get_actual_len(newext) == 0");
-> +		return -EIO;
-> +	}
->  	depth = ext_depth(inode);
->  	ex = path[depth].p_ext;
-> -	BUG_ON(path[depth].p_hdr == NULL);
-> +	if (unlikely(path[depth].p_hdr == NULL)) {
-> +		EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
-> +		return -EIO;
-> +	}
-> 
->  	/* try to insert block into found extent and return */
->  	if (ex && !(flag & EXT4_GET_BLOCKS_PRE_IO)
-> @@ -1788,7 +1879,11 @@ int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->  		}
-> 
->  		depth = ext_depth(inode);
-> -		BUG_ON(path[depth].p_hdr == NULL);
-> +		if (unlikely(path[depth].p_hdr == NULL)) {
-> +			EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
-> +			err = -EIO;
-> +			break;
-> +		}
->  		ex = path[depth].p_ext;
->  		next = ext4_ext_next_allocated_block(path);
-> 
-> @@ -1839,7 +1934,11 @@ int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->  			cbex.ec_type = EXT4_EXT_CACHE_EXTENT;
->  		}
-> 
-> -		BUG_ON(cbex.ec_len == 0);
-> +		if (unlikely(cbex.ec_len == 0)) {
-> +			EXT4_ERROR_INODE(inode, "cbex.ec_len == 0");
-> +			err = -EIO;
-> +			break;
-> +		}
->  		err = func(inode, path, &cbex, ex, cbdata);
->  		ext4_ext_drop_refs(path);
-> 
-> @@ -1982,7 +2081,10 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->  	/* free index block */
->  	path--;
->  	leaf = idx_pblock(path->p_idx);
-> -	BUG_ON(path->p_hdr->eh_entries == 0);
-> +	if (unlikely(path->p_hdr->eh_entries == 0)) {
-> +		EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
-> +		return -EIO;
-> +	}
->  	err = ext4_ext_get_access(handle, inode, path);
->  	if (err)
->  		return err;
-> @@ -2120,8 +2222,10 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->  	if (!path[depth].p_hdr)
->  		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
->  	eh = path[depth].p_hdr;
-> -	BUG_ON(eh == NULL);
-> -
-> +	if (unlikely(path[depth].p_hdr == NULL)) {
-> +		EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
-> +		return -EIO;
-> +	}
->  	/* find where to start removing */
->  	ex = EXT_LAST_EXTENT(eh);
-> 
-> @@ -3240,10 +3344,10 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  	 * this situation is possible, though, _during_ tree modification;
->  	 * this is why assert can't be put in ext4_ext_find_extent()
->  	 */
-> -	if (path[depth].p_ext == NULL && depth != 0) {
-> -		ext4_error(inode->i_sb, "bad extent address "
-> -			   "inode: %lu, iblock: %d, depth: %d",
-> -			   inode->i_ino, iblock, depth);
-> +	if (unlikely(path[depth].p_ext == NULL && depth != 0)) {
-> +		EXT4_ERROR_INODE(inode, "bad extent address "
-> +				 "iblock: %d, depth: %d pblock %lld",
-> +				 iblock, depth, path[depth].p_block);
->  		err = -EIO;
->  		goto out2;
->  	}
-> @@ -3371,16 +3475,17 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  	}
-> 
->  	if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)) {
-> -		if (eh->eh_entries) {
-> -			last_ex = EXT_LAST_EXTENT(eh);
-> -			if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
-> -					    + ext4_ext_get_actual_len(last_ex))
-> -				EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
-> -		} else {
-> -			WARN_ON(eh->eh_entries == 0);
-> -			ext4_error(inode->i_sb, __func__,
-> -				"inode#%lu, eh->eh_entries = 0!", inode->i_ino);
-> -			}
-> +		if (unlikely(!eh->eh_entries)) {
-> +			EXT4_ERROR_INODE(inode,
-> +					 "eh->eh_entries == 0 ee_block %d",
-> +					 ex->ee_block);
-> +			err = -EIO;
-> +			goto out2;
-> +		}
-> +		last_ex = EXT_LAST_EXTENT(eh);
-> +		if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
-> +		    + ext4_ext_get_actual_len(last_ex))
-> +			EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
->  	}
->  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
->  	if (err) {
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 576bbe2..2c48fbe 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -607,7 +607,14 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
->  		if (*err)
->  			goto failed_out;
-> 
-> -		BUG_ON(current_block + count > EXT4_MAX_BLOCK_FILE_PHYS);
-> +		if (unlikely(current_block + count > EXT4_MAX_BLOCK_FILE_PHYS)) {
-> +			EXT4_ERROR_INODE(inode,
-> +					 "current_block %llu + count %lu > %d!",
-> +					 current_block, count,
-> +					 EXT4_MAX_BLOCK_FILE_PHYS);
-> +			*err = -EIO;
-> +			goto failed_out;
-> +		}
-> 
->  		target -= count;
->  		/* allocate blocks for indirect blocks */
-> @@ -643,7 +650,14 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
->  		ar.flags = EXT4_MB_HINT_DATA;
-> 
->  	current_block = ext4_mb_new_blocks(handle, &ar, err);
-> -	BUG_ON(current_block + ar.len > EXT4_MAX_BLOCK_FILE_PHYS);
-> +	if (unlikely(current_block + ar.len > EXT4_MAX_BLOCK_FILE_PHYS)) {
-> +		EXT4_ERROR_INODE(inode,
-> +				 "current_block %llu + ar.len %d > %d!",
-> +				 current_block, ar.len,
-> +				 EXT4_MAX_BLOCK_FILE_PHYS);
-> +		*err = -EIO;
-> +		goto failed_out;
-> +	}
-> 
->  	if (*err && (target == blks)) {
->  		/*
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 200d257..6c8e92c 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -347,6 +347,42 @@ void __ext4_error(struct super_block *sb, const char *function,
->  	ext4_handle_error(sb);
->  }
-> 
-> +void ext4_error_inode(const char *function, struct inode *inode,
-> +		      const char *fmt, ...)
-> +{
-> +	va_list args;
-> +
-> +	va_start(args, fmt);
-> +	printk(KERN_CRIT "EXT4-fs error (device %s): %s: inode #%lu: (comm %s) ",
-> +	       inode->i_sb->s_id, function, inode->i_ino, current->comm);
-> +	vprintk(fmt, args);
-> +	printk("\n");
-> +	va_end(args);
-> +
-> +	ext4_handle_error(inode->i_sb);
-> +}
-> +
-> +void ext4_error_file(const char *function, struct file *file,
-> +		     const char *fmt, ...)
-> +{
-> +	va_list args;
-> +	struct inode *inode = file->f_dentry->d_inode;
-> +	char pathname[80], *path;
-> +
-> +	va_start(args, fmt);
-> +	path = d_path(&(file->f_path), pathname, sizeof(pathname));
-> +	if (!path)
-> +		path = "(unknown)";
-> +	printk(KERN_CRIT
-> +	       "EXT4-fs error (device %s): %s: inode #%lu (comm %s path %s): ",
-> +	       inode->i_sb->s_id, function, inode->i_ino, current->comm, path);
-> +	vprintk(fmt, args);
-> +	printk("\n");
-> +	va_end(args);
-> +
-> +	ext4_handle_error(inode->i_sb);
-> +}
+So if you could give me your point of view...
 
 
--aneesh
+Thank you for your advices.
+
+
+Paul.
+
+
+--------------020504000300030607030505
+Content-Type: text/plain;
+ name="main.c"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="main.c"
+
+/* gcc -Wall -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -o main main.c -lrt */
+
+/* open */
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+/* write,close,pathconf */
+#include <unistd.h>
+
+/* posix_memalign */
+#include <stdlib.h>
+
+/* perror */
+#include <stdio.h>
+
+/* signal */
+#include <signal.h>
+
+/* clock_* */
+#include <time.h>
+
+/* sched_setscheduler */
+#include <sched.h>
+
+/* memset */
+#include <string.h>
+
+/* mlockall */
+#include <sys/mman.h> // Needed for ()
+
+/* getrusage */
+#include <sys/time.h>
+#include <sys/resource.h>
+   
+/* iob */
+#include <sys/io.h>
+
+
+#define PP_DATA 0x378
+
+static volatile int test_is_running = 1;
+
+void sig_handler(int sig_num)
+{
+  test_is_running = 0;
+}
+
+int main(int argc, char **argv)
+{
+  /*
+   * I stream 640x480x1 pnm images (307215 bytes each) to a tar file.
+   * The write buffer is multiple of 512.
+   * So 307712 bytes.
+   */
+  const int buffer_size = 307712;
+  /*
+   * Alignement for direct io
+   */
+  int buffer_alignment;
+  /*
+   * The buffer will be allocated dynamicaly for alignement
+   */
+  void *buffer;
+
+  int fd;
+
+  /* 
+   * Set the scheduler
+   */
+  struct sched_param param;
+
+  /*
+   * Monitoring variable
+   */
+  unsigned long long sample = 0;
+  struct timespec start_time;
+  struct timespec stop_time;
+  unsigned long long diff_cur;
+  unsigned long long diff_min;
+  unsigned long long diff_max;
+  unsigned long long diff_avg;
+  struct timespec ts;
+  unsigned long long period_ns = 200000000;
+  struct rusage usage_before;
+  struct rusage usage_after;
+
+  /* handle ctrl-c */
+  struct sigaction sigact;
+  sigact.sa_handler= sig_handler;
+  sigact.sa_flags = SA_RESETHAND;
+  sigaction(SIGINT, &sigact, NULL);
+
+  /* for pp monitoring */
+  ioperm(PP_DATA, 1, 1);
+
+  /* declare ourself as a real time task */
+  param.sched_priority = 49;
+  if(sched_setscheduler(0, SCHED_FIFO, &param) == -1) 
+    {
+      perror("sched_setscheduler failed");
+      return EXIT_FAILURE;
+    }
+
+  /* lock all current and future pages from preventing of being paged */
+  if(mlockall(MCL_CURRENT | MCL_FUTURE ))
+    {
+      perror("mlockall failed");
+      return EXIT_FAILURE;
+    }
+     
+  /* open */
+  fd = open("test.log", O_WRONLY | O_CREAT | O_TRUNC | O_SYNC | O_DIRECT, 0644);
+  if(fd < 0)
+    {
+      perror("open failed");
+      return EXIT_FAILURE;
+    }
+ 
+  /* compute alignement constraints for direct io */
+  buffer_alignment = pathconf("test.log", _PC_REC_XFER_ALIGN);
+  if(buffer_alignment < 0)
+    {
+      perror("pathconf failed");
+      return EXIT_FAILURE;
+    }
+
+  /* alloc aligned buffer */
+  if(posix_memalign((void **)&buffer, buffer_alignment, buffer_size))
+    {
+      perror("posix_memalign failed");
+      return EXIT_FAILURE;
+    }
+     
+  memset(buffer, 0, buffer_size);
+  
+  fprintf(stderr, "%*s%*s\n", 16, "file size", 16, "duration");
+
+  getrusage(RUSAGE_SELF, &usage_before);
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  while(test_is_running)
+    {
+      int nb_write;
+
+      outb((inb(PP_DATA) | (0x0001)), PP_DATA);
+
+      clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+      nb_write = write(fd, buffer, buffer_size);
+ 
+      clock_gettime(CLOCK_MONOTONIC, &stop_time);
+
+      outb((inb(PP_DATA) & ~(0x0001)), PP_DATA);
+ 
+      /* error handling */
+      if(nb_write != buffer_size)
+        {
+          perror("write failed");
+          return EXIT_FAILURE;
+        }
+
+      /* compute stats */
+      if(stop_time.tv_nsec < start_time.tv_nsec)
+        {
+          stop_time.tv_sec--;
+          stop_time.tv_nsec+=1000000000;
+        } 
+    
+      diff_cur = (stop_time.tv_sec - start_time.tv_sec) * 1000000000ULL + (stop_time.tv_nsec - start_time.tv_nsec);
+
+      if(sample == 0)
+        {
+          diff_min = diff_cur;
+          diff_max = diff_cur;
+          diff_avg = diff_cur;
+        }
+      else
+        {
+          if(diff_cur < diff_min)
+            {
+              diff_min = diff_cur;
+            }
+          if(diff_max < diff_cur)
+            {
+              diff_max = diff_cur;
+            }
+          if(diff_cur < diff_avg)
+            {
+              diff_avg = diff_avg - (diff_avg - diff_cur) / sample;
+            }
+          else
+            {
+              diff_avg = diff_avg + (diff_cur - diff_avg) / sample;
+            }
+        }
+      sample++;
+
+      /* print suspect write */
+      if((2 * diff_avg) < diff_cur)
+        {
+          struct stat buf;
+          fstat(fd, &buf);
+          fprintf(stderr, "%*llu%*llu\n", 16, buf.st_size, 16, diff_cur);
+        }
+
+      /* sleep */
+      ts.tv_nsec += period_ns;
+      while(ts.tv_nsec >= 1000000000)
+        {
+          ts.tv_nsec -= 1000000000;
+          ts.tv_sec++;
+        }
+
+      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
+    }
+
+  getrusage(RUSAGE_SELF, &usage_after);
+
+  close(fd);
+
+  fprintf(stderr, "\n");
+  fprintf(stderr, "diff min : %llu\n", diff_min);
+  fprintf(stderr, "diff moy : %llu\n", diff_avg);
+  fprintf(stderr, "diff max : %llu\n", diff_max);
+  fprintf(stderr, "%llu iterations\n", sample);
+  printf("major pagefaults : %ld\nminor pagefaults : %ld\n", usage_after.ru_majflt - usage_before.ru_majflt, usage_after.ru_minflt - usage_before.ru_minflt);
+
+  return EXIT_SUCCESS;
+}
+
+--------------020504000300030607030505--
