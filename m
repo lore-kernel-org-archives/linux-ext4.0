@@ -1,40 +1,51 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: discard + LVM
-Date: Sun, 07 Mar 2010 12:38:56 -0500
-Message-ID: <yq18wa4c9qn.fsf@sermon.lab.mkp.net>
-References: <4B922929.5020006@zappa.cx> <4B933BD6.80100@redhat.com>
+From: Christian Borntraeger <borntraeger@de.ibm.com>
+Subject: [PATCH] ext4: allow defrag (EXT4_IOC_MOVE_EXT) in 32bit compat mode
+Date: Sun, 7 Mar 2010 21:32:10 +0100
+Message-ID: <201003072132.10579.borntraeger@de.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Sundstrom <sunkan@zappa.cx>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, Akira Fujita <a-fujita@rs.jp.nec.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:17270 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752003Ab0CGRkz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Mar 2010 12:40:55 -0500
-In-Reply-To: <4B933BD6.80100@redhat.com> (Eric Sandeen's message of "Sat, 06
-	Mar 2010 23:38:30 -0600")
+Received: from mtagate5.uk.ibm.com ([194.196.100.165]:47542 "EHLO
+	mtagate5.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754794Ab0CGUcO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Mar 2010 15:32:14 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Eric" == Eric Sandeen <sandeen@redhat.com> writes:
+I have an x86_64 kernel with i386 userspace. e4defrag fails on the
+EXT4_IOC_MOVE_EXT ioctl because it is not wired up for the compat
+case. It seems that struct move_extent is compat save, only types
+with fixed widths are used:
+{
+        __u32 reserved;         /* should be zero */
+        __u32 donor_fd;         /* donor file descriptor */
+        __u64 orig_start;       /* logical start offset in block for orig */
+        __u64 donor_start;      /* logical start offset in block for donor */
+        __u64 len;              /* block length to be moved */
+        __u64 moved_len;        /* moved block length */
+};
 
-Eric> Andreas Sundstrom wrote:
->> Hi..
->> 
->> I have an OCZ agility SSD drive with FW 1.5 that supports the TRIM
->> command.
->> 
->> I can see that it works on a plain partition.  But it does not seem
->> to work together with LVM.
->> 
->> So I'm wondering if this is expected and whether it is something that
->> will be worked on to get fixed?
+Lets just wire up EXT4_IOC_MOVE_EXT for the compat case.
 
-Eric> It is expected, as lvm is not yet passing discard requests.
+Signed-off-by: Christian Borntraeger <borntraeger@de.ibm.com>
+CCed: Akira Fujita <a-fujita@rs.jp.nec.com> 
 
-I'm working on this.  Missed the 2.6.34 merge window so I'm aiming at
-2.6.35.
+---
+ fs/ext4/ioctl.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
--- 
-Martin K. Petersen	Oracle Linux Engineering
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -375,6 +375,8 @@ long ext4_compat_ioctl(struct file *file
+ 		break;
+ 	case EXT4_IOC_GROUP_ADD:
+ 		break;
++	case EXT4_IOC_MOVE_EXT:
++		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
+ 	}
