@@ -1,39 +1,52 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: Re: [PATCH 27/28] ext4: Convert BUG_ON checks to use ext4_error()
-	instead
-Date: Mon, 08 Mar 2010 09:46:11 -0800
-Message-ID: <1268070371.5347.8.camel@bobble.smo.corp.google.com>
-References: <1267553925-6308-1-git-send-email-tytso@mit.edu>
-	 <1267553925-6308-28-git-send-email-tytso@mit.edu>
-	 <87r5nxsitn.fsf@linux.vnet.ibm.com>  <20100307024531.GB5395@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13598] FIEMAP related circular locking dependency detected
+Date: Mon, 8 Mar 2010 18:19:20 GMT
+Message-ID: <201003081819.o28IJK8N015233@demeter.kernel.org>
+References: <bug-13598-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:7582 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750985Ab0CHRqQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 12:46:16 -0500
-In-Reply-To: <20100307024531.GB5395@thunk.org>
+Received: from demeter.kernel.org ([140.211.167.39]:54969 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754515Ab0CHSTV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 13:19:21 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o28IJK1d015234
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Mar 2010 18:19:20 GMT
+In-Reply-To: <bug-13598-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 2010-03-06 at 21:45 -0500, tytso@mit.edu wrote:
-> On Sat, Mar 06, 2010 at 06:33:48PM +0530, Aneesh Kumar K. V wrote:
-> > 
-> > I guess ext4_error and ext4_warning are now not taking __func__. So we
-> > to be consistant with thos i this this can be in lower case even though
-> > they are #defines.
-> 
-> Or maybe we should rename them be EXT4_ERROR and EXT4_WARNING.  What
-> do other people think?
+http://bugzilla.kernel.org/show_bug.cgi?id=13598
 
-I guess I'm joining the apathetic majority when I say that it doesn't
-matter to me at all.  Keeping them as-is is fine.
+
+Eric Sandeen <sandeen@redhat.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
+         AssignedTo|fs_ext4@kernel-bugs.osdl.or |sandeen@redhat.com
+                   |g                           |
+
+
+
+
+--- Comment #1 from Eric Sandeen <sandeen@redhat.com>  2010-03-08 18:19:17 ---
+Assigning to myself just so I can close it; Aneesh looked and this was fixed
+by:
+
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Thu, 10 Dec 2009 02:30:02 +0000 (-0500)
+Subject: ext4: Fix potential fiemap deadlock (mmap_sem vs. i_data_sem)
+X-Git-Tag: v2.6.33-rc1~330^2
+X-Git-Url:
+http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Ftorvalds%2Flinux-2.6.git;a=commitdiff_plain;h=fab3a549e204172236779f502eccb4f9bf0dc87d
+
+ext4: Fix potential fiemap deadlock (mmap_sem vs. i_data_sem)
+
 -- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
