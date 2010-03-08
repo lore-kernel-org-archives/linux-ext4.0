@@ -1,73 +1,39 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: discard + LVM
-Date: Mon, 8 Mar 2010 11:54:45 -0500
-Message-ID: <170fa0d21003080854l1c7e8a76w277b1d1ce51da2e@mail.gmail.com>
-References: <4B922929.5020006@zappa.cx> <4B933BD6.80100@redhat.com>
-	 <yq18wa4c9qn.fsf@sermon.lab.mkp.net>
+From: jim owens <owens6336@gmail.com>
+Subject: Re: defrag deployment status (was Re: [PATCH] ext4: allow defrag
+ 	(EXT4_IOC_MOVE_EXT) in 32bit compat mode)
+Date: Mon, 08 Mar 2010 12:11:17 -0500
+Message-ID: <4B952FB5.2060600@gmail.com>
+References: <201003072132.10579.borntraeger@de.ibm.com>	 <4B94367E.9080506@garzik.org>	 <201003080853.42978.borntraeger@de.ibm.com>	 <4B9518DA.8010201@davidnewall.com> <4B952437.8020607@gmail.com> <87f94c371003080831n4d310e10i2b9badf4290f1ede@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Sundstrom <sunkan@zappa.cx>,
-	linux-ext4@vger.kernel.org, dm-devel@redhat.com,
-	linux-raid@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <yq18wa4c9qn.fsf@sermon.lab.mkp.net>
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: David Newall <davidn@davidnewall.com>,
+	Christian Borntraeger <borntraeger@de.ibm.com>,
+	Jeff Garzik <jeff@garzik.org>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Akira Fujita <a-fujita@rs.jp.nec.com>
+To: Greg Freemyer <greg.freemyer@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from qw-out-2122.google.com ([74.125.92.26]:35707 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751367Ab0CHRLW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 12:11:22 -0500
+In-Reply-To: <87f94c371003080831n4d310e10i2b9badf4290f1ede@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 7, 2010 at 12:38 PM, Martin K. Petersen
-<martin.petersen@oracle.com> wrote:
->>>>>> "Eric" =3D=3D Eric Sandeen <sandeen@redhat.com> writes:
->
-> Eric> Andreas Sundstrom wrote:
->>> Hi..
->>>
->>> I have an OCZ agility SSD drive with FW 1.5 that supports the TRIM
->>> command.
->>>
->>> I can see that it works on a plain partition. =A0But it does not se=
-em
->>> to work together with LVM.
->>>
->>> So I'm wondering if this is expected and whether it is something th=
-at
->>> will be worked on to get fixed?
->
-> Eric> It is expected, as lvm is not yet passing discard requests.
->
-> I'm working on this. =A0Missed the 2.6.34 merge window so I'm aiming =
-at
-> 2.6.35.
+Greg Freemyer wrote:
+> 
+> Jim, I should know this, but is sector 0 on the outside edge, or the inner edge?
+> 
+> I assume outer so that the linear speed of the platter under the head
+> is faster and thus more data per second is passing under the head.
 
-Hey Martin,
+Correct.  AFAIK everyone starts 0 at the outer edge for that reason,
+it makes for better benchmarks ;)
 
-We've been scoping the work associated with adding discard support to
-DM (afaik MD would need comparable infrastructure, e.g.: spliting
-discard requests).
+When I only worried about a few OEM drives, I used to read the zone
+geometry from the drive to see where each speed transition was as the
+density decreased.  But that is just not worth the effort in linux
+filesystems IMO, it is enough to pack low.
 
-There is a fair amount of complexity associated with this work.
-Especially when you look to support discards for some of the more
-advanced DM targets.  Discard support for the 'linear' target is the
-relatively low hanging fruit.  The 'striped' target gets more
-interesting (having to split the discard into multiple discards to
-submit to the appropriate underlying devices in the striped volume).
-
-One thought was we might have a block layer hook along the lines of
-the q->merge_bvec_fn (similar but hopefully less
-problematic/controversial).  Christoph removed a hook that was vaguely
-like this, but posed allocation problems, with linux-2.6 commit:
-c15227de132f
-
-Please feel free to share your patches/design with dm-devel.  (I'll
-also check with Alasdair to see about making the dm-devel filtering
-less prone to eat mail)
-
-Thanks!
-Mike
---
-To unsubscribe from this list: send the line "unsubscribe linux-raid" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+jim
