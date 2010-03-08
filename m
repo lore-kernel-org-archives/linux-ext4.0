@@ -1,65 +1,38 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH] ext4: allow defrag (EXT4_IOC_MOVE_EXT) in 32bit compat
- mode
-Date: Mon, 08 Mar 2010 17:42:58 +0900
-Message-ID: <4B94B892.8000209@rs.jp.nec.com>
-References: <201003072132.10579.borntraeger@de.ibm.com>
+From: Stelian Pop <stelian@popies.net>
+Subject: Re: dump/restore not supported for ext4
+Date: Mon, 8 Mar 2010 12:03:21 +0100
+Message-ID: <20100308110320.GA3480@calypso>
+References: <alpine.DEB.2.00.1003041704230.17723@p34.internal.lan>
+ <4B90A366.9080201@gmail.com>
+ <alpine.DEB.2.00.1003050412260.17723@p34.internal.lan>
+ <87lje620z8.fsf@gag.com>
+Reply-To: Stelian Pop <stelian@popies.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christian Borntraeger <borntraeger@de.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Justin Piszcz <jpiszcz@lucidpixels.com>,
+	Gertjan van Wingerde <gwingerde@gmail.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Alan Piszcz <ap@solarrain.com>, tytso@mit.edu,
+	Eric Sandeen <sandeen@redhat.com>, debian-gcc@lists.debian.org
+To: Bdale Garbee <bdale@gag.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:52227 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750857Ab0CHInV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 03:43:21 -0500
-In-Reply-To: <201003072132.10579.borntraeger@de.ibm.com>
+Received: from sd-11162.dedibox.fr ([88.191.70.230]:46246 "EHLO
+	sd-11162.dedibox.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753510Ab0CHLJq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 06:09:46 -0500
+Content-Disposition: inline
+In-Reply-To: <87lje620z8.fsf@gag.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Mar 05, 2010 at 09:21:31AM -0700, Bdale Garbee wrote:
 
-Hi Christian,
+> Thanks for noticing those!  I've made those changes in my git repo for
+> the next Debian package upload.  Hopefully Stelian will also fix those
+> in his next release, I see you've copied him on this.
 
-(2010/03/08 5:32), Christian Borntraeger wrote:
-> I have an x86_64 kernel with i386 userspace. e4defrag fails on the
-> EXT4_IOC_MOVE_EXT ioctl because it is not wired up for the compat
-> case. It seems that struct move_extent is compat save, only types
-> with fixed widths are used:
-> {
->          __u32 reserved;         /* should be zero */
->          __u32 donor_fd;         /* donor file descriptor */
->          __u64 orig_start;       /* logical start offset in block for orig */
->          __u64 donor_start;      /* logical start offset in block for donor */
->          __u64 len;              /* block length to be moved */
->          __u64 moved_len;        /* moved block length */
-> };
->
-> Lets just wire up EXT4_IOC_MOVE_EXT for the compat case.
->
-> Signed-off-by: Christian Borntraeger<borntraeger@de.ibm.com>
-> CCed: Akira Fujita<a-fujita@rs.jp.nec.com>
->
-> ---
->   fs/ext4/ioctl.c |    2 ++
->   1 file changed, 2 insertions(+)
->
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -375,6 +375,8 @@ long ext4_compat_ioctl(struct file *file
->   		break;
->   	case EXT4_IOC_GROUP_ADD:
->   		break;
-> +	case EXT4_IOC_MOVE_EXT:
-> +		break;
->   	default:
->   		return -ENOIOCTLCMD;
->   	}
+Done !
 
-Looks good for me.
-Thank you for your work.
-
-Regards,
-Akira Fujita
-
-
+Stelian.
+-- 
+Stelian Pop <stelian@popies.net>
