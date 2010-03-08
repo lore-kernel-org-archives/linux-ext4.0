@@ -1,38 +1,42 @@
-From: Stelian Pop <stelian@popies.net>
-Subject: Re: dump/restore not supported for ext4
-Date: Mon, 8 Mar 2010 12:03:21 +0100
-Message-ID: <20100308110320.GA3480@calypso>
-References: <alpine.DEB.2.00.1003041704230.17723@p34.internal.lan>
- <4B90A366.9080201@gmail.com>
- <alpine.DEB.2.00.1003050412260.17723@p34.internal.lan>
- <87lje620z8.fsf@gag.com>
-Reply-To: Stelian Pop <stelian@popies.net>
+From: "Joseph D. Wagner" <theman@josephdwagner.info>
+Subject: RFC: EXT4 Defrag Specification (Draft)
+Date: Mon, 08 Mar 2010 05:11:13 -0800
+Message-ID: <4B94F771.4010507@josephdwagner.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Piszcz <jpiszcz@lucidpixels.com>,
-	Gertjan van Wingerde <gwingerde@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Alan Piszcz <ap@solarrain.com>, tytso@mit.edu,
-	Eric Sandeen <sandeen@redhat.com>, debian-gcc@lists.debian.org
-To: Bdale Garbee <bdale@gag.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sd-11162.dedibox.fr ([88.191.70.230]:46246 "EHLO
-	sd-11162.dedibox.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753510Ab0CHLJq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 06:09:46 -0500
-Content-Disposition: inline
-In-Reply-To: <87lje620z8.fsf@gag.com>
+Received: from josephdwagner.info ([72.4.161.242]:46999 "EHLO
+	josephdwagner.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751497Ab0CHN2z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Mar 2010 08:28:55 -0500
+Received: from localhost.localdomain (c-98-246-67-237.hsd1.wa.comcast.net [98.246.67.237])
+	(authenticated bits=0)
+	by josephdwagner.info (8.13.7/8.13.7) with ESMTP id o28DBh5s027679
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Mar 2010 05:11:49 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 05, 2010 at 09:21:31AM -0700, Bdale Garbee wrote:
+Hello.
 
-> Thanks for noticing those!  I've made those changes in my git repo for
-> the next Debian package upload.  Hopefully Stelian will also fix those
-> in his next release, I see you've copied him on this.
+I am very interested in EXT4's defrag capabilities.  I haven't been able 
+to find much documentation on them or even a formal specification for 
+them.  I was hoping to help nudge the process along by drafting the 
+specification that I have been unable to find.
 
-Done !
+Please keep in mind that I am a newbie when it comes to kernel 
+programming.  I may be way off on my assumptions or seriously 
+misinformed, or perhaps you already have a plan and I was simply unable 
+to find it.  Please do not hold it against me.  Also, I was hoping to be 
+further along before posting.  However, people were starting to ask 
+questions, so I figured it was better to post an incomplete draft and 
+finish it out later.
 
-Stelian.
--- 
-Stelian Pop <stelian@popies.net>
+Please let me know what you think of the draft thus far.  Thank you for 
+your time.
+
+http://www.josephdwagner.info/ext4_defrag_specs.html
+
+Joseph D. Wagner
