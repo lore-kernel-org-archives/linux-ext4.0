@@ -1,33 +1,41 @@
-From: David Newall <davidn@davidnewall.com>
-Subject: Re: defrag deployment status (was Re: [PATCH] ext4: allow defrag
- (EXT4_IOC_MOVE_EXT) in 32bit compat mode)
-Date: Wed, 10 Mar 2010 02:49:41 +1030
-Message-ID: <4B96751D.10804@davidnewall.com>
-References: <201003072132.10579.borntraeger@de.ibm.com> <4B94367E.9080506@garzik.org> <201003080853.42978.borntraeger@de.ibm.com> <4B9518DA.8010201@davidnewall.com> <4B952437.8020607@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15420] EXT4_USE_FOR_EXT23 causes wrong free space calculation
+ on ext2 and ext3
+Date: Tue, 9 Mar 2010 21:27:23 GMT
+Message-ID: <201003092127.o29LRNiD028336@demeter.kernel.org>
+References: <bug-15420-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Christian Borntraeger <borntraeger@de.ibm.com>,
-	Jeff Garzik <jeff@garzik.org>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Akira Fujita <a-fujita@rs.jp.nec.com>
-To: jim owens <owens6336@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4B952437.8020607@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:41850 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751297Ab0CIV1Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Mar 2010 16:27:24 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o29LRNfF028337
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Mar 2010 21:27:23 GMT
+In-Reply-To: <bug-15420-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-jim owens wrote:
-> No.  Your logic would be correct if rotating disks had
-> similar speed at all locations.  Current disks are much
-> faster at the 0 end than at the middle or highest address.
->   
+http://bugzilla.kernel.org/show_bug.cgi?id=3D15420
 
-I think  my logic is still correct, although I wished I had said "closer 
-to the middle."  In fact, simplistic ideas for placement of files are 
-unlikely to produce fabulous results (and that includes placing commonly 
-used files towards the middle of the disk, say at the inside edge of the 
-outermost zone.)  The effort that BSD went to in FFS, placing 
-directories with files and meta-data in cylinder groups, illustrates 
-that disk performance is a sophisticated problem.
 
-Why don't we use BSD FFS/FFS2?
+
+
+
+--- Comment #2 from Thomas B=C3=A4chler <thomas@archlinux.org>  2010-03=
+-09 21:27:19 ---
+Ping? Anyone actually reading this?
+
+--=20
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
