@@ -1,57 +1,72 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15420] EXT4_USE_FOR_EXT23 causes wrong free space calculation
- on ext2 and ext3
-Date: Wed, 10 Mar 2010 15:44:48 GMT
-Message-ID: <201003101544.o2AFimBW026206@demeter.kernel.org>
-References: <bug-15420-13602@http.bugzilla.kernel.org/>
+From: Enrik Berkhan <Enrik.Berkhan@ge.com>
+Subject: Re: possible ext4 related deadlock
+Date: Wed, 10 Mar 2010 17:23:38 +0100
+Message-ID: <4B97C78A.10301@ge.com>
+References: <4B754E5E.603@ge.com> <4B910D8C.30301@ge.com> <20100305154552.GA6000@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:44016 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756701Ab0CJPot (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Mar 2010 10:44:49 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2AFim3A026207
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Mar 2010 15:44:48 GMT
-In-Reply-To: <bug-15420-13602@http.bugzilla.kernel.org/>
+Received: from exprod5og111.obsmtp.com ([64.18.0.22]:38821 "EHLO
+	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751381Ab0CJQX7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Mar 2010 11:23:59 -0500
+In-Reply-To: <20100305154552.GA6000@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15420
+tytso@mit.edu wrote:
+> On Fri, Mar 05, 2010 at 02:56:28PM +0100, Enrik Berkhan wrote:
+>> Meanwhile, I have found out that thread 2 actually isn't completely
+>> blocked but loops in __alloc_pages_internal:
+>>
+>> get_page_from_freelist() doesn't return a page;
+>> try_to_free_pages() returns did_some_progress == 0;
+>> later, do_retry == 1 and the loop restarts with goto rebalance;
+>>
+>>
+>> Can anybody explain this behaviour and maybe direct me to the root cause?
 
+I think, I have isolated it further: the Blackfin/NOMMU changes are
+simply to call drop_pagecache() in __alloc_pages_internal() before
+trying harder to get pages, which generally is a good thing on NOMMU. We 
+have far less OOMs since that has been introduced into the Blackfin patches.
 
+So, the call sequence may reduce to
 
+...
+/* got no free page on first try */
+drop_pagecache();
+rebalance:
+did_some_progress = try_to_free_pages();
+/* returns 0, most probably because drop_pagecache() has already cleaned 
+up everything possible, thus no call to get_page_from_freelist() */
+drop_pagecache();
+goto rebalance;
+...
 
+>> Of course, this now looks more like a page allocation problem than
+>> an ext4 one.
+> 
+> Yep, I'd have to agree with you.  We're only trying to allocate a
+> single page here, and you have plenty of pages available.  Just
+> checking....  you don't have CONFIG_NUMA enabled and doing something
+> crazy with NUMA nodes, are you?
 
---- Comment #13 from Theodore Tso <tytso@mit.edu>  2010-03-10 15:44:46 ---
-OK, I can confirm that the problem is with delayed allocation and indirect
-files.   While downloading a 70 meg kernel source tar ball, the amount of space
-shown as being used by df goes as high as 1 gigabyte (50% of the space on my
-disk, about 25% of my available free memory) before dropping back down. as the
-blocks get allocated.   Mounting with nodelalloc makes the problem go away.
-Using extents, the df result will occasionally be as much as 1-2 megs but it is
-much smaller in practice.
+no NUMA, of course :)
 
-Using nodelalloc for ext2/3 mounts may make sense not just as a workaround, but
-to help protect users using crappy desktop applications that don't know how to
-use fsync().  (They'll still get screwed by btrfs, but the lazy application
-writers and Phoronix they can complain to the btrfs developers about how they
-are incompetent, and it's no longer my problem at that point.  :-)
+The ext4 contribution to the problem is setting AOP_FLAG_NOFS, which is
+correct, of course. And because most probably no one else in the world 
+uses ext4 on Blackfin/NOMMU, the endless loop only triggers here.
 
-We should try to improve the estimation logic for indirect blocks (I remember
-being in a hurry to write the code to work around the regression caused by the
-quota bugfix that has caused us so much heartache), but I don't think this is a
-problem for people who are migrating from ext3 to ext4, since it's rare that
-they will be extending an already existing indirect-mapped file.  The problem
-with EXT4_USE_FOR_EXT23 is that they are _not_ migrating, and we're seeing a
-weakness in delalloc with indirect block files; a weakness that was only
-introduced recently, and one that I hope we can fix.   But for other reasons
-mentioned above, we probably want to turn on nodelalloc anyway...
+So it's definitely a page allocation problem and a better workaround is 
+to call get_page_from_freelist() after each call to drop_pagecache().
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+I will continue this discussion on the Blackfin list.
+
+Thanks for your patience.
+
+Enrik
+
