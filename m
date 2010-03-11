@@ -1,43 +1,43 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4
-	filesystem
-Date: Thu, 11 Mar 2010 07:06:23 -0500
-Message-ID: <20100311120623.GC4706@infradead.org>
-References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org> <1267727677-11956-2-git-send-email-dmonakhov@openvz.org> <1267727677-11956-3-git-send-email-dmonakhov@openvz.org> <1267727677-11956-4-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 4/5] ext4: add isolated project support
+Date: Thu, 11 Mar 2010 07:07:47 -0500
+Message-ID: <20100311120747.GD4706@infradead.org>
+References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org> <1267727677-11956-2-git-send-email-dmonakhov@openvz.org> <1267727677-11956-3-git-send-email-dmonakhov@openvz.org> <1267727677-11956-4-git-send-email-dmonakhov@openvz.org> <1267727677-11956-5-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:44346 "EHLO
+Received: from bombadil.infradead.org ([18.85.46.34]:43542 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757692Ab0CKMGY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Mar 2010 07:06:24 -0500
+	with ESMTP id S1757707Ab0CKMHs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Mar 2010 07:07:48 -0500
 Content-Disposition: inline
-In-Reply-To: <1267727677-11956-4-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1267727677-11956-5-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 04, 2010 at 09:34:35PM +0300, Dmitry Monakhov wrote:
->   Project id is stored on disk inside xattr usually inside ibody.
->   Xattr is used only as a data storage, It has not user visible xattr
->   interface.
+On Thu, Mar 04, 2010 at 09:34:36PM +0300, Dmitry Monakhov wrote:
+> PROJECT_ISOLATION
+> This feature allows to create an isolated project subtrees.
+> Isolation means what:
+>   1) directory subtree has no common inodes (no hadlinks across subtrees)
+>   2) All descendants belongs to the same subtree.
 > 
-> * User interface
->   Project id is accessible via generic xattr interface "system.project_id"
+> Project subtree's isolation assumptions:
+>   1)Inode can not belongs to different subtree trees
+>     Otherwise changes in one subtree result in changes in other subtree
+>     which contradict to isolation criteria.
 > 
-> TODO: implement e2libfs support for project_id.
+> *Usage*
+>  We already has bind mounts which prevent link/remount across mounts.
+>  But if user has isolated project which consists of several subtrees
+>  and he want link/renames to work between subtrees(but in one project)
+> 
+> Since this feature is non obvious it controlled by mount option.
 
-I think you'd be much better off storing it inide the inode core itself.
-E.g. you could ue the never used fragment address in the ext2/3/4 disk
-inode.
-
-> +#ifdef CONFIG_QUOTA
-> +	qid[PRJQUOTA] = new_prjid;
-> +	ret = inode->i_sb->dq_op->transfer(inode, qid, 1 << PRJQUOTA);
-> +	if (ret)
-> +		return ret;
-> +#endif
-
-This needs to be updated to use dquot_transfer directly.
+Making this a mount option is even more non-obvious.  Unless you have
+very good reason to support both and not just stick to the existing
+"isolated" semantics make it a chattr option so we can easily check
+out what kind of subtree we deal with.
 
