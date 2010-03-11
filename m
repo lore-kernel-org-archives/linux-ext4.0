@@ -1,63 +1,47 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4 filesystem
-Date: Thu, 11 Mar 2010 12:54:46 -0700
-Message-ID: <B4AAD310-8A75-43C8-989E-616CFACFB7A9@sun.com>
-References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-3-git-send-email-dmonakhov@openvz.org>
- <1267727677-11956-4-git-send-email-dmonakhov@openvz.org>
- <20100311120623.GC4706@infradead.org> <877hpjj88k.fsf@openvz.org>
+From: tytso@mit.edu
+Subject: Re: what exactly is CONFIG_EXT4_USE_FOR_EXT23 for?
+Date: Thu, 11 Mar 2010 15:37:49 -0500
+Message-ID: <20100311203749.GJ1497@thunk.org>
+References: <4B991C81.5040506@redhat.com>
+ <20100311172748.GC19923@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <877hpjj88k.fsf@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:47334 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751019Ab0CKUhy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Mar 2010 15:37:54 -0500
+Content-Disposition: inline
+In-Reply-To: <20100311172748.GC19923@atrey.karlin.mff.cuni.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-03-11, at 06:30, Dmitry Monakhov wrote:
-> Christoph Hellwig <hch@infradead.org> writes:
->>
->> I think you'd be much better off storing it inide the inode core  
->> itself.
->> E.g. you could ue the never used fragment address in the ext2/3/4  
->> disk
->> inode.
->
-> This was already discussed at the first RFC
-> http://patchwork.ozlabs.org/patch/38766
-> and Andreas was strongly against this idea.
+On Thu, Mar 11, 2010 at 06:27:48PM +0100, Jan Kara wrote:
+>   Yeah, this is a good point... Honestly, I don't quite understand what's
+> the problem with "minimalist kernel fanatics" going and mounting all the
+> devices as ext4 (when they decided to compile kernel without ext2/3) - no
+> need for special kernel option. It will probably need some tweaks in
+> automounters but still...
 
+The number of places in userspace that try to automatically decide
+whether to mount a particular filesystem as "ext2", "ext3", or "ext4",
+is somewhat large.  It's not just blkid (which is no longer under my
+control); there are magic programs in various distributions
+initramfs's, and I don't blame people who don't want to mess with that
+that; at least for some distributions, it's a fragile PoS that the
+less you have to mess with, the better.  (Since any failures in the
+initramfs image are effectively impossible to debug.)
 
-I had written:
->> You can instead just store this data in an xattr (which will  
->> normally be stored in the inode, so no performance impact), and  
->> then you are free to store multiple values per inode.
+So if some people want to be able to seemlessly start using ext4 and
+not have to worry about doing a search through all of userspace and
+their config files, and we get a bit more testing of ext4 in somewhat
+"nonstandard" configurations, as far as I'm concerned it's all good.
 
-I don't know if I would classify this as "strongly against", but it is  
-true that I'm hesitant to use up the last field in the inode for  
-something that may be used so rarely.  There is also some desire to  
-use this field for an extended i_links_hi field, and/or an inode  
-checksum.
+I agree that most distributions are highly unlikely to ever want to
+turn on this CONFIG option; it's really more for the Linux From
+Scratch or maybe Gentoo users.
 
-Part of my suggestion to use xattrs was that it would then be possible  
-to allow hard links to have different project IDs on the same file,  
-since the size of the xattr is flexible.  Since the xattr is stored  
-inside the inode in ext3/ext4 if the inode was formatted with 256-byte  
-inodes this is a minimal performance hit.
-
-A second possibility (if there is really no desire to have more than a  
-single project ID per inode) is to add a field to the "large" inode  
-for ext4, though that doesn't help filesystems that were not formatted  
-that way, and it also consumes space in all inodes even if this  
-feature is not used.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+				- Ted
