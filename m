@@ -1,57 +1,43 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15420] EXT4_USE_FOR_EXT23 causes wrong free space calculation
- on ext2 and ext3
-Date: Thu, 11 Mar 2010 16:17:02 GMT
-Message-ID: <201003111617.o2BGH2ts015927@demeter.kernel.org>
-References: <bug-15420-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix io-barrier logic for external journal case
+Date: Thu, 11 Mar 2010 17:27:08 +0100
+Message-ID: <20100311162707.GB19923@atrey.karlin.mff.cuni.cz>
+References: <87wrxij28h.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54474 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933184Ab0CKQRE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Mar 2010 11:17:04 -0500
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2BGH2Bq015930
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Mar 2010 16:17:02 GMT
-In-Reply-To: <bug-15420-13602@http.bugzilla.kernel.org/>
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:38955 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751599Ab0CKQ1K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Mar 2010 11:27:10 -0500
+Content-Disposition: inline
+In-Reply-To: <87wrxij28h.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15420
+> We have to submit barrier before we start journal commit process.
+> otherwise transaction may be committed before data flushed to disk.
+> There is no difference from performance of view, but definitely
+> fsync becomes more correct.
+> 
+> If jbd2_log_start_commit return 0 then it means that transaction
+> was already committed. So we don't have to issue barrier for
+> ordered mode, because it was already done during commit.
+  Umm, we have to - when a file has just been rewritten (i.e. no block
+allocation), then i_datasync_tid is not updated and thus we won't commit
+any transaction as a part of fdatasync (and that is correct because there
+are no metadata that need to be written for that fdatasync). But we still
+have to flush disk caches with data submitted by filemap_fdatawrite_and_wait.
 
+> By unknown reason we ignored ret val from jbd2_log_wait_commit()
+> so even in case of EIO fsync will succeed.
+  I just forgot jbd2_log_wait_commit can return a failure...
 
-
-
-
---- Comment #17 from Eric Sandeen <sandeen@redhat.com>  2010-03-11 16:16:46 ---
-(In reply to comment #16)
-> As for comment #13 - I fully agree with Ted. When admin does "mount -t ext3
-> ...", I think we should give him as close behavior to ext3 as possible by the
-> principle of the least surprise - and that means nodelalloc. If user wishes
-> better performance etc, he can always mount the filesystem as ext4 explicitely.
-
-Under what circumstances, then, do we recommend mounting ext3 with the ext4
-driver?
-
-The user will get different allocation behavior as well; will that also be a
-surprise?
-
-I just want to be clear in our recommendations about this stuff...
-
-> Also I remember some discussions with KDE guys when they were at some point
-> considering detecting filesystem type and avoid doing fsync if it was ext3 -
-> hopefully, I convinced them not to do it but I bet someone else had the same
-> idea and actually implemented it. Not that I'd have too much pity with broken
-> applications but I prefer to avoid breaking them silently like this...
-
-I think by having this config option at -all- we have really muddied the
-waters, to be honest ... but I suppose this is all better hashed outon the
-list, not in this bug.  :)
-
+								Honza
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
