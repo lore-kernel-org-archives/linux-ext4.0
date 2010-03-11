@@ -1,60 +1,45 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: what exactly is CONFIG_EXT4_USE_FOR_EXT23 for?
-Date: Thu, 11 Mar 2010 18:27:48 +0100
-Message-ID: <20100311172748.GC19923@atrey.karlin.mff.cuni.cz>
-References: <4B991C81.5040506@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15420] EXT4_USE_FOR_EXT23 causes wrong free space calculation
+ on ext2 and ext3
+Date: Thu, 11 Mar 2010 17:42:21 GMT
+Message-ID: <201003111742.o2BHgLaH010560@demeter.kernel.org>
+References: <bug-15420-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:43203 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751357Ab0CKR1u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Mar 2010 12:27:50 -0500
-Content-Disposition: inline
-In-Reply-To: <4B991C81.5040506@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:50686 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933361Ab0CKRmW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Mar 2010 12:42:22 -0500
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2BHgLs1010562
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Mar 2010 17:42:21 GMT
+In-Reply-To: <bug-15420-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> commit 24b584240a0006ea7436cd35f5e8983eb76f1e6f
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Mon Dec 7 14:08:51 2009 -0500
-> 
->     ext4: Use ext4 file system driver for ext2/ext3 file system mounts
->     
->     Add a new config option, CONFIG_EXT4_USE_FOR_EXT23 which if enabled,
->     will cause ext4 to be used for either ext2 or ext3 file system mounts
->     when ext2 or ext3 is not enabled in the configuration.
->     
->     This allows minimalist kernel fanatics to drop to file system drivers
->     from their compiled kernel with out losing functionality.
->     
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> 
-> So now we have this thing, and people are using it, and running into trouble:
-> 
-> http://bugzilla.kernel.org/show_bug.cgi?id=15420
-> Bug 15420 -  EXT4_USE_FOR_EXT23 causes wrong free space calculation on ext2 and ext3
-> 
-> and now we propose turning off delalloc if we mount ext3 as ext4; however,
-> migrated ext3->ext4 filesystems, which initially may have no difference other
-> than a superblock feature flag, will not get this behavior, I guess.
-> 
-> Jan suggests that we not surprise users by having delalloc enabled when ext3
-> is mounted with the ext4 driver.  However there are other behavior differences
-> as well, mballoc behavior comes to mind at least.  What about the 32000 subdir
-> limit?  If we go back to ext3 is it ok with the subsecond timestamps and
-> creation time etc?  Maybe so... have we tested any of this?
-  Yeah, this is a good point... Honestly, I don't quite understand what's
-the problem with "minimalist kernel fanatics" going and mounting all the
-devices as ext4 (when they decided to compile kernel without ext2/3) - no
-need for special kernel option. It will probably need some tweaks in
-automounters but still...
+http://bugzilla.kernel.org/show_bug.cgi?id=15420
 
-								Honza
+
+
+
+
+--- Comment #18 from Theodore Tso <tytso@mit.edu>  2010-03-11 17:42:06 ---
+On Thu, Mar 11, 2010 at 04:00:27PM +0000, bugzilla-daemon@bugzilla.kernel.org
+wrote:
+> Indeed, the logic in ext4_indirect_calc_metadata_amount seems to be broken.
+> Attached patch fixes it for me...
+
+Nice catch.  Yeah, I really screwed that up!
+
+I'll get that into the ext4 patch queue, quickly, and get that pushed
+to Linus.
+
+                    - Ted
+
 -- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
