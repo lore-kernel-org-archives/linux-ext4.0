@@ -1,110 +1,167 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: check missed return value ext4_sync_file
-Date: Fri, 12 Mar 2010 20:20:04 +0300
-Message-ID: <87fx45e9tn.fsf@openvz.org>
-References: <87wrxij28h.fsf@openvz.org>
-	<20100311162707.GB19923@atrey.karlin.mff.cuni.cz>
-	<87y6hy9bqg.fsf_-_@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/2] ext3, jbd: Add barriers for file systems with exernal journals
+Date: Fri, 12 Mar 2010 20:26:50 +0300
+Message-ID: <1268414810-17289-2-git-send-email-dmonakhov@openvz.org>
+References: <1268414810-17289-1-git-send-email-dmonakhov@openvz.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:62859 "EHLO
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:37241 "EHLO
 	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933238Ab0CLRUK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2010 12:20:10 -0500
-Received: by bwz1 with SMTP id 1so1241733bwz.21
-        for <linux-ext4@vger.kernel.org>; Fri, 12 Mar 2010 09:20:08 -0800 (PST)
-In-Reply-To: <87y6hy9bqg.fsf_-_@openvz.org> (Dmitry Monakhov's message of
-	"Fri, 12 Mar 2010 11:37:43 +0300")
+	with ESMTP id S933363Ab0CLR07 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2010 12:26:59 -0500
+Received: by bwz1 with SMTP id 1so1247715bwz.21
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Mar 2010 09:26:57 -0800 (PST)
+In-Reply-To: <1268414810-17289-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
+This is a bit complicated because we are trying to optimize when we
+send barriers to the fs data disk.  We could just throw in an extra
+barrier to the data disk whenever we send a barrier to the journal
+disk, but that's not always strictly necessary.
 
-> Jan Kara <jack@suse.cz> writes:
->
->>> We have to submit barrier before we start journal commit process.
->>> otherwise transaction may be committed before data flushed to disk.
->>> There is no difference from performance of view, but definitely
->>> fsync becomes more correct.
-> Unfortunately this change does affect performance because latency
-> will be increased since we have to wait barrier before we start
-> journal commit. 
->>> 
->>> If jbd2_log_start_commit return 0 then it means that transaction
->>> was already committed. So we don't have to issue barrier for
->>> ordered mode, because it was already done during commit.
->>   Umm, we have to - when a file has just been rewritten (i.e. no block
->> allocation), then i_datasync_tid is not updated and thus we won't commit
->> any transaction as a part of fdatasync (and that is correct because there
->> are no metadata that need to be written for that fdatasync). But we still
->> have to flush disk caches with data submitted by filemap_fdatawrite_and_wait.
-> Yepp. I've missed that. i thought that transaction id updated
-> even in that case.
-> The most unpleasant part in ext4_sync_file implementation is that 
-> barrier is issued on each fsync() call.  So some bad user may perform:
-> while(1) fsync(fd);
-> which result in bad system performance. And since barrier request is 
-> empty it is hard to detect the reason of troubles.
-> Off course we may solve it by introducing some sort of dirty flag
-> which is set in write_page, and clear in fsync. But it looks as
-> ugly workaround.
->>
->>> By unknown reason we ignored ret val from jbd2_log_wait_commit()
->>> so even in case of EIO fsync will succeed.
->>   I just forgot jbd2_log_wait_commit can return a failure...
-> In respect to previous comments the patch reduced to simple missed
-> error check fix.
-It is fun but I've found what journalled mode is still broken in ext4
-in case of external journal. We forget to issue io-barrier to j_fs_dev 
-if transaction has only metadata and has no data blocks :)
-This affect all data modes.
-It is easy to reproduce on classic test-case with data=journall
-for(i=0; i < 3; i++) {
-  memset(buf, 'a'+i);
-  pwrite(fd, buf, 1024*1024, 0)
-  fsync(fd);
-}
-/* At this time transaction was committed so journal is empty */
-<<POWER_OFF
-Later i've found old data('b' chars) at the end of the file.
-So i've prepared another patch  which supersede previous one.
-> BTW: While investigating similar code in ext3 i've found what
-> fsync is broken in case of external journal. JBD itself does not
-> send barrier to j_fs_dev. So if fsync goes via
-> log_start_commit/log_wait_commit path data loss is still possible.
-> I'm able to reproduce this via simple write test
-> wile (1) {
->  write(fd, buf, 1024*1024)
->  fsync(fd);
-> }
-> and then reboot in the middle of operation.
-> Later file content check spotted data inconsistency.
-> Will send a fix ASAP.
->
-> From 1f7382ea4a8b8e3880e1938d161f924ea572a1e1 Mon Sep 17 00:00:00 2001
-> From: Dmitry Monakhov <dmonakhov@openvz.org>
-> Date: Thu, 11 Mar 2010 20:14:13 +0300
-> Subject: [PATCH] ext4: check missed return value ext4_sync_file
->
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/fsync.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index 0d0c323..42bd94a 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -101,7 +101,7 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
->  		    (journal->j_fs_dev != journal->j_dev) &&
->  		    (journal->j_flags & JBD2_BARRIER))
->  			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
-> -		jbd2_log_wait_commit(journal, commit_tid);
-> +		ret = jbd2_log_wait_commit(journal, commit_tid);
->  	} else if (journal->j_flags & JBD2_BARRIER)
->  		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
->  	return ret;
+Send barrier only if transaction has data or metadata.
+The patch is mostly backported from ext4.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext3/fsync.c     |   39 ++++++++++++++++++++++++---------------
+ fs/jbd/commit.c     |   16 ++++++++++++++++
+ include/linux/jbd.h |    1 +
+ 3 files changed, 41 insertions(+), 15 deletions(-)
+
+diff --git a/fs/ext3/fsync.c b/fs/ext3/fsync.c
+index 8209f26..983a3bc 100644
+--- a/fs/ext3/fsync.c
++++ b/fs/ext3/fsync.c
+@@ -70,10 +70,8 @@ int ext3_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 	 *  (they were dirtied by commit).  But that's OK - the blocks are
+ 	 *  safe in-journal, which is all fsync() needs to ensure.
+ 	 */
+-	if (ext3_should_journal_data(inode)) {
+-		ret = ext3_force_commit(inode->i_sb);
+-		goto out;
+-	}
++	if (ext3_should_journal_data(inode))
++		return  ext3_force_commit(inode->i_sb);
+ 
+ 	if (datasync)
+ 		commit_tid = atomic_read(&ei->i_datasync_tid);
+@@ -81,17 +79,28 @@ int ext3_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 		commit_tid = atomic_read(&ei->i_sync_tid);
+ 
+ 	if (log_start_commit(journal, commit_tid)) {
+-		log_wait_commit(journal, commit_tid);
+-		goto out;
+-	}
++		/*
++		 * When the journal is on a different device than the
++		 * fs data disk, we need to issue the barrier in
++		 * writeback mode.  (In ordered mode, the jbd layer
++		 * will take care of issuing the barrier.  In
++		 * data=journal, all of the data blocks are written to
++		 * the journal device.)
++		 */
++		if (ext3_should_writeback_data(inode) &&
++		    (journal->j_fs_dev != journal->j_dev) &&
++		    (journal->j_flags & JFS_BARRIER))
++			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ 
+-	/*
+-	 * In case we didn't commit a transaction, we have to flush
+-	 * disk caches manually so that data really is on persistent
+-	 * storage
+-	 */
+-	if (test_opt(inode->i_sb, BARRIER))
+-		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+-out:
++		ret = log_wait_commit(journal, commit_tid);
++	} else {
++		/*
++		 * In case we didn't commit a transaction, we have to flush
++		 * disk caches manually so that data really is on persistent
++		 * storage
++		 */
++		if (test_opt(inode->i_sb, BARRIER))
++			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
++	}
+ 	return ret;
+ }
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index 2c90e3e..027e02b 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -21,6 +21,7 @@
+ #include <linux/mm.h>
+ #include <linux/pagemap.h>
+ #include <linux/bio.h>
++#include <linux/blkdev.h>
+ 
+ /*
+  * Default IO end handler for temporary BJ_IO buffer_heads.
+@@ -194,6 +195,7 @@ static int journal_submit_data_buffers(journal_t *journal,
+ 	struct journal_head *jh;
+ 	struct buffer_head *bh;
+ 	int locked;
++	int sync_data = 0;
+ 	int bufs = 0;
+ 	struct buffer_head **wbuf = journal->j_wbuf;
+ 	int err = 0;
+@@ -211,6 +213,7 @@ write_out_data:
+ 	spin_lock(&journal->j_list_lock);
+ 
+ 	while (commit_transaction->t_sync_datalist) {
++		sync_data = 1;
+ 		jh = commit_transaction->t_sync_datalist;
+ 		bh = jh2bh(jh);
+ 		locked = 0;
+@@ -288,6 +291,7 @@ write_out_data:
+ 			goto write_out_data;
+ 		}
+ 	}
++	commit_transaction->t_flushed_data_blocks |= sync_data;
+ 	spin_unlock(&journal->j_list_lock);
+ 	journal_do_submit_data(wbuf, bufs, write_op);
+ 
+@@ -668,6 +672,8 @@ void journal_commit_transaction(journal_t *journal)
+ 			tag->t_flags |= cpu_to_be32(JFS_FLAG_LAST_TAG);
+ 
+ start_journal_io:
++			if (bufs)
++				commit_transaction->t_flushed_data_blocks = 1;
+ 			for (i = 0; i < bufs; i++) {
+ 				struct buffer_head *bh = wbuf[i];
+ 				lock_buffer(bh);
+@@ -685,6 +691,16 @@ start_journal_io:
+ 		}
+ 	}
+ 
++	/*
++	 * If the journal is not located on the file system device,
++	 * then we must flush the file system device before we issue
++	 * the commit record
++	 */
++	if (commit_transaction->t_flushed_data_blocks &&
++	    (journal->j_fs_dev != journal->j_dev) &&
++	    (journal->j_flags & JFS_BARRIER))
++		blkdev_issue_flush(journal->j_fs_dev, NULL);
++
+ 	/* Lo and behold: we have just managed to send a transaction to
+            the log.  Before we can commit it, wait for the IO so far to
+            complete.  Control buffers being written are on the
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index f3aa59c..3ea2807 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -546,6 +546,7 @@ struct transaction_s
+ 	 * waiting for it to finish.
+ 	 */
+ 	unsigned int t_synchronous_commit:1;
++	unsigned int t_flushed_data_blocks:1;
+ };
+ 
+ /**
+-- 
+1.6.6
+
