@@ -1,61 +1,61 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4 filesystem
-Date: Fri, 12 Mar 2010 12:32:09 +0300
-Message-ID: <87pr39evhi.fsf@openvz.org>
-References: <1267727677-11956-1-git-send-email-dmonakhov@openvz.org>
-	<1267727677-11956-2-git-send-email-dmonakhov@openvz.org>
-	<1267727677-11956-3-git-send-email-dmonakhov@openvz.org>
-	<1267727677-11956-4-git-send-email-dmonakhov@openvz.org>
-	<20100311120623.GC4706@infradead.org> <877hpjj88k.fsf@openvz.org>
-	<B4AAD310-8A75-43C8-989E-616CFACFB7A9@sun.com>
-	<20100311220133.GL1497@thunk.org>
+From: Karsten Weiss <K.Weiss@science-computing.de>
+Subject: Re: Bad ext4 sync performance on 16 TB GPT partition
+Date: Fri, 12 Mar 2010 12:37:31 +0100 (CET)
+Message-ID: <alpine.LNX.2.00.1003121227040.13248@wong.science-computing.de>
+References: <alpine.LNX.2.00.1002260926140.18232@wong.science-computing.de> <87ljegb4ow.fsf@openvz.org> <alpine.LNX.2.00.1002261546380.18232@wong.science-computing.de> <4B8809C2.2000300@redhat.com> <alpine.LNX.2.00.1003010908360.26560@wong.science-computing.de>
+ <4B8BE9AE.5080601@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100311220133.GL1497@thunk.org> (tytso@mit.edu's message of
-	"Thu, 11 Mar 2010 17:01:33 -0500")
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.belwue.de ([129.143.2.12]:57575 "EHLO smtp1.belwue.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756904Ab0CLLwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Mar 2010 06:52:22 -0500
+Received: from mx3.science-computing.de (mx3.science-computing.de [193.197.16.20])
+	by smtp1.belwue.de with ESMTP id o2CBbcWc011970
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Mar 2010 12:37:39 +0100 (MET)
+	env-from (prvs=68006298b=K.Weiss@science-computing.de)
+In-Reply-To: <4B8BE9AE.5080601@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu writes:
+Hi Eric!
 
-> On Thu, Mar 11, 2010 at 12:54:46PM -0700, Andreas Dilger wrote:
->> A second possibility (if there is really no desire to have more than
->> a single project ID per inode) is to add a field to the "large"
->> inode for ext4, though that doesn't help filesystems that were not
->> formatted that way, and it also consumes space in all inodes even if
->> this feature is not used.
->
-> The big question that I'm still uncertain about is how often are
-> people going to be using this feature, and how many project ID's do we
-> really need?  I know Dimitry believes this is going to be the greatest
-> thing since sliced bread, but even for people running virtualization,
-> I'm not sure how many folks really will consider it critical.
-Most of our customers (hosting providers) use quota, otherwise
-it is impossible to restrict disk usage. Currently they have to
-perform full quotecheck after power failure. Which result in huge
-service down time. If we able to use journalled quota all problems
-will be solved.
-Also NFS people was interesting in projectid feature. They want to
-use it for creating safe file-handles.
-http://marc.info/?l=linux-fsdevel&m=126634832431306&w=2
-In fact the projectid feature is not intrusive (except an isolation part)
-it is even much simpler than ACL.
->
-> I'd be a bit more willing to give the last 16-bit field for the
-> project ID, but otherwise, I think using a 32-bit field in the large
-> inode might be the better compromise if we don't like the xattr
-> approach.
-IMHO one 32-bit value in xattr it the best solution. Because it is
-stored in inode's in_body xattr.And how we store it via update_inode
-or xattr_set is not really important.
-Another plus is that we are able to support all existing filesystems
-without any problems even if they have 128-bit inodes.
->
-> Of course, I'm willing to be convinced otherwise with some sound
-> technical arguments.  (Or beer; beer is good too.  :-)
-I've attached two mega-liters of beer. Feel free drink the attachment :)
+On Mon, 1 Mar 2010, Eric Sandeen wrote:
+
+> > Sorry for the delay, here's the (good) 2.6.32 result:
+> > 
+> > # /usr/bin/time bash -c "dd if=/dev/zero of=/mnt/large/10GB bs=1M count=10000 && sync"
+> > 10000+0 records in
+> > 10000+0 records out
+> > 10485760000 bytes (10 GB) copied, 46.3369 seconds, 226 MB/s
+> > 0.00user 14.17system 0:59.53elapsed 23%CPU (0avgtext+0avgdata 6224maxresident)k
+> > 0inputs+0outputs (0major+1045minor)pagefaults 0swaps
+> > 
+> > To summarize:
+> > 
+> > Bad:  2.6.18-164.el5 (CentOS)
+> > Bad:  2.6.18-164.11.1el5 (CentOS)
+> > Bad:  2.6.18-190.el5 (RH)
+> > Good: 2.6.32
+> > Good: 2.6.33
+
+In the meantime I've also reproduced the problem on another machine with a 
+Red Hat 5.5 Beta (x86_64) installation and decided to open a bug on RH's 
+bugzilla:
+
+Bad ext4 sync performance on 16 TB GPT partition
+https://bugzilla.redhat.com/show_bug.cgi?id=572930
+
+> Thanks, I'll have to investigate that.  I guess something may have gotten lost
+> in translation in the 2.6.32->2.6.18 backport.....
+
+Did you come up with anything I could test?
+
+Is anyone else able to reproduce the problem?
+
+-- 
+Karsten Weiss
