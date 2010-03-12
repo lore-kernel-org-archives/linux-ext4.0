@@ -1,55 +1,49 @@
-From: Christian Borntraeger <borntraeger@de.ibm.com>
-Subject: [PATCH resend] ext4: allow defrag (EXT4_IOC_MOVE_EXT) in 32bit compat mode
-Date: Fri, 12 Mar 2010 08:01:51 +0100
-Message-ID: <201003120801.51249.borntraeger@de.ibm.com>
-References: <201003072132.10579.borntraeger@de.ibm.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] mke2fs: skip alignment questioning if -F specified
+Date: Fri, 12 Mar 2010 00:54:39 -0700
+Message-ID: <31D4615D-CB8C-48D7-934D-2CDAF327CF44@sun.com>
+References: <4B8C1B25.5050006@redhat.com> <20100312024831.GN1497@thunk.org>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
 To: tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <201003072132.10579.borntraeger@de.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:39166 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752756Ab0CLHyl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2010 02:54:41 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o2C7sepu024369
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Mar 2010 23:54:40 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KZ500500S6S0G00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
+ 11 Mar 2010 23:54:40 -0800 (PST)
+In-reply-to: <20100312024831.GN1497@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Ted, can you consider this patch for ext4?
+On 2010-03-11, at 19:48, tytso@mit.edu wrote:
+> On Mon, Mar 01, 2010 at 01:53:09PM -0600, Eric Sandeen wrote:
+>> RH bug 569021 - mke2fs insists on user interaction even if stdin is  
+>> not a tty and -F is passed
+>>
+>> This is just a warning, -F should easily override it.
 
-From: Christian Borntraeger <borntraeger@de.ibm.com>
+Since this is just a warning, do we really need to have "-F" at all?   
+I dislike requiring "-F" on common actions, because it means that it  
+will commonly be used, but may accidentally override some unintended  
+problem.
 
-I have an x86_64 kernel with i386 userspace. e4defrag fails on the
-EXT4_IOC_MOVE_EXT ioctl because it is not wired up for the compat
-case. It seems that 
-struct move_extent is compat save, only types with fixed widths are used.
-{
-        __u32 reserved;         /* should be zero */
-        __u32 donor_fd;         /* donor file descriptor */
-        __u64 orig_start;       /* logical start offset in block for orig */
-        __u64 donor_start;      /* logical start offset in block for donor */
-        __u64 len;              /* block length to be moved */
-        __u64 moved_len;        /* moved block length */
-};
+We've lived without block device alignment until now, and it seems  
+somewhat unpleasant that mke2fs may start failing (if -F is not given)  
+for situations where it previously worked just fine.
 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-Signed-off-by: Christian Borntraeger <borntraeger@de.ibm.com>
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-Acked-by: Akira Fujita <a-fujita@rs.jp.nec.com> 
-
----
- fs/ext4/ioctl.c |    2 ++
- 1 file changed, 2 insertions(+)
-
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -375,6 +375,8 @@ long ext4_compat_ioctl(struct file *file
- 		break;
- 	case EXT4_IOC_GROUP_ADD:
- 		break;
-+	case EXT4_IOC_MOVE_EXT:
-+		break;
- 	default:
- 		return -ENOIOCTLCMD;
- 	}
