@@ -1,49 +1,38 @@
-From: tytso@mit.edu
-Subject: Re: Bug#564084: debugfs: logdump -b<block> show incorrect
- allocation status in block  bitmap
-Date: Sun, 14 Mar 2010 19:02:30 -0400
-Message-ID: <20100314230230.GB5340@thunk.org>
-References: <5914604b1001070757x7574f111qd578f499f9f7cab8@mail.gmail.com>
+From: Stefan Richter <stefanr@s5r6.in-berlin.de>
+Subject: New compiler warning in 2.6.34-rc1: 'start_ext.ee_block' may be used
+ uninitialized
+Date: Mon, 15 Mar 2010 15:42:39 +0100
+Message-ID: <4B9E475F.1010302@s5r6.in-berlin.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: control@bugs.debian.org, linux-ext4@vger.kernel.org
-To: Anon Sricharoenchai <anon.hui@gmail.com>, 564084@bugs.debian.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46119 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754790Ab0CNXCx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Mar 2010 19:02:53 -0400
-Content-Disposition: inline
-In-Reply-To: <5914604b1001070757x7574f111qd578f499f9f7cab8@mail.gmail.com>
+Received: from einhorn.in-berlin.de ([192.109.42.8]:36028 "EHLO
+	einhorn.in-berlin.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965028Ab0COOms (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Mar 2010 10:42:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tags 564084 +pending
-thanks
+Hi,
 
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=564084
+I saw the following scroll by during kernel compilation:
 
-On Thu, Jan 07, 2010 at 10:57:25PM +0700, Anon Sricharoenchai wrote:
-> 
-> *** Please type your report below this line ***
-> "logdump -b<block>" command in debugfs show incorrect allocation status
-> in block bitmap
+fs/ext4/move_extent.c: In function 'mext_leaf_block':
 
-Thanks for reporting this bug.  I believe a much simpler fix for this
-problem is:
+fs/ext4/move_extent.c:478: warning: 'start_ext.ee_block' may be used
+uninitialized in this function
 
-diff --git a/debugfs/logdump.c b/debugfs/logdump.c
-index 9a7108a..9364ce4 100644
---- a/debugfs/logdump.c
-+++ b/debugfs/logdump.c
-@@ -619,7 +619,7 @@ static void dump_metadata_block(FILE *out_file, struct journal_source *source,
- 		int offset;
- 
- 		super = current_fs->super;
--		offset = ((fs_blocknr - super->s_first_data_block) %
-+		offset = ((block_to_dump - super->s_first_data_block) %
- 			  super->s_blocks_per_group);
- 
- 		fprintf(out_file, "    (block bitmap for block %u: "
 
-				       	      	     - Ted
+Is it real?  It seems that the initial start_ext.ee_len = 0 guards
+against accidental use of an uninitialized start_ext.ee_block, but maybe
+I missed something.
+
+The message is from gcc (Gentoo 4.3.4 p1.0, pie-10.1.5) 4.3.4 here.
+-- 
+Stefan Richter
+-=====-==-=- --== -====
+http://arcgraph.de/sr/
