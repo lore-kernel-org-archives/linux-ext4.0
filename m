@@ -1,43 +1,39 @@
-From: tytso@mit.edu
-Subject: Re: New compiler warning in 2.6.34-rc1: 'start_ext.ee_block' may
- be used uninitialized
-Date: Mon, 15 Mar 2010 11:41:42 -0400
-Message-ID: <20100315154142.GB4484@thunk.org>
-References: <4B9E475F.1010302@s5r6.in-berlin.de>
+From: Evgeniy Ivanov <lolkaantimat@gmail.com>
+Subject: Using parts of ext2_fs.h in BSD licensed code
+Date: Mon, 15 Mar 2010 19:42:06 +0300
+Message-ID: <e1e08eb01003150942s6350c04fn6b3d696fed8b7fc1@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org
-To: Stefan Richter <stefanr@s5r6.in-berlin.de>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46898 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932525Ab0COPlu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Mar 2010 11:41:50 -0400
-Content-Disposition: inline
-In-Reply-To: <4B9E475F.1010302@s5r6.in-berlin.de>
+Received: from mail-fx0-f219.google.com ([209.85.220.219]:56065 "EHLO
+	mail-fx0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932612Ab0COQmJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Mar 2010 12:42:09 -0400
+Received: by fxm19 with SMTP id 19so3383287fxm.21
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Mar 2010 09:42:08 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 15, 2010 at 03:42:39PM +0100, Stefan Richter wrote:
-> Hi,
-> 
-> I saw the following scroll by during kernel compilation:
-> 
-> fs/ext4/move_extent.c: In function 'mext_leaf_block':
-> 
-> fs/ext4/move_extent.c:478: warning: 'start_ext.ee_block' may be used
-> uninitialized in this function
-> 
-> Is it real?  It seems that the initial start_ext.ee_len = 0 guards
-> against accidental use of an uninitialized start_ext.ee_block, but maybe
-> I missed something.
+Hello,
 
->From my review of the code the fact that ee_len is set to zero should
-make this be safe, but my preference would be to clear
-start_ext.ee_block as well to prevent the warning from coming up
-(since false positives clutter up warnings and might cause us to miss
-a warning which isn't so benign).
+I'm working on ext2 implementation for Minix3, where BSD license is
+desirable (AFAIK folks from *BSD are interested too). Most things are
+already implemented, while working I looked through linux and hurd
+implementations, but didn't use anything from there (I just learned
+some internals of ext2) and read http://nongnu.org/ext2-doc/ (thus my
+implementation mostly based on ext2-doc).
+Flags, constants, data structures are available in ext2-doc and
+ext2_fs.h. As I understand GPL license I can't just take it from
+ext2_fs.h and use in BSD licensed code, since it violates GPL (it was
+confirmed on #gnu). Is it correct? From another hand code based on
+ext2-doc can't be called derivative work. Is there any other header
+similar to ext2_fs.h (or any documentation except
+nongnu.org/ext2-doc/)?
 
-Akira-san, do you agree that it is currently is safe?
+Do you think I can ask copyright owners for permission to use
+constants(data structures) from ext2_fs.h? Can somebody please send me
+Remy Card's email (in sources it's incorrect)?
 
-	      	  	     	   - Ted
+-- 
+Evgeniy Ivanov
