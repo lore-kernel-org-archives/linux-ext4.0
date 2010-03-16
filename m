@@ -1,55 +1,63 @@
-From: Steven Liu <lingjiujianke@gmail.com>
-Subject: [PATCH 1/1]ext4: cleanup a warning
-Date: Tue, 16 Mar 2010 18:54:43 +0800
-Message-ID: <bd0d95d71003160354h538eec47t3246b397f4e0c5be@mail.gmail.com>
+From: Evgeniy Ivanov <lolkaantimat@gmail.com>
+Subject: Re: Using parts of ext2_fs.h in BSD licensed code
+Date: Tue, 16 Mar 2010 15:34:14 +0300
+Message-ID: <e1e08eb01003160534u7093df1ds4a0e3c86a0de1474@mail.gmail.com>
+References: <e1e08eb01003150942s6350c04fn6b3d696fed8b7fc1@mail.gmail.com>
+	 <e1e08eb01003151026q1352c02btf12d7cd6d84c3f21@mail.gmail.com>
+	 <20100315182338.GG4484@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f176.google.com ([209.85.223.176]:43185 "EHLO
-	mail-iw0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S937718Ab0CPKyo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Mar 2010 06:54:44 -0400
-Received: by iwn6 with SMTP id 6so764122iwn.4
-        for <linux-ext4@vger.kernel.org>; Tue, 16 Mar 2010 03:54:43 -0700 (PDT)
+Received: from mail-fx0-f219.google.com ([209.85.220.219]:47851 "EHLO
+	mail-fx0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S937841Ab0CPMeR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Mar 2010 08:34:17 -0400
+Received: by fxm19 with SMTP id 19so4193254fxm.21
+        for <linux-ext4@vger.kernel.org>; Tue, 16 Mar 2010 05:34:14 -0700 (PDT)
+In-Reply-To: <20100315182338.GG4484@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Mon, Mar 15, 2010 at 9:23 PM,  <tytso@mit.edu> wrote:
+> On Mon, Mar 15, 2010 at 08:26:16PM +0300, Evgeniy Ivanov wrote:
+>> Just found, that recently FreeBSD got this:
+>> http://www.freebsd.org/cgi/cvsweb.cgi/src/sys/fs/ext2fs/ext2fs.h
+>> It looks like I can easily include it to the BSD-licensed project an=
+d
+>> no GPL violation. But I dunno how did they wrote ext2fs.h, since it
+>> still must be based on ext2_fs.h
+>
+> Constants and code points aren't subject to copyright, so they don't
+> have ask any question. =A0The places where things start to get dicy i=
+s
+> with inline function and CPP macros, especially when the code starts
+> become non-trivial. =A0i.e., there's only one way to do "(foo & MASK)=
+ !=3D
+> 0", so that's probably not subject to copyright. =A0A complicated 20
+> line function, even if it's in a header file, is probably going to be
+> subject to copyright. =A0What is and isn't a matter of copyright is
+> something you'd have to get a lawyer to answer for you.
+>
+> You can of couse also request permission, but that can get tricky,
+> especially if the person who originally wrote it can't easily be
+> tracked down (I haven't talked or e-mailed with Remy in years), or if
+> it was done by someone while being paid by their employer, in which
+> case some corporate lawyers might have to be dragged in to give
+> permission.
+>
+> Fortunately I don't think there's much in the way of complicated code
+> in the header files that you would have to deal with.
+>
 
-        I have get a warning, too,
+Thanks a lot for your answer.
 
-
-fs/ext4/move_extent.c:478: warning: start_ext.ee_block may be used
-uninitialized in this function
-
-my compiler version:
-
-gcc (GCC) 4.3.2 20081105 (Red Hat 4.3.2-7)
-Copyright (C) 2008 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-
-I think i'm not the first get this warning,then i make a patch for
-this warning, can you fix it in?
-
-Signed-off-by: Qi Liu (lingjiujianke@gmail.com)
-
-diff --git a/ext4/fs/ext4/move_extent.c.orig b/ext4/fs/ext4/move_extent.c
-index aa5fe28..b399358 100644
---- a/ext4/fs/ext4/move_extent.c.orig
-+++ b/ext4/fs/ext4/move_extent.c
-@@ -481,6 +481,7 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
-        int depth = ext_depth(orig_inode);
-        int ret;
-
-+       start_ext.ee_block = end_ext.ee_block = 0;
-        o_start = o_end = oext = orig_path[depth].p_ext;
-        oext_alen = ext4_ext_get_actual_len(oext);
-        start_ext.ee_len = end_ext.ee_len = 0;
-
-
-
-
-                                Qi Liu
+--=20
+Evgeniy Ivanov
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
