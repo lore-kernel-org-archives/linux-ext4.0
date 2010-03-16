@@ -1,222 +1,186 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 2.6.27.y 04/11] ext4: Add percpu dirty block accounting.
-Date: Tue, 16 Mar 2010 12:48:03 -0600
-Message-ID: <FC682EC6-96F8-475B-9569-9E2A26454BF2@sun.com>
-References: <1268699165-17461-1-git-send-email-tytso@mit.edu>
- <1268699165-17461-5-git-send-email-tytso@mit.edu>
+From: "Frans van de Wiel" <fvdw@fvdw.eu>
+Subject: Re: bug in ext3 code causing OOM error on systems with small memory
+Date: Tue, 16 Mar 2010 20:50:41 +0100
+Message-ID: <A3EB2A214241435BA2367EE2076C2444@FransW7>
+References: <84493E34003342289DF1705263D087AC@FransW7> <20100312135736.2f3f5b91.akpm@linux-foundation.org> <20100315184301.GB7744@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_/l4HKDXtVa5fQUSC6bmPkw)"
-Cc: "K. V K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain;
+	format=flowed;
+	charset="iso-8859-1";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+Cc: <adilger@sun.com>, <linux-ext4@vger.kernel.org>,
+	"Mingming Cao" <cmm@us.ibm.com>, "Jan Kara" <jack@suse.cz>
+To: "Jan Kara" <jack@suse.cz>,
+	"Andrew Morton" <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:52178 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755290Ab0CPSsJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Mar 2010 14:48:09 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o2GIm73k009811
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Mar 2010 11:48:08 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KZE00H00134K100@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 16 Mar 2010 11:48:07 -0700 (PDT)
-In-reply-to: <1268699165-17461-5-git-send-email-tytso@mit.edu>
+Received: from edu-smtp-02.edutel.nl ([88.159.1.222]:33367 "EHLO
+	edu-smtp-02.edutel.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754642Ab0CPUIr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Mar 2010 16:08:47 -0400
+In-Reply-To: <20100315184301.GB7744@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Dear Jan, Andrew
 
---Boundary_(ID_/l4HKDXtVa5fQUSC6bmPkw)
-Content-type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-transfer-encoding: 7BIT
+The patch looks fine to me, if you say using free_blocks is better in the if 
+statement I believe you, as said I am not a very experienced C programmer.
+I just used "common sense" to locate this loop causing problems on my 
+system.
+I will sign it off as you requested and double check it in the weekend by 
+compiling the kernel again with this patch.
 
-On 2010-03-15, at 18:25, Theodore Ts'o wrote:
-> int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-> 						ext4_fsblk_t nblocks)
-> {
-> +	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
-> +						EXT4_FREEBLOCKS_WATERMARK) {
-> +		free_blocks  = percpu_counter_sum(fbc);
-> +		dirty_blocks = percpu_counter_sum(dbc);
-> +		if (dirty_blocks < 0) {
-> +			printk(KERN_CRIT "Dirty block accounting "
-> +					"went wrong %lld\n",
-> +					dirty_blocks);
+PS there is one thing, think a similar patch is required in balloc.c in 
+fs/ext2 as well.
+There is the same loop only it does not cause on OOM error but it 
+significantly delays the creation of a sub folder (25 seconds  on my disk of 
+500 GB, with the patch its done it less then a second)
 
-Just looking at this old patch, and noticed this is still the same in  
-newer versions.
+kind regards, Frans van de Wiel
 
-This should probably be either an ext4_error(), since it affects data  
-correctness, even though it isn't an on-disk error, or at least an  
-ext4_msg() so that it also prints the block device and uses the  
-standard ext4 error format.
+--------------------------------------------------
+From: "Jan Kara" <jack@suse.cz>
+Sent: Monday, March 15, 2010 7:43 PM
+To: "Andrew Morton" <akpm@linux-foundation.org>
+Cc: "Frans van de Wiel" <fvdw@fvdw.eu>; <adilger@sun.com>; 
+<linux-ext4@vger.kernel.org>; "Mingming Cao" <cmm@us.ibm.com>; "Jan Kara" 
+<jack@suse.cz>
+Subject: Re: bug in ext3 code causing OOM error on systems with small memory
 
-As it stands, this error doesn't indicate that it is an ext4 error, or  
-which filesystem is involved, so it isn't very useful to the  
-sysadmin.  I don't think it is needed for the .stable release, but  
-would be good for the next kernel.
-
-In the first patch (ext4-claim-err.diff) the access to the superblock  
-for ext4_msg() is a bit of a hack, but I think it isn't terrible.
-
-The second patch (ext4-error-cleanup.diff, to be used instead of the  
-first one) is a bit more thorough cleanup that changes the callers to  
-pass a struct super_block, and also removes some single-use stack  
-variables in related code.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
---Boundary_(ID_/l4HKDXtVa5fQUSC6bmPkw)
-Content-type: application/octet-stream; name=ext4-claim-err.diff;
- x-unix-mode=0644
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=ext4-claim-err.diff
-
-VXNlIGEgc3RhbmRhcmQgZXh0NCBlcnJvciBtZXNzYWdlIGZvcm1hdCBmb3IgZXh0
-NF9oYXNfZnJlZV9ibG9ja3MoKS4NCg0KU2lnbmVkLW9mZi1ieTogQW5kcmVhcyBE
-aWxnZXIgPGFkaWxnZXJAc3VuLmNvbT4NCg0KLS0tIC4vZnMvZXh0NC9iYWxsb2Mu
-Yy5vcmlnCTIwMDktMDktMDkgMTY6MTM6NTkuMDAwMDAwMDAwIC0wNjAwDQorKysg
-Li9mcy9leHQ0L2JhbGxvYy5jCTIwMTAtMDMtMTYgMTA6NTc6NTAuMDAwMDAwMDAw
-IC0wNjAwDQpAQCAtNTU5LDkgKzU1OSw5IEBAIGludCBleHQ0X2hhc19mcmVlX2Js
-b2NrcyhzdHJ1Y3QgZXh0NF9zYl8NCiAJCWZyZWVfYmxvY2tzICA9IHBlcmNwdV9j
-b3VudGVyX3N1bV9wb3NpdGl2ZShmYmMpOw0KIAkJZGlydHlfYmxvY2tzID0gcGVy
-Y3B1X2NvdW50ZXJfc3VtX3Bvc2l0aXZlKGRiYyk7DQogCQlpZiAoZGlydHlfYmxv
-Y2tzIDwgMCkgew0KLQkJCXByaW50ayhLRVJOX0NSSVQgIkRpcnR5IGJsb2NrIGFj
-Y291bnRpbmcgIg0KLQkJCQkJIndlbnQgd3JvbmcgJWxsZFxuIiwNCi0JCQkJCShs
-b25nIGxvbmcpZGlydHlfYmxvY2tzKTsNCisJCQlleHQ0X21zZyhzYmktPnNfYnVk
-ZHlfY2FjaGUtPmlfc2IsIEtFUk5fQ1JJVCwNCisJCQkJICJEaXJ0eSBibG9jayBh
-Y2NvdW50aW5nIHdlbnQgd3Jvbmc6ICVsbGRcbiIsDQorCQkJCSAobG9uZyBsb25n
-KWRpcnR5X2Jsb2Nrcyk7DQogCQl9DQogCX0NCiAJLyogQ2hlY2sgd2hldGhlciB3
-ZSBoYXZlIHNwYWNlIGFmdGVyDQo=
-
---Boundary_(ID_/l4HKDXtVa5fQUSC6bmPkw)
-Content-type: application/octet-stream; name=ext4-error-cleanup.diff;
- x-unix-mode=0644
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=ext4-error-cleanup.diff
-
-UGFzcyBzdHJ1Y3Qgc3VwZXJibG9jayB0byBleHQ0X2hhc19mcmVlX2Jsb2Nrcygp
-IHNvIHRoYXQgaXQgY2FuIHVzZSBleHQ0X21zZygpDQpmb3IgdGhlIGVycm9yIG1l
-c3NhZ2UsIGFuZCBtYXJrIHN0YXRpYywgc2luY2UgaXQgaXMgb25seSB1c2VkIGlu
-c2lkZSBiYWxsb2MuYy4NCg0KU2lnbmVkLW9mZi1ieTogQW5kcmVhcyBEaWxnZXIg
-PGFkaWxnZXJAc3VuLmNvbT4NCg0KLS0tIC4vZnMvZXh0NC9iYWxsb2MuYy5vcmln
-CTIwMDktMDktMDkgMTY6MTM6NTkuMDAwMDAwMDAwIC0wNjAwDQorKysgLi9mcy9l
-eHQ0L2JhbGxvYy5jCTIwMTAtMDMtMTYgMTI6MTM6MTcuMDAwMDAwMDAwIC0wNjAw
-DQpAQCAtNTM4LDE1ICs1MzgsMTYgQEAgdm9pZCBleHQ0X2ZyZWVfYmxvY2tzKGhh
-bmRsZV90ICpoYW5kbGUsIA0KIA0KIC8qKg0KICAqIGV4dDRfaGFzX2ZyZWVfYmxv
-Y2tzKCkNCi0gKiBAc2JpOglpbi1jb3JlIHN1cGVyIGJsb2NrIHN0cnVjdHVyZS4N
-CisgKiBAc2I6CQlpbi1jb3JlIHN1cGVyIGJsb2NrIHN0cnVjdHVyZS4NCiAgKiBA
-bmJsb2NrczoJbnVtYmVyIG9mIG5lZWRlZCBibG9ja3MNCiAgKg0KICAqIENoZWNr
-IGlmIGZpbGVzeXN0ZW0gaGFzIG5ibG9ja3MgZnJlZSAmIGF2YWlsYWJsZSBmb3Ig
-YWxsb2NhdGlvbi4NCiAgKiBPbiBzdWNjZXNzIHJldHVybiAxLCByZXR1cm4gMCBv
-biBmYWlsdXJlLg0KICAqLw0KLWludCBleHQ0X2hhc19mcmVlX2Jsb2NrcyhzdHJ1
-Y3QgZXh0NF9zYl9pbmZvICpzYmksIHM2NCBuYmxvY2tzKQ0KK3N0YXRpYyBpbnQg
-ZXh0NF9oYXNfZnJlZV9ibG9ja3Moc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwgczY0
-IG5ibG9ja3MpDQogew0KIAlzNjQgZnJlZV9ibG9ja3MsIGRpcnR5X2Jsb2Nrcywg
-cm9vdF9ibG9ja3M7DQorCXN0cnVjdCBleHQ0X3NiX2luZm8gKnNiaSA9IEVYVDRf
-U0Ioc2IpOw0KIAlzdHJ1Y3QgcGVyY3B1X2NvdW50ZXIgKmZiYyA9ICZzYmktPnNf
-ZnJlZWJsb2Nrc19jb3VudGVyOw0KIAlzdHJ1Y3QgcGVyY3B1X2NvdW50ZXIgKmRi
-YyA9ICZzYmktPnNfZGlydHlibG9ja3NfY291bnRlcjsNCiANCkBAIC01NTksOSAr
-NTYwLDkgQEAgaW50IGV4dDRfaGFzX2ZyZWVfYmxvY2tzKHN0cnVjdCBleHQ0X3Ni
-Xw0KIAkJZnJlZV9ibG9ja3MgID0gcGVyY3B1X2NvdW50ZXJfc3VtX3Bvc2l0aXZl
-KGZiYyk7DQogCQlkaXJ0eV9ibG9ja3MgPSBwZXJjcHVfY291bnRlcl9zdW1fcG9z
-aXRpdmUoZGJjKTsNCiAJCWlmIChkaXJ0eV9ibG9ja3MgPCAwKSB7DQotCQkJcHJp
-bnRrKEtFUk5fQ1JJVCAiRGlydHkgYmxvY2sgYWNjb3VudGluZyAiDQotCQkJCQki
-d2VudCB3cm9uZyAlbGxkXG4iLA0KLQkJCQkJKGxvbmcgbG9uZylkaXJ0eV9ibG9j
-a3MpOw0KKwkJCWV4dDRfbXNnKHNiLCBLRVJOX0NSSVQsDQorCQkJCSAiRGlydHkg
-YmxvY2sgYWNjb3VudGluZyB3ZW50IHdyb25nOiAlbGxkXG4iLA0KKwkJCQkgKGxv
-bmcgbG9uZylkaXJ0eV9ibG9ja3MpOw0KIAkJfQ0KIAl9DQogCS8qIENoZWNrIHdo
-ZXRoZXIgd2UgaGF2ZSBzcGFjZSBhZnRlcg0KQEAgLTU4MSwxMSArNTgyLDEwIEBA
-IGludCBleHQ0X2hhc19mcmVlX2Jsb2NrcyhzdHJ1Y3QgZXh0NF9zYl8NCiAJcmV0
-dXJuIDA7DQogfQ0KIA0KLWludCBleHQ0X2NsYWltX2ZyZWVfYmxvY2tzKHN0cnVj
-dCBleHQ0X3NiX2luZm8gKnNiaSwNCi0JCQkJCQlzNjQgbmJsb2NrcykNCitpbnQg
-ZXh0NF9jbGFpbV9mcmVlX2Jsb2NrcyhzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLCBz
-NjQgbmJsb2NrcykNCiB7DQotCWlmIChleHQ0X2hhc19mcmVlX2Jsb2NrcyhzYmks
-IG5ibG9ja3MpKSB7DQotCQlwZXJjcHVfY291bnRlcl9hZGQoJnNiaS0+c19kaXJ0
-eWJsb2Nrc19jb3VudGVyLCBuYmxvY2tzKTsNCisJaWYgKGV4dDRfaGFzX2ZyZWVf
-YmxvY2tzKHNiLCBuYmxvY2tzKSkgew0KKwkJcGVyY3B1X2NvdW50ZXJfYWRkKCZF
-WFQ0X1NCKHNiKS0+c19kaXJ0eWJsb2Nrc19jb3VudGVyLCBuYmxvY2tzKTsNCiAJ
-CXJldHVybiAwOw0KIAl9IGVsc2UNCiAJCXJldHVybiAtRU5PU1BDOw0KQEAgLTYw
-NSw4ICs2MDUsNyBAQCBpbnQgZXh0NF9jbGFpbV9mcmVlX2Jsb2NrcyhzdHJ1Y3Qg
-ZXh0NF9zDQogICovDQogaW50IGV4dDRfc2hvdWxkX3JldHJ5X2FsbG9jKHN0cnVj
-dCBzdXBlcl9ibG9jayAqc2IsIGludCAqcmV0cmllcykNCiB7DQotCWlmICghZXh0
-NF9oYXNfZnJlZV9ibG9ja3MoRVhUNF9TQihzYiksIDEpIHx8DQotCSAgICAoKnJl
-dHJpZXMpKysgPiAzIHx8DQorCWlmICghZXh0NF9oYXNfZnJlZV9ibG9ja3Moc2Is
-IDEpIHx8ICgqcmV0cmllcykrKyA+IDMgfHwNCiAJICAgICFFWFQ0X1NCKHNiKS0+
-c19qb3VybmFsKQ0KIAkJcmV0dXJuIDA7DQogDQotLS0gLi9mcy9leHQ0L2V4dDQu
-aC5vcmlnCTIwMDktMDktMDkgMTY6MTM6NTkuMDAwMDAwMDAwIC0wNjAwDQorKysg
-Li9mcy9leHQ0L2V4dDQuaAkyMDEwLTAzLTE2IDEyOjE0OjA0LjAwMDAwMDAwMCAt
-MDYwMA0KQEAgLTEyNzQsOCArMTI3NCw3IEBAIGV4dGVybiB1bnNpZ25lZCBsb25n
-IGV4dDRfYmdfbnVtX2dkYihzdHINCiAJCQlleHQ0X2dyb3VwX3QgZ3JvdXApOw0K
-IGV4dGVybiBleHQ0X2ZzYmxrX3QgZXh0NF9uZXdfbWV0YV9ibG9ja3MoaGFuZGxl
-X3QgKmhhbmRsZSwgc3RydWN0IGlub2RlICppbm9kZSwNCiAJCQlleHQ0X2ZzYmxr
-X3QgZ29hbCwgdW5zaWduZWQgbG9uZyAqY291bnQsIGludCAqZXJycCk7DQotZXh0
-ZXJuIGludCBleHQ0X2NsYWltX2ZyZWVfYmxvY2tzKHN0cnVjdCBleHQ0X3NiX2lu
-Zm8gKnNiaSwgczY0IG5ibG9ja3MpOw0KLWV4dGVybiBpbnQgZXh0NF9oYXNfZnJl
-ZV9ibG9ja3Moc3RydWN0IGV4dDRfc2JfaW5mbyAqc2JpLCBzNjQgbmJsb2Nrcyk7
-DQorZXh0ZXJuIGludCBleHQ0X2NsYWltX2ZyZWVfYmxvY2tzKHN0cnVjdCBzdXBl
-cl9ibG9jayAqc2IsIHM2NCBuYmxvY2tzKTsNCiBleHRlcm4gdm9pZCBleHQ0X2Zy
-ZWVfYmxvY2tzKGhhbmRsZV90ICpoYW5kbGUsIHN0cnVjdCBpbm9kZSAqaW5vZGUs
-DQogCQkJZXh0NF9mc2Jsa190IGJsb2NrLCB1bnNpZ25lZCBsb25nIGNvdW50LCBp
-bnQgbWV0YWRhdGEpOw0KIGV4dGVybiB2b2lkIGV4dDRfYWRkX2dyb3VwYmxvY2tz
-KGhhbmRsZV90ICpoYW5kbGUsIHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsDQotLS0g
-Li9mcy9leHQ0L2lub2RlLmMub3JpZwkyMDA5LTA5LTA5IDE2OjEzOjU5LjAwMDAw
-MDAwMCAtMDYwMA0KKysrIC4vZnMvZXh0NC9pbm9kZS5jCTIwMTAtMDMtMTYgMTI6
-MTY6MjAuMDAwMDAwMDAwIC0wNjAwDQpAQCAtMTc0Nyw3ICsxNzQ3LDYgQEAgc3Rh
-dGljIGludCBleHQ0X2pvdXJuYWxsZWRfd3JpdGVfZW5kKHN0cg0KIHN0YXRpYyBp
-bnQgZXh0NF9kYV9yZXNlcnZlX3NwYWNlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHNl
-Y3Rvcl90IGxibG9jaykNCiB7DQogCWludCByZXRyaWVzID0gMDsNCi0Jc3RydWN0
-IGV4dDRfc2JfaW5mbyAqc2JpID0gRVhUNF9TQihpbm9kZS0+aV9zYik7DQogCXN0
-cnVjdCBleHQ0X2lub2RlX2luZm8gKmVpID0gRVhUNF9JKGlub2RlKTsNCiAJdW5z
-aWduZWQgbG9uZyBtZF9uZWVkZWQsIG1kX3Jlc2VydmVkOw0KIAlpbnQgcmV0Ow0K
-QEAgLTE3NzQsNyArMTc3Myw3IEBAIHJlcGVhdDoNCiAJaWYgKHJldCkNCiAJCXJl
-dHVybiByZXQ7DQogDQotCWlmIChleHQ0X2NsYWltX2ZyZWVfYmxvY2tzKHNiaSwg
-bWRfbmVlZGVkICsgMSkpIHsNCisJaWYgKGV4dDRfY2xhaW1fZnJlZV9ibG9ja3Mo
-aW5vZGUtPmlfc2IsIG1kX25lZWRlZCArIDEpKSB7DQogCQlkcXVvdF9yZWxlYXNl
-X3Jlc2VydmF0aW9uX2Jsb2NrKGlub2RlLCBtZF9uZWVkZWQgKyAxKTsNCiAJCWlm
-IChleHQ0X3Nob3VsZF9yZXRyeV9hbGxvYyhpbm9kZS0+aV9zYiwgJnJldHJpZXMp
-KSB7DQogCQkJeWllbGQoKTsNCkBAIC0xNzkyLDcgKzE3OTEsNiBAQCByZXBlYXQ6
-DQogDQogc3RhdGljIHZvaWQgZXh0NF9kYV9yZWxlYXNlX3NwYWNlKHN0cnVjdCBp
-bm9kZSAqaW5vZGUsIGludCB0b19mcmVlKQ0KIHsNCi0Jc3RydWN0IGV4dDRfc2Jf
-aW5mbyAqc2JpID0gRVhUNF9TQihpbm9kZS0+aV9zYik7DQogCXN0cnVjdCBleHQ0
-X2lub2RlX2luZm8gKmVpID0gRVhUNF9JKGlub2RlKTsNCiANCiAJaWYgKCF0b19m
-cmVlKQ0KQEAgLTE4MjUsNyArMTgyMyw3IEBAIHN0YXRpYyB2b2lkIGV4dDRfZGFf
-cmVsZWFzZV9zcGFjZShzdHJ1Y3QNCiAJfQ0KIA0KIAkvKiB1cGRhdGUgZnMgZGly
-dHkgYmxvY2tzIGNvdW50ZXIgKi8NCi0JcGVyY3B1X2NvdW50ZXJfc3ViKCZzYmkt
-PnNfZGlydHlibG9ja3NfY291bnRlciwgdG9fZnJlZSk7DQorCXBlcmNwdV9jb3Vu
-dGVyX3N1YigmRVhUNF9TQihzYiktPnNfZGlydHlibG9ja3NfY291bnRlciwgdG9f
-ZnJlZSk7DQogDQogCXNwaW5fdW5sb2NrKCZFWFQ0X0koaW5vZGUpLT5pX2Jsb2Nr
-X3Jlc2VydmF0aW9uX2xvY2spOw0KIA0KLS0tIC4vZnMvZXh0NC9tYmFsbG9jLmMu
-b3JpZwkyMDA5LTA5LTA5IDE2OjEzOjU5LjAwMDAwMDAwMCAtMDYwMA0KKysrIC4v
-ZnMvZXh0NC9tYmFsbG9jLmMJMjAxMC0wMy0xNiAxMjoxOTo0OS4wMDAwMDAwMDAg
-LTA2MDANCkBAIC00NDYzLDE0ICs0NDYzLDEyIEBAIGV4dDRfZnNibGtfdCBleHQ0
-X21iX25ld19ibG9ja3MoaGFuZGxlX3QNCiB7DQogCWludCBmcmVlZDsNCiAJc3Ry
-dWN0IGV4dDRfYWxsb2NhdGlvbl9jb250ZXh0ICphYyA9IE5VTEw7DQotCXN0cnVj
-dCBleHQ0X3NiX2luZm8gKnNiaTsNCiAJc3RydWN0IHN1cGVyX2Jsb2NrICpzYjsN
-CiAJZXh0NF9mc2Jsa190IGJsb2NrID0gMDsNCiAJdW5zaWduZWQgaW50IGlucXVv
-dGEgPSAwOw0KIAl1bnNpZ25lZCBpbnQgcmVzZXJ2X2Jsa3MgPSAwOw0KIA0KIAlz
-YiA9IGFyLT5pbm9kZS0+aV9zYjsNCi0Jc2JpID0gRVhUNF9TQihzYik7DQogDQog
-CXRyYWNlX2V4dDRfcmVxdWVzdF9ibG9ja3MoYXIpOw0KIA0KQEAgLTQ0ODYsNyAr
-NDQ4NCw3IEBAIGV4dDRfZnNibGtfdCBleHQ0X21iX25ld19ibG9ja3MoaGFuZGxl
-X3QNCiAJCSAqIHRoZXJlIGlzIGVub3VnaCBmcmVlIGJsb2NrcyB0byBkbyBibG9j
-ayBhbGxvY2F0aW9uDQogCQkgKiBhbmQgdmVyaWZ5IGFsbG9jYXRpb24gZG9lc24n
-dCBleGNlZWQgdGhlIHF1b3RhIGxpbWl0cy4NCiAJCSAqLw0KLQkJd2hpbGUgKGFy
-LT5sZW4gJiYgZXh0NF9jbGFpbV9mcmVlX2Jsb2NrcyhzYmksIGFyLT5sZW4pKSB7
-DQorCQl3aGlsZSAoYXItPmxlbiAmJiBleHQ0X2NsYWltX2ZyZWVfYmxvY2tzKHNi
-LCBhci0+bGVuKSkgew0KIAkJCS8qIGxldCBvdGhlcnMgdG8gZnJlZSB0aGUgc3Bh
-Y2UgKi8NCiAJCQl5aWVsZCgpOw0KIAkJCWFyLT5sZW4gPSBhci0+bGVuID4+IDE7
-DQpAQCAtNDU3Nyw4ICs0NTc1LDggQEAgb3V0MzoNCiAJaWYgKCFhci0+bGVuKSB7
-DQogCQlpZiAoIUVYVDRfSShhci0+aW5vZGUpLT5pX2RlbGFsbG9jX3Jlc2VydmVk
-X2ZsYWcpDQogCQkJLyogcmVsZWFzZSBhbGwgdGhlIHJlc2VydmVkIGJsb2NrcyBp
-ZiBub24gZGVsYWxsb2MgKi8NCi0JCQlwZXJjcHVfY291bnRlcl9zdWIoJnNiaS0+
-c19kaXJ0eWJsb2Nrc19jb3VudGVyLA0KLQkJCQkJCXJlc2Vydl9ibGtzKTsNCisJ
-CQlwZXJjcHVfY291bnRlcl9zdWIoJkVYVDRfU0Ioc2IpLT5zX2RpcnR5YmxvY2tz
-X2NvdW50ZXIsDQorCQkJCQkgICByZXNlcnZfYmxrcyk7DQogCX0NCiANCiAJdHJh
-Y2VfZXh0NF9hbGxvY2F0ZV9ibG9ja3MoYXIsICh1bnNpZ25lZCBsb25nIGxvbmcp
-YmxvY2spOw0K
-
---Boundary_(ID_/l4HKDXtVa5fQUSC6bmPkw)--
+>  Hi,
+>
+> On Fri 12-03-10 13:57:36, Andrew Morton wrote:
+>> (cc's added)
+>  Thanks for forwarding.
+>
+>> On Sat, 6 Mar 2010 10:31:07 +0100
+>> "Frans van de Wiel" <fvdw@fvdw.eu> wrote:
+>>
+>> > Dear sirs
+>> >
+>> > Recently I compiled the linux-2.6.33 kernel for my arm9  based NAS 
+>> > using the orion5x mach.
+>> > The kernel runs but when creating a sub directory outside the root in a 
+>> > big disk ext3 partition (in my case 5000 GB) it caused an OOM error.
+>> >
+>> > journal_get_undo_access: No memory for committed data
+>> > ext3_try_to_allocate_with_rsv: aborting transaction: Out of memory in 
+>> > __ext3_journal_get_undo_access
+>> >
+>> > Now my NAS has a tiny system memory only 16 MB  but it worked fine on 
+>> > older kernels like 2.6.12.
+>> > I am not an experienced C programmer but I investigated the problem and 
+>> > think I found the reason and that it might be a good idea to share this 
+>> > with you as it might be useful for others with the same problem and I 
+>> > think it will speed up sub directory creation on big partitions.
+>> > The problem is also present in etx2 driver but it does not cause an OOM 
+>> > as there is no journaling, however it causes a significant delay in 
+>> > directory creation.
+>> > Creating a sub directory took in my case 25 seconds on a 500 GB disk. 
+>> > Thats not acceptable.
+>> >
+>> >  It took me a while to figure it out why, but it appeared that when 
+>> > trying to create a sub directory the driver starts to look for free 
+>> > blocks with a block group number that was not suitable (too high). Then 
+>> > the routine starts to check all groups one by one to find a suitable 
+>> > group. As there are almost 4000 groups on a 500 GB partition that takes 
+>> > time and in case of using ext3 the journaling of that action caused an 
+>> > out of memory situation. On ext2 it just took a long time to make a sub 
+>> > directory (up to 20 seconds or so).
+>> >
+>> > The error was in the balloc.c file  where there is a routine to 
+>> > allocate new blocks.
+>> >
+>> > By adding printk lines I finally found the place where the problem was. 
+>> > After comparing this file with the linux-2.6.12.6 version it appeared 
+>> > that in the newer version they deleted a check that caused the loop to 
+>> > continue without trying to allocate in cause the group was not 
+>> > suitable, so skipping the time and memory intensive part of the loop 
+>> > for that group.
+>> > I added that again and voila problem solved. Think on more powerful 
+>> > system with more memory you will never notice the problem but on the 
+>> > NAS with its limited hardware it caused an issue.
+>> >
+>> > I attached a file showing the part of the balloc.c file with the 
+>> > problem and the correction made (the correction is in line 117-120 of 
+>> > the attached file in between the lines markes /* fvdw */). I am not a C 
+>> > expert and just copied the check from the old version (of course 
+>> > adapting variables names to match with the new version). But it seems 
+>> > to fix the problem. I checked with printk statements, the adapted 
+>> > routine allocates to the same block as without this correction, it only 
+>> > skips unnecessary work. maybe you can have a look at it if it its ok 
+>> > and will not cause other problems.
+>> > The function at line 137 was causing the OOM error when called too many 
+>> > times after each other in ext3  and in ext causing the delay of 
+>> > creating the directory.
+>> >
+>> > Hope this information is useful to you. I am not a n experienced C 
+>> > progrommar so my bug rapport may be different from your standards sorry 
+>> > for this
+>> >
+>>
+>> Thanks.  Here's Frans's patch:
+>>
+>> --- a/fs/ext3/balloc.c~a
+>> +++ a/fs/ext3/balloc.c
+>> @@ -1581,6 +1581,8 @@ retry_alloc:
+>>  gdp = ext3_get_group_desc(sb, group_no, &gdp_bh);
+>>  if (!gdp)
+>>  goto io_error;
+>> + if (!gdp->bg_free_blocks_count)
+>> + continue;
+>>  free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+>>  /*
+>>  * skip this group if the number of
+>  I'd just add a comment why this check is needed but otherwise the patch
+> looks fine. Maybe I'd just use free_blocks in the check. I know that
+> zero-check works fine even with disk-endian value but still... And I agree
+> that the Mingming's patch probably caused the regression.
+>  Frans, do you agree with the patch below and can I add you Signed-off-by
+> to it (see Documentation/SubmittingPatches)?
+>
+> Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> ---
+>
+> From 0e7e5dd29c072fa7afe0a25d64d41682a07d7dff Mon Sep 17 00:00:00 2001
+> From: Frans van de Wiel <fvdw@fvdw.eu>
+> Date: Mon, 15 Mar 2010 19:29:34 +0100
+> Subject: [PATCH] ext3: Avoid loading bitmaps for full groups during block 
+> allocation
+>
+> There is no point in loading bitmap for groups which are completely full.
+> This causes noticeable performance problems (and memory pressure) on small
+> systems with large full filesystem
+> (http://marc.info/?l=linux-ext4&m=126843108314310&w=2).
+>
+> Jan Kara: Added a comment and changed check to use cpu-endian value.
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+> fs/ext3/balloc.c |    6 ++++++
+> 1 files changed, 6 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> index 161da2d..c0980fc 100644
+> --- a/fs/ext3/balloc.c
+> +++ b/fs/ext3/balloc.c
+> @@ -1583,6 +1583,12 @@ retry_alloc:
+>  goto io_error;
+>  free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+>  /*
+> + * skip this group (and avoid loading bitmap) if there
+> + * are no free blocks
+> + */
+> + if (!free_blocks)
+> + continue;
+> + /*
+>  * skip this group if the number of
+>  * free blocks is less than half of the reservation
+>  * window size.
+> -- 
+> 1.6.4.2
+> 
