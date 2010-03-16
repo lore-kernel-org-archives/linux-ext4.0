@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.27.y 01/11] ext4: invalidate pages if delalloc block allocation fails.
-Date: Mon, 15 Mar 2010 20:25:55 -0400
-Message-ID: <1268699165-17461-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.27.y 07/11] ext4: Use tag dirty lookup during mpage_da_submit_io
+Date: Mon, 15 Mar 2010 20:26:01 -0400
+Message-ID: <1268699165-17461-8-git-send-email-tytso@mit.edu>
 References: <1268699165-17461-1-git-send-email-tytso@mit.edu>
 Cc: "Jayson R. King" <dev@jaysonking.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
@@ -9,9 +9,9 @@ Cc: "Jayson R. King" <dev@jaysonking.com>,
 	Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38645 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:38644 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S937211Ab0CPA0L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S932851Ab0CPA0L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 15 Mar 2010 20:26:11 -0400
 In-Reply-To: <1268699165-17461-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -19,166 +19,94 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit c4a0c46ec92c194c873232b88debce4e1a448483 upstream.
+commit af6f029d3836eb7264cd3fbb13a6baf0e5fdb5ea upstream.
 
-We are a bit agressive in invalidating all the pages. But
-it is ok because we really don't know why the block allocation
-failed and it is better to come of the writeback path
-so that user can look for more info.
+This enables us to drop the range_cont writeback mode
+use from ext4_da_writepages.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   85 +++++++++++++++++++++++++++++++++++++++++++++++--------
- 1 files changed, 73 insertions(+), 12 deletions(-)
+ fs/ext4/inode.c |   30 +++++++++++++-----------------
+ 1 files changed, 13 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index aeebfc2..ebd83cd 100644
+index 71901ae..a67f837 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1821,6 +1821,39 @@ static inline void __unmap_underlying_blocks(struct inode *inode,
- 		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
- }
+@@ -1699,17 +1699,23 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
  
-+static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
-+					sector_t logical, long blk_cnt)
-+{
-+	int nr_pages, i;
-+	pgoff_t index, end;
-+	struct pagevec pvec;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
-+
-+	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	end   = (logical + blk_cnt - 1) >>
-+				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	while (index <= end) {
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
-+			block_invalidatepage(page, 0);
-+			ClearPageUptodate(page);
-+			unlock_page(page);
-+		}
-+	}
-+	return;
-+}
-+
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1830,7 +1863,7 @@ static inline void __unmap_underlying_blocks(struct inode *inode,
-  * The function skips space we know is already mapped to disk blocks.
-  *
-  */
--static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
- 	int err = 0;
- 	struct buffer_head *lbh = &mpd->lbh;
-@@ -1841,7 +1874,7 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
--		return;
-+		return 0;
- 
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
-@@ -1852,10 +1885,38 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	 * to write simply return
- 	 */
- 	if (!new.b_size)
--		return;
-+		return 0;
- 	err = mpd->get_block(mpd->inode, next, &new, 1);
--	if (err)
--		return;
-+	if (err) {
-+
-+		/* If get block returns with error
-+		 * we simply return. Later writepage
-+		 * will redirty the page and writepages
-+		 * will find the dirty page again
-+		 */
-+		if (err == -EAGAIN)
-+			return 0;
+ 	pagevec_init(&pvec, 0);
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
 +		/*
-+		 * get block failure will cause us
-+		 * to loop in writepages. Because
-+		 * a_ops->writepage won't be able to
-+		 * make progress. The page will be redirtied
-+		 * by writepage and writepages will again
-+		 * try to write the same.
++		 * We can use PAGECACHE_TAG_DIRTY lookup here because
++		 * even though we have cleared the dirty flag on the page
++		 * We still keep the page in the radix tree with tag
++		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
++		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
++		 * which is called via the below writepage callback.
 +		 */
-+		printk(KERN_EMERG "%s block allocation failed for inode %lu "
-+				  "at logical offset %llu with max blocks "
-+				  "%zd with error %d\n",
-+				  __func__, mpd->inode->i_ino,
-+				  (unsigned long long)next,
-+				  lbh->b_size >> mpd->inode->i_blkbits, err);
-+		printk(KERN_EMERG "This should not happen.!! "
-+					"Data will be lost\n");
-+		/* invlaidate all the pages */
-+		ext4_da_block_invalidatepages(mpd, next,
-+				lbh->b_size >> mpd->inode->i_blkbits);
-+		return err;
-+	}
- 	BUG_ON(new.b_size == 0);
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++					PAGECACHE_TAG_DIRTY,
++					min(end - index,
++					(pgoff_t)PAGEVEC_SIZE-1) + 1);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
  
- 	if (buffer_new(&new))
-@@ -1868,7 +1929,7 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	if (buffer_delay(lbh) || buffer_unwritten(lbh))
- 		mpage_put_bnr_to_bhs(mpd, next, &new);
+-			index = page->index;
+-			if (index > end)
+-				break;
+-			index++;
+-
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
  
--	return;
-+	return 0;
- }
- 
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
-@@ -1937,8 +1998,8 @@ flush_it:
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	mpage_da_map_blocks(mpd);
--	mpage_da_submit_io(mpd);
-+	if (mpage_da_map_blocks(mpd) == 0)
-+		mpage_da_submit_io(mpd);
- 	mpd->io_done = 1;
- 	return;
- }
-@@ -1980,8 +2041,8 @@ static int __mpage_da_writepage(struct page *page,
- 		 * and start IO on them using writepage()
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			mpage_da_map_blocks(mpd);
--			mpage_da_submit_io(mpd);
-+			if (mpage_da_map_blocks(mpd) == 0)
-+				mpage_da_submit_io(mpd);
- 			/*
- 			 * skip rest of the page in the page_vec
- 			 */
-@@ -2102,8 +2163,8 @@ static int mpage_da_writepages(struct address_space *mapping,
- 	 * Handle last extent of pages
- 	 */
- 	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--		mpage_da_map_blocks(&mpd);
--		mpage_da_submit_io(&mpd);
-+		if (mpage_da_map_blocks(&mpd) == 0)
-+			mpage_da_submit_io(&mpd);
+@@ -2442,7 +2448,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 			      struct writeback_control *wbc)
+ {
+ 	handle_t *handle = NULL;
+-	loff_t range_start = 0;
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+@@ -2481,14 +2486,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 		wbc->nr_to_write = sbi->s_mb_stream_request;
  	}
  
- 	wbc->nr_to_write = to_write - mpd.pages_written;
+-	if (!wbc->range_cyclic)
+-		/*
+-		 * If range_cyclic is not set force range_cont
+-		 * and save the old writeback_index
+-		 */
+-		wbc->range_cont = 1;
+ 
+-	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
+ 
+ 	mpd.wbc = wbc;
+@@ -2559,9 +2557,8 @@ restart_loop:
+ 		wbc->nr_to_write = to_write;
+ 	}
+ 
+-	if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
++	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+ 		/* We skipped pages in this loop */
+-		wbc->range_start = range_start;
+ 		wbc->nr_to_write = to_write +
+ 				wbc->pages_skipped - pages_skipped;
+ 		wbc->pages_skipped = pages_skipped;
+@@ -2570,7 +2567,6 @@ restart_loop:
+ 
+ out_writepages:
+ 	wbc->nr_to_write = to_write - nr_to_writebump;
+-	wbc->range_start = range_start;
+ 	return ret;
+ }
+ 
 -- 
 1.6.6.1.1.g974db.dirty
 
