@@ -1,123 +1,193 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.27.y 02/11] percpu counter: clean up percpu_counter_sum_and_set()
-Date: Mon, 15 Mar 2010 20:25:56 -0400
-Message-ID: <1268699165-17461-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.27.y 06/11] ext4: Retry block allocation if we have free blocks left
+Date: Mon, 15 Mar 2010 20:26:00 -0400
+Message-ID: <1268699165-17461-7-git-send-email-tytso@mit.edu>
 References: <1268699165-17461-1-git-send-email-tytso@mit.edu>
 Cc: "Jayson R. King" <dev@jaysonking.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38654 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:38655 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S937226Ab0CPA0M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S937230Ab0CPA0M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 15 Mar 2010 20:26:12 -0400
 In-Reply-To: <1268699165-17461-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Mingming Cao <cmm@us.ibm.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit 1f7c14c62ce63805f9574664a6c6de3633d4a354 upstream.
+commit df22291ff0fde0d350cf15dac3e5cc33ac528875 upstream.
 
-percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
-the former updates the global counter after accounting.  Since we are
-taking the fbc->lock to calculate the precise value of the counter in
-percpu_counter_sum() anyway, it should simply set fbc->count too, as the
-percpu_counter_sum_and_set() does.
+When we truncate files, the meta-data blocks released are not reused
+untill we commit the truncate transaction.  That means delayed get_block
+request will return ENOSPC even if we have free blocks left.  Force a
+journal commit and retry block allocation if we get ENOSPC with free
+blocks left.
 
-This patch merges these two interfaces into one.
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/balloc.c               |    2 +-
- include/linux/percpu_counter.h |   12 +++---------
- lib/percpu_counter.c           |    8 +++-----
- 3 files changed, 7 insertions(+), 15 deletions(-)
+ fs/ext4/inode.c |   81 ++++++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 57 insertions(+), 24 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 8b7c776..344ec1c 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1778,7 +1778,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
- #ifdef CONFIG_SMP
- 	if (free_blocks - root_blocks < FBC_BATCH)
- 		free_blocks =
--			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
-+			percpu_counter_sum(&sbi->s_freeblocks_counter);
- #endif
- 	if (free_blocks <= root_blocks)
- 		/* we don't have free space */
-diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
-index 2083888..9007ccd 100644
---- a/include/linux/percpu_counter.h
-+++ b/include/linux/percpu_counter.h
-@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
- void percpu_counter_destroy(struct percpu_counter *fbc);
- void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
- void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
-+s64 __percpu_counter_sum(struct percpu_counter *fbc);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e82b895..71901ae 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1661,6 +1661,7 @@ struct mpage_da_data {
+ 	struct writeback_control *wbc;
+ 	int io_done;
+ 	long pages_written;
++	int retval;
+ };
  
- static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
- {
-@@ -44,19 +44,13 @@ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
- 
- static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
- {
--	s64 ret = __percpu_counter_sum(fbc, 0);
-+	s64 ret = __percpu_counter_sum(fbc);
- 	return ret < 0 ? 0 : ret;
+ /*
+@@ -1858,6 +1859,24 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ 	return;
  }
  
--static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
--{
--	return __percpu_counter_sum(fbc, 1);
--}
--
--
- static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- {
--	return __percpu_counter_sum(fbc, 0);
-+	return __percpu_counter_sum(fbc);
- }
++static void ext4_print_free_blocks(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	printk(KERN_EMERG "Total free blocks count %lld\n",
++			ext4_count_free_blocks(inode->i_sb));
++	printk(KERN_EMERG "Free/Dirty block details\n");
++	printk(KERN_EMERG "free_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_freeblocks_counter));
++	printk(KERN_EMERG "dirty_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
++	printk(KERN_EMERG "Block reservation details\n");
++	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_data_blocks);
++	printk(KERN_EMERG "i_reserved_meta_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_meta_blocks);
++	return;
++}
++
+ /*
+  * mpage_da_map_blocks - go through given space
+  *
+@@ -1872,7 +1891,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	int err = 0;
+ 	struct buffer_head new;
+ 	struct buffer_head *lbh = &mpd->lbh;
+-	sector_t next = lbh->b_blocknr;
++	sector_t next;
  
- static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
-index 4a8ba4b..a866389 100644
---- a/lib/percpu_counter.c
-+++ b/lib/percpu_counter.c
-@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
-  * Add up all the per-cpu counts, return the result.  This is a more accurate
-  * but much slower version of percpu_counter_read_positive()
+ 	/*
+ 	 * We consider only non-mapped and non-allocated blocks
+@@ -1882,6 +1901,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+ 	new.b_size = lbh->b_size;
++	next = lbh->b_blocknr;
+ 	/*
+ 	 * If we didn't accumulate anything
+ 	 * to write simply return
+@@ -1898,6 +1918,13 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		 */
+ 		if (err == -EAGAIN)
+ 			return 0;
++
++		if (err == -ENOSPC &&
++				ext4_count_free_blocks(mpd->inode->i_sb)) {
++			mpd->retval = err;
++			return 0;
++		}
++
+ 		/*
+ 		 * get block failure will cause us
+ 		 * to loop in writepages. Because
+@@ -1915,8 +1942,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		printk(KERN_EMERG "This should not happen.!! "
+ 					"Data will be lost\n");
+ 		if (err == -ENOSPC) {
+-			printk(KERN_CRIT "Total free blocks count %lld\n",
+-				ext4_count_free_blocks(mpd->inode->i_sb));
++			ext4_print_free_blocks(mpd->inode);
+ 		}
+ 		/* invlaidate all the pages */
+ 		ext4_da_block_invalidatepages(mpd, next,
+@@ -2141,39 +2167,36 @@ static int __mpage_da_writepage(struct page *page,
   */
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
-+s64 __percpu_counter_sum(struct percpu_counter *fbc)
+ static int mpage_da_writepages(struct address_space *mapping,
+ 			       struct writeback_control *wbc,
+-			       get_block_t get_block)
++			       struct mpage_da_data *mpd)
  {
- 	s64 ret;
- 	int cpu;
-@@ -62,11 +62,9 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		ret += *pcount;
--		if (set)
--			*pcount = 0;
-+		*pcount = 0;
- 	}
--	if (set)
--		fbc->count = ret;
-+	fbc->count = ret;
+-	struct mpage_da_data mpd;
+ 	long to_write;
+ 	int ret;
  
- 	spin_unlock(&fbc->lock);
+-	if (!get_block)
++	if (!mpd->get_block)
+ 		return generic_writepages(mapping, wbc);
+ 
+-	mpd.wbc = wbc;
+-	mpd.inode = mapping->host;
+-	mpd.lbh.b_size = 0;
+-	mpd.lbh.b_state = 0;
+-	mpd.lbh.b_blocknr = 0;
+-	mpd.first_page = 0;
+-	mpd.next_page = 0;
+-	mpd.get_block = get_block;
+-	mpd.io_done = 0;
+-	mpd.pages_written = 0;
++	mpd->lbh.b_size = 0;
++	mpd->lbh.b_state = 0;
++	mpd->lbh.b_blocknr = 0;
++	mpd->first_page = 0;
++	mpd->next_page = 0;
++	mpd->io_done = 0;
++	mpd->pages_written = 0;
++	mpd->retval = 0;
+ 
+ 	to_write = wbc->nr_to_write;
+ 
+-	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
++	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
+ 
+ 	/*
+ 	 * Handle last extent of pages
+ 	 */
+-	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
+-		if (mpage_da_map_blocks(&mpd) == 0)
+-			mpage_da_submit_io(&mpd);
++	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
++		if (mpage_da_map_blocks(mpd) == 0)
++			mpage_da_submit_io(mpd);
+ 	}
+ 
+-	wbc->nr_to_write = to_write - mpd.pages_written;
++	wbc->nr_to_write = to_write - mpd->pages_written;
  	return ret;
--- 
-1.6.6.1.1.g974db.dirty
-
+ }
+ 
+@@ -2420,6 +2443,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ {
+ 	handle_t *handle = NULL;
+ 	loff_t range_start = 0;
++	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+ 	long to_write, pages_skipped = 0;
+@@ -2467,6 +2491,9 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
+ 
++	mpd.wbc = wbc;
++	mpd.inode = mapping->host;
++
+ restart_loop:
+ 	to_write = wbc->nr_to_write;
+ 	while (!ret && to_write > 0) {
+@@ -2502,11 +2529,17 @@ restart_loop:
+ 				goto out_writepages;
+ 			}
+ 		}
