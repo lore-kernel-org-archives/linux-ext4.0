@@ -1,112 +1,98 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.27.y 07/11] ext4: Use tag dirty lookup during mpage_da_submit_io
-Date: Mon, 15 Mar 2010 20:26:01 -0400
-Message-ID: <1268699165-17461-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.27.y 09/11] vfs: Add no_nrwrite_index_update writeback control flag
+Date: Mon, 15 Mar 2010 20:26:03 -0400
+Message-ID: <1268699165-17461-10-git-send-email-tytso@mit.edu>
 References: <1268699165-17461-1-git-send-email-tytso@mit.edu>
 Cc: "Jayson R. King" <dev@jaysonking.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>
+	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
 To: stable@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38644 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932851Ab0CPA0L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Mar 2010 20:26:11 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1268699165-17461-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit af6f029d3836eb7264cd3fbb13a6baf0e5fdb5ea upstream.
+commit 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 upstream.
 
-This enables us to drop the range_cont writeback mode
-use from ext4_da_writepages.
+If no_nrwrite_index_update is set we don't update nr_to_write and
+address space writeback_index in write_cache_pages.  This change
+enables a file system to skip these updates in write_cache_pages and do
+them in the writepages() callback.  This patch will be followed by an
+ext4 patch that make use of these new flags.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-fsdevel@vger.kernel.org
+[dev@jaysonking.com: Modified the patch to account for subsequent changes in mainline being cherry-picked earlier for 2.6.27.y.]
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   30 +++++++++++++-----------------
- 1 files changed, 13 insertions(+), 17 deletions(-)
+ include/linux/writeback.h |    9 +++++++++
+ mm/page-writeback.c       |   14 +++++++++-----
+ 2 files changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 71901ae..a67f837 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1699,17 +1699,23 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index cc0e6d9..b93ab38 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -62,6 +62,15 @@ struct writeback_control {
+ 	unsigned for_writepages:1;	/* This is a writepages() call */
+ 	unsigned range_cyclic:1;	/* range_start is cyclic */
+ 	unsigned more_io:1;		/* more io to be dispatched */
++	/*
++	 * write_cache_pages() won't update wbc->nr_to_write and
++	 * mapping->writeback_index if no_nrwrite_index_update
++	 * is set.  write_cache_pages() may write more than we
++	 * requested and we want to make sure nr_to_write and
++	 * writeback_index are updated in a consistent manner
++	 * so we use a single control to update them
++	 */
++	unsigned no_nrwrite_index_update:1;
+ };
  
- 	pagevec_init(&pvec, 0);
- 	while (index <= end) {
--		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		/*
-+		 * We can use PAGECACHE_TAG_DIRTY lookup here because
-+		 * even though we have cleared the dirty flag on the page
-+		 * We still keep the page in the radix tree with tag
-+		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
-+		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
-+		 * which is called via the below writepage callback.
-+		 */
-+		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
-+					PAGECACHE_TAG_DIRTY,
-+					min(end - index,
-+					(pgoff_t)PAGEVEC_SIZE-1) + 1);
- 		if (nr_pages == 0)
- 			break;
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
+ /*
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index e5c4ca2..036dee5 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -878,6 +878,7 @@ int write_cache_pages(struct address_space *mapping,
+ 	pgoff_t done_index;
+ 	int cycled;
+ 	int range_whole = 0;
++	long nr_to_write = wbc->nr_to_write;
  
--			index = page->index;
--			if (index > end)
--				break;
--			index++;
--
- 			BUG_ON(!PageLocked(page));
- 			BUG_ON(PageWriteback(page));
+ 	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 		wbc->encountered_congestion = 1;
+@@ -985,9 +986,9 @@ continue_unlock:
+ 				}
+  			}
  
-@@ -2442,7 +2448,6 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			      struct writeback_control *wbc)
- {
- 	handle_t *handle = NULL;
--	loff_t range_start = 0;
- 	struct mpage_da_data mpd;
- 	struct inode *inode = mapping->host;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
-@@ -2481,14 +2486,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 		wbc->nr_to_write = sbi->s_mb_stream_request;
+-			if (wbc->nr_to_write > 0) {
+-				wbc->nr_to_write--;
+-				if (wbc->nr_to_write == 0 &&
++			if (nr_to_write > 0) {
++				nr_to_write--;
++				if (nr_to_write == 0 &&
+ 				    wbc->sync_mode == WB_SYNC_NONE) {
+ 					/*
+ 					 * We stop writing back only if we are
+@@ -1024,8 +1025,11 @@ continue_unlock:
+ 		end = writeback_index - 1;
+ 		goto retry;
  	}
+-	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+-		mapping->writeback_index = done_index;
++	if (!wbc->no_nrwrite_index_update) {
++		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
++			mapping->writeback_index = done_index;
++		wbc->nr_to_write = nr_to_write;
++	}
  
--	if (!wbc->range_cyclic)
--		/*
--		 * If range_cyclic is not set force range_cont
--		 * and save the old writeback_index
--		 */
--		wbc->range_cont = 1;
- 
--	range_start =  wbc->range_start;
- 	pages_skipped = wbc->pages_skipped;
- 
- 	mpd.wbc = wbc;
-@@ -2559,9 +2557,8 @@ restart_loop:
- 		wbc->nr_to_write = to_write;
- 	}
- 
--	if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
-+	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
- 		/* We skipped pages in this loop */
--		wbc->range_start = range_start;
- 		wbc->nr_to_write = to_write +
- 				wbc->pages_skipped - pages_skipped;
- 		wbc->pages_skipped = pages_skipped;
-@@ -2570,7 +2567,6 @@ restart_loop:
- 
- out_writepages:
- 	wbc->nr_to_write = to_write - nr_to_writebump;
--	wbc->range_start = range_start;
  	return ret;
  }
- 
 -- 
 1.6.6.1.1.g974db.dirty
 
