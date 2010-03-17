@@ -1,48 +1,48 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15543] Oops in dentry_iput during ext3 remount readonly
-Date: Wed, 17 Mar 2010 12:15:25 GMT
-Message-ID: <201003171215.o2HCFP7q010964@demeter.kernel.org>
-References: <bug-15543-13602@http.bugzilla.kernel.org/>
+From: "Wei, Zibiao" <zwei@syncsort.com>
+Subject: Meta BGs and Flex BGs
+Date: Wed, 17 Mar 2010 09:50:56 -0400
+Message-ID: <1E6F625B713B6F429425AD4B5A8034A96811B5@email4.us.syncsort.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54087 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754596Ab0CQMP0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Mar 2010 08:15:26 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2HCFPEo010965
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Mar 2010 12:15:25 GMT
-In-Reply-To: <bug-15543-13602@http.bugzilla.kernel.org/>
+Received: from email4.syncsort.com ([65.115.38.4]:9705 "EHLO
+	email4.us.syncsort.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751836Ab0CQNu6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Mar 2010 09:50:58 -0400
+Content-Class: urn:content-classes:message
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=15543
+Hi,
 
-
-Jan Kara <jack@suse.cz> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
-         AssignedTo|fs_ext3@kernel-bugs.osdl.or |jack@suse.cz
-                   |g                           |
+Can both EXT4_FEATURE_INCOMPAT_META_BG and EXT4_FEATURE_INCOMPAT_FLEX_BG
+flags turn on the same time? If yes, I am wondering whether there is a
+correlation between the numbers of block groups in META group and FLEX
+group. Where are backups of superblock and group description table (GDT)
+stored in this case?
 
 
 
+Thanks.
 
---- Comment #3 from Jan Kara <jack@suse.cz>  2010-03-17 12:15:19 ---
-Thanks for the report. I'm sorry but this looks like a single-bit error. From
-the oops, it looks like the kernel tried to dereference address 0xb05cad1c
-while the correct address would be f05cad1c (as you can see, lots of addresses
-in this range are in registers so that's probably where kernel has it's data on
-your machine). So I'd blame either cosmic rays or faulty HW. Maybe try running
-memtest, or try replacing memory if it repeats. I'll close the bug as
-invalid...
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+_____________________________________________________________________________
+
+ATTENTION:
+
+The information contained in this message (including any files transmitted 
+with this message) may contain proprietary, trade secret or other 
+confidential and/or legally privileged information. Any pricing 
+information contained in this message or in any files transmitted with 
+this message is always confidential and cannot be shared with any third 
+parties without prior written approval from Syncsort. This message is 
+intended to be read only by the individual or entity to whom it is 
+addressed or by their designee. If the reader of this message is not the 
+intended recipient, you are on notice that any use, disclosure, copying or 
+distribution of this message, in any form, is strictly prohibited. If you 
+have received this message in error, please immediately notify the sender 
+and/or Syncsort and destroy all copies of this message in your possession, 
+custody or control.
