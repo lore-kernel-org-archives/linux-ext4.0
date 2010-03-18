@@ -1,51 +1,43 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4 filesystem
-Date: Thu, 18 Mar 2010 15:25:00 -0600
-Message-ID: <41219796-D9F2-4292-9284-E8D266EB3532@sun.com>
-References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
- <1268920970-9061-2-git-send-email-dmonakhov@openvz.org>
- <1268920970-9061-3-git-send-email-dmonakhov@openvz.org>
- <1268920970-9061-4-git-send-email-dmonakhov@openvz.org>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: >2TB file issue with e2fsck
+Date: Thu, 18 Mar 2010 14:25:23 -0700
+Message-ID: <150c16851003181425s3cea7067o1505279f9d01b0a9@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, hch@infradead.org, jack@suse.cz,
-	david@fromorbit.com, viro@ZenIV.linux.org.uk, xemul@openvz.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <1268920970-9061-4-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-px0-f198.google.com ([209.85.216.198]:62737 "EHLO
+	mail-px0-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751323Ab0CRVZY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Mar 2010 17:25:24 -0400
+Received: by pxi36 with SMTP id 36so1849288pxi.21
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Mar 2010 14:25:23 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-03-18, at 08:02, Dmitry Monakhov wrote:
-> * Disk layout
->  Project id is stored on disk inside xattr usually inside ibody.
->  Xattr is used only as a data storage, It has not user visible xattr
->  interface.
->
-> * User interface
->  Project id is accessible via generic xattr interface  
-> "system.project_id"
->
-> +#define EXT4_XATTR_INDEX_PROJECT_ID	        7
+Ran into an interesting issue, and thought I'd report it.  I created a
+4TB file using posix_fallocate() on a freshly-created ext4 filesystem,
+unmounted, and then ran e2fsck -f on it.  Using e2fsprogs 1.41.9,
+e2fsck ran through with no issues.  Versions 1.41.10 and 1.41.11,
+however, reported finding an error.  Output was the same for both
+1.41.10 and 1.41.11:
 
-If you are making this attribute available to userspace via  
-system.project_id, doesn't it make sense to store it on disk as  
-system.project_id also (i.e. in the "system" namespace)?
+e2fsck 1.41.10 (10-Feb-2009)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 12, i_blocks is 8589935432, should be 840.  Fix? yes
 
-Alternately, the "trusted" namespace is already intended for use as  
-"accessible only by root/kernel" semantics if this is what you are  
-trying to achieve.
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
 
-I'm also with the statement "It has not user visible xattr interface"  
-yet you also write "Project id is accessible via generic xattr  
-interface".  Why bother having this complexity when you are free to  
-make the two identical?
+c: ***** FILE SYSTEM WAS MODIFIED *****
+c: 12/90523648 files (0.0% non-contiguous), 1079543383/1448361984 blocks
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I'm in the process of trying it again using dd to create the large
+file instead of posix_fallocate(), but I suspect the results will be
+the same.  Writing out such a huge file using dd takes a lot longer,
+since as was discussed on this list a couple weeks ago, large
+sequential writes on ext4 max out around 350MB/s. :)
 
+-Justin
