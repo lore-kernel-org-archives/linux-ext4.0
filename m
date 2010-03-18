@@ -1,48 +1,51 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: memory leakage in ext4_discard_preallocations
-Date: Thu, 18 Mar 2010 13:46:29 -0400
-Message-ID: <20100318174629.GK8256@thunk.org>
-References: <ac8f92701003180539h7228040bm82a0c69d678ec93b@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4 filesystem
+Date: Thu, 18 Mar 2010 15:25:00 -0600
+Message-ID: <41219796-D9F2-4292-9284-E8D266EB3532@sun.com>
+References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
+ <1268920970-9061-2-git-send-email-dmonakhov@openvz.org>
+ <1268920970-9061-3-git-send-email-dmonakhov@openvz.org>
+ <1268920970-9061-4-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: jing zhang <zj.barak@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51485 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753477Ab0CRRqy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Mar 2010 13:46:54 -0400
-Content-Disposition: inline
-In-Reply-To: <ac8f92701003180539h7228040bm82a0c69d678ec93b@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, hch@infradead.org, jack@suse.cz,
+	david@fromorbit.com, viro@ZenIV.linux.org.uk, xemul@openvz.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <1268920970-9061-4-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
->  		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
-> @@ -3811,6 +3813,12 @@ repeat:
->  		list_del(&pa->u.pa_tmp_list);
->  		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
->  	}
-> +	if (! list_empty(&list)) {
-> +		if (occurs++ < 2)
-> +			goto best_efforts;
-> +		else
-> +			BUG();
-> +	}
->  	if (ac)
->  		kmem_cache_free(ext4_ac_cachep, ac);
->  }
+On 2010-03-18, at 08:02, Dmitry Monakhov wrote:
+> * Disk layout
+>  Project id is stored on disk inside xattr usually inside ibody.
+>  Xattr is used only as a data storage, It has not user visible xattr
+>  interface.
+>
+> * User interface
+>  Project id is accessible via generic xattr interface  
+> "system.project_id"
+>
+> +#define EXT4_XATTR_INDEX_PROJECT_ID	        7
 
-Hmm, I'm not sure that BUG() is appropriate here.  If there is an
-I/O error reading the block bitmap, #1, retrying isn't going to help,
-and #2, bringing down the entire system just because of an I/O error
-in reading the block bitmap doesn't seem right.
+If you are making this attribute available to userspace via  
+system.project_id, doesn't it make sense to store it on disk as  
+system.project_id also (i.e. in the "system" namespace)?
 
-Right now, if there is a problem, we just end up leaving the
-preallocated list on the inode.  Does that cause problems later on
-down the line which you have observed?
+Alternately, the "trusted" namespace is already intended for use as  
+"accessible only by root/kernel" semantics if this is what you are  
+trying to achieve.
 
-					- Ted
+I'm also with the statement "It has not user visible xattr interface"  
+yet you also write "Project id is accessible via generic xattr  
+interface".  Why bother having this complexity when you are free to  
+make the two identical?
 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
