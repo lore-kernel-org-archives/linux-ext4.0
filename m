@@ -1,63 +1,64 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: [PATCH] ext4: memory leakage in ext4_discard_preallocations
-Date: Thu, 18 Mar 2010 20:39:40 +0800
-Message-ID: <ac8f92701003180539h7228040bm82a0c69d678ec93b@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/5] RFC: introduce extended inode owner identifier v6
+Date: Thu, 18 Mar 2010 17:02:45 +0300
+Message-ID: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
+Cc: linux-fsdevel@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
+	hch@infradead.org, jack@suse.cz, david@fromorbit.com,
+	viro@ZenIV.linux.org.uk, xemul@openvz.org,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:33959 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752896Ab0CRMjl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Mar 2010 08:39:41 -0400
-Received: by gyg8 with SMTP id 8so978093gyg.19
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Mar 2010 05:39:40 -0700 (PDT)
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:55608 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753398Ab0CROC6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Mar 2010 10:02:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jing Zhang <zj.barak@gmail.com>
+This is 6'th version of extened inode owner patch-set.
+Please review it tell me what do you think about all this.
+ Are you agree with this approach?
+ Are you worry about some implementation details?
+ Is it ready for merge to some devel's tree?
 
-Date: Thu Mar 18 20:33:44 2010
+*Feature description*
+1) Inode may has a project identifier which has same meaning as uid/gid.
+2) Id is stored in inode's xattr named "system.project_id"
+3) Id is inherent from parent inode on creation.
+4) This id is cached in memory inode structure vfs_inode->i_prjid
+   This field it restricted by CONFIG_PROJECT_ID. So no wasting
+   of memory happens.
 
-When unexpected errors occur, there is memory leakage, and more.
+5) Since id is cached in memory it may be used for different purposes
+   such as:
+5A) Implement additional quota id space orthogonal to uid/gid. This is
+    useful in managing quota for some filesystem hierarchy(chroot or
+    container over bindmount)
+5B) Export dedicated fs hierarchy to nfsd (only inode which has some
+    project_id will be accessible via nfsd)
 
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+6) It is possible to create isolated project's subtree.
+   Note: Please do not blame isolation feature before you read the
+         isolation patch description, and than please wellcome.
 
----
+*User interface *
+Project id is managed via generic xattr interface "system.project_id"
+This good because
+ 1) We may use already existing interface.
+ 2) xattr already supported by generic urils tar/rsync and etc
 
---- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-+++ zj/mballoc.c	2010-03-18 20:41:32.000000000 +0800
-@@ -3717,6 +3717,7 @@ void ext4_discard_preallocations(struct
- 	struct list_head list;
- 	struct ext4_buddy e4b;
- 	int err;
-+	int occurs = 0;
+PATCH SET TOC:
+1) generic projectid support
+2) generic project quota support
+3) ext4 project support implementation
+ 3A) ext4: generic project support
+ 3B) ext4: project quota support
+ 3C) ext4: project isolation support. This patch is not principal
+           but makes ext4 implementation rename behaviour equotals
+	   to XFS
 
- 	if (!S_ISREG(inode->i_mode)) {
- 		/*BUG_ON(!list_empty(&ei->i_prealloc_list));*/
-@@ -3781,6 +3782,7 @@ repeat:
- 	}
- 	spin_unlock(&ei->i_prealloc_lock);
-
-+best_efforts:
- 	list_for_each_entry_safe(pa, tmp, &list, u.pa_tmp_list) {
- 		BUG_ON(pa->pa_type != MB_INODE_PA);
- 		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
-@@ -3811,6 +3813,12 @@ repeat:
- 		list_del(&pa->u.pa_tmp_list);
- 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
- 	}
-+	if (! list_empty(&list)) {
-+		if (occurs++ < 2)
-+			goto best_efforts;
-+		else
-+			BUG();
-+	}
- 	if (ac)
- 		kmem_cache_free(ext4_ac_cachep, ac);
- }
+Patch against linux-next-20100318
+Changes against v5
+ - convert dquota_transfer to struct iattr interface. Not it is possible
+   to change i_prjid via notify_changes()
+ - some bugfixes.
