@@ -1,56 +1,81 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4 filesystem
-Date: Fri, 19 Mar 2010 11:16:14 +0300
-Message-ID: <87fx3wg20h.fsf@openvz.org>
-References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
-	<1268920970-9061-2-git-send-email-dmonakhov@openvz.org>
-	<1268920970-9061-3-git-send-email-dmonakhov@openvz.org>
-	<1268920970-9061-4-git-send-email-dmonakhov@openvz.org>
-	<41219796-D9F2-4292-9284-E8D266EB3532@sun.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15579] New: ext4 -o discard produces incorrect blocks of zeroes
+ in newly created files under heavy read+truncate+append-new-file load
+Date: Fri, 19 Mar 2010 10:51:38 GMT
+Message-ID: <bug-15579-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, hch@infradead.org, jack@suse.cz,
-	david@fromorbit.com, viro@ZenIV.linux.org.uk, xemul@openvz.org
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <41219796-D9F2-4292-9284-E8D266EB3532@sun.com> (Andreas Dilger's
-	message of "Thu, 18 Mar 2010 15:25:00 -0600")
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:35895 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751359Ab0CSKvj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Mar 2010 06:51:39 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2JApcce006324
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Mar 2010 10:51:38 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger <adilger@sun.com> writes:
+http://bugzilla.kernel.org/show_bug.cgi?id=15579
 
-> On 2010-03-18, at 08:02, Dmitry Monakhov wrote:
->> * Disk layout
->>  Project id is stored on disk inside xattr usually inside ibody.
->>  Xattr is used only as a data storage, It has not user visible xattr
->>  interface.
->>
->> * User interface
->>  Project id is accessible via generic xattr interface
->> "system.project_id"
->>
->> +#define EXT4_XATTR_INDEX_PROJECT_ID	        7
->
-> If you are making this attribute available to userspace via
-> system.project_id, doesn't it make sense to store it on disk as
-> system.project_id also (i.e. in the "system" namespace)?
->
-> Alternately, the "trusted" namespace is already intended for use as
-> "accessible only by root/kernel" semantics if this is what you are
-> trying to achieve.
-Yess, may be it will be better storage class for projectid.
-> I'm also with the statement "It has not user visible xattr interface"
-> yet you also write "Project id is accessible via generic xattr
-> interface".  Why bother having this complexity when you are free to
-> make the two identical?
-Ohh. obviously sentence that 'xattr is not visible' is obsolete.
-I'v forgot to change it after prjid becomes visible xattr, sorry
-for ambiguity.
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
+           Summary: ext4 -o discard produces incorrect blocks of zeroes in
+                    newly created files under heavy
+                    read+truncate+append-new-file load
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: kernel-bugs@abeckmann.de
+        Regression: No
+
+
+I'm testing ext4 -o discard on a Super Talent FTM56GX25H SSD. The speed
+increase by using the discard option seems promising.
+But I'm experiencing problems under a certain stressful file system load:
+
+(approximate description, the actual sizes/numbers are not exact MB/GB, but
+that shouldn't be a problem)
+* you have a 252 GB ext4 -m 0 -T largefile filesystem
+* you have 250 input files of size 1 GB each and an empty output file
+* while the input has not been consumed
+  - load 1 MB from the end of each input file
+  - truncate the input files to reduce their size by 1 MB
+  - do some computation ...
+  - append 250 MB to the output file
+
+Checking the output file after operation has finished I find blocks of 0x00
+that should not be there. These blocks are usually the size of 1MB (the size
+that was truncated and 'discarded') and always multiples of 16KB (the minimal
+discard/TRIM-able unit (also the discard/TRIM alignment) of the SSD, found by
+doing manual experiments using hdparm --trim-sector-ranges).
+In several repetitions I've counted about 10-12MB of invalid 0x00 bytes in the
+output.
+
+The problem does not occur if I use 250000 inputfiles instead, read a subset of
+250 files and delete them before writing the output. This is significantly
+slower.
+
+A possible cause could be some race condition between
+* freeing filesystem blocks by truncating a file and queuing them for
+DISCARD/TRIM
+* allocating free filesystem blocks for a new append/write to a file
+* submitting the DISCARD/TRIM request to the disk
+* submitting the write request to the disk
+
+Is there a possibility to generate debug information from ext4 that would be
+helpful for tracking down this problem? The file system on the SSD is the only
+ext[2-4] file system in the machine.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
