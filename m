@@ -1,51 +1,102 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 1/3] ext4: Convert calls of ext4_error() to EXT4_ERROR_INODE()
-Date: Thu, 18 Mar 2010 20:50:40 -0400
-Message-ID: <1268959842-4697-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 3/3] ext4: Add option for squelching ext4 errors to prevent dmesg from filling up
+Date: Thu, 18 Mar 2010 20:50:42 -0400
+Message-ID: <1268959842-4697-3-git-send-email-tytso@mit.edu>
+References: <1268959842-4697-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34404 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:34408 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751808Ab0CSAvH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751875Ab0CSAvH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 18 Mar 2010 20:51:07 -0400
+In-Reply-To: <1268959842-4697-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-EXT4_ERROR_INODE() tends to provide better error information and in a
-more consistent format.
+Only print one error per inode; this is enough to know that something
+is wrong with an inode, without filling dmesg by spamming the system
+with messages over and over again.
+
+This is enabled via sysfs option, which is currently off by default.
+Some environments may want to turn this on by default.  Eventually we
+may want to make this be something which is tunable by a superblock
+flag, perhaps.
 
 Addresses-Google-Bug: #2507977
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
+ fs/ext4/ext4.h  |    2 ++
+ fs/ext4/super.c |   21 +++++++++++++++------
+ 2 files changed, 17 insertions(+), 6 deletions(-)
 
-Yes, there are more calls to ext4_error that we probably want to convert
-to use ext4_error_inode; this is just for illustrative purposes, and
-because it's the one which is most obnoxious if there is a bad entry in
-a particular inode which is referenced over and over again (see patch 3
-in this series).
-
- fs/ext4/namei.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 0c070fa..0c0cba4 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1072,9 +1072,9 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
- 		inode = ext4_iget(dir->i_sb, ino);
- 		if (unlikely(IS_ERR(inode))) {
- 			if (PTR_ERR(inode) == -ESTALE) {
--				ext4_error(dir->i_sb,
--						"deleted inode referenced: %u",
--						ino);
-+				EXT4_ERROR_INODE(dir,
-+						 "deleted inode referenced: %u",
-+						 ino);
- 				return ERR_PTR(-EIO);
- 			} else {
- 				return ERR_CAST(inode);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bf938cf..58b4983 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -895,6 +895,7 @@ struct ext4_super_block {
+  */
+ #define EXT4_MF_MNTDIR_SAMPLED	0x0001
+ #define EXT4_MF_FS_ABORTED	0x0002	/* Fatal error detected */
++#define EXT4_MF_FS_SQUELCH	0x0004	/* Squelch file system errors */
+ 
+ /*
+  * fourth extended-fs super-block data in memory
+@@ -1062,6 +1063,7 @@ enum {
+ 	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
+ 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+ 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
++	EXT4_STATE_ERR_SQUELCHED,	/* squeched error */
+ };
+ 
+ static inline int ext4_test_inode_state(struct inode *inode, int bit)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1d23b65..c28e8bc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -363,12 +363,19 @@ void ext4_error_inode(const char *function, struct inode *inode,
+ {
+ 	va_list args;
+ 
+-	va_start(args, fmt);
+-	printk(KERN_CRIT "EXT4-fs error (device %s): %s: inode #%lu: (comm %s) ",
+-	       inode->i_sb->s_id, function, inode->i_ino, current->comm);
+-	vprintk(fmt, args);
+-	printk("\n");
+-	va_end(args);
++	if (!ext4_test_inode_state(inode, EXT4_STATE_ERR_SQUELCHED) ||
++	    !(EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_SQUELCH)) {
++		va_start(args, fmt);
++		printk(KERN_CRIT "EXT4-fs error (device %s): %s: "
++		       "inode #%lu: (comm %s) ",
++		       inode->i_sb->s_id, function, inode->i_ino,
++		       current->comm);
++		vprintk(fmt, args);
++		printk("\n");
++		va_end(args);
++		if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_SQUELCH)
++			ext4_set_inode_state(inode, EXT4_STATE_ERR_SQUELCHED);
++	}
+ 
+ 	ext4_handle_error(inode->i_sb);
+ }
+@@ -2354,6 +2361,7 @@ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+ EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+ EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
++EXT4_RW_ATTR_SBI_BOOL(squelch_errors, s_mount_flags, EXT4_MF_FS_SQUELCH);
+ 
+ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(delayed_allocation_blocks),
+@@ -2368,6 +2376,7 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(mb_stream_req),
+ 	ATTR_LIST(mb_group_prealloc),
+ 	ATTR_LIST(max_writeback_mb_bump),
++	ATTR_LIST(squelch_errors),
+ 	NULL,
+ };
+ 
 -- 
 1.6.6.1.1.g974db.dirty
 
