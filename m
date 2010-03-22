@@ -1,168 +1,100 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: [PATCH] ext4: remove unnecessary operation in ext4_mb_regular_allocator()
-Date: Mon, 22 Mar 2010 22:35:54 +0800
-Message-ID: <ac8f92701003220735h76b4a51dib1a9b311f9cf6d99@mail.gmail.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH 1/2] ext4/jbd2: fix io-barrier logic in case of
+ external journal
+Date: Mon, 22 Mar 2010 11:03:42 -0400
+Message-ID: <20100322150342.GG11560@thunk.org>
+References: <1268414810-17289-1-git-send-email-dmonakhov@openvz.org>
+ <20100322012000.GD11560@thunk.org>
+ <87iq8o4fmk.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f182.google.com ([209.85.210.182]:37910 "EHLO
-	mail-yx0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750967Ab0CVOf4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Mar 2010 10:35:56 -0400
-Received: by yxe12 with SMTP id 12so1816552yxe.33
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 07:35:55 -0700 (PDT)
+Received: from thunk.org ([69.25.196.29]:59634 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750861Ab0CVPD6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Mar 2010 11:03:58 -0400
+Content-Disposition: inline
+In-Reply-To: <87iq8o4fmk.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jing Zhang <zj.barak@gmail.com>
+On Mon, Mar 22, 2010 at 05:04:19PM +0300, Dmitry Monakhov wrote:
+> tytso@mit.edu writes:
+> 
+> > On Fri, Mar 12, 2010 at 08:26:49PM +0300, Dmitry Monakhov wrote:
+> >>  start_journal_io:
+> >> +			if (bufs)
+> >> +				commit_transaction->t_flushed_data_blocks = 1;
+> >> +
+> >
+> > I'm not convinced this is right.
+> >
+> > From your test case, the problem isn't because we have journaled
+> > metadata blocks (which is what bufs) counts, but because fsync()
+> > depends on data blocks also getting flushed out to disks.
+> >
+> > However, if we aren't closing the transaction because of fsync(), I
+> > don't think we need to do a barrier in the case of an external
+> > journal.  So instead of effectively unconditionally setting
+> > t_flushed_data_blocks (since bufs is nearly always going to be
+> > non-zero), I think the better fix is to test to see if the journal
+> > device != to the fs data device in fsync(), and if so, start the
+> > barrier operation there.
+> >
+> > Do you agree?
+> Yes.
 
-Date: Mon Mar 22 22:20:38     2010
+Just to be clear, since I realized I wrote fsync() when I should have
+written fs/ext4/fsync.c, my proposal was to put this check in
+ext4_sync_file().
 
-1, In one of the hot functions in mballoc.c, unnecessary operation on
-       struct ext4_group_desc *desc;
-    is removed.
+> BTW Would it be correct to update j_tail in
+> jbd2_journal_commit_transaction() to something more recent
+> if we have issued an io-barrier to j_fs_dev?
+> This will helps to reduce journal_recovery time which may be really
+> painful in some slow devices.
 
-2, Unlike spin_lock() and spin_unlock(), ext4_mb_load_buddy() is
-companied by ext4_mb_release_desc. And it is hard, at least for me, to
-get sure that ext4_mb_release_desc has little to do with struct
-ext4_group_desc, and for those readers as well, whose native language
-is not English. It seems the choice includes
-     ext4_mb_release_buddy
-     ext4_mb_put_buddy
-     ext4_mb_unload_buddy
-and I like the last one.
+Um, maybe.  We are already calling __jbd2_journal_clean_checkpoint_list(),
+and the barrier operation *is* expensive.
 
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+On the other hand, updating the journal superblock on every sync is
+another seek that would have to made before the barrier operation, and
+I'm a bit concerned that this seek would be noticeable.  If it is
+noticeable, is it worth it to optimize for the uncommon case (a power
+failure requiring a journal replay) when it might cost us something,
+however, small, on every single journal update?
 
----
+Do we really think the journal replay time is really something that is
+a major pain point.  I can think of optimizations that involve
+skipping writes that will get updated later in future transactions,
+but it means complicating the replay code, which has been stable for a
+long time, and it's not clear to me that the costs are worth the
+benefits.
 
---- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-+++ ext4_mm_leak/mballoc4.c	2010-03-22 22:08:56.000000000 +0800
-@@ -1150,7 +1150,7 @@ err:
- 	return ret;
- }
+> I've take a look at async commit logic: fs/jbd2/commit.c
+> void jbd2_journal_commit_transaction(journal_t *journal)
+> {
+> 725:    /* Done it all: now write the commit record asynchronously. */
+>         if (JBD2_HAS_INCOMPAT_FEATURE(journal,
+>                                       JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT))
+>                                       {
+>                 err = journal_submit_commit_record(journal,
+>                 commit_transaction,
+>                                                  &cbh, crc32_sum);
+>                 if (err)
+>                         __jbd2_journal_abort_hard(journal);
+>                 if (journal->j_flags & JBD2_BARRIER)
+>                         blkdev_issue_flush(journal->j_dev, NULL);
+> <<< blkdev_issue_flush is wait for barrier to complete by default, but
+> <<< in fact we don't have to wait for barrier here. I've prepared a
+> <<< patch wich add flags to control blkdev_issue_flush() wait
+> <<< behavior, and this is the place for no-wait variant.
 
--static void ext4_mb_release_desc(struct ext4_buddy *e4b)
-+static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
- {
- 	if (e4b->bd_bitmap_page)
- 		page_cache_release(e4b->bd_bitmap_page);
-@@ -1618,7 +1618,7 @@ int ext4_mb_try_best_found(struct ext4_a
- 	}
+I think that's right, as long as we're confident that subsequent
+writes won't get scheduled before the no-wait barrier.  If it did, it
+would be a bug in the block I/O layer, so it should be OK.
 
- 	ext4_unlock_group(ac->ac_sb, group);
--	ext4_mb_release_desc(e4b);
-+	ext4_mb_unload_buddy(e4b);
-
- 	return 0;
- }
-@@ -1674,7 +1674,7 @@ int ext4_mb_find_by_goal(struct ext4_all
- 		ext4_mb_use_best_found(ac, e4b);
- 	}
- 	ext4_unlock_group(ac->ac_sb, group);
--	ext4_mb_release_desc(e4b);
-+	ext4_mb_unload_buddy(e4b);
-
- 	return 0;
- }
-@@ -2027,7 +2027,7 @@ repeat:
-
- 		for (i = 0; i < ngroups; group++, i++) {
- 			struct ext4_group_info *grp;
--			struct ext4_group_desc *desc;
-+			/* struct ext4_group_desc *desc; */
-
- 			if (group == ngroups)
- 				group = 0;
-@@ -2045,12 +2045,12 @@ repeat:
- 			if (!ext4_mb_good_group(ac, group, cr)) {
- 				/* someone did allocation from this group */
- 				ext4_unlock_group(sb, group);
--				ext4_mb_release_desc(&e4b);
-+				ext4_mb_unload_buddy(&e4b);
- 				continue;
- 			}
-
- 			ac->ac_groups_scanned++;
--			desc = ext4_get_group_desc(sb, group, NULL);
-+			/* desc = ext4_get_group_desc(sb, group, NULL); */
- 			if (cr == 0)
- 				ext4_mb_simple_scan_group(ac, &e4b);
- 			else if (cr == 1 &&
-@@ -2060,7 +2060,7 @@ repeat:
- 				ext4_mb_complex_scan_group(ac, &e4b);
-
- 			ext4_unlock_group(sb, group);
--			ext4_mb_release_desc(&e4b);
-+			ext4_mb_unload_buddy(&e4b);
-
- 			if (ac->ac_status != AC_STATUS_CONTINUE)
- 				break;
-@@ -2150,7 +2150,7 @@ static int ext4_mb_seq_groups_show(struc
- 	ext4_lock_group(sb, group);
- 	memcpy(&sg, ext4_get_group_info(sb, group), i);
- 	ext4_unlock_group(sb, group);
--	ext4_mb_release_desc(&e4b);
-+	ext4_mb_unload_buddy(&e4b);
-
- 	seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
- 			sg.info.bb_fragments, sg.info.bb_first_free);
-@@ -2567,7 +2567,7 @@ static void release_blocks_on_commit(jou
- 		sb_issue_discard(sb, discard_block, entry->count);
-
- 		kmem_cache_free(ext4_free_ext_cachep, entry);
--		ext4_mb_release_desc(&e4b);
-+		ext4_mb_unload_buddy(&e4b);
- 	}
-
- 	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
-@@ -3692,7 +3692,7 @@ out:
- 	ext4_unlock_group(sb, group);
- 	if (ac)
- 		kmem_cache_free(ext4_ac_cachep, ac);
--	ext4_mb_release_desc(&e4b);
-+	ext4_mb_unload_buddy(&e4b);
- 	put_bh(bitmap_bh);
- 	return free;
- }
-@@ -3796,7 +3796,7 @@ repeat:
- 		if (bitmap_bh == NULL) {
- 			ext4_error(sb, __func__, "Error in reading block "
- 					"bitmap for %u", group);
--			ext4_mb_release_desc(&e4b);
-+			ext4_mb_unload_buddy(&e4b);
- 			continue;
- 		}
-
-@@ -3805,7 +3805,7 @@ repeat:
- 		ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa, ac);
- 		ext4_unlock_group(sb, group);
-
--		ext4_mb_release_desc(&e4b);
-+		ext4_mb_unload_buddy(&e4b);
- 		put_bh(bitmap_bh);
-
- 		list_del(&pa->u.pa_tmp_list);
-@@ -4069,7 +4069,7 @@ ext4_mb_discard_lg_preallocations(struct
- 		ext4_mb_release_group_pa(&e4b, pa, ac);
- 		ext4_unlock_group(sb, group);
-
--		ext4_mb_release_desc(&e4b);
-+		ext4_mb_unload_buddy(&e4b);
- 		list_del(&pa->u.pa_tmp_list);
- 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
- 	}
-@@ -4570,7 +4570,7 @@ do_more:
- 		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
- 	}
-
--	ext4_mb_release_desc(&e4b);
-+	ext4_mb_unload_buddy(&e4b);
-
- 	*freed += count;
+      	       	      	    	- Ted
+ 
