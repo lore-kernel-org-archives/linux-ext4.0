@@ -1,63 +1,101 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
-Date: Sun, 21 Mar 2010 21:27:58 -0400
-Message-ID: <20100322012758.GE11560@thunk.org>
-References: <ac8f92701003210701j5926f2c4v843e36bc602a0444@mail.gmail.com>
+Subject: Re: [PATCH] memory leakage in ext4_ext_zeroout
+Date: Sun, 21 Mar 2010 21:02:10 -0400
+Message-ID: <20100322010210.GC11560@thunk.org>
+References: <ac8f92701003110542p6c11ad77l285091cf28928660@mail.gmail.com>
+ <1268402132.32032.13.camel@norville.austin.ibm.com>
+ <ac8f92701003122233i6e673351p692dbc2a452b2514@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, Xu Chang Ming <xcmhit@gmail.com>
 To: jing zhang <zj.barak@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51213 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:51214 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753690Ab0CVCMR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Mar 2010 22:12:17 -0400
+	id S1753708Ab0CVCMS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Mar 2010 22:12:18 -0400
 Content-Disposition: inline
-In-Reply-To: <ac8f92701003210701j5926f2c4v843e36bc602a0444@mail.gmail.com>
+In-Reply-To: <ac8f92701003122233i6e673351p692dbc2a452b2514@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 21, 2010 at 10:01:06PM +0800, jing zhang wrote:
+On Sat, Mar 13, 2010 at 02:33:28PM +0800, jing zhang wrote:
 > From: Jing Zhang <zj.barak@gmail.com>
 > 
-> Date: Sun Mar 21 21:59:35     2010
+> Date: Sat Mar 13 14:05:27     2010
 > 
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger@sun.com>
+> When EIO occurs after bio is submitted, there is no memory free
+> operation for bio, which results in memory leakage. And there is also
+> no check against bio_alloc() for bio.
+> 
 > Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 > Signed-off-by: Jing Zhang <zj.barak@gmail.com>
-> 
-> ---
-> 
-> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-> +++ ext4_mm_leak/mballoc3.c	2010-03-21 21:37:18.000000000 +0800
-> @@ -2360,6 +2360,24 @@ err_freesgi:
->  	return -ENOMEM;
->  }
-> 
-> +static void ext4_mb_destroy_backend(struct super_block *sb)
-> +{
-> +	ext4_group_t ngroups = ext4_get_groups_count(sb);
-> +	ext4_group_t i;
-> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> +	int j;
-> +	int num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -1)
-> +					>> EXT4_DESC_PER_BLOCK_BITS(sb);
-> +	for (i = 0; i < ngroups; i++)
-> +		kfree(ext4_get_group_info(sb, i));
-> +
-> +	for (j = 0; j < num_meta_group_infos; j++)
-> +		kfree(sbi->s_group_info[j]);
-> +
-> +	kfree(sbi->s_group_info);
-> +	iput(sbi->s_buddy_cache);
-> +}
-> +
 
-It would be better if this could be done by making ext4_mb_release()
-more flexible, and then calling ext4_mb_release() if there is an error
-setting up the data structures in ext4_mb_init().
+Thanks for the patch.
 
-						- Ted
+This is what I've checked in, which also simplifies the error handling
+a bit and makes the code a bit easier to follow.
+
+      	  	    	       	      	 - Ted
+
+ext4: fix memory leaks in error path handling of ext4_ext_zeroout()
+
+From: jing zhang <zj.barak@gmail.com>
+
+When EIO occurs after bio is submitted, there is no memory free
+operation for bio, which results in memory leakage. And there is also
+no check against bio_alloc() for bio.
+
+Acked-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c |   15 ++++++++-------
+ 1 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 94c8ee8..8bdee27 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2544,7 +2544,7 @@ static void bi_complete(struct bio *bio, int error)
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
+ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ {
+-	int ret = -EIO;
++	int ret;
+ 	struct bio *bio;
+ 	int blkbits, blocksize;
+ 	sector_t ee_pblock;
+@@ -2568,6 +2568,9 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 			len = ee_len;
+ 
+ 		bio = bio_alloc(GFP_NOIO, len);
++		if (!bio)
++			return -ENOMEM;
++
+ 		bio->bi_sector = ee_pblock;
+ 		bio->bi_bdev   = inode->i_sb->s_bdev;
+ 
+@@ -2595,17 +2598,15 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 		submit_bio(WRITE, bio);
+ 		wait_for_completion(&event);
+ 
+-		if (test_bit(BIO_UPTODATE, &bio->bi_flags))
+-			ret = 0;
+-		else {
+-			ret = -EIO;
+-			break;
++		if (!test_bit(BIO_UPTODATE, &bio->bi_flags)) {
++			bio_put(bio);
++			return -EIO;
+ 		}
+ 		bio_put(bio);
+ 		ee_len    -= done;
+ 		ee_pblock += done  << (blkbits - 9);
+ 	}
+-	return ret;
++	return 0;
+ }
+ 
+ #define EXT4_EXT_ZERO_LEN 7
+
