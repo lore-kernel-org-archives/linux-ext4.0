@@ -1,35 +1,86 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13549] Kernel oops while online resizing of an ext4 filesystem
-Date: Mon, 22 Mar 2010 20:16:27 GMT
-Message-ID: <201003222016.o2MKGRRk024081@demeter.kernel.org>
-References: <bug-13549-13602@https.bugzilla.kernel.org/>
+From: tytso@mit.edu
+Subject: Re: [PATCH 1/2] ext4/jbd2: fix io-barrier logic in case of
+ external journal
+Date: Mon, 22 Mar 2010 16:22:51 -0400
+Message-ID: <20100322202251.GJ11560@thunk.org>
+References: <1268414810-17289-1-git-send-email-dmonakhov@openvz.org>
+ <20100322012000.GD11560@thunk.org>
+ <87iq8o4fmk.fsf@openvz.org>
+ <20100322150342.GG11560@thunk.org>
+ <87d3yw49m2.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:47084 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755245Ab0CVUQ2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Mar 2010 16:16:28 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2MKGRif024083
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 20:16:27 GMT
-In-Reply-To: <bug-13549-13602@https.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:55009 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755905Ab0CVUWy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Mar 2010 16:22:54 -0400
+Content-Disposition: inline
+In-Reply-To: <87d3yw49m2.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=13549
+On Mon, Mar 22, 2010 at 07:14:13PM +0300, Dmitry Monakhov wrote:
+> >
+> > Just to be clear, since I realized I wrote fsync() when I should have
+> > written fs/ext4/fsync.c, my proposal was to put this check in
+> > ext4_sync_file().
+> This means that we will end up with two io-barriers in a row
+> for external journal case:
+> ext4_sync_file()
+>   ->jbd2_log_start_commit()
+>      ->blkdev_issue_flush(j_fs_dev)
+>   /* seems following flush is mandatory to guarantee the metadata
+>    * consistency */
+>   ->blkdev_issue_flush(j_fs_dev)
 
+Well, not if we only issue a barrier in the external barrier case....
+but I agree the logic may start getting ugly.
 
+> I've already started to work with the patch but was surprised with
+> commit logic. 
+> ->__jbd2_log_start_commit(target)
+>    journal->j_commit_request = target
+>    ->wake_up(&journal->j_wait_commit)
+> ->kjournald2
+>    transaction = journal->j_running_transaction
+>    ->jbd2_journal_commit_transaction(journal);
+>      commit_transaction = journal->j_running_transaction
+>      ...
+>      /* So j_commit_request is used only for comparison. But actually
+>         committing journal->j_running_transaction->t_tid transaction
+>         instead of j_commit_request. Why?
+>       */
 
+Yeah, I don't think jbd2_log_start_commit() has the semantics that are
+currently documented.  We will return 0 if we wake up the commit
+thread, yes --- but since we only check j_commit_request, and it's a
+geq test, it might very well be the case that the transaction was
+committed long ago, and so we end up kicking off a transaction commit
+when one is not needed.  Or, it may be that a transaction is just
+already being committed (and in fact is just about to be completed),
+and so the wake_up() call is a no-op, and so we don't get a barrier
+when one is needed (and expected) by ext4_sync_file().
 
+We need to look at this very closely, but I think
+jbd2_log_start_commit() needs to check to see whether there is a
+current committing transaction, and whether it is the one which is
+that has been requested as a target.  If so, and a barrier is
+requested, I think we need to have jbd2_log_start_commit() do the
+barrier.  There is a risk of having a double barrier in that case, but
+modifying the flag on the currently committing transaction has the
+danger of being lost by kjournald --- or I guess alternatively we
+could have kjournald check that flag while holding j_state_lock, which
+might be better.    
 
---- Comment #9 from Alessandro Polverini <alex@nibbles.it>  2010-03-22 20:16:20 ---
-The problem is reproducible at will, this is not the first time I resized the
-partition and everytime there was a kernel oops.
+If the currently running transaction is the requested target, then
+that's easy; we can set the flag, and then wake up the j_wait_commit
+wait queue.  
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+In any case, log_start_commit() doesn't currently distinguish between
+whether the targetted commit is the running or the committing
+transaction when it returns 0, and I think that's a problem.
+
+	    	    	       	     - Ted
