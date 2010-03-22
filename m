@@ -1,43 +1,78 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13549] Kernel oops while online resizing of an ext4 filesystem
-Date: Mon, 22 Mar 2010 16:51:35 GMT
-Message-ID: <201003221651.o2MGpZXK006908@demeter.kernel.org>
-References: <bug-13549-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Help on Implementation of EXT3 type Ordered Mode in EXT4
+Date: Mon, 22 Mar 2010 17:52:09 +0100
+Message-ID: <20100322165209.GB4754@quack.suse.cz>
+References: <20100211195624.GM739@thunk.org>
+ <38f6fb7d1002111922i4ae6131w6b5cce79344efc63@mail.gmail.com>
+ <20100212200726.GD5337@thunk.org>
+ <38f6fb7d1002130043s54e61e74jcc3297aeeac294b0@mail.gmail.com>
+ <20100215150021.GE3434@quack.suse.cz>
+ <38f6fb7d1002160210x6dc86fb5o82825e7677c07994@mail.gmail.com>
+ <20100216131039.GB3153@quack.suse.cz>
+ <20100216141854.GT5337@thunk.org>
+ <38f6fb7d1002170737l1e9e3b72ub08e106283c26501@mail.gmail.com>
+ <38f6fb7d1003182023j5513640csdc797adb49393ea0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Jiaying Zhang <jiayingz@google.com>
+To: Kailas Joshi <kailas.joshi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52380 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755298Ab0CVQvg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Mar 2010 12:51:36 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2MGpZKn006910
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 16:51:35 GMT
-In-Reply-To: <bug-13549-13602@https.bugzilla.kernel.org/>
+Received: from cantor.suse.de ([195.135.220.2]:60422 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755235Ab0CVQv5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Mar 2010 12:51:57 -0400
+Content-Disposition: inline
+In-Reply-To: <38f6fb7d1003182023j5513640csdc797adb49393ea0@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=13549
+  Hi,
 
+On Fri 19-03-10 08:53:08, Kailas Joshi wrote:
+> I am facing some problems while implementing alloc_on_commit.
+> While performing exhaustive write operations(for example using postmark),
+> system locks up after some time.
+> It runs fine for (simple)non-exhaustive write operations.
+> 
+> I am using filemap_write_and_wait() in journal commit callback for
+> performing synchronous block allocation. It uses special journal handle
+> which enables use of early reservations.
+> Is it right to use this function here? If no, is there any other alternative
+> that should be used in this scenario?
+> 
+> I am using following strategy -
+> 1) ext4_da_get_block_prep() marks delayed-allocation buffers with BH_DA
+> after reserving space for them.
+  We have a BH_Delay flag for this already. OK, probably you need a
+temporary flag which you can clear in ext4_da_write_begin. I'd find
+counting number of BH_Delay buffers before and after block_write_begin
+call nicer...
 
+> 2) ext4_da_write_begin() counts the number of buffers marked with BH_DA and
+> reserves credits for block allocation.
+> 3) journal_stop() accumulates the unused credits of a handle in the
+> transaction.
+> 4) journal_start() when called with nblocks=0, creates a special handle with
+> the credits accumulated by all previous handles(by step 2).
+  This is a hack. I'd rather create a separate JBD2 function for this.
 
+> 5) journal_commit() creates special handle for block allocation(as in step
+> 4) and calls filemap_write_and_wait() to perform block allocation.
+> 
+> I am also sending the patch(for kernel 2.6.32.4) for my implementation (also
+> available at
+> http://www.cse.iitb.ac.in/~kailasjoshi/files/alloc_on_commit.patch).
+> 
+> Being new to filesystem development, I am not able to identify the problem.
+> I will be very greatful if someone can help me out.
+  Probably you are hitting some lock inversion problem. I suggest you
+compile the kernel with lockdep enabled (in Kernel hacking -> Lock debugging
+-> Prove lock correctness or something like that) and see whether it issues
+some warnings. If not, you can get backtraces of the locked up processes
+by pressing Alt-Sysrq-w (or echo "w" >/proc/sysrq-trigger).
 
-
---- Comment #6 from Eric Sandeen <sandeen@redhat.com>  2010-03-22 16:51:25 ---
-I'm very sorry, my fingers translated my brain wrong ;)  Ideally we can start
-with dumpe2fs -h (not e2image -h, sorry) to quickly recreate a similar
-filesystem, and try expanding it.
-
-Keep that e2image around though just in case (although we would need one
-created with -r to use it)
-
-Thanks,
-
--Eric
-
+									Honza
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
