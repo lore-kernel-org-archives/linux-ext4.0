@@ -1,80 +1,109 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/18] ext4: Provide config options for enabling ext4 and jbd2 tracing
-Date: Tue, 23 Mar 2010 01:32:09 +0100
-Message-ID: <1269304340-25372-8-git-send-email-jack@suse.cz>
-References: <1269304340-25372-1-git-send-email-jack@suse.cz>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1269304340-25372-1-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] fix up flex groups used_dirs manipulation
+Date: Mon, 22 Mar 2010 22:34:33 -0500
+Message-ID: <4BA836C9.1050104@redhat.com>
+References: <20100323002123.GQ29604@tux1.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: djwong@us.ibm.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:10785 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754182Ab0CWDek (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Mar 2010 23:34:40 -0400
+In-Reply-To: <20100323002123.GQ29604@tux1.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
+Darrick J. Wong wrote:
+
+...
+> Unfortunately, this second behavior means that the "find the least full
+> blockgroup" code can use stale data in its comparisons.  Am I correct that
+> something is wrong here, or have I misinterpreted the code?  Is it /supposed/
+> to be the case that used_dirs reflects the number of directories in the
+> blockgroup at *mount time* and not at the current time?
+>   
+This does seem weird; the flex_group dir counters are indeed only updated
+at mount time:
+
+ext4_fill_super
+        ext4_fill_flex_info
+                atomic_add(ext4_used_dirs_count(sb, gdp),
+                           &sbi->s_flex_groups[flex_group].used_dirs);
+
+and yet it's read repeatedly in get_orlov_stats:
+
+2 ialloc.c get_orlov_stats      430 stats->used_dirs = atomic_read(&flex_group[g].used_dirs);
+
+I think this patch:
+
+commit 7d39db14a42cbd719c7515b9da8f85a2eb6a0633
+[PATCH] ext4: Use struct flex_groups to calculate get_orlov_stats()
+
+"missed" a bit, maybe a cut and paste error:
+
+ @@ -267,6 +267,13 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+                        if (is_directory) {
+                                count = ext4_used_dirs_count(sb, gdp) - 1;
+                                ext4_used_dirs_set(sb, gdp, count);
++                               if (sbi->s_log_groups_per_flex) {
++                                       ext4_group_t f;
++
++                                       f = ext4_flex_group(sbi, block_group);
++                                       atomic_dec(&sbi->s_flex_groups[f].free_inodes);
++                               }
+
+why would we be decremeting free inodes in free_inode?  And then later
+in the function we atomic_inc it again.  Very odd, and likely a thinko.
+
+I think the following patch fixes it up, although it seems like we should
+probably introduce (another) wrapper to set these counts in the gdp as
+well as the flex groups if they are present, so we don't always have
+to remember to manually hit both.
+
+There also seems to be some inconsistency about when we update the flex
+grp vs the group descriptor, but I may be reading things wrong; ext4_new_inode
+decrements the flex group free inode count, but ext4_claim_inode decrements
+the gdp free inode count?  I may be missing something there.
+
+Anyway - does this make things behave more as expected?
+
+-------- patch follows ----------
+
+When used_dirs was introduced for the flex_groups struct, it looks
+like the accounting was not put into place properly, in some places
+manipulating free_inodes rather than used_dirs.
+
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- include/trace/events/ext4.h |    2 ++
- include/trace/events/jbd2.h |    2 ++
- kernel/trace/Kconfig        |   23 +++++++++++++++++++++++
- 3 files changed, 27 insertions(+), 0 deletions(-)
 
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 2aa6aa3..f1ad2e3 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1,5 +1,7 @@
- #undef TRACE_SYSTEM
-+#undef TRACE_CONFIG
- #define TRACE_SYSTEM ext4
-+#define TRACE_CONFIG CONFIG_EXT4_TRACER
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index f3624ea..3a5c7ec 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -268,7 +268,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 					ext4_group_t f;
  
- #if !defined(_TRACE_EXT4_H) || defined(TRACE_HEADER_MULTI_READ)
- #define _TRACE_EXT4_H
-diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-index bf16545..37e442b 100644
---- a/include/trace/events/jbd2.h
-+++ b/include/trace/events/jbd2.h
-@@ -1,5 +1,7 @@
- #undef TRACE_SYSTEM
-+#undef TRACE_CONFIG
- #define TRACE_SYSTEM jbd2
-+#define TRACE_CONFIG CONFIG_JBD2_TRACER
+ 					f = ext4_flex_group(sbi, block_group);
+-					atomic_dec(&sbi->s_flex_groups[f].free_inodes);
++					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
+ 				}
  
- #if !defined(_TRACE_JBD2_H) || defined(TRACE_HEADER_MULTI_READ)
- #define _TRACE_JBD2_H
-diff --git a/kernel/trace/Kconfig b/kernel/trace/Kconfig
-index 13e13d4..e696314 100644
---- a/kernel/trace/Kconfig
-+++ b/kernel/trace/Kconfig
-@@ -438,6 +438,29 @@ config BLK_DEV_IO_TRACE
+ 			}
+@@ -779,7 +779,7 @@ static int ext4_claim_inode(struct super_block *sb,
+ 		if (sbi->s_log_groups_per_flex) {
+ 			ext4_group_t f = ext4_flex_group(sbi, group);
  
- 	  If unsure, say N.
- 
-+config EXT4_TRACER
-+	bool "Support for tracing EXT4 events"
-+	depends on EXT4_FS
-+	select GENERIC_TRACER
-+	select TRACE_ANY_MODULE if EXT4_FS=m
-+	help
-+	  Provide tracing for various functions in ext4 filesystem
-+	  such as block allocation, delayed allocation, or writeback
-+	  handling. This trace points can help with debugging allocation
-+	  algorithms or writeback performance.
-+
-+	  If unsure, say N.
-+
-+config JBD2_TRACER
-+	bool "JBD2 tracing"
-+	depends on JBD2
-+	select GENERIC_TRACER
-+	help
-+	  Provide tracing for several functions in JBD2 commit and
-+	  checkpointing code.
-+
-+	  If unsure, say N.
-+
- config KPROBE_EVENT
- 	depends on KPROBES
- 	depends on HAVE_REGS_AND_STACK_ACCESS_API
--- 
-1.6.4.2
+-			atomic_inc(&sbi->s_flex_groups[f].free_inodes);
++			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+ 		}
+ 	}
+
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+
