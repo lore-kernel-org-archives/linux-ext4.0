@@ -1,109 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] fix up flex groups used_dirs manipulation
-Date: Mon, 22 Mar 2010 22:34:33 -0500
-Message-ID: <4BA836C9.1050104@redhat.com>
-References: <20100323002123.GQ29604@tux1.beaverton.ibm.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext4: remove unnecessary operation in
+ ext4_mb_regular_allocator()
+Date: Mon, 22 Mar 2010 21:42:01 -0600
+Message-ID: <06B9B10D-6B78-4A44-9DFC-85FD66E8D57B@sun.com>
+References: <ac8f92701003220735h76b4a51dib1a9b311f9cf6d99@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Keith Mannthey <kmannth@us.ibm.com>,
-	Mingming Cao <mcao@us.ibm.com>
-To: djwong@us.ibm.com
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+To: jing zhang <zj.barak@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10785 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754182Ab0CWDek (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Mar 2010 23:34:40 -0400
-In-Reply-To: <20100323002123.GQ29604@tux1.beaverton.ibm.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:42537 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754229Ab0CWDmH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Mar 2010 23:42:07 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o2N3g2P5021809
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 20:42:04 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KZP00F00TP6KL00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 22 Mar 2010 20:42:02 -0700 (PDT)
+In-reply-to: <ac8f92701003220735h76b4a51dib1a9b311f9cf6d99@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Darrick J. Wong wrote:
-
-...
-> Unfortunately, this second behavior means that the "find the least full
-> blockgroup" code can use stale data in its comparisons.  Am I correct that
-> something is wrong here, or have I misinterpreted the code?  Is it /supposed/
-> to be the case that used_dirs reflects the number of directories in the
-> blockgroup at *mount time* and not at the current time?
->   
-This does seem weird; the flex_group dir counters are indeed only updated
-at mount time:
-
-ext4_fill_super
-        ext4_fill_flex_info
-                atomic_add(ext4_used_dirs_count(sb, gdp),
-                           &sbi->s_flex_groups[flex_group].used_dirs);
-
-and yet it's read repeatedly in get_orlov_stats:
-
-2 ialloc.c get_orlov_stats      430 stats->used_dirs = atomic_read(&flex_group[g].used_dirs);
-
-I think this patch:
-
-commit 7d39db14a42cbd719c7515b9da8f85a2eb6a0633
-[PATCH] ext4: Use struct flex_groups to calculate get_orlov_stats()
-
-"missed" a bit, maybe a cut and paste error:
-
- @@ -267,6 +267,13 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
-                        if (is_directory) {
-                                count = ext4_used_dirs_count(sb, gdp) - 1;
-                                ext4_used_dirs_set(sb, gdp, count);
-+                               if (sbi->s_log_groups_per_flex) {
-+                                       ext4_group_t f;
-+
-+                                       f = ext4_flex_group(sbi, block_group);
-+                                       atomic_dec(&sbi->s_flex_groups[f].free_inodes);
-+                               }
-
-why would we be decremeting free inodes in free_inode?  And then later
-in the function we atomic_inc it again.  Very odd, and likely a thinko.
-
-I think the following patch fixes it up, although it seems like we should
-probably introduce (another) wrapper to set these counts in the gdp as
-well as the flex groups if they are present, so we don't always have
-to remember to manually hit both.
-
-There also seems to be some inconsistency about when we update the flex
-grp vs the group descriptor, but I may be reading things wrong; ext4_new_inode
-decrements the flex group free inode count, but ext4_claim_inode decrements
-the gdp free inode count?  I may be missing something there.
-
-Anyway - does this make things behave more as expected?
-
--------- patch follows ----------
-
-When used_dirs was introduced for the flex_groups struct, it looks
-like the accounting was not put into place properly, in some places
-manipulating free_inodes rather than used_dirs.
+On 2010-03-22, at 08:35, jing zhang wrote:
+> @@ -2027,7 +2027,7 @@ repeat:
+>
+> 		for (i = 0; i < ngroups; group++, i++) {
+> 			struct ext4_group_info *grp;
+> -			struct ext4_group_desc *desc;
+> +			/* struct ext4_group_desc *desc; */
+>
+> 			if (group == ngroups)
+> 				group = 0;
+> @@ -2045,12 +2045,12 @@ repeat:
+>
+> 			ac->ac_groups_scanned++;
+> -			desc = ext4_get_group_desc(sb, group, NULL);
+> +			/* desc = ext4_get_group_desc(sb, group, NULL); */
+> 			if (cr == 0)
+> 				ext4_mb_simple_scan_group(ac, &e4b);
+> 			else if (cr == 1 &&
 
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Rather than commenting these lines out, please just delete them.  They  
+serve no purpose, and leaving them in the code will just add confusion  
+in the future.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f3624ea..3a5c7ec 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -268,7 +268,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 					ext4_group_t f;
- 
- 					f = ext4_flex_group(sbi, block_group);
--					atomic_dec(&sbi->s_flex_groups[f].free_inodes);
-+					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
- 				}
- 
- 			}
-@@ -779,7 +779,7 @@ static int ext4_claim_inode(struct super_block *sb,
- 		if (sbi->s_log_groups_per_flex) {
- 			ext4_group_t f = ext4_flex_group(sbi, group);
- 
--			atomic_inc(&sbi->s_flex_groups[f].free_inodes);
-+			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
- 		}
- 	}
-
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
