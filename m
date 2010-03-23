@@ -1,125 +1,83 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH] avoid scanning bitmaps for group preallocation
-Date: Mon, 22 Mar 2010 16:03:10 -0600
-Message-ID: <A2A61325-CB7F-40E0-B9B9-A918135BCBC6@sun.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: bug in inode allocator?
+Date: Mon, 22 Mar 2010 17:21:23 -0700
+Message-ID: <20100323002123.GQ29604@tux1.beaverton.ibm.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_Jav1o1x89yboYcOcN6mhoA)"
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Keith Mannthey <kmannth@us.ibm.com>, Mingming Cao <mcao@us.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:60807 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753504Ab0CVWDO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Mar 2010 18:03:14 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o2MM3Csn014873
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 15:03:14 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KZP00H00E9QNR00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 22 Mar 2010 15:03:11 -0700 (PDT)
+Received: from e35.co.us.ibm.com ([32.97.110.153]:41384 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754841Ab0CWAVY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Mar 2010 20:21:24 -0400
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e35.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id o2N0Gohl012673
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 18:16:50 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o2N0LOSc138396
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 18:21:24 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o2N0LNqf002210
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Mar 2010 18:21:24 -0600
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
---Boundary_(ID_Jav1o1x89yboYcOcN6mhoA)
-Content-type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Content-transfer-encoding: 7BIT
+I'm trying to understand how ext4_allocate_inode selects a blockgroup when
+creating a top level directory, and I've noticed a couple of odd behaviors with
+the algorithm (2.6.34-rc2 if anyone cares):
 
-Here is the patch I mentioned today on the call.  It avoids (or at  
-least reduces) serious latency (10 minutes or more) on a large  
-filesystem (8TB+) on the first write, if the filesystem is nearly  
-full.  The latency is entirely due to seeking to read the block  
-bitmaps, so is considerably less serious on flex_bg formatted  
-filesystems.
+First, the allocator will pick a random blockgroup from which to begin a linear
+scan of all the blockgroups to find the least heavily loaded one.  However, if
+there are ties for the least heavily loaded bg, the allocator picks the first
+one it scanned, not necessarily the one with the lowest bg number.  This seems
+to be a strategy to scatter top level directories all over the disk in an
+attempt to try to keep top level directories from ending up in the same bg and
+fragmenting each other.  However, if the tie is between empty blockgroups and
+the media is a rotating disk, this can result in top level directories being
+created far away from the high-bandwidth beginning of the disk.  If one creates
+only a handful of directories which all end up hashing to higher number
+blockgroups, then the filesystem won't use the high performance areas of the
+disk until there's enough data to wrap around to the blockgroups at the
+beginning.
 
-A better long-term approach would be to store in the superblock the  
-last group that had space to allocate a stripe-sized chunk and/or flag  
-in the group descriptor if there is not a large amount of contiguous  
-free space therein (cleared on freeing blocks in the group).
+An "easy" fix seems to be: If there is a tie in comparing blockgroups, then the
+one with the lowest bg number wins, though that heavily biases blockgroup
+creation towards the beginning of the disk, so further study on my part is
+needed.  In performing _that_ analysis, I came across a second problem:
 
-Having the mount-time buddy-bitmap (and checksum verifying) scanning  
-thread start at mount would only help if the first write to the  
-filesystem is not immediately after mount (which it is in Lustre at  
-least).  Having a filesystem-wide (r)btree for the freespace (ala XFS)  
-would also only help if the btree could be (at least partially) built  
-from bitmaps before the first write, unless we cache the bitmap on  
-disk, which caused Lustre plenty in the past and I'm leery to do it.
+The get_orlov_stat() function returns three metrics for a given block group;
+these metrics (used_dirs, free_inodes, and free_blocks) are used to figure out
+if one blockgroup is less heavily loaded than another.  If I create a bunch of
+1-byte files, the free_inodes and free_blocks counts decrease by 1 every time,
+as you'd expect.  However, when I create directories, only the free_blocks
+count decreases--used_dirs and free_inodes remain the same!  This seemed very
+suspicious to me, so I umounted and mounted the filesystem and reran my test.
+free_blocks and used_dirs suddenly decreased by the number of directories that
+I had created before the umount, but after the first mkdir, the free_inodes and
+used_dirs counts did not change, just like before.
 
+I then ran a loop wherein I create a directory and then a small file.  For
+each dir/file creation, the free_inodes count decreased by 1, the used_dirs
+count remained unchanged, and the free_blocks count decreased by 2.  Weird,
+since I was pretty sure that even directories require an inode and a block.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I interpret this behavior to mean that free_inodes/used_dirs only get updated
+at mount time and at file creation time, and furthermore are not being updated
+when directories get created.  The fact that the counts _do_ suddenly decrease
+across a umount/mount cycle confirms that directories do use inodes, which is
+what I expect.  I wondered if this was a behavior of delalloc or something, but
+-o nodelalloc did not change the behavior.  Nor did adding copious calls to
+sync.
 
+Unfortunately, this second behavior means that the "find the least full
+blockgroup" code can use stale data in its comparisons.  Am I correct that
+something is wrong here, or have I misinterpreted the code?  Is it /supposed/
+to be the case that used_dirs reflects the number of directories in the
+blockgroup at *mount time* and not at the current time?
 
---Boundary_(ID_Jav1o1x89yboYcOcN6mhoA)
-Content-type: application/octet-stream; name=ext4-mballoc-skip.diff;
- x-unix-mode=0644
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=ext4-mballoc-skip.diff
-
-UmVkdWNlIHRoZSBzaXplIG9mIGdyb3VwIHByZWFsbG9jYXRpb24gY2h1bmtzIHRv
-IGEgc2luZ2xlIFJBSUQNCnN0cmlwZSwgb3IgMU1CIGlmIHRoYXQgaXMgbm90IHNw
-ZWNpZmllZC4gIFNpbmNlIGl0IGlzIGxpa2VseSB0aGUNCnNtYWxsIGZpbGVzIHdp
-bGwgYmUgcmVhZCBiYWNrIGluIGFuIHVucmVsYXRlZCBvcmRlciBhbnl3YXksIHRo
-ZQ0KbWFpbiBiZW5lZml0IG9mIGFnZ3JlZ2F0aW9uIGlzIHRvIGF2b2lkIHJlYWQt
-bW9kaWZ5LXdyaXRlLCB3aGljaA0KaXMgc3RpbGwgc2F0aXNmaWVkIGJ5IHRoZSBz
-bWFsbGVyIGRlZmF1bHQgc2l6ZS4NCg0KQWxzbyBza2lwIHJlYWRpbmcgb2YgYmxv
-Y2sgYml0bWFwcyBpZiB0aGVyZSBpcyBhYnNvbHV0ZWx5IG5vIGNoYW5jZQ0Kb2Yg
-ZmluZGluZyBhIGJldHRlciBleHRlbnQgaW4gdGhhdCBncm91cCwgYmVjYXVzZSB0
-aGUgbnVtYmVyIG9mDQpmcmVlIGJsb2NrcyBpcyBsZXNzIHRoYW4gdGhlIG51bWJl
-ciBvZiBibG9ja3MgaW4gdGhlIGJlc3QgZXh0ZW50DQpmb3VuZCBzbyBmYXIuICBB
-IGJldHRlciBkZWNpc2lvbiBjYW4gYmUgbWFkZSBhZnRlciB0aGUgYml0bWFwIGlz
-DQpsb2FkZWQsIGJ1dCBpbiBhIGxhcmdlIGZpbGVzeXN0ZW0gdGhlcmUgY2FuIGJl
-IHRlbnMgb2YgdGhvdXNhbmRzDQpvZiBncm91cHMsIGFuZCByZWFkaW5nIHRoZW0g
-YWxsIGluIGNhbiB0YWtlIG1pbnV0ZXMgaWYgdGhlIGZpbGVzeXN0ZW0NCmlzIG5l
-YXJseSBmdWxsLg0KDQpTaWduZWQtb2ZmLWJ5OiBBbmRyZWFzIERpbGdlciA8YWRp
-bGdlckBzdW4uY29tPg0KDQpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9tYmFsbG9jLmMg
-Yi9mcy9leHQ0L21iYWxsb2MuYw0KaW5kZXggNTRkZjIwOS4uNjAzOGZhZCAxMDA2
-NDQNCi0tLSBhL2ZzL2V4dDQvbWJhbGxvYy5jDQorKysgYi9mcy9leHQ0L21iYWxs
-b2MuYw0KQEAgLTEyNSw4ICsxMjUsNyBAQA0KICAqIGxpc3QuIEluIGNhc2Ugb2Yg
-aW5vZGUgcHJlYWxsb2NhdGlvbiB3ZSBmb2xsb3cgYSBsaXN0IG9mIGhldXJpc3Rp
-Y3MNCiAgKiBiYXNlZCBvbiBmaWxlIHNpemUuIFRoaXMgY2FuIGJlIGZvdW5kIGlu
-IGV4dDRfbWJfbm9ybWFsaXplX3JlcXVlc3QuIElmDQogICogd2UgYXJlIGRvaW5n
-IGEgZ3JvdXAgcHJlYWxsb2Mgd2UgdHJ5IHRvIG5vcm1hbGl6ZSB0aGUgcmVxdWVz
-dCB0bw0KLSAqIHNiaS0+c19tYl9ncm91cF9wcmVhbGxvYy4gRGVmYXVsdCB2YWx1
-ZSBvZiBzX21iX2dyb3VwX3ByZWFsbG9jIGlzDQotICogNTEyIGJsb2Nrcy4gVGhp
-cyBjYW4gYmUgdHVuZWQgdmlhDQorICogc2JpLT5zX21iX2dyb3VwX3ByZWFsbG9j
-LiAgVGhpcyBjYW4gYmUgdHVuZWQgdmlhDQogICogL3N5cy9mcy9leHQ0LzxwYXJ0
-aXRpb24vbWJfZ3JvdXBfcHJlYWxsb2MuIFRoZSB2YWx1ZSBpcyByZXByZXNlbnRl
-ZCBpbg0KICAqIHRlcm1zIG9mIG51bWJlciBvZiBibG9ja3MuIElmIHdlIGhhdmUg
-bW91bnRlZCB0aGUgZmlsZSBzeXN0ZW0gd2l0aCAtTw0KICAqIHN0cmlwZT08dmFs
-dWU+IG9wdGlvbiB0aGUgZ3JvdXAgcHJlYWxsb2MgcmVxdWVzdCBpcyBub3JtYWxp
-emVkIHRvIHRoZQ0KQEAgLTIwMjksOSArMjAyOCwxMiBAQCByZXBlYXQ6DQogCQkJ
-aWYgKGdyb3VwID09IG5ncm91cHMpDQogCQkJCWdyb3VwID0gMDsNCiANCi0JCQkv
-KiBxdWljayBjaGVjayB0byBza2lwIGVtcHR5IGdyb3VwcyAqLw0KKwkJCS8qIElm
-IHRoZXJlJ3Mgbm8gY2hhbmNlIHRoYXQgdGhpcyBncm91cCBoYXMgYSBiZXR0ZXIN
-CisJCQkgKiBleHRlbnQsIGp1c3Qgc2tpcCBpdCBpbnN0ZWFkIG9mIHNlZWtpbmcg
-dG8gcmVhZA0KKwkJCSAqIGJsb2NrIGJpdG1hcCBmcm9tIGRpc2suIEluaXRpYWxs
-eSBhY19iX2V4LmZlX2xlbiA9IDAsDQorCQkJICogc28gdGhpcyBhbHdheXMgc2tp
-cHMgZ3JvdXBzIHdpdGggbm8gZnJlZSBzcGFjZS4gKi8NCiAJCQlncnAgPSBleHQ0
-X2dldF9ncm91cF9pbmZvKHNiLCBncm91cCk7DQotCQkJaWYgKGdycC0+YmJfZnJl
-ZSA9PSAwKQ0KKwkJCWlmIChncnAtPmJiX2ZyZWUgPD0gYWMtPmFjX2JfZXguZmVf
-bGVuKQ0KIAkJCQljb250aW51ZTsNCiANCiAJCQllcnIgPSBleHQ0X21iX2xvYWRf
-YnVkZHkoc2IsIGdyb3VwLCAmZTRiKTsNCmRpZmYgLS1naXQgYS9mcy9leHQ0L21i
-YWxsb2MuaCBiL2ZzL2V4dDQvbWJhbGxvYy5oDQppbmRleCBiNjE5MzIyLi5kZjUx
-NmM4IDEwMDY0NA0KLS0tIGEvZnMvZXh0NC9tYmFsbG9jLmgNCisrKyBiL2ZzL2V4
-dDQvbWJhbGxvYy5oDQpAQCAtOTAsOSArOTAsOSBAQCBleHRlcm4gdTggbWJfZW5h
-YmxlX2RlYnVnOw0KICNkZWZpbmUgTUJfREVGQVVMVF9PUkRFUjJfUkVRUwkJMg0K
-IA0KIC8qDQotICogZGVmYXVsdCBncm91cCBwcmVhbGxvYyBzaXplIDUxMiBibG9j
-a3MNCisgKiBkZWZhdWx0IGdyb3VwIHByZWFsbG9jIHNpemUgaW4gYmxvY2tzDQog
-ICovDQotI2RlZmluZSBNQl9ERUZBVUxUX0dST1VQX1BSRUFMTE9DCTUxMg0KKyNk
-ZWZpbmUgTUJfREVGQVVMVF9HUk9VUF9QUkVBTExPQwkyNTYNCiANCiANCiBzdHJ1
-Y3QgZXh0NF9mcmVlX2RhdGEgew0K
-
---Boundary_(ID_Jav1o1x89yboYcOcN6mhoA)
-Content-type: text/plain; CHARSET=US-ASCII; format=flowed
-Content-transfer-encoding: 7BIT
-
-
-
-
-
---Boundary_(ID_Jav1o1x89yboYcOcN6mhoA)--
+--D
