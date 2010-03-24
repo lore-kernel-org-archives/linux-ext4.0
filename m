@@ -1,35 +1,28 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13549] Kernel oops while online resizing of an ext4 filesystem
-Date: Tue, 23 Mar 2010 21:19:35 GMT
-Message-ID: <201003232119.o2NLJZaQ015502@demeter.kernel.org>
-References: <bug-13549-13602@https.bugzilla.kernel.org/>
+From: tytso@mit.edu
+Subject: Re: [PATCH] fix up flex groups used_dirs manipulation
+Date: Tue, 23 Mar 2010 20:37:17 -0400
+Message-ID: <20100324003717.GE2159@thunk.org>
+References: <20100323002123.GQ29604@tux1.beaverton.ibm.com>
+ <4BA836C9.1050104@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: djwong@us.ibm.com, linux-ext4 <linux-ext4@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:60195 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753093Ab0CWVTg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Mar 2010 17:19:36 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2NLJZnQ015503
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Mar 2010 21:19:35 GMT
-In-Reply-To: <bug-13549-13602@https.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:54188 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753571Ab0CXBbx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Mar 2010 21:31:53 -0400
+Content-Disposition: inline
+In-Reply-To: <4BA836C9.1050104@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=13549
+I've added this to the ext4 patch queue.
 
+Yeah, I screwed up when I implemented the new flex_bg based allocator
+last year.   Thanks for catching this!
 
-
-
-
---- Comment #15 from Alessandro Polverini <alex@nibbles.it>  2010-03-23 21:19:30 ---
-Hello Eric and thanks, I've sent you the link to download it.
-If someone else is interested please ask me in private.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
