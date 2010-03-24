@@ -1,35 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4/super.c: Replace CONTIG_EXT{2,3}_FS by CONFIG_EXT{2,3}_FS
-Date: Wed, 24 Mar 2010 11:30:39 -0500
-Message-ID: <4BAA3E2F.6030901@redhat.com>
-References: <2d0a357f1003240405x1178f0c6x188d30d1d311cb5@mail.gmail.com> <20100324161201.GG2159@thunk.org> <4BAA3C27.2000505@redhat.com> <20100324162747.GI2159@thunk.org>
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: page_cache pages not released in
+ ext4_mb_load_buddy()
+Date: Wed, 24 Mar 2010 22:19:47 +0530
+Message-ID: <87eij9d5qs.fsf@linux.vnet.ibm.com>
+References: <ac8f92701003240721l7a7079dnd9cbd55526cd1788@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+To: jing zhang <zj.barak@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5284 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752022Ab0CXQan (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Mar 2010 12:30:43 -0400
-In-Reply-To: <20100324162747.GI2159@thunk.org>
+Received: from e28smtp02.in.ibm.com ([122.248.162.2]:40940 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756138Ab0CXQtx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Mar 2010 12:49:53 -0400
+Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
+	by e28smtp02.in.ibm.com (8.14.3/8.13.1) with ESMTP id o2OGnodM007224
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Mar 2010 22:19:50 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o2OGnoQ73506220
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Mar 2010 22:19:50 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o2OGnnEQ019875
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Mar 2010 22:19:50 +0530
+In-Reply-To: <ac8f92701003240721l7a7079dnd9cbd55526cd1788@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/24/2010 11:27 AM, tytso@mit.edu wrote:
-> On Wed, Mar 24, 2010 at 11:21:59AM -0500, Eric Sandeen wrote:
-
-...
-
->> so, if you turn off ext2, but leave ext3 on, it will ask you if you want
->> to use ext4 for ext3?  That doesn't make sense to me.
+On Wed, 24 Mar 2010 22:21:01 +0800, jing zhang <zj.barak@gmail.com> wrote:
+> From: Jing Zhang <zj.barak@gmail.com>
 > 
-> Well, the idea is you can use ext4 instead of ext2 or ext3.  So if
-> ext3 is turned on, but ext2 is off, then the option will use ext4 for
-> ext2, but ext3 will stay ext3.
+> Date: Wed Mar 24 20:38:48     2010
+> 
+> If ext4_mb_init_cache() returns error, there is no page_cache_release() issued.
+> 
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger@sun.com>
+> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+> 
+> ---
+> 
+> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
+> +++ ext4_mm_leak/mballoc-9.c	2010-03-24 22:24:56.000000000 +0800
+> @@ -1132,8 +1132,6 @@ repeat_load_buddy:
+>  	e4b->bd_buddy = page_address(page) + (poff * sb->s_blocksize);
+>  	mark_page_accessed(page);
+> 
+> -	BUG_ON(e4b->bd_bitmap_page == NULL);
+> -	BUG_ON(e4b->bd_buddy_page == NULL);
 
-Oh, ok, I shoulda looked at super.c.  Got it now.  :)
+Why remove these ? 
 
-Thanks,
--Eric
+> 
+>  	return 0;
+> 
+> @@ -1142,6 +1140,8 @@ err:
+>  		page_cache_release(e4b->bd_bitmap_page);
+>  	if (e4b->bd_buddy_page)
+>  		page_cache_release(e4b->bd_buddy_page);
+> +	if (page)
+> +		page_cache_release(page);
+>  	e4b->bd_buddy = NULL;
+>  	e4b->bd_bitmap = NULL;
+
+Can you add a comment which says on error page will point to the page
+cache page which haven't been assigned to neither bd_bitmap_page or
+bd_buddy_page
+
+But good catch !!
+
+-aneesh
