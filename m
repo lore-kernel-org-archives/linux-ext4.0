@@ -1,35 +1,24 @@
-From: Evgeniy Ivanov <lolkaantimat@gmail.com>
+From: tytso@mit.edu
 Subject: Re: ext2/ext3 different block_sizes/i_size/e2fsck question
-Date: Thu, 25 Mar 2010 02:18:12 +0300
-Message-ID: <e1e08eb01003241618l17744154p943871532e552698@mail.gmail.com>
+Date: Wed, 24 Mar 2010 21:55:03 -0400
+Message-ID: <20100325015503.GJ2159@thunk.org>
 References: <e1e08eb01003241227p35e84777q622996b861009ecb@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Evgeniy Ivanov <lolkaantimat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f223.google.com ([209.85.220.223]:38836 "EHLO
-	mail-fx0-f223.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752260Ab0CXXSO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Mar 2010 19:18:14 -0400
-Received: by fxm23 with SMTP id 23so612898fxm.21
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Mar 2010 16:18:12 -0700 (PDT)
+Received: from THUNK.ORG ([69.25.196.29]:39352 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750911Ab0CYBzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Mar 2010 21:55:46 -0400
+Content-Disposition: inline
 In-Reply-To: <e1e08eb01003241227p35e84777q622996b861009ecb@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've also noted a very interesting and strange thing. I checked a file
-for which e2fsck did 67445000->67446784 i_size change.
-debugfs stat comparison between fixed file and file with old size
-differs in i_size *only* (all blocks are the same), but cmp shows
-difference in 67382273 (it's constant for any bogus file), that is
-block 65803 which is the last before triple indirection. How did file
-change if e2fsck just had changed i_size and both values are greater
-than 67382273?
-
-
-On Wed, Mar 24, 2010 at 10:27 PM, Evgeniy Ivanov <lolkaantimat@gmail.com> wrote:
-> Hello,
->
+On Wed, Mar 24, 2010 at 10:27:24PM +0300, Evgeniy Ivanov wrote:
+> 
 > Sorry for bothering list with my ext2 questions.
 > I got into trouble with my ext2 implementation and filesystem with
 > 1024 block size. Sometimes when I write files they're written
@@ -41,16 +30,16 @@ On Wed, Mar 24, 2010 at 10:27 PM, Evgeniy Ivanov <lolkaantimat@gmail.com> wrote:
 > 4096 block sizes. I thought the problem was in trash in unused part of
 > last block (actually it is zeroed), but then it would be reproduceable
 > in fs with another block size.
-> How does ext2 decide to fix that files sizes? Any suggestions?
->
-> Thanks in advance for any help.
->
->
-> --
-> Evgeniy Ivanov
->
 
+E2fsck will adjust i_size if it is smaller than the number of blocks
+than you have allocated.  So in the case of 67445000->67446784, your
+file probably had 65866 1k blocks, and since 67445000 is less than
+(655865*1024)+1, e2fsck assumed that your i_size was wrong, and so it
+asked for permission to fix it.
 
+Put another way, if you have 2 blocks in 1k file, and i_size is 1024,
+it clearly must be wrong.  If it's 1025, maybe we're only using 1 byte
+in the last block; but if i_size is less than or equal to 1024, then
+why was the 2nd block allocated in the file in the first place?
 
--- 
-Evgeniy Ivanov
+    	    	      		       - Ted
