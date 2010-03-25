@@ -1,45 +1,35 @@
 From: tytso@mit.edu
-Subject: Re: ext2/ext3 different block_sizes/i_size/e2fsck question
-Date: Wed, 24 Mar 2010 21:55:03 -0400
-Message-ID: <20100325015503.GJ2159@thunk.org>
-References: <e1e08eb01003241227p35e84777q622996b861009ecb@mail.gmail.com>
+Subject: Re: [PATCH] ext4/super.c: Replace CONTIG_EXT{2,3}_FS by
+ CONFIG_EXT{2,3}_FS
+Date: Wed, 24 Mar 2010 21:59:46 -0400
+Message-ID: <20100325015945.GK2159@thunk.org>
+References: <2d0a357f1003240405x1178f0c6x188d30d1d311cb5@mail.gmail.com>
+ <20100324161201.GG2159@thunk.org>
+ <2d0a357f1003240957r21f869cft5685d2e214f47914@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Evgeniy Ivanov <lolkaantimat@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: sedat.dilek@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39352 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:55858 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750911Ab0CYBzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Mar 2010 21:55:46 -0400
+	id S1751203Ab0CYCA1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Mar 2010 22:00:27 -0400
 Content-Disposition: inline
-In-Reply-To: <e1e08eb01003241227p35e84777q622996b861009ecb@mail.gmail.com>
+In-Reply-To: <2d0a357f1003240957r21f869cft5685d2e214f47914@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 24, 2010 at 10:27:24PM +0300, Evgeniy Ivanov wrote:
-> 
-> Sorry for bothering list with my ext2 questions.
-> I got into trouble with my ext2 implementation and filesystem with
-> 1024 block size. Sometimes when I write files they're written
-> correctly (md5sum is the same as original, i_size is correct either),
-> but e2fsck changes i_size to another values (which breaks files). E.g.
-> 67445000->67446784 or 67445248->67446784. I see that new sizes are
-> numbers of multiples of 1024.
-> Strange thing is that I can't reproduce this problem with 2048 and
-> 4096 block sizes. I thought the problem was in trash in unused part of
-> last block (actually it is zeroed), but then it would be reproduceable
-> in fs with another block size.
+On Wed, Mar 24, 2010 at 05:57:34PM +0100, Sedat Dilek wrote:
+> Thanks for the fast fix - hope this goes soon into linus-tree.
 
-E2fsck will adjust i_size if it is smaller than the number of blocks
-than you have allocated.  So in the case of 67445000->67446784, your
-file probably had 65866 1k blocks, and since 67445000 is less than
-(655865*1024)+1, e2fsck assumed that your i_size was wrong, and so it
-asked for permission to fix it.
+So I hadn't sent the pull request to Linus, and when I was looking
+over the patches, I realized that (a) the patch that broke the build
+hadn't been pushed to Linus yet, and (b) I wanted to pull a patch from
+the patch series since I didn't think it was appropriate at this point
+in the release cycle.  So I ended up rewinding my for_linus branch,
+and I'll be pushing something to Linus tonight.
 
-Put another way, if you have 2 blocks in 1k file, and i_size is 1024,
-it clearly must be wrong.  If it's 1025, maybe we're only using 1 byte
-in the last block; but if i_size is less than or equal to 1024, then
-why was the 2nd block allocated in the file in the first place?
+Regards,
 
-    	    	      		       - Ted
+						- Ted
