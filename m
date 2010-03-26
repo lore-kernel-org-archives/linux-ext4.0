@@ -1,104 +1,87 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
-Date: Fri, 26 Mar 2010 11:18:28 +0300
-Message-ID: <87hbo37ay3.fsf@openvz.org>
-References: <E1NuxHe-0005cj-JN@closure.thunk.org>
-	<20100326004738.GJ3145@quack.suse.cz>
-	<20100326033824.GC21658@thunk.org>
-	<9E7C0FF6-B02F-4470-B70A-4DBF5D5D6E0E@oracle.com>
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: memory leakage in ext4_discard_preallocations
+Date: Fri, 26 Mar 2010 14:07:31 +0530
+Message-ID: <87vdcjv5pw.fsf@linux.vnet.ibm.com>
+References: <ac8f92701003180539h7228040bm82a0c69d678ec93b@mail.gmail.com>
+	<20100318174629.GK8256@thunk.org>
+	<ac8f92701003190717u19334b4ei58e4829e4651db22@mail.gmail.com>
+	<67790F0F-9921-4A98-8DC6-DA1C00CE6CA9@sun.com>
+	<ac8f92701003200705u2bb6b65p4adce7b79f250705@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <andreas.dilger@oracle.com>
+Cc: tytso@mit.edu, linux-ext4 <linux-ext4@vger.kernel.org>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+To: jing zhang <zj.barak@gmail.com>, Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:47721 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752174Ab0CZISf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 04:18:35 -0400
-Received: by bwz1 with SMTP id 1so1578075bwz.21
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 01:18:33 -0700 (PDT)
-In-Reply-To: <9E7C0FF6-B02F-4470-B70A-4DBF5D5D6E0E@oracle.com> (Andreas
-	Dilger's message of "Fri, 26 Mar 2010 01:01:35 -0600")
+Received: from e28smtp05.in.ibm.com ([122.248.162.5]:58876 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752199Ab0CZIhg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 04:37:36 -0400
+Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
+	by e28smtp05.in.ibm.com (8.14.3/8.13.1) with ESMTP id o2Q8bXNK020470
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 14:07:33 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o2Q8bXGR2818210
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 14:07:33 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o2Q8bWm7017833
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 14:07:33 +0530
+In-Reply-To: <ac8f92701003200705u2bb6b65p4adce7b79f250705@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger <andreas.dilger@oracle.com> writes:
+On Sat, 20 Mar 2010 22:05:13 +0800, jing zhang <zj.barak@gmail.com> wrote:
+> 
+> Evening,
+> 
+> Thanks Andreas and Ted for your good explanations to deal error in
+> gentle way, and I got it that the chance may exist since the pa is not
+> deleted from its group_list yet.
+> 
+> And it also seems that there is work deserved.
+>        - zj
+> 
+> ---
+> 
+> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
+> +++ fs/mballoc.c	2010-03-20 21:40:04.000000000 +0800
+> @@ -3788,14 +3788,14 @@ repeat:
+>  		err = ext4_mb_load_buddy(sb, group, &e4b);
+>  		if (err) {
+>  			ext4_error(sb, __func__, "Error in loading buddy "
+> -					"information for %u", group);
+> +			"information for group %u inode %lu", group, inode->i_ino);
+>  			continue;
+>  		}
+> 
+>  		bitmap_bh = ext4_read_block_bitmap(sb, group);
+>  		if (bitmap_bh == NULL) {
+>  			ext4_error(sb, __func__, "Error in reading block "
+> -					"bitmap for %u", group);
+> +			"bitmap for group %u inode %lu", group, inode->i_ino);
+>  			ext4_mb_release_desc(&e4b);
+>  			continue;
+>  		}
+> @@ -3811,6 +3811,14 @@ repeat:
+>  		list_del(&pa->u.pa_tmp_list);
+>  		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
+>  	}
+> +	if (! list_empty(&list)) {
+> +		/*
+> +		 * we have to do something for the check in
+> +		 * the function, ext4_mb_discard_group_preallocations()
+> +		 */
+> +		list_for_each_entry(pa, &list, u.pa_tmp_list)
+> +			pa->pa_deleted = 0;
+> +	}
+>  	if (ac)
+>  		kmem_cache_free(ext4_ac_cachep, ac);
+>  }
 
-> On 2010-03-25, at 21:38, tytso@mit.edu wrote:
->> On Fri, Mar 26, 2010 at 01:47:38AM +0100, Jan Kara wrote:
->>>  This is definitely a move in the right direction. I'd be even
->>> happier
->>> if e2fsck would write quota file directly - then we could just make
->>> quota files hidden inodes, start doing quota accounting immediately
->>> on mount and always do quota journaling. That would save us quite
->>> some
->>> trouble in kernel. The only problem with this is that we'd need to
->>> pull
->>> knowledge about quota formats in e2fsck...
->
-> I totally agree.  Having to run quotacheck when the quota is journaled
-> is a major time waster on a large filesystem.  This is doubly true
-> since the only time the journal should ever get inconsistent is when
-> e2fsck changes it.
->
->> Yes, quite possibly.  How quota is currently is set up is quite
->> kludgy, with magic options that do nothing but display magic options
->> in /proc/mounts, just in case that's a hard link to /etc/mtab.  It
->> also looks like that some of the magic is in various distribution's
->> init.d scripts, and so while I very much want to clean things up, it
->> wasn't clear to me how much flexibility we would have without worrying
->> about breaking the init scripts for Debian, Ubuntu, RHEL, SLES,
->> Fedora, Open SuSE, etc.
->>
->> There may also be other programs that depend on the existence of
->> aquota.user, and may be reading and writing them in various random
->> ways, and there is the question of how do we provide compatibility
->> with these other programs, some of which may not be within quotatools,
->> but in various magic virtualization or container or cluster management
->> systems....
->
-> If the quota file is already present as a regular file, I don't think
-> it would be terrible to leave it in place, but to create new quota
-> files as hidden files.
-> It also would be nice to always enable quota journaing in ext4, since
-> I don't think this does any harm, and if quotacheck isn't run then at
-> least there a good chance the quotas are still correct.
->
->> So maintaining compatibility between older kernels, newer kernels,
->> older init scripts, new init scripts, etc. may make changing the quota
->> system quite difficult.  I would like to do as much cleanup as we can,
->> though.
->>
->> One question I have --- do we really have to support the 2 or 3
->> different quota variants?  How many people/distributions are still
->> using the original old quota system?  One thing that worries me is
->> that it looks like the old (non-journaled) quota system may be the
->> primary system still being used by Canonical and Debian...  I really
->> do hope I'm wrong, but there are a bunch of HOWTO's that still people
->> to use usrquota and grpquota in /etc/fstab, and not the newer
->> usrjquota and grpjquota mount options.
->
-> If there isn't a reason to continue using unjournaled quota (i.e. it
-> doesn't break to just move to journaled quota everywhere), then these
-> could just become aliases for the journaled quota implementation.  The
-> other alternative is to deprecate these options in the next kernel and
-> have it print out a warning on the console to tell the user to switch
-> over to the journaled version.
-The only reason to not use journalled quota by default is the currently
-it is a bit slower than unjournalled variant.
-This is because each quota change result in synchronous quotafile 
-update in per-sb-page-cache. And this update is protected by i_mutex.
-and dqio_mutex. It may be fixed easily. I've sent a RFC patch two
-month ago. I'll update it and will submit it this weekend. 
->
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Principal Engineer, Lustre Group
-> Oracle Corporation Canada Inc.
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Can you add a comment saying if we fail to load buddy or read block
+bitmap we skip freeing the prealloc space. So mark it undeleted. The
+prealloc space is still removed from the inode but it is linked to the
+group prealloc list via (pa_group_list)
+
+
+-aneesh
