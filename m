@@ -1,63 +1,64 @@
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: remove unnecessary operation in
- ext4_mb_normalize_group_request()
-Date: Fri, 26 Mar 2010 13:38:01 +0530
-Message-ID: <87wrwzv732.fsf@linux.vnet.ibm.com>
-References: <ac8f92701003250754o682aa32dw9bb51f36f0fa433b@mail.gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
+Date: Fri, 26 Mar 2010 11:09:59 +0300
+Message-ID: <87ljdf7bc8.fsf@openvz.org>
+References: <E1NuxHe-0005cj-JN@closure.thunk.org>
+	<20100326004738.GJ3145@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: jing zhang <zj.barak@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([122.248.162.5]:55660 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750711Ab0CZIIE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 04:08:04 -0400
-Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
-	by e28smtp05.in.ibm.com (8.14.3/8.13.1) with ESMTP id o2Q882Ra027622
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 13:38:02 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o2Q882bg3092542
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 13:38:02 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o2Q881OG032222
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 19:08:02 +1100
-In-Reply-To: <ac8f92701003250754o682aa32dw9bb51f36f0fa433b@mail.gmail.com>
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:41933 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751572Ab0CZIKG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 04:10:06 -0400
+Received: by mail-bw0-f209.google.com with SMTP id 1so1573123bwz.21
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 01:10:05 -0700 (PDT)
+In-Reply-To: <20100326004738.GJ3145@quack.suse.cz> (Jan Kara's message of
+	"Fri, 26 Mar 2010 01:47:38 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 25 Mar 2010 22:54:21 +0800, jing zhang <zj.barak@gmail.com> wrote:
-> From: Jing Zhang <zj.barak@gmail.com>
-> 
-> Date: Wed Mar 25  22:55:04   2010
-> 
-> Checking bug seems not at right place, and the function itself should
-> be inlined.
-> 
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger@sun.com>
-> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-> Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
-> 
-> ---
-> 
-> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-> +++ ext4_mm_leak/mballoc-10.c	2010-03-25 22:44:00.000000000 +0800
-> @@ -2786,9 +2786,7 @@ out_err:
->  static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
->  {
->  	struct super_block *sb = ac->ac_sb;
-> -	struct ext4_locality_group *lg = ac->ac_lg;
-> 
-> -	BUG_ON(lg == NULL);
->  	if (EXT4_SB(sb)->s_stripe)
->  		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
->  	else
+Jan Kara <jack@suse.cz> writes:
 
-That BUG_ON is to ensure that the allocation context is actually having
-a locality group which is needed for group allocation request.
-
--aneesh
+>   Hi Ted,
+>
+> On Thu 25-03-10 20:20:18, Theodore Ts'o wrote:
+>> This is something I whipped up last night to speed up quotacheck by
+>> doing the data collection in e2fsck.  If e2fsck runs and does a full
+>> check, it's likely that quotacheck needs to be run as well --- and it's
+>> faster if e2fsck does the dirty work of fetching the information since
+>> (1) it needs to paw through all of the inodes anyway, and (2) quotacheck
+>> has to go through the file system and iterate over the files in an
+>> non-optimal order.
+>> 
+>> What do folks think?  Obviously changes in quotacheck would be required
+>> before it could take advantage of these output files, but hopefully that
+>> shouldn't be hard...
+>> 
+>> To use, either use:
+>> 
+>>    e2fsck -E usrquota_check=/tmp/quota.user,grpquota_check=/tmp/quota.group
+>> 
+>> or you can edit /etc/e2fsck.conf and add:
+>> 
+>> [quota]
+>> 	directory = /var/e2fsck/quota
+>> 
+>> I still need to write documentation, update the man pages, and do some
+>> polishing, so this is still in a pretty rough state, but I'd appreciate
+>> comments.
+This is definitely right idea.
+>   This is definitely a move in the right direction. I'd be even happier
+> if e2fsck would write quota file directly - then we could just make
+> quota files hidden inodes, start doing quota accounting immediately
+Please excuse my naive question, but is it easy enough to allocate
+space during fsck?  If we allow to do this then each fsck will result
+in sb-changes because of new tmp quota-file creation/rename/deletion
+even if sb and quota is ok.
+> on mount and always do quota journaling. That would save us quite some
+> trouble in kernel. The only problem with this is that we'd need to pull
+> knowledge about quota formats in e2fsck...
+>
+> 								Honza
