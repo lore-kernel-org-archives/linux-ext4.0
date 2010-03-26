@@ -1,56 +1,51 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: tytso@mit.edu
 Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
-Date: Fri, 26 Mar 2010 14:15:39 +0300
-Message-ID: <87y6hfibac.fsf@openvz.org>
+Date: Fri, 26 Mar 2010 09:38:56 -0400
+Message-ID: <20100326133856.GE21658@thunk.org>
 References: <E1NuxHe-0005cj-JN@closure.thunk.org>
-	<20100326004738.GJ3145@quack.suse.cz>
-	<20100326033824.GC21658@thunk.org>
-	<9E7C0FF6-B02F-4470-B70A-4DBF5D5D6E0E@oracle.com>
-	<87hbo37ay3.fsf@openvz.org> <20100326105733.GC3055@quack.suse.cz>
+ <20100326004738.GJ3145@quack.suse.cz>
+ <20100326033824.GC21658@thunk.org>
+ <20100326104205.GA3055@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <andreas.dilger@oracle.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:56167 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753325Ab0CZLPr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 07:15:47 -0400
-Received: by bwz1 with SMTP id 1so1692280bwz.21
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 04:15:45 -0700 (PDT)
-In-Reply-To: <20100326105733.GC3055@quack.suse.cz> (Jan Kara's message of
-	"Fri, 26 Mar 2010 11:57:33 +0100")
+Received: from THUNK.ORG ([69.25.196.29]:39299 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753562Ab0CZNjo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Mar 2010 09:39:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20100326104205.GA3055@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+On Fri, Mar 26, 2010 at 11:42:05AM +0100, Jan Kara wrote:
+> > There may also be other programs that depend on the existence of
+> > aquota.user, and may be reading and writing them in various random
+> > ways, and there is the question of how do we provide compatibility
+> > with these other programs, some of which may not be within quotatools,
+> > but in various magic virtualization or container or cluster management
+> > systems....
+>   Yeah, this is possible, although I'm not aware of any such program -
 
-> On Fri 26-03-10 11:18:28, Dmitry Monakhov wrote:
->> > If there isn't a reason to continue using unjournaled quota (i.e. it
->> > doesn't break to just move to journaled quota everywhere), then these
->> > could just become aliases for the journaled quota implementation.  The
->> > other alternative is to deprecate these options in the next kernel and
->> > have it print out a warning on the console to tell the user to switch
->> > over to the journaled version.
->> The only reason to not use journalled quota by default is the currently
->> it is a bit slower than unjournalled variant.
->> This is because each quota change result in synchronous quotafile 
->> update in per-sb-page-cache. And this update is protected by i_mutex.
->> and dqio_mutex. It may be fixed easily. I've sent a RFC patch two
->> month ago. I'll update it and will submit it this weekend. 
->   Well, there is also some overhead caused by more IO we have to do for
-> quota journaling and that is essentially unavoidable. But still I believe
-> we should transition people to journaled quotas...
-Agree. IO overhead due to journalled quota is almost invisible.
-And it must be enabled by default after most annoying lock contention
-will be resolved.
+Actually, Google's cluster management system is accessing/modifying
+aquota.group file directly before and after quota is enabled.  This
+may change in the future, but it's one more point of compatibility.
 
-BTW. i've had bad news. Seems what journalled was broken recently.
-Right after i've wrote the first letter. i've started to update the
-quota-speedup patch. And during testing phase i've found that
-journalled quota is inconsistent after power-failure(w/o my patches).
-I've tested ext4.git/for-next branch
-Currently i'm investing the issue.
->
-> 								Honza
+>   Yeah, I believe that support for the oldest quota format can be phased
+> out - the new format is around for something like 10 years and it had
+> it's problems at that time already. I guess I'll add a warning to the
+> next release of quota-tools to the people still using it.
+
+And if we transition to using quotactl calls to access and read the
+information in the quota files, then the actual format of the quota
+file won't matter any more, right?
+
+Stupid question --- how does repquota work on OCFS2?  I don't see any
+quotactl subcommands that would appear to return the functionality
+needed by repquota --- unless you just assume that the only uid/gid's
+in use are in /etc/passwd and /etc/group, and just call quotactl for
+each uid/gid in the system passwd and group files.
+
+     	     	    	   	      	    - Ted
