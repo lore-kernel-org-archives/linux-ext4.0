@@ -1,66 +1,65 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: remove unnecessary operation in
-	ext4_mb_normalize_group_request()
-Date: Fri, 26 Mar 2010 21:44:33 +0800
-Message-ID: <ac8f92701003260644s7dad8b4mea3bcb4dbcedfd17@mail.gmail.com>
-References: <ac8f92701003250754o682aa32dw9bb51f36f0fa433b@mail.gmail.com>
-	 <87wrwzv732.fsf@linux.vnet.ibm.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
+Date: Fri, 26 Mar 2010 09:51:36 -0400
+Message-ID: <20100326135136.GF21658@thunk.org>
+References: <E1NuxHe-0005cj-JN@closure.thunk.org>
+ <20100326004738.GJ3145@quack.suse.cz>
+ <20100326033824.GC21658@thunk.org>
+ <9E7C0FF6-B02F-4470-B70A-4DBF5D5D6E0E@oracle.com>
+ <20100326105441.GB3055@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <andreas.dilger@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f191.google.com ([209.85.210.191]:32795 "EHLO
-	mail-yx0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754005Ab0CZNoi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 09:44:38 -0400
-Received: by yxe29 with SMTP id 29so825322yxe.4
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 06:44:34 -0700 (PDT)
-In-Reply-To: <87wrwzv732.fsf@linux.vnet.ibm.com>
+Received: from THUNK.ORG ([69.25.196.29]:58472 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753586Ab0CZNwU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Mar 2010 09:52:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20100326105441.GB3055@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
-> On Thu, 25 Mar 2010 22:54:21 +0800, jing zhang <zj.barak@gmail.com> wrote:
->> From: Jing Zhang <zj.barak@gmail.com>
->>
->> Date: Wed Mar 25  22:55:04   2010
->>
->> Checking bug seems not at right place, and the function itself should
->> be inlined.
->>
->> Cc: Theodore Ts'o <tytso@mit.edu>
->> Cc: Andreas Dilger <adilger@sun.com>
->> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
->> Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
->> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
->>
->> ---
->>
->> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
->> +++ ext4_mm_leak/mballoc-10.c	2010-03-25 22:44:00.000000000 +0800
->> @@ -2786,9 +2786,7 @@ out_err:
->>  static void ext4_mb_normalize_group_request(struct
->> ext4_allocation_context *ac)
->>  {
->>  	struct super_block *sb = ac->ac_sb;
->> -	struct ext4_locality_group *lg = ac->ac_lg;
->>
->> -	BUG_ON(lg == NULL);
->>  	if (EXT4_SB(sb)->s_stripe)
->>  		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
->>  	else
->
-> That BUG_ON is to ensure that the allocation context is actually having
-> a locality group which is needed for group allocation request.
->
-> -aneesh
->
+On Fri, Mar 26, 2010 at 11:54:41AM +0100, Jan Kara wrote:
+>   Yes, this should be a good option. I imagine we would create RO_COMPAT
+> features USRQUOTA and GRPQUOTA meaning that the filesystem maintains
+> quotas in hidden files. And mkfs would directly create these files if
+> it was asked to.
 
-Please check
-1, the 3 lines at the end of ext4_mb_group_or_file()
-2, the function name of this patch
+Technically we don't even need to make this be an RO_COMPAT feature; a
+COMPAT feature might suffice.  We just need to have new superblock
+fields which indicate the inode numbers for the user and group quotas.
+If the inode number is the reserved inode for user or group quotas,
+then it's the hidden inode.  If it's the number corresponding to a
+user-visible file then we simply haven't transitioned the file over.
+See e2fsck to see how we handle automatically transinition a user
+visible .journal file to inode #8.  That part's not hard.
 
-              - zj
+I am worried about the transition to a model where quotas are always
+enforced; that's quite different from what we had before.  What
+happens if someone uses the command quotaoff command?  Does it turn
+off quotas?  If the quota files are now hidden, a system administrator
+can't use quotacheck (which is an on-line command) to fix bad quotas;
+now they have to use e2fsck, which is normally an off-line checker.  I
+suppose we could make e2fsck be able to run in an on-line quotacheck
+mode, where it only updates quotas and accepts that there may be some
+race conditions where the blocks/inodes-in-use numbers won't be
+exactly right.
+
+What about use cases where people were accustomed to letting BSD or
+MacOS access an ext3 file system, and either accept the quota being
+slightly off, or relying on quotacheck to fix tihngs up at some point
+later?
+
+These are all things which can be quite surprising to system
+administrators...
+
+					- Ted
+
+P.S.  We can add a new superblock field, which is a "quota last
+updated time", and if that is less than the superblock write time, it
+could be a hint that e2fsck needs to do a quotacheck run.  That could
+partially help address the situation of 3rd party OS's/tools accessing
+the file system directly.... 
