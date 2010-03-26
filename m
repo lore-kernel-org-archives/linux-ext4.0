@@ -1,46 +1,71 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Ensure writecache to disk in no journal mode
-Date: Fri, 26 Mar 2010 12:40:04 -0500
-Message-ID: <4BACF174.50703@redhat.com>
-References: <1269620462-25906-1-git-send-email-surbhi.palande@canonical.com> <87pr2rhwe0.fsf@openvz.org> <4BACEBE3.50108@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] avoid scanning bitmaps for group preallocation
+Date: Fri, 26 Mar 2010 11:58:49 -0600
+Message-ID: <4D0B9967-E479-4E87-AC33-472CAF9F0BF3@sun.com>
+References: <A2A61325-CB7F-40E0-B9B9-A918135BCBC6@sun.com>
+ <87y6hfwf5v.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	Surbhi Palande <surbhi.palande@canonical.com>,
-	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
+Content-Transfer-Encoding: 7BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65066 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750772Ab0CZRkK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Mar 2010 13:40:10 -0400
-In-Reply-To: <4BACEBE3.50108@redhat.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:42037 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753270Ab0CZR64 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Mar 2010 13:58:56 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id o2QHwpvl028437
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Mar 2010 10:58:52 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KZW00300HIJOQ00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 26 Mar 2010 10:58:51 -0700 (PDT)
+In-reply-to: <87y6hfwf5v.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/26/2010 12:16 PM, Ric Wheeler wrote:
-> On 03/26/2010 12:37 PM, Dmitry Monakhov wrote:
->> Surbhi Palande<surbhi.palande@canonical.com>  writes:
->>
->>    
->>> Ensure that in the no journal mode the write cache is flushed to the disk by
->>> calling a blkdev_issue_flush() which issues a WRITE_BARRIER if necessary.
->>>      
->> As soon as i understand, nojournal mode is assumed to be used for
->> fail-free block devices(raid + UPS). So we don't have to worry about
->> blkdev's wcache vs persistent storage correctness.
+On 2010-03-26, at 04:28, Aneesh Kumar K. V wrote:
+> On Mon, 22 Mar 2010 16:03:10 -0600, Andreas Dilger <adilger@sun.com>  
+> wrote:
+>> Here is the patch I mentioned today on the call.  It avoids (or at
+>> least reduces) serious latency (10 minutes or more) on a large
+>> filesystem (8TB+) on the first write, if the filesystem is nearly
+>> full.  The latency is entirely due to seeking to read the block
+>> bitmaps, so is considerably less serious on flex_bg formatted
+>> filesystems.
+>
+> @@ -2029,9 +2028,12 @@ repeat:
+> +		/* If there's no chance that this group has a better
+> +		 * extent, just skip it instead of seeking to read
+> +		 * block bitmap from disk. Initially ac_b_ex.fe_len = 0,
+> +		 * so this always skips groups with no free space. */
+>  		grp = ext4_get_group_info(sb, group);
+> -		if (grp->bb_free == 0)
+> +		if (grp->bb_free <= ac->ac_b_ex.fe_len)
+>  			continue;
+>
+> I was wondering whether we need to make sure we also use criteria  
+> value
+> when checking for bb_free. If we are really low on space we may want  
+> to
+> return what is left right ?. Or does ac_b_ex take care of that ?
 
-No, I don't think so - even with "fail-free" storage, a system crash
-still results in an inconsistent filesystem; with nojournalling you've
-made the decision to either fsck or re-mkfs after that event.
 
-> I don't think that is a safe assumption. If users want that behavior, 
-> they can mount with fs without barriers...
+ac_b_ex is the best currently ALLOCATED extent, so mballoc wouldn't  
+ever select an extent that is smaller than ac_b_ex.fe_len.  That means  
+it is pointless to even look at a group which has fewer free blocks  
+than ac_b_ex.fe_len.
 
-yes, I agree with Ric - even if you don't have journalling, the proper
-sequence of sync calls should still result in data permanently on disk
-by default.  (though I think using mount -o nobarrier for this purpose,
-in absence of journalling, overloads the option a little...)
+Later, after the group information is loaded, ldiskfs_mb_good_group()  
+will skip the group if the average fragment size is smaller than the  
+GOAL extent, but only for certain criterion levels.  At the highest  
+criterion, any group with free blocks will be scanned.
 
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
