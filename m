@@ -1,58 +1,84 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/3] quota: optimize mark_dirty logic
-Date: Sat, 27 Mar 2010 15:15:38 +0300
-Message-ID: <1269692140-5375-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 3/3] ext4: optimize quota write locking
+Date: Sat, 27 Mar 2010 15:15:40 +0300
+Message-ID: <1269692140-5375-4-git-send-email-dmonakhov@openvz.org>
 References: <1269692140-5375-1-git-send-email-dmonakhov@openvz.org>
+ <1269692140-5375-2-git-send-email-dmonakhov@openvz.org>
+ <1269692140-5375-3-git-send-email-dmonakhov@openvz.org>
 Cc: linux-fsdevel@vger.kernel.org, jack@suse.cz,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:61402 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752989Ab0C0MPz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Mar 2010 08:15:55 -0400
-In-Reply-To: <1269692140-5375-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1269692140-5375-3-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-- Skipp locking if quota is dirty already.
-- Return old quota state to help fs-specciffic implementation to optimize
-  case where quota was dirty already.
+Quota inode is append only. In most cases writes performed
+to allocated blocks before i_size. Currently we grup i_mutex
+for each quota write to protect i_size and i_mtime. But in most
+cases i_size not changed. And i_mtime is not that important
+as for regular files. So let's update it only when quota file
+increased. This allow us to avoid i_mutex in most cases.
+
+Some day quota file will be hiden completly, so i_mtime hack
+will disappear.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/quota/dquot.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+ fs/ext4/super.c |   22 +++++++++++++++-------
+ 1 files changed, 15 insertions(+), 7 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index e0b870f..88a8ef2 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -319,14 +319,23 @@ static inline int mark_dquot_dirty(struct dquot *dquot)
- 	return dquot->dq_sb->dq_op->mark_dirty(dquot);
- }
- 
-+/* Mark dquot dirty in atomic meaner, and return it's old dirty flag state */
- int dquot_mark_dquot_dirty(struct dquot *dquot)
- {
-+	int ret = 1;
-+
-+	/* If quota is dirtly already we don't have to acquire dq_list_lock */
-+	if (test_bit(DQ_MOD_B, &dquot->dq_flags))
-+		return 1;
-+
- 	spin_lock(&dq_list_lock);
--	if (!test_and_set_bit(DQ_MOD_B, &dquot->dq_flags))
-+	if (!test_and_set_bit(DQ_MOD_B, &dquot->dq_flags)) {
- 		list_add(&dquot->dq_dirty, &sb_dqopt(dquot->dq_sb)->
- 				info[dquot->dq_type].dqi_dirty_list);
-+		ret = 0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b7b5707..5a378e3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4039,6 +4039,7 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
+ 	int err = 0;
+ 	int offset = off & (sb->s_blocksize - 1);
++	int is_locked = 0;
+ 	int journal_quota = EXT4_SB(sb)->s_qf_names[type] != NULL;
+ 	struct buffer_head *bh;
+ 	handle_t *handle = journal_current_handle();
+@@ -4059,8 +4060,14 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 			(unsigned long long)off, (unsigned long long)len);
+ 		return -EIO;
+ 	}
+-
+-	mutex_lock_nested(&inode->i_mutex, I_MUTEX_QUOTA);
++	/*
++	 * Inode file is append only. It is not necessery to hold i_mutex
++	 * if quota block is allocated already. Optimize that case.
++	 */
++	if (off + len > i_size_read(inode)) {
++		mutex_lock_nested(&inode->i_mutex, I_MUTEX_QUOTA);
++		is_locked = 1;
 +	}
- 	spin_unlock(&dq_list_lock);
--	return 0;
-+	return ret;
+ 	bh = ext4_bread(handle, inode, blk, 1, &err);
+ 	if (!bh)
+ 		goto out;
+@@ -4085,16 +4092,17 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 	brelse(bh);
+ out:
+ 	if (err) {
+-		mutex_unlock(&inode->i_mutex);
++		if (is_locked)
++			mutex_unlock(&inode->i_mutex);
+ 		return err;
+ 	}
+-	if (inode->i_size < off + len) {
++	if (is_locked) {
+ 		i_size_write(inode, off + len);
+ 		EXT4_I(inode)->i_disksize = inode->i_size;
++		inode->i_mtime = inode->i_ctime = CURRENT_TIME;
++		ext4_mark_inode_dirty(handle, inode);
++		mutex_unlock(&inode->i_mutex);
+ 	}
+-	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+-	ext4_mark_inode_dirty(handle, inode);
+-	mutex_unlock(&inode->i_mutex);
+ 	return len;
  }
- EXPORT_SYMBOL(dquot_mark_dquot_dirty);
  
 -- 
 1.6.6.1
