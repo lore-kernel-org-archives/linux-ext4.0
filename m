@@ -1,60 +1,72 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: FIEMAP sometimes returns bad information for delalloc extents
-Date: Sat, 27 Mar 2010 13:35:17 -0500
-Message-ID: <4BAE4FE5.7020004@redhat.com>
-References: <E1NvXbm-00087i-Tf@closure.thunk.org> <DB0601D5-963C-4017-B7EA-A3764D2067EF@oracle.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13549] Kernel oops while online resizing of an ext4 filesystem
+Date: Sat, 27 Mar 2010 19:16:15 GMT
+Message-ID: <201003271916.o2RJGFvn019746@demeter.kernel.org>
+References: <bug-13549-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <andreas.dilger@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21177 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753790Ab0C0SfZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 27 Mar 2010 14:35:25 -0400
-In-Reply-To: <DB0601D5-963C-4017-B7EA-A3764D2067EF@oracle.com>
+Received: from demeter.kernel.org ([140.211.167.39]:50605 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753841Ab0C0TQS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Mar 2010 15:16:18 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2RJGGg0019754
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 27 Mar 2010 19:16:17 GMT
+In-Reply-To: <bug-13549-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On 2010-03-27, at 09:07, Theodore Ts'o wrote:
->> I was monitoring the progress of a distributed download program, and saw
->> the following output from two runs of filefrag taken a few seconds
->> apart:
->>
->>   8     790  8825663  8825551     65
->>   9     855        0  8825727    319 unknown,delalloc
->>  10    1174  8798367      318    128
->>
->>   7     790  8825663  8825559     69
->>   8    1174  8798367  8825731    128
->>
->> The length of the delalloc extent, 319, is bogus.  The 319 seems to come
->> from 1174 - 855.   But it's not actually the number of delayed
->> allocation blocks, as we can see when the blocks finally get written;
->> apparently it was only 4 blocks long.
-> 
-> I'm surprised it shows anything at all for delalloc blocks, since AFAIK
-> FIEMAP is only walking the extent tree.  It would be interesting if it
-> walked the VM pagetable for unallocated extents in the file, and beyond
-> i_size.
+https://bugzilla.kernel.org/show_bug.cgi?id=13549
 
-it does this in the callback for ext4_ext_walk_space:
 
-        if (newex->ec_type == EXT4_EXT_CACHE_GAP) {
-...
-                page = find_get_page(inode->i_mapping, offset);
-...
-                bh = page_buffers(page);
-...
-                if (buffer_delay(bh)) {
-                        flags |= FIEMAP_EXTENT_DELALLOC;
-...
 
-so it was an attempt, at least, to flag which extents are delalloc.
 
-FWIW, on xfs xfs_bmap initially would cause a file flush, it didn't even ever
-try to report delalloc until fiemap came along ...
+
+--- Comment #18 from Eric Sandeen <sandeen@redhat.com>  2010-03-27 19:16:09 ---
+Reproducer works perfectly, thanks.
+
+So here's the issue; sbi->flex_groups[] doesn't get filled out in
+ext4_fill_flex_info() because:
+
+        if (groups_per_flex < 2) {
+                sbi->s_log_groups_per_flex = 0;
+                return 1;
+        }
+
+but resize is unconditionally doing this in ext4_group_add as long as the
+FLEX_BG feature is set:
+
+                atomic_add(input->free_blocks_count,
+                           &sbi->s_flex_groups[flex_group].free_blocks);
+
+so for a NULL s_flex groups it went boom.
+
+Every other access to ->s_flex_groups checks s_log_groups_per_flex first, so
+this should be the proper fix:
+
+Index: linux-2.6/fs/ext4/resize.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/resize.c
++++ linux-2.6/fs/ext4/resize.c
+@@ -930,7 +930,8 @@ int ext4_group_add(struct super_block *s
+     percpu_counter_add(&sbi->s_freeinodes_counter,
+                EXT4_INODES_PER_GROUP(sb));
+
+-    if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
++    if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++        sbi->s_log_groups_per_flex) {
+         ext4_group_t flex_group;
+         flex_group = ext4_flex_group(sbi, input->group);
+         atomic_add(input->free_blocks_count,
+
+This fixes the reproducer, need to double check it on Alessandro's image.
 
 -Eric
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
