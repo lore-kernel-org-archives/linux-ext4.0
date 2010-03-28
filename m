@@ -1,172 +1,102 @@
 From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
-Date: Sun, 28 Mar 2010 16:13:51 +0800
-Message-ID: <x2vac8f92701003280113k2458fcb6mefe6c04875c9b3a3@mail.gmail.com>
-References: <ac8f92701003210701j5926f2c4v843e36bc602a0444@mail.gmail.com>
-	 <20100322012758.GE11560@thunk.org>
-	 <ac8f92701003230547p3e56a9cdnff8ce874535db117@mail.gmail.com>
-	 <87sk7nv4sp.fsf@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: add rb_tree cache to struct ext4_group_info
+Date: Sun, 28 Mar 2010 17:11:55 +0800
+Message-ID: <h2tac8f92701003280211p70c2dbcpac77b16fb27deb79@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: tytso@mit.edu, linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f191.google.com ([209.85.210.191]:57666 "EHLO
-	mail-yx0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753789Ab0C1INy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2010 04:13:54 -0400
-Received: by yxe29 with SMTP id 29so1497947yxe.4
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Mar 2010 01:13:52 -0700 (PDT)
-In-Reply-To: <87sk7nv4sp.fsf@linux.vnet.ibm.com>
+Received: from mail-yw0-f172.google.com ([209.85.211.172]:60222 "EHLO
+	mail-yw0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753907Ab0C1JL5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2010 05:11:57 -0400
+Received: by ywh2 with SMTP id 2so4362471ywh.33
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Mar 2010 02:11:56 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
-> On Tue, 23 Mar 2010 20:47:39 +0800, jing zhang <zj.barak@gmail.com> wrote:
->> 2010/3/22, tytso@mit.edu <tytso@mit.edu>:
->> > On Sun, Mar 21, 2010 at 10:01:06PM +0800, jing zhang wrote:
->> >> From: Jing Zhang <zj.barak@gmail.com>
->> >>
->> >> Date: Sun Mar 21 21:59:35     2010
->> >>
->> >> Cc: Theodore Ts'o <tytso@mit.edu>
->> >> Cc: Andreas Dilger <adilger@sun.com>
->> >> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
->> >> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
->> >>
->> >> ---
->> >>
->> >> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
->> >> +++ ext4_mm_leak/mballoc3.c	2010-03-21 21:37:18.000000000 +0800
->> >> @@ -2360,6 +2360,24 @@ err_freesgi:
->> >>  	return -ENOMEM;
->> >>  }
->> >>
->> >> +static void ext4_mb_destroy_backend(struct super_block *sb)
->> >> +{
->> >> +	ext4_group_t ngroups = ext4_get_groups_count(sb);
->> >> +	ext4_group_t i;
->> >> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
->> >> +	int j;
->> >> +	int num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -1)
->> >> +					>> EXT4_DESC_PER_BLOCK_BITS(sb);
->> >> +	for (i = 0; i < ngroups; i++)
->> >> +		kfree(ext4_get_group_info(sb, i));
->> >> +
->> >> +	for (j = 0; j < num_meta_group_infos; j++)
->> >> +		kfree(sbi->s_group_info[j]);
->> >> +
->> >> +	kfree(sbi->s_group_info);
->> >> +	iput(sbi->s_buddy_cache);
->> >> +}
->> >> +
->> >
->> > It would be better if this could be done by making ext4_mb_release()
->> > more flexible, and then calling ext4_mb_release() if there is an error
->> > setting up the data structures in ext4_mb_init().
->> >
->> > 						- Ted
->> >
->>
->> Yeah, Ted, going through ext4_mb_release() is clearer.
->>
->> ---
->>
->> diff --git a/linux-2.6.32/fs/ext4/mballoc.c b/ext4_mm_leak/mballoc3.c
->> index bba1282..99ca2de 100644
->> --- a/linux-2.6.32/fs/ext4/mballoc.c
->> +++ b/ext4_mm_leak/mballoc3.c
->> @@ -2417,8 +2417,7 @@ int ext4_mb_init(struct super_block *sb, int
->> needs_recovery)
->>
->>  	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
->>  	if (sbi->s_locality_groups == NULL) {
->> -		kfree(sbi->s_mb_offsets);
->> -		kfree(sbi->s_mb_maxs);
->> +		ext4_mb_release(sb);
->
-> We may want to make sure that we can safely call ext4_mb_release that
-> early. what i would suggest is to move s_locality_group allocation
-> before ext4_mb_init. that makes error handling easy
->
+From: Jing Zhang <zj.barak@gmail.com>
 
-cool idea, Aneesh, and I got it.
+Date: Sun Mar 28 17:09:33     2010
+
+rb_tree cache is added to struct ext4_group_info at minor cost.
+
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@sun.com>
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jing Zhang <zj.barak@gmail.com>
 
 ---
 
---- old-linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-+++ ext4_mm_leak/mballoc3-2.c	2010-03-28 16:13:20.000000000 +0800
-@@ -2397,11 +2397,27 @@ int ext4_mb_init(struct super_block *sb,
- 		i++;
- 	} while (i <= sb->s_blocksize_bits + 1);
+--- linux-2.6.32/fs/ext4/ext4.h	2009-12-03 11:51:22.000000000 +0800
++++ ext4_mm_leak/ext4-12.h	2010-03-28 16:47:56.000000000 +0800
+@@ -1622,6 +1622,7 @@ static inline void ext4_update_i_disksiz
+ struct ext4_group_info {
+ 	unsigned long   bb_state;
+ 	struct rb_root  bb_free_root;
++	struct rb_node *bb_free_cache;
+ 	ext4_grpblk_t	bb_first_free;	/* first free block */
+ 	ext4_grpblk_t	bb_free;	/* total free blocks */
+ 	ext4_grpblk_t	bb_fragments;	/* nr of freespace fragments */
+--- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
++++ ext4_mm_leak/mballoc-12.c	2010-03-28 16:43:08.000000000 +0800
+@@ -2548,6 +2548,8 @@ static void release_blocks_on_commit(jou
+ 		count2++;
+ 		ext4_lock_group(sb, entry->group);
+ 		/* Take it out of per group rb tree */
++		if (db->bb_free_cache == &entry->node)
++			db->bb_free_cache = rb_next(&entry->node);
+ 		rb_erase(&entry->node, &(db->bb_free_root));
+ 		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
 
-+	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
-+	if (sbi->s_locality_groups == NULL) {
-+		kfree(sbi->s_mb_offsets);
-+		kfree(sbi->s_mb_maxs);
-+		return -ENOMEM;
-+	}
-+	for_each_possible_cpu(i) {
-+		struct ext4_locality_group *lg;
-+		lg = per_cpu_ptr(sbi->s_locality_groups, i);
-+		mutex_init(&lg->lg_mutex);
-+		for (j = 0; j < PREALLOC_TB_SIZE; j++)
-+			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
-+		spin_lock_init(&lg->lg_prealloc_lock);
-+	}
-+
- 	/* init file for buddy data */
- 	ret = ext4_mb_init_backend(sb);
- 	if (ret != 0) {
- 		kfree(sbi->s_mb_offsets);
- 		kfree(sbi->s_mb_maxs);
-+		free_percpu(sbi->s_locality_groups);
- 		return ret;
+@@ -3188,7 +3190,10 @@ static void ext4_mb_generate_from_freeli
+ 	struct ext4_free_data *entry;
+
+ 	grp = ext4_get_group_info(sb, group);
+-	n = rb_first(&(grp->bb_free_root));
++	if (grp->bb_free_cache)
++		n = grp->bb_free_cache;
++	else
++		n = rb_first(&(grp->bb_free_root));
+
+ 	while (n) {
+ 		entry = rb_entry(n, struct ext4_free_data, node);
+@@ -4353,6 +4358,7 @@ ext4_mb_free_metadata(handle_t *handle,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct rb_node **n = &db->bb_free_root.rb_node, *node;
+ 	struct rb_node *parent = NULL, *new_node;
++	int left = 1;
+
+ 	BUG_ON(!ext4_handle_valid(handle));
+ 	BUG_ON(e4b->bd_bitmap_page == NULL);
+@@ -4369,6 +4375,8 @@ ext4_mb_free_metadata(handle_t *handle,
+ 		 * blocks */
+ 		page_cache_get(e4b->bd_buddy_page);
+ 		page_cache_get(e4b->bd_bitmap_page);
++		/* just for sure */
++		db->bb_free_cache = 0;
  	}
+ 	while (*n) {
+ 		parent = *n;
+@@ -4376,7 +4384,7 @@ ext4_mb_free_metadata(handle_t *handle,
+ 		if (block < entry->start_blk)
+ 			n = &(*n)->rb_left;
+ 		else if (block >= (entry->start_blk + entry->count))
+-			n = &(*n)->rb_right;
++			n = &(*n)->rb_right, left = 0;
+ 		else {
+ 			ext4_grp_locked_error(sb, e4b->bd_group, __func__,
+ 					"Double free of blocks %d (%d %d)",
+@@ -4387,6 +4395,8 @@ ext4_mb_free_metadata(handle_t *handle,
 
-@@ -2415,20 +2431,6 @@ int ext4_mb_init(struct super_block *sb,
- 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
- 	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
+ 	rb_link_node(new_node, parent, n);
+ 	rb_insert_color(new_node, &db->bb_free_root);
++	if (left)
++		db->bb_free_cache = new_node;
 
--	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
--	if (sbi->s_locality_groups == NULL) {
--		kfree(sbi->s_mb_offsets);
--		kfree(sbi->s_mb_maxs);
--		return -ENOMEM;
--	}
--	for_each_possible_cpu(i) {
--		struct ext4_locality_group *lg;
--		lg = per_cpu_ptr(sbi->s_locality_groups, i);
--		mutex_init(&lg->lg_mutex);
--		for (j = 0; j < PREALLOC_TB_SIZE; j++)
--			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
--		spin_lock_init(&lg->lg_prealloc_lock);
--	}
-
- 	if (sbi->s_proc)
- 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
-
-
->
->
->>  		return -ENOMEM;
->>  	}
->>  	for_each_possible_cpu(i) {
->> @@ -2511,7 +2510,8 @@ int ext4_mb_release(struct super_block *sb)
->>  				atomic_read(&sbi->s_mb_discarded));
->>  	}
->>
->> -	free_percpu(sbi->s_locality_groups);
->> +	if (sbi->s_locality_groups)
->> +		free_percpu(sbi->s_locality_groups);
->>  	if (sbi->s_proc)
->>  		remove_proc_entry("mb_groups", sbi->s_proc);
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> -aneesh
->
+ 	/* Now try to see the extent can be merged to left and right */
+ 	node = rb_prev(new_node);
