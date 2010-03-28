@@ -1,205 +1,172 @@
-From: "Frans van de Wiel" <fvdw@fvdw.eu>
-Subject: Re: bug in ext3 code causing OOM error on systems with small memory
-Date: Sat, 27 Mar 2010 23:27:12 +0100
-Message-ID: <05DE7995A7094F9C9EE8B98EBD9FC67E@FransW7>
+From: jing zhang <zj.barak@gmail.com>
+Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
+Date: Sun, 28 Mar 2010 16:13:51 +0800
+Message-ID: <x2vac8f92701003280113k2458fcb6mefe6c04875c9b3a3@mail.gmail.com>
+References: <ac8f92701003210701j5926f2c4v843e36bc602a0444@mail.gmail.com>
+	 <20100322012758.GE11560@thunk.org>
+	 <ac8f92701003230547p3e56a9cdnff8ce874535db117@mail.gmail.com>
+	 <87sk7nv4sp.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=response
-Content-Transfer-Encoding: 7bit
-Cc: <adilger@sun.com>, <linux-ext4@vger.kernel.org>,
-	"Mingming Cao" <cmm@us.ibm.com>, "Jan Kara" <jack@suse.cz>
-To: "Jan Kara" <jack@suse.cz>,
-	"Andrew Morton" <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: tytso@mit.edu, linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@sun.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from edu-smtp-02.edutel.nl ([88.159.1.176]:46554 "EHLO
-	edu-smtp-02.edutel.nl" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754020Ab0C0W1c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Mar 2010 18:27:32 -0400
+Received: from mail-yx0-f191.google.com ([209.85.210.191]:57666 "EHLO
+	mail-yx0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753789Ab0C1INy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2010 04:13:54 -0400
+Received: by yxe29 with SMTP id 29so1497947yxe.4
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Mar 2010 01:13:52 -0700 (PDT)
+In-Reply-To: <87sk7nv4sp.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello
-
-Took me another week to find time to test the final version of the patch as 
-proposed by Jan
-It works ok, I also tried in the 2.6.33.1 kernel (as well ext2 as ext3) and 
-it works perfect.
-
-Signed-off-by:  Frans van de Wiel <fvdw@fvdw.eu>
-
---------------------------------------------------
-From: "Frans van de Wiel" <fvdw@fvdw.eu>
-Sent: Tuesday, March 16, 2010 8:50 PM
-To: "Jan Kara" <jack@suse.cz>; "Andrew Morton" <akpm@linux-foundation.org>
-Cc: <adilger@sun.com>; <linux-ext4@vger.kernel.org>; "Mingming Cao" 
-<cmm@us.ibm.com>; "Jan Kara" <jack@suse.cz>
-Subject: Re: bug in ext3 code causing OOM error on systems with small memory
-
-> Dear Jan, Andrew
->
-> The patch looks fine to me, if you say using free_blocks is better in the 
-> if statement I believe you, as said I am not a very experienced C 
-> programmer.
-> I just used "common sense" to locate this loop causing problems on my 
-> system.
-> I will sign it off as you requested and double check it in the weekend by 
-> compiling the kernel again with this patch.
->
-> PS there is one thing, think a similar patch is required in balloc.c in 
-> fs/ext2 as well.
-> There is the same loop only it does not cause on OOM error but it 
-> significantly delays the creation of a sub folder (25 seconds  on my disk 
-> of 500 GB, with the patch its done it less then a second)
->
-> kind regards, Frans van de Wiel
->
-> --------------------------------------------------
-> From: "Jan Kara" <jack@suse.cz>
-> Sent: Monday, March 15, 2010 7:43 PM
-> To: "Andrew Morton" <akpm@linux-foundation.org>
-> Cc: "Frans van de Wiel" <fvdw@fvdw.eu>; <adilger@sun.com>; 
-> <linux-ext4@vger.kernel.org>; "Mingming Cao" <cmm@us.ibm.com>; "Jan Kara" 
-> <jack@suse.cz>
-> Subject: Re: bug in ext3 code causing OOM error on systems with small 
-> memory
->
->>  Hi,
+2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
+> On Tue, 23 Mar 2010 20:47:39 +0800, jing zhang <zj.barak@gmail.com> wrote:
+>> 2010/3/22, tytso@mit.edu <tytso@mit.edu>:
+>> > On Sun, Mar 21, 2010 at 10:01:06PM +0800, jing zhang wrote:
+>> >> From: Jing Zhang <zj.barak@gmail.com>
+>> >>
+>> >> Date: Sun Mar 21 21:59:35     2010
+>> >>
+>> >> Cc: Theodore Ts'o <tytso@mit.edu>
+>> >> Cc: Andreas Dilger <adilger@sun.com>
+>> >> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+>> >> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+>> >>
+>> >> ---
+>> >>
+>> >> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
+>> >> +++ ext4_mm_leak/mballoc3.c	2010-03-21 21:37:18.000000000 +0800
+>> >> @@ -2360,6 +2360,24 @@ err_freesgi:
+>> >>  	return -ENOMEM;
+>> >>  }
+>> >>
+>> >> +static void ext4_mb_destroy_backend(struct super_block *sb)
+>> >> +{
+>> >> +	ext4_group_t ngroups = ext4_get_groups_count(sb);
+>> >> +	ext4_group_t i;
+>> >> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>> >> +	int j;
+>> >> +	int num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -1)
+>> >> +					>> EXT4_DESC_PER_BLOCK_BITS(sb);
+>> >> +	for (i = 0; i < ngroups; i++)
+>> >> +		kfree(ext4_get_group_info(sb, i));
+>> >> +
+>> >> +	for (j = 0; j < num_meta_group_infos; j++)
+>> >> +		kfree(sbi->s_group_info[j]);
+>> >> +
+>> >> +	kfree(sbi->s_group_info);
+>> >> +	iput(sbi->s_buddy_cache);
+>> >> +}
+>> >> +
+>> >
+>> > It would be better if this could be done by making ext4_mb_release()
+>> > more flexible, and then calling ext4_mb_release() if there is an error
+>> > setting up the data structures in ext4_mb_init().
+>> >
+>> > 						- Ted
+>> >
 >>
->> On Fri 12-03-10 13:57:36, Andrew Morton wrote:
->>> (cc's added)
->>  Thanks for forwarding.
+>> Yeah, Ted, going through ext4_mb_release() is clearer.
 >>
->>> On Sat, 6 Mar 2010 10:31:07 +0100
->>> "Frans van de Wiel" <fvdw@fvdw.eu> wrote:
->>>
->>> > Dear sirs
->>> >
->>> > Recently I compiled the linux-2.6.33 kernel for my arm9  based NAS 
->>> > using the orion5x mach.
->>> > The kernel runs but when creating a sub directory outside the root in 
->>> > a big disk ext3 partition (in my case 5000 GB) it caused an OOM error.
->>> >
->>> > journal_get_undo_access: No memory for committed data
->>> > ext3_try_to_allocate_with_rsv: aborting transaction: Out of memory in 
->>> > __ext3_journal_get_undo_access
->>> >
->>> > Now my NAS has a tiny system memory only 16 MB  but it worked fine on 
->>> > older kernels like 2.6.12.
->>> > I am not an experienced C programmer but I investigated the problem 
->>> > and think I found the reason and that it might be a good idea to share 
->>> > this with you as it might be useful for others with the same problem 
->>> > and I think it will speed up sub directory creation on big partitions.
->>> > The problem is also present in etx2 driver but it does not cause an 
->>> > OOM as there is no journaling, however it causes a significant delay 
->>> > in directory creation.
->>> > Creating a sub directory took in my case 25 seconds on a 500 GB disk. 
->>> > Thats not acceptable.
->>> >
->>> >  It took me a while to figure it out why, but it appeared that when 
->>> > trying to create a sub directory the driver starts to look for free 
->>> > blocks with a block group number that was not suitable (too high). 
->>> > Then the routine starts to check all groups one by one to find a 
->>> > suitable group. As there are almost 4000 groups on a 500 GB partition 
->>> > that takes time and in case of using ext3 the journaling of that 
->>> > action caused an out of memory situation. On ext2 it just took a long 
->>> > time to make a sub directory (up to 20 seconds or so).
->>> >
->>> > The error was in the balloc.c file  where there is a routine to 
->>> > allocate new blocks.
->>> >
->>> > By adding printk lines I finally found the place where the problem 
->>> > was. After comparing this file with the linux-2.6.12.6 version it 
->>> > appeared that in the newer version they deleted a check that caused 
->>> > the loop to continue without trying to allocate in cause the group was 
->>> > not suitable, so skipping the time and memory intensive part of the 
->>> > loop for that group.
->>> > I added that again and voila problem solved. Think on more powerful 
->>> > system with more memory you will never notice the problem but on the 
->>> > NAS with its limited hardware it caused an issue.
->>> >
->>> > I attached a file showing the part of the balloc.c file with the 
->>> > problem and the correction made (the correction is in line 117-120 of 
->>> > the attached file in between the lines markes /* fvdw */). I am not a 
->>> > C expert and just copied the check from the old version (of course 
->>> > adapting variables names to match with the new version). But it seems 
->>> > to fix the problem. I checked with printk statements, the adapted 
->>> > routine allocates to the same block as without this correction, it 
->>> > only skips unnecessary work. maybe you can have a look at it if it its 
->>> > ok and will not cause other problems.
->>> > The function at line 137 was causing the OOM error when called too 
->>> > many times after each other in ext3  and in ext causing the delay of 
->>> > creating the directory.
->>> >
->>> > Hope this information is useful to you. I am not a n experienced C 
->>> > progrommar so my bug rapport may be different from your standards 
->>> > sorry for this
->>> >
->>>
->>> Thanks.  Here's Frans's patch:
->>>
->>> --- a/fs/ext3/balloc.c~a
->>> +++ a/fs/ext3/balloc.c
->>> @@ -1581,6 +1581,8 @@ retry_alloc:
->>>  gdp = ext3_get_group_desc(sb, group_no, &gdp_bh);
->>>  if (!gdp)
->>>  goto io_error;
->>> + if (!gdp->bg_free_blocks_count)
->>> + continue;
->>>  free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
->>>  /*
->>>  * skip this group if the number of
->>  I'd just add a comment why this check is needed but otherwise the patch
->> looks fine. Maybe I'd just use free_blocks in the check. I know that
->> zero-check works fine even with disk-endian value but still... And I 
->> agree
->> that the Mingming's patch probably caused the regression.
->>  Frans, do you agree with the patch below and can I add you Signed-off-by
->> to it (see Documentation/SubmittingPatches)?
->>
->> Honza
->> -- 
->> Jan Kara <jack@suse.cz>
->> SUSE Labs, CR
 >> ---
 >>
->> From 0e7e5dd29c072fa7afe0a25d64d41682a07d7dff Mon Sep 17 00:00:00 2001
->> From: Frans van de Wiel <fvdw@fvdw.eu>
->> Date: Mon, 15 Mar 2010 19:29:34 +0100
->> Subject: [PATCH] ext3: Avoid loading bitmaps for full groups during block 
->> allocation
+>> diff --git a/linux-2.6.32/fs/ext4/mballoc.c b/ext4_mm_leak/mballoc3.c
+>> index bba1282..99ca2de 100644
+>> --- a/linux-2.6.32/fs/ext4/mballoc.c
+>> +++ b/ext4_mm_leak/mballoc3.c
+>> @@ -2417,8 +2417,7 @@ int ext4_mb_init(struct super_block *sb, int
+>> needs_recovery)
 >>
->> There is no point in loading bitmap for groups which are completely full.
->> This causes noticeable performance problems (and memory pressure) on 
->> small
->> systems with large full filesystem
->> (http://marc.info/?l=linux-ext4&m=126843108314310&w=2).
+>>  	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+>>  	if (sbi->s_locality_groups == NULL) {
+>> -		kfree(sbi->s_mb_offsets);
+>> -		kfree(sbi->s_mb_maxs);
+>> +		ext4_mb_release(sb);
+>
+> We may want to make sure that we can safely call ext4_mb_release that
+> early. what i would suggest is to move s_locality_group allocation
+> before ext4_mb_init. that makes error handling easy
+>
+
+cool idea, Aneesh, and I got it.
+
+---
+
+--- old-linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
++++ ext4_mm_leak/mballoc3-2.c	2010-03-28 16:13:20.000000000 +0800
+@@ -2397,11 +2397,27 @@ int ext4_mb_init(struct super_block *sb,
+ 		i++;
+ 	} while (i <= sb->s_blocksize_bits + 1);
+
++	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
++	if (sbi->s_locality_groups == NULL) {
++		kfree(sbi->s_mb_offsets);
++		kfree(sbi->s_mb_maxs);
++		return -ENOMEM;
++	}
++	for_each_possible_cpu(i) {
++		struct ext4_locality_group *lg;
++		lg = per_cpu_ptr(sbi->s_locality_groups, i);
++		mutex_init(&lg->lg_mutex);
++		for (j = 0; j < PREALLOC_TB_SIZE; j++)
++			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
++		spin_lock_init(&lg->lg_prealloc_lock);
++	}
++
+ 	/* init file for buddy data */
+ 	ret = ext4_mb_init_backend(sb);
+ 	if (ret != 0) {
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
++		free_percpu(sbi->s_locality_groups);
+ 		return ret;
+ 	}
+
+@@ -2415,20 +2431,6 @@ int ext4_mb_init(struct super_block *sb,
+ 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+ 	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
+
+-	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+-	if (sbi->s_locality_groups == NULL) {
+-		kfree(sbi->s_mb_offsets);
+-		kfree(sbi->s_mb_maxs);
+-		return -ENOMEM;
+-	}
+-	for_each_possible_cpu(i) {
+-		struct ext4_locality_group *lg;
+-		lg = per_cpu_ptr(sbi->s_locality_groups, i);
+-		mutex_init(&lg->lg_mutex);
+-		for (j = 0; j < PREALLOC_TB_SIZE; j++)
+-			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
+-		spin_lock_init(&lg->lg_prealloc_lock);
+-	}
+
+ 	if (sbi->s_proc)
+ 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+
+
+>
+>
+>>  		return -ENOMEM;
+>>  	}
+>>  	for_each_possible_cpu(i) {
+>> @@ -2511,7 +2510,8 @@ int ext4_mb_release(struct super_block *sb)
+>>  				atomic_read(&sbi->s_mb_discarded));
+>>  	}
 >>
->> Jan Kara: Added a comment and changed check to use cpu-endian value.
->>
->> Signed-off-by: Jan Kara <jack@suse.cz>
->> ---
->> fs/ext3/balloc.c |    6 ++++++
->> 1 files changed, 6 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
->> index 161da2d..c0980fc 100644
->> --- a/fs/ext3/balloc.c
->> +++ b/fs/ext3/balloc.c
->> @@ -1583,6 +1583,12 @@ retry_alloc:
->>  goto io_error;
->>  free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
->>  /*
->> + * skip this group (and avoid loading bitmap) if there
->> + * are no free blocks
->> + */
->> + if (!free_blocks)
->> + continue;
->> + /*
->>  * skip this group if the number of
->>  * free blocks is less than half of the reservation
->>  * window size.
->> -- 
->> 1.6.4.2
->> 
+>> -	free_percpu(sbi->s_locality_groups);
+>> +	if (sbi->s_locality_groups)
+>> +		free_percpu(sbi->s_locality_groups);
+>>  	if (sbi->s_proc)
+>>  		remove_proc_entry("mb_groups", sbi->s_proc);
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> -aneesh
+>
