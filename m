@@ -1,48 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] resize: check s_log_groups_per_flex before accessing
- flex groups
-Date: Sun, 28 Mar 2010 10:26:50 -0500
-Message-ID: <4BAF753A.3070704@redhat.com>
-References: <4BAE5D40.5050809@redhat.com> <96C33B08-CDC5-48B3-98C0-479F230E7F98@oracle.com>
+From: CaT <cat@zip.com.au>
+Subject: 2.6.33.1: ext4 disk free weirdness
+Date: Mon, 29 Mar 2010 15:57:49 +1100
+Message-ID: <20100329045748.GR2657@zip.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Alessandro Polverini <alex@nibbles.it>,
-	Christoph Biedl <bugzilla.kernel.bpeb@manchmal.in-ulm.de>
-To: Andreas Dilger <andreas.dilger@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18656 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753620Ab0C1P1D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 28 Mar 2010 11:27:03 -0400
-In-Reply-To: <96C33B08-CDC5-48B3-98C0-479F230E7F98@oracle.com>
+Received: from nessie.weebeastie.net ([220.233.7.36]:58413 "EHLO
+	bunyip.billabong.weebeastie.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751138Ab0C2Fmt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Mar 2010 01:42:49 -0400
+Received: from hogarth by bunyip.billabong.weebeastie.net with local (Exim 4.69)
+	(envelope-from <cat@zip.com.au>)
+	id 1Nw72r-0006Uf-0t
+	for linux-ext4@vger.kernel.org; Mon, 29 Mar 2010 15:57:49 +1100
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On 2010-03-27, at 13:32, Eric Sandeen wrote:
->> #13549, Kernel oops while online resizing of an ext4 filesystem
->>
->> if groups_per_flex < 2, sbi->s_flex_groups[] doesn't get filled out,
->> and every other access to this first tests s_log_groups_per_flex;
->> same thing needs to happen in resize or we'll wander off into
->> a null pointer.
-> 
-> Does it even make sense to set INCOMPAT_FLEX_BG if we only have a single
-> group per flexbg?  That is just a normal filesystem then.  That would be
-> a separate bug in mke2fs.
+Using kernel 2.6.33.1. Am rsyncing from /data/mirror (a raid0 mount) to
+/dev/sda1 (a usb HD). Both filesystems formatted as ext3 but mounted as
+ext4. /mnt filesystem is only being added to and currently large files
+(iso files 700MB-4.4GB) are being copied. When I remounted /mnt as ext3
+I could not duplicate the issue and the amount of disk used stabilised
+at 182G. The df results, whilst /mnt is mounted as ext4, are below:
 
-yes, I really wondered about that, but we have this check throughout the
-ext4 kernel code right now, so as a quick fix ...
+1 [29/03 15:05:58] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  317G  555G  37% /mnt
+1 [29/03 15:11:05] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  224G  647G  26% /mnt
+1 [29/03 15:41:38] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  670G  201G  77% /mnt 
+1 [29/03 15:48:32] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  246G  626G  29% /mnt 
+1 [29/03 15:48:36] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  313G  559G  36% /mnt 
+1 [29/03 15:48:37] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  396G  475G  46% /mnt 
+1 [29/03 15:48:37] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  615G  256G  71% /mnt 
+1 [29/03 15:48:39] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  671G  201G  77% /mnt 
+1 [29/03 15:48:40] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  671G  201G  77% /mnt 
+1 [29/03 15:48:40] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  215G  656G  25% /mnt 
+1 [29/03 15:48:41] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  334G  538G  39% /mnt 
+1 [29/03 15:48:42] >> df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md5              1.3T  1.2T  113G  92% /data/mirror
+/dev/sda1             917G  522G  349G  60% /mnt 
+1 [29/03 15:48:43] >> 
 
-(note in this case it was an ext3 fs converted to ext4, with tune2fs:)
-
-# tune2fs -O extents,uninit_bg,dir_index,flex_bg,huge_file,dir_nlink,extra_isize fsfile
-
-I haven't honestly looked at what it means to "turn on" flex_bg
-for a filesystem not originally mkfs'd with it.  I'm not sure it does
-anything other than setting the flag, leaving flex group size == group size.
-
-Thanks,
--Eric
+-- 
+  "A search of his car uncovered pornography, a homemade sex aid, women's 
+  stockings and a Jack Russell terrier."
+    - http://www.news.com.au/story/0%2C27574%2C24675808-421%2C00.html
