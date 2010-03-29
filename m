@@ -1,67 +1,64 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] ext2: symlink must be handled via filesystem
-	specific operation
-Date: Mon, 29 Mar 2010 17:58:49 +0200
-Message-ID: <20100329155849.GA18791@atrey.karlin.mff.cuni.cz>
-References: <1269620996-11400-1-git-send-email-dmonakhov@openvz.org> <20100329142135.GB5835@quack.suse.cz> <87bpe7dubf.fsf@openvz.org>
+Subject: Re: Help on Implementation of EXT3 type Ordered Mode in EXT4
+Date: Mon, 29 Mar 2010 17:45:34 +0200
+Message-ID: <20100329154534.GE5835@quack.suse.cz>
+References: <20100212200726.GD5337@thunk.org>
+ <38f6fb7d1002130043s54e61e74jcc3297aeeac294b0@mail.gmail.com>
+ <20100215150021.GE3434@quack.suse.cz>
+ <38f6fb7d1002160210x6dc86fb5o82825e7677c07994@mail.gmail.com>
+ <20100216131039.GB3153@quack.suse.cz>
+ <20100216141854.GT5337@thunk.org>
+ <38f6fb7d1002170737l1e9e3b72ub08e106283c26501@mail.gmail.com>
+ <38f6fb7d1003182023j5513640csdc797adb49393ea0@mail.gmail.com>
+ <20100322165209.GB4754@quack.suse.cz>
+ <38f6fb7d1003230341j4ff52fffidc614d566476b5bc@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
-To: dmonakhov@openvz.org
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Jiaying Zhang <jiayingz@google.com>
+To: Kailas Joshi <kailas.joshi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:58756 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753421Ab0C2P6u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 11:58:50 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:37200 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754154Ab0C2QpV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Mar 2010 12:45:21 -0400
 Content-Disposition: inline
-In-Reply-To: <87bpe7dubf.fsf@openvz.org>
+In-Reply-To: <38f6fb7d1003230341j4ff52fffidc614d566476b5bc@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Jan Kara <jack@suse.cz> writes:
+  Hi,
+
+On Tue 23-03-10 16:11:45, Kailas Joshi wrote:
+> I have Lock Debugging enables but that didn't give any warnings.
+> However, when I did echo "w" >/proc/sysrq-trigger after system lockup,
+> I got the stack trace for locked up process.
 > 
-> > On Fri 26-03-10 19:29:54, Dmitry Monakhov wrote:
-> >> generic setattr implementation is no longer responsible for
-> >> quota transfer so synlinks must be handled via ext2_setattr.
-> >   Ah, good catch. I'll merge ext2 and ext3 patch.
-> Same issue for ufs/udf/jfs
-> Should i send as combined patch or as a separate fixes?
-  I think separate patches are fine.
+> Following are the stack traces of the processes (I suspect) resulting
+> in total system lockup -
+  <snip>
 
-							Honza
+  So kjournald is waiting on a page lock and everyone else waits for
+kjournald to finish committing or for page lock as well. The strange thing
+is that I don't see anybody who could hold the page lock everyone is
+waiting on. So I think further debugging should go in this direction - find
+out on which page do we wait and who is holding it's lock (you'd need to
+add tracking of page lock owner but that shouldn't be too hard).
 
-> >> ---
-> >>  fs/ext2/symlink.c |    2 ++
-> >>  1 files changed, 2 insertions(+), 0 deletions(-)
-> >> 
-> >> diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
-> >> index 4e2426e..565cf81 100644
-> >> --- a/fs/ext2/symlink.c
-> >> +++ b/fs/ext2/symlink.c
-> >> @@ -32,6 +32,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
-> >>  	.readlink	= generic_readlink,
-> >>  	.follow_link	= page_follow_link_light,
-> >>  	.put_link	= page_put_link,
-> >> +	.setattr	= ext2_setattr,
-> >>  #ifdef CONFIG_EXT2_FS_XATTR
-> >>  	.setxattr	= generic_setxattr,
-> >>  	.getxattr	= generic_getxattr,
-> >> @@ -43,6 +44,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
-> >>  const struct inode_operations ext2_fast_symlink_inode_operations = {
-> >>  	.readlink	= generic_readlink,
-> >>  	.follow_link	= ext2_follow_link,
-> >> +	.setattr	= ext2_setattr,
-> >>  #ifdef CONFIG_EXT2_FS_XATTR
-> >>  	.setxattr	= generic_setxattr,
-> >>  	.getxattr	= generic_getxattr,
-> >> -- 
-> >> 1.6.6.1
-> >> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I have few questions here.
+> I guess process named jbd2/sdb1-8 is kjournald thread. But what is
+  Yes.
+
+> flush-8:16 process? Is it the kernel thread for periodically writing
+> dirty pages to disk?
+  Yes.
+
+> Is it the case that these threads are running concurrently at certain
+> time and are trying to get lock on same pages resulting into deadlock?
+  It should not happen - they should always acquire page lock in
+index-increasing order so that way deadlocks should be avoided...
+
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
-SuSE CR Labs
+SUSE Labs, CR
