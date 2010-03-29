@@ -1,45 +1,67 @@
-From: tytso@mit.edu
-Subject: Re: 2.6.33.1: ext4 disk free weirdness
-Date: Mon, 29 Mar 2010 10:53:11 -0400
-Message-ID: <20100329145311.GA4671@thunk.org>
-References: <20100329045748.GR2657@zip.com.au>
- <4BB0BDD2.3080100@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/3] ext2: symlink must be handled via filesystem
+	specific operation
+Date: Mon, 29 Mar 2010 17:58:49 +0200
+Message-ID: <20100329155849.GA18791@atrey.karlin.mff.cuni.cz>
+References: <1269620996-11400-1-git-send-email-dmonakhov@openvz.org> <20100329142135.GB5835@quack.suse.cz> <87bpe7dubf.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: CaT <cat@zip.com.au>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
+To: dmonakhov@openvz.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36497 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754105Ab0C2P4h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 11:56:37 -0400
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:58756 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753421Ab0C2P6u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Mar 2010 11:58:50 -0400
 Content-Disposition: inline
-In-Reply-To: <4BB0BDD2.3080100@redhat.com>
+In-Reply-To: <87bpe7dubf.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 29, 2010 at 09:48:50AM -0500, Eric Sandeen wrote:
-> CaT wrote:
-> > Using kernel 2.6.33.1. Am rsyncing from /data/mirror (a raid0 mount) to
-> > /dev/sda1 (a usb HD). Both filesystems formatted as ext3 but mounted as
-> > ext4. /mnt filesystem is only being added to and currently large files
-> > (iso files 700MB-4.4GB) are being copied. When I remounted /mnt as ext3
-> > I could not duplicate the issue and the amount of disk used stabilised
-> > at 182G. The df results, whilst /mnt is mounted as ext4, are below:
+> Jan Kara <jack@suse.cz> writes:
 > 
-> I would say this is likely speculative allocation due to delalloc
-> (ext4 has to reserve worst-case metadata amounts to prepare for
-> delalloc writeback).  When the file data actually gets written out,
-> the worst-case reservation is freed up again.  We also flush and
-> switch to nodelalloc when the filesystem is pretty close to full.
-> see ext4_nonda_switch() for example.
-> 
-> This looks pretty severe though, more than I would expect
-> from that behavior.
+> > On Fri 26-03-10 19:29:54, Dmitry Monakhov wrote:
+> >> generic setattr implementation is no longer responsible for
+> >> quota transfer so synlinks must be handled via ext2_setattr.
+> >   Ah, good catch. I'll merge ext2 and ext3 patch.
+> Same issue for ufs/udf/jfs
+> Should i send as combined patch or as a separate fixes?
+  I think separate patches are fine.
 
-This is fixed in commit d330a5bef, which which got merged post
-2.6.34-rc2, and which we need to get into 2.6.33 stable.  If you
-cherry-pick that commit, I think you'll see that it fixes this
-problem.
+							Honza
 
-						- Ted
+> >> ---
+> >>  fs/ext2/symlink.c |    2 ++
+> >>  1 files changed, 2 insertions(+), 0 deletions(-)
+> >> 
+> >> diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+> >> index 4e2426e..565cf81 100644
+> >> --- a/fs/ext2/symlink.c
+> >> +++ b/fs/ext2/symlink.c
+> >> @@ -32,6 +32,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
+> >>  	.readlink	= generic_readlink,
+> >>  	.follow_link	= page_follow_link_light,
+> >>  	.put_link	= page_put_link,
+> >> +	.setattr	= ext2_setattr,
+> >>  #ifdef CONFIG_EXT2_FS_XATTR
+> >>  	.setxattr	= generic_setxattr,
+> >>  	.getxattr	= generic_getxattr,
+> >> @@ -43,6 +44,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
+> >>  const struct inode_operations ext2_fast_symlink_inode_operations = {
+> >>  	.readlink	= generic_readlink,
+> >>  	.follow_link	= ext2_follow_link,
+> >> +	.setattr	= ext2_setattr,
+> >>  #ifdef CONFIG_EXT2_FS_XATTR
+> >>  	.setxattr	= generic_setxattr,
+> >>  	.getxattr	= generic_getxattr,
+> >> -- 
+> >> 1.6.6.1
+> >> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
