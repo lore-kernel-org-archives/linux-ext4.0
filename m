@@ -1,54 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: 2.6.33.1: ext4 disk free weirdness
-Date: Mon, 29 Mar 2010 10:01:38 -0500
-Message-ID: <4BB0C0D2.1080303@redhat.com>
-References: <20100329045748.GR2657@zip.com.au> <4BB0BDD2.3080100@redhat.com> <20100329145311.GA4671@thunk.org>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: Ext4 performance regression: Post 2.6.30
+Date: Mon, 29 Mar 2010 11:10:55 -0400
+Message-ID: <87f94c371003290810u58f64ce6uc20be6bbac420e73@mail.gmail.com>
+References: <1269843935.13369.52.camel@keith-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: CaT <cat@zip.com.au>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Keith Mannthey <kmannth@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47544 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751728Ab0C2PBn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 11:01:43 -0400
-In-Reply-To: <20100329145311.GA4671@thunk.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:61589 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751357Ab0C2PK7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Mar 2010 11:10:59 -0400
+Received: by gyg13 with SMTP id 13so1489513gyg.19
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 08:10:58 -0700 (PDT)
+In-Reply-To: <1269843935.13369.52.camel@keith-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu wrote:
-> On Mon, Mar 29, 2010 at 09:48:50AM -0500, Eric Sandeen wrote:
->> CaT wrote:
->>> Using kernel 2.6.33.1. Am rsyncing from /data/mirror (a raid0 mount) to
->>> /dev/sda1 (a usb HD). Both filesystems formatted as ext3 but mounted as
->>> ext4. /mnt filesystem is only being added to and currently large files
->>> (iso files 700MB-4.4GB) are being copied. When I remounted /mnt as ext3
->>> I could not duplicate the issue and the amount of disk used stabilised
->>> at 182G. The df results, whilst /mnt is mounted as ext4, are below:
->> I would say this is likely speculative allocation due to delalloc
->> (ext4 has to reserve worst-case metadata amounts to prepare for
->> delalloc writeback).  When the file data actually gets written out,
->> the worst-case reservation is freed up again.  We also flush and
->> switch to nodelalloc when the filesystem is pretty close to full.
->> see ext4_nonda_switch() for example.
->>
->> This looks pretty severe though, more than I would expect
->> from that behavior.
-> 
-> This is fixed in commit d330a5bef, which which got merged post
-> 2.6.34-rc2, and which we need to get into 2.6.33 stable.  If you
-> cherry-pick that commit, I think you'll see that it fixes this
-> problem.
+On Mon, Mar 29, 2010 at 2:25 AM, Keith Mannthey <kmannth@us.ibm.com> wrote:
+>
+>
+> After 2.6.30 I am seeing large performance regressions on a raid setup.
+> I am working to publish a larger amount of data but I wanted to get some
+> quick data out about what I am seeing.
+>
 
-Oh, right, spaced that one.  Thanks for the reminder Ted.  :)
+Is mdraid involved?
 
-And from now on ext3-mounted-as-ext4 is special-cased so you won't get
-delalloc, and you won't get this behavior at all (nor will you get
-any delalloc benefits, FWIW).
+They added barrier support for some configs after 2.6.30 I believe.
+It can cause a drastic perf change, but it increases reliability and
+is "correct".
 
-Thanks,
--Eric
- 
-> 						- Ted
-
+Greg
