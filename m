@@ -1,83 +1,111 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: 2.6.33.1: ext4 disk free weirdness
-Date: Mon, 29 Mar 2010 12:51:00 -0500
-Message-ID: <4BB0E884.5070500@redhat.com>
-References: <20100329045748.GR2657@zip.com.au> <4BB0BDD2.3080100@redhat.com>	 <20100329145311.GA4671@thunk.org> <4BB0C0D2.1080303@redhat.com> <150c16851003291043l2fa17795o3b8339b2e04514ba@mail.gmail.com>
+Subject: [PATCH] ext4_freeze: don't return to userspace with a mutex held
+Date: Mon, 29 Mar 2010 17:34:43 -0500
+Message-ID: <4BB12B03.9070906@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Justin Maggard <jmaggard10@gmail.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30700 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10984 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754899Ab0C2RvI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 13:51:08 -0400
-In-Reply-To: <150c16851003291043l2fa17795o3b8339b2e04514ba@mail.gmail.com>
+	id S1753648Ab0C2Weu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Mar 2010 18:34:50 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o2TMYmuo027416
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 18:34:48 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o2TMYhFc003642
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 18:34:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Justin Maggard wrote:
-> On Mon, Mar 29, 2010 at 8:01 AM, Eric Sandeen <sandeen@redhat.com> wrote:
->> tytso@mit.edu wrote:
->>> On Mon, Mar 29, 2010 at 09:48:50AM -0500, Eric Sandeen wrote:
->>>> CaT wrote:
->>>>> Using kernel 2.6.33.1. Am rsyncing from /data/mirror (a raid0 mount) to
->>>>> /dev/sda1 (a usb HD). Both filesystems formatted as ext3 but mounted as
->>>>> ext4. /mnt filesystem is only being added to and currently large files
->>>>> (iso files 700MB-4.4GB) are being copied. When I remounted /mnt as ext3
->>>>> I could not duplicate the issue and the amount of disk used stabilised
->>>>> at 182G. The df results, whilst /mnt is mounted as ext4, are below:
->>>> I would say this is likely speculative allocation due to delalloc
->>>> (ext4 has to reserve worst-case metadata amounts to prepare for
->>>> delalloc writeback).  When the file data actually gets written out,
->>>> the worst-case reservation is freed up again.  We also flush and
->>>> switch to nodelalloc when the filesystem is pretty close to full.
->>>> see ext4_nonda_switch() for example.
->>>>
->>>> This looks pretty severe though, more than I would expect
->>>> from that behavior.
->>> This is fixed in commit d330a5bef, which which got merged post
->>> 2.6.34-rc2, and which we need to get into 2.6.33 stable.  If you
->>> cherry-pick that commit, I think you'll see that it fixes this
->>> problem.
->> Oh, right, spaced that one.  Thanks for the reminder Ted.  :)
->>
->> And from now on ext3-mounted-as-ext4 is special-cased so you won't get
->> delalloc, and you won't get this behavior at all (nor will you get
->> any delalloc benefits, FWIW).
->>
-> 
-> Out of curiosity, when you say ext3-mounted-as-ext4, are you referring
-> to filesystems without ext4 features mounted -t ext4, or filesystems
-> mounted -t ext3 when CONFIG_EXT4_USE_FOR_EXT23 is defined?
+This is for RH bug 568503 - 
+snapshot bug: lock held when returning to user space
 
-hmmm to be honest i've lost track a little ;)
+ext4_freeze() does jbd2_journal_lock_updates() which takes
+the j_barrier mutex, and then we return to userspace.  The
+kernel does not like this:
 
-I was referring to:
+================================================
+[ BUG: lock held when returning to user space! ]
+------------------------------------------------
+lvcreate/1075 is leaving the kernel with locks still held!
+1 lock held by lvcreate/1075:
+ #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
+jbd2_journal_lock_updates+0xe1/0xf0
 
-commit ba69f9ab7df844125898104e854e063b47c26637
-Author: Jan Kara <jack@suse.cz>
-Date:   Wed Mar 24 20:18:37 2010 -0400
+I don't -think- we need to do this; by now we should have s_frozen
+set, and nobody else should be coming down the pipe to get to
+the journal.  However, just to be on the safe side, I added
+a couple of vfs_check_frozen() calls in ext4 functions which will
+arrive at start_this_handle(), which should ensure that we never
+get any journal traffic generated while frozen.
 
-    ext4: Don't use delayed allocation by default when used instead of ext3
-    
-    When ext4 driver is used to mount a filesystem instead of the ext3 file
-    system driver (through CONFIG_EXT4_USE_FOR_EXT23), do not enable delayed
-    allocation by default since some ext3 users and application writers have
-    developed unfortunate expectations about the safety of writing files on
-    systems subject to sudden and violent death without using fsync().
-    
-    Signed-off-by: Jan Kara <jack@suse.cz>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-looking at that commit I guess it's -only- when CONFIG_EXT4_USE_FOR_EXT23
-is defined.  So in answer to your question above, it's your latter case.
+(ext3 will need similar changes if this patch passes
+muster on review
 
-See previous complaint about this all becoming rather confusing....
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e14d22c..00d09f5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -241,6 +241,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
+ 
++	vfs_check_frozen(sb, SB_FREEZE_WRITE);
+ 	/* Special case here: if the journal has aborted behind our
+ 	 * backs (eg. EIO in the commit thread), then we still need to
+ 	 * take the FS itself readonly cleanly. */
+@@ -3485,8 +3486,10 @@ int ext4_force_commit(struct super_block *sb)
+ 		return 0;
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (journal)
++	if (journal) {
++		vfs_check_frozen(sb, SB_FREEZE_WRITE);
+ 		ret = ext4_journal_force_commit(journal);
++	}
+ 
+ 	return ret;
+ }
+@@ -3535,18 +3538,16 @@ static int ext4_freeze(struct super_block *sb)
+ 	 * the journal.
+ 	 */
+ 	error = jbd2_journal_flush(journal);
+-	if (error < 0) {
+-	out:
+-		jbd2_journal_unlock_updates(journal);
+-		return error;
+-	}
++	if (error < 0)
++		goto out;
+ 
+ 	/* Journal blocked and flushed, clear needs_recovery flag. */
+ 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	error = ext4_commit_super(sb, 1);
+-	if (error)
+-		goto out;
+-	return 0;
++out:
++	/* we rely on s_frozen to stop further updates */
++	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
++	return error;
+ }
+ 
+ /*
+@@ -3563,7 +3564,6 @@ static int ext4_unfreeze(struct super_block *sb)
+ 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	ext4_commit_super(sb, 1);
+ 	unlock_super(sb);
+-	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	return 0;
+ }
+ 
 
--Eric
-
-
-> -Justin
 
