@@ -1,78 +1,45 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH (RESEND)] don't scan/accumulate more pages than mballoc will
- allocate
-Date: Mon, 29 Mar 2010 10:29:37 -0500
-Message-ID: <4BB0C761.50204@redhat.com>
+From: tytso@mit.edu
+Subject: Re: 2.6.33.1: ext4 disk free weirdness
+Date: Mon, 29 Mar 2010 10:53:11 -0400
+Message-ID: <20100329145311.GA4671@thunk.org>
+References: <20100329045748.GR2657@zip.com.au>
+ <4BB0BDD2.3080100@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: CaT <cat@zip.com.au>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11261 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:36497 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752249Ab0C2P3m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 11:29:42 -0400
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o2TFTglK011455
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 11:29:42 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o2TFTbSR023301
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 11:29:41 -0400
+	id S1754105Ab0C2P4h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Mar 2010 11:56:37 -0400
+Content-Disposition: inline
+In-Reply-To: <4BB0BDD2.3080100@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(resend, email sent Friday seems lost)
+On Mon, Mar 29, 2010 at 09:48:50AM -0500, Eric Sandeen wrote:
+> CaT wrote:
+> > Using kernel 2.6.33.1. Am rsyncing from /data/mirror (a raid0 mount) to
+> > /dev/sda1 (a usb HD). Both filesystems formatted as ext3 but mounted as
+> > ext4. /mnt filesystem is only being added to and currently large files
+> > (iso files 700MB-4.4GB) are being copied. When I remounted /mnt as ext3
+> > I could not duplicate the issue and the amount of disk used stabilised
+> > at 182G. The df results, whilst /mnt is mounted as ext4, are below:
+> 
+> I would say this is likely speculative allocation due to delalloc
+> (ext4 has to reserve worst-case metadata amounts to prepare for
+> delalloc writeback).  When the file data actually gets written out,
+> the worst-case reservation is freed up again.  We also flush and
+> switch to nodelalloc when the filesystem is pretty close to full.
+> see ext4_nonda_switch() for example.
+> 
+> This looks pretty severe though, more than I would expect
+> from that behavior.
 
-There was a bug reported on RHEL5 that a 10G dd on a 12G box
-had a very, very slow sync after that.
+This is fixed in commit d330a5bef, which which got merged post
+2.6.34-rc2, and which we need to get into 2.6.33 stable.  If you
+cherry-pick that commit, I think you'll see that it fixes this
+problem.
 
-At issue was the loop in write_cache_pages scanning all the way
-to the end of the 10G file, even though the subsequent call
-to mpage_da_submit_io would only actually write a smallish amt; then
-we went back to the write_cache_pages loop ... wasting tons of time
-in calling __mpage_da_writepage for thousands of pages we would
-just revisit (many times) later.
-
-Upstream it's not such a big issue for sys_sync because we get
-to the loop with a much smaller nr_to_write, which limits the loop.
-
-However, talking with Aneesh he realized that fsync upstream still
-gets here with a very large nr_to_write and we face the same problem.
-
-This patch makes mpage_add_bh_to_extent stop the loop after we've
-accumulated 2048 pages, by setting mpd->io_done = 1; which ultimately
-causes the write_cache_pages loop to break.
-
-Repeating the test with a dirty_ratio of 80 (to leave something for
-fsync to do), I don't see huge IO performance gains, but the reduction
-in cpu usage is striking: 80% usage with stock, and 2% with the
-below patch.  Instrumenting the loop in write_cache_pages clearly
-shows that we are wasting time here.
-
-It'd be better to not have a magic number of 2048 in here, so I'll
-look for a cleaner way to get this info out of mballoc; I still need
-to look at what Aneesh has in the patch queue, that might help.
-This is something we could probably put in for now, though; the 2048
-is already enshrined in a comment in inode.c, at least.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-Index: linux-2.6/fs/ext4/inode.c
-===================================================================
---- linux-2.6.orig/fs/ext4/inode.c
-+++ linux-2.6/fs/ext4/inode.c
-@@ -2318,6 +2318,10 @@ static void mpage_add_bh_to_extent(struc
- 	sector_t next;
- 	int nrblocks = mpd->b_size >> mpd->inode->i_blkbits;
- 
-+	/* Don't go larger than mballoc is willing to allocate */
-+	if (nrblocks >= 2048)
-+		goto flush_it;
-+
- 	/* check if thereserved journal credits might overflow */
- 	if (!(EXT4_I(mpd->inode)->i_flags & EXT4_EXTENTS_FL)) {
- 		if (nrblocks >= EXT4_MAX_TRANS_DATA) {
-
+						- Ted
