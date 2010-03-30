@@ -1,258 +1,223 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [PATCH] e2fsprogs: Fix the overflow in e4defrag with 2GB over file
-Date: Tue, 30 Mar 2010 15:35:39 +0900
-Message-ID: <4BB19BBB.9010509@rs.jp.nec.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15655] New: corrupt ext3 fs and partial freeze
+Date: Tue, 30 Mar 2010 08:26:14 GMT
+Message-ID: <bug-15655-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:46191 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755627Ab0C3Ggf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 02:36:35 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:48091 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755225Ab0C3I0Q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 04:26:16 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2U8QFKu007775
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Mar 2010 08:26:15 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-e2fsprogs: Fix the overflow in e4defrag with 2GB over file
+https://bugzilla.kernel.org/show_bug.cgi?id=15655
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
+           Summary: corrupt ext3 fs and partial freeze
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.34-rc2
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: prahal@yahoo.com
+        Regression: Yes
 
-In e4defrag, we use locally defined posix_fallocate interface.
-And its "offset" and "len" are defined as off_t (long) type,
-their upper limit is 2GB -1 byte.
-Thus if we run e4defrag to the file whose size is 2GB over,
-the overflow occurs at calling fallocate syscall.
 
-To fix this issue, I add new define _FILE_OFFSET_BITS 64 to use
-64bit offset for filesystem related syscalls in e4defrag.c.
-(Also this patch includes open mode fix which has been
-released but not been merged e2fsprogs git tree yet.
-http://lists.openwall.net/linux-ext4/2010/01/19/3)
+Created an attachment (id=25762)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=25762)
+kernel log (full)
 
-Reported-by: David Calinski <david@fullrecall.com>
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
----
-  e4defrag.c |   60 +++++++++++++++++++++++++++---------------------------------
-  1 file changed, 27 insertions(+), 33 deletions(-)
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 82e3868..243949b 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -7,13 +7,7 @@
-   *         Takashi Sato	<t-sato@yk.jp.nec.com>
-   */
+Sorry it is against wireless-testing. I am not eager to test again or bisect :
+the filesystem gets corrupted after a little while (it get the boot ok ... but
+then later on I get this issue). And I already did 2 runs and it was close to
+big lose on the second before switching back to 2.6.33 wireless-testing (I had
+to use a live usb key and fsck with it ... a hundred of the groups were broken
+already). I am developping/testing ralink wireless thus the tree.
 
--#ifndef _LARGEFILE_SOURCE
--#define _LARGEFILE_SOURCE
--#endif
--
--#ifndef _LARGEFILE64_SOURCE
--#define _LARGEFILE64_SOURCE
--#endif
-+#define _FILE_OFFSET_BITS 64
+It is really close to https://bugzilla.kernel.org/show_bug.cgi?id=15610 .
+As far as I can tell the Tainted comes from the previous lockdep warning. As it
+seems the dkms build of external modules did not happened.
 
-  #ifndef _GNU_SOURCE
-  #define _GNU_SOURCE
-@@ -403,7 +397,7 @@ static int is_ext4(const char *file)
-  	const char	*mtab = MOUNTED;
-  	char	file_path[PATH_MAX + 1];
-  	struct mntent	*mnt = NULL;
--	struct statfs64	fsbuf;
-+	struct statfs	fsbuf;
 
-  	/* Get full path */
-  	if (realpath(file, file_path) == NULL) {
-@@ -412,7 +406,7 @@ static int is_ext4(const char *file)
-  		return -1;
-  	}
+[  575.960512] BUG: unable to handle kernel NULL pointer dereference at (null)
+[  575.960536] IP: [<c0128d3f>] __wake_up_common+0x1f/0x70
+[  575.960560] *pde = 00000000 
+[  575.960571] Oops: 0000 [#2] SMP 
+[  575.960585] last sysfs file:
+/sys/devices/LNXSYSTM:00/LNXSYBUS:00/PNP0A08:00/PNP0C0A:00/power_supply/BAT0/charge_full
+[  575.960599] Modules linked in: nfsd lockd nfs_acl auth_rpcgss sunrpc
+exportfs ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4
+xt_state nf_conntrack ipt_REJECT xt_tcpudp iptable_filter ip_tables x_tables
+ppdev parport af_packet sco bridge stp bnep l2cap crc16 bluetooth ipx p8022
+psnap llc p8023 ipv6 ipmi_devintf ipmi_si(+) ibmpex ipmi_msghandler
+acpi_cpufreq cpufreq_conservative cpufreq_powersave cpufreq_userspace
+cpufreq_ondemand cpufreq_stats freq_table binfmt_misc fuse tun uinput dm_crypt
+snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_pcm_oss snd_mixer_oss
+snd_pcm snd_seq_oss snd_seq_midi snd_rawmidi snd_seq_midi_event snd_seq
+snd_timer eeepc_laptop snd_seq_device sparse_keymap uvcvideo snd rtc_cmos
+tpm_tis rfkill psmouse rtc_core videodev soundcore tpm v4l1_compat joydev
+led_class rng_core snd_page_alloc rtc_lib tpm_bios serio_raw ac evdev battery
+processor pci_hotplug ext3 jbd mbcache dm_mod md_mod hid_logitech usbhid hid
+usb_storage usb_libusual s
+_mod ata_generic pata_acpi ata_piix libata uhci_hcd ehci_hcd atl1e scsi_mod
+usbcore thermal fan i915 drm_kms_helper drm i2c_algo_bit button i2c_core
+intel_agp agpgart video thermal_sys output fbcon tileblit font bitblit
+softcursor [last unloaded: pciehp]
+[  575.961030] 
+[  575.961042] Pid: 7382, comm: dwww-build Tainted: G      D W 
+2.6.34-rc2-wleeepc #25 1000H/1000H
+[  575.961054] EIP: 0060:[<c0128d3f>] EFLAGS: 00010082 CPU: 0
+[  575.961066] EIP is at __wake_up_common+0x1f/0x70
+[  575.961075] EAX: c3ea0ec8 EBX: fffffff4 ECX: 00000001 EDX: 00000000
+[  575.961084] ESI: 00000003 EDI: 00000292 EBP: e25d9d50 ESP: e25d9d34
+[  575.961094]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+[  575.961106] Process dwww-build (pid: 7382, ti=e25d8000 task=e891e700
+task.ti=e25d8000)
+[  575.961115] Stack:
+[  575.961122]  00000000 00000001 00000003 c012cb90 c3ea0ea4 00000003 00000292
+e25d9d70
+[  575.961152] <0> c012cbac 00000000 e25d9d7c 00000001 c05ac378 c0591780
+00000084 e25d9d84
+[  575.961186] <0> c0157a3e e25d9d7c c05ac378 00000003 e25d9d94 c0157a9c
+c05ac10c c05ac10c
+[  575.961222] Call Trace:
+[  575.961238]  [<c012cb90>] ? __wake_up+0x20/0x60
+[  575.961252]  [<c012cbac>] ? __wake_up+0x3c/0x60
+[  575.961269]  [<c05ac378>] ? code_bytes_setup+0xb/0x26
+[  575.961284]  [<c0157a3e>] ? __wake_up_bit+0x2e/0x30
+[  575.961299]  [<c05ac378>] ? code_bytes_setup+0xb/0x26
+[  575.961313]  [<c0157a9c>] ? wake_up_bit+0x5c/0x60
+[  575.961327]  [<c05ac10c>] ? trap_init+0x27d/0x44c
+[  575.961341]  [<c05ac10c>] ? trap_init+0x27d/0x44c
+[  575.961356]  [<c020c265>] ? unlock_new_inode+0x95/0xc0
+[  575.961370]  [<c05ac10c>] ? trap_init+0x27d/0x44c
+[  575.961383]  [<c05ac10c>] ? trap_init+0x27d/0x44c
+[  575.961432]  [<fa6fc9f3>] ? ext3_iget+0x273/0x440 [ext3]
+[  575.961447]  [<c020a65c>] ? d_alloc+0xfc/0x180
+[  575.961494]  [<fa702e87>] ? ext3_lookup+0x87/0x100 [ext3]
+[  575.961510]  [<c03e9ea2>] ? _raw_spin_unlock+0x22/0x30
+[  575.961524]  [<c020a682>] ? d_alloc+0x122/0x180
+[  575.961553]  [<c0200e13>] ? do_lookup+0x163/0x1c0
+[  575.961567]  [<c020305d>] ? link_path_walk+0x42d/0x9b0
+[  575.961582]  [<c0203711>] ? path_walk+0x51/0xc0
+[  575.961596]  [<c02037d9>] ? do_path_lookup+0x59/0x90
+[  575.961611]  [<c02042e1>] ? user_path_at+0x41/0x80
+[  575.961625]  [<c02a7c5b>] ? copy_to_user+0x3b/0x120
+[  575.961642]  [<c01fc1ca>] ? vfs_fstatat+0x3a/0x70
+[  575.961656]  [<c01fc260>] ? vfs_lstat+0x20/0x30
+[  575.961671]  [<c01fc289>] ? sys_lstat64+0x19/0x30
+[  575.961686]  [<c0192ad2>] ? audit_syscall_entry+0x1e2/0x210
+[  575.961700]  [<c0102d8d>] ? sysenter_exit+0xf/0x1a
+[  575.961714]  [<c0102d58>] ? sysenter_do_call+0x12/0x38
+[  575.961724] Code: 1f 44 00 00 e8 53 ff ff ff 5d c3 90 55 89 e5 57 56 53 83
+ec 10 0f 1f 44 00 00 89 55 ec 89 4d e8 8b 50 24 83 c0 24 8d 5a f4 39 d0 <8b> 73
+0c 89 45 f0 74 3b 83 ee 0c eb 09 8d 74 26 00 89 f3 8d 70 
+[  575.961911] EIP: [<c0128d3f>] __wake_up_common+0x1f/0x70 SS:ESP
+0068:e25d9d34
+[  575.961930] CR2: 0000000000000000
+[  575.961942] ---[ end trace 28287be16bbcea07 ]---
 
--	if (statfs64(file_path, &fsbuf) < 0) {
-+	if (statfs(file_path, &fsbuf) < 0) {
-  		perror("Failed to get filesystem information");
-  		PRINT_FILE_NAME(file);
-  		return -1;
-@@ -470,7 +464,7 @@ static int is_ext4(const char *file)
-   * @ftwbuf:		the pointer of a struct FTW.
-   */
-  static int calc_entry_counts(const char *file EXT2FS_ATTR((unused)),
--		const struct stat64 *buf, int flag EXT2FS_ATTR((unused)),
-+		const struct stat *buf, int flag EXT2FS_ATTR((unused)),
-  		struct FTW *ftwbuf EXT2FS_ATTR((unused)))
-  {
-  	if (S_ISREG(buf->st_mode))
-@@ -580,15 +574,15 @@ static int defrag_fadvise(int fd, struct move_extent defrag_data,
-   *
-   * @fd:			defrag target file's descriptor.
-   * @file:		file name.
-- * @buf:		the pointer of the struct stat64.
-+ * @buf:		the pointer of the struct stat.
-   */
--static int check_free_size(int fd, const char *file, const struct stat64 *buf)
-+static int check_free_size(int fd, const char *file, const struct stat *buf)
-  {
-  	ext4_fsblk_t	blk_count;
-  	ext4_fsblk_t	free_blk_count;
--	struct statfs64	fsbuf;
-+	struct statfs	fsbuf;
 
--	if (fstatfs64(fd, &fsbuf) < 0) {
-+	if (fstatfs(fd, &fsbuf) < 0) {
-  		if (mode_flag & DETAIL) {
-  			PRINT_FILE_NAME(file);
-  			PRINT_ERR_MSG_WITH_ERRNO(
-@@ -641,11 +635,11 @@ static int file_frag_count(int fd)
-   * file_check() -	Check file's attributes.
-   *
-   * @fd:			defrag target file's descriptor.
-- * @buf:		a pointer of the struct stat64.
-+ * @buf:		a pointer of the struct stat.
-   * @file:		the file's name.
-   * @extents:		the file's extents.
-   */
--static int file_check(int fd, const struct stat64 *buf, const char *file,
-+static int file_check(int fd, const struct stat *buf, const char *file,
-  		int extents)
-  {
-  	int	ret;
-@@ -1151,14 +1145,14 @@ static int get_superblock_info(const char *file, struct ext4_super_block *sb)
-  				strnlen(mnt->mnt_fsname, PATH_MAX));
-  	}
+[  575.967255] BUG: unable to handle kernel NULL pointer dereference at (null)
+[  575.967278] IP: [<c0128d3f>] __wake_up_common+0x1f/0x70
+[  575.967302] *pde = 00000000 
+[  575.967314] Oops: 0000 [#3] SMP 
+[  575.967327] last sysfs file:
+/sys/devices/LNXSYSTM:00/LNXSYBUS:00/PNP0A08:00/PNP0C0A:00/power_supply/BAT0/charge_full
+[  575.967339] Modules linked in: nfsd lockd nfs_acl auth_rpcgss sunrpc
+exportfs ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4
+xt_state nf_conntrack ipt_REJECT xt_tcpudp iptable_filter ip_tables x_tables
+ppdev parport af_packet sco bridge stp bnep l2cap crc16 bluetooth ipx p8022
+psnap llc p8023 ipv6 ipmi_devintf ipmi_si(+) ibmpex ipmi_msghandler
+acpi_cpufreq cpufreq_conservative cpufreq_powersave cpufreq_userspace
+cpufreq_ondemand cpufreq_stats freq_table binfmt_misc fuse tun uinput dm_crypt
+snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_pcm_oss snd_mixer_oss
+snd_pcm snd_seq_oss snd_seq_midi snd_rawmidi snd_seq_midi_event snd_seq
+snd_timer eeepc_laptop snd_seq_device sparse_keymap uvcvideo snd rtc_cmos
+tpm_tis rfkill psmouse rtc_core videodev soundcore tpm v4l1_compat joydev
+led_class rng_core snd_page_alloc rtc_lib tpm_bios serio_raw ac evdev battery
+processor pci_hotplug ext3 jbd mbcache dm_mod md_mod hid_logitech usbhid hid
+usb_storage usb_libusual s
+_mod ata_generic pata_acpi ata_piix libata uhci_hcd ehci_hcd atl1e scsi_mod
+usbcore thermal fan i915 drm_kms_helper drm i2c_algo_bit button i2c_core
+intel_agp agpgart video thermal_sys output fbcon tileblit font bitblit
+softcursor [last unloaded: pciehp]
+[  575.967792] 
+[  575.967808] Pid: 6884, comm: run-parts Tainted: G      D W 
+2.6.34-rc2-wleeepc #25 1000H/1000H
+[  575.967820] EIP: 0060:[<c0128d3f>] EFLAGS: 00010086 CPU: 0
+[  575.967834] EIP is at __wake_up_common+0x1f/0x70
+[  575.967845] EAX: c3ea0e9c EBX: fffffff4 ECX: 00000001 EDX: 00000000
+[  575.967856] ESI: 00000003 EDI: 00000292 EBP: e8981d50 ESP: e8981d34
+[  575.967866]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+[  575.967876] Process run-parts (pid: 6884, ti=e8980000 task=ecbc19c0
+task.ti=e8980000)
+[  575.967884] Stack:
+[  575.967891]  00000000 00000001 00000003 c012cb90 c3ea0e78 00000003 00000292
+e8981d70
+[  575.967923] <0> c012cbac 00000000 e8981d7c 00000001 c05ac718 c0591780
+00000084 e8981d84
+[  575.967955] <0> c0157a3e e8981d7c c05ac718 00000003 e8981d94 c0157a9c
+c05ac4ac c05ac4ac
+[  575.967994] Call Trace:
+[  575.968011]  [<c012cb90>] ? __wake_up+0x20/0x60
+[  575.968023]  [<c012cbac>] ? __wake_up+0x3c/0x60
+[  575.968023]  [<c05ac718>] ? setup_arch+0x2be/0xaa1
+[  575.968023]  [<c0157a3e>] ? __wake_up_bit+0x2e/0x30
+[  575.968023]  [<c05ac718>] ? setup_arch+0x2be/0xaa1
+[  575.968023]  [<c0157a9c>] ? wake_up_bit+0x5c/0x60
+[  575.968023]  [<c05ac4ac>] ? setup_arch+0x52/0xaa1
+[  575.968023]  [<c05ac4ac>] ? setup_arch+0x52/0xaa1
+[  575.968023]  [<c020c265>] ? unlock_new_inode+0x95/0xc0
+[  575.968023]  [<c05ac4ac>] ? setup_arch+0x52/0xaa1
+[  575.968023]  [<c05ac4ac>] ? setup_arch+0x52/0xaa1
+[  575.968132]  [<fa6fc9f3>] ? ext3_iget+0x273/0x440 [ext3]
+[  575.968132]  [<c020a65c>] ? d_alloc+0xfc/0x180
+[  575.968132]  [<fa702e87>] ? ext3_lookup+0x87/0x100 [ext3]
+[  575.968132]  [<c03e9ea2>] ? _raw_spin_unlock+0x22/0x30
+[  575.968132]  [<c020a682>] ? d_alloc+0x122/0x180
+[  575.968132]  [<c0200e13>] ? do_lookup+0x163/0x1c0
+[  575.968132]  [<c020305d>] ? link_path_walk+0x42d/0x9b0
+[  575.968132]  [<c0203711>] ? path_walk+0x51/0xc0
+[  575.968132]  [<c02037d9>] ? do_path_lookup+0x59/0x90
+[  575.968132]  [<c02042e1>] ? user_path_at+0x41/0x80
+[  575.968132]  [<c01dedfe>] ? handle_mm_fault+0x37e/0x860
+[  575.968132]  [<c01dedfe>] ? handle_mm_fault+0x37e/0x860
+[  575.968132]  [<c03e9481>] ? _raw_spin_lock+0x61/0x70
+[  575.968132]  [<c01fc1ca>] ? vfs_fstatat+0x3a/0x70
+[  575.968132]  [<c01fc320>] ? vfs_stat+0x20/0x30
+[  575.968132]  [<c01fc349>] ? sys_stat64+0x19/0x30
+[  575.968132]  [<c015cabb>] ? up_read+0x1b/0x30
+[  575.968132]  [<c0192ad2>] ? audit_syscall_entry+0x1e2/0x210
+[  575.968132]  [<c03ea0d6>] ? restore_all_notrace+0x0/0x18
+[  575.968132]  [<c03ed060>] ? do_page_fault+0x0/0x3c0
+[  575.968132]  [<c0102d58>] ? sysenter_do_call+0x12/0x38
+[  575.968132] Code: 1f 44 00 00 e8 53 ff ff ff 5d c3 90 55 89 e5 57 56 53 83
+ec 10 0f 1f 44 00 00 89 55 ec 89 4d e8 8b 50 24 83 c0 24 8d 5a f4 39 d0 <8b> 73
+0c 89 45 f0 74 3b 83 ee 0c eb 09 8d 74 26 00 89 f3 8d 70 
+[  575.968132] EIP: [<c0128d3f>] __wake_up_common+0x1f/0x70 SS:ESP
+0068:e8981d34
+[  575.968132] CR2: 0000000000000000
+[  575.968579] ---[ end trace 28287be16bbcea08 ]--
 
--	fd = open64(dev_name, O_RDONLY);
-+	fd = open(dev_name, O_RDONLY);
-  	if (fd < 0) {
-  		ret = -1;
-  		goto out;
-  	}
 
-  	/* Set offset to read superblock */
--	ret = lseek64(fd, SUPERBLOCK_OFFSET, SEEK_SET);
-+	ret = lseek(fd, SUPERBLOCK_OFFSET, SEEK_SET);
-  	if (ret < 0)
-  		goto out;
 
-@@ -1200,11 +1194,11 @@ static int get_best_count(ext4_fsblk_t block_count)
-   * file_statistic() -	Get statistic info of the file's fragments.
-   *
-   * @file:		the file's name.
-- * @buf:		the pointer of the struct stat64.
-+ * @buf:		the pointer of the struct stat.
-   * @flag:		file type.
-   * @ftwbuf:		the pointer of a struct FTW.
-   */
--static int file_statistic(const char *file, const struct stat64 *buf,
-+static int file_statistic(const char *file, const struct stat *buf,
-  			int flag EXT2FS_ATTR((unused)),
-  			struct FTW *ftwbuf EXT2FS_ATTR((unused)))
-  {
-@@ -1275,7 +1269,7 @@ static int file_statistic(const char *file, const struct stat64 *buf,
-  		return 0;
-  	}
+I will get a second station up to test (with no real data). So I will be able
+to bisect on it in a few days.
 
--	fd = open64(file, O_RDONLY);
-+	fd = open(file, O_RDONLY);
-  	if (fd < 0) {
-  		if (mode_flag & DETAIL) {
-  			PRINT_FILE_NAME(file);
-@@ -1447,11 +1441,11 @@ static void print_progress(const char *file, loff_t start, loff_t file_size)
-   * @fd:			target file descriptor.
-   * @donor_fd:		donor file descriptor.
-   * @file:			target file name.
-- * @buf:			pointer of the struct stat64.
-+ * @buf:			pointer of the struct stat.
-   * @ext_list_head:	head of the extent list.
-   */
-  static int call_defrag(int fd, int donor_fd, const char *file,
--	const struct stat64 *buf, struct fiemap_extent_list *ext_list_head)
-+	const struct stat *buf, struct fiemap_extent_list *ext_list_head)
-  {
-  	loff_t	start = 0;
-  	unsigned int	page_num;
-@@ -1541,11 +1535,11 @@ static int call_defrag(int fd, int donor_fd, const char *file,
-   * file_defrag() -		Check file attributes and call ioctl to defrag.
-   *
-   * @file:		the file's name.
-- * @buf:		the pointer of the struct stat64.
-+ * @buf:		the pointer of the struct stat.
-   * @flag:		file type.
-   * @ftwbuf:		the pointer of a struct FTW.
-   */
--static int file_defrag(const char *file, const struct stat64 *buf,
-+static int file_defrag(const char *file, const struct stat *buf,
-  			int flag EXT2FS_ATTR((unused)),
-  			struct FTW *ftwbuf EXT2FS_ATTR((unused)))
-  {
-@@ -1605,7 +1599,7 @@ static int file_defrag(const char *file, const struct stat64 *buf,
-  		return 0;
-  	}
-
--	fd = open64(file, O_RDONLY);
-+	fd = open(file, O_RDWR);
-  	if (fd < 0) {
-  		if (mode_flag & DETAIL) {
-  			PRINT_FILE_NAME(file);
-@@ -1675,7 +1669,7 @@ static int file_defrag(const char *file, const struct stat64 *buf,
-  	memset(tmp_inode_name, 0, PATH_MAX + 8);
-  	sprintf(tmp_inode_name, "%.*s.defrag",
-  				(int)strnlen(file, PATH_MAX), file);
--	donor_fd = open64(tmp_inode_name, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR);
-+	donor_fd = open(tmp_inode_name, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR);
-  	if (donor_fd < 0) {
-  		if (mode_flag & DETAIL) {
-  			PRINT_FILE_NAME(file);
-@@ -1822,7 +1816,7 @@ int main(int argc, char *argv[])
-  	int	arg_type = -1;
-  	int	success_flag = 0;
-  	char	dir_name[PATH_MAX + 1];
--	struct stat64	buf;
-+	struct stat	buf;
-  	struct ext4_super_block sb;
-
-  	/* Parse arguments */
-@@ -1876,7 +1870,7 @@ int main(int argc, char *argv[])
-  		continue;
-  #endif
-
--		if (lstat64(argv[i], &buf) < 0) {
-+		if (lstat(argv[i], &buf) < 0) {
-  			perror(NGMSG_FILE_INFO);
-  			PRINT_FILE_NAME(argv[i]);
-  			continue;
-@@ -1886,7 +1880,7 @@ int main(int argc, char *argv[])
-  			/* Block device */
-  			if (get_mount_point(argv[i], dir_name, PATH_MAX) < 0)
-  				continue;
--			if (lstat64(dir_name, &buf) < 0) {
-+			if (lstat(dir_name, &buf) < 0) {
-  				perror(NGMSG_FILE_INFO);
-  				PRINT_FILE_NAME(argv[i]);
-  				continue;
-@@ -1987,7 +1981,7 @@ int main(int argc, char *argv[])
-  							   PATH_MAX));
-  			}
-
--			nftw64(dir_name, calc_entry_counts, FTW_OPEN_FD, flags);
-+			nftw(dir_name, calc_entry_counts, FTW_OPEN_FD, flags);
-
-  			if (mode_flag & STATISTIC) {
-  				if (mode_flag & DETAIL)
-@@ -2000,7 +1994,7 @@ int main(int argc, char *argv[])
-  					continue;
-  				}
-
--				nftw64(dir_name, file_statistic,
-+				nftw(dir_name, file_statistic,
-  							FTW_OPEN_FD, flags);
-
-  				if (succeed_cnt != 0 &&
-@@ -2034,7 +2028,7 @@ int main(int argc, char *argv[])
-  				break;
-  			}
-  			/* File tree walk */
--			nftw64(dir_name, file_defrag, FTW_OPEN_FD, flags);
-+			nftw(dir_name, file_defrag, FTW_OPEN_FD, flags);
-  			printf("\n\tSuccess:\t\t\t[ %u/%u ]\n", succeed_cnt,
-  				total_count);
-  			printf("\tFailure:\t\t\t[ %u/%u ]\n",
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
