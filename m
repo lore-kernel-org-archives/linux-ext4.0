@@ -1,57 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsck: make block counting variable in pass1 64 bits
-Date: Tue, 30 Mar 2010 11:42:51 -0500
-Message-ID: <4BB22A0B.2000303@redhat.com>
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: fix quota accounting in case of fallocate
+Date: Tue, 30 Mar 2010 23:38:48 +0530
+Message-ID: <87zl1py95b.fsf@linux.vnet.ibm.com>
+References: <1269959076-9591-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Justin Maggard <jmaggard10@gmail.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34854 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753858Ab0C3Qmz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Mar 2010 12:42:55 -0400
+Received: from e23smtp09.au.ibm.com ([202.81.31.142]:36340 "EHLO
+	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753384Ab0C3SIz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 14:08:55 -0400
+Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
+	by e23smtp09.au.ibm.com (8.14.3/8.13.1) with ESMTP id o2UI8s1H004672
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 05:08:54 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o2UI2fui1478862
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 05:02:41 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o2UI8rCZ009966
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 05:08:54 +1100
+In-Reply-To: <1269959076-9591-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Justin reported that creating a 4T file with posix_fallocate led
-to fsck errors:
+On Tue, 30 Mar 2010 18:24:35 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> allocated_meta_data is already included in 'used' variable.
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/inode.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index bec222c..bf989fb 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1110,7 +1110,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
+>  		 */
+>  		if (allocated_meta_blocks)
+>  			dquot_claim_block(inode, allocated_meta_blocks);
+> -		dquot_release_reservation_block(inode, mdb_free + used);
+> +		dquot_release_reservation_block(inode, mdb_free + used -
+> +			allocated_meta_blocks);
+>  	}
+> 
+>  	/*
 
-e2fsck 1.41.10 (10-Feb-2009)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 12, i_blocks is 8589935432, should be 840.  Fix? yes
+Do we really need to do this ? IIUC reservation count and actual
+allocated count are two different. One block allocation we need to
+remove all the blocks reserved from the reservation count and add
+actually allocated blocks to the allocated count.
 
-This looks like a 32-bit overflow.
-
-commmit 8a8f36540bbf5d4397cf476e216e9a720b5c1d8e added handling of
-the high i_blocks number, but we accumulate blocks in the num_blocks
-field, and that's still just 32 bits.
-
-Note: we don't need to expand max_blocks for now, that's only used
-in the non-extents case, and those files have smaller max sizes.
-
-I haven't been able to replicate the problem, oddly, but Justin
-reports that this patch fixed his situation.
-
-Reported-by: Justin Maggard <jmaggard10@gmail.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-(resend, a thunderbird upgrade changed things so vger was eating my patches)
-
-
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 09ff1d0..8c8fe8c 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -80,7 +80,7 @@ struct process_block_struct {
- 	ext2_ino_t	ino;
- 	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
- 				fragmented:1, compressed:1, bbcheck:1;
--	blk_t		num_blocks;
-+	blk64_t		num_blocks;
- 	blk_t		max_blocks;
- 	e2_blkcnt_t	last_block;
- 	int		num_illegal_blocks;
-
+-aneesh
