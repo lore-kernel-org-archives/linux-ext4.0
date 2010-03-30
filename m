@@ -1,61 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Should journaled quota be default for ext4?
-Date: Tue, 30 Mar 2010 04:24:47 +0200
-Message-ID: <20100330022447.GF18791@atrey.karlin.mff.cuni.cz>
-References: <4BAC3860.7010905@redhat.com> <20100326142626.GI21658@thunk.org> <20100330011750.GC18791@atrey.karlin.mff.cuni.cz> <20100330021008.GB7628@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
+Date: Tue, 30 Mar 2010 09:26:52 +0400
+Message-ID: <8739zie5wj.fsf@openvz.org>
+References: <E1NuxHe-0005cj-JN@closure.thunk.org>
+	<20100326004738.GJ3145@quack.suse.cz>
+	<20100326033824.GC21658@thunk.org>
+	<20100326104205.GA3055@quack.suse.cz>
+	<20100326133856.GE21658@thunk.org>
+	<20100330005504.GJ5835@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:51800 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753276Ab0C3CYs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 22:24:48 -0400
-Content-Disposition: inline
-In-Reply-To: <20100330021008.GB7628@thunk.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:11402 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752242Ab0C3F1E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Mar 2010 01:27:04 -0400
+In-Reply-To: <20100330005504.GJ5835@quack.suse.cz> (Jan Kara's message of
+	"Tue, 30 Mar 2010 02:55:05 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Tue, Mar 30, 2010 at 03:17:50AM +0200, Jan Kara wrote:
-> >   Yes, quota-tools currently use these options as well to detect whether they
-> > should run the command on the filesystem or not. The problem is that at least
-> > "quotaon -a" needs to know on which filesystem it should run and currently it
-> > uses quota mount options to decide. I can change quota tools to just look for
-> > quota files but that's not guaranteed to succeed because for unjournaled
-> > quotas, quota files could be anywhere - even on a different filesystem - and I
-> > really know admins who use such setup.
-> 
-> Hmm.... so is this something we need to continue to support?  If we
-> phase out support for anything other than hidden journal files, that
-> implies that these sysadmins would eventually need to ove, right?
-  Yes, they will be forced to move. Honestly, I never heard a good technical
-reason for this so hopefully it won't be a big pain for them. But sure we have
-to provide a long enough period where we only warn about deprecation so that we
-can get some decent feedback.
+Jan Kara <jack@suse.cz> writes:
 
-> > And for journaled quotas, file name
-> > of the quota file is the one given in the {usr,grp}jquota mount option
-> > so without it it's impossible to locate the quota file as well.
-> 
-> ... and sometimes names other than aquota.user and aquota.group are
-> used?
-  Sadly yes, although I expect this to be rather rare.
-
-> I was thinking about having e2fsck look for those file names, maybe check the
-> format, and then offer to auto-convert them to the new format with hidden
-> quota files.  I suppose I could have e2fsck try to look for that information
-> in /etc/fstab, but that adds a different layer of complexity (namely, we need
-> to be confident we can match up a particular device with an /etc/fstab entry,
-> which usually but doesn't always work).
-  Alternatively, you could have an option where admin could provide filenames
-of quota files for conversion if e2fsck cannot find them on its own. It
-wouldn't be automated but it would still provide a reasonable transition
-path.
-
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+> On Fri 26-03-10 09:38:56, tytso@mit.edu wrote:
+>> On Fri, Mar 26, 2010 at 11:42:05AM +0100, Jan Kara wrote:
+>> > > There may also be other programs that depend on the existence of
+>> > > aquota.user, and may be reading and writing them in various random
+>> > > ways, and there is the question of how do we provide compatibility
+>> > > with these other programs, some of which may not be within quotatools,
+>> > > but in various magic virtualization or container or cluster management
+>> > > systems....
+>> >   Yeah, this is possible, although I'm not aware of any such program -
+>> 
+>> Actually, Google's cluster management system is accessing/modifying
+>> aquota.group file directly before and after quota is enabled.  This
+>> may change in the future, but it's one more point of compatibility.
+>   I see. Thanks for info.
+>
+>> >   Yeah, I believe that support for the oldest quota format can be phased
+>> > out - the new format is around for something like 10 years and it had
+>> > it's problems at that time already. I guess I'll add a warning to the
+>> > next release of quota-tools to the people still using it.
+>> 
+>> And if we transition to using quotactl calls to access and read the
+>> information in the quota files, then the actual format of the quota
+>> file won't matter any more, right?
+>   Yes, hopefully.
+>
+>> Stupid question --- how does repquota work on OCFS2?  I don't see any
+>> quotactl subcommands that would appear to return the functionality
+>> needed by repquota --- unless you just assume that the only uid/gid's
+>> in use are in /etc/passwd and /etc/group, and just call quotactl for
+>> each uid/gid in the system passwd and group files.
+>   Currently it does not work at all. I didn't get to writing it when
+> writing original quota support for OCFS2 because the inferface won't be
+> completely trivial and it would be complicated for OCFS2 to expose the
+> file directly. Probably the interface will have to be something like
+> readdir but then you have to have some "handles" and state associated
+> with them and it gets complicated. Maybe we could make our life simpler
+> by returning an read-only unseekable fd from repquota quotactl and reading
+> from it would pass quota structures. But I haven't thought too much about
+> it.
+Ok. i hope finally we will end up with something like this.
+Before introducing this interface it is reasonable to redesign
+dquot structures itself because they aren't linked together
+so it is not easy to iterate it without probing each id in a loop.
