@@ -1,54 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Should journaled quota be default for ext4?
-Date: Tue, 30 Mar 2010 03:17:50 +0200
-Message-ID: <20100330011750.GC18791@atrey.karlin.mff.cuni.cz>
-References: <4BAC3860.7010905@redhat.com> <20100326142626.GI21658@thunk.org>
+From: CaT <cat@zip.com.au>
+Subject: Re: 2.6.33.1: ext4 disk free weirdness
+Date: Tue, 30 Mar 2010 12:44:09 +1100
+Message-ID: <20100330014409.GS2657@zip.com.au>
+References: <20100329045748.GR2657@zip.com.au> <4BB0BDD2.3080100@redhat.com> <20100329145311.GA4671@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:36761 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753288Ab0C3BRv (ORCPT
+Received: from nessie.weebeastie.net ([220.233.7.36]:34711 "EHLO
+	bunyip.billabong.weebeastie.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754447Ab0C3BoS (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 21:17:51 -0400
+	Mon, 29 Mar 2010 21:44:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20100326142626.GI21658@thunk.org>
+In-Reply-To: <20100329145311.GA4671@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Thu, Mar 25, 2010 at 11:30:24PM -0500, Eric Sandeen wrote:
-> > Ted's email about quotacheck made me think:
-> > 
-> > Is there a reason that journaled quota is not default for ext4?
-> > (or ext3 for that matter, but we're not messing with that now)
-> > 
-> > IOW - if we do mount -o quota, is there any reason that we should
-> > also need more options to journal that quota?  When would we not
-> > want journaled quota?
-> > 
-> > (Forgive me if it's a dumb question, I'm not as well versed in
-> > extN quota as I probably should be).
-> 
-> Part of the problem is that these mount options matter to various init
-> scripts (and possibly to quotatools?).  So for example, the usrquota
-  Yes, quota-tools currently use these options as well to detect whether they
-should run the command on the filesystem or not. The problem is that at least
-"quotaon -a" needs to know on which filesystem it should run and currently it
-uses quota mount options to decide. I can change quota tools to just look for
-quota files but that's not guaranteed to succeed because for unjournaled
-quotas, quota files could be anywhere - even on a different filesystem - and I
-really know admins who use such setup. And for journaled quotas, file name
-of the quota file is the one given in the {usr,grp}jquota mount option
-so without it it's impossible to locate the quota file as well.
-  So I think the easiest way out of this is really to make quota files hidden
-as we discussed in another thread. Then kernel always knows whether the
-filesystem accounts quotas or not and quota tools can ask it with GETFMT
-quotactl.
+On Mon, Mar 29, 2010 at 10:53:11AM -0400, tytso@mit.edu wrote:
+> This is fixed in commit d330a5bef, which which got merged post
+> 2.6.34-rc2, and which we need to get into 2.6.33 stable.  If you
+> cherry-pick that commit, I think you'll see that it fixes this
+> problem.
 
-									Honza
+As it turns out, that USB drive died soon after so, as soon as I
+get a warranty replacement I'll either cherry-pick this or install
+the 33 point release with it in. It's kinda wild and wooly with its
+speculation. All else fails, I'll use the mount option.
+
+Thanks to both you and Eric for your replies. :)
+
 -- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+  "A search of his car uncovered pornography, a homemade sex aid, women's 
+  stockings and a Jack Russell terrier."
+    - http://www.news.com.au/story/0%2C27574%2C24675808-421%2C00.html
