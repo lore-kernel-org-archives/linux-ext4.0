@@ -1,38 +1,61 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15655] corrupt ext3 fs and partial freeze
-Date: Tue, 30 Mar 2010 08:28:39 GMT
-Message-ID: <201003300828.o2U8SdG1008400@demeter.kernel.org>
-References: <bug-15655-13602@https.bugzilla.kernel.org/>
+From: jing zhang <zj.barak@gmail.com>
+Subject: [PATCH] ext4: group cache is added in ext4_mb_discard_preallocations()
+Date: Tue, 30 Mar 2010 20:36:17 +0800
+Message-ID: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>,
+	"zj.barak" <zj.barak@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55061 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755225Ab0C3I2k (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 04:28:40 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o2U8SdRX008401
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Mar 2010 08:28:39 GMT
-In-Reply-To: <bug-15655-13602@https.bugzilla.kernel.org/>
+Received: from mail-yx0-f199.google.com ([209.85.210.199]:48477 "EHLO
+	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755360Ab0C3MgU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 08:36:20 -0400
+Received: by yxe37 with SMTP id 37so5537124yxe.21
+        for <linux-ext4@vger.kernel.org>; Tue, 30 Mar 2010 05:36:19 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15655
+From: Jing Zhang <zj.barak@gmail.com>
 
+Date: Tue Mar 30 20:35:22     2010
 
-Alban Browaeys <prahal@yahoo.com> changed:
+With the added cache, better group locality may be earned when
+allocating blocks.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |prahal@yahoo.com
-             Blocks|                            |15310
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@sun.com>
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jing Zhang <zj.barak@gmail.com>
 
+---
 
+--- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
++++ ext4_mm_leak/mballoc-13.c	2010-03-30 20:28:08.000000000 +0800
+@@ -4183,12 +4183,20 @@ static int ext4_mb_discard_preallocation
+ 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
+ 	int ret;
+ 	int freed = 0;
++	static ext4_group_t grp_cache = 0;
 
+ 	trace_ext4_mb_discard_preallocations(sb, needed);
+-	for (i = 0; i < ngroups && needed > 0; i++) {
+-		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
++	if (needed <= 0)
++		return freed;
++	for (i = 0; i < ngroups; i++) {
++		if (grp_cache >= ngroups)
++			grp_cache -= ngroups;
++		ret = ext4_mb_discard_group_preallocations(sb, grp_cache, needed);
+ 		freed += ret;
+ 		needed -= ret;
++		if (needed <= 0)
++			break;
++		grp_cache++;
+ 	}
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+ 	return freed;
