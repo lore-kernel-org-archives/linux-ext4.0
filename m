@@ -1,61 +1,78 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: [PATCH] ext4: group cache is added in ext4_mb_discard_preallocations()
-Date: Tue, 30 Mar 2010 20:36:17 +0800
-Message-ID: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
+Date: Tue, 30 Mar 2010 14:42:14 +0200
+Message-ID: <20100330124214.GA3424@quack.suse.cz>
+References: <E1NuxHe-0005cj-JN@closure.thunk.org>
+ <20100326004738.GJ3145@quack.suse.cz>
+ <20100326033824.GC21658@thunk.org>
+ <20100326104205.GA3055@quack.suse.cz>
+ <20100326133856.GE21658@thunk.org>
+ <20100330005504.GJ5835@quack.suse.cz>
+ <8739zie5wj.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: linux-ext4 <linux-ext4@vger.kernel.org>,
-	"zj.barak" <zj.barak@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f199.google.com ([209.85.210.199]:48477 "EHLO
-	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755360Ab0C3MgU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 08:36:20 -0400
-Received: by yxe37 with SMTP id 37so5537124yxe.21
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Mar 2010 05:36:19 -0700 (PDT)
+Received: from cantor.suse.de ([195.135.220.2]:45915 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755832Ab0C3MmR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Mar 2010 08:42:17 -0400
+Content-Disposition: inline
+In-Reply-To: <8739zie5wj.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jing Zhang <zj.barak@gmail.com>
+On Tue 30-03-10 09:26:52, Dmitry Monakhov wrote:
+> Jan Kara <jack@suse.cz> writes:
+> > On Fri 26-03-10 09:38:56, tytso@mit.edu wrote:
+> >> On Fri, Mar 26, 2010 at 11:42:05AM +0100, Jan Kara wrote:
+> >> > > There may also be other programs that depend on the existence of
+> >> > > aquota.user, and may be reading and writing them in various random
+> >> > > ways, and there is the question of how do we provide compatibility
+> >> > > with these other programs, some of which may not be within quotatools,
+> >> > > but in various magic virtualization or container or cluster management
+> >> > > systems....
+> >> >   Yeah, this is possible, although I'm not aware of any such program -
+> >> 
+> >> Actually, Google's cluster management system is accessing/modifying
+> >> aquota.group file directly before and after quota is enabled.  This
+> >> may change in the future, but it's one more point of compatibility.
+> >   I see. Thanks for info.
+> >
+> >> >   Yeah, I believe that support for the oldest quota format can be phased
+> >> > out - the new format is around for something like 10 years and it had
+> >> > it's problems at that time already. I guess I'll add a warning to the
+> >> > next release of quota-tools to the people still using it.
+> >> 
+> >> And if we transition to using quotactl calls to access and read the
+> >> information in the quota files, then the actual format of the quota
+> >> file won't matter any more, right?
+> >   Yes, hopefully.
+> >
+> >> Stupid question --- how does repquota work on OCFS2?  I don't see any
+> >> quotactl subcommands that would appear to return the functionality
+> >> needed by repquota --- unless you just assume that the only uid/gid's
+> >> in use are in /etc/passwd and /etc/group, and just call quotactl for
+> >> each uid/gid in the system passwd and group files.
+> >   Currently it does not work at all. I didn't get to writing it when
+> > writing original quota support for OCFS2 because the inferface won't be
+> > completely trivial and it would be complicated for OCFS2 to expose the
+> > file directly. Probably the interface will have to be something like
+> > readdir but then you have to have some "handles" and state associated
+> > with them and it gets complicated. Maybe we could make our life simpler
+> > by returning an read-only unseekable fd from repquota quotactl and reading
+> > from it would pass quota structures. But I haven't thought too much about
+> > it.
+> Ok. i hope finally we will end up with something like this.
+> Before introducing this interface it is reasonable to redesign
+> dquot structures itself because they aren't linked together
+> so it is not easy to iterate it without probing each id in a loop.
+  Well, the quotactl call would scan the quota file on disk anyway because
+all the dquot structures needn't be loaded in memory. So linking structures
+in memory will not help.
 
-Date: Tue Mar 30 20:35:22     2010
-
-With the added cache, better group locality may be earned when
-allocating blocks.
-
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Jing Zhang <zj.barak@gmail.com>
-
----
-
---- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-+++ ext4_mm_leak/mballoc-13.c	2010-03-30 20:28:08.000000000 +0800
-@@ -4183,12 +4183,20 @@ static int ext4_mb_discard_preallocation
- 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
- 	int ret;
- 	int freed = 0;
-+	static ext4_group_t grp_cache = 0;
-
- 	trace_ext4_mb_discard_preallocations(sb, needed);
--	for (i = 0; i < ngroups && needed > 0; i++) {
--		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
-+	if (needed <= 0)
-+		return freed;
-+	for (i = 0; i < ngroups; i++) {
-+		if (grp_cache >= ngroups)
-+			grp_cache -= ngroups;
-+		ret = ext4_mb_discard_group_preallocations(sb, grp_cache, needed);
- 		freed += ret;
- 		needed -= ret;
-+		if (needed <= 0)
-+			break;
-+		grp_cache++;
- 	}
-
- 	return freed;
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
