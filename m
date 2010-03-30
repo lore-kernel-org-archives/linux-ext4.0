@@ -1,84 +1,57 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH] e2fsprogs: Fix the overflow in e4defrag with 2GB over
-	file
-Date: Tue, 30 Mar 2010 12:14:47 -0400
-Message-ID: <87f94c371003300914h16a0ed4l38d27e1313c6383c@mail.gmail.com>
-References: <4BB19BBB.9010509@rs.jp.nec.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsck: make block counting variable in pass1 64 bits
+Date: Tue, 30 Mar 2010 11:42:51 -0500
+Message-ID: <4BB22A0B.2000303@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Content-Transfer-Encoding: 7bit
+Cc: Justin Maggard <jmaggard10@gmail.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:46973 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751409Ab0C3QOx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Mar 2010 12:14:53 -0400
-Received: by vws20 with SMTP id 20so804114vws.19
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Mar 2010 09:14:52 -0700 (PDT)
-In-Reply-To: <4BB19BBB.9010509@rs.jp.nec.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34854 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753858Ab0C3Qmz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Mar 2010 12:42:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 30, 2010 at 2:35 AM, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
-> e2fsprogs: Fix the overflow in e4defrag with 2GB over file
->
-> From: Akira Fujita <a-fujita@rs.jp.nec.com>
->
-> In e4defrag, we use locally defined posix_fallocate interface.
-> And its "offset" and "len" are defined as off_t (long) type,
-> their upper limit is 2GB -1 byte.
-> Thus if we run e4defrag to the file whose size is 2GB over,
-> the overflow occurs at calling fallocate syscall.
->
-> To fix this issue, I add new define _FILE_OFFSET_BITS 64 to use
-> 64bit offset for filesystem related syscalls in e4defrag.c.
-> (Also this patch includes open mode fix which has been
-> released but not been merged e2fsprogs git tree yet.
-> http://lists.openwall.net/linux-ext4/2010/01/19/3)
->
-> Reported-by: David Calinski <david@fullrecall.com>
-> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> ---
+Justin reported that creating a 4T file with posix_fallocate led
+to fsck errors:
 
-Akira,
+e2fsck 1.41.10 (10-Feb-2009)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 12, i_blocks is 8589935432, should be 840.  Fix? yes
 
-I haven't looked at the4defrag code since Sept, but does it still
-defrag large files in one huge effort.
+This looks like a 32-bit overflow.
 
-Thus a 100GB sparse file being used to hold VM virtual disk is
-defrag'ed all at once.
+commmit 8a8f36540bbf5d4397cf476e216e9a720b5c1d8e added handling of
+the high i_blocks number, but we accumulate blocks in the num_blocks
+field, and that's still just 32 bits.
 
-And worse, when data is written to one of the holes in the sparse
-file, the entire file has to be defragged again?
+Note: we don't need to expand max_blocks for now, that's only used
+in the non-extents case, and those files have smaller max sizes.
 
-If so, I think that is a broken design, and e4defrag should simply
-skip these large files for now.
+I haven't been able to replicate the problem, oddly, but Justin
+reports that this patch fixed his situation.
 
-The proper fix being to defrag a "donor extent" at a time.
+Reported-by: Justin Maggard <jmaggard10@gmail.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-ie. attempt to allocate a full 128 MB extent for the donor file.  If
-successful, replace the first partial extent in the target file with
-the donor extent.  Repeat until done.
+(resend, a thunderbird upgrade changed things so vger was eating my patches)
 
-That way you have a few advantages:
 
-1) You never need more than one free extent to work with.
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 09ff1d0..8c8fe8c 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -80,7 +80,7 @@ struct process_block_struct {
+ 	ext2_ino_t	ino;
+ 	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
+ 				fragmented:1, compressed:1, bbcheck:1;
+-	blk_t		num_blocks;
++	blk64_t		num_blocks;
+ 	blk_t		max_blocks;
+ 	e2_blkcnt_t	last_block;
+ 	int		num_illegal_blocks;
 
-2) Once you defrag the beginning of a file, you never have to defrag
-it again.  Thus when a sparse file gets new blocks/extents allocated,
-only the areas of the files that are truly fragmented have to be
-defragmented.
-
-The one negative I can see is that the extents may not be localized
-well with this approach.  Is that a major concern?  Is there a way to
-try to localize the new donor extent request near to the extent it
-will be following logically?
-
-For the last issue, I think you've been working on a mballoc patch
-that would give e4defrag the ability to control mballoc on a per inode
-basis.  If not, the ohsm project has a patch for something similar.  I
-haven't worked with the ohsm mballoc patch, so I'm not sure how it
-works.
-
-Greg
