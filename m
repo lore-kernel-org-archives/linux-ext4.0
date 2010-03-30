@@ -1,111 +1,87 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4_freeze: don't return to userspace with a mutex held
-Date: Mon, 29 Mar 2010 17:34:43 -0500
-Message-ID: <4BB12B03.9070906@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH,RFC] Adding quotacheck functionality to e2fsck
+Date: Tue, 30 Mar 2010 02:43:08 +0200
+Message-ID: <20100330004308.GI5835@quack.suse.cz>
+References: <E1NuxHe-0005cj-JN@closure.thunk.org>
+ <20100326004738.GJ3145@quack.suse.cz>
+ <20100326033824.GC21658@thunk.org>
+ <9E7C0FF6-B02F-4470-B70A-4DBF5D5D6E0E@oracle.com>
+ <20100326105441.GB3055@quack.suse.cz>
+ <20100326135136.GF21658@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Andreas Dilger <andreas.dilger@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10984 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:55065 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753648Ab0C2Weu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Mar 2010 18:34:50 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o2TMYmuo027416
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 18:34:48 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o2TMYhFc003642
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Mar 2010 18:34:46 -0400
+	id S1752742Ab0C3Amx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Mar 2010 20:42:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20100326135136.GF21658@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is for RH bug 568503 - 
-snapshot bug: lock held when returning to user space
+On Fri 26-03-10 09:51:36, tytso@mit.edu wrote:
+> On Fri, Mar 26, 2010 at 11:54:41AM +0100, Jan Kara wrote:
+> >   Yes, this should be a good option. I imagine we would create RO_COMPAT
+> > features USRQUOTA and GRPQUOTA meaning that the filesystem maintains
+> > quotas in hidden files. And mkfs would directly create these files if
+> > it was asked to.
+> Technically we don't even need to make this be an RO_COMPAT feature; a
+> COMPAT feature might suffice.  We just need to have new superblock
+> fields which indicate the inode numbers for the user and group quotas.
+> If the inode number is the reserved inode for user or group quotas,
+> then it's the hidden inode.  If it's the number corresponding to a
+> user-visible file then we simply haven't transitioned the file over.
+> See e2fsck to see how we handle automatically transinition a user
+> visible .journal file to inode #8.  That part's not hard.
+  Yes, this should be fine.
 
-ext4_freeze() does jbd2_journal_lock_updates() which takes
-the j_barrier mutex, and then we return to userspace.  The
-kernel does not like this:
+> I am worried about the transition to a model where quotas are always
+> enforced; that's quite different from what we had before.  What
+  I didn't mean quotas would be always enforced. They would be always
+accounted (when appropriate quota features are set). They will be enforced
+only if admin calls quotaon (and quotaoff turns off only enforcement, not
+accounting).
 
-================================================
-[ BUG: lock held when returning to user space! ]
-------------------------------------------------
-lvcreate/1075 is leaving the kernel with locks still held!
-1 lock held by lvcreate/1075:
- #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
-jbd2_journal_lock_updates+0xe1/0xf0
+> happens if someone uses the command quotaoff command?  Does it turn
+> off quotas?  If the quota files are now hidden, a system administrator
+> can't use quotacheck (which is an on-line command) to fix bad quotas;
+> now they have to use e2fsck, which is normally an off-line checker.  I
+> suppose we could make e2fsck be able to run in an on-line quotacheck
+> mode, where it only updates quotas and accepts that there may be some
+> race conditions where the blocks/inodes-in-use numbers won't be
+> exactly right.
+  Well, normally, quota information should never be wrong when we journal
+quotas and always account them. So we can treat it as other kinds of
+filesystem corruption (although this inconsistency is rather harmless for
+data).
 
-I don't -think- we need to do this; by now we should have s_frozen
-set, and nobody else should be coming down the pipe to get to
-the journal.  However, just to be on the safe side, I added
-a couple of vfs_check_frozen() calls in ext4 functions which will
-arrive at start_this_handle(), which should ensure that we never
-get any journal traffic generated while frozen.
+> What about use cases where people were accustomed to letting BSD or
+> MacOS access an ext3 file system, and either accept the quota being
+> slightly off, or relying on quotacheck to fix tihngs up at some point
+> later?
+  Well, I'm not sure how often people have multi-OS system with quotas.
+I expect quotas to be used on multiuser machines where the amount of
+trust among users is low - i.e. university servers, hosting servers, ...
+Not exactly the case where I would expect the possibility to modify
+filesystem externally. So I don't expect this to be common and offline
+e2fsck should be fine IMHO. But given it's not too hard to implement
+online quotacheck in e2fsck we provide it as well...
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+> P.S.  We can add a new superblock field, which is a "quota last
+> updated time", and if that is less than the superblock write time, it
+> could be a hint that e2fsck needs to do a quotacheck run.  That could
+> partially help address the situation of 3rd party OS's/tools accessing
+> the file system directly.... 
+  Yes, I think this will be fine for detecting someone modifying the fs
+although having USRQUOTA feature RO_COMPAT would do as well. But I guess
+your solution is easier for users.
 
-(ext3 will need similar changes if this patch passes
-muster on review
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e14d22c..00d09f5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -241,6 +241,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
- 
-+	vfs_check_frozen(sb, SB_FREEZE_WRITE);
- 	/* Special case here: if the journal has aborted behind our
- 	 * backs (eg. EIO in the commit thread), then we still need to
- 	 * take the FS itself readonly cleanly. */
-@@ -3485,8 +3486,10 @@ int ext4_force_commit(struct super_block *sb)
- 		return 0;
- 
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal)
-+	if (journal) {
-+		vfs_check_frozen(sb, SB_FREEZE_WRITE);
- 		ret = ext4_journal_force_commit(journal);
-+	}
- 
- 	return ret;
- }
-@@ -3535,18 +3538,16 @@ static int ext4_freeze(struct super_block *sb)
- 	 * the journal.
- 	 */
- 	error = jbd2_journal_flush(journal);
--	if (error < 0) {
--	out:
--		jbd2_journal_unlock_updates(journal);
--		return error;
--	}
-+	if (error < 0)
-+		goto out;
- 
- 	/* Journal blocked and flushed, clear needs_recovery flag. */
- 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	error = ext4_commit_super(sb, 1);
--	if (error)
--		goto out;
--	return 0;
-+out:
-+	/* we rely on s_frozen to stop further updates */
-+	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+	return error;
- }
- 
- /*
-@@ -3563,7 +3564,6 @@ static int ext4_unfreeze(struct super_block *sb)
- 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	ext4_commit_super(sb, 1);
- 	unlock_super(sb);
--	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
- 	return 0;
- }
- 
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
