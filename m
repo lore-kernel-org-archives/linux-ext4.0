@@ -1,88 +1,134 @@
-From: dmonakhov@openvz.org
-Subject: Re: [PATCH] ext4: fix quota accounting in case of fallocate
-Date: Wed, 31 Mar 2010 08:51:27 +0400
-Message-ID: <87eij1ccvk.fsf@openvz.org>
-References: <1269959076-9591-1-git-send-email-dmonakhov@openvz.org>
-	<87zl1py95b.fsf@linux.vnet.ibm.com>
+From: jing zhang <zj.barak@gmail.com>
+Subject: Re: [PATCH] ext4: add rb_tree cache to struct ext4_group_info
+Date: Wed, 31 Mar 2010 22:26:45 +0800
+Message-ID: <x2tac8f92701003310726uf41823efz3d2ef98f438872b6@mail.gmail.com>
+References: <h2tac8f92701003280211p70c2dbcpac77b16fb27deb79@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Ingo Molnar <mingo@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:24231 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755243Ab0CaEvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Mar 2010 00:51:42 -0400
-In-Reply-To: <87zl1py95b.fsf@linux.vnet.ibm.com> (Aneesh Kumar K. V.'s message
-	of "Tue, 30 Mar 2010 23:38:48 +0530")
+Received: from mail-yx0-f195.google.com ([209.85.210.195]:59997 "EHLO
+	mail-yx0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751570Ab0CaO0r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Mar 2010 10:26:47 -0400
+Received: by yxe33 with SMTP id 33so86853yxe.15
+        for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 07:26:46 -0700 (PDT)
+In-Reply-To: <h2tac8f92701003280211p70c2dbcpac77b16fb27deb79@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> writes:
-
-> On Tue, 30 Mar 2010 18:24:35 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
->> allocated_meta_data is already included in 'used' variable.
->> 
->> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
->> ---
->>  fs/ext4/inode.c |    3 ++-
->>  1 files changed, 2 insertions(+), 1 deletions(-)
->> 
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index bec222c..bf989fb 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -1110,7 +1110,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
->>  		 */
->>  		if (allocated_meta_blocks)
->>  			dquot_claim_block(inode, allocated_meta_blocks);
->> -		dquot_release_reservation_block(inode, mdb_free + used);
->> +		dquot_release_reservation_block(inode, mdb_free + used -
->> +			allocated_meta_blocks);
->>  	}
->> 
->>  	/*
+2010/3/28, jing zhang <zj.barak@gmail.com>:
+> From: Jing Zhang <zj.barak@gmail.com>
 >
-> Do we really need to do this ? IIUC reservation count and actual
-> allocated count are two different. One block allocation we need to
-> remove all the blocks reserved from the reservation count and add
-Yes. remove all, but minus already allocated_metadata, which was
-accounted in to metadata reservation.
-> actually allocated blocks to the allocated count.
-Just try an example:
-reserve_space (inode, lblock := 1024 ) {
-   md_needed = ext4_calc_metadata_amount(inode, lblock) (let it be '2')
-   dquot_reserve_block(inode, md_needed + 1) /* '3' i.e blocks  reserved*/
-   /* If this is first reservation for this inode then
-    dq_rsv = inode->i_reserved_data_blocks + inode->i_reserved_meta_block
-   */
-}
-Later called from fallocate
-update_rerved_space(inode, used:=1, claim :=0) {
-  /* Let i_allocatd_meta_data is '1' (as it so in most cases)  */
-  ei->i_reserved_data_blocks -= used;  /* 1 - 1 => 0 */
-  used += ei->i_allocated_meta_blocks; /* 1 + 1 => 2 */
-  ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks /* 2 - 1 => 1 */
-  allocated_meta_blocks = ei->i_allocated_meta_blocks; /*  1 */
-  ei->i_allocated_meta_blocks = 0;
+> Date: Sun Mar 28 17:09:33     2010
+>
+> rb_tree cache is added to struct ext4_group_info at minor cost.
+>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger@sun.com>
+> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+> Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+>
+> ---
+>
+> --- linux-2.6.32/fs/ext4/ext4.h	2009-12-03 11:51:22.000000000 +0800
+> +++ ext4_mm_leak/ext4-12.h	2010-03-28 16:47:56.000000000 +0800
+> @@ -1622,6 +1622,7 @@ static inline void ext4_update_i_disksiz
+>  struct ext4_group_info {
+>  	unsigned long   bb_state;
+>  	struct rb_root  bb_free_root;
+> +	struct rb_node *bb_free_cache;
+>  	ext4_grpblk_t	bb_first_free;	/* first free block */
+>  	ext4_grpblk_t	bb_free;	/* total free blocks */
+>  	ext4_grpblk_t	bb_fragments;	/* nr of freespace fragments */
+> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
+> +++ ext4_mm_leak/mballoc-12.c	2010-03-28 16:43:08.000000000 +0800
+> @@ -2548,6 +2548,8 @@ static void release_blocks_on_commit(jou
+>  		count2++;
+>  		ext4_lock_group(sb, entry->group);
+>  		/* Take it out of per group rb tree */
+> +		if (db->bb_free_cache == &entry->node)
+> +			db->bb_free_cache = rb_next(&entry->node);
+>  		rb_erase(&entry->node, &(db->bb_free_root));
+>  		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
+>
+> @@ -3188,7 +3190,10 @@ static void ext4_mb_generate_from_freeli
+>  	struct ext4_free_data *entry;
+>
+>  	grp = ext4_get_group_info(sb, group);
+> -	n = rb_first(&(grp->bb_free_root));
+> +	if (grp->bb_free_cache)
+> +		n = grp->bb_free_cache;
+> +	else
+> +		n = rb_first(&(grp->bb_free_root));
+>
+>  	while (n) {
+>  		entry = rb_entry(n, struct ext4_free_data, node);
+> @@ -4353,6 +4358,7 @@ ext4_mb_free_metadata(handle_t *handle,
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  	struct rb_node **n = &db->bb_free_root.rb_node, *node;
+>  	struct rb_node *parent = NULL, *new_node;
+> +	int left = 1;
+>
+>  	BUG_ON(!ext4_handle_valid(handle));
+>  	BUG_ON(e4b->bd_bitmap_page == NULL);
+> @@ -4369,6 +4375,8 @@ ext4_mb_free_metadata(handle_t *handle,
+>  		 * blocks */
+>  		page_cache_get(e4b->bd_buddy_page);
+>  		page_cache_get(e4b->bd_bitmap_page);
+> +		/* just for sure */
+> +		db->bb_free_cache = 0;
+>  	}
+>  	while (*n) {
+>  		parent = *n;
+> @@ -4376,7 +4384,7 @@ ext4_mb_free_metadata(handle_t *handle,
+>  		if (block < entry->start_blk)
+>  			n = &(*n)->rb_left;
+>  		else if (block >= (entry->start_blk + entry->count))
+> -			n = &(*n)->rb_right;
+> +			n = &(*n)->rb_right, left = 0;
+>  		else {
+>  			ext4_grp_locked_error(sb, e4b->bd_group, __func__,
+>  					"Double free of blocks %d (%d %d)",
+> @@ -4387,6 +4395,8 @@ ext4_mb_free_metadata(handle_t *handle,
+>
+>  	rb_link_node(new_node, parent, n);
+>  	rb_insert_color(new_node, &db->bb_free_root);
+> +	if (left)
+> +		db->bb_free_cache = new_node;
+>
+>  	/* Now try to see the extent can be merged to left and right */
+>  	node = rb_prev(new_node);
+>
 
-  if (ei->i_reserved_data_blocks == 0) /* True in our case */
-     mdb_free = ei->i_reserved_meta_blocks; /* mbd_free == 1*/
 
-  if (allocated_meta_blocks)
-         dquot_claim_block(inode, allocated_meta_blocks); /* claim '1' block*/
-  dquot_release_reservation_block(inode, mdb_free + used); /* free (1 + 2) */
 
-  /* So we reserved:
-     dq_rsv = i_reserved_data_blocks + i_reserved_meta_block ( 3 blocks)
-     But during update we claim + free:
-          i_allocated_meta_data+(i_reserved_data_block+i_reserved_meta_data)
-          (4 blocks).
-          Which result in incorrect dquota reservation accounting(it
-          goes negative)
-  */
+2010/3/31, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
+> On Sun, 28 Mar 2010 17:11:55 +0800, jing zhang <zj.barak@gmail.com> wrote:
+>> From: Jing Zhang <zj.barak@gmail.com>
+>>
+>> Date: Sun Mar 28 17:09:33     2010
+>>
+>> rb_tree cache is added to struct ext4_group_info at minor cost.
+>>
+>
+> Did we measure the cost of not doing this ? Is there a profile data that
+> we can look at ?
+>
+> -aneesh
+>
 
-Initially i've found the issue by executing fsstress with falloc support.
-It takes enouth process to catch writepage/fallocate overlapping.
-xfstests-dev/ltp/xfsfsstress -p100 -n99999999
+With the added cache, there is over 50% probability that the operation,
+       rb_first(&(grp->bb_free_root));
+can be saved, when there are multiple nodes in tree.
 
+It seems what is added is following what is called O(1), one of the
+works by Mr. Ingo Molnar, but I am not sure, and let's ask Mr. Ingo
+Molnar.
+
+          - zj
