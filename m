@@ -1,80 +1,53 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: group cache is added in ext4_mb_discard_preallocations()
-Date: Wed, 31 Mar 2010 23:10:02 +0800
-Message-ID: <z2tac8f92701003310810r9b299d8bj3f4d0a246fd69184@mail.gmail.com>
-References: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
-	 <87wrwty7tx.fsf@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: quota reservation fixes for -stable?
+Date: Wed, 31 Mar 2010 10:36:12 -0500
+Message-ID: <4BB36BEC.2000207@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f172.google.com ([209.85.211.172]:36604 "EHLO
-	mail-yw0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752505Ab0CaPKE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Mar 2010 11:10:04 -0400
-Received: by ywh2 with SMTP id 2so103697ywh.33
-        for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 08:10:03 -0700 (PDT)
-In-Reply-To: <87wrwty7tx.fsf@linux.vnet.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:60807 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757041Ab0CaPgU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Mar 2010 11:36:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/3/31, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
-> On Tue, 30 Mar 2010 20:36:17 +0800, jing zhang <zj.barak@gmail.com> wrote:
->> From: Jing Zhang <zj.barak@gmail.com>
->>
->> Date: Tue Mar 30 20:35:22     2010
->>
->> With the added cache, better group locality may be earned when
->> allocating blocks.
->>
->> Cc: Theodore Ts'o <tytso@mit.edu>
->> Cc: Andreas Dilger <adilger@sun.com>
->> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
->> Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
->> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
->>
->> ---
->>
->> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
->> +++ ext4_mm_leak/mballoc-13.c	2010-03-30 20:28:08.000000000 +0800
->> @@ -4183,12 +4183,20 @@ static int ext4_mb_discard_preallocation
->>  	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
->>  	int ret;
->>  	int freed = 0;
->> +	static ext4_group_t grp_cache = 0;
->>
->>  	trace_ext4_mb_discard_preallocations(sb, needed);
->> -	for (i = 0; i < ngroups && needed > 0; i++) {
->> -		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
->> +	if (needed <= 0)
->> +		return freed;
->> +	for (i = 0; i < ngroups; i++) {
->> +		if (grp_cache >= ngroups)
->> +			grp_cache -= ngroups;
->> +		ret = ext4_mb_discard_group_preallocations(sb, grp_cache, needed);
->>  		freed += ret;
->>  		needed -= ret;
->> +		if (needed <= 0)
->> +			break;
->> +		grp_cache++;
->>  	}
->>
->>  	return freed;
->
-> can you explain this further ?
->
-> -aneesh
->
+I think we should get the following commits to -stable:
 
-The added cache checks whether blocks pre-allocated in group are still
-available. If yes, they are discarded and used for allocation without
-change of group. So more group locality can be earned.
+0a5a9c725512461d19397490f3adf29931dca1f2 quota: Fix warning when a delayed write happens before quota is enabled
+c469070aea5a0ada45a836937c776fd3083dae2b quota: manage reserved space when quota is not active [v2]
 
-What is more, in function, ext4_mb_discard_group_preallocations(),
-pre-allocation is allowed  to be discarded as much as possible by
-yielding.
+without these, we're just racking up the score on kerneloops:
 
-     - zj
+http://www.kerneloops.org/searchweek.php?search=dquot_claim_space
+
+(I think this is a #1 all-time high for a kerneloops count ;)
+
+Pretty sure the 2 commits above can be backported w/o other
+dependencies, but maybe Jan & Dmitry can confirm.
+
+I dug into this a little; at least on stock .32 Fedora, it's really
+only hitting on a few files, but seems to hit every time they're written:
+/var/log/messages, audit.log, etc - things that likely were written
+prior to quota being enabled.  Perhaps this is a Fedora initscripts
+bug... 
+
+But check this out, with a modified .32 kernel with the above 2 commints,
+and a change that reports which inodes were modified:
+
+VFS (sda12): inode(s) 1064 
+VFS (sda12): Writes happened before quota was turned on thus quota information is probably inconsistent. Please run quotacheck(8).
+
+# find /etc -inum 1064
+/etc/mtab
+
+This sounds a little chicken-and-eggy to me!
+
+Anyway, the above 2 commits should make things -significantly- better,
+so w/o any objections, let's get them to -stable.
+
+Thanks,
+-Eric
