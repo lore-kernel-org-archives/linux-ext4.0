@@ -1,53 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: quota reservation fixes for -stable?
-Date: Wed, 31 Mar 2010 10:36:12 -0500
-Message-ID: <4BB36BEC.2000207@redhat.com>
+From: Surbhi Palande <Surbhi.Palande@canonical.com>
+Subject: question on sync()
+Date: Wed, 31 Mar 2010 19:29:17 +0300
+Message-ID: <1270052957.26517.24.camel@subu>
+Reply-To: Surbhi.Palande@canonical.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60807 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757041Ab0CaPgU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Mar 2010 11:36:20 -0400
+Received: from adelie.canonical.com ([91.189.90.139]:44443 "EHLO
+	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757620Ab0CaQ3S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Mar 2010 12:29:18 -0400
+Received: from hutte.canonical.com ([91.189.90.181])
+	by adelie.canonical.com with esmtp (Exim 4.69 #1 (Debian))
+	id 1Nx0n7-0001XZ-2I
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 17:29:17 +0100
+Received: from a88-112-254-38.elisa-laajakaista.fi ([88.112.254.38] helo=[192.168.1.38])
+	by hutte.canonical.com with esmtpsa (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.69)
+	(envelope-from <Surbhi.Palande@canonical.com>)
+	id 1Nx0n6-0001tS-Tx
+	for linux-ext4@vger.kernel.org; Wed, 31 Mar 2010 17:29:17 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I think we should get the following commits to -stable:
+Hie,
 
-0a5a9c725512461d19397490f3adf29931dca1f2 quota: Fix warning when a delayed write happens before quota is enabled
-c469070aea5a0ada45a836937c776fd3083dae2b quota: manage reserved space when quota is not active [v2]
+While looking at fs/sync.c :: sync(), I found out that:
 
-without these, we're just racking up the score on kerneloops:
+1) sync() first calls wakeup_flusher_threads() which ultimately calls
+bdi_alloc_queue_work() with WB_SYNC_NONE for every bdi in the bdi_list.
 
-http://www.kerneloops.org/searchweek.php?search=dquot_claim_space
+2) sync() immediate then calls sync_filesystems(0) which does the same
+thing - it calls writeback_inodes_sb() which finally calls
+bdi_alloc_queue_work() with WB_SYNC_NONE for every bdi corresponding to
+every filesystem.
 
-(I think this is a #1 all-time high for a kerneloops count ;)
+If it is possible, then I wanted to know why there are effectively two
+calls which ultimately call bdi_alloc_queue_work() with WB_SYNC_NONE
+twice?
 
-Pretty sure the 2 commits above can be backported w/o other
-dependencies, but maybe Jan & Dmitry can confirm.
+Thanks!
 
-I dug into this a little; at least on stock .32 Fedora, it's really
-only hitting on a few files, but seems to hit every time they're written:
-/var/log/messages, audit.log, etc - things that likely were written
-prior to quota being enabled.  Perhaps this is a Fedora initscripts
-bug... 
+Warm Regards,
+Surbhi.
 
-But check this out, with a modified .32 kernel with the above 2 commints,
-and a change that reports which inodes were modified:
 
-VFS (sda12): inode(s) 1064 
-VFS (sda12): Writes happened before quota was turned on thus quota information is probably inconsistent. Please run quotacheck(8).
 
-# find /etc -inum 1064
-/etc/mtab
 
-This sounds a little chicken-and-eggy to me!
-
-Anyway, the above 2 commits should make things -significantly- better,
-so w/o any objections, let's get them to -stable.
-
-Thanks,
--Eric
