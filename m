@@ -1,51 +1,73 @@
-From: Surbhi Palande <Surbhi.Palande@canonical.com>
-Subject: question on sync()
-Date: Wed, 31 Mar 2010 19:29:17 +0300
-Message-ID: <1270052957.26517.24.camel@subu>
-Reply-To: Surbhi.Palande@canonical.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] resize2fs: don't print minimum size if fs is not clean
+Date: Wed, 31 Mar 2010 14:28:42 -0500
+Message-ID: <4BB3A26A.9080405@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:44443 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757620Ab0CaQ3S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Mar 2010 12:29:18 -0400
-Received: from hutte.canonical.com ([91.189.90.181])
-	by adelie.canonical.com with esmtp (Exim 4.69 #1 (Debian))
-	id 1Nx0n7-0001XZ-2I
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 17:29:17 +0100
-Received: from a88-112-254-38.elisa-laajakaista.fi ([88.112.254.38] helo=[192.168.1.38])
-	by hutte.canonical.com with esmtpsa (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.69)
-	(envelope-from <Surbhi.Palande@canonical.com>)
-	id 1Nx0n6-0001tS-Tx
-	for linux-ext4@vger.kernel.org; Wed, 31 Mar 2010 17:29:17 +0100
+Received: from mx1.redhat.com ([209.132.183.28]:2600 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756472Ab0CaT2q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Mar 2010 15:28:46 -0400
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o2VJSjtK003012
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 15:28:45 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o2VJSgEn006653
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Mar 2010 15:28:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hie,
+Right now, resize2fs -P on a dirty filesystem will give you a number;
+however, it's probably wrong if the fs is not clean:
 
-While looking at fs/sync.c :: sync(), I found out that:
+# resize2fs -P myimage.img
+resize2fs 1.41.9 (22-Aug-2009)
+Estimated minimum size of the filesystem: 75623
 
-1) sync() first calls wakeup_flusher_threads() which ultimately calls
-bdi_alloc_queue_work() with WB_SYNC_NONE for every bdi in the bdi_list.
+# e2fsck -fy myimage.img
+e2fsck 1.41.9 (22-Aug-2009)
+myimage.img: recovering journal
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
 
-2) sync() immediate then calls sync_filesystems(0) which does the same
-thing - it calls writeback_inodes_sb() which finally calls
-bdi_alloc_queue_work() with WB_SYNC_NONE for every bdi corresponding to
-every filesystem.
+myimage.img: ***** FILE SYSTEM WAS MODIFIED *****
+myimage.img: 9530/53760 files (0.1% non-contiguous), 24737/98304 blocks
 
-If it is possible, then I wanted to know why there are effectively two
-calls which ultimately call bdi_alloc_queue_work() with WB_SYNC_NONE
-twice?
+# resize2fs -P myimage.img
+resize2fs 1.41.9 (22-Aug-2009)
+Estimated minimum size of the filesystem: 32165
 
-Thanks!
+We should issue the same "Please run e2fsck ..." message for
+-P as we do for an actual resize request.
 
-Warm Regards,
-Surbhi.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-
-
+diff --git a/resize/main.c b/resize/main.c
+index fd85d90..f5ffb0f 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -345,6 +345,14 @@ int main (int argc, char ** argv)
+ 	min_size = calculate_minimum_resize_size(fs);
+ 
+ 	if (print_min_size) {
++		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
++			       (fs->super->s_state & EXT2_ERROR_FS) ||
++			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
++			fprintf(stderr,
++				_("Please run 'e2fsck -f %s' first.\n\n"),
++				device_name);
++			exit(1);
++		}
+ 		printf(_("Estimated minimum size of the filesystem: %u\n"),
+ 		       min_size);
+ 		exit(0);
 
