@@ -1,118 +1,89 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH] e2fsprogs: Fix the overflow in e4defrag with 2GB over
- 	file
-Date: Thu, 01 Apr 2010 17:27:19 +0900
-Message-ID: <4BB458E7.9050306@rs.jp.nec.com>
-References: <4BB19BBB.9010509@rs.jp.nec.com> <87f94c371003300914h16a0ed4l38d27e1313c6383c@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/3] ext4: journalled quota optimization
+Date: Thu, 1 Apr 2010 11:12:10 +0200
+Message-ID: <20100401091209.GE3322@quack.suse.cz>
+References: <1269692140-5375-1-git-send-email-dmonakhov@openvz.org>
+ <1269692140-5375-2-git-send-email-dmonakhov@openvz.org>
+ <1269692140-5375-3-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Greg Freemyer <greg.freemyer@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:44766 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754145Ab0DAI3e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Apr 2010 04:29:34 -0400
-In-Reply-To: <87f94c371003300914h16a0ed4l38d27e1313c6383c@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1269692140-5375-3-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Greg,
+  Hi,
 
-(2010/03/31 1:14), Greg Freemyer wrote:
-> On Tue, Mar 30, 2010 at 2:35 AM, Akira Fujita<a-fujita@rs.jp.nec.com>  wrote:
->> e2fsprogs: Fix the overflow in e4defrag with 2GB over file
->>
->> From: Akira Fujita<a-fujita@rs.jp.nec.com>
->>
->> In e4defrag, we use locally defined posix_fallocate interface.
->> And its "offset" and "len" are defined as off_t (long) type,
->> their upper limit is 2GB -1 byte.
->> Thus if we run e4defrag to the file whose size is 2GB over,
->> the overflow occurs at calling fallocate syscall.
->>
->> To fix this issue, I add new define _FILE_OFFSET_BITS 64 to use
->> 64bit offset for filesystem related syscalls in e4defrag.c.
->> (Also this patch includes open mode fix which has been
->> released but not been merged e2fsprogs git tree yet.
->> http://lists.openwall.net/linux-ext4/2010/01/19/3)
->>
->> Reported-by: David Calinski<david@fullrecall.com>
->> Signed-off-by: Akira Fujita<a-fujita@rs.jp.nec.com>
->> ---
->
-> Akira,
->
-> I haven't looked at the4defrag code since Sept, but does it still
-> defrag large files in one huge effort.
->
-> Thus a 100GB sparse file being used to hold VM virtual disk is
-> defrag'ed all at once.
->
-> And worse, when data is written to one of the holes in the sparse
-> file, the entire file has to be defragged again?
-
-Yes, but only if necessary.
-The blocks which are allocated to the holes in the sparse file
-are not defragged, because the target blocks to be defragged
-are determined by FS_IOC_FIEMAP which is called at the beginning of e4defrag.
+On Sat 27-03-10 15:15:39, Dmitry Monakhov wrote:
+> Currently each quota modification result in write_dquot()
+> and later dquot_commit().  This means what each quota modification
+> function must wait for dqio_mutex. Which is *huge* performance
+> penalty on big SMP systems. ASAIU The core idea of this implementation
+> is to guarantee that each quota modification will be written to journal
+> atomically. But in fact this is not always true, because dquot may be
+> changed after dquot modification, but before it was committed to disk.
+  We were already discussing this when you've last submitted the patch.
+dqio_mutex has nothing to do with journaling. It is there so that two
+writes to quota file cannot happen in parallel because that could cause
+corruption. Without dqio_mutex, the following would be possible:
+  Task 1				Task 2
+...
+  qtree_write_dquot()
+    ...
+    info->dqi_ops->mem2disk_dqblk
+					modify dquot
+					mark_dquot_dirty
+					...
+					qtree_write_dquot()
+					  - writes newer information
+    ret = sb->s_op->quota_write
+      - overwrites the new information
+        with an old one.
 
 
-> If so, I think that is a broken design, and e4defrag should simply
-> skip these large files for now.
->
-> The proper fix being to defrag a "donor extent" at a time.
->
-> ie. attempt to allocate a full 128 MB extent for the donor file.  If
-> successful, replace the first partial extent in the target file with
-> the donor extent.  Repeat until done.
+>  | Task 1                           | Task 2                      |
+>  | alloc_space(nr)                  |                             |
+>  | ->spin_lock(dq_data_lock)        |                             |
+>  | ->curspace += nr                 |                             |
+>  | ->spin_unlock(dq_data_lock)      |                             |
+>  | ->mark_dirty()                   | free_space(nr)              |
+>  | -->write_dquot()                 | ->spin_lock(dq_data_lock)   |
+>  | --->dquot_commit()               | ->curspace -= nr            |
+>  | ---->commit_dqblk()              | ->spin_unlock(dq_data_lock) |
+>  | ----->spin_lock(dq_data_lock)    |                             |
+>  | ----->mem2disk_dqblk(ddq, dquot) | <<< Copy updated value      |
+>  | ----->spin_unlock(dq_data_lock)  |                             |
+>  | ----->quota_write()              |                             |
+> Quota corruption not happens only because quota modification caller
+> started journal already. And ext3/4 allow only one running transaction
+> at a time.
+  While what you write above happens for other ext3/4 metadata as well.
 
-If allocate blocks to donor file per 128MB, and then
-exchange blocks with EXT4_IOC_MOVE_EXT,
-fragmentation improvement is unknown till the last, in worst case.
-As a result, the wast I/Os are generated.
+> Let's exploit this fact and avoid writing quota each time.
+> Act similar to dirty_for_io in general write_back path in page-cache.
+> If we have found what other task already started on copy and write the
+> dquot then we skip actual quota_write stage. And let that task do the job.
+> This patch fix only contention on dqio_mutex.
+  As I wrote last time, your patch helps the contention only a tiny bit -
+we clear the dirty bit as a first thing after we acquire dqio_mutex. So
+your patch helps only if one task happens while another task is between
 
-On the other hand, current e4defrag allocates blocks with fallocate
-by logical contiguous unit (the holes in the sparse file are skipped).
-After allocating whole blocks, compare extents count between source file
-and donor file.  If fragmentation does not seem to be improved,
-no need to call EXT4_IOC_MOVE_EXT to block exchange, just skip this file.
-I think this is better.
-(Of course, free space same as source file is necessary, though.)
+dquot_mark_dquot_dirty <---------- here
+mutex_lock(&dqopt->dqio_mutex);
+spin_lock(&dq_list_lock);
+if (!clear_dquot_dirty(dquot)) { <----- and here
 
-By the way, EXT4_IOC_MOVE_EXT is called per extent.
-This method has not been changed so far,
-the patch just fixes fallocate argument overflow.
+So I find this as complicating the code without much merit. And if I
+remember right, last time I also suggested that it might be much more
+useful to optimize how quota structure is written - i.e., get a reference
+to a buffer in ext4_acquire_dquot and thus save ext4_bread from
+ext4_quota_write.
 
-> That way you have a few advantages:
->
-> 1) You never need more than one free extent to work with.
->
-> 2) Once you defrag the beginning of a file, you never have to defrag
-> it again.  Thus when a sparse file gets new blocks/extents allocated,
-> only the areas of the files that are truly fragmented have to be
-> defragmented.
->
-> The one negative I can see is that the extents may not be localized
-> well with this approach.  Is that a major concern?  Is there a way to
-> try to localize the new donor extent request near to the extent it
-> will be following logically?
->
-> For the last issue, I think you've been working on a mballoc patch
-> that would give e4defrag the ability to control mballoc on a per inode
-> basis.  If not, the ohsm project has a patch for something similar.  I
-> haven't worked with the ohsm mballoc patch, so I'm not sure how it
-> works.
->
-
-Yes, we have been working on block allocation control patch for e4defrag.
-Most of tests have been done, but it takes a little more time to release.
-(Note: Andreas Dilger advised me that we should use inode PA
-  instead of implementing the arule ioctl to control block allocation, before.
-  And it makes sense a lot, so this patch uses inode PA to control block allocation,
-  its implementation is different from the ohsm has.)
-
-Regards,
-Akira Fujita
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
