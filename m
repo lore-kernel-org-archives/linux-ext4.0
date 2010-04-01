@@ -1,70 +1,57 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: group cache is added in ext4_mb_discard_preallocations()
-Date: Thu, 1 Apr 2010 20:34:41 +0800
-Message-ID: <h2zac8f92701004010534g3607d64fh2dcf615053e59549@mail.gmail.com>
-References: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
-	 <56E2631B-9D71-4B96-9F2C-D469F6994598@sun.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: quota reservation fixes for -stable?
+Date: Thu, 01 Apr 2010 08:57:52 -0500
+Message-ID: <4BB4A660.6030609@redhat.com>
+References: <4BB36BEC.2000207@redhat.com> <20100401082334.GD3322@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:47460 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756086Ab0DAMen (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Apr 2010 08:34:43 -0400
-Received: by gyg13 with SMTP id 13so422520gyg.19
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Apr 2010 05:34:42 -0700 (PDT)
-In-Reply-To: <56E2631B-9D71-4B96-9F2C-D469F6994598@sun.com>
+Received: from mx1.redhat.com ([209.132.183.28]:17543 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757951Ab0DAQbE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Apr 2010 12:31:04 -0400
+In-Reply-To: <20100401082334.GD3322@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/3/31, Andreas Dilger <adilger@sun.com>:
-> On 2010-03-30, at 06:36, jing zhang wrote:
->> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
->> +++ ext4_mm_leak/mballoc-13.c	2010-03-30 20:28:08.000000000 +0800
->> @@ -4183,12 +4183,20 @@ static int ext4_mb_discard_preallocation
->> 	trace_ext4_mb_discard_preallocations(sb, needed);
->> -	for (i = 0; i < ngroups && needed > 0; i++) {
->> -		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
->> +	if (needed <= 0)
->> +		return freed;
->> +	for (i = 0; i < ngroups; i++) {
->> +		if (grp_cache >= ngroups)
->> +			grp_cache -= ngroups;
->> +		ret = ext4_mb_discard_group_preallocations(sb, grp_cache, needed);
->
->
-> Anything that is walking every group in the filesystem is going to hit
-> problems on large filesystems.  This seems like something that needs
-> to be fixed in a different way (e.g. keeping a list of preallocations).
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->
->
+Jan Kara wrote:
+> On Wed 31-03-10 10:36:12, Eric Sandeen wrote:
+>> I think we should get the following commits to -stable:
+>>
+>> 0a5a9c725512461d19397490f3adf29931dca1f2 quota: Fix warning when a delayed write happens before quota is enabled
+>> c469070aea5a0ada45a836937c776fd3083dae2b quota: manage reserved space when quota is not active [v2]
+>   They are already queued for 2.6.33 and 2.6.32 stable trees. I sent
+> them to Greg last week or so.
 
-Then please take the following also into consideration.
+Oh, good news - sorry I missed that.
 
-Thanks
-            - zj
+...
 
----
+>> But check this out, with a modified .32 kernel with the above 2 commints,
+>> and a change that reports which inodes were modified:
+>>
+>> VFS (sda12): inode(s) 1064 
+>> VFS (sda12): Writes happened before quota was turned on thus quota information is probably inconsistent. Please run quotacheck(8).
+>>
+>> # find /etc -inum 1064
+>> /etc/mtab
+>   Ah, I'm testing quotas on non-root fs so I was wondering how come people
+> hit the warning so often. Now I understand :) For root filesystem on ext4
+> we don't have a chance to not see this warning. That being said the warning
+> is pretty useless for ordinary users so I guess we should just hide it
+> behind #ifdef __DQUOT_PARANOIA and use it for debugging purposes only.
+>   If noone objects soon, I'll do the change.
 
---- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-+++ ext4_mm_leak/mballoc-14.c	2010-04-01 20:35:58.000000000 +0800
-@@ -4299,7 +4299,7 @@ repeat:
- 		}
- 	} else {
- 		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
--		if (freed)
-+		if (freed && freed >= ac->ac_o_ex.fe_len)
- 			goto repeat;
- 		*errp = -ENOSPC;
- 		ac->ac_b_ex.fe_len = 0;
+Yes, I think it's better that way, otherwise we'll keep getting reports about
+how they can't seem to make this warning go away.  :)
+
+Thanks,
+-Eric
+
+> 
+> 								Honza
+
