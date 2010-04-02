@@ -1,14 +1,14 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: Remove unnecessary call to ext4_get_group_desc() in mballoc
-Date: Thu,  1 Apr 2010 21:48:41 -0400
-Message-ID: <1270172922-10876-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: rename ext4_mb_release_desc() to ext4_mb_unload_buddy()
+Date: Thu,  1 Apr 2010 21:48:42 -0400
+Message-ID: <1270172922-10876-2-git-send-email-tytso@mit.edu>
 References: <ac8f92701003240514l77f5b597h605b06b5f6140674@mail.gmail.com>
 Cc: Jing Zhang <zj.barak@gmail.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:38767 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:38766 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758995Ab0DBBs4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754324Ab0DBBs4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 1 Apr 2010 21:48:56 -0400
 In-Reply-To: <ac8f92701003240514l77f5b597h605b06b5f6140674@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -16,32 +16,127 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jing Zhang <zj.barak@gmail.com>
 
+This function cleans up after ext4_mb_load_buddy(), so the renaming
+makes the code clearer.
+
 Signed-off-by: Jing Zhang <zj.barak@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 54df209..fcc919f 100644
+index fcc919f..f9fe733 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2024,7 +2024,6 @@ repeat:
+@@ -1149,7 +1149,7 @@ err:
+ 	return ret;
+ }
  
- 		for (i = 0; i < ngroups; group++, i++) {
- 			struct ext4_group_info *grp;
--			struct ext4_group_desc *desc;
+-static void ext4_mb_release_desc(struct ext4_buddy *e4b)
++static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
+ {
+ 	if (e4b->bd_bitmap_page)
+ 		page_cache_release(e4b->bd_bitmap_page);
+@@ -1616,7 +1616,7 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
+ 	}
  
- 			if (group == ngroups)
- 				group = 0;
-@@ -2047,7 +2046,6 @@ repeat:
+ 	ext4_unlock_group(ac->ac_sb, group);
+-	ext4_mb_release_desc(e4b);
++	ext4_mb_unload_buddy(e4b);
+ 
+ 	return 0;
+ }
+@@ -1671,7 +1671,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 		ext4_mb_use_best_found(ac, e4b);
+ 	}
+ 	ext4_unlock_group(ac->ac_sb, group);
+-	ext4_mb_release_desc(e4b);
++	ext4_mb_unload_buddy(e4b);
+ 
+ 	return 0;
+ }
+@@ -2041,7 +2041,7 @@ repeat:
+ 			if (!ext4_mb_good_group(ac, group, cr)) {
+ 				/* someone did allocation from this group */
+ 				ext4_unlock_group(sb, group);
+-				ext4_mb_release_desc(&e4b);
++				ext4_mb_unload_buddy(&e4b);
+ 				continue;
  			}
  
- 			ac->ac_groups_scanned++;
--			desc = ext4_get_group_desc(sb, group, NULL);
- 			if (cr == 0)
- 				ext4_mb_simple_scan_group(ac, &e4b);
- 			else if (cr == 1 &&
+@@ -2055,7 +2055,7 @@ repeat:
+ 				ext4_mb_complex_scan_group(ac, &e4b);
+ 
+ 			ext4_unlock_group(sb, group);
+-			ext4_mb_release_desc(&e4b);
++			ext4_mb_unload_buddy(&e4b);
+ 
+ 			if (ac->ac_status != AC_STATUS_CONTINUE)
+ 				break;
+@@ -2145,7 +2145,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	ext4_lock_group(sb, group);
+ 	memcpy(&sg, ext4_get_group_info(sb, group), i);
+ 	ext4_unlock_group(sb, group);
+-	ext4_mb_release_desc(&e4b);
++	ext4_mb_unload_buddy(&e4b);
+ 
+ 	seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
+ 			sg.info.bb_fragments, sg.info.bb_first_free);
+@@ -2564,7 +2564,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 			sb_issue_discard(sb, discard_block, entry->count);
+ 		}
+ 		kmem_cache_free(ext4_free_ext_cachep, entry);
+-		ext4_mb_release_desc(&e4b);
++		ext4_mb_unload_buddy(&e4b);
+ 	}
+ 
+ 	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
+@@ -3693,7 +3693,7 @@ out:
+ 	ext4_unlock_group(sb, group);
+ 	if (ac)
+ 		kmem_cache_free(ext4_ac_cachep, ac);
+-	ext4_mb_release_desc(&e4b);
++	ext4_mb_unload_buddy(&e4b);
+ 	put_bh(bitmap_bh);
+ 	return free;
+ }
+@@ -3797,7 +3797,7 @@ repeat:
+ 		if (bitmap_bh == NULL) {
+ 			ext4_error(sb, "Error reading block bitmap for %u",
+ 					group);
+-			ext4_mb_release_desc(&e4b);
++			ext4_mb_unload_buddy(&e4b);
+ 			continue;
+ 		}
+ 
+@@ -3806,7 +3806,7 @@ repeat:
+ 		ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa, ac);
+ 		ext4_unlock_group(sb, group);
+ 
+-		ext4_mb_release_desc(&e4b);
++		ext4_mb_unload_buddy(&e4b);
+ 		put_bh(bitmap_bh);
+ 
+ 		list_del(&pa->u.pa_tmp_list);
+@@ -4070,7 +4070,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 		ext4_mb_release_group_pa(&e4b, pa, ac);
+ 		ext4_unlock_group(sb, group);
+ 
+-		ext4_mb_release_desc(&e4b);
++		ext4_mb_unload_buddy(&e4b);
+ 		list_del(&pa->u.pa_tmp_list);
+ 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
+ 	}
+@@ -4606,7 +4606,7 @@ do_more:
+ 		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
+ 	}
+ 
+-	ext4_mb_release_desc(&e4b);
++	ext4_mb_unload_buddy(&e4b);
+ 
+ 	freed += count;
+ 
 -- 
 1.6.6.1.1.g974db.dirty
 
