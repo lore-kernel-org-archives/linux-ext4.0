@@ -1,50 +1,45 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14830] When other IO is running sync times go to 10 to 20
- minutes
-Date: Fri, 2 Apr 2010 05:41:35 GMT
-Message-ID: <201004020541.o325fZKw007754@demeter.kernel.org>
-References: <bug-14830-13602@https.bugzilla.kernel.org/>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [patch/rft] jbd2: tag journal writes as metadata I/O
+Date: Fri, 2 Apr 2010 09:00:02 +0200
+Message-ID: <20100402070001.GY23510@kernel.dk>
+References: <x49iq8b9ep5.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	esandeen@redhat.com
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:38827 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757928Ab0DBFlg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Apr 2010 01:41:36 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o325fZGd007763
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 2 Apr 2010 05:41:36 GMT
-In-Reply-To: <bug-14830-13602@https.bugzilla.kernel.org/>
+Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:51380 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759213Ab0DBHAD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Apr 2010 03:00:03 -0400
+Content-Disposition: inline
+In-Reply-To: <x49iq8b9ep5.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14830
+On Thu, Apr 01 2010, Jeff Moyer wrote:
+> Hi,
+> 
+> In running iozone for writes to small files, we noticed a pretty big
+> discrepency between the performance of the deadline and cfq I/O
+> schedulers.  Investigation showed that I/O was being issued from 2
+> different contexts: the iozone process itself, and the jbd2/sdh-8 thread
+> (as expected).  Because of the way cfq performs slice idling, the delays
+> introduced between the metadata and data I/Os were significant.  For
+> example, cfq would see about 7MB/s versus deadline's 35 for the same
+> workload.  I also tested fs_mark with writing and fsyncing 1000 64k
+> files, and a similar 5x performance difference was observed.  Eric
+> Sandeen suggested that I flag the journal writes as metadata, and once I
+> did that, the performance difference went away completely (cfq has
+> special logic to prioritize metadata I/O).
+> 
+> So, I'm submitting this patch for comments and testing.  I have a
+> similar patch for jbd that I will submit if folks agree that this is a
+> good idea.
 
-
-
-
-
---- Comment #22 from Michael Godfrey <godfrey@isl.stanford.edu>  2010-04-02 05:41:26 ---
-I tried another test with 2.6.32.10-90.fc12.x86_64.  I did
-not expect an improvement.  But, the results were actually
-a lot worse.  After starting an rsync  which transferred a
-few 100GB through NFS, I started a sync using time sync.
-This caused a number of the usual 2 minute timeout messages.  But, also
-it did not close until about 20 minutes after the rsync had
-completed.  All together  it ran for several hours. By the
-way it was not possible to kill the sync using kill -9.
-
-This is clearly hopeless.
-
-Will anything be done about this in 2.6.33 for fc13?
-
-Will the fact that Google is going with ext4 possibly help?
-
-Michael
+Looks good to me.
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jens Axboe
+
