@@ -1,75 +1,60 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: add rb_tree cache to struct ext4_group_info
-Date: Sun, 4 Apr 2010 14:26:01 +0800
-Message-ID: <h2kac8f92701004032326v22750abfr458ea51bbfc0b901@mail.gmail.com>
-References: <h2tac8f92701003280211p70c2dbcpac77b16fb27deb79@mail.gmail.com>
-	 <x2tac8f92701003310726uf41823efz3d2ef98f438872b6@mail.gmail.com>
-	 <20100403153413.GO8298@thunk.org>
-	 <p2xac8f92701004031826ice3889f1tc27211ac145de4fd@mail.gmail.com>
-	 <20100404020656.GC18524@thunk.org>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: fsck more often when powerfail is detected (was Re: wishful
+	thinking about atomic, multi-sector or full MD stripe width, writes
+	in storage)
+Date: Sun, 4 Apr 2010 15:47:29 +0200
+Message-ID: <20100404134729.GA1388@ucw.cz>
+References: <20090831132139.GA5425@infradead.org> <4A9F230F.40707@redhat.com> <m3ab1cp9ii.fsf@intrepid.localdomain> <4A9FA5F2.9090704@redhat.com> <m3ljkwnoct.fsf@intrepid.localdomain> <4A9FC9B3.1080809@redhat.com> <m3ab1cnn7y.fsf@intrepid.localdomain> <4A9FCF6B.1080704@redhat.com> <20090907114534.GP23450@elf.ucw.cz> <20090907131026.GC32427@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ingo Molnar <mingo@redhat.com>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
+	Krzysztof Halasa <khc@pm.waw.pl>,
+	Christoph Hellwig <hch@infradead.org>, Mark Lord <lkml@rtr.ca>,
+	Michael Tokarev <mjt
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f172.google.com ([209.85.211.172]:52947 "EHLO
-	mail-yw0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751140Ab0DDG0D (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Apr 2010 02:26:03 -0400
-Received: by ywh2 with SMTP id 2so2011984ywh.33
-        for <linux-ext4@vger.kernel.org>; Sat, 03 Apr 2010 23:26:01 -0700 (PDT)
-In-Reply-To: <20100404020656.GC18524@thunk.org>
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:54286 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754251Ab0DDNrl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Apr 2010 09:47:41 -0400
+Content-Disposition: inline
+In-Reply-To: <20090907131026.GC32427@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/4/4, tytso@mit.edu <tytso@mit.edu>:
-> On Sun, Apr 04, 2010 at 09:26:26AM +0800, jing zhang wrote:
->> > That being said, I'm not convinced ext4_mb_generate_from_freelist() is
->> > (a) necessary, or (b) bug-free, either.  The whole point of having
->> > extents in bb_free_root tree is that those extents aren't safe to be
->> > placed in the buddy bitmap.  And ext4_mb_generate_from_freelist()
->> > isn't freeing the nodes from the rbtree.  Fortunately it looks like
->> > ext4_mb_generate_from_freelist is only getting called when the buddy
->> > bitmap is being set up, so the rbtree should be empty during those
->> > times.
->> >
->> > I need to do some more investigation, but I think the function can be
->> > removed entirely.
->>
->> Do you mean that ext4_mb_generate_from_freelist() can be removed entirely?
->
-> Maybe.  I need to do more investigation to be sure.  The code in
-> mballoc is subtle, and in some places there is stuff which is vestigal
-> or misnamed, but it means that I'm going to be very careful before
-> changing things.
->
-> It also means that if you submit patches, you need to be very clear
-> what you think the surrounding code is doing, why you think it's
-> wrong, and how your patch make things better.  For example, this:
->
->     The function, ext4_mb_discard_group_preallocations(), works alone as
->     hard as possible without correct understanding its caller's good
->     thinking.
->
->     And now try to relieve it in simple way.
->
-> is almost useless as a comment.  It doesn't help me understand the
-> code.  "hard as possible"?  Huh?  "without correct understanding"?
-> How can code, unless it's artificially intelligent, have
-> understanding?  And if you meant the original author had no
-> understanding, how do you know that?  "caller's good thinking"?  Same
-> question; the calling code doesn't think.
->
-> This sort of explanation isn't helpful in understanding the patch.
->
-> 							- Ted
->
+Hi!
 
-Another good lesson, I got it.
+> > Yes, but ext3 was designed to handle the partial write  (according to
+> > tytso).
+> 
+> I'm not sure what made you think that I said that.  In practice things
+> usually work out, as a conseuqence of the fact that ext3 uses physical
+> block journaling, but it's not perfect, becase...
 
-Thanks
-              - zj
+Ok; so the journalling actually  is not reliable on many machines --
+not even disk drive manufacturers guarantee full block writes AFAICT.
+
+Maybe there's time to reviwe the patch to increase mount count by >1
+when journal is replayed, to do fsck more often when powerfails are
+present?
+
+
+> > > Also, when you enable the write cache (MD or not) you are buffering 
+> > > multiple MB's of data that can go away on power loss. Far greater (10x) 
+> > > the exposure that the partial RAID rewrite case worries about.
+> > 
+> > Yes, that's what barriers are for. Except that they are not there on
+> > MD0/MD5/MD6. They actually work on local sata drives...
+> 
+> Yes, but ext3 does not enable barriers by default (the patch has been
+> submitted but akpm has balked because he doesn't like the performance
+> degredation and doesn't believe that Chris Mason's "workload of doom"
+> is a common case).  Note though that it is possible for dirty blocks
+> to remain in the track buffer for *minutes* without being written to
+> spinning rust platters without a barrier.
+
+So we do wrong thing by default. Another reason to do fsck more often
+when powerfails are present?
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
