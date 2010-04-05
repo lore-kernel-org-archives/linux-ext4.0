@@ -1,44 +1,48 @@
 From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: BUG_ON triggered in ext4_mb_complex_scan_group()
-Date: Mon, 5 Apr 2010 13:01:31 +0800
-Message-ID: <i2gac8f92701004042201gbe239f33la21b31828752fd3c@mail.gmail.com>
-References: <m2uac8f92701004042130o76a81f3az89d538ebe0afea31@mail.gmail.com>
-	 <4BB968B6.1060005@redhat.com>
+Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
+Date: Mon, 5 Apr 2010 13:08:58 +0800
+Message-ID: <o2tac8f92701004042208l99c70297mf9955beacacd96bf@mail.gmail.com>
+References: <ac8f92701003210701j5926f2c4v843e36bc602a0444@mail.gmail.com>
+	 <87sk7nv4sp.fsf@linux.vnet.ibm.com>
+	 <x2vac8f92701003280113k2458fcb6mefe6c04875c9b3a3@mail.gmail.com>
+	 <20100403165340.GA17819@thunk.org>
+	 <j2tac8f92701004031805s9b09d04csc5adf5199dc9b9a7@mail.gmail.com>
+	 <20100404180845.GG18524@thunk.org>
+	 <v2oac8f92701004042053p1738ece4u299dcb481b2fc3f2@mail.gmail.com>
+	 <4BB966AE.1060207@redhat.com>
+	 <t2pac8f92701004042151x3b0c27e2h805778b7b3aeefba@mail.gmail.com>
+	 <4BB96E14.9010903@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
+Cc: tytso@mit.edu,
 	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
 	Andreas Dilger <adilger@sun.com>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:42553 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750961Ab0DEFBe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Apr 2010 01:01:34 -0400
-Received: by gyg13 with SMTP id 13so1867612gyg.19
-        for <linux-ext4@vger.kernel.org>; Sun, 04 Apr 2010 22:01:33 -0700 (PDT)
-In-Reply-To: <4BB968B6.1060005@redhat.com>
+Received: from mail-yx0-f191.google.com ([209.85.210.191]:61720 "EHLO
+	mail-yx0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750732Ab0DEFI7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Apr 2010 01:08:59 -0400
+Received: by yxe29 with SMTP id 29so1930545yxe.4
+        for <linux-ext4@vger.kernel.org>; Sun, 04 Apr 2010 22:08:58 -0700 (PDT)
+In-Reply-To: <4BB96E14.9010903@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 2010/4/5, Eric Sandeen <sandeen@redhat.com>:
-> jing zhang wrote:
->> From: Jing Zhang <zj.barak@gmail.com>
->>
->> Date: Mon Apr 5 12:10:50     2010
->>
->> BUG_ON is triggered at [line:1762] in ext4_mb_complex_scan_group(),
+> Testing really is critical to development; some things can be done by
+> inspection, but if you don't test it is hard to know if you made a
+> mistake.
 >
-> Do you have a test case which can trigger this BUG_ON?
+> You can always test inside a vm, or on a loopback file, on a single box.
 >
-> -Eric
+> Without testing, you are asking others to do testing for you
+> (unless the change is so obvious that it can be trusted)
+>
 
-No I do not have.
+Before linux-2.6.32 is released, would you like tell me, how is ext4 tested?
+Is tough testing able to catch all bugs?
 
-But you can check [line: 1762] and [line: 1321].
-
-And please info me the result, if you like, after check.
-
-                - zj
+      - zj
