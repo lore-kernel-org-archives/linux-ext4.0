@@ -1,54 +1,96 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
-Date: Mon, 5 Apr 2010 08:43:19 -0400
-Message-ID: <20100405124319.GO18524@thunk.org>
-References: <87sk7nv4sp.fsf@linux.vnet.ibm.com>
- <x2vac8f92701003280113k2458fcb6mefe6c04875c9b3a3@mail.gmail.com>
- <20100403165340.GA17819@thunk.org>
- <j2tac8f92701004031805s9b09d04csc5adf5199dc9b9a7@mail.gmail.com>
- <20100404180845.GG18524@thunk.org>
- <v2oac8f92701004042053p1738ece4u299dcb481b2fc3f2@mail.gmail.com>
- <4BB966AE.1060207@redhat.com>
- <t2pac8f92701004042151x3b0c27e2h805778b7b3aeefba@mail.gmail.com>
- <4BB96E14.9010903@redhat.com>
- <x2lac8f92701004042218w7f13beacl572ae7c84b77c279@mail.gmail.com>
+Subject: Re: [PATCH] ext4: remove unnecessary operation in
+ ext4_mb_normalize_group_request()
+Date: Mon, 5 Apr 2010 08:48:14 -0400
+Message-ID: <20100405124814.GP18524@thunk.org>
+References: <ac8f92701003250754o682aa32dw9bb51f36f0fa433b@mail.gmail.com>
+ <87wrwzv732.fsf@linux.vnet.ibm.com>
+ <ac8f92701003260644s7dad8b4mea3bcb4dbcedfd17@mail.gmail.com>
+ <87bpebnonl.fsf@linux.vnet.ibm.com>
+ <ac8f92701003260737h8e46e69y5a7bd119036ec486@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
+Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	Andreas Dilger <adilger@sun.com>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 To: jing zhang <zj.barak@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:53363 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:55085 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754386Ab0DEMni (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Apr 2010 08:43:38 -0400
+	id S1754386Ab0DEMsQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Apr 2010 08:48:16 -0400
 Content-Disposition: inline
-In-Reply-To: <x2lac8f92701004042218w7f13beacl572ae7c84b77c279@mail.gmail.com>
+In-Reply-To: <ac8f92701003260737h8e46e69y5a7bd119036ec486@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 05, 2010 at 01:18:58PM +0800, jing zhang wrote:
-> 2010/4/5, Eric Sandeen <sandeen@redhat.com>:
-> >>>
-> >>> Ted meant that -he- was curious about how much testing you were doing.
+This patch has been marked as rejected in patchwork.
+
+-- Ted
+
+On Fri, Mar 26, 2010 at 10:37:49PM +0800, jing zhang wrote:
+> 2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
+> > On Fri, 26 Mar 2010 21:44:33 +0800, jing zhang <zj.barak@gmail.com> wrote:
+> >> 2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
+> >> > On Thu, 25 Mar 2010 22:54:21 +0800, jing zhang <zj.barak@gmail.com>
+> >> > wrote:
+> >> >> From: Jing Zhang <zj.barak@gmail.com>
+> >> >>
+> >> >> Date: Wed Mar 25  22:55:04   2010
+> >> >>
+> >> >> Checking bug seems not at right place, and the function itself should
+> >> >> be inlined.
+> >> >>
+> >> >> Cc: Theodore Ts'o <tytso@mit.edu>
+> >> >> Cc: Andreas Dilger <adilger@sun.com>
+> >> >> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+> >> >> Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+> >> >> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+> >> >>
+> >> >> ---
+> >> >>
+> >> >> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
+> >> >> +++ ext4_mm_leak/mballoc-10.c	2010-03-25 22:44:00.000000000 +0800
+> >> >> @@ -2786,9 +2786,7 @@ out_err:
+> >> >>  static void ext4_mb_normalize_group_request(struct
+> >> >> ext4_allocation_context *ac)
+> >> >>  {
+> >> >>  	struct super_block *sb = ac->ac_sb;
+> >> >> -	struct ext4_locality_group *lg = ac->ac_lg;
+> >> >>
+> >> >> -	BUG_ON(lg == NULL);
+> >> >>  	if (EXT4_SB(sb)->s_stripe)
+> >> >>  		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
+> >> >>  	else
+> >> >
+> >> > That BUG_ON is to ensure that the allocation context is actually having
+> >> > a locality group which is needed for group allocation request.
+> >> >
+> >> > -aneesh
+> >> >
 > >>
-> >> How do know what Ted meant, by iphone?
+> >> Please check
+> >> 1, the 3 lines at the end of ext4_mb_group_or_file()
+> >> 2, the function name of this patch
+> >>
 > >
-> > No, because I am a native English speaker and I understood the
-> > figure of speech.  ("out of curiosity")
+> > What i wanted to mention was the BUG_ON is there to ensure that we don't
+> > call ext4_mb_normalize_group_request on non group enabled allocation
+> > context by programming mistake. Doing that would cause ac_g_ex.fe_len
+> > to change. So that BUG_ON is there to capture a programming error.
+> >
+> > -aneesh
 > >
 > 
-> And I am also curious about what educational degree did you win, Eric,
-> on the language of English, at Harvard University?
-
-Jing,
-
-That's uncalled for.  Please be polite.  Eric is a native speaker of
-English, and he quite correctly interpreted my question.
-
-Thanks,
-
-	     	      			    - Ted
+> Thank you, Aneesh, for good explanation in patience.
+> 
+> Again, good weekend.
+> 
+> Still in work?
+> 
+>         - zj
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
