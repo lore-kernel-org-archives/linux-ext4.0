@@ -1,67 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH (RESEND)] don't scan/accumulate more pages than mballoc
- will allocate
-Date: Mon, 05 Apr 2010 09:42:11 -0500
-Message-ID: <4BB9F6C3.5000001@redhat.com>
-References: <4BB0C761.50204@redhat.com> <20100405131105.GB22104@thunk.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [patch/rft] jbd2: tag journal writes as metadata I/O
+Date: Mon, 05 Apr 2010 11:24:13 -0400
+Message-ID: <x49tyrpkjmq.fsf@segfault.boston.devel.redhat.com>
+References: <x49iq8b9ep5.fsf@segfault.boston.devel.redhat.com>
+	<20100401194822.GA8401@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	jens.axboe@oracle.com, esandeen@redhat.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:16972 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38075 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753668Ab0DEOmR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Apr 2010 10:42:17 -0400
-In-Reply-To: <20100405131105.GB22104@thunk.org>
+	id S1754611Ab0DEPYV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Apr 2010 11:24:21 -0400
+In-Reply-To: <20100401194822.GA8401@atrey.karlin.mff.cuni.cz> (Jan Kara's
+	message of "Thu, 1 Apr 2010 21:48:23 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu wrote:
-> On Mon, Mar 29, 2010 at 10:29:37AM -0500, Eric Sandeen wrote:
->> This patch makes mpage_add_bh_to_extent stop the loop after we've
->> accumulated 2048 pages, by setting mpd->io_done = 1; which ultimately
->> causes the write_cache_pages loop to break.
->>
->> Repeating the test with a dirty_ratio of 80 (to leave something for
->> fsync to do), I don't see huge IO performance gains, but the reduction
->> in cpu usage is striking: 80% usage with stock, and 2% with the
->> below patch.  Instrumenting the loop in write_cache_pages clearly
->> shows that we are wasting time here.
->>
->> It'd be better to not have a magic number of 2048 in here, so I'll
->> look for a cleaner way to get this info out of mballoc; I still need
->> to look at what Aneesh has in the patch queue, that might help.
->> This is something we could probably put in for now, though; the 2048
->> is already enshrined in a comment in inode.c, at least.
-> 
-> I wonder if a better way of fixing this is to changing
-> mpage_da_map_pages() to call ext4_get_blocks() multiple times.  This
+Jan Kara <jack@suse.cz> writes:
 
-That sounds reasonable, I'll look into writing something up and testing
-it a bit.
+>   Hi,
+>
+>> In running iozone for writes to small files, we noticed a pretty big
+>> discrepency between the performance of the deadline and cfq I/O
+>> schedulers.  Investigation showed that I/O was being issued from 2
+>> different contexts: the iozone process itself, and the jbd2/sdh-8 thread
+>> (as expected).  Because of the way cfq performs slice idling, the delays
+>> introduced between the metadata and data I/Os were significant.  For
+>> example, cfq would see about 7MB/s versus deadline's 35 for the same
+>> workload.  I also tested fs_mark with writing and fsyncing 1000 64k
+>> files, and a similar 5x performance difference was observed.  Eric
+>> Sandeen suggested that I flag the journal writes as metadata, and once I
+>> did that, the performance difference went away completely (cfq has
+>> special logic to prioritize metadata I/O).
+>> 
+>> So, I'm submitting this patch for comments and testing.  I have a
+>> similar patch for jbd that I will submit if folks agree that this is a
+>> good idea.
+>   This looks like a good idea to me. I'd just be careful about data=journal
+> mode where even data is written via journal and thus you'd incorrectly
+> prioritize all the IO. I suppose that could have negative impact on performace
+> of other filesystems on the same disk. So for data=journal mode, I'd leave
+> write_op to be just WRITE / WRITE_SYNC_PLUG.
 
-Up to you whether the initial patch goes in, I know it's kind of
-stopgap/hacky.
+Hi, Jan, thanks for the review!  I'm trying to figure out the best way
+to relay the journal mode from ext3 or ext4 to jbd or jbd2.  Would a new
+journal flag, set in journal_init_inode, be appropriate?  This wouldn't
+cover the case of data journalling set per inode, though.  It also puts
+some ext3-specific code into the purportedly fs-agnostic jbd code
+(specifically, testing the superblock for the data journal mount flag).
+Do you have any suggestions?
 
-thanks,
--Eric
-
-> should be a lot easier after we integrate mpage_da_submit_io() into
-> mpage_da_map_pages().  That way we can way more efficient; in a loop,
-> we accumulate the pages, call ext4_get_blocks(), then submit the IO
-> (as a single block I/O submission, instead of 4k at a time through
-> ext4_writepages()), and then call ext4_get_blocks() again, etc.
-
-
-
-> I'm willing to include this patch as an interim stopgap, but
-> eventually, I think we need to refactor and reorganize
-> mpage_da_map_pages() and and mpage_da_submit_IO(), and let them call
-> mballoc (via ext4_get_blocks) multiple times in a loop.
-> 
-> Thoughts, suggestions?
-> 
-> 					- Ted
-
+Thanks!
+Jeff
