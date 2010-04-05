@@ -1,96 +1,53 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: remove unnecessary operation in
- ext4_mb_normalize_group_request()
-Date: Mon, 5 Apr 2010 08:48:14 -0400
-Message-ID: <20100405124814.GP18524@thunk.org>
-References: <ac8f92701003250754o682aa32dw9bb51f36f0fa433b@mail.gmail.com>
- <87wrwzv732.fsf@linux.vnet.ibm.com>
- <ac8f92701003260644s7dad8b4mea3bcb4dbcedfd17@mail.gmail.com>
- <87bpebnonl.fsf@linux.vnet.ibm.com>
- <ac8f92701003260737h8e46e69y5a7bd119036ec486@mail.gmail.com>
+Subject: Re: [PATCH (RESEND)] don't scan/accumulate more pages than mballoc
+ will allocate
+Date: Mon, 5 Apr 2010 09:11:05 -0400
+Message-ID: <20100405131105.GB22104@thunk.org>
+References: <4BB0C761.50204@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: jing zhang <zj.barak@gmail.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:55085 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:37573 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754386Ab0DEMsQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Apr 2010 08:48:16 -0400
+	id S1754465Ab0DENLH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Apr 2010 09:11:07 -0400
 Content-Disposition: inline
-In-Reply-To: <ac8f92701003260737h8e46e69y5a7bd119036ec486@mail.gmail.com>
+In-Reply-To: <4BB0C761.50204@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch has been marked as rejected in patchwork.
+On Mon, Mar 29, 2010 at 10:29:37AM -0500, Eric Sandeen wrote:
+> This patch makes mpage_add_bh_to_extent stop the loop after we've
+> accumulated 2048 pages, by setting mpd->io_done = 1; which ultimately
+> causes the write_cache_pages loop to break.
+> 
+> Repeating the test with a dirty_ratio of 80 (to leave something for
+> fsync to do), I don't see huge IO performance gains, but the reduction
+> in cpu usage is striking: 80% usage with stock, and 2% with the
+> below patch.  Instrumenting the loop in write_cache_pages clearly
+> shows that we are wasting time here.
+> 
+> It'd be better to not have a magic number of 2048 in here, so I'll
+> look for a cleaner way to get this info out of mballoc; I still need
+> to look at what Aneesh has in the patch queue, that might help.
+> This is something we could probably put in for now, though; the 2048
+> is already enshrined in a comment in inode.c, at least.
 
--- Ted
+I wonder if a better way of fixing this is to changing
+mpage_da_map_pages() to call ext4_get_blocks() multiple times.  This
+should be a lot easier after we integrate mpage_da_submit_io() into
+mpage_da_map_pages().  That way we can way more efficient; in a loop,
+we accumulate the pages, call ext4_get_blocks(), then submit the IO
+(as a single block I/O submission, instead of 4k at a time through
+ext4_writepages()), and then call ext4_get_blocks() again, etc.
 
-On Fri, Mar 26, 2010 at 10:37:49PM +0800, jing zhang wrote:
-> 2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
-> > On Fri, 26 Mar 2010 21:44:33 +0800, jing zhang <zj.barak@gmail.com> wrote:
-> >> 2010/3/26, Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>:
-> >> > On Thu, 25 Mar 2010 22:54:21 +0800, jing zhang <zj.barak@gmail.com>
-> >> > wrote:
-> >> >> From: Jing Zhang <zj.barak@gmail.com>
-> >> >>
-> >> >> Date: Wed Mar 25  22:55:04   2010
-> >> >>
-> >> >> Checking bug seems not at right place, and the function itself should
-> >> >> be inlined.
-> >> >>
-> >> >> Cc: Theodore Ts'o <tytso@mit.edu>
-> >> >> Cc: Andreas Dilger <adilger@sun.com>
-> >> >> Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-> >> >> Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-> >> >> Signed-off-by: Jing Zhang <zj.barak@gmail.com>
-> >> >>
-> >> >> ---
-> >> >>
-> >> >> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-> >> >> +++ ext4_mm_leak/mballoc-10.c	2010-03-25 22:44:00.000000000 +0800
-> >> >> @@ -2786,9 +2786,7 @@ out_err:
-> >> >>  static void ext4_mb_normalize_group_request(struct
-> >> >> ext4_allocation_context *ac)
-> >> >>  {
-> >> >>  	struct super_block *sb = ac->ac_sb;
-> >> >> -	struct ext4_locality_group *lg = ac->ac_lg;
-> >> >>
-> >> >> -	BUG_ON(lg == NULL);
-> >> >>  	if (EXT4_SB(sb)->s_stripe)
-> >> >>  		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
-> >> >>  	else
-> >> >
-> >> > That BUG_ON is to ensure that the allocation context is actually having
-> >> > a locality group which is needed for group allocation request.
-> >> >
-> >> > -aneesh
-> >> >
-> >>
-> >> Please check
-> >> 1, the 3 lines at the end of ext4_mb_group_or_file()
-> >> 2, the function name of this patch
-> >>
-> >
-> > What i wanted to mention was the BUG_ON is there to ensure that we don't
-> > call ext4_mb_normalize_group_request on non group enabled allocation
-> > context by programming mistake. Doing that would cause ac_g_ex.fe_len
-> > to change. So that BUG_ON is there to capture a programming error.
-> >
-> > -aneesh
-> >
-> 
-> Thank you, Aneesh, for good explanation in patience.
-> 
-> Again, good weekend.
-> 
-> Still in work?
-> 
->         - zj
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm willing to include this patch as an interim stopgap, but
+eventually, I think we need to refactor and reorganize
+mpage_da_map_pages() and and mpage_da_submit_IO(), and let them call
+mballoc (via ext4_get_blocks) multiple times in a loop.
+
+Thoughts, suggestions?
+
+					- Ted
