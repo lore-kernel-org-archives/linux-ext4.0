@@ -1,66 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
-Date: Sun, 04 Apr 2010 23:27:26 -0500
-Message-ID: <4BB966AE.1060207@redhat.com>
-References: <ac8f92701003210701j5926f2c4v843e36bc602a0444@mail.gmail.com>	 <20100322012758.GE11560@thunk.org>	 <ac8f92701003230547p3e56a9cdnff8ce874535db117@mail.gmail.com>	 <87sk7nv4sp.fsf@linux.vnet.ibm.com>	 <x2vac8f92701003280113k2458fcb6mefe6c04875c9b3a3@mail.gmail.com>	 <20100403165340.GA17819@thunk.org>	 <j2tac8f92701004031805s9b09d04csc5adf5199dc9b9a7@mail.gmail.com>	 <20100404180845.GG18524@thunk.org> <v2oac8f92701004042053p1738ece4u299dcb481b2fc3f2@mail.gmail.com>
+From: jing zhang <zj.barak@gmail.com>
+Subject: [PATCH] ext4: BUG_ON triggered in ext4_mb_complex_scan_group()
+Date: Mon, 5 Apr 2010 12:30:19 +0800
+Message-ID: <m2uac8f92701004042130o76a81f3az89d538ebe0afea31@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu,
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
 	Andreas Dilger <adilger@sun.com>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: jing zhang <zj.barak@gmail.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5735 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750732Ab0DEE1g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Apr 2010 00:27:36 -0400
-In-Reply-To: <v2oac8f92701004042053p1738ece4u299dcb481b2fc3f2@mail.gmail.com>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:53453 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750732Ab0DEEaU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Apr 2010 00:30:20 -0400
+Received: by gwb19 with SMTP id 19so1030021gwb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 04 Apr 2010 21:30:19 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jing zhang wrote:
-> 2010/4/5, tytso@mit.edu <tytso@mit.edu>:
->> On Sun, Apr 04, 2010 at 09:05:14AM +0800, jing zhang wrote:
->>
->> How much testing are you doing before submitting patches, out of
->> curiosity?
-> 
-> Yes, Ted, it is curiosity that drives me to do hard works, including patch ext4.
+From: Jing Zhang <zj.barak@gmail.com>
 
-It is the language barrier that is making some of this difficult,
-but I'm not complaining - you speak English much better than I speak any
-second language.  :)
+Date: Mon Apr 5 12:10:50     2010
 
-Ted meant that -he- was curious about how much testing you were doing.
+BUG_ON is triggered at [line:1762] in ext4_mb_complex_scan_group(),
+and fix is to change the return value of mb_find_extent() if the
+needed extent can not be found. The fix can also be applied to other
+points where mb_find_extent() is called.
 
-...
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@sun.com>
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+---
+ fs/ext4/mballoc.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-> And after operations on cmdline, I compile the modified, modprobe, dd,
-> and rmmod with virtual machine. It is not hard.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index bba1282..fbb6899 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1321,7 +1321,7 @@ static int mb_find_extent(struct ext4_buddy
+*e4b, int order, int block,
+ 		ex->fe_len = 0;
+ 		ex->fe_start = 0;
+ 		ex->fe_group = 0;
+-		return 0;
++		return -ENOSPC;
+ 	}
 
-More testing than this would be good; dd is very minimal.
+ 	/* FIXME dorp order completely ? */
+@@ -1358,6 +1358,8 @@ static int mb_find_extent(struct ext4_buddy
+*e4b, int order, int block,
+ 	}
 
-One of our new standard tests for et4 is the xfstests test suite from 
-http://git.kernel.org/?p=fs/xfs/xfstests-dev.git;a=summary
+ 	BUG_ON(ex->fe_start + ex->fe_len > (1 << (e4b->bd_blkbits + 3)));
++	if (needed > ex->fe_len)
++		return -ENOSPC;
+ 	return ex->fe_len;
+ }
 
-It is a collection of many tests developed for xfs, but many tests are
-generic and can run on ext4 as well.  I would suggest that after you have
-several patches ready, you should at least run through the tests in this
-collection.  It won't catch every mistake but it runs a large variety of 
-tests, much more stressful than dd.
+@@ -1758,7 +1760,8 @@ void ext4_mb_complex_scan_group(struct
+ext4_allocation_context *ac,
+ 			break;
+ 		}
 
-Thanks for your email, and thanks for clearly spending time looking for
-ways to improve ext4.  I think that with practice, you will be a good 
-contributor.
-
-Ted can certainly be a patient maintainer - read his suggestions and the
-kernel patch submission guidelines, and I think you will get better at this.
-
-Do your best to explain the reasons for your patches, and any testing you
-have done, and describe any test which can show a bug that you find - 
-and we can help to clarify changelogs if they need it.
-
--Eric
+-		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
++		if (0 > mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex))
++			break;
+ 		BUG_ON(ex.fe_len <= 0);
+ 		if (free < ex.fe_len) {
+ 			ext4_grp_locked_error(sb, e4b->bd_group,
