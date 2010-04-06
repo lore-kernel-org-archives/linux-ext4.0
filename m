@@ -1,164 +1,73 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
-Date: Tue, 6 Apr 2010 10:21:03 -0400
-Message-ID: <20100406142103.GI23670@thunk.org>
-References: <20100403165340.GA17819@thunk.org>
- <j2tac8f92701004031805s9b09d04csc5adf5199dc9b9a7@mail.gmail.com>
- <20100404180845.GG18524@thunk.org>
- <v2oac8f92701004042053p1738ece4u299dcb481b2fc3f2@mail.gmail.com>
- <4BB966AE.1060207@redhat.com>
- <t2pac8f92701004042151x3b0c27e2h805778b7b3aeefba@mail.gmail.com>
- <4BB96E14.9010903@redhat.com>
- <o2tac8f92701004042208l99c70297mf9955beacacd96bf@mail.gmail.com>
- <20100405124223.GN18524@thunk.org>
- <n2pac8f92701004060643q1702a1a4v8e8643cf35742559@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [patch/rft] jbd2: tag journal writes as metadata I/O
+Date: Tue, 6 Apr 2010 17:20:37 +0200
+Message-ID: <20100406152036.GA4420@quack.suse.cz>
+References: <x49iq8b9ep5.fsf@segfault.boston.devel.redhat.com>
+ <20100401194822.GA8401@atrey.karlin.mff.cuni.cz>
+ <x49tyrpkjmq.fsf@segfault.boston.devel.redhat.com>
+ <20100405174603.GA24493@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: jing zhang <zj.barak@gmail.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	jens.axboe@oracle.com, esandeen@redhat.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:53606 "EHLO thunker.thunk.org"
+Received: from cantor.suse.de ([195.135.220.2]:59994 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269Ab0DFOVf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Apr 2010 10:21:35 -0400
+	id S1750976Ab0DFPU1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Apr 2010 11:20:27 -0400
 Content-Disposition: inline
-In-Reply-To: <n2pac8f92701004060643q1702a1a4v8e8643cf35742559@mail.gmail.com>
+In-Reply-To: <20100405174603.GA24493@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 06, 2010 at 09:43:58PM +0800, jing zhang wrote:
+On Mon 05-04-10 13:46:03, tytso@mit.edu wrote:
+> On Mon, Apr 05, 2010 at 11:24:13AM -0400, Jeff Moyer wrote:
+> > Jan Kara <jack@suse.cz> writes:
+> > >> In running iozone for writes to small files, we noticed a pretty big
+> > >> discrepency between the performance of the deadline and cfq I/O
+> > >> schedulers.  Investigation showed that I/O was being issued from 2
+> > >> different contexts: the iozone process itself, and the jbd2/sdh-8 thread
+> > >> (as expected).  Because of the way cfq performs slice idling, the delays
+> > >> introduced between the metadata and data I/Os were significant.  For
+> > >> example, cfq would see about 7MB/s versus deadline's 35 for the same
+> > >> workload.  I also tested fs_mark with writing and fsyncing 1000 64k
+> > >> files, and a similar 5x performance difference was observed.  Eric
+> > >> Sandeen suggested that I flag the journal writes as metadata, and once I
+> > >> did that, the performance difference went away completely (cfq has
+> > >> special logic to prioritize metadata I/O).
+> > >> 
+> > >> So, I'm submitting this patch for comments and testing.  I have a
+> > >> similar patch for jbd that I will submit if folks agree that this is a
+> > >> good idea.
+> > >   This looks like a good idea to me. I'd just be careful about data=journal
+> > > mode where even data is written via journal and thus you'd incorrectly
+> > > prioritize all the IO. I suppose that could have negative impact on performace
+> > > of other filesystems on the same disk. So for data=journal mode, I'd leave
+> > > write_op to be just WRITE / WRITE_SYNC_PLUG.
+> > 
+> > Hi, Jan, thanks for the review!  I'm trying to figure out the best way
+> > to relay the journal mode from ext3 or ext4 to jbd or jbd2.  Would a new
+> > journal flag, set in journal_init_inode, be appropriate?  This wouldn't
+> > cover the case of data journalling set per inode, though.  It also puts
+> > some ext3-specific code into the purportedly fs-agnostic jbd code
+> > (specifically, testing the superblock for the data journal mount flag).
+> > Do you have any suggestions?
 > 
-> In my view, one of the important parts of a patch is that the patcher
-> is really concerning what is patched, another is whether the questions
-> listed in the patch do exist, and whether the solution, if provided by
-> the patcher, is correct.
-> 
-> Even if the provide solution is ok, I think, it is the privilege,
-> responsibility and duty of maintainers to execute the final
-> submitting, and therefore it is not the duty of patchers to make sure
-> that the solution is 100% correct and perfect, testing is good or not.
+> I don't think it's necessary to worry about journal=data mode.  First
+> of all, it's not true that all of the I/O would be prioritized as
+> metadata.  In data=journal mode, data blocks are written twice; once
+> to the journal, and once to the final location on disk.  And the
+> journal writes do need to be prioritized because the commit can't go
+> out until all of the preceeding journal blocks have been written.  So
+> treating all of the journal writes as metadata for the the purposes of
+> cfq's prioritization makes sense to me....
+  OK, you are right that if we look at it this way, it makes sence to
+treat data writes to journal as metadata. So Jeff, now I agree with your
+original patch.
 
-Well, the problem is there are many more patch submitters than there
-are maintainers, and so your proposal simply doesn't scale.  Consider
-that for some maintainers, there may be 10 or 20 or 30 or more patch
-submitters in their subsystem.  With that kind of
-submitter-to-maintainer ratio, the patch submitter simply has to do
-much more of the work, since otherwise the subsystem maintainer simply
-can't keep up.
-
-Most maintainers actually spend much less time dealing with patch
-submitters than I have invested with you.  They simply send a NACK,
-and maybe 2-3 sentences explaning of what still needs fixing, and then
-it's up to the patch submitter to resubmit the patch.  Some patches
-are resubmitted 5, 6 times before the maintainer finally accepts it.
-
-I happen to believe that we need to encourage newcomers to the kernel
-developer community, and so I spend more time mentoring people who are
-new to the process.  But at the end of the day, I have only so many
-hours that I can spend on newcomers, and so after a while, I will
-start serving other patch submitters who are more capable of providing
-patches that are easy to review and integrate.
-
-> I like to be a maintainer of some subsystem of GNU Linux, since it is
-> my shame that end users experience panic, crash, bug, bug_on caused by
-> what is under my maintenance, that end users are treated as rats and
-> monkeys in laboratory even though I am not paid by any end user, and
-> the nice reputations of distributors, say red hat, of service
-> providers, say IBM.
-
-Sure, but that means the patches which are submitted has to be high
-quality.  If I get half-tested patches, or patches where you can't
-give me a reproduction case that demonstrates the BUG_ON, and it's not
-obvious whether or not the patch is safe, I have to worry about the
-possibility that applying your patch may make the the file system more
-likely to crash, not less.
-
-Ext4 is actually quite stable at this point.  Very large numbers of
-people are using it, and most users are quite happy.  So at this
-point, I have to weigh the risk that a patch might introduce a bug
-against the claim that it fixes the bug --- especially if the patch
-submitter can't explain how the BUG_ON might have been triggered
-without their patch, and can't explain to me how much testing he or
-she has done before sumitting the patch to me.
-
-As far as your concern about end users getting treated as "rats and
-monkeys", they are certainly getting paid; they get to use very high
-quality software for free!  The tradeoff is that they won't get as
-much support compared to someone who is a paying customer of Red Hat
-or IBM.  For the right customer, when I worked at IBM, I would fly on
-site to a bank in New York City and fix their bug.  And I'm sure it's
-the same for Eric, if someone has a critical bug and they are a big
-Red Hat customer.  Those who pay our salaries, get the best support.
-End users who aren't paying support to a big Linux company still get
-support, but it won't be as good, and that's just life.  End users who
-want to use the latest code, are in fact guinea pigs.  If they don't
-want to guinea pigs, they can use Fedora kernels or OpenSuSE kernels.
-
-> > where decent comments and making sure the code is maintainable is
-> > critically important.  Since this takes other developer's time,
-> > especially senior developers like Eric and myself's time, which is
-> 
-> I still concern how to correctly measure the lost, in the next half of
-> 2010, of time and value of end users, say 100, caused by what is buggy
-> in ext4. Are you sure no buggy, Eric and Ted?
-
-There is no such thing as code which is not buggy.  For any
-non-trivial program, it's almost certain there are bugs.  The only
-question is how easy it is for the someone to trigger the bugs, and
-what are the consequences if the bugs get triggered.  During ext4
-development, we've found bugs that were around in for over a decade in
-ext3, but it was simply something that no one had ever tripped over.
-(It required a certain race condition getting hit, plus a power
-failure or other unclean shutdown very shortly after the race
-condition, and it was simply something which no one had ever noticed,
-or if they did trip over it, they assumed it was caused by a hardware
-problem.)
-
-Ext4 is not exempt from these fundamental laws of software
-engienering.  "Code is always buggy until the last user of the program
-dies".
-
-As far as the time value of users, remember that people who get free
-code, get what they pay for.  We all have our salaries paid by
-someone, and at the end of the day, our priorities are driven by our
-employers.  So I will track down a bug report from an end user because
-(a) that bug might affect the machines that I am paid to support, and
-(b) a larger ext4 user base is good for the community in general, and
-there are secondary benefits to my employer that accrue from that, and
-(c) Google is just a great company.  :-)    
-
-(As is Red Hat, SuSE, Oracle, etc. :-)
-
-But please don't get fooled that the resources we have to work on
-problems from end users, or time that I can spend mentoring newcomers
-to the kernel developer community, is infinite.  Because it isn't.
-I'll spend some of my own time, and work late at nights, to help end
-users who are getting linux "for free", especially if they run into
-problems with ext4, because I like to help users as much as I can.
-And I will help out newcomers like you because it's personally
-important to me.  But I do need to sleep, and I do have other
-priorities, like family and friends.  And at the end of the day,
-because I like food with my meals, the needs of my $DAYJOB, are going
-to get priority, at least during work hours.
-
-Finally, keep in mind that the maxim that code which is not buggy also
-applies to your patches.  At least some of your patches are definitely
-buggy, and which brings us back to the question whether things will be
-made better or worse if we were to apply all of your patches.  And in
-the meantime, there are patches from other patch submitters which are
-proven themselves to be much more likely to be correct, and easier to
-review and integrate.  
-
-If you were a maintainer, faced with limited time and resources, and
-someone who floods you with a large number of patches that take extra
-time to review and comprehend, and that person refuses to help you
-make life easier by reworking their patches so that they are easier to
-review and comprehend, what would _you_ do?
-
-Best regards,
-
-						- Ted
+									Honza 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
