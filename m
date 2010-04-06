@@ -1,48 +1,47 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: group cache is added in
- ext4_mb_discard_preallocations()
-Date: Tue, 6 Apr 2010 14:31:58 -0400
-Message-ID: <20100406183158.GK23670@thunk.org>
-References: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
+Subject: Re: [patch/rft] jbd2: tag journal writes as metadata I/O
+Date: Tue, 6 Apr 2010 14:45:05 -0400
+Message-ID: <20100406184505.GL23670@thunk.org>
+References: <x49iq8b9ep5.fsf@segfault.boston.devel.redhat.com>
+ <20100401194822.GA8401@atrey.karlin.mff.cuni.cz>
+ <x49tyrpkjmq.fsf@segfault.boston.devel.redhat.com>
+ <20100405174603.GA24493@thunk.org>
+ <20100406182527.GF3029@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: jing zhang <zj.barak@gmail.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	jens.axboe@oracle.com, esandeen@redhat.com
+To: Vivek Goyal <vgoyal@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:41069 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:57368 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756888Ab0DFScE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Apr 2010 14:32:04 -0400
+	id S1756888Ab0DFSpI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Apr 2010 14:45:08 -0400
 Content-Disposition: inline
-In-Reply-To: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
+In-Reply-To: <20100406182527.GF3029@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 30, 2010 at 08:36:17PM +0800, jing zhang wrote:
-> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-> +++ ext4_mm_leak/mballoc-13.c	2010-03-30 20:28:08.000000000 +0800
-> @@ -4183,12 +4183,20 @@ static int ext4_mb_discard_preallocation
->  	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
->  	int ret;
->  	int freed = 0;
-> +	static ext4_group_t grp_cache = 0;
+> CFQ currently seems to be preempting any thread doing IO if a request has
+> been marked as metadata. I think this is going to be bad for any other IO
+> going on.
+> 
+> I wrote a small fio script which is doing buffered writes with bs=32K and I
+> am doing fsync on file after every 20 IOs (fsync=20). I am assuming that this
+> something close to writting a small file and then doing fsync on that. 
+> 
+> With that fio script running I launched firefox and measured the
+> time it takes.....  it looks like that firefox launching times have
+> seems to just almost doubled.
 
-This is a problem right there.  Remember that there could be multiple
-file systems mounted so a static variable is fundamentally flawed.
+Vivek, thanks for pointing this out.  Sounds like we need to think
+carefully about whether the potential unfairness that this patch might
+impose on other workloads sharing the file system dominates the
+improvements that Jeff found when there's only a single workload
+running on the file system.
 
-In fact, we could have a one filesystem which has more than 3 times
-the number of groups as another file system.  I'll leave it as an
-exercise to a reader why your patch would be fundamentally flawed in
-that case.
-
-The other thing to note is that this case only gets hit if the file
-system is so full that we need to empty preallocations.  So this means
-hitting this case is rare, which raises two questions: (1) is it worth
-it to optimize this case in the first place (is it really that
-expensive to iterate over all the groups to discard the
-preallocations); (2) can we test this case well?
+I'm tentatively leaning towards pulling this patch so we can do more
+testing / benchmarking.   Jeff, any thoughts or comments?
 
 						- Ted
