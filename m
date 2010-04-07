@@ -1,114 +1,153 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
-Date: Wed, 7 Apr 2010 17:46:31 -0400
-Message-ID: <20100407214631.GL3206@redhat.com>
-References: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 1/3] quota: use flags interface for dquot alloc/free space
+Date: Wed, 07 Apr 2010 16:49:05 -0500
+Message-ID: <4BBCFDD1.30505@redhat.com>
+References: <4BBCFD10.3030504@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, jens.axboe@oracle.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14919 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53744 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752640Ab0DGVql (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Apr 2010 17:46:41 -0400
-Content-Disposition: inline
-In-Reply-To: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com>
+	id S1754248Ab0DGVtM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Apr 2010 17:49:12 -0400
+Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o37LnC9N031851
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:49:12 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o37Ln5tF012635
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:49:11 -0400
+In-Reply-To: <4BBCFD10.3030504@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 07, 2010 at 05:18:12PM -0400, Jeff Moyer wrote:
-> Hi again,
-> 
-> So, here's another stab at fixing this.  This patch is very much an RFC,
-> so do not pull it into anything bound for Linus.  ;-)  For those new to
-> this topic, here is the original posting:  http://lkml.org/lkml/2010/4/1/344
-> 
-> The basic problem is that, when running iozone on smallish files (up to
-> 8MB in size) and including fsync in the timings, deadline outperforms
-> CFQ by a factor of about 5 for 64KB files, and by about 10% for 8MB
-> files.  From examining the blktrace data, it appears that iozone will
-> issue an fsync() call, and will have to wait until it's CFQ timeslice
-> has expired before the journal thread can run to actually commit data to
-> disk.
-> 
-> The approach below puts an explicit call into the filesystem-specific
-> fsync code to yield the disk so that the jbd[2] process has a chance to
-> issue I/O.  This bring performance of CFQ in line with deadline.
-> 
-> There is one outstanding issue with the patch that Vivek pointed out.
-> Basically, this could starve out the sync-noidle workload if there is a
-> lot of fsync-ing going on.  I'll address that in a follow-on patch.  For
-> now, I wanted to get the idea out there for others to comment on.
-> 
-> Thanks a ton to Vivek for spotting the problem with the initial
-> approach, and for his continued review.
-> 
+Switch __dquot_alloc_space and __dquot_free_space to take flags
+to indicate whether to warn and/or to reserve (or free reserve).
 
-Thanks Jeff. Conceptually this appraoch makes lot of sense to me. Higher
-layers explicitly telling CFQ not to idle/yield the slice.
+This is slightly more readable at the callpoints, and makes it
+cleaner to add a "nofail" option in the next patch.
 
-My firefox timing test is perfoming much better now.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-real	0m15.957s
-user	0m0.608s
-sys	0m0.165s
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index e0b870f..8436d9b 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1484,11 +1484,12 @@ static void inode_decr_space(struct inode *inode, qsize_t number, int reserve)
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-int __dquot_alloc_space(struct inode *inode, qsize_t number,
+-		int warn, int reserve)
++int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
+ {
+ 	int cnt, ret = 0;
+ 	char warntype[MAXQUOTAS];
++	int warn = flags & DQUOT_SPACE_WARN;
++	int reserve = flags & DQUOT_SPACE_RESERVE;
+ 
+ 	/*
+ 	 * First test before acquiring mutex - solves deadlocks when we
+@@ -1608,10 +1609,11 @@ EXPORT_SYMBOL(dquot_claim_space_nodirty);
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-void __dquot_free_space(struct inode *inode, qsize_t number, int reserve)
++void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
+ {
+ 	unsigned int cnt;
+ 	char warntype[MAXQUOTAS];
++	int reserve = flags & DQUOT_SPACE_RESERVE;
+ 
+ 	/* First test before acquiring mutex - solves deadlocks when we
+          * re-enter the quota code and are already holding the mutex */
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index e6fa7ac..daa106f 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -14,6 +14,9 @@ static inline struct quota_info *sb_dqopt(struct super_block *sb)
+ 	return &sb->s_dquot;
+ }
+ 
++#define DQUOT_SPACE_WARN	0x1
++#define DQUOT_SPACE_RESERVE	0x2
++
+ #if defined(CONFIG_QUOTA)
+ 
+ /*
+@@ -33,9 +36,8 @@ int dquot_scan_active(struct super_block *sb,
+ struct dquot *dquot_alloc(struct super_block *sb, int type);
+ void dquot_destroy(struct dquot *dquot);
+ 
+-int __dquot_alloc_space(struct inode *inode, qsize_t number,
+-		int warn, int reserve);
+-void __dquot_free_space(struct inode *inode, qsize_t number, int reserve);
++int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags);
++void __dquot_free_space(struct inode *inode, qsize_t number, int flags);
+ 
+ int dquot_alloc_inode(const struct inode *inode);
+ 
+@@ -231,17 +233,17 @@ static inline int dquot_transfer(struct inode *inode, struct iattr *iattr)
+ }
+ 
+ static inline int __dquot_alloc_space(struct inode *inode, qsize_t number,
+-		int warn, int reserve)
++		int flags)
+ {
+-	if (!reserve)
++	if (!(flags & DQUOT_SPACE_RESERVE))
+ 		inode_add_bytes(inode, number);
+ 	return 0;
+ }
+ 
+ static inline void __dquot_free_space(struct inode *inode, qsize_t number,
+-		int reserve)
++		int flags)
+ {
+-	if (!reserve)
++	if (!(flags & DQUOT_SPACE_RESERVE))
+ 		inode_sub_bytes(inode, number);
+ }
+ 
+@@ -257,7 +259,7 @@ static inline int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
+ 
+ static inline int dquot_alloc_space_nodirty(struct inode *inode, qsize_t nr)
+ {
+-	return __dquot_alloc_space(inode, nr, 1, 0);
++	return __dquot_alloc_space(inode, nr, DQUOT_SPACE_WARN);
+ }
+ 
+ static inline int dquot_alloc_space(struct inode *inode, qsize_t nr)
+@@ -282,7 +284,7 @@ static inline int dquot_alloc_block(struct inode *inode, qsize_t nr)
+ 
+ static inline int dquot_prealloc_block_nodirty(struct inode *inode, qsize_t nr)
+ {
+-	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 0, 0);
++	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 0);
+ }
+ 
+ static inline int dquot_prealloc_block(struct inode *inode, qsize_t nr)
+@@ -297,7 +299,8 @@ static inline int dquot_prealloc_block(struct inode *inode, qsize_t nr)
+ 
+ static inline int dquot_reserve_block(struct inode *inode, qsize_t nr)
+ {
+-	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 1, 1);
++	return __dquot_alloc_space(inode, nr << inode->i_blkbits,
++				DQUOT_SPACE_WARN|DQUOT_SPACE_RESERVE);
+ }
+ 
+ static inline int dquot_claim_block(struct inode *inode, qsize_t nr)
+@@ -334,7 +337,7 @@ static inline void dquot_free_block(struct inode *inode, qsize_t nr)
+ static inline void dquot_release_reservation_block(struct inode *inode,
+ 		qsize_t nr)
+ {
+-	__dquot_free_space(inode, nr << inode->i_blkbits, 1);
++	__dquot_free_space(inode, nr << inode->i_blkbits, DQUOT_SPACE_RESERVE);
+ }
+ 
+ #endif /* _LINUX_QUOTAOPS_ */
 
-real	0m12.984s
-user	0m0.602s
-sys	0m0.148s
-
-real	0m13.057s
-user	0m0.624s
-sys	0m0.145s
-
-So we got to take care of two issues now.
-
-- Make it work with dm/md devices also. Somehow shall have to propogate
-  this yield semantic down the stack.
-
-- The issue of making sure we don't yield if we are servicing sync-noidle
-  tree and there is other IO going on which relies on sync-noidle tree
-  idling (as you have already mentioned).
-
-
-[..]
-> +static void cfq_yield(struct request_queue *q)
-> +{
-> +	struct cfq_data *cfqd = q->elevator->elevator_data;
-> +	struct cfq_io_context *cic;
-> +	struct cfq_queue *cfqq;
-> +	unsigned long flags;
-> +
-> +	cic = cfq_cic_lookup(cfqd, current->io_context);
-> +	if (!cic)
-> +		return;
-> +
-> +	spin_lock_irqsave(q->queue_lock, flags);
-> +
-> +	/*
-> +	 * This is primarily called to ensure that the long synchronous
-> +	 * time slice does not prevent other I/O happenning (like journal
-> +	 * commits) while we idle waiting for it.  Thus, check to see if the
-> +	 * current cfqq is the sync cfqq for this process.
-> +	 */
-> +	cfqq = cic_to_cfqq(cic, 1);
-> +	if (!cfqq)
-> +		goto out_unlock;
-> +
-> +	if (cfqd->active_queue != cfqq)
-> +		goto out_unlock;
-> +
-> +	cfq_log_cfqq(cfqd, cfqq, "yielding queue");
-> +
-> +	__cfq_slice_expired(cfqd, cfqq, 1);
-> +	__blk_run_queue(cfqd->queue);
-
-I think it would be good if we also check that cfqq is empty or not. If cfqq
-is not empty we don't want to give up slice? But this is a minor point. At
-least in case of fsync, we seem to be waiting for all the iozone request
-to finish and then calling yield. So cfqq should be empty at this point of
-time. 
-
-Vivek
