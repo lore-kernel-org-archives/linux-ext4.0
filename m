@@ -1,261 +1,289 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: Re: [PATCH] ext4: memory leakage in ext4_mb_init()
-Date: Thu, 8 Apr 2010 00:34:12 +0800
-Message-ID: <i2zac8f92701004070934qb74eef2ak4bd7455f4573f50a@mail.gmail.com>
-References: <20100403165340.GA17819@thunk.org>
-	 <20100404180845.GG18524@thunk.org>
-	 <v2oac8f92701004042053p1738ece4u299dcb481b2fc3f2@mail.gmail.com>
-	 <4BB966AE.1060207@redhat.com>
-	 <t2pac8f92701004042151x3b0c27e2h805778b7b3aeefba@mail.gmail.com>
-	 <4BB96E14.9010903@redhat.com>
-	 <o2tac8f92701004042208l99c70297mf9955beacacd96bf@mail.gmail.com>
-	 <20100405124223.GN18524@thunk.org>
-	 <n2pac8f92701004060643q1702a1a4v8e8643cf35742559@mail.gmail.com>
-	 <20100406142103.GI23670@thunk.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
+Date: Wed, 07 Apr 2010 17:18:12 -0400
+Message-ID: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@sun.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: tytso@mit.edu, torvalds@linux-foundation.org, mingo@redhat.com,
-	gregkh@suse.de, axboe@kernel.dk, ralf@linux-mips.org,
-	health-science@washpost.com,
-	linux-kernel <linux-kernel@vger.kern
+Content-Type: text/plain; charset=us-ascii
+Cc: Vivek Goyal <vgoyal@redhat.com>, jens.axboe@oracle.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f171.google.com ([209.85.210.171]:43030 "EHLO
-	mail-yx0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932723Ab0DGQeP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Apr 2010 12:34:15 -0400
-In-Reply-To: <20100406142103.GI23670@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57056 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751132Ab0DGVSU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Apr 2010 17:18:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/4/6, tytso@mit.edu <tytso@mit.edu>:
-> On Tue, Apr 06, 2010 at 09:43:58PM +0800, jing zhang wrote:
->>
->> In my view, one of the important parts of a patch is that the patcher
->> is really concerning what is patched, another is whether the questions
->> listed in the patch do exist, and whether the solution, if provided by
->> the patcher, is correct.
->>
->> Even if the provide solution is ok, I think, it is the privilege,
->> responsibility and duty of maintainers to execute the final
->> submitting, and therefore it is not the duty of patchers to make sure
->> that the solution is 100% correct and perfect, testing is good or not.
->
-> Well, the problem is there are many more patch submitters than there
-> are maintainers, and so your proposal simply doesn't scale.  Consider
-> that for some maintainers, there may be 10 or 20 or 30 or more patch
-> submitters in their subsystem.  With that kind of
-> submitter-to-maintainer ratio, the patch submitter simply has to do
-> much more of the work, since otherwise the subsystem maintainer simply
-> can't keep up.
->
+Hi again,
 
-If you are not able to deal with all patches received, the simple way
-seems that you should share your burden with those maintainers who
-like.
+So, here's another stab at fixing this.  This patch is very much an RFC,
+so do not pull it into anything bound for Linus.  ;-)  For those new to
+this topic, here is the original posting:  http://lkml.org/lkml/2010/4/1/344
 
-> Most maintainers actually spend much less time dealing with patch
-> submitters than I have invested with you.  They simply send a NACK,
-> and maybe 2-3 sentences explaning of what still needs fixing, and then
-> it's up to the patch submitter to resubmit the patch.  Some patches
-> are resubmitted 5, 6 times before the maintainer finally accepts it.
+The basic problem is that, when running iozone on smallish files (up to
+8MB in size) and including fsync in the timings, deadline outperforms
+CFQ by a factor of about 5 for 64KB files, and by about 10% for 8MB
+files.  From examining the blktrace data, it appears that iozone will
+issue an fsync() call, and will have to wait until it's CFQ timeslice
+has expired before the journal thread can run to actually commit data to
+disk.
 
-This seems one of the cool reasons that some subsystem, say in stable
-stock kernel, is buggy, and end users have to face panic.
+The approach below puts an explicit call into the filesystem-specific
+fsync code to yield the disk so that the jbd[2] process has a chance to
+issue I/O.  This bring performance of CFQ in line with deadline.
 
->
-> I happen to believe that we need to encourage newcomers to the kernel
-> developer community, and so I spend more time mentoring people who are
-> new to the process.  But at the end of the day, I have only so many
-> hours that I can spend on newcomers, and so after a while, I will
-> start serving other patch submitters who are more capable of providing
-> patches that are easy to review and integrate.
->
+There is one outstanding issue with the patch that Vivek pointed out.
+Basically, this could starve out the sync-noidle workload if there is a
+lot of fsync-ing going on.  I'll address that in a follow-on patch.  For
+now, I wanted to get the idea out there for others to comment on.
 
-Newcomers, I think, are the cool gifts sent by Jesus and Buddha to
-what is called GUN Linux, and the accepted patches do not remove the
-buggy in the unaccepted patches, if the buggy does exist.
+Thanks a ton to Vivek for spotting the problem with the initial
+approach, and for his continued review.
 
->> I like to be a maintainer of some subsystem of GNU Linux, since it is
->> my shame that end users experience panic, crash, bug, bug_on caused by
->> what is under my maintenance, that end users are treated as rats and
->> monkeys in laboratory even though I am not paid by any end user, and
->> the nice reputations of distributors, say red hat, of service
->> providers, say IBM.
->
-> Sure, but that means the patches which are submitted has to be high
-> quality.  If I get half-tested patches, or patches where you can't
-> give me a reproduction case that demonstrates the BUG_ON, and it's not
+Cheers,
+Jeff
 
-The first action on the received patch to what is under my maintenance
-is to check whether there is really buggy. If yes, I apologize to the
-patcher as soon as possible. Second the correctness of the solution,
-if provided in patch, is checked as tough as I can, simply because
-that no case of reproduction can not tell me it is not buggy. Third it
-is my duty to be responsible for the stability of the subsystem in
-what is called stable stock kernel, with little to do with the safety
-of any patch, and I would share my ideas with the original patcher.
+# git diff --stat
+ block/blk-core.c            |   15 +++++++++++++++
+ block/cfq-iosched.c         |   38 +++++++++++++++++++++++++++++++++++++-
+ block/elevator.c            |    8 ++++++++
+ fs/ext3/fsync.c             |    5 ++++-
+ fs/ext4/fsync.c             |    6 +++++-
+ include/linux/backing-dev.h |   13 +++++++++++++
+ include/linux/blkdev.h      |    1 +
+ include/linux/elevator.h    |    3 +++
+ 8 files changed, 86 insertions(+), 3 deletions(-)
 
-> obvious whether or not the patch is safe, I have to worry about the
-> possibility that applying your patch may make the the file system more
-> likely to crash, not less.
->
-> Ext4 is actually quite stable at this point.  Very large numbers of
 
-How stable is it? Would you like to show which version of ext4 is free of buggy?
-
-> people are using it, and most users are quite happy.  So at this
-
-Is happy meaning ext4 is free of buggy?
-
-> point, I have to weigh the risk that a patch might introduce a bug
-> against the claim that it fixes the bug --- especially if the patch
-
-It seems the day to day duty to review patches for any maintainer, but
-I am not sure.
-
-> submitter can't explain how the BUG_ON might have been triggered
-> without their patch, and can't explain to me how much testing he or
-> she has done before sumitting the patch to me.
-
-I do not think his/her testing can ensure the safety of the patch, but
-review is necessary.
-
->
-> As far as your concern about end users getting treated as "rats and
-> monkeys", they are certainly getting paid; they get to use very high
-> quality software for free!  The tradeoff is that they won't get as
-
-End users do get privilege for free from GNU, other than to be treated
-as rats and monkeys for any reason, I think.
-
-If you like to provide free ext4 as stable, first above all, you
-should be sure it is free of buggy, or at least you have to info end
-users, as much as you can, how buggy it is.
-
-In other words, if you like to provide free bread, and claim the bread
-is safe, you must ensure the bread is free of poison, or you have to
-info, as much as you can, those who take your bread that the bread is
-not  free of poison, how danger the bread is.
-
-Is it murder with no info at all?
-
-> much support compared to someone who is a paying customer of Red Hat
-> or IBM.  For the right customer, when I worked at IBM, I would fly on
-> site to a bank in New York City and fix their bug.  And I'm sure it's
-> the same for Eric, if someone has a critical bug and they are a big
-> Red Hat customer.  Those who pay our salaries, get the best support.
-
-Those right customers seems pay too much for what is unnecessary, and
-IBM is lucky enough, unlike Toyota. Indeed I first hear that, a cool
-story:)  I would share it with my friends. Thanks.
-
-> End users who aren't paying support to a big Linux company still get
-> support, but it won't be as good, and that's just life.  End users who
-
-So these end users who aren't paying do get treated as rats and monkeys by you?
-
-> want to use the latest code, are in fact guinea pigs.  If they don't
-
-No, no and no, in any way, end users are not pigs in Guinea but users
-of GNU Linux, I believe. Jesus and Buddha, please, rescue me.
-
-> want to guinea pigs, they can use Fedora kernels or OpenSuSE kernels.
->
->> > where decent comments and making sure the code is maintainable is
->> > critically important.  Since this takes other developer's time,
->> > especially senior developers like Eric and myself's time, which is
->>
->> I still concern how to correctly measure the lost, in the next half of
->> 2010, of time and value of end users, say 100, caused by what is buggy
->> in ext4. Are you sure no buggy, Eric and Ted?
->
-> There is no such thing as code which is not buggy.  For any
-> non-trivial program, it's almost certain there are bugs.  The only
-
-So it is clear ext4 is not free of buggy but in stable linux-2.6.32.
-
-> question is how easy it is for the someone to trigger the bugs, and
-> what are the consequences if the bugs get triggered.  During ext4
-> development, we've found bugs that were around in for over a decade in
-> ext3, but it was simply something that no one had ever tripped over.
-
-And you achieved a lot, but I think ext4 is another ext3.
-
-> (It required a certain race condition getting hit, plus a power
-> failure or other unclean shutdown very shortly after the race
-> condition, and it was simply something which no one had ever noticed,
-> or if they did trip over it, they assumed it was caused by a hardware
-> problem.)
->
-> Ext4 is not exempt from these fundamental laws of software
-> engienering.  "Code is always buggy until the last user of the program
-> dies".
-
-Nobody want to die, it is a life not so hard.
-
->
-> As far as the time value of users, remember that people who get free
-> code, get what they pay for.  We all have our salaries paid by
-
-GNU is free, Linux is also free, it sounds cool, for any user at least today.
-
-> someone, and at the end of the day, our priorities are driven by our
-> employers.  So I will track down a bug report from an end user because
-> (a) that bug might affect the machines that I am paid to support, and
-> (b) a larger ext4 user base is good for the community in general, and
-> there are secondary benefits to my employer that accrue from that, and
-> (c) Google is just a great company.  :-)
->
-> (As is Red Hat, SuSE, Oracle, etc. :-)
->
-> But please don't get fooled that the resources we have to work on
-> problems from end users, or time that I can spend mentoring newcomers
-> to the kernel developer community, is infinite.  Because it isn't.
-> I'll spend some of my own time, and work late at nights, to help end
-> users who are getting linux "for free", especially if they run into
-> problems with ext4, because I like to help users as much as I can.
-
-Nice words. And How about those users in Guinea?
-
-> And I will help out newcomers like you because it's personally
-> important to me.  But I do need to sleep, and I do have other
-> priorities, like family and friends.  And at the end of the day,
-> because I like food with my meals, the needs of my $DAYJOB, are going
-> to get priority, at least during work hours.
->
-> Finally, keep in mind that the maxim that code which is not buggy also
-> applies to your patches.  At least some of your patches are definitely
-> buggy, and which brings us back to the question whether things will be
-
-My buggy is still not in the stable kernel, right?
-
-> made better or worse if we were to apply all of your patches.  And in
-> the meantime, there are patches from other patch submitters which are
-> proven themselves to be much more likely to be correct, and easier to
-> review and integrate.
->
-> If you were a maintainer, faced with limited time and resources, and
-
-My mind is changed, I should not be a maintainer like you who are
-treating users differently.
-
-> someone who floods you with a large number of patches that take extra
-> time to review and comprehend, and that person refuses to help you
-> make life easier by reworking their patches so that they are easier to
-> review and comprehend, what would _you_ do?
-
-My answer is simple, I would apologize to all patchers first.
-
-good night
-               - zj
-
->
-> Best regards,
->
-> 						- Ted
->
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 9fe174d..1be9413 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -323,6 +323,19 @@ void blk_unplug(struct request_queue *q)
+ }
+ EXPORT_SYMBOL(blk_unplug);
+ 
++void blk_backing_dev_yield(struct backing_dev_info *bdi)
++{
++	struct request_queue *q = bdi->yield_data;
++
++	blk_yield(q);
++}
++
++void blk_yield(struct request_queue *q)
++{
++	elv_yield(q);
++}
++EXPORT_SYMBOL(blk_yield);
++
+ /**
+  * blk_start_queue - restart a previously stopped queue
+  * @q:    The &struct request_queue in question
+@@ -498,6 +511,8 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
+ 
+ 	q->backing_dev_info.unplug_io_fn = blk_backing_dev_unplug;
+ 	q->backing_dev_info.unplug_io_data = q;
++	q->backing_dev_info.yield_fn = blk_backing_dev_yield;
++	q->backing_dev_info.yield_data = q;
+ 	q->backing_dev_info.ra_pages =
+ 			(VM_MAX_READAHEAD * 1024) / PAGE_CACHE_SIZE;
+ 	q->backing_dev_info.state = 0;
+diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+index dee9d93..a76ccd1 100644
+--- a/block/cfq-iosched.c
++++ b/block/cfq-iosched.c
+@@ -2065,7 +2065,7 @@ static void cfq_choose_cfqg(struct cfq_data *cfqd)
+ 	cfqd->serving_group = cfqg;
+ 
+ 	/* Restore the workload type data */
+-	if (cfqg->saved_workload_slice) {
++	if (cfqg && cfqg->saved_workload_slice) {
+ 		cfqd->workload_expires = jiffies + cfqg->saved_workload_slice;
+ 		cfqd->serving_type = cfqg->saved_workload;
+ 		cfqd->serving_prio = cfqg->saved_serving_prio;
+@@ -2163,6 +2163,41 @@ keep_queue:
+ 	return cfqq;
+ }
+ 
++static void cfq_yield(struct request_queue *q)
++{
++	struct cfq_data *cfqd = q->elevator->elevator_data;
++	struct cfq_io_context *cic;
++	struct cfq_queue *cfqq;
++	unsigned long flags;
++
++	cic = cfq_cic_lookup(cfqd, current->io_context);
++	if (!cic)
++		return;
++
++	spin_lock_irqsave(q->queue_lock, flags);
++
++	/*
++	 * This is primarily called to ensure that the long synchronous
++	 * time slice does not prevent other I/O happenning (like journal
++	 * commits) while we idle waiting for it.  Thus, check to see if the
++	 * current cfqq is the sync cfqq for this process.
++	 */
++	cfqq = cic_to_cfqq(cic, 1);
++	if (!cfqq)
++		goto out_unlock;
++
++	if (cfqd->active_queue != cfqq)
++		goto out_unlock;
++
++	cfq_log_cfqq(cfqd, cfqq, "yielding queue");
++
++	__cfq_slice_expired(cfqd, cfqq, 1);
++	__blk_run_queue(cfqd->queue);
++
++out_unlock:
++	spin_unlock_irqrestore(q->queue_lock, flags);
++}
++
+ static int __cfq_forced_dispatch_cfqq(struct cfq_queue *cfqq)
+ {
+ 	int dispatched = 0;
+@@ -3854,6 +3889,7 @@ static struct elevator_type iosched_cfq = {
+ 		.elevator_deactivate_req_fn =	cfq_deactivate_request,
+ 		.elevator_queue_empty_fn =	cfq_queue_empty,
+ 		.elevator_completed_req_fn =	cfq_completed_request,
++		.elevator_yield_fn =		cfq_yield,
+ 		.elevator_former_req_fn =	elv_rb_former_request,
+ 		.elevator_latter_req_fn =	elv_rb_latter_request,
+ 		.elevator_set_req_fn =		cfq_set_request,
+diff --git a/block/elevator.c b/block/elevator.c
+index df75676..2cf6f89 100644
+--- a/block/elevator.c
++++ b/block/elevator.c
+@@ -855,6 +855,14 @@ void elv_completed_request(struct request_queue *q, struct request *rq)
+ 	}
+ }
+ 
++void elv_yield(struct request_queue *q)
++{
++	struct elevator_queue *e = q->elevator;
++
++	if (e && e->ops->elevator_yield_fn)
++		e->ops->elevator_yield_fn(q);
++}
++
+ #define to_elv(atr) container_of((atr), struct elv_fs_entry, attr)
+ 
+ static ssize_t
+diff --git a/fs/ext3/fsync.c b/fs/ext3/fsync.c
+index 8209f26..44f9db0 100644
+--- a/fs/ext3/fsync.c
++++ b/fs/ext3/fsync.c
+@@ -50,6 +50,7 @@ int ext3_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 	journal_t *journal = EXT3_SB(inode->i_sb)->s_journal;
+ 	int ret = 0;
+ 	tid_t commit_tid;
++	int new_commit;
+ 
+ 	if (inode->i_sb->s_flags & MS_RDONLY)
+ 		return 0;
+@@ -80,7 +81,9 @@ int ext3_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 	else
+ 		commit_tid = atomic_read(&ei->i_sync_tid);
+ 
+-	if (log_start_commit(journal, commit_tid)) {
++	new_commit = log_start_commit(journal, commit_tid);
++	blk_yield_backing_dev(inode->i_sb->s_bdi);
++	if (new_commit) {
+ 		log_wait_commit(journal, commit_tid);
+ 		goto out;
+ 	}
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 0d0c323..1630c68 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -55,6 +55,7 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+ 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+ 	int ret;
+ 	tid_t commit_tid;
++	int new_commit;
+ 
+ 	J_ASSERT(ext4_journal_current_handle() == NULL);
+ 
+@@ -88,7 +89,10 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+ 		return ext4_force_commit(inode->i_sb);
+ 
+ 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
+-	if (jbd2_log_start_commit(journal, commit_tid)) {
++	new_commit = jbd2_log_start_commit(journal, commit_tid);
++	blk_yield_backing_dev(inode->i_sb->s_bdi);
++
++	if (new_commit) {
+ 		/*
+ 		 * When the journal is on a different device than the
+ 		 * fs data disk, we need to issue the barrier in
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index fcbc26a..5bb6c3f 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -67,6 +67,8 @@ struct backing_dev_info {
+ 	void *congested_data;	/* Pointer to aux data for congested func */
+ 	void (*unplug_io_fn)(struct backing_dev_info *, struct page *);
+ 	void *unplug_io_data;
++	void (*yield_fn)(struct backing_dev_info *);
++	void *yield_data;
+ 
+ 	char *name;
+ 
+@@ -344,4 +346,15 @@ static inline void blk_run_address_space(struct address_space *mapping)
+ 		blk_run_backing_dev(mapping->backing_dev_info, NULL);
+ }
+ 
++static inline void blk_yield_backing_dev(struct backing_dev_info *bdi)
++{
++	if (bdi && bdi->yield_fn)
++		bdi->yield_fn(bdi);
++}
++static inline void blk_yield_address_space(struct address_space *mapping)
++{
++	if (mapping)
++		blk_yield_backing_dev(mapping->backing_dev_info);
++}
++
+ #endif		/* _LINUX_BACKING_DEV_H */
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index ebd22db..83c06d4 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -832,6 +832,7 @@ extern int blk_execute_rq(struct request_queue *, struct gendisk *,
+ extern void blk_execute_rq_nowait(struct request_queue *, struct gendisk *,
+ 				  struct request *, int, rq_end_io_fn *);
+ extern void blk_unplug(struct request_queue *q);
++extern void blk_yield(struct request_queue *q);
+ 
+ static inline struct request_queue *bdev_get_queue(struct block_device *bdev)
+ {
+diff --git a/include/linux/elevator.h b/include/linux/elevator.h
+index 1cb3372..9b4e2e9 100644
+--- a/include/linux/elevator.h
++++ b/include/linux/elevator.h
+@@ -20,6 +20,7 @@ typedef void (elevator_add_req_fn) (struct request_queue *, struct request *);
+ typedef int (elevator_queue_empty_fn) (struct request_queue *);
+ typedef struct request *(elevator_request_list_fn) (struct request_queue *, struct request *);
+ typedef void (elevator_completed_req_fn) (struct request_queue *, struct request *);
++typedef void (elevator_yield_fn) (struct request_queue *);
+ typedef int (elevator_may_queue_fn) (struct request_queue *, int);
+ 
+ typedef int (elevator_set_req_fn) (struct request_queue *, struct request *, gfp_t);
+@@ -44,6 +45,7 @@ struct elevator_ops
+ 
+ 	elevator_queue_empty_fn *elevator_queue_empty_fn;
+ 	elevator_completed_req_fn *elevator_completed_req_fn;
++	elevator_yield_fn *elevator_yield_fn;
+ 
+ 	elevator_request_list_fn *elevator_former_req_fn;
+ 	elevator_request_list_fn *elevator_latter_req_fn;
+@@ -105,6 +107,7 @@ extern void elv_merge_requests(struct request_queue *, struct request *,
+ extern void elv_merged_request(struct request_queue *, struct request *, int);
+ extern void elv_requeue_request(struct request_queue *, struct request *);
+ extern int elv_queue_empty(struct request_queue *);
++extern void elv_yield(struct request_queue *);
+ extern struct request *elv_former_request(struct request_queue *, struct request *);
+ extern struct request *elv_latter_request(struct request_queue *, struct request *);
+ extern int elv_register_queue(struct request_queue *q);
