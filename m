@@ -1,58 +1,114 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 0/3] ext4: don't use quota reservation for speculative metadata
- blocks
-Date: Wed, 07 Apr 2010 16:45:52 -0500
-Message-ID: <4BBCFD10.3030504@redhat.com>
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: Re: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
+Date: Wed, 7 Apr 2010 17:46:31 -0400
+Message-ID: <20100407214631.GL3206@redhat.com>
+References: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, jens.axboe@oracle.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60407 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14919 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752271Ab0DGVp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Apr 2010 17:45:56 -0400
-Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o37LjtRo027995
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:45:55 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o37Ljqm1003737
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:45:55 -0400
+	id S1752640Ab0DGVql (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Apr 2010 17:46:41 -0400
+Content-Disposition: inline
+In-Reply-To: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Because we can badly over-reserve metadata when we
-calculate worst-case, it complicates things for quota, since
-we must reserve and then claim later, retry on EDQUOT, etc.
-Quota is also a generally smaller pool than fs free blocks,
-so this over-reservation hurts more, and more often.
+On Wed, Apr 07, 2010 at 05:18:12PM -0400, Jeff Moyer wrote:
+> Hi again,
+> 
+> So, here's another stab at fixing this.  This patch is very much an RFC,
+> so do not pull it into anything bound for Linus.  ;-)  For those new to
+> this topic, here is the original posting:  http://lkml.org/lkml/2010/4/1/344
+> 
+> The basic problem is that, when running iozone on smallish files (up to
+> 8MB in size) and including fsync in the timings, deadline outperforms
+> CFQ by a factor of about 5 for 64KB files, and by about 10% for 8MB
+> files.  From examining the blktrace data, it appears that iozone will
+> issue an fsync() call, and will have to wait until it's CFQ timeslice
+> has expired before the journal thread can run to actually commit data to
+> disk.
+> 
+> The approach below puts an explicit call into the filesystem-specific
+> fsync code to yield the disk so that the jbd[2] process has a chance to
+> issue I/O.  This bring performance of CFQ in line with deadline.
+> 
+> There is one outstanding issue with the patch that Vivek pointed out.
+> Basically, this could starve out the sync-noidle workload if there is a
+> lot of fsync-ing going on.  I'll address that in a follow-on patch.  For
+> now, I wanted to get the idea out there for others to comment on.
+> 
+> Thanks a ton to Vivek for spotting the problem with the initial
+> approach, and for his continued review.
+> 
 
-I'm of the opinion that it's not the worst thing to allow
-metadata to push a user slightly over quota.  This simplifies
-the code and avoids the false quota rejections that result
-from worst-case speculation.
+Thanks Jeff. Conceptually this appraoch makes lot of sense to me. Higher
+layers explicitly telling CFQ not to idle/yield the slice.
 
-This patch series stops the speculative quota-charging for
-worst-case metadata requirements, and just charges quota
-when the blocks are allocated at writeout.  It also is
-able to remove the try-again loop on EDQUOT.
+My firefox timing test is perfoming much better now.
 
-The first 2 patches are quota infrastructure changes,
-to change __dquot_alloc/free_space to take a flags argument,
-and then add a NOFAIL option, so that metadata writes which
-tip us over quota can proceed.
+real	0m15.957s
+user	0m0.608s
+sys	0m0.165s
 
-The last patch makes the ext4 changes.  The whole batch
-has been tested indirectly by running the xfstests suite
-with a hack to mount & enable quota prior to the test.
+real	0m12.984s
+user	0m0.602s
+sys	0m0.148s
 
-I also did a more specific test of fragmenting freespace
-and then doing a large delalloc write under quota; quota
-stopped me at the right amount of file IO, and then the
-writeout generated enough metadata (due to the fragmentation)
-that it put me slightly over quota, as expected.
+real	0m13.057s
+user	0m0.624s
+sys	0m0.145s
 
-Thanks,
--Eric
+So we got to take care of two issues now.
+
+- Make it work with dm/md devices also. Somehow shall have to propogate
+  this yield semantic down the stack.
+
+- The issue of making sure we don't yield if we are servicing sync-noidle
+  tree and there is other IO going on which relies on sync-noidle tree
+  idling (as you have already mentioned).
+
+
+[..]
+> +static void cfq_yield(struct request_queue *q)
+> +{
+> +	struct cfq_data *cfqd = q->elevator->elevator_data;
+> +	struct cfq_io_context *cic;
+> +	struct cfq_queue *cfqq;
+> +	unsigned long flags;
+> +
+> +	cic = cfq_cic_lookup(cfqd, current->io_context);
+> +	if (!cic)
+> +		return;
+> +
+> +	spin_lock_irqsave(q->queue_lock, flags);
+> +
+> +	/*
+> +	 * This is primarily called to ensure that the long synchronous
+> +	 * time slice does not prevent other I/O happenning (like journal
+> +	 * commits) while we idle waiting for it.  Thus, check to see if the
+> +	 * current cfqq is the sync cfqq for this process.
+> +	 */
+> +	cfqq = cic_to_cfqq(cic, 1);
+> +	if (!cfqq)
+> +		goto out_unlock;
+> +
+> +	if (cfqd->active_queue != cfqq)
+> +		goto out_unlock;
+> +
+> +	cfq_log_cfqq(cfqd, cfqq, "yielding queue");
+> +
+> +	__cfq_slice_expired(cfqd, cfqq, 1);
+> +	__blk_run_queue(cfqd->queue);
+
+I think it would be good if we also check that cfqq is empty or not. If cfqq
+is not empty we don't want to give up slice? But this is a minor point. At
+least in case of fsync, we seem to be waiting for all the iozone request
+to finish and then calling yield. So cfqq should be empty at this point of
+time. 
+
+Vivek
