@@ -1,214 +1,145 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 3/3] ext4: don't use quota reservation for speculative metadata
- blocks
-Date: Wed, 07 Apr 2010 16:55:52 -0500
-Message-ID: <4BBCFF68.1060000@redhat.com>
-References: <4BBCFD10.3030504@redhat.com>
+From: john stultz <johnstul@us.ibm.com>
+Subject: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Wed, 07 Apr 2010 16:21:18 -0700
+Message-ID: <1270682478.3755.58.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Mingming Cao <cmm@us.ibm.com>, keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, "Theodore Ts'o" <tytso@mit.edu>,
+	Darren Hart <dvhltc@us.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29353 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756679Ab0DGVz4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Apr 2010 17:55:56 -0400
-Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o37Lttq7032045
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:55:55 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o37LtqIE014098
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:55:55 -0400
-In-Reply-To: <4BBCFD10.3030504@redhat.com>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:34190 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754771Ab0DGXVY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Apr 2010 19:21:24 -0400
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by e34.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id o37NEPje016134
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:14:25 -0600
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o37NLNwM018338
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:21:23 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o37NLMpN019581
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Apr 2010 17:21:23 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Because we can badly over-reserve metadata when we
-calculate worst-case, it complicates things for quota, since
-we must reserve and then claim later, retry on EDQUOT, etc.
-Quota is also a generally smaller pool than fs free blocks,
-so this over-reservation hurts more, and more often.
+I've recently been working on scalability issues with the PREEMPT_RT
+kernel patch, and one area I've hit has been ext4 journal j_state_lock
+contention.
 
-I'm of the opinion that it's not the worst thing to allow
-metadata to push a user slightly over quota.  This simplifies
-the code and avoids the false quota rejections that result
-from worst-case speculation.
+With the PREEMPT_RT kernel, most spinlocks become pi-aware mutexes, so
+they sleep when the lock cannot be acquired. This means lock contention
+has a *much* greater impact on the PREEMPT_RT kernel then mainline. Thus
+scalability issues hit the PREEMPT_RT kernel at lower cpu counts then
+mainline.
 
-This patch stops the speculative quota-charging for
-worst-case metadata requirements, and just charges quota
-when the blocks are allocated at writeout.  It also is
-able to remove the try-again loop on EDQUOT.
+Now, you might not care about PREEMPT_RT, but consider that any lock
+contention will get worse in mainline as the cpu count increases. So in
+this way, the PREEMPT_RT kernel allows us to see what scalability issues
+are on the horizon for mainline kernels running on larger systems.
 
-This patch has been tested indirectly by running the xfstests
-suite with a hack to mount & enable quota prior to the test.
+When running dbench on ext4 with the -rt kernel, I saw a fairly severe
+performance drop off (~-60%) going from 4 to 8 clients (on an 8 cpu
+machine).
 
-I also did a more specific test of fragmenting freespace
-and then doing a large delalloc write under quota; quota
-stopped me at the right amount of file IO, and then the
-writeout generated enough metadata (due to the fragmentation)
-that it put me slightly over quota, as expected.
+Looking at the perf log, I could see there was quite a bit of lock
+contention in the jdb2 start_This_handle/jbd2_journal_stop code paths:
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+27.39%       dbench  [kernel]                    [k] _raw_spin_lock_irqsave
+                |          
+                |--90.91%-- rt_spin_lock_slowlock
+                |          rt_spin_lock
+                |          |          
+                |          |--66.92%-- start_this_handle
+                |          |          jbd2_journal_start
+                |          |          ext4_journal_start_sb
+                |          |          |          
+... 
+                |          |          
+                |          |--32.31%-- jbd2_journal_stop
+                |          |          __ext4_journal_stop
+                |          |          |          
+                |          |          |--92.86%-- ext4_da_write_end
+                |          |          |          generic_file_buffered_write
 
- balloc.c |    5 ++--
- inode.c  |   64 ++++++++++++++++++++-------------------------------------------
- 2 files changed, 24 insertions(+), 45 deletions(-)
+Full perf log here:
+http://sr71.net/~jstultz/dbench-scalability/perflogs/2.6.33/linux-2.6.33-rt11-vfs-ext4-8cpu.log
+
+The perf logs for mainline showed similar contention, but at 8 cpus it
+was not severe enough to drastically hurt performance in the same way.
+
+Further using lockstat I was able to isolate it the contention down to
+the journal j_state_lock, and then adding some lock owner tracking, I
+was able to see that the lock owners were almost always in
+start_this_handle, and jbd2_journal_stop when we saw contention (with
+the freq breakdown being about 55% in jbd2_journal_stop and 45% in
+start_this_handle).
 
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index d2f37a5..95b7594 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -591,14 +591,15 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 	ret = ext4_mb_new_blocks(handle, &ar, errp);
- 	if (count)
- 		*count = ar.len;
--
- 	/*
--	 * Account for the allocated meta blocks
-+	 * Account for the allocated meta blocks.  We will never
-+	 * fail EDQUOT for metdata, but we do account for it.
- 	 */
- 	if (!(*errp) && EXT4_I(inode)->i_delalloc_reserved_flag) {
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+		dquot_alloc_block_nofail(inode, ar.len);
- 	}
- 	return ret;
- }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5381802..dba674a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1076,7 +1076,6 @@ void ext4_da_update_reserve_space(struct inode *inode,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	int mdb_free = 0, allocated_meta_blocks = 0;
- 
- 	spin_lock(&ei->i_block_reservation_lock);
- 	trace_ext4_da_update_reserve_space(inode, used);
-@@ -1091,11 +1090,10 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 
- 	/* Update per-inode reservations */
- 	ei->i_reserved_data_blocks -= used;
--	used += ei->i_allocated_meta_blocks;
- 	ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks;
--	allocated_meta_blocks = ei->i_allocated_meta_blocks;
-+	percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-+			   used + ei->i_allocated_meta_blocks);
- 	ei->i_allocated_meta_blocks = 0;
--	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used);
- 
- 	if (ei->i_reserved_data_blocks == 0) {
- 		/*
-@@ -1103,30 +1101,23 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 		 * only when we have written all of the delayed
- 		 * allocation blocks.
- 		 */
--		mdb_free = ei->i_reserved_meta_blocks;
-+		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-+				   ei->i_reserved_meta_blocks);
- 		ei->i_reserved_meta_blocks = 0;
- 		ei->i_da_metadata_calc_len = 0;
--		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
- 	}
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 
--	/* Update quota subsystem */
-+	/* Update quota subsystem for data blocks */
- 	if (quota_claim) {
- 		dquot_claim_block(inode, used);
--		if (mdb_free)
--			dquot_release_reservation_block(inode, mdb_free);
- 	} else {
- 		/*
- 		 * We did fallocate with an offset that is already delayed
- 		 * allocated. So on delayed allocated writeback we should
--		 * not update the quota for allocated blocks. But then
--		 * converting an fallocate region to initialized region would
--		 * have caused a metadata allocation. So claim quota for
--		 * that
-+		 * not re-claim the quota for fallocated blocks.
- 		 */
--		if (allocated_meta_blocks)
--			dquot_claim_block(inode, allocated_meta_blocks);
--		dquot_release_reservation_block(inode, mdb_free + used);
-+		dquot_release_reservation_block(inode, used);
- 	}
- 
- 	/*
-@@ -1860,7 +1851,7 @@ static int ext4_da_reserve_space(struct inode *inode, sector_t lblock)
- 	int retries = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	unsigned long md_needed, md_reserved;
-+	unsigned long md_needed;
- 	int ret;
- 
- 	/*
-@@ -1870,22 +1861,24 @@ static int ext4_da_reserve_space(struct inode *inode, sector_t lblock)
- 	 */
- repeat:
- 	spin_lock(&ei->i_block_reservation_lock);
--	md_reserved = ei->i_reserved_meta_blocks;
- 	md_needed = ext4_calc_metadata_amount(inode, lblock);
- 	trace_ext4_da_reserve_space(inode, md_needed);
- 	spin_unlock(&ei->i_block_reservation_lock);
- 
- 	/*
--	 * Make quota reservation here to prevent quota overflow
--	 * later. Real quota accounting is done at pages writeout
--	 * time.
-+	 * We will charge metadata quota at writeout time; this saves
-+	 * us from metadata over-estimation, though we may go over by
-+	 * a small amount in the end.  Here we just reserve for data.
- 	 */
--	ret = dquot_reserve_block(inode, md_needed + 1);
-+	ret = dquot_reserve_block(inode, 1);
- 	if (ret)
- 		return ret;
--
-+	/*
-+	 * We do still charge estimated metadata to the sb though;
-+	 * we cannot afford to run out of free blocks.
-+	 */
- 	if (ext4_claim_free_blocks(sbi, md_needed + 1)) {
--		dquot_release_reservation_block(inode, md_needed + 1);
-+		dquot_release_reservation_block(inode, 1);
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
- 			yield();
- 			goto repeat;
-@@ -1932,12 +1925,13 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
- 		 * only when we have written all of the delayed
- 		 * allocation blocks.
- 		 */
--		to_free += ei->i_reserved_meta_blocks;
-+		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-+				   ei->i_reserved_meta_blocks);
- 		ei->i_reserved_meta_blocks = 0;
- 		ei->i_da_metadata_calc_len = 0;
- 	}
- 
--	/* update fs dirty blocks counter */
-+	/* update fs dirty data blocks counter */
- 	percpu_counter_sub(&sbi->s_dirtyblocks_counter, to_free);
- 
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-@@ -3076,7 +3070,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 			       loff_t pos, unsigned len, unsigned flags,
- 			       struct page **pagep, void **fsdata)
- {
--	int ret, retries = 0, quota_retries = 0;
-+	int ret, retries = 0;
- 	struct page *page;
- 	pgoff_t index;
- 	unsigned from, to;
-@@ -3135,22 +3129,6 @@ retry:
- 
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
+Now, I'm very new to this code, and I don't fully understand the locking
+rules. There is some documentation in the journal_s structure about
+what's protected by the j_state_lock, but I'm not sure if its 100%
+correct or not. 
+
+For the most part, in jbd2_jorunal_stop we're only reading values in the
+journal_t struct, so throwing caution to the wind, I simply removed the
+locking there (trying to be careful in the one case of a structure write
+to use cmpxchg so its sort of an atomic write).
+
+Doing this more then doubled performance (2.5x increase).
+
+Now, I know its terribly terribly wrong, in probably more ways then I
+imagine, and I'm in no way suggesting this "locks are for data integrity
+nerds, look at this performance!" mentality is valid. But it does show
+exactly where contention is hurting us, and maybe what is possibly
+achievable if we can rework some of the locking here.
+
+
+The terrible terrible disk-eating* patch can be found here:
+http://sr71.net/~jstultz/dbench-scalability/patches/2.6.33-ext4-hack/state_lock_hack.patch
+
+Here's a chart comparing 2.6.33 vs 2.6.33-rt11-vfs  both with and
+without the terrible terrible disk-eating* locking hack:
+http://sr71.net/~jstultz/dbench-scalability/graphs/2.6.33-ext4-hack/2.6.33-ext4-hack.png
+
+
+All the perf logs for the 4 cases above:
+http://sr71.net/~jstultz/dbench-scalability/perflogs/2.6.33-ext4-hack/
+
+
+As you can see in the charts, the hack doesn't seem to give any benefit
+to mainline at only 8 cpus, but looking at the perf logs it does seem to
+lower the overhead of the journal code.
+
+The charts also show that start_this_handle still sees some contention
+so there is still more gains to be had by reworking the j_state_lock.
+
+
+So questions from there are:
+1) Some of the values protected by the j_state_lock are protected only
+for quick modification or reading. Could these be converted to a
+atomic_t? If not, why?
+
+2) Alternatively can some of the values protected by the j_state_lock
+which seem to be mostly read type values be converted to something like
+a seq_lock? Again, I'm looking more for the locking dependency reasons
+then just yes or no.
+
+3) Is RCU too crazy for filesystems?
+
+
+If there's any better documentation on the locking rules here, I'd also
+appreciate a pointer.
+
+Any other thoughts or feedback would be greatly appreciated.
+
+thanks
+-john
+
+* No disks were actually eaten in the creation of this data. The patch
+actually ran fine the whole time, but that said, DON'T TRY IT AT HOME!
+
