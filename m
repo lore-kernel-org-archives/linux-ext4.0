@@ -1,49 +1,57 @@
-From: jing zhang <zj.barak@gmail.com>
-Subject: [PATCH] ext4: BUG_ON could be triggered in ext4_mb_normalize_request()
-Date: Wed, 7 Apr 2010 21:51:46 +0800
-Message-ID: <j2oac8f92701004070651xf35cfb9bsedcdd25169427515@mail.gmail.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: group cache is added in
+ ext4_mb_discard_preallocations()
+Date: Wed, 7 Apr 2010 10:46:03 -0400
+Message-ID: <20100407144603.GO23670@thunk.org>
+References: <p2yac8f92701003300536kd52f7ad0p43755fcc2382423b@mail.gmail.com>
+ <56E2631B-9D71-4B96-9F2C-D469F6994598@sun.com>
+ <h2zac8f92701004010534g3607d64fh2dcf615053e59549@mail.gmail.com>
+ <20100406184952.GM23670@thunk.org>
+ <l2jac8f92701004070558l26bcc892g5bb2dbe263e389d5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
 	"Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+To: jing zhang <zj.barak@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:33406 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753355Ab0DGNwF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Apr 2010 09:52:05 -0400
-Received: by gyg13 with SMTP id 13so558184gyg.19
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Apr 2010 06:52:02 -0700 (PDT)
+Received: from thunk.org ([69.25.196.29]:37930 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753431Ab0DGOqq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Apr 2010 10:46:46 -0400
+Content-Disposition: inline
+In-Reply-To: <l2jac8f92701004070558l26bcc892g5bb2dbe263e389d5@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jing Zhang <zj.barak@gmail.com>
+On Wed, Apr 07, 2010 at 08:58:36PM +0800, jing zhang wrote:
+> 2010/4/7, tytso@mit.edu <tytso@mit.edu>:
+> > On Thu, Apr 01, 2010 at 08:34:41PM +0800, jing zhang wrote:
+> >>
+> >> --- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
+> >> +++ ext4_mm_leak/mballoc-14.c	2010-04-01 20:35:58.000000000 +0800
+> >> @@ -4299,7 +4299,7 @@ repeat:
+> >>  		}
+> >>  	} else {
+> >>  		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
+> >> -		if (freed)
+> >> +		if (freed && freed >= ac->ac_o_ex.fe_len)
+> >>  			goto repeat;
+> >>  		*errp = -ENOSPC;
+> >>  		ac->ac_b_ex.fe_len = 0;
+> >
+> > This is just wrong.
+> >
+> > Since you didn't give a justification, I'm not sure why you think it
+> > is correct.
+> >
+> 
+> Though freed, is the amount freed bigger than needed?
+> If not, it seems unnecessary to repeat.
 
-Date: Wed Apr 7 21:34:48     2010
+You don't understand the code, I think.  If we've freed up any number
+of blocks, it makes sense to use those blocks right away.  Mballoc()
+is allowed to return fewer blocks than what was requested.
 
-BUG_ON at [line: 2912] could be triggered,
-     if (pa->pa_deleted == 0 && pa->pa_free == 0)
-as checked at [line: 3111] and [line: 3122].
-
-It is bypassed by adding check for pa_free.
-
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Cc: Aneesh Kumar K. V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Jing Zhang <zj.barak@gmail.com>
-
----
-
---- linux-2.6.32/fs/ext4/mballoc.c	2009-12-03 11:51:22.000000000 +0800
-+++ ext4_mm_leak/mballoc-16.c	2010-04-07 20:20:26.000000000 +0800
-@@ -2901,7 +2901,7 @@ ext4_mb_normalize_request(struct ext4_al
- 		if (pa->pa_deleted)
- 			continue;
- 		spin_lock(&pa->pa_lock);
--		if (pa->pa_deleted) {
-+		if (pa->pa_deleted || 0 == pa->pa_free) {
- 			spin_unlock(&pa->pa_lock);
- 			continue;
- 		}
+   	      	    	     	 - Ted
