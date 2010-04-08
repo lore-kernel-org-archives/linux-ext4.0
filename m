@@ -1,74 +1,87 @@
-From: tytso@mit.edu
-Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
-Date: Wed, 7 Apr 2010 23:46:31 -0400
-Message-ID: <20100408034631.GB23188@thunk.org>
-References: <1270682478.3755.58.camel@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: "data=writeback" and TRIM don't get along
+Date: Wed, 07 Apr 2010 23:10:40 -0500
+Message-ID: <4BBD5740.4070101@redhat.com>
+References: <4BBD285B.9000603@gmail.com> <4BBD2FDF.4040407@redhat.com> <4BBD3365.90306@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
-	keith maanthey <kmannth@us.ibm.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>
-To: john stultz <johnstul@us.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Nebojsa Trpkovic <trx.lists@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56471 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:52480 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755297Ab0DHDqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Apr 2010 23:46:35 -0400
-Content-Disposition: inline
-In-Reply-To: <1270682478.3755.58.camel@localhost.localdomain>
+	id S1751506Ab0DHEKp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Apr 2010 00:10:45 -0400
+In-Reply-To: <4BBD3365.90306@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 07, 2010 at 04:21:18PM -0700, john stultz wrote:
-> Further using lockstat I was able to isolate it the contention down to
-> the journal j_state_lock, and then adding some lock owner tracking, I
-> was able to see that the lock owners were almost always in
-> start_this_handle, and jbd2_journal_stop when we saw contention (with
-> the freq breakdown being about 55% in jbd2_journal_stop and 45% in
-> start_this_handle).
+Nebojsa Trpkovic wrote:
+> On 04/08/10 03:22, Eric Sandeen wrote:
+>> How does it fail?
+>>
+>> Surely a bug.  :)  If you can provide details we'll look into it.
+>> (perhaps it's obvious on first try but still worth saying exactly
+>> what problematic behavior you saw, when reporting a bug you
+>> encountered)
+> 
+> Well, I've done a simple test, described like:
+> 
+> "get the used sectors for a file
+> hdparm --fibmap filename
+> read a sector from the file eg. with
+> sudo hdparm --read-sector 66385920 /dev/sda
+> delete the file and sync
+> rm filename;sync
+> and read the sector a second time"
 
-Hmm....  I've taken a very close look at jbd2_journal_stop(), and I
-don't think we need to take j_state_lock() at all except if we need to
-call jbd2_log_start_commit().  t_outstanding_credits,
-h_buffer_credits, and t_updates are all documented (and verified by
-me) to be protected by the t_handle_lock spinlock.
+Ok, thanks, perfect test & explanation.
 
-So I ***think*** the following might be safe.  WARNING!  WARNING!!  No
-real testing done on this patch, other than "it compiles!  ship it!!".
+Well the good news is, at least it's nothing like discarding
+the wrong block.  :)
 
-I'll let other people review it, and maybe you could give this a run
-and see what happens with this patch?
+Long explanation:
 
-					- Ted
+in ext4_free_blocks():
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index bfc70f5..e214d68 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1311,7 +1311,6 @@ int jbd2_journal_stop(handle_t *handle)
- 	if (handle->h_sync)
- 		transaction->t_synchronous_commit = 1;
- 	current->journal_info = NULL;
--	spin_lock(&journal->j_state_lock);
- 	spin_lock(&transaction->t_handle_lock);
- 	transaction->t_outstanding_credits -= handle->h_buffer_credits;
- 	transaction->t_updates--;
-@@ -1340,8 +1339,7 @@ int jbd2_journal_stop(handle_t *handle)
- 		jbd_debug(2, "transaction too old, requesting commit for "
- 					"handle %p\n", handle);
- 		/* This is non-blocking */
--		__jbd2_log_start_commit(journal, transaction->t_tid);
--		spin_unlock(&journal->j_state_lock);
-+		jbd2_log_start_commit(journal, transaction->t_tid);
- 
- 		/*
- 		 * Special case: JBD2_SYNC synchronous updates require us
-@@ -1351,7 +1349,6 @@ int jbd2_journal_stop(handle_t *handle)
- 			err = jbd2_log_wait_commit(journal, tid);
- 	} else {
- 		spin_unlock(&transaction->t_handle_lock);
--		spin_unlock(&journal->j_state_lock);
- 	}
- 
- 	lock_map_release(&handle->h_lockdep_map);
+        /* 
+         * We need to make sure we don't reuse the freed block until
+         * after the transaction is committed, which we can do by
+         * treating the block as metadata, below.  We make an
+         * exception if the inode is to be written in writeback mode
+         * since writeback mode has weak data consistency guarantees.
+         */
+        if (!ext4_should_writeback_data(inode))
+                flags |= EXT4_FREE_BLOCKS_METADATA;
+
+
+so here we don't set this flag for writeback mode.
+
+Later in that function we do:
+
+        if ((flags & EXT4_FREE_BLOCKS_METADATA) && ext4_handle_valid(handle)) {
+...
+		ext4_mb_free_metadata(handle, &e4b, new_entry);
+
+
+ext4_mb_free_metadata adds to t_private_list:
+
+        /* Add the extent to transaction's private list */
+        spin_lock(&sbi->s_md_lock);
+        list_add(&new_entry->list, &handle->h_transaction->t_private_list);
+        spin_unlock(&sbi->s_md_lock);
+
+Once we finally get to release_blocks_on_commit, only things on t_private_list
+ultimately get discarded.
+
+Anyway, at the root of this is right now the discard really only happens for
+things flagged as metadata, which is a pretty funky thing to do.
+
+(and indeed if you have a unique xattr block, you'll see it get discarded
+even with data=writeback).
+
+I'll have to think about the right way to do this... it seems pretty
+convoluted to me right now.
+
+-Eric
