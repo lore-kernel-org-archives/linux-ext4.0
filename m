@@ -1,88 +1,45 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: random performance optimizations for ext4_setattr
-Date: Thu,  8 Apr 2010 12:29:23 +0400
-Message-ID: <1270715363-10958-1-git-send-email-dmonakhov@openvz.org>
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Thu, 8 Apr 2010 06:18:30 -0400
+Message-ID: <DEFD67F2-FC52-49EF-9CBD-762CFAD94997@mit.edu>
+References: <1270682478.3755.58.camel@localhost.localdomain> <20100408034631.GB23188@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1077)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: john stultz <johnstul@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Mingming Cao <cmm@us.ibm.com>,
+	keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:44151 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752171Ab0DHIaD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Apr 2010 04:30:03 -0400
-Received: by bwz1 with SMTP id 1so1562745bwz.21
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Apr 2010 01:30:01 -0700 (PDT)
+Received: from DMZ-MAILSEC-SCANNER-3.MIT.EDU ([18.9.25.14]:55611 "EHLO
+	dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758389Ab0DHKSg convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Apr 2010 06:18:36 -0400
+In-Reply-To: <20100408034631.GB23188@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If quota is not enabled it is not necessery to start separate
-transaction for uid, gid and quota credits changes.
 
-If inode wasn't added to orphan list when it is not necessary
-to remove it from the list. This allow to avoid locking on
-per-sb s_orphan_lock mutex.
+On Apr 7, 2010, at 11:46 PM, tytso@MIT.EDU wrote:
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/inode.c |   15 ++++++++++++---
- 1 files changed, 12 insertions(+), 3 deletions(-)
+> On Wed, Apr 07, 2010 at 04:21:18PM -0700, john stultz wrote:
+>> Further using lockstat I was able to isolate it the contention down to
+>> the journal j_state_lock, and then adding some lock owner tracking, I
+>> was able to see that the lock owners were almost always in
+>> start_this_handle, and jbd2_journal_stop when we saw contention (with
+>> the freq breakdown being about 55% in jbd2_journal_stop and 45% in
+>> start_this_handle).
+> 
+> Hmm....  I've taken a very close look at jbd2_journal_stop(), and I
+> don't think we need to take j_state_lock() at all except if we need to
+> call jbd2_log_start_commit().  t_outstanding_credits,
+> h_buffer_credits, and t_updates are all documented (and verified by
+> me) to be protected by the t_handle_lock spinlock.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3996151..b498274 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5418,6 +5418,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error, rc = 0;
-+	int orphan = 0;
- 	const unsigned int ia_valid = attr->ia_valid;
- 
- 	error = inode_change_ok(inode, attr);
-@@ -5426,8 +5427,13 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 
- 	if (ia_valid & ATTR_SIZE)
- 		dquot_initialize(inode);
--	if ((ia_valid & ATTR_UID && attr->ia_uid != inode->i_uid) ||
--		(ia_valid & ATTR_GID && attr->ia_gid != inode->i_gid)) {
-+	/*
-+	 * If quota is active when uig, git and quota's credits must
-+	 * being changed in the one transaction.
-+	*/
-+	if (sb_any_quota_active(inode->i_sb) && !IS_NOQUOTA(inode) && (
-+		(ia_valid & ATTR_UID && attr->ia_uid != inode->i_uid) ||
-+		(ia_valid & ATTR_GID && attr->ia_gid != inode->i_gid))) {
- 		handle_t *handle;
- 
- 		/* (user+group)*(old+new) structure, inode write (sb,
-@@ -5477,6 +5483,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 		}
- 
- 		error = ext4_orphan_add(handle, inode);
-+		orphan = 1;
- 		EXT4_I(inode)->i_disksize = attr->ia_size;
- 		rc = ext4_mark_inode_dirty(handle, inode);
- 		if (!error)
-@@ -5491,9 +5498,11 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				handle = ext4_journal_start(inode, 3);
- 				if (IS_ERR(handle)) {
- 					ext4_orphan_del(NULL, inode);
-+					orphan = 0;
- 					goto err_out;
- 				}
- 				ext4_orphan_del(handle, inode);
-+				orphan = 0;
- 				ext4_journal_stop(handle);
- 				goto err_out;
- 			}
-@@ -5508,7 +5517,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	/* If inode_setattr's call to ext4_truncate failed to get a
- 	 * transaction handle at all, we need to clean up the in-core
- 	 * orphan list manually. */
--	if (inode->i_nlink)
-+	if (orphan && inode->i_nlink)
- 		ext4_orphan_del(NULL, inode);
- 
- 	if (!rc && (ia_valid & ATTR_MODE))
--- 
-1.6.3.3
+BTW, it might be possible to remove the need to take t_handle_lock by converting t_outstanding_credits and t_updates to be atomic_t's, but that might have other performance impacts for other cases.  This patch shouldn't cause any performance regressions because we're just removing code.   As I said, I'm pretty sure it's safe but it could use more review and I should look at it again with fresh eyes, but in the meantime, it would be great if you could let us know what sort of results you get with this patch.
+
+													- Ted
 
