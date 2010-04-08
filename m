@@ -1,51 +1,35 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 0/3] ext4: don't use quota reservation for speculative
- metadata blocks
-Date: Thu, 08 Apr 2010 10:28:16 -0500
-Message-ID: <4BBDF610.8030906@redhat.com>
-References: <4BBCFD10.3030504@redhat.com> <87sk76tkx9.fsf@openvz.org>
+Subject: Re: "data=writeback" and TRIM don't get along
+Date: Thu, 08 Apr 2010 10:32:04 -0500
+Message-ID: <4BBDF6F4.2020208@redhat.com>
+References: <4BBD285B.9000603@gmail.com> <4BBD2FDF.4040407@redhat.com> <4BBD3365.90306@gmail.com> <4BBD5740.4070101@redhat.com> <4BBD5D90.4090203@redhat.com> <4BBD5FDB.9010100@redhat.com> <4BBDC2A3.1040901@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: Nebojsa Trpkovic <trx.lists@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48433 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64605 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932373Ab0DHP2W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Apr 2010 11:28:22 -0400
-In-Reply-To: <87sk76tkx9.fsf@openvz.org>
+	id S932309Ab0DHPcJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Apr 2010 11:32:09 -0400
+In-Reply-To: <4BBDC2A3.1040901@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry Monakhov wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
+Nebojsa Trpkovic wrote:
+
+> Well, to be honest, I'm not some programmer guy, so I doubt my skills
+> can be of any help here.
 > 
->> Because we can badly over-reserve metadata when we
->> calculate worst-case, it complicates things for quota, since
->> we must reserve and then claim later, retry on EDQUOT, etc.
->> Quota is also a generally smaller pool than fs free blocks,
->> so this over-reservation hurts more, and more often.
->>
->> I'm of the opinion that it's not the worst thing to allow
->> metadata to push a user slightly over quota.  This simplifies
->> the code and avoids the false quota rejections that result
->> from worst-case speculation.
-> Hm.. Totally agree with issue description. And seem there is no another
-> solution except yours.
-> ASAIU alloc_nofail is called from places where it is impossible to fail
-> an allocation even if something goes wrong.
-> I ask because currently i'm working on EIO handling in alloc/free calls.
-> I've found that it is useless to fail claim/free procedures because
-> caller is unable to handle it properly.
-> It is impossible to fail following operation
-> ->writepage
->  ->dquot_claim_space (what to do if EIO happens?)
+> Second, unfortunately, my SSD is now my root partition (just one big
+> sda1), so I cannot experiment with it too much.
 
-Hm, if these start returning EIO then maybe my patch should be modified
-to treat EDQUOT differently than EIO ... assuming callers can handle
-the return at all.
+Well, you might just keep in mind that:
 
-In other words, make NOFAIL really just mean "don't fail for EDQUOT"
+1) trimming these small amounts has actually looked very inefficient, and
+2) data=writeback really isn't very safe in the face of a crash or power loss, and
+3) hopefully we'll have a better trim solution eventually.
 
 -Eric
+
