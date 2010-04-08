@@ -1,47 +1,51 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
-Date: Thu, 8 Apr 2010 10:31:02 -0400
-Message-ID: <20100408143102.GE10879@redhat.com>
-References: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com> <20100408110045.GJ10103@kernel.dk> <20100408135901.GA10879@redhat.com> <x49pr2a9h3n.fsf@segfault.boston.devel.redhat.com> <20100408141004.GC10879@redhat.com> <x49hbnm9g29.fsf@segfault.boston.devel.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 0/3] ext4: don't use quota reservation for speculative
+ metadata blocks
+Date: Thu, 08 Apr 2010 10:28:16 -0500
+Message-ID: <4BBDF610.8030906@redhat.com>
+References: <4BBCFD10.3030504@redhat.com> <87sk76tkx9.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jens.axboe@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19991 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48433 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758732Ab0DHObb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Apr 2010 10:31:31 -0400
-Content-Disposition: inline
-In-Reply-To: <x49hbnm9g29.fsf@segfault.boston.devel.redhat.com>
+	id S932373Ab0DHP2W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Apr 2010 11:28:22 -0400
+In-Reply-To: <87sk76tkx9.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 08, 2010 at 10:25:50AM -0400, Jeff Moyer wrote:
-> Vivek Goyal <vgoyal@redhat.com> writes:
+Dmitry Monakhov wrote:
+> Eric Sandeen <sandeen@redhat.com> writes:
 > 
-> > On Thu, Apr 08, 2010 at 10:03:24AM -0400, Jeff Moyer wrote:
-> >> Which actually brings up the question of whether this needs some
-> >> knowledge of whether the journal is on the same device as the file
-> >> system!  In such a case, we need not yield.  I think I'll stick my head
-> >> in the sand for this one.  ;-)
-> >
-> > Jeff even if journal is not on same device, what harm yielding could do?
-> > Anyway there is no IO on that queue and we are idling. Only side affect is
-> > that yielding process could lose a bit if after fsync it immediately submits
-> > more IO. Because this process has yielded it slice, it is back in the queue
-> > instead of doing more IO in the current slice immediately.
-> 
-> What happens if the journal is on a super fast device, and finishes up
-> very quickly allowing our process to initiate more I/O within the idle
-> window?
-> 
+>> Because we can badly over-reserve metadata when we
+>> calculate worst-case, it complicates things for quota, since
+>> we must reserve and then claim later, retry on EDQUOT, etc.
+>> Quota is also a generally smaller pool than fs free blocks,
+>> so this over-reservation hurts more, and more often.
+>>
+>> I'm of the opinion that it's not the worst thing to allow
+>> metadata to push a user slightly over quota.  This simplifies
+>> the code and avoids the false quota rejections that result
+>> from worst-case speculation.
+> Hm.. Totally agree with issue description. And seem there is no another
+> solution except yours.
+> ASAIU alloc_nofail is called from places where it is impossible to fail
+> an allocation even if something goes wrong.
+> I ask because currently i'm working on EIO handling in alloc/free calls.
+> I've found that it is useless to fail claim/free procedures because
+> caller is unable to handle it properly.
+> It is impossible to fail following operation
+> ->writepage
+>  ->dquot_claim_space (what to do if EIO happens?)
 
-You lose. :-) But at the same time if journalling devices is not fast
-enough, and you if can't submit next IO in idling window, then you are 
-unnecessarily keeping the disk idle and preventing others from making
-progress.
+Hm, if these start returning EIO then maybe my patch should be modified
+to treat EDQUOT differently than EIO ... assuming callers can handle
+the return at all.
 
-Vivek
+In other words, make NOFAIL really just mean "don't fail for EDQUOT"
+
+-Eric
