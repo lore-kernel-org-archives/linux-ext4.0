@@ -1,94 +1,61 @@
-From: Nebojsa Trpkovic <trx.lists@gmail.com>
-Subject: Re: "data=writeback" and TRIM don't get along
-Date: Thu, 08 Apr 2010 13:48:51 +0200
-Message-ID: <4BBDC2A3.1040901@gmail.com>
-References: <4BBD285B.9000603@gmail.com> <4BBD2FDF.4040407@redhat.com> <4BBD3365.90306@gmail.com> <4BBD5740.4070101@redhat.com> <4BBD5D90.4090203@redhat.com> <4BBD5FDB.9010100@redhat.com>
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: Re: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
+Date: Thu, 8 Apr 2010 09:59:01 -0400
+Message-ID: <20100408135901.GA10879@redhat.com>
+References: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com> <20100408110045.GJ10103@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Moyer <jmoyer@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:62375 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753378Ab0DHLs4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Apr 2010 07:48:56 -0400
-Received: by bwz1 with SMTP id 1so1702817bwz.21
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Apr 2010 04:48:53 -0700 (PDT)
-In-Reply-To: <4BBD5FDB.9010100@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35314 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753227Ab0DHN7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Apr 2010 09:59:32 -0400
+Content-Disposition: inline
+In-Reply-To: <20100408110045.GJ10103@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/08/10 06:47, Eric Sandeen wrote:
-> Eric Sandeen wrote:
->> Eric Sandeen wrote:
->>> I'll have to think about the right way to do this... it seems pretty
->>> convoluted to me right now.
->>>   
->> Something like this probably works, but I really REALLY would not test
->> it on an important filesystem.   :)
->>
->> I'm not sure it's a good idea to discard it before returning it
->> to the prealloc pool, because it may well get re-used again
->> quickly.... not sure if that's helpful.
+On Thu, Apr 08, 2010 at 01:00:45PM +0200, Jens Axboe wrote:
+> On Wed, Apr 07 2010, Jeff Moyer wrote:
+> > Hi again,
+> > 
+> > So, here's another stab at fixing this.  This patch is very much an RFC,
+> > so do not pull it into anything bound for Linus.  ;-)  For those new to
+> > this topic, here is the original posting:  http://lkml.org/lkml/2010/4/1/344
+> > 
+> > The basic problem is that, when running iozone on smallish files (up to
+> > 8MB in size) and including fsync in the timings, deadline outperforms
+> > CFQ by a factor of about 5 for 64KB files, and by about 10% for 8MB
+> > files.  From examining the blktrace data, it appears that iozone will
+> > issue an fsync() call, and will have to wait until it's CFQ timeslice
+> > has expired before the journal thread can run to actually commit data to
+> > disk.
+> > 
+> > The approach below puts an explicit call into the filesystem-specific
+> > fsync code to yield the disk so that the jbd[2] process has a chance to
+> > issue I/O.  This bring performance of CFQ in line with deadline.
+> > 
+> > There is one outstanding issue with the patch that Vivek pointed out.
+> > Basically, this could starve out the sync-noidle workload if there is a
+> > lot of fsync-ing going on.  I'll address that in a follow-on patch.  For
+> > now, I wanted to get the idea out there for others to comment on.
+> > 
+> > Thanks a ton to Vivek for spotting the problem with the initial
+> > approach, and for his continued review.
 > 
-> (now I'm really talking to myself, but scratch that bit - 
-> ext4_mb_return_to_preallocation is pretty much a no-op)
+> I like the concept, it's definitely useful (and your results amply
+> demonstrate that). I was thinking if there was a way in through the ioc
+> itself, rather than bdi -> queue and like you are doing. But I can't
+> think of a nice way to do it, so this is probably as good as it gets.
 > 
-> -Eric
-> 
->> Just a note, I think eventually we may move to more of a batch discard
->> in the background, because these little discards are actually quite
->> inefficient on the hardware we've tested so far.
->>
->> -Eric
->>
->> p.s. really.  Don't test this with important data.  I haven't tested
->> it at all yet.
->>
->> Index: linux-2.6/fs/ext4/mballoc.c
->> ===================================================================
->> --- linux-2.6.orig/fs/ext4/mballoc.c
->> +++ linux-2.6/fs/ext4/mballoc.c
->> @@ -4602,6 +4606,8 @@ do_more:
->>  		mb_clear_bits(bitmap_bh->b_data, bit, count);
->>  		ext4_mb_free_metadata(handle, &e4b, new_entry);
->>  	} else {
->> +		ext4_fsblk_t discard_block;
->> +
->>  		/* need to update group_info->bb_free and bitmap
->>  		 * with group lock held. generate_buddy look at
->>  		 * them with group lock_held
->> @@ -4609,6 +4615,11 @@ do_more:
->>  		ext4_lock_group(sb, block_group);
->>  		mb_clear_bits(bitmap_bh->b_data, bit, count);
->>  		mb_free_blocks(inode, &e4b, bit, count);
->> +		discard_block = bit +
->> +				ext4_group_first_block_no(sb, block_group);
->> +		trace_ext4_discard_blocks(sb,
->> +				(unsigned long long)discard_block, count);
->> +		sb_issue_discard(sb, discard_block, count);
->>  		ext4_mb_return_to_preallocation(inode, &e4b, block, count);
->>  	}
 
-Well, to be honest, I'm not some programmer guy, so I doubt my skills
-can be of any help here.
+I think, one issue with ioc based approach will be that it will then call
+yield operation on all the devices in the system where this context has ever
+done any IO. With bdi based approach this call will remain limited to
+a smaller set of devices.
 
-Second, unfortunately, my SSD is now my root partition (just one big
-sda1), so I cannot experiment with it too much.
-
-And finally,
->> I'm not sure it's a good idea to discard it before returning it
->> to the prealloc pool, because it may well get re-used again
->> quickly.... not sure if that's helpful.
-
-I'm not sure I understood you well about this prealloc pool - re-using
-mechanism, but...
-AFAIK, modern SSDs are using very aggressive wear-leveling algorithms.
-Writing two times into the same filesystem sector almost newer goes to
-the same hardware sector. Therefore, saving sectors from discarding and
-for re-using makes no much sense - once re-used it will be written to
-some other physical NAND memory cell anyways. Guess we can discard it as
-soon as we have no valid data in it.
-
-Nebojsa
+Thanks
+Vivek
