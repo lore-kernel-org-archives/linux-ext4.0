@@ -1,109 +1,82 @@
-From: Nebojsa Trpkovic <trx.lists@gmail.com>
-Subject: Re: "data=writeback" and TRIM don't get along
-Date: Thu, 08 Apr 2010 03:37:41 +0200
-Message-ID: <4BBD3365.90306@gmail.com>
-References: <4BBD285B.9000603@gmail.com> <4BBD2FDF.4040407@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: don't scan/accumulate more pages than mballoc will allocate
+Date: Wed,  7 Apr 2010 22:10:19 -0400
+Message-ID: <1270692619-16629-1-git-send-email-tytso@mit.edu>
+References: <4BB9F6C3.5000001@redhat.com>
+Cc: "From: Eric Sandeen" <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:54259 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757547Ab0DHBhp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Apr 2010 21:37:45 -0400
-Received: by bwz1 with SMTP id 1so1385047bwz.21
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Apr 2010 18:37:43 -0700 (PDT)
-In-Reply-To: <4BBD2FDF.4040407@redhat.com>
+Received: from thunk.org ([69.25.196.29]:56200 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751184Ab0DHCKa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Apr 2010 22:10:30 -0400
+In-Reply-To: <4BB9F6C3.5000001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/08/10 03:22, Eric Sandeen wrote:
-> How does it fail?
-> 
-> Surely a bug.  :)  If you can provide details we'll look into it.
-> (perhaps it's obvious on first try but still worth saying exactly
-> what problematic behavior you saw, when reporting a bug you
-> encountered)
+From: From: Eric Sandeen <sandeen@redhat.com>
 
-Well, I've done a simple test, described like:
+There was a bug reported on RHEL5 that a 10G dd on a 12G box
+had a very, very slow sync after that.
 
-"get the used sectors for a file
-hdparm --fibmap filename
-read a sector from the file eg. with
-sudo hdparm --read-sector 66385920 /dev/sda
-delete the file and sync
-rm filename;sync
-and read the sector a second time"
+At issue was the loop in write_cache_pages scanning all the way
+to the end of the 10G file, even though the subsequent call
+to mpage_da_submit_io would only actually write a smallish amt; then
+we went back to the write_cache_pages loop ... wasting tons of time
+in calling __mpage_da_writepage for thousands of pages we would
+just revisit (many times) later.
 
+Upstream it's not such a big issue for sys_sync because we get
+to the loop with a much smaller nr_to_write, which limits the loop.
 
-And I get something like this:
+However, talking with Aneesh he realized that fsync upstream still
+gets here with a very large nr_to_write and we face the same problem.
 
-================================
-# dd if=/dev/urandom of=tempfile count=100 bs=512k oflag=direct
-100+0 records in
-100+0 records out
-52428800 bytes (52 MB) copied, 6.47137 s, 8.1 MB/s
+This patch makes mpage_add_bh_to_extent stop the loop after we've
+accumulated 2048 pages, by setting mpd->io_done = 1; which ultimately
+causes the write_cache_pages loop to break.
 
-# hdparm --fibmap tempfile
+Repeating the test with a dirty_ratio of 80 (to leave something for
+fsync to do), I don't see huge IO performance gains, but the reduction
+in cpu usage is striking: 80% usage with stock, and 2% with the
+below patch.  Instrumenting the loop in write_cache_pages clearly
+shows that we are wasting time here.
 
-tempfile:
- filesystem blocksize 4096, begins at LBA 0; assuming 512 byte sectors.
- byte_offset  begin_LBA    end_LBA    sectors
-           0   37094400   37196799     102400
+Eventually we need to change mpage_da_map_pages() also submit its I/O
+to the block layer, subsuming mpage_da_submit_io(), and then change it
+call ext4_get_blocks() multiple times.
 
-# hdparm --read-sector 37094400 /dev/sdb
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
 
-/dev/sdb:
-reading sector 37094400: succeeded
-b0e8 3ad7 d080 84e8 b4b2 7e60 21f1 eff3
-0ef9 fa10 b172 89f8 186f 0194 4cb1 e190
-d6b5 b2fe 2577 5dba e6f2 5ad7 34a0 f09f
-ca5c 07ef 6e86 c3a8 9e77 77f3 78ff 672f
-af71 dea7 ac23 a55d e31e ff83 164e bb76
-8ea4 416d 343a 9f5e b41f b1d0 b6e9 6ed8
-90c0 3cba ec07 1d96 fdd6 3940 1290 7cd2
-c506 c3ee c120 3732 17eb 6e68 11aa 721c...
+This is the slightly revised version of Eric's patch that I've added to
+the ext4 patch queue. -- Ted
 
-# rm tempfile
-# sync
-================================
+ fs/ext4/inode.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
-Now, if I have "data=writeback" enable and I run
-# hdparm --read-sector 37094400 /dev/sdb
-again, I'll get the same random bytes.
-Reboot doesn't help.
-
-If I disable "data=writeback" and run
-# hdparm --read-sector 37094400 /dev/sdb
-I'll get all zeroes:
-================================
-# hdparm --read-sector 37094400 /dev/sdb
-
-/dev/sdb:
-reading sector 37094400: succeeded
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-0000 0000 0000 0000 0000 0000 0000 0000
-...
-================================
-
-So, TRIM command works well, but not with "data=writeback" mount option.
-
-Other info:
-
-Intel X25-V 40GB (latest firmware)
-
-Linux box 2.6.33-gentoo #4 SMP Sat Apr 3 05:02:04 CEST 2010 x86_64
-Intel(R) Core(TM) i5 CPU 750 @ 2.67GHz GenuineIntel GNU/Linux
-
-
-Nebojsa
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5c6ca10..2c12926 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2349,6 +2349,15 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
+ 	sector_t next;
+ 	int nrblocks = mpd->b_size >> mpd->inode->i_blkbits;
+ 
++	/* 
++	 * XXX Don't go larger than mballoc is willing to allocate
++	 * This is a stopgap solution.  We eventually need to fold
++	 * mpage_da_submit_io() into this function and then call
++	 * ext4_get_blocks() multiple times in a loop
++	 */
++	if (nrblocks >= 8*1024*1024/mpd->inode->i_sb->s_blocksize)
++		goto flush_it;
++
+ 	/* check if thereserved journal credits might overflow */
+ 	if (!(EXT4_I(mpd->inode)->i_flags & EXT4_EXTENTS_FL)) {
+ 		if (nrblocks >= EXT4_MAX_TRANS_DATA) {
+-- 
+1.6.6.1.1.g974db.dirty
 
