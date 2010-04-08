@@ -1,70 +1,88 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 0/3] ext4: don't use quota reservation for speculative metadata blocks
-Date: Thu, 08 Apr 2010 12:20:34 +0400
-Message-ID: <87sk76tkx9.fsf@openvz.org>
-References: <4BBCFD10.3030504@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: random performance optimizations for ext4_setattr
+Date: Thu,  8 Apr 2010 12:29:23 +0400
+Message-ID: <1270715363-10958-1-git-send-email-dmonakhov@openvz.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:46227 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751454Ab0DHIVA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Apr 2010 04:21:00 -0400
-In-Reply-To: <4BBCFD10.3030504@redhat.com> (Eric Sandeen's message of "Wed, 07
-	Apr 2010 16:45:52 -0500")
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:44151 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752171Ab0DHIaD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Apr 2010 04:30:03 -0400
+Received: by bwz1 with SMTP id 1so1562745bwz.21
+        for <linux-ext4@vger.kernel.org>; Thu, 08 Apr 2010 01:30:01 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen <sandeen@redhat.com> writes:
+If quota is not enabled it is not necessery to start separate
+transaction for uid, gid and quota credits changes.
 
-> Because we can badly over-reserve metadata when we
-> calculate worst-case, it complicates things for quota, since
-> we must reserve and then claim later, retry on EDQUOT, etc.
-> Quota is also a generally smaller pool than fs free blocks,
-> so this over-reservation hurts more, and more often.
->
-> I'm of the opinion that it's not the worst thing to allow
-> metadata to push a user slightly over quota.  This simplifies
-> the code and avoids the false quota rejections that result
-> from worst-case speculation.
-Hm.. Totally agree with issue description. And seem there is no another
-solution except yours.
-ASAIU alloc_nofail is called from places where it is impossible to fail
-an allocation even if something goes wrong.
-I ask because currently i'm working on EIO handling in alloc/free calls.
-I've found that it is useless to fail claim/free procedures because
-caller is unable to handle it properly.
-It is impossible to fail following operation
-->writepage
- ->dquot_claim_space (what to do if EIO happens?)
-Seems that your nofail operations has same semantics because it is just
-an equivalent of claim, but without reservation.
->
-> This patch series stops the speculative quota-charging for
-> worst-case metadata requirements, and just charges quota
-> when the blocks are allocated at writeout.  It also is
-> able to remove the try-again loop on EDQUOT.
->
-> The first 2 patches are quota infrastructure changes,
-> to change __dquot_alloc/free_space to take a flags argument,
-> and then add a NOFAIL option, so that metadata writes which
-> tip us over quota can proceed.
->
-> The last patch makes the ext4 changes.  The whole batch
-> has been tested indirectly by running the xfstests suite
-> with a hack to mount & enable quota prior to the test.
->
-> I also did a more specific test of fragmenting freespace
-> and then doing a large delalloc write under quota; quota
-> stopped me at the right amount of file IO, and then the
-> writeout generated enough metadata (due to the fragmentation)
-> that it put me slightly over quota, as expected.
->
-> Thanks,
-> -Eric
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If inode wasn't added to orphan list when it is not necessary
+to remove it from the list. This allow to avoid locking on
+per-sb s_orphan_lock mutex.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/inode.c |   15 ++++++++++++---
+ 1 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3996151..b498274 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5418,6 +5418,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+ 	struct inode *inode = dentry->d_inode;
+ 	int error, rc = 0;
++	int orphan = 0;
+ 	const unsigned int ia_valid = attr->ia_valid;
+ 
+ 	error = inode_change_ok(inode, attr);
+@@ -5426,8 +5427,13 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 
+ 	if (ia_valid & ATTR_SIZE)
+ 		dquot_initialize(inode);
+-	if ((ia_valid & ATTR_UID && attr->ia_uid != inode->i_uid) ||
+-		(ia_valid & ATTR_GID && attr->ia_gid != inode->i_gid)) {
++	/*
++	 * If quota is active when uig, git and quota's credits must
++	 * being changed in the one transaction.
++	*/
++	if (sb_any_quota_active(inode->i_sb) && !IS_NOQUOTA(inode) && (
++		(ia_valid & ATTR_UID && attr->ia_uid != inode->i_uid) ||
++		(ia_valid & ATTR_GID && attr->ia_gid != inode->i_gid))) {
+ 		handle_t *handle;
+ 
+ 		/* (user+group)*(old+new) structure, inode write (sb,
+@@ -5477,6 +5483,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 		}
+ 
+ 		error = ext4_orphan_add(handle, inode);
++		orphan = 1;
+ 		EXT4_I(inode)->i_disksize = attr->ia_size;
+ 		rc = ext4_mark_inode_dirty(handle, inode);
+ 		if (!error)
+@@ -5491,9 +5498,11 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				handle = ext4_journal_start(inode, 3);
+ 				if (IS_ERR(handle)) {
+ 					ext4_orphan_del(NULL, inode);
++					orphan = 0;
+ 					goto err_out;
+ 				}
+ 				ext4_orphan_del(handle, inode);
++				orphan = 0;
+ 				ext4_journal_stop(handle);
+ 				goto err_out;
+ 			}
+@@ -5508,7 +5517,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	/* If inode_setattr's call to ext4_truncate failed to get a
+ 	 * transaction handle at all, we need to clean up the in-core
+ 	 * orphan list manually. */
+-	if (inode->i_nlink)
++	if (orphan && inode->i_nlink)
+ 		ext4_orphan_del(NULL, inode);
+ 
+ 	if (!rc && (ia_valid & ATTR_MODE))
+-- 
+1.6.3.3
+
