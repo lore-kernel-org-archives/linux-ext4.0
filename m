@@ -1,58 +1,72 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
-Date: Thu, 8 Apr 2010 21:23:36 +0200
-Message-ID: <20100408192336.GV10103@kernel.dk>
-References: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com> <20100407214631.GL3206@redhat.com> <20100408110442.GK10103@kernel.dk> <20100408140515.GB10879@redhat.com> <20100408140944.GQ10103@kernel.dk> <x49ljcy9g4t.fsf@segfault.boston.devel.redhat.com>
+From: john stultz <johnstul@us.ibm.com>
+Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Thu, 08 Apr 2010 13:41:57 -0700
+Message-ID: <1270759317.3373.7.camel@localhost.localdomain>
+References: <1270682478.3755.58.camel@localhost.localdomain>
+	 <20100408034631.GB23188@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Vivek Goyal <vgoyal@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:50847 "EHLO kernel.dk"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:32953 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754046Ab0DHTXi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Apr 2010 15:23:38 -0400
-Content-Disposition: inline
-In-Reply-To: <x49ljcy9g4t.fsf@segfault.boston.devel.redhat.com>
+	id S1758869Ab0DHUmE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Apr 2010 16:42:04 -0400
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by e8.ny.us.ibm.com (8.14.3/8.13.1) with ESMTP id o38KWvmS021897
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Apr 2010 16:32:57 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o38Kg2oZ1699874
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Apr 2010 16:42:02 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o38Kg1QP016088
+	for <linux-ext4@vger.kernel.org>; Thu, 8 Apr 2010 16:42:02 -0400
+In-Reply-To: <20100408034631.GB23188@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 08 2010, Jeff Moyer wrote:
-> Jens Axboe <jens.axboe@oracle.com> writes:
+On Wed, 2010-04-07 at 23:46 -0400, tytso@mit.edu wrote:
+> On Wed, Apr 07, 2010 at 04:21:18PM -0700, john stultz wrote:
+> > Further using lockstat I was able to isolate it the contention down to
+> > the journal j_state_lock, and then adding some lock owner tracking, I
+> > was able to see that the lock owners were almost always in
+> > start_this_handle, and jbd2_journal_stop when we saw contention (with
+> > the freq breakdown being about 55% in jbd2_journal_stop and 45% in
+> > start_this_handle).
 > 
-> > Precisely. The next question would be how to control the yielding. In
-> > this particular case, you want to be yielding to a specific cfqq. IOW,
-> > you essentially want to pass your slide on to that queue. The way the
-> > above is implemented, you could easily just switch to another unrelated
-> > queue. And if that is done, fairness is skewed without helping the
-> > yielding process at all (which was the intention).
+> Hmm....  I've taken a very close look at jbd2_journal_stop(), and I
+> don't think we need to take j_state_lock() at all except if we need to
+> call jbd2_log_start_commit().  t_outstanding_credits,
+> h_buffer_credits, and t_updates are all documented (and verified by
+> me) to be protected by the t_handle_lock spinlock.
 > 
-> Well, that's true in part.  Prior to this patch, the process would idle,
-> keeping all other cfq_queues on the system from making progress.  With
-> this patch, at least *somebody* else makes progress, getting you closer
-> to running the journal thread that you're blocked on.  Ideally, you'd
-> want the thread you're waiting on to get disk time next, sure.  You
-> would have to pass the process information down to the I/O scheduler for
-> that, and I'm not sure that the file system code knows which process to
-> hand off to.  Does it?
+> So I ***think*** the following might be safe.  WARNING!  WARNING!!  No
+> real testing done on this patch, other than "it compiles!  ship it!!".
 > 
-> Do we really want to go down this road at all?  I'm not convinced.
+> I'll let other people review it, and maybe you could give this a run
+> and see what happens with this patch?
 
-Don't get me wrong, neither am I. I'm just thinking out loud and
-pondering. As a general mechanism, yield to a specific cfqq is going to
-be tricky and doing a generic yield to signal that _someone_ else must
-make progress before we can is better than nothing.
 
-Continuing that train of thought, I don't think we'll ever need full
-'yield to X' functionality where 'X' is a really specific target. But
-for this fsync case, we know at least what we are yielding to and it
-seems like a shame to throw away that information. So you could include
-a hint of what to yield to, which cfq could factor in.
+So this patch seems to match the performance and has similar perf log
+output to what I was getting with my hack. 
 
-Dunno, I need to think a bit about the cleanliness of such an approach.
-We can definitely use your patch as a starting point.
+Very very cool!
 
--- 
-Jens Axboe
+I'll continue to play with your patch and see if I can con some some
+folks with more interesting storage setups to do some testing as well.
+
+Any thoughts for ways to rework the state_lock in start_this_handle?
+(Now that its at the top of the contention logs? :)
+
+thanks so much!
+-john
+
+
+
+
 
