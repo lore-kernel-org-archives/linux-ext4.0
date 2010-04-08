@@ -1,44 +1,31 @@
-From: Nebojsa Trpkovic <trx.lists@gmail.com>
-Subject: "data=writeback" and TRIM don't get along
-Date: Thu, 08 Apr 2010 02:50:35 +0200
-Message-ID: <4BBD285B.9000603@gmail.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: stop issuing discards if not supported by device
+Date: Wed, 7 Apr 2010 20:58:12 -0400
+Message-ID: <20100408005812.GA23188@thunk.org>
+References: <4B97CEAB.1040004@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:33423 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758109Ab0DHAuj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Apr 2010 20:50:39 -0400
-Received: by bwz1 with SMTP id 1so1367915bwz.21
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Apr 2010 17:50:37 -0700 (PDT)
+Received: from thunk.org ([69.25.196.29]:32914 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758205Ab0DHA6O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Apr 2010 20:58:14 -0400
+Content-Disposition: inline
+In-Reply-To: <4B97CEAB.1040004@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello.
+On Wed, Mar 10, 2010 at 10:54:03AM -0600, Eric Sandeen wrote:
+> Turn off issuance of discard requests if the device does
+> not support it - similar to the action we take for barriers.
+> This will save a little computation time if a non-discardable
+> device is mounted with -o discard, and also makes it obvious
+> that it's not doing what was asked at mount time ...
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-TRIM command issued to SSD doesn't work with this mount options:
+Added to the ext4 patch queue, thanks.
 
-============================
-rootfs / rootfs rw 0 0
-/dev/root / ext4
-rw,noatime,commit=100,barrier=0,nobh,stripe=128,data=writeback,discard 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-rc-svcdir /lib64/rc/init.d tmpfs
-rw,nosuid,nodev,noexec,relatime,size=1024k,mode=755 0 0
-sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-udev /dev tmpfs rw,nosuid,relatime,size=10240k,mode=755 0 0
-devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620 0 0
-shm /dev/shm tmpfs rw,nosuid,nodev,noexec,relatime 0 0
-============================
-
-Removing "data=writeback" option from /etc/fstab and from rootflags in
-kernel boot options results in TRIM working just like it should.
-
-So, the question is:
-
-Is this "data=writeback" and TRIM incompatibility a bug or a feature? :)
-
-Thank you.
-Nebojsa Trpkovic
+					- Ted
