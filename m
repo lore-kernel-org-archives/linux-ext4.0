@@ -1,50 +1,60 @@
-From: Anshuman Aggarwal <anshuman@brillgene.com>
-Subject: ext4 fs recovery
-Date: Sat, 10 Apr 2010 04:32:49 +0530
-Message-ID: <71330BF9-B4D0-4BDB-A9B7-655872791FA3@brillgene.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
+From: tytso@mit.edu
+Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Fri, 9 Apr 2010 19:33:26 -0400
+Message-ID: <20100409233325.GF1849@thunk.org>
+References: <1270682478.3755.58.camel@localhost.localdomain>
+ <87d3y8wrq5.fsf@basil.nowhere.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Cc: john stultz <johnstul@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Mingming Cao <cmm@us.ibm.com>,
+	keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>,
+	tim.c.chen@intel.com
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:49206 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752320Ab0DIXDA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Apr 2010 19:03:00 -0400
-Received: by gyg13 with SMTP id 13so1924107gyg.19
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Apr 2010 16:02:58 -0700 (PDT)
+Received: from THUNK.ORG ([69.25.196.29]:34476 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755089Ab0DIXdi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Apr 2010 19:33:38 -0400
+Content-Disposition: inline
+In-Reply-To: <87d3y8wrq5.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
- I have an ext4 partition which is unable to find its superblock on e2fsck. 
+On Fri, Apr 09, 2010 at 05:49:54PM +0200, Andi Kleen wrote:
+> john stultz <johnstul@us.ibm.com> writes:
+> >
+> > Further using lockstat I was able to isolate it the contention down to
+> > the journal j_state_lock, and then adding some lock owner tracking, I
+> > was able to see that the lock owners were almost always in
+> > start_this_handle, and jbd2_journal_stop when we saw contention (with
+> > the freq breakdown being about 55% in jbd2_journal_stop and 45% in
+> > start_this_handle).
+> 
+> FWIW we've been also seeing this on larger systems without RT.
+> The journal locks are the number one contention in some workloads.
+> So it's not just a RT problem.
 
-#e2fsck -n /dev/VGdata/LVstore 
-e2fsck 1.41.11 (14-Mar-2010)
-e2fsck: Superblock invalid, trying backup blocks...
-e2fsck: Bad magic number in super-block while trying to open /dev/VGdata/LVstore
+Yeah, I'm very much aware of that.  What worries me is that locking
+problems in the jbd2 layer could be very hard to debug, so we need to
+make sure we have some really good testing as we make any changes.
 
-The superblock could not be read or does not describe a correct ext2
-filesystem.  If the device is valid and it really contains an ext2
-filesystem (and not swap or ufs or something else), then the superblock
-is corrupt, and you might try running e2fsck with an alternate superblock:
-    e2fsck -b 8193 <device>
+Not taking the j_state_lock spinlock in jbd2_stop_lock() was relatively
+easy to prove to be safe, but I'm really worried about
+start_this_handle() the locking around that is going to be subtle, and
+it's not just the specific fields in the transaction and journal
+handle.
 
+And even with the jbd2_stop_lock() change, I'd really prefer some
+pretty exhaustive testing, including power fail testing, just to make
+sure we're in practice when/if we make more subtle or more invasive
+changes to the jbd2 layer...
 
-# e2fsck -n -b 8193 /dev/VGdata/LVstore 
-e2fsck 1.41.11 (14-Mar-2010)
-e2fsck: Bad magic number in super-block while trying to open /dev/VGdata/LVstore
+So I'm mot waving the red flag, but the yellow flag (as they would say
+in auto racing circles).
 
-The superblock could not be read or does not describe a correct ext2
-filesystem.  If the device is valid and it really contains an ext2
-filesystem (and not swap or ufs or something else), then the superblock
-is corrupt, and you might try running e2fsck with an alternate superblock:
-    e2fsck -b 8193 <device>
+Regards,
 
-
-Any ideas on how to proceed?
-
-How I got here was due to a failed disk which I have ddrescued over but seems to have missing corrupt metadata.
-
-Thanks,
-Anshuman
+						- Ted
