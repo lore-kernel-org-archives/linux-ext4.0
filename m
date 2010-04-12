@@ -1,108 +1,36 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: init statistics after journal recovery v2
-Date: Mon, 12 Apr 2010 23:12:56 +0400
-Message-ID: <1271099576-7507-2-git-send-email-dmonakhov@openvz.org>
-References: <1271099576-7507-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15768] Incorrectly calculated free blocks result in ENOSPC from
+ writepage
+Date: Mon, 12 Apr 2010 19:14:36 GMT
+Message-ID: <201004121914.o3CJEaJr032659@demeter.kernel.org>
+References: <bug-15768-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:44298 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753439Ab0DLTNO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Apr 2010 15:13:14 -0400
-Received: by bwz19 with SMTP id 19so4195bwz.21
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 12:13:12 -0700 (PDT)
-In-Reply-To: <1271099576-7507-1-git-send-email-dmonakhov@openvz.org>
+Received: from demeter.kernel.org ([140.211.167.39]:51912 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753613Ab0DLTOi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Apr 2010 15:14:38 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3CJEaEu032660
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 19:14:36 GMT
+In-Reply-To: <bug-15768-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently block/inode/dir counters initialized before journal was
-recovered. In fact after journal recovery this info will probably
-change. And freeblocks it critical for correct delalloc mode
-accounting.
-BUG:#15768
+https://bugzilla.kernel.org/show_bug.cgi?id=15768
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/super.c |   44 ++++++++++++++++++++++----------------------
- 1 files changed, 22 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 29c6875..04a30ef 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2793,24 +2793,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
- 
--	err = percpu_counter_init(&sbi->s_freeblocks_counter,
--			ext4_count_free_blocks(sb));
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_freeinodes_counter,
--				ext4_count_free_inodes(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirs_counter,
--				ext4_count_dirs(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
--	}
--	if (err) {
--		ext4_msg(sb, KERN_ERR, "insufficient memory");
--		goto failed_mount3;
--	}
--
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_max_writeback_mb_bump = 128;
- 
-@@ -2910,6 +2892,24 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
- 
- no_journal:
-+	err = percpu_counter_init(&sbi->s_freeblocks_counter,
-+			ext4_count_free_blocks(sb));
-+	if (!err) {
-+		err = percpu_counter_init(&sbi->s_freeinodes_counter,
-+				ext4_count_free_inodes(sb));
-+	}
-+	if (!err) {
-+		err = percpu_counter_init(&sbi->s_dirs_counter,
-+				ext4_count_dirs(sb));
-+	}
-+	if (!err) {
-+		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
-+	}
-+	if (err) {
-+		ext4_msg(sb, KERN_ERR, "insufficient memory");
-+		goto failed_mount_wq;
-+	}
-+
- 	if (test_opt(sb, NOBH)) {
- 		if (!(test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)) {
- 			ext4_msg(sb, KERN_WARNING, "Ignoring nobh option - "
-@@ -3059,6 +3059,10 @@ failed_mount_wq:
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
- 	}
-+	percpu_counter_destroy(&sbi->s_freeblocks_counter);
-+	percpu_counter_destroy(&sbi->s_freeinodes_counter);
-+	percpu_counter_destroy(&sbi->s_dirs_counter);
-+	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount3:
- 	if (sbi->s_flex_groups) {
- 		if (is_vmalloc_addr(sbi->s_flex_groups))
-@@ -3066,10 +3070,6 @@ failed_mount3:
- 		else
- 			kfree(sbi->s_flex_groups);
- 	}
--	percpu_counter_destroy(&sbi->s_freeblocks_counter);
--	percpu_counter_destroy(&sbi->s_freeinodes_counter);
--	percpu_counter_destroy(&sbi->s_dirs_counter);
--	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
+
+
+
+--- Comment #4 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-04-12 19:14:30 ---
+Updated version of the fix posted here.
+http://patchwork.ozlabs.org/patch/49989/
+
 -- 
-1.6.6.1
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
