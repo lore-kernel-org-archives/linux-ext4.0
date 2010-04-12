@@ -1,92 +1,78 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
-Date: Mon, 12 Apr 2010 21:46:28 +0200
-Message-ID: <20100412194628.GI12238@atrey.karlin.mff.cuni.cz>
-References: <1270682478.3755.58.camel@localhost.localdomain> <20100408034631.GB23188@thunk.org>
+From: "Chen, Tim C" <tim.c.chen@intel.com>
+Subject: RE: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Mon, 12 Apr 2010 13:54:03 -0600
+Message-ID: <EA929A9653AAE14F841771FB1DE5A1365FE4FCE0C4@rrsmsx501.amr.corp.intel.com>
+References: <1270682478.3755.58.camel@localhost.localdomain>
+ <87d3y8wrq5.fsf@basil.nowhere.org> <20100409233325.GF1849@thunk.org>
+ <EA929A9653AAE14F841771FB1DE5A1365FE4FCD4BC@rrsmsx501.amr.corp.intel.com>
+ <20100410115816.GH1849@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: john stultz <johnstul@us.ibm.com>, linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: Andi Kleen <andi@firstfloor.org>,
+	john stultz <johnstul@us.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	Mingming Cao <cmm@us.ibm.com>,
 	keith maanthey <kmannth@us.ibm.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
 	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>
-To: tytso@mit.edu
+To: "tytso@mit.edu" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:48280 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752499Ab0DLTq3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Apr 2010 15:46:29 -0400
-Content-Disposition: inline
-In-Reply-To: <20100408034631.GB23188@thunk.org>
+Received: from mga11.intel.com ([192.55.52.93]:43926 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752920Ab0DLTya convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Apr 2010 15:54:30 -0400
+In-Reply-To: <20100410115816.GH1849@thunk.org>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Wed, Apr 07, 2010 at 04:21:18PM -0700, john stultz wrote:
-> > Further using lockstat I was able to isolate it the contention down to
-> > the journal j_state_lock, and then adding some lock owner tracking, I
-> > was able to see that the lock owners were almost always in
-> > start_this_handle, and jbd2_journal_stop when we saw contention (with
-> > the freq breakdown being about 55% in jbd2_journal_stop and 45% in
-> > start_this_handle).
-> 
-> Hmm....  I've taken a very close look at jbd2_journal_stop(), and I
-> don't think we need to take j_state_lock() at all except if we need to
-> call jbd2_log_start_commit().  t_outstanding_credits,
-> h_buffer_credits, and t_updates are all documented (and verified by
-> me) to be protected by the t_handle_lock spinlock.
-> 
-> So I ***think*** the following might be safe.  WARNING!  WARNING!!  No
-> real testing done on this patch, other than "it compiles!  ship it!!".
-> 
-> I'll let other people review it, and maybe you could give this a run
-> and see what happens with this patch?
-  I had a look and it really seems that t_handle_lock is enough for
-all we do in jbd2_journal_stop (except for jbd2_log_start_commit). So
-I think your patch is fine.
-  I also had a look at jbd2_journal_start. What probably makes things bad there
-is that lots of threads accumulate waiting for transaction to get out of
-T_LOCKED state. When that happens, all the threads are woken up and start
-pondering at j_state_lock which creates contention. This is just a theory and I
-might be completely wrong... Some lockstat data would be useful to confirm /
-refute this.
+>tytso@mit.edu wrote
+>
+>On Fri, Apr 09, 2010 at 05:48:23PM -0600, Chen, Tim C wrote:
+>>  
+>> Your patch did remove the contention on the j_state_lock for dbench
+>> in my testing with 64 threads.  The contention point now
+>> moves dcache_lock, which is also another tricky bottleneck.
+>> 
+>> In our other testing with FFSB that creates/rename/remove a 
+>lot of directories,
+>> we found that journal->j_revoke_lock was also heavily contended.
+>> 
+>
+>Do you have lock_stat reports handy?  I'd love to take a look at them.
+>
+>Thanks,
+>
 
-								Honza
+Here's the lock_stat for dbench and ffsb respectively.
 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index bfc70f5..e214d68 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -1311,7 +1311,6 @@ int jbd2_journal_stop(handle_t *handle)
->  	if (handle->h_sync)
->  		transaction->t_synchronous_commit = 1;
->  	current->journal_info = NULL;
-> -	spin_lock(&journal->j_state_lock);
->  	spin_lock(&transaction->t_handle_lock);
->  	transaction->t_outstanding_credits -= handle->h_buffer_credits;
->  	transaction->t_updates--;
-> @@ -1340,8 +1339,7 @@ int jbd2_journal_stop(handle_t *handle)
->  		jbd_debug(2, "transaction too old, requesting commit for "
->  					"handle %p\n", handle);
->  		/* This is non-blocking */
-> -		__jbd2_log_start_commit(journal, transaction->t_tid);
-> -		spin_unlock(&journal->j_state_lock);
-> +		jbd2_log_start_commit(journal, transaction->t_tid);
->  
->  		/*
->  		 * Special case: JBD2_SYNC synchronous updates require us
-> @@ -1351,7 +1349,6 @@ int jbd2_journal_stop(handle_t *handle)
->  			err = jbd2_log_wait_commit(journal, tid);
->  	} else {
->  		spin_unlock(&transaction->t_handle_lock);
-> -		spin_unlock(&journal->j_state_lock);
->  	}
->  
->  	lock_map_release(&handle->h_lockdep_map);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+-- Tim
+
+lock_stat for dbench:
+
+ 					class name    con-bounces    contentions   waittime-min   waittime-max waittime-total    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total
+                             dcache_lock:       6025583        6290348           0.11       19839.44  1798082999.37        6444352        6455257           0.09        1098.09    18850261.22
+                &(&vfsmount_lock)->rlock:         73901          76686           0.11          60.15      113381.57        1453130        1729218           0.11          77.81     1256803.55
+               &(&dentry->d_lock)->rlock:         70544          70816           0.10          81.63       57218.45        3260359        9367952           0.10          87.68     2882612.48
+                     cpufreq_driver_lock:         13957          13957           0.15          16.34       11674.72         191861         191900           0.15          18.25      127363.61
+              &sb->s_type->i_mutex_key#6:         11469          11471           9.81       23837.58    15425101.39          19705          19832           0.99       12681.28     9526135.06
+                        rcu_node_level_1:          6074           6078           0.14         119.79       61347.68         195893         526772           0.09         107.31      250906.16
+            &(&sbinfo->stat_lock)->rlock:          4119           4201           0.11          58.20        5152.25         170931         485773           0.10          74.01      171147.12
+                        clockevents_lock:          1303           1323           0.15          48.76        5762.88          32798          53769           0.46          47.28      132041.92
+                     tick_broadcast_lock:          1072           1077           0.16          44.15        3567.97          51339          71398           0.18          66.81      145312.14
+                              inode_lock:           862            870           0.16          19.43         896.55         122469         189716           0.10          39.86      132519.21
+
+lock_stat for ffsb:
+
+					class name    con-bounces    contentions   waittime-min   waittime-max waittime-total    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total
+     &(&journal->j_revoke_lock)->rlock#2:       2776732        2797303           0.09        1226.54    25572406.37        5534106        7180109           0.08         940.11     4072313.72
+   &(&inode->i_data.private_lock)->rlock:        877686         881325           0.10        1012.54     6852161.82        3877066        5037811           0.08         953.17     2419421.96
+                        clockevents_lock:        748984         760650           0.12        1863.26   101406877.20        1060958        1382494           0.42        1308.88    11071530.40
+                             dcache_lock:        388413         409694           0.12         864.01     1468208.41        1434252        2471228           0.09        2655.71     2629938.50
+              &(&q->__queue_lock)->rlock:        211707         214131           0.11         813.65     1255954.31         464310        2882306           0.08         984.38     3729431.78
+      &(&journal->j_state_lock)->rlock#2:        206642         206832           0.13        2312.55     3561899.14        1049032        1490515           0.08        2447.20     2079827.95
+   &(&transaction->t_handle_lock)->rlo#2:        179770         180327           0.11         745.09      438500.40        1724000        1997981           0.08         795.20     1097502.30
+                   &sbi->s_orphan_lock#2:        123150         123161           3.87       41421.17   406113809.87         408087         532092           0.17       36588.86     5151196.68
+                 &(&n->list_lock)->rlock:        116548         117330           0.11          88.35       65548.86        2219789        4243060           0.08          87.43     1324289.71
+       &(&journal->j_list_lock)->rlock#2:         71612          72458           0.11         814.83      257968.30         833686        3148049           0.08        
