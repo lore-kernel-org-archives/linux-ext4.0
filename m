@@ -1,117 +1,65 @@
-From: cy6erGn0m <cy6ergn0m@gmail.com>
-Subject: No space left on device after many files creation
-Date: Tue, 13 Apr 2010 01:20:57 +0400
-Message-ID: <4BC38EB9.8080501@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: No space left on device after many files creation
+Date: Mon, 12 Apr 2010 16:28:56 -0500
+Message-ID: <4BC39098.4030704@redhat.com>
+References: <4BC38EB9.8080501@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1; boundary="------------ms010705020101070403080106"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: cy6erGn0m <cy6ergn0m@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f220.google.com ([209.85.219.220]:53308 "EHLO
-	mail-ew0-f220.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752982Ab0DLVVB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Apr 2010 17:21:01 -0400
-Received: by ewy20 with SMTP id 20so2280412ewy.1
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 14:20:59 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:5547 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753757Ab0DLV3C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Apr 2010 17:29:02 -0400
+In-Reply-To: <4BC38EB9.8080501@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
+cy6erGn0m wrote:
+> I have found issue with ext4 partition.
+> I created many many empty files with the following way:
+> [cy6ergn0m@cgmachine heap]$ seq 1 10000000 | xargs touch
+>=20
+> But this command crashes asfter a while with a error 'no space left o=
+n
+> device'. At the same time, df -h shows that I have 7Gb free on this f=
+ile
+> system. So, I can't create any file in any directory at this filesyst=
+em.
+>=20
+> [cy6ergn0m@cgmachine heap]$ pwd
+> /e4/sandbox/heap
+> [cy6ergn0m@cgmachine heap]$ ls -1 | wc -l
+> 1261144
+> [cy6ergn0m@cgmachine heap]$ df -h /e4
+> =D0=A4=D0=B0=D0=B9=D0=BB=D0=BE=D0=B2=D0=B0=D1=8F =D1=81=D0=B8=D1=81=D1=
+=82=D0=B5=D0=BC=D0=B0      =D0=A0=D0=B0=D0=B7=D0=BC  =D0=98=D1=81=D0=BF=
+  =D0=94=D0=BE=D1=81=D1=82  =D0=98=D1=81=D0=BF% =D1=81=D0=BC=D0=BE=D0=BD=
+=D1=82=D0=B8=D1=80=D0=BE=D0=B2=D0=B0=D0=BD=D0=B0 =D0=BD=D0=B0
+> (filesystem/size/used/available/used%/mounted)
+> /dev/sda4              28G  7.2G   19G  28% /e4
 
---------------ms010705020101070403080106
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
+try df -i
 
-SSBoYXZlIGZvdW5kIGlzc3VlIHdpdGggZXh0NCBwYXJ0aXRpb24uCkkgY3JlYXRlZCBtYW55
-IG1hbnkgZW1wdHkgZmlsZXMgd2l0aCB0aGUgZm9sbG93aW5nIHdheToKW2N5NmVyZ24wbUBj
-Z21hY2hpbmUgaGVhcF0kIHNlcSAxIDEwMDAwMDAwIHwgeGFyZ3MgdG91Y2gKCkJ1dCB0aGlz
-IGNvbW1hbmQgY3Jhc2hlcyBhc2Z0ZXIgYSB3aGlsZSB3aXRoIGEgZXJyb3IgJ25vIHNwYWNl
-IGxlZnQgb24KZGV2aWNlJy4gQXQgdGhlIHNhbWUgdGltZSwgZGYgLWggc2hvd3MgdGhhdCBJ
-IGhhdmUgN0diIGZyZWUgb24gdGhpcyBmaWxlCnN5c3RlbS4gU28sIEkgY2FuJ3QgY3JlYXRl
-IGFueSBmaWxlIGluIGFueSBkaXJlY3RvcnkgYXQgdGhpcyBmaWxlc3lzdGVtLgoKW2N5NmVy
-Z24wbUBjZ21hY2hpbmUgaGVhcF0kIHB3ZAovZTQvc2FuZGJveC9oZWFwCltjeTZlcmduMG1A
-Y2dtYWNoaW5lIGhlYXBdJCBscyAtMSB8IHdjIC1sCjEyNjExNDQKW2N5NmVyZ24wbUBjZ21h
-Y2hpbmUgaGVhcF0kIGRmIC1oIC9lNArQpNCw0LnQu9C+0LLQsNGPINGB0LjRgdGC0LXQvNCw
-ICAgICAg0KDQsNC30LwgINCY0YHQvyAg0JTQvtGB0YIgINCY0YHQvyUg0YHQvNC+0L3RgtC4
-0YDQvtCy0LDQvdCwINC90LAKKGZpbGVzeXN0ZW0vc2l6ZS91c2VkL2F2YWlsYWJsZS91c2Vk
-JS9tb3VudGVkKQovZGV2L3NkYTQgICAgICAgICAgICAgIDI4RyAgNy4yRyAgIDE5RyAgMjgl
-IC9lNApbY3k2ZXJnbjBtQGNnbWFjaGluZSBoZWFwXSQgdG91Y2ggdHR0CnRvdWNoOiDQvdC1
-0LLQvtC30LzQvtC20L3QviDQstGL0L/QvtC70L3QuNGC0YwgdG91Y2gg0LTQu9GPIGB0dHQn
-OiDQndCwINGD0YHRgtGA0L7QudGB0YLQstC1INC60L7QvdGH0LjQu9C+0YHRjCDQvNC10YHR
-gtC+Cih0b3VjaDogZmFpbGVkIHRvIGV4ZWN1dGUgdG91Y2ggZm9yICd0dHQnOiBObyBzcGFj
-ZSBsZWZ0IG9uIGRldmljZSkKCgo=
+There is a limited number of inodes that you can create, as set
+at mkfs time.
 
---------------ms010705020101070403080106
-Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
+-Eric
 
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIKcDCC
-BTQwggMcoAMCAQICAwhTxTANBgkqhkiG9w0BAQUFADB5MRAwDgYDVQQKEwdSb290IENBMR4w
-HAYDVQQLExVodHRwOi8vd3d3LmNhY2VydC5vcmcxIjAgBgNVBAMTGUNBIENlcnQgU2lnbmlu
-ZyBBdXRob3JpdHkxITAfBgkqhkiG9w0BCQEWEnN1cHBvcnRAY2FjZXJ0Lm9yZzAeFw0xMDAz
-MDgyMjMzMjdaFw0xMDA5MDQyMjMzMjdaMD4xGDAWBgNVBAMTD0NBY2VydCBXb1QgVXNlcjEi
-MCAGCSqGSIb3DQEJARYTY3k2ZXJHbjBtQGdtYWlsLmNvbTCCASIwDQYJKoZIhvcNAQEBBQAD
-ggEPADCCAQoCggEBAKl2G6TMtz2i5t40UoH8NB7kx5/x8ng5CHYiL3YYDnB/6CDEKpSrSujP
-kDkZhM3senhPNqN6WEwIOu+T1HWhatvIymxy6XxlnpOLzAZsdSslfX5klkjLKDrpqAPQ64fd
-/pR1GNKTNmJ9OwmnHkRaIx6pMt182kV3K6Isbfexa27DnDpYsN2W/Or7+ncGBRe4cPL5RuKa
-0tHhlmxlaveK4kx3g5BvtUDbECd3vOI+jQe/nArlNUecKSihCPU58r7pdrIdNng1+R6vkvJy
-KSLF7uFStCvk1U+dgJHvjYrvbiQwCCu4WUS0bucpkwJtHDnJrwha1iuuFph3r4RK5pGJHp0C
-AwEAAaOB/zCB/DAMBgNVHRMBAf8EAjAAMFYGCWCGSAGG+EIBDQRJFkdUbyBnZXQgeW91ciBv
-d24gY2VydGlmaWNhdGUgZm9yIEZSRUUgaGVhZCBvdmVyIHRvIGh0dHA6Ly93d3cuQ0FjZXJ0
-Lm9yZzBABgNVHSUEOTA3BggrBgEFBQcDBAYIKwYBBQUHAwIGCisGAQQBgjcKAwQGCisGAQQB
-gjcKAwMGCWCGSAGG+EIEATAyBggrBgEFBQcBAQQmMCQwIgYIKwYBBQUHMAGGFmh0dHA6Ly9v
-Y3NwLmNhY2VydC5vcmcwHgYDVR0RBBcwFYETY3k2ZXJHbjBtQGdtYWlsLmNvbTANBgkqhkiG
-9w0BAQUFAAOCAgEAKUjhQKealtXCVJ5eAbAKWmhSVT5On/pVtpDrdzT36xZ5iKfHruB25ieQ
-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
-dCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0
-IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcC
-AwhTxTAJBgUrDgMCGgUAoIIB6DAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3
-DQEJBTEPFw0xMDA0MTIyMTIwNTdaMCMGCSqGSIb3DQEJBDEWBBQ9r+YaCqBvjMuXbXzeO6Kt
-MXjkVDBfBgkqhkiG9w0BCQ8xUjBQMAsGCWCGSAFlAwQBAjAKBggqhkiG9w0DBzAOBggqhkiG
-9w0DAgICAIAwDQYIKoZIhvcNAwICAUAwBwYFKw4DAgcwDQYIKoZIhvcNAwICASgwgZEGCSsG
-AQQBgjcQBDGBgzCBgDB5MRAwDgYDVQQKEwdSb290IENBMR4wHAYDVQQLExVodHRwOi8vd3d3
-LmNhY2VydC5vcmcxIjAgBgNVBAMTGUNBIENlcnQgU2lnbmluZyBBdXRob3JpdHkxITAfBgkq
-hkiG9w0BCQEWEnN1cHBvcnRAY2FjZXJ0Lm9yZwIDCFPFMIGTBgsqhkiG9w0BCRACCzGBg6CB
-gDB5MRAwDgYDVQQKEwdSb290IENBMR4wHAYDVQQLExVodHRwOi8vd3d3LmNhY2VydC5vcmcx
-IjAgBgNVBAMTGUNBIENlcnQgU2lnbmluZyBBdXRob3JpdHkxITAfBgkqhkiG9w0BCQEWEnN1
-cHBvcnRAY2FjZXJ0Lm9yZwIDCFPFMA0GCSqGSIb3DQEBAQUABIIBAIDuvdL3tL8MP6BdDAbD
-X5xfrNQNi6Tqj9sD6g8VqiokOokqCRXf71MITeUgv/5xxE+aoXE5AOisl079YxgxOhUAaeh5
-i1abfZvmUa4ZYognxjtbUoQbAWdxSjd3jdFyYv/v4zq1izwr8NnHkII3HB2w7l2ogtsElnFJ
-qRxW6/qmQMpyq49HN3x+c7g2h9mLJ5TfV6UMNjedaUh6gwkodfnw+tP+v9xeUKrdKpZNII/g
-gR7DmMcONjDFeiDuONR4X/Tz+V6q3gD+cxi1vGIr8gl5FH5EawgAOaDR+w8vL2p3/upmzghV
-Lr4O33EsuvLsrRaTCKFXbLCYyajUBy342OsAAAAAAAA=
---------------ms010705020101070403080106--
+> [cy6ergn0m@cgmachine heap]$ touch ttt
+> touch: =D0=BD=D0=B5=D0=B2=D0=BE=D0=B7=D0=BC=D0=BE=D0=B6=D0=BD=D0=BE =D0=
+=B2=D1=8B=D0=BF=D0=BE=D0=BB=D0=BD=D0=B8=D1=82=D1=8C touch =D0=B4=D0=BB=D1=
+=8F `ttt': =D0=9D=D0=B0 =D1=83=D1=81=D1=82=D1=80=D0=BE=D0=B9=D1=81=D1=82=
+=D0=B2=D0=B5 =D0=BA=D0=BE=D0=BD=D1=87=D0=B8=D0=BB=D0=BE=D1=81=D1=8C =D0=
+=BC=D0=B5=D1=81=D1=82=D0=BE
+> (touch: failed to execute touch for 'ttt': No space left on device)
+>=20
+>=20
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
