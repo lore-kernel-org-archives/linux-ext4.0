@@ -1,140 +1,92 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] ext3: init statistics after journal recovery v2
-Date: Mon, 12 Apr 2010 23:46:00 +0400
-Message-ID: <87fx308nev.fsf_-_@openvz.org>
-References: <1271099576-7507-1-git-send-email-dmonakhov@openvz.org>
-	<20100412193019.GO3404@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Mon, 12 Apr 2010 21:46:28 +0200
+Message-ID: <20100412194628.GI12238@atrey.karlin.mff.cuni.cz>
+References: <1270682478.3755.58.camel@localhost.localdomain> <20100408034631.GB23188@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Cc: john stultz <johnstul@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Mingming Cao <cmm@us.ibm.com>,
+	keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:55744 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752499Ab0DLTqU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Apr 2010 15:46:20 -0400
-Received: by bwz19 with SMTP id 19so449bwz.21
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 12:46:15 -0700 (PDT)
-In-Reply-To: <20100412193019.GO3404@quack.suse.cz> (Jan Kara's message of
-	"Mon, 12 Apr 2010 21:30:19 +0200")
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:48280 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752499Ab0DLTq3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Apr 2010 15:46:29 -0400
+Content-Disposition: inline
+In-Reply-To: <20100408034631.GB23188@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+> On Wed, Apr 07, 2010 at 04:21:18PM -0700, john stultz wrote:
+> > Further using lockstat I was able to isolate it the contention down to
+> > the journal j_state_lock, and then adding some lock owner tracking, I
+> > was able to see that the lock owners were almost always in
+> > start_this_handle, and jbd2_journal_stop when we saw contention (with
+> > the freq breakdown being about 55% in jbd2_journal_stop and 45% in
+> > start_this_handle).
+> 
+> Hmm....  I've taken a very close look at jbd2_journal_stop(), and I
+> don't think we need to take j_state_lock() at all except if we need to
+> call jbd2_log_start_commit().  t_outstanding_credits,
+> h_buffer_credits, and t_updates are all documented (and verified by
+> me) to be protected by the t_handle_lock spinlock.
+> 
+> So I ***think*** the following might be safe.  WARNING!  WARNING!!  No
+> real testing done on this patch, other than "it compiles!  ship it!!".
+> 
+> I'll let other people review it, and maybe you could give this a run
+> and see what happens with this patch?
+  I had a look and it really seems that t_handle_lock is enough for
+all we do in jbd2_journal_stop (except for jbd2_log_start_commit). So
+I think your patch is fine.
+  I also had a look at jbd2_journal_start. What probably makes things bad there
+is that lots of threads accumulate waiting for transaction to get out of
+T_LOCKED state. When that happens, all the threads are woken up and start
+pondering at j_state_lock which creates contention. This is just a theory and I
+might be completely wrong... Some lockstat data would be useful to confirm /
+refute this.
 
-Currently block/inode/dir counters initialized before journal was
-recovered. In fact after journal recovery this info will probably
-change which result in incorrect statfs()
-BUG:#15768
+								Honza
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext3/super.c |   44 +++++++++++++++++++++-----------------------
- 1 files changed, 21 insertions(+), 23 deletions(-)
-
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index e844acc..436e0dc 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1890,21 +1890,6 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
- 
--	err = percpu_counter_init(&sbi->s_freeblocks_counter,
--			ext3_count_free_blocks(sb));
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_freeinodes_counter,
--				ext3_count_free_inodes(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirs_counter,
--				ext3_count_dirs(sb));
--	}
--	if (err) {
--		ext3_msg(sb, KERN_ERR, "error: insufficient memory");
--		goto failed_mount3;
--	}
--
- 	/* per fileystem reservation list head & lock */
- 	spin_lock_init(&sbi->s_rsv_window_lock);
- 	sbi->s_rsv_window_root = RB_ROOT;
-@@ -1945,15 +1930,29 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	if (!test_opt(sb, NOLOAD) &&
- 	    EXT3_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
- 		if (ext3_load_journal(sb, es, journal_devnum))
--			goto failed_mount3;
-+			goto failed_mount2;
- 	} else if (journal_inum) {
- 		if (ext3_create_journal(sb, es, journal_inum))
--			goto failed_mount3;
-+			goto failed_mount2;
- 	} else {
- 		if (!silent)
- 			ext3_msg(sb, KERN_ERR,
- 				"error: no journal found. "
- 				"mounting ext3 over ext2?");
-+		goto failed_mount2;
-+	}
-+	err = percpu_counter_init(&sbi->s_freeblocks_counter,
-+			ext3_count_free_blocks(sb));
-+	if (!err) {
-+		err = percpu_counter_init(&sbi->s_freeinodes_counter,
-+				ext3_count_free_inodes(sb));
-+	}
-+	if (!err) {
-+		err = percpu_counter_init(&sbi->s_dirs_counter,
-+				ext3_count_dirs(sb));
-+	}
-+	if (err) {
-+		ext3_msg(sb, KERN_ERR, "error: insufficient memory");
- 		goto failed_mount3;
- 	}
- 
-@@ -1978,7 +1977,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 			ext3_msg(sb, KERN_ERR,
- 				"error: journal does not support "
- 				"requested data journaling mode");
--			goto failed_mount4;
-+			goto failed_mount3;
- 		}
- 	default:
- 		break;
-@@ -2001,19 +2000,19 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	if (IS_ERR(root)) {
- 		ext3_msg(sb, KERN_ERR, "error: get root inode failed");
- 		ret = PTR_ERR(root);
--		goto failed_mount4;
-+		goto failed_mount3;
- 	}
- 	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
- 		iput(root);
- 		ext3_msg(sb, KERN_ERR, "error: corrupt root inode, run e2fsck");
--		goto failed_mount4;
-+		goto failed_mount3;
- 	}
- 	sb->s_root = d_alloc_root(root);
- 	if (!sb->s_root) {
- 		ext3_msg(sb, KERN_ERR, "error: get root dentry failed");
- 		iput(root);
- 		ret = -ENOMEM;
--		goto failed_mount4;
-+		goto failed_mount3;
- 	}
- 
- 	ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
-@@ -2039,12 +2038,11 @@ cantfind_ext3:
- 		       sb->s_id);
- 	goto failed_mount;
- 
--failed_mount4:
--	journal_destroy(sbi->s_journal);
- failed_mount3:
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
-+	journal_destroy(sbi->s_journal);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index bfc70f5..e214d68 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1311,7 +1311,6 @@ int jbd2_journal_stop(handle_t *handle)
+>  	if (handle->h_sync)
+>  		transaction->t_synchronous_commit = 1;
+>  	current->journal_info = NULL;
+> -	spin_lock(&journal->j_state_lock);
+>  	spin_lock(&transaction->t_handle_lock);
+>  	transaction->t_outstanding_credits -= handle->h_buffer_credits;
+>  	transaction->t_updates--;
+> @@ -1340,8 +1339,7 @@ int jbd2_journal_stop(handle_t *handle)
+>  		jbd_debug(2, "transaction too old, requesting commit for "
+>  					"handle %p\n", handle);
+>  		/* This is non-blocking */
+> -		__jbd2_log_start_commit(journal, transaction->t_tid);
+> -		spin_unlock(&journal->j_state_lock);
+> +		jbd2_log_start_commit(journal, transaction->t_tid);
+>  
+>  		/*
+>  		 * Special case: JBD2_SYNC synchronous updates require us
+> @@ -1351,7 +1349,6 @@ int jbd2_journal_stop(handle_t *handle)
+>  			err = jbd2_log_wait_commit(journal, tid);
+>  	} else {
+>  		spin_unlock(&transaction->t_handle_lock);
+> -		spin_unlock(&journal->j_state_lock);
+>  	}
+>  
+>  	lock_map_release(&handle->h_lockdep_map);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-1.6.6.1
-
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
