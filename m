@@ -1,58 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsck: mark sparse journal as invalid
-Date: Mon, 12 Apr 2010 17:36:33 -0500
-Message-ID: <4BC3A071.4030501@redhat.com>
+From: tytso@mit.edu
+Subject: Re: No space left on device after many files creation
+Date: Mon, 12 Apr 2010 18:44:29 -0400
+Message-ID: <20100412224429.GN1849@thunk.org>
+References: <4BC38EB9.8080501@gmail.com>
+ <4BC39098.4030704@redhat.com>
+ <4BC39762.9080406@gmail.com>
+ <4BC39805.7090807@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: cy6erGn0m <cy6ergn0m@gmail.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19668 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:33884 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753592Ab0DLWgi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Apr 2010 18:36:38 -0400
-Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o3CMacm0031044
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 18:36:38 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o3CMaXGp029893
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 18:36:37 -0400
+	id S1754021Ab0DLX4p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Apr 2010 19:56:45 -0400
+Content-Disposition: inline
+In-Reply-To: <4BC39805.7090807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For a filesystem that fails with:
+On Mon, Apr 12, 2010 at 05:00:37PM -0500, Eric Sandeen wrote:
+> cy6erGn0m wrote:
+> > In the past I have done the same test for ext3 and it was created ~=
+10M
+> > files in one firectory at working filesystem (/home) and it was no
+> > issues reached.
+> >=20
+> > On ext4 i found inodes max size is limited as you wrote:
+> > [root@cgmachine sandbox]# df -i /e4
+> > =D0=A4=D0=B0=D0=B9=D0=BB=D0=BE=D0=B2=D0=B0=D1=8F =D1=81=D0=B8=D1=81=
+=D1=82=D0=B5=D0=BC=D0=B0      =D0=98=D0=BD=D0=BE=D0=B4=D0=BE=D0=B2   =D0=
+=98=D1=81=D0=BF=D0=BE=D0=BB   =D0=A1=D0=B2=D0=BE=D0=B1  =D0=98=D1=81=D0=
+=BF % =D1=81=D0=BC=D0=BE=D0=BD=D1=82=D0=B8=D1=80=D0=BE=D0=B2=D0=B0=D0=BD=
+=D0=B0 =D0=BD=D0=B0
+> > (file system/inodes/used/free/used%/mounted on)
+> > /dev/sda4               1,8M    1,8M       0  100% /e4
+> > [root@cgmachine sandbox]#
+> >=20
+> > Why inodes count limit is so small by default? Is it depends on
+> > partition size?
+>=20
+> it does depend on partition size; the inode_ratio =3D 16384 in mke2fs=
+=2Econf
+> says 1 inode per 16k of filesystem space.
 
-journal_bmap: journal block not found at offset 7334 on loop0
-JBD: bad block at offset 7334
+1.8 million inodes is hardly small.....  most people complain that
+we're reserving too much space for inodes. =20
 
-e2fsck won't actually fix this; it will mark the fs as clean,
-so it will mount, but it does not fix that block, and when the
-journal reaches this point again it will fail again.
+Cy6erGn0m, What is your use case where the average file size for your
+20G partition is smaller that 16k?
 
-The following simple change to process_journal_block() might be
-a little drastic; it will clear & recreate the journal inode if
-it's sparse - i.e. if it gets block 0.
-
-I suppose we could be more complicated and try to replay the journal
-up to the error, but I'm not sure it's worth it since we're fscking
-it anyway.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 57783eb..4e6a7c3 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -214,7 +214,7 @@ static int process_journal_block(ext2_filsys fs,
- 
- 	p = (struct process_block_struct *) priv_data;
- 
--	if (blk < fs->super->s_first_data_block ||
-+	if (!blk || blk < fs->super->s_first_data_block ||
- 	    blk >= ext2fs_blocks_count(fs->super))
- 		return BLOCK_ABORT;
- 
-
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
