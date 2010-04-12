@@ -1,97 +1,157 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/3] ext4: don't use quota reservation for speculative
-	metadata blocks
-Date: Mon, 12 Apr 2010 15:22:14 +0200
-Message-ID: <20100412132214.GC12238@atrey.karlin.mff.cuni.cz>
-References: <4BBCFD10.3030504@redhat.com> <87sk76tkx9.fsf@openvz.org> <4BBDF610.8030906@redhat.com> <87eiimtjne.fsf@openvz.org> <20100412131530.GB12238@atrey.karlin.mff.cuni.cz>
+Subject: Re: [PATCH 1/3] quota: use flags interface for dquot alloc/free
+	space
+Date: Mon, 12 Apr 2010 15:22:47 +0200
+Message-ID: <20100412132247.GD12238@atrey.karlin.mff.cuni.cz>
+References: <4BBCFD10.3030504@redhat.com> <4BBCFDD1.30505@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:60871 "EHLO
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:60965 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750782Ab0DLNWP (ORCPT
+	by vger.kernel.org with ESMTP id S1750782Ab0DLNWs (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Apr 2010 09:22:15 -0400
+	Mon, 12 Apr 2010 09:22:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20100412131530.GB12238@atrey.karlin.mff.cuni.cz>
+In-Reply-To: <4BBCFDD1.30505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> > Eric Sandeen <sandeen@redhat.com> writes:
-> > 
-> > > Dmitry Monakhov wrote:
-> > >> Eric Sandeen <sandeen@redhat.com> writes:
-> > >> 
-> > >>> Because we can badly over-reserve metadata when we
-> > >>> calculate worst-case, it complicates things for quota, since
-> > >>> we must reserve and then claim later, retry on EDQUOT, etc.
-> > >>> Quota is also a generally smaller pool than fs free blocks,
-> > >>> so this over-reservation hurts more, and more often.
-> > >>>
-> > >>> I'm of the opinion that it's not the worst thing to allow
-> > >>> metadata to push a user slightly over quota.  This simplifies
-> > >>> the code and avoids the false quota rejections that result
-> > >>> from worst-case speculation.
-> > >> Hm.. Totally agree with issue description. And seem there is no another
-> > >> solution except yours.
-> > >> ASAIU alloc_nofail is called from places where it is impossible to fail
-> > >> an allocation even if something goes wrong.
-> > >> I ask because currently i'm working on EIO handling in alloc/free calls.
-> > >> I've found that it is useless to fail claim/free procedures because
-> > >> caller is unable to handle it properly.
-> > >> It is impossible to fail following operation
-> > >> ->writepage
-> > >>  ->dquot_claim_space (what to do if EIO happens?)
-> > >
-> > > Hm, if these start returning EIO then maybe my patch should be modified
-> > > to treat EDQUOT differently than EIO ... assuming callers can handle
-> > > the return at all.
-> > >
-> > > In other words, make NOFAIL really just mean "don't fail for EDQUOT"
-> > Yes. agree So we have two types of errors
-> > 1) expected errors: EDQUOT
-> > 2) fatal errors: (EIO/ENOSPC/ENOMEM)
-> > So we need two types of flags:
-> > 1)FORCE (IMHO it is better name than you proposed) to allow exceed a
-> >   quota limit
-> > 2)NOFAIL to allow ignore fatal errors.
-> > 
-> > We still need NOFAIL, because for example if something is happens in
-> > ->write_page()
-> >  ->dquot_claim()
-> >      update_quota() -> EIO  /* update disk quota */
-> >      update_bytes() /* update i_bytes count */
-> > It is obvious that write_page should fail because it is too late to
-> > return the error to userspace, so data will probably lost which
-> > is much more dramatic bug than quota inconsistency.
-> > So the only options we have is to:
-> > 1) Do not modify inode->i_bytes and return error which caller will
-> >    probably ignore. IMHO this is not good because result in
-> >    incorrect stat()
-> > 
-> > 2) do as much as we can (as it happens for now), modify inode->i_bytes
-> >    and return positive error code to caller.(which signal what error
-> >    result in quota inconsystency only)
->   Yes, agreed that 2) is a better solution.
+> Switch __dquot_alloc_space and __dquot_free_space to take flags
+> to indicate whether to warn and/or to reserve (or free reserve).
 > 
-> > This fatal errors handling logic i'll post on top of your patch-set.
-> > But please change flag name from NOFAIL to FORCE.
->   Hmm, do we really need to distinguish between your NOFAIL and FORCE?
-> I mean there are places where we can handle quota failures (both EDQUOT
-> or others) and places where we cannot and then we just want to go on as
-> seamlessly as possible. So NOFAIL flag seems to be enough...
->   Now I agree that in theory there can be some caller which might wish
-> to seamlessly continue on EDQUOT and bail out on EIO but I'm not aware
-> of such callsite currently so there's no immediate need for the flag.
-> So Eric's patches seem to be fine to me as they are. What do you think?
-  Maybe one more point - the callsite in ext4 that uses _nofail variant
-really needs full NOFAIL semantics because we have no way of handling
-an error there.
+> This is slightly more readable at the callpoints, and makes it
+> cleaner to add a "nofail" option in the next patch.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+  Looks good. Acked-by: Jan Kara <jack@suse.cz>
 
-								Honza
+> ---
+> 
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index e0b870f..8436d9b 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -1484,11 +1484,12 @@ static void inode_decr_space(struct inode *inode, qsize_t number, int reserve)
+>  /*
+>   * This operation can block, but only after everything is updated
+>   */
+> -int __dquot_alloc_space(struct inode *inode, qsize_t number,
+> -		int warn, int reserve)
+> +int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
+>  {
+>  	int cnt, ret = 0;
+>  	char warntype[MAXQUOTAS];
+> +	int warn = flags & DQUOT_SPACE_WARN;
+> +	int reserve = flags & DQUOT_SPACE_RESERVE;
+>  
+>  	/*
+>  	 * First test before acquiring mutex - solves deadlocks when we
+> @@ -1608,10 +1609,11 @@ EXPORT_SYMBOL(dquot_claim_space_nodirty);
+>  /*
+>   * This operation can block, but only after everything is updated
+>   */
+> -void __dquot_free_space(struct inode *inode, qsize_t number, int reserve)
+> +void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
+>  {
+>  	unsigned int cnt;
+>  	char warntype[MAXQUOTAS];
+> +	int reserve = flags & DQUOT_SPACE_RESERVE;
+>  
+>  	/* First test before acquiring mutex - solves deadlocks when we
+>           * re-enter the quota code and are already holding the mutex */
+> diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+> index e6fa7ac..daa106f 100644
+> --- a/include/linux/quotaops.h
+> +++ b/include/linux/quotaops.h
+> @@ -14,6 +14,9 @@ static inline struct quota_info *sb_dqopt(struct super_block *sb)
+>  	return &sb->s_dquot;
+>  }
+>  
+> +#define DQUOT_SPACE_WARN	0x1
+> +#define DQUOT_SPACE_RESERVE	0x2
+> +
+>  #if defined(CONFIG_QUOTA)
+>  
+>  /*
+> @@ -33,9 +36,8 @@ int dquot_scan_active(struct super_block *sb,
+>  struct dquot *dquot_alloc(struct super_block *sb, int type);
+>  void dquot_destroy(struct dquot *dquot);
+>  
+> -int __dquot_alloc_space(struct inode *inode, qsize_t number,
+> -		int warn, int reserve);
+> -void __dquot_free_space(struct inode *inode, qsize_t number, int reserve);
+> +int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags);
+> +void __dquot_free_space(struct inode *inode, qsize_t number, int flags);
+>  
+>  int dquot_alloc_inode(const struct inode *inode);
+>  
+> @@ -231,17 +233,17 @@ static inline int dquot_transfer(struct inode *inode, struct iattr *iattr)
+>  }
+>  
+>  static inline int __dquot_alloc_space(struct inode *inode, qsize_t number,
+> -		int warn, int reserve)
+> +		int flags)
+>  {
+> -	if (!reserve)
+> +	if (!(flags & DQUOT_SPACE_RESERVE))
+>  		inode_add_bytes(inode, number);
+>  	return 0;
+>  }
+>  
+>  static inline void __dquot_free_space(struct inode *inode, qsize_t number,
+> -		int reserve)
+> +		int flags)
+>  {
+> -	if (!reserve)
+> +	if (!(flags & DQUOT_SPACE_RESERVE))
+>  		inode_sub_bytes(inode, number);
+>  }
+>  
+> @@ -257,7 +259,7 @@ static inline int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
+>  
+>  static inline int dquot_alloc_space_nodirty(struct inode *inode, qsize_t nr)
+>  {
+> -	return __dquot_alloc_space(inode, nr, 1, 0);
+> +	return __dquot_alloc_space(inode, nr, DQUOT_SPACE_WARN);
+>  }
+>  
+>  static inline int dquot_alloc_space(struct inode *inode, qsize_t nr)
+> @@ -282,7 +284,7 @@ static inline int dquot_alloc_block(struct inode *inode, qsize_t nr)
+>  
+>  static inline int dquot_prealloc_block_nodirty(struct inode *inode, qsize_t nr)
+>  {
+> -	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 0, 0);
+> +	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 0);
+>  }
+>  
+>  static inline int dquot_prealloc_block(struct inode *inode, qsize_t nr)
+> @@ -297,7 +299,8 @@ static inline int dquot_prealloc_block(struct inode *inode, qsize_t nr)
+>  
+>  static inline int dquot_reserve_block(struct inode *inode, qsize_t nr)
+>  {
+> -	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 1, 1);
+> +	return __dquot_alloc_space(inode, nr << inode->i_blkbits,
+> +				DQUOT_SPACE_WARN|DQUOT_SPACE_RESERVE);
+>  }
+>  
+>  static inline int dquot_claim_block(struct inode *inode, qsize_t nr)
+> @@ -334,7 +337,7 @@ static inline void dquot_free_block(struct inode *inode, qsize_t nr)
+>  static inline void dquot_release_reservation_block(struct inode *inode,
+>  		qsize_t nr)
+>  {
+> -	__dquot_free_space(inode, nr << inode->i_blkbits, 1);
+> +	__dquot_free_space(inode, nr << inode->i_blkbits, DQUOT_SPACE_RESERVE);
+>  }
+>  
+>  #endif /* _LINUX_QUOTAOPS_ */
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SuSE CR Labs
