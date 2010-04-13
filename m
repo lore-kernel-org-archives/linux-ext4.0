@@ -1,59 +1,38 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/5] ext2: Move ext2_write_super() out of
- ext2_setup_super()
-Date: Tue, 13 Apr 2010 19:53:18 +0200
-Message-ID: <20100413175318.GA3250@quack.wifi.zluty.cz>
-References: <1271104905-8804-1-git-send-email-jblunck@suse.de>
- <1271104905-8804-5-git-send-email-jblunck@suse.de>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Ping.
+Date: Tue, 13 Apr 2010 14:14:50 -0400
+Message-ID: <20100413181450.GA5720@infradead.org>
+References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org> <87ljd1vtth.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu,
-	Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	Arnd Bergmann <arnd@arndb.de>
-To: Jan Blunck <jblunck@suse.de>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, adilger@sun.com, hch@infradead.org, jack@suse.cz,
+	david@fromorbit.com, viro@ZenIV.linux.org.uk, xemul@openvz.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36151 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751316Ab0DMRxR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Apr 2010 13:53:17 -0400
+Received: from bombadil.infradead.org ([18.85.46.34]:59035 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751463Ab0DMSOu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 14:14:50 -0400
 Content-Disposition: inline
-In-Reply-To: <1271104905-8804-5-git-send-email-jblunck@suse.de>
+In-Reply-To: <87ljd1vtth.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 12-04-10 22:41:44, Jan Blunck wrote:
-> Move ext2_write_super() out of ext2_setup_super() as a preparation for the
-> next patch that adds a new lock for superblock fields.
+On Tue, Apr 06, 2010 at 01:00:58PM +0400, Dmitry Monakhov wrote:
+> Dmitry Monakhov <dmonakhov@openvz.org> writes:
 > 
-> Signed-off-by: Jan Blunck <jblunck@suse.de>
-> ---
->  fs/ext2/super.c |    8 +++++---
->  1 files changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 40fc8d5..b01c491 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -606,7 +606,6 @@ static int ext2_setup_super (struct super_block * sb,
->  	if (!le16_to_cpu(es->s_max_mnt_count))
->  		es->s_max_mnt_count = cpu_to_le16(EXT2_DFL_MAX_MNT_COUNT);
->  	le16_add_cpu(&es->s_mnt_count, 1);
-> -	ext2_write_super(sb);
->  	if (test_opt (sb, DEBUG))
->  		ext2_msg(sb, KERN_INFO, "%s, %s, bs=%lu, fs=%lu, gc=%lu, "
->  			"bpg=%lu, ipg=%lu, mo=%04lx]",
-> @@ -1079,7 +1078,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_HAS_JOURNAL))
->  		ext2_msg(sb, KERN_WARNING,
->  			"warning: mounting ext3 filesystem as ext2");
-> -	ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY);
-> +	if (ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY))
-> +		sb->s_flags != MS_RDONLY;
-                            ^^ Should be |=, shouldn't it?
+> > This is 6'th version of extened inode owner patch-set.
+> > Please review it tell me what do you think about all this.
+> >  Are you agree with this approach?
+> >  Are you worry about some implementation details?
+> >  Is it ready for merge to some devel's tree?
+> Ping. I haven't got response about the patchset, just small note about
+> xattr-name from Andreas.
+> Please clarify what do you think about whole idea and
+> current patch-set state. What do i have to do to make a progress?
 
-										Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+As long as you still have the awkward ifdefs and different semantics for
+"isolation" vs "not"  there's still a NACK from me.  But in the end Al
+will have to decide if he wants to take your patches or not.
+
