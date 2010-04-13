@@ -1,39 +1,50 @@
-From: Larkin Lowrey <llowrey@nuclearwinter.com>
-Subject: Q wrt LVM snapshot of ext4 w/ external journal
-Date: Tue, 13 Apr 2010 13:22:35 -0500
-Message-ID: <4BC4B66B.9000205@nuclearwinter.com>
+From: Frederic Weisbecker <fweisbec@gmail.com>
+Subject: Re: [PATCH 0/5] ext2: Preparation to remove BKL
+Date: Tue, 13 Apr 2010 22:12:49 +0200
+Message-ID: <20100413201246.GB5602@nowhere>
+References: <1271104905-8804-1-git-send-email-jblunck@suse.de> <20100412210127.GE8285@nowhere> <201004131131.54650.arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Blunck <jblunck@suse.de>, Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from titan.nuclearwinter.com ([209.40.204.131]:54012 "EHLO
-	titan.nuclearwinter.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751694Ab0DMTIf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 15:08:35 -0400
-Received: from [10.0.0.100] (c-98-196-242-36.hsd1.tx.comcast.net [98.196.242.36])
-	(authenticated bits=0)
-	by titan.nuclearwinter.com (8.14.1/8.14.1) with ESMTP id o3DILZon030712
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Apr 2010 13:21:36 -0500
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:57070 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753021Ab0DMUM5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 16:12:57 -0400
+Content-Disposition: inline
+In-Reply-To: <201004131131.54650.arnd@arndb.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Is it safe to mount an LVM2 snapshot of an ext4 fs that has an external
-journal?
+On Tue, Apr 13, 2010 at 11:31:54AM +0200, Arnd Bergmann wrote:
+> On Monday 12 April 2010, Frederic Weisbecker wrote:
+> > It looks like this is all about .35 material.
+> > 
+> > This is going to be hard to have a separate tree to pushdown/remove
+> > the bkl in the mount path if it depends on the ext2 tree.
+> 
+> The pushdown can be in a separate tree that can be merged independently,
+> just the final patch removing it in do_new_mount needs to wait
+> for everything else to get merged first.
 
-My googling has revealed only that the snapshot procedure will cause the
-fs to checkpoint the journal (if that's the right term) but also that
-the fs will want to replay the journal when mounted, even if -o ro. If
-my journal is on an external device (NVRAM device in my case) I don't
-want the snapshot instance to interfere with the main on-line fs's use
-of the journal.
 
-Is there any documentation, other than code, that describes this scenario?
+Right.
 
-If there is another, more appropriate, venue for my question please let
-me know.
 
-Thank you,
 
---Larkin
+> We have some other patches,
+> in particular the one that makes CONFIG_BKL modular that have to
+> wait for other patches and should probably just be applied separately
+> rather than merged from a bisectable git tree.
+> 
+> 	Arnd
+
+
+Ok, no problem then.
+
+Thanks.
+
