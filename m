@@ -1,50 +1,43 @@
-From: Frederic Weisbecker <fweisbec@gmail.com>
-Subject: Re: [PATCH 0/5] ext2: Preparation to remove BKL
-Date: Tue, 13 Apr 2010 22:12:49 +0200
-Message-ID: <20100413201246.GB5602@nowhere>
-References: <1271104905-8804-1-git-send-email-jblunck@suse.de> <20100412210127.GE8285@nowhere> <201004131131.54650.arnd@arndb.de>
+From: Larkin Lowrey <llowrey@nuclearwinter.com>
+Subject: Re: Q wrt LVM snapshot of ext4 w/ external journal
+Date: Tue, 13 Apr 2010 16:06:41 -0500
+Message-ID: <4BC4DCE1.3050600@nuclearwinter.com>
+References: <4BC4B66B.9000205@nuclearwinter.com> <20100413192257.GP1849@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Blunck <jblunck@suse.de>, Jan Kara <jack@suse.cz>,
-	tytso@mit.edu,
-	Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:57070 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753021Ab0DMUM5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 16:12:57 -0400
-Content-Disposition: inline
-In-Reply-To: <201004131131.54650.arnd@arndb.de>
+Received: from titan.nuclearwinter.com ([209.40.204.131]:36256 "EHLO
+	titan.nuclearwinter.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752246Ab0DMVGn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 17:06:43 -0400
+In-Reply-To: <20100413192257.GP1849@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 13, 2010 at 11:31:54AM +0200, Arnd Bergmann wrote:
-> On Monday 12 April 2010, Frederic Weisbecker wrote:
-> > It looks like this is all about .35 material.
-> > 
-> > This is going to be hard to have a separate tree to pushdown/remove
-> > the bkl in the mount path if it depends on the ext2 tree.
-> 
-> The pushdown can be in a separate tree that can be merged independently,
-> just the final patch removing it in do_new_mount needs to wait
-> for everything else to get merged first.
+On 4/13/2010 2:22 PM, tytso@mit.edu wrote:
+> It's safe to mount the LVM2 snapshot only if you use the mount option
+> noload.  This will prevent it from using the journal, which is good,
+> since the journal is in use by the original file system.  :-)
+>
+>   
+I was able to verify that mounting with noload worked as advertised.
+Thank you. The exact message was "mounted filesystem without journal".
+> Hopefully, mounting the snapshot without using noload _should_ fail,
+> since the journal is already in use, but I'm not sure we have that
+> check in place, so I don't recommend trying it on a production file
+> system.
+I also verified that mounting w/o noload causes the mount operation to
+fail. The message was "failed to claim external journal device".
 
+When I unmounted the original fs so that the journal device was not in
+use and then tried to mount the snapshot w/o noload, the mounted
+snapshot was able to claim the journal. Of course I would never do that
+on purpose but I wanted to see what would happen. I believe this falls
+under the "don't do that or bad things will happen" category.
 
-Right.
+Thank you very much for your response to my query.
 
-
-
-> We have some other patches,
-> in particular the one that makes CONFIG_BKL modular that have to
-> wait for other patches and should probably just be applied separately
-> rather than merged from a bisectable git tree.
-> 
-> 	Arnd
-
-
-Ok, no problem then.
-
-Thanks.
-
+--Larkin
