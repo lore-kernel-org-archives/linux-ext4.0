@@ -1,38 +1,39 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Ping.
-Date: Tue, 13 Apr 2010 14:14:50 -0400
-Message-ID: <20100413181450.GA5720@infradead.org>
-References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org> <87ljd1vtth.fsf@openvz.org>
+From: Larkin Lowrey <llowrey@nuclearwinter.com>
+Subject: Q wrt LVM snapshot of ext4 w/ external journal
+Date: Tue, 13 Apr 2010 13:22:35 -0500
+Message-ID: <4BC4B66B.9000205@nuclearwinter.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, hch@infradead.org, jack@suse.cz,
-	david@fromorbit.com, viro@ZenIV.linux.org.uk, xemul@openvz.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:59035 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751463Ab0DMSOu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 14:14:50 -0400
-Content-Disposition: inline
-In-Reply-To: <87ljd1vtth.fsf@openvz.org>
+Received: from titan.nuclearwinter.com ([209.40.204.131]:54012 "EHLO
+	titan.nuclearwinter.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751694Ab0DMTIf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 15:08:35 -0400
+Received: from [10.0.0.100] (c-98-196-242-36.hsd1.tx.comcast.net [98.196.242.36])
+	(authenticated bits=0)
+	by titan.nuclearwinter.com (8.14.1/8.14.1) with ESMTP id o3DILZon030712
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Apr 2010 13:21:36 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 06, 2010 at 01:00:58PM +0400, Dmitry Monakhov wrote:
-> Dmitry Monakhov <dmonakhov@openvz.org> writes:
-> 
-> > This is 6'th version of extened inode owner patch-set.
-> > Please review it tell me what do you think about all this.
-> >  Are you agree with this approach?
-> >  Are you worry about some implementation details?
-> >  Is it ready for merge to some devel's tree?
-> Ping. I haven't got response about the patchset, just small note about
-> xattr-name from Andreas.
-> Please clarify what do you think about whole idea and
-> current patch-set state. What do i have to do to make a progress?
+Is it safe to mount an LVM2 snapshot of an ext4 fs that has an external
+journal?
 
-As long as you still have the awkward ifdefs and different semantics for
-"isolation" vs "not"  there's still a NACK from me.  But in the end Al
-will have to decide if he wants to take your patches or not.
+My googling has revealed only that the snapshot procedure will cause the
+fs to checkpoint the journal (if that's the right term) but also that
+the fs will want to replay the journal when mounted, even if -o ro. If
+my journal is on an external device (NVRAM device in my case) I don't
+want the snapshot instance to interfere with the main on-line fs's use
+of the journal.
 
+Is there any documentation, other than code, that describes this scenario?
+
+If there is another, more appropriate, venue for my question please let
+me know.
+
+Thank you,
+
+--Larkin
