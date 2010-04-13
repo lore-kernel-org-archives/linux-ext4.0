@@ -1,60 +1,95 @@
-From: tytso@mit.edu
-Subject: Re: No space left on device after many files creation
-Date: Mon, 12 Apr 2010 18:44:29 -0400
-Message-ID: <20100412224429.GN1849@thunk.org>
-References: <4BC38EB9.8080501@gmail.com>
- <4BC39098.4030704@redhat.com>
- <4BC39762.9080406@gmail.com>
- <4BC39805.7090807@redhat.com>
+From: john stultz <johnstul@us.ibm.com>
+Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Mon, 12 Apr 2010 20:52:57 -0700
+Message-ID: <1271130777.3469.18.camel@localhost.localdomain>
+References: <1270682478.3755.58.camel@localhost.localdomain>
+	 <20100408034631.GB23188@thunk.org>
+	 <1270759317.3373.7.camel@localhost.localdomain>
+	 <20100408211054.GB1849@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: cy6erGn0m <cy6ergn0m@gmail.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33884 "EHLO thunker.thunk.org"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:37364 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754021Ab0DLX4p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Apr 2010 19:56:45 -0400
-Content-Disposition: inline
-In-Reply-To: <4BC39805.7090807@redhat.com>
+	id S1750944Ab0DMDxC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Apr 2010 23:53:02 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by e2.ny.us.ibm.com (8.14.3/8.13.1) with ESMTP id o3D3flIq001907
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 23:41:47 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o3D3r2GR160536
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 23:53:02 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o3D3r13D030926
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Apr 2010 23:53:02 -0400
+In-Reply-To: <20100408211054.GB1849@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 12, 2010 at 05:00:37PM -0500, Eric Sandeen wrote:
-> cy6erGn0m wrote:
-> > In the past I have done the same test for ext3 and it was created ~=
-10M
-> > files in one firectory at working filesystem (/home) and it was no
-> > issues reached.
-> >=20
-> > On ext4 i found inodes max size is limited as you wrote:
-> > [root@cgmachine sandbox]# df -i /e4
-> > =D0=A4=D0=B0=D0=B9=D0=BB=D0=BE=D0=B2=D0=B0=D1=8F =D1=81=D0=B8=D1=81=
-=D1=82=D0=B5=D0=BC=D0=B0      =D0=98=D0=BD=D0=BE=D0=B4=D0=BE=D0=B2   =D0=
-=98=D1=81=D0=BF=D0=BE=D0=BB   =D0=A1=D0=B2=D0=BE=D0=B1  =D0=98=D1=81=D0=
-=BF % =D1=81=D0=BC=D0=BE=D0=BD=D1=82=D0=B8=D1=80=D0=BE=D0=B2=D0=B0=D0=BD=
-=D0=B0 =D0=BD=D0=B0
-> > (file system/inodes/used/free/used%/mounted on)
-> > /dev/sda4               1,8M    1,8M       0  100% /e4
-> > [root@cgmachine sandbox]#
-> >=20
-> > Why inodes count limit is so small by default? Is it depends on
-> > partition size?
->=20
-> it does depend on partition size; the inode_ratio =3D 16384 in mke2fs=
-=2Econf
-> says 1 inode per 16k of filesystem space.
+On Thu, 2010-04-08 at 17:10 -0400, tytso@mit.edu wrote:
+> > Any thoughts for ways to rework the state_lock in start_this_handle?
+> > (Now that its at the top of the contention logs? :)
+> 
+> That's going to be much harder.  We're going to have to take
+> j_state_lock at some point inside start_this_handle.  We might be able
+> to decrease the amount of code which is run while the spinlock is
+> taken, but I very much doubt it's possible to eliminate that spinlock
+> entirely.
+> 
+> Do you have detailed lockstat information showing the hold-time and
+> wait-time of j_lock_stat (especially in start_this_handle)?
 
-1.8 million inodes is hardly small.....  most people complain that
-we're reserving too much space for inodes. =20
+Hey Ted,
+	Sorry this took so long. I've been using a fairly large pile of patches
+in my testing on top of -rt, and since with -rt lockstat is less useful
+(you don't get any of the contention data for mutexes, and the contended
+spinlocks are always the internal rtmutex locks), I tried to regenerate
+the data on something closer to plain vanilla.
 
-Cy6erGn0m, What is your use case where the average file size for your
-20G partition is smaller that 16k?
+So I ran dbench with 2.6.33, 2.6.33 + Nick Piggin's VFS scalability
+patches, and 2.6.33 + Nick's patches + your state-lock patch on an 8 cpu
+system. 
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Here's the chart of the performance difference:
+http://sr71.net/~jstultz/dbench-scalability/graphs/2.6.33-ext4-state-lock/2.6.33_ext4-state-lock.png
+
+Here's the perf log output:
+http://sr71.net/~jstultz/dbench-scalability/perflogs/2.6.33-ext4-state-lock/
+
+And finally, as requested, here's the lockstat data:
+http://sr71.net/~jstultz/dbench-scalability/lockstat/2.6.33-ext4-state-lock/
+
+
+Now, again, because the -rt kernel amplifies the contention cost, the
+data above doesn't show as much pain at only 8 cpus as we see with -rt.
+However, the contention does show up, and your patch helps. 
+
+In fact, with your patch, I'm not seeing any major contention in the
+perf logs at 8 cpus. Although the lockstat logs still show:
+
+t_handle_lock contention in start_This_handle/jbd2_journal_stop
+	- Likely the j_stat_lock was previously serializing this
+
+j_state_lock contention in start_this_handle
+	- Expected
+
+j_revoke_lock contention in find_revoke_record
+	- Also observed by Tim Chen
+
+
+
+Let me know if there's any other data you'd like to see.
+
+thanks
+-john
+
+
+
+
+
