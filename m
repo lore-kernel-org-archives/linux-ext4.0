@@ -1,43 +1,59 @@
-From: Larkin Lowrey <llowrey@nuclearwinter.com>
-Subject: Re: Q wrt LVM snapshot of ext4 w/ external journal
-Date: Tue, 13 Apr 2010 16:06:41 -0500
-Message-ID: <4BC4DCE1.3050600@nuclearwinter.com>
-References: <4BC4B66B.9000205@nuclearwinter.com> <20100413192257.GP1849@thunk.org>
+From: john stultz <johnstul@us.ibm.com>
+Subject: Re: ext4 dbench performance with CONFIG_PREEMPT_RT
+Date: Tue, 13 Apr 2010 20:04:50 -0700
+Message-ID: <1271214290.2169.254.camel@localhost>
+References: <1270682478.3755.58.camel@localhost.localdomain>
+	 <20100408034631.GB23188@thunk.org>
+	 <1270759317.3373.7.camel@localhost.localdomain>
+	 <20100408211054.GB1849@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="ISO-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	keith maanthey <kmannth@us.ibm.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Ingo Molnar <mingo@elte.hu>, Darren Hart <dvhltc@us.ibm.com>,
+	djwong <djwong@linux.vnet.ibm.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from titan.nuclearwinter.com ([209.40.204.131]:36256 "EHLO
-	titan.nuclearwinter.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752246Ab0DMVGn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 17:06:43 -0400
-In-Reply-To: <20100413192257.GP1849@thunk.org>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:54708 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752012Ab0DNDEx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Apr 2010 23:04:53 -0400
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by e38.co.us.ibm.com (8.14.3/8.13.1) with ESMTP id o3E2wmxb028285
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Apr 2010 20:58:48 -0600
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o3E34qUq123850
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Apr 2010 21:04:52 -0600
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o3E37Urr007523
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Apr 2010 21:07:31 -0600
+In-Reply-To: <20100408211054.GB1849@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/13/2010 2:22 PM, tytso@mit.edu wrote:
-> It's safe to mount the LVM2 snapshot only if you use the mount option
-> noload.  This will prevent it from using the journal, which is good,
-> since the journal is in use by the original file system.  :-)
->
->   
-I was able to verify that mounting with noload worked as advertised.
-Thank you. The exact message was "mounted filesystem without journal".
-> Hopefully, mounting the snapshot without using noload _should_ fail,
-> since the journal is already in use, but I'm not sure we have that
-> check in place, so I don't recommend trying it on a production file
-> system.
-I also verified that mounting w/o noload causes the mount operation to
-fail. The message was "failed to claim external journal device".
+On Thu, 2010-04-08 at 17:10 -0400, tytso@mit.edu wrote:
+> On Thu, Apr 08, 2010 at 01:41:57PM -0700, john stultz wrote:
+> > 
+> > I'll continue to play with your patch and see if I can con some some
+> > folks with more interesting storage setups to do some testing as well.
+> 
+> You might want to ask djwong to play with it with his nice big
+> machine.  (We don't need a big file system, but we want as many CPU's
+> as possible, and to use his "mailserver" workload to really stress the
+> journal.  I'd recommend using barrier=0 for additional journal
+> lock-level stress testing, and then try some forced sysrq-b reboots
+> and then make sure that the filesystem is consistent after the journal
+> replay.)
 
-When I unmounted the original fs so that the journal device was not in
-use and then tried to mount the snapshot w/o noload, the mounted
-snapshot was able to claim the journal. Of course I would never do that
-on purpose but I wanted to see what would happen. I believe this falls
-under the "don't do that or bad things will happen" category.
+So I did the above on a 16way that I borrowed from Keith and Darrick.
+Got about 5 power-cycles and the journal was recovered and reported
+clean by fsck on bootup each time.
 
-Thank you very much for your response to my query.
+So, again, doesn't prove its right, but nothing blew up. 
 
---Larkin
+thanks
+-john
+ 
+
