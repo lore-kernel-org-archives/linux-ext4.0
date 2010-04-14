@@ -1,74 +1,192 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: ext34_free_inode's mess
-Date: Wed, 14 Apr 2010 18:33:30 +0400
-Message-ID: <87d3y23xz9.fsf@openvz.org>
-References: <87pr2246y4.fsf@openvz.org> <20100414133440.GD3616@quack.suse.cz>
+Date: Wed, 14 Apr 2010 11:01:16 -0500
+Message-ID: <4BC5E6CC.7030709@redhat.com>
+References: <87pr2246y4.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, xfs-oss <xfs@oss.sgi.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:21741 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:60169 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755555Ab0DNOdn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Apr 2010 10:33:43 -0400
-In-Reply-To: <20100414133440.GD3616@quack.suse.cz> (Jan Kara's message of
-	"Wed, 14 Apr 2010 15:34:40 +0200")
+	id S1756055Ab0DNQBZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Apr 2010 12:01:25 -0400
+In-Reply-To: <87pr2246y4.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+Dmitry Monakhov wrote:
+> I've finally automated my favorite testcase (see attachment), 
+> before i've run it by hand.
 
-> On Wed 14-04-10 15:19:47, Dmitry Monakhov wrote:
->> I've finally automated my favorite testcase (see attachment), 
->> before i've run it by hand.
->> And sometimes i've saw following complain from fsck:
->> fsck.ext4 -f -n /dev/sdb2
->> ...
->> Pass 5: Checking group summary information
->> Inode bitmap differences:  -93582
->> Fix? no
->> 
->> Free inodes count wrong for group #12 (4634, counted=4633).
->> Fix? no
->> 
->> Free inodes count wrong (35610, counted=35609).
->> Fix? no
->> ...
->   Interesting. So some inode is marked as free although it is in
-> use, right? That sounds like a nasty bug - if you reproduce this
-> again, could you use debugfs to find out what file type is that
-> inode? It could help looking for the bug.
-No problems, 
-wget http://download.openvz.org/~dmonakhov/junk/sdb2-2.bz2
-In fact i've had even better image (with only 1 free inode in a
-group, but full bitmask) unfortunately i forgot to save it.
->
->> I've started to look an inode bitmap manipulation code paths
->> and found strange logic in ext{3,4}_free_inode functions
->> 
->> 1) Group lock acquired twice for bitmap and for group_desc.
->>    There are not any advantage from this double locking, only
->>    error path(where the bit is already cleared) takes an
->>    advantage from this locking schema.
->>    It is reasonable to batch it in to one locking block.
->   I guess you think that this happens because we pass the lock parameter
-> to ext3_clear_bit_atomic. But if you would actually look at the definition
-> of the function, you would see that it's hard to find an architecture that
-> uses the lock. Most architectures just use atomic bitop to clear the bit.
-> I actually fail to see why anyone would need the lock - probably Ted knows
-> :).
->
->> 2) if we failed to read gdp then bh2 is undefined so
->>    may result in oops due to undefince pointer dereferance.
->   No, because during mount time we check that all gdp pointers exist so
-> ext3_get_group_desc can never fail after the mount has succeeded.
-Yes, that is right,  why we have to check gdp to NULL when?
->> 3) if we failed to get write_access to gdp we skip
->>    handle_dirty_metadata for inode_bitmap which is also a bug.
->   It doesn't matter. At the moment ext3_journal_get_write_access fails we
-> abort the journal so no writes are allowed to the filesystem anyway. So
-> modified bitmap has hardly any chance to get to disk and you have to
-> run fsck to clean up the mess anyway...
->
-> 								Honza
+Thanks!  Feel free to cc: the xfs list since the patch hits
+xfstests.  (I added it here)
+
+>  227     |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  227.out |    5 +++
+>  group   |    1 +
+>  3 files changed, 111 insertions(+), 0 deletions(-)
+>  create mode 100755 227
+>  create mode 100644 227.out
+> 
+> diff --git a/227 b/227
+> new file mode 100755
+> index 0000000..d2b0c7d
+> --- /dev/null
+> +++ b/227
+> @@ -0,0 +1,105 @@
+> +#! /bin/bash
+> +# FS QA Test No. 227
+> +#
+> +# Perform fsstress test with parallel dd
+> +# This proven to be a good stress test
+> +# * Continuous dd retult in ENOSPC condition but only for a limited periods
+> +#   of time.
+> +# * Fsstress test cover many code paths
+
+just little editor nitpicks: 
+
++# Perform fsstress test with parallel dd
++# This is proven to be a good stress test
++# * Continuous dd results in ENOSPC condition but only for a limited period
++#   of time.
++# * Fsstress test covers many code paths
+
+
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2010 Dmitry Monakhov.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#
+> +#-----------------------------------------------------------------------
+> +#
+> +# creator
+> +owner=dmonakhov@openvz.org
+> +
+> +seq=`basename $0`
+> +echo "QA output created by $seq"
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1	# failure is the default!
+> +
+> +_cleanup()
+> +{
+> +    rm -f $tmp.*
+> +}
+> +
+> +workout()
+> +{
+> +    # Disable bash job controll, to prevent message about killed task.
+
+s/controll/control/
+
+> +    set +m
+> +
+> +    #Timing parameters
+> +    nr_iterations=5
+> +    kill_tries=20
+> +    echo Running fsstress. | tee -a $seq.full
+> +
+> +####################################################
+
+What is all this for?
+
+FWIW other fsstress tests use an $FSSTRESS_AVOID variable,
+where you can set the things you want to avoid easily
+
+> +##    -f unresvsp=0 -f allocsp=0 -f freesp=0 \
+> +##    -f setxattr=0 -f attr_remove=0 -f attr_set=0 \
+> +## 
+> +######################################################
+> +    mkdir -p $SCRATCH_MNT/fsstress
+> +    # It is reasonable to disable sync, otherwise most of tasks will simply
+> +    # stuck in that sync() call.
+> +    $FSSTRESS_PROG \
+> +	-d $SCRATCH_MNT/fsstress \
+> +	-p 100 -f sync=0  -n 9999999 > /dev/null 2>&1 &
+> +
+> +    echo Running ENOSPC hitters. | tee -a $seq.full
+> +    for ((i = 0; i < $nr_iterations; i++))
+> +    do
+> +	#Open with O_TRUNC and then write until error
+> +	#hit ENOSPC each time.
+> +	dd if=/dev/zero of=$SCRATCH_MNT/BIG_FILE bs=1M 2> /dev/null
+> +    done
+> +
+> +    for ((i = 0; i < $kill_tries; i++))
+> +    do
+> +	killall -r -q -TERM fsstress 2> /dev/null
+> +	sleep 1
+> +    done
+> +}
+> +
+> +trap "_cleanup ; exit \$status" 0 1 2 3 15
+> +
+> +# get standard environment, filters and checks
+> +. ./common.rc
+> +. ./common.filter
+> +
+> +# real QA test starts here
+> +_supported_fs generic
+> +_supported_os Linux
+> +_require_scratch
+> +
+> +rm -f $seq.full
+> +
+> +umount $TEST_DEV >/dev/null 2>&1
+> +umount $SCRATCH_DEV >/dev/null 2>&1
+> +echo "*** MKFS ***"                         >>$seq.full
+> +echo ""                                     >>$seq.full
+> +_scratch_mkfs    >/dev/null 2>&1 || _fail "mkfs failed"
+> +_scratch_mount   >/dev/null 2>&1 || _fail "mount failed"
+> +
+> +workout
+> +umount $SCRATCH_MNT
+> +echo 
+> +echo Checking filesystem
+> +_check_scratch_fs
+> +status=$?
+> +exit
+> diff --git a/227.out b/227.out
+> new file mode 100644
+> index 0000000..6a7342d
+> --- /dev/null
+> +++ b/227.out
+> @@ -0,0 +1,5 @@
+> +QA output created by 227
+> +Running fsstress.
+> +Running ENOSPC hitters.
+> +
+> +Checking filesystem
+> diff --git a/group b/group
+> index 8d4a83a..81a2aa4 100644
+> --- a/group
+> +++ b/group
+> @@ -339,3 +339,4 @@ deprecated
+>  223 auto quick
+>  224 auto
+>  225 auto quick
+> +227 rw auto prealloc enospc
+
+Is this prealloc just because fsstress may run resvsp?
+FWIW, other fsstress tests aren't in that group, so this is
+as little inconsistent.
+
+Thanks for writing an xfstests patch! :)
+
+-Eric
