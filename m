@@ -1,185 +1,215 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [RFC][PATCH 3/3] ext4: add EXT4_IOC_GET_PA to get inode PA information
-Date: Wed, 14 Apr 2010 17:19:55 +0900
-Message-ID: <4BC57AAB.3060400@sx.jp.nec.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: ext34_free_inode's mess
+Date: Wed, 14 Apr 2010 15:19:47 +0400
+Message-ID: <87pr2246y4.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org
-To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:6143 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754869Ab0DNLTz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Apr 2010 07:19:55 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This ioctl gets the information of all inode PAs in the target inode.
-The interface of this ioctl is like FS_IOC_FIEMAP. If we call this ioctl, we
-get the array of struct ext4_prealloc_info that stores the information of inode
-PA.
+--=-=-=
 
- INTERFACE
------------
+I've finally automated my favorite testcase (see attachment), 
+before i've run it by hand.
+And sometimes i've saw following complain from fsck:
+fsck.ext4 -f -n /dev/sdb2
+...
+Pass 5: Checking group summary information
+Inode bitmap differences:  -93582
+Fix? no
 
-#define EXT4_IOC_GET_PA		_IOWR('f', 17, struct ext4_prealloc_list)
+Free inodes count wrong for group #12 (4634, counted=4633).
+Fix? no
 
-struct ext4_prealloc_list {
-	__u32 pl_count;		/* size of pl_space array (in) */
-	__u32 pl_mapped;	/* number of PAs that were mapped (out) */
-	__u32 pl_entries;	/* number of PAs the inode has (out) */
-	struct ext4_prealloc_info pl_space[0];	/* array of mapped PAs (out) */
-};
+Free inodes count wrong (35610, counted=35609).
+Fix? no
+...
 
-pl_count specifies the number of elements in the pl_space[] array that can be
-used to return inode PAs. If pl_count is zero, no inode PAs will be returned.
-Moreover, if pl_count is set the value that is better than the number of
-elements in the pl_space array, this ioctl returns EFAULT.
+I've started to look an inode bitmap manipulation code paths
+and found strange logic in ext{3,4}_free_inode functions
 
-pl_mapped shows the number of getting inode PAs, and pl_entries shows the
-number of inode PAs in the target inode. You can confirm that we could get all
-inode PAs in the target inode by comparison with pl_mapped and pl_entries.
+1) Group lock acquired twice for bitmap and for group_desc.
+   There are not any advantage from this double locking, only
+   error path(where the bit is already cleared) takes an
+   advantage from this locking schema.
+   It is reasonable to batch it in to one locking block.
+2) if we failed to read gdp then bh2 is undefined so
+   may result in oops due to undefince pointer dereferance.
+3) if we failed to get write_access to gdp we skip
+   handle_dirty_metadata for inode_bitmap which is also a bug.
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+I've redesigned free_inode logic(see later two emails) and
+currently i'm not able to reproduce the bug, but i can not
+guarantee it is goes away.
+
+
+--=-=-=
+Content-Disposition: inline;
+ filename=0001-xfstests-dev-add-one-more-stress-test.patch
+
+>From 1857fc6c7349a67cf930e73b802427a138e43456 Mon Sep 17 00:00:00 2001
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Date: Wed, 14 Apr 2010 14:53:47 +0400
+Subject: [PATCH] xfstests-dev: add one more stress test
+
+During stress testing we want to cover most of code paths.
+fsstress is very good for this purpose. But it has expandable
+nature (disk usage almost continually grow). So once we
+goes it no ENOSPC condition we will be where till the end.
+
+But by running 'dd' in parallel we can regularly trigger
+ENOSPC but only for a limited periods of time.
+
+This is my favorite stress test-case configuration.
 ---
- fs/ext4/ext4.h    |   11 +++++++++++
- fs/ext4/ioctl.c   |   32 ++++++++++++++++++++++++++++++++
- fs/ext4/mballoc.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 87 insertions(+), 0 deletions(-)
+ 227     |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 227.out |    5 +++
+ group   |    1 +
+ 3 files changed, 111 insertions(+), 0 deletions(-)
+ create mode 100755 227
+ create mode 100644 227.out
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b6be407..4b03362 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -141,6 +141,14 @@ struct ext4_prealloc_info {
- 	__u16 pi_flags;		/* flags for the inode PA setting ioctl (in) */
- };
- 
-+/* inode PA list */
-+struct ext4_prealloc_list {
-+	__u32 pl_count;		/* size of pl_space array (in) */
-+	__u32 pl_mapped;	/* number of PAs that were mapped (out) */
-+	__u32 pl_entries;	/* number of PAs the inode has (out) */
-+	struct ext4_prealloc_info pl_space[0];	/* array of mapped PAs (out) */
-+};
+diff --git a/227 b/227
+new file mode 100755
+index 0000000..d2b0c7d
+--- /dev/null
++++ b/227
+@@ -0,0 +1,105 @@
++#! /bin/bash
++# FS QA Test No. 227
++#
++# Perform fsstress test with parallel dd
++# This proven to be a good stress test
++# * Continuous dd retult in ENOSPC condition but only for a limited periods
++#   of time.
++# * Fsstress test cover many code paths
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2010 Dmitry Monakhov.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=dmonakhov@openvz.org
 +
- /*
-  * For delayed allocation tracking
-  */
-@@ -414,6 +422,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- #define EXT4_IOC_CONTROL_PA		_IOWR('f', 16, struct ext4_prealloc_info)
-+#define EXT4_IOC_GET_PA			_IOWR('f', 17, struct ext4_prealloc_list)
- 
- /*
-  * ioctl commands in 32 bit emulation
-@@ -1461,6 +1470,8 @@ extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
- 						ext4_group_t, int);
- extern int ext4_mb_control_pa(struct inode *inode,
- 				struct ext4_prealloc_info *pi);
-+extern int ext4_mb_get_pa(struct inode *inode, struct ext4_prealloc_list *pl,
-+			  struct ext4_prealloc_info *dest);
- /* inode.c */
- struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index ed68a83..81e2016 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -424,6 +424,37 @@ mext_out:
- 		return err;
- 	}
- 
-+	case EXT4_IOC_GET_PA:
-+	{
-+		struct ext4_prealloc_list pl;
-+		struct ext4_prealloc_info *dest;
-+		int err;
++seq=`basename $0`
++echo "QA output created by $seq"
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
 +
-+		if (!S_ISREG(inode->i_mode))
-+			return -EINVAL;
-+		if (!(filp->f_mode & FMODE_READ))
-+			return -EBADF;
-+
-+		if (copy_from_user(&pl,
-+			(struct ext4_prealloc_list __user *)arg, sizeof(pl)))
-+			return -EFAULT;
-+
-+		dest = (struct ext4_prealloc_info *)(arg + sizeof(pl));
-+		if (!access_ok(VERIFY_WRITE,
-+			      (struct ext4_prealloc_info __force __user *)dest,
-+			      pl.pl_count * sizeof(struct ext4_prealloc_info)))
-+			return -EFAULT;
-+
-+		err = ext4_mb_get_pa(inode, &pl, dest);
-+
-+		if (err)
-+			return err;
-+
-+		if (copy_to_user((struct ext4_prealloc_list __user *)arg,
-+					&pl, sizeof(pl)))
-+			return -EFAULT;
-+		return err;
-+	}
- 
- 	default:
- 		return -ENOTTY;
-@@ -473,6 +504,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case EXT4_IOC_MOVE_EXT:
- 		break;
- 	case EXT4_IOC_CONTROL_PA:
-+	case EXT4_IOC_GET_PA:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 317a98a..af8b15b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5041,3 +5041,47 @@ out:
- 	return err1;
- }
- 
-+/**
-+ * ext4_mb_get_pa - Pass inode PA information to user space
-+ *
-+ * @inode:	target inode
-+ * @pl:		information of the inode PA list (in/out)
-+ * @dest:	user space address where PAs' information is written to
-+ *
-+ * Return 0 if success or error code on failure.
-+ */
-+int ext4_mb_get_pa(struct inode *inode, struct ext4_prealloc_list *pl,
-+		   struct ext4_prealloc_info *dest)
++_cleanup()
 +{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_prealloc_space *pa;
-+	struct ext4_prealloc_info pi;
-+
-+	pl->pl_entries = 0;
-+	pl->pl_mapped = 0;
-+
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(pa, &ei->i_prealloc_list, pa_inode_list) {
-+		pl->pl_entries++;
-+		if (pl->pl_mapped < pl->pl_count) {
-+			memset(&pi, 0, sizeof(pi));
-+			pi.pi_pstart = pa->pa_pstart;
-+			pi.pi_lstart = pa->pa_lstart;
-+			pi.pi_len = pa->pa_len;
-+			pi.pi_free = pa->pa_free;
-+
-+			rcu_read_unlock();
-+			if (copy_to_user(
-+			       (struct ext4_prealloc_info __force __user *)dest,
-+							&pi, sizeof(pi))) {
-+				return -EFAULT;
-+			}
-+			dest++;
-+			pl->pl_mapped++;
-+			rcu_read_lock();
-+		}
-+	}
-+	rcu_read_unlock();
-+
-+	return 0;
++    rm -f $tmp.*
 +}
++
++workout()
++{
++    # Disable bash job controll, to prevent message about killed task.
++    set +m
++
++    #Timing parameters
++    nr_iterations=5
++    kill_tries=20
++    echo Running fsstress. | tee -a $seq.full
++
++####################################################
++##    -f unresvsp=0 -f allocsp=0 -f freesp=0 \
++##    -f setxattr=0 -f attr_remove=0 -f attr_set=0 \
++## 
++######################################################
++    mkdir -p $SCRATCH_MNT/fsstress
++    # It is reasonable to disable sync, otherwise most of tasks will simply
++    # stuck in that sync() call.
++    $FSSTRESS_PROG \
++	-d $SCRATCH_MNT/fsstress \
++	-p 100 -f sync=0  -n 9999999 > /dev/null 2>&1 &
++
++    echo Running ENOSPC hitters. | tee -a $seq.full
++    for ((i = 0; i < $nr_iterations; i++))
++    do
++	#Open with O_TRUNC and then write until error
++	#hit ENOSPC each time.
++	dd if=/dev/zero of=$SCRATCH_MNT/BIG_FILE bs=1M 2> /dev/null
++    done
++
++    for ((i = 0; i < $kill_tries; i++))
++    do
++	killall -r -q -TERM fsstress 2> /dev/null
++	sleep 1
++    done
++}
++
++trap "_cleanup ; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_require_scratch
++
++rm -f $seq.full
++
++umount $TEST_DEV >/dev/null 2>&1
++umount $SCRATCH_DEV >/dev/null 2>&1
++echo "*** MKFS ***"                         >>$seq.full
++echo ""                                     >>$seq.full
++_scratch_mkfs    >/dev/null 2>&1 || _fail "mkfs failed"
++_scratch_mount   >/dev/null 2>&1 || _fail "mount failed"
++
++workout
++umount $SCRATCH_MNT
++echo 
++echo Checking filesystem
++_check_scratch_fs
++status=$?
++exit
+diff --git a/227.out b/227.out
+new file mode 100644
+index 0000000..6a7342d
+--- /dev/null
++++ b/227.out
+@@ -0,0 +1,5 @@
++QA output created by 227
++Running fsstress.
++Running ENOSPC hitters.
++
++Checking filesystem
+diff --git a/group b/group
+index 8d4a83a..81a2aa4 100644
+--- a/group
++++ b/group
+@@ -339,3 +339,4 @@ deprecated
+ 223 auto quick
+ 224 auto
+ 225 auto quick
++227 rw auto prealloc enospc
+\ No newline at end of file
+-- 
+1.6.6
+
+
+--=-=-=--
