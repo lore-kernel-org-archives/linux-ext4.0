@@ -1,136 +1,232 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: ext34_free_inode's mess
-Date: Thu, 15 Apr 2010 09:47:13 +1000
-Message-ID: <20100414234713.GM2493@dastard>
-References: <87pr2246y4.fsf@openvz.org>
- <4BC5E6CC.7030709@redhat.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond
+ i_size
+Date: Wed, 14 Apr 2010 17:28:31 -0400
+Message-ID: <20100414212831.GD19959@thunk.org>
+References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-        Dmitry Monakhov <dmonakhov@openvz.org>, Jan Kara <jack@suse.cz>,
-        xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:33735 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754841Ab0DOF4O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 01:56:14 -0400
 Content-Disposition: inline
-In-Reply-To: <4BC5E6CC.7030709@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 14, 2010 at 11:01:16AM -0500, Eric Sandeen wrote:
-> Dmitry Monakhov wrote:
-> > I've finally automated my favorite testcase (see attachment), 
-> > before i've run it by hand.
-> 
-> Thanks!  Feel free to cc: the xfs list since the patch hits
-> xfstests.  (I added it here)
-> 
-> >  227     |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-> >  227.out |    5 +++
-> >  group   |    1 +
-> >  3 files changed, 111 insertions(+), 0 deletions(-)
-> >  create mode 100755 227
-> >  create mode 100644 227.out
-> > 
-> > diff --git a/227 b/227
-> > new file mode 100755
-> > index 0000000..d2b0c7d
-> > --- /dev/null
-> > +++ b/227
-> > @@ -0,0 +1,105 @@
-> > +#! /bin/bash
-> > +# FS QA Test No. 227
-> > +#
-> > +# Perform fsstress test with parallel dd
-> > +# This proven to be a good stress test
-> > +# * Continuous dd retult in ENOSPC condition but only for a limited periods
-> > +#   of time.
-> > +# * Fsstress test cover many code paths
-> 
-> just little editor nitpicks: 
-> 
-> +# Perform fsstress test with parallel dd
-> +# This is proven to be a good stress test
-> +# * Continuous dd results in ENOSPC condition but only for a limited period
-> +#   of time.
-> +# * Fsstress test covers many code paths
+This is a slightly revised version of the patch where I've made to
+keep ext4_ext_convert_to_initialized() and
+ext4_split_unwritten_extents() more in sync with each other.  (If you
+use "meld" on the these two functions, it's really clear they are very
+similar to each other, and really need to be combined --- my plan is
+to smash the two functions together and call the result
+ext4_prepare_uninit_extent().)
 
-This is close to the same as test 083:
+I think it should be functionality equivalent to Dmitriy's original
+patch; aside from mostly syntatic/cosmetic changes and spelling fixes,
+the only substantive change I made was simplifying the may_zeroout
+calculation by changing how eof_block is calculated.  I've run it
+through xfstests, and it's passing.
 
-# Exercise filesystem full behaviour - run numerous fsstress
-# processes in write mode on a small filesystem.  NB: delayed
-# allocate flushing is quite deadlock prone at the filesystem
-# full boundary due to the fact that we will retry allocation
-# several times after flushing, before giving back ENOSPC.
+					- Ted
 
-That test is not really doing anything XFS specific,
-so could easily be modified to run on generic filesystems...
+ext4: Do not zeroout uninitialized extents beyond i_size
 
-> > +
-> > +    #Timing parameters
-> > +    nr_iterations=5
-> > +    kill_tries=20
-> > +    echo Running fsstress. | tee -a $seq.full
-> > +
-> > +####################################################
-> 
-> What is all this for?
-> 
-> FWIW other fsstress tests use an $FSSTRESS_AVOID variable,
-> where you can set the things you want to avoid easily
-> 
-> > +##    -f unresvsp=0 -f allocsp=0 -f freesp=0 \
-> > +##    -f setxattr=0 -f attr_remove=0 -f attr_set=0 \
-> > +## 
-> > +######################################################
-> > +    mkdir -p $SCRATCH_MNT/fsstress
-> > +    # It is reasonable to disable sync, otherwise most of tasks will simply
-> > +    # stuck in that sync() call.
-> > +    $FSSTRESS_PROG \
-> > +	-d $SCRATCH_MNT/fsstress \
-> > +	-p 100 -f sync=0  -n 9999999 > /dev/null 2>&1 &
-> > +
-> > +    echo Running ENOSPC hitters. | tee -a $seq.full
-> > +    for ((i = 0; i < $nr_iterations; i++))
-> > +    do
-> > +	#Open with O_TRUNC and then write until error
-> > +	#hit ENOSPC each time.
-> > +	dd if=/dev/zero of=$SCRATCH_MNT/BIG_FILE bs=1M 2> /dev/null
-> > +    done
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-OK, so on a 10GB scratch device, this is going to write 50GB of
-data, which at 100MB/s is going to take roughly 10 minutes.
-The test should use a limited size filesystems (mkfs_scratch_sized)
-to limit the runtime...
+The extents code will sometimes zero out blocks and mark them as
+initialized instead of splitting an extent into several smaller ones.
+This optimization however, causes problems if the extent is beyond
+i_size because fsck will complain if there are uninitialized blocks
+after i_size as this can not be distinguished from an inode that has
+an incorrect i_size field.
 
-FWIW, test 083 spends most of it's runtime at or near ENOSPC, so
-once again I wonder if that is not a better test to be using...
+https://bugzilla.kernel.org/show_bug.cgi?id=15742
 
-> > +workout
-> > +umount $SCRATCH_MNT
-> > +echo 
-> > +echo Checking filesystem
-> > +_check_scratch_fs
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c |   66 ++++++++++++++++++++++++++++++++++++++++-------------
+ 1 files changed, 50 insertions(+), 16 deletions(-)
 
-You don't need to check the scratch fs in the test - that is done by
-the test harness after the test completes.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 228eeaf..7c0438e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2631,11 +2631,21 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	struct ext4_extent *ex2 = NULL;
+ 	struct ext4_extent *ex3 = NULL;
+ 	struct ext4_extent_header *eh;
+-	ext4_lblk_t ee_block;
++	ext4_lblk_t ee_block, eof_block;
+ 	unsigned int allocated, ee_len, depth;
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
+ 	int ret = 0;
++	int may_zeroout;
++
++	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
++		"block %llu, max_blocks %u\n", inode->i_ino,
++		(unsigned long long)iblock, max_blocks);
++
++	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
++		inode->i_sb->s_blocksize_bits;
++	if (eof_block < iblock + max_blocks)
++		eof_block = iblock + max_blocks;
+ 
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+@@ -2644,16 +2654,23 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	allocated = ee_len - (iblock - ee_block);
+ 	newblock = iblock - ee_block + ext_pblock(ex);
++
+ 	ex2 = ex;
+ 	orig_ex.ee_block = ex->ee_block;
+ 	orig_ex.ee_len   = cpu_to_le16(ee_len);
+ 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+ 
++	/*
++	 * It is safe to convert extent to initialized via explicit
++	 * zeroout only if extent is fully insde i_size or new_size.
++	 */
++	may_zeroout = ee_block + ee_len <= eof_block;
++
+ 	err = ext4_ext_get_access(handle, inode, path + depth);
+ 	if (err)
+ 		goto out;
+ 	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
+-	if (ee_len <= 2*EXT4_EXT_ZERO_LEN) {
++	if (ee_len <= 2*EXT4_EXT_ZERO_LEN && may_zeroout) {
+ 		err =  ext4_ext_zeroout(inode, &orig_ex);
+ 		if (err)
+ 			goto fix_extent_len;
+@@ -2684,7 +2701,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	if (allocated > max_blocks) {
+ 		unsigned int newdepth;
+ 		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
+-		if (allocated <= EXT4_EXT_ZERO_LEN) {
++		if (allocated <= EXT4_EXT_ZERO_LEN && may_zeroout) {
+ 			/*
+ 			 * iblock == ee_block is handled by the zerouout
+ 			 * at the beginning.
+@@ -2760,7 +2777,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3, 0);
+-		if (err == -ENOSPC) {
++		if (err == -ENOSPC && may_zeroout) {
+ 			err =  ext4_ext_zeroout(inode, &orig_ex);
+ 			if (err)
+ 				goto fix_extent_len;
+@@ -2784,8 +2801,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		 * update the extent length after successful insert of the
+ 		 * split extent
+ 		 */
+-		orig_ex.ee_len = cpu_to_le16(ee_len -
+-						ext4_ext_get_actual_len(ex3));
++		ee_len -= ext4_ext_get_actual_len(ex3);
++		orig_ex.ee_len = cpu_to_le16(ee_len);
++		may_zeroout = ee_block + ee_len <= eof_block;
++
+ 		depth = newdepth;
+ 		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode, iblock, path);
+@@ -2809,7 +2828,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		 * otherwise give the extent a chance to merge to left
+ 		 */
+ 		if (le16_to_cpu(orig_ex.ee_len) <= EXT4_EXT_ZERO_LEN &&
+-							iblock != ee_block) {
++			iblock != ee_block && may_zeroout) {
+ 			err =  ext4_ext_zeroout(inode, &orig_ex);
+ 			if (err)
+ 				goto fix_extent_len;
+@@ -2878,7 +2897,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
+-	if (err == -ENOSPC) {
++	if (err == -ENOSPC && may_zeroout) {
+ 		err =  ext4_ext_zeroout(inode, &orig_ex);
+ 		if (err)
+ 			goto fix_extent_len;
+@@ -2938,14 +2957,21 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	struct ext4_extent *ex2 = NULL;
+ 	struct ext4_extent *ex3 = NULL;
+ 	struct ext4_extent_header *eh;
+-	ext4_lblk_t ee_block;
++	ext4_lblk_t ee_block, eof_block;
+ 	unsigned int allocated, ee_len, depth;
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
++	int may_zeroout;
++
++	ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
++		"block %llu, max_blocks %u\n", inode->i_ino,
++		(unsigned long long)iblock, max_blocks);
++
++	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
++		inode->i_sb->s_blocksize_bits;
++	if (eof_block < iblock + max_blocks)
++		eof_block = iblock + max_blocks;
+ 
+-	ext_debug("ext4_split_unwritten_extents: inode %lu,"
+-		  "iblock %llu, max_blocks %u\n", inode->i_ino,
+-		  (unsigned long long)iblock, max_blocks);
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+ 	ex = path[depth].p_ext;
+@@ -2953,12 +2979,19 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	allocated = ee_len - (iblock - ee_block);
+ 	newblock = iblock - ee_block + ext_pblock(ex);
++
+ 	ex2 = ex;
+ 	orig_ex.ee_block = ex->ee_block;
+ 	orig_ex.ee_len   = cpu_to_le16(ee_len);
+ 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+ 
+ 	/*
++	 * It is safe to convert extent to initialized via explicit
++	 * zeroout only if extent is fully insde i_size or new_size.
++	 */
++	may_zeroout = ee_block + ee_len <= eof_block;
++
++	/*
+  	 * If the uninitialized extent begins at the same logical
+  	 * block where the write begins, and the write completely
+  	 * covers the extent, then we don't need to split it.
+@@ -2992,7 +3025,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
+-		if (err == -ENOSPC) {
++		if (err == -ENOSPC && may_zeroout) {
+ 			err =  ext4_ext_zeroout(inode, &orig_ex);
+ 			if (err)
+ 				goto fix_extent_len;
+@@ -3016,8 +3049,9 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 		 * update the extent length after successful insert of the
+ 		 * split extent
+ 		 */
+-		orig_ex.ee_len = cpu_to_le16(ee_len -
+-						ext4_ext_get_actual_len(ex3));
++		ee_len -= ext4_ext_get_actual_len(ex3);
++		orig_ex.ee_len = cpu_to_le16(ee_len);
++
+ 		depth = newdepth;
+ 		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode, iblock, path);
+@@ -3063,7 +3097,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+-	if (err == -ENOSPC) {
++	if (err == -ENOSPC && may_zeroout) {
+ 		err =  ext4_ext_zeroout(inode, &orig_ex);
+ 		if (err)
+ 			goto fix_extent_len;
