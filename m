@@ -1,48 +1,136 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 1/4] cfq-iosched: Keep track of average think time for the sync-noidle workload.
-Date: Wed, 14 Apr 2010 19:06:38 -0400
-Message-ID: <x49zl15k51d.fsf@segfault.boston.devel.redhat.com>
-References: <1271279826-30294-1-git-send-email-jmoyer@redhat.com>
-	<1271279826-30294-2-git-send-email-jmoyer@redhat.com>
-	<20100414213745.GC3167@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: ext34_free_inode's mess
+Date: Thu, 15 Apr 2010 09:47:13 +1000
+Message-ID: <20100414234713.GM2493@dastard>
+References: <87pr2246y4.fsf@openvz.org>
+ <4BC5E6CC.7030709@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jens.axboe@oracle.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Vivek Goyal <vgoyal@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13210 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756198Ab0DNXGo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Apr 2010 19:06:44 -0400
-In-Reply-To: <20100414213745.GC3167@redhat.com> (Vivek Goyal's message of
-	"Wed, 14 Apr 2010 17:37:45 -0400")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+        Dmitry Monakhov <dmonakhov@openvz.org>, Jan Kara <jack@suse.cz>,
+        xfs-oss <xfs@oss.sgi.com>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <4BC5E6CC.7030709@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Vivek Goyal <vgoyal@redhat.com> writes:
+On Wed, Apr 14, 2010 at 11:01:16AM -0500, Eric Sandeen wrote:
+> Dmitry Monakhov wrote:
+> > I've finally automated my favorite testcase (see attachment), 
+> > before i've run it by hand.
+> 
+> Thanks!  Feel free to cc: the xfs list since the patch hits
+> xfstests.  (I added it here)
+> 
+> >  227     |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  227.out |    5 +++
+> >  group   |    1 +
+> >  3 files changed, 111 insertions(+), 0 deletions(-)
+> >  create mode 100755 227
+> >  create mode 100644 227.out
+> > 
+> > diff --git a/227 b/227
+> > new file mode 100755
+> > index 0000000..d2b0c7d
+> > --- /dev/null
+> > +++ b/227
+> > @@ -0,0 +1,105 @@
+> > +#! /bin/bash
+> > +# FS QA Test No. 227
+> > +#
+> > +# Perform fsstress test with parallel dd
+> > +# This proven to be a good stress test
+> > +# * Continuous dd retult in ENOSPC condition but only for a limited periods
+> > +#   of time.
+> > +# * Fsstress test cover many code paths
+> 
+> just little editor nitpicks: 
+> 
+> +# Perform fsstress test with parallel dd
+> +# This is proven to be a good stress test
+> +# * Continuous dd results in ENOSPC condition but only for a limited period
+> +#   of time.
+> +# * Fsstress test covers many code paths
 
-> On Wed, Apr 14, 2010 at 05:17:03PM -0400, Jeff Moyer wrote:
+This is close to the same as test 083:
 
->> @@ -3678,11 +3710,14 @@ static void *cfq_init_queue(struct request_queue *q)
->>  
->>  	/* Init root service tree */
->>  	cfqd->grp_service_tree = CFQ_RB_ROOT;
->> +	cfqd->grp_service_tree.last_end_request = jiffies;
->>  
->
-> This assignment is not required as we never update think time analsys of
-> service tree where all the groups are hanging.  So for grp_service_tree,
-> last_end_request can be zero and there will be no harm.
+# Exercise filesystem full behaviour - run numerous fsstress
+# processes in write mode on a small filesystem.  NB: delayed
+# allocate flushing is quite deadlock prone at the filesystem
+# full boundary due to the fact that we will retry allocation
+# several times after flushing, before giving back ENOSPC.
 
-OK, thanks.
+That test is not really doing anything XFS specific,
+so could easily be modified to run on generic filesystems...
 
-> Otherwise patch looks good to me. Can you please run some simple blkio
-> cgroup tests to make sure that functionality is not broken.
+> > +
+> > +    #Timing parameters
+> > +    nr_iterations=5
+> > +    kill_tries=20
+> > +    echo Running fsstress. | tee -a $seq.full
+> > +
+> > +####################################################
+> 
+> What is all this for?
+> 
+> FWIW other fsstress tests use an $FSSTRESS_AVOID variable,
+> where you can set the things you want to avoid easily
+> 
+> > +##    -f unresvsp=0 -f allocsp=0 -f freesp=0 \
+> > +##    -f setxattr=0 -f attr_remove=0 -f attr_set=0 \
+> > +## 
+> > +######################################################
+> > +    mkdir -p $SCRATCH_MNT/fsstress
+> > +    # It is reasonable to disable sync, otherwise most of tasks will simply
+> > +    # stuck in that sync() call.
+> > +    $FSSTRESS_PROG \
+> > +	-d $SCRATCH_MNT/fsstress \
+> > +	-p 100 -f sync=0  -n 9999999 > /dev/null 2>&1 &
+> > +
+> > +    echo Running ENOSPC hitters. | tee -a $seq.full
+> > +    for ((i = 0; i < $nr_iterations; i++))
+> > +    do
+> > +	#Open with O_TRUNC and then write until error
+> > +	#hit ENOSPC each time.
+> > +	dd if=/dev/zero of=$SCRATCH_MNT/BIG_FILE bs=1M 2> /dev/null
+> > +    done
 
-Yes, I'll add that to my list and get back to you.
+OK, so on a 10GB scratch device, this is going to write 50GB of
+data, which at 100MB/s is going to take roughly 10 minutes.
+The test should use a limited size filesystems (mkfs_scratch_sized)
+to limit the runtime...
 
-Thanks for the review, Vivek.
+FWIW, test 083 spends most of it's runtime at or near ENOSPC, so
+once again I wonder if that is not a better test to be using...
+
+> > +workout
+> > +umount $SCRATCH_MNT
+> > +echo 
+> > +echo Checking filesystem
+> > +_check_scratch_fs
+
+You don't need to check the scratch fs in the test - that is done by
+the test harness after the test completes.
 
 Cheers,
-Jeff
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
