@@ -1,50 +1,150 @@
 From: Jan Blunck <jblunck@suse.de>
-Subject: [PATCH 0/7] ext2: Preparation to remove BKL (v2)
-Date: Wed, 14 Apr 2010 14:38:32 +0200
-Message-ID: <1271248719-21488-1-git-send-email-jblunck@suse.de>
+Subject: [PATCH 7/7] BKL: Remove BKL from ext2 filesystem
+Date: Wed, 14 Apr 2010 14:38:39 +0200
+Message-ID: <1271248719-21488-8-git-send-email-jblunck@suse.de>
+References: <1271248719-21488-1-git-send-email-jblunck@suse.de>
 Cc: Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org,
 	Frederic Weisbecker <fweisbec@gmail.com>,
-	Arnd Bergmann <arnd@arndb.de>, Jan Blunck <jblunck@suse.de>
+	Arnd Bergmann <arnd@arndb.de>, Jan Blunck <jblunck@suse.de>,
+	Jan Kara <jack@suse.cz>
 To: Jan Kara <jack@suse.cz>, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47340 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750939Ab0DNMin (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Apr 2010 08:38:43 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1271248719-21488-1-git-send-email-jblunck@suse.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This is a series of patches in preparation to the removal of the big kernel
-lock from ext2. It consists mostly of cleanup patches to later introduce a
-spinlock to protect some of the superblock's fields against concurrent access.
-With the spinlock in place we don't need to use the big kernel lock anymore.
+The BKL is still used in ext2_put_super(), ext2_fill_super(), ext2_sync_fs()
+ext2_remount() and ext2_write_inode(). From these calls ext2_put_super(),
+ext2_fill_super() and ext2_remount() are protected against each other by
+the struct super_block s_umount rw semaphore. The call in ext2_write_inode()
+could only protect the modification of the ext2_sb_info through
+ext2_update_dynamic_rev() against concurrent ext2_sync_fs() or ext2_remount().
+ext2_fill_super() and ext2_put_super() can be left out because you need a
+valid filesystem reference in all three cases, which you do not have when
+you are one of these functions.
 
-This series has been part of the BKL removal patches that I have posted in
-November 2009 already. I've addressed the feedback kindly provided by Ogawa-san
-by moving the ext2_write_super() out of ext2_setup_super().
+If the BKL is only protecting the modification of the ext2_sb_info it can
+safely be removed since this is protected by the struct ext2_sb_info s_lock.
 
-Changes since v1:
-- fix typo when setting MS_RDONLY
-- take s_lock when setting EXT2_FEATURE_COMPAT_EXT_ATTR
-- fold ext2_commit_super() into ext2_sync_super()
-- include BKL removal patch
+Signed-off-by: Jan Blunck <jblunck@suse.de>
+Cc: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/inode.c |    3 ---
+ fs/ext2/super.c |   13 -------------
+ 2 files changed, 0 insertions(+), 16 deletions(-)
 
-Thanks,
-Jan
-
-Jan Blunck (7):
-  ext2: Use ext2_clear_super_error() in ext2_sync_fs()
-  ext2: Set the write time in ext2_sync_fs()
-  ext2: Remove duplicate code from ext2_sync_fs()
-  ext2: Fold ext2_commit_super() into ext2_sync_super()
-  ext2: Move ext2_write_super() out of ext2_setup_super()
-  ext2: Add ext2_sb_info s_lock spinlock
-  BKL: Remove BKL from ext2 filesystem
-
- fs/ext2/inode.c            |    5 +-
- fs/ext2/super.c            |   99 ++++++++++++++++++--------------------------
- fs/ext2/xattr.c            |    2 +
- include/linux/ext2_fs_sb.h |    9 ++++
- 4 files changed, 54 insertions(+), 61 deletions(-)
-
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 5d15442..b90c3bf 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -22,7 +22,6 @@
+  *  Assorted race fixes, rewrite of ext2_get_block() by Al Viro, 2000
+  */
+ 
+-#include <linux/smp_lock.h>
+ #include <linux/time.h>
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+@@ -1406,13 +1405,11 @@ static int __ext2_write_inode(struct inode *inode, int do_sync)
+ 			       /* If this is the first large file
+ 				* created, add a flag to the superblock.
+ 				*/
+-				lock_kernel();
+ 				spin_lock(&EXT2_SB(sb)->s_lock);
+ 				ext2_update_dynamic_rev(sb);
+ 				EXT2_SET_RO_COMPAT_FEATURE(sb,
+ 					EXT2_FEATURE_RO_COMPAT_LARGE_FILE);
+ 				spin_unlock(&EXT2_SB(sb)->s_lock);
+-				unlock_kernel();
+ 				ext2_write_super(sb);
+ 			}
+ 		}
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 28f6560..71e9eb1 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -26,7 +26,6 @@
+ #include <linux/random.h>
+ #include <linux/buffer_head.h>
+ #include <linux/exportfs.h>
+-#include <linux/smp_lock.h>
+ #include <linux/vfs.h>
+ #include <linux/seq_file.h>
+ #include <linux/mount.h>
+@@ -120,8 +119,6 @@ static void ext2_put_super (struct super_block * sb)
+ 	int i;
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+ 
+-	lock_kernel();
+-
+ 	if (sb->s_dirt)
+ 		ext2_write_super(sb);
+ 
+@@ -147,8 +144,6 @@ static void ext2_put_super (struct super_block * sb)
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+-
+-	unlock_kernel();
+ }
+ 
+ static struct kmem_cache * ext2_inode_cachep;
+@@ -1170,7 +1165,6 @@ static int ext2_sync_fs(struct super_block *sb, int wait)
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+ 	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
+ 
+-	lock_kernel();
+ 	spin_lock(&sbi->s_lock);
+ 	if (es->s_state & cpu_to_le16(EXT2_VALID_FS)) {
+ 		ext2_debug("setting valid to 0\n");
+@@ -1178,8 +1172,6 @@ static int ext2_sync_fs(struct super_block *sb, int wait)
+ 	}
+ 	spin_unlock(&sbi->s_lock);
+ 	ext2_sync_super(sb, es, wait);
+-	unlock_kernel();
+-
+ 	return 0;
+ }
+ 
+@@ -1201,7 +1193,6 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 	unsigned long old_sb_flags;
+ 	int err;
+ 
+-	lock_kernel();
+ 	spin_lock(&sbi->s_lock);
+ 
+ 	/* Store the old options */
+@@ -1242,14 +1233,12 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 	}
+ 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY)) {
+ 		spin_unlock(&sbi->s_lock);
+-		unlock_kernel();
+ 		return 0;
+ 	}
+ 	if (*flags & MS_RDONLY) {
+ 		if (le16_to_cpu(es->s_state) & EXT2_VALID_FS ||
+ 		    !(sbi->s_mount_state & EXT2_VALID_FS)) {
+ 			spin_unlock(&sbi->s_lock);
+-			unlock_kernel();
+ 			return 0;
+ 		}
+ 		/*
+@@ -1282,7 +1271,6 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 		spin_unlock(&sbi->s_lock);
+ 		ext2_write_super(sb);
+ 	}
+-	unlock_kernel();
+ 	return 0;
+ restore_opts:
+ 	sbi->s_mount_opt = old_opts.s_mount_opt;
+@@ -1290,7 +1278,6 @@ restore_opts:
+ 	sbi->s_resgid = old_opts.s_resgid;
+ 	sb->s_flags = old_sb_flags;
+ 	spin_unlock(&sbi->s_lock);
+-	unlock_kernel();
+ 	return err;
+ }
+ 
+-- 
+1.6.4.2
