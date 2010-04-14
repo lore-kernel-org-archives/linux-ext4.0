@@ -1,108 +1,71 @@
 From: Jan Blunck <jblunck@suse.de>
-Subject: [PATCH 4/7] ext2: Fold ext2_commit_super() into ext2_sync_super()
-Date: Wed, 14 Apr 2010 14:38:36 +0200
-Message-ID: <1271248719-21488-5-git-send-email-jblunck@suse.de>
+Subject: [PATCH 5/7] ext2: Move ext2_write_super() out of ext2_setup_super()
+Date: Wed, 14 Apr 2010 14:38:37 +0200
+Message-ID: <1271248719-21488-6-git-send-email-jblunck@suse.de>
 References: <1271248719-21488-1-git-send-email-jblunck@suse.de>
 Cc: Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org,
 	Frederic Weisbecker <fweisbec@gmail.com>,
 	Arnd Bergmann <arnd@arndb.de>, Jan Blunck <jblunck@suse.de>
 To: Jan Kara <jack@suse.cz>, tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:47348 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754426Ab0DNMin (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Apr 2010 08:38:43 -0400
 In-Reply-To: <1271248719-21488-1-git-send-email-jblunck@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Both function originally did similar things except that ext2_sync_super()
-is returning after the call to sync_dirty_buffer(sbh). Therefore this
-patch adds a wait flag to tell ext2_sync_super() if it has to call
-sync_dirty_buffer() to wait for in-progress I/O to finish.
+Move ext2_write_super() out of ext2_setup_super() as a preparation for the
+next patch that adds a new lock for superblock fields.
 
 Signed-off-by: Jan Blunck <jblunck@suse.de>
 ---
- fs/ext2/super.c |   28 +++++++++-------------------
- 1 files changed, 9 insertions(+), 19 deletions(-)
+ fs/ext2/super.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 09a88bf..a304c54 100644
+index a304c54..f28a7ad 100644
 --- a/fs/ext2/super.c
 +++ b/fs/ext2/super.c
-@@ -39,7 +39,7 @@
- #include "xip.h"
- 
- static void ext2_sync_super(struct super_block *sb,
--			    struct ext2_super_block *es);
-+			    struct ext2_super_block *es, int wait);
- static int ext2_remount (struct super_block * sb, int * flags, char * data);
- static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf);
- static int ext2_sync_fs(struct super_block *sb, int wait);
-@@ -54,7 +54,7 @@ void ext2_error (struct super_block * sb, const char * function,
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		sbi->s_mount_state |= EXT2_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT2_ERROR_FS);
--		ext2_sync_super(sb, es);
-+		ext2_sync_super(sb, es, 1);
- 	}
- 
- 	va_start(args, fmt);
-@@ -125,7 +125,7 @@ static void ext2_put_super (struct super_block * sb)
- 		struct ext2_super_block *es = sbi->s_es;
- 
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
--		ext2_sync_super(sb, es);
-+		ext2_sync_super(sb, es, 1);
- 	}
- 	db_count = sbi->s_gdb_count;
- 	for (i = 0; i < db_count; i++)
-@@ -1127,23 +1127,16 @@ static void ext2_clear_super_error(struct super_block *sb)
- 	}
- }
- 
--static void ext2_commit_super (struct super_block * sb,
--			       struct ext2_super_block * es)
--{
--	ext2_clear_super_error(sb);
--	es->s_wtime = cpu_to_le32(get_seconds());
--	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
--	sb->s_dirt = 0;
--}
--
--static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es)
-+static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
-+			    int wait)
- {
- 	ext2_clear_super_error(sb);
- 	es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
- 	es->s_wtime = cpu_to_le32(get_seconds());
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
--	sync_dirty_buffer(EXT2_SB(sb)->s_sbh);
-+	if (wait)
-+		sync_dirty_buffer(EXT2_SB(sb)->s_sbh);
- 	sb->s_dirt = 0;
- }
- 
-@@ -1166,11 +1159,8 @@ static int ext2_sync_fs(struct super_block *sb, int wait)
- 	if (es->s_state & cpu_to_le16(EXT2_VALID_FS)) {
- 		ext2_debug("setting valid to 0\n");
- 		es->s_state &= cpu_to_le16(~EXT2_VALID_FS);
--		ext2_sync_super(sb, es);
--	} else {
--		ext2_commit_super(sb, es);
- 	}
--	sb->s_dirt = 0;
-+	ext2_sync_super(sb, es, wait);
- 	unlock_kernel();
- 
+@@ -606,7 +606,6 @@ static int ext2_setup_super (struct super_block * sb,
+ 	if (!le16_to_cpu(es->s_max_mnt_count))
+ 		es->s_max_mnt_count = cpu_to_le16(EXT2_DFL_MAX_MNT_COUNT);
+ 	le16_add_cpu(&es->s_mnt_count, 1);
+-	ext2_write_super(sb);
+ 	if (test_opt (sb, DEBUG))
+ 		ext2_msg(sb, KERN_INFO, "%s, %s, bs=%lu, fs=%lu, gc=%lu, "
+ 			"bpg=%lu, ipg=%lu, mo=%04lx]",
+@@ -1079,7 +1078,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_HAS_JOURNAL))
+ 		ext2_msg(sb, KERN_WARNING,
+ 			"warning: mounting ext3 filesystem as ext2");
+-	ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY);
++	if (ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY))
++		sb->s_flags |= MS_RDONLY;
++	ext2_write_super(sb);
  	return 0;
-@@ -1268,7 +1258,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 
+ cantfind_ext2:
+@@ -1238,6 +1239,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 		 */
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+ 		es->s_mtime = cpu_to_le32(get_seconds());
++		ext2_sync_super(sb, es, 1);
+ 	} else {
+ 		__le32 ret = EXT2_HAS_RO_COMPAT_FEATURE(sb,
+ 					       ~EXT2_FEATURE_RO_COMPAT_SUPP);
+@@ -1257,8 +1259,8 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 		sbi->s_mount_state = le16_to_cpu(es->s_state);
  		if (!ext2_setup_super (sb, es, 0))
  			sb->s_flags &= ~MS_RDONLY;
++		ext2_write_super(sb);
  	}
--	ext2_sync_super(sb, es);
-+	ext2_sync_super(sb, es, 1);
+-	ext2_sync_super(sb, es, 1);
  	unlock_kernel();
  	return 0;
  restore_opts:
 -- 
 1.6.4.2
+
