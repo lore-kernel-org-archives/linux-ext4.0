@@ -1,248 +1,69 @@
-From: Jan Blunck <jblunck@suse.de>
-Subject: [PATCH 6/7] ext2: Add ext2_sb_info s_lock spinlock
-Date: Wed, 14 Apr 2010 14:38:38 +0200
-Message-ID: <1271248719-21488-7-git-send-email-jblunck@suse.de>
-References: <1271248719-21488-1-git-send-email-jblunck@suse.de>
-Cc: Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	Arnd Bergmann <arnd@arndb.de>, Jan Blunck <jblunck@suse.de>,
-	Andi Kleen <andi@firstfloor.org>, Jan Kara <jack@suse.cz>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-To: Jan Kara <jack@suse.cz>, tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1271248719-21488-1-git-send-email-jblunck@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext34_free_inode's mess
+Date: Wed, 14 Apr 2010 15:34:40 +0200
+Message-ID: <20100414133440.GD3616@quack.suse.cz>
+References: <87pr2246y4.fsf@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:49744 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752274Ab0DNNef (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Apr 2010 09:34:35 -0400
+Content-Disposition: inline
+In-Reply-To: <87pr2246y4.fsf@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Add a spinlock that protects against concurrent modifications of
-s_mount_state, s_blocks_last, s_overhead_last and the content of the
-superblock's buffer pointed to by sbi->s_es. The spinlock is now used in
-ext2_xattr_update_super_block() which was setting the
-EXT2_FEATURE_COMPAT_EXT_ATTR flag on the superblock without protection
-before. Likewise the spinlock is used in ext2_show_options() to have a
-consistent view of the mount options.
+On Wed 14-04-10 15:19:47, Dmitry Monakhov wrote:
+> I've finally automated my favorite testcase (see attachment), 
+> before i've run it by hand.
+> And sometimes i've saw following complain from fsck:
+> fsck.ext4 -f -n /dev/sdb2
+> ...
+> Pass 5: Checking group summary information
+> Inode bitmap differences:  -93582
+> Fix? no
+> 
+> Free inodes count wrong for group #12 (4634, counted=4633).
+> Fix? no
+> 
+> Free inodes count wrong (35610, counted=35609).
+> Fix? no
+> ...
+  Interesting. So some inode is marked as free although it is in
+use, right? That sounds like a nasty bug - if you reproduce this
+again, could you use debugfs to find out what file type is that
+inode? It could help looking for the bug.
 
-This is a preparation patch for removing the BKL from ext2 in the next
-patch.
+> I've started to look an inode bitmap manipulation code paths
+> and found strange logic in ext{3,4}_free_inode functions
+> 
+> 1) Group lock acquired twice for bitmap and for group_desc.
+>    There are not any advantage from this double locking, only
+>    error path(where the bit is already cleared) takes an
+>    advantage from this locking schema.
+>    It is reasonable to batch it in to one locking block.
+  I guess you think that this happens because we pass the lock parameter
+to ext3_clear_bit_atomic. But if you would actually look at the definition
+of the function, you would see that it's hard to find an architecture that
+uses the lock. Most architectures just use atomic bitop to clear the bit.
+I actually fail to see why anyone would need the lock - probably Ted knows
+:).
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
-Cc: Andi Kleen <andi@firstfloor.org>
-Cc: Jan Kara <jack@suse.cz>
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
----
- fs/ext2/inode.c            |    2 ++
- fs/ext2/super.c            |   27 ++++++++++++++++++++++++++-
- fs/ext2/xattr.c            |    2 ++
- include/linux/ext2_fs_sb.h |    9 +++++++++
- 4 files changed, 39 insertions(+), 1 deletions(-)
+> 2) if we failed to read gdp then bh2 is undefined so
+>    may result in oops due to undefince pointer dereferance.
+  No, because during mount time we check that all gdp pointers exist so
+ext3_get_group_desc can never fail after the mount has succeeded.
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index fc13cc1..5d15442 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1407,9 +1407,11 @@ static int __ext2_write_inode(struct inode *inode, int do_sync)
- 				* created, add a flag to the superblock.
- 				*/
- 				lock_kernel();
-+				spin_lock(&EXT2_SB(sb)->s_lock);
- 				ext2_update_dynamic_rev(sb);
- 				EXT2_SET_RO_COMPAT_FEATURE(sb,
- 					EXT2_FEATURE_RO_COMPAT_LARGE_FILE);
-+				spin_unlock(&EXT2_SB(sb)->s_lock);
- 				unlock_kernel();
- 				ext2_write_super(sb);
- 			}
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index f28a7ad..28f6560 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -52,8 +52,10 @@ void ext2_error (struct super_block * sb, const char * function,
- 	struct ext2_super_block *es = sbi->s_es;
- 
- 	if (!(sb->s_flags & MS_RDONLY)) {
-+		spin_lock(&sbi->s_lock);
- 		sbi->s_mount_state |= EXT2_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT2_ERROR_FS);
-+		spin_unlock(&sbi->s_lock);
- 		ext2_sync_super(sb, es, 1);
- 	}
- 
-@@ -84,6 +86,9 @@ void ext2_msg(struct super_block *sb, const char *prefix,
- 	va_end(args);
- }
- 
-+/*
-+ * This must be called with sbi->s_lock held.
-+ */
- void ext2_update_dynamic_rev(struct super_block *sb)
- {
- 	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
-@@ -124,7 +129,9 @@ static void ext2_put_super (struct super_block * sb)
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		struct ext2_super_block *es = sbi->s_es;
- 
-+		spin_lock(&sbi->s_lock);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-+		spin_unlock(&sbi->s_lock);
- 		ext2_sync_super(sb, es, 1);
- 	}
- 	db_count = sbi->s_gdb_count;
-@@ -209,6 +216,7 @@ static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	struct ext2_super_block *es = sbi->s_es;
- 	unsigned long def_mount_opts;
- 
-+	spin_lock(&sbi->s_lock);
- 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
- 
- 	if (sbi->s_sb_block != 1)
-@@ -281,6 +289,7 @@ static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (!test_opt(sb, RESERVATION))
- 		seq_puts(seq, ",noreservation");
- 
-+	spin_unlock(&sbi->s_lock);
- 	return 0;
- }
- 
-@@ -766,6 +775,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_fs_info = sbi;
- 	sbi->s_sb_block = sb_block;
- 
-+	spin_lock_init(&sbi->s_lock);
-+
- 	/*
- 	 * See what the current blocksize for the device is, and
- 	 * use that as the blocksize.  Otherwise (or if the blocksize
-@@ -1132,9 +1143,12 @@ static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
- 			    int wait)
- {
- 	ext2_clear_super_error(sb);
-+	spin_lock(&EXT2_SB(sb)->s_lock);
- 	es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
- 	es->s_wtime = cpu_to_le32(get_seconds());
-+	/* unlock before we do IO */
-+	spin_unlock(&EXT2_SB(sb)->s_lock);
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
- 	if (wait)
- 		sync_dirty_buffer(EXT2_SB(sb)->s_sbh);
-@@ -1151,16 +1165,18 @@ static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
-  * may have been checked while mounted and e2fsck may have
-  * set s_state to EXT2_VALID_FS after some corrections.
-  */
--
- static int ext2_sync_fs(struct super_block *sb, int wait)
- {
-+	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
- 
- 	lock_kernel();
-+	spin_lock(&sbi->s_lock);
- 	if (es->s_state & cpu_to_le16(EXT2_VALID_FS)) {
- 		ext2_debug("setting valid to 0\n");
- 		es->s_state &= cpu_to_le16(~EXT2_VALID_FS);
- 	}
-+	spin_unlock(&sbi->s_lock);
- 	ext2_sync_super(sb, es, wait);
- 	unlock_kernel();
- 
-@@ -1186,6 +1202,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 	int err;
- 
- 	lock_kernel();
-+	spin_lock(&sbi->s_lock);
- 
- 	/* Store the old options */
- 	old_sb_flags = sb->s_flags;
-@@ -1224,12 +1241,14 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 		sbi->s_mount_opt |= old_mount_opt & EXT2_MOUNT_XIP;
- 	}
- 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY)) {
-+		spin_unlock(&sbi->s_lock);
- 		unlock_kernel();
- 		return 0;
- 	}
- 	if (*flags & MS_RDONLY) {
- 		if (le16_to_cpu(es->s_state) & EXT2_VALID_FS ||
- 		    !(sbi->s_mount_state & EXT2_VALID_FS)) {
-+			spin_unlock(&sbi->s_lock);
- 			unlock_kernel();
- 			return 0;
- 		}
-@@ -1239,6 +1258,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 		 */
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
- 		es->s_mtime = cpu_to_le32(get_seconds());
-+		spin_unlock(&sbi->s_lock);
- 		ext2_sync_super(sb, es, 1);
- 	} else {
- 		__le32 ret = EXT2_HAS_RO_COMPAT_FEATURE(sb,
-@@ -1259,6 +1279,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 		sbi->s_mount_state = le16_to_cpu(es->s_state);
- 		if (!ext2_setup_super (sb, es, 0))
- 			sb->s_flags &= ~MS_RDONLY;
-+		spin_unlock(&sbi->s_lock);
- 		ext2_write_super(sb);
- 	}
- 	unlock_kernel();
-@@ -1268,6 +1289,7 @@ restore_opts:
- 	sbi->s_resuid = old_opts.s_resuid;
- 	sbi->s_resgid = old_opts.s_resgid;
- 	sb->s_flags = old_sb_flags;
-+	spin_unlock(&sbi->s_lock);
- 	unlock_kernel();
- 	return err;
- }
-@@ -1279,6 +1301,8 @@ static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf)
- 	struct ext2_super_block *es = sbi->s_es;
- 	u64 fsid;
- 
-+	spin_lock(&sbi->s_lock);
-+
- 	if (test_opt (sb, MINIX_DF))
- 		sbi->s_overhead_last = 0;
- 	else if (sbi->s_blocks_last != le32_to_cpu(es->s_blocks_count)) {
-@@ -1333,6 +1357,7 @@ static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf)
- 	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
- 	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
- 	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
-+	spin_unlock(&sbi->s_lock);
- 	return 0;
- }
- 
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index e44dc92..3b96045 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -345,7 +345,9 @@ static void ext2_xattr_update_super_block(struct super_block *sb)
- 	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR))
- 		return;
- 
-+	spin_lock(&EXT2_SB(sb)->s_lock);
- 	EXT2_SET_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR);
-+	spin_unlock(&EXT2_SB(sb)->s_lock);
- 	sb->s_dirt = 1;
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
- }
-diff --git a/include/linux/ext2_fs_sb.h b/include/linux/ext2_fs_sb.h
-index 1cdb663..db4d9f5 100644
---- a/include/linux/ext2_fs_sb.h
-+++ b/include/linux/ext2_fs_sb.h
-@@ -106,6 +106,15 @@ struct ext2_sb_info {
- 	spinlock_t s_rsv_window_lock;
- 	struct rb_root s_rsv_window_root;
- 	struct ext2_reserve_window_node s_rsv_window_head;
-+	/*
-+	 * s_lock protects against concurrent modifications of s_mount_state,
-+	 * s_blocks_last, s_overhead_last and the content of superblock's
-+	 * buffer pointed to by sbi->s_es.
-+	 *
-+	 * Note: It is used in ext2_show_options() to provide a consistent view
-+	 * of the mount options.
-+	 */
-+	spinlock_t s_lock;
- };
- 
- static inline spinlock_t *
--- 
-1.6.4.2
+> 3) if we failed to get write_access to gdp we skip
+>    handle_dirty_metadata for inode_bitmap which is also a bug.
+  It doesn't matter. At the moment ext3_journal_get_write_access fails we
+abort the journal so no writes are allowed to the filesystem anyway. So
+modified bitmap has hardly any chance to get to disk and you have to
+run fsck to clean up the mess anyway...
+
+								Honza
