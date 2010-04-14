@@ -1,69 +1,38 @@
 From: Jan Blunck <jblunck@suse.de>
-Subject: [PATCH 1/7] ext2: Use ext2_clear_super_error() in ext2_sync_fs()
-Date: Wed, 14 Apr 2010 14:38:33 +0200
-Message-ID: <1271248719-21488-2-git-send-email-jblunck@suse.de>
+Subject: [PATCH 2/7] ext2: Set the write time in ext2_sync_fs()
+Date: Wed, 14 Apr 2010 14:38:34 +0200
+Message-ID: <1271248719-21488-3-git-send-email-jblunck@suse.de>
 References: <1271248719-21488-1-git-send-email-jblunck@suse.de>
 Cc: Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org,
 	Frederic Weisbecker <fweisbec@gmail.com>,
 	Arnd Bergmann <arnd@arndb.de>, Jan Blunck <jblunck@suse.de>
 To: Jan Kara <jack@suse.cz>, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47341 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750715Ab0DNMin (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Apr 2010 08:38:43 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1271248719-21488-1-git-send-email-jblunck@suse.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext2_sync_fs() used to duplicate the code from ext2_clear_super_error().
+This is probably a typo since the write time should actually be updated by
+ext2_sync_fs() instead of the mount time.
 
 Signed-off-by: Jan Blunck <jblunck@suse.de>
 ---
- fs/ext2/super.c |   20 +++-----------------
- 1 files changed, 3 insertions(+), 17 deletions(-)
+ fs/ext2/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 42e4a30..8e8b675 100644
+index 8e8b675..b205003 100644
 --- a/fs/ext2/super.c
 +++ b/fs/ext2/super.c
-@@ -1120,8 +1120,8 @@ static void ext2_clear_super_error(struct super_block *sb)
- 		 * be remapped.  Nothing we can do but to retry the
- 		 * write and hope for the best.
- 		 */
--		printk(KERN_ERR "EXT2-fs: %s previous I/O error to "
--		       "superblock detected", sb->s_id);
-+		ext2_msg(sb, KERN_ERR,
-+		       "previous I/O error to superblock detected\n");
- 		clear_buffer_write_io_error(sbh);
- 		set_buffer_uptodate(sbh);
- 	}
-@@ -1161,23 +1161,9 @@ static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es)
- static int ext2_sync_fs(struct super_block *sb, int wait)
- {
- 	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
--	struct buffer_head *sbh = EXT2_SB(sb)->s_sbh;
- 
- 	lock_kernel();
--	if (buffer_write_io_error(sbh)) {
--		/*
--		 * Oh, dear.  A previous attempt to write the
--		 * superblock failed.  This could happen because the
--		 * USB device was yanked out.  Or it could happen to
--		 * be a transient write error and maybe the block will
--		 * be remapped.  Nothing we can do but to retry the
--		 * write and hope for the best.
--		 */
--		ext2_msg(sb, KERN_ERR,
--		       "previous I/O error to superblock detected\n");
--		clear_buffer_write_io_error(sbh);
--		set_buffer_uptodate(sbh);
--	}
-+	ext2_clear_super_error(sb);
- 
- 	if (es->s_state & cpu_to_le16(EXT2_VALID_FS)) {
- 		ext2_debug("setting valid to 0\n");
+@@ -1172,7 +1172,7 @@ static int ext2_sync_fs(struct super_block *sb, int wait)
+ 			cpu_to_le32(ext2_count_free_blocks(sb));
+ 		es->s_free_inodes_count =
+ 			cpu_to_le32(ext2_count_free_inodes(sb));
+-		es->s_mtime = cpu_to_le32(get_seconds());
++		es->s_wtime = cpu_to_le32(get_seconds());
+ 		ext2_sync_super(sb, es);
+ 	} else {
+ 		ext2_commit_super(sb, es);
 -- 
 1.6.4.2
-
