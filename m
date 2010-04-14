@@ -1,215 +1,113 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: ext34_free_inode's mess
-Date: Wed, 14 Apr 2010 15:19:47 +0400
-Message-ID: <87pr2246y4.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Subject: [PATCH 1/2] ext3: fix inode bitmaps manipulation in free_inode
+Date: Wed, 14 Apr 2010 15:23:03 +0400
+Message-ID: <1271244184-8693-1-git-send-email-dmonakhov@openvz.org>
+References: <87pr2246y4.fsf@openvz.org>
+Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:6143 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754869Ab0DNLTz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Apr 2010 07:19:55 -0400
+Received: from mail-bw0-f225.google.com ([209.85.218.225]:47378 "EHLO
+	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754902Ab0DNLXL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2010 07:23:11 -0400
+Received: by bwz25 with SMTP id 25so6781341bwz.28
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2010 04:23:10 -0700 (PDT)
+In-Reply-To: <87pr2246y4.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
+- Reorganize locking scheme to batch two atomic operation in to one.
+- Fix possible undefined pointer deference.
+- Even if group descriptor stats aren't assessable we have to update
+  inode bitmaps.
 
-I've finally automated my favorite testcase (see attachment), 
-before i've run it by hand.
-And sometimes i've saw following complain from fsck:
-fsck.ext4 -f -n /dev/sdb2
-...
-Pass 5: Checking group summary information
-Inode bitmap differences:  -93582
-Fix? no
-
-Free inodes count wrong for group #12 (4634, counted=4633).
-Fix? no
-
-Free inodes count wrong (35610, counted=35609).
-Fix? no
-...
-
-I've started to look an inode bitmap manipulation code paths
-and found strange logic in ext{3,4}_free_inode functions
-
-1) Group lock acquired twice for bitmap and for group_desc.
-   There are not any advantage from this double locking, only
-   error path(where the bit is already cleared) takes an
-   advantage from this locking schema.
-   It is reasonable to batch it in to one locking block.
-2) if we failed to read gdp then bh2 is undefined so
-   may result in oops due to undefince pointer dereferance.
-3) if we failed to get write_access to gdp we skip
-   handle_dirty_metadata for inode_bitmap which is also a bug.
-
-I've redesigned free_inode logic(see later two emails) and
-currently i'm not able to reproduce the bug, but i can not
-guarantee it is goes away.
-
-
---=-=-=
-Content-Disposition: inline;
- filename=0001-xfstests-dev-add-one-more-stress-test.patch
-
->From 1857fc6c7349a67cf930e73b802427a138e43456 Mon Sep 17 00:00:00 2001
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Date: Wed, 14 Apr 2010 14:53:47 +0400
-Subject: [PATCH] xfstests-dev: add one more stress test
-
-During stress testing we want to cover most of code paths.
-fsstress is very good for this purpose. But it has expandable
-nature (disk usage almost continually grow). So once we
-goes it no ENOSPC condition we will be where till the end.
-
-But by running 'dd' in parallel we can regularly trigger
-ENOSPC but only for a limited periods of time.
-
-This is my favorite stress test-case configuration.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- 227     |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 227.out |    5 +++
- group   |    1 +
- 3 files changed, 111 insertions(+), 0 deletions(-)
- create mode 100755 227
- create mode 100644 227.out
+ fs/ext3/ialloc.c |   62 +++++++++++++++++++++++++++--------------------------
+ 1 files changed, 32 insertions(+), 30 deletions(-)
 
-diff --git a/227 b/227
-new file mode 100755
-index 0000000..d2b0c7d
---- /dev/null
-+++ b/227
-@@ -0,0 +1,105 @@
-+#! /bin/bash
-+# FS QA Test No. 227
-+#
-+# Perform fsstress test with parallel dd
-+# This proven to be a good stress test
-+# * Continuous dd retult in ENOSPC condition but only for a limited periods
-+#   of time.
-+# * Fsstress test cover many code paths
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2010 Dmitry Monakhov.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=dmonakhov@openvz.org
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+
-+_cleanup()
-+{
-+    rm -f $tmp.*
-+}
-+
-+workout()
-+{
-+    # Disable bash job controll, to prevent message about killed task.
-+    set +m
-+
-+    #Timing parameters
-+    nr_iterations=5
-+    kill_tries=20
-+    echo Running fsstress. | tee -a $seq.full
-+
-+####################################################
-+##    -f unresvsp=0 -f allocsp=0 -f freesp=0 \
-+##    -f setxattr=0 -f attr_remove=0 -f attr_set=0 \
-+## 
-+######################################################
-+    mkdir -p $SCRATCH_MNT/fsstress
-+    # It is reasonable to disable sync, otherwise most of tasks will simply
-+    # stuck in that sync() call.
-+    $FSSTRESS_PROG \
-+	-d $SCRATCH_MNT/fsstress \
-+	-p 100 -f sync=0  -n 9999999 > /dev/null 2>&1 &
-+
-+    echo Running ENOSPC hitters. | tee -a $seq.full
-+    for ((i = 0; i < $nr_iterations; i++))
-+    do
-+	#Open with O_TRUNC and then write until error
-+	#hit ENOSPC each time.
-+	dd if=/dev/zero of=$SCRATCH_MNT/BIG_FILE bs=1M 2> /dev/null
-+    done
-+
-+    for ((i = 0; i < $kill_tries; i++))
-+    do
-+	killall -r -q -TERM fsstress 2> /dev/null
-+	sleep 1
-+    done
-+}
-+
-+trap "_cleanup ; exit \$status" 0 1 2 3 15
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+_require_scratch
-+
-+rm -f $seq.full
-+
-+umount $TEST_DEV >/dev/null 2>&1
-+umount $SCRATCH_DEV >/dev/null 2>&1
-+echo "*** MKFS ***"                         >>$seq.full
-+echo ""                                     >>$seq.full
-+_scratch_mkfs    >/dev/null 2>&1 || _fail "mkfs failed"
-+_scratch_mount   >/dev/null 2>&1 || _fail "mount failed"
-+
-+workout
-+umount $SCRATCH_MNT
-+echo 
-+echo Checking filesystem
-+_check_scratch_fs
-+status=$?
-+exit
-diff --git a/227.out b/227.out
-new file mode 100644
-index 0000000..6a7342d
---- /dev/null
-+++ b/227.out
-@@ -0,0 +1,5 @@
-+QA output created by 227
-+Running fsstress.
-+Running ENOSPC hitters.
-+
-+Checking filesystem
-diff --git a/group b/group
-index 8d4a83a..81a2aa4 100644
---- a/group
-+++ b/group
-@@ -339,3 +339,4 @@ deprecated
- 223 auto quick
- 224 auto
- 225 auto quick
-+227 rw auto prealloc enospc
-\ No newline at end of file
+diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
+index ef9008b..8352a68 100644
+--- a/fs/ext3/ialloc.c
++++ b/fs/ext3/ialloc.c
+@@ -98,7 +98,7 @@ void ext3_free_inode (handle_t *handle, struct inode * inode)
+ 	struct ext3_group_desc * gdp;
+ 	struct ext3_super_block * es;
+ 	struct ext3_sb_info *sbi;
+-	int fatal = 0, err;
++	int fatal = 0, err, cleared = 0;
+ 
+ 	if (atomic_read(&inode->i_count) > 1) {
+ 		printk ("ext3_free_inode: inode has count=%d\n",
+@@ -150,38 +150,40 @@ void ext3_free_inode (handle_t *handle, struct inode * inode)
+ 	if (fatal)
+ 		goto error_return;
+ 
+-	/* Ok, now we can actually update the inode bitmaps.. */
+-	if (!ext3_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+-					bit, bitmap_bh->b_data))
+-		ext3_error (sb, "ext3_free_inode",
+-			      "bit already cleared for inode %lu", ino);
+-	else {
+-		gdp = ext3_get_group_desc (sb, block_group, &bh2);
+-
++	fatal = -ESRCH;
++	gdp = ext3_get_group_desc (sb, block_group, &bh2);
++	if (gdp) {
+ 		BUFFER_TRACE(bh2, "get_write_access");
+ 		fatal = ext3_journal_get_write_access(handle, bh2);
+-		if (fatal) goto error_return;
+-
+-		if (gdp) {
+-			spin_lock(sb_bgl_lock(sbi, block_group));
+-			le16_add_cpu(&gdp->bg_free_inodes_count, 1);
+-			if (is_directory)
+-				le16_add_cpu(&gdp->bg_used_dirs_count, -1);
+-			spin_unlock(sb_bgl_lock(sbi, block_group));
+-			percpu_counter_inc(&sbi->s_freeinodes_counter);
+-			if (is_directory)
+-				percpu_counter_dec(&sbi->s_dirs_counter);
+-
+-		}
+-		BUFFER_TRACE(bh2, "call ext3_journal_dirty_metadata");
+-		err = ext3_journal_dirty_metadata(handle, bh2);
+-		if (!fatal) fatal = err;
+ 	}
+-	BUFFER_TRACE(bitmap_bh, "call ext3_journal_dirty_metadata");
+-	err = ext3_journal_dirty_metadata(handle, bitmap_bh);
+-	if (!fatal)
+-		fatal = err;
++	spin_lock(sb_bgl_lock(sbi, block_group));
++	if (fatal) {
++		/* Skip group descriptor update, update only inode bitmaps */
++		cleared = ext3_clear_bit(bit, bitmap_bh->b_data);
++		spin_unlock(sb_bgl_lock(sbi, block_group));
++		goto out;
++	}
++	/* Ok, now we can actually update the inode bitmaps.. */
++	cleared = ext3_clear_bit(bit, bitmap_bh->b_data);
++	if (!cleared) {
++		spin_unlock(sb_bgl_lock(sbi, block_group));
++		goto out;
++	}
++	le16_add_cpu(&gdp->bg_free_inodes_count, 1);
++	if (is_directory)
++		le16_add_cpu(&gdp->bg_used_dirs_count, -1);
++	spin_unlock(sb_bgl_lock(sbi, block_group));
++	percpu_counter_inc(&sbi->s_freeinodes_counter);
++	if (is_directory)
++		percpu_counter_dec(&sbi->s_dirs_counter);
+ 
++	BUFFER_TRACE(bh2, "call ext3_journal_dirty_metadata");
++	err = ext3_journal_dirty_metadata(handle, bh2);
++out:
++	if (cleared) {
++		BUFFER_TRACE(bitmap_bh, "call ext3_journal_dirty_metadata");
++		fatal = ext3_journal_dirty_metadata(handle, bitmap_bh);
++	}
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext3_std_error(sb, fatal);
 -- 
-1.6.6
+1.6.6.1
 
-
---=-=-=--
