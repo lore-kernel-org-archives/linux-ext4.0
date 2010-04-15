@@ -1,151 +1,84 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 2/2] ext4: fix inode bitmaps manipulation in free_inode
-Date: Wed, 14 Apr 2010 20:12:42 -0400
-Message-ID: <20100415001242.GE19959@thunk.org>
-References: <87pr2246y4.fsf@openvz.org>
- <1271244184-8693-1-git-send-email-dmonakhov@openvz.org>
- <1271244184-8693-2-git-send-email-dmonakhov@openvz.org>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: EXT4_IOC_MOVE_EXT file corruption!
+Date: Thu, 15 Apr 2010 17:27:50 +0900
+Message-ID: <4BC6CE06.3070302@rs.jp.nec.com>
+References: <20100405220220.GT29604@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33736 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754841Ab0DOF4P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Apr 2010 01:56:15 -0400
-Content-Disposition: inline
-In-Reply-To: <1271244184-8693-2-git-send-email-dmonakhov@openvz.org>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:63357 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757244Ab0DOI2U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Apr 2010 04:28:20 -0400
+In-Reply-To: <20100405220220.GT29604@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is what I dropped into the ext4 patch queue.  It fixes up some
-spelling errors, and a few other minor changes.
+Hi Darrick,
 
-					- Ted
+(2010/04/06 7:02), Darrick J. Wong wrote:
+> Hi all,
+>
+> I wrote a program called e4frag that deliberately tries to fragment an ext4
+> filesystem via EXT4_IOC_MOVE_EXT so that I could run e4defrag through its
+> paces.  While running e4frag and e4defrag concurrently on a kernel source tree,
+> I discovered ongoing file corruption.  It appears that if e4frag and e4defrag
+> hit the same file at same time, the file ends up with a 4K data block from
+> somewhere else.  "Somewhere else" seems to be a small chunk of binary gibberish
+> followed by contents from other files(!)  Obviously this isn't a good thing to
+> see, since today it's header files but tomorrow it could be the credit card/SSN
+> database. :)
+>
+> Ted asked me to send out a copy of the program ASAP, so the test program source
+> code is at the end of this message.  To build it, run:
+>
+> $ gcc -o e4frag -O2 -Wall e4frag.c
+>
+> and then to run it:
+>
+> (unpack something in /path/to/files)
+> $ cp -pRdu /path/to/files /path/to/intact_files
+> $ while true; do e4defrag /path/to/files&  done
+> $ while true; do ./e4frag -m 500 -s random /path/to/files&  done
+> $ while true; do diff -Naurp /path/to/intact_files /path/to/files; done
+>
+> ...and wait for diff to cough up differences.  This seems to happen on
+> 2.6.34-rc3, and only if e4frag and e4defrag are running concurrently.  Running
+> e4frag or e4defrag in a serial loop doesn't produce this corruption, so I think
+> it's purely a concurrent access problem.
 
-ext4: clean up inode bitmaps manipulation in ext4_free_inode
+I couldn't reproduce this problem, somehow.
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+My environment is:
+Arch: i386
+Kernel: 2.6.34-rc3
+e2fsprogs: 1.41.11
+Mount option: delalloc, data=ordered, async
+Block size: 4KB
+Partition size: 100GB
 
-- Reorganize locking scheme to batch two atomic operation in to one.
-  This also allow us to state what healthy group must obey following rule
-  ext4_free_inodes_count(sb, gdp) == ext4_count_free(inode_bitmap, NUM);
-- Fix possible undefined pointer dereference.
-- Even if group descriptor stats aren't accessible we have to update
-  inode bitmaps.
-- Move non-group members update out of group_lock.
+Is there any difference in your case?
+And how long does this file corruption take to be detected?
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+I ran below program all day long, but problem did not occur.
+
 ---
- fs/ext4/ialloc.c |   88 +++++++++++++++++++++++++++---------------------------
- 1 files changed, 44 insertions(+), 44 deletions(-)
+#!/bin/bash
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 57f6eef..25fe42f 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -240,56 +240,56 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	if (fatal)
- 		goto error_return;
- 
--	/* Ok, now we can actually update the inode bitmaps.. */
--	cleared = ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
--					bit, bitmap_bh->b_data);
--	if (!cleared)
--		ext4_error(sb, "bit already cleared for inode %lu", ino);
--	else {
--		gdp = ext4_get_group_desc(sb, block_group, &bh2);
--
-+	fatal = -ESRCH;
-+	gdp = ext4_get_group_desc(sb, block_group, &bh2);
-+	if (gdp) {
- 		BUFFER_TRACE(bh2, "get_write_access");
- 		fatal = ext4_journal_get_write_access(handle, bh2);
--		if (fatal) goto error_return;
--
--		if (gdp) {
--			ext4_lock_group(sb, block_group);
--			count = ext4_free_inodes_count(sb, gdp) + 1;
--			ext4_free_inodes_set(sb, gdp, count);
--			if (is_directory) {
--				count = ext4_used_dirs_count(sb, gdp) - 1;
--				ext4_used_dirs_set(sb, gdp, count);
--				if (sbi->s_log_groups_per_flex) {
--					ext4_group_t f;
--
--					f = ext4_flex_group(sbi, block_group);
--					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
--				}
-+	}
-+	ext4_lock_group(sb, block_group);
-+	if (fatal) {
-+		/* Skip group descriptor update, update only inode bitmaps */
-+		cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
-+		ext4_unlock_group(sb, block_group);
-+		goto out;
-+	}
- 
--			}
--			gdp->bg_checksum = ext4_group_desc_csum(sbi,
--							block_group, gdp);
--			ext4_unlock_group(sb, block_group);
--			percpu_counter_inc(&sbi->s_freeinodes_counter);
--			if (is_directory)
--				percpu_counter_dec(&sbi->s_dirs_counter);
--
--			if (sbi->s_log_groups_per_flex) {
--				ext4_group_t f;
--
--				f = ext4_flex_group(sbi, block_group);
--				atomic_inc(&sbi->s_flex_groups[f].free_inodes);
--			}
--		}
--		BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
--		err = ext4_handle_dirty_metadata(handle, NULL, bh2);
--		if (!fatal) fatal = err;
-+	/* Ok, now we can actually update the inode bitmaps.. */
-+	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
-+	if (!cleared) {
-+		ext4_unlock_group(sb, block_group);
-+		goto out;
- 	}
--	BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
--	if (!fatal)
--		fatal = err;
--	sb->s_dirt = 1;
-+	count = ext4_free_inodes_count(sb, gdp) + 1;
-+	ext4_free_inodes_set(sb, gdp, count);
-+	if (is_directory) {
-+		count = ext4_used_dirs_count(sb, gdp) - 1;
-+		ext4_used_dirs_set(sb, gdp, count);
-+		percpu_counter_dec(&sbi->s_dirs_counter);
-+	}
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
-+	ext4_unlock_group(sb, block_group);
-+
-+	percpu_counter_inc(&sbi->s_freeinodes_counter);
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t f = ext4_flex_group(sbi, block_group);
-+
-+		atomic_inc(&sbi->s_flex_groups[f].free_inodes);
-+		if (is_directory)
-+			atomic_dec(&sbi->s_flex_groups[f].used_dirs);
-+	}
-+	BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
-+	fatal = ext4_handle_dirty_metadata(handle, NULL, bh2);
-+out:
-+	if (cleared) {
-+		BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
-+		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-+		if (!fatal)
-+			fatal = err;
-+		sb->s_dirt = 1;
-+	} else
-+		ext4_error(sb, "bit already cleared for inode %lu", ino);
-+
- error_return:
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, fatal);
+TARGET="/mnt/mp1/TEST/linux-2.6.34-rc3"
+ORIG="/mnt/mp1/TEST/linux-2.6.34-rc3-orig"
+
+cp -pRdu $TARGET $ORIG
+while true; do ./e4defrag -v $TARGET & done
+while true; do ./e4frag -m 500 -s random $TARGET & done
+while true; do diff -Naurp $ORIG $TARGET; done
+---
+
+# The OOM killer sometimes runs while running this program
+   because this is a heavy load for system, though.
+
+Regards,
+Akira Fujita
