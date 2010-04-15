@@ -1,232 +1,151 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond
- i_size
-Date: Wed, 14 Apr 2010 17:28:31 -0400
-Message-ID: <20100414212831.GD19959@thunk.org>
-References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 2/2] ext4: fix inode bitmaps manipulation in free_inode
+Date: Wed, 14 Apr 2010 20:12:42 -0400
+Message-ID: <20100415001242.GE19959@thunk.org>
+References: <87pr2246y4.fsf@openvz.org>
+ <1271244184-8693-1-git-send-email-dmonakhov@openvz.org>
+ <1271244184-8693-2-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33735 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33736 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754841Ab0DOF4O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Apr 2010 01:56:14 -0400
+	id S1754841Ab0DOF4P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 01:56:15 -0400
 Content-Disposition: inline
-In-Reply-To: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1271244184-8693-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a slightly revised version of the patch where I've made to
-keep ext4_ext_convert_to_initialized() and
-ext4_split_unwritten_extents() more in sync with each other.  (If you
-use "meld" on the these two functions, it's really clear they are very
-similar to each other, and really need to be combined --- my plan is
-to smash the two functions together and call the result
-ext4_prepare_uninit_extent().)
-
-I think it should be functionality equivalent to Dmitriy's original
-patch; aside from mostly syntatic/cosmetic changes and spelling fixes,
-the only substantive change I made was simplifying the may_zeroout
-calculation by changing how eof_block is calculated.  I've run it
-through xfstests, and it's passing.
+This is what I dropped into the ext4 patch queue.  It fixes up some
+spelling errors, and a few other minor changes.
 
 					- Ted
 
-ext4: Do not zeroout uninitialized extents beyond i_size
+ext4: clean up inode bitmaps manipulation in ext4_free_inode
 
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-The extents code will sometimes zero out blocks and mark them as
-initialized instead of splitting an extent into several smaller ones.
-This optimization however, causes problems if the extent is beyond
-i_size because fsck will complain if there are uninitialized blocks
-after i_size as this can not be distinguished from an inode that has
-an incorrect i_size field.
-
-https://bugzilla.kernel.org/show_bug.cgi?id=15742
+- Reorganize locking scheme to batch two atomic operation in to one.
+  This also allow us to state what healthy group must obey following rule
+  ext4_free_inodes_count(sb, gdp) == ext4_count_free(inode_bitmap, NUM);
+- Fix possible undefined pointer dereference.
+- Even if group descriptor stats aren't accessible we have to update
+  inode bitmaps.
+- Move non-group members update out of group_lock.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |   66 ++++++++++++++++++++++++++++++++++++++++-------------
- 1 files changed, 50 insertions(+), 16 deletions(-)
+ fs/ext4/ialloc.c |   88 +++++++++++++++++++++++++++---------------------------
+ 1 files changed, 44 insertions(+), 44 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 228eeaf..7c0438e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2631,11 +2631,21 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	struct ext4_extent *ex2 = NULL;
- 	struct ext4_extent *ex3 = NULL;
- 	struct ext4_extent_header *eh;
--	ext4_lblk_t ee_block;
-+	ext4_lblk_t ee_block, eof_block;
- 	unsigned int allocated, ee_len, depth;
- 	ext4_fsblk_t newblock;
- 	int err = 0;
- 	int ret = 0;
-+	int may_zeroout;
-+
-+	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
-+		"block %llu, max_blocks %u\n", inode->i_ino,
-+		(unsigned long long)iblock, max_blocks);
-+
-+	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-+		inode->i_sb->s_blocksize_bits;
-+	if (eof_block < iblock + max_blocks)
-+		eof_block = iblock + max_blocks;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 57f6eef..25fe42f 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -240,56 +240,56 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	if (fatal)
+ 		goto error_return;
  
- 	depth = ext_depth(inode);
- 	eh = path[depth].p_hdr;
-@@ -2644,16 +2654,23 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	allocated = ee_len - (iblock - ee_block);
- 	newblock = iblock - ee_block + ext_pblock(ex);
-+
- 	ex2 = ex;
- 	orig_ex.ee_block = ex->ee_block;
- 	orig_ex.ee_len   = cpu_to_le16(ee_len);
- 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+-	/* Ok, now we can actually update the inode bitmaps.. */
+-	cleared = ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
+-					bit, bitmap_bh->b_data);
+-	if (!cleared)
+-		ext4_error(sb, "bit already cleared for inode %lu", ino);
+-	else {
+-		gdp = ext4_get_group_desc(sb, block_group, &bh2);
+-
++	fatal = -ESRCH;
++	gdp = ext4_get_group_desc(sb, block_group, &bh2);
++	if (gdp) {
+ 		BUFFER_TRACE(bh2, "get_write_access");
+ 		fatal = ext4_journal_get_write_access(handle, bh2);
+-		if (fatal) goto error_return;
+-
+-		if (gdp) {
+-			ext4_lock_group(sb, block_group);
+-			count = ext4_free_inodes_count(sb, gdp) + 1;
+-			ext4_free_inodes_set(sb, gdp, count);
+-			if (is_directory) {
+-				count = ext4_used_dirs_count(sb, gdp) - 1;
+-				ext4_used_dirs_set(sb, gdp, count);
+-				if (sbi->s_log_groups_per_flex) {
+-					ext4_group_t f;
+-
+-					f = ext4_flex_group(sbi, block_group);
+-					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
+-				}
++	}
++	ext4_lock_group(sb, block_group);
++	if (fatal) {
++		/* Skip group descriptor update, update only inode bitmaps */
++		cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
++		ext4_unlock_group(sb, block_group);
++		goto out;
++	}
  
-+	/*
-+	 * It is safe to convert extent to initialized via explicit
-+	 * zeroout only if extent is fully insde i_size or new_size.
-+	 */
-+	may_zeroout = ee_block + ee_len <= eof_block;
+-			}
+-			gdp->bg_checksum = ext4_group_desc_csum(sbi,
+-							block_group, gdp);
+-			ext4_unlock_group(sb, block_group);
+-			percpu_counter_inc(&sbi->s_freeinodes_counter);
+-			if (is_directory)
+-				percpu_counter_dec(&sbi->s_dirs_counter);
+-
+-			if (sbi->s_log_groups_per_flex) {
+-				ext4_group_t f;
+-
+-				f = ext4_flex_group(sbi, block_group);
+-				atomic_inc(&sbi->s_flex_groups[f].free_inodes);
+-			}
+-		}
+-		BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
+-		err = ext4_handle_dirty_metadata(handle, NULL, bh2);
+-		if (!fatal) fatal = err;
++	/* Ok, now we can actually update the inode bitmaps.. */
++	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
++	if (!cleared) {
++		ext4_unlock_group(sb, block_group);
++		goto out;
+ 	}
+-	BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
+-	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+-	if (!fatal)
+-		fatal = err;
+-	sb->s_dirt = 1;
++	count = ext4_free_inodes_count(sb, gdp) + 1;
++	ext4_free_inodes_set(sb, gdp, count);
++	if (is_directory) {
++		count = ext4_used_dirs_count(sb, gdp) - 1;
++		ext4_used_dirs_set(sb, gdp, count);
++		percpu_counter_dec(&sbi->s_dirs_counter);
++	}
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
++	ext4_unlock_group(sb, block_group);
 +
- 	err = ext4_ext_get_access(handle, inode, path + depth);
- 	if (err)
- 		goto out;
- 	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
--	if (ee_len <= 2*EXT4_EXT_ZERO_LEN) {
-+	if (ee_len <= 2*EXT4_EXT_ZERO_LEN && may_zeroout) {
- 		err =  ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
-@@ -2684,7 +2701,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	if (allocated > max_blocks) {
- 		unsigned int newdepth;
- 		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
--		if (allocated <= EXT4_EXT_ZERO_LEN) {
-+		if (allocated <= EXT4_EXT_ZERO_LEN && may_zeroout) {
- 			/*
- 			 * iblock == ee_block is handled by the zerouout
- 			 * at the beginning.
-@@ -2760,7 +2777,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
- 		ext4_ext_mark_uninitialized(ex3);
- 		err = ext4_ext_insert_extent(handle, inode, path, ex3, 0);
--		if (err == -ENOSPC) {
-+		if (err == -ENOSPC && may_zeroout) {
- 			err =  ext4_ext_zeroout(inode, &orig_ex);
- 			if (err)
- 				goto fix_extent_len;
-@@ -2784,8 +2801,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		 * update the extent length after successful insert of the
- 		 * split extent
- 		 */
--		orig_ex.ee_len = cpu_to_le16(ee_len -
--						ext4_ext_get_actual_len(ex3));
-+		ee_len -= ext4_ext_get_actual_len(ex3);
-+		orig_ex.ee_len = cpu_to_le16(ee_len);
-+		may_zeroout = ee_block + ee_len <= eof_block;
++	percpu_counter_inc(&sbi->s_freeinodes_counter);
++	if (sbi->s_log_groups_per_flex) {
++		ext4_group_t f = ext4_flex_group(sbi, block_group);
 +
- 		depth = newdepth;
- 		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode, iblock, path);
-@@ -2809,7 +2828,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		 * otherwise give the extent a chance to merge to left
- 		 */
- 		if (le16_to_cpu(orig_ex.ee_len) <= EXT4_EXT_ZERO_LEN &&
--							iblock != ee_block) {
-+			iblock != ee_block && may_zeroout) {
- 			err =  ext4_ext_zeroout(inode, &orig_ex);
- 			if (err)
- 				goto fix_extent_len;
-@@ -2878,7 +2897,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	goto out;
- insert:
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
--	if (err == -ENOSPC) {
-+	if (err == -ENOSPC && may_zeroout) {
- 		err =  ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
-@@ -2938,14 +2957,21 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	struct ext4_extent *ex2 = NULL;
- 	struct ext4_extent *ex3 = NULL;
- 	struct ext4_extent_header *eh;
--	ext4_lblk_t ee_block;
-+	ext4_lblk_t ee_block, eof_block;
- 	unsigned int allocated, ee_len, depth;
- 	ext4_fsblk_t newblock;
- 	int err = 0;
-+	int may_zeroout;
++		atomic_inc(&sbi->s_flex_groups[f].free_inodes);
++		if (is_directory)
++			atomic_dec(&sbi->s_flex_groups[f].used_dirs);
++	}
++	BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
++	fatal = ext4_handle_dirty_metadata(handle, NULL, bh2);
++out:
++	if (cleared) {
++		BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
++		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
++		if (!fatal)
++			fatal = err;
++		sb->s_dirt = 1;
++	} else
++		ext4_error(sb, "bit already cleared for inode %lu", ino);
 +
-+	ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
-+		"block %llu, max_blocks %u\n", inode->i_ino,
-+		(unsigned long long)iblock, max_blocks);
-+
-+	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-+		inode->i_sb->s_blocksize_bits;
-+	if (eof_block < iblock + max_blocks)
-+		eof_block = iblock + max_blocks;
- 
--	ext_debug("ext4_split_unwritten_extents: inode %lu,"
--		  "iblock %llu, max_blocks %u\n", inode->i_ino,
--		  (unsigned long long)iblock, max_blocks);
- 	depth = ext_depth(inode);
- 	eh = path[depth].p_hdr;
- 	ex = path[depth].p_ext;
-@@ -2953,12 +2979,19 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	allocated = ee_len - (iblock - ee_block);
- 	newblock = iblock - ee_block + ext_pblock(ex);
-+
- 	ex2 = ex;
- 	orig_ex.ee_block = ex->ee_block;
- 	orig_ex.ee_len   = cpu_to_le16(ee_len);
- 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
- 
- 	/*
-+	 * It is safe to convert extent to initialized via explicit
-+	 * zeroout only if extent is fully insde i_size or new_size.
-+	 */
-+	may_zeroout = ee_block + ee_len <= eof_block;
-+
-+	/*
-  	 * If the uninitialized extent begins at the same logical
-  	 * block where the write begins, and the write completely
-  	 * covers the extent, then we don't need to split it.
-@@ -2992,7 +3025,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
- 		ext4_ext_mark_uninitialized(ex3);
- 		err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
--		if (err == -ENOSPC) {
-+		if (err == -ENOSPC && may_zeroout) {
- 			err =  ext4_ext_zeroout(inode, &orig_ex);
- 			if (err)
- 				goto fix_extent_len;
-@@ -3016,8 +3049,9 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 		 * update the extent length after successful insert of the
- 		 * split extent
- 		 */
--		orig_ex.ee_len = cpu_to_le16(ee_len -
--						ext4_ext_get_actual_len(ex3));
-+		ee_len -= ext4_ext_get_actual_len(ex3);
-+		orig_ex.ee_len = cpu_to_le16(ee_len);
-+
- 		depth = newdepth;
- 		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode, iblock, path);
-@@ -3063,7 +3097,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	goto out;
- insert:
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
--	if (err == -ENOSPC) {
-+	if (err == -ENOSPC && may_zeroout) {
- 		err =  ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, fatal);
