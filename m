@@ -1,55 +1,43 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH 0/4 v3] ext3/4: enhance fsync performance when using CFQ
-Date: Thu, 15 Apr 2010 12:33:45 +0200
-Message-ID: <20100415103345.GY27497@kernel.dk>
-References: <1271279826-30294-1-git-send-email-jmoyer@redhat.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: Ping.
+Date: Thu, 15 Apr 2010 15:30:58 +0400
+Message-ID: <87y6gp2brh.fsf@openvz.org>
+References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
+	<87ljd1vtth.fsf@openvz.org> <20100413181450.GA5720@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	vgoyal@redhat.com
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:52899 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753058Ab0DOKdq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Apr 2010 06:33:46 -0400
-Content-Disposition: inline
-In-Reply-To: <1271279826-30294-1-git-send-email-jmoyer@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, adilger@sun.com, jack@suse.cz, david@fromorbit.com,
+	viro@ZenIV.linux.org.uk, xemul@openvz.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20100413181450.GA5720@infradead.org> (Christoph Hellwig's
+	message of "Tue, 13 Apr 2010 14:14:50 -0400")
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 14 2010, Jeff Moyer wrote:
-> Hi,
-> 
-> The previous two postings can be found here:
->   http://lkml.org/lkml/2010/4/1/344
-> and here:
->   http://lkml.org/lkml/2010/4/7/325
-> 
-> The basic problem is that, when running iozone on smallish files (up to
-> 8MB in size) and including fsync in the timings, deadline outperforms
-> CFQ by a factor of about 5 for 64KB files, and by about 10% for 8MB
-> files.  From examining the blktrace data, it appears that iozone will
-> issue an fsync() call, and subsequently wait until its CFQ timeslice
-> has expired before the journal thread can run to actually commit data to
-> disk.
-> 
-> The approach taken to solve this problem is to implement a blk_yield call,
-> which tells the I/O scheduler not to idle on this process' queue.  The call
-> is made from the jbd[2] log_wait_commit function.
-> 
-> This patch set addresses previous concerns that the sync-noidle workload
-> would be starved by keeping track of the average think time for that
-> workload and using that to decide whether or not to yield the queue.
-> 
-> My testing showed nothing but improvements for mixed workloads, though I
-> wouldn't call the testing exhaustive.  I'd still very much like feedback
-> on the approach from jbd/jbd2 developers.  Finally, I will continue to do
-> performance analysis of the patches.
+Christoph Hellwig <hch@infradead.org> writes:
 
-This is starting to look better. Can you share what tests you did? I
-tried reproducing with fs_mark last time and could not.
-
--- 
-Jens Axboe
-
+> On Tue, Apr 06, 2010 at 01:00:58PM +0400, Dmitry Monakhov wrote:
+>> Dmitry Monakhov <dmonakhov@openvz.org> writes:
+>> 
+>> > This is 6'th version of extened inode owner patch-set.
+>> > Please review it tell me what do you think about all this.
+>> >  Are you agree with this approach?
+>> >  Are you worry about some implementation details?
+>> >  Is it ready for merge to some devel's tree?
+>> Ping. I haven't got response about the patchset, just small note about
+>> xattr-name from Andreas.
+>> Please clarify what do you think about whole idea and
+>> current patch-set state. What do i have to do to make a progress?
+>
+> As long as you still have the awkward ifdefs and different semantics for
+About ifdefs style:
+How can i avoid CONFIG_PROJECT_ID without bloating inode size?
+embedded people will kill me for this.
+I just act similar quota code, or you want protect prjid logic 
+via quota config option?
+I don't remember, are we already talk about this?
+If so please remind me your vision.
+> "isolation" vs "not"  there's still a NACK from me.  But in the end Al
+> will have to decide if he wants to take your patches or not.
