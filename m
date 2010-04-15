@@ -1,270 +1,114 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond i_size
-Date: Thu, 15 Apr 2010 13:20:35 +0400
-Message-ID: <8739yx3wd8.fsf@openvz.org>
-References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
-	<20100414212831.GD19959@thunk.org>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH 2/4] block: Implement a blk_yield function to
+	voluntarily give up the I/O scheduler.
+Date: Thu, 15 Apr 2010 12:33:23 +0200
+Message-ID: <20100415103323.GW27497@kernel.dk>
+References: <1271279826-30294-1-git-send-email-jmoyer@redhat.com> <1271279826-30294-3-git-send-email-jmoyer@redhat.com> <20100414214654.GD3167@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Moyer <jmoyer@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Vivek Goyal <vgoyal@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:35292 "EHLO relay.sw.ru"
+Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:52891 "EHLO kernel.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757591Ab0DOJUt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Apr 2010 05:20:49 -0400
-In-Reply-To: <20100414212831.GD19959@thunk.org> (tytso@mit.edu's message of
-	"Wed, 14 Apr 2010 17:28:31 -0400")
+	id S1752786Ab0DOKdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 06:33:24 -0400
+Content-Disposition: inline
+In-Reply-To: <20100414214654.GD3167@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
+On Wed, Apr 14 2010, Vivek Goyal wrote:
+> On Wed, Apr 14, 2010 at 05:17:04PM -0400, Jeff Moyer wrote:
+> > This patch implements a blk_yield to allow a process to voluntarily
+> > give up its I/O scheduler time slice.  This is desirable for those processes
+> > which know that they will be blocked on I/O from another process, such as
+> > the file system journal thread.  Following patches will put calls to blk_yield
+> > into jbd and jbd2.
+> > 
+> > Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> > ---
+> >  block/blk-core.c         |    6 ++++
+> >  block/cfq-iosched.c      |   70 ++++++++++++++++++++++++++++++++++++++++++++++
+> >  block/elevator.c         |    8 +++++
+> >  include/linux/blkdev.h   |    1 +
+> >  include/linux/elevator.h |    3 ++
+> >  5 files changed, 88 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/block/blk-core.c b/block/blk-core.c
+> > index 9fe174d..3e4e98c 100644
+> > --- a/block/blk-core.c
+> > +++ b/block/blk-core.c
+> > @@ -323,6 +323,12 @@ void blk_unplug(struct request_queue *q)
+> >  }
+> >  EXPORT_SYMBOL(blk_unplug);
+> >  
+> > +void blk_yield(struct request_queue *q)
+> > +{
+> > +	elv_yield(q);
+> > +}
+> > +EXPORT_SYMBOL(blk_yield);
+> > +
+> >  /**
+> >   * blk_start_queue - restart a previously stopped queue
+> >   * @q:    The &struct request_queue in question
+> > diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+> > index ef59ab3..8a300ab 100644
+> > --- a/block/cfq-iosched.c
+> > +++ b/block/cfq-iosched.c
+> > @@ -292,6 +292,7 @@ struct cfq_data {
+> >  };
+> >  
+> >  static struct cfq_group *cfq_get_next_cfqg(struct cfq_data *cfqd);
+> > +static void cfq_yield_cfqq(struct cfq_data *cfqd, struct cfq_queue *cfqq);
+> >  
+> >  static struct cfq_rb_root *service_tree_for(struct cfq_group *cfqg,
+> >  					    enum wl_prio_t prio,
+> > @@ -320,6 +321,7 @@ enum cfqq_state_flags {
+> >  	CFQ_CFQQ_FLAG_split_coop,	/* shared cfqq will be splitted */
+> >  	CFQ_CFQQ_FLAG_deep,		/* sync cfqq experienced large depth */
+> >  	CFQ_CFQQ_FLAG_wait_busy,	/* Waiting for next request */
+> > +	CFQ_CFQQ_FLAG_yield,		/* Allow another cfqq to run */
+> >  };
+> >  
+> >  #define CFQ_CFQQ_FNS(name)						\
+> > @@ -349,6 +351,7 @@ CFQ_CFQQ_FNS(coop);
+> >  CFQ_CFQQ_FNS(split_coop);
+> >  CFQ_CFQQ_FNS(deep);
+> >  CFQ_CFQQ_FNS(wait_busy);
+> > +CFQ_CFQQ_FNS(yield);
+> >  #undef CFQ_CFQQ_FNS
+> >  
+> >  #ifdef CONFIG_DEBUG_CFQ_IOSCHED
+> > @@ -1566,6 +1569,7 @@ __cfq_slice_expired(struct cfq_data *cfqd, struct cfq_queue *cfqq,
+> >  
+> >  	cfq_clear_cfqq_wait_request(cfqq);
+> >  	cfq_clear_cfqq_wait_busy(cfqq);
+> > +	cfq_clear_cfqq_yield(cfqq);
+> >  
+> >  	/*
+> >  	 * If this cfqq is shared between multiple processes, check to
+> > @@ -1887,6 +1891,9 @@ static void cfq_dispatch_insert(struct request_queue *q, struct request *rq)
+> >  
+> >  	cfqd->rq_in_flight[cfq_cfqq_sync(cfqq)]++;
+> >  	cfqq->nr_sectors += blk_rq_sectors(rq);
+> > +
+> > +	if (cfq_cfqq_yield(cfqq) && RB_EMPTY_ROOT(&cfqq->sort_list))
+> > +		cfq_yield_cfqq(cfqd, cfqq);
+> 
+> Jeff,
+> 
+> I am wondering if cfq_select_queue() will be a better place for yielding
+> the queue.
+> 
+> 	if (cfq_cfqq_yield(cfqq) && RB_EMPTY_ROOT(&cfqq->sort_list))
+> 			goto expire;
+> 
+> We can avoid one unnecessary __blk_run_queue().
 
-tytso@mit.edu writes:
+Agree, doing it on insert is not the right place.
 
-> This is a slightly revised version of the patch where I've made to
-> keep ext4_ext_convert_to_initialized() and
-> ext4_split_unwritten_extents() more in sync with each other.  (If you
-> use "meld" on the these two functions, it's really clear they are very
-Yepp. Indeed function are almost identical, and sadly i've missed 
-may_zeroout condition update in second one :(. see later in the text
-> similar to each other, and really need to be combined --- my plan is
-> to smash the two functions together and call the result
-> ext4_prepare_uninit_extent().)
->
-> I think it should be functionality equivalent to Dmitriy's original
-> patch; aside from mostly syntatic/cosmetic changes and spelling fixes,
-> the only substantive change I made was simplifying the may_zeroout
-> calculation by changing how eof_block is calculated.  I've run it
-> through xfstests, and it's passing.
-Other useful test is to run fsstress with boosted write/fallocate
-probability on small(1Gb)  filesystem
-xfstests/ltp/fsstress -p10 -z -f mkdir=1 -f creat=1 -f write=10 \
-                      -f resrvsp=10 -n999999999 &
-sleep 100
-killall -9 fsstress
-#umount/e2fsck
->
-> 					- Ted
->
-> ext4: Do not zeroout uninitialized extents beyond i_size
->
-> From: Dmitry Monakhov <dmonakhov@openvz.org>
->
-> The extents code will sometimes zero out blocks and mark them as
-> initialized instead of splitting an extent into several smaller ones.
-> This optimization however, causes problems if the extent is beyond
-> i_size because fsck will complain if there are uninitialized blocks
-> after i_size as this can not be distinguished from an inode that has
-> an incorrect i_size field.
->
-> https://bugzilla.kernel.org/show_bug.cgi?id=15742
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/extents.c |   66 ++++++++++++++++++++++++++++++++++++++++-------------
->  1 files changed, 50 insertions(+), 16 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 228eeaf..7c0438e 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2631,11 +2631,21 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	struct ext4_extent *ex2 = NULL;
->  	struct ext4_extent *ex3 = NULL;
->  	struct ext4_extent_header *eh;
-> -	ext4_lblk_t ee_block;
-> +	ext4_lblk_t ee_block, eof_block;
->  	unsigned int allocated, ee_len, depth;
->  	ext4_fsblk_t newblock;
->  	int err = 0;
->  	int ret = 0;
-> +	int may_zeroout;
-> +
-> +	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
-> +		"block %llu, max_blocks %u\n", inode->i_ino,
-> +		(unsigned long long)iblock, max_blocks);
-> +
-> +	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-> +		inode->i_sb->s_blocksize_bits;
-> +	if (eof_block < iblock + max_blocks)
-> +		eof_block = iblock + max_blocks;
->  
->  	depth = ext_depth(inode);
->  	eh = path[depth].p_hdr;
-> @@ -2644,16 +2654,23 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	ee_len = ext4_ext_get_actual_len(ex);
->  	allocated = ee_len - (iblock - ee_block);
->  	newblock = iblock - ee_block + ext_pblock(ex);
-> +
->  	ex2 = ex;
->  	orig_ex.ee_block = ex->ee_block;
->  	orig_ex.ee_len   = cpu_to_le16(ee_len);
->  	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
->  
-> +	/*
-> +	 * It is safe to convert extent to initialized via explicit
-> +	 * zeroout only if extent is fully insde i_size or new_size.
-> +	 */
-> +	may_zeroout = ee_block + ee_len <= eof_block;
-> +
->  	err = ext4_ext_get_access(handle, inode, path + depth);
->  	if (err)
->  		goto out;
->  	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
-> -	if (ee_len <= 2*EXT4_EXT_ZERO_LEN) {
-> +	if (ee_len <= 2*EXT4_EXT_ZERO_LEN && may_zeroout) {
->  		err =  ext4_ext_zeroout(inode, &orig_ex);
->  		if (err)
->  			goto fix_extent_len;
-> @@ -2684,7 +2701,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	if (allocated > max_blocks) {
->  		unsigned int newdepth;
->  		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
-> -		if (allocated <= EXT4_EXT_ZERO_LEN) {
-> +		if (allocated <= EXT4_EXT_ZERO_LEN && may_zeroout) {
->  			/*
->  			 * iblock == ee_block is handled by the zerouout
->  			 * at the beginning.
-> @@ -2760,7 +2777,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
->  		ext4_ext_mark_uninitialized(ex3);
->  		err = ext4_ext_insert_extent(handle, inode, path, ex3, 0);
-> -		if (err == -ENOSPC) {
-> +		if (err == -ENOSPC && may_zeroout) {
->  			err =  ext4_ext_zeroout(inode, &orig_ex);
->  			if (err)
->  				goto fix_extent_len;
-> @@ -2784,8 +2801,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  		 * update the extent length after successful insert of the
->  		 * split extent
->  		 */
-> -		orig_ex.ee_len = cpu_to_le16(ee_len -
-> -						ext4_ext_get_actual_len(ex3));
-> +		ee_len -= ext4_ext_get_actual_len(ex3);
-> +		orig_ex.ee_len = cpu_to_le16(ee_len);
-> +		may_zeroout = ee_block + ee_len <= eof_block;
-> +
->  		depth = newdepth;
->  		ext4_ext_drop_refs(path);
->  		path = ext4_ext_find_extent(inode, iblock, path);
-> @@ -2809,7 +2828,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  		 * otherwise give the extent a chance to merge to left
->  		 */
->  		if (le16_to_cpu(orig_ex.ee_len) <= EXT4_EXT_ZERO_LEN &&
-> -							iblock != ee_block) {
-> +			iblock != ee_block && may_zeroout) {
->  			err =  ext4_ext_zeroout(inode, &orig_ex);
->  			if (err)
->  				goto fix_extent_len;
-> @@ -2878,7 +2897,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	goto out;
->  insert:
->  	err = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
-> -	if (err == -ENOSPC) {
-> +	if (err == -ENOSPC && may_zeroout) {
->  		err =  ext4_ext_zeroout(inode, &orig_ex);
->  		if (err)
->  			goto fix_extent_len;
-> @@ -2938,14 +2957,21 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->  	struct ext4_extent *ex2 = NULL;
->  	struct ext4_extent *ex3 = NULL;
->  	struct ext4_extent_header *eh;
-> -	ext4_lblk_t ee_block;
-> +	ext4_lblk_t ee_block, eof_block;
->  	unsigned int allocated, ee_len, depth;
->  	ext4_fsblk_t newblock;
->  	int err = 0;
-> +	int may_zeroout;
-> +
-> +	ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
-> +		"block %llu, max_blocks %u\n", inode->i_ino,
-> +		(unsigned long long)iblock, max_blocks);
-> +
-> +	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-> +		inode->i_sb->s_blocksize_bits;
-> +	if (eof_block < iblock + max_blocks)
-> +		eof_block = iblock + max_blocks;
->  
-> -	ext_debug("ext4_split_unwritten_extents: inode %lu,"
-> -		  "iblock %llu, max_blocks %u\n", inode->i_ino,
-> -		  (unsigned long long)iblock, max_blocks);
->  	depth = ext_depth(inode);
->  	eh = path[depth].p_hdr;
->  	ex = path[depth].p_ext;
-> @@ -2953,12 +2979,19 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->  	ee_len = ext4_ext_get_actual_len(ex);
->  	allocated = ee_len - (iblock - ee_block);
->  	newblock = iblock - ee_block + ext_pblock(ex);
-> +
->  	ex2 = ex;
->  	orig_ex.ee_block = ex->ee_block;
->  	orig_ex.ee_len   = cpu_to_le16(ee_len);
->  	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
->  
->  	/*
-> +	 * It is safe to convert extent to initialized via explicit
-> +	 * zeroout only if extent is fully insde i_size or new_size.
-> +	 */
-> +	may_zeroout = ee_block + ee_len <= eof_block;
-> +
-> +	/*
->   	 * If the uninitialized extent begins at the same logical
->   	 * block where the write begins, and the write completely
->   	 * covers the extent, then we don't need to split it.
-> @@ -2992,7 +3025,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->  		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
->  		ext4_ext_mark_uninitialized(ex3);
->  		err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
-> -		if (err == -ENOSPC) {
-> +		if (err == -ENOSPC && may_zeroout) {
->  			err =  ext4_ext_zeroout(inode, &orig_ex);
->  			if (err)
->  				goto fix_extent_len;
-> @@ -3016,8 +3049,9 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->  		 * update the extent length after successful insert of the
->  		 * split extent
->  		 */
-> -		orig_ex.ee_len = cpu_to_le16(ee_len -
-> -						ext4_ext_get_actual_len(ex3));
-> +		ee_len -= ext4_ext_get_actual_len(ex3);
-> +		orig_ex.ee_len = cpu_to_le16(ee_len);
-> +
-We have to update may_zeroout since orig extent was changed.
-+               may_zeroout = ee_block + ee_len <= eof_block;  
-I've attached incremental patch for you.
-In fact, this not result in any serious bugs but increase our changes to
-use zeroout optimization and helps us to overcome ENOSPC if possible.
->  		depth = newdepth;
->  		ext4_ext_drop_refs(path);
->  		path = ext4_ext_find_extent(inode, iblock, path);
-> @@ -3063,7 +3097,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
->  	goto out;
->  insert:
->  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
-> -	if (err == -ENOSPC) {
-> +	if (err == -ENOSPC && may_zeroout) {
->  		err =  ext4_ext_zeroout(inode, &orig_ex);
->  		if (err)
->  			goto fix_extent_len;
+-- 
+Jens Axboe
 
-
---=-=-=
-Content-Disposition: inline;
- filename=ext4-Do-not-zeroout-uninitialized-extents-beyond-i_s-2
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2c8f73d..1938418 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3051,6 +3051,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 		 */
- 		ee_len -= ext4_ext_get_actual_len(ex3);
- 		orig_ex.ee_len = cpu_to_le16(ee_len);
-+		may_zeroout = ee_block + ee_len <= eof_block;
- 
- 		depth = newdepth;
- 		ext4_ext_drop_refs(path);
-
---=-=-=--
