@@ -1,113 +1,59 @@
 From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH 2/4] block: Implement a blk_yield function to
-	voluntarily give up the I/O scheduler.
-Date: Thu, 15 Apr 2010 12:33:23 +0200
-Message-ID: <20100415103323.GW27497@kernel.dk>
-References: <1271279826-30294-1-git-send-email-jmoyer@redhat.com> <1271279826-30294-3-git-send-email-jmoyer@redhat.com> <20100414214654.GD3167@redhat.com>
+Subject: Re: [PATCH 4/4] jbd2: yield the device queue when waiting for
+	journal commits
+Date: Thu, 15 Apr 2010 12:33:38 +0200
+Message-ID: <20100415103337.GX27497@kernel.dk>
+References: <1271279826-30294-1-git-send-email-jmoyer@redhat.com> <1271279826-30294-5-git-send-email-jmoyer@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Vivek Goyal <vgoyal@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	vgoyal@redhat.com
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:52891 "EHLO kernel.dk"
+Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:52896 "EHLO kernel.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752786Ab0DOKdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Apr 2010 06:33:24 -0400
+	id S1753172Ab0DOKdj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 06:33:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20100414214654.GD3167@redhat.com>
+In-Reply-To: <1271279826-30294-5-git-send-email-jmoyer@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 14 2010, Vivek Goyal wrote:
-> On Wed, Apr 14, 2010 at 05:17:04PM -0400, Jeff Moyer wrote:
-> > This patch implements a blk_yield to allow a process to voluntarily
-> > give up its I/O scheduler time slice.  This is desirable for those processes
-> > which know that they will be blocked on I/O from another process, such as
-> > the file system journal thread.  Following patches will put calls to blk_yield
-> > into jbd and jbd2.
-> > 
-> > Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-> > ---
-> >  block/blk-core.c         |    6 ++++
-> >  block/cfq-iosched.c      |   70 ++++++++++++++++++++++++++++++++++++++++++++++
-> >  block/elevator.c         |    8 +++++
-> >  include/linux/blkdev.h   |    1 +
-> >  include/linux/elevator.h |    3 ++
-> >  5 files changed, 88 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/block/blk-core.c b/block/blk-core.c
-> > index 9fe174d..3e4e98c 100644
-> > --- a/block/blk-core.c
-> > +++ b/block/blk-core.c
-> > @@ -323,6 +323,12 @@ void blk_unplug(struct request_queue *q)
-> >  }
-> >  EXPORT_SYMBOL(blk_unplug);
-> >  
-> > +void blk_yield(struct request_queue *q)
-> > +{
-> > +	elv_yield(q);
-> > +}
-> > +EXPORT_SYMBOL(blk_yield);
-> > +
-> >  /**
-> >   * blk_start_queue - restart a previously stopped queue
-> >   * @q:    The &struct request_queue in question
-> > diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-> > index ef59ab3..8a300ab 100644
-> > --- a/block/cfq-iosched.c
-> > +++ b/block/cfq-iosched.c
-> > @@ -292,6 +292,7 @@ struct cfq_data {
-> >  };
-> >  
-> >  static struct cfq_group *cfq_get_next_cfqg(struct cfq_data *cfqd);
-> > +static void cfq_yield_cfqq(struct cfq_data *cfqd, struct cfq_queue *cfqq);
-> >  
-> >  static struct cfq_rb_root *service_tree_for(struct cfq_group *cfqg,
-> >  					    enum wl_prio_t prio,
-> > @@ -320,6 +321,7 @@ enum cfqq_state_flags {
-> >  	CFQ_CFQQ_FLAG_split_coop,	/* shared cfqq will be splitted */
-> >  	CFQ_CFQQ_FLAG_deep,		/* sync cfqq experienced large depth */
-> >  	CFQ_CFQQ_FLAG_wait_busy,	/* Waiting for next request */
-> > +	CFQ_CFQQ_FLAG_yield,		/* Allow another cfqq to run */
-> >  };
-> >  
-> >  #define CFQ_CFQQ_FNS(name)						\
-> > @@ -349,6 +351,7 @@ CFQ_CFQQ_FNS(coop);
-> >  CFQ_CFQQ_FNS(split_coop);
-> >  CFQ_CFQQ_FNS(deep);
-> >  CFQ_CFQQ_FNS(wait_busy);
-> > +CFQ_CFQQ_FNS(yield);
-> >  #undef CFQ_CFQQ_FNS
-> >  
-> >  #ifdef CONFIG_DEBUG_CFQ_IOSCHED
-> > @@ -1566,6 +1569,7 @@ __cfq_slice_expired(struct cfq_data *cfqd, struct cfq_queue *cfqq,
-> >  
-> >  	cfq_clear_cfqq_wait_request(cfqq);
-> >  	cfq_clear_cfqq_wait_busy(cfqq);
-> > +	cfq_clear_cfqq_yield(cfqq);
-> >  
-> >  	/*
-> >  	 * If this cfqq is shared between multiple processes, check to
-> > @@ -1887,6 +1891,9 @@ static void cfq_dispatch_insert(struct request_queue *q, struct request *rq)
-> >  
-> >  	cfqd->rq_in_flight[cfq_cfqq_sync(cfqq)]++;
-> >  	cfqq->nr_sectors += blk_rq_sectors(rq);
-> > +
-> > +	if (cfq_cfqq_yield(cfqq) && RB_EMPTY_ROOT(&cfqq->sort_list))
-> > +		cfq_yield_cfqq(cfqd, cfqq);
+On Wed, Apr 14 2010, Jeff Moyer wrote:
+> This patch gets CFQ back in line with deadline for iozone runs, especially
+> those testing small files + fsync timings.
 > 
-> Jeff,
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> ---
+>  fs/jbd2/journal.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
 > 
-> I am wondering if cfq_select_queue() will be a better place for yielding
-> the queue.
-> 
-> 	if (cfq_cfqq_yield(cfqq) && RB_EMPTY_ROOT(&cfqq->sort_list))
-> 			goto expire;
-> 
-> We can avoid one unnecessary __blk_run_queue().
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index c03d4dc..ce46df6 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -41,6 +41,7 @@
+>  #include <linux/hash.h>
+>  #include <linux/log2.h>
+>  #include <linux/vmalloc.h>
+> +#include <linux/blkdev.h>
+>  
+>  #define CREATE_TRACE_POINTS
+>  #include <trace/events/jbd2.h>
+> @@ -580,6 +581,11 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+>  	while (tid_gt(tid, journal->j_commit_sequence)) {
+>  		jbd_debug(1, "JBD: want %d, j_commit_sequence=%d\n",
+>  				  tid, journal->j_commit_sequence);
+> +                /*
+> +		 * Give up our I/O scheduler time slice to allow the journal
+> +		 * thread to issue I/O.
+> +		 */
+> +                blk_yield(journal->j_dev->bd_disk->queue);
+>  		wake_up(&journal->j_wait_commit);
+>  		spin_unlock(&journal->j_state_lock);
+>  		wait_event(journal->j_wait_done_commit,
 
-Agree, doing it on insert is not the right place.
+White space problem here.
 
 -- 
 Jens Axboe
