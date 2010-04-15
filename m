@@ -1,107 +1,99 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: EXT4_IOC_MOVE_EXT file corruption!
-Date: Thu, 15 Apr 2010 15:25:33 -0400
-Message-ID: <n2z87f94c371004151225q6aed9b2eud2d6bbd01419a189@mail.gmail.com>
-References: <20100405220220.GT29604@tux1.beaverton.ibm.com>
-	 <4BC6CE06.3070302@rs.jp.nec.com>
-	 <20100415191724.GW29604@tux1.beaverton.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext34_free_inode's mess
+Date: Thu, 15 Apr 2010 23:39:04 +0200
+Message-ID: <20100415213904.GA13293@quack.suse.cz>
+References: <87pr2246y4.fsf@openvz.org>
+ <20100414133440.GD3616@quack.suse.cz>
+ <87d3y23xz9.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: djwong@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f204.google.com ([209.85.222.204]:53543 "EHLO
-	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755336Ab0DOTZe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Apr 2010 15:25:34 -0400
-Received: by pzk42 with SMTP id 42so1426434pzk.4
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Apr 2010 12:25:33 -0700 (PDT)
-In-Reply-To: <20100415191724.GW29604@tux1.beaverton.ibm.com>
+Received: from cantor.suse.de ([195.135.220.2]:55958 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756720Ab0DOVjB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 17:39:01 -0400
+Content-Disposition: inline
+In-Reply-To: <87d3y23xz9.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 15, 2010 at 3:17 PM, Darrick J. Wong <djwong@us.ibm.com> wr=
-ote:
-> On Thu, Apr 15, 2010 at 05:27:50PM +0900, Akira Fujita wrote:
->> Hi Darrick,
->>
->> (2010/04/06 7:02), Darrick J. Wong wrote:
->>> Hi all,
->>>
->>> I wrote a program called e4frag that deliberately tries to fragment=
- an ext4
->>> filesystem via EXT4_IOC_MOVE_EXT so that I could run e4defrag throu=
-gh its
->>> paces. =A0While running e4frag and e4defrag concurrently on a kerne=
-l source tree,
->>> I discovered ongoing file corruption. =A0It appears that if e4frag =
-and e4defrag
->>> hit the same file at same time, the file ends up with a 4K data blo=
-ck from
->>> somewhere else. =A0"Somewhere else" seems to be a small chunk of bi=
-nary gibberish
->>> followed by contents from other files(!) =A0Obviously this isn't a =
-good thing to
->>> see, since today it's header files but tomorrow it could be the cre=
-dit card/SSN
->>> database. :)
->>>
->>> Ted asked me to send out a copy of the program ASAP, so the test pr=
-ogram source
->>> code is at the end of this message. =A0To build it, run:
->>>
->>> $ gcc -o e4frag -O2 -Wall e4frag.c
->>>
->>> and then to run it:
->>>
->>> (unpack something in /path/to/files)
->>> $ cp -pRdu /path/to/files /path/to/intact_files
->>> $ while true; do e4defrag /path/to/files& =A0done
->>> $ while true; do ./e4frag -m 500 -s random /path/to/files& =A0done
->>> $ while true; do diff -Naurp /path/to/intact_files /path/to/files; =
-done
->>>
->>> ...and wait for diff to cough up differences. =A0This seems to happ=
-en on
->>> 2.6.34-rc3, and only if e4frag and e4defrag are running concurrentl=
-y. =A0Running
->>> e4frag or e4defrag in a serial loop doesn't produce this corruption=
-, so I think
->>> it's purely a concurrent access problem.
->>
->> I couldn't reproduce this problem, somehow.
->>
->> My environment is:
->> Arch: i386
->> Kernel: 2.6.34-rc3
->> e2fsprogs: 1.41.11
->> Mount option: delalloc, data=3Dordered, async
->> Block size: 4KB
->> Partition size: 100GB
->>
->> Is there any difference in your case?
->> And how long does this file corruption take to be detected?
->>
->> I ran below program all day long, but problem did not occur.
->
-> Hmm. =A0I was running with 2.6.34-rc3 on x86-64, same block size, tho=
-ugh with a
-> 2TB mdraid0. =A0It usually took a few hours to reproduce, though I've=
- noticed
-> that if I kick off at least as many e4defrags and e4frags, it will sh=
-ow up much
-> sooner. =A0Thank you for trying this out!
+On Wed 14-04-10 18:33:30, Dmitry Monakhov wrote:
+> Jan Kara <jack@suse.cz> writes:
+> 
+> > On Wed 14-04-10 15:19:47, Dmitry Monakhov wrote:
+> >> I've finally automated my favorite testcase (see attachment), 
+> >> before i've run it by hand.
+> >> And sometimes i've saw following complain from fsck:
+> >> fsck.ext4 -f -n /dev/sdb2
+> >> ...
+> >> Pass 5: Checking group summary information
+> >> Inode bitmap differences:  -93582
+> >> Fix? no
+> >> 
+> >> Free inodes count wrong for group #12 (4634, counted=4633).
+> >> Fix? no
+> >> 
+> >> Free inodes count wrong (35610, counted=35609).
+> >> Fix? no
+> >> ...
+> >   Interesting. So some inode is marked as free although it is in
+> > use, right? That sounds like a nasty bug - if you reproduce this
+> > again, could you use debugfs to find out what file type is that
+> > inode? It could help looking for the bug.
+> No problems, 
+> wget http://download.openvz.org/~dmonakhov/junk/sdb2-2.bz2
+> In fact i've had even better image (with only 1 free inode in a
+> group, but full bitmask) unfortunately i forgot to save it.
+  I've looked at it: So the problem is the other way around (I always
+confuse this). The inode is properly deleted but the bit remains set
+in the bitmap. What is strange is that group descriptor counts are
+correct so it's really only the bitmap bit that is wrong. I've looked
+through the inode allocation and freeing code back and forth but I could
+not find a place where this could realistically happen.
+  So just for record:
+Inode has mtime = ctime = atime = dtime (so it was really deleted), i_nlink
+= 0, it is a directory, i_disksize = 4096, i_blocks = 0. So indeed it looks
+that we were in ext4_mkdir, we failed to allocate the block for directory
+and went to out_clear_inode (thus i_disksize remained to be set to 4096,
+otherwise it would be set to 0)... But how it happened that the bit in the
+bitmap didn't get cleared while the group descriptors were updated is
+beyond me.
+  Alternatively the inode could have been deleted just fine and later we
+just set the bit in the inode bitmap and didn't update anything else. But
+even this does not seem to be possible to me...
+  Since you can reproduce it, good first step would be to 
 
-If its not reproducible on a simple disk, it could be a bug in the
-barrier code for mdraid.
+> >> I've started to look an inode bitmap manipulation code paths
+> >> and found strange logic in ext{3,4}_free_inode functions
+> >> 
+> >> 1) Group lock acquired twice for bitmap and for group_desc.
+> >>    There are not any advantage from this double locking, only
+> >>    error path(where the bit is already cleared) takes an
+> >>    advantage from this locking schema.
+> >>    It is reasonable to batch it in to one locking block.
+> >   I guess you think that this happens because we pass the lock parameter
+> > to ext3_clear_bit_atomic. But if you would actually look at the definition
+> > of the function, you would see that it's hard to find an architecture that
+> > uses the lock. Most architectures just use atomic bitop to clear the bit.
+> > I actually fail to see why anyone would need the lock - probably Ted knows
+> > :).
+> >
+> >> 2) if we failed to read gdp then bh2 is undefined so
+> >>    may result in oops due to undefince pointer dereferance.
+> >   No, because during mount time we check that all gdp pointers exist so
+> > ext3_get_group_desc can never fail after the mount has succeeded.
+> Yes, that is right,  why we have to check gdp to NULL when?
+  Hmm, I've looked at the code again and I think the check is there mainly
+to avoid Oops in case filesystem got corrupted and we computed some bogus
+group number. Not that I would see how that could happen in this particular
+case but in some other uses of ext3_get_group_desc it could happen. So
+moving the gdp check before we use bh2 probably makes some sence (although
+it's probably just a style cleanup in this case).
 
-But I think raid0 support for barriers has been around for a long time.
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
