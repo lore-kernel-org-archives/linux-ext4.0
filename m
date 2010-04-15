@@ -1,114 +1,270 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14830] When other IO is running sync times go to 10 to 20
- minutes
-Date: Thu, 15 Apr 2010 08:45:22 GMT
-Message-ID: <201004150845.o3F8jMsx024449@demeter.kernel.org>
-References: <bug-14830-13602@https.bugzilla.kernel.org/>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond i_size
+Date: Thu, 15 Apr 2010 13:20:35 +0400
+Message-ID: <8739yx3wd8.fsf@openvz.org>
+References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
+	<20100414212831.GD19959@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:49199 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757418Ab0DOIpX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Apr 2010 04:45:23 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3F8jMT2024450
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Apr 2010 08:45:22 GMT
-In-Reply-To: <bug-14830-13602@https.bugzilla.kernel.org/>
+Received: from mailhub.sw.ru ([195.214.232.25]:35292 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757591Ab0DOJUt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 05:20:49 -0400
+In-Reply-To: <20100414212831.GD19959@thunk.org> (tytso@mit.edu's message of
+	"Wed, 14 Apr 2010 17:28:31 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14830
+--=-=-=
+
+tytso@mit.edu writes:
+
+> This is a slightly revised version of the patch where I've made to
+> keep ext4_ext_convert_to_initialized() and
+> ext4_split_unwritten_extents() more in sync with each other.  (If you
+> use "meld" on the these two functions, it's really clear they are very
+Yepp. Indeed function are almost identical, and sadly i've missed 
+may_zeroout condition update in second one :(. see later in the text
+> similar to each other, and really need to be combined --- my plan is
+> to smash the two functions together and call the result
+> ext4_prepare_uninit_extent().)
+>
+> I think it should be functionality equivalent to Dmitriy's original
+> patch; aside from mostly syntatic/cosmetic changes and spelling fixes,
+> the only substantive change I made was simplifying the may_zeroout
+> calculation by changing how eof_block is calculated.  I've run it
+> through xfstests, and it's passing.
+Other useful test is to run fsstress with boosted write/fallocate
+probability on small(1Gb)  filesystem
+xfstests/ltp/fsstress -p10 -z -f mkdir=1 -f creat=1 -f write=10 \
+                      -f resrvsp=10 -n999999999 &
+sleep 100
+killall -9 fsstress
+#umount/e2fsck
+>
+> 					- Ted
+>
+> ext4: Do not zeroout uninitialized extents beyond i_size
+>
+> From: Dmitry Monakhov <dmonakhov@openvz.org>
+>
+> The extents code will sometimes zero out blocks and mark them as
+> initialized instead of splitting an extent into several smaller ones.
+> This optimization however, causes problems if the extent is beyond
+> i_size because fsck will complain if there are uninitialized blocks
+> after i_size as this can not be distinguished from an inode that has
+> an incorrect i_size field.
+>
+> https://bugzilla.kernel.org/show_bug.cgi?id=15742
+>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/extents.c |   66 ++++++++++++++++++++++++++++++++++++++++-------------
+>  1 files changed, 50 insertions(+), 16 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 228eeaf..7c0438e 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2631,11 +2631,21 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	struct ext4_extent *ex2 = NULL;
+>  	struct ext4_extent *ex3 = NULL;
+>  	struct ext4_extent_header *eh;
+> -	ext4_lblk_t ee_block;
+> +	ext4_lblk_t ee_block, eof_block;
+>  	unsigned int allocated, ee_len, depth;
+>  	ext4_fsblk_t newblock;
+>  	int err = 0;
+>  	int ret = 0;
+> +	int may_zeroout;
+> +
+> +	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
+> +		"block %llu, max_blocks %u\n", inode->i_ino,
+> +		(unsigned long long)iblock, max_blocks);
+> +
+> +	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+> +		inode->i_sb->s_blocksize_bits;
+> +	if (eof_block < iblock + max_blocks)
+> +		eof_block = iblock + max_blocks;
+>  
+>  	depth = ext_depth(inode);
+>  	eh = path[depth].p_hdr;
+> @@ -2644,16 +2654,23 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	ee_len = ext4_ext_get_actual_len(ex);
+>  	allocated = ee_len - (iblock - ee_block);
+>  	newblock = iblock - ee_block + ext_pblock(ex);
+> +
+>  	ex2 = ex;
+>  	orig_ex.ee_block = ex->ee_block;
+>  	orig_ex.ee_len   = cpu_to_le16(ee_len);
+>  	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+>  
+> +	/*
+> +	 * It is safe to convert extent to initialized via explicit
+> +	 * zeroout only if extent is fully insde i_size or new_size.
+> +	 */
+> +	may_zeroout = ee_block + ee_len <= eof_block;
+> +
+>  	err = ext4_ext_get_access(handle, inode, path + depth);
+>  	if (err)
+>  		goto out;
+>  	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
+> -	if (ee_len <= 2*EXT4_EXT_ZERO_LEN) {
+> +	if (ee_len <= 2*EXT4_EXT_ZERO_LEN && may_zeroout) {
+>  		err =  ext4_ext_zeroout(inode, &orig_ex);
+>  		if (err)
+>  			goto fix_extent_len;
+> @@ -2684,7 +2701,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	if (allocated > max_blocks) {
+>  		unsigned int newdepth;
+>  		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
+> -		if (allocated <= EXT4_EXT_ZERO_LEN) {
+> +		if (allocated <= EXT4_EXT_ZERO_LEN && may_zeroout) {
+>  			/*
+>  			 * iblock == ee_block is handled by the zerouout
+>  			 * at the beginning.
+> @@ -2760,7 +2777,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+>  		ext4_ext_mark_uninitialized(ex3);
+>  		err = ext4_ext_insert_extent(handle, inode, path, ex3, 0);
+> -		if (err == -ENOSPC) {
+> +		if (err == -ENOSPC && may_zeroout) {
+>  			err =  ext4_ext_zeroout(inode, &orig_ex);
+>  			if (err)
+>  				goto fix_extent_len;
+> @@ -2784,8 +2801,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		 * update the extent length after successful insert of the
+>  		 * split extent
+>  		 */
+> -		orig_ex.ee_len = cpu_to_le16(ee_len -
+> -						ext4_ext_get_actual_len(ex3));
+> +		ee_len -= ext4_ext_get_actual_len(ex3);
+> +		orig_ex.ee_len = cpu_to_le16(ee_len);
+> +		may_zeroout = ee_block + ee_len <= eof_block;
+> +
+>  		depth = newdepth;
+>  		ext4_ext_drop_refs(path);
+>  		path = ext4_ext_find_extent(inode, iblock, path);
+> @@ -2809,7 +2828,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		 * otherwise give the extent a chance to merge to left
+>  		 */
+>  		if (le16_to_cpu(orig_ex.ee_len) <= EXT4_EXT_ZERO_LEN &&
+> -							iblock != ee_block) {
+> +			iblock != ee_block && may_zeroout) {
+>  			err =  ext4_ext_zeroout(inode, &orig_ex);
+>  			if (err)
+>  				goto fix_extent_len;
+> @@ -2878,7 +2897,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	goto out;
+>  insert:
+>  	err = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
+> -	if (err == -ENOSPC) {
+> +	if (err == -ENOSPC && may_zeroout) {
+>  		err =  ext4_ext_zeroout(inode, &orig_ex);
+>  		if (err)
+>  			goto fix_extent_len;
+> @@ -2938,14 +2957,21 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+>  	struct ext4_extent *ex2 = NULL;
+>  	struct ext4_extent *ex3 = NULL;
+>  	struct ext4_extent_header *eh;
+> -	ext4_lblk_t ee_block;
+> +	ext4_lblk_t ee_block, eof_block;
+>  	unsigned int allocated, ee_len, depth;
+>  	ext4_fsblk_t newblock;
+>  	int err = 0;
+> +	int may_zeroout;
+> +
+> +	ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
+> +		"block %llu, max_blocks %u\n", inode->i_ino,
+> +		(unsigned long long)iblock, max_blocks);
+> +
+> +	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+> +		inode->i_sb->s_blocksize_bits;
+> +	if (eof_block < iblock + max_blocks)
+> +		eof_block = iblock + max_blocks;
+>  
+> -	ext_debug("ext4_split_unwritten_extents: inode %lu,"
+> -		  "iblock %llu, max_blocks %u\n", inode->i_ino,
+> -		  (unsigned long long)iblock, max_blocks);
+>  	depth = ext_depth(inode);
+>  	eh = path[depth].p_hdr;
+>  	ex = path[depth].p_ext;
+> @@ -2953,12 +2979,19 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+>  	ee_len = ext4_ext_get_actual_len(ex);
+>  	allocated = ee_len - (iblock - ee_block);
+>  	newblock = iblock - ee_block + ext_pblock(ex);
+> +
+>  	ex2 = ex;
+>  	orig_ex.ee_block = ex->ee_block;
+>  	orig_ex.ee_len   = cpu_to_le16(ee_len);
+>  	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+>  
+>  	/*
+> +	 * It is safe to convert extent to initialized via explicit
+> +	 * zeroout only if extent is fully insde i_size or new_size.
+> +	 */
+> +	may_zeroout = ee_block + ee_len <= eof_block;
+> +
+> +	/*
+>   	 * If the uninitialized extent begins at the same logical
+>   	 * block where the write begins, and the write completely
+>   	 * covers the extent, then we don't need to split it.
+> @@ -2992,7 +3025,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+>  		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+>  		ext4_ext_mark_uninitialized(ex3);
+>  		err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
+> -		if (err == -ENOSPC) {
+> +		if (err == -ENOSPC && may_zeroout) {
+>  			err =  ext4_ext_zeroout(inode, &orig_ex);
+>  			if (err)
+>  				goto fix_extent_len;
+> @@ -3016,8 +3049,9 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+>  		 * update the extent length after successful insert of the
+>  		 * split extent
+>  		 */
+> -		orig_ex.ee_len = cpu_to_le16(ee_len -
+> -						ext4_ext_get_actual_len(ex3));
+> +		ee_len -= ext4_ext_get_actual_len(ex3);
+> +		orig_ex.ee_len = cpu_to_le16(ee_len);
+> +
+We have to update may_zeroout since orig extent was changed.
++               may_zeroout = ee_block + ee_len <= eof_block;  
+I've attached incremental patch for you.
+In fact, this not result in any serious bugs but increase our changes to
+use zeroout optimization and helps us to overcome ENOSPC if possible.
+>  		depth = newdepth;
+>  		ext4_ext_drop_refs(path);
+>  		path = ext4_ext_find_extent(inode, iblock, path);
+> @@ -3063,7 +3097,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+>  	goto out;
+>  insert:
+>  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+> -	if (err == -ENOSPC) {
+> +	if (err == -ENOSPC && may_zeroout) {
+>  		err =  ext4_ext_zeroout(inode, &orig_ex);
+>  		if (err)
+>  			goto fix_extent_len;
 
 
-Neil Broomfield <neil.broomfield@caasaudio.com> changed:
+--=-=-=
+Content-Disposition: inline;
+ filename=ext4-Do-not-zeroout-uninitialized-extents-beyond-i_s-2
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |neil.broomfield@caasaudio.c
-                   |                            |om
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2c8f73d..1938418 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3051,6 +3051,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 		 */
+ 		ee_len -= ext4_ext_get_actual_len(ex3);
+ 		orig_ex.ee_len = cpu_to_le16(ee_len);
++		may_zeroout = ee_block + ee_len <= eof_block;
+ 
+ 		depth = newdepth;
+ 		ext4_ext_drop_refs(path);
 
-
-
-
---- Comment #33 from Neil Broomfield <neil.broomfield@caasaudio.com>  2010-04-15 08:44:13 ---
-I think I might be seeing the same/similar issue, see "dmesg | tail" below, it
-seams fairly repeatable and occurs usually when I move a file from my download
-drive to my raid array 5 (5 disk, 6TB), I'm running Ubuntu 9.10 with all the
-latest official patches.
-
-[301080.930044] INFO: task kjournald2:1583 blocked for more than 120 seconds.
-[301080.930048] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
-this message.
-[301080.930051] kjournald2    D ffff88007734e8e0     0  1583      2 0x00000000
-[301080.930056]  ffff88006c38dd10 0000000000000046 ffff88005695d850
-0000000000015880
-[301080.930060]  ffff880070d247c0 0000000000015880 0000000000015880
-0000000000015880
-[301080.930063]  0000000000015880 ffff880070d247c0 0000000000015880
-0000000000015880
-[301080.930066] Call Trace:
-[301080.930075]  [<ffffffff811f096a>]
-jbd2_journal_commit_transaction+0x1aa/0x1120
-[301080.930080]  [<ffffffff8127c336>] ? rb_erase+0xd6/0x160
-[301080.930085]  [<ffffffff81010785>] ? __switch_to+0x1e5/0x370
-[301080.930088]  [<ffffffff8104f075>] ? finish_task_switch+0x65/0x120
-[301080.930093]  [<ffffffff8152c98a>] ? _spin_lock_irqsave+0x2a/0x40
-[301080.930097]  [<ffffffff8106af57>] ? lock_timer_base+0x37/0x70
-[301080.930101]  [<ffffffff81078a30>] ? autoremove_wake_function+0x0/0x40
-[301080.930105]  [<ffffffff811f6963>] kjournald2+0x103/0x270
-[301080.930108]  [<ffffffff81078a30>] ? autoremove_wake_function+0x0/0x40
-[301080.930111]  [<ffffffff811f6860>] ? kjournald2+0x0/0x270
-[301080.930114]  [<ffffffff81078646>] kthread+0xa6/0xb0
-[301080.930117]  [<ffffffff8101316a>] child_rip+0xa/0x20
-[301080.930120]  [<ffffffff810785a0>] ? kthread+0x0/0xb0
-[301080.930123]  [<ffffffff81013160>] ? child_rip+0x0/0x20
-[301080.930145] INFO: task mv:2005 blocked for more than 120 seconds.
-[301080.930146] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
-this message.
-[301080.930148] mv            D ffff880079705928     0  2005   2464 0x00000000
-[301080.930152]  ffff8800210f9868 0000000000000086 ffff8800210f97e8
-0000000000015880
-[301080.930155]  ffff880003b747c0 0000000000015880 0000000000015880
-0000000000015880
-[301080.930159]  0000000000015880 ffff880003b747c0 0000000000015880
-0000000000015880
-[301080.930162] Call Trace:
-[301080.930165]  [<ffffffff8152c87d>] __down_read+0x8d/0xc6
-[301080.930169]  [<ffffffff8152bc49>] down_read+0x19/0x20
-[301080.930172]  [<ffffffff811b5fe2>] ext4_get_blocks+0x52/0x210
-[301080.930175]  [<ffffffff811b62e7>] ext4_da_get_block_prep+0x77/0x100
-[301080.930179]  [<ffffffff81148663>] __block_prepare_write+0x1c3/0x560
-[301080.930182]  [<ffffffff811b6270>] ? ext4_da_get_block_prep+0x0/0x100
-[301080.930185]  [<ffffffff81148b9f>] block_write_begin+0x5f/0x100
-[301080.930188]  [<ffffffff811b8a0d>] ext4_da_write_begin+0x12d/0x260
-[301080.930191]  [<ffffffff811b6270>] ? ext4_da_get_block_prep+0x0/0x100
-[301080.930194]  [<ffffffff8104f075>] ? finish_task_switch+0x65/0x120
-[301080.930198]  [<ffffffff810da1a2>] generic_perform_write+0xb2/0x1d0
-[301080.930202]  [<ffffffff811e4dbb>] ? ext4_xattr_get+0x5b/0x90
-[301080.930206]  [<ffffffff810dafd3>] generic_file_buffered_write+0x83/0x140
-[301080.930209]  [<ffffffff810dc950>]
-__generic_file_aio_write_nolock+0x240/0x470
-[301080.930213]  [<ffffffff811348f3>] ? touch_atime+0x33/0x150
-[301080.930216]  [<ffffffff810dcca0>] generic_file_aio_write+0x70/0xf0
-[301080.930221]  [<ffffffff811ae7f9>] ext4_file_write+0x49/0x160
-[301080.930225]  [<ffffffff8111f342>] do_sync_write+0xf2/0x130
-[301080.930229]  [<ffffffff811511db>] ? fsnotify+0xfb/0x140
-[301080.930232]  [<ffffffff81078a30>] ? autoremove_wake_function+0x0/0x40
-[301080.930235]  [<ffffffff81133333>] ? dput+0xc3/0x190
-[301080.930239]  [<ffffffff81224a11>] ? security_file_permission+0x11/0x20
-[301080.930242]  [<ffffffff8111f628>] vfs_write+0xb8/0x1a0
-[301080.930245]  [<ffffffff811200dc>] sys_write+0x4c/0x80
-[301080.930249]  [<ffffffff81012082>] system_call_fastpath+0x16/0x1b
-
-Let me know if I can be of any further assistance? If you require more info /
-test running, I'm happy to help.
-
-Neil
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--=-=-=--
