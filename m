@@ -1,38 +1,51 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: No space left on device after many files creation
-Date: Thu, 15 Apr 2010 17:14:52 +0200
-Message-ID: <87ljco928j.fsf@basil.nowhere.org>
-References: <4BC38EB9.8080501@gmail.com> <4BC39098.4030704@redhat.com>
-	<4BC39762.9080406@gmail.com> <4BC39805.7090807@redhat.com>
-	<20100412224429.GN1849@thunk.org> <4BC410AB.1030607@gmail.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 2/4] block: Implement a blk_yield function to voluntarily give up the I/O scheduler.
+Date: Thu, 15 Apr 2010 11:49:22 -0400
+Message-ID: <x49fx2wemwt.fsf@segfault.boston.devel.redhat.com>
+References: <1271279826-30294-1-git-send-email-jmoyer@redhat.com>
+	<1271279826-30294-3-git-send-email-jmoyer@redhat.com>
+	<20100414214654.GD3167@redhat.com> <20100415103323.GW27497@kernel.dk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, Eric Sandeen <sandeen@redhat.com>,
+Cc: Vivek Goyal <vgoyal@redhat.com>, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: cy6erGn0m <cy6ergn0m@gmail.com>
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:41632 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753862Ab0DOPOx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Apr 2010 11:14:53 -0400
-In-Reply-To: <4BC410AB.1030607@gmail.com> (cy6ergn0m@gmail.com's message of "Tue, 13 Apr 2010 10:35:23 +0400")
+Received: from mx1.redhat.com ([209.132.183.28]:60594 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752540Ab0DOPt1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Apr 2010 11:49:27 -0400
+In-Reply-To: <20100415103323.GW27497@kernel.dk> (Jens Axboe's message of "Thu,
+	15 Apr 2010 12:33:23 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-cy6erGn0m <cy6ergn0m@gmail.com> writes:
-> I use filysystem as Set data structure to make fast checks from scripts.
-> Of course I can make long long file and test it with grep but it's will
-> have linear performance degradation (List), at the same time file system
-> has efficient tree binary structures (smth. like TreeSet). So, using
-> filesystem is the simplest way to do this efficient. Also I always have
-> timestamps for every entry. In this usecase all files are always empty.
+Jens Axboe <jens.axboe@oracle.com> writes:
 
-If the files are always empty you could just create hard links: 
-ln file number instead of touch.
-Then you'll only need a single inode for your complete set
-and also avoid a lot of seeking.
+> On Wed, Apr 14 2010, Vivek Goyal wrote:
 
--Andi
+>> > @@ -1887,6 +1891,9 @@ static void cfq_dispatch_insert(struct request_queue *q, struct request *rq)
+>> >  
+>> >  	cfqd->rq_in_flight[cfq_cfqq_sync(cfqq)]++;
+>> >  	cfqq->nr_sectors += blk_rq_sectors(rq);
+>> > +
+>> > +	if (cfq_cfqq_yield(cfqq) && RB_EMPTY_ROOT(&cfqq->sort_list))
+>> > +		cfq_yield_cfqq(cfqd, cfqq);
+>> 
+>> Jeff,
+>> 
+>> I am wondering if cfq_select_queue() will be a better place for yielding
+>> the queue.
+>> 
+>> 	if (cfq_cfqq_yield(cfqq) && RB_EMPTY_ROOT(&cfqq->sort_list))
+>> 			goto expire;
+>> 
+>> We can avoid one unnecessary __blk_run_queue().
+>
+> Agree, doing it on insert is not the right place.
 
--- 
-ak@linux.intel.com -- Speaking for myself only.
+I see where you're coming from, but that makes things quite a bit
+trickier.  I look forward to the review of *that* patch.  ;-)
+
+Cheers,
+Jeff
