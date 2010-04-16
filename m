@@ -1,40 +1,39 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: quota reservation fixes for -stable?
-Date: Fri, 16 Apr 2010 15:37:35 -0500
-Message-ID: <4BC8CA8F.1030708@redhat.com>
-References: <4BB36BEC.2000207@redhat.com> <20100401082334.GD3322@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15768] Incorrectly calculated free blocks result in ENOSPC from
+ writepage
+Date: Fri, 16 Apr 2010 21:44:26 GMT
+Message-ID: <201004162144.o3GLiQxk001688@demeter.kernel.org>
+References: <bug-15768-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49464 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932408Ab0DPUhk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Apr 2010 16:37:40 -0400
-In-Reply-To: <20100401082334.GD3322@quack.suse.cz>
+Received: from demeter.kernel.org ([140.211.167.39]:46940 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932546Ab0DPVo1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Apr 2010 17:44:27 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3GLiQEX001689
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Apr 2010 21:44:26 GMT
+In-Reply-To: <bug-15768-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/01/2010 03:23 AM, Jan Kara wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=15768
 
->   Ah, I'm testing quotas on non-root fs so I was wondering how come people
-> hit the warning so often. Now I understand :) For root filesystem on ext4
-> we don't have a chance to not see this warning. That being said the warning
-> is pretty useless for ordinary users so I guess we should just hide it
-> behind #ifdef __DQUOT_PARANOIA and use it for debugging purposes only.
->   If noone objects soon, I'll do the change.
-> 
-> 								Honza
 
-Hm, I see this in your tree now, but isn't __DQUOT_PARANOIA defined by
-default anyway?
+Rafael J. Wysocki <rjw@sisk.pl> changed:
 
-fs/quota/dquot.c:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |rjw@sisk.pl
+             Blocks|                            |15310
 
-1da177e4	(Linus Torvalds	2005-04-16 15:20:36 -0700	83)#define
-__DQUOT_PARANOIA
 
--Eric
+
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
