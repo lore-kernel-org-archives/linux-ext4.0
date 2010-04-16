@@ -1,69 +1,38 @@
-From: Andre Noll <maan@systemlinux.org>
-Subject: Re: ext4: (2.6.34-rc4): This should not happen!!  Data will be lost
-Date: Fri, 16 Apr 2010 19:07:07 +0200
-Message-ID: <20100416170707.GB25507@skl-net.de>
-References: <20100416123526.GW21495@skl-net.de> <4BC87BF6.2040104@redhat.com> <20100416153024.GY25507@skl-net.de> <4BC885B9.2000902@redhat.com> <20100416155221.GA57840@plapa.qlogic.org> <20100416160856.GA25507@skl-net.de> <20100416163654.GD58339@plapa.qlogic.org>
+From: Jiri Slaby <jirislaby@gmail.com>
+Subject: busy inodes -> ext3 umount crash
+Date: Fri, 16 Apr 2010 20:09:05 +0200
+Message-ID: <4BC8A7C1.20102@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="2bJ57vwr75KGnr5s"
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Driver <Linux-Driver@qlogic.com>,
-	Thomas Helle <Helle@tuebingen.mpg.de>
-To: Andrew Vasquez <andrew.vasquez@qlogic.com>
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: 7bit
+Cc: adilger@sun.com, linux-ext4@vger.kernel.org,
+	Linux kernel mailing list <linux-kernel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from systemlinux.org ([83.151.29.59]:47724 "EHLO m18s25.vlinux.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758653Ab0DPRHb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Apr 2010 13:07:31 -0400
-Content-Disposition: inline
-In-Reply-To: <20100416163654.GD58339@plapa.qlogic.org>
+Received: from mail-bw0-f225.google.com ([209.85.218.225]:63756 "EHLO
+	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755177Ab0DPSJQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Apr 2010 14:09:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
---2bJ57vwr75KGnr5s
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+with mmotm 2010-04-05-16-09 and much older (I hadn't camera to take a
+picture) I sometimes get a BUG() trace in ext3 umount code:
+http://www.fi.muni.cz/~xslaby/sklad/panics/ext3_1.png
+http://www.fi.muni.cz/~xslaby/sklad/panics/ext3_2.png
 
-On 09:36, Andrew Vasquez wrote:
-> > > 	qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 fa6a73 =
-2002.
-> > >=20
-> > > I can't explain why the storage did not complete the request in the
-> > > allotted time.
-> >=20
-> > Ah, that's valuable information, thanks. The underlying Infortrend
-> > Raid System is rather old but worked without any problems for several
-> > years. We recently replaced its 400G disks by new 2T WD disks. Maybe
-> > the new disks have longer response times, could that be the reason? And
-> > is there a way to increase the timeout value?
->=20
-> To update the default timeout value (30 seconds) for commands
-> submitted to /dev/sdn to 60 seconds:
->=20
->         $ echo 60 > /sys/block/sdn/device/timeout
+I have no idea how to reproduce it :(, but it usually happens when I do
+shutdown/kexec.
 
-I will re-run the stress test with a 60 seconds timeout value and follow
-up if this did not help.
+Those busy inodes are pretty common in current kernels, I don't know if
+that's related -- I doubt it since it is for different bdevs.
 
-Thanks again
-Andre
---=20
-The only person who always got his work done by Friday was Robinson Crusoe
+Do you have any clue what to test, how to debug that?
 
---2bJ57vwr75KGnr5s
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
+@Honza: this is the one we talked about earlier, you wanted to see
+details, but I thought it disappeared. (Just in case you are interested.)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
-
-iD8DBQFLyJk7Wto1QDEAkw8RAj9XAJ9nbBmgpu+zMEKKl3IbOLCyLDtpEQCffQ/u
-EHT8ybIvOH7vBO0ZjW7VkYQ=
-=Jfv+
------END PGP SIGNATURE-----
-
---2bJ57vwr75KGnr5s--
+Thanks.
