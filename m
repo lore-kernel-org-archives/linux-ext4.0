@@ -1,58 +1,54 @@
-From: Andrew Vasquez <andrew.vasquez@qlogic.com>
+From: Andre Noll <maan@systemlinux.org>
 Subject: Re: ext4: (2.6.34-rc4): This should not happen!!  Data will be lost
-Date: Fri, 16 Apr 2010 08:52:21 -0700
-Message-ID: <20100416155221.GA57840@plapa.qlogic.org>
-References: <20100416123526.GW21495@skl-net.de>
- <4BC87BF6.2040104@redhat.com>
- <20100416153024.GY25507@skl-net.de>
- <4BC885B9.2000902@redhat.com>
+Date: Fri, 16 Apr 2010 17:57:10 +0200
+Message-ID: <20100416155710.GZ25507@skl-net.de>
+References: <20100416123526.GW21495@skl-net.de> <4BC87BF6.2040104@redhat.com> <20100416153024.GY25507@skl-net.de> <4BC885B9.2000902@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andre Noll <maan@systemlinux.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Driver <Linux-Driver@qlogic.com>,
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="wwSFAA0Com6UqrPP"
+Cc: linux-ext4@vger.kernel.org, linux-driver@qlogic.com,
 	Thomas Helle <Helle@tuebingen.mpg.de>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vpn.pathscale.com ([198.186.3.75]:37138 "HELO mx.mv.qlogic.com"
-	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1758229Ab0DPPwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Apr 2010 11:52:22 -0400
+Received: from systemlinux.org ([83.151.29.59]:55742 "EHLO m18s25.vlinux.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932274Ab0DPP5c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Apr 2010 11:57:32 -0400
 Content-Disposition: inline
 In-Reply-To: <4BC885B9.2000902@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 16 Apr 2010, Eric Sandeen wrote:
 
-> On 04/16/2010 10:30 AM, Andre Noll wrote:
-> > On 10:02, Eric Sandeen wrote:
-> > 
-> >>> I'm seeing the following errors when writing to an ext4 file system:
-> >>>
-> >>> 	qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 fa6a73 2002.
-> >>> 	end_request: I/O error, dev sda, sector 7812771880
-> >>
-> >> Sounds like a hardware failure
-> > 
-> > Yes, or a problem with the qla2xxx driver. However, it's a bit
-> > surprising that the hardware survived the stress test for more than
-> > one day and went south just at the moment the fs was completely filled.
-> 
-> Hm, that's true.
-> 
+--wwSFAA0Com6UqrPP
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On 10:43, Eric Sandeen wrote:
+
 > Well, the error was on sector 7812771880 of the device ...
-> 
+>=20
 > can you reliably write directly to that sector w/o the filesystem in
 > between?
 
-The driver here is simply reporting that the a command's timeout value
-had been exceeded and the mid-layer began error-recovery with a request
-to 'abort' the command.  The abort-request completed successfully:
+Yes, that does not result in any errors.
 
-	qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 fa6a73 2002.
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
 
-I can't explain why the storage did not complete the request in the
-allotted time.
+--wwSFAA0Com6UqrPP
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
 
--- av
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFLyIjWWto1QDEAkw8RAtzmAJ9TniiYm5ZPfLAP/+++RqZROvTCggCfdx+g
+ofmSdON+1a+fufFrgcKrguw=
+=cNrQ
+-----END PGP SIGNATURE-----
+
+--wwSFAA0Com6UqrPP--
