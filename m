@@ -1,63 +1,68 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: e2fsck doesn't repair broken ext4
-Date: Fri, 16 Apr 2010 10:22:30 -0500
-Message-ID: <4BC880B6.9090207@redhat.com>
-References: <20100312205435.GG32664@alea.gnuu.de> <20100416101156.GB1556@alea.gnuu.de>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: ext4: (2.6.34-rc4): This should not happen!!  Data will be lost
+Date: Fri, 16 Apr 2010 17:30:24 +0200
+Message-ID: <20100416153024.GY25507@skl-net.de>
+References: <20100416123526.GW21495@skl-net.de> <4BC87BF6.2040104@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org
-To: =?ISO-8859-1?Q?J=F6rg_Sommer?= <joerg@alea.gnuu.de>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="ONmcTkPhtkbQYSLg"
+Cc: linux-ext4@vger.kernel.org, linux-driver@qlogic.com,
+	Thomas Helle <Helle@tuebingen.mpg.de>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15747 "EHLO mx1.redhat.com"
+Received: from systemlinux.org ([83.151.29.59]:39988 "EHLO m18s25.vlinux.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752338Ab0DPPWh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Apr 2010 11:22:37 -0400
-In-Reply-To: <20100416101156.GB1556@alea.gnuu.de>
+	id S1751710Ab0DPPas (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Apr 2010 11:30:48 -0400
+Content-Disposition: inline
+In-Reply-To: <4BC87BF6.2040104@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/16/2010 05:11 AM, J=F6rg Sommer wrote:
-> Hi,
+
+--ONmcTkPhtkbQYSLg
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On 10:02, Eric Sandeen wrote:
+
+> > I'm seeing the following errors when writing to an ext4 file system:
+> >=20
+> > 	qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 fa6a73 20=
+02.
+> > 	end_request: I/O error, dev sda, sector 7812771880
 >=20
-> J=F6rg Sommer hat am Fri 12. Mar, 21:54 (+0100) geschrieben:
->> after a system crash, I had a problem with ext4 that e2fsck didn't f=
-ix. I
->> don't know if e2fsck or ext4 was wrong. In the end, I had to remove =
-the
->> broken directory, which succeed and solved my problem.
->>
->> These are the steps I did:
->>
->> 01 % e2fsck -fy /dev/root
->> 02 % dumpe2fsck -x /dev/root
->> 03 % e2image -r /dev/root
->> 04 % apt-get install
->> 05 % dmesg
->> 06 % dumpe2fs -x /dev/root
->> 07 % e2image -r /dev/root
->> 08 % e2fsck -y /dev/root
->> 09 % dumpe2fs -x /dev/root
->> 10 % e2image -r /dev/root
->> 11 % apt-get install
->> 12 % dmesg
->>
->> I've put the output and images of all these commands at
->> <http://alioth.debian.org/~jo-guest/ext4/>. I hope they help you som=
-ehow.
->=20
-> I would like to ask, if there was any result from this issue? Did you
-> found a bug in e2fsck?
+> Sounds like a hardware failure
 
-I'm sorry, I haven't made further progress on this yet.
+Yes, or a problem with the qla2xxx driver. However, it's a bit
+surprising that the hardware survived the stress test for more than
+one day and went south just at the moment the fs was completely filled.
 
--Eric
+My first guess was that the problem might be caused by a reported
+device size which is slightly larger than the actual size. But then
 
-> Bye, J=F6rg.
+	ddrescue -i 7440Gi /dev/zero /dev/sda
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+would have resulted in a similar error. This command completed without
+errors though.
+
+Thanks
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--ONmcTkPhtkbQYSLg
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFLyIKQWto1QDEAkw8RAqWyAJ4hQm2p4ZPTN0BliHp+h6c4vgYPgQCfUV8V
+04nPTCoelSeZhG4qxiTB7oY=
+=yD31
+-----END PGP SIGNATURE-----
+
+--ONmcTkPhtkbQYSLg--
