@@ -1,39 +1,76 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [RFC][PATCH 0/3] ext4: inode preferred block allocation
-Date: Fri, 16 Apr 2010 17:23:51 +0900
-Message-ID: <4BC81E97.9030701@sx.jp.nec.com>
-References: <4BC57A1D.9080105@sx.jp.nec.com> <87pr2092e2.fsf@basil.nowhere.org>
+From: =?iso-8859-1?Q?J=F6rg?= Sommer <joerg@alea.gnuu.de>
+Subject: Re: e2fsck doesn't repair broken ext4
+Date: Fri, 16 Apr 2010 12:11:56 +0200
+Message-ID: <20100416101156.GB1556@alea.gnuu.de>
+References: <20100312205435.GG32664@alea.gnuu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
-	linux-fsdevel@vger.kernel.org
-To: Andi Kleen <andi@firstfloor.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="rS8CxjVDS/+yyDmU"
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:51000 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755247Ab0DPI0e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Apr 2010 04:26:34 -0400
-In-Reply-To: <87pr2092e2.fsf@basil.nowhere.org>
+Received: from uucp.gnuu.de ([83.246.114.63]:4036 "EHLO uucp.gnuu.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756924Ab0DPKMv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Apr 2010 06:12:51 -0400
+Content-Disposition: inline
+In-Reply-To: <20100312205435.GG32664@alea.gnuu.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andi,
 
-2010/04/16 0:11, Andi Kleen wrote:
-> Kazuya Mio<k-mio@sx.jp.nec.com>  writes:
-> 
-> 
->> We implemented new two ioctls to allocate preferred blocks using inode PA.
->> The old implementation idea is the following (b).
->> http://marc.info/?l=linux-ext4&m=124962738211206&w=4
-> 
-> I had to read until patch 3/3 to find out what a "PA" actually is.
-> It might make the patch descriptions more clearer if it was spelled
-> out at least once in each.
+--rS8CxjVDS/+yyDmU
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Thank you for informing me.
-I will take care not to abbreviate the first "preallocation" to "PA".
+Hi,
 
-Best regards,
-Kazuya Mio
+J=F6rg Sommer hat am Fri 12. Mar, 21:54 (+0100) geschrieben:
+> after a system crash, I had a problem with ext4 that e2fsck didn't fix. I
+> don't know if e2fsck or ext4 was wrong. In the end, I had to remove the
+> broken directory, which succeed and solved my problem.
+>=20
+> These are the steps I did:
+>=20
+> 01 % e2fsck -fy /dev/root
+> 02 % dumpe2fsck -x /dev/root
+> 03 % e2image -r /dev/root
+> 04 % apt-get install
+> 05 % dmesg
+> 06 % dumpe2fs -x /dev/root
+> 07 % e2image -r /dev/root
+> 08 % e2fsck -y /dev/root
+> 09 % dumpe2fs -x /dev/root
+> 10 % e2image -r /dev/root
+> 11 % apt-get install
+> 12 % dmesg
+>=20
+> I've put the output and images of all these commands at
+> <http://alioth.debian.org/~jo-guest/ext4/>. I hope they help you somehow.
+
+I would like to ask, if there was any result from this issue? Did you
+found a bug in e2fsck?
+
+Bye, J=F6rg.
+--=20
+< Mr X.> jo: contact an admin to mount it for you
+< jo> The admin is not, well how should I say it, he isn't very familiar wi=
+th
+      the system. What should I tell my admin, what he should do?
+< Mr X.> taking a sun solaris administration course.
+
+--rS8CxjVDS/+yyDmU
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature http://en.wikipedia.org/wiki/OpenPGP
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEARECAAYFAkvIN+sACgkQwe0mZwH1VIDGHgCfRPXG79kBCogWYHF266g6f9NV
+SP4An0eTcwXTcajVjMLT52hROJWVs9Lg
+=mwVL
+-----END PGP SIGNATURE-----
+
+--rS8CxjVDS/+yyDmU--
