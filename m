@@ -1,56 +1,60 @@
-From: David Woodhouse <dwmw2@infradead.org>
+From: Jan Blunck <jblunck@suse.de>
 Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
-Date: Mon, 19 Apr 2010 14:02:48 +0100
-Message-ID: <1271682168.14748.718.camel@macbook.infradead.org>
-References: <1271372682-21225-5-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-6-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-7-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-8-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-9-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-10-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-11-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-12-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-13-git-send-email-vaurora@redhat.com>
-	 <1271372682-21225-14-git-send-email-vaurora@redhat.com>
-	 <20100419124025.GG10776@bolzano.suse.de>
+Date: Mon, 19 Apr 2010 15:23:44 +0200
+Message-ID: <20100419132344.GI10776@bolzano.suse.de>
+References: <1271372682-21225-7-git-send-email-vaurora@redhat.com> <1271372682-21225-8-git-send-email-vaurora@redhat.com> <1271372682-21225-9-git-send-email-vaurora@redhat.com> <1271372682-21225-10-git-send-email-vaurora@redhat.com> <1271372682-21225-11-git-send-email-vaurora@redhat.com> <1271372682-21225-12-git-send-email-vaurora@redhat.com> <1271372682-21225-13-git-send-email-vaurora@redhat.com> <1271372682-21225-14-git-send-email-vaurora@redhat.com> <20100419124025.GG10776@bolzano.suse.de> <1271682168.14748.718.camel@macbook.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Valerie Aurora <vaurora@redhat.com>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Blunck <jblunck@suse.de>
+To: David Woodhouse <dwmw2@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:35756 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754663Ab0DSNC4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Apr 2010 09:02:56 -0400
-In-Reply-To: <20100419124025.GG10776@bolzano.suse.de>
+Received: from cantor2.suse.de ([195.135.220.15]:50356 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754798Ab0DSNXr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Apr 2010 09:23:47 -0400
+Content-Disposition: inline
+In-Reply-To: <1271682168.14748.718.camel@macbook.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2010-04-19 at 14:40 +0200, Jan Blunck wrote:
-> On Thu, Apr 15, Valerie Aurora wrote:
-> 
-> > Add support for fallthru directory entries to ext2.
+On Mon, Apr 19, David Woodhouse wrote:
+
+> On Mon, 2010-04-19 at 14:40 +0200, Jan Blunck wrote:
+> > On Thu, Apr 15, Valerie Aurora wrote:
 > > 
-> > XXX - Makes up inode number for fallthru entry
-> > XXX - Might be better implemented as special symlinks
+> > > Add support for fallthru directory entries to ext2.
+> > > 
+> > > XXX - Makes up inode number for fallthru entry
+> > > XXX - Might be better implemented as special symlinks
+> > 
+> > Better not. David Woodhouse actually convinced me of moving away from the
+> > special symlink approach. The whiteouts have been implemented as special
+> > symlinks before.
 > 
-> Better not. David Woodhouse actually convinced me of moving away from the
-> special symlink approach. The whiteouts have been implemented as special
-> symlinks before.
+> I certainly asked whether you really need a real 'struct inode' for
+> whiteouts, and suggested that they should be represented _purely_ as a
+> dentry with type DT_WHT.
+> 
+> I don't much like the manifestation of that in this patch though,
+> especially with the made-up inode number. (ISTR I had other
+> jffs2-specific objections too, which I'll dig out and forward).
 
-I certainly asked whether you really need a real 'struct inode' for
-whiteouts, and suggested that they should be represented _purely_ as a
-dentry with type DT_WHT.
+Yes, this patches still have issues that Val and me are aware off. I can't
+remember anything jffs2-specific though.
 
-I don't much like the manifestation of that in this patch though,
-especially with the made-up inode number. (ISTR I had other
-jffs2-specific objections too, which I'll dig out and forward).
+We return that inode number because we don't want to lookup the name on the
+other filesystem during readdir. Therefore returning DT_UNKNOWN to let the
+userspace decide if it needs to stat the file was the easiest workaround. I
+know that POSIX requires d_ino and d_name but on the other hand it does not
+require anything more on how long d_ino is valid.
+
+If somebody has an idea how to make this cleaner please speak up.
+
+Regards,
+	Jan
 
 -- 
-David Woodhouse                            Open Source Technology Centre
-David.Woodhouse@intel.com                              Intel Corporation
-
+Jan Blunck <jblunck@suse.de>
