@@ -1,59 +1,117 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15792] ext4_inode_info->i_flags modification is racy
-Date: Mon, 19 Apr 2010 03:43:24 GMT
-Message-ID: <201004190343.o3J3hOn7027727@demeter.kernel.org>
-References: <bug-15792-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Ext4: batched discard support
+Date: Mon, 19 Apr 2010 12:55:25 +0200
+Message-ID: <1271674527-2977-1-git-send-email-lczerner@redhat.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	Edward Shishkin <eshishki@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52760 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753401Ab0DSDnZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Apr 2010 23:43:25 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3J3hOGO027728
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Apr 2010 03:43:24 GMT
-In-Reply-To: <bug-15792-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:42330 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754226Ab0DSKzm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Apr 2010 06:55:42 -0400
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o3JAtfMN007695
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Apr 2010 06:55:42 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15792
+Hi all,
+
+I would like to present a new way to deal with TRIM in ext4 file system.
+The current solution is not ideal because of its bad performance impact.
+So basic idea to improve things is to avoid discarding every time some
+blocks are freed. and instead batching is together into bigger trims,
+which tends to be more effective.
+
+The basic idea behind my discard support is to create an ioctl which
+walks through all the free extents in each allocating group and discard
+those extents. As an addition to improve its performance one can specify
+minimum free extent length, so ioctl will not bother with shorter extents.
+
+This of course means, that with each invocation the ioctl must walk
+through whole file system, checking and discarding free extents, which
+is not very efficient. The best way to avoid this is to keep track of
+deleted (freed) blocks. Then the ioctl have to trim just those free
+extents which were recently freed.
+
+In order to implement this I have added new bitmap into ext4_group_info
+(bb_bitmap_deleted) which stores recently freed blocks. The ioctl then
+walk through bb_bitmap_deleted, compare deleted extents with free
+extents trim them and then removes it from the bb_bitmap_deleted. 
+
+But you may notice, that there is one problem. bb_bitmap_deleted does
+not survive umount. To bypass the problem the first ioctl call have to
+walk through whole file system trimming all free extents. But there is a
+better solution to this problem. The bb_bitmap_deleted can be stored on
+disk an can be restored in mount time along with other bitmaps, but I
+think it is a quite big change and should be discussed further.
+
+I have also benchmarked it a little. You can find results here:
+
+people.redhat.com/jmoyer/discard/ext4_batched_discard/
+
+comparison with current solution included. Keep in mind that ideal ioctl
+invocation interval is yet to be determined, so in benchmark I have used
+the performance-worst scenario - without any sleep between execution.
 
 
+There are two patches for this. The first one just creates file system
+independent ioctl for this and the second one it the batched discard
+support itself.
 
+I will very much appreciate any comment on this, your opinions, ideas to
+make this better etc. Thanks.
 
+If you want to try it, just create EXT4 file system mount it and invoke
+ioctl on the mount point. You can use following code for this (I have
+taken this from xfs patch for the same thing). You can also see some
+debugging messages, but you may want to set EXT4FS_DEBUG for this.
 
---- Comment #5 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-04-19 03:42:20 ---
-Ohh.. one more thing, which is not actually related with the name of the bug,
-But this peace of code was already mention here. Let's just document this here.
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
 
-fs/ext4/extents.c 
-3288:int ext4_ext_get_blocks(...)
+#define FITRIM		_IOWR('X', 121, int)
+
+int main(int argc, char **argv)
 {
-....
-3477:   if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)) {
-3478:           if (unlikely(!eh->eh_entries)) {
-3479:                   EXT4_ERROR_INODE(inode,
-3480:                                    "eh->eh_entries == 0 ee_block %d",
-3481:                                    ex->ee_block);
-3482:                   err = -EIO;
-3483:                   goto out2;
-3484:           }
-3485:           last_ex = EXT_LAST_EXTENT(eh);
-3486:           if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
-3487:               + ext4_ext_get_actual_len(last_ex))
-##### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-##### If depth > 0 then last_ex may not be the latest extent of the file.
-##### because "eh" is just a one of leafs(writing at the middle of a file)
-##### We have to find latest extent by traversing a whole path again but
-##### always chose the latest eh,ex.
-3488:                   EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
-for (  
-3489:   }
+	int minsize = 4096;
+	int fd;
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+	if (argc != 2) {
+		fprintf(stderr, "usage: %s mountpoint\n", argv[0]);
+		return 1;
+	}
+
+	fd = open(argv[1], O_RDONLY);
+	if (fd < 0) {
+		perror("open");
+		return 1;
+	}
+
+	if (ioctl(fd, FITRIM, &minsize)) {
+		if (errno == EOPNOTSUPP)
+			fprintf(stderr, "TRIM not supported\n");
+		else
+			perror("EXT4_IOC_TRIM");
+		return 1;
+	}
+
+	return 0;
+}
+
+ fs/ioctl.c         |   31 +++++++++++++++++++++++++++++++
+ include/linux/fs.h |    2 ++
+ 2 files changed, 33 insertions(+), 0 deletions(-)
+
+ fs/ext4/ext4.h    |    4 +
+ fs/ext4/mballoc.c |  207 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+ fs/ext4/super.c   |    1 +
+ 3 files changed, 202 insertions(+), 10 deletions(-)
