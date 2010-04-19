@@ -1,29 +1,48 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
-Date: Mon, 19 Apr 2010 16:53:22 +0200
-Message-ID: <E1O3sLi-0008EA-QW@pomaz-ex.szeredi.hu>
-References: <1271372682-21225-10-git-send-email-vaurora@redhat.com> <1271372682-21225-11-git-send-email-vaurora@redhat.com> <1271372682-21225-12-git-send-email-vaurora@redhat.com> <1271372682-21225-13-git-send-email-vaurora@redhat.com> <1271372682-21225-14-git-send-email-vaurora@redhat.com> <20100419124025.GG10776@bolzano.suse.de> <1271682168.14748.718.camel@macbook.infradead.org> <20100419132344.GI10776@bolzano.suse.de> <20100419133028.GA3631@shareable.org> <20100419141248.GK10776@bolzano.suse.de> <20100419142315.GA2688@shell>
-Cc: jblunck@suse.de, jamie@shareable.org, dwmw2@infradead.org,
-	viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <20100419142315.GA2688@shell> (message from Valerie Aurora on
-	Mon, 19 Apr 2010 10:23:15 -0400)
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15806] Kernel Panic or Kernel becomes unstable with encrypted
+ drives (TrueCrypt)
+Date: Mon, 19 Apr 2010 15:19:43 GMT
+Message-ID: <201004191519.o3JFJhAM022477@demeter.kernel.org>
+References: <bug-15806-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:60284 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751034Ab0DSPTo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Apr 2010 11:19:44 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3JFJhSx022478
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Apr 2010 15:19:43 GMT
+In-Reply-To: <bug-15806-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 19 Apr 2010, Valerie Aurora wrote:
-> I don't recall there being any technical reason not to look up the
-> real inode number.  I just wrote it that we because I was lazy.  So I
-> like returning the directory's d_ino better than a single magic
-> number, but I'd at least like to try returning the real inode number
-> too.
+https://bugzilla.kernel.org/show_bug.cgi?id=15806
 
-Note, "struct dirent" doesn't have d_dev, so you really can't return
-the "real" inode number, that's on a different filesystem and just a
-random number in the context of the the readdir in question.
 
-Thanks,
-Miklos
+Eric Sandeen <sandeen@redhat.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
+
+
+
+
+--- Comment #1 from Eric Sandeen <sandeen@redhat.com>  2010-04-19 15:19:40 ---
+I don't see anything in the oops that looks at all ext4-specific - unless you
+can show otherwise, I'm guessing that this is a bug in another layer...
+
+If this is triggered by doing userspace IO on the block device (i.e. via fsck)
+that's another clue that it's a problem in the (crypted) block layer rather
+than the filesystem, I think.
+
+-Eric
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
