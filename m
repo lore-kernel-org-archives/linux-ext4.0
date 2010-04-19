@@ -1,8 +1,8 @@
 From: <gregkh@suse.de>
-Subject: patch ext4-invalidate-pages-if-delalloc-block-allocation-fails.patch added to 2.6.27-stable tree
-Date: Mon, 19 Apr 2010 10:26:55 -0700
-Message-ID: <12716980151857@kroah.org>
-References: <1268699165-17461-2-git-send-email-tytso@mit.edu>
+Subject: patch vfs-add-no_nrwrite_index_update-writeback-control-flag.patch added to 2.6.27-stable tree
+Date: Mon, 19 Apr 2010 10:27:06 -0700
+Message-ID: <12716980263125@kroah.org>
+References: <1268699165-17461-10-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ANSI_X3.4-1968
 Content-Transfer-Encoding: 8bit
@@ -10,198 +10,114 @@ Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
 To: aneesh.kumar@linux.vnet.ibm.com, dev@jaysonking.com,
 	gregkh@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:48455 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:48496 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752257Ab0DSR36 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Apr 2010 13:29:58 -0400
-In-Reply-To: <1268699165-17461-2-git-send-email-tytso@mit.edu>
+	id S1752446Ab0DSRaF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Apr 2010 13:30:05 -0400
+In-Reply-To: <1268699165-17461-10-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 This is a note to let you know that we have just queued up the patch titled
 
-    Subject: ext4: invalidate pages if delalloc block allocation fails.
+    Subject: vfs: Add no_nrwrite_index_update writeback control flag
 
 to the 2.6.27-stable tree.  Its filename is
 
-    ext4-invalidate-pages-if-delalloc-block-allocation-fails.patch
+    vfs-add-no_nrwrite_index_update-writeback-control-flag.patch
 
 A git repo of this tree can be found at 
     http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
 
->From tytso@mit.edu  Mon Apr 19 10:19:40 2010
+>From tytso@mit.edu  Mon Apr 19 10:23:14 2010
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Mon, 15 Mar 2010 20:25:55 -0400
-Subject: ext4: invalidate pages if delalloc block allocation fails.
+Date: Mon, 15 Mar 2010 20:26:03 -0400
+Subject: vfs: Add no_nrwrite_index_update writeback control flag
 To: stable@kernel.org
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>, "Jayson R. King" <dev@jaysonking.com>, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Message-ID: <1268699165-17461-2-git-send-email-tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org, Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>, "Jayson R. King" <dev@jaysonking.com>, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Message-ID: <1268699165-17461-10-git-send-email-tytso@mit.edu>
 
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit c4a0c46ec92c194c873232b88debce4e1a448483 upstream.
+commit 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 upstream.
 
-We are a bit agressive in invalidating all the pages. But
-it is ok because we really don't know why the block allocation
-failed and it is better to come of the writeback path
-so that user can look for more info.
+If no_nrwrite_index_update is set we don't update nr_to_write and
+address space writeback_index in write_cache_pages.  This change
+enables a file system to skip these updates in write_cache_pages and do
+them in the writepages() callback.  This patch will be followed by an
+ext4 patch that make use of these new flags.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-fsdevel@vger.kernel.org
+[dev@jaysonking.com: Modified the patch to account for subsequent changes in mainline being cherry-picked earlier for 2.6.27.y.]
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/inode.c |   85 ++++++++++++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 73 insertions(+), 12 deletions(-)
+ include/linux/writeback.h |    9 +++++++++
+ mm/page-writeback.c       |   14 +++++++++-----
+ 2 files changed, 18 insertions(+), 5 deletions(-)
 
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1821,6 +1821,39 @@ static inline void __unmap_underlying_bl
- 		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
- }
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -62,6 +62,15 @@ struct writeback_control {
+ 	unsigned for_writepages:1;	/* This is a writepages() call */
+ 	unsigned range_cyclic:1;	/* range_start is cyclic */
+ 	unsigned more_io:1;		/* more io to be dispatched */
++	/*
++	 * write_cache_pages() won't update wbc->nr_to_write and
++	 * mapping->writeback_index if no_nrwrite_index_update
++	 * is set.  write_cache_pages() may write more than we
++	 * requested and we want to make sure nr_to_write and
++	 * writeback_index are updated in a consistent manner
++	 * so we use a single control to update them
++	 */
++	unsigned no_nrwrite_index_update:1;
+ };
  
-+static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
-+					sector_t logical, long blk_cnt)
-+{
-+	int nr_pages, i;
-+	pgoff_t index, end;
-+	struct pagevec pvec;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
-+
-+	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	end   = (logical + blk_cnt - 1) >>
-+				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	while (index <= end) {
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
-+			block_invalidatepage(page, 0);
-+			ClearPageUptodate(page);
-+			unlock_page(page);
-+		}
-+	}
-+	return;
-+}
-+
  /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1830,7 +1863,7 @@ static inline void __unmap_underlying_bl
-  * The function skips space we know is already mapped to disk blocks.
-  *
-  */
--static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
- 	int err = 0;
- 	struct buffer_head *lbh = &mpd->lbh;
-@@ -1841,7 +1874,7 @@ static void mpage_da_map_blocks(struct m
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
--		return;
-+		return 0;
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -878,6 +878,7 @@ int write_cache_pages(struct address_spa
+ 	pgoff_t done_index;
+ 	int cycled;
+ 	int range_whole = 0;
++	long nr_to_write = wbc->nr_to_write;
  
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
-@@ -1852,10 +1885,38 @@ static void mpage_da_map_blocks(struct m
- 	 * to write simply return
- 	 */
- 	if (!new.b_size)
--		return;
-+		return 0;
- 	err = mpd->get_block(mpd->inode, next, &new, 1);
--	if (err)
--		return;
-+	if (err) {
-+
-+		/* If get block returns with error
-+		 * we simply return. Later writepage
-+		 * will redirty the page and writepages
-+		 * will find the dirty page again
-+		 */
-+		if (err == -EAGAIN)
-+			return 0;
-+		/*
-+		 * get block failure will cause us
-+		 * to loop in writepages. Because
-+		 * a_ops->writepage won't be able to
-+		 * make progress. The page will be redirtied
-+		 * by writepage and writepages will again
-+		 * try to write the same.
-+		 */
-+		printk(KERN_EMERG "%s block allocation failed for inode %lu "
-+				  "at logical offset %llu with max blocks "
-+				  "%zd with error %d\n",
-+				  __func__, mpd->inode->i_ino,
-+				  (unsigned long long)next,
-+				  lbh->b_size >> mpd->inode->i_blkbits, err);
-+		printk(KERN_EMERG "This should not happen.!! "
-+					"Data will be lost\n");
-+		/* invlaidate all the pages */
-+		ext4_da_block_invalidatepages(mpd, next,
-+				lbh->b_size >> mpd->inode->i_blkbits);
-+		return err;
-+	}
- 	BUG_ON(new.b_size == 0);
+ 	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 		wbc->encountered_congestion = 1;
+@@ -985,9 +986,9 @@ continue_unlock:
+ 				}
+  			}
  
- 	if (buffer_new(&new))
-@@ -1868,7 +1929,7 @@ static void mpage_da_map_blocks(struct m
- 	if (buffer_delay(lbh) || buffer_unwritten(lbh))
- 		mpage_put_bnr_to_bhs(mpd, next, &new);
- 
--	return;
-+	return 0;
- }
- 
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
-@@ -1937,8 +1998,8 @@ flush_it:
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	mpage_da_map_blocks(mpd);
--	mpage_da_submit_io(mpd);
-+	if (mpage_da_map_blocks(mpd) == 0)
-+		mpage_da_submit_io(mpd);
- 	mpd->io_done = 1;
- 	return;
- }
-@@ -1980,8 +2041,8 @@ static int __mpage_da_writepage(struct p
- 		 * and start IO on them using writepage()
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			mpage_da_map_blocks(mpd);
--			mpage_da_submit_io(mpd);
-+			if (mpage_da_map_blocks(mpd) == 0)
-+				mpage_da_submit_io(mpd);
- 			/*
- 			 * skip rest of the page in the page_vec
- 			 */
-@@ -2102,8 +2163,8 @@ static int mpage_da_writepages(struct ad
- 	 * Handle last extent of pages
- 	 */
- 	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--		mpage_da_map_blocks(&mpd);
--		mpage_da_submit_io(&mpd);
-+		if (mpage_da_map_blocks(&mpd) == 0)
-+			mpage_da_submit_io(&mpd);
+-			if (wbc->nr_to_write > 0) {
+-				wbc->nr_to_write--;
+-				if (wbc->nr_to_write == 0 &&
++			if (nr_to_write > 0) {
++				nr_to_write--;
++				if (nr_to_write == 0 &&
+ 				    wbc->sync_mode == WB_SYNC_NONE) {
+ 					/*
+ 					 * We stop writing back only if we are
+@@ -1024,8 +1025,11 @@ continue_unlock:
+ 		end = writeback_index - 1;
+ 		goto retry;
  	}
+-	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+-		mapping->writeback_index = done_index;
++	if (!wbc->no_nrwrite_index_update) {
++		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
++			mapping->writeback_index = done_index;
++		wbc->nr_to_write = nr_to_write;
++	}
  
- 	wbc->nr_to_write = to_write - mpd.pages_written;
+ 	return ret;
+ }
 
 
 Patches currently in stable-queue which might be from aneesh.kumar@linux.vnet.ibm.com are
