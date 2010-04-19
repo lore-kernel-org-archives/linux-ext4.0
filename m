@@ -1,68 +1,59 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
-Date: Mon, 19 Apr 2010 14:30:28 +0100
-Message-ID: <20100419133028.GA3631@shareable.org>
-References: <1271372682-21225-8-git-send-email-vaurora@redhat.com> <1271372682-21225-9-git-send-email-vaurora@redhat.com> <1271372682-21225-10-git-send-email-vaurora@redhat.com> <1271372682-21225-11-git-send-email-vaurora@redhat.com> <1271372682-21225-12-git-send-email-vaurora@redhat.com> <1271372682-21225-13-git-send-email-vaurora@redhat.com> <1271372682-21225-14-git-send-email-vaurora@redhat.com> <20100419124025.GG10776@bolzano.suse.de> <1271682168.14748.718.camel@macbook.infradead.org> <20100419132344.GI10776@bolzano.suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: busy inodes -> ext3 umount crash
+Date: Mon, 19 Apr 2010 16:11:58 +0200
+Message-ID: <20100419141158.GB5439@quack.suse.cz>
+References: <4BC8A7C1.20102@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Woodhouse <dwmw2@infradead.org>,
-	Valerie Aurora <vaurora@redhat.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Blunck <jblunck@suse.de>
+Cc: Andrew Morton <akpm@linux-foundation.org>, adilger@sun.com,
+	linux-ext4@vger.kernel.org,
+	Linux kernel mailing list <linux-kernel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, mszeredi@suse.cz
+To: Jiri Slaby <jirislaby@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:56950 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754775Ab0DSNal (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Apr 2010 09:30:41 -0400
+Received: from cantor.suse.de ([195.135.220.2]:37073 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754243Ab0DSOLz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Apr 2010 10:11:55 -0400
 Content-Disposition: inline
-In-Reply-To: <20100419132344.GI10776@bolzano.suse.de>
+In-Reply-To: <4BC8A7C1.20102@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Blunck wrote:
-> On Mon, Apr 19, David Woodhouse wrote:
-> 
-> > On Mon, 2010-04-19 at 14:40 +0200, Jan Blunck wrote:
-> > > On Thu, Apr 15, Valerie Aurora wrote:
-> > > 
-> > > > Add support for fallthru directory entries to ext2.
-> > > > 
-> > > > XXX - Makes up inode number for fallthru entry
-> > > > XXX - Might be better implemented as special symlinks
-> > > 
-> > > Better not. David Woodhouse actually convinced me of moving away from the
-> > > special symlink approach. The whiteouts have been implemented as special
-> > > symlinks before.
-> > 
-> > I certainly asked whether you really need a real 'struct inode' for
-> > whiteouts, and suggested that they should be represented _purely_ as a
-> > dentry with type DT_WHT.
-> > 
-> > I don't much like the manifestation of that in this patch though,
-> > especially with the made-up inode number. (ISTR I had other
-> > jffs2-specific objections too, which I'll dig out and forward).
-> 
-> Yes, this patches still have issues that Val and me are aware off. I can't
-> remember anything jffs2-specific though.
-> 
-> We return that inode number because we don't want to lookup the name on the
-> other filesystem during readdir. Therefore returning DT_UNKNOWN to let the
-> userspace decide if it needs to stat the file was the easiest workaround. I
-> know that POSIX requires d_ino and d_name but on the other hand it does not
-> require anything more on how long d_ino is valid.
+  Hi,
 
-Although the lifetime of d_ino might very, I know some programs (not
-public) that will break if they see a d_ino which is wrongly matching
-the st_ino of another file somewhere on the same st_dev.  They will
-assume the name is a hard link to the other file, without calling
-stat(), which I think is a reasonable assumption and a useful optimisation.
+On Fri 16-04-10 20:09:05, Jiri Slaby wrote:
+> with mmotm 2010-04-05-16-09 and much older (I hadn't camera to take a
+> picture) I sometimes get a BUG() trace in ext3 umount code:
+> http://www.fi.muni.cz/~xslaby/sklad/panics/ext3_1.png
+> http://www.fi.muni.cz/~xslaby/sklad/panics/ext3_2.png
+  I see several "Busy inodes on umount" messages from several filesystems
+and then the complaint on dm-1 about ext3 orphan inodes on umount (which are
+actually directories with i_nlink == 0). I guess these are actually caused by
+the same bug - some leak in inode references. I think this is a bug
+specific to mmotm since otherwise we'd be seeing much more reports of this.
+Looking at the patches in mmotm,
+vfs-fix-vfs_rename_dir-for-fs_rename_does_d_move-filesystems.patch caught
+my eye but frankly I don't see how we could leak dentry because of that
+change. Certainly a path taken by dput() changes but the new one does
+dentry_iput() as well.
 
-So the made-up d_ino should at least be careful to not match an inode
-number of another file which has a stable st_ino.
+> I have no idea how to reproduce it :(, but it usually happens when I do
+> shutdown/kexec.
+  If it's the patch I suspect above, then moving one directory over another
+one might trigger the leak which would be later spotted on umount of the
+filesystem. Or maybe to trigger the leak you have to have a process which
+has its CWD in the directory you are going to delete by the rename... not
+sure.
 
-Why not zero for d_ino?
+> Those busy inodes are pretty common in current kernels, I don't know if
+> that's related -- I doubt it since it is for different bdevs.
+  I think it is related - if the busy inode is a deleted one, then you get
+exactly the WARN_ON you are reporting... So if you can easily reproduce
+the "busy inodes" message then I'd start with debugging that one. Do you
+see it also with vanilla kernels?
 
--- Jamie
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
