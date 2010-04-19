@@ -1,42 +1,59 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Introducing Next3 - built-in snapshots support for Ext3
-Date: Sun, 18 Apr 2010 18:41:21 +0300
-Message-ID: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15792] ext4_inode_info->i_flags modification is racy
+Date: Mon, 19 Apr 2010 03:43:24 GMT
+Message-ID: <201004190343.o3J3hOn7027727@demeter.kernel.org>
+References: <bug-15792-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f225.google.com ([209.85.218.225]:52000 "EHLO
-	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752126Ab0DRPlZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Apr 2010 11:41:25 -0400
-Received: by bwz25 with SMTP id 25so4611822bwz.28
-        for <linux-ext4@vger.kernel.org>; Sun, 18 Apr 2010 08:41:21 -0700 (PDT)
+Received: from demeter.kernel.org ([140.211.167.39]:52760 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753401Ab0DSDnZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Apr 2010 23:43:25 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3J3hOGO027728
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Apr 2010 03:43:24 GMT
+In-Reply-To: <bug-15792-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+https://bugzilla.kernel.org/show_bug.cgi?id=15792
 
-For over a year, Next3 has been developed in-house by CTERA networks,
-as part of its NAS appliances.
-Now that the appliances are out in the market, Next3 project can
-finally be shared with the world.
 
-Main Next3 features:
-- Backward and forward compatible with Ext3
-- Incremental, volume level, read-only snapshots
-- Snapshots use available file system disk space
-- Snapshot deletion frees up disk space
-- Retains Ext3 stability including journaling and fsck
-- Minimal performance overhead (in average usage scenarios)
-- No upper limit on number or size of snapshots
 
-Please visit Next3 wiki page:
-http://sourceforge.net/apps/mediawiki/next3/
 
-Next3 project is looking for code reviewers, beta testers and public attention.
 
-Would love to read your comments on Next3-users mailing list:
-https://lists.sourceforge.net/lists/listinfo/next3-users
+--- Comment #5 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-04-19 03:42:20 ---
+Ohh.. one more thing, which is not actually related with the name of the bug,
+But this peace of code was already mention here. Let's just document this here.
 
-Amir.
+fs/ext4/extents.c 
+3288:int ext4_ext_get_blocks(...)
+{
+....
+3477:   if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)) {
+3478:           if (unlikely(!eh->eh_entries)) {
+3479:                   EXT4_ERROR_INODE(inode,
+3480:                                    "eh->eh_entries == 0 ee_block %d",
+3481:                                    ex->ee_block);
+3482:                   err = -EIO;
+3483:                   goto out2;
+3484:           }
+3485:           last_ex = EXT_LAST_EXTENT(eh);
+3486:           if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
+3487:               + ext4_ext_get_actual_len(last_ex))
+##### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##### If depth > 0 then last_ex may not be the latest extent of the file.
+##### because "eh" is just a one of leafs(writing at the middle of a file)
+##### We have to find latest extent by traversing a whole path again but
+##### always chose the latest eh,ex.
+3488:                   EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
+for (  
+3489:   }
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
