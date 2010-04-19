@@ -1,149 +1,360 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Ext4: batched discard support
-Date: Mon, 19 Apr 2010 11:30:09 -0500
-Message-ID: <4BCC8511.2070402@redhat.com>
-References: <1271674527-2977-1-git-send-email-lczerner@redhat.com> <h2o87f94c371004190920h5e793818x4113da75dd21da8b@mail.gmail.com>
+From: <gregkh@suse.de>
+Subject: patch ext4-add-percpu-dirty-block-accounting.patch added to 2.6.27-stable tree
+Date: Mon, 19 Apr 2010 10:26:48 -0700
+Message-ID: <12716980071820@kroah.org>
+References: <1268699165-17461-5-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Edward Shishkin <eshishki@redhat.com>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>, Mark Lord <liml@rtr.ca>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=ANSI_X3.4-1968
+Content-Transfer-Encoding: 8bit
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: aneesh.kumar@linux.vnet.ibm.com, cmm@us.ibm.com,
+	dev@jaysonking.com, gregkh@suse.de, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59563 "EHLO mx1.redhat.com"
+Received: from kroah.org ([198.145.64.141]:48438 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753615Ab0DSQ4L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Apr 2010 12:56:11 -0400
-In-Reply-To: <h2o87f94c371004190920h5e793818x4113da75dd21da8b@mail.gmail.com>
+	id S1751742Ab0DSR3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Apr 2010 13:29:55 -0400
+In-Reply-To: <1268699165-17461-5-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Greg Freemyer wrote:
-> Adding Mark Lord in cc.
-> 
-> He wrote a preliminary discard solution last summer.  I'm not sure how
-> it has progressed.
 
-The difference here is that Mark's stuff wasn't as tightly integrated
-with the kernel, IIRC.  What I saw was more at a user level - make a big
-file, map it, discard all the blocks, unlink the file.
+This is a note to let you know that we have just queued up the patch titled
 
-It was a good first step, but I think we can do a lot better by using
-fs-specific calls to be efficient & targeted about the discards.
+    Subject: ext4: Add percpu dirty block accounting.
 
-Christoph has a similar approach for XFS, FWIW.
+to the 2.6.27-stable tree.  Its filename is
 
--Eric
+    ext4-add-percpu-dirty-block-accounting.patch
 
-> Mark, you can find the 2 patches at:
-> 
-> http://patchwork.ozlabs.org/patch/50441/
-> http://patchwork.ozlabs.org/patch/50442/
-> 
-> Greg
-> 
-> On Mon, Apr 19, 2010 at 6:55 AM, Lukas Czerner <lczerner@redhat.com> wrote:
->> Hi all,
->>
->> I would like to present a new way to deal with TRIM in ext4 file system.
->> The current solution is not ideal because of its bad performance impact.
->> So basic idea to improve things is to avoid discarding every time some
->> blocks are freed. and instead batching is together into bigger trims,
->> which tends to be more effective.
->>
->> The basic idea behind my discard support is to create an ioctl which
->> walks through all the free extents in each allocating group and discard
->> those extents. As an addition to improve its performance one can specify
->> minimum free extent length, so ioctl will not bother with shorter extents.
->>
->> This of course means, that with each invocation the ioctl must walk
->> through whole file system, checking and discarding free extents, which
->> is not very efficient. The best way to avoid this is to keep track of
->> deleted (freed) blocks. Then the ioctl have to trim just those free
->> extents which were recently freed.
->>
->> In order to implement this I have added new bitmap into ext4_group_info
->> (bb_bitmap_deleted) which stores recently freed blocks. The ioctl then
->> walk through bb_bitmap_deleted, compare deleted extents with free
->> extents trim them and then removes it from the bb_bitmap_deleted.
->>
->> But you may notice, that there is one problem. bb_bitmap_deleted does
->> not survive umount. To bypass the problem the first ioctl call have to
->> walk through whole file system trimming all free extents. But there is a
->> better solution to this problem. The bb_bitmap_deleted can be stored on
->> disk an can be restored in mount time along with other bitmaps, but I
->> think it is a quite big change and should be discussed further.
->>
->> I have also benchmarked it a little. You can find results here:
->>
->> people.redhat.com/jmoyer/discard/ext4_batched_discard/
->>
->> comparison with current solution included. Keep in mind that ideal ioctl
->> invocation interval is yet to be determined, so in benchmark I have used
->> the performance-worst scenario - without any sleep between execution.
->>
->>
->> There are two patches for this. The first one just creates file system
->> independent ioctl for this and the second one it the batched discard
->> support itself.
->>
->> I will very much appreciate any comment on this, your opinions, ideas to
->> make this better etc. Thanks.
->>
->> If you want to try it, just create EXT4 file system mount it and invoke
->> ioctl on the mount point. You can use following code for this (I have
->> taken this from xfs patch for the same thing). You can also see some
->> debugging messages, but you may want to set EXT4FS_DEBUG for this.
->>
->> #include <errno.h>
->> #include <fcntl.h>
->> #include <stdio.h>
->> #include <stdint.h>
->> #include <sys/ioctl.h>
->>
->> #define FITRIM          _IOWR('X', 121, int)
->>
->> int main(int argc, char **argv)
->> {
->>        int minsize = 4096;
->>        int fd;
->>
->>        if (argc != 2) {
->>                fprintf(stderr, "usage: %s mountpoint\n", argv[0]);
->>                return 1;
->>        }
->>
->>        fd = open(argv[1], O_RDONLY);
->>        if (fd < 0) {
->>                perror("open");
->>                return 1;
->>        }
->>
->>        if (ioctl(fd, FITRIM, &minsize)) {
->>                if (errno == EOPNOTSUPP)
->>                        fprintf(stderr, "TRIM not supported\n");
->>                else
->>                        perror("EXT4_IOC_TRIM");
->>                return 1;
->>        }
->>
->>        return 0;
->> }
->>
->>  fs/ioctl.c         |   31 +++++++++++++++++++++++++++++++
->>  include/linux/fs.h |    2 ++
->>  2 files changed, 33 insertions(+), 0 deletions(-)
->>
->>  fs/ext4/ext4.h    |    4 +
->>  fs/ext4/mballoc.c |  207 ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>  fs/ext4/super.c   |    1 +
->>  3 files changed, 202 insertions(+), 10 deletions(-)
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
+
+>From tytso@mit.edu  Mon Apr 19 10:21:01 2010
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date: Mon, 15 Mar 2010 20:25:58 -0400
+Subject: ext4: Add percpu dirty block accounting.
+To: stable@kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Ext4 Developers List <linux-ext4@vger.kernel.org>, Mingming Cao <cmm@us.ibm.com>, "Jayson R. King" <dev@jaysonking.com>, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Message-ID: <1268699165-17461-5-git-send-email-tytso@mit.edu>
+
+
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+
+commit 6bc6e63fcd7dac9e633ea29f1fddd9580ab28f3f upstream.
+
+This patch adds dirty block accounting using percpu_counters.  Delayed
+allocation block reservation is now done by updating dirty block
+counter.  In a later patch we switch to non delalloc mode if the
+filesystem free blocks is greater than 150% of total filesystem dirty
+blocks
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao<cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Jayson R. King <dev@jaysonking.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+---
+ fs/ext4/balloc.c  |   62 ++++++++++++++++++++++++++++++++++--------------------
+ fs/ext4/ext4_sb.h |    1 
+ fs/ext4/inode.c   |   22 +++++++++----------
+ fs/ext4/mballoc.c |   31 ++++++++++++---------------
+ fs/ext4/super.c   |    8 ++++++
+ 5 files changed, 73 insertions(+), 51 deletions(-)
+
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1757,26 +1757,38 @@ out:
+ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks)
+ {
+-	s64 free_blocks;
++	s64 free_blocks, dirty_blocks;
+ 	ext4_fsblk_t root_blocks = 0;
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
+ 
+-	free_blocks = percpu_counter_read(fbc);
++	free_blocks  = percpu_counter_read_positive(fbc);
++	dirty_blocks = percpu_counter_read_positive(dbc);
+ 
+ 	if (!capable(CAP_SYS_RESOURCE) &&
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
+ 
+-	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
+-		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
+-
+-	if (free_blocks < (root_blocks + nblocks))
++	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
++						EXT4_FREEBLOCKS_WATERMARK) {
++		free_blocks  = percpu_counter_sum(fbc);
++		dirty_blocks = percpu_counter_sum(dbc);
++		if (dirty_blocks < 0) {
++			printk(KERN_CRIT "Dirty block accounting "
++					"went wrong %lld\n",
++					dirty_blocks);
++		}
++	}
++	/* Check whether we have space after
++	 * accounting for current dirty blocks
++	 */
++	if (free_blocks < ((s64)(root_blocks + nblocks) + dirty_blocks))
+ 		/* we don't have free space */
+ 		return -ENOSPC;
+ 
+-	/* reduce fs free blocks counter */
+-	percpu_counter_sub(fbc, nblocks);
++	/* Add the blocks to nblocks */
++	percpu_counter_add(dbc, nblocks);
+ 	return 0;
+ }
+ 
+@@ -1792,23 +1804,28 @@ int ext4_claim_free_blocks(struct ext4_s
+ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks)
+ {
+-	ext4_fsblk_t free_blocks;
++	ext4_fsblk_t free_blocks, dirty_blocks;
+ 	ext4_fsblk_t root_blocks = 0;
++	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
+ 
+-	free_blocks = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
++	free_blocks  = percpu_counter_read_positive(fbc);
++	dirty_blocks = percpu_counter_read_positive(dbc);
+ 
+ 	if (!capable(CAP_SYS_RESOURCE) &&
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
+ 
+-	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
+-		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
+-
+-	if (free_blocks <= root_blocks)
++	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
++						EXT4_FREEBLOCKS_WATERMARK) {
++		free_blocks  = percpu_counter_sum_positive(fbc);
++		dirty_blocks = percpu_counter_sum_positive(dbc);
++	}
++	if (free_blocks <= (root_blocks + dirty_blocks))
+ 		/* we don't have free space */
+ 		return 0;
+-	if (free_blocks - root_blocks < nblocks)
++	if (free_blocks - (root_blocks + dirty_blocks) < nblocks)
+ 		return free_blocks - root_blocks;
+ 	return nblocks;
+ }
+@@ -2089,13 +2106,14 @@ allocated:
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
+-		/*
+-		 * we allocated less blocks than we
+-		 * claimed. Add the difference back.
+-		 */
+-		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
+-	}
++	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
++	/*
++	 * Now reduce the dirty block count also. Should not go negative
++	 */
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, *count);
++	else
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, num);
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+ 		spin_lock(sb_bgl_lock(sbi, flex_group));
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -60,6 +60,7 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
++	struct percpu_counter s_dirtyblocks_counter;
+ 	struct blockgroup_lock s_blockgroup_lock;
+ 
+ 	/* root of the per fs reservation window tree */
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1032,19 +1032,20 @@ static void ext4_da_update_reserve_space
+ 	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
+ 	mdb_free = EXT4_I(inode)->i_reserved_meta_blocks - mdb;
+ 
+-	/* Account for allocated meta_blocks */
+-	mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
+-
+-	/* update fs free blocks counter for truncate case */
+-	percpu_counter_add(&sbi->s_freeblocks_counter, mdb_free);
++	if (mdb_free) {
++		/* Account for allocated meta_blocks */
++		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
++
++		/* update fs dirty blocks counter */
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
++		EXT4_I(inode)->i_allocated_meta_blocks = 0;
++		EXT4_I(inode)->i_reserved_meta_blocks = mdb;
++	}
+ 
+ 	/* update per-inode reservations */
+ 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
+ 	EXT4_I(inode)->i_reserved_data_blocks -= used;
+ 
+-	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
+-	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
+-	EXT4_I(inode)->i_allocated_meta_blocks = 0;
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 
+ 	/*
+@@ -1609,8 +1610,8 @@ static void ext4_da_release_space(struct
+ 
+ 	release = to_free + mdb_free;
+ 
+-	/* update fs free blocks counter for truncate case */
+-	percpu_counter_add(&sbi->s_freeblocks_counter, release);
++	/* update fs dirty blocks counter for truncate case */
++	percpu_counter_sub(&sbi->s_dirtyblocks_counter, release);
+ 
+ 	/* update per-inode reservations */
+ 	BUG_ON(to_free > EXT4_I(inode)->i_reserved_data_blocks);
+@@ -2546,7 +2547,6 @@ static int ext4_da_write_begin(struct fi
+ 	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+-
+ retry:
+ 	/*
+ 	 * With delayed allocation, we don't log the i_disksize update
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3100,7 +3100,7 @@ void exit_ext4_mballoc(void)
+  */
+ static noinline_for_stack int
+ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+-				handle_t *handle)
++				handle_t *handle, unsigned long reserv_blks)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+ 	struct ext4_super_block *es;
+@@ -3188,21 +3188,16 @@ ext4_mb_mark_diskspace_used(struct ext4_
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -ac->ac_b_ex.fe_len);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+-
++	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
+ 	/*
+-	 * free blocks account has already be reduced/reserved
+-	 * at write_begin() time for delayed allocation
+-	 * do not double accounting
++	 * Now reduce the dirty block count also. Should not go negative
+ 	 */
+-	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
+-			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
+-		/*
+-		 * we allocated less blocks than we calimed
+-		 * Add the difference back
+-		 */
+-		percpu_counter_add(&sbi->s_freeblocks_counter,
+-				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
+-	}
++	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
++		/* release all the reserved blocks if non delalloc */
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
++	else
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
++						ac->ac_b_ex.fe_len);
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
+@@ -4636,12 +4631,13 @@ static int ext4_mb_discard_preallocation
+ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 				 struct ext4_allocation_request *ar, int *errp)
+ {
++	int freed;
+ 	struct ext4_allocation_context *ac = NULL;
+ 	struct ext4_sb_info *sbi;
+ 	struct super_block *sb;
+ 	ext4_fsblk_t block = 0;
+-	int freed;
+-	int inquota;
++	unsigned long inquota;
++	unsigned long reserv_blks = 0;
+ 
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
+@@ -4659,6 +4655,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+ 			*errp = -ENOSPC;
+ 			return 0;
+ 		}
++		reserv_blks = ar->len;
+ 	}
+ 	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+ 		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+@@ -4704,7 +4701,7 @@ repeat:
+ 			ext4_mb_new_preallocation(ac);
+ 	}
+ 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+-		*errp = ext4_mb_mark_diskspace_used(ac, handle);
++		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
+ 		if (*errp ==  -EAGAIN) {
+ 			/*
+ 			 * drop the reference that we took
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -521,6 +521,7 @@ static void ext4_put_super(struct super_
+ 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+ 	brelse(sbi->s_sbh);
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < MAXQUOTAS; i++)
+@@ -2280,6 +2281,9 @@ static int ext4_fill_super(struct super_
+ 		err = percpu_counter_init(&sbi->s_dirs_counter,
+ 				ext4_count_dirs(sb));
+ 	}
++	if (!err) {
++		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
++	}
+ 	if (err) {
+ 		printk(KERN_ERR "EXT4-fs: insufficient memory\n");
+ 		goto failed_mount3;
+@@ -2517,6 +2521,7 @@ failed_mount3:
+ 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+@@ -3208,7 +3213,8 @@ static int ext4_statfs(struct dentry *de
+ 	buf->f_type = EXT4_SUPER_MAGIC;
+ 	buf->f_bsize = sb->s_blocksize;
+ 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
+-	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
++	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter) -
++		       percpu_counter_sum_positive(&sbi->s_dirtyblocks_counter);
+ 	ext4_free_blocks_count_set(es, buf->f_bfree);
+ 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
+ 	if (buf->f_bfree < ext4_r_blocks_count(es))
+
+
+Patches currently in stable-queue which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+queue-2.6.27/ext4-fix-file-fragmentation-during-large-file-write.patch
+queue-2.6.27/ext4-retry-block-allocation-if-we-have-free-blocks-left.patch
+queue-2.6.27/vfs-add-no_nrwrite_index_update-writeback-control-flag.patch
+queue-2.6.27/ext4-retry-block-reservation.patch
+queue-2.6.27/ext4-invalidate-pages-if-delalloc-block-allocation-fails.patch
+queue-2.6.27/ext4-use-tag-dirty-lookup-during-mpage_da_submit_io.patch
+queue-2.6.27/vfs-remove-the-range_cont-writeback-mode.patch
+queue-2.6.27/ext4-make-sure-all-the-block-allocation-paths-reserve-blocks.patch
+queue-2.6.27/ext4-implement-range_cyclic-in-ext4_da_writepages-instead-of-write_cache_pages.patch
+queue-2.6.27/ext4-add-percpu-dirty-block-accounting.patch
