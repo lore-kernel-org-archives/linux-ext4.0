@@ -1,340 +1,294 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2] Add batched discard support for ext4.
-Date: Mon, 19 Apr 2010 12:55:27 +0200
-Message-ID: <1271674527-2977-3-git-send-email-lczerner@redhat.com>
-References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>
- <1271674527-2977-2-git-send-email-lczerner@redhat.com>
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	Edward Shishkin <eshishki@redhat.com>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Blunck <jblunck@suse.de>
+Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
+Date: Mon, 19 Apr 2010 14:40:25 +0200
+Message-ID: <20100419124025.GG10776@bolzano.suse.de>
+References: <1271372682-21225-5-git-send-email-vaurora@redhat.com> <1271372682-21225-6-git-send-email-vaurora@redhat.com> <1271372682-21225-7-git-send-email-vaurora@redhat.com> <1271372682-21225-8-git-send-email-vaurora@redhat.com> <1271372682-21225-9-git-send-email-vaurora@redhat.com> <1271372682-21225-10-git-send-email-vaurora@redhat.com> <1271372682-21225-11-git-send-email-vaurora@redhat.com> <1271372682-21225-12-git-send-email-vaurora@redhat.com> <1271372682-21225-13-git-send-email-vaurora@redhat.com> <1271372682-21225-14-git-send-email-vaurora@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	David Woodhouse <dwmw2@infradead.org>
+To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23418 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:60952 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754250Ab0DSK4L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Apr 2010 06:56:11 -0400
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o3JAuBdt007134
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Apr 2010 06:56:11 -0400
-In-Reply-To: <1271674527-2977-2-git-send-email-lczerner@redhat.com>
+	id S1754165Ab0DSMk1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Apr 2010 08:40:27 -0400
+Content-Disposition: inline
+In-Reply-To: <1271372682-21225-14-git-send-email-vaurora@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create an ioctl which walks through all the free extents in each
-allocating group and discard those extents. As an addition to improve
-its performance one can specify minimum free extent length, so ioctl
-will not bother with shorter extents.
+On Thu, Apr 15, Valerie Aurora wrote:
 
-This of course means, that with each invocation the ioctl must walk
-through whole file system, checking and discarding free extents, which
-is not very efficient. The best way to avoid this is to keep track of
-deleted (freed) blocks. Then the ioctl have to trim just those free
-extents which were recently freed.
+> Add support for fallthru directory entries to ext2.
+> 
+> XXX - Makes up inode number for fallthru entry
+> XXX - Might be better implemented as special symlinks
 
-In order to implement this I have added new bitmap into ext4_group_info
-(bb_bitmap_deleted) which stores recently freed blocks. The ioctl then
-walk through bb_bitmap_deleted, compare deleted extents with free
-extents trim them and then removes it from the bb_bitmap_deleted. 
+Better not. David Woodhouse actually convinced me of moving away from the
+special symlink approach. The whiteouts have been implemented as special
+symlinks before.
 
-But you may notice, that there is one problem. bb_bitmap_deleted does
-not survive umount. To bypass the problem the first ioctl call have to
-walk through whole file system trimming all free extents.
+What makes you think that it would be beneficial to do so?
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/ext4.h    |    4 +
- fs/ext4/mballoc.c |  207 ++++++++++++++++++++++++++++++++++++++++++++++++++---
- fs/ext4/super.c   |    1 +
- 3 files changed, 202 insertions(+), 10 deletions(-)
+Thanks,
+Jan
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bf938cf..e25f672 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1437,6 +1437,8 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
- extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
- extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
- 						ext4_group_t, int);
-+extern int ext4_trim_fs(unsigned int, struct super_block *);
-+
- /* inode.c */
- struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
-@@ -1682,6 +1684,8 @@ struct ext4_group_info {
- #ifdef DOUBLE_CHECK
- 	void            *bb_bitmap;
- #endif
-+	void		*bb_bitmap_deleted;
-+	ext4_grpblk_t	bb_deleted;
- 	struct rw_semaphore alloc_sem;
- 	ext4_grpblk_t	bb_counters[];	/* Nr of free power-of-two-block
- 					 * regions, index is order.
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index bde9d0b..fbc83fe 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2255,6 +2255,9 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
- 	init_rwsem(&meta_group_info[i]->alloc_sem);
- 	meta_group_info[i]->bb_free_root = RB_ROOT;
-+	meta_group_info[i]->bb_deleted = -1;
-+
-+
- 
- #ifdef DOUBLE_CHECK
- 	{
-@@ -2469,6 +2472,7 @@ int ext4_mb_release(struct super_block *sb)
- #ifdef DOUBLE_CHECK
- 			kfree(grinfo->bb_bitmap);
- #endif
-+			kfree(grinfo->bb_bitmap_deleted);
- 			ext4_lock_group(sb, i);
- 			ext4_mb_cleanup_pa(grinfo);
- 			ext4_unlock_group(sb, i);
-@@ -2528,6 +2532,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 	int err, count = 0, count2 = 0;
- 	struct ext4_free_data *entry;
- 	struct list_head *l, *ltmp;
-+	void *bitmap_deleted = NULL;
- 
- 	list_for_each_safe(l, ltmp, &txn->t_private_list) {
- 		entry = list_entry(l, struct ext4_free_data, list);
-@@ -2543,6 +2548,14 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 		/* there are blocks to put in buddy to make them really free */
- 		count += entry->count;
- 		count2++;
-+
-+		if (test_opt(sb, DISCARD) &&
-+			(db->bb_bitmap_deleted == NULL) &&
-+			(db->bb_deleted >= 0)) {
-+			bitmap_deleted =
-+				kmalloc(sb->s_blocksize, GFP_KERNEL);
-+		}
-+
- 		ext4_lock_group(sb, entry->group);
- 		/* Take it out of per group rb tree */
- 		rb_erase(&entry->node, &(db->bb_free_root));
-@@ -2555,17 +2568,24 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 			page_cache_release(e4b.bd_buddy_page);
- 			page_cache_release(e4b.bd_bitmap_page);
- 		}
--		ext4_unlock_group(sb, entry->group);
--		if (test_opt(sb, DISCARD)) {
--			ext4_fsblk_t discard_block;
--
--			discard_block = entry->start_blk +
--				ext4_group_first_block_no(sb, entry->group);
--			trace_ext4_discard_blocks(sb,
--					(unsigned long long)discard_block,
--					entry->count);
--			sb_issue_discard(sb, discard_block, entry->count);
-+		if (test_opt(sb, DISCARD) && (db->bb_deleted >= 0)) {
-+			if (db->bb_bitmap_deleted == NULL) {
-+				db->bb_bitmap_deleted = bitmap_deleted;
-+				BUG_ON(db->bb_bitmap_deleted == NULL);
-+
-+				bitmap_deleted = NULL;
-+				mb_clear_bits(db->bb_bitmap_deleted,
-+					0, EXT4_BLOCKS_PER_GROUP(sb));
-+			}
-+
-+			db->bb_deleted += entry->count;
-+			mb_set_bits(db->bb_bitmap_deleted, entry->start_blk,
-+				 entry->count);
- 		}
-+		ext4_unlock_group(sb, entry->group);
-+
-+		kfree(bitmap_deleted);
-+
- 		kmem_cache_free(ext4_free_ext_cachep, entry);
- 		ext4_mb_release_desc(&e4b);
- 	}
-@@ -4639,3 +4659,170 @@ error_return:
- 		kmem_cache_free(ext4_ac_cachep, ac);
- 	return;
- }
-+
-+/* Trim "count" blocks starting at "start" in "group"
-+ * This must be called under group lock
-+ */
-+void ext4_trim_extent(struct super_block *sb, int start, int count,
-+		ext4_group_t group, struct ext4_buddy *e4b)
-+{
-+	ext4_fsblk_t discard_block;
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	struct ext4_free_extent ex;
-+
-+	assert_spin_locked(ext4_group_lock_ptr(sb, group));
-+
-+	ex.fe_start = start;
-+	ex.fe_group = group;
-+	ex.fe_len = count;
-+
-+	mb_mark_used(e4b, &ex);
-+	ext4_unlock_group(sb, group);
-+
-+	discard_block = (ext4_fsblk_t)group *
-+			EXT4_BLOCKS_PER_GROUP(sb)
-+			+ start
-+			+ le32_to_cpu(es->s_first_data_block);
-+	trace_ext4_discard_blocks(sb,
-+			(unsigned long long)discard_block,
-+			count);
-+	sb_issue_discard(sb, discard_block, count);
-+
-+	ext4_lock_group(sb, group);
-+	mb_free_blocks(NULL, e4b, start, ex.fe_len);
-+}
-+
-+/* Trim all free blocks, which have at least minlen length */
-+ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
-+		ext4_grpblk_t minblocks)
-+{
-+	void *bitmap;
-+	ext4_grpblk_t max = EXT4_BLOCKS_PER_GROUP(sb);
-+	ext4_grpblk_t start, next, count = 0;
-+	ext4_group_t group;
-+
-+	BUG_ON(e4b == NULL);
-+
-+	bitmap = e4b->bd_bitmap;
-+	group = e4b->bd_group;
-+	start = 0;
-+	ext4_lock_group(sb, group);
-+
-+	while (start < max) {
-+
-+		start = mb_find_next_zero_bit(bitmap, max, start);
-+		if (start >= max)
-+			break;
-+		next = mb_find_next_bit(bitmap, max, start);
-+
-+		if ((next - start) >= minblocks) {
-+
-+			count += next - start;
-+			ext4_trim_extent(sb, start,
-+				next - start, group, e4b);
-+
-+		}
-+		start = next + 1;
-+	}
-+
-+	e4b->bd_info->bb_deleted = 0;
-+	ext4_unlock_group(sb, group);
-+
-+	return count;
-+}
-+
-+/* Trim only blocks which is free and in bb_bitmap_deleted */
-+ext4_grpblk_t ext4_trim_deleted(struct super_block *sb, struct ext4_buddy *e4b,
-+		ext4_grpblk_t minblocks)
-+{
-+	void *bitmap;
-+	struct ext4_group_info *grp;
-+	ext4_group_t group;
-+	ext4_grpblk_t max, next, count = 0, start = 0;
-+
-+	BUG_ON(e4b == NULL);
-+
-+	bitmap = e4b->bd_bitmap;
-+	group = e4b->bd_group;
-+	grp = ext4_get_group_info(sb, group);
-+
-+	if (grp->bb_deleted < minblocks)
-+		return 0;
-+
-+	ext4_lock_group(sb, group);
-+
-+	while (start < EXT4_BLOCKS_PER_GROUP(sb)) {
-+		start = mb_find_next_bit(grp->bb_bitmap_deleted,
-+			EXT4_BLOCKS_PER_GROUP(sb), start);
-+		max = mb_find_next_zero_bit(grp->bb_bitmap_deleted,
-+			EXT4_BLOCKS_PER_GROUP(sb), start);
-+
-+		while (start < max) {
-+			start = mb_find_next_zero_bit(bitmap, max, start);
-+			if (start >= max)
-+				break;
-+			next = mb_find_next_bit(bitmap, max, start);
-+			if (next > max)
-+				next = max;
-+
-+			if ((next - start) >= minblocks) {
-+				count += next - start;
-+
-+				ext4_trim_extent(sb, start,
-+					next - start, group, e4b);
-+
-+				mb_clear_bits(grp->bb_bitmap_deleted,
-+					start, next - start);
-+			}
-+			start = next + 1;
-+		}
-+	}
-+	grp->bb_deleted -= count;
-+
-+	ext4_unlock_group(sb, group);
-+
-+	ext4_debug("trimmed %d blocks in the group %d\n",
-+		count, group);
-+
-+	return count;
-+}
-+
-+int ext4_trim_fs(unsigned int minlen, struct super_block *sb)
-+{
-+	struct ext4_buddy e4b;
-+	struct ext4_group_info *grp;
-+	ext4_group_t group;
-+	ext4_group_t ngroups = ext4_get_groups_count(sb);
-+	ext4_grpblk_t minblocks;
-+
-+	if (!test_opt(sb, DISCARD))
-+		return 0;
-+
-+	minblocks = DIV_ROUND_UP(minlen, sb->s_blocksize);
-+	if (unlikely(minblocks > EXT4_BLOCKS_PER_GROUP(sb)))
-+		return -EINVAL;
-+
-+	for (group = 0; group < ngroups; group++) {
-+		int err;
-+
-+		err = ext4_mb_load_buddy(sb, group, &e4b);
-+		if (err) {
-+			ext4_error(sb, "Error in loading buddy "
-+					"information for %u", group);
-+			continue;
-+		}
-+		grp = ext4_get_group_info(sb, group);
-+
-+		if (grp->bb_deleted < 0) {
-+			/* First run after mount */
-+			ext4_trim_all_free(sb, &e4b, minblocks);
-+		} else if (grp->bb_deleted >= minblocks) {
-+			/* Trim only blocks deleted since first run */
-+			ext4_trim_deleted(sb, &e4b, minblocks);
-+		}
-+
-+		ext4_mb_release_desc(&e4b);
-+	}
-+
-+	return 0;
-+}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e14d22c..253eb98 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1109,6 +1109,7 @@ static const struct super_operations ext4_sops = {
- 	.quota_write	= ext4_quota_write,
- #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
-+	.trim_fs	= ext4_trim_fs
- };
- 
- static const struct super_operations ext4_nojournal_sops = {
+> Cc: Theodore Tso <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Signed-off-by: Valerie Aurora <vaurora@redhat.com>
+> Signed-off-by: Jan Blunck <jblunck@suse.de>
+> ---
+>  fs/ext2/dir.c           |   92 ++++++++++++++++++++++++++++++++++++++++++++--
+>  fs/ext2/ext2.h          |    1 +
+>  fs/ext2/namei.c         |   22 +++++++++++
+>  include/linux/ext2_fs.h |    1 +
+>  4 files changed, 112 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+> index 030bd46..f3b4aff 100644
+> --- a/fs/ext2/dir.c
+> +++ b/fs/ext2/dir.c
+> @@ -219,7 +219,8 @@ static inline int ext2_match (int len, const char * const name,
+>  {
+>  	if (len != de->name_len)
+>  		return 0;
+> -	if (!de->inode && (de->file_type != EXT2_FT_WHT))
+> +	if (!de->inode && ((de->file_type != EXT2_FT_WHT) &&
+> +			   (de->file_type != EXT2_FT_FALLTHRU)))
+>  		return 0;
+>  	return !memcmp(name, de->name, len);
+>  }
+> @@ -256,6 +257,7 @@ static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
+>  	[EXT2_FT_SOCK]		= DT_SOCK,
+>  	[EXT2_FT_SYMLINK]	= DT_LNK,
+>  	[EXT2_FT_WHT]		= DT_WHT,
+> +	[EXT2_FT_FALLTHRU]	= DT_UNKNOWN,
+>  };
+>  
+>  #define S_SHIFT 12
+> @@ -342,6 +344,24 @@ ext2_readdir (struct file * filp, void * dirent, filldir_t filldir)
+>  					ext2_put_page(page);
+>  					return 0;
+>  				}
+> +			} else if (de->file_type == EXT2_FT_FALLTHRU) {
+> +				int over;
+> +				unsigned char d_type = DT_UNKNOWN;
+> +
+> +				offset = (char *)de - kaddr;
+> +				/* XXX We don't know the inode number
+> +				 * of the directory entry in the
+> +				 * underlying file system.  Should
+> +				 * look it up, either on fallthru
+> +				 * creation at first readdir or now at
+> +				 * filldir time. */
+> +				over = filldir(dirent, de->name, de->name_len,
+> +					       (n<<PAGE_CACHE_SHIFT) | offset,
+> +					       123 /* Made up ino */, d_type);
+> +				if (over) {
+> +					ext2_put_page(page);
+> +					return 0;
+> +				}
+>  			}
+>  			filp->f_pos += ext2_rec_len_from_disk(de->rec_len);
+>  		}
+> @@ -463,6 +483,10 @@ ino_t ext2_inode_by_dentry(struct inode *dir, struct dentry *dentry)
+>  			spin_lock(&dentry->d_lock);
+>  			dentry->d_flags |= DCACHE_WHITEOUT;
+>  			spin_unlock(&dentry->d_lock);
+> +		} else if(!res && de->file_type == EXT2_FT_FALLTHRU) {
+> +			spin_lock(&dentry->d_lock);
+> +			dentry->d_flags |= DCACHE_FALLTHRU;
+> +			spin_unlock(&dentry->d_lock);
+>  		}
+>  		ext2_put_page(page);
+>  	}
+> @@ -532,6 +556,7 @@ static ext2_dirent * ext2_append_entry(struct dentry * dentry,
+>  				de->name_len = 0;
+>  				de->rec_len = ext2_rec_len_to_disk(chunk_size);
+>  				de->inode = 0;
+> +				de->file_type = 0;
+>  				goto got_it;
+>  			}
+>  			if (de->rec_len == 0) {
+> @@ -545,6 +570,7 @@ static ext2_dirent * ext2_append_entry(struct dentry * dentry,
+>  			name_len = EXT2_DIR_REC_LEN(de->name_len);
+>  			rec_len = ext2_rec_len_from_disk(de->rec_len);
+>  			if (!de->inode && (de->file_type != EXT2_FT_WHT) &&
+> +			    (de->file_type != EXT2_FT_FALLTHRU) &&
+>  			    (rec_len >= reclen))
+>  				goto got_it;
+>  			if (rec_len >= name_len + reclen)
+> @@ -587,7 +613,8 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+>  
+>  	err = -EEXIST;
+>  	if (ext2_match (namelen, name, de)) {
+> -		if (de->file_type == EXT2_FT_WHT)
+> +		if ((de->file_type == EXT2_FT_WHT) ||
+> +		    (de->file_type == EXT2_FT_FALLTHRU))
+>  			goto got_it;
+>  		goto out_unlock;
+>  	}
+> @@ -602,7 +629,8 @@ got_it:
+>  							&page, NULL);
+>  	if (err)
+>  		goto out_unlock;
+> -	if (de->inode || ((de->file_type == EXT2_FT_WHT) &&
+> +	if (de->inode || (((de->file_type == EXT2_FT_WHT) ||
+> +			   (de->file_type == EXT2_FT_FALLTHRU)) &&
+>  			  !ext2_match (namelen, name, de))) {
+>  		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
+>  		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
+> @@ -627,6 +655,60 @@ out_unlock:
+>  }
+>  
+>  /*
+> + * Create a fallthru entry.
+> + */
+> +int ext2_fallthru_entry (struct inode *dir, struct dentry *dentry)
+> +{
+> +	const char *name = dentry->d_name.name;
+> +	int namelen = dentry->d_name.len;
+> +	unsigned short rec_len, name_len;
+> +	ext2_dirent * de;
+> +	struct page *page;
+> +	loff_t pos;
+> +	int err;
+> +
+> +	de = ext2_append_entry(dentry, &page);
+> +	if (IS_ERR(de))
+> +		return PTR_ERR(de);
+> +
+> +	err = -EEXIST;
+> +	if (ext2_match (namelen, name, de))
+> +		goto out_unlock;
+> +
+> +	name_len = EXT2_DIR_REC_LEN(de->name_len);
+> +	rec_len = ext2_rec_len_from_disk(de->rec_len);
+> +
+> +	pos = page_offset(page) +
+> +		(char*)de - (char*)page_address(page);
+> +	err = __ext2_write_begin(NULL, page->mapping, pos, rec_len, 0,
+> +							&page, NULL);
+> +	if (err)
+> +		goto out_unlock;
+> +	if (de->inode || (de->file_type == EXT2_FT_WHT) ||
+> +	    (de->file_type == EXT2_FT_FALLTHRU)) {
+> +		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
+> +		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
+> +		de->rec_len = ext2_rec_len_to_disk(name_len);
+> +		de = de1;
+> +	}
+> +	de->name_len = namelen;
+> +	memcpy(de->name, name, namelen);
+> +	de->inode = 0;
+> +	de->file_type = EXT2_FT_FALLTHRU;
+> +	err = ext2_commit_chunk(page, pos, rec_len);
+> +	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
+> +	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
+> +	mark_inode_dirty(dir);
+> +	/* OFFSET_CACHE */
+> +out_put:
+> +	ext2_put_page(page);
+> +	return err;
+> +out_unlock:
+> +	unlock_page(page);
+> +	goto out_put;
+> +}
+> +
+> +/*
+>   * ext2_delete_entry deletes a directory entry by merging it with the
+>   * previous entry. Page is up-to-date. Releases the page.
+>   */
+> @@ -711,7 +793,9 @@ int ext2_whiteout_entry (struct inode * dir, struct dentry * dentry,
+>  	 */
+>  	if (ext2_match (namelen, name, de))
+>  		de->inode = 0;
+> -	if (de->inode || (de->file_type == EXT2_FT_WHT)) {
+> +	if (de->inode || (((de->file_type == EXT2_FT_WHT) ||
+> +			   (de->file_type == EXT2_FT_FALLTHRU)) &&
+> +			  !ext2_match (namelen, name, de))) {
+>  		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
+>  		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
+>  		de->rec_len = ext2_rec_len_to_disk(name_len);
+> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+> index 44d190c..2fa32b3 100644
+> --- a/fs/ext2/ext2.h
+> +++ b/fs/ext2/ext2.h
+> @@ -108,6 +108,7 @@ extern struct ext2_dir_entry_2 * ext2_find_entry (struct inode *,struct qstr *,
+>  extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
+>  extern int ext2_whiteout_entry (struct inode *, struct dentry *,
+>  				struct ext2_dir_entry_2 *, struct page *);
+> +extern int ext2_fallthru_entry (struct inode *, struct dentry *);
+>  extern int ext2_empty_dir (struct inode *);
+>  extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct page **);
+>  extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, struct inode *, int);
+> diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+> index 12195a5..f28154c 100644
+> --- a/fs/ext2/namei.c
+> +++ b/fs/ext2/namei.c
+> @@ -349,6 +349,7 @@ static int ext2_whiteout(struct inode *dir, struct dentry *dentry,
+>  		goto out;
+>  
+>  	spin_lock(&new_dentry->d_lock);
+> +	new_dentry->d_flags &= ~DCACHE_FALLTHRU;
+>  	new_dentry->d_flags |= DCACHE_WHITEOUT;
+>  	spin_unlock(&new_dentry->d_lock);
+>  	d_add(new_dentry, NULL);
+> @@ -367,6 +368,26 @@ out:
+>  	return err;
+>  }
+>  
+> +/*
+> + * Create a fallthru entry.
+> + */
+> +static int ext2_fallthru (struct inode *dir, struct dentry *dentry)
+> +{
+> +	int err;
+> +
+> +	dquot_initialize(dir);
+> +
+> +	err = ext2_fallthru_entry(dir, dentry);
+> +	if (err)
+> +		return err;
+> +
+> +	d_instantiate(dentry, NULL);
+> +	spin_lock(&dentry->d_lock);
+> +	dentry->d_flags |= DCACHE_FALLTHRU;
+> +	spin_unlock(&dentry->d_lock);
+> +	return 0;
+> +}
+> +
+>  static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
+>  	struct inode * new_dir,	struct dentry * new_dentry )
+>  {
+> @@ -470,6 +491,7 @@ const struct inode_operations ext2_dir_inode_operations = {
+>  	.rmdir		= ext2_rmdir,
+>  	.mknod		= ext2_mknod,
+>  	.whiteout	= ext2_whiteout,
+> +	.fallthru	= ext2_fallthru,
+>  	.rename		= ext2_rename,
+>  #ifdef CONFIG_EXT2_FS_XATTR
+>  	.setxattr	= generic_setxattr,
+> diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+> index 20468bd..cb3d400 100644
+> --- a/include/linux/ext2_fs.h
+> +++ b/include/linux/ext2_fs.h
+> @@ -577,6 +577,7 @@ enum {
+>  	EXT2_FT_SOCK		= 6,
+>  	EXT2_FT_SYMLINK		= 7,
+>  	EXT2_FT_WHT		= 8,
+> +	EXT2_FT_FALLTHRU	= 9,
+>  	EXT2_FT_MAX
+>  };
+>  
+> -- 
+> 1.6.3.3
+> 
+Regards,
+	Jan
+
 -- 
-1.6.6.1
-
+Jan Blunck <jblunck@suse.de>
