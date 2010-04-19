@@ -1,39 +1,29 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15792] ext4_inode_info->i_flags modification is racy
-Date: Mon, 19 Apr 2010 14:38:12 GMT
-Message-ID: <201004191438.o3JEcCAO019461@demeter.kernel.org>
-References: <bug-15792-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:58268 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751824Ab0DSOiN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Apr 2010 10:38:13 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3JEcC2A019462
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Apr 2010 14:38:12 GMT
-In-Reply-To: <bug-15792-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
+Date: Mon, 19 Apr 2010 16:53:22 +0200
+Message-ID: <E1O3sLi-0008EA-QW@pomaz-ex.szeredi.hu>
+References: <1271372682-21225-10-git-send-email-vaurora@redhat.com> <1271372682-21225-11-git-send-email-vaurora@redhat.com> <1271372682-21225-12-git-send-email-vaurora@redhat.com> <1271372682-21225-13-git-send-email-vaurora@redhat.com> <1271372682-21225-14-git-send-email-vaurora@redhat.com> <20100419124025.GG10776@bolzano.suse.de> <1271682168.14748.718.camel@macbook.infradead.org> <20100419132344.GI10776@bolzano.suse.de> <20100419133028.GA3631@shareable.org> <20100419141248.GK10776@bolzano.suse.de> <20100419142315.GA2688@shell>
+Cc: jblunck@suse.de, jamie@shareable.org, dwmw2@infradead.org,
+	viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Valerie Aurora <vaurora@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20100419142315.GA2688@shell> (message from Valerie Aurora on
+	Mon, 19 Apr 2010 10:23:15 -0400)
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15792
+On Mon, 19 Apr 2010, Valerie Aurora wrote:
+> I don't recall there being any technical reason not to look up the
+> real inode number.  I just wrote it that we because I was lazy.  So I
+> like returning the directory's d_ino better than a single magic
+> number, but I'd at least like to try returning the real inode number
+> too.
 
+Note, "struct dirent" doesn't have d_dev, so you really can't return
+the "real" inode number, that's on a different filesystem and just a
+random number in the context of the the readdir in question.
 
-
-
-
---- Comment #6 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-04-19 14:38:10 ---
-Proposed patches
-http://patchwork.ozlabs.org/patch/50468/
-http://patchwork.ozlabs.org/patch/50469/
-
-My hosts survived reasonable amount of time with these patches.
-If everybody agree with the first patch, I'll prepare similar one for ext3.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks,
+Miklos
