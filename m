@@ -1,59 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14830] When other IO is running sync times go to 10 to 20
- minutes
-Date: Tue, 20 Apr 2010 03:46:33 GMT
-Message-ID: <201004200346.o3K3kXDn020782@demeter.kernel.org>
-References: <bug-14830-13602@https.bugzilla.kernel.org/>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [RFC][PATCH 0/3] ext4: inode preferred block allocation
+Date: Tue, 20 Apr 2010 17:40:41 +0900
+Message-ID: <4BCD6889.2010308@sx.jp.nec.com>
+References: <4BC57A1D.9080105@sx.jp.nec.com> <g2q87f94c371004150922qb636f468t9cf3b6cb8cfd7b03@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54855 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752867Ab0DTDqe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Apr 2010 23:46:34 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3K3kX6w020783
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Apr 2010 03:46:33 GMT
-In-Reply-To: <bug-14830-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
+	linux-fsdevel@vger.kernel.org, ohsm-devel@lists.sourceforge.net,
+	dmonakhov@openvz.org
+To: Greg Freemyer <greg.freemyer@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <g2q87f94c371004150922qb636f468t9cf3b6cb8cfd7b03@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14830
+2010/04/16 1:22, Greg Freemyer wrote:
+> I have a basic understanding how these could be used by e4defrag to
+> organize stable data blocks / extents, but is the goal to also allow a
+> working set of dynamic files which allocate new data blocks routinely?
+> 
+> == details / example
+> 
+> Assume I know that files owned by a specific user (such as the apache
+> daemon) need to be collocated to reduce seek times as pages are
+> displayed.
+> 
+> After the fact, I can see the e4defrag moving all files with UID
+> apached into a subset of block groups thus increasing locality and
+> decreasing seeks.
+> 
+> But what if those files themselves are dynamically being created /
+> extended and thus allocating new data blocks/extents on the fly.   The
+> need in that situation would be more along the lines of defining a
+> preferred block group range for all files with the same UID.  And all
+> of those files would be provided exactly the same block range.
 
+Even if we implement preferred block group range, the problem you said will
+occur. Because we don't know how much data will be increased.
+If you really want the function, you will be able to materialize your idea by
+creating the persistent inode preallocation in struct ext4_sb_info.
 
+I don't have a plan to develop the function of the inode preferred range at
+present. This patch has a function enough to realize new feature of e4derag.
+Moreover, Andreas said we should not create a second similar mechanism.
+http://marc.info/?l=linux-ext4&m=124650093015617&w=4
 
-
-
---- Comment #35 from Michael Godfrey <godfrey@isl.stanford.edu>  2010-04-20 03:46:28 ---
-Dave (above) said:
-
-"Sync is acting as designed right now. I agree it's not ideal, but it's now
-defaulting to slow-but-safe behaviour rather than the previous behaviour of
-potentially not syncing everything that was dirty at the time of the sync call.
-
-Dave,"
-
-Are you aware that this blocks other IO so that a user who requests
-a read of some data may have to wait for something like 20 minutes
-before getting a response?  This includes, for instance, just typing
-vi xxx.  Take a look at the reports above which show nfsd being effectively
-blocked for periods of more than 20 minutes.
-
-For me this is not just "not ideal" but simply useless.  I do not
-see how a system with this behavior can be used.
-
-I also do not see why sync completing with dirty data is a problem.
-In an active system there will be new dirty data within milliseconds
-of sync completion no matter what it does.
-
-I am well-aware that this is not a simple problem.  But, a solution
-that is consistent with the usability of the system is necessary.
-
-Michael
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Best Regards,
+Kazuya Mio
