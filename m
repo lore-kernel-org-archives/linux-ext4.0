@@ -1,45 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: quota reservation fixes for -stable?
-Date: Mon, 19 Apr 2010 17:56:58 -0500
-Message-ID: <4BCCDFBA.4080701@redhat.com>
-References: <4BB36BEC.2000207@redhat.com> <20100401082334.GD3322@quack.suse.cz> <4BC8CA8F.1030708@redhat.com> <20100419225209.GK5439@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14830] When other IO is running sync times go to 10 to 20
+ minutes
+Date: Tue, 20 Apr 2010 02:49:41 GMT
+Message-ID: <201004200249.o3K2nfS9008248@demeter.kernel.org>
+References: <bug-14830-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23217 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752716Ab0DSW5F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Apr 2010 18:57:05 -0400
-In-Reply-To: <20100419225209.GK5439@quack.suse.cz>
+Received: from demeter.kernel.org ([140.211.167.39]:33301 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753079Ab0DTCtl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Apr 2010 22:49:41 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3K2nfjB008251
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Apr 2010 02:49:41 GMT
+In-Reply-To: <bug-14830-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
-> On Fri 16-04-10 15:37:35, Eric Sandeen wrote:
->> On 04/01/2010 03:23 AM, Jan Kara wrote:
->>
->>>   Ah, I'm testing quotas on non-root fs so I was wondering how come people
->>> hit the warning so often. Now I understand :) For root filesystem on ext4
->>> we don't have a chance to not see this warning. That being said the warning
->>> is pretty useless for ordinary users so I guess we should just hide it
->>> behind #ifdef __DQUOT_PARANOIA and use it for debugging purposes only.
->>>   If noone objects soon, I'll do the change.
->>>
->>> 								Honza
->> Hm, I see this in your tree now, but isn't __DQUOT_PARANOIA defined by
->> default anyway?
->   Ah, good point. Thanks for spotting this. I guess the attached cleanup is
-> long overdue... Will push it too Linus this week and then to stable if
-> noone objects.
-> 
-> 								Honza
-> 
-> 
+https://bugzilla.kernel.org/show_bug.cgi?id=14830
 
-looks great to me, thanks!
 
--Eric
+Dave Chinner <david@fromorbit.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |david@fromorbit.com
+
+
+
+
+--- Comment #34 from Dave Chinner <david@fromorbit.com>  2010-04-20 02:49:34 ---
+See:
+
+http://marc.info/?l=linux-fsdevel&m=127166071530948&w=2
+
+Sync is acting as designed right now. I agree it's not ideal, but it's now
+defaulting to slow-but-safe behaviour rather than the previous behaviour of
+potentially not syncing everything that was dirty at the time of the sync call.
+
+Cheers,
+
+Dave.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
