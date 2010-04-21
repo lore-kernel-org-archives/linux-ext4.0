@@ -1,80 +1,69 @@
-From: Eric Paris <eparis@redhat.com>
-Subject: Re: busy inodes -> ext3 umount crash
-Date: Wed, 21 Apr 2010 11:24:10 -0400
-Message-ID: <1271863450.2899.12.camel@dhcp235-240.rdu.redhat.com>
-References: <4BC8A7C1.20102@gmail.com> <20100419141158.GB5439@quack.suse.cz>
-	 <4BCC69B4.2050308@gmail.com> <4BCDB633.9040901@gmail.com>
-	 <20100420152844.GB3885@quack.suse.cz>  <4BCF16CE.2080403@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15827] New: ext4_get_blocks may be called while
+ ext4_truncate() is in progress
+Date: Wed, 21 Apr 2010 15:43:20 GMT
+Message-ID: <bug-15827-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	adilger@sun.com, linux-ext4@vger.kernel.org,
-	Linux kernel mailing list <linux-kernel@vger.kernel.org>,
-	mszeredi@suse.cz
-To: Jiri Slaby <jirislaby@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45139 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755503Ab0DUPYY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Apr 2010 11:24:24 -0400
-In-Reply-To: <4BCF16CE.2080403@gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:52284 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755680Ab0DUPp0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 11:45:26 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3LFhKom008699
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 21 Apr 2010 15:43:21 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2010-04-21 at 17:16 +0200, Jiri Slaby wrote:
-> On 04/20/2010 05:28 PM, Jan Kara wrote:
-> > On Tue 20-04-10 16:12:03, Jiri Slaby wrote:
-> >> On 04/19/2010 04:33 PM, Jiri Slaby wrote:
-> >>> The trigger for busy inodes is as simple as (I=initialization done only
-> >>> once):
-> >>> I> # dd if=/dev/zero of=/dev/shm/ext3 bs=1024 count=1 seek=$((100*1024))
-> >>> I> # mkfs.ext3 -m 0 /dev/shm/ext3
-> >>> # mount -oloop /dev/shm/ext3 /mnt/c
-> >>> # umount /mnt/c
-> >>> # dmesg|tail
-> >>> VFS: Busy inodes after unmount of loop0. Self-destruct in 5 seconds.
-> >>> Have a nice day...
-> >>>
-> >>> (The printk time varies -- this sequence really suffices.)
-> >>
-> >> Well, this happens only after gnome-session is started and it's fuzzy --
-> >> sometimes it happens, sometimes not. I didn't find 100% trigger yet.
-> >   Hmph - maybe something in inotify? Dunno...
-> 
-> fsnotify...
-> 
-> >>>> So if you can easily reproduce
-> >>>> the "busy inodes" message then I'd start with debugging that one. Do you
-> >>>> see it also with vanilla kernels?
-> >>
-> >> Vanilla seems not to be affected. It's in next/master already though
-> >> (2603ecd9). I'll investigate it further later.
-> >   Do you mean it's in today's linux-next but not in Linus' tree?
-> 
-> Yes, exactly.
-> 
-> And the winner is (seemingly):
-> commit 69c1182c4e5d8b7da772ddad512c6f6b67ec1bb8
-> Author: Eric Paris <eparis@redhat.com>
-> Date:   Thu Dec 17 21:24:27 2009 -0500
-> 
->     fsnotify: vfsmount marks generic functions
-> 
->     Much like inode-mark.c has all of the code dealing with marks on inodes
->     this patch adds a vfsmount-mark.c which has similar code but is intended
->     for marks on vfsmounts.
-> 
->     Signed-off-by: Eric Paris <eparis@redhat.com>
-> 
-> 
-> I can't verify it by reverting on the top of -mm as it doesn't revert
-> cleanly. Do you see any bug in there?
+https://bugzilla.kernel.org/show_bug.cgi?id=15827
 
-You cannot revert, but you can certainly reset --hard before and after
-this patch.  I'll take a look, but I'm not seeing a problem right off
-hand.  This patch wasn't supposed to mess with inode refcounting at
-all....
+           Summary: ext4_get_blocks may be called while  ext4_truncate()
+                    is in progress
+           Product: File System
+           Version: 2.5
+    Kernel Version: v2.6.29-rc5
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: dmonakhov@openvz.org
+        Regression: No
 
--Eric
 
+Created an attachment (id=26081)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=26081)
+dmesg output
+
+During truncate we may need to restart new transaction, to avoid deadlock on
+i_data_sem it was dropped 
+commit 487caeef9fc08c0565e082c40a8aaf58dad92bbb
+Author: Jan Kara <jack@suse.cz>
+Date:   Mon Aug 17 22:17:20 2009 -0400
+
+Jan given a good explanation why this approach would work, I have better
+explanation why this can't work work.
+Yes we have blocked all writers beyond i_size, but writers(flush, page_mkwrite)
+before i_size still may change node blocks, so 'path' which was lookup by
+truncate is not longer valid. So we are in big big troubles. 
+
+I've add created inode's history tracer patch which spotted the issue.
+See attachments.
+
+--- Comment #1 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-04-21 15:41:13 ---
+Created an attachment (id=26082)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=26082)
+debug patch against ext4.git/next + patches from bug #15792
+
+The debug patch is rather ugly, but still useful.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
