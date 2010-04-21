@@ -1,202 +1,99 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
-Date: Wed, 21 Apr 2010 16:53:53 -0400
-Message-ID: <j2l87f94c371004211353i479985dfl2b76b10e5efc20a0@mail.gmail.com>
-References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>
-	 <1271674527-2977-2-git-send-email-lczerner@redhat.com>
-	 <1271674527-2977-3-git-send-email-lczerner@redhat.com>
-	 <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com>
-	 <4BCE6243.5010209@teksavvy.com> <4BCE66C5.3060906@redhat.com>
-	 <v2w87f94c371004211159ue3a48923u6a543e8090dcdfa6@mail.gmail.com>
-	 <4BCF4C53.3010608@redhat.com>
-	 <x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com>
-	 <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCH] block: Add a trace point whenever a barrier IO request is
+	sent
+Date: Wed, 21 Apr 2010 13:56:26 -0700
+Message-ID: <20100421205626.GA15607@tux1.beaverton.ibm.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Mark Lord <kernel@teksavvy.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, Edward Shishkin <eshishki@redhat.com>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jens Axboe <axboe@kernel.dk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:62064 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756555Ab0DUUxy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 16:53:54 -0400
-Received: by pvg13 with SMTP id 13so1175340pvg.19
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Apr 2010 13:53:53 -0700 (PDT)
-In-Reply-To: <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:34065 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755279Ab0DUU4r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 16:56:47 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-correcting Christoph's email address - no other edits/comments
+Simple debugging patch used to watch for barrier requests.  I've been using
+this to watch ext4's barrier=1 behavior.
 
-On Wed, Apr 21, 2010 at 4:44 PM, Greg Freemyer <greg.freemyer@gmail.com=
-> wrote:
-> On Wed, Apr 21, 2010 at 3:22 PM, Jeff Moyer <jmoyer@redhat.com> wrote=
-:
->> Ric Wheeler <rwheeler@redhat.com> writes:
->>
->>> On 04/21/2010 02:59 PM, Greg Freemyer wrote:
->>>> On Tue, Apr 20, 2010 at 10:45 PM, Eric Sandeen<sandeen@redhat.com>=
- =A0wrote:
->>>>> Mark Lord wrote:
->>>>>> On 20/04/10 05:21 PM, Greg Freemyer wrote:
->>>>>>> Mark,
->>>>>>>
->>>>>>> This is the patch implementing the new discard logic.
->>>>>> ..
->>>>>>> Signed-off-by: Lukas Czerner<lczerner@redhat.com>
->>>>>> ..
->>>>>>>> +void ext4_trim_extent(struct super_block *sb, int start, int =
-count,
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_group_t group, struct ext4_=
-buddy *e4b)
->>>>>>>> +{
->>>>>>>> + =A0 =A0 =A0 ext4_fsblk_t discard_block;
->>>>>>>> + =A0 =A0 =A0 struct ext4_super_block *es =3D EXT4_SB(sb)->s_e=
-s;
->>>>>>>> + =A0 =A0 =A0 struct ext4_free_extent ex;
->>>>>>>> +
->>>>>>>> + =A0 =A0 =A0 assert_spin_locked(ext4_group_lock_ptr(sb, group=
-));
->>>>>>>> +
->>>>>>>> + =A0 =A0 =A0 ex.fe_start =3D start;
->>>>>>>> + =A0 =A0 =A0 ex.fe_group =3D group;
->>>>>>>> + =A0 =A0 =A0 ex.fe_len =3D count;
->>>>>>>> +
->>>>>>>> + =A0 =A0 =A0 mb_mark_used(e4b,&ex);
->>>>>>>> + =A0 =A0 =A0 ext4_unlock_group(sb, group);
->>>>>>>> +
->>>>>>>> + =A0 =A0 =A0 discard_block =3D (ext4_fsblk_t)group *
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_BLOCKS_PER_=
-GROUP(sb)
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 + start
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 + le32_to_cpu(es=
-->s_first_data_block);
->>>>>>>> + =A0 =A0 =A0 trace_ext4_discard_blocks(sb,
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (unsigned long l=
-ong)discard_block,
->>>>>>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 count);
->>>>>>>> + =A0 =A0 =A0 sb_issue_discard(sb, discard_block, count);
->>>>>>>> +
->>>>>>>> + =A0 =A0 =A0 ext4_lock_group(sb, group);
->>>>>>>> + =A0 =A0 =A0 mb_free_blocks(NULL, e4b, start, ex.fe_len);
->>>>>>>> +}
->>>>>>>
->>>>>>> Mark, unless I'm missing something, sb_issue_discard() above is=
- going
->>>>>>> to trigger a trim command for just the one range. =A0I thought =
-the
->>>>>>> benchmarks you did showed that a collection of ranges needed to=
- be
->>>>>>> built, then a single trim command invoked that trimmed that gro=
-up of
->>>>>>> ranges.
->>>>>> ..
->>>>>>
->>>>>> Mmm.. If that's what it is doing, then this patch set would be a
->>>>>> complete disaster.
->>>>>> It would take *hours* to do the initial TRIM.
->>
->> Except it doesn't. =A0Lukas did provide numbers in his original emai=
-l.
->>
->
-> Looking at the benchmarks (for the first time) at
-> http://people.redhat.com/jmoyer/discard/ext4_batched_discard/
->
-> I don't see anything that says how long the proposed trim ioctl takes
-> to complete on the full filesystem.
->
-> What they do show is that with the 3 test SSDs used for this
-> benchmark, the current released discard implementation is a net loss.
-> ie. You are better off running without the discards for all 3 vendors=
-=2E
-> =A0(at least under the conditions tested.)
->
-> After the patch is applied and optimizing the discards to large free
-> extents only, it works out to same performance with or without the
-> discards. =A0ie. no net gain or loss.
->
-> That is extremely cool because one assumes that the non-discard case
-> would degrade over time, but that the discard case will not.
->
-> So that argues for the current proposed patch going in.
->
-> But quoting from the first email:
->
-> =3D=3D
-> The basic idea behind my discard support is to create an ioctl which
-> walks through all the free extents in each allocating group and disca=
-rd
-> those extents. As an addition to improve its performance one can spec=
-ify
-> minimum free extent length, so ioctl will not bother with shorter ext=
-ents.
->
-> This of course means, that with each invocation the ioctl must walk
-> through whole file system, checking and discarding free extents, whic=
-h
-> is not very efficient. The best way to avoid this is to keep track of
-> deleted (freed) blocks. Then the ioctl have to trim just those free
-> extents which were recently freed.
->
-> In order to implement this I have added new bitmap into ext4_group_in=
-fo
-> (bb_bitmap_deleted) which stores recently freed blocks. The ioctl the=
-n
-> walk through bb_bitmap_deleted, compare deleted extents with free
-> extents trim them and then removes it from the bb_bitmap_deleted.
->
-> But you may notice, that there is one problem. bb_bitmap_deleted does
-> not survive umount. To bypass the problem the first ioctl call have t=
-o
-> walk through whole file system trimming all free extents. But there i=
-s a
-> better solution to this problem. The bb_bitmap_deleted can be stored =
-on
-> disk an can be restored in mount time along with other bitmaps, but I
-> think it is a quite big change and should be discussed further.
-> =3D=3D
->
-> The above seems to argue against the patch going in until the
-> mount/umount issues are addressed.
->
-> So in addition to this patch, Lukas is proposing a on disk change to
-> address the fact that calling trim upteen times at mount time is too
-> slow.
->
-> Per Mark's testing of last summer, an alternative solution is to use =
-a
-> vectored trim approach that is far more efficient.
->
-> Mark's benchmarks showed this as doable in seconds which seems like a
-> reasonable amount of time for a mount time operation.
->
-> Greg
->
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+
+ block/blk-core.c             |    4 ++++
+ include/trace/events/block.h |   35 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 39 insertions(+), 0 deletions(-)
 
 
-
---=20
-Greg Freemyer
-Head of EDD Tape Extraction and Processing team
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-CNN/TruTV Aired Forensic Imaging Demo -
-   http://insession.blogs.cnn.com/2010/03/23/how-computer-evidence-gets=
--retrieved/
-
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 9fe174d..fe02ea7 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -36,6 +36,7 @@
+ EXPORT_TRACEPOINT_SYMBOL_GPL(block_remap);
+ EXPORT_TRACEPOINT_SYMBOL_GPL(block_rq_remap);
+ EXPORT_TRACEPOINT_SYMBOL_GPL(block_bio_complete);
++EXPORT_TRACEPOINT_SYMBOL_GPL(block_barrier);
+ 
+ static int __make_request(struct request_queue *q, struct bio *bio);
+ 
+@@ -1135,6 +1136,9 @@ void init_request_from_bio(struct request *req, struct bio *bio)
+ 	if (bio_rw_flagged(bio, BIO_RW_NOIDLE))
+ 		req->cmd_flags |= REQ_NOIDLE;
+ 
++	if (req->cmd_flags & (REQ_HARDBARRIER | REQ_SOFTBARRIER))
++		trace_block_barrier(req, bio);
++
+ 	req->errors = 0;
+ 	req->__sector = bio->bi_sector;
+ 	req->ioprio = bio_prio(bio);
+diff --git a/include/trace/events/block.h b/include/trace/events/block.h
+index d870a91..ccf96c3 100644
+--- a/include/trace/events/block.h
++++ b/include/trace/events/block.h
+@@ -198,6 +198,41 @@ TRACE_EVENT(block_bio_bounce,
+ );
+ 
+ /**
++ * block_barrier - barrier operation requested
++ * @r: request that asked for the barrier
++ * @bio: block operation
++ *
++ * This tracepoint indicates that a barrier operation has been
++ * requested and a flush will be sent to the underlying block
++ * device.
++ */
++TRACE_EVENT(block_barrier,
++
++	TP_PROTO(struct request *r, struct bio *bio),
++
++	TP_ARGS(r, bio),
++
++	TP_STRUCT__entry(
++		__field( dev_t,		dev		)
++		__field( sector_t,	sector		)
++		__field( unsigned,	nr_sector	)
++		__field( unsigned,	cmd_flags	)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= bio->bi_bdev->bd_dev;
++		__entry->sector		= bio->bi_sector;
++		__entry->nr_sector	= bio->bi_size >> 9;
++		__entry->cmd_flags	= r->cmd_flags;
++	),
++
++	TP_printk("%d:%d %llu + %u [0x%x]",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long long)__entry->sector,
++		  __entry->nr_sector, __entry->cmd_flags)
++);
++
++/**
+  * block_bio_complete - completed all work on the block operation
+  * @q: queue holding the block operation
+  * @bio: block operation completed
