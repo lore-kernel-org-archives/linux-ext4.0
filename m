@@ -1,116 +1,109 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 2/2] ext4: init statistics after journal recovery v2
-Date: Wed, 21 Apr 2010 16:03:06 -0400
-Message-ID: <20100421200306.GI14986@thunk.org>
-References: <1271099576-7507-1-git-send-email-dmonakhov@openvz.org>
- <1271099576-7507-2-git-send-email-dmonakhov@openvz.org>
- <20100412193728.GP3404@quack.suse.cz>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: Re: [patch,rfc v2] ext3/4: enhance fsync performance when using cfq
+Date: Wed, 21 Apr 2010 16:42:38 -0400
+Message-ID: <z2u170fa0d21004211342ncaf04f90h2cd7ebe832dcc46a@mail.gmail.com>
+References: <x49ochv7yi3.fsf@segfault.boston.devel.redhat.com>
+	 <20100407214631.GL3206@redhat.com> <20100408110442.GK10103@kernel.dk>
+	 <20100408140515.GB10879@redhat.com> <20100408140944.GQ10103@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Vivek Goyal <vgoyal@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	dm-devel@redhat.com
+To: Jeff Moyer <jmoyer@redhat.com>, Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:53113 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755658Ab0DUUDQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Apr 2010 16:03:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20100412193728.GP3404@quack.suse.cz>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:58836 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756496Ab0DUUmk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 16:42:40 -0400
+In-Reply-To: <20100408140944.GQ10103@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is what I've checked into the ext4 patch queue.  Fixes some
-whitespace issues, and removed some unneeded curly braces.
+On Thu, Apr 8, 2010 at 10:09 AM, Jens Axboe <jens.axboe@oracle.com> wro=
+te:
+> On Thu, Apr 08 2010, Vivek Goyal wrote:
+>> On Thu, Apr 08, 2010 at 01:04:42PM +0200, Jens Axboe wrote:
+>> > On Wed, Apr 07 2010, Vivek Goyal wrote:
+>> > > On Wed, Apr 07, 2010 at 05:18:12PM -0400, Jeff Moyer wrote:
+>> > > > Hi again,
+>> > > >
+>> > > > So, here's another stab at fixing this. =A0This patch is very =
+much an RFC,
+>> > > > so do not pull it into anything bound for Linus. =A0;-) =A0For=
+ those new to
+>> > > > this topic, here is the original posting: =A0http://lkml.org/l=
+kml/2010/4/1/344
+>> > > >
+>> > > > The basic problem is that, when running iozone on smallish fil=
+es (up to
+>> > > > 8MB in size) and including fsync in the timings, deadline outp=
+erforms
+>> > > > CFQ by a factor of about 5 for 64KB files, and by about 10% fo=
+r 8MB
+>> > > > files. =A0From examining the blktrace data, it appears that io=
+zone will
+>> > > > issue an fsync() call, and will have to wait until it's CFQ ti=
+meslice
+>> > > > has expired before the journal thread can run to actually comm=
+it data to
+>> > > > disk.
+>> > > >
+>> > > > The approach below puts an explicit call into the filesystem-s=
+pecific
+>> > > > fsync code to yield the disk so that the jbd[2] process has a =
+chance to
+>> > > > issue I/O. =A0This bring performance of CFQ in line with deadl=
+ine.
+>> > > >
+>> > > > There is one outstanding issue with the patch that Vivek point=
+ed out.
+>> > > > Basically, this could starve out the sync-noidle workload if t=
+here is a
+>> > > > lot of fsync-ing going on. =A0I'll address that in a follow-on=
+ patch. =A0For
+>> > > > now, I wanted to get the idea out there for others to comment =
+on.
+>> > > >
+>> > > > Thanks a ton to Vivek for spotting the problem with the initia=
+l
+>> > > > approach, and for his continued review.
+>> > > >
+=2E..
+>> > > So we got to take care of two issues now.
+>> > >
+>> > > - Make it work with dm/md devices also. Somehow shall have to pr=
+opogate
+>> > > =A0 this yield semantic down the stack.
+>> >
+>> > The way that Jeff set it up, it's completely parallel to eg conges=
+tion
+>> > or unplugging. So that should be easily doable.
+>> >
+>>
+>> Ok, so various dm targets now need to define "yield_fn" and propogat=
+e the
+>> yield call to all the component devices.
+>
+> Exactly.
 
-	   	       	       	    - Ted
+To do so doesn't DM (and MD) need a blk_queue_yield() setter to
+establish its own yield_fn?  The established dm_yield_fn would call
+blk_yield() for all real devices in a given DM target.  Something like
+how blk_queue_merge_bvec() or blk_queue_make_request() allow DM to
+provide functional extensions.
 
-ext4: init statistics after journal recovery
+I'm not seeing such a yield_fn hook for stacking drivers to use. And
+as is, jbd and jbd2 just call blk_yield() directly and there is no way
+for the block layer to call into DM.
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+What am I missing?
 
-Currently block/inode/dir counters initialized before journal was
-recovered. In fact after journal recovery this info will probably
-change. And freeblocks it critical for correct delalloc mode
-accounting.
-
-https://bugzilla.kernel.org/show_bug.cgi?id=15768
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Acked-by: Jan Kara <jack@suse.cz>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c |   40 ++++++++++++++++++----------------------
- 1 files changed, 18 insertions(+), 22 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 00d09f5..d83cdcb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2794,24 +2794,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
- 
--	err = percpu_counter_init(&sbi->s_freeblocks_counter,
--			ext4_count_free_blocks(sb));
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_freeinodes_counter,
--				ext4_count_free_inodes(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirs_counter,
--				ext4_count_dirs(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
--	}
--	if (err) {
--		ext4_msg(sb, KERN_ERR, "insufficient memory");
--		goto failed_mount3;
--	}
--
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_max_writeback_mb_bump = 128;
- 
-@@ -2911,6 +2893,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
- 
- no_journal:
-+	err = percpu_counter_init(&sbi->s_freeblocks_counter,
-+				  ext4_count_free_blocks(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_freeinodes_counter,
-+					  ext4_count_free_inodes(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_dirs_counter,
-+					  ext4_count_dirs(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
-+	if (err) {
-+		ext4_msg(sb, KERN_ERR, "insufficient memory");
-+		goto failed_mount_wq;
-+	}
- 	if (test_opt(sb, NOBH)) {
- 		if (!(test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)) {
- 			ext4_msg(sb, KERN_WARNING, "Ignoring nobh option - "
-@@ -3060,6 +3056,10 @@ failed_mount_wq:
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
- 	}
-+	percpu_counter_destroy(&sbi->s_freeblocks_counter);
-+	percpu_counter_destroy(&sbi->s_freeinodes_counter);
-+	percpu_counter_destroy(&sbi->s_dirs_counter);
-+	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount3:
- 	if (sbi->s_flex_groups) {
- 		if (is_vmalloc_addr(sbi->s_flex_groups))
-@@ -3067,10 +3067,6 @@ failed_mount3:
- 		else
- 			kfree(sbi->s_flex_groups);
- 	}
--	percpu_counter_destroy(&sbi->s_freeblocks_counter);
--	percpu_counter_destroy(&sbi->s_freeinodes_counter);
--	percpu_counter_destroy(&sbi->s_dirs_counter);
--	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
+Thanks,
+Mike
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
