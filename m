@@ -1,99 +1,41 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH] block: Add a trace point whenever a barrier IO request is
-	sent
-Date: Wed, 21 Apr 2010 13:56:26 -0700
-Message-ID: <20100421205626.GA15607@tux1.beaverton.ibm.com>
-Reply-To: djwong@us.ibm.com
+From: Eric Sandeen <esandeen@redhat.com>
+Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
+Date: Wed, 21 Apr 2010 16:01:29 -0500
+Message-ID: <4BCF67A9.2040902@redhat.com>
+References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>	 <1271674527-2977-2-git-send-email-lczerner@redhat.com>	 <1271674527-2977-3-git-send-email-lczerner@redhat.com>	 <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com>	 <4BCE6243.5010209@teksavvy.com> <4BCE66C5.3060906@redhat.com>	 <v2w87f94c371004211159ue3a48923u6a543e8090dcdfa6@mail.gmail.com>	 <4BCF4C53.3010608@redhat.com>	 <x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com> <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>
+Reply-To: sandeen@redhat.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jens Axboe <axboe@kernel.dk>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jeff Moyer <jmoyer@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Mark Lord <kernel@teksavvy.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, Edward Shishkin <eshishki@redhat.com>,
+	Christoph Hellwig <hch@ifradead.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:34065 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755279Ab0DUU4r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 16:56:47 -0400
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:23392 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751880Ab0DUVBd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Apr 2010 17:01:33 -0400
+In-Reply-To: <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Simple debugging patch used to watch for barrier requests.  I've been using
-this to watch ext4's barrier=1 behavior.
+On 04/21/2010 03:44 PM, Greg Freemyer wrote:
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
+> Mark's benchmarks showed this as doable in seconds which seems like a
+> reasonable amount of time for a mount time operation.
 
- block/blk-core.c             |    4 ++++
- include/trace/events/block.h |   35 +++++++++++++++++++++++++++++++++++
- 2 files changed, 39 insertions(+), 0 deletions(-)
+All the other things aside, mount-time is interesting, but it's an
+infrequent operation, at least in my world.  I think we need something
+that can be done runtime.
 
+For anything with uptime, I don't think it's acceptable to wait until
+the next mount to trim unused blocks.
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index 9fe174d..fe02ea7 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -36,6 +36,7 @@
- EXPORT_TRACEPOINT_SYMBOL_GPL(block_remap);
- EXPORT_TRACEPOINT_SYMBOL_GPL(block_rq_remap);
- EXPORT_TRACEPOINT_SYMBOL_GPL(block_bio_complete);
-+EXPORT_TRACEPOINT_SYMBOL_GPL(block_barrier);
- 
- static int __make_request(struct request_queue *q, struct bio *bio);
- 
-@@ -1135,6 +1136,9 @@ void init_request_from_bio(struct request *req, struct bio *bio)
- 	if (bio_rw_flagged(bio, BIO_RW_NOIDLE))
- 		req->cmd_flags |= REQ_NOIDLE;
- 
-+	if (req->cmd_flags & (REQ_HARDBARRIER | REQ_SOFTBARRIER))
-+		trace_block_barrier(req, bio);
-+
- 	req->errors = 0;
- 	req->__sector = bio->bi_sector;
- 	req->ioprio = bio_prio(bio);
-diff --git a/include/trace/events/block.h b/include/trace/events/block.h
-index d870a91..ccf96c3 100644
---- a/include/trace/events/block.h
-+++ b/include/trace/events/block.h
-@@ -198,6 +198,41 @@ TRACE_EVENT(block_bio_bounce,
- );
- 
- /**
-+ * block_barrier - barrier operation requested
-+ * @r: request that asked for the barrier
-+ * @bio: block operation
-+ *
-+ * This tracepoint indicates that a barrier operation has been
-+ * requested and a flush will be sent to the underlying block
-+ * device.
-+ */
-+TRACE_EVENT(block_barrier,
-+
-+	TP_PROTO(struct request *r, struct bio *bio),
-+
-+	TP_ARGS(r, bio),
-+
-+	TP_STRUCT__entry(
-+		__field( dev_t,		dev		)
-+		__field( sector_t,	sector		)
-+		__field( unsigned,	nr_sector	)
-+		__field( unsigned,	cmd_flags	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		= bio->bi_bdev->bd_dev;
-+		__entry->sector		= bio->bi_sector;
-+		__entry->nr_sector	= bio->bi_size >> 9;
-+		__entry->cmd_flags	= r->cmd_flags;
-+	),
-+
-+	TP_printk("%d:%d %llu + %u [0x%x]",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long long)__entry->sector,
-+		  __entry->nr_sector, __entry->cmd_flags)
-+);
-+
-+/**
-  * block_bio_complete - completed all work on the block operation
-  * @q: queue holding the block operation
-  * @bio: block operation completed
+But as long as the mechanism can be called either at mount time and/or
+kicked off runtime somehow, I'm happy.
+
+-Eric
