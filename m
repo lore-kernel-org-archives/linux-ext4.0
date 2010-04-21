@@ -1,80 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
-Date: Tue, 20 Apr 2010 21:45:25 -0500
-Message-ID: <4BCE66C5.3060906@redhat.com>
-References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>	 <1271674527-2977-2-git-send-email-lczerner@redhat.com>	 <1271674527-2977-3-git-send-email-lczerner@redhat.com> <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com> <4BCE6243.5010209@teksavvy.com>
+From: Jan Blunck <jblunck@suse.de>
+Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
+Date: Wed, 21 Apr 2010 10:42:11 +0200
+Message-ID: <20100421084211.GB22741@bolzano.suse.de>
+References: <1271372682-21225-13-git-send-email-vaurora@redhat.com> <1271372682-21225-14-git-send-email-vaurora@redhat.com> <20100419124025.GG10776@bolzano.suse.de> <1271682168.14748.718.camel@macbook.infradead.org> <20100419132344.GI10776@bolzano.suse.de> <20100419133028.GA3631@shareable.org> <20100419141248.GK10776@bolzano.suse.de> <20100419142315.GA2688@shell> <E1O3sLi-0008EA-QW@pomaz-ex.szeredi.hu> <20100420213450.GM11723@shareable.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, Jeff Moyer <jmoyer@redhat.com>,
-	Edward Shishkin <eshishki@redhat.com>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Ric Wheeler <rwheeler@redhat.com>
-To: Mark Lord <kernel@teksavvy.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Miklos Szeredi <miklos@szeredi.hu>,
+	Valerie Aurora <vaurora@redhat.com>, dwmw2@infradead.org,
+	viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Jamie Lokier <jamie@shareable.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64338 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:36307 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753840Ab0DUCpf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Apr 2010 22:45:35 -0400
-In-Reply-To: <4BCE6243.5010209@teksavvy.com>
+	id S1753087Ab0DUImN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Apr 2010 04:42:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20100420213450.GM11723@shareable.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mark Lord wrote:
-> On 20/04/10 05:21 PM, Greg Freemyer wrote:
->> Mark,
->>
->> This is the patch implementing the new discard logic.
-> ..
->> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ..
->>> +void ext4_trim_extent(struct super_block *sb, int start, int count,
->>> +               ext4_group_t group, struct ext4_buddy *e4b)
->>> +{
->>> +       ext4_fsblk_t discard_block;
->>> +       struct ext4_super_block *es = EXT4_SB(sb)->s_es;
->>> +       struct ext4_free_extent ex;
->>> +
->>> +       assert_spin_locked(ext4_group_lock_ptr(sb, group));
->>> +
->>> +       ex.fe_start = start;
->>> +       ex.fe_group = group;
->>> +       ex.fe_len = count;
->>> +
->>> +       mb_mark_used(e4b,&ex);
->>> +       ext4_unlock_group(sb, group);
->>> +
->>> +       discard_block = (ext4_fsblk_t)group *
->>> +                       EXT4_BLOCKS_PER_GROUP(sb)
->>> +                       + start
->>> +                       + le32_to_cpu(es->s_first_data_block);
->>> +       trace_ext4_discard_blocks(sb,
->>> +                       (unsigned long long)discard_block,
->>> +                       count);
->>> +       sb_issue_discard(sb, discard_block, count);
->>> +
->>> +       ext4_lock_group(sb, group);
->>> +       mb_free_blocks(NULL, e4b, start, ex.fe_len);
->>> +}
->>
->> Mark, unless I'm missing something, sb_issue_discard() above is going
->> to trigger a trim command for just the one range.  I thought the
->> benchmarks you did showed that a collection of ranges needed to be
->> built, then a single trim command invoked that trimmed that group of
->> ranges.
-> ..
+On Tue, Apr 20, Jamie Lokier wrote:
+
+> Miklos Szeredi wrote:
+> > On Mon, 19 Apr 2010, Valerie Aurora wrote:
+> > > I don't recall there being any technical reason not to look up the
+> > > real inode number.  I just wrote it that we because I was lazy.  So I
+> > > like returning the directory's d_ino better than a single magic
+> > > number, but I'd at least like to try returning the real inode number
+> > > too.
+> > 
+> > Note, "struct dirent" doesn't have d_dev, so you really can't return
+> > the "real" inode number, that's on a different filesystem and just a
+> > random number in the context of the the readdir in question.
 > 
-> Mmm.. If that's what it is doing, then this patch set would be a
-> complete disaster.
-> It would take *hours* to do the initial TRIM.
-> 
-> Lukas ?
+> Agree.  Does this inappropriate inode number for the union mount's
+> st_dev happen with stat() on the actual files too?  That could be bad.
 
-I'm confused; do we have an interface to send a trim command for multiple ranges?
+No, for stat() you do a lookup and that is returning the correct dentry/inode
+for the filesystem the name is on.
 
-I didn't think so ...  Lukas' patch is finding free ranges (above a size threshold)
-to discard; it's not doing it a block at a time, if that's the concern.
+We just return the the fallthru directory entries to give userspace an offset
+that they can seekdir() to.
 
--Eric
+Regards,
+	Jan
+
+-- 
+Jan Blunck <jblunck@suse.de>
