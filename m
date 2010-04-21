@@ -1,76 +1,120 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
-Date: Wed, 21 Apr 2010 17:38:43 -0400
-Message-ID: <20100421213843.GE5041@shell>
-References: <1271682168.14748.718.camel@macbook.infradead.org> <20100419132344.GI10776@bolzano.suse.de> <20100419133028.GA3631@shareable.org> <20100419141248.GK10776@bolzano.suse.de> <20100419142315.GA2688@shell> <E1O3sLi-0008EA-QW@pomaz-ex.szeredi.hu> <20100420213450.GM11723@shareable.org> <20100421084211.GB22741@bolzano.suse.de> <20100421092235.GB13114@shareable.org> <E1O4WKa-0003Pp-0y@pomaz-ex.szeredi.hu>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
+Date: Wed, 21 Apr 2010 17:47:27 -0400
+Message-ID: <n2x87f94c371004211447w1e57ae43j4c988cf0205d7ec2@mail.gmail.com>
+References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>
+	 <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com>
+	 <4BCE6243.5010209@teksavvy.com> <4BCE66C5.3060906@redhat.com>
+	 <v2w87f94c371004211159ue3a48923u6a543e8090dcdfa6@mail.gmail.com>
+	 <4BCF4C53.3010608@redhat.com>
+	 <x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com>
+	 <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>
+	 <4BCF67A9.2040902@redhat.com> <4BCF6831.7080506@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jamie Lokier <jamie@shareable.org>, jblunck@suse.de,
-	dwmw2@infradead.org, viro@zeniv.linux.org.uk,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: sandeen@redhat.com, Eric Sandeen <esandeen@redhat.com>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Mark Lord <kernel@teksavvy.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, Edward Shishkin <eshishki@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	James Bottomley <James.Bottomley@hansenpartnership.com>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49279 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755329Ab0DUVjE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Apr 2010 17:39:04 -0400
-Content-Disposition: inline
-In-Reply-To: <E1O4WKa-0003Pp-0y@pomaz-ex.szeredi.hu>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:56076 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756661Ab0DUVr2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 17:47:28 -0400
+Received: by gwj19 with SMTP id 19so1603819gwj.19
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Apr 2010 14:47:28 -0700 (PDT)
+In-Reply-To: <4BCF6831.7080506@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 21, 2010 at 11:34:52AM +0200, Miklos Szeredi wrote:
-> On Wed, 21 Apr 2010, Jamie Lokier wrote:
-> > Hmm.  I smell potential confusion for some otherwise POSIX-friendly
-> > userspaces.
-> > 
-> > When I open /path/to/foo, call fstat (st_dev=2, st_ino=5678), and then
-> > keep the file open, then later do a readdir which includes foo
-> > (dir.st_dev=1, d_ino=1234), I'm going to immediately assume a rename
-> > or unlink happened, close the file, abort streaming from it, refresh
-> > the GUI windows, refresh application caches for that name entry, etc.
-> > 
-> > Because in the POSIX world I think open files have stable inode
-> > numbers (as long as they are open), and I don't think that an open
-> > file can have it's name's d_ino not match the inode number unless it's
-> > a mount point, which my program would know about.
-> > 
-> > This plays into inotify, where you have to know if you are monitoring
-> > every directory that contains a link to a file, to know if you need to
-> > monitor the file itself directly instead.
-> > 
-> > Now I think it's fair enough that a union mount doesn't play all the
-> > traditional rules :-)  C'est la vie.
-> > 
-> > This mismatch of (dir.st_dev,d_ino) and st_ino strongly resembles a
-> > file-bind-mount.  Like bind mounts, it's quite annoying for programs
-> > that like to assume they've seen all of a file's links when they've
-> > seen i_nlink of them.
-> > 
-> > Bind mounts can be detected by looking in /proc/mounts.  st_dev
-> > changing doesn't work because it can be a binding of the same
-> > filesystem.
-> > 
-> > How would I go about detecting when a union mount's directory entry
-> > has similar behaviour, without calling stat() on each entry?  Is it
-> > just a matter of recognising a particular filesystem name in
-> > /proc/mounts, or something more?
-> 
-> Detecting mount points is best done by comparing st_dev for the parent
-> directory with st_dev of the child.  This is much simpler than parsing
-> /proc/mounts and will work for bind mounts as well as union mounts.
-> 
-> I think there's no question that union mounts might break apps (POSIX
-> or not).  But I think there's hope that they are few and can easily be
-> fixed.
+Adding James Bottomley because high-end scsi is entering the
+discussion.  James, I have a couple scsi questions for you at the end.
 
-I couldn't have put it better myself.
+On Wed, Apr 21, 2010 at 5:03 PM, Ric Wheeler <rwheeler@redhat.com> wrot=
+e:
+> On 04/21/2010 05:01 PM, Eric Sandeen wrote:
+>>
+>> On 04/21/2010 03:44 PM, Greg Freemyer wrote:
+>>
+>>
+>>>
+>>> Mark's benchmarks showed this as doable in seconds which seems like=
+ a
+>>> reasonable amount of time for a mount time operation.
+>>>
+>>
+>> All the other things aside, mount-time is interesting, but it's an
+>> infrequent operation, at least in my world. =A0I think we need somet=
+hing
+>> that can be done runtime.
+>>
+>> For anything with uptime, I don't think it's acceptable to wait unti=
+l
+>> the next mount to trim unused blocks.
+>>
+>> But as long as the mechanism can be called either at mount time and/=
+or
+>> kicked off runtime somehow, I'm happy.
+>>
+>> -Eric
+>>
+>
+> That makes sense to me. =A0Most enterprise servers will go without re=
+mounting
+> a file system for (hopefully!) a very long time.
+>
+> It is really important to keep in mind that this is not just a laptop
+> feature for laptop SSD's, this is also used by high end arrays and *c=
+ould*
+> be useful for virt IO, etc as well :-)
+>
+> ric
 
-To expand slightly, if the broken apps are not few and easily fixed,
-then we'll go back and make the kernel more complicated.  I'd like to
-try the simplest version we think will work, first.
+I'm not arguing that a runtime solution is not needed.
 
-Thanks!
+I'm arguing that at least for SSD backed filesystems Mark's userspace
+implementation shows how the mount time initialization of the runtime
+bitmap can be accomplished in a few seconds by leveraging the hardware
+and using vector'ed trims as opposed to having to build an additional
+on-disk structure.
 
--VAL
+At least for SSDs, the primary purpose of the proposed on-disk
+structure seems to be to overcome the current lack of a vector'ed
+discard implementation.
+
+If it is too difficult to implement a fully functional vector'ed
+discard in the block layer due to locking issues, possibly a special
+purpose version could be written that is only used at mount time when
+one can be assured no other i/o is occurring to the filesystem.
+
+James,
+
+The ATA-8 spec. supports vectored trims and requires a minimum of 255
+sectors worth of range payload be supported.  That equates to a single
+trim being able to trim thousands of ranges in one command.
+
+Mark Lord has benchmarked in found a vectored trim to be drastically
+faster than calling trim individually for each of those ranges.
+
+Does scsi support vector'ed discard? (ie. write-same commands)
+
+Or are high-end scsi arrays so fast they can process tens of thousands
+of discard commands in a reasonable amount of time, unlike the SSDs
+have so far proven to do.
+
+It would be interesting to find out that a SSD can discard thousands
+of ranges drastically faster than a high-end scsi device can.  But if
+true, that might argue for the on-disk bitmap to track previously
+discarded blocks/extents.
+
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
