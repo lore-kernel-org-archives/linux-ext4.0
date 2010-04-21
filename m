@@ -1,45 +1,39 @@
-From: Mark Lord <kernel@teksavvy.com>
-Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
-Date: Wed, 21 Apr 2010 17:59:07 -0400
-Message-ID: <4BCF752B.6050502@teksavvy.com>
-References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>	 <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com>	 <4BCE6243.5010209@teksavvy.com> <4BCE66C5.3060906@redhat.com>	 <v2w87f94c371004211159ue3a48923u6a543e8090dcdfa6@mail.gmail.com>	 <4BCF4C53.3010608@redhat.com>	 <x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com>	 <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>	 <4BCF67A9.2040902@redhat.com> <4BCF6831.7080506@redhat.com> <n2x87f94c371004211447w1e57ae43j4c988cf0205d7ec2@mail.gmail.com>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
+Date: Wed, 21 Apr 2010 23:10:45 +0100
+Message-ID: <20100421221045.GE27575@shareable.org>
+References: <20100419132344.GI10776@bolzano.suse.de> <20100419133028.GA3631@shareable.org> <20100419141248.GK10776@bolzano.suse.de> <20100419142315.GA2688@shell> <E1O3sLi-0008EA-QW@pomaz-ex.szeredi.hu> <20100420213450.GM11723@shareable.org> <20100421084211.GB22741@bolzano.suse.de> <20100421092235.GB13114@shareable.org> <E1O4WKa-0003Pp-0y@pomaz-ex.szeredi.hu> <20100421213843.GE5041@shell>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, sandeen@redhat.com,
-	Eric Sandeen <esandeen@redhat.com>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, Edward Shishkin <eshishki@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Miklos Szeredi <miklos@szeredi.hu>, jblunck@suse.de,
+	dwmw2@infradead.org, viro@zeniv.linux.org.uk,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ironport2-out.teksavvy.com ([206.248.154.181]:17160 "EHLO
-	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753323Ab0DUV7T (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 17:59:19 -0400
-In-Reply-To: <n2x87f94c371004211447w1e57ae43j4c988cf0205d7ec2@mail.gmail.com>
+Received: from mail2.shareable.org ([80.68.89.115]:38842 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755436Ab0DUWK7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 18:10:59 -0400
+Content-Disposition: inline
+In-Reply-To: <20100421213843.GE5041@shell>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 21/04/10 05:47 PM, Greg Freemyer wrote:
->
-> The ATA-8 spec. supports vectored trims and requires a minimum of 255
-> sectors worth of range payload be supported.  That equates to a single
-> trim being able to trim thousands of ranges in one command.
->
-> Mark Lord has benchmarked in found a vectored trim to be drastically
-> faster than calling trim individually for each of those ranges.
-..
+Valerie Aurora wrote:
+> > I think there's no question that union mounts might break apps (POSIX
+> > or not).  But I think there's hope that they are few and can easily be
+> > fixed.
+> 
+> I couldn't have put it better myself.
+> 
+> To expand slightly, if the broken apps are not few and easily fixed,
+> then we'll go back and make the kernel more complicated.  I'd like to
+> try the simplest version we think will work, first.
 
-Does anyone have an Intel-based SSD they could spare?  :)
+Don't worry, I'm not trying to deviate you from that good plan.
 
-Rumour has it they they do not comply with the ATA-8 spec for TRIM,
-in that they don't support more than one "sector" of range data.
-The SSDs I have here all support much more than that.
+Just throwing questions out to find what's a good and simple answer to
+these little open questions to minimise trouble.
 
-Still, even if we just do a single 512-byte payload of TRIM ranges,
-it would be a huge win.
-
-Cheers
+-- Jamie
