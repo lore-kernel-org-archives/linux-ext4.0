@@ -1,69 +1,34 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15827] New: ext4_get_blocks may be called while
- ext4_truncate() is in progress
-Date: Wed, 21 Apr 2010 15:43:20 GMT
-Message-ID: <bug-15827-13602@https.bugzilla.kernel.org/>
+From: Jiri Slaby <jirislaby@gmail.com>
+Subject: Re: busy inodes -> ext3 umount crash
+Date: Wed, 21 Apr 2010 17:47:07 +0200
+Message-ID: <4BCF1DFB.8020202@gmail.com>
+References: <4BC8A7C1.20102@gmail.com> <20100419141158.GB5439@quack.suse.cz>	 <4BCC69B4.2050308@gmail.com> <4BCDB633.9040901@gmail.com>	 <20100420152844.GB3885@quack.suse.cz>  <4BCF16CE.2080403@gmail.com> <1271863450.2899.12.camel@dhcp235-240.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	adilger@sun.com, linux-ext4@vger.kernel.org,
+	Linux kernel mailing list <linux-kernel@vger.kernel.org>,
+	mszeredi@suse.cz
+To: Eric Paris <eparis@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52284 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755680Ab0DUPp0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 11:45:26 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3LFhKom008699
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Apr 2010 15:43:21 GMT
+Received: from mail-bw0-f225.google.com ([209.85.218.225]:54161 "EHLO
+	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755731Ab0DUPrN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 11:47:13 -0400
+In-Reply-To: <1271863450.2899.12.camel@dhcp235-240.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15827
+On 04/21/2010 05:24 PM, Eric Paris wrote:
+> I'll take a look, but I'm not seeing a problem right off
+> hand.  This patch wasn't supposed to mess with inode refcounting at
+> all....
 
-           Summary: ext4_get_blocks may be called while  ext4_truncate()
-                    is in progress
-           Product: File System
-           Version: 2.5
-    Kernel Version: v2.6.29-rc5
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: dmonakhov@openvz.org
-        Regression: No
-
-
-Created an attachment (id=26081)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=26081)
-dmesg output
-
-During truncate we may need to restart new transaction, to avoid deadlock on
-i_data_sem it was dropped 
-commit 487caeef9fc08c0565e082c40a8aaf58dad92bbb
-Author: Jan Kara <jack@suse.cz>
-Date:   Mon Aug 17 22:17:20 2009 -0400
-
-Jan given a good explanation why this approach would work, I have better
-explanation why this can't work work.
-Yes we have blocked all writers beyond i_size, but writers(flush, page_mkwrite)
-before i_size still may change node blocks, so 'path' which was lookup by
-truncate is not longer valid. So we are in big big troubles. 
-
-I've add created inode's history tracer patch which spotted the issue.
-See attachments.
-
---- Comment #1 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-04-21 15:41:13 ---
-Created an attachment (id=26082)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=26082)
-debug patch against ext4.git/next + patches from bug #15792
-
-The debug patch is rather ugly, but still useful.
+Heh, but with very high probability now, it did :). Do you want me to
+inject some printouts anywhere? Can you reproduce it? KDE doesn't
+trigger the bug. After I switched from KDE to gnome in qemu, it started
+to occur (X :0 & (sleep 1; DISPLAY=:0 gnome-session)).
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+js
