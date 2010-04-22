@@ -1,39 +1,100 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: [PATCH 13/35] fallthru: ext2 fallthru support
-Date: Wed, 21 Apr 2010 23:10:45 +0100
-Message-ID: <20100421221045.GE27575@shareable.org>
-References: <20100419132344.GI10776@bolzano.suse.de> <20100419133028.GA3631@shareable.org> <20100419141248.GK10776@bolzano.suse.de> <20100419142315.GA2688@shell> <E1O3sLi-0008EA-QW@pomaz-ex.szeredi.hu> <20100420213450.GM11723@shareable.org> <20100421084211.GB22741@bolzano.suse.de> <20100421092235.GB13114@shareable.org> <E1O4WKa-0003Pp-0y@pomaz-ex.szeredi.hu> <20100421213843.GE5041@shell>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Miklos Szeredi <miklos@szeredi.hu>, jblunck@suse.de,
-	dwmw2@infradead.org, viro@zeniv.linux.org.uk,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: restart ext4_ext_remove_space() after transaction restart
+Date: Thu, 22 Apr 2010 08:31:11 +0400
+Message-ID: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
+Cc: jack@suse.cz, aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:38842 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755436Ab0DUWK7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Apr 2010 18:10:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20100421213843.GE5041@shell>
+Received: from mail-bw0-f225.google.com ([209.85.218.225]:48246 "EHLO
+	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751986Ab0DVEbT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Apr 2010 00:31:19 -0400
+Received: by bwz25 with SMTP id 25so9066891bwz.28
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Apr 2010 21:31:17 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Valerie Aurora wrote:
-> > I think there's no question that union mounts might break apps (POSIX
-> > or not).  But I think there's hope that they are few and can easily be
-> > fixed.
-> 
-> I couldn't have put it better myself.
-> 
-> To expand slightly, if the broken apps are not few and easily fixed,
-> then we'll go back and make the kernel more complicated.  I'd like to
-> try the simplest version we think will work, first.
+If i_data_sem was internally dropped due to transaction restart, it is
+necessary to restart path look-up because extents tree was possibly
+modified by ext4_get_block().
 
-Don't worry, I'm not trying to deviate you from that good plan.
+https://bugzilla.kernel.org/show_bug.cgi?id=15827
 
-Just throwing questions out to find what's a good and simple answer to
-these little open questions to minimise trouble.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/ext4.h    |    1 +
+ fs/ext4/extents.c |   18 +++++++++++++-----
+ 2 files changed, 14 insertions(+), 5 deletions(-)
 
--- Jamie
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6641c58..c69efb2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1089,6 +1089,7 @@ enum {
+ 	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
+ 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+ 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
++	EXT4_STATE_EXT_TRUNC,		/* truncate is in progress, modified under i_data_sem */
+ };
+ 
+ #define EXT4_INODE_BIT_FNS(name, field)					\
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4fa103c..6856272 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -107,11 +107,8 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
+ 	if (err <= 0)
+ 		return err;
+ 	err = ext4_truncate_restart_trans(handle, inode, needed);
+-	/*
+-	 * We have dropped i_data_sem so someone might have cached again
+-	 * an extent we are going to truncate.
+-	 */
+-	ext4_ext_invalidate_cache(inode);
++	if (!err && !ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
++		err = -EAGAIN;
+ 
+ 	return err;
+ }
+@@ -2370,12 +2367,15 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
++again:
+ 	ext4_ext_invalidate_cache(inode);
+ 
+ 	/*
+ 	 * We start scanning from right side, freeing all the blocks
+ 	 * after i_size and walking into the tree depth-wise.
+ 	 */
++	ext4_set_inode_state(inode, EXT4_STATE_EXT_TRUNC);
++	depth = ext_depth(inode);
+ 	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+ 	if (path == NULL) {
+ 		ext4_journal_stop(handle);
+@@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ out:
+ 	ext4_ext_drop_refs(path);
+ 	kfree(path);
++	if (err == EAGAIN) {
++		err = 0;
++		goto again;
++	}
++	ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
+ 	ext4_journal_stop(handle);
+ 
+ 	return err;
+@@ -3338,6 +3343,9 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	ext_debug("blocks %u/%u requested for inode %lu\n",
+ 			iblock, max_blocks, inode->i_ino);
+ 
++	if (unlikely((flags & EXT4_GET_BLOCKS_CREATE)) &&
++		ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
++		ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
+ 	/* check in cache */
+ 	cache_type = ext4_ext_in_cache(inode, iblock, &newex);
+ 	if (cache_type) {
+-- 
+1.6.6.1
+
