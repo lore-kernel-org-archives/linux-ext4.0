@@ -1,54 +1,34 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: Cleancache [PATCH 7/7] (was Transcendent Memory): ocfs2 hook
-Date: Thu, 22 Apr 2010 06:29:49 -0700
-Message-ID: <20100422132949.GA27396__2404.26606401361$1271943160$gmane$org@ca-server1.us.oracle.com>
+From: Evgeniy Ivanov <lolkaantimat@gmail.com>
+Subject: Question about e2fsck and HTree
+Date: Thu, 22 Apr 2010 23:43:30 +0400
+Message-ID: <z2ne1e08eb01004221243m89a97acei72316abe62daaba@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
-	akpm@linux-foundation.org, adilger@Sun.COM, tytso@mit.edu,
-	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
-	linux-btrfs@vger.
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:33725 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754989Ab0DVNbO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Apr 2010 09:31:14 -0400
-Content-Disposition: inline
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:46406 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756481Ab0DVTnc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Apr 2010 15:43:32 -0400
+Received: by gwj19 with SMTP id 19so2249230gwj.19
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Apr 2010 12:43:31 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(Sorry for resend... Mail server DNS problems sending to some recipients)
+Hello,
 
-Cleancache [PATCH 7/7] (was Transcendent Memory): ocfs2 hook
+I have a question about ext2/ext3.
 
-Filesystems must explicitly enable cleancache.  Ocfs2 is
-currently the only user of the clustered filesystem
-interface but nevertheless, the cleancache hooks in the
-VFS layer are sufficient for ocfs2.
+As I understand directory indexing is compatible feature, currently my
+implementations doesn't support HTree.
+I do some things (make kernel and libs) with FS and check it with
+e2fsck: it creates index (everything else is ok, exit status is 1).
+Then I do same things with FS and check again:
 
-Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
-Acked-by: Joel Becker <joel.becker@oracle.com>
+HTree directory inode 23316 has an invalid root node.
 
-Diffstat:
- super.c                                  |    3 +++
- 1 file changed, 3 insertions(+)
+Is it OK for implementation without directory indexing?
 
---- linux-2.6.34-rc5/fs/ocfs2/super.c	2010-04-19 17:29:56.000000000 -0600
-+++ linux-2.6.34-rc5-cleancache/fs/ocfs2/super.c	2010-04-21 10:13:13.000000000 -0600
-@@ -42,6 +42,7 @@
- #include <linux/seq_file.h>
- #include <linux/quotaops.h>
- #include <linux/smp_lock.h>
-+#include <linux/cleancache.h>
- 
- #define MLOG_MASK_PREFIX ML_SUPER
- #include <cluster/masklog.h>
-@@ -2233,6 +2234,8 @@ static int ocfs2_initialize_super(struct
- 		mlog_errno(status);
- 		goto bail;
- 	}
-+	sb->cleancache_poolid =
-+		cleancache_init_shared_fs((char *)&uuid_net_key, PAGE_SIZE);
- 
- bail:
- 	mlog_exit(status);
+
+-- 
+Evgeniy Ivanov
