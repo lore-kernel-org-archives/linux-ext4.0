@@ -1,114 +1,128 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after transaction restart
-Date: Thu, 22 Apr 2010 11:33:50 +0400
-Message-ID: <87wrw03pr5.fsf@openvz.org>
-References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: ext4: (2.6.34-rc4): This should not happen!!  Data will be lost
+Date: Thu, 22 Apr 2010 10:21:23 +0200
+Message-ID: <20100422082123.GC21495@skl-net.de>
+References: <20100416123526.GW21495@skl-net.de> <20100416163654.GD58339@plapa.qlogic.org> <20100416170707.GB25507@skl-net.de> <201004171855.36874.bernd.schubert@fastmail.fm> <4BCA1DFB.5030501@redhat.com> <20100417223854.GD25507@skl-net.de> <20100420153723.GE25507@skl-net.de> <4BCDDB7F.6040903@redhat.com> <20100420174610.GZ21495@skl-net.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, aneesh.kumar@linux.vnet.ibm.com, tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="tZ7UtMhm9kWBoSQe"
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
+	Andrew Vasquez <andrew.vasquez@qlogic.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Driver <Linux-Driver@qlogic.com>,
+	Thomas Helle <Helle@tuebingen.mpg.de>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f225.google.com ([209.85.218.225]:50314 "EHLO
-	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752256Ab0DVHd6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Apr 2010 03:33:58 -0400
-Received: by bwz25 with SMTP id 25so9184722bwz.28
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Apr 2010 00:33:57 -0700 (PDT)
-In-Reply-To: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org> (Dmitry
-	Monakhov's message of "Thu, 22 Apr 2010 08:31:11 +0400")
+Received: from systemlinux.org ([83.151.29.59]:51876 "EHLO m18s25.vlinux.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752432Ab0DVIVx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Apr 2010 04:21:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20100420174610.GZ21495@skl-net.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
 
-Oops. i've missed last 'u' in 'edu', the Ted's email.
-Add him to cc.
-BTW seems that there is only one reproducible bug is left after
-227's xfstest case. The bug with wrong i_blocks count:
-Pass 1: Checking inodes, blocks, and sizes
-Inode 3855, i_blocks is 288, should be 304.  Fix? no
-This will be the hardest one because i'm able to discover wrong blocks
-count only on fsck stage. I'm suspecting what quota charge is missed
-somewhere for metablocks. Continue digging. 
-> If i_data_sem was internally dropped due to transaction restart, it is
-> necessary to restart path look-up because extents tree was possibly
-> modified by ext4_get_block().
->
-> https://bugzilla.kernel.org/show_bug.cgi?id=15827
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/ext4.h    |    1 +
->  fs/ext4/extents.c |   18 +++++++++++++-----
->  2 files changed, 14 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 6641c58..c69efb2 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1089,6 +1089,7 @@ enum {
->  	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
->  	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
->  	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
-> +	EXT4_STATE_EXT_TRUNC,		/* truncate is in progress, modified under i_data_sem */
->  };
->  
->  #define EXT4_INODE_BIT_FNS(name, field)					\
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 4fa103c..6856272 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -107,11 +107,8 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
->  	if (err <= 0)
->  		return err;
->  	err = ext4_truncate_restart_trans(handle, inode, needed);
-> -	/*
-> -	 * We have dropped i_data_sem so someone might have cached again
-> -	 * an extent we are going to truncate.
-> -	 */
-> -	ext4_ext_invalidate_cache(inode);
-> +	if (!err && !ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
-> +		err = -EAGAIN;
->  
->  	return err;
->  }
-> @@ -2370,12 +2367,15 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
->  	if (IS_ERR(handle))
->  		return PTR_ERR(handle);
->  
-> +again:
->  	ext4_ext_invalidate_cache(inode);
->  
->  	/*
->  	 * We start scanning from right side, freeing all the blocks
->  	 * after i_size and walking into the tree depth-wise.
->  	 */
-> +	ext4_set_inode_state(inode, EXT4_STATE_EXT_TRUNC);
-> +	depth = ext_depth(inode);
->  	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
->  	if (path == NULL) {
->  		ext4_journal_stop(handle);
-> @@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
->  out:
->  	ext4_ext_drop_refs(path);
->  	kfree(path);
-> +	if (err == EAGAIN) {
-> +		err = 0;
-> +		goto again;
-> +	}
-> +	ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
->  	ext4_journal_stop(handle);
->  
->  	return err;
-> @@ -3338,6 +3343,9 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  	ext_debug("blocks %u/%u requested for inode %lu\n",
->  			iblock, max_blocks, inode->i_ino);
->  
-> +	if (unlikely((flags & EXT4_GET_BLOCKS_CREATE)) &&
-> +		ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
-> +		ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
->  	/* check in cache */
->  	cache_type = ext4_ext_in_cache(inode, iblock, &newex);
->  	if (cache_type) {
+--tZ7UtMhm9kWBoSQe
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
->  LocalWords:  xfstest
+On 19:46, Andre Noll wrote:
+> > To be honest I'm not sure what I would do with the blktrace data now,
+> > but perhaps someone might be interested to see it; I'd at least gather =
+it.
+>=20
+> OK, will send it tomorrow.
+
+Here we go.
+
+mount | grep sda:
+
+        /dev/sda on /mnt type ext4 (ro,relatime,barrier=3D1,data=3Dordered)
+
+command:
+
+        ls stress.* | head -n 5 | xargs rm && stress -d 5 --hdd-noclean --h=
+dd-bytes 10G
+
+dmesg:
+
+        EXT4-fs (sda): mounted filesystem with ordered data mode
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82d1=
+ 2002.
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82d3=
+ 2002.
+        end_request: I/O error, dev sda, sector 7812689752
+        Aborting journal on device sda-8.
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82d8=
+ 2002.
+        EXT4-fs (sda): delayed block allocation failed for inode 4198406 at=
+ logical offset 0 with max blocks 32768 with error -30
+
+        This should not happen!!  Data will be lost
+        EXT4-fs error (device sda) in ext4_da_writepages: Journal has abort=
+ed
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82da=
+ 2002.
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82db=
+ 2002.
+        EXT4-fs (sda): delayed block allocation failed for inode 4198435 at=
+ logical offset 0 with max blocks 32768 with error -30
+
+        This should not happen!!  Data will be lost
+        EXT4-fs error (device sda): ext4_journal_start_sb: Detected aborted=
+ journal
+        EXT4-fs (sda): Remounting filesystem read-only
+        EXT4-fs (sda): ext4_da_writepages: jbd2_start: 32768 pages, ino 419=
+8406; err -30
+
+        EXT4-fs (sda): ext4_da_writepages: jbd2_start: 32768 pages, ino 419=
+8435; err -30
+
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82df=
+ 2002.
+        EXT4-fs (sda): delayed block allocation failed for inode 4198433 at=
+ logical offset 0 with max blocks 32768 with error -30
+
+        This should not happen!!  Data will be lost
+        EXT4-fs (sda): delayed block allocation failed for inode 4198437 at=
+ logical offset 0 with max blocks 32768 with error -30
+
+        This should not happen!!  Data will be lost
+        EXT4-fs (sda): ext4_da_writepages: jbd2_start: 32768 pages, ino 419=
+8433; err -30
+
+        EXT4-fs (sda): ext4_da_writepages: jbd2_start: 32768 pages, ino 419=
+8437; err -30
+
+        qla2xxx 0000:06:09.0: scsi(0:0:0): Abort command issued -- 1 2f82e2=
+ 2002.
+        ...
+
+The output of "btrace /dev/sda" during the above command is 1.7M
+large. It's at
+
+        http://systemlinux.org/~maan/btrace.sda
+
+I'll run further tests with barrier=3D0 and 60s timeout.
+
+Thanks
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--tZ7UtMhm9kWBoSQe
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFL0AcDWto1QDEAkw8RAv8NAKCInPMiSy/Gs2ADyp2MnJESS55NhwCeP54Y
+at+zge03jqj2pWEo7dzlZ6o=
+=vqYd
+-----END PGP SIGNATURE-----
+
+--tZ7UtMhm9kWBoSQe--
