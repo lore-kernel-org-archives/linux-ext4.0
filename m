@@ -1,100 +1,114 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: restart ext4_ext_remove_space() after transaction restart
-Date: Thu, 22 Apr 2010 08:31:11 +0400
-Message-ID: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
-Cc: jack@suse.cz, aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed,
-	Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after transaction restart
+Date: Thu, 22 Apr 2010 11:33:50 +0400
+Message-ID: <87wrw03pr5.fsf@openvz.org>
+References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, aneesh.kumar@linux.vnet.ibm.com, tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f225.google.com ([209.85.218.225]:48246 "EHLO
+Received: from mail-bw0-f225.google.com ([209.85.218.225]:50314 "EHLO
 	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751986Ab0DVEbT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Apr 2010 00:31:19 -0400
-Received: by bwz25 with SMTP id 25so9066891bwz.28
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Apr 2010 21:31:17 -0700 (PDT)
+	with ESMTP id S1752256Ab0DVHd6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Apr 2010 03:33:58 -0400
+Received: by bwz25 with SMTP id 25so9184722bwz.28
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Apr 2010 00:33:57 -0700 (PDT)
+In-Reply-To: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org> (Dmitry
+	Monakhov's message of "Thu, 22 Apr 2010 08:31:11 +0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If i_data_sem was internally dropped due to transaction restart, it is
-necessary to restart path look-up because extents tree was possibly
-modified by ext4_get_block().
+Dmitry Monakhov <dmonakhov@openvz.org> writes:
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15827
+Oops. i've missed last 'u' in 'edu', the Ted's email.
+Add him to cc.
+BTW seems that there is only one reproducible bug is left after
+227's xfstest case. The bug with wrong i_blocks count:
+Pass 1: Checking inodes, blocks, and sizes
+Inode 3855, i_blocks is 288, should be 304.  Fix? no
+This will be the hardest one because i'm able to discover wrong blocks
+count only on fsck stage. I'm suspecting what quota charge is missed
+somewhere for metablocks. Continue digging. 
+> If i_data_sem was internally dropped due to transaction restart, it is
+> necessary to restart path look-up because extents tree was possibly
+> modified by ext4_get_block().
+>
+> https://bugzilla.kernel.org/show_bug.cgi?id=15827
+>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/ext4.h    |    1 +
+>  fs/ext4/extents.c |   18 +++++++++++++-----
+>  2 files changed, 14 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 6641c58..c69efb2 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1089,6 +1089,7 @@ enum {
+>  	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
+>  	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+>  	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
+> +	EXT4_STATE_EXT_TRUNC,		/* truncate is in progress, modified under i_data_sem */
+>  };
+>  
+>  #define EXT4_INODE_BIT_FNS(name, field)					\
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 4fa103c..6856272 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -107,11 +107,8 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
+>  	if (err <= 0)
+>  		return err;
+>  	err = ext4_truncate_restart_trans(handle, inode, needed);
+> -	/*
+> -	 * We have dropped i_data_sem so someone might have cached again
+> -	 * an extent we are going to truncate.
+> -	 */
+> -	ext4_ext_invalidate_cache(inode);
+> +	if (!err && !ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
+> +		err = -EAGAIN;
+>  
+>  	return err;
+>  }
+> @@ -2370,12 +2367,15 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
+>  
+> +again:
+>  	ext4_ext_invalidate_cache(inode);
+>  
+>  	/*
+>  	 * We start scanning from right side, freeing all the blocks
+>  	 * after i_size and walking into the tree depth-wise.
+>  	 */
+> +	ext4_set_inode_state(inode, EXT4_STATE_EXT_TRUNC);
+> +	depth = ext_depth(inode);
+>  	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+>  	if (path == NULL) {
+>  		ext4_journal_stop(handle);
+> @@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+>  out:
+>  	ext4_ext_drop_refs(path);
+>  	kfree(path);
+> +	if (err == EAGAIN) {
+> +		err = 0;
+> +		goto again;
+> +	}
+> +	ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
+>  	ext4_journal_stop(handle);
+>  
+>  	return err;
+> @@ -3338,6 +3343,9 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+>  	ext_debug("blocks %u/%u requested for inode %lu\n",
+>  			iblock, max_blocks, inode->i_ino);
+>  
+> +	if (unlikely((flags & EXT4_GET_BLOCKS_CREATE)) &&
+> +		ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
+> +		ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
+>  	/* check in cache */
+>  	cache_type = ext4_ext_in_cache(inode, iblock, &newex);
+>  	if (cache_type) {
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |   18 +++++++++++++-----
- 2 files changed, 14 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6641c58..c69efb2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1089,6 +1089,7 @@ enum {
- 	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
- 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
- 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
-+	EXT4_STATE_EXT_TRUNC,		/* truncate is in progress, modified under i_data_sem */
- };
- 
- #define EXT4_INODE_BIT_FNS(name, field)					\
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4fa103c..6856272 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -107,11 +107,8 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
- 	if (err <= 0)
- 		return err;
- 	err = ext4_truncate_restart_trans(handle, inode, needed);
--	/*
--	 * We have dropped i_data_sem so someone might have cached again
--	 * an extent we are going to truncate.
--	 */
--	ext4_ext_invalidate_cache(inode);
-+	if (!err && !ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
-+		err = -EAGAIN;
- 
- 	return err;
- }
-@@ -2370,12 +2367,15 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-+again:
- 	ext4_ext_invalidate_cache(inode);
- 
- 	/*
- 	 * We start scanning from right side, freeing all the blocks
- 	 * after i_size and walking into the tree depth-wise.
- 	 */
-+	ext4_set_inode_state(inode, EXT4_STATE_EXT_TRUNC);
-+	depth = ext_depth(inode);
- 	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
- 	if (path == NULL) {
- 		ext4_journal_stop(handle);
-@@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- out:
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
-+	if (err == EAGAIN) {
-+		err = 0;
-+		goto again;
-+	}
-+	ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
- 	ext4_journal_stop(handle);
- 
- 	return err;
-@@ -3338,6 +3343,9 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	ext_debug("blocks %u/%u requested for inode %lu\n",
- 			iblock, max_blocks, inode->i_ino);
- 
-+	if (unlikely((flags & EXT4_GET_BLOCKS_CREATE)) &&
-+		ext4_test_inode_state(inode, EXT4_STATE_EXT_TRUNC))
-+		ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
- 	/* check in cache */
- 	cache_type = ext4_ext_in_cache(inode, iblock, &newex);
- 	if (cache_type) {
--- 
-1.6.6.1
-
+>  LocalWords:  xfstest
