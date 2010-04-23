@@ -1,88 +1,97 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 benchmark questions
-Date: Thu, 22 Apr 2010 17:20:47 -0500
-Message-ID: <4BD0CBBF.1060300@redhat.com>
-References: <x2m1f4ef0971004221438n76bbc32bu6835dfe17dd702d8@mail.gmail.com>	 <4BD0C50A.5050508@redhat.com> <m2h1f4ef0971004221511wa0ea3d3fteb90ad1c38c9511d@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [RFC][PATCH] Journal superblock update should send a barrier
+Date: Fri, 23 Apr 2010 02:25:55 +0200
+Message-ID: <20100423002554.GB25327@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Steve Brown <sbrown25@gmail.com>
+Content-Type: multipart/mixed; boundary="LQksG6bCIzRHxTLp"
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49539 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:49666 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751689Ab0DVWUy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Apr 2010 18:20:54 -0400
-In-Reply-To: <m2h1f4ef0971004221511wa0ea3d3fteb90ad1c38c9511d@mail.gmail.com>
+	id S1754315Ab0DWAZy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Apr 2010 20:25:54 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Steve Brown wrote:
->>> I'll start with the craziest one: noatime.  Everything I have read
->>> says that the noatime option should increase both read and write
->>> performance.  My results are finding that write speeds are comparable
->>> with or without this option, but read speeds are significantly faster
->>> *without* the noatime option.  For example, a 16GB file reads about
->>> 210MB/s with noatime but reads closer to 250MB/s without the noatime
->>> option.
->> the kernel uses "relatime" now by default, which gives you most of the
->> benefit already.
-> 
-> So should I see any performance change by using the noatime mount option at all?
 
-they are not exactly the same thing, so noatime may be -slightly-
-faster in some cases than relatime.
+--LQksG6bCIzRHxTLp
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
->>> Next is the write barrier.  I'm an in a fully battery-backed
->>> environment, so I'm not worried about disabling it.  From my testing,
->>> setting barrier=0 will improve write performance on large files
->>> (>10GB), but hurts performance on smaller files (<10GB).  Read
->>> performance is effected similarly.  Is this to be expected with files
->>> of this size?
->> not expected by me; barriers == drive write cache flushes, which I
->> would never expect to speed things up...
-> 
-> hmmm... this would seem to conflict with the docs in the kernel, especially:
-> 
-> "Write barriers enforce proper on-disk ordering
-> of journal commits, making volatile disk write caches
-> safe to use, at some performance penalty.  If
-> your disks are battery-backed in one way or another,
-> disabling barriers may safely improve performance."
+  Hi,
 
-what you saw is in conflict with what is expected, yes; I don't know
-why barriers would ever increase performance.
+  while reading through the checkpointing code I've realized that we
+actually have to send a barrier before each update of journal superblock
+after checkpointing. Attached patch does this. Just I'm not sure whether
+the performance cost won't be too big. In principle, we could make this
+more lightweight by using the fact that transaction commit also sends the
+barrier. So we could check before sending a barrier for transaction commit
+whether we are slowly running out of journal space and if so whether some
+transaction isn't already checkpointed. If yes, we can happily submit
+update of journal superblock after the barrier. In case journal is decently
+large this should solve the checkpointing problem without introducing
+noticeable overhead...
 
-(my description of barriers as drive write caches isn't in conflict
-with the docs, I just said how they're implemented)
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
->>> Next is the data option.  I am seeing a significant increase in read
->>> performance when using data=ordered vs data=writeback.  Reading is as
->>> much as 20% faster when using data=ordered.  The difference in write
->>> performance is almost none with this option.
->> data=writeback is not safe for data integrity; unless you can handle
->> scrambled files post-crash/powerloss, don't use it.
-> 
-> I'm not worried about powerloss.  The kernel docs seem to imply that
-> data=[journaled,ordered] come with a performance hit.  My results
-> would indicate otherwise.  Should I be seeing this kinda of
-> performance difference?
+--LQksG6bCIzRHxTLp
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext4-Send-barrier-before-updating-journal-superblock.patch"
 
-Sorry, I misread...  I also don't know why reading would be much affected
-at all by the journalling mode, which journals -writes- (reading can
-update metadata, but not much, esp. if you have noatime/relatime).
+>From e749e83627c35c683114fea32695e581a487e560 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Fri, 23 Apr 2010 02:12:32 +0200
+Subject: [PATCH] ext4: Send barrier before updating journal superblock after checkpointing
 
--Eric
+We have to send a disk barrier after we have finished checkpointing and before
+we update the journal superblock and thus effectively remove transactions from
+the journal. Otherwise the write of journal superblock can be reordered before
+writes of checkpointed journal blocks and thus in case of crash these blocks
+needn't be on the platter leading to filesystem corruption.
 
->>> Finally is the commit option.  I did my testing mounting with commit=5
->>> and commit=90.  While my read performance increased with commit=90, my
->>> write performance improved by as much as 30% or more with commit=5.
->> not sure offhand what to make of decreased write performance with a longer
->> commit time...
-> 
-> Steve
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/checkpoint.c |   19 +++++++++----------
+ 1 files changed, 9 insertions(+), 10 deletions(-)
 
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 30beb11..b2de17f 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -519,17 +519,16 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	spin_unlock(&journal->j_state_lock);
+ 
+ 	/*
+-	 * If there is an external journal, we need to make sure that
+-	 * any data blocks that were recently written out --- perhaps
+-	 * by jbd2_log_do_checkpoint() --- are flushed out before we
+-	 * drop the transactions from the external journal.  It's
+-	 * unlikely this will be necessary, especially with a
+-	 * appropriately sized journal, but we need this to guarantee
+-	 * correctness.  Fortunately jbd2_cleanup_journal_tail()
+-	 * doesn't get called all that often.
++	 * We need to make sure that any data blocks that were recently written
++	 * out --- perhaps by jbd2_log_do_checkpoint() --- are flushed out
++	 * before we drop the transactions from the journal. Otherwise journal
++	 * superblock write could be reordered before writeout of data and thus
++	 * we could corrupt the filesystem in case of crash. It's unlikely this
++	 * will be necessary, especially with a appropriately sized journal,
++	 * but we need this to guarantee correctness.  Fortunately
++	 * jbd2_cleanup_journal_tail() doesn't get called all that often.
+ 	 */
+-	if ((journal->j_fs_dev != journal->j_dev) &&
+-	    (journal->j_flags & JBD2_BARRIER))
++	if (journal->j_flags & JBD2_BARRIER)
+ 		blkdev_issue_flush(journal->j_fs_dev, NULL);
+ 	if (!(journal->j_flags & JBD2_ABORT))
+ 		jbd2_journal_update_superblock(journal, 1);
+-- 
+1.6.4.2
+
+
+--LQksG6bCIzRHxTLp--
