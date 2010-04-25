@@ -1,53 +1,54 @@
-From: tytso@mit.edu
-Subject: Re: [GIT PULL] ext4 fixes
-Date: Sat, 24 Apr 2010 20:53:36 -0400
-Message-ID: <20100425005336.GB667@thunk.org>
-References: <E1O4LAG-0003NN-0A@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <E1O4LAG-0003NN-0A@closure.thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: No one seems to be using AOP_WRITEPAGE_ACTIVATE?
+Date: Sat, 24 Apr 2010 22:40:21 -0400
+Message-ID: <E1O5rld-0001AX-Lk@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ping?  
 
-I'm guessing that perhaps you didn't pull because of concerns raised
-about some of the crazy dates in the ext4 tree.  I've checked to make
-sure this isn't true for this set of patches, and I'll make sure the
-dates are well-behaved for the future.
+I happened to be going through the source code for write_cache_pages(),
+and I came across a reference to AOP_WRITEPAGE_ACTIVATE.  I was curious
+what the heck that was, so I did search for it, and found this in
+Documentation/filesystems/vfs.txt:
 
-Best regards,
+      If wbc->sync_mode is WB_SYNC_NONE, ->writepage doesn't have to
+      try too hard if there are problems, and may choose to write out
+      other pages from the mapping if that is easier (e.g. due to
+      internal dependencies).  If it chooses not to start writeout, it
+      should return AOP_WRITEPAGE_ACTIVATE so that the VM will not keep
+      calling ->writepage on that page.
 
-     	       	   	     		  - Ted
+      See the file "Locking" for more details.
 
-On Tue, Apr 20, 2010 at 05:39:28PM -0400, Theodore Ts'o wrote:
-> Hi Linus,
-> 
-> I have some fixes for some data corruption bugs that should really get
-> pulled into the 2.6.34 kernel, so I'd appreciate it if you could pull
-> from:
-> 
->         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-> 
-> Thanks,
-> 
-> 						- Ted
-> 
->  fs/ext4/extents.c |    1 +
->  fs/ext4/inode.c   |    3 ++-
->  fs/ext4/mballoc.c |   21 +++++++++++----------
->  3 files changed, 14 insertions(+), 11 deletions(-)
-> 
-> Curt Wohlgemuth (2):
->       ext4: Fix possible lost inode write in no journal mode
->       ext4: Fix buffer head leaks after calls to ext4_get_inode_loc()
-> 
-> Theodore Ts'o (1):
->       ext4: Issue the discard operation *before* releasing the blocks to be reused
-> 
-> 
-> 
+No filesystems are currently returning AOP_WRITEPAGE_ACTIVATE when it
+chooses not to writeout page and call redirty_page_for_writeback()
+instead.
+
+Is this a change we should make, for example when btrfs refuses a
+writepage() when PF_MEMALLOC is set, or when ext4 refuses a writepage()
+if the page involved hasn't been allocated an on-disk block yet (i.e.,
+delayed allocation)?  The change seems to be that we should call
+redirty_page_for_writeback() as before, but then _not_ unlock the page,
+and return AOP_WRITEPAGE_ACTIVATE.  Is this a good and useful thing for
+us to do?
+
+Right now, the only writepage() function which is returning
+AOP_WRITEPAGE_ACTIVATE is shmem_writepage(), and very curiously it's not
+using redirty_page_for_writeback().  Should it, out of consistency's
+sake if not to keep various zone accounting straight?
+
+There are some longer-term issues, including the fact that ext4 and
+btrfs are violating some of the rules laid out in
+Documentation/vfs/Locking regarding what writepage() is supposed to do
+under direct reclaim -- something which isn't going to be practical for
+us to change on the file-system side, at least not without doing some
+pretty nasty and serious rework, for both ext4 and I suspect btrfs.  But
+if returning AOP_WRITEPAGE_ACTIVATE will help the VM deal more
+gracefully with the fact that ext4 and btrfs will be refusing
+writepage() calls under certain conditions, maybe we should make this
+change?
+
+						- Ted
