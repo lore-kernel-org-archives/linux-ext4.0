@@ -1,64 +1,35 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: DRAFT Design Spec for 1st Class Quota Support in Ext4
-Date: Mon, 26 Apr 2010 21:00:37 +0200
-Message-ID: <20100426190036.GD21179@atrey.karlin.mff.cuni.cz>
-References: <E1O6I3M-0002Wl-CV@closure.thunk.org> <87y6gad45r.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/2] Fix waiting on transaction in ext3_sync_file
+Date: Mon, 26 Apr 2010 22:10:57 +0200
+Message-ID: <1272312659-16468-1-git-send-email-jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:36184 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754293Ab0DZTAi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Apr 2010 15:00:38 -0400
-Content-Disposition: inline
-In-Reply-To: <87y6gad45r.fsf@openvz.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58379 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754985Ab0DZULE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Apr 2010 16:11:04 -0400
+Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.221.2])
+	by mx2.suse.de (Postfix) with ESMTP id 8EAE686EE4
+	for <linux-ext4@vger.kernel.org>; Mon, 26 Apr 2010 22:11:01 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> "Theodore Ts'o" <tytso@mit.edu> writes:
-> 
-> > 2) The quota files will use the v2 format only, and updates to the quota
-> > files will be protected with the journal if the journal is present.
-> Since we are about to starting huge movements let's use new (v3) quota
-> format. The only difference with v2 is extended header wider than old
-> magic+version.
-> 
-> struct v3_disk_dqheader {
->         __le32 dqh_magic;        /* Magic number identifying file */
->         __le32 dqh_version;      /* File version */
->         __le32 dqh_state;        /* quota file  state */
->         __u32  dqh_reserved[125];
->  };
-> dqh_state is an equivalent of sb's s_state.
-  Dmitry, if you need new fields, add them to v?_disk_dqinfo. That is
-designed for such things. Also the whole first quota block (1k) is reserved
-for the header and the dqinfo structure so there's no need for the
-dqh_reserved field.
-  Now I guess you want the dqh_state to record that quota is inconsistent
-due to some error or so. I'm OK with this but there's another option of
-having this directly in the superblock. 
 
-> > 6) Tune2fs will have a facility for adding and removing user and group
-> > quotas inodes while the file system is mounted.  The quota usage will
-> > not be correct after the quota inodes are newly added, however, so quota
-> > will not be enabled by default,  If the quota inodes are removed, quota
-> > will be disabled first.
->   Who is responsible for quota enabling in that scenario?
->   Will it enabled by default on mount time?
-> 
-> Small note: quotacheck -cug /mnt will result in unlink/create
-> so we have options exclusive options:
-> if inode is already exist
->   replace unlink/create with truncate
-> else
->   call tune2fs from quotacheck after inodes was created.
-  I guess I'll just make quotacheck refuse to work on an ext4 filesystem
-with quota support. It's upto e2fsck to properly fill the quota information.
+  Hi,
+
+  the two patches below fix waiting on transaction in ext3_sync_file.  The
+problem is that log_start_commit() returns 1 only if it has really started
+committing. If the transaction is already undergoing commit, it will return 0
+and thus we incorrectly proceed although we should have waited for commit to
+finish. This problem would be easily solved by always waiting for transaction
+commit. But we also need to know whether the commit really happened after we
+have entered ext3_sync_file - otherwise we have to send a barrier request to
+disk. Sending it in all cases has unnecessarily bad performance.
+  Attached patch addresses the issue by providing a function
+journal_trans_will_send_data_barrier which takes transaction ID and returns
+whether the final stage of commit of this transaction has not happened yet.
+Ext3 then uses this function to check whether it needs to send an additional
+barrier or not.
+  Any comments or review welcome.
 
 								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
