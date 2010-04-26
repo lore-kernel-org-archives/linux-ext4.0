@@ -1,35 +1,67 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Question about e2fsck and HTree
-Date: Sun, 25 Apr 2010 18:33:51 -0400
-Message-ID: <A4C3C712-08DD-48E0-8537-CA5572F679CF@mit.edu>
-References: <z2ne1e08eb01004221243m89a97acei72316abe62daaba@mail.gmail.com> <20100424004544.GM14986@thunk.org> <o2ne1e08eb01004251510h64d7915arb977d7d9a77959d7@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Locking between writeback and truncate paths?
+Date: Sun, 25 Apr 2010 20:32:40 -0400
+Message-ID: <E1O6CFc-0006Y2-SY@closure.thunk.org>
 Cc: linux-ext4@vger.kernel.org
-To: Evgeniy Ivanov <lolkaantimat@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-1.MIT.EDU ([18.9.25.12]:62508 "EHLO
-	dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752138Ab0DYWi6 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Apr 2010 18:38:58 -0400
-In-Reply-To: <o2ne1e08eb01004251510h64d7915arb977d7d9a77959d7@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-On Apr 25, 2010, at 6:10 PM, Evgeniy Ivanov wrote:
->> 
->> If your implementation of extN don't support HTree, then it's
->> important that when you modify a filesystem you clear the inode's
->> EXT2_INDEX_FL flag.   Then the right thing will happen....
-> 
-> Thank you very much again :)
+Has anyone looked into whether it might make sense to have have a lock
+which which blocks vmtruncate() from racing against the writeback code?
+Arguments in favor of the status quo is that if the inode happens to be
+undergoing writeback, and we know we're about to truncate the sucker,
+it's best if we can stop the writeback ASAP and avoid the wasted work.
 
-Just to be clear, since I typo'ed the above -- when you modify a _directory_ you must clear the directory's EXT2_INDEX_FL flag.
+However, modern file systems have to do multiple pass against the page
+cache; first to find out how many dirty pages are present so that the
+delayed allocation can be efficiently targetted against the free space
+on disk; then the file system has to allocate the necessary extent, and
+the finally the buffer heads attached to the pages need to be populated
+and the page sent out for writeback.  However what if while this is
+happening, on another CPU, some of the pages are truncated and then
+(perhaps on a 3rd CPU) the pages are written to again once again subject
+to delayed allocation?
 
-Regards,
+Right now, ext4 doesn't protect against this; I'm working on it fixing
+it.  But fixing it in the file system, while possible, is nasty, since
+it means that we have to constantly recheck against file systems
+get_blocks() filesystem against every single page, after locking each
+page, just in case the we happen to be racing against a truncate.  I
+suppose I could put in a lock to prevent the fs-level truncate from
+completing until the inode's writeback is complete, but then it's still
+possible that we will have allocated too much space (since the truncate
+happened right after we finished counting out the delalloc pages), and
+we need to make sure extent is marked uninitalized lest we crash right
+after the allocate and before the truncate takes place.  Ugh!
 
--- Ted
+I'm prety sure I can make it work, but it won't necessarily be the
+fastest thing in the world, and it will require taking a bunch of extra
+locks, some of them for every single page being written.  It would be
+simpler to simply add a mutual exclusion between truncate and writeback;
+which has a downside, as I've acknowledged --- but which case is more
+common and thus worth optimizing for?  The normal writeback case, or
+being able to avoid some extra disk writes in the case where the
+truncate is issued exactly while the write back code is processing the
+inode?
 
+Any thoughts or suggestions would be greatly appreciated.  I've looked
+at the xfs and btrfs code for some ideas, but dealing with current
+writeback and truncate is nasty, especially if there's a subsequent
+delalloc write happening in parallel with the writeback and immediately
+after the truncate.  After studying the code quite extensively over the
+weekend, I'm still not entirely sure that XFS and btrfs gets this case
+right (I know ext4 currently doesn't).  Of course, it's not clear
+whether users will trip against this in practice, but it's nevertheless
+still a botch, and I'm wondering if it's simpler to avoid the concurrent
+vmtruncate/writeback case entirely.
+
+						- Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
