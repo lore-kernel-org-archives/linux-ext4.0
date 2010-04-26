@@ -1,67 +1,71 @@
 From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Locking between writeback and truncate paths?
-Date: Sun, 25 Apr 2010 20:32:40 -0400
-Message-ID: <E1O6CFc-0006Y2-SY@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: DRAFT Design Spec for 1st Class Quota Support in Ext4
+Date: Mon, 26 Apr 2010 02:44:24 -0400
+Message-ID: <E1O6I3M-0002Wl-CV@closure.thunk.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:47110 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751586Ab0DZGo3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Apr 2010 02:44:29 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
-Has anyone looked into whether it might make sense to have have a lock
-which which blocks vmtruncate() from racing against the writeback code?
-Arguments in favor of the status quo is that if the inode happens to be
-undergoing writeback, and we know we're about to truncate the sucker,
-it's best if we can stop the writeback ASAP and avoid the wasted work.
+Please comment!
 
-However, modern file systems have to do multiple pass against the page
-cache; first to find out how many dirty pages are present so that the
-delayed allocation can be efficiently targetted against the free space
-on disk; then the file system has to allocate the necessary extent, and
-the finally the buffer heads attached to the pages need to be populated
-and the page sent out for writeback.  However what if while this is
-happening, on another CPU, some of the pages are truncated and then
-(perhaps on a 3rd CPU) the pages are written to again once again subject
-to delayed allocation?
+		    1st Class Quota Support in Ext4
+		    DRAFT Design Specification, v0.5
 
-Right now, ext4 doesn't protect against this; I'm working on it fixing
-it.  But fixing it in the file system, while possible, is nasty, since
-it means that we have to constantly recheck against file systems
-get_blocks() filesystem against every single page, after locking each
-page, just in case the we happen to be racing against a truncate.  I
-suppose I could put in a lock to prevent the fs-level truncate from
-completing until the inode's writeback is complete, but then it's still
-possible that we will have allocated too much space (since the truncate
-happened right after we finished counting out the delalloc pages), and
-we need to make sure extent is marked uninitalized lest we crash right
-after the allocate and before the truncate takes place.  Ugh!
 
-I'm prety sure I can make it work, but it won't necessarily be the
-fastest thing in the world, and it will require taking a bunch of extra
-locks, some of them for every single page being written.  It would be
-simpler to simply add a mutual exclusion between truncate and writeback;
-which has a downside, as I've acknowledged --- but which case is more
-common and thus worth optimizing for?  The normal writeback case, or
-being able to avoid some extra disk writes in the case where the
-truncate is issued exactly while the write back code is processing the
-inode?
+This proposal promotes quota to being a first class supported feature in
+ext4.  To do this, we will do the following:
 
-Any thoughts or suggestions would be greatly appreciated.  I've looked
-at the xfs and btrfs code for some ideas, but dealing with current
-writeback and truncate is nasty, especially if there's a subsequent
-delalloc write happening in parallel with the writeback and immediately
-after the truncate.  After studying the code quite extensively over the
-weekend, I'm still not entirely sure that XFS and btrfs gets this case
-right (I know ext4 currently doesn't).  Of course, it's not clear
-whether users will trip against this in practice, but it's nevertheless
-still a botch, and I'm wondering if it's simpler to avoid the concurrent
-vmtruncate/writeback case entirely.
+1)  We define the following two new fields to the superblock.  No new
+COMPAT features are defined; since unused superblock fields are zero, if
+the fields are not known.
+  *) A superblock field containing the inode number for the user quota
+     file.  This inode number will be 3 if the inode is user quota file
+     is hidden.  If this field is zero, then user quotas will not be tracked.
+  *) A superblock field containing the inode number for the group quota
+     file.  This inode number will be 4 if the inode is group quota file
+     is hidden.  If this field is zero, then group quotas will not be
+     tracked.
 
-						- Ted
+2) The quota files will use the v2 format only, and updates to the quota
+files will be protected with the journal if the journal is present.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+3) If e2fsck needs to do a full file system consistency check, it will
+keep track of the disk space used by each user and/or groups ids, and
+update the user and/or group quota files at the end of the e2fsck run.
+
+4) If the filesystem appears consistent, but the user and/or group quota
+fils are not equal to the last superblock write time, e2fsck will do a
+partical file system consistency check.  This will consist of e2fsck
+pass #1, and if no errors were detected, e2fsck will update the user and
+group quota files and exit.  If any errors were detected during pass #1,
+then e2fsck will  continue to do pass numbers 2-5, and thus do a full
+file system consistency check before updating the quota files.
+
+5) Mke2fs will take an extended option (quota=user,group) which if
+present will force the initialization of the quota inodes.  Using the
+/etc/mke2fs.conf file, the system administrator can also specify a quota
+option in the [defaults] and [fs_types] section, so that quota files can
+be enabled by default.
+
+6) Tune2fs will have a facility for adding and removing user and group
+quotas inodes while the file system is mounted.  The quota usage will
+not be correct after the quota inodes are newly added, however, so quota
+will not be enabled by default,  If the quota inodes are removed, quota
+will be disabled first.
+
+7) There will be a new interface so that bulk quota information can be
+fetched from the file system.  This needs to be negotiated with Jan
+Kara.  It can either be a new system call, or a magic file in /proc that
+can be opened and the repquota data extracted.
+
+8) Traditional style quota will still be supported; that is the
+appropriate magic flags will be passed through to /proc/mounts so that
+the old-style init scripts will still function correctly.  This support
+will be deprecated over an 18 month period after the new-style kernel
+code and userspace tools have been released.
