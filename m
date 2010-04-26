@@ -1,121 +1,52 @@
-From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
-Subject: Re: No one seems to be using AOP_WRITEPAGE_ACTIVATE?
-Date: Mon, 26 Apr 2010 19:18:32 +0900 (JST)
-Message-ID: <20100426094837.2E5E.A69D9226@jp.fujitsu.com>
-References: <E1O5rld-0001AX-Lk@closure.thunk.org>
+From: Mark Lord <kernel@teksavvy.com>
+Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
+Date: Mon, 26 Apr 2010 10:03:37 -0400
+Message-ID: <4BD59D39.5050906@teksavvy.com>
+References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>	<x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com>	<k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com>	<alpine.LFD.2.00.1004230944070.2814@localhost>	<w2x87f94c371004240624iba3cc79az1becd78ae0c0ce2@mail.gmail.com>	<4BD2F69D.7070508@redhat.com>	<o2y87f94c371004240730x389391dfka42a1e8abc498e1a@mail.gmail.com>	<4BD30393.4050800@redhat.com>	<h2n87f94c371004240803obefca41cg1ca8a727c1726827@mail.gmail.com>	<4BD324B5.4030808@redhat.com>	<p2i87f94c371004241130ya1642597g42bd77c3e3c351f1@mail.gmail.com> <yq1wrvweklj.fsf@sermon.lab.mkp.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: kosaki.motohiro@jp.fujitsu.com, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	Hugh Dickins <hugh.dickins@tiscali.co.uk>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Jeff Moyer <jmoyer@redhat.com>, linux-ext4@vger.kernel.org,
+	Edward Shishkin <eshishki@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:44363 "EHLO
-	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754013Ab0DZKSh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Apr 2010 06:18:37 -0400
-In-Reply-To: <E1O5rld-0001AX-Lk@closure.thunk.org>
+Received: from ironport2-out.teksavvy.com ([206.248.154.183]:65285 "EHLO
+	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752575Ab0DZOGt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Apr 2010 10:06:49 -0400
+In-Reply-To: <yq1wrvweklj.fsf@sermon.lab.mkp.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted
+On 24/04/10 03:06 PM, Martin K. Petersen wrote:
+..
+> Our discard implementation is meant to accommodate a wide range of
+> devices.  Just because some of the currently shipping low-end consumer
+> SSDs implement TRIM poorly does not mean we're going to scrap what we
+> have.
+..
 
+The current implementation works extremely poorly for the singlemost
+common style of hardware that's out there.  Millions and millions
+of SATA SSDs, and they're becoming more and more ubiquitous.
 
-> I happened to be going through the source code for write_cache_pages(),
-> and I came across a reference to AOP_WRITEPAGE_ACTIVATE.  I was curious
-> what the heck that was, so I did search for it, and found this in
-> Documentation/filesystems/vfs.txt:
-> 
->       If wbc->sync_mode is WB_SYNC_NONE, ->writepage doesn't have to
->       try too hard if there are problems, and may choose to write out
->       other pages from the mapping if that is easier (e.g. due to
->       internal dependencies).  If it chooses not to start writeout, it
->       should return AOP_WRITEPAGE_ACTIVATE so that the VM will not keep
->       calling ->writepage on that page.
-> 
->       See the file "Locking" for more details.
-> 
-> No filesystems are currently returning AOP_WRITEPAGE_ACTIVATE when it
-> chooses not to writeout page and call redirty_page_for_writeback()
-> instead.
-> 
-> Is this a change we should make, for example when btrfs refuses a
-> writepage() when PF_MEMALLOC is set, or when ext4 refuses a writepage()
-> if the page involved hasn't been allocated an on-disk block yet (i.e.,
-> delayed allocation)?  The change seems to be that we should call
-> redirty_page_for_writeback() as before, but then _not_ unlock the page,
-> and return AOP_WRITEPAGE_ACTIVATE.  Is this a good and useful thing for
-> us to do?
+A "solution" that ignores reality isn't very helpful.
+We can do better than that, a lot better.
 
-Sorry, no.
+> We are not in the business of designing for the past.  Especially not
+> when the past can be handled by a shell script.
+..
 
-AOP_WRITEPAGE_ACTIVATE was introduced for ramdisk and tmpfs thing
-(and later rd choosed to use another way).
-Then, It assume writepage refusing aren't happen on majority pages.
-IOW, the VM assume other many pages can writeout although the page can't.
-Then, the VM only make page activation if AOP_WRITEPAGE_ACTIVATE is returned.
-but now ext4 and btrfs refuse all writepage(). (right?)
+We are in the business of supporting the hardware that people run Linux on.
+Today, and tomorrow, and the next few years, that means SATA SSDs by the gazillions,
+as well as a relatively smaller number of enterprise behemoths.
 
-IOW, I don't think such documentation suppose delayed allocation issue ;)
+A shell script cannot currently deal with LVM, RAID, or btrfs filesystems.
 
-The point is, Our dirty page accounting only account per-system-memory
-dirty ratio and per-task dirty pages. but It doesn't account per-numa-node
-nor per-zone dirty ratio. and then, to refuse write page and fake numa
-abusing can make confusing our vm easily. if _all_ pages in our VM LRU
-list (it's per-zone), page activation doesn't help. It also lead to OOM.
-
-And I'm sorry. I have to say now all vm developers fake numa is not
-production level quority yet. afaik, nobody have seriously tested our
-vm code on such environment. (linux/arch/x86/Kconfig says "This is only 
-useful for debugging".)
-
-	--------------------------------------------------------------
-	config NUMA_EMU
-	        bool "NUMA emulation"
-	        depends on X86_64 && NUMA
-	        ---help---
-	          Enable NUMA emulation. A flat machine will be split
-	          into virtual nodes when booted with "numa=fake=N", where N is the
-	          number of nodes. This is only useful for debugging.
-
-
-> 
-> Right now, the only writepage() function which is returning
-> AOP_WRITEPAGE_ACTIVATE is shmem_writepage(), and very curiously it's not
-> using redirty_page_for_writeback().  Should it, out of consistency's
-> sake if not to keep various zone accounting straight?
-
-Umm. I don't know the reason. instead I've cc to hugh :)
-
-
-> There are some longer-term issues, including the fact that ext4 and
-> btrfs are violating some of the rules laid out in
-> Documentation/vfs/Locking regarding what writepage() is supposed to do
-> under direct reclaim -- something which isn't going to be practical for
-> us to change on the file-system side, at least not without doing some
-> pretty nasty and serious rework, for both ext4 and I suspect btrfs.  But
-> if returning AOP_WRITEPAGE_ACTIVATE will help the VM deal more
-> gracefully with the fact that ext4 and btrfs will be refusing
-> writepage() calls under certain conditions, maybe we should make this
-> change?
-
-I'm sorry again. I'm pretty sure our vm also need to change if we need
-to solve your company's fake numa use case. I think our vm is still delayed 
-allocation unfriendly. we haven't noticed ext4 delayed allocation issue ;-)
-
-So, I have two questions
- - I really hope to understand ext4 delayed allocation issue, can you please
-   tell me which url explain ext4 high level design and behavior about delayed
-   allocation.
- - If my understood is correctly, making very much fake numa node and
-   simple dd can reproduce your issue. right?
-
-Now I'm guessing enough small vm patch can solve this issue. (that's only
-guess, maybe yes maybe no). but correct understanding and correct testing
-way are really necessary. please help.
-
-
-
-
+Cheers
