@@ -1,189 +1,77 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: No one seems to be using AOP_WRITEPAGE_ACTIVATE?
-Date: Mon, 26 Apr 2010 13:24:42 -0400
-Message-ID: <20100426172442.GN6513@think>
-References: <E1O5rld-0001AX-Lk@closure.thunk.org>
- <20100426094837.2E5E.A69D9226@jp.fujitsu.com>
- <7B2E5B6F-3C25-4EF5-AC2F-AE62E9C643C2@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
+Date: Mon, 26 Apr 2010 19:46:38 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1004261903260.2797@localhost>
+References: <1271674527-2977-2-git-send-email-lczerner@redhat.com> <1271674527-2977-3-git-send-email-lczerner@redhat.com> <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com> <4BCE6243.5010209@teksavvy.com> <4BCE66C5.3060906@redhat.com>
+ <v2w87f94c371004211159ue3a48923u6a543e8090dcdfa6@mail.gmail.com> <4BCF4C53.3010608@redhat.com> <x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com> <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com> <alpine.LFD.2.00.1004230944070.2814@localhost>
+ <20100426165527.GB21179@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	Hugh Dickins <hugh.dickins@tiscali.co.uk>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Mark Lord <kernel@teksavvy.com>, linux-ext4@vger.kernel.org,
+	Edward Shishkin <eshishki@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48409 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752431Ab0DZR0C (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Apr 2010 13:26:02 -0400
-Content-Disposition: inline
-In-Reply-To: <7B2E5B6F-3C25-4EF5-AC2F-AE62E9C643C2@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:21330 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751210Ab0DZRqn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Apr 2010 13:46:43 -0400
+In-Reply-To: <20100426165527.GB21179@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 26, 2010 at 10:50:45AM -0400, Theodore Tso wrote:
-> 
-> On Apr 26, 2010, at 6:18 AM, KOSAK
-> > AOP_WRITEPAGE_ACTIVATE was introduced for ramdisk and tmpfs thing
-> > (and later rd choosed to use another way).
-> > Then, It assume writepage refusing aren't happen on majority pages.
-> > IOW, the VM assume other many pages can writeout although the page can't.
-> > Then, the VM only make page activation if AOP_WRITEPAGE_ACTIVATE is returned.
-> > but now ext4 and btrfs refuse all writepage(). (right?)
-> 
-> No, not exactly.   Btrfs refuses the writepage() in the direct reclaim
-> cases (i.e., if PF_MEMALLOC is set), but will do writepage() in the
-> case of zone scanning.  I don't want to speak for Chris, but I assume
-> it's due to stack depth concerns --- if it was just due to worrying
-> about fs recursion issues, i assume all of the btrfs allocations could
-> be done GFP_NOFS.
-> 
+On Mon, 26 Apr 2010, Jan Kara wrote:
 
-Btrfs refuses all PF_MEMALLOC writepage.  It will go ahead and process a
-regular writepage but in practice that never happens...everyone else
-except a few internal btrfs callers use writepages.
+> > On Wed, 21 Apr 2010, Greg Freemyer wrote:
+> > And also, currently I am rewriting the patch do use rbtree instead of the
+> > bitmap, because there were some concerns of memory consumption. It is a
+> > question whether or not the rbtree will be more memory friendly.
+> > Generally I think that in most "normal" cases it will, but there are some
+> > extreme scenarios, where the rbtree will be much worse. Any comment on
+> > this ?
+>   I see two possible improvements here:
+> a) At a cost of some code complexity, you can bound the worst case by combining
+> RB-trees with bitmaps. The basic idea is that when space to TRIM gets too
+> fragmented (memory to keep to-TRIM blocks in RB-tree for a given group exceeds
+> the memory needed to keep it in a bitmap), you convert RB-tree for a
+> problematic group to a bitmap and attach it to an appropriate RB-node. If you
+> track with a bitmap also a number of to-TRIM extents in the bitmap, you can
+> also decide whether it's benefitial to switch back to an RB-tree.
 
-I wish I had thought of stack depth back then, but really this was to
-keep kswapd out of the heavy work done by delalloc.  From a locking
-point of view we're properly GPF_NOFS, so its safe, but it just isn't a
-great way to use precious PF_MEMALLOC cycles.
-
-> Ext4 is slightly different; it refuses writepages() if the inode
-> blocks for the page haven't yet been allocated.  (Regardless of
-> whether it's happening for direct reclaim or zone scanning.)  However,
-> if the on-disk block has been assigned (i.e., this isn't a delalloc
-> case), ext4 will honor the writepage().   (i.e., if this is an mmap of
-> an already existing file, or if the space has been pre-allocated using
-> fallocate()).    The reason for ext4's concern is lock ordering,
-> although I'm investigating whether I can fix this.   If we call
-> set_page_writeback() to set PG_writeback (plus set the various bits of
-> magic fs accounting), and then drop the page_lock, does that protect
-> us from random changes happening to the page (i.e., from vmtruncate,
-> etc.)?
-
-PG_writeback will protect you from vmtruncate, but may also want to
-have page_mkwrite wait for pages in flight.
+This sounds like a good idea, but I wonder if it is worth it :
+ 1. The tree will have very short life, because with next ioctl all
+ stored deleted extents will be trimmed and removed from the tree.
+ 2. Also note, that the longer it lives the less fragmented it possibly
+ became.
+ 3. I do not expect, that deleted ranges can be too fragmented, and
+ even if it is, it will be probably merged into one big extent very
+ soon.
 
 > 
-> > 
-> > IOW, I don't think such documentation suppose delayed allocation issue ;)
-> > 
-> > The point is, Our dirty page accounting only account per-system-memory
-> > dirty ratio and per-task dirty pages. but It doesn't account per-numa-node
-> > nor per-zone dirty ratio. and then, to refuse write page and fake numa
-> > abusing can make confusing our vm easily. if _all_ pages in our VM LRU
-> > list (it's per-zone), page activation doesn't help. It also lead to OOM.
-> > 
-> > And I'm sorry. I have to say now all vm developers fake numa is not
-> > production level quority yet. afaik, nobody have seriously tested our
-> > vm code on such environment. (linux/arch/x86/Kconfig says "This is only 
-> > useful for debugging".)
+> b) Another idea might be: When to-TRIM space is fragmented (again, let's say
+> in some block group), there's not much point in sending tiny trim commands
+> anyway (at least that's what I've understood from this discussion). So you
+> might as well stop maintaining information which blocks we need to trim
+> for that group. When the situation gets better, you can always walk block
+> bitmap and issue trim commands. You might even trigger this rescan from
+> kernel - if you'd maintain number of free block extents for each block group
+> (which is rather easy), you could trigger the bitmap rescan and trim as soon
+> as ratio number of free blocks / number of extents gets above a reasonable
+> threshold.
+> 
+> 								Honza
 > 
 
-> So I'm sorry I mentioned the fake numa bit, since I think this is a
-> bit of a red herring.   That code is in production here, and we've
-> made all sorts of changes so ti can be used for more than just
-> debugging.  So please ignore it, it's our local hack, and if it breaks
-> that's our problem.    More importantly, just two weeks ago I talked
-> to soeone in the financial sector, who was testing out ext4 on an
-> upstream kernel, and not using our hacks that force 128MB zones, and
-> he ran into the ext4/OOM problem while using an upstream kernel.  It
-> involved Oracle pinning down 3G worth of pages, and him trying to do a
-> huge streaming backup (which of course wasn't using fallocate or
-> direct I/O) under ext4, and he had the same issue --- an OOM, that I'm
-> pretty sure was caused by the fact that ext4_writepage() was refusing
-> the writepage() and most of the pages weren't nailed down by Oracle
-> were delalloc.    The same test scenario using ext3 worked just fine,
-> of course.
-> 
-> Under normal cases it's not a problem since statistically there should
-> be enough other pages in the system compared to the number of pages
-> that are subject to delalloc, such that pages can usually get pushed
-> out until the writeback code can get around to writing out the pages.
-> But in cases where the zones have been made artificially small, or you
-> have a big program like Oracle pinning down a large number of pages,
-> then of course we have problems. 
-> 
-> I'm trying to fix things from the file system side, which means trying
-> to understand magic flags like AOP_WRITEPAGE_ACTIVATE, which is
-> described in Documentation/filesystems/Locking as something which MUST
-> be used if writepage() is going refuse a page.  And then I discovered
-> no one is actually using it.   So that's why I was asking with respect
-> whether the Locking documentation file was out of date, or whether all
-> of the file systems are doing it wrong.
-> 
+In what I am preparing now, I simple ignore small extents, which would
+be created by splitting the deleted extent into smaller pieces by chunks
+of used blocks. This, in my opinion, will prevent the fragmentation,
+which otherwise may occur in the longer term (between ioctl calls).
 
-> On a related example of how file system code isnt' necessarily
-> following what is required/recommended by the Locking documentation,
-> ext2 and ext3 are both NOT using
-> set_page_writeback()/end_page_writeback(), but are rather keeping the
-> page locked until after they call block_write_full_page(), because of
-> concerns of truncate coming in and screwing things up.
-
-block_write_full_page takes a locked page and if all goes well produces
-a writeback page without the page locked.  Basically it needs the page
-locked until after it has the writeback bit set to protect against
-truncate and make sure the page buffers don't go away while it is
-looping over them.
-
-So, I don't think ext23 are breaking the rules here.
-
->But now looking at Locking, it appears that set_page_writeback() is as
->good as page_lock() for preventing the truncate code from coming in and
->screwing everything up?   It's not clear to me exactly what locking
->guarantees are provided against truncate by set_page_writeback().   And
->suppose we are writing out a whole cluster of pages, say 4MB worth of
->pages; do we need to call set_page_writeback() on every single page in
->the cluster before we do the I/O to make sure things don't change out
->from under us?  (I'm pretty sure at least some of the other filesystems
->that are submitting huge numbers of pages using bio instead of 4k at a
->time like ext2/3/4 aren' t calling set_page_writeback() on all of the
->pages first.)
-> 
-> Part of the problem is that the writeback Locking semantics aren't
-> well documented, and where they are documented, it's not clear they
-> are up to date --- and all of the file systems that are doing delayed
-> allocation writeback are doing things slightly differently, or in some
-> cases very differently.    (And even without delalloc, as I've pointed
-> out ext2/3 don't use set_page_writeback() --- if this is a MUST USE as
-> implied by the Locking file, why did whoever added this requirement
-> didn't go in and modify common filesystems like ext2 and ext3 to use
-> the set_page_writeback/end_page_writeback calls?)
-> 
-> I'm happy to change things in ext4; in fact I'm pretty sure ext4
-> probably isn't completely right here.   But it's not clear what
-> "right" actually is, and when I look to see what protects writepage()
-> racing with vmtruncate(), it's enough to give me a headache.  :-(    
-> 
-> Hence my question about wouldn't it be simpler if we simply added more
-> high-level locking to prevent truncate from racing against
-> writepage/writeback.  
-
-My understanding of the current scheme is that truncate will wait on
-both locked and writeback pages.  The page lock is used while setting
-up the page for writeback, which is true both for writepages and
-writepage.
-
-I don't think we need a new lock on top of the page lock and the
-writeback bit, but maybe I don't see exactly which problem you're
-solving.  A given range of pages is either:
-
-1) allocated but not under IO.  ext4 must write these pages to disk
-before truncate can finish for data=ordered reasons, unless it manages
-to log the orphan item.  Figuring out dependency between the orphan
-item, which i_size is on disk right now, and holes is pretty tricky, so
-I'd go with the less complex: just wait for all the allocated delalloc
-pages to hit the disk.
-
-2) Allocated and under IO.  These pages go to disk.
-
-3) Delalloc and not under IO.  Truncate (or notify_change if you lean
-toward the xfs crowd) should be able to clean these up
-without waiting for the IO.
-
-Of the three, #3 is probably the most common, which #1 a close second.
-Is this a case that we really need to optimize for?
-
--chris
-
+Thanks for suggestions.
+-Lukas
