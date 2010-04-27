@@ -1,217 +1,181 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: Do not dec quota for reserved blocks on error paths
-Date: Tue, 27 Apr 2010 11:14:34 +0400
-Message-ID: <87zl0pbc4l.fsf@openvz.org>
-References: <87633dcxhp.fsf@openvz.org>
+From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Subject: Re: No one seems to be using AOP_WRITEPAGE_ACTIVATE?
+Date: Tue, 27 Apr 2010 22:03:18 +0900 (JST)
+Message-ID: <20100427214722.80DC.A69D9226@jp.fujitsu.com>
+References: <20100426094837.2E5E.A69D9226@jp.fujitsu.com> <7B2E5B6F-3C25-4EF5-AC2F-AE62E9C643C2@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:56269 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751092Ab0D0HOo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Apr 2010 03:14:44 -0400
-Received: by bwz19 with SMTP id 19so179054bwz.21
-        for <linux-ext4@vger.kernel.org>; Tue, 27 Apr 2010 00:14:43 -0700 (PDT)
-In-Reply-To: <87633dcxhp.fsf@openvz.org> (Dmitry Monakhov's message of "Tue,
-	27 Apr 2010 08:47:46 +0400")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: quoted-printable
+Cc: kosaki.motohiro@jp.fujitsu.com, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, Hugh Dickins <hugh.dickins@tiscali.co.uk>
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <7B2E5B6F-3C25-4EF5-AC2F-AE62E9C643C2@mit.edu>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
+>=20
+> On Apr 26, 2010, at 6:18 AM, KOSAK
+> > AOP_WRITEPAGE_ACTIVATE was introduced for ramdisk and tmpfs thing
+> > (and later rd choosed to use another way).
+> > Then, It assume writepage refusing aren't happen on majority pages.
+> > IOW, the VM assume other many pages can writeout although the page can'=
+t.
+> > Then, the VM only make page activation if AOP_WRITEPAGE_ACTIVATE is ret=
+urned.
+> > but now ext4 and btrfs refuse all writepage(). (right?)
+>=20
+> No, not exactly.   Btrfs refuses the writepage() in the direct reclaim ca=
+ses (i.e., if PF_MEMALLOC is set), but will do writepage() in the case of z=
+one scanning.  I don't want to speak for Chris, but I assume it's due to st=
+ack depth concerns --- if it was just due to worrying about fs recursion is=
+sues, i assume all of the btrfs allocations could be done GFP_NOFS.
+>=20
+> Ext4 is slightly different; it refuses writepages() if the inode blocks f=
+or the page haven't yet been allocated.  (Regardless of whether it's happen=
+ing for direct reclaim or zone scanning.)  However, if the on-disk block ha=
+s been assigned (i.e., this isn't a delalloc case), ext4 will honor the wri=
+tepage().   (i.e., if this is an mmap of an already existing file, or if th=
+e space has been pre-allocated using fallocate()).    The reason for ext4's=
+ concern is lock ordering, although I'm investigating whether I can fix thi=
+s.   If we call set_page_writeback() to set PG_writeback (plus set the vari=
+ous bits of magic fs accounting), and then drop the page_lock, does that pr=
+otect us from random changes happening to the page (i.e., from vmtruncate, =
+etc.)?
+>=20
+> >=20
+> > IOW, I don't think such documentation suppose delayed allocation issue =
+;)
+> >=20
+> > The point is, Our dirty page accounting only account per-system-memory
+> > dirty ratio and per-task dirty pages. but It doesn't account per-numa-n=
+ode
+> > nor per-zone dirty ratio. and then, to refuse write page and fake numa
+> > abusing can make confusing our vm easily. if _all_ pages in our VM LRU
+> > list (it's per-zone), page activation doesn't help. It also lead to OOM.
+> >=20
+> > And I'm sorry. I have to say now all vm developers fake numa is not
+> > production level quority yet. afaik, nobody have seriously tested our
+> > vm code on such environment. (linux/arch/x86/Kconfig says "This is only=
+=20
+> > useful for debugging".)
+>=20
+> So I'm sorry I mentioned the fake numa bit, since I think this is a bit o=
+f a red herring.   That code is in production here, and we've made all sort=
+s of changes so ti can be used for more than just debugging.  So please ign=
+ore it, it's our local hack, and if it breaks that's our problem.    More i=
+mportantly, just two weeks ago I talked to soeone in the financial sector, =
+who was testing out ext4 on an upstream kernel, and not using our hacks tha=
+t force 128MB zones, and he ran into the ext4/OOM problem while using an up=
+stream kernel.  It involved Oracle pinning down 3G worth of pages, and him =
+trying to do a huge streaming backup (which of course wasn't using fallocat=
+e or direct I/O) under ext4, and he had the same issue --- an OOM, that I'm=
+ pretty sure was caused by the fact that ext4_writepage() was refusing the =
+writepage() and most of the pages weren't nailed down by Oracle were delall=
+oc.    The same test scenario using ext3 worked just fine, of course.
+>=20
+> Under normal cases it's not a problem since statistically there should be=
+ enough other pages in the system compared to the number of pages that are =
+subject to delalloc, such that pages can usually get pushed out until the w=
+riteback code can get around to writing out the pages.   But in cases where=
+ the zones have been made artificially small, or you have a big program lik=
+e Oracle pinning down a large number of pages, then of course we have probl=
+ems.=20
+>=20
+> I'm trying to fix things from the file system side, which means trying to=
+ understand magic flags like AOP_WRITEPAGE_ACTIVATE, which is described in =
+Documentation/filesystems/Locking as something which MUST be used if writep=
+age() is going refuse a page.  And then I discovered no one is actually usi=
+ng it.   So that's why I was asking with respect whether the Locking docume=
+ntation file was out of date, or whether all of the file systems are doing =
+it wrong.
+>=20
+> On a related example of how file system code isnt' necessarily following =
+what is required/recommended by the Locking documentation, ext2 and ext3 ar=
+e both NOT using set_page_writeback()/end_page_writeback(), but are rather =
+keeping the page locked until after they call block_write_full_page(), beca=
+use of concerns of truncate coming in and screwing things up.   But now loo=
+king at Locking, it appears that set_page_writeback() is as good as page_lo=
+ck() for preventing the truncate code from coming in and screwing everythin=
+g up?   It's not clear to me exactly what locking guarantees are provided a=
+gainst truncate by set_page_writeback().   And suppose we are writing out a=
+ whole cluster of pages, say 4MB worth of pages; do we need to call set_pag=
+e_writeback() on every single page in the cluster before we do the I/O to m=
+ake sure things don't change out from under us?  (I'm pretty sure at least =
+some of the other filesystems that are submitting huge numbers of pages usi=
+ng bio instead of 4k at a time like ext2/3/4 aren't calling set_page_writeb=
+ack() on all of the pages first.)
+>=20
+> Part of the problem is that the writeback Locking semantics aren't well d=
+ocumented, and where they are documented, it's not clear they are up to dat=
+e --- and all of the file systems that are doing delayed allocation writeba=
+ck are doing things slightly differently, or in some cases very differently.=
+    (And even without delalloc, as I've pointed out ext2/3 don't use set_pa=
+ge_writeback() --- if this is a MUST USE as implied by the Locking file, wh=
+y did whoever added this requirement didn't go in and modify common filesys=
+tems like ext2 and ext3 to use the set_page_writeback/end_page_writeback ca=
+lls?)
+>=20
+> I'm happy to change things in ext4; in fact I'm pretty sure ext4 probably=
+ isn't completely right here.   But it's not clear what "right" actually is=
+, and when I look to see what protects writepage() racing with vmtruncate()=
+, it's enough to give me a headache.  :-(   =20
+
+Umm.. sorry, I'm not good person to answer your question.=20
+probably Nick has best knowledge in this area.
+
+afaics, vmtruncate call graph is here.
+
+vmtruncate
+ -> truncate_pagecache
+    -> truncate_inode_pages
+       -> truncate_inode_pages_range
+            lock_page(page);
+            wait_on_page_writeback(page);
+            truncate_inode_page(mapping, page);
+             -> truncate_complete_page
+                -> remove_from_page_cache
+             ....
+            unlock_page(page);
+
+Then, PG_lock and/or PG_writeback protect against remove_from_page_cache().
+
+But..
+Now I'm afraid it can't solve ext4 delalloc issue. I'm pretty sure =20
+you have done above easy grepping. I guess you are suffering from more
+difficult issue. I hope to ask you, why ext4 couing logic of number of
+delalloc pages can't take page lock?
+
+and, today's my grep result is,=20
+
+ext2_writepage
+  block_write_full_page
+    block_write_full_page_endio
+      __block_write_full_page
+        set_page_writeback
+
+end_buffer_async_write
+  end_page_writeback
 
 
-> If we have failed some where inside ext4_get_blocks() internals we may
-> have allocated some new blocks, which was not yet claimed to quota.
-> We have to free such blocks, but without touching quota. Quota will
-> be updated later on exit from ext4_get_blocks().
-> There are two possible ways to understand what we have to skip quota update:
-> 1) Caller pass corresponding flag to ext4_free_blocks()
-> 2) check that free_blocks() was indirectly called by get_blocks() 
->    (i.e EXT4_I(inode)->i_delalloc_reserved_flag is set)
-> Second is simpler, but may result in unpredictable consequences later.
-> So i've chosen the first one, because caller must know which blocks it
-> is freeing.
-Hm... my test failed one more time, seems that single NOQUOTA flag is
-not enough. Because if metadata block was allocated it was charged to
-ei->i_allocated_meta_blocks so this counter must being decremented
-accordingly.
->
-> The bug happens on heavily loaded node, or with 227'th xfstestcase and
-> result in incorrect i_blocks (less than expected). So truncation for
-> that file result in i_blocks overflow.
-> Seems this was the last bug which was easily triggered by 227'th testcase.
->
-> Test hosts survived for 24hrs without complain. Tested configuration:
-> * ext3 over ext4driver with -odelalloc mount option
-> * ext4 with default mount opt
->
-> From ff4594462fe9101042df9c47a7c35cddd809db4f Mon Sep 17 00:00:00 2001
-> From: Dmitry Monakhov <dmonakhov@openvz.org>
-> Date: Tue, 27 Apr 2010 06:49:28 +0400
-> Subject: [PATCH] ext4: Do not drop quota for reserved blocks on error paths
->
-> If we have failed some where inside ext4_get_blocks() internals we may
-> have allocated some new blocks, which was not yet claimed to quota.
-> We have to free such blocks, but without touching quota. Quota will
-> be updated later on exit from ext4_get_blocks().
-> The bug happens on heavily loaded node.
->
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/ext4.h    |    1 +
->  fs/ext4/extents.c |   18 +++++++++++++-----
->  fs/ext4/inode.c   |   26 +++++++++++++++++---------
->  fs/ext4/mballoc.c |    2 +-
->  4 files changed, 32 insertions(+), 15 deletions(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index c69efb2..c009805 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -401,6 +401,7 @@ struct ext4_new_group_data {
->  #define EXT4_FREE_BLOCKS_METADATA	0x0001
->  #define EXT4_FREE_BLOCKS_FORGET		0x0002
->  #define EXT4_FREE_BLOCKS_VALIDATED	0x0004
-> +#define EXT4_FREE_BLOCKS_NOQUOTA	0x0008
->  
->  /*
->   * ioctl commands
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 6856272..815fd97 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1057,11 +1057,15 @@ cleanup:
->  
->  	if (err) {
->  		/* free all allocated blocks in error case */
-> +		int fb_flags = EXT4_FREE_BLOCKS_METADATA;
-> +		if (EXT4_I(inode)->i_delalloc_reserved_flag)
-> +			fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
-> +
->  		for (i = 0; i < depth; i++) {
->  			if (!ablocks[i])
->  				continue;
->  			ext4_free_blocks(handle, inode, 0, ablocks[i], 1,
-> -					 EXT4_FREE_BLOCKS_METADATA);
-> +					 fb_flags);
->  		}
->  	}
->  	kfree(ablocks);
-> @@ -3553,12 +3557,16 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  	}
->  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
->  	if (err) {
-> -		/* free data blocks we just allocated */
-> -		/* not a good idea to call discard here directly,
-> -		 * but otherwise we'd need to call it every free() */
-> +		int fb_flags = 0;
-> +		/* free data blocks we just allocated
-> +		 * Not a good idea to call discard here directly,
-> +		 * but otherwise we'd need to call it every free().
-> +		 * On delalloc blocks are not yet accounted to quota */
-> +		if (EXT4_I(inode)->i_delalloc_reserved_flag)
-> +			fb_flags = EXT4_FREE_BLOCKS_NOQUOTA;
->  		ext4_discard_preallocations(inode);
->  		ext4_free_blocks(handle, inode, 0, ext_pblock(&newex),
-> -				 ext4_ext_get_actual_len(&newex), 0);
-> +				 ext4_ext_get_actual_len(&newex), fb_flags);
->  		goto out2;
->  	}
->  
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e4e0a7d..58a3787 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -591,7 +591,9 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
->  	int index = 0;
->  	ext4_fsblk_t current_block = 0;
->  	int ret = 0;
-> -
-> +	int fb_flags = 0;
-> +	if (EXT4_I(inode)->i_delalloc_reserved_flag)
-> +		fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
->  	/*
->  	 * Here we try to allocate the requested multiple blocks at once,
->  	 * on a best-effort basis.
-> @@ -686,7 +688,7 @@ allocated:
->  	return ret;
->  failed_out:
->  	for (i = 0; i < index; i++)
-> -		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
-> +		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, fb_flags);
->  	return ret;
->  }
->  
-> @@ -727,6 +729,9 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
->  	int num;
->  	ext4_fsblk_t new_blocks[4];
->  	ext4_fsblk_t current_block;
-> +	int fb_flags = 0;
-> +	if (EXT4_I(inode)->i_delalloc_reserved_flag)
-> +		fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
->  
->  	num = ext4_alloc_blocks(handle, inode, iblock, goal, indirect_blks,
->  				*blks, new_blocks, &err);
-> @@ -782,20 +787,20 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
->  	return err;
->  failed:
->  	/* Allocation failed, free what we already allocated */
-> -	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, 0);
-> +	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, fb_flags);
->  	for (i = 1; i <= n ; i++) {
-> -		/* 
-> +		/*
->  		 * branch[i].bh is newly allocated, so there is no
->  		 * need to revoke the block, which is why we don't
->  		 * need to set EXT4_FREE_BLOCKS_METADATA.
->  		 */
->  		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1,
-> -				 EXT4_FREE_BLOCKS_FORGET);
-> +				 fb_flags | EXT4_FREE_BLOCKS_FORGET);
->  	}
->  	for (i = n+1; i < indirect_blks; i++)
-> -		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
-> +		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, fb_flags);
->  
-> -	ext4_free_blocks(handle, inode, 0, new_blocks[i], num, 0);
-> +	ext4_free_blocks(handle, inode, 0, new_blocks[i], num, fb_flags);
->  
->  	return err;
->  }
-> @@ -821,6 +826,9 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
->  	int i;
->  	int err = 0;
->  	ext4_fsblk_t current_block;
-> +	int fb_flags = 0;
-> +	if (EXT4_I(inode)->i_delalloc_reserved_flag)
-> +		fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
->  
->  	/*
->  	 * If we're splicing into a [td]indirect block (as opposed to the
-> @@ -880,10 +888,10 @@ err_out:
->  		 * need to set EXT4_FREE_BLOCKS_METADATA.
->  		 */
->  		ext4_free_blocks(handle, inode, where[i].bh, 0, 1,
-> -				 EXT4_FREE_BLOCKS_FORGET);
-> +				fb_flags | EXT4_FREE_BLOCKS_FORGET);
->  	}
->  	ext4_free_blocks(handle, inode, 0, le32_to_cpu(where[num].key),
-> -			 blks, 0);
-> +			 blks, fb_flags);
->  
->  	return err;
->  }
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 3c27377..fa2fcf2 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4635,7 +4635,7 @@ do_more:
->  	}
->  	sb->s_dirt = 1;
->  error_return:
-> -	if (freed)
-> +	if (!(flags & EXT4_FREE_BLOCKS_NOQUOTA) && freed)
->  		dquot_free_block(inode, freed);
->  	brelse(bitmap_bh);
->  	ext4_std_error(sb, err);
+ext3 seems to have similar logic of ext2. Am I missing something?
+
+
+
+
+>=20
+> Hence my question about wouldn't it be simpler if we simply added more hi=
+gh-level locking to prevent truncate from racing against writepage/writebac=
+k. =20
+>=20
+> -- Ted
+>=20
+
+
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
