@@ -1,139 +1,219 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/2] jbd: Provide function to check whether transaction will issue data barrier
-Date: Tue, 27 Apr 2010 07:42:49 +0400
-Message-ID: <87eii1d0hy.fsf@openvz.org>
-References: <1272312659-16468-1-git-send-email-jack@suse.cz>
-	<1272312659-16468-2-git-send-email-jack@suse.cz>
+Subject: [PATCH] ext4: Do not dec quota for reserved blocks on error paths
+Date: Tue, 27 Apr 2010 08:47:46 +0400
+Message-ID: <87633dcxhp.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: multipart/mixed; boundary="=-=-="
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:56544 "EHLO
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:38200 "EHLO
 	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753027Ab0D0Dmy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Apr 2010 23:42:54 -0400
-Received: by bwz19 with SMTP id 19so109817bwz.21
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Apr 2010 20:42:52 -0700 (PDT)
-In-Reply-To: <1272312659-16468-2-git-send-email-jack@suse.cz> (Jan Kara's
-	message of "Mon, 26 Apr 2010 22:10:58 +0200")
+	with ESMTP id S1749667Ab0D0Erv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Apr 2010 00:47:51 -0400
+Received: by bwz19 with SMTP id 19so122824bwz.21
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Apr 2010 21:47:49 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+--=-=-=
 
-> Provide a function which returns whether a transaction with given tid
-> will send a barrier to the filesystem device. The function will be used
-> by ext3 to detect whether fsync needs to send a separate barrier or not.
-Agree. Except the fact that in case of j_dev != j_fs_dev jbd is still
-broken. I'm plan to post back-port from jbd2 which makes
-journal_trans_will_send_data_barrier() more complex. It have to analyze
-commit_transaction->t_flushed_data_blocks.
->
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/jbd/commit.c     |    8 +++++++-
->  fs/jbd/journal.c    |   33 +++++++++++++++++++++++++++++++++
->  include/linux/jbd.h |    3 ++-
->  3 files changed, 42 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-> index ecb44c9..28a9dda 100644
-> --- a/fs/jbd/commit.c
-> +++ b/fs/jbd/commit.c
-> @@ -786,6 +786,12 @@ wait_for_iobuf:
->  
->  	jbd_debug(3, "JBD: commit phase 6\n");
->  
-> +	/* All metadata is written, now write commit record and do cleanup */
-> +	spin_lock(&journal->j_state_lock);
-> +	J_ASSERT(commit_transaction->t_state == T_COMMIT);
-> +	commit_transaction->t_state = T_COMMIT_RECORD;
-> +	spin_unlock(&journal->j_state_lock);
-> +
->  	if (journal_write_commit_record(journal, commit_transaction))
->  		err = -EIO;
->  
-> @@ -923,7 +929,7 @@ restart_loop:
->  
->  	jbd_debug(3, "JBD: commit phase 8\n");
->  
-> -	J_ASSERT(commit_transaction->t_state == T_COMMIT);
-> +	J_ASSERT(commit_transaction->t_state == T_COMMIT_RECORD);
->  
->  	commit_transaction->t_state = T_FINISHED;
->  	J_ASSERT(commit_transaction == journal->j_committing_transaction);
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index bd224ee..99c7194 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -565,6 +565,38 @@ int log_wait_commit(journal_t *journal, tid_t tid)
->  }
->  
->  /*
-> + * Return 1 if a given transaction has not yet sent barrier request
-> + * connected with a transaction commit. If 0 is returned, transaction
-> + * may or may not have sent the barrier. Used to avoid sending barrier
-> + * twice in common cases.
-> + */
-> +int journal_trans_will_send_data_barrier(journal_t *journal, tid_t tid)
-> +{
-> +	int ret = 0;
-> +	transaction_t *commit_trans;
-> +
-> +	if (!(journal->j_flags & JFS_BARRIER))
-> +		return 0;
-> +	spin_lock(&journal->j_state_lock);
-> +	/* Transaction already committed? */
-> +	if (tid_geq(journal->j_commit_sequence, tid))
-> +		goto out;
-> +	/*
-> +	 * Transaction is being committed and we already proceeded to
-> +	 * writing commit record?
-> +	 */
-> +	commit_trans = journal->j_committing_transaction;
-> +	if (commit_trans && commit_trans->t_tid == tid &&
-> +	    commit_trans->t_state >= T_COMMIT_RECORD)
-> +		goto out;
-> +	ret = 1;
-> +out:
-> +	spin_unlock(&journal->j_state_lock);
-> +	return ret;
-> +}
-> +EXPORT_SYMBOL(journal_commit_will_send_barrier);
-> +
-> +/*
->   * Log buffer allocation routines:
->   */
->  
-> @@ -1157,6 +1189,7 @@ int journal_destroy(journal_t *journal)
->  {
->  	int err = 0;
->  
-> +	
->  	/* Wait for the commit thread to wake up and die. */
->  	journal_kill_thread(journal);
->  
-> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> index 516a2a2..e069650 100644
-> --- a/include/linux/jbd.h
-> +++ b/include/linux/jbd.h
-> @@ -427,9 +427,9 @@ struct transaction_s
->  	enum {
->  		T_RUNNING,
->  		T_LOCKED,
-> -		T_RUNDOWN,
->  		T_FLUSH,
->  		T_COMMIT,
-> +		T_COMMIT_RECORD,
->  		T_FINISHED
->  	}			t_state;
->  
-> @@ -991,6 +991,7 @@ int journal_start_commit(journal_t *journal, tid_t *tid);
->  int journal_force_commit_nested(journal_t *journal);
->  int log_wait_commit(journal_t *journal, tid_t tid);
->  int log_do_checkpoint(journal_t *journal);
-> +int journal_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
->  
->  void __log_wait_for_space(journal_t *journal);
->  extern void	__journal_drop_transaction(journal_t *, transaction_t *);
+If we have failed some where inside ext4_get_blocks() internals we may
+have allocated some new blocks, which was not yet claimed to quota.
+We have to free such blocks, but without touching quota. Quota will
+be updated later on exit from ext4_get_blocks().
+There are two possible ways to understand what we have to skip quota update:
+1) Caller pass corresponding flag to ext4_free_blocks()
+2) check that free_blocks() was indirectly called by get_blocks() 
+   (i.e EXT4_I(inode)->i_delalloc_reserved_flag is set)
+Second is simpler, but may result in unpredictable consequences later.
+So i've chosen the first one, because caller must know which blocks it
+is freeing.
+
+The bug happens on heavily loaded node, or with 227'th xfstestcase and
+result in incorrect i_blocks (less than expected). So truncation for
+that file result in i_blocks overflow.
+Seems this was the last bug which was easily triggered by 227'th testcase.
+
+Test hosts survived for 24hrs without complain. Tested configuration:
+* ext3 over ext4driver with -odelalloc mount option
+* ext4 with default mount opt
+
+
+--=-=-=
+Content-Disposition: inline;
+ filename=0001-ext4-Do-not-drop-quota-for-reserved-blocks-on-error-.patch
+
+>From ff4594462fe9101042df9c47a7c35cddd809db4f Mon Sep 17 00:00:00 2001
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Date: Tue, 27 Apr 2010 06:49:28 +0400
+Subject: [PATCH] ext4: Do not drop quota for reserved blocks on error paths
+
+If we have failed some where inside ext4_get_blocks() internals we may
+have allocated some new blocks, which was not yet claimed to quota.
+We have to free such blocks, but without touching quota. Quota will
+be updated later on exit from ext4_get_blocks().
+The bug happens on heavily loaded node.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/ext4.h    |    1 +
+ fs/ext4/extents.c |   18 +++++++++++++-----
+ fs/ext4/inode.c   |   26 +++++++++++++++++---------
+ fs/ext4/mballoc.c |    2 +-
+ 4 files changed, 32 insertions(+), 15 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c69efb2..c009805 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -401,6 +401,7 @@ struct ext4_new_group_data {
+ #define EXT4_FREE_BLOCKS_METADATA	0x0001
+ #define EXT4_FREE_BLOCKS_FORGET		0x0002
+ #define EXT4_FREE_BLOCKS_VALIDATED	0x0004
++#define EXT4_FREE_BLOCKS_NOQUOTA	0x0008
+ 
+ /*
+  * ioctl commands
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6856272..815fd97 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1057,11 +1057,15 @@ cleanup:
+ 
+ 	if (err) {
+ 		/* free all allocated blocks in error case */
++		int fb_flags = EXT4_FREE_BLOCKS_METADATA;
++		if (EXT4_I(inode)->i_delalloc_reserved_flag)
++			fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
++
+ 		for (i = 0; i < depth; i++) {
+ 			if (!ablocks[i])
+ 				continue;
+ 			ext4_free_blocks(handle, inode, 0, ablocks[i], 1,
+-					 EXT4_FREE_BLOCKS_METADATA);
++					 fb_flags);
+ 		}
+ 	}
+ 	kfree(ablocks);
+@@ -3553,12 +3557,16 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	}
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+ 	if (err) {
+-		/* free data blocks we just allocated */
+-		/* not a good idea to call discard here directly,
+-		 * but otherwise we'd need to call it every free() */
++		int fb_flags = 0;
++		/* free data blocks we just allocated
++		 * Not a good idea to call discard here directly,
++		 * but otherwise we'd need to call it every free().
++		 * On delalloc blocks are not yet accounted to quota */
++		if (EXT4_I(inode)->i_delalloc_reserved_flag)
++			fb_flags = EXT4_FREE_BLOCKS_NOQUOTA;
+ 		ext4_discard_preallocations(inode);
+ 		ext4_free_blocks(handle, inode, 0, ext_pblock(&newex),
+-				 ext4_ext_get_actual_len(&newex), 0);
++				 ext4_ext_get_actual_len(&newex), fb_flags);
+ 		goto out2;
+ 	}
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e4e0a7d..58a3787 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -591,7 +591,9 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 	int index = 0;
+ 	ext4_fsblk_t current_block = 0;
+ 	int ret = 0;
+-
++	int fb_flags = 0;
++	if (EXT4_I(inode)->i_delalloc_reserved_flag)
++		fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
+ 	/*
+ 	 * Here we try to allocate the requested multiple blocks at once,
+ 	 * on a best-effort basis.
+@@ -686,7 +688,7 @@ allocated:
+ 	return ret;
+ failed_out:
+ 	for (i = 0; i < index; i++)
+-		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
++		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, fb_flags);
+ 	return ret;
+ }
+ 
+@@ -727,6 +729,9 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 	int num;
+ 	ext4_fsblk_t new_blocks[4];
+ 	ext4_fsblk_t current_block;
++	int fb_flags = 0;
++	if (EXT4_I(inode)->i_delalloc_reserved_flag)
++		fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
+ 
+ 	num = ext4_alloc_blocks(handle, inode, iblock, goal, indirect_blks,
+ 				*blks, new_blocks, &err);
+@@ -782,20 +787,20 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 	return err;
+ failed:
+ 	/* Allocation failed, free what we already allocated */
+-	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, 0);
++	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, fb_flags);
+ 	for (i = 1; i <= n ; i++) {
+-		/* 
++		/*
+ 		 * branch[i].bh is newly allocated, so there is no
+ 		 * need to revoke the block, which is why we don't
+ 		 * need to set EXT4_FREE_BLOCKS_METADATA.
+ 		 */
+ 		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1,
+-				 EXT4_FREE_BLOCKS_FORGET);
++				 fb_flags | EXT4_FREE_BLOCKS_FORGET);
+ 	}
+ 	for (i = n+1; i < indirect_blks; i++)
+-		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
++		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, fb_flags);
+ 
+-	ext4_free_blocks(handle, inode, 0, new_blocks[i], num, 0);
++	ext4_free_blocks(handle, inode, 0, new_blocks[i], num, fb_flags);
+ 
+ 	return err;
+ }
+@@ -821,6 +826,9 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 	int i;
+ 	int err = 0;
+ 	ext4_fsblk_t current_block;
++	int fb_flags = 0;
++	if (EXT4_I(inode)->i_delalloc_reserved_flag)
++		fb_flags |= EXT4_FREE_BLOCKS_NOQUOTA;
+ 
+ 	/*
+ 	 * If we're splicing into a [td]indirect block (as opposed to the
+@@ -880,10 +888,10 @@ err_out:
+ 		 * need to set EXT4_FREE_BLOCKS_METADATA.
+ 		 */
+ 		ext4_free_blocks(handle, inode, where[i].bh, 0, 1,
+-				 EXT4_FREE_BLOCKS_FORGET);
++				fb_flags | EXT4_FREE_BLOCKS_FORGET);
+ 	}
+ 	ext4_free_blocks(handle, inode, 0, le32_to_cpu(where[num].key),
+-			 blks, 0);
++			 blks, fb_flags);
+ 
+ 	return err;
+ }
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 3c27377..fa2fcf2 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4635,7 +4635,7 @@ do_more:
+ 	}
+ 	sb->s_dirt = 1;
+ error_return:
+-	if (freed)
++	if (!(flags & EXT4_FREE_BLOCKS_NOQUOTA) && freed)
+ 		dquot_free_block(inode, freed);
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
+-- 
+1.6.6.1
+
+
+--=-=-=--
