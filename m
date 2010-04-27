@@ -1,113 +1,139 @@
-From: tytso@mit.edu
-Subject: Re: DRAFT Design Spec for 1st Class Quota Support in Ext4
-Date: Mon, 26 Apr 2010 18:57:58 -0400
-Message-ID: <20100426225758.GA13800@thunk.org>
-References: <E1O6I3M-0002Wl-CV@closure.thunk.org>
- <20100426184746.GC21179@atrey.karlin.mff.cuni.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/2] jbd: Provide function to check whether transaction will issue data barrier
+Date: Tue, 27 Apr 2010 07:42:49 +0400
+Message-ID: <87eii1d0hy.fsf@openvz.org>
+References: <1272312659-16468-1-git-send-email-jack@suse.cz>
+	<1272312659-16468-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56109 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751964Ab0D0B1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Apr 2010 21:27:39 -0400
-Content-Disposition: inline
-In-Reply-To: <20100426184746.GC21179@atrey.karlin.mff.cuni.cz>
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:56544 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753027Ab0D0Dmy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Apr 2010 23:42:54 -0400
+Received: by bwz19 with SMTP id 19so109817bwz.21
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Apr 2010 20:42:52 -0700 (PDT)
+In-Reply-To: <1272312659-16468-2-git-send-email-jack@suse.cz> (Jan Kara's
+	message of "Mon, 26 Apr 2010 22:10:58 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 26, 2010 at 08:47:47PM +0200, Jan Kara wrote:
->   Hi Ted,
-> 
->   The proposal looks fine. A couple of comments / questions:
-> 
-> > 6) Tune2fs will have a facility for adding and removing user and group
-> > quotas inodes while the file system is mounted.  The quota usage will
-> > not be correct after the quota inodes are newly added, however, so quota
-> > will not be enabled by default,  If the quota inodes are removed, quota
-> > will be disabled first.
->   I suppose you will make quota file mtime not match last mounted time so
-> that e2fsck updating the usage will be triggered, right?
+Jan Kara <jack@suse.cz> writes:
 
-Yes, that was my original plan (when adding quotas to a mounted
-filesystem).  The one downside to this is that it requires rebooting
-and running e2fsck in order enable quotas, which is kind of unfortunate.
-
-One thing which I was thinking about doing was running quotacheck and
-having it create aquota.user,group files the old-fashioned (admittedly
-racy) way, and then having tune2fs zap those inodes into the
-superblock and then enabling quotas.  The usage counters won't be
-exactly write if the filesystem has any activity happening while
-quotacheck si running, but that's a problem system administrators seem
-to be willing to live with today.
-
-We can then have e2fsck convert the aquota.{user,group} files to
-hidden files by simply copying the inode to inodes 3 and 4, and then
-removing the link in the root directory (without requiring a full fsck
-run) on the next reboot.  We use a similar trick today to migrate from
-a /.journal file to a hidden journal inode in e2fsck already, so most
-of that code is in e2fsck already.
-
-> > 7) There will be a new interface so that bulk quota information can be
-> > fetched from the file system.  This needs to be negotiated with Jan
-> > Kara.  It can either be a new system call, or a magic file in /proc that
-> > can be opened and the repquota data extracted.
->   Traditionally, quota interaction happens via quotactl() syscall. I'm not
-> against adding a syscall for this but then it would be a logical thing to
-> transition all the quotactl interface to standard syscalls... I'll try to
-> come up with some proposal during this week.
-
-I'm OK with whatever you can get past the LKML bike shed painting
-crew.  :-)
-
-There's a set of folks who tend to whinge about how multiplexed system
-calls are evil, and I'm not sure whether they will complain about
-adding more multiplexing to the quotactl system call, with the
-attendent need for 64->32 compat complexity.
-
->   Using /proc/ file looks like an ugly hack to me.
-
-Well, unlike the other the other quotactl subcommands, this one is
-going to require some kind of first/next iterator, since the number of
-user/groups that needs to be returned is highly variable.  And in
-fact, if we need a system call per user/group data that we need to
-extract, it's going to be somewhat painful from a syscall overhead
-point of view, isn't it?
-
-Using a single /proc file means many fewer syscalls to read out the
-repquota data, since userspace can use a nice big 4k buffer.  (I
-suppose the repquota quotactl subcommand could fill in a big passed-in
-array, but that's more complexity.)  And with a /proc file, userspace
-would be able to read out the repquota information directly using a
-shell script.
-
-But I don't have strong preference if you really want to use a binary
-format instead of a /proc file.
-
->   And one more question: You don't speak in your document, when quotas
-> will be enabled. I expect accounting will be enabled during mount time, how
-> about quota enforcement? I think it might be useful if admin can disable
-> the quota limit enforcement and QUOTAON / QUOTAOFF sysctl is a natural
-> way to do this. Generic quota code supports this so it comes basically
-> for free.
-
-I was assuming that it was better to simply enable quota enforcement
-by default; how often do system administrators want to selecting
-enable and disable quota?  It seemed to me that a huge amount of the
-hair and complexity and nastiness of the /etc/init.d/quota scripts was
-because quota checking had to be enabled from userspace, and there was
-a need to grovel through /etc/mtab (or /proc/mounts) to figure out
-which file systems needed to have quota enabled, not just for
-quotacheck.
-
-I consider the amount of mount options that we have to pass through to
-/proc/mounts to be horrible, and one of my primary design goals was to
-eliminate all of that.  So my plan was to enable quotas enforcement
-and tracking when the file system is mounted.
-
-Is there a usage scenario where a system administrator would want to
-mount a file system and _not_ enforce quota?
-
-    	     	     	    	 	   - Ted
+> Provide a function which returns whether a transaction with given tid
+> will send a barrier to the filesystem device. The function will be used
+> by ext3 to detect whether fsync needs to send a separate barrier or not.
+Agree. Except the fact that in case of j_dev != j_fs_dev jbd is still
+broken. I'm plan to post back-port from jbd2 which makes
+journal_trans_will_send_data_barrier() more complex. It have to analyze
+commit_transaction->t_flushed_data_blocks.
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/jbd/commit.c     |    8 +++++++-
+>  fs/jbd/journal.c    |   33 +++++++++++++++++++++++++++++++++
+>  include/linux/jbd.h |    3 ++-
+>  3 files changed, 42 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+> index ecb44c9..28a9dda 100644
+> --- a/fs/jbd/commit.c
+> +++ b/fs/jbd/commit.c
+> @@ -786,6 +786,12 @@ wait_for_iobuf:
+>  
+>  	jbd_debug(3, "JBD: commit phase 6\n");
+>  
+> +	/* All metadata is written, now write commit record and do cleanup */
+> +	spin_lock(&journal->j_state_lock);
+> +	J_ASSERT(commit_transaction->t_state == T_COMMIT);
+> +	commit_transaction->t_state = T_COMMIT_RECORD;
+> +	spin_unlock(&journal->j_state_lock);
+> +
+>  	if (journal_write_commit_record(journal, commit_transaction))
+>  		err = -EIO;
+>  
+> @@ -923,7 +929,7 @@ restart_loop:
+>  
+>  	jbd_debug(3, "JBD: commit phase 8\n");
+>  
+> -	J_ASSERT(commit_transaction->t_state == T_COMMIT);
+> +	J_ASSERT(commit_transaction->t_state == T_COMMIT_RECORD);
+>  
+>  	commit_transaction->t_state = T_FINISHED;
+>  	J_ASSERT(commit_transaction == journal->j_committing_transaction);
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index bd224ee..99c7194 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -565,6 +565,38 @@ int log_wait_commit(journal_t *journal, tid_t tid)
+>  }
+>  
+>  /*
+> + * Return 1 if a given transaction has not yet sent barrier request
+> + * connected with a transaction commit. If 0 is returned, transaction
+> + * may or may not have sent the barrier. Used to avoid sending barrier
+> + * twice in common cases.
+> + */
+> +int journal_trans_will_send_data_barrier(journal_t *journal, tid_t tid)
+> +{
+> +	int ret = 0;
+> +	transaction_t *commit_trans;
+> +
+> +	if (!(journal->j_flags & JFS_BARRIER))
+> +		return 0;
+> +	spin_lock(&journal->j_state_lock);
+> +	/* Transaction already committed? */
+> +	if (tid_geq(journal->j_commit_sequence, tid))
+> +		goto out;
+> +	/*
+> +	 * Transaction is being committed and we already proceeded to
+> +	 * writing commit record?
+> +	 */
+> +	commit_trans = journal->j_committing_transaction;
+> +	if (commit_trans && commit_trans->t_tid == tid &&
+> +	    commit_trans->t_state >= T_COMMIT_RECORD)
+> +		goto out;
+> +	ret = 1;
+> +out:
+> +	spin_unlock(&journal->j_state_lock);
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL(journal_commit_will_send_barrier);
+> +
+> +/*
+>   * Log buffer allocation routines:
+>   */
+>  
+> @@ -1157,6 +1189,7 @@ int journal_destroy(journal_t *journal)
+>  {
+>  	int err = 0;
+>  
+> +	
+>  	/* Wait for the commit thread to wake up and die. */
+>  	journal_kill_thread(journal);
+>  
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 516a2a2..e069650 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -427,9 +427,9 @@ struct transaction_s
+>  	enum {
+>  		T_RUNNING,
+>  		T_LOCKED,
+> -		T_RUNDOWN,
+>  		T_FLUSH,
+>  		T_COMMIT,
+> +		T_COMMIT_RECORD,
+>  		T_FINISHED
+>  	}			t_state;
+>  
+> @@ -991,6 +991,7 @@ int journal_start_commit(journal_t *journal, tid_t *tid);
+>  int journal_force_commit_nested(journal_t *journal);
+>  int log_wait_commit(journal_t *journal, tid_t tid);
+>  int log_do_checkpoint(journal_t *journal);
+> +int journal_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
+>  
+>  void __log_wait_for_space(journal_t *journal);
+>  extern void	__journal_drop_transaction(journal_t *, transaction_t *);
