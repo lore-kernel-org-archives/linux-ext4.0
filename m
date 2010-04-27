@@ -1,80 +1,137 @@
-From: Edward Shishkin <edward@redhat.com>
-Subject: Re: [PATCH 2/2] Add batched discard support for ext4 - using rbtree
-Date: Tue, 27 Apr 2010 17:29:06 +0200
-Message-ID: <4BD702C2.7000209@redhat.com>
-References: <1271674527-2977-2-git-send-email-lczerner@redhat.com> <1271674527-2977-3-git-send-email-lczerner@redhat.com> <r2k87f94c371004201421se796c0ekbae28495e62a9eb7@mail.gmail.com> <4BCE6243.5010209@teksavvy.com> <4BCE66C5.3060906@redhat.com> <v2w87f94c371004211159ue3a48923u6a543e8090dcdfa6@mail.gmail.com> <4BCF4C53.3010608@redhat.com> <x49zl0w1uhh.fsf@segfault.boston.devel.redhat.com> <k2y87f94c371004211344xfd17387fwc62432d022145376@mail.gmail.com> <alpine.LFD.2.00.1004230944070.2814@localhost> <20100426165527.GB21179@atrey.karlin.mff.cuni.cz> <alpine.LFD.2.00.1004261903260.2797@localhost> <4BD5D2EA.1070008@redhat.com> <alpine.LFD.2.00.1004261957001.29999@localhost> <x49hbmy2hmz.fsf@segfault.boston.devel.redhat.com> <alpine.LFD.2.00.1004262036070.29999@localhost> <alpine.LFD.2.00.100
- 4262038310.29999@localhost>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: DRAFT Design Spec for 1st Class Quota Support in Ext4
+Date: Tue, 27 Apr 2010 22:42:55 +0200
+Message-ID: <20100427204254.GC5103@quack.suse.cz>
+References: <E1O6I3M-0002Wl-CV@closure.thunk.org>
+ <20100426184746.GC21179@atrey.karlin.mff.cuni.cz>
+ <20100426225758.GA13800@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jeff Moyer <jmoyer@redhat.com>, Ric Wheeler <rwheeler@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Mark Lord <kernel@teksavvy.com>, linux-ext4@vger.kernel.org,
-	Edward Shishkin <eshishki@redhat.com>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:33277 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752703Ab0D0P3R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Apr 2010 11:29:17 -0400
-In-Reply-To: <alpine.LFD.2.00.1004262038310.29999@localhost>
+	id S1753834Ab0D0Umz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Apr 2010 16:42:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20100426225758.GA13800@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lukas Czerner wrote:
-> On Mon, 26 Apr 2010, Lukas Czerner wrote:
->
->   
->> Create an ioctl which walks through all the free extents in each
->> allocating group and discard those extents. As an addition to improve
->> its performance one can specify minimum free extent length, so ioctl
->> will not bother with shorter extents.
->>
->> This of course means, that with each invocation the ioctl must walk
->> through whole file system, checking and discarding free extents, which
->> is not very efficient. The best way to avoid this is to keep track of
->> deleted (freed) blocks. Then the ioctl have to trim just those free
->> extents which were recently freed.
->>
->> In order to implement this I have created new structure
->> ext4_deleted_data which represents deleted extent in per-group rbtree.
->> When blocks are freed, extents are stored in the tree (possibly merged
->> with other extents). The ioctl then can walk through the tree, take out
->> extents from the tree, compare them with the free extents and possibly
->> trim them.
->>
->> Note that there is support for setting minimum extent length in ioctl
->> call, so it will not bother with shorter extents. Also, when the
->> previously deleted range is taken from the tree and it is not entirely
->> free, the free fragments are discarded and extents shorter than minlen
->> are NOT returned back to the tree to avoid fragmentation of the tree
->> which could lead to the big memory consumption.
->>
->> But you may notice, that there is one problem. bb_bitmap_deleted does
->> not survive umount. To bypass the problem the first ioctl call have to
->> walk through whole file system trimming all free extents.
->>
->> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
->>     
->
-> For now it just ignores the small extents to avoid fragmentation. As I
-> said before, I agree that they should not be ignored, I just need to
-> figure out the way to do this efficiently.
+On Mon 26-04-10 18:57:58, tytso@mit.edu wrote:
+> On Mon, Apr 26, 2010 at 08:47:47PM +0200, Jan Kara wrote:
+> >   Hi Ted,
+> > 
+> >   The proposal looks fine. A couple of comments / questions:
+> > 
+> > > 6) Tune2fs will have a facility for adding and removing user and group
+> > > quotas inodes while the file system is mounted.  The quota usage will
+> > > not be correct after the quota inodes are newly added, however, so quota
+> > > will not be enabled by default,  If the quota inodes are removed, quota
+> > > will be disabled first.
+> >   I suppose you will make quota file mtime not match last mounted time so
+> > that e2fsck updating the usage will be triggered, right?
+> 
+> Yes, that was my original plan (when adding quotas to a mounted
+> filesystem).  The one downside to this is that it requires rebooting
+> and running e2fsck in order enable quotas, which is kind of unfortunate.
+> 
+> One thing which I was thinking about doing was running quotacheck and
+> having it create aquota.user,group files the old-fashioned (admittedly
+> racy) way, and then having tune2fs zap those inodes into the
+> superblock and then enabling quotas.  The usage counters won't be
+> exactly write if the filesystem has any activity happening while
+> quotacheck si running, but that's a problem system administrators seem
+> to be willing to live with today.
+  When all the needed functionality for gathering quota information will
+be in e2fsck already, wouldn't it be more natural to use e2fsck for
+gathering quota information on mounted filesystem as well? Or what would
+be benefit of using quotacheck for this? It uses libext2fs to do inode
+scan anyways...
 
-I suggest to not start with optimisations: let's first take a look
-what is going on in the simple case. Benchmarks are our friends..
+> We can then have e2fsck convert the aquota.{user,group} files to
+> hidden files by simply copying the inode to inodes 3 and 4, and then
+> removing the link in the root directory (without requiring a full fsck
+> run) on the next reboot.  We use a similar trick today to migrate from
+> a /.journal file to a hidden journal inode in e2fsck already, so most
+> of that code is in e2fsck already.
+> 
+> > > 7) There will be a new interface so that bulk quota information can be
+> > > fetched from the file system.  This needs to be negotiated with Jan
+> > > Kara.  It can either be a new system call, or a magic file in /proc that
+> > > can be opened and the repquota data extracted.
+> >   Traditionally, quota interaction happens via quotactl() syscall. I'm not
+> > against adding a syscall for this but then it would be a logical thing to
+> > transition all the quotactl interface to standard syscalls... I'll try to
+> > come up with some proposal during this week.
+> 
+> I'm OK with whatever you can get past the LKML bike shed painting
+> crew.  :-)
+> 
+> There's a set of folks who tend to whinge about how multiplexed system
+> calls are evil, and I'm not sure whether they will complain about
+> adding more multiplexing to the quotactl system call, with the
+> attendent need for 64->32 compat complexity.
+> 
+> >   Using /proc/ file looks like an ugly hack to me.
+> 
+> Well, unlike the other the other quotactl subcommands, this one is
+> going to require some kind of first/next iterator, since the number of
+> user/groups that needs to be returned is highly variable.  And in
+> fact, if we need a system call per user/group data that we need to
+> extract, it's going to be somewhat painful from a syscall overhead
+> point of view, isn't it?
+> 
+> Using a single /proc file means many fewer syscalls to read out the
+> repquota data, since userspace can use a nice big 4k buffer.  (I
+> suppose the repquota quotactl subcommand could fill in a big passed-in
+> array, but that's more complexity.)  And with a /proc file, userspace
+> would be able to read out the repquota information directly using a
+> shell script.
+> 
+> But I don't have strong preference if you really want to use a binary
+> format instead of a /proc file.
+  So what I have in mind is that we would have QUOTASCAN_OPEN quotactl
+which would create a fd for the caller (essentially a read end of the pipe)
+and return it. Reading from the fd would give quota information as if_dqblk
+structures. The read would return only complete if_dqblk structures.
+Internally I'd use f_pos to store the id (uid / gid) of the next structure
+to return to maintain scan state. This should be reasonably flexible,
+efficient, and clean interface. What do you think?
 
-Edward.
+> >   And one more question: You don't speak in your document, when quotas
+> > will be enabled. I expect accounting will be enabled during mount time, how
+> > about quota enforcement? I think it might be useful if admin can disable
+> > the quota limit enforcement and QUOTAON / QUOTAOFF sysctl is a natural
+> > way to do this. Generic quota code supports this so it comes basically
+> > for free.
+> 
+> I was assuming that it was better to simply enable quota enforcement
+> by default; how often do system administrators want to selecting
+> enable and disable quota?  It seemed to me that a huge amount of the
+> hair and complexity and nastiness of the /etc/init.d/quota scripts was
+> because quota checking had to be enabled from userspace, and there was
+> a need to grovel through /etc/mtab (or /proc/mounts) to figure out
+> which file systems needed to have quota enabled, not just for
+> quotacheck.
+> 
+> I consider the amount of mount options that we have to pass through to
+> /proc/mounts to be horrible, and one of my primary design goals was to
+> eliminate all of that.  So my plan was to enable quotas enforcement
+> and tracking when the file system is mounted.
+  Well, mount options are a separate issue. As soon as filesystem is
+aware of potential quotas since mount, we know that Q_GETFMT quotactl
+will return quota format ID (instead of -ESRCH) if quota accounting is
+started. So quota-tools can use this and there's no need for special
+mount options.
 
->  
->
-> Also it was not properly tested yet.
->
->
-> -Lukas.
->   
+> Is there a usage scenario where a system administrator would want to
+> mount a file system and _not_ enforce quota?
+  Hmm, no, I'm not aware of any reasonable scenario. So feel free to
+enable enforcement on mount.
 
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
