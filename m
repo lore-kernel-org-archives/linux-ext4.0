@@ -1,43 +1,42 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] jbd: Provide function to check whether transaction
- will issue data barrier
-Date: Tue, 27 Apr 2010 22:48:31 +0200
-Message-ID: <20100427204831.GD5103@quack.suse.cz>
-References: <1272312659-16468-1-git-send-email-jack@suse.cz>
- <1272312659-16468-2-git-send-email-jack@suse.cz>
- <87eii1d0hy.fsf@openvz.org>
+From: Mark Lord <kernel@teksavvy.com>
+Subject: Re: [PATCH 2/2] Add batched discard support for ext4.
+Date: Tue, 27 Apr 2010 21:25:00 -0400
+Message-ID: <4BD78E6C.6000709@teksavvy.com>
+References: <1271674527-2977-1-git-send-email-lczerner@redhat.com>	 <4BD2F69D.7070508@redhat.com>	 <o2y87f94c371004240730x389391dfka42a1e8abc498e1a@mail.gmail.com>	 <4BD30393.4050800@redhat.com>	 <h2n87f94c371004240803obefca41cg1ca8a727c1726827@mail.gmail.com>	 <4BD324B5.4030808@redhat.com>	 <p2i87f94c371004241130ya1642597g42bd77c3e3c351f1@mail.gmail.com>	 <4BD33B61.2080807@redhat.com> <4BD59C84.4040200@teksavvy.com>	 <yq18w8ae0mq.fsf@sermon.lab.mkp.net> <x2s87f94c371004260827gf5f978f4l48548add85094e22@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Jeff Moyer <jmoyer@redhat.com>, linux-ext4@vger.kernel.org,
+	Edward Shishkin <eshishki@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38695 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754631Ab0D0Usb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Apr 2010 16:48:31 -0400
-Content-Disposition: inline
-In-Reply-To: <87eii1d0hy.fsf@openvz.org>
+Received: from ironport2-out.teksavvy.com ([206.248.154.181]:36053 "EHLO
+	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755013Ab0D1BZE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Apr 2010 21:25:04 -0400
+In-Reply-To: <x2s87f94c371004260827gf5f978f4l48548add85094e22@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 27-04-10 07:42:49, Dmitry Monakhov wrote:
-> Jan Kara <jack@suse.cz> writes:
-> 
-> > Provide a function which returns whether a transaction with given tid
-> > will send a barrier to the filesystem device. The function will be used
-> > by ext3 to detect whether fsync needs to send a separate barrier or not.
-> Agree. Except the fact that in case of j_dev != j_fs_dev jbd is still
-> broken.
-  Yeah, I know about this. I had a look at it but stumbled over a barrier
-issue in the checkpointing code
-(http://marc.info/?l=linux-ext4&m=127198235617788&w=2) so I though I'll
-wait till that gets resolved.
+On 26/04/10 11:27 AM, Greg Freemyer wrote:
+..
+> Mark, or anyone, do you think it would be a bad idea for me to push
+> for Opensuse 11.3 (2.6.34 based) to use wiper.sh as a standard ext4
+> discard tool?  hdparm and wiper.sh are already in the distro, it just
+> needs a cron entry and maybe some basic management infrastructure.
+> They're at feature freeze for 11.3, so I don't know if I can get it in
+> or not.
+..
 
-> I'm plan to post back-port from jbd2 which makes
-> journal_trans_will_send_data_barrier() more complex. It have to analyze
-> commit_transaction->t_flushed_data_blocks.
+I'd hold off for now.  Rumour has it that Intel SSDs are not 100% compliant
+with TRIM -- they fail with large amounts of range data.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I don't have an Intel SSD to verify that or fix it with.
+
+Cheers
