@@ -1,33 +1,52 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: RFC Per group orphan list
-Date: Wed, 28 Apr 2010 14:55:29 +0400
-Message-ID: <87och3q21q.fsf@openvz.org>
+From: Nikanth Karthikesan <knikanth@suse.de>
+Subject: [PATCH] Prevent creation of files larger than RLIMIT_FSIZE using fallocate
+Date: Wed, 28 Apr 2010 18:54:49 +0530
+Message-ID: <201004281854.49730.knikanth@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:52202 "EHLO
-	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751342Ab0D1Kzd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Apr 2010 06:55:33 -0400
-Received: by bwz19 with SMTP id 19so26994bwz.21
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Apr 2010 03:55:32 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eelis <opensuse.org@contacts.eelis.net>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently orphan list is global, which require per-sb mutex
-to protect add/del from the list. But it is not really necessary.
-Just think about it we have to add inode to orphan list for each
-->write_begin call(for each page) if i_size will grow.
-For example btrfs support per-ctree orphan list.
-So IMHO per-group orphan list seems to be more natural here.
-So my proposal is following:
-1) Introduce new incompat feature for per-group orphan list. 
-2) Store per-group head of the list in group descriptor
-   (Where are several reserved fields in grp-desc).
-3) Maintain per-group orphan which protected by per-group lst-mutex. 
-4) Let fsck to scan group descriptors after unclean umount.Since they
-   are close to each other performance penalty will be negligible.
+Prevent creation of files larger than RLIMIT_FSIZE using fallocate.
 
-Seems that development complexity of this feature is not too high, 
-what do you think.
+Currently using posix_fallocate one can bypass an RLIMIT_FSIZE limit
+and create a file larger than the limit. Add a check for new size in
+the fallocate system call.
+
+File-systems supporting fallocate such as ext4 are affected by this
+bug. 
+
+Signed-off-by: Nikanth Karthikesan <knikanth@suse.de>
+Reported-by: Eelis - <opensuse.org@contacts.eelis.net>
+
+---
+
+diff --git a/fs/open.c b/fs/open.c
+index 74e5cd9..95ce069 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -412,10 +412,14 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	if (!S_ISREG(inode->i_mode) && !S_ISDIR(inode->i_mode))
+ 		return -ENODEV;
+ 
+-	/* Check for wrap through zero too */
+-	if (((offset + len) > inode->i_sb->s_maxbytes) || ((offset + len) < 0))
++	/* Check for wrap through zero */
++	if (offset+len < 0)
+ 		return -EFBIG;
+ 
++	ret = inode_newsize_ok(inode, (offset + len));
++	if (ret)
++		return ret;
++
+ 	if (!inode->i_op->fallocate)
+ 		return -EOPNOTSUPP;
+ 
