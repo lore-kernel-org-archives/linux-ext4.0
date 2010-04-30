@@ -1,47 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15875] Add an option to disable file/directory permissions for
- ext2/ext3/ext4 file systems
-Date: Thu, 29 Apr 2010 10:16:21 GMT
-Message-ID: <201004291016.o3TAGL1M006173@demeter.kernel.org>
-References: <bug-15875-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Bill Pemberton <wfp5p@virginia.edu>
+Subject: [PATCH 04/11] jbd2:  use NULL instead of 0 when pointer is needed
+Date: Fri, 30 Apr 2010 09:34:31 -0400
+Message-ID: <1272634478-4127-5-git-send-email-wfp5p@virginia.edu>
+References: <1272634478-4127-1-git-send-email-wfp5p@virginia.edu>
+Cc: linux-ext4@vger.kernel.org
+To: trivial@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:40848 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758781Ab0D3RbW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Apr 2010 13:31:22 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o3TAGLm3006176
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Apr 2010 10:16:21 GMT
-In-Reply-To: <bug-15875-13602@https.bugzilla.kernel.org/>
+Received: from viridian.itc.Virginia.EDU ([128.143.12.139]:53042 "EHLO
+	viridian.itc.virginia.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757571Ab0D3SU6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Apr 2010 14:20:58 -0400
+In-Reply-To: <1272634478-4127-1-git-send-email-wfp5p@virginia.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15875
+Fixes sparse warning:
 
+fs/jbd2/journal.c:1892:9: warning: Using plain integer as NULL pointer
 
+Signed-off-by: Bill Pemberton <wfp5p@virginia.edu>
+CC: linux-ext4@vger.kernel.org
+---
+ fs/jbd2/journal.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-
-
---- Comment #4 from Artem S. Tashkinov <t.artem@mailcity.com>  2010-04-29 10:16:06 ---
-It doesn't work:
-
-# dd if=/dev/zero of=ext2.img bs=100M count=1
-...
-# mke2fs ext2.img -> y
-...
-# mount -o loop,noacl ext2.img loop
-# mount | grep noacl
-/dev/loop0 on /tmp/loop type ext2 (rw,noacl)
-
-$ cd /tmp/loop
-$ touch test
-touch: cannot touch `test': Permission denied
-
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index c03d4dc..bc2ff59 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1889,7 +1889,7 @@ static struct kmem_cache *get_slab(size_t size)
+ 	BUG_ON(i >= JBD2_MAX_SLABS);
+ 	if (unlikely(i < 0))
+ 		i = 0;
+-	BUG_ON(jbd2_slab[i] == 0);
++	BUG_ON(jbd2_slab[i] == NULL);
+ 	return jbd2_slab[i];
+ }
+ 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.0.6
+
