@@ -1,172 +1,91 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: [PATCH] New testcase to check if fallocate respects RLIMIT_FSIZE
-	or not
-Date: Mon, 3 May 2010 14:01:35 +0530
-Message-ID: <20100503083135.GC13756@amitarora.in.ibm.com>
-References: <201004281854.49730.knikanth@suse.de> <4BD85F1F.7030100@suse.de> <201004291014.07194.knikanth@suse.de> <20100430143319.d51d6d77.akpm@linux-foundation.org> <20100501070426.GA9562@amitarora.in.ibm.com> <20100501101846.GA3769@infradead.org>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: Introducing Next3 - built-in snapshots support for Ext3
+Date: Mon, 3 May 2010 12:47:58 +0300
+Message-ID: <s2s18730dc51005030247u5ef2fddfz269b57d97714db8f@mail.gmail.com>
+References: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, xfs@oss.sgi.com,
-	Nikanth Karthikesan <knikanth@suse.de>, coly.li@suse.de,
-	Nick Piggin <npiggin@suse.de>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	Eelis <opensuse.org@contacts.eelis.net>,
-	Amit Arora <aarora@in.ibm.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100501101846.GA3769@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:63586 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751897Ab0ECJsB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 May 2010 05:48:01 -0400
+Received: by bwz19 with SMTP id 19so1179743bwz.21
+        for <linux-ext4@vger.kernel.org>; Mon, 03 May 2010 02:47:59 -0700 (PDT)
+In-Reply-To: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 01, 2010 at 06:18:46AM -0400, Christoph Hellwig wrote:
-> On Sat, May 01, 2010 at 12:34:26PM +0530, Amit K. Arora wrote:
-> > Agreed. How about doing this check in the filesystem specific fallocate
-> > inode routines instead ? For example, in ext4 we could do :
-> 
-> That looks okay - in fact XFS should already have this check because
-> it re-uses the setattr implementation to set the size.
-> 
-> Can you submit an xfstests testcase to verify this behaviour on all
-> filesystems?
+On Sun, Apr 18, 2010 at 6:41 PM, Amir G. wrote:
+> Hi All,
+>
+> For over a year, Next3 has been developed in-house by CTERA networks,
+> as part of its NAS appliances.
+> Now that the appliances are out in the market, Next3 project can
+> finally be shared with the world.
+>
+> Main Next3 features:
+> - Backward and forward compatible with Ext3
+> - Incremental, volume level, read-only snapshots
+> - Snapshots use available file system disk space
+> - Snapshot deletion frees up disk space
+> - Retains Ext3 stability including journaling and fsck
+> - Minimal performance overhead (in average usage scenarios)
+> - No upper limit on number or size of snapshots
+>
+> Please visit Next3 wiki page:
+> http://sourceforge.net/apps/mediawiki/next3/
+>
+> Next3 project is looking for code reviewers, beta testers and public attention.
+>
+> Would love to read your comments on Next3-users mailing list:
+> https://lists.sourceforge.net/lists/listinfo/next3-users
+>
+> Amir.
+>
 
-Here is the new testcase.
+Hi Ted,
 
-I have run this test on a x86_64 box on XFS and ext4 on 2.6.34-rc6. It
-passes on XFS, but fails on ext4. Below is the snapshot of results
-followed by the testcase itself.
+Next3 project was introduced 2 weeks ago. I hope you've had a chance
+to visit the wiki page.
 
---
-Regards,
-Amit Arora
+Since the snapshot support patches do not fall into standard patch
+categories (feature/bug fix),
+I would like to request your advise on the best way to move forward
+with code review.
 
-Test results:
-------------
-# ./check 228
-FSTYP         -- xfs (non-debug)
-PLATFORM      -- Linux/x86_64 elm9m93 2.6.34-rc6
+There are 2 patch series available for download from:
+http://sourceforge.net/projects/next3/files/Latest%20patch%20series
 
-228 0s ...
-Ran: 228
-Passed all 1 tests
-#
-# umount /mnt
-# mkfs.ext4 /dev/sda4 >/dev/null
-mke2fs 1.41.10 (10-Feb-2009)
-# ./check 228
-FSTYP         -- ext4
-PLATFORM      -- Linux/x86_64 elm9m93 2.6.34-rc6
+e2fsprogs-1.41.11-next3-020510_patches.tar.gz contains a "small and
+simple" patch series (1350 lines/8 patches),
+which adds Next3 snapshots awareness to e2fsprogs.
 
-228 0s ... - output mismatch (see 228.out.bad)
---- 228.out	2010-05-03 02:51:24.000000000 -0400
-+++ 228.out.bad	2010-05-03 04:27:33.000000000 -0400
-@@ -1,2 +1 @@
- QA output created by 228
--File size limit exceeded (core dumped)
-Ran: 228
-Failures: 228
-Failed 1 of 1 tests
-#
+next3_snapshot-020510_patches.tar.gz contains a "large and complex"
+patch series (7000 lines/38 patches),
+which adds Next3 built-in snapshots support to an Ext3 clone.
 
+In my opinion, accepting the Next3 patches to e2fsprogs makes sense
+for 3 reasons:
+1. It is "small and simple" (mostly harmless).
+2. It will help finalizing the Next3 on-disk format, so the sooner the better.
+3. It will be of service for all those who would like to start
+using/testing Next3 and still want to be up-to-date with latest
+e2fsprogs.
 
-Here is the test:
-----------------
-Add a new testcase to the xfstests suite to check if fallocate respects
-the limit imposed by RLIMIT_FSIZE (can be set by "ulimit -f XXX") or
-not, on a particular filesystem.
+Please let me know what you think.
+Your blessing means a lot to me (and to potential reviewers I should hope so).
 
-Signed-off-by: Amit Arora <aarora@in.ibm.com>
+And now for a few personal requests from the list:
+- For those of you who didn't visit the wiki yet, please find the time
+to visit, it is very friendly.
+- For those of you who have read the wiki and found it interesting (or
+not), please send me some comments to feed my ego (or not).
+- For those of you who will be willing to pick up one of the code
+review gloves above (small or large size), please let me know if you
+need anything else from me and I will provide.
 
-diff -Nuarp xfstests-dev.org/228 xfstests-dev/228
---- xfstests-dev.org/228	1969-12-31 19:00:00.000000000 -0500
-+++ xfstests-dev/228	2010-05-03 02:45:10.000000000 -0400
-@@ -0,0 +1,79 @@
-+#! /bin/bash
-+# FS QA Test No. 228
-+#
-+# Check if fallocate respects RLIMIT_FSIZE 
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2010 IBM Corporation. All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=aarora@in.ibm.com
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+}
-+
-+here=`pwd`
-+tmp=$TEST_DIR/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15 25
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+
-+# real QA test starts here
-+# generic, but xfs_io's fallocate must work
-+_supported_fs generic
-+# only Linux supports fallocate
-+_supported_os Linux
-+
-+[ -n "$XFS_IO_PROG" ] || _notrun "xfs_io executable not found"
-+
-+rm -f $seq.full
-+
-+# Sanity check to see if fallocate works
-+_require_xfs_io_falloc
-+
-+# Check if we have good enough space available
-+avail=`df -P $TEST_DIR | awk 'END {print $4}'`
-+[ "$avail" -ge 104000 ] || _notrun "Test device is too small ($avail KiB)"
-+
-+# Set the FSIZE ulimit to 100MB and check
-+ulimit -f 102400
-+flim=`ulimit -f`
-+[ "$flim" != "unlimited" ] || _notrun "Unable to set FSIZE ulimit"
-+[ "$flim" -eq 102400 ] || _notrun "FSIZE ulimit is not correct (100 MB)"
-+
-+# FSIZE limit is now set to 100 MB.
-+# Lets try to preallocate 101 MB. This should fail.
-+$XFS_IO_PROG -F -f -c 'falloc 0 101m' $TEST_DIR/ouch
-+rm -f $TEST_DIR/ouch
-+
-+# Lets now try to preallocate 50 MB. This should succeed.
-+$XFS_IO_PROG -F -f -c 'falloc 0 50m' $TEST_DIR/ouch
-+rm -f $TEST_DIR/ouch
-+
-+# success, all done
-+status=0
-+exit
-diff -Nuarp xfstests-dev.org/group xfstests-dev/group
---- xfstests-dev.org/group	2010-05-03 02:35:09.000000000 -0400
-+++ xfstests-dev/group	2010-05-03 02:45:21.000000000 -0400
-@@ -341,3 +341,4 @@ deprecated
- 225 auto quick
- 226 auto enospc
- 227 auto fsr
-+228 rw auto prealloc quick
+Thanks in advance,
+Amir.
