@@ -1,63 +1,172 @@
-From: Nikanth Karthikesan <knikanth@suse.de>
-Subject: Re: [PATCH] Prevent creation of files larger than RLIMIT_FSIZE using fallocate
-Date: Mon, 3 May 2010 13:19:44 +0530
-Message-ID: <201005031319.44538.knikanth@suse.de>
-References: <201004281854.49730.knikanth@suse.de> <201005030953.45157.knikanth@suse.de> <20100503065945.GA13756@amitarora.in.ibm.com>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: [PATCH] New testcase to check if fallocate respects RLIMIT_FSIZE
+	or not
+Date: Mon, 3 May 2010 14:01:35 +0530
+Message-ID: <20100503083135.GC13756@amitarora.in.ibm.com>
+References: <201004281854.49730.knikanth@suse.de> <4BD85F1F.7030100@suse.de> <201004291014.07194.knikanth@suse.de> <20100430143319.d51d6d77.akpm@linux-foundation.org> <20100501070426.GA9562@amitarora.in.ibm.com> <20100501101846.GA3769@infradead.org>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, coly.li@suse.de,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, xfs@oss.sgi.com,
+	Nikanth Karthikesan <knikanth@suse.de>, coly.li@suse.de,
 	Nick Piggin <npiggin@suse.de>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
 	Eelis <opensuse.org@contacts.eelis.net>,
-	Amit Arora <aarora@in.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+	Amit Arora <aarora@in.ibm.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100503065945.GA13756@amitarora.in.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <20100501101846.GA3769@infradead.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Monday 03 May 2010 12:29:45 Amit K. Arora wrote:
-> On Mon, May 03, 2010 at 09:53:44AM +0530, Nikanth Karthikesan wrote:
-> > On Saturday 01 May 2010 12:34:26 Amit K. Arora wrote:
-> > > On Fri, Apr 30, 2010 at 02:33:19PM -0700, Andrew Morton wrote:
-> > > > Also, there doesn't seem to be much point in doing
-> > > >
-> > > > 	mutex_lock(i_mutex);
-> > > > 	if (some_condition)
-> > > > 		bale out
-> > > > 	mutex_unlock(i_mutex);
-> > > >
-> > > > 	<stuff>
-> > > >
-> > > > because `some_condition' can now become true before or during the
-> > > > execution of `stuff'.
-> > > >
-> > > > IOW, it's racy.
-> >
-> > oh, yes. :(
-> >
-> > > Agreed. How about doing this check in the filesystem specific fallocate
-> > > inode routines instead ? For example, in ext4 we could do :
-> >
-> > I guess, calling the filesystem specific fallocate with the lock held
-> > would create lock ordering problems? If so, this might be the only way.
-> > But it would be better to document at the call site, that the callee
-> > should check for RLIMIT_FSIZE.
+On Sat, May 01, 2010 at 06:18:46AM -0400, Christoph Hellwig wrote:
+> On Sat, May 01, 2010 at 12:34:26PM +0530, Amit K. Arora wrote:
+> > Agreed. How about doing this check in the filesystem specific fallocate
+> > inode routines instead ? For example, in ext4 we could do :
 > 
-> Hmm.. I never said to call the filesystem specific fallocate with
-> i_mutex held. What I suggested was that each filesystem at some point
-> anyhow takes the i_mutex to preallocate. Thats where the check should
-> be, to avoid the race. This is what the example patch below does.
+> That looks okay - in fact XFS should already have this check because
+> it re-uses the setattr implementation to set the size.
 > 
+> Can you submit an xfstests testcase to verify this behaviour on all
+> filesystems?
 
-Yes, you never said that. But I just wondered whether that would be have 
-problems and doing the check in filesystem specific fallocate is the only 
-solution. :)
+Here is the new testcase.
 
-Thanks
-Nikanth
+I have run this test on a x86_64 box on XFS and ext4 on 2.6.34-rc6. It
+passes on XFS, but fails on ext4. Below is the snapshot of results
+followed by the testcase itself.
+
+--
+Regards,
+Amit Arora
+
+Test results:
+------------
+# ./check 228
+FSTYP         -- xfs (non-debug)
+PLATFORM      -- Linux/x86_64 elm9m93 2.6.34-rc6
+
+228 0s ...
+Ran: 228
+Passed all 1 tests
+#
+# umount /mnt
+# mkfs.ext4 /dev/sda4 >/dev/null
+mke2fs 1.41.10 (10-Feb-2009)
+# ./check 228
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 elm9m93 2.6.34-rc6
+
+228 0s ... - output mismatch (see 228.out.bad)
+--- 228.out	2010-05-03 02:51:24.000000000 -0400
++++ 228.out.bad	2010-05-03 04:27:33.000000000 -0400
+@@ -1,2 +1 @@
+ QA output created by 228
+-File size limit exceeded (core dumped)
+Ran: 228
+Failures: 228
+Failed 1 of 1 tests
+#
+
+
+Here is the test:
+----------------
+Add a new testcase to the xfstests suite to check if fallocate respects
+the limit imposed by RLIMIT_FSIZE (can be set by "ulimit -f XXX") or
+not, on a particular filesystem.
+
+Signed-off-by: Amit Arora <aarora@in.ibm.com>
+
+diff -Nuarp xfstests-dev.org/228 xfstests-dev/228
+--- xfstests-dev.org/228	1969-12-31 19:00:00.000000000 -0500
++++ xfstests-dev/228	2010-05-03 02:45:10.000000000 -0400
+@@ -0,0 +1,79 @@
++#! /bin/bash
++# FS QA Test No. 228
++#
++# Check if fallocate respects RLIMIT_FSIZE 
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2010 IBM Corporation. All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=aarora@in.ibm.com
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++here=`pwd`
++tmp=$TEST_DIR/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15 25
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++
++# real QA test starts here
++# generic, but xfs_io's fallocate must work
++_supported_fs generic
++# only Linux supports fallocate
++_supported_os Linux
++
++[ -n "$XFS_IO_PROG" ] || _notrun "xfs_io executable not found"
++
++rm -f $seq.full
++
++# Sanity check to see if fallocate works
++_require_xfs_io_falloc
++
++# Check if we have good enough space available
++avail=`df -P $TEST_DIR | awk 'END {print $4}'`
++[ "$avail" -ge 104000 ] || _notrun "Test device is too small ($avail KiB)"
++
++# Set the FSIZE ulimit to 100MB and check
++ulimit -f 102400
++flim=`ulimit -f`
++[ "$flim" != "unlimited" ] || _notrun "Unable to set FSIZE ulimit"
++[ "$flim" -eq 102400 ] || _notrun "FSIZE ulimit is not correct (100 MB)"
++
++# FSIZE limit is now set to 100 MB.
++# Lets try to preallocate 101 MB. This should fail.
++$XFS_IO_PROG -F -f -c 'falloc 0 101m' $TEST_DIR/ouch
++rm -f $TEST_DIR/ouch
++
++# Lets now try to preallocate 50 MB. This should succeed.
++$XFS_IO_PROG -F -f -c 'falloc 0 50m' $TEST_DIR/ouch
++rm -f $TEST_DIR/ouch
++
++# success, all done
++status=0
++exit
+diff -Nuarp xfstests-dev.org/group xfstests-dev/group
+--- xfstests-dev.org/group	2010-05-03 02:35:09.000000000 -0400
++++ xfstests-dev/group	2010-05-03 02:45:21.000000000 -0400
+@@ -341,3 +341,4 @@ deprecated
+ 225 auto quick
+ 226 auto enospc
+ 227 auto fsr
++228 rw auto prealloc quick
