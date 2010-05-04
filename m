@@ -1,154 +1,56 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [RFC] ext4: Don't send extra barrier during fsync if there are
- no dirty pages.
-Date: Tue, 04 May 2010 10:16:37 -0400
-Message-ID: <4BE02C45.6010608@redhat.com>
-References: <20100429235102.GC15607@tux1.beaverton.ibm.com> <1272934667.2544.3.camel@mingming-laptop>
+From: tytso@mit.edu
+Subject: Re: [PATCH, RFC 2/2] ext4: Convert callers of ext4_get_blocks() to
+ use ext4_map_blocks()
+Date: Tue, 4 May 2010 11:42:51 -0400
+Message-ID: <20100504154251.GA6344@thunk.org>
+References: <1272927081-12694-1-git-send-email-tytso@mit.edu>
+ <1272927081-12694-2-git-send-email-tytso@mit.edu>
+ <878w80htis.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: djwong@us.ibm.com, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Keith Mannthey <kmannth@us.ibm.com>,
-	Mingming Cao <mcao@us.ibm.com>
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1272934667.2544.3.camel@mingming-laptop>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:41817 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933068Ab0EDPm4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 May 2010 11:42:56 -0400
+Content-Disposition: inline
+In-Reply-To: <878w80htis.fsf@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/03/2010 08:57 PM, Mingming Cao wrote:
-> On Thu, 2010-04-29 at 16:51 -0700, Darrick J. Wong wrote:
->    
->> Hmm.  A while ago I was complaining that an evil program that calls fsync() in
->> a loop will send a continuous stream of write barriers to the hard disk.  Ted
->> theorized that it might be possible to set a flag in ext4_writepage and clear
->> it in ext4_sync_file; if we happen to enter ext4_sync_file and the flag isn't
->> set (meaning that nothing has been dirtied since the last fsync()) then we
->> could skip issuing the barrier.
->>
->> Here's an experimental patch to do something sort of like that.  From a quick
->> run with blktrace, it seems to skip the redundant barriers and improves the ffsb
->> mail server scores.  However, I haven't done extensive power failure testing to
->> see how much data it can destroy.  For that matter I'm not even 100% sure it's
->> correct at what it aims to do.
->>
->> Just throwing this out there, though.  Nothing's blown up ... yet. :P
->> ---
->> Signed-off-by: Darrick J. Wong<djwong@us.ibm.com>
->> ---
->>
->>   fs/ext4/ext4.h  |    2 ++
->>   fs/ext4/fsync.c |    7 +++++--
->>   fs/ext4/inode.c |    5 +++++
->>   3 files changed, 12 insertions(+), 2 deletions(-)
->>
->>
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index bf938cf..3b70195 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -1025,6 +1025,8 @@ struct ext4_sb_info {
->>
->>   	/* workqueue for dio unwritten */
->>   	struct workqueue_struct *dio_unwritten_wq;
->> +
->> +	atomic_t unflushed_writes;
->>   };
->>
->>      
-> Just wondering is this per filesystem flag? Thought it is nicer to make
-> this per -inode flag, when there is no dirty data in fly for this inode
-> (instead of the whole fs), there is no need to call barrier in
-> ext4_sync_file().
->
-> Mingming
->    
+On Tue, May 04, 2010 at 03:34:59PM +0530, Aneesh Kumar K. V wrote:
+> 
+> bh flags are not set here. This check should be based on map.m_flags.
 
-Checking per inode is actually incorrect - we do not want to short cut 
-the need to flush the target storage device's write cache just because a 
-specific file has no dirty pages.  If a power hit occurs, having sent 
-the pages from to the storage device is not sufficient.
+Good catch, thanks.
 
-I was thinking that it could actually be more general, specifically we 
-could track the status of the write cache on the entire storage device. 
-That way, any command (write, etc) to the target device would set the 
-cache state to needs_flush (or whatever) and the barrier flush would 
-clear it.
+> Only thing i am worried about is we were modifying bh_flags in all
+> possible confusing ways. We may want to make sure we get the update
+> correct. I am still going through the patch after applying it to the
+> tree. So may take more time to look at the full changeset.
 
-Probably not worth the complication...
+I'm concerned about that as well; in fact I'm not sure what we had
+before was completely correct, and I *still* have trouble reasoning
+about how all the flags work and why we do some of the things that we
+do based on how the flags are set --- and that scares me.
 
-ric
+XFS doesn't jump through *nearly* as many hoops as we do --- and given
+XFS's reputation for complexity, that's saying a lot! --- and I
+suspect some of the things we do are mandated by the fs/buffer.c and
+fs/direct_io.c, the latter of which does some very strange and
+unnatural things with buffer_heads --- and some of the things we do
+are based on our own, ext4-specific logic and how we route state
+through the many layers of callback functions.  I think I've figured
+some of this out, but it's gotten very crufty over the course of
+ext4's development.
 
+One of the reasons I had for doing this cleanup, in addition to
+reducing stack usage (which I have measured as around 120 bytes or so
+on an 32-bit system, and I'm sure it's got to be more on a 64-bit
+system) was to make explicit how we were modifying the bh_flags.  At
+least now we can grep for EXT4_MAP_* and see on the places where we
+were mucking with things.
 
->>   static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
->> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
->> index 0d0c323..441f872 100644
->> --- a/fs/ext4/fsync.c
->> +++ b/fs/ext4/fsync.c
->> @@ -52,7 +52,8 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
->>   {
->>   	struct inode *inode = dentry->d_inode;
->>   	struct ext4_inode_info *ei = EXT4_I(inode);
->> -	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
->> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->> +	journal_t *journal = sbi->s_journal;
->>   	int ret;
->>   	tid_t commit_tid;
->>      
-> ...
->
->    
->> @@ -102,7 +103,9 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
->>   		    (journal->j_flags&  JBD2_BARRIER))
->>   			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
->>   		jbd2_log_wait_commit(journal, commit_tid);
->> -	} else if (journal->j_flags&  JBD2_BARRIER)
->> +	} else if (journal->j_flags&  JBD2_BARRIER&&  atomic_read(&sbi->unflushed_writes)) {
->> +		atomic_set(&sbi->unflushed_writes, 0);
->>   		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
->> +	}
->>   	return ret;
->>   }
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 5381802..e501abd 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -2718,6 +2718,7 @@ static int ext4_writepage(struct page *page,
->>   	unsigned int len;
->>   	struct buffer_head *page_bufs = NULL;
->>   	struct inode *inode = page->mapping->host;
->> +	struct ext4_sb_info *sbi = EXT4_SB(page->mapping->host->i_sb);
->>
->>   	trace_ext4_writepage(inode, page);
->>   	size = i_size_read(inode);
->> @@ -2726,6 +2727,8 @@ static int ext4_writepage(struct page *page,
->>   	else
->>   		len = PAGE_CACHE_SIZE;
->>
->> +	atomic_set(&sbi->unflushed_writes, 1);
->> +
->>   	if (page_has_buffers(page)) {
->>   		page_bufs = page_buffers(page);
->>   		if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
->> @@ -2872,6 +2875,8 @@ static int ext4_da_writepages(struct address_space *mapping,
->>   	if (wbc->range_start == 0&&  wbc->range_end == LLONG_MAX)
->>   		range_whole = 1;
->>
->> +	atomic_set(&sbi->unflushed_writes, 1);
->> +
->>   	range_cyclic = wbc->range_cyclic;
->>   	if (wbc->range_cyclic) {
->>   		index = mapping->writeback_index;
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>      
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->    
+						- Ted
