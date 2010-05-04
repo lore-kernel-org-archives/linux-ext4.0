@@ -1,38 +1,48 @@
-From: Andi Kleen <andi@halobates.de>
-Subject: Re: Introducing Next3 - built-in snapshots support for Ext3
-Date: Tue, 04 May 2010 21:55:47 +0200
-Message-ID: <87eihr4f24.fsf@basil.nowhere.org>
-References: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
-	<s2s18730dc51005030247u5ef2fddfz269b57d97714db8f@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4: Do not dec quota for reserved blocks on error paths v2
+Date: Tue, 04 May 2010 15:22:45 -0500
+Message-ID: <4BE08215.2050603@redhat.com>
+References: <87633dcxhp.fsf@openvz.org> <87bpd3ecya.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Amir G." <amir73il@users.sourceforge.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:58982 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756201Ab0EDTzw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 May 2010 15:55:52 -0400
-In-Reply-To: <s2s18730dc51005030247u5ef2fddfz269b57d97714db8f@mail.gmail.com> (Amir G.'s message of "Mon, 3 May 2010 12:47:58 +0300")
+Received: from mx1.redhat.com ([209.132.183.28]:50814 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933863Ab0EDUWu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 May 2010 16:22:50 -0400
+In-Reply-To: <87bpd3ecya.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Amir G." <amir73il@users.sourceforge.net> writes:
->
-> Since the snapshot support patches do not fall into standard patch
-> categories (feature/bug fix),
+Dmitry Monakhov wrote:
+> If we have failed some where inside ext4_get_blocks() internals we may
+> have allocated some new blocks, which was not yet claimed to quota.
+> We have to free such blocks, but without touching quota. Quota will
+> be updated later on exit from ext4_get_blocks().
+> There are two possible ways to understand what we have to skip quota update:
+> 1) Caller pass corresponding flag to ext4_free_blocks()
+> 2) check that free_blocks() was indirectly called by get_blocks() 
+>    (i.e EXT4_I(inode)->i_delalloc_reserved_flag is set)
+> Second is simpler, but may result in unpredictable consequences later.
+> So i've chosen the first one, because caller must know which blocks it
+> is freeing.
+> 
+> Eric, please take your attention to metadata blocks handling when
+> you will work on new versing of  "ext4: don't use quota reservation for
+> speculative metadata blocks" patch.
+> 
+> The bug happens on heavily loaded node, or with 227'th xfstestcase and
 
-What is it then?
+hm which test?  227 is xfs-only...
 
-> I would like to request your advise on the best way to move forward
-> with code review.
+-Eric
 
-The typical way to get code review is to post patches to the mailing
-list.
+> result in incorrect i_blocks (less than expected). So truncation for
+> that file result in i_blocks overflow.
+> Seems this was the last bug which was easily triggered by 227'th testcase.
+> 
+> 
 
-However do it in smaller batches if you have a lot of them.
-
--Andi
-
--- 
-ak@linux.intel.com -- Speaking for myself only.
