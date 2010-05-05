@@ -1,124 +1,80 @@
-From: Amir Goldstein <amir73il@users.sf.net>
-Subject: [PATCH 8/8] e2fsprogs: Dump Next3 message buffer on fsck.
-Date: Wed, 05 May 2010 21:28:56 +0300
-Message-ID: <1273084136-6286-9-git-send-email-amir73il@users.sf.net>
-References: <1273084136-6286-1-git-send-email-amir73il@users.sf.net>
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, Amir Goldstein <amir73il@users.sf.net>
-To: Theodore Tso <tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15910] zero-length files and performance degradation
+Date: Wed, 5 May 2010 18:54:48 GMT
+Message-ID: <201005051854.o45IsmJk027144@demeter.kernel.org>
+References: <bug-15910-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mxout3.netvision.net.il ([194.90.6.2]:28329 "EHLO
-	mxout3.netvision.net.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757673Ab0EESwU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 May 2010 14:52:20 -0400
-Received: from localhost.localdomain ([109.186.177.237])
- by mxout3.netvision.net.il
- (Sun Java(tm) System Messaging Server 6.3-9.01 (built Oct 22 2009; 32bit))
- with ESMTP id <0L1Y005YHLXZVNB0@mxout3.netvision.net.il> for
- linux-ext4@vger.kernel.org; Wed, 05 May 2010 21:30:02 +0300 (IDT)
-In-reply-to: <1273084136-6286-1-git-send-email-amir73il@users.sf.net>
+Received: from demeter.kernel.org ([140.211.167.39]:41470 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751143Ab0EESzG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 May 2010 14:55:06 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o45IsnCL027148
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 5 May 2010 18:54:49 GMT
+In-Reply-To: <bug-15910-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Next3 error messages are recorded in a 2K message buffer after the
-journal super block.  On journal recovery, the journal message buffer
-is copied to the file system message buffer.  On fsck, if the message
-buffer is not empty, the recorded messages are printed to stdout and
-the buffer is cleared.
-Next3 supports only block size of 4K, so there is always 2K of free
-space for the message buffer after the 1K super block.
+https://bugzilla.kernel.org/show_bug.cgi?id=15910
 
-Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
----
- e2fsck/journal.c |   14 ++++++++++++++
- e2fsck/super.c   |   42 ++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 56 insertions(+), 0 deletions(-)
 
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 57783eb..72d2ea0 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -836,6 +836,20 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
- 
- 
- 	if (journal->j_superblock->s_errno) {
-+		/* journal message buffer at journal super block + 1K */
-+		char *buf = ((char *) journal->j_superblock) +
-+			SUPERBLOCK_OFFSET;
-+		int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
-+
-+		if (len >= 2*SUPERBLOCK_OFFSET && *buf) {
-+			/* write journal message buffer to super block + 2K */
-+			io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
-+			retval = io_channel_write_blk(ctx->fs->io, 2, 2, buf);
-+			io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
-+			/* clear journal message buffer */
-+			memset(buf, 0, len);
-+		}
-+
- 		ctx->fs->super->s_state |= EXT2_ERROR_FS;
- 		ext2fs_mark_super_dirty(ctx->fs);
- 		journal->j_superblock->s_errno = 0;
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index f66ce9d..4a830bc 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -584,6 +584,43 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
- 	}
- }
- 
-+/*
-+ * This function prints the message buffer at the end of super block.
-+ */
-+static void e2fsck_print_message_buffer(e2fsck_t ctx)
-+{
-+	char *buf;
-+	int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
-+	unsigned offset = 0;
-+	int retval;
-+#define MSGLEN 256
-+
-+	if (len < 2*SUPERBLOCK_OFFSET)
-+		return;
-+
-+	buf = (char *) e2fsck_allocate_memory(ctx, len, "message buffer");
-+
-+	io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
-+	/* read message buffer from super block + 2K */
-+	retval = io_channel_read_blk(ctx->fs->io, 2, 2, buf);
-+	if (retval || !*buf)
-+		goto out;
-+
-+	/* print messages in buffer */
-+	puts("Error messages recorded in message buffer:");
-+	while (offset < len && buf[offset]) {
-+		printf(buf+offset);
-+		offset += MSGLEN;
-+	}
-+	/* clear message buffer */
-+	memset(buf, 0, len);
-+	retval = io_channel_write_blk(ctx->fs->io, 2, 2, buf);
-+	puts("End of message buffer.");
-+out:
-+	io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
-+	ext2fs_free_mem(&buf);
-+}
-+
- 
- void check_super_block(e2fsck_t ctx)
- {
-@@ -998,6 +1035,11 @@ void check_super_block(e2fsck_t ctx)
- 	 */
- 	e2fsck_fix_dirhash_hint(ctx);
- 
-+	/*
-+	 * Print message buffer if necessary
-+	 */
-+	e2fsck_print_message_buffer(ctx);
-+
- 	return;
- }
- 
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+
+
+
+--- Comment #1 from Theodore Tso <tytso@mit.edu>  2010-05-05 18:54:23 ---
+Why can't you #1, just fsync after writing the control file, if that's the
+primary problem?
+
+Or #2, make the dpkg recover more gracefully if it finds that the control file
+has been truncated down to zero?
+
+The reality is that all of the newer file systems are going to have this
+property.  XFS has always behaved this way.  Btrfs will as well.  We are _all_
+using the same hueristic to force sync a file which is replaced via a rename()
+system call, but that's really considered a workaround buggy application
+programs that don't call fsync(), because there are more stupid application
+programmers than there are of us file system developers.
+
+As far as the rest of the files are concerned, what I would suggest doing is
+set a sentinel value which is used to indicate that package is being installed,
+and if the system crashes, either in the init scripts or the next time dpkg
+runs, it should reinstall that package.   That way you're not fsync()'ing every
+single file in the package, and you're also not optimizing for the exception
+condition.   You just have appropriate application-level retries in case of a
+crash.
+
+So Debian and Ubuntu have a choice.  You can just stick with the ext3, and not
+upgrade, but this is one place where you can't blackmail file system developers
+by saying, "if you don't do this, I'll go use some other file system" ---
+because we are *all* doing delayed allocation.   It's allowed by POSIX, and
+it's the only way to get much better file system performance --- and there are
+intelligent ways you can design your applications so the right thing happens on
+a power failure.   Programmers used to be familiar with these in the days
+before ext3, because that's how the world has always worked in Unix.  
+
+Ext3 has lousy performance precisely because it guaranteed more semantics that
+what was promised by POSIX, and unfortunately, people have gotten flabby
+(think: the humans in the movie Wall-E) and lazy about how to write programs
+that write to the file system defensively.   So if people are upset about the
+performance of ext3, great, upgrade to newer file systems.   But then you will
+need to be careful about how you code applications like dpkg.
+
+In retrospect, I really wish we hadn't given programmers the data=ordered
+guarantees in ext3, because they both trashed ext3's performance and caused
+application programmers to get the wrong idea about how the world worked. 
+Unfortunately, the damange has been done....
+
 -- 
-1.6.6
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
