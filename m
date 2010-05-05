@@ -1,40 +1,36 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v2] New testcase to check if fallocate respects	RLIMIT_FSIZE
- or not
-Date: Wed, 05 May 2010 10:50:07 -0500
-Message-ID: <4BE193AF.3070505@redhat.com>
-References: <201004281854.49730.knikanth@suse.de> <4BD85F1F.7030100@suse.de> <201004291014.07194.knikanth@suse.de> <20100430143319.d51d6d77.akpm@linux-foundation.org> <20100501070426.GA9562@amitarora.in.ibm.com> <20100501101846.GA3769@infradead.org> <20100503083135.GC13756@amitarora.in.ibm.com> <4BE08718.5040608@redhat.com> <20100505075556.GA5142@amitarora.in.ibm.com>
+Subject: Re: ext4: Do not dec quota for reserved blocks on error paths v2
+Date: Wed, 05 May 2010 10:51:56 -0500
+Message-ID: <4BE1941C.2050907@redhat.com>
+References: <87633dcxhp.fsf@openvz.org> <87bpd3ecya.fsf@openvz.org>	<4BE08215.2050603@redhat.com> <87wrvihlr5.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>, xfs@oss.sgi.com,
-	Nikanth Karthikesan <knikanth@suse.de>, coly.li@suse.de,
-	Nick Piggin <npiggin@suse.de>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	Eelis <opensuse.org@contacts.eelis.net>,
-	Amit Arora <aarora@in.ibm.com>
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43582 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753105Ab0EEPvD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 May 2010 11:51:03 -0400
-In-Reply-To: <20100505075556.GA5142@amitarora.in.ibm.com>
+	id S1753105Ab0EEPwA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 May 2010 11:52:00 -0400
+In-Reply-To: <87wrvihlr5.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/05/2010 02:55 AM, Amit K. Arora wrote:
-> On Tue, May 04, 2010 at 03:44:08PM -0500, Eric Sandeen wrote:
->> Amit K. Arora wrote:
->>> Here is the new testcase.
->> Thanks!  A few comments...
-> Thanks for the review!
+On 05/05/2010 02:05 AM, Dmitry Monakhov wrote:
+> Eric Sandeen <sandeen@redhat.com> writes:
 
-Sure thing - looks good, I'll merge it after a retest if it all goes
-well.  :)
+...
+
+>>> The bug happens on heavily loaded node, or with 227'th xfstestcase and
+>>
+>> hm which test?  227 is xfs-only...
+> Oh.. it has that number at the time i've posted it, and it wasn't
+> merged yet.
+> http://marc.info/?l=linux-ext4&m=127124399930095&w=2
+> You have already requested some cleanups, so i'll post new version,
+> under new number, soon.
+
+Oh ok, sorry!  I lost track.
 
 -Eric
-
