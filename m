@@ -1,41 +1,78 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15875] Add an option to disable file/directory permissions for
- ext2/ext3/ext4 file systems
-Date: Thu, 6 May 2010 12:36:40 GMT
-Message-ID: <201005061236.o46CaeAY024925@demeter.kernel.org>
-References: <bug-15875-13602@https.bugzilla.kernel.org/>
+From: =?GB2312?B?IsXLzsDGvShQZXRlciBQYW4pIg==?= <wppan@redflag-linux.com>
+Subject: [PATCH] ext2/ext3:useless code for return value
+Date: Thu, 06 May 2010 21:36:21 +0800
+Message-ID: <4BE2C5D5.2050207@redflag-linux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	kernel-janitors@vger.kernel.org
+To: tj@kernel.org, Christoph Lameter <cl@linux-foundation.org>,
+	hch@lst.de, akpm@linux-foundation.org, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:41829 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752372Ab0EFMgl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 May 2010 08:36:41 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o46Cafud024930
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 6 May 2010 12:36:41 GMT
-In-Reply-To: <bug-15875-13602@https.bugzilla.kernel.org/>
+Received: from mail.redflag-linux.com ([219.237.229.196]:54944 "EHLO
+	mail.redflag-linux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752498Ab0EFODH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 May 2010 10:03:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15875
+
+When rsv is the right hand side of goal, we should return NULL,
+because now rsv's prev is NULL, or we return rsv.
+
+Signed-off-by: Peter Pan(=C5=CB=CE=C0=C6=BD) <wppan@redflag-linux.com>
+
+---
+ fs/ext2/balloc.c |    6 +-----
+ fs/ext3/balloc.c |    6 +-----
+ 2 files changed, 2 insertions(+), 10 deletions(-)
+
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 3cf038c..023990f 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -323,11 +323,7 @@ search_reserve_window(struct rb_root *root,
+ext2_fsblk_t goal)
+ 	 * side of the interval containing the goal.  If it's the RHS,
+ 	 * we need to back up one.
+ 	 */
+-	if (rsv->rsv_start > goal) {
+-		n =3D rb_prev(&rsv->rsv_node);
+-		rsv =3D rb_entry(n, struct ext2_reserve_window_node, rsv_node);
+-	}
+-	return rsv;
++    return (rsv->rsv_start < goal) ? rsv : NULL;
+ }
+
+ /*
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index a177122..bfa62e9 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -310,11 +310,7 @@ search_reserve_window(struct rb_root *root,
+ext3_fsblk_t goal)
+ 	 * side of the interval containing the goal.  If it's the RHS,
+ 	 * we need to back up one.
+ 	 */
+-	if (rsv->rsv_start > goal) {
+-		n =3D rb_prev(&rsv->rsv_node);
+-		rsv =3D rb_entry(n, struct ext3_reserve_window_node, rsv_node);
+-	}
+-	return rsv;
++    return (rsv->rsv_start < goal) ? rsv : NULL;
+ }
+
+ /**
+--=20
+1.6.6
 
 
-Alexey Dobriyan <adobriyan@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |adobriyan@gmail.com
-
-
-
-
---- Comment #6 from Alexey Dobriyan <adobriyan@gmail.com>  2010-05-06 12:36:33 ---
-This would be "uid=", "gid=" options VFAT-style.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--=20
+Peter Pan(=C5=CB=CE=C0=C6=BD)
+Red Flag Software Co.,Ltd
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
