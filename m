@@ -1,72 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2/ext3:useless code for return value
-Date: Fri, 7 May 2010 18:23:48 +0200
-Message-ID: <20100507162348.GD3265@atrey.karlin.mff.cuni.cz>
-References: <4BE2C5D5.2050207@redflag-linux.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: Introducing Next3 - built-in snapshots support for Ext3
+Date: Fri, 7 May 2010 21:22:56 +0200
+Message-ID: <q2i18730dc51005071222q7d97ab67p968072fa6fdceb28@mail.gmail.com>
+References: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
+	 <s2s18730dc51005030247u5ef2fddfz269b57d97714db8f@mail.gmail.com>
+	 <20100504224226.GE6344@thunk.org>
+	 <p2h18730dc51005041905ma9e3733uc944bdb58af9f10@mail.gmail.com>
+	 <87vdaz21b0.fsf@basil.nowhere.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tj@kernel.org, Christoph Lameter <cl@linux-foundation.org>,
-	hch@lst.de, akpm@linux-foundation.org, adilger@sun.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: =?utf-8?B?Iua9mOWNq+W5syhQZXRlciBQYW4pIg==?=
-	<wppan@redflag-linux.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Andi Kleen <andi@halobates.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:48232 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756847Ab0EGQXt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2010 12:23:49 -0400
-Content-Disposition: inline
-In-Reply-To: <4BE2C5D5.2050207@redflag-linux.com>
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:46796 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755971Ab0EGTW6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2010 15:22:58 -0400
+Received: by bwz19 with SMTP id 19so769782bwz.21
+        for <linux-ext4@vger.kernel.org>; Fri, 07 May 2010 12:22:56 -0700 (PDT)
+In-Reply-To: <87vdaz21b0.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> When rsv is the right hand side of goal, we should return NULL,
-> because now rsv's prev is NULL, or we return rsv.
->=20
-> Signed-off-by: Peter Pan(=E6=BD=98=E5=8D=AB=E5=B9=B3) <wppan@redflag-=
-linux.com>
->=20
-> ---
->  fs/ext2/balloc.c |    6 +-----
->  fs/ext3/balloc.c |    6 +-----
->  2 files changed, 2 insertions(+), 10 deletions(-)
->=20
-> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> index 3cf038c..023990f 100644
-> --- a/fs/ext2/balloc.c
-> +++ b/fs/ext2/balloc.c
-> @@ -323,11 +323,7 @@ search_reserve_window(struct rb_root *root,
-> ext2_fsblk_t goal)
->  	 * side of the interval containing the goal.  If it's the RHS,
->  	 * we need to back up one.
->  	 */
-> -	if (rsv->rsv_start > goal) {
-> -		n =3D rb_prev(&rsv->rsv_node);
-> -		rsv =3D rb_entry(n, struct ext2_reserve_window_node, rsv_node);
-> -	}
-> -	return rsv;
-> +    return (rsv->rsv_start < goal) ? rsv : NULL;
-  Hmm, I'm not sure I understand your reasoning. Suppose we have an RB-=
-tree
-with two intervals 0-10, 20-30. Interval 0-10 is in the root. Now we se=
-arch
-for goal 15. In the root we go to right because 10<15, in the next node=
- we go
-to left because 15 < 20. Then the loop terminates. Now your code would =
-return
-NULL but previous code would return rb_prev of interval 20-30 which is =
-0-10.
-And that is what we want as far as I understand what we expect from the
-function...
+On Fri, May 7, 2010 at 5:12 PM, Andi Kleen wrote:
+> "Amir G." writes:
+>>
+>> Yes, of course, I realize that. This is the reason I chose to
+>> introduce Next3 as a new f/s,
+>> which was branched from Ext3 and not as a new feature to Ext3.
+>> Unfortunately, merging Next3 snapshots feature into Ext4 is not an easy task,
+>> because extent mapped files break the design concepts of Next3 snapshots.
+>
+> As I understand it the ext4 code base still supports not having
+> extents enabled in the super block (although I'm not sure how well
+> that variant is tested in practice)
+>
+> So in theory you could have a feature that requires disabling extents.
+>
+> It might not make users very happy though.
+>
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In theory, it is possible to have 2 modes for Ext4 (extents or snapshots)
+and some would argue that it makes sense to do that.
+But I think that making that decision can be deferred to a later time,
+after people have experienced with Next3 and have decided if they
+would like to have
+the snapshot feature merged into Ext4 or not.
+
+Besides, it would take me a considerable amount of time to merge the
+snapshot feature into Ext4,
+and Next3 is ready to be used now.
+
+Amir.
