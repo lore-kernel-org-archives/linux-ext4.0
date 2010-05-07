@@ -1,47 +1,33 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15906] performance regression in "umount" of filesystems using
- barriers
-Date: Fri, 7 May 2010 09:47:17 GMT
-Message-ID: <201005070947.o479lHcD017128@demeter.kernel.org>
-References: <bug-15906-13602@https.bugzilla.kernel.org/>
+From: Andi Kleen <andi@halobates.de>
+Subject: Re: status of MMP?
+Date: Fri, 07 May 2010 17:06:53 +0200
+Message-ID: <87zl0b21ki.fsf@basil.nowhere.org>
+References: <201005052330.49491.bs_lists@aakef.fastmail.fm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>
+To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:57566 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755023Ab0EGJrZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2010 05:47:25 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o479lKpb017141
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 7 May 2010 09:47:20 GMT
-In-Reply-To: <bug-15906-13602@https.bugzilla.kernel.org/>
+Received: from one.firstfloor.org ([213.235.205.2]:54382 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752628Ab0EGPHA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2010 11:07:00 -0400
+In-Reply-To: <201005052330.49491.bs_lists@aakef.fastmail.fm> (Bernd Schubert's message of "Wed, 5 May 2010 23:30:49 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15906
+Bernd Schubert <bs_lists@aakef.fastmail.fm> writes:
 
+>
+> Lustres ldiskfs already has MMP support for several years and I would like to 
+> know what is the blocker for ext4? Updating the MMP patches for ext4-git 
+> should be fairly simple.
 
+AFAIK simply nobody has done the work and submitted it.
 
+Simply adding it would break LVM snapshots though, so there's a 
+compatibility issue.
 
-
---- Comment #20 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-05-07 09:45:32 ---
-I can confirm that Jens's fix the original regression for me,
-so IMHO first part well done.
-
-About second one.
-(In reply to comment #13)
-> A delalloc option. In fact dirty inode is still dirty even after first
-> call of writeback_single_inode which is called from __sync_filesystem(0)
-> due to delalloc allocation happen during inode write. So it takes second
-> __sync_filesystem call to clear dirty flags. Currently i'm working on that
-> issue. I hope i'll post a solution today.
-
-Proposed patch was posted may be found here: 
-http://marc.info/?l=linux-fsdevel&m=127322500915287&w=2
-
+-Andi
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+ak@linux.intel.com -- Speaking for myself only.
