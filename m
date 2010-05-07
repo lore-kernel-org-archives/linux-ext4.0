@@ -1,41 +1,56 @@
-From: Andi Kleen <andi@halobates.de>
-Subject: Re: Introducing Next3 - built-in snapshots support for Ext3
-Date: Fri, 07 May 2010 17:12:35 +0200
-Message-ID: <87vdaz21b0.fsf@basil.nowhere.org>
-References: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
-	<s2s18730dc51005030247u5ef2fddfz269b57d97714db8f@mail.gmail.com>
-	<20100504224226.GE6344@thunk.org>
-	<p2h18730dc51005041905ma9e3733uc944bdb58af9f10@mail.gmail.com>
+From: Bernd Schubert <bschubert@ddn.com>
+Subject: Re: status of MMP?
+Date: Fri, 7 May 2010 17:14:51 +0200
+Message-ID: <4BE42E6B.90405@ddn.com>
+References: <201005052330.49491.bs_lists@aakef.fastmail.fm> <87zl0b21ki.fsf@basil.nowhere.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Amir G." <amir73il@users.sourceforge.net>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <andreas.dilger@oracle.com>
+To: Andi Kleen <andi@halobates.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:48211 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754775Ab0EGPMh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2010 11:12:37 -0400
-In-Reply-To: <p2h18730dc51005041905ma9e3733uc944bdb58af9f10@mail.gmail.com> (Amir G.'s message of "Wed, 5 May 2010 04:05:11 +0200")
+Received: from mail.datadirectnet.com ([74.62.46.229]:35081 "EHLO
+	mail.datadirectnet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755343Ab0EGPUM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2010 11:20:12 -0400
+In-Reply-To: <87zl0b21ki.fsf@basil.nowhere.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Amir G." <amir73il@users.sourceforge.net> writes:
->
-> Yes, of course, I realize that. This is the reason I chose to
-> introduce Next3 as a new f/s,
-> which was branched from Ext3 and not as a new feature to Ext3.
-> Unfortunately, merging Next3 snapshots feature into Ext4 is not an easy task,
-> because extent mapped files break the design concepts of Next3 snapshots.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-As I understand it the ext4 code base still supports not having
-extents enabled in the super block (although I'm not sure how well
-that variant is tested in practice)
+On 05/07/2010 05:06 PM, Andi Kleen wrote:
+> Bernd Schubert <bs_lists@aakef.fastmail.fm> writes:
+> 
+>>
+>> Lustres ldiskfs already has MMP support for several years and I would like to 
+>> know what is the blocker for ext4? Updating the MMP patches for ext4-git 
+>> should be fairly simple.
+> 
+> AFAIK simply nobody has done the work and submitted it.
+> 
+> Simply adding it would break LVM snapshots though, so there's a 
+> compatibility issue.
 
-So in theory you could have a feature that requires disabling extents.
+Well, firstly, you are not forced to enable MMP. And then, I don't
+understand what should be the issue with MMP. We use snapshots + ldiskfs
++ MMP all the time.
 
-It might not make users very happy though.
 
--Andi
+I have a basic understanding how the MMP code works, but not as thorough
+as the Orcacle Lustre team. Andreas, would you mind if I post updated
+patches here?
 
--- 
-ak@linux.intel.com -- Speaking for myself only.
+Cheers,
+Bernd
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iEYEARECAAYFAkvkLmsACgkQqh74FqyuOzT0bwCfQQRWqaUcTM0xQ1dgyAv483t1
+2fQAniCT6AWBdqJiKWQmpUMdYvEKKubW
+=U2NE
+-----END PGP SIGNATURE-----
