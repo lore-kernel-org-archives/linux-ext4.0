@@ -1,100 +1,88 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Introducing Next3 - built-in snapshots support for Ext3
-Date: Sat, 08 May 2010 08:51:21 -0400
-Message-ID: <4BE55E49.5000006@redhat.com>
-References: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>	 <s2s18730dc51005030247u5ef2fddfz269b57d97714db8f@mail.gmail.com>	 <20100504224226.GE6344@thunk.org>	 <p2h18730dc51005041905ma9e3733uc944bdb58af9f10@mail.gmail.com>	 <87vdaz21b0.fsf@basil.nowhere.org>	 <q2i18730dc51005071222q7d97ab67p968072fa6fdceb28@mail.gmail.com>	 <4BE4855E.40808@redhat.com> <AANLkTinbzARSNHOvMbRq7iKSZENKhnKYdKSq5IHvX_xs@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15906] performance regression in "umount" of filesystems using
+ barriers
+Date: Sat, 8 May 2010 14:30:32 GMT
+Message-ID: <201005081430.o48EUWDw021756@demeter.kernel.org>
+References: <bug-15906-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, Andi Kleen <andi@halobates.de>,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Amir G." <amir73il@users.sourceforge.net>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61582 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752426Ab0EHMvd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 May 2010 08:51:33 -0400
-In-Reply-To: <AANLkTinbzARSNHOvMbRq7iKSZENKhnKYdKSq5IHvX_xs@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:57039 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751328Ab0EHOad (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 May 2010 10:30:33 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o48EUWtD021757
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 8 May 2010 14:30:32 GMT
+In-Reply-To: <bug-15906-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/08/2010 01:43 AM, Amir G. wrote:
-> On Fri, May 7, 2010 at 11:25 PM, Ric Wheeler wrote:
->    
->> On 05/07/2010 03:22 PM, Amir G. wrote:
->>      
->>> In theory, it is possible to have 2 modes for Ext4 (extents or snapshots)
->>> and some would argue that it makes sense to do that.
->>> But I think that making that decision can be deferred to a later time,
->>> after people have experienced with Next3 and have decided if they
->>> would like to have
->>> the snapshot feature merged into Ext4 or not.
->>>
->>> Besides, it would take me a considerable amount of time to merge the
->>> snapshot feature into Ext4,
->>> and Next3 is ready to be used now.
->>>
->>> Amir.
->>> --
->>>
->>>        
->> I think that the counter argument would be that moving features into ext3 is
->> probably the wrong thing to do.
->>
->> I don't think that anyone is in a huge hurry given that we have LVM based
->> snapshots with ext3 and btrfs snapshots around the corner.  Probably this is
->> most interesting when done to the latest version of the ext family.
->>
->>      
-> This is a valid argument, but it is important for me to clarify a few
-> issues regarding the statements above:
->
-> 1. No features are added to Ext3, so there is no concern for the
-> stability of Ext3.
-> The feature is added as a new f/s, with the slight overhead of
-> duplicate code in the
-> kernel tree and an extra loadable module in the system.
->
-> 2. From the user's point of view, there is not much difference between
-> "mount -t next3"
-> and "mount -t ext4 -o snapshots", because in both cases it would not
-> be possible to
-> mount ext4 with extents support on that volume before discarding snapshots and
-> it will be possible to mount ext4 with extents support after
-> discarding snapshots.
->
-> 3. Next3 snapshots are much more scalable durable and efficient than
-> LVM snapshots.
-> These are some of the benefits of built-in snapshots support.
->
-> 4. I do not want to restart the discussion about when btrfs will be
-> production ready.
-> As for Next3 stability, I think that with the help of the community,
-> Next3 can be production ready within a matter of months,
-> because the Next3 code religiously attempts to retain the stability of
-> its ancestor Ext3.
->
-> I dare you to prove me wrong ;-)
->
-> Amir.
->    
+https://bugzilla.kernel.org/show_bug.cgi?id=15906
 
-As Ted mentioned in his reply, the big concern is that you are forking 
-ext3 instead of adding a new feature to the end of the ext* family of 
-file systems.
 
-Since we have multiple snapshot mechanisms in place already (not just 
-btrfs & lvm, but don't forget all of the builtin array snapshots), I 
-think that we are not in a hurry to get this done quickly. I would 
-strongly prefer we get this rebased onto the latest ext4 and resubmitted.
+Thierry Vignaud <thierry.vignaud@gmail.com> changed:
 
-As far as proof goes, I think that the unfortunate burden of proof is on 
-your shoulders to prove to us that we should take and maintain those new 
-features given the often conflicting priorities :-)
-
-Thanks!
-
-Ric
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |thierry.vignaud@gmail.com
 
 
 
+
+--- Comment #20 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-05-07 09:45:32 ---
+I can confirm that Jens's fix the original regression for me,
+so IMHO first part well done.
+
+About second one.
+(In reply to comment #13)
+> A delalloc option. In fact dirty inode is still dirty even after first
+> call of writeback_single_inode which is called from __sync_filesystem(0)
+> due to delalloc allocation happen during inode write. So it takes second
+> __sync_filesystem call to clear dirty flags. Currently i'm working on that
+> issue. I hope i'll post a solution today.
+
+Proposed patch was posted may be found here: 
+http://marc.info/?l=linux-fsdevel&m=127322500915287&w=2
+
+--- Comment #21 from Dmitry Monakhov <dmonakhov@openvz.org>  2010-05-07 10:49:00 ---
+#########################################
+# Testcase
+#Prep stage
+for ((i=0;i<1000;i++)) ;do echo test > /tmp/FILES/file-$i ;done
+tar cf /tmp/files.tar /tmp/FILES
+#Actual measurements  
+FSTYPE=ext4
+OPT='-obarrier=1'
+mkfs.$FSTYPE /dev/sdb1 
+mount /dev/sdb1 /mnt  $OPT
+time tar xf /tmp/files.tar  -C /mnt/
+time umount /mnt
+#########################################
+
+w/o update dflags patch
+real    0m0.142s
+user    0m0.005s
+sys     0m0.093s
+
+real    0m8.506s
+user    0m0.000s
+sys     0m0.016s
+
+with update dflags patch
+real    0m0.105s
+user    0m0.006s
+sys     0m0.086s
+
+real    0m0.148s
+user    0m0.002s
+sys     0m0.007s
+
+Seems where are no visible diffidence for btrfs and xfs.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
