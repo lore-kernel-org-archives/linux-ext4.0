@@ -1,21 +1,21 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 15910] zero-length files and performance degradation
-Date: Mon, 10 May 2010 14:36:18 GMT
-Message-ID: <201005101436.o4AEaIXA030326@demeter.kernel.org>
+Date: Mon, 10 May 2010 14:52:16 GMT
+Message-ID: <201005101452.o4AEqGeA001448@demeter.kernel.org>
 References: <bug-15910-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39449 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:35777 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751160Ab0EJOhP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 May 2010 10:37:15 -0400
+	with ESMTP id S1751116Ab0EJOxC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 May 2010 10:53:02 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4AEaISW030327
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4AEqfcN001576
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 10 May 2010 14:36:18 GMT
+	for <linux-ext4@vger.kernel.org>; Mon, 10 May 2010 14:52:43 GMT
 In-Reply-To: <bug-15910-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -71,6 +71,26 @@ ml
 --=20
 Thanks,
 -Bergwolf
+
+--- Comment #7 from Theodore Tso <tytso@mit.edu>  2010-05-10 14:42:13 -=
+--
+On Mon, May 10, 2010 at 10:22:47PM +0800, Peng Tao wrote:
+> What about letting fsync() on dir recursively fsync() all
+> files/sub-dirs in the dir?
+> Then apps can unpack package in a temp dir, fsync(), and rename.
+
+There are programs to do who execute fsync() on a directory, and they
+do not expect a recursive fsync() on all files/subdirectories in a
+directory.
+
+At least for Linux, sync() is synchronous and will do what you want.
+There is unfortunately not a portable way to do what you want short of
+fsync'ing all of the files after they are written.  This case is
+mostly optimized under ext3/4 (we could do a bit better for ext4, but
+the performance shouldn't be disastrous --- certainly much better than
+write a file, fsync, rename a file, repeat).
+
+                    - Ted
 
 --=20
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
