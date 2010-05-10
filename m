@@ -1,78 +1,41 @@
-From: =?UTF-8?B?Iua9mOWNq+W5syhQZXRlciBQYW4pIg==?=
-	<wppan@redflag-linux.com>
-Subject: Re: [PATCH] ext2/ext3:useless code for return value
-Date: Mon, 10 May 2010 10:36:57 +0800
-Message-ID: <4BE77149.8050307@redflag-linux.com>
-References: <4BE2C5D5.2050207@redflag-linux.com> <20100507162348.GD3265@atrey.karlin.mff.cuni.cz>
+From: tytso@mit.edu
+Subject: Re: [Bug 15910] zero-length files and performance degradation
+Date: Sun, 9 May 2010 22:56:12 -0400
+Message-ID: <20100510025612.GM18762@thunk.org>
+References: <bug-15910-13602@https.bugzilla.kernel.org/>
+ <201005091819.o49IJCQG017276@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tj@kernel.org, Christoph Lameter <cl@linux-foundation.org>,
-	hch@lst.de, akpm@linux-foundation.org, adilger@sun.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.redflag-linux.com ([219.237.229.196]:49592 "EHLO
-	mail.redflag-linux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754992Ab0EJCh3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 9 May 2010 22:37:29 -0400
-In-Reply-To: <20100507162348.GD3265@atrey.karlin.mff.cuni.cz>
+Received: from thunk.org ([69.25.196.29]:34103 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755087Ab0EJC4Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 9 May 2010 22:56:16 -0400
+Content-Disposition: inline
+In-Reply-To: <201005091819.o49IJCQG017276@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/08/2010 12:23 AM, Jan Kara wrote:
->> When rsv is the right hand side of goal, we should return NULL,
->> because now rsv's prev is NULL, or we return rsv.
->>
->> Signed-off-by: Peter Pan(=E6=BD=98=E5=8D=AB=E5=B9=B3)<wppan@redflag-=
-linux.com>
->>
->> ---
->>   fs/ext2/balloc.c |    6 +-----
->>   fs/ext3/balloc.c |    6 +-----
->>   2 files changed, 2 insertions(+), 10 deletions(-)
->>
->> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
->> index 3cf038c..023990f 100644
->> --- a/fs/ext2/balloc.c
->> +++ b/fs/ext2/balloc.c
->> @@ -323,11 +323,7 @@ search_reserve_window(struct rb_root *root,
->> ext2_fsblk_t goal)
->>   	 * side of the interval containing the goal.  If it's the RHS,
->>   	 * we need to back up one.
->>   	 */
->> -	if (rsv->rsv_start>  goal) {
->> -		n =3D rb_prev(&rsv->rsv_node);
->> -		rsv =3D rb_entry(n, struct ext2_reserve_window_node, rsv_node);
->> -	}
->> -	return rsv;
->> +    return (rsv->rsv_start<  goal) ? rsv : NULL;
->    Hmm, I'm not sure I understand your reasoning. Suppose we have an =
-RB-tree
-> with two intervals 0-10, 20-30. Interval 0-10 is in the root. Now we =
-search
-> for goal 15. In the root we go to right because 10<15, in the next no=
-de we go
-> to left because 15<  20. Then the loop terminates. Now your code woul=
-d return
-> NULL but previous code would return rb_prev of interval 20-30 which i=
-s 0-10.
-> And that is what we want as far as I understand what we expect from t=
-he
-> function...
->
-> 								Honza
-You got the point!
-Many thanks.
+> The problem is, dpkg needs to guarantee the system is always usable,
+> and when a crash occurs, say when it's unpacking libc, it's not
+> acceptable for dpkg not to fsync() before rename() as it might end
+> up with an empty libc.so file, even if it might have marked the
+> package as correctly unpacked (wrongly but unknowingly as there's no
+> guarantees), which is not true until the changes have been fully
+> committed to the file system.
 
-Regards
---=20
-Peter Pan
-Red Flag Software Co.,Ltd
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Why not unpack all of the files as "foo.XXXXXX" (where XXXXXX is a
+mkstemp filename template) do a sync call (which in Linux is
+synchronous and won't return until all the files have been written),
+and only then, rename the files?  That's going to be the most fastest
+and most efficient way to guarantee safety under Linux; the downside
+is that you need to have enough free space to store the old and the
+new files in the package simultaneously.  But this also is a win,
+because it means you don't actually start overwriting files in a
+package until you know that the package installation is most likely
+going to succeed.  (Well, it could fail in the postinstall script, but
+at least you don't have to worry about disk full errors.)
+
+   	     	   	   	       	    - Ted
