@@ -1,23 +1,31 @@
-From: tytso@mit.edu
-Subject: Re: [Bug 15910] zero-length files and performance degradation
-Date: Sun, 9 May 2010 22:56:12 -0400
-Message-ID: <20100510025612.GM18762@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15910] zero-length files and performance degradation
+Date: Mon, 10 May 2010 03:49:35 GMT
+Message-ID: <201005100349.o4A3nZqB013514@demeter.kernel.org>
 References: <bug-15910-13602@https.bugzilla.kernel.org/>
- <201005091819.o49IJCQG017276@demeter.kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34103 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755087Ab0EJC4Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 9 May 2010 22:56:16 -0400
-Content-Disposition: inline
-In-Reply-To: <201005091819.o49IJCQG017276@demeter.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:56146 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751254Ab0EJDtg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 9 May 2010 23:49:36 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4A3nasl013515
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 10 May 2010 03:49:36 GMT
+In-Reply-To: <bug-15910-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=15910
+
+
+
+
+
+--- Comment #5 from Theodore Tso <tytso@mit.edu>  2010-05-10 03:49:25 ---
 > The problem is, dpkg needs to guarantee the system is always usable,
 > and when a crash occurs, say when it's unpacking libc, it's not
 > acceptable for dpkg not to fsync() before rename() as it might end
@@ -38,4 +46,9 @@ package until you know that the package installation is most likely
 going to succeed.  (Well, it could fail in the postinstall script, but
 at least you don't have to worry about disk full errors.)
 
-   	     	   	   	       	    - Ted
+                                             - Ted
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
