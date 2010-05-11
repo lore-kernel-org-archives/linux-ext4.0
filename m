@@ -1,112 +1,111 @@
-From: "Shilimkar, Santosh" <santosh.shilimkar@ti.com>
-Subject: RE: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell
-	88f5182)
-Date: Tue, 11 May 2010 16:44:47 +0530
-Message-ID: <EAF47CD23C76F840A9E7FCE10091EFAB02C545537F@dbde02.ent.ti.com>
-References: <1273569821.21352.19.camel@pasglop>
- <1273575478.21352.29.camel@pasglop>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: Nicolas Pitre <nico@marvell.com>,
-	Saeed Bishara <saeed@marvell.com>,
-	"James E.J. Bottomley" <jejb@parisc-linux.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
-To: Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: Check for cases where EOFBLOCKS_FL is unnecessarily set
+Date: Tue, 11 May 2010 16:31:18 -0400
+Message-ID: <1273609878-22746-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from comal.ext.ti.com ([198.47.26.152]:51069 "EHLO comal.ext.ti.com"
+Received: from THUNK.ORG ([69.25.196.29]:53017 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751332Ab0EKLPS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 May 2010 07:15:18 -0400
-In-Reply-To: <1273575478.21352.29.camel@pasglop>
-Content-Language: en-US
+	id S1753014Ab0EKUbW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 May 2010 16:31:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-arm-kernel-bounces@lists.infradead.org [mailto:linux-arm-kernel-
-> bounces@lists.infradead.org] On Behalf Of Benjamin Herrenschmidt
-> Sent: Tuesday, May 11, 2010 4:28 PM
-> To: linux-kernel@vger.kernel.org
-> Cc: Nicolas Pitre; Saeed Bishara; James E.J. Bottomley; Andrew Morton; linux-ext4@vger.kernel.org;
-> linux-arm-kernel@lists.infradead.org
-> Subject: Re: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell 88f5182)
-> 
-> On Tue, 2010-05-11 at 19:23 +1000, Benjamin Herrenschmidt wrote:
-> 
-> > Since I doubt ext3 is busted so dramatically in mainline for "normal" machines,
-> > I tend to suspect things could be related to the infamous vivt caches. On the
-> > other hand, it's pretty clearly metadata or journal corruption and I'm not
-> > sure we ever do things that could cause aliases (such as vmap etc..) on
-> > these things, and they shouldn't be mapped into userspace... unless it's fsck
-> > itself that causes aliases to occur at the block device level ? (I do unmount
-> > though before I run fsck).
-> >
-> > On the other hand, it could also be a busticated marvell SATA driver :-)
-> >
-> > I have no problem with the vendor kernel, but it's ancient (2.6.12) and based
-> > on an out of tree variant of a Marvell originated BSP, so everything is
-> > completely different, especially in the area of drivers for the chipset.
-> >
-> > Anyways, I'll see if I can gather more data tomorrow as time, viruses and sick
-> > kids permits.
-> >
-> > In the meantime, any hint appreciated.
-> 
-> A quick other test which brings more infos, using a smaller (about 5GB)
-> partition and no md or raid involved:
-> 
->  - Boot with NFS root
->  - mkfs /dev/sdb2 (no md or raid involved)
->  - mount /dev/sdb2 /mnt/test
->  - rsync -avx /test-stuff /mnt/test
->  - cd /mnt/test
->  - md5sum -c ~/test-stuff-sums.txt
-> 
-> That gives me a whole bunch of:
-> 
-> md5sum: ./usr/bin/debconf-escape: No such file or directory
-> ./usr/bin/debconf-escape: FAILED open or read
-> ./usr/bin/stat: OK
-> md5sum: ./usr/bin/chrt: No such file or directory
-> ./usr/bin/chrt: FAILED open or read
-> 
-> In fact, if I do ls /mnt/test/usr/bin/ I see debconf but if I do
-> ls /mnt/test/usr/bin/chrt then I get No such file or directory.
-> 
-> So something is badly wrong :-)
-> 
-> Now, trying without the dir_index feature (mkfs.ext3 -O ^dir_index)
-> and it works fine. All my md5sum's are correct and fsck passes.
-> 
-> So there's what looks like a problem specific to htree's. I don't think
-> it's a SATA driver problem (doesn't smell like it but we can't
-> completely dismiss the possibility yet). Could be a VIVT issue but then
-> why ? I don't see ext3 playing with virtual mappings and none of that
-> should alias with userspace...
-> 
-> Or is it incorrectly accessing pages while they are DMA'ed to or from ?
-> IE. Accessing with the CPU pages between dma_map_* and dma_unmap_* ?
-> That will break on a number of setups including swiotlb on x86 so I tend
-> to doubt it but who knows...
+Some kernels will crash if EOFBLOCKS_FL is set when it is it not
+needed, and this if it is left set when it isn't needed, it is a sign
+of a kernel bug.
 
-Not sure if it is related but we saw similar issue with MMC driver on
-Cortex-A9 MP core. I was seeing similar weird issues with EXT3 and 
-everything use to be fine with EXT2.
+Addresses-Google-Bug: #2604224
 
-All those errors you mentioned use to come and at times whole FS
-Use to get corrupted.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ e2fsck/pass1.c                          |   13 +++++++++++++
+ e2fsck/problem.c                        |    5 +++++
+ e2fsck/problem.h                        |    3 +++
+ tests/f_bad_disconnected_inode/expect.1 |    9 +++++++++
+ 4 files changed, 30 insertions(+), 0 deletions(-)
 
-It was root-caused to MMC driver which uses DMA engine for TX/RX. The
-issue was mainly with writes and hence EXT3 was having issue which does
-journaling and hence more writes.
-There was a memory write barrier missing before the DMA descriptors 
-are handed over to DMA controller.
-
-Regards,
-Santosh
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index bb5604b..a0249ff 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2000,6 +2000,19 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 			 ((1ULL << (32 + EXT2_BLOCK_SIZE_BITS(fs->super))) - 1))
+ 			/* too big for an extent-based file - 32bit ee_block */
+ 			bad_size = 6;
++
++		/*
++		 * Check to see if the EOFBLOCKS flag is set where it
++		 * doesn't need to be.
++		 */
++		if ((inode->i_flags & EXT4_EOFBLOCKS_FL) &&
++		    (size <= (((__u64)pb.last_block + 1) * fs->blocksize))) {
++			pctx->blkcount = pb.last_block;
++			if (fix_problem(ctx, PR_1_EOFBLOCKS_FL_SET, pctx)) {
++				inode->i_flags &= ~EXT4_EOFBLOCKS_FL;
++				dirty_inode++;
++			}
++		}
+ 	}
+ 	/* i_size for symlinks is checked elsewhere */
+ 	if (bad_size && !LINUX_S_ISLNK(inode->i_mode)) {
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 9043281..ceb2ae9 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -885,6 +885,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i has an invalid extent node (blk %b, lblk %c)\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
++	{ PR_1_EOFBLOCKS_FL_SET,
++	  N_("@i %i should not have EOFBLOCKS_FL set "
++	     "(size %Is, lblk %r)\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index f3969e0..b1bc97f 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -517,6 +517,9 @@ struct problem_context {
+ /* Extent node header invalid */
+ #define PR_1_EXTENT_HEADER_INVALID	0x01005F
+ 
++/* EOFBLOCKS flag set when not necessary */
++#define PR_1_EOFBLOCKS_FL_SET		0x010060
++
+ /*
+  * Pass 1b errors
+  */
+diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
+index 11862f6..d3920e3 100644
+--- a/tests/f_bad_disconnected_inode/expect.1
++++ b/tests/f_bad_disconnected_inode/expect.1
+@@ -2,12 +2,21 @@ Pass 1: Checking inodes, blocks, and sizes
+ Inode 1 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
+ 
++Inode 9 should not have EOFBLOCKS_FL set (size 0, lblk -1)
++Clear? yes
++
++Inode 10 should not have EOFBLOCKS_FL set (size 0, lblk -1)
++Clear? yes
++
+ Inode 15 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
+ 
+ Inode 16 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
+ 
++Inode 13 should not have EOFBLOCKS_FL set (size 0, lblk -1)
++Clear? yes
++
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ /lost+found not found.  Create? yes
+-- 
+1.6.6.1.1.g974db.dirty
 
