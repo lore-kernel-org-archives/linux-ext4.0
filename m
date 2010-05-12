@@ -1,69 +1,82 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] e2fsck: Check for cases where EOFBLOCKS_FL is
- unnecessarily set
-Date: Tue, 11 May 2010 21:44:03 -0400
-Message-ID: <20100512014403.GZ18762@thunk.org>
-References: <1273609878-22746-1-git-send-email-tytso@mit.edu>
- <4BE9D4F3.9080003@redhat.com>
- <20100512004452.GY18762@thunk.org>
- <4BE9FFEE.9030102@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell
+	88f5182)
+Date: Wed, 12 May 2010 17:00:57 +0200
+Message-ID: <20100512150057.GA29867@atrey.karlin.mff.cuni.cz>
+References: <1273569821.21352.19.camel@pasglop> <1273575478.21352.29.camel@pasglop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+	Saeed Bishara <saeed@marvell.com>,
+	Nicolas Pitre <nico@marvell.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"James E.J. Bottomley" <jejb@parisc-linux.org>
+To: Benjamin Herrenschmidt <benh@kernel.crashing.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:35272 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750939Ab0ELBoF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 May 2010 21:44:05 -0400
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:38959 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751845Ab0ELPA6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 May 2010 11:00:58 -0400
 Content-Disposition: inline
-In-Reply-To: <4BE9FFEE.9030102@redhat.com>
+In-Reply-To: <1273575478.21352.29.camel@pasglop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 11, 2010 at 08:10:06PM -0500, Eric Sandeen wrote:
-> tytso@mit.edu wrote:
-> > On Tue, May 11, 2010 at 05:06:43PM -0500, Eric Sandeen wrote:
-> >> Theodore Ts'o wrote:
-> >>> Some kernels will crash if EOFBLOCKS_FL is set when it is it not
-> >> Is there a kernel fix to go with this, then?
-> > 
-> > There will be; Dmitry sent a patch in the ext4 patch a while back.
-> > 
-> > http://patchwork.ozlabs.org/patch/50469/
-> > 
-> > The fix to prevent the crash is tiny.  The rest of the patch I need to
-> > review more carefully....  I'll get to it RSN.
+> On Tue, 2010-05-11 at 19:23 +1000, Benjamin Herrenschmidt wrote:
 > 
-> Ok sorry, I didn't put 2 & 2 together, there.  :)
+> > Since I doubt ext3 is busted so dramatically in mainline for "normal" machines,
+> > I tend to suspect things could be related to the infamous vivt caches. On the
+> > other hand, it's pretty clearly metadata or journal corruption and I'm not
+> > sure we ever do things that could cause aliases (such as vmap etc..) on
+> > these things, and they shouldn't be mapped into userspace... unless it's fsck
+> > itself that causes aliases to occur at the block device level ? (I do unmount
+> > though before I run fsck).
+> > 
+> > On the other hand, it could also be a busticated marvell SATA driver :-)
+> > 
+> > I have no problem with the vendor kernel, but it's ancient (2.6.12) and based
+> > on an out of tree variant of a Marvell originated BSP, so everything is
+> > completely different, especially in the area of drivers for the chipset.
+> > 
+> > Anyways, I'll see if I can gather more data tomorrow as time, viruses and sick
+> > kids permits.
+> > 
+> > In the meantime, any hint appreciated.
 > 
-> Thanks for the reminder,
+> A quick other test which brings more infos, using a smaller (about 5GB)
+> partition and no md or raid involved:
+> 
+>  - Boot with NFS root
+>  - mkfs /dev/sdb2 (no md or raid involved)
+>  - mount /dev/sdb2 /mnt/test
+>  - rsync -avx /test-stuff /mnt/test
+>  - cd /mnt/test
+>  - md5sum -c ~/test-stuff-sums.txt
+> 
+> That gives me a whole bunch of:
+> 
+> md5sum: ./usr/bin/debconf-escape: No such file or directory
+> ./usr/bin/debconf-escape: FAILED open or read
+> ./usr/bin/stat: OK
+> md5sum: ./usr/bin/chrt: No such file or directory
+> ./usr/bin/chrt: FAILED open or read
+  Could you get the filesystem image with: e2image -r /dev/sdb2 buggy-image
+bzip2 it and make it available somewhere? Maybe I could guess something
+from the way the filesystem gets corrupted.
+  Oh, and also overwrite the partition with zeros before calling mkfs to make
+the analysis simpler.
 
-To be clear, the fix to prevent the crash is:
+> In fact, if I do ls /mnt/test/usr/bin/ I see debconf but if I do
+> ls /mnt/test/usr/bin/chrt then I get No such file or directory.
+> 
+> So something is badly wrong :-)
+> 
+> Now, trying without the dir_index feature (mkfs.ext3 -O ^dir_index)
+> and it works fine. All my md5sum's are correct and fsck passes.
+  Funny. Not sure how that could happen...
 
-		EXT4_ERROR_INODE(inode,
-	     			"eh->eh_entries == 0 ee_block %d",
- 				ex->ee_block);
-
-to:
-
-		EXT4_ERROR_INODE(inode,
-				"eh->eh_entries == 0, iblock = %u"
-				iblock);
-
-(this is the quick fix that we dropped into our production kernels,
-anyway; the problem is that ex is NULL, which means instead of marking
-the file system as needing repair, we Oops the system instead.)
-
-I just haven't had the time to analyze the rest of the patch yet.
-
-One of the things I've been considering is whether we should be trying
-to test for this failure at all.  Is there a downside if EOFBLOCKS_FL
-is set when it shouldn't matter?  Should we simply not try to check
-for the case?  Or if we do check, should we just clear the flag and
-print a warning?  The other side of the argument is if this is wrong,
-then either we have a kernel bug (see the first patch) or we had a
-hardware error, in which case something else might be wrong and maybe
-we should force a file system check.
-
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
