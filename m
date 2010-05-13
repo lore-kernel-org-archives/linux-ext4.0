@@ -1,69 +1,48 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] e2fsck: make block counting variable in pass1 64 bits
-Date: Thu, 13 May 2010 13:35:04 -0400
-Message-ID: <20100513173504.GA13321@thunk.org>
-References: <4BB22A0B.2000303@redhat.com>
+From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Subject: Re: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell
+ 88f5182)
+Date: Fri, 14 May 2010 07:33:45 +1000
+Message-ID: <1273786425.21352.191.camel@pasglop>
+References: <1273569821.21352.19.camel@pasglop>
+	 <1273575478.21352.29.camel@pasglop>
+	 <20100512150057.GA29867@atrey.karlin.mff.cuni.cz>
+	 <1273709714.21352.138.camel@pasglop> <20100513151245.GA21251@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Justin Maggard <jmaggard10@gmail.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+	Saeed Bishara <saeed@marvell.com>,
+	Nicolas Pitre <nico@marvell.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"James E.J. Bottomley" <jejb@parisc-linux.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:33971 "EHLO thunker.thunk.org"
+Received: from gate.crashing.org ([63.228.1.57]:59381 "EHLO gate.crashing.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756825Ab0EMRfG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 May 2010 13:35:06 -0400
-Content-Disposition: inline
-In-Reply-To: <4BB22A0B.2000303@redhat.com>
+	id S1757445Ab0EMVfg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 May 2010 17:35:36 -0400
+In-Reply-To: <20100513151245.GA21251@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Applied to the maint branch
+On Thu, 2010-05-13 at 17:12 +0200, Jan Kara wrote:
 
-				- Ted
+> If you look at the array more in detail, you'll notice that 'offs' part of
+> structure is sometimes identical. That should never happen because 'offs'
+> contains offset of the corresponding directory entry in a block. So when
+> offsets are identical in this array, subsequent move will copy some entries
+> several times and leave entries that should be moved in the old block,
+> resulting in a corruption we see.
+>   The question is, how could offsets be the same? dx_make_map seems to get
+> it right and dx_sort_map as well. Maybe I'd peek into disassembly of
+> dx_sort_map to see whether swap() macro does what it should... If that
+> looks OK, you could try adding some debug checks into dx_sort_map and try
+> to catch the moment when duplicate offsets are created...
 
-On Tue, Mar 30, 2010 at 11:42:51AM -0500, Eric Sandeen wrote:
-> Justin reported that creating a 4T file with posix_fallocate led
-> to fsck errors:
-> 
-> e2fsck 1.41.10 (10-Feb-2009)
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 12, i_blocks is 8589935432, should be 840.  Fix? yes
-> 
-> This looks like a 32-bit overflow.
-> 
-> commmit 8a8f36540bbf5d4397cf476e216e9a720b5c1d8e added handling of
-> the high i_blocks number, but we accumulate blocks in the num_blocks
-> field, and that's still just 32 bits.
-> 
-> Note: we don't need to expand max_blocks for now, that's only used
-> in the non-extents case, and those files have smaller max sizes.
-> 
-> I haven't been able to replicate the problem, oddly, but Justin
-> reports that this patch fixed his situation.
-> 
-> Reported-by: Justin Maggard <jmaggard10@gmail.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> (resend, a thunderbird upgrade changed things so vger was eating my patches)
-> 
-> 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 09ff1d0..8c8fe8c 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -80,7 +80,7 @@ struct process_block_struct {
->  	ext2_ino_t	ino;
->  	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
->  				fragmented:1, compressed:1, bbcheck:1;
-> -	blk_t		num_blocks;
-> +	blk64_t		num_blocks;
->  	blk_t		max_blocks;
->  	e2_blkcnt_t	last_block;
->  	int		num_illegal_blocks;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks. I'll have a look. It could be a miscompile indeed. My cross-gcc
+is a 4.4.0, maybe that's the root of the problem.
+
+Cheers,
+Ben.
+
+
