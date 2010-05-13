@@ -1,73 +1,50 @@
-From: Andreas Dilger <andreas.dilger@oracle.com>
-Subject: Re: [PATCH 0/9] mm: generic adaptive large memory allocation APIs
-Date: Thu, 13 May 2010 15:56:43 -0600
-Message-ID: <7280ADBE-F4BF-43B4-8BAC-5BF129C9DDB3@oracle.com>
-References: <1273744147-7594-1-git-send-email-xiaosuo@gmail.com> <1273763055.4353.136.camel@mulgrave.site>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Changli Gao <xiaosuo@gmail.com>, Andrew Morton <akpm@linux-foundation.org>,
-        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
-        Christoph Raisch <raisch@de.ibm.com>,
-        Roland Dreier <rolandd@cisco.com>, Sean Hefty <sean.hefty@intel.com>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Divy Le Ray <divy@chelsio.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Paul Menage <menage@google.com>, Li Zefan <lizf@cn.fujitsu.com>,
-        linux-rdma@vger.kernel.org,
-        "linux-kernel@vger.kernel.org Mailinglist" <linux-kernel@vger.kernel.org>,
-        netdev@vger.kernel.org, linux-scsi@vger.kernel.org,
-        "linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        containers@lists.linux-foundation.org
-To: James Bottomley <James.Bottomley@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1273763055.4353.136.camel@mulgrave.site>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Subject: Re: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell
+ 88f5182)
+Date: Fri, 14 May 2010 09:51:22 +1000
+Message-ID: <1273794682.21352.199.camel@pasglop>
+References: <1273569821.21352.19.camel@pasglop>
+	 <1273575478.21352.29.camel@pasglop>
+	 <20100512150057.GA29867@atrey.karlin.mff.cuni.cz>
+	 <1273709714.21352.138.camel@pasglop> <20100513151245.GA21251@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+	Saeed Bishara <saeed@marvell.com>,
+	Nicolas Pitre <nico@marvell.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"James E.J. Bottomley" <jejb@parisc-linux.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from gate.crashing.org ([63.228.1.57]:39194 "EHLO gate.crashing.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750997Ab0EMXyy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 May 2010 19:54:54 -0400
+In-Reply-To: <20100513151245.GA21251@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-05-13, at 09:04, James Bottomley wrote:
-> This isn't necessarily true ... most drivers and filesystems have to
-> know what type they're getting.  Often they have to do extra tricks to
-> process vmalloc areas.  Conversely, large kmalloc areas are a very
-> precious commodity: if a driver or filesystem can handle vmalloc for
-> large allocations, it should: it's easier for us to expand the vmalloc
-> area than to try to make page reclaim keep large contiguous areas ... =
-I
-> notice your proposed API does the exact opposite of this ... tries
-> kmalloc first and then does vmalloc.
->=20
-> Given this policy problem, isn't it easier simply to hand craft the
-> vmalloc fall back to kmalloc (or vice versa) in the driver than add =
-this
-> whole massive raft of APIs for it?
+On Thu, 2010-05-13 at 17:12 +0200, Jan Kara wrote:
 
-I know we wouldn't mind using large vmalloc allocations for e.g. =
-per-group arrays in ext4 (allocated once per mount), but I'd always =
-understood that using vmalloc for general purpose uses can have a =
-significant impact because the vmalloc() engine has (had?) serious =
-performance problems.  That means it is better performance-wise to have =
-a wrapper function like this to switch between kmalloc() and vmalloc() =
-based on the allocation size, but it makes the code ugly.  Having the =
-wrapper in the kernel would at least identify the different places that =
-are using this kind of workaround.
+> If you look at the array more in detail, you'll notice that 'offs' part of
+> structure is sometimes identical. That should never happen because 'offs'
+> contains offset of the corresponding directory entry in a block. So when
+> offsets are identical in this array, subsequent move will copy some entries
+> several times and leave entries that should be moved in the old block,
+> resulting in a corruption we see.
+>   The question is, how could offsets be the same? dx_make_map seems to get
+> it right and dx_sort_map as well. Maybe I'd peek into disassembly of
+> dx_sort_map to see whether swap() macro does what it should... If that
+> looks OK, you could try adding some debug checks into dx_sort_map and try
+> to catch the moment when duplicate offsets are created...
 
-If the performance of vmalloc() has been improved in the last few years, =
-then I'd be happy to just use vmalloc() all the time.  That said, =
-vmalloc still isn't suitable for sub-page allocations, so if you have a =
-variable-sized allocation that may be very small or very large the small =
-allocations will waste a whole page and a wrapper is still needed, or =
-vmalloc should be changed to call kmalloc/kfree for the sub-page =
-allocations.
+Ok so a very quick test with another compiler and the problem -appears-
+gone. I'll investigate more in depth later tonight or this week-end.
 
-Cheers, Andreas
---
-Andreas Dilger
-Lustre Technical Lead
-Oracle Corporation Canada Inc.
+Looks like it may all have been a false alarm, just don't use
+gcc-4.4.0 :-)
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers,
+Ben.
+
