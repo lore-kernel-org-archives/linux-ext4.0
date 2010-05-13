@@ -1,78 +1,62 @@
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
+From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
 Subject: Re: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell
  88f5182)
-Date: Wed, 12 May 2010 18:41:48 -0500
-Message-ID: <1273707708.15428.4.camel@mulgrave.site>
+Date: Thu, 13 May 2010 10:15:14 +1000
+Message-ID: <1273709714.21352.138.camel@pasglop>
 References: <1273569821.21352.19.camel@pasglop>
 	 <1273575478.21352.29.camel@pasglop>
-	 <EAF47CD23C76F840A9E7FCE10091EFAB02C545537F@dbde02.ent.ti.com>
-	 <20100512222154.GA6841@shareable.org>  <1273704431.21352.136.camel@pasglop>
+	 <20100512150057.GA29867@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Jamie Lokier <jamie@shareable.org>,
-	"Shilimkar, Santosh" <santosh.shilimkar@ti.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Nicolas Pitre <nico@marvell.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"James E.J. Bottomley" <jejb@parisc-linux.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
 	Saeed Bishara <saeed@marvell.com>,
-	"linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>,
-	FUJITA Tomonori <fujita.tomonori@lab.ntt.co.jp>
-To: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+	Nicolas Pitre <nico@marvell.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"James E.J. Bottomley" <jejb@parisc-linux.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:41953 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753147Ab0ELXlv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 May 2010 19:41:51 -0400
-In-Reply-To: <1273704431.21352.136.camel@pasglop>
+Received: from gate.crashing.org ([63.228.1.57]:55569 "EHLO gate.crashing.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753921Ab0EMARN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 May 2010 20:17:13 -0400
+In-Reply-To: <20100512150057.GA29867@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2010-05-13 at 08:47 +1000, Benjamin Herrenschmidt wrote:
-> On Wed, 2010-05-12 at 23:21 +0100, Jamie Lokier wrote:
-> > Shilimkar, Santosh wrote:
-> > > There was a memory write barrier missing before the DMA descriptors 
-> > > are handed over to DMA controller.
+On Wed, 2010-05-12 at 17:00 +0200, Jan Kara wrote:
+
+>  Could you get the filesystem image with: e2image -r /dev/sdb2 buggy-image
+> bzip2 it and make it available somewhere? Maybe I could guess something
+> from the way the filesystem gets corrupted.
+>  Oh, and also overwrite the partition with zeros before calling mkfs to make
+> the analysis simpler.
+
+Here we go.
+
+Created a smaller partition (100MB). dd'ed /dev/zero to it, dd'ed it off
+to NFS host to locally cmp it with /dev/zero to make sure it's nice and
+clean. It is. Then mkfs.ext3, mount, rsync over /usr/lib of my test
+root, unmount, and dd it off to the NFS host again.
+
+The result shows the same errors with fsck.ext3 -n -f ./test.img
+
+I uploaded it at:
+
+http://gate.crashing.org/~benh/test.img.bz2
+
+Cheers,
+Ben.
+
+> > In fact, if I do ls /mnt/test/usr/bin/ I see debconf but if I do
+> > ls /mnt/test/usr/bin/chrt then I get No such file or directory.
 > > 
-> > On that note, are the cache flush functions implicit memory barriers?
-
-Not exactly ... they *should* be stream ordered with respect to accesses
-to the memory they're flushing (which isn't the same thing, and no-one
-ever went broke overestimating the stupidity of chip designers, but if a
-flush instruction needs explicit ordering, I'd expect that to be built
-into the arch layer).
-
-> (Adding Fujita on CC)
+> > So something is badly wrong :-)
+> > 
+> > Now, trying without the dir_index feature (mkfs.ext3 -O ^dir_index)
+> > and it works fine. All my md5sum's are correct and fsck passes.
+>   Funny. Not sure how that could happen...
 > 
-> That's a very good question. The generic inline implementation of
-> dma_sync_* is:
-> 
-> static inline void dma_sync_single_for_cpu(struct device *dev, dma_addr_t addr,
-> 					   size_t size,
-> 					   enum dma_data_direction dir)
-> {
-> 	struct dma_map_ops *ops = get_dma_ops(dev);
-> 
-> 	BUG_ON(!valid_dma_direction(dir));
-> 	if (ops->sync_single_for_cpu)
-> 		ops->sync_single_for_cpu(dev, addr, size, dir);
-> 	debug_dma_sync_single_for_cpu(dev, addr, size, dir);
-> }
-> 
-> Which means that for coherent architectures that do not implement
-> the ops->sync_* hooks, we are probably missing a barrier here... 
-> 
-> Thus if the above is expected to be a memory barrier, it's broken on
-> cache coherent powerpc for example. On non-coherent powerpc, we do cache
-> flushes and those are implicit barriers.
-
-Can you explain this a little more.  On a cache coherent machine, the
-sync is a nop ... why would you want a nop to be any type of barrier?
-
-James
+> 								Honza
 
 
