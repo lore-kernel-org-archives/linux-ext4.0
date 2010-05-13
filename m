@@ -1,73 +1,52 @@
-From: FUJITA Tomonori <fujita.tomonori@lab.ntt.co.jp>
+From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
 Subject: Re: Rampant ext3/4 corruption on 2.6.34-rc7 with VIVT ARM (Marvell
- 88f5182)
-Date: Thu, 13 May 2010 12:12:33 +0900
-Message-ID: <20100513121302Z.fujita.tomonori@lab.ntt.co.jp>
+	88f5182)
+Date: Thu, 13 May 2010 14:42:31 +1000
+Message-ID: <1273725751.21352.176.camel@pasglop>
 References: <EAF47CD23C76F840A9E7FCE10091EFAB02C545537F@dbde02.ent.ti.com>
 	<20100512222154.GA6841@shareable.org>
 	<1273704431.21352.136.camel@pasglop>
+	<20100513121302Z.fujita.tomonori@lab.ntt.co.jp>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: jamie@shareable.org, santosh.shilimkar@ti.com,
-	linux-ext4@vger.kernel.org, nico@marvell.com,
-	linux-kernel@vger.kernel.org, jejb@parisc-linux.org,
-	akpm@linux-foundation.org, saeed@marvell.com,
-	linux-arm-kernel@lists.infradead.org, fujita.tomonori@lab.ntt.co.jp
-To: benh@kernel.crashing.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sh.osrg.net ([192.16.179.4]:32770 "EHLO sh.osrg.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753967Ab0EMDNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 May 2010 23:13:18 -0400
-In-Reply-To: <1273704431.21352.136.camel@pasglop>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, nico@marvell.com, jamie@shareable.org,
+	saeed@marvell.com, jejb@parisc-linux.org,
+	santosh.shilimkar@ti.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-arm-kernel@lists.infradead.org
+To: FUJITA Tomonori <fujita.tomonori@lab.ntt.co.jp>
+Return-path: <linux-arm-kernel-bounces+linux-arm-kernel=m.gmane.org@lists.infradead.org>
+In-Reply-To: <20100513121302Z.fujita.tomonori@lab.ntt.co.jp>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-arm-kernel>,
+	<mailto:linux-arm-kernel-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-arm-kernel/>
+List-Post: <mailto:linux-arm-kernel@lists.infradead.org>
+List-Help: <mailto:linux-arm-kernel-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-arm-kernel>,
+	<mailto:linux-arm-kernel-request@lists.infradead.org?subject=subscribe>
+Sender: linux-arm-kernel-bounces@lists.infradead.org
+Errors-To: linux-arm-kernel-bounces+linux-arm-kernel=m.gmane.org@lists.infradead.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 13 May 2010 08:47:11 +1000
-Benjamin Herrenschmidt <benh@kernel.crashing.org> wrote:
-
-> On Wed, 2010-05-12 at 23:21 +0100, Jamie Lokier wrote:
-> > Shilimkar, Santosh wrote:
-> > > There was a memory write barrier missing before the DMA descriptors 
-> > > are handed over to DMA controller.
-> > 
-> > On that note, are the cache flush functions implicit memory barriers?
+On Thu, 2010-05-13 at 12:12 +0900, FUJITA Tomonori wrote:
+> X86 OOSTORE uses a memory barrier dma_sync_single_for_device (seems
+> that some mips archs also use it and do cache operations).
 > 
-> (Adding Fujita on CC)
+> I think that the DMA-API says that
 > 
-> That's a very good question. The generic inline implementation of
-> dma_sync_* is:
+> - dma_sync_single_for_device() makes sure the data ready for DMA.
 > 
-> static inline void dma_sync_single_for_cpu(struct device *dev, dma_addr_t addr,
-> 					   size_t size,
-> 					   enum dma_data_direction dir)
-> {
-> 	struct dma_map_ops *ops = get_dma_ops(dev);
+> - dma_sync_single_for_cpu() makes sure that drivers doesn't get the
+>   stale data after DMA.
 > 
-> 	BUG_ON(!valid_dma_direction(dir));
-> 	if (ops->sync_single_for_cpu)
-> 		ops->sync_single_for_cpu(dev, addr, size, dir);
-> 	debug_dma_sync_single_for_cpu(dev, addr, size, dir);
-> }
-> 
-> Which means that for coherent architectures that do not implement
-> the ops->sync_* hooks, we are probably missing a barrier here... 
-> 
-> Thus if the above is expected to be a memory barrier, it's broken on
-> cache coherent powerpc for example. On non-coherent powerpc, we do cache
-> flushes and those are implicit barriers.
+> I guess, it means if an architecture need a memory barrier (not only
+> cache operations) to guarantee the above, the architecture needs to
+> take care of it. 
 
-X86 OOSTORE uses a memory barrier dma_sync_single_for_device (seems
-that some mips archs also use it and do cache operations).
+Right, but doing an indirect function pointer call for a memory barrier
+in what can be a pretty hot code path doesn't sound like a great idea
+if it can be avoided. I'd rather we define some inline that the arch
+can stick in there if it wishes so.
 
-I think that the DMA-API says that
-
-- dma_sync_single_for_device() makes sure the data ready for DMA.
-
-- dma_sync_single_for_cpu() makes sure that drivers doesn't get the
-  stale data after DMA.
-
-I guess, it means if an architecture need a memory barrier (not only
-cache operations) to guarantee the above, the architecture needs to
-take care of it.
+Cheers,
+Ben.
