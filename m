@@ -1,77 +1,90 @@
-From: Changli Gao <xiaosuo@gmail.com>
-Subject: [PATCH 5/9] ext4: use kvzalloc and kvfree
-Date: Thu, 13 May 2010 18:03:50 +0800
-Message-ID: <1273745030-10297-1-git-send-email-xiaosuo@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Changli Gao <xiaosuo@gmail.com>
-To: akpm@linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:52015 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751668Ab0EMKEG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 May 2010 06:04:06 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 1/9] mm: add generic adaptive large memory allocation
+ APIs
+Date: Thu, 13 May 2010 15:20:16 +0200
+Message-ID: <1273756816.5605.3547.camel@twins>
+References: <1273744285-8128-1-git-send-email-xiaosuo@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Cc: akpm@linux-foundation.org, Hoang-Nam Nguyen <hnguyen@de.ibm.com>,  Christoph Raisch <raisch@de.ibm.com>, Roland Dreier <rolandd@cisco.com>, Sean Hefty <sean.hefty@intel.com>, Hal Rosenstock <hal.rosenstock@gmail.com>, Divy Le Ray <divy@chelsio.com>, "James E.J. Bottomley" <James.Bottomley@suse.de>,  Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>, Alexander Viro <viro@zeniv.linux.org.uk>, Paul Menage <menage@google.com>, Li Zefan <lizf@cn.fujitsu.com>, linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,  netdev@vger.kernel.org, linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org,  linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,  containers@lists.linux-foundation.org, Eric Dumazet <eric.dumazet@gmail.com>,  Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+To: Changli Gao <xiaosuo@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1273744285-8128-1-git-send-email-xiaosuo@gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-use kvzalloc and kvfree
+On Thu, 2010-05-13 at 17:51 +0800, Changli Gao wrote:
+> +void *__kvmalloc(size_t size, gfp_t flags)
+> +{
+> +       void *ptr;
+> +
+> +       if (size < PAGE_SIZE)
+> +               return kmalloc(size, GFP_KERNEL | flags);
+> +       size =3D PAGE_ALIGN(size);
+> +       if (is_power_of_2(size))
+> +               ptr =3D (void *)__get_free_pages(GFP_KERNEL | flags |
+> +                                              __GFP_NOWARN, get_order(si=
+ze));
+> +       else
+> +               ptr =3D alloc_pages_exact(size, GFP_KERNEL | flags |
+> +                                             __GFP_NOWARN);
+> +       if (ptr !=3D NULL) {
+> +               virt_to_head_page(ptr)->private =3D size;
+> +               return ptr;
+> +       }
+> +
+> +       ptr =3D vmalloc(size);
+> +       if (ptr !=3D NULL && (flags & __GFP_ZERO))
+> +               memset(ptr, 0, size);
+> +
+> +       return ptr;
+> +}
+> +EXPORT_SYMBOL(__kvmalloc);
 
-use kvzalloc and kvfree
+So if I do kvmalloc(size, GFP_ATOMIC) I get GFP_KERNEL|GFP_ATOMIC, which
+is not a recommended variation because one should not mix __GFP_WAIT and
+__GFP_HIGH.
 
-Signed-off-by: Changli Gao <xiaosuo@gmail.com>
-----
- fs/ext4/super.c |   21 ++++-----------------
- 1 file changed, 4 insertions(+), 17 deletions(-)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e14d22c..822bd93 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -20,7 +20,6 @@
- #include <linux/string.h>
- #include <linux/fs.h>
- #include <linux/time.h>
--#include <linux/vmalloc.h>
- #include <linux/jbd2.h>
- #include <linux/slab.h>
- #include <linux/init.h>
-@@ -679,10 +678,7 @@ static void ext4_put_super(struct super_block *sb)
- 	for (i = 0; i < sbi->s_gdb_count; i++)
- 		brelse(sbi->s_group_desc[i]);
- 	kfree(sbi->s_group_desc);
--	if (is_vmalloc_addr(sbi->s_flex_groups))
--		vfree(sbi->s_flex_groups);
--	else
--		kfree(sbi->s_flex_groups);
-+	kvfree(sbi->s_flex_groups);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
-@@ -1810,12 +1806,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 			((le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) + 1) <<
- 			      EXT4_DESC_PER_BLOCK_BITS(sb))) / groups_per_flex;
- 	size = flex_group_count * sizeof(struct flex_groups);
--	sbi->s_flex_groups = kzalloc(size, GFP_KERNEL);
--	if (sbi->s_flex_groups == NULL) {
--		sbi->s_flex_groups = vmalloc(size);
--		if (sbi->s_flex_groups)
--			memset(sbi->s_flex_groups, 0, size);
--	}
-+	sbi->s_flex_groups = kvzalloc(size);
- 	if (sbi->s_flex_groups == NULL) {
- 		ext4_msg(sb, KERN_ERR, "not enough memory for "
- 				"%u flex groups", flex_group_count);
-@@ -3060,12 +3051,8 @@ failed_mount_wq:
- 		sbi->s_journal = NULL;
- 	}
- failed_mount3:
--	if (sbi->s_flex_groups) {
--		if (is_vmalloc_addr(sbi->s_flex_groups))
--			vfree(sbi->s_flex_groups);
--		else
--			kfree(sbi->s_flex_groups);
--	}
-+	if (sbi->s_flex_groups)
-+		kvfree(sbi->s_flex_groups);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
+So I would simply drop the gfp argument to avoid confusion.
+
+> +void __kvfree(void *ptr, bool inatomic)
+> +{
+> +       if (unlikely(ZERO_OR_NULL_PTR(ptr)))
+> +               return;
+> +       if (is_vmalloc_addr(ptr)) {
+> +               if (inatomic) {
+> +                       struct work_struct *work;
+> +
+> +                       work =3D ptr;
+> +                       BUILD_BUG_ON(sizeof(struct work_struct) > PAGE_SI=
+ZE);
+> +                       INIT_WORK(work, kvfree_work);
+> +                       schedule_work(work);
+> +               } else {
+> +                       vfree(ptr);
+> +               }
+> +       } else {
+> +               struct page *page;
+> +
+> +               page =3D virt_to_head_page(ptr);
+> +               if (PageSlab(page) || PageCompound(page))
+> +                       kfree(ptr);
+> +               else if (is_power_of_2(page->private))
+> +                       free_pages((unsigned long)ptr,
+> +                                  get_order(page->private));
+> +               else
+> +                       free_pages_exact(ptr, page->private);
+> +       }
+> +}
+> +EXPORT_SYMBOL(__kvfree);=20
+
+NAK, I really utterly dislike that inatomic argument. The alloc side
+doesn't function in atomic context either. Please keep the thing
+symmetric in that regards.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
