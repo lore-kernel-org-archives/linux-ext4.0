@@ -1,64 +1,49 @@
-From: Coly Li <coly.li@suse.de>
-Subject: Re: [PATCH, RFC] support discard in non-journal ext4
-Date: Thu, 13 May 2010 17:08:33 +0800
-Message-ID: <4BEBC191.7060305@suse.de>
-References: <20100513050014.879651BC316@ruihe.smo.corp.google.com>
-Reply-To: coly.li@suse.de
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jiaying Zhang <jiayingz@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40249 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750785Ab0EMIzL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 May 2010 04:55:11 -0400
-In-Reply-To: <20100513050014.879651BC316@ruihe.smo.corp.google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Changli Gao <xiaosuo@gmail.com>
+Subject: [PATCH 0/9] mm: generic adaptive large memory allocation APIs
+Date: Thu, 13 May 2010 17:49:07 +0800
+Message-ID: <1273744147-7594-1-git-send-email-xiaosuo@gmail.com>
+Cc: Hoang-Nam Nguyen <hnguyen@de.ibm.com>, Christoph Raisch <raisch@de.ibm.com>, Roland Dreier <rolandd@cisco.com>, Sean Hefty <sean.hefty@intel.com>, Hal Rosenstock <hal.rosenstock@gmail.com>, Divy Le Ray <divy@chelsio.com>, "James E.J. Bottomley" <James.Bottomley@suse.de>, "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>, Alexander Viro <viro@zeniv.linux.org.uk>, Paul Menage <menage@google.com>, Li Zefan <lizf@cn.fujitsu.com>, linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, containers@lists.linux-foundation.org, Changli Gao <xiaosuo@gmail.com>
+To: akpm@linux-foundation.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+generic adaptive large memory allocation APIs
 
+kv*alloc are used to allocate large contiguous memory and the users don't mind
+whether the memory is physically or virtually contiguous. The allocator always
+try its best to allocate physically contiguous memory first.
 
-On 05/13/2010 01:00 PM, Jiaying Zhang Wrote:
-> This patch issues discard request for freed blocks in ext4_free_blocks()
-> if ext4 is mounted with discard option and without journal.
-> 
-> Author: Jiaying Zhang <jiayingz@google.com>
-> Date:   Wed May 12 21:11:46 2010 -0700
-> 
->     Issue discard request in ext4_free_blocks() when ext4 has no journal and
->     is mounted with discard option.
->     
->     Signed-off-by: Jiaying Zhang <jiayingz@google.com>
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index a291cc3..d51b79a 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2513,6 +2513,22 @@ int ext4_mb_release(struct super_block *sb)
->  	return 0;
->  }
->  
-> +static void ext4_issue_discard(struct super_block *sb, ext4_group_t block_group,
-> +		ext4_grpblk_t block, int count)
-> +{
-> +	int ret;
-> +	ext4_fsblk_t discard_block;
-> +
-> +	discard_block = block + ext4_group_first_block_no(sb, block_group);
-> +	trace_ext4_discard_blocks(sb,
-> +			(unsigned long long) discard_block, count);
-> +	ret = sb_issue_discard(sb, discard_block, count);
-> +	if (ret == EOPNOTSUPP) {
-> +		ext4_warning(sb, "discard not supported, disabling");
-> +		clear_opt(EXT4_SB(sb)->s_mount_opt, DISCARD);
-> +	}
-> +}
-> +
+In this patch set, some APIs are introduced: kvmalloc(), kvzalloc(), kvcalloc(),
+kvrealloc(), kvfree() and kvfree_inatomic().
 
-How about make it as an inline routine? Thanks.
+Some code are converted to use the new generic APIs instead.
 
--- 
-Coly Li
-SuSE Labs
+Signed-off-by: Changli Gao <xiaosuo@gmail.com>
+----
+ drivers/infiniband/hw/ehca/ipz_pt_fn.c |   22 +-----
+ drivers/net/cxgb3/cxgb3_defs.h         |    2 
+ drivers/net/cxgb3/cxgb3_offload.c      |   31 ---------
+ drivers/net/cxgb3/l2t.c                |    4 -
+ drivers/net/cxgb4/cxgb4.h              |    3 
+ drivers/net/cxgb4/cxgb4_main.c         |   37 +----------
+ drivers/net/cxgb4/l2t.c                |    2 
+ drivers/scsi/cxgb3i/cxgb3i_ddp.c       |   12 +--
+ drivers/scsi/cxgb3i/cxgb3i_ddp.h       |   26 -------
+ drivers/scsi/cxgb3i/cxgb3i_offload.c   |    6 -
+ fs/ext4/super.c                        |   21 +-----
+ fs/file.c                              |  109 ++++-----------------------------
+ include/linux/mm.h                     |   31 +++++++++
+ include/linux/vmalloc.h                |    1 
+ kernel/cgroup.c                        |   47 +-------------
+ kernel/relay.c                         |   35 ----------
+ mm/nommu.c                             |    6 +
+ mm/util.c                              |  104 +++++++++++++++++++++++++++++++
+ mm/vmalloc.c                           |   14 ++++
+ 19 files changed, 207 insertions(+), 306 deletions(-)
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
