@@ -1,17 +1,15 @@
 From: jiayingz@google.com (Jiaying Zhang)
-Subject: (unknown)
-Date: Fri, 14 May 2010 14:39:45 -0700 (PDT)
-Message-ID: <20100514213946.0FEA81BC316@ruihe.smo.corp.google.com>
-Cc: "[PATCH]"@google.com, fix@google.com, the@google.com,
-	extent@google.com, validity@google.com, checking@google.com,
-	in@google.com, e2fsck@google.com, linux-ext4@vger.kernel.org
+Subject: [PATCH] fix the extent validity checking in e2fsck
+Date: Fri, 14 May 2010 14:42:00 -0700 (PDT)
+Message-ID: <20100514214200.8B9DB1BC317@ruihe.smo.corp.google.com>
+Cc: linux-ext4@vger.kernel.org
 To: curtw@google.com, fmayhar@google.com, mrubin@google.com,
 	tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.35]:48121 "EHLO
+Received: from smtp-out.google.com ([216.239.44.51]:29537 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755910Ab0ENVjy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 May 2010 17:39:54 -0400
+	with ESMTP id S1757401Ab0ENVmE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 May 2010 17:42:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
