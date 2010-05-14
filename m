@@ -1,7 +1,7 @@
 From: Coly Li <coly.li@suse.de>
 Subject: Re: [PATCH, RFC] support discard in non-journal ext4
-Date: Fri, 14 May 2010 12:03:43 +0800
-Message-ID: <4BECCB9F.8070007@suse.de>
+Date: Fri, 14 May 2010 12:09:21 +0800
+Message-ID: <4BECCCF1.8050401@suse.de>
 References: <20100513050014.879651BC316@ruihe.smo.corp.google.com>	 <4BEBC191.7060305@suse.de> <AANLkTinniD1Acxh8CmMd1oE72fzYvmA8aEVWEWB4TS1j@mail.gmail.com>
 Reply-To: coly.li@suse.de
 Mime-Version: 1.0
@@ -10,10 +10,10 @@ Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
 To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38820 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:39623 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751667Ab0ENDuU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 May 2010 23:50:20 -0400
+	id S1751667Ab0ENDz5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 May 2010 23:55:57 -0400
 In-Reply-To: <AANLkTinniD1Acxh8CmMd1oE72fzYvmA8aEVWEWB4TS1j@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -56,7 +56,8 @@ t block_group,
 > Ok. I changed it to inline. The modified patch is attached.
 >=20
 
-Acked-by: Coly Li <coly.li@suse.de>
+- Acked-by: Coly Li <coly.li@suse.de>
++ Reviewed-by: Coly Li <coly.li@suse.de>
 
 Thanks.
 
