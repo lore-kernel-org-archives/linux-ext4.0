@@ -1,71 +1,39 @@
-From: Coly Li <coly.li@suse.de>
-Subject: Re: [PATCH, RFC] support discard in non-journal ext4
-Date: Fri, 14 May 2010 12:09:21 +0800
-Message-ID: <4BECCCF1.8050401@suse.de>
-References: <20100513050014.879651BC316@ruihe.smo.corp.google.com>	 <4BEBC191.7060305@suse.de> <AANLkTinniD1Acxh8CmMd1oE72fzYvmA8aEVWEWB4TS1j@mail.gmail.com>
-Reply-To: coly.li@suse.de
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 1/9] mm: add generic adaptive large memory allocation
+ APIs
+Date: Fri, 14 May 2010 10:03:34 +0200
+Message-ID: <1273824214.5605.3625.camel@twins>
+References: <1273744285-8128-1-git-send-email-xiaosuo@gmail.com>
+	 <1273756816.5605.3547.camel@twins>
+	 <AANLkTinLT5g5SKjqmQlS2kxvvMq1gsi1jPDgOKTnrT-q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Jiaying Zhang <jiayingz@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:39623 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751667Ab0ENDz5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 May 2010 23:55:57 -0400
-In-Reply-To: <AANLkTinniD1Acxh8CmMd1oE72fzYvmA8aEVWEWB4TS1j@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Cc: akpm@linux-foundation.org, Hoang-Nam Nguyen <hnguyen@de.ibm.com>,  Christoph Raisch <raisch@de.ibm.com>, Roland Dreier <rolandd@cisco.com>, Sean Hefty <sean.hefty@intel.com>, Hal Rosenstock <hal.rosenstock@gmail.com>, Divy Le Ray <divy@chelsio.com>, "James E.J. Bottomley" <James.Bottomley@suse.de>,  Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>, Alexander Viro <viro@zeniv.linux.org.uk>, Paul Menage <menage@google.com>, Li Zefan <lizf@cn.fujitsu.com>, linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,  netdev@vger.kernel.org, linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org,  linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,  containers@lists.linux-foundation.org, Eric Dumazet <eric.dumazet@gmail.com>,  Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+To: Changli Gao <xiaosuo@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <AANLkTinLT5g5SKjqmQlS2kxvvMq1gsi1jPDgOKTnrT-q@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-
-
-On 05/14/2010 08:29 AM, Jiaying Zhang Wrote:
-> On Thu, May 13, 2010 at 2:08 AM, Coly Li <coly.li@suse.de> wrote:
->>
->>
->> On 05/13/2010 01:00 PM, Jiaying Zhang Wrote:
->>> This patch issues discard request for freed blocks in ext4_free_blo=
-cks()
->>> if ext4 is mounted with discard option and without journal.
->>>
->>> Author: Jiaying Zhang <jiayingz@google.com>
->>> Date: =EF=BF=BD Wed May 12 21:11:46 2010 -0700
->>>
->>> =EF=BF=BD =EF=BF=BD Issue discard request in ext4_free_blocks() whe=
-n ext4 has no journal and
->>> =EF=BF=BD =EF=BF=BD is mounted with discard option.
->>>
->>> =EF=BF=BD =EF=BF=BD Signed-off-by: Jiaying Zhang <jiayingz@google.c=
-om>
->>>
->>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->>> index a291cc3..d51b79a 100644
->>> --- a/fs/ext4/mballoc.c
->>> +++ b/fs/ext4/mballoc.c
->>> @@ -2513,6 +2513,22 @@ int ext4_mb_release(struct super_block *sb)
->>> =EF=BF=BD =EF=BF=BD =EF=BF=BD return 0;
->>> =EF=BF=BD}
->>>
->>> +static void ext4_issue_discard(struct super_block *sb, ext4_group_=
-t block_group,
-[snip]
->>
->> How about make it as an inline routine? Thanks.
+On Thu, 2010-05-13 at 22:08 +0800, Changli Gao wrote:
+> > NAK, I really utterly dislike that inatomic argument. The alloc side
+> > doesn't function in atomic context either. Please keep the thing
+> > symmetric in that regards.
+> >
 >=20
-> Ok. I changed it to inline. The modified patch is attached.
->=20
+> There are some users, who release memory in atomic context. for
+> example: fs/file.c: fdmem.=20
 
-- Acked-by: Coly Li <coly.li@suse.de>
-+ Reviewed-by: Coly Li <coly.li@suse.de>
+urgh, but yeah, aside from not using vmalloc to allocate fd tables one
+needs to deal with this.
 
-Thanks.
+But if that is the only one, I'd let them do the workqueue thing that's
+already there. If there really are more people wanting to do this, then
+maybe add: kvfree_atomic().
 
---=20
-Coly Li
-SuSE Labs
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
