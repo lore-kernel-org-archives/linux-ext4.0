@@ -1,166 +1,183 @@
-From: Ivan Shmakov <ivan@main.uusia.org>
-Subject: Re: [PATCH] libblkid: support for GUID Partition Table (GPT), please?
-Date: Sat, 15 May 2010 10:06:23 +0700
-Message-ID: <87vdapkgnk.fsf@violet.siamics.net>
-References: <87632ql0pg.fsf@violet.siamics.net>
-Reply-To: Ivan Shmakov <oneingray@gmail.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: Introducing Next3 - built-in snapshots support for Ext3
+Date: Sat, 15 May 2010 08:14:30 +0200
+Message-ID: <AANLkTin5ctEU4VSnibjBd7urrfCznnSTJvJ1b8DpYazJ@mail.gmail.com>
+References: <g2j18730dc51004180841obb1171bbwa1822d6fe0856429@mail.gmail.com>
+	 <q2i18730dc51005071222q7d97ab67p968072fa6fdceb28@mail.gmail.com>
+	 <4BE4855E.40808@redhat.com>
+	 <AANLkTinbzARSNHOvMbRq7iKSZENKhnKYdKSq5IHvX_xs@mail.gmail.com>
+	 <8D8944AA-9368-4E4F-B91D-5CEEE6E2EE2A@mit.edu>
+	 <AANLkTin0kirxWJR1jfKdX8AtWJbAjBiQNR3WsTmr5z8U@mail.gmail.com>
+	 <20100508172557.GK18762@thunk.org>
+	 <AANLkTiniWITctyA7t3IEWM-K-Rla9YJ9AeSqE3klOg41@mail.gmail.com>
+	 <07F5C185-5595-44B6-8B48-A6A9FEA2EC65@mit.edu>
+	 <AANLkTikdhvWOsO1JG3r2p27hHCEoJ-PRFVG8-f0iJdYp@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-Cc: Ivan Shmakov <oneingray@gmail.com>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ric Wheeler <rwheeler@redhat.com>, Andi Kleen <andi@halobates.de>,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:35821 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750798Ab0EODGk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 May 2010 23:06:40 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1OD7i2-0000ba-M3
-	for linux-ext4@vger.kernel.org; Sat, 15 May 2010 05:06:38 +0200
-Received: from 81.201.254.124 ([81.201.254.124])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 15 May 2010 05:06:38 +0200
-Received: from oneingray by 81.201.254.124 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Sat, 15 May 2010 05:06:38 +0200
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:60175 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751871Ab0EOGOc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 May 2010 02:14:32 -0400
+Received: by fxm6 with SMTP id 6so2156191fxm.19
+        for <linux-ext4@vger.kernel.org>; Fri, 14 May 2010 23:14:31 -0700 (PDT)
+In-Reply-To: <AANLkTikdhvWOsO1JG3r2p27hHCEoJ-PRFVG8-f0iJdYp@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---==-=-=
-Content-Type: multipart/mixed; boundary="=-=-="
+On Sun, May 9, 2010 at 1:56 PM, Amir G. <amir73il@users.sourceforge.net=
+> wrote:
+> On Sun, May 9, 2010 at 5:25 AM, Theodore Tso =A0wrote:
+>>
+>> For example, if you have flags that only are used in-memory, they sh=
+ouldn't be allocated out of i_flags, but instead using the i_state fiel=
+d in the ext4_inode_info structure, referenced via EXT4_I(inode).i_stat=
+e. =A0 That's what it is there fore.
+>>
+>
+> I have 4 non-persistent flags. I will move them to i_state.
+> I've kept them in i_flags out of laziness, since I use lsattr -X
+> to read non-persistent snapshot flags along with persistent snapshot =
+flags.
+>
+>>
+>> For example: i_snapshot_blocks_count. =A0Is that really necessary? =A0=
+ Why can not be computed by looking at i_size of the snapshot inode? =A0=
+ Or by checking to see if the superblock has be COW'ed? =A0If it hasn't=
+ then the s_blocks_count in the fs superblock must be what would have b=
+een in i_snapshot_blocks_count. =A0If the sb has been COW'ed, s_blocks_=
+count in the COW'ed sb must be that value. =A0Why allocate and waste a =
+full 32-bit field out of _every_ inode in the file system if it's possi=
+ble to get that value via other places.
+>>
+>
+> very well, I can read snapshot_blocks_count from COWed superblock (it
+> is always COWed on snapshot take) and release i_snapshot_blocks_count=
+=2E
+>
+>> I have similar question about bg_cow_bitmap. =A0Is that really neces=
+sary? =A0 The COW bitmap is just a copy of the base file system's block=
+ allocation bitmap, right? =A0(The wiki documentation and the design PD=
+=46 isn't completely clear on that point, but that seems to be what it =
+is.) =A0 So why do you need to allocate a field out of the bg discripto=
+r field for it?
+>>
+>> It's not clear why you need an exclude inode, if you are also storin=
+g the address of the exclude bitmap blocks in the bg descriptor. =A0One=
+ or the other, but not both...
+>>
+>
+> bg_cow_bitmap/bg_exculde_bitmap are used by Next3 as non-persistent
+> cache for the address of a bitmap blocks,
+> which can be read from active_snapshot/exclude_inode.
+> in other words, instead of allocating per group in-memory structure, =
+I
+> used the 2 unused fields in the in-memory group descriptor.
+> the only side effect for the ext* on-disk format is that those fields
+> are no longer 0 after mounting a volume with Next3.
+> is that a problem? can the CSUM feature resolve that problem?
+>
+> in e2fsprogs, I only reference those fields for debugging purpose
+> (dumpe2fs displays them).
+> also create_exclude_inode and resize2fs set the bg_exclude_bitmap, bu=
+t
+> they don't have to,
+> because Next3 re-reads all exclude_bitmap block addresses from exclud=
+e
+> inode on mount time.
+> so please feel free to reject those field assignments. I can include
+> them in a seperate debug only patch.
+>
+>
+>
+>> Also, as far as i_next_snapshot is concerned, why not just use d_tim=
+e for the linked list. =A0That's what we do with the orphaned inode lis=
+t, so we have code that maintains a linked list using d_time already. =A0=
+ So that way you don't need _any_ new inode fields.
+>>
+>
+> I don't know if you noticed, but I reused the code of
+> add/del_orphan_list() to manipulate the snapshot list...
+> And as I said a few lines back, I can revert to using i_dtime instead
+> of i_next_snapshot.
+>
+>> I'm not convinced by all of the fs feature compatibility flags you'v=
+e defined, either. =A0 In general, if you suspect one part of the file =
+system, you need to check everything. =A0So do you really need separate=
+ ro_compat bits for "fix_snapshot" and "fix_exclude"?
+>
+> no, not really. these are informational only. I didn't even use
+> fix_snapshot yet.
+>
+>> And why do you need "IS_SNAPSHOT"?
+>>
+>
+> I "fix" the COWed superblock to make it look like ext2 superblock and
+> set the is_snapshot feature, so fsck would know it is checking a Next=
+3
+> snapshot image (and not report wrong block counts).
+>
+>> As far as COMPAT_BIG_JOURNAL, we have feature flags in the journal, =
+and that probably is better placed there.
+>
+> I will look into that.
+>
+>>And I assume COMPAT_EXCLUDE_INODE is really "COMPAT_HAS_SNAPSHOTS"?
+>
+> logically, it means that the exclude inode/bitmap is allocated.
+> currently, the only feature that uses the exclude bitmap is the
+> snapshot feature,
+> so I don't mind bundling them together.
+>
+> but I do recommend to mke2fs -o exclude_inode if you intend to switch
+> from Ext3 to Next3 at some point.
+> it will guarenty that exclude bitmap blocks are allocated their
+> corresponding block bitmap.
+>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+I have started making some changes to on-disk format based on the
+points we seem to agree upon.
 
->>>>> "IS" =3D=3D Ivan Shmakov <ivan@main.uusia.org> writes:
+I would like to register only 1 ro_compat feature (has_snapshot) and 1
+compat feature (exclude_inode).
+the rest of the "informational features" I would like to move to
+s_flags, including NEXT3_FLAGS_BIG_JOURNAL.
 
- IS> GPT contains a supposed to be unique =E2=80=9CDisk GUID=E2=80=9D field=
-, which
- IS> allows for the media bearing such a partition table to be
- IS> identified.
+A Next3 big journal can be created with the option -J big or by
+mkfs.next3/mkn3fs.
 
- IS> May I suggest adding support for GPT to libblkid?  An alpha-quality
- IS> patch is MIME'd.
+I will evacuate all the fields that Next3 can do without (i.e.,
+{s_snapshot_blocks_count,bg_{cow,exclude}_bitmap}).
 
-	Ahem.  Wrong copy-paste late at night.  Should be better this
-	time.
+I will move the non-persistent snapshot flags to i_state.
 
-	For a test:
+I would like to stick with i_version list chaining and not revert to
+using i_dtime. awaiting further discussion on that topic.
 
-$ blkid -t TYPE=3Dgpt /dev/sd?=20
-/dev/sdb: UUID=3D"CE050C6F-E7BE-AD46-8FEE-F02476EC767E" TYPE=3D"gpt"=20
-/dev/sdd: UUID=3D"2A1210B5-535F-4A4A-84D0-34ABC6E57FFB" TYPE=3D"gpt"=20
-/dev/sde: UUID=3D"7B0FA8C6-26DD-1840-BBF5-46AD26CA551C" TYPE=3D"gpt"=20
-/dev/sdf: UUID=3D"04DF9DE5-CFDA-514D-99B7-CC61061FCE3C" TYPE=3D"gpt"=20
-$=20
+Awaiting permanent assignments for the rest of the fields/flags.
 
-	Please note that the CRC-32 value contained in the GPT is not
-	checked.
+Per your request, I have added the information above to the Next3 wiki.
+Please find the TODO items in red and WIP items in green (implemented
+and not published):
+http://sourceforge.net/apps/mediawiki/next3/index.php?title=3DCode_docu=
+mentation#Reserved_fields_and_bits_in_on-disk_structures
 
-	The UUID could be printed in lower case instead.
+Also, if you could please drop a line about your view of how to
+progress with Next3
+(something in the lines of what you said in the conference call), that
+would be nice.
+Some people may have gotten the impression that the fork from Ext3 is
+a show stopper for you,
+see: http://lwn.net/SubscriberLink/387231/1310b1360769c12b/
 
-=2D-=20
-FSF associate member #7257
-
---=-=-=
-Content-Type: text/x-diff
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
-index 6b75732..8500320 100644
-=2D-- a/lib/blkid/probe.c
-+++ b/lib/blkid/probe.c
-@@ -1383,6 +1383,33 @@ static int probe_btrfs(struct blkid_probe *probe,
- 	set_uuid(probe->dev, bs->fsid, 0);
- 	return 0;
- }
-+
-+static int probe_gpt (struct blkid_probe *probe,
-+                      struct blkid_magic *id,
-+                      unsigned char *buf)
-+{
-+	struct gpt_header *gh
-+		=3D (struct gpt_header *)(buf + 0x200);
-+
-+	/* FIXME: check gh->header_crc32 */
-+
-+	{
-+		const __u8 *u =3D gh->disk_guid;
-+		char uuid_str[33];
-+
-+		sprintf (uuid_str,
-+			 ("%02X%02X%02X%02X"
-+			  "-%02X%02X-%02X%02X-%02X%02X"
-+			  "-%02X%02X%02X%02X%02X%02X"),
-+			 u[0], u[1], u[2], u[3],
-+			 u[4], u[5], u[6], u[7], u[8], u[9],
-+			 u[10], u[11], u[12], u[13], u[14], u[15]);
-+		blkid_set_tag (probe->dev, "UUID", uuid_str, 0);
-+	}
-+
-+	return 0;
-+}
-+
- /*
-  * Various filesystem magics that we can check for.  Note that kboff and
-  * sboff are in kilobytes and bytes respectively.  All magics are in
-@@ -1482,6 +1509,7 @@ static struct blkid_magic type_array[] =3D {
-   { "lvm2pv",	 1,  0x018,  8, "LVM2 001",		probe_lvm2 },
-   { "lvm2pv",	 1,  0x218,  8, "LVM2 001",		probe_lvm2 },
-   { "btrfs",	 64,  0x40,  8, "_BHRfS_M",		probe_btrfs },
-+  { "gpt",       0,  0x200,  8, "EFI PART",             probe_gpt },
-   {   NULL,	 0,	 0,  0, NULL,			NULL }
- };
-=20
-diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
-index 37fc9c0..4d39b84 100644
-=2D-- a/lib/blkid/probe.h
-+++ b/lib/blkid/probe.h
-@@ -725,6 +725,28 @@ struct btrfs_super_block {
- 	__u8 sys_chunk_array[BTRFS_SYSTEM_CHUNK_ARRAY_SIZE];
- } __attribute__ ((__packed__));
-=20
-+struct gpt_header {
-+	/* references:
-+	 *   * linux/include/linux/efi.h;
-+	 *   * Wikipedia entry.
-+	 */
-+	__u64 signature;
-+	__u32 revision;
-+	__u32 header_size;
-+	__u32 header_crc32;
-+	__u32 reserved1;
-+	__u64 my_lba;
-+	__u64 alternate_lba;
-+	__u64 first_usable_lba;
-+	__u64 last_usable_lba;
-+	__u8 disk_guid[16];
-+	__u64 partition_entry_lba;
-+	__u32 num_partition_entries;
-+	__u32 sizeof_partition_entry;
-+	__u32 partition_entry_array_crc32;
-+	__u8 reserved2[512 - 92];
-+} __attribute__ ((__packed__));
-+
- /*
-  * Byte swap functions
-  */
-
---=-=-=--
-
---==-=-=
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkvuD7EACgkQ+MvqjYjLOAwswgCZAVUwXaGd0we2Ul2NsHlt2MMc
-RmIAnio+pvfCP3zmkzjufrZ7ZMrSoLFA
-=v738
------END PGP SIGNATURE-----
---==-=-=--
-
+Thanks,
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
