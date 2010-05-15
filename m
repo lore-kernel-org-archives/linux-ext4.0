@@ -1,71 +1,61 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: Next3 - COW of data blocks
-Date: Sat, 15 May 2010 08:36:04 +0200
-Message-ID: <AANLkTilD-9GKI6SRF-ZmzkoSRW2YfvPk80Jyt0dHuErk@mail.gmail.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: Ping.
+Date: Sat, 15 May 2010 10:34:41 +0100
+Message-ID: <20100515093441.GA20809@ZenIV.linux.org.uk>
+References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
+ <87ljd1vtth.fsf@openvz.org>
+ <20100413181450.GA5720@infradead.org>
+ <87y6gp2brh.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ric Wheeler <rwheeler@redhat.com>, Andi Kleen <andi@halobates.de>,
-	linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
+	jack@suse.cz, david@fromorbit.com, xemul@openvz.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:55651 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751335Ab0EOGgG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 May 2010 02:36:06 -0400
-Received: by fxm6 with SMTP id 6so2163043fxm.19
-        for <linux-ext4@vger.kernel.org>; Fri, 14 May 2010 23:36:05 -0700 (PDT)
+Received: from zeniv.linux.org.uk ([195.92.253.2]:39452 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752737Ab0EOJev (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 May 2010 05:34:51 -0400
+Content-Disposition: inline
+In-Reply-To: <87y6gp2brh.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 8, 2010 at 9:40 PM, Amir G. <amir73il@users.sourceforge.net=
-> wrote:
-> On Sat, May 8, 2010 at 7:25 PM, =A0<tytso@mit.edu> wrote:
->>
->> Technically speaking, it's possible to do it both way, yes? =A0I'm n=
-ot
->> sure why you consider this such a important design decision. =A0We c=
-an
->> even play games where for some files we might do copy-on-write, and
->> for some files, we do move-on-write. =A0It's always possible to chec=
-k
->> the COW bitmaps to decide what had happened.
->>
->
-> Definitely yes! I never thought it would really have to come down to =
-a
-> "decision",
-> because there is a trade-off at hand.
-> Even in Next3, without extents, it makes sense to have a choice of
-> write performance vs. fragmentation per file.
-> The few applications that use random in-place write (db, virtual disk=
-)
-> would probably want to avoid the fragmentation.
->
+On Thu, Apr 15, 2010 at 03:30:58PM +0400, Dmitry Monakhov wrote:
 
-There is another challenge concerning COW of non-journaled data blocks.
+> > As long as you still have the awkward ifdefs and different semantics for
+> About ifdefs style:
+> How can i avoid CONFIG_PROJECT_ID without bloating inode size?
+> embedded people will kill me for this.
+> I just act similar quota code, or you want protect prjid logic 
+> via quota config option?
+> I don't remember, are we already talk about this?
+> If so please remind me your vision.
 
-With COW of metadata blocks, the order of I/O is guarantied to
-preserve snapshot consistency after crash,
-because snapshot data blocks (the copied block) are ordered and both
-snapshot metadata blocks and original COWed metadata block are
-journaled in the same transaction.
+You have way more ifdefs than just that.
 
-With move-on-write of non-journaled data blocks, the entire move block
-operation is journaled, the snapshot data block is
-a moved block, so has no I/O at all, and the new data block is
-whatever (ordered,writeback).
+E.g. struct iattr ones are pure junk; it's not kept around for long
+time.  Moreover, since ATTR_... is not userland-reachable, you can
+bloody well #define ATTR_PRJID to 0 and get rid of more ifdefs.
+Ifdefs due to accesses to i_prjid can be reduced to just two inlined
+helpers (get_prjid/set_prjid) and there you go...
 
-If Next3 were to implement COW of non-journaled data blocks (i.e.,
-ordered or writeback) to avoid the file fragmentation,
-how can it assure the correct order of I/O between the COWed data
-block and the snapshot copied block without using synchronic I/O?
+As for the ->i_prjid itself, I'd buy ifdef there, but _not_ in that
+place within structure.  You are shoving it between two pointers;
+think of alignment.
 
-Can someone propose a solution to that challenge?
+As for the isolation...  Why do we care about link/rename at all?
+All stuff with the same project ID gets counted together, wherever
+in the tree it might be.  It's not as if we'd been scanning a subtree
+and calculate the sum over it, after all.  So what is the problem?
+Some bastard DoSing you by creating links from places you can't write
+to?  Then you want as much isolation as possible anyway, TYVM, and
+bind-as-link-barrier is entirely appropriate there.
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > "isolation" vs "not"  there's still a NACK from me.  But in the end Al
+> > will have to decide if he wants to take your patches or not.
+
+I want details on use cases and semantics for isolation stuff; as it is,
+it looks rather odd.  Why move towards "neutral" part of the tree is
+allowed and links over there are not, for example?
