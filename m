@@ -1,61 +1,79 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: Ping.
-Date: Sat, 15 May 2010 10:34:41 +0100
-Message-ID: <20100515093441.GA20809@ZenIV.linux.org.uk>
-References: <1268920970-9061-1-git-send-email-dmonakhov@openvz.org>
- <87ljd1vtth.fsf@openvz.org>
- <20100413181450.GA5720@infradead.org>
- <87y6gp2brh.fsf@openvz.org>
+From: "Justin P. Mattock" <justinmattock@gmail.com>
+Subject: Re: INFO: task umount:1524 blocked for more than 120 seconds
+Date: Sun, 16 May 2010 11:28:38 -0700
+Message-ID: <4BF03956.6020105@gmail.com>
+References: <h2xdd18b0c31005101446pf8201153vaed5b38afe72d7ad@mail.gmail.com> <4BE88705.9030105@gmail.com> <4BE890E8.9010700@s5r6.in-berlin.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
-	jack@suse.cz, david@fromorbit.com, xemul@openvz.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Stefan Richter <stefanr@s5r6.in-berlin.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:39452 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752737Ab0EOJev (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 May 2010 05:34:51 -0400
-Content-Disposition: inline
-In-Reply-To: <87y6gp2brh.fsf@openvz.org>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:53898 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754096Ab0EPS2I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 May 2010 14:28:08 -0400
+In-Reply-To: <4BE890E8.9010700@s5r6.in-berlin.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 15, 2010 at 03:30:58PM +0400, Dmitry Monakhov wrote:
+well, I'm confused on this one..
 
-> > As long as you still have the awkward ifdefs and different semantics for
-> About ifdefs style:
-> How can i avoid CONFIG_PROJECT_ID without bloating inode size?
-> embedded people will kill me for this.
-> I just act similar quota code, or you want protect prjid logic 
-> via quota config option?
-> I don't remember, are we already talk about this?
-> If so please remind me your vision.
+If I cp -R 2.6.34(kernel) using the macbook pro
+I can umount cleanly. But if I do the same for
+the iMac9,1 I get this issue.
 
-You have way more ifdefs than just that.
+At first thought this might be an ext4 sync(and possibly)
+hardware issue but if it was, then the  macbook would portrait
+similar issues as well(but could be wrong).
 
-E.g. struct iattr ones are pure junk; it's not kept around for long
-time.  Moreover, since ATTR_... is not userland-reachable, you can
-bloody well #define ATTR_PRJID to 0 and get rid of more ifdefs.
-Ifdefs due to accesses to i_prjid can be reduced to just two inlined
-helpers (get_prjid/set_prjid) and there you go...
+I did add(hopefully)the firelite device to the
+workaround list with as many options as possible,
+but had no difference(added/removed options as well)
+here is what the patch looks like:
 
-As for the ->i_prjid itself, I'd buy ifdef there, but _not_ in that
-place within structure.  You are shoving it between two pointers;
-think of alignment.
 
-As for the isolation...  Why do we care about link/rename at all?
-All stuff with the same project ID gets counted together, wherever
-in the tree it might be.  It's not as if we'd been scanning a subtree
-and calculate the sum over it, after all.  So what is the problem?
-Some bastard DoSing you by creating links from places you can't write
-to?  Then you want as much isolation as possible anyway, TYVM, and
-bind-as-link-barrier is entirely appropriate there.
+  From 445d63a80e336408151f4dff7c23fb59a070d246 Mon Sep 17 00:00:00 2001
+  From: Justin P. Mattock <justinmattock@gmail.com>
+  Date: Sun, 16 May 2010 11:23:00 -0700
+  Subject: [PATCH] fix an umount bug
+   Signed-off-by: Justin P. Mattock <justinmattock@gmail.com>
 
-> > "isolation" vs "not"  there's still a NACK from me.  But in the end Al
-> > will have to decide if he wants to take your patches or not.
+  ---
+   drivers/ieee1394/sbp2.c |   11 +++++++++++
+   1 files changed, 11 insertions(+), 0 deletions(-)
 
-I want details on use cases and semantics for isolation stuff; as it is,
-it looks rather odd.  Why move towards "neutral" part of the tree is
-allowed and links over there are not, for example?
+  diff --git a/drivers/ieee1394/sbp2.c b/drivers/ieee1394/sbp2.c
+  index 4565cb5..ce826f3 100644
+  --- a/drivers/ieee1394/sbp2.c
+  +++ b/drivers/ieee1394/sbp2.c
+  @@ -393,6 +393,17 @@ static const struct {
+   		.model			= SBP2_ROM_VALUE_WILDCARD,
+   		.workarounds		= SBP2_WORKAROUND_128K_MAX_TRANS,
+   	},
+  +		/* SmartDsk FireLite Model #FWFL60-N */
+  +	{
+  +		.firmware_revision	= 0x000470,
+  +		.model			= 0x000000,
+  +		.workarounds		= SBP2_WORKAROUND_128K_MAX_TRANS |
+  +					  SBP2_WORKAROUND_INQUIRY_36 |
+  +					  SBP2_WORKAROUND_MODE_SENSE_8 |
+  +					  SBP2_WORKAROUND_FIX_CAPACITY |
+  +					  SBP2_WORKAROUND_DELAY_INQUIRY |
+  +					  SBP2_WORKAROUND_POWER_CONDITION,
+  +	},
+   	/*
+   	 * iPod 2nd generation: needs 128k max transfer size workaround
+   	 * iPod 3rd generation: needs fix capacity workaround
+  --
+  1.6.5.2.180.gc5b3e
+
+
+I'm might be wrong with the .firmware_revision and model
+which I got  echo 1 >  /sys/module/sbp2/parameters/workarounds
+
+only thing I didn't test was adding this patch, then doing
+the echo command(not sure if it matters or not though).
+
+Justin P. Mattock
