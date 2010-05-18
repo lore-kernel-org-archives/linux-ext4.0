@@ -1,130 +1,90 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: [PATCH 1/4] cfq-iosched: Keep track of average think time for the sync-noidle workload.
-Date: Tue, 18 May 2010 14:20:17 -0400
-Message-ID: <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
-References: <1274206820-17071-1-git-send-email-jmoyer@redhat.com>
-Cc: linux-ext4@vger.kernel.org, jens.axboe@oracle.com,
-	vgoyal@redhat.com, Jeff Moyer <jmoyer@redhat.com>
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1274206820-17071-1-git-send-email-jmoyer@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: Re: [PATCH 1/4] cfq-iosched: Keep track of average think time for
+	the sync-noidle workload.
+Date: Tue, 18 May 2010 16:52:27 -0400
+Message-ID: <20100518205227.GC12330@redhat.com>
+References: <1274206820-17071-1-git-send-email-jmoyer@redhat.com> <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jens.axboe@oracle.com
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:40479 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752708Ab0ERUwb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 May 2010 16:52:31 -0400
+Content-Disposition: inline
+In-Reply-To: <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch uses an average think time for the entirety of the sync-noidle
-workload to determine whether or not to idle on said workload.  This brings
-it more in line with the policy for the sync queues in the sync workload.
+On Tue, May 18, 2010 at 02:20:17PM -0400, Jeff Moyer wrote:
+> This patch uses an average think time for the entirety of the sync-noidle
+> workload to determine whether or not to idle on said workload.  This brings
+> it more in line with the policy for the sync queues in the sync workload.
+> 
+> Testing shows that this provided an overall increase in throughput for
+> a mixed workload on my hardware RAID array.
+> 
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> ---
+>  block/cfq-iosched.c |   44 +++++++++++++++++++++++++++++++++++++++-----
+>  1 files changed, 39 insertions(+), 5 deletions(-)
+> 
+> diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+> index 838834b..46a7fe5 100644
+> --- a/block/cfq-iosched.c
+> +++ b/block/cfq-iosched.c
+> @@ -83,9 +83,14 @@ struct cfq_rb_root {
+>  	unsigned total_weight;
+>  	u64 min_vdisktime;
+>  	struct rb_node *active;
+> +	unsigned long last_end_request;
+> +	unsigned long ttime_total;
+> +	unsigned long ttime_samples;
+> +	unsigned long ttime_mean;
+>  };
+>  #define CFQ_RB_ROOT	(struct cfq_rb_root) { .rb = RB_ROOT, .left = NULL, \
+> -			.count = 0, .min_vdisktime = 0, }
+> +			.count = 0, .min_vdisktime = 0, .last_end_request = 0, \
+> +			.ttime_total = 0, .ttime_samples = 0, .ttime_mean = 0 }
+>  
+>  /*
+>   * Per process-grouping structure
+> @@ -962,8 +967,10 @@ cfq_find_alloc_cfqg(struct cfq_data *cfqd, struct cgroup *cgroup, int create)
+>  		goto done;
+>  
+>  	cfqg->weight = blkcg->weight;
+> -	for_each_cfqg_st(cfqg, i, j, st)
+> +	for_each_cfqg_st(cfqg, i, j, st) {
+>  		*st = CFQ_RB_ROOT;
+> +		st->last_end_request = jiffies;
+> +	}
+>  	RB_CLEAR_NODE(&cfqg->rb_node);
+>  
+>  	/*
+> @@ -1795,9 +1802,12 @@ static bool cfq_should_idle(struct cfq_data *cfqd, struct cfq_queue *cfqq)
+>  
+>  	/*
+>  	 * Otherwise, we do only if they are the last ones
+> -	 * in their service tree.
+> +	 * in their service tree and the average think time is
+> +	 * less than the slice length.
+>  	 */
+> -	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq))
+> +	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq) &&
+> +	    (!sample_valid(service_tree->ttime_samples || 
+						     ^^^
+Jeff, 
 
-Testing shows that this provided an overall increase in throughput for
-a mixed workload on my hardware RAID array.
+Are we closing sample_valid() bracket at right place here?
 
-Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
----
- block/cfq-iosched.c |   44 +++++++++++++++++++++++++++++++++++++++-----
- 1 files changed, 39 insertions(+), 5 deletions(-)
+I am wondering where it is helping you. If it is to bring in line with
+with sync tree (old implementation), then we should have also compared
+the think time with slice_idle?
 
-diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-index 838834b..46a7fe5 100644
---- a/block/cfq-iosched.c
-+++ b/block/cfq-iosched.c
-@@ -83,9 +83,14 @@ struct cfq_rb_root {
- 	unsigned total_weight;
- 	u64 min_vdisktime;
- 	struct rb_node *active;
-+	unsigned long last_end_request;
-+	unsigned long ttime_total;
-+	unsigned long ttime_samples;
-+	unsigned long ttime_mean;
- };
- #define CFQ_RB_ROOT	(struct cfq_rb_root) { .rb = RB_ROOT, .left = NULL, \
--			.count = 0, .min_vdisktime = 0, }
-+			.count = 0, .min_vdisktime = 0, .last_end_request = 0, \
-+			.ttime_total = 0, .ttime_samples = 0, .ttime_mean = 0 }
+But comparing that here might not be the best thing as cfq_should_idle()
+is used in many contexts.
  
- /*
-  * Per process-grouping structure
-@@ -962,8 +967,10 @@ cfq_find_alloc_cfqg(struct cfq_data *cfqd, struct cgroup *cgroup, int create)
- 		goto done;
- 
- 	cfqg->weight = blkcg->weight;
--	for_each_cfqg_st(cfqg, i, j, st)
-+	for_each_cfqg_st(cfqg, i, j, st) {
- 		*st = CFQ_RB_ROOT;
-+		st->last_end_request = jiffies;
-+	}
- 	RB_CLEAR_NODE(&cfqg->rb_node);
- 
- 	/*
-@@ -1795,9 +1802,12 @@ static bool cfq_should_idle(struct cfq_data *cfqd, struct cfq_queue *cfqq)
- 
- 	/*
- 	 * Otherwise, we do only if they are the last ones
--	 * in their service tree.
-+	 * in their service tree and the average think time is
-+	 * less than the slice length.
- 	 */
--	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq))
-+	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq) &&
-+	    (!sample_valid(service_tree->ttime_samples || 
-+	     cfqq->slice_end - jiffies < service_tree->ttime_mean)))
- 		return 1;
- 	cfq_log_cfqq(cfqd, cfqq, "Not idling. st->count:%d",
- 			service_tree->count);
-@@ -2988,6 +2998,18 @@ err:
- }
- 
- static void
-+cfq_update_st_thinktime(struct cfq_data *cfqd, struct cfq_rb_root *service_tree)
-+{
-+	unsigned long elapsed = jiffies - service_tree->last_end_request;
-+	unsigned long ttime = min(elapsed, 2UL * cfqd->cfq_slice_idle);
-+
-+	service_tree->ttime_samples = (7*service_tree->ttime_samples + 256) / 8;
-+	service_tree->ttime_total = (7*service_tree->ttime_total + 256*ttime)/8;
-+	service_tree->ttime_mean = (service_tree->ttime_total + 128) /
-+						service_tree->ttime_samples;
-+}
-+
-+static void
- cfq_update_io_thinktime(struct cfq_data *cfqd, struct cfq_io_context *cic)
- {
- 	unsigned long elapsed = jiffies - cic->last_end_request;
-@@ -3166,6 +3188,7 @@ cfq_rq_enqueued(struct cfq_data *cfqd, struct cfq_queue *cfqq,
- 		cfqq->meta_pending++;
- 
- 	cfq_update_io_thinktime(cfqd, cic);
-+	cfq_update_st_thinktime(cfqd, cfqq->service_tree);
- 	cfq_update_io_seektime(cfqd, cfqq, rq);
- 	cfq_update_idle_window(cfqd, cfqq, cic);
- 
-@@ -3304,7 +3327,16 @@ static void cfq_completed_request(struct request_queue *q, struct request *rq)
- 	cfqd->rq_in_flight[cfq_cfqq_sync(cfqq)]--;
- 
- 	if (sync) {
-+		struct cfq_rb_root *st;
-+
- 		RQ_CIC(rq)->last_end_request = now;
-+		/*
-+		 * cfqq->service_tree is only filled in while on the rb tree,
-+		 * so we need to lookup the service tree here.
-+		 */
-+		st = service_tree_for(cfqq->cfqg,
-+				      cfqq_prio(cfqq), cfqq_type(cfqq));
-+		st->last_end_request = now;
- 		if (!time_after(rq->start_time + cfqd->cfq_fifo_expire[1], now))
- 			cfqd->last_delayed_sync = now;
- 	}
-@@ -3681,8 +3713,10 @@ static void *cfq_init_queue(struct request_queue *q)
- 
- 	/* Init root group */
- 	cfqg = &cfqd->root_group;
--	for_each_cfqg_st(cfqg, i, j, st)
-+	for_each_cfqg_st(cfqg, i, j, st) {
- 		*st = CFQ_RB_ROOT;
-+		st->last_end_request = jiffies;
-+	}
- 	RB_CLEAR_NODE(&cfqg->rb_node);
- 
- 	/* Give preference to root group over other groups */
--- 
-1.6.5.2
+Vivek
