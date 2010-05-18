@@ -1,115 +1,145 @@
 From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [PATCH 1/4] cfq-iosched: Keep track of average think time for
-	the sync-noidle workload.
-Date: Tue, 18 May 2010 17:02:26 -0400
-Message-ID: <20100518210226.GD12330@redhat.com>
-References: <1274206820-17071-1-git-send-email-jmoyer@redhat.com> <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
+Subject: Re: [PATCH 2/4] block: Implement a blk_yield function to
+	voluntarily give up the I/O scheduler.
+Date: Tue, 18 May 2010 17:07:52 -0400
+Message-ID: <20100518210752.GE12330@redhat.com>
+References: <1274206820-17071-1-git-send-email-jmoyer@redhat.com> <1274206820-17071-3-git-send-email-jmoyer@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	jens.axboe@oracle.com
 To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62089 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751441Ab0ERVCa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 May 2010 17:02:30 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1274206820-17071-3-git-send-email-jmoyer@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 18, 2010 at 02:20:17PM -0400, Jeff Moyer wrote:
-> This patch uses an average think time for the entirety of the sync-noidle
-> workload to determine whether or not to idle on said workload.  This brings
-> it more in line with the policy for the sync queues in the sync workload.
-> 
-> Testing shows that this provided an overall increase in throughput for
-> a mixed workload on my hardware RAID array.
+On Tue, May 18, 2010 at 02:20:18PM -0400, Jeff Moyer wrote:
+> This patch implements a blk_yield to allow a process to voluntarily
+> give up its I/O scheduler time slice.  This is desirable for those processes
+> which know that they will be blocked on I/O from another process, such as
+> the file system journal thread.  Following patches will put calls to blk_yield
+> into jbd and jbd2.
 > 
 > Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
 > ---
->  block/cfq-iosched.c |   44 +++++++++++++++++++++++++++++++++++++++-----
->  1 files changed, 39 insertions(+), 5 deletions(-)
+>  block/blk-core.c         |   13 +++++
+>  block/blk-settings.c     |    6 +++
+>  block/cfq-iosched.c      |  112 +++++++++++++++++++++++++++++++++++++++++++++-
+>  block/elevator.c         |    8 +++
+>  include/linux/blkdev.h   |    4 ++
+>  include/linux/elevator.h |    3 +
+>  6 files changed, 144 insertions(+), 2 deletions(-)
 > 
+> diff --git a/block/blk-core.c b/block/blk-core.c
+> index 9fe174d..b8be6c8 100644
+> --- a/block/blk-core.c
+> +++ b/block/blk-core.c
+> @@ -323,6 +323,18 @@ void blk_unplug(struct request_queue *q)
+>  }
+>  EXPORT_SYMBOL(blk_unplug);
+>  
+> +void generic_yield_iosched(struct request_queue *q, struct task_struct *tsk)
+> +{
+> +	elv_yield(q, tsk);
+> +}
+> +
+> +void blk_yield(struct request_queue *q, struct task_struct *tsk)
+> +{
+> +	if (q->yield_fn)
+> +		q->yield_fn(q, tsk);
+> +}
+> +EXPORT_SYMBOL(blk_yield);
+> +
+>  /**
+>   * blk_start_queue - restart a previously stopped queue
+>   * @q:    The &struct request_queue in question
+> @@ -580,6 +592,7 @@ blk_init_queue_node(request_fn_proc *rfn, spinlock_t *lock, int node_id)
+>  	q->request_fn		= rfn;
+>  	q->prep_rq_fn		= NULL;
+>  	q->unplug_fn		= generic_unplug_device;
+> +	q->yield_fn		= generic_yield_iosched;
+>  	q->queue_flags		= QUEUE_FLAG_DEFAULT;
+>  	q->queue_lock		= lock;
+>  
+> diff --git a/block/blk-settings.c b/block/blk-settings.c
+> index f5ed5a1..fe548c9 100644
+> --- a/block/blk-settings.c
+> +++ b/block/blk-settings.c
+> @@ -171,6 +171,12 @@ void blk_queue_make_request(struct request_queue *q, make_request_fn *mfn)
+>  }
+>  EXPORT_SYMBOL(blk_queue_make_request);
+>  
+> +void blk_queue_yield(struct request_queue *q, yield_fn *yield)
+> +{
+> +	q->yield_fn = yield;
+> +}
+> +EXPORT_SYMBOL_GPL(blk_queue_yield);
+> +
+>  /**
+>   * blk_queue_bounce_limit - set bounce buffer limit for queue
+>   * @q: the request queue for the device
 > diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-> index 838834b..46a7fe5 100644
+> index 46a7fe5..9aab701 100644
 > --- a/block/cfq-iosched.c
 > +++ b/block/cfq-iosched.c
-> @@ -83,9 +83,14 @@ struct cfq_rb_root {
->  	unsigned total_weight;
->  	u64 min_vdisktime;
->  	struct rb_node *active;
-> +	unsigned long last_end_request;
-> +	unsigned long ttime_total;
-> +	unsigned long ttime_samples;
-> +	unsigned long ttime_mean;
+> @@ -148,6 +148,7 @@ struct cfq_queue {
+>  	struct cfq_queue *new_cfqq;
+>  	struct cfq_group *cfqg;
+>  	struct cfq_group *orig_cfqg;
+> +	struct cfq_io_context *yield_to;
+>  	/* Sectors dispatched in current dispatch round */
+>  	unsigned long nr_sectors;
 >  };
->  #define CFQ_RB_ROOT	(struct cfq_rb_root) { .rb = RB_ROOT, .left = NULL, \
-> -			.count = 0, .min_vdisktime = 0, }
-> +			.count = 0, .min_vdisktime = 0, .last_end_request = 0, \
-> +			.ttime_total = 0, .ttime_samples = 0, .ttime_mean = 0 }
+> @@ -320,6 +321,7 @@ enum cfqq_state_flags {
+>  	CFQ_CFQQ_FLAG_split_coop,	/* shared cfqq will be splitted */
+>  	CFQ_CFQQ_FLAG_deep,		/* sync cfqq experienced large depth */
+>  	CFQ_CFQQ_FLAG_wait_busy,	/* Waiting for next request */
+> +	CFQ_CFQQ_FLAG_yield,		/* Allow another cfqq to run */
+>  };
 >  
->  /*
->   * Per process-grouping structure
-> @@ -962,8 +967,10 @@ cfq_find_alloc_cfqg(struct cfq_data *cfqd, struct cgroup *cgroup, int create)
->  		goto done;
+>  #define CFQ_CFQQ_FNS(name)						\
+> @@ -349,6 +351,7 @@ CFQ_CFQQ_FNS(coop);
+>  CFQ_CFQQ_FNS(split_coop);
+>  CFQ_CFQQ_FNS(deep);
+>  CFQ_CFQQ_FNS(wait_busy);
+> +CFQ_CFQQ_FNS(yield);
+>  #undef CFQ_CFQQ_FNS
 >  
->  	cfqg->weight = blkcg->weight;
-> -	for_each_cfqg_st(cfqg, i, j, st)
-> +	for_each_cfqg_st(cfqg, i, j, st) {
->  		*st = CFQ_RB_ROOT;
-> +		st->last_end_request = jiffies;
-> +	}
->  	RB_CLEAR_NODE(&cfqg->rb_node);
+>  #ifdef CONFIG_DEBUG_CFQ_IOSCHED
+> @@ -1566,6 +1569,7 @@ __cfq_slice_expired(struct cfq_data *cfqd, struct cfq_queue *cfqq,
+>  
+>  	cfq_clear_cfqq_wait_request(cfqq);
+>  	cfq_clear_cfqq_wait_busy(cfqq);
+> +	cfq_clear_cfqq_yield(cfqq);
 >  
 >  	/*
-> @@ -1795,9 +1802,12 @@ static bool cfq_should_idle(struct cfq_data *cfqd, struct cfq_queue *cfqq)
+>  	 * If this cfqq is shared between multiple processes, check to
+> @@ -2068,7 +2072,7 @@ static void choose_service_tree(struct cfq_data *cfqd, struct cfq_group *cfqg)
+>  		slice = max(slice, 2 * cfqd->cfq_slice_idle);
 >  
->  	/*
->  	 * Otherwise, we do only if they are the last ones
-> -	 * in their service tree.
-> +	 * in their service tree and the average think time is
-> +	 * less than the slice length.
->  	 */
-> -	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq))
-> +	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq) &&
-> +	    (!sample_valid(service_tree->ttime_samples || 
-> +	     cfqq->slice_end - jiffies < service_tree->ttime_mean)))
->  		return 1;
+>  	slice = max_t(unsigned, slice, CFQ_MIN_TT);
+> -	cfq_log(cfqd, "workload slice:%d", slice);
+> +	cfq_log(cfqd, "workload:%d slice:%d", cfqd->serving_type, slice);
+>  	cfqd->workload_expires = jiffies + slice;
+>  	cfqd->noidle_tree_requires_idle = false;
+>  }
+> @@ -2138,7 +2142,8 @@ static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
+>  		 * ok to wait for this request to complete.
+>  		 */
+>  		if (cfqq->cfqg->nr_cfqq == 1 && RB_EMPTY_ROOT(&cfqq->sort_list)
+> -		    && cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
+> +		    && cfqq->dispatched && !cfq_cfqq_yield(cfqq) &&
+> +		    cfq_should_idle(cfqd, cfqq)) {
+>  			cfqq = NULL;
 
-This comparision will also might break some logic in select_queue() where
-we wait for a queue/group to get busy even if queue's time slice has
-expired.
+I think if we just place cfq_cfqq_yield(cfqq), check above it, we don't
+need above code modification?
 
-********************************************************************
-if (cfq_slice_used(cfqq) && !cfq_cfqq_must_dispatch(cfqq)) {
-                /*
-                 * If slice had not expired at the completion of last
-                 * request
-                 * we might not have turned on wait_busy flag. Don't
-                 * expire
-                 * the queue yet. Allow the group to get backlogged.
-                 *
-                 * The very fact that we have used the slice, that means
-                 * we
-                 * have been idling all along on this queue and it should
-                 * be
-                 * ok to wait for this request to complete.
-                 */
-                if (cfqq->cfqg->nr_cfqq == 1 && RB_EMPTY_ROOT(&cfqq->sort_list)
-                    && cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
-                        cfqq = NULL;
-                        goto keep_queue;
-		}
-
-*************************************************************************
-
-With this change, now above condition will never be true as
-cfq_should_idle() will always return false as slice has already expired.
-And that will affect group loosing its fair share.
-
-So I guess we can define new functions to check more conditions instead of
-putting it in cfq_should_idle()
+This might result in some group losing fairness in certain scenarios, but
+I guess we will tackle it once we face it. For the time being if fsync
+thread is giving up cpu, journald commits will come in root group and
+there might not be a point in wasting time idling on this group.
 
 Vivek
