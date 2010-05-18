@@ -1,8 +1,8 @@
 From: Vivek Goyal <vgoyal@redhat.com>
 Subject: Re: [PATCH 1/4] cfq-iosched: Keep track of average think time for
 	the sync-noidle workload.
-Date: Tue, 18 May 2010 16:52:27 -0400
-Message-ID: <20100518205227.GC12330@redhat.com>
+Date: Tue, 18 May 2010 17:02:26 -0400
+Message-ID: <20100518210226.GD12330@redhat.com>
 References: <1274206820-17071-1-git-send-email-jmoyer@redhat.com> <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -10,10 +10,10 @@ Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	jens.axboe@oracle.com
 To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40479 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62089 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752708Ab0ERUwb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 May 2010 16:52:31 -0400
+	id S1751441Ab0ERVCa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 May 2010 17:02:30 -0400
 Content-Disposition: inline
 In-Reply-To: <1274206820-17071-2-git-send-email-jmoyer@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -75,16 +75,41 @@ On Tue, May 18, 2010 at 02:20:17PM -0400, Jeff Moyer wrote:
 > -	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq))
 > +	if (service_tree->count == 1 && cfq_cfqq_sync(cfqq) &&
 > +	    (!sample_valid(service_tree->ttime_samples || 
-						     ^^^
-Jeff, 
+> +	     cfqq->slice_end - jiffies < service_tree->ttime_mean)))
+>  		return 1;
 
-Are we closing sample_valid() bracket at right place here?
+This comparision will also might break some logic in select_queue() where
+we wait for a queue/group to get busy even if queue's time slice has
+expired.
 
-I am wondering where it is helping you. If it is to bring in line with
-with sync tree (old implementation), then we should have also compared
-the think time with slice_idle?
+********************************************************************
+if (cfq_slice_used(cfqq) && !cfq_cfqq_must_dispatch(cfqq)) {
+                /*
+                 * If slice had not expired at the completion of last
+                 * request
+                 * we might not have turned on wait_busy flag. Don't
+                 * expire
+                 * the queue yet. Allow the group to get backlogged.
+                 *
+                 * The very fact that we have used the slice, that means
+                 * we
+                 * have been idling all along on this queue and it should
+                 * be
+                 * ok to wait for this request to complete.
+                 */
+                if (cfqq->cfqg->nr_cfqq == 1 && RB_EMPTY_ROOT(&cfqq->sort_list)
+                    && cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
+                        cfqq = NULL;
+                        goto keep_queue;
+		}
 
-But comparing that here might not be the best thing as cfq_should_idle()
-is used in many contexts.
- 
+*************************************************************************
+
+With this change, now above condition will never be true as
+cfq_should_idle() will always return false as slice has already expired.
+And that will affect group loosing its fair share.
+
+So I guess we can define new functions to check more conditions instead of
+putting it in cfq_should_idle()
+
 Vivek
