@@ -1,42 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15579] ext4 -o discard produces incorrect blocks of zeroes in
- newly created files under heavy read+truncate+append-new-file load
-Date: Wed, 19 May 2010 15:58:33 GMT
-Message-ID: <201005191558.o4JFwXcq026335@demeter.kernel.org>
-References: <bug-15579-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsck: correct test for EOFBLOCKS
+Date: Wed, 19 May 2010 13:20:13 -0500
+Message-ID: <4BF42BDD.9090301@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:44536 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752847Ab0ESP6d (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 May 2010 11:58:33 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4JFwXqx026336
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 19 May 2010 15:58:33 GMT
-In-Reply-To: <bug-15579-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:15966 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751400Ab0ESSUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 May 2010 14:20:17 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15579
+This test, added to e2fsprogs-1.41.12, is backwards.
 
+If EOFBLOCKS is set, then the size -should- be less than
+the last physical block...
 
-Eric Sandeen <sandeen@redhat.com> changed:
+xfstests 013 caught this.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |sandeen@redhat.com
-                   |g                           |
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
+Index: e2fsprogs-1.41.12/e2fsck/pass1.c
+===================================================================
+--- e2fsprogs-1.41.12.orig/e2fsck/pass1.c
++++ e2fsprogs-1.41.12/e2fsck/pass1.c
+@@ -2013,7 +2013,7 @@ static void check_blocks(e2fsck_t ctx, s
+ 		 * doesn't need to be.
+ 		 */
+ 		if ((inode->i_flags & EXT4_EOFBLOCKS_FL) &&
+-		    (size <= (((__u64)pb.last_block + 1) * fs->blocksize))) {
++		    (size >= (((__u64)pb.last_block + 1) * fs->blocksize))) {
+ 			pctx->blkcount = pb.last_block;
+ 			if (fix_problem(ctx, PR_1_EOFBLOCKS_FL_SET, pctx)) {
+ 				inode->i_flags &= ~EXT4_EOFBLOCKS_FL;
 
-
-
---- Comment #13 from Eric Sandeen <sandeen@redhat.com>  2010-05-19 15:58:25 ---
-Taking bug so I can close it :)
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
