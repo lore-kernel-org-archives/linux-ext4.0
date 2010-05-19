@@ -1,41 +1,40 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsck: correct test for EOFBLOCKS
-Date: Wed, 19 May 2010 13:20:13 -0500
-Message-ID: <4BF42BDD.9090301@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 15906] performance regression in "umount" of filesystems using
+ barriers
+Date: Wed, 19 May 2010 18:57:59 GMT
+Message-ID: <201005191857.o4JIvxOC016392@demeter.kernel.org>
+References: <bug-15906-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15966 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751400Ab0ESSUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 May 2010 14:20:17 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:60450 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752742Ab0ESS6A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 May 2010 14:58:00 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4JIvxYL016393
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 19 May 2010 18:57:59 GMT
+In-Reply-To: <bug-15906-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This test, added to e2fsprogs-1.41.12, is backwards.
+https://bugzilla.kernel.org/show_bug.cgi?id=15906
 
-If EOFBLOCKS is set, then the size -should- be less than
-the last physical block...
 
-xfstests 013 caught this.
+Andrew Morton <akpm@linux-foundation.org> changed:
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+                 CC|                            |akpm@linux-foundation.org
+         Resolution|                            |CODE_FIX
 
-Index: e2fsprogs-1.41.12/e2fsck/pass1.c
-===================================================================
---- e2fsprogs-1.41.12.orig/e2fsck/pass1.c
-+++ e2fsprogs-1.41.12/e2fsck/pass1.c
-@@ -2013,7 +2013,7 @@ static void check_blocks(e2fsck_t ctx, s
- 		 * doesn't need to be.
- 		 */
- 		if ((inode->i_flags & EXT4_EOFBLOCKS_FL) &&
--		    (size <= (((__u64)pb.last_block + 1) * fs->blocksize))) {
-+		    (size >= (((__u64)pb.last_block + 1) * fs->blocksize))) {
- 			pctx->blkcount = pb.last_block;
- 			if (fix_problem(ctx, PR_1_EOFBLOCKS_FL_SET, pctx)) {
- 				inode->i_flags &= ~EXT4_EOFBLOCKS_FL;
 
+
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
