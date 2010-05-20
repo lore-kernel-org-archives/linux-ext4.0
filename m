@@ -1,52 +1,46 @@
-From: Ben Hutchings <ben@decadent.org.uk>
-Subject: [PATCH 1/2] ext4: Conditionally define compat ioctl numbers
-Date: Fri, 21 May 2010 00:30:22 +0100
-Message-ID: <1274398223.2257.0.camel@localhost>
+From: tytso@mit.edu
+Subject: Re: ext4 df regression introduced by commit 9d0be50
+Date: Thu, 20 May 2010 19:32:45 -0400
+Message-ID: <20100520233245.GG16634@thunk.org>
+References: <20100510180531.GA13538@untroubled.org>
+ <20100520161121.GB28963@atrey.karlin.mff.cuni.cz>
+ <20100520163214.GC28770@untroubled.org>
+ <20100520205911.GA2317@untroubled.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:39918 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755174Ab0ETXaa convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 May 2010 19:30:30 -0400
+Received: from THUNK.ORG ([69.25.196.29]:55635 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755174Ab0ETXcs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 May 2010 19:32:48 -0400
+Content-Disposition: inline
+In-Reply-To: <20100520205911.GA2317@untroubled.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is unnecessary, and in general impossible, to define the compat
-ioctl numbers except when building the filesystem with CONFIG_COMPAT
-defined.
+On Thu, May 20, 2010 at 02:59:11PM -0600, Bruce Guenter wrote:
+> On Thu, May 20, 2010 at 10:32:14AM -0600, Bruce Guenter wrote:
+> > IIRC this only affects NFS clients.  The same test running locally on
+> > the server doesn't show the same problem.  I will retest shortly and
+> > confirm (and also test with 2.6.34).
+> 
+> Sorry, I was mistaken.  Running 'df' either locally or remotely shows
+> the same results.
+> 
+> I have been unable to reproduce the problem with a simplified test
+> program as of yet, and have so far been unable to reproduce the problem
+> with 2.6.34 with any program either.
+> 
+> Hopefully this means the problem has been solved, but I'll let you know
+> if it reappears in 2.6.34
 
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
----
- fs/ext4/ext4.h |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+Sorry for not responding right away; I've been a bit swamped lately
+and this fell through the cracks in my inbox.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bf938cf..f5c9941 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -398,6 +398,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- 
-+#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-  * ioctl commands in 32 bit emulation
-  */
-@@ -413,6 +414,7 @@ struct ext4_new_group_data {
- #endif
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
- #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
-+#endif
- 
+Yes this is fixed in 2.6.34.  The fix for your problem was commit
+d330a5be.  If I have a moment to breathe I'll try to get that
+backported to the 2.6.33 stable series, but upgrading to 2.6.34 works
+too.  :-)
 
- /*
--- 
-1.7.1
-
-
-
+					- Ted
