@@ -1,20 +1,20 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Thu, 20 May 2010 22:55:32 GMT
-Message-ID: <201005202255.o4KMtWYs027746@demeter.kernel.org>
+Date: Thu, 20 May 2010 23:00:34 GMT
+Message-ID: <201005202300.o4KN0YdO028950@demeter.kernel.org>
 References: <bug-16019-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:37400 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:46651 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753557Ab0ETWzd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 May 2010 18:55:33 -0400
+	with ESMTP id S1755003Ab0ETXAf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 May 2010 19:00:35 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4KMtWLn027747
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4KN0Yl6028951
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 20 May 2010 22:55:32 GMT
+	for <linux-ext4@vger.kernel.org>; Thu, 20 May 2010 23:00:34 GMT
 In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -22,13 +22,18 @@ List-ID: <linux-ext4.vger.kernel.org>
 https://bugzilla.kernel.org/show_bug.cgi?id=16019
 
 
+Rafael J. Wysocki <rjw@sisk.pl> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |rjw@sisk.pl
+             Blocks|                            |7216
 
 
 
---- Comment #1 from David Lowe <lowe@brown.edu>  2010-05-20 22:55:31 ---
-Created an attachment (id=26478)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=26478)
-log messages for hibernate/resume cycle
+
+--- Comment #2 from Rafael J. Wysocki <rjw@sisk.pl>  2010-05-20 23:00:33 ---
+What kind of HDD is the filesystem on?
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
