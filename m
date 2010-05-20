@@ -1,58 +1,33 @@
-From: Bruce Guenter <bruce@untroubled.org>
-Subject: Re: ext4 df regression introduced by commit 9d0be50
-Date: Thu, 20 May 2010 14:59:11 -0600
-Message-ID: <20100520205911.GA2317@untroubled.org>
-References: <20100510180531.GA13538@untroubled.org>
- <20100520161121.GB28963@atrey.karlin.mff.cuni.cz>
- <20100520163214.GC28770@untroubled.org>
+From: tytso@mit.edu
+Subject: Re: [PATCH 1/3] quota: use flags interface for dquot alloc/free
+ space
+Date: Thu, 20 May 2010 18:29:46 -0400
+Message-ID: <20100520222946.GD16634@thunk.org>
+References: <4BBCFD10.3030504@redhat.com>
+ <4BBCFDD1.30505@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="UugvWAfsgieZRqgk"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zak.futurequest.net ([69.5.6.152]:44710 "HELO
-	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753355Ab0ETU7P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 May 2010 16:59:15 -0400
+Received: from THUNK.ORG ([69.25.196.29]:53467 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755028Ab0ETW3v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 May 2010 18:29:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20100520163214.GC28770@untroubled.org>
+In-Reply-To: <4BBCFDD1.30505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Apr 07, 2010 at 04:49:05PM -0500, Eric Sandeen wrote:
+> Switch __dquot_alloc_space and __dquot_free_space to take flags
+> to indicate whether to warn and/or to reserve (or free reserve).
+> 
+> This is slightly more readable at the callpoints, and makes it
+> cleaner to add a "nofail" option in the next patch.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
---UugvWAfsgieZRqgk
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Applied to the ext4 patch queue, apologies for the delay.
 
-On Thu, May 20, 2010 at 10:32:14AM -0600, Bruce Guenter wrote:
-> IIRC this only affects NFS clients.  The same test running locally on
-> the server doesn't show the same problem.  I will retest shortly and
-> confirm (and also test with 2.6.34).
-
-Sorry, I was mistaken.  Running 'df' either locally or remotely shows
-the same results.
-
-I have been unable to reproduce the problem with a simplified test
-program as of yet, and have so far been unable to reproduce the problem
-with 2.6.34 with any program either.
-
-Hopefully this means the problem has been solved, but I'll let you know
-if it reappears in 2.6.34
-
---=20
-Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
-
---UugvWAfsgieZRqgk
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.14 (GNU/Linux)
-
-iEYEARECAAYFAkv1op8ACgkQ6W+y3GmZgOhQiACgo++0T/LQERg5M9DKH2pJJM10
-xBUAnRH2PgKR/Igvtetk5BqytLti3G4F
-=ILOS
------END PGP SIGNATURE-----
-
---UugvWAfsgieZRqgk--
+	       	    	  	 - Ted
