@@ -1,20 +1,20 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Fri, 21 May 2010 18:00:30 GMT
-Message-ID: <201005211800.o4LI0U7U013111@demeter.kernel.org>
+Date: Fri, 21 May 2010 18:04:40 GMT
+Message-ID: <201005211804.o4LI4ecd014301@demeter.kernel.org>
 References: <bug-16019-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:59578 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:41385 "EHLO
 	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755733Ab0EUSAb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 May 2010 14:00:31 -0400
+	with ESMTP id S934024Ab0EUSEl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 May 2010 14:04:41 -0400
 Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4LI0UM7013112
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4LI4e0m014302
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 21 May 2010 18:00:30 GMT
+	for <linux-ext4@vger.kernel.org>; Fri, 21 May 2010 18:04:41 GMT
 In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -25,27 +25,8 @@ https://bugzilla.kernel.org/show_bug.cgi?id=16019
 
 
 
---- Comment #7 from David Lowe <lowe@brown.edu>  2010-05-21 18:00:27 ---
-(In reply to comment #6)
-> Just to test a theory, could you try doing "hdparm -W" on your disk(s) to check
-> the write cache status?
-> 
-> If it's 1 (on), then prior to hibernate, can you try hdparm -W 0 on the disk(s)
-> and see if the problem persists?  I'm wondering if it's possible that data in
-> the drive's write cache got lost when the system powered down, if it wasn't
-> properly flushed during hibernate.
-> 
-> You'll want to do hdparm -W 1 later to turn them back on if that was the
-> original state.
-> 
-> Thanks,
-> 
-> -Eric
-
-I gave that a try and did not find any difference.
-
-The original state was 1 (on) so I set it to 0 and did a hibernate. 
-The system comes back up with the unwritable disk as before.
+--- Comment #8 from Eric Sandeen <sandeen@redhat.com>  2010-05-21 18:04:40 ---
+Thanks for testing ... so much for that theory.
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
