@@ -1,35 +1,226 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Sat, 22 May 2010 17:10:06 GMT
-Message-ID: <201005221710.o4MHA6bf014090@demeter.kernel.org>
-References: <bug-16019-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Use our own write_cache_pages()
+Date: Sat, 22 May 2010 21:00:42 -0400
+Message-ID: <1274576442-9698-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:34887 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751838Ab0EVRKH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 May 2010 13:10:07 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o4MHA68a014091
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 22 May 2010 17:10:06 GMT
-In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:40091 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755522Ab0EWBAs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 May 2010 21:00:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16019
+Make a copy of write_cache_pages() for the benefit of
+ext4_da_writepages().  This allows us to simplify the code some, and
+will allow us to further customize the code in future patches.
 
+There are some nasty hacks in write_cache_pages(), which Linus has
+(correctly) characterized as vile.  I've just copied it into
+write_cache_pages_da(), without trying to clean those bits up lest I
+break something in the ext4's delalloc implementation, which is a bit
+fragile right now.  This will allow Dave Chinner to clean up
+write_cache_pages() in mm/page-writeback.c, without worrying about
+breaking ext4.  Eventually write_cache_pages_da() will go away when I
+rewrite ext4's delayed allocation and create a general
+ext4_writepages() which is used for all of ext4's writeback.  Until
+now this is the lowest risk way to clean up the core
+write_cache_pages() function.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Dave Chinner <david@fromorbit.com>
+---
+ fs/ext4/inode.c |  141 ++++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 119 insertions(+), 22 deletions(-)
 
-
-
---- Comment #16 from Eric Sandeen <sandeen@redhat.com>  2010-05-22 17:10:04 ---
-David, do you know if this regressed for you at some point?  Has it ever
-worked?
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6aa0442..10be87b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2426,17 +2426,6 @@ static int __mpage_da_writepage(struct page *page,
+ 	struct buffer_head *bh, *head;
+ 	sector_t logical;
+ 
+-	if (mpd->io_done) {
+-		/*
+-		 * Rest of the page in the page_vec
+-		 * redirty then and skip then. We will
+-		 * try to write them again after
+-		 * starting a new transaction
+-		 */
+-		redirty_page_for_writepage(wbc, page);
+-		unlock_page(page);
+-		return MPAGE_DA_EXTENT_TAIL;
+-	}
+ 	/*
+ 	 * Can we merge this page to current extent?
+ 	 */
+@@ -2831,6 +2820,124 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
+ 	return ext4_chunk_trans_blocks(inode, max_blocks);
+ }
+ 
++/*
++ * write_cache_pages_da - walk the list of dirty pages of the given
++ * address space and call the callback function (which usually writes
++ * the pages).
++ *
++ * This is a forked version of write_cache_pages().  Differences:
++ *	Range cyclic is ignored.
++ *	no_nrwrite_index_update is always presumed true
++ */
++static int write_cache_pages_da(struct address_space *mapping,
++				struct writeback_control *wbc,
++				struct mpage_da_data *mpd)
++{
++	int ret = 0;
++	int done = 0;
++	struct pagevec pvec;
++	int nr_pages;
++	pgoff_t index;
++	pgoff_t end;		/* Inclusive */
++	long nr_to_write = wbc->nr_to_write;
++
++	pagevec_init(&pvec, 0);
++	index = wbc->range_start >> PAGE_CACHE_SHIFT;
++	end = wbc->range_end >> PAGE_CACHE_SHIFT;
++
++	while (!done && (index <= end)) {
++		int i;
++
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++			      PAGECACHE_TAG_DIRTY,
++			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
++		if (nr_pages == 0)
++			break;
++
++		for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
++
++			/*
++			 * At this point, the page may be truncated or
++			 * invalidated (changing page->mapping to NULL), or
++			 * even swizzled back from swapper_space to tmpfs file
++			 * mapping. However, page->index will not change
++			 * because we have a reference on the page.
++			 */
++			if (page->index > end) {
++				done = 1;
++				break;
++			}
++
++			lock_page(page);
++
++			/*
++			 * Page truncated or invalidated. We can freely skip it
++			 * then, even for data integrity operations: the page
++			 * has disappeared concurrently, so there could be no
++			 * real expectation of this data interity operation
++			 * even if there is now a new, dirty page at the same
++			 * pagecache address.
++			 */
++			if (unlikely(page->mapping != mapping)) {
++continue_unlock:
++				unlock_page(page);
++				continue;
++			}
++
++			if (!PageDirty(page)) {
++				/* someone wrote it for us */
++				goto continue_unlock;
++			}
++
++			if (PageWriteback(page)) {
++				if (wbc->sync_mode != WB_SYNC_NONE)
++					wait_on_page_writeback(page);
++				else
++					goto continue_unlock;
++			}
++
++			BUG_ON(PageWriteback(page));
++			if (!clear_page_dirty_for_io(page))
++				goto continue_unlock;
++
++			ret = __mpage_da_writepage(page, wbc, mpd);
++			if (unlikely(ret)) {
++				if (ret == AOP_WRITEPAGE_ACTIVATE) {
++					unlock_page(page);
++					ret = 0;
++				} else {
++					done = 1;
++					break;
++				}
++ 			}
++
++			if (nr_to_write > 0) {
++				nr_to_write--;
++				if (nr_to_write == 0 &&
++				    wbc->sync_mode == WB_SYNC_NONE) {
++					/*
++					 * We stop writing back only if we are
++					 * not doing integrity sync. In case of
++					 * integrity sync we have to keep going
++					 * because someone may be concurrently
++					 * dirtying pages, and we might have
++					 * synced a lot of newly appeared dirty
++					 * pages, but have not synced all of the
++					 * old dirty pages.
++					 */
++					done = 1;
++					break;
++				}
++			}
++		}
++		pagevec_release(&pvec);
++		cond_resched();
++	}
++	return ret;
++}
++
++
+ static int ext4_da_writepages(struct address_space *mapping,
+ 			      struct writeback_control *wbc)
+ {
+@@ -2839,7 +2946,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	handle_t *handle = NULL;
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+-	int no_nrwrite_index_update;
+ 	int pages_written = 0;
+ 	long pages_skipped;
+ 	unsigned int max_pages;
+@@ -2919,12 +3025,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	mpd.wbc = wbc;
+ 	mpd.inode = mapping->host;
+ 
+-	/*
+-	 * we don't want write_cache_pages to update
+-	 * nr_to_write and writeback_index
+-	 */
+-	no_nrwrite_index_update = wbc->no_nrwrite_index_update;
+-	wbc->no_nrwrite_index_update = 1;
+ 	pages_skipped = wbc->pages_skipped;
+ 
+ retry:
+@@ -2966,8 +3066,7 @@ retry:
+ 		mpd.io_done = 0;
+ 		mpd.pages_written = 0;
+ 		mpd.retval = 0;
+-		ret = write_cache_pages(mapping, wbc, __mpage_da_writepage,
+-					&mpd);
++		ret = write_cache_pages_da(mapping, wbc, &mpd);
+ 		/*
+ 		 * If we have a contiguous extent of pages and we
+ 		 * haven't done the I/O yet, map the blocks and submit
+@@ -3033,8 +3132,6 @@ retry:
+ 		mapping->writeback_index = index;
+ 
+ out_writepages:
+-	if (!no_nrwrite_index_update)
+-		wbc->no_nrwrite_index_update = 0;
+ 	wbc->nr_to_write -= nr_to_writebump;
+ 	wbc->range_start = range_start;
+ 	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching someone on the CC list of the bug.
+1.6.6.1.1.g974db.dirty
+
