@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [12/24] ext4: Implement range_cyclic in ext4_da_writepages instead of write_cache_pages
-Date: Mon, 24 May 2010 15:28:08 -0700
-Message-ID: <20100524223016.785615552@clark.site>
+Subject: [08/24] ext4: Use tag dirty lookup during mpage_da_submit_io
+Date: Mon, 24 May 2010 15:28:04 -0700
+Message-ID: <20100524223015.642557299@clark.site>
 References: <20100524223544.GA13721@kroah.com>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
@@ -22,95 +22,91 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit 2acf2c261b823d9d9ed954f348b97620297a36b5 upstream.
+commit af6f029d3836eb7264cd3fbb13a6baf0e5fdb5ea upstream.
 
-With delayed allocation we lock the page in write_cache_pages() and
-try to build an in memory extent of contiguous blocks.  This is needed
-so that we can get large contiguous blocks request.  If range_cyclic
-mode is enabled, write_cache_pages() will loop back to the 0 index if
-no I/O has been done yet, and try to start writing from the beginning
-of the range.  That causes an attempt to take the page lock of lower
-index page while holding the page lock of higher index page, which can
-cause a dead lock with another writeback thread.
-
-The solution is to implement the range_cyclic behavior in
-ext4_da_writepages() instead.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=12579
+This enables us to drop the range_cont writeback mode
+use from ext4_da_writepages.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/inode.c |   21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c |   30 +++++++++++++-----------------
+ 1 file changed, 13 insertions(+), 17 deletions(-)
 
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2456,6 +2456,7 @@ static int ext4_da_writepages(struct add
+@@ -1699,17 +1699,23 @@ static int mpage_da_submit_io(struct mpa
+ 
+ 	pagevec_init(&pvec, 0);
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		/*
++		 * We can use PAGECACHE_TAG_DIRTY lookup here because
++		 * even though we have cleared the dirty flag on the page
++		 * We still keep the page in the radix tree with tag
++		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
++		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
++		 * which is called via the below writepage callback.
++		 */
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++					PAGECACHE_TAG_DIRTY,
++					min(end - index,
++					(pgoff_t)PAGEVEC_SIZE-1) + 1);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+ 
+-			index = page->index;
+-			if (index > end)
+-				break;
+-			index++;
+-
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
+ 
+@@ -2442,7 +2448,6 @@ static int ext4_da_writepages(struct add
+ 			      struct writeback_control *wbc)
+ {
+ 	handle_t *handle = NULL;
+-	loff_t range_start = 0;
+ 	struct mpage_da_data mpd;
  	struct inode *inode = mapping->host;
- 	int no_nrwrite_index_update;
- 	long pages_written = 0, pages_skipped;
-+	int range_cyclic, cycled = 1, io_done = 0;
  	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+@@ -2481,14 +2486,7 @@ static int ext4_da_writepages(struct add
+ 		wbc->nr_to_write = sbi->s_mb_stream_request;
+ 	}
  
-@@ -2493,9 +2494,15 @@ static int ext4_da_writepages(struct add
- 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
- 		range_whole = 1;
+-	if (!wbc->range_cyclic)
+-		/*
+-		 * If range_cyclic is not set force range_cont
+-		 * and save the old writeback_index
+-		 */
+-		wbc->range_cont = 1;
  
--	if (wbc->range_cyclic)
-+	range_cyclic = wbc->range_cyclic;
-+	if (wbc->range_cyclic) {
- 		index = mapping->writeback_index;
--	else
-+		if (index)
-+			cycled = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = LLONG_MAX;
-+		wbc->range_cyclic = 0;
-+	} else
- 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
- 
- 	mpd.wbc = wbc;
-@@ -2509,6 +2516,7 @@ static int ext4_da_writepages(struct add
- 	wbc->no_nrwrite_index_update = 1;
+-	range_start =  wbc->range_start;
  	pages_skipped = wbc->pages_skipped;
  
-+retry:
- 	while (!ret && wbc->nr_to_write > 0) {
- 
- 		/*
-@@ -2563,6 +2571,7 @@ static int ext4_da_writepages(struct add
- 			pages_written += mpd.pages_written;
- 			wbc->pages_skipped = pages_skipped;
- 			ret = 0;
-+			io_done = 1;
- 		} else if (wbc->nr_to_write)
- 			/*
- 			 * There is no more writeout needed
-@@ -2571,6 +2580,13 @@ static int ext4_da_writepages(struct add
- 			 */
- 			break;
+ 	mpd.wbc = wbc;
+@@ -2559,9 +2557,8 @@ restart_loop:
+ 		wbc->nr_to_write = to_write;
  	}
-+	if (!io_done && !cycled) {
-+		cycled = 1;
-+		index = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = mapping->writeback_index - 1;
-+		goto retry;
-+	}
- 	if (pages_skipped != wbc->pages_skipped)
- 		printk(KERN_EMERG "This should not happen leaving %s "
- 				"with nr_to_write = %ld ret = %d\n",
-@@ -2578,6 +2594,7 @@ static int ext4_da_writepages(struct add
  
- 	/* Update index */
- 	index += pages_written;
-+	wbc->range_cyclic = range_cyclic;
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		/*
- 		 * set the writeback_index so that range_cyclic
+-	if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
++	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+ 		/* We skipped pages in this loop */
+-		wbc->range_start = range_start;
+ 		wbc->nr_to_write = to_write +
+ 				wbc->pages_skipped - pages_skipped;
+ 		wbc->pages_skipped = pages_skipped;
+@@ -2570,7 +2567,6 @@ restart_loop:
+ 
+ out_writepages:
+ 	wbc->nr_to_write = to_write - nr_to_writebump;
+-	wbc->range_start = range_start;
+ 	return ret;
+ }
+ 
