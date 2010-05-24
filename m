@@ -1,19 +1,24 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [04/24] ext4: Make sure all the block allocation paths reserve blocks
-Date: Mon, 24 May 2010 15:28:00 -0700
-Message-ID: <20100524223014.777274118@clark.site>
+Subject: [07/24] ext4: Retry block allocation if we have free blocks left
+Date: Mon, 24 May 2010 15:28:03 -0700
+Message-ID: <20100524223015.458788652@clark.site>
 References: <20100524223544.GA13721@kroah.com>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	"Theodore Tso" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>,
 	"Jayson R. King" <dev@jaysonking.com>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:36008 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751593Ab0EXWiQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 May 2010 18:38:16 -0400
 In-Reply-To: <20100524223544.GA13721@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
@@ -22,210 +27,175 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit a30d542a0035b886ffaafd0057ced0a2b28c3a4f upstream.
+commit df22291ff0fde0d350cf15dac3e5cc33ac528875 upstream.
 
-With delayed allocation we need to make sure block are reserved before
-we attempt to allocate them. Otherwise we get block allocation failure
-(ENOSPC) during writepages which cannot be handled. This would mean
-silent data loss (We do a printk stating data will be lost). This patch
-updates the DIO and fallocate code path to do block reservation before
-block allocation. This is needed to make sure parallel DIO and fallocate
-request doesn't take block out of delayed reserve space.
-
-When free blocks count go below a threshold we switch to a slow patch
-which looks at other CPU's accumulated percpu counter values.
+When we truncate files, the meta-data blocks released are not reused
+untill we commit the truncate transaction.  That means delayed get_block
+request will return ENOSPC even if we have free blocks left.  Force a
+journal commit and retry block allocation if we get ENOSPC with free
+blocks left.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/balloc.c  |   58 +++++++++++++++++++++++++++++++++++++++---------------
- fs/ext4/ext4.h    |   13 ++++++++++++
- fs/ext4/inode.c   |    5 ----
- fs/ext4/mballoc.c |   23 ++++++++++++---------
- 4 files changed, 69 insertions(+), 30 deletions(-)
+ fs/ext4/inode.c |   81 +++++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 57 insertions(+), 24 deletions(-)
 
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1754,6 +1754,32 @@ out:
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1661,6 +1661,7 @@ struct mpage_da_data {
+ 	struct writeback_control *wbc;
+ 	int io_done;
+ 	long pages_written;
++	int retval;
+ };
+ 
+ /*
+@@ -1858,6 +1859,24 @@ static void ext4_da_block_invalidatepage
+ 	return;
+ }
+ 
++static void ext4_print_free_blocks(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	printk(KERN_EMERG "Total free blocks count %lld\n",
++			ext4_count_free_blocks(inode->i_sb));
++	printk(KERN_EMERG "Free/Dirty block details\n");
++	printk(KERN_EMERG "free_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_freeblocks_counter));
++	printk(KERN_EMERG "dirty_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
++	printk(KERN_EMERG "Block reservation details\n");
++	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_data_blocks);
++	printk(KERN_EMERG "i_reserved_meta_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_meta_blocks);
++	return;
++}
++
+ /*
+  * mpage_da_map_blocks - go through given space
+  *
+@@ -1872,7 +1891,7 @@ static int  mpage_da_map_blocks(struct m
+ 	int err = 0;
+ 	struct buffer_head new;
+ 	struct buffer_head *lbh = &mpd->lbh;
+-	sector_t next = lbh->b_blocknr;
++	sector_t next;
+ 
+ 	/*
+ 	 * We consider only non-mapped and non-allocated blocks
+@@ -1882,6 +1901,7 @@ static int  mpage_da_map_blocks(struct m
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+ 	new.b_size = lbh->b_size;
++	next = lbh->b_blocknr;
+ 	/*
+ 	 * If we didn't accumulate anything
+ 	 * to write simply return
+@@ -1898,6 +1918,13 @@ static int  mpage_da_map_blocks(struct m
+ 		 */
+ 		if (err == -EAGAIN)
+ 			return 0;
++
++		if (err == -ENOSPC &&
++				ext4_count_free_blocks(mpd->inode->i_sb)) {
++			mpd->retval = err;
++			return 0;
++		}
++
+ 		/*
+ 		 * get block failure will cause us
+ 		 * to loop in writepages. Because
+@@ -1915,8 +1942,7 @@ static int  mpage_da_map_blocks(struct m
+ 		printk(KERN_EMERG "This should not happen.!! "
+ 					"Data will be lost\n");
+ 		if (err == -ENOSPC) {
+-			printk(KERN_CRIT "Total free blocks count %lld\n",
+-				ext4_count_free_blocks(mpd->inode->i_sb));
++			ext4_print_free_blocks(mpd->inode);
+ 		}
+ 		/* invlaidate all the pages */
+ 		ext4_da_block_invalidatepages(mpd, next,
+@@ -2141,39 +2167,36 @@ static int __mpage_da_writepage(struct p
+  */
+ static int mpage_da_writepages(struct address_space *mapping,
+ 			       struct writeback_control *wbc,
+-			       get_block_t get_block)
++			       struct mpage_da_data *mpd)
+ {
+-	struct mpage_da_data mpd;
+ 	long to_write;
+ 	int ret;
+ 
+-	if (!get_block)
++	if (!mpd->get_block)
+ 		return generic_writepages(mapping, wbc);
+ 
+-	mpd.wbc = wbc;
+-	mpd.inode = mapping->host;
+-	mpd.lbh.b_size = 0;
+-	mpd.lbh.b_state = 0;
+-	mpd.lbh.b_blocknr = 0;
+-	mpd.first_page = 0;
+-	mpd.next_page = 0;
+-	mpd.get_block = get_block;
+-	mpd.io_done = 0;
+-	mpd.pages_written = 0;
++	mpd->lbh.b_size = 0;
++	mpd->lbh.b_state = 0;
++	mpd->lbh.b_blocknr = 0;
++	mpd->first_page = 0;
++	mpd->next_page = 0;
++	mpd->io_done = 0;
++	mpd->pages_written = 0;
++	mpd->retval = 0;
+ 
+ 	to_write = wbc->nr_to_write;
+ 
+-	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
++	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
+ 
+ 	/*
+ 	 * Handle last extent of pages
+ 	 */
+-	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
+-		if (mpage_da_map_blocks(&mpd) == 0)
+-			mpage_da_submit_io(&mpd);
++	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
++		if (mpage_da_map_blocks(mpd) == 0)
++			mpage_da_submit_io(mpd);
+ 	}
+ 
+-	wbc->nr_to_write = to_write - mpd.pages_written;
++	wbc->nr_to_write = to_write - mpd->pages_written;
  	return ret;
  }
  
-+int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-+						ext4_fsblk_t nblocks)
-+{
-+	s64 free_blocks;
-+	ext4_fsblk_t root_blocks = 0;
-+	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
-+
-+	free_blocks = percpu_counter_read(fbc);
-+
-+	if (!capable(CAP_SYS_RESOURCE) &&
-+		sbi->s_resuid != current->fsuid &&
-+		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
-+		root_blocks = ext4_r_blocks_count(sbi->s_es);
-+
-+	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
-+		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
-+
-+	if (free_blocks < (root_blocks + nblocks))
-+		/* we don't have free space */
-+		return -ENOSPC;
-+
-+	/* reduce fs free blocks counter */
-+	percpu_counter_sub(fbc, nblocks);
-+	return 0;
-+}
-+
- /**
-  * ext4_has_free_blocks()
-  * @sbi:	in-core super block structure.
-@@ -1775,18 +1801,17 @@ ext4_fsblk_t ext4_has_free_blocks(struct
- 		sbi->s_resuid != current->fsuid &&
- 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
- 		root_blocks = ext4_r_blocks_count(sbi->s_es);
--#ifdef CONFIG_SMP
--	if (free_blocks - root_blocks < FBC_BATCH)
--		free_blocks =
--			percpu_counter_sum(&sbi->s_freeblocks_counter);
--#endif
-+
-+	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
-+		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
-+
- 	if (free_blocks <= root_blocks)
- 		/* we don't have free space */
- 		return 0;
- 	if (free_blocks - root_blocks < nblocks)
- 		return free_blocks - root_blocks;
- 	return nblocks;
-- }
-+}
+@@ -2420,6 +2443,7 @@ static int ext4_da_writepages(struct add
+ {
+ 	handle_t *handle = NULL;
+ 	loff_t range_start = 0;
++	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+ 	long to_write, pages_skipped = 0;
+@@ -2467,6 +2491,9 @@ static int ext4_da_writepages(struct add
+ 	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
  
- 
- /**
-@@ -1865,14 +1890,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		*count = ext4_has_free_blocks(sbi, *count);
--	}
--	if (*count == 0) {
--		*errp = -ENOSPC;
--		return 0;	/*return with ENOSPC error */
-+		if (ext4_claim_free_blocks(sbi, *count)) {
-+			*errp = -ENOSPC;
-+			return 0;	/*return with ENOSPC error */
-+		}
- 	}
--	num = *count;
--
- 	/*
- 	 * Check quota for allocation of this block.
- 	 */
-@@ -2067,9 +2089,13 @@ allocated:
- 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
- 	spin_unlock(sb_bgl_lock(sbi, group_no));
--	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
--		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
--
-+	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
-+		/*
-+		 * we allocated less blocks than we
-+		 * claimed. Add the difference back.
-+		 */
-+		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
-+	}
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
- 		spin_lock(sb_bgl_lock(sbi, flex_group));
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1015,6 +1015,8 @@ extern ext4_fsblk_t ext4_new_blocks(hand
- 					unsigned long *count, int *errp);
- extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp);
-+extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-+						ext4_fsblk_t nblocks);
- extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
- 						ext4_fsblk_t nblocks);
- extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
-@@ -1245,6 +1247,17 @@ do {								\
- 		__ext4_std_error((sb), __func__, (errno));	\
- } while (0)
- 
-+#ifdef CONFIG_SMP
-+/* Each CPU can accumulate FBC_BATCH blocks in their local
-+ * counters. So we need to make sure we have free blocks more
-+ * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
-+ */
-+#define EXT4_FREEBLOCKS_WATERMARK (4 * (FBC_BATCH * nr_cpu_ids))
-+#else
-+#define EXT4_FREEBLOCKS_WATERMARK 0
-+#endif
++	mpd.wbc = wbc;
++	mpd.inode = mapping->host;
 +
-+
- /*
-  * Inodes and files operations
-  */
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1564,13 +1564,10 @@ static int ext4_da_reserve_space(struct
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
- 	total = md_needed + nrblocks;
- 
--	if (ext4_has_free_blocks(sbi, total) < total) {
-+	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		return -ENOSPC;
- 	}
--	/* reduce fs free blocks counter */
--	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
--
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
- 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
- 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3194,9 +3194,15 @@ ext4_mb_mark_diskspace_used(struct ext4_
- 	 * at write_begin() time for delayed allocation
- 	 * do not double accounting
- 	 */
--	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
--		percpu_counter_sub(&sbi->s_freeblocks_counter,
--					ac->ac_b_ex.fe_len);
-+	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
-+			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
-+		/*
-+		 * we allocated less blocks than we calimed
-+		 * Add the difference back
-+		 */
-+		percpu_counter_add(&sbi->s_freeblocks_counter,
-+				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
-+	}
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
-@@ -4649,14 +4655,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		ar->len = ext4_has_free_blocks(sbi, ar->len);
--	}
--
--	if (ar->len == 0) {
--		*errp = -ENOSPC;
--		return 0;
-+		if (ext4_claim_free_blocks(sbi, ar->len)) {
-+			*errp = -ENOSPC;
-+			return 0;
-+		}
- 	}
--
- 	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
- 		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
- 		ar->len--;
+ restart_loop:
+ 	to_write = wbc->nr_to_write;
+ 	while (!ret && to_write > 0) {
+@@ -2502,11 +2529,17 @@ restart_loop:
+ 				goto out_writepages;
+ 			}
+ 		}
