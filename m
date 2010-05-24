@@ -1,83 +1,147 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 1/2] ext4: Use bitops to read/modify
- EXT4_I(inode)->i_flags
-Date: Sun, 23 May 2010 23:09:54 -0400
-Message-ID: <20100524030954.GA4606@thunk.org>
-References: <1271687537-15655-1-git-send-email-dmonakhov@openvz.org>
+From: Li Zefan <lizf@cn.fujitsu.com>
+Subject: [PATCH 5/8] tracing: Convert more ext4 events to DEFINE_EVENT
+Date: Mon, 24 May 2010 16:24:04 +0800
+Message-ID: <4BFA37A4.1050208@cn.fujitsu.com>
+References: <4BFA3728.3000701@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Frederic Weisbecker <fweisbec@gmail.com>,
+	Ingo Molnar <mingo@elte.hu>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Steven Rostedt <rostedt@goodmis.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:45065 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756008Ab0EXDJ5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 May 2010 23:09:57 -0400
-Content-Disposition: inline
-In-Reply-To: <1271687537-15655-1-git-send-email-dmonakhov@openvz.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:51647 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753812Ab0EXIVq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 May 2010 04:21:46 -0400
+In-Reply-To: <4BFA3728.3000701@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 19, 2010 at 06:32:16PM +0400, Dmitry Monakhov wrote:
-> At several places we modify EXT4_I(inode)->i_flags without holding
-> i_mutex (ext4_do_update_inode, ...). These modifications are racy and we can
-> lose updates to i_flags. So convert handling of i_flags to use bitops
-> which are atomic.
-> https://bugzilla.kernel.org/show_bug.cgi?id=15792
+Use DECLARE_EVENT_CLASS, and save ~2.7K:
 
-I don't think it would cause any harm, since those flags aren't used
-(yet) but this patch is buggy; The values for EXT4_INODE_EA_INODE, and
-EXT4_INODE_RESERVED are wrong.  Fortunately I'm a paranoid b*stard, so
-I caught it by *not* deleting the explicit EXT4_XXX_FL flags, and
-using this:
+   text    data     bss     dec     hex filename
+ 274441    7200     260  281901   44d2d fs/ext4/ext4.o.orig
+ 271881    7040     256  279177   44289 fs/ext4/ext4.o
 
-#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
-#define CHECK_FLAG_VALUE(FLAG) if (!TEST_FLAG_VALUE(FLAG)) { \
-	printk("EXT4 flag fail: " #FLAG ": %d %d\n", EXT4_##FLAG##_FL, \
-	       EXT4_INODE_##FLAG); BUG_ON(1); }
+4 events are converted:
 
-/*
- * Since it's pretty easy to mix up bit numbers and hex values, and we
- * can't do a compile-time test for ENUM values, we use a run-time
- * test to make sure that EXT4_XXX_FL is consistent with respect to
- * EXT4_INODE_XXX.  If all is well the printk and BUG_ON will all drop
- * out so it won't cost any extra space in the compiled kernel image.
- * But it's important that these values are the same, since we are
- * using EXT4_INODE_XXX to test for the flag values, but EXT4_XX_FL
- * must be consistent with the values of FS_XXX_FL defined in
- * include/linux/fs.h and the on-disk values found in ext2, ext3, and
- * ext4 filesystems, and of course the values defined in e2fsprogs.
- *
- * It's not paranoia if Murphy's Law really *is* out to get you.  :-)
- */
-static inline void ext4_check_flag_values(void)
-{
-	CHECK_FLAG_VALUE(SECRM);
-	CHECK_FLAG_VALUE(UNRM);
-	CHECK_FLAG_VALUE(COMPR);
-	CHECK_FLAG_VALUE(SYNC);
-	CHECK_FLAG_VALUE(IMMUTABLE);
-	CHECK_FLAG_VALUE(APPEND);
-	CHECK_FLAG_VALUE(NODUMP);
-	CHECK_FLAG_VALUE(NOATIME);
-	CHECK_FLAG_VALUE(DIRTY);
-	CHECK_FLAG_VALUE(COMPRBLK);
-	CHECK_FLAG_VALUE(NOCOMPR);
-	CHECK_FLAG_VALUE(ECOMPR);
-	CHECK_FLAG_VALUE(INDEX);
-	CHECK_FLAG_VALUE(IMAGIC);
-	CHECK_FLAG_VALUE(JOURNAL_DATA);
-	CHECK_FLAG_VALUE(NOTAIL);
-	CHECK_FLAG_VALUE(DIRSYNC);
-	CHECK_FLAG_VALUE(TOPDIR);
-	CHECK_FLAG_VALUE(HUGE_FILE);
-	CHECK_FLAG_VALUE(EXTENTS);
-	CHECK_FLAG_VALUE(EA_INODE);
-	CHECK_FLAG_VALUE(EOFBLOCKS);
-	CHECK_FLAG_VALUE(RESERVED);
-}
+  ext4__mb_new_pa: ext4_mb_new_inode_pa, ext4_mb_new_group_pa
+  ext4__mballoc:   ext4_mballoc_discard, ext4_mballoc_free
 
-I'll send the full patch after I finish doing some testing, but I
-thought I'd just point this out before I hit the sack...
+No change in functionality.
 
-	    	       	    	       	 - Ted
+Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+---
+ include/trace/events/ext4.h |   61 ++++++++++++-------------------------------
+ 1 files changed, 17 insertions(+), 44 deletions(-)
+
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 2aa6aa3..9425714 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -353,7 +353,7 @@ TRACE_EVENT(ext4_discard_blocks,
+ 		  jbd2_dev_to_name(__entry->dev), __entry->blk, __entry->count)
+ );
+ 
+-TRACE_EVENT(ext4_mb_new_inode_pa,
++DECLARE_EVENT_CLASS(ext4__mb_new_pa,
+ 	TP_PROTO(struct ext4_allocation_context *ac,
+ 		 struct ext4_prealloc_space *pa),
+ 
+@@ -381,32 +381,20 @@ TRACE_EVENT(ext4_mb_new_inode_pa,
+ 		  __entry->pa_pstart, __entry->pa_len, __entry->pa_lstart)
+ );
+ 
+-TRACE_EVENT(ext4_mb_new_group_pa,
++DEFINE_EVENT(ext4__mb_new_pa, ext4_mb_new_inode_pa,
++
+ 	TP_PROTO(struct ext4_allocation_context *ac,
+ 		 struct ext4_prealloc_space *pa),
+ 
+-	TP_ARGS(ac, pa),
+-
+-	TP_STRUCT__entry(
+-		__field(	dev_t,	dev			)
+-		__field(	ino_t,	ino			)
+-		__field(	__u64,	pa_pstart		)
+-		__field(	__u32,	pa_len			)
+-		__field(	__u64,	pa_lstart		)
++	TP_ARGS(ac, pa)
++);
+ 
+-	),
++DEFINE_EVENT(ext4__mb_new_pa, ext4_mb_new_group_pa,
+ 
+-	TP_fast_assign(
+-		__entry->dev		= ac->ac_sb->s_dev;
+-		__entry->ino		= ac->ac_inode->i_ino;
+-		__entry->pa_pstart	= pa->pa_pstart;
+-		__entry->pa_len		= pa->pa_len;
+-		__entry->pa_lstart	= pa->pa_lstart;
+-	),
++	TP_PROTO(struct ext4_allocation_context *ac,
++		 struct ext4_prealloc_space *pa),
+ 
+-	TP_printk("dev %s ino %lu pstart %llu len %u lstart %llu",
+-		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino,
+-		  __entry->pa_pstart, __entry->pa_len, __entry->pa_lstart)
++	TP_ARGS(ac, pa)
+ );
+ 
+ TRACE_EVENT(ext4_mb_release_inode_pa,
+@@ -790,7 +778,7 @@ TRACE_EVENT(ext4_mballoc_prealloc,
+ 		  __entry->result_len, __entry->result_logical)
+ );
+ 
+-TRACE_EVENT(ext4_mballoc_discard,
++DECLARE_EVENT_CLASS(ext4__mballoc,
+ 	TP_PROTO(struct ext4_allocation_context *ac),
+ 
+ 	TP_ARGS(ac),
+@@ -819,33 +807,18 @@ TRACE_EVENT(ext4_mballoc_discard,
+ 		  __entry->result_len, __entry->result_logical)
+ );
+ 
+-TRACE_EVENT(ext4_mballoc_free,
++DEFINE_EVENT(ext4__mballoc, ext4_mballoc_discard,
++
+ 	TP_PROTO(struct ext4_allocation_context *ac),
+ 
+-	TP_ARGS(ac),
++	TP_ARGS(ac)
++);
+ 
+-	TP_STRUCT__entry(
+-		__field(	dev_t,	dev			)
+-		__field(	ino_t,	ino			)
+-		__field(	__u32, 	result_logical		)
+-		__field(	  int,	result_start		)
+-		__field(	__u32, 	result_group		)
+-		__field(	  int,	result_len		)
+-	),
++DEFINE_EVENT(ext4__mballoc, ext4_mballoc_free,
+ 
+-	TP_fast_assign(
+-		__entry->dev		= ac->ac_inode->i_sb->s_dev;
+-		__entry->ino		= ac->ac_inode->i_ino;
+-		__entry->result_logical	= ac->ac_b_ex.fe_logical;
+-		__entry->result_start	= ac->ac_b_ex.fe_start;
+-		__entry->result_group	= ac->ac_b_ex.fe_group;
+-		__entry->result_len	= ac->ac_b_ex.fe_len;
+-	),
++	TP_PROTO(struct ext4_allocation_context *ac),
+ 
+-	TP_printk("dev %s inode %lu extent %u/%d/%u@%u ",
+-		  jbd2_dev_to_name(__entry->dev), (unsigned long) __entry->ino,
+-		  __entry->result_group, __entry->result_start,
+-		  __entry->result_len, __entry->result_logical)
++	TP_ARGS(ac)
+ );
+ 
+ TRACE_EVENT(ext4_forget,
+-- 
+1.6.3
+
