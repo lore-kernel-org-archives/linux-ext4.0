@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [09/24] vfs: Remove the range_cont writeback mode.
-Date: Mon, 24 May 2010 15:28:05 -0700
-Message-ID: <20100524223015.837791747@clark.site>
+Subject: [10/24] vfs: Add no_nrwrite_index_update writeback control flag
+Date: Mon, 24 May 2010 15:28:06 -0700
+Message-ID: <20100524223016.208581966@clark.site>
 References: <20100524223544.GA13721@kroah.com>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
@@ -11,10 +11,14 @@ Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	"Jayson R. King" <dev@jaysonking.com>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:42336 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757150Ab0EXWiS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 May 2010 18:38:18 -0400
 In-Reply-To: <20100524223544.GA13721@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
@@ -23,42 +27,81 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit 74baaaaec8b4f22e1ae279f5ecca4ff705b28912 upstream.
+commit 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 upstream.
 
-Ext4 was the only user of range_cont writeback mode and ext4 switched
-to a different method. So remove the range_cont mode which is not used
-in the kernel.
+If no_nrwrite_index_update is set we don't update nr_to_write and
+address space writeback_index in write_cache_pages.  This change
+enables a file system to skip these updates in write_cache_pages and do
+them in the writepages() callback.  This patch will be followed by an
+ext4 patch that make use of these new flags.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 CC: linux-fsdevel@vger.kernel.org
+[dev@jaysonking.com: Modified the patch to account for subsequent changes in mainline being cherry-picked earlier for 2.6.27.y.]
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- include/linux/writeback.h |    1 -
- mm/page-writeback.c       |    2 --
- 2 files changed, 3 deletions(-)
+ include/linux/writeback.h |    9 +++++++++
+ mm/page-writeback.c       |   14 +++++++++-----
+ 2 files changed, 18 insertions(+), 5 deletions(-)
 
 --- a/include/linux/writeback.h
 +++ b/include/linux/writeback.h
-@@ -62,7 +62,6 @@ struct writeback_control {
+@@ -62,6 +62,15 @@ struct writeback_control {
  	unsigned for_writepages:1;	/* This is a writepages() call */
  	unsigned range_cyclic:1;	/* range_start is cyclic */
  	unsigned more_io:1;		/* more io to be dispatched */
--	unsigned range_cont:1;
++	/*
++	 * write_cache_pages() won't update wbc->nr_to_write and
++	 * mapping->writeback_index if no_nrwrite_index_update
++	 * is set.  write_cache_pages() may write more than we
++	 * requested and we want to make sure nr_to_write and
++	 * writeback_index are updated in a consistent manner
++	 * so we use a single control to update them
++	 */
++	unsigned no_nrwrite_index_update:1;
  };
  
  /*
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
-@@ -1027,8 +1027,6 @@ continue_unlock:
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		mapping->writeback_index = done_index;
+@@ -878,6 +878,7 @@ int write_cache_pages(struct address_spa
+ 	pgoff_t done_index;
+ 	int cycled;
+ 	int range_whole = 0;
++	long nr_to_write = wbc->nr_to_write;
  
--	if (wbc->range_cont)
--		wbc->range_start = index << PAGE_CACHE_SHIFT;
+ 	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 		wbc->encountered_congestion = 1;
+@@ -985,9 +986,9 @@ continue_unlock:
+ 				}
+  			}
+ 
+-			if (wbc->nr_to_write > 0) {
+-				wbc->nr_to_write--;
+-				if (wbc->nr_to_write == 0 &&
++			if (nr_to_write > 0) {
++				nr_to_write--;
++				if (nr_to_write == 0 &&
+ 				    wbc->sync_mode == WB_SYNC_NONE) {
+ 					/*
+ 					 * We stop writing back only if we are
+@@ -1024,8 +1025,11 @@ continue_unlock:
+ 		end = writeback_index - 1;
+ 		goto retry;
+ 	}
+-	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+-		mapping->writeback_index = done_index;
++	if (!wbc->no_nrwrite_index_update) {
++		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
++			mapping->writeback_index = done_index;
++		wbc->nr_to_write = nr_to_write;
++	}
+ 
  	return ret;
  }
- EXPORT_SYMBOL(write_cache_pages);
+
+
