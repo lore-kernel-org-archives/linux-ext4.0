@@ -1,145 +1,49 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [06/24] ext4: Retry block reservation
-Date: Mon, 24 May 2010 15:28:02 -0700
-Message-ID: <20100524223015.223930014@clark.site>
-References: <20100524223544.GA13721@kroah.com>
-Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	"Theodore Tso" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	"Jayson R. King" <dev@jaysonking.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20100524223544.GA13721@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: RE: Cleancache [PATCH 2/7] (was Transcendent Memory): core files
+Date: Mon, 24 May 2010 19:15:59 -0700 (PDT)
+Message-ID: <c5c17e83-a21c-4360-a201-3bb865062961@default>
+References: <20100422132809.GA27302@ca-server1.us.oracle.com
+ 20100514231815.GY30031@ZenIV.linux.org.uk
+ 1b84523f-a7df-4d6a-870f-b684bd012230@default>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: chris.mason@oracle.com, akpm@linux-foundation.org, adilger@sun.com,
+        tytso@mit.edu, mfasheh@suse.com, joel.becker@oracle.com,
+        matthew@wil.cx, linux-btrfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org, ngupta@vflare.org, jeremy@goop.org,
+        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
+        dave.mccracken@oracle.com, riel@redhat.com
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1b84523f-a7df-4d6a-870f-b684bd012230@default>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-2.6.27-stable review patch.  If anyone has any objections, please let us know.
+> > The third one is pgoff_t; again, use sane types, _if_ you actually
+> want
+> > the argument #3 at all - it can be derived from struct page you are
+> > passing there as well.
+>=20
+> I thought it best to declare the _ops so that the struct page
+> is opaque to the "backend" (driver).  The kernel-side ("frontend")
+> defines the handle and ensures coherency, so the backend shouldn't
+> be allowed to derive or muck with the three-tuple passed by the
+> kernel. In the existing (Xen tmem) driver, the only operation
+> performed on the struct page parameter is page_to_pfn().  OTOH,
+> I could go one step further and pass a pfn_t instead of a
+> struct page, since it is really only the physical page frame that
+> the backend needs to know about and (synchronously) read/write from/to.
+>=20
+> Thoughts?
 
-------------------
+Silly me.  pfn_t is a Xen/KVM type not otherwise used in the
+kernel AFAICT.  Please ignore...
 
-
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-commit 030ba6bc67b4f2bc5cd174f57785a1745c929abe upstream.
-
-During block reservation if we don't have enough blocks left, retry
-block reservation with smaller block counts.  This makes sure we try
-fallocate and DIO with smaller request size and don't fail early.  The
-delayed allocation reservation cannot try with smaller block count. So
-retry block reservation to handle temporary disk full conditions.  Also
-print free blocks details if we fail block allocation during writepages.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Jayson R. King <dev@jaysonking.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/ext4/balloc.c  |    8 +++++++-
- fs/ext4/inode.c   |   14 +++++++++++---
- fs/ext4/mballoc.c |    7 ++++++-
- 3 files changed, 24 insertions(+), 5 deletions(-)
-
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1907,10 +1907,16 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		if (ext4_claim_free_blocks(sbi, *count)) {
-+		while (*count && ext4_claim_free_blocks(sbi, *count)) {
-+			/* let others to free the space */
-+			yield();
-+			*count = *count >> 1;
-+		}
-+		if (!*count) {
- 			*errp = -ENOSPC;
- 			return 0;	/*return with ENOSPC error */
- 		}
-+		num = *count;
- 	}
- 	/*
- 	 * Check quota for allocation of this block.
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1549,6 +1549,7 @@ static int ext4_journalled_write_end(str
- 
- static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- {
-+	int retries = 0;
-        struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-        unsigned long md_needed, mdblocks, total = 0;
- 
-@@ -1557,6 +1558,7 @@ static int ext4_da_reserve_space(struct
- 	 * in order to allocate nrblocks
- 	 * worse case is one extent per block
- 	 */
-+repeat:
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
- 	mdblocks = ext4_calc_metadata_amount(inode, total);
-@@ -1567,6 +1569,10 @@ static int ext4_da_reserve_space(struct
- 
- 	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
-+			yield();
-+			goto repeat;
-+		}
- 		return -ENOSPC;
- 	}
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-@@ -1864,20 +1870,18 @@ static void ext4_da_block_invalidatepage
- static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
- 	int err = 0;
-+	struct buffer_head new;
- 	struct buffer_head *lbh = &mpd->lbh;
- 	sector_t next = lbh->b_blocknr;
--	struct buffer_head new;
- 
- 	/*
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
- 		return 0;
--
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
- 	new.b_size = lbh->b_size;
--
- 	/*
- 	 * If we didn't accumulate anything
- 	 * to write simply return
-@@ -1910,6 +1914,10 @@ static int  mpage_da_map_blocks(struct m
- 				  lbh->b_size >> mpd->inode->i_blkbits, err);
- 		printk(KERN_EMERG "This should not happen.!! "
- 					"Data will be lost\n");
-+		if (err == -ENOSPC) {
-+			printk(KERN_CRIT "Total free blocks count %lld\n",
-+				ext4_count_free_blocks(mpd->inode->i_sb));
-+		}
- 		/* invlaidate all the pages */
- 		ext4_da_block_invalidatepages(mpd, next,
- 				lbh->b_size >> mpd->inode->i_blkbits);
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4651,7 +4651,12 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		if (ext4_claim_free_blocks(sbi, ar->len)) {
-+		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
-+			/* let others to free the space */
-+			yield();
-+			ar->len = ar->len >> 1;
-+		}
-+		if (!ar->len) {
- 			*errp = -ENOSPC;
- 			return 0;
- 		}
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
