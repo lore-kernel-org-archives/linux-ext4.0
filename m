@@ -1,33 +1,30 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH 1/2] ext4: Conditionally define compat ioctl numbers
-Date: Tue, 25 May 2010 11:22:19 -0400
-Message-ID: <20100525152219.GM5556@thunk.org>
+Subject: Re: [PATCH 2/2] ext4: Fix compat EXT4_IOC_ADD_GROUP
+Date: Tue, 25 May 2010 11:25:42 -0400
+Message-ID: <20100525152542.GN5556@thunk.org>
 References: <1274398223.2257.0.camel@localhost>
- <20100525151548.GL5556@thunk.org>
+ <1274398462.2257.7.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
 To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:50381 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:37574 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757090Ab0EYPWZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 May 2010 11:22:25 -0400
+	id S1757090Ab0EYPZp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 11:25:45 -0400
 Content-Disposition: inline
-In-Reply-To: <20100525151548.GL5556@thunk.org>
+In-Reply-To: <1274398462.2257.7.camel@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 25, 2010 at 11:15:48AM -0400, tytso@MIT.EDU wrote:
-> On Fri, May 21, 2010 at 12:30:22AM +0100, Ben Hutchings wrote:
-> > It is unnecessary, and in general impossible, to define the compat
-> > ioctl numbers except when building the filesystem with CONFIG_COMPAT
-> > defined.
+On Fri, May 21, 2010 at 12:34:22AM +0100, Ben Hutchings wrote:
+> struct ext4_new_group_input needs to be converted because u64 has
+> only 32-bit alignment on some 32-bit architectures, notably i386.
 > 
-> Umm.... why?  (The impossible part)  I think I'm missing something here.
-> 
+> Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+> ---
 
-Oh, right.  The type widths might not be guaranteed (or even defined).
-Never mind...
+Thanks for your patches.  Both have been applied to the ext4 tree.
 
-    	    	     	    	      	 	    	- Ted
+       	   		       	    	 - Ted
