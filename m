@@ -1,35 +1,38 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 5/6] xfs: remove nr_to_write writeback windup.
-Date: Tue, 25 May 2010 07:14:14 -0400
-Message-ID: <20100525111414.GC8931@infradead.org>
-References: <1274784852-30502-1-git-send-email-david@fromorbit.com> <1274784852-30502-6-git-send-email-david@fromorbit.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH 2/2] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when
+ warranted
+Date: Tue, 25 May 2010 09:03:31 -0400
+Message-ID: <20100525130331.GC5556@thunk.org>
+References: <20100525041737.GB5556@thunk.org>
+ <1274761117-26560-2-git-send-email-tytso@mit.edu>
+ <87zkzola0r.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, jens.axboe@oracle.com
-To: Dave Chinner <david@fromorbit.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:41701 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932306Ab0EYLOO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 07:14:14 -0400
+Received: from thunk.org ([69.25.196.29]:48878 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753878Ab0EYNDg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 09:03:36 -0400
 Content-Disposition: inline
-In-Reply-To: <1274784852-30502-6-git-send-email-david@fromorbit.com>
+In-Reply-To: <87zkzola0r.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 25, 2010 at 08:54:11PM +1000, Dave Chinner wrote:
-> From: Dave Chinner <dchinner@redhat.com>
-> 
-> Now that the background flush code has been fixed, we shouldn't need to
-> silently multiply the wbc->nr_to_write to get good writeback. Remove
-> that code.
-> 
-> Signed-off-by: Dave Chinner <dchinner@redhat.com>
+On Tue, May 25, 2010 at 11:23:48AM +0400, Dmitry Monakhov wrote:
+> This condition was triggered during fsstress test. So I consider
+> it as rare but possible in real life. Nor than less it is better
+> to fix it now, than fix it in response from a midnight call from some
+> crazy customer :)
 
-Ok,
+Fair enough, I just didn't have an 8-core system handy when I was
+dealing with it, so hand-crafted an fs image.
 
+BTW, whatever happened to the xfstests patch that you created in
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+https://bugzilla.kernel.org/show_bug.cgi?id=15792
 
+Did you submit it to the xfstests folks for inclusion?
+
+    	       	     	 	  	- Ted
