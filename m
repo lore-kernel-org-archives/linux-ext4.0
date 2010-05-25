@@ -1,250 +1,87 @@
-From: Grant Coady <gcoady.lk@gmail.com>
-Subject: Re: [04/24] ext4: Make sure all the block allocation paths reserve blocks
-Date: Tue, 25 May 2010 17:21:43 +1000
-Message-ID: <5humv51rdjr8vl3c7qlroekj2k004gl665@4ax.com>
-References: <20100524223544.GA13721@kroah.com> <20100524223014.777274118@clark.site>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 2/2] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when warranted
+Date: Tue, 25 May 2010 11:23:48 +0400
+Message-ID: <87zkzola0r.fsf@openvz.org>
+References: <20100525041737.GB5556@thunk.org>
+	<1274761117-26560-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, stable@kernel.org,
-	stable-review@kernel.org, torvalds@linux-foundation.org,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Tso" <tytso@mit.edu>,
-	"Jayson R. King" <dev@jaysonking.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Greg KH <gregkh@suse.de>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:59131 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751208Ab0EYHVy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 03:21:54 -0400
-In-Reply-To: <20100524223014.777274118@clark.site>
+Received: from fg-out-1718.google.com ([72.14.220.154]:14825 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750800Ab0EYHXx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 03:23:53 -0400
+Received: by fg-out-1718.google.com with SMTP id e12so163394fga.1
+        for <linux-ext4@vger.kernel.org>; Tue, 25 May 2010 00:23:51 -0700 (PDT)
+In-Reply-To: <1274761117-26560-2-git-send-email-tytso@mit.edu> (Theodore
+	Ts'o's message of "Tue, 25 May 2010 00:18:37 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 24 May 2010 15:28:00 -0700, you wrote:
+Theodore Ts'o <tytso@mit.edu> writes:
 
->2.6.27-stable review patch.  If anyone has any objections, please let us know.
+> Dimitry Monakhov discovered an edge case where it was possible for the
+> EXT4_EOFBLOCKS_FL flag could get cleared unnecessarily.  This is true;
+> I have a test case that can be exercised via downloading and
+> decompressing the file:
 >
->------------------
+> wget ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-testcases/eofblocks-fl-test-case.img.bz2
+> bunzip2 eofblocks-fl-test-case.img
+> dd if=/dev/zero of=eofblocks-fl-test-case.img bs=1k seek=17925 bs=1k count=1 conv=notrunc
 >
+> However, triggering it in real life is highly unlikely since it
+> requires an extremely fragmented sparse file with a hole in exactly
+> the right place in the extent tree.  (It actually took quite a bit of
+This condition was triggered during fsstress test. So I consider
+it as rare but possible in real life. Nor than less it is better
+to fix it now, than fix it in response from a midnight call from some
+crazy customer :)
+> work to generate this test case.)  Still, it's nice to get even
+> extreme corner cases to be correct, so this patch makes sure that we
+> don't clear the EXT4_EOFBLOCKS_FL incorrectly even in this corner
+> case.
 >
->From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/extents.c |   18 +++++++++++++++---
+>  1 files changed, 15 insertions(+), 3 deletions(-)
 >
->commit a30d542a0035b886ffaafd0057ced0a2b28c3a4f upstream.
->
->With delayed allocation we need to make sure block are reserved before
->we attempt to allocate them. Otherwise we get block allocation failure
->(ENOSPC) during writepages which cannot be handled. This would mean
->silent data loss (We do a printk stating data will be lost). This patch
->updates the DIO and fallocate code path to do block reservation before
->block allocation. This is needed to make sure parallel DIO and fallocate
->request doesn't take block out of delayed reserve space.
->
->When free blocks count go below a threshold we switch to a slow patch
-
-s/patch/path/ ??
-
-Or, are these patch comments locked in stone for -stable?
-
-Grant.
-
->which looks at other CPU's accumulated percpu counter values.
->
->Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->Signed-off-by: Jayson R. King <dev@jaysonking.com>
->Signed-off-by: Theodore Ts'o <tytso@mit.edu>
->Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
->
->---
-> fs/ext4/balloc.c  |   58 +++++++++++++++++++++++++++++++++++++++---------------
-> fs/ext4/ext4.h    |   13 ++++++++++++
-> fs/ext4/inode.c   |    5 ----
-> fs/ext4/mballoc.c |   23 ++++++++++++---------
-> 4 files changed, 69 insertions(+), 30 deletions(-)
->
->--- a/fs/ext4/balloc.c
->+++ b/fs/ext4/balloc.c
->@@ -1754,6 +1754,32 @@ out:
-> 	return ret;
-> }
-> 
->+int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
->+						ext4_fsblk_t nblocks)
->+{
->+	s64 free_blocks;
->+	ext4_fsblk_t root_blocks = 0;
->+	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
->+
->+	free_blocks = percpu_counter_read(fbc);
->+
->+	if (!capable(CAP_SYS_RESOURCE) &&
->+		sbi->s_resuid != current->fsuid &&
->+		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
->+		root_blocks = ext4_r_blocks_count(sbi->s_es);
->+
->+	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
->+		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
->+
->+	if (free_blocks < (root_blocks + nblocks))
->+		/* we don't have free space */
->+		return -ENOSPC;
->+
->+	/* reduce fs free blocks counter */
->+	percpu_counter_sub(fbc, nblocks);
->+	return 0;
->+}
->+
-> /**
->  * ext4_has_free_blocks()
->  * @sbi:	in-core super block structure.
->@@ -1775,18 +1801,17 @@ ext4_fsblk_t ext4_has_free_blocks(struct
-> 		sbi->s_resuid != current->fsuid &&
-> 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
-> 		root_blocks = ext4_r_blocks_count(sbi->s_es);
->-#ifdef CONFIG_SMP
->-	if (free_blocks - root_blocks < FBC_BATCH)
->-		free_blocks =
->-			percpu_counter_sum(&sbi->s_freeblocks_counter);
->-#endif
->+
->+	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
->+		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
->+
-> 	if (free_blocks <= root_blocks)
-> 		/* we don't have free space */
-> 		return 0;
-> 	if (free_blocks - root_blocks < nblocks)
-> 		return free_blocks - root_blocks;
-> 	return nblocks;
->- }
->+}
-> 
-> 
-> /**
->@@ -1865,14 +1890,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
-> 		/*
-> 		 * With delalloc we already reserved the blocks
-> 		 */
->-		*count = ext4_has_free_blocks(sbi, *count);
->-	}
->-	if (*count == 0) {
->-		*errp = -ENOSPC;
->-		return 0;	/*return with ENOSPC error */
->+		if (ext4_claim_free_blocks(sbi, *count)) {
->+			*errp = -ENOSPC;
->+			return 0;	/*return with ENOSPC error */
->+		}
-> 	}
->-	num = *count;
->-
-> 	/*
-> 	 * Check quota for allocation of this block.
-> 	 */
->@@ -2067,9 +2089,13 @@ allocated:
-> 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
-> 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
-> 	spin_unlock(sb_bgl_lock(sbi, group_no));
->-	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
->-		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
->-
->+	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
->+		/*
->+		 * we allocated less blocks than we
->+		 * claimed. Add the difference back.
->+		 */
->+		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
->+	}
-> 	if (sbi->s_log_groups_per_flex) {
-> 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
-> 		spin_lock(sb_bgl_lock(sbi, flex_group));
->--- a/fs/ext4/ext4.h
->+++ b/fs/ext4/ext4.h
->@@ -1015,6 +1015,8 @@ extern ext4_fsblk_t ext4_new_blocks(hand
-> 					unsigned long *count, int *errp);
-> extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
-> 			ext4_fsblk_t goal, unsigned long *count, int *errp);
->+extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
->+						ext4_fsblk_t nblocks);
-> extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
-> 						ext4_fsblk_t nblocks);
-> extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
->@@ -1245,6 +1247,17 @@ do {								\
-> 		__ext4_std_error((sb), __func__, (errno));	\
-> } while (0)
-> 
->+#ifdef CONFIG_SMP
->+/* Each CPU can accumulate FBC_BATCH blocks in their local
->+ * counters. So we need to make sure we have free blocks more
->+ * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
->+ */
->+#define EXT4_FREEBLOCKS_WATERMARK (4 * (FBC_BATCH * nr_cpu_ids))
->+#else
->+#define EXT4_FREEBLOCKS_WATERMARK 0
->+#endif
->+
->+
-> /*
->  * Inodes and files operations
->  */
->--- a/fs/ext4/inode.c
->+++ b/fs/ext4/inode.c
->@@ -1564,13 +1564,10 @@ static int ext4_da_reserve_space(struct
-> 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
-> 	total = md_needed + nrblocks;
-> 
->-	if (ext4_has_free_blocks(sbi, total) < total) {
->+	if (ext4_claim_free_blocks(sbi, total)) {
-> 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> 		return -ENOSPC;
-> 	}
->-	/* reduce fs free blocks counter */
->-	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
->-
-> 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-> 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
-> 
->--- a/fs/ext4/mballoc.c
->+++ b/fs/ext4/mballoc.c
->@@ -3194,9 +3194,15 @@ ext4_mb_mark_diskspace_used(struct ext4_
-> 	 * at write_begin() time for delayed allocation
-> 	 * do not double accounting
-> 	 */
->-	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
->-		percpu_counter_sub(&sbi->s_freeblocks_counter,
->-					ac->ac_b_ex.fe_len);
->+	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
->+			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
->+		/*
->+		 * we allocated less blocks than we calimed
->+		 * Add the difference back
->+		 */
->+		percpu_counter_add(&sbi->s_freeblocks_counter,
->+				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
->+	}
-> 
-> 	if (sbi->s_log_groups_per_flex) {
-> 		ext4_group_t flex_group = ext4_flex_group(sbi,
->@@ -4649,14 +4655,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
-> 		/*
-> 		 * With delalloc we already reserved the blocks
-> 		 */
->-		ar->len = ext4_has_free_blocks(sbi, ar->len);
->-	}
->-
->-	if (ar->len == 0) {
->-		*errp = -ENOSPC;
->-		return 0;
->+		if (ext4_claim_free_blocks(sbi, ar->len)) {
->+			*errp = -ENOSPC;
->+			return 0;
->+		}
-> 	}
->-
-> 	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
-> 		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
-> 		ar->len--;
--- 
-http://bugs.id.au/
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index aeec5c7..c7c304f 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3319,7 +3319,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  	struct ext4_extent_header *eh;
+>  	struct ext4_extent newex, *ex, *last_ex;
+>  	ext4_fsblk_t newblock;
+> -	int err = 0, depth, ret, cache_type;
+> +	int i, err = 0, depth, ret, cache_type;
+>  	unsigned int allocated = 0;
+>  	struct ext4_allocation_request ar;
+>  	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+> @@ -3508,8 +3508,20 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  			goto out2;
+>  		}
+>  		last_ex = EXT_LAST_EXTENT(eh);
+> -		if (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block)
+> -		    + ext4_ext_get_actual_len(last_ex))
+> +		/*
+> +		 * If the current leaf block was reached by looking at
+> +		 * the last index block all the way down the tree, and
+> +		 * we are extending the inode beyond the last extent
+> +		 * in the current leaf block, then clear the
+> +		 * EOFBLOCKS_FL flag.
+> +		 */
+> +		for (i=depth-1; i >= 0; i--) {
+> +			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
+> +				break;
+This approach definitely looks better.
+> +		}
+> +		if ((i < 0) &&
+> +		    (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block) + 
+> +		     ext4_ext_get_actual_len(last_ex)))
+>  			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
+>  	}
+>  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
