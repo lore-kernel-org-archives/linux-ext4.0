@@ -1,8 +1,8 @@
 From: tytso@mit.edu
 Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after
  transaction restart
-Date: Tue, 25 May 2010 17:38:17 -0400
-Message-ID: <20100525213817.GO5556@thunk.org>
+Date: Tue, 25 May 2010 17:44:47 -0400
+Message-ID: <20100525214447.GA14530@thunk.org>
 References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
  <20100525133241.GF5556@thunk.org>
  <87632ckqcy.fsf@openvz.org>
@@ -12,10 +12,10 @@ Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
 	aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:43296 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:52723 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934271Ab0EYViW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 May 2010 17:38:22 -0400
+	id S1758519Ab0EYVot (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 17:44:49 -0400
 Content-Disposition: inline
 In-Reply-To: <87632ckqcy.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -37,14 +37,9 @@ On Tue, May 25, 2010 at 06:28:29PM +0400, Dmitry Monakhov wrote:
 > So in case of alloc/truncate restart truncate will be aborted,
 > so i_size != i_disk_size which must be caught by fsck (my test run
 > it every time) but this never happens which is very strange.
-> The only reason i can explain this that truncate was called second
-> time which is probable due to should_retry_alloc logic.
 
-Does adding the optimization I suggested help?  I was nervous because
-we don't immediately abort the loop after the rm_leaf function returns
--EAGAIN.  And disentangling the code to free the buffer references
-from the other processing that was happening was difficult, and I was
-worried about other potential side effects when the code tried to
-modify blocks that were already added to the transaction.
+What test case are you using?  And does it require a system crash to
+show up, or are you seeing an fsck problem after the test completes
+and you unmount the file system?
 
-       	      	   		      	     - Ted
+						- Ted
