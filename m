@@ -1,31 +1,30 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [10/24] vfs: Add no_nrwrite_index_update writeback control flag
-Date: Tue, 25 May 2010 07:12:08 -0400
-Message-ID: <20100525111208.GA8779@infradead.org>
-References: <20100524223544.GA13721@kroah.com> <20100524223016.208581966@clark.site>
+Subject: Re: [PATCH 1/6] writeback: initial tracing support
+Date: Tue, 25 May 2010 07:13:26 -0400
+Message-ID: <20100525111326.GA8931@infradead.org>
+References: <1274784852-30502-1-git-send-email-david@fromorbit.com> <1274784852-30502-2-git-send-email-david@fromorbit.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, stable@kernel.org,
-	stable-review@kernel.org, torvalds@linux-foundation.org,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	"Jayson R. King" <dev@jaysonking.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Greg KH <gregkh@suse.de>
+Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, jens.axboe@oracle.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:42252 "EHLO
+Received: from bombadil.infradead.org ([18.85.46.34]:41649 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753885Ab0EYLMK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 07:12:10 -0400
+	with ESMTP id S1756530Ab0EYLN1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 07:13:27 -0400
 Content-Disposition: inline
-In-Reply-To: <20100524223016.208581966@clark.site>
+In-Reply-To: <1274784852-30502-2-git-send-email-david@fromorbit.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 24, 2010 at 03:28:06PM -0700, Greg KH wrote:
-> 2.6.27-stable review patch.  If anyone has any objections, please let us know.
+> +#define CREATE_TRACE_POINTS
+> +#include <trace/events/writeback.h>
 
-NACK.  This has been shown to cause severe writeback regression for
-other filesystems and is beeing reverted in mianline.
+It might be worth to add a comment why this is in an unusal place.
+
+Otherwise looks good,
+
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
