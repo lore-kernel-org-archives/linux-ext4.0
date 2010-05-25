@@ -1,118 +1,231 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [03/25] percpu counter: clean up percpu_counter_sum_and_set()
-Date: Tue, 25 May 2010 11:09:01 -0700
-Message-ID: <20100525181212.388455050@clark.site>
+Subject: [04/25] ext4: Make sure all the block allocation paths reserve blocks
+Date: Tue, 25 May 2010 11:09:02 -0700
+Message-ID: <20100525181212.483245121@clark.site>
 References: <20100525181259.GA18630@kroah.com>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	"Theodore Tso" <tytso@mit.edu>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>,
+	"Theodore Tso" <tytso@mit.edu>,
 	"Jayson R. King" <dev@jaysonking.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:44323 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932192Ab0EYSRW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 14:17:22 -0400
 In-Reply-To: <20100525181259.GA18630@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
 
-From: Mingming Cao <cmm@us.ibm.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit 1f7c14c62ce63805f9574664a6c6de3633d4a354 upstream.
+commit a30d542a0035b886ffaafd0057ced0a2b28c3a4f upstream.
 
-percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
-the former updates the global counter after accounting.  Since we are
-taking the fbc->lock to calculate the precise value of the counter in
-percpu_counter_sum() anyway, it should simply set fbc->count too, as the
-percpu_counter_sum_and_set() does.
+With delayed allocation we need to make sure block are reserved before
+we attempt to allocate them. Otherwise we get block allocation failure
+(ENOSPC) during writepages which cannot be handled. This would mean
+silent data loss (We do a printk stating data will be lost). This patch
+updates the DIO and fallocate code path to do block reservation before
+block allocation. This is needed to make sure parallel DIO and fallocate
+request doesn't take block out of delayed reserve space.
 
-This patch merges these two interfaces into one.
+When free blocks count go below a threshold we switch to a slow patch
+which looks at other CPU's accumulated percpu counter values.
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/balloc.c               |    2 +-
- include/linux/percpu_counter.h |   12 +++---------
- lib/percpu_counter.c           |    8 +++-----
- 3 files changed, 7 insertions(+), 15 deletions(-)
+ fs/ext4/balloc.c  |   58 +++++++++++++++++++++++++++++++++++++++---------------
+ fs/ext4/ext4.h    |   13 ++++++++++++
+ fs/ext4/inode.c   |    5 ----
+ fs/ext4/mballoc.c |   23 ++++++++++++---------
+ 4 files changed, 69 insertions(+), 30 deletions(-)
 
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -1778,7 +1778,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct
- #ifdef CONFIG_SMP
- 	if (free_blocks - root_blocks < FBC_BATCH)
- 		free_blocks =
--			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
-+			percpu_counter_sum(&sbi->s_freeblocks_counter);
- #endif
+@@ -1754,6 +1754,32 @@ out:
+ 	return ret;
+ }
+ 
++int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++						ext4_fsblk_t nblocks)
++{
++	s64 free_blocks;
++	ext4_fsblk_t root_blocks = 0;
++	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++
++	free_blocks = percpu_counter_read(fbc);
++
++	if (!capable(CAP_SYS_RESOURCE) &&
++		sbi->s_resuid != current->fsuid &&
++		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
++		root_blocks = ext4_r_blocks_count(sbi->s_es);
++
++	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
++		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
++
++	if (free_blocks < (root_blocks + nblocks))
++		/* we don't have free space */
++		return -ENOSPC;
++
++	/* reduce fs free blocks counter */
++	percpu_counter_sub(fbc, nblocks);
++	return 0;
++}
++
+ /**
+  * ext4_has_free_blocks()
+  * @sbi:	in-core super block structure.
+@@ -1775,18 +1801,17 @@ ext4_fsblk_t ext4_has_free_blocks(struct
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
+-#ifdef CONFIG_SMP
+-	if (free_blocks - root_blocks < FBC_BATCH)
+-		free_blocks =
+-			percpu_counter_sum(&sbi->s_freeblocks_counter);
+-#endif
++
++	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
++		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
++
  	if (free_blocks <= root_blocks)
  		/* we don't have free space */
---- a/include/linux/percpu_counter.h
-+++ b/include/linux/percpu_counter.h
-@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
- void percpu_counter_destroy(struct percpu_counter *fbc);
- void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
- void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
-+s64 __percpu_counter_sum(struct percpu_counter *fbc);
+ 		return 0;
+ 	if (free_blocks - root_blocks < nblocks)
+ 		return free_blocks - root_blocks;
+ 	return nblocks;
+- }
++}
  
- static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
- {
-@@ -44,19 +44,13 @@ static inline void percpu_counter_add(st
  
- static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
- {
--	s64 ret = __percpu_counter_sum(fbc, 0);
-+	s64 ret = __percpu_counter_sum(fbc);
- 	return ret < 0 ? 0 : ret;
- }
- 
--static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
--{
--	return __percpu_counter_sum(fbc, 1);
--}
--
--
- static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- {
--	return __percpu_counter_sum(fbc, 0);
-+	return __percpu_counter_sum(fbc);
- }
- 
- static inline s64 percpu_counter_read(struct percpu_counter *fbc)
---- a/lib/percpu_counter.c
-+++ b/lib/percpu_counter.c
-@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
-  * Add up all the per-cpu counts, return the result.  This is a more accurate
-  * but much slower version of percpu_counter_read_positive()
-  */
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
-+s64 __percpu_counter_sum(struct percpu_counter *fbc)
- {
- 	s64 ret;
- 	int cpu;
-@@ -62,11 +62,9 @@ s64 __percpu_counter_sum(struct percpu_c
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		ret += *pcount;
--		if (set)
--			*pcount = 0;
-+		*pcount = 0;
+ /**
+@@ -1865,14 +1890,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		*count = ext4_has_free_blocks(sbi, *count);
+-	}
+-	if (*count == 0) {
+-		*errp = -ENOSPC;
+-		return 0;	/*return with ENOSPC error */
++		if (ext4_claim_free_blocks(sbi, *count)) {
++			*errp = -ENOSPC;
++			return 0;	/*return with ENOSPC error */
++		}
  	}
--	if (set)
--		fbc->count = ret;
-+	fbc->count = ret;
+-	num = *count;
+-
+ 	/*
+ 	 * Check quota for allocation of this block.
+ 	 */
+@@ -2067,9 +2089,13 @@ allocated:
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
+-		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+-
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
++		/*
++		 * we allocated less blocks than we
++		 * claimed. Add the difference back.
++		 */
++		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
++	}
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+ 		spin_lock(sb_bgl_lock(sbi, flex_group));
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1015,6 +1015,8 @@ extern ext4_fsblk_t ext4_new_blocks(hand
+ 					unsigned long *count, int *errp);
+ extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
++extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++						ext4_fsblk_t nblocks);
+ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks);
+ extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
+@@ -1245,6 +1247,17 @@ do {								\
+ 		__ext4_std_error((sb), __func__, (errno));	\
+ } while (0)
  
- 	spin_unlock(&fbc->lock);
- 	return ret;
++#ifdef CONFIG_SMP
++/* Each CPU can accumulate FBC_BATCH blocks in their local
++ * counters. So we need to make sure we have free blocks more
++ * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
++ */
++#define EXT4_FREEBLOCKS_WATERMARK (4 * (FBC_BATCH * nr_cpu_ids))
++#else
++#define EXT4_FREEBLOCKS_WATERMARK 0
++#endif
++
++
+ /*
+  * Inodes and files operations
+  */
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1564,13 +1564,10 @@ static int ext4_da_reserve_space(struct
+ 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
+ 	total = md_needed + nrblocks;
+ 
+-	if (ext4_has_free_blocks(sbi, total) < total) {
++	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		return -ENOSPC;
+ 	}
+-	/* reduce fs free blocks counter */
+-	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
+-
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+ 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
+ 
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3194,9 +3194,15 @@ ext4_mb_mark_diskspace_used(struct ext4_
+ 	 * at write_begin() time for delayed allocation
+ 	 * do not double accounting
+ 	 */
+-	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+-		percpu_counter_sub(&sbi->s_freeblocks_counter,
+-					ac->ac_b_ex.fe_len);
++	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
++			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
++		/*
++		 * we allocated less blocks than we calimed
++		 * Add the difference back
++		 */
++		percpu_counter_add(&sbi->s_freeblocks_counter,
++				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
++	}
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
+@@ -4649,14 +4655,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		ar->len = ext4_has_free_blocks(sbi, ar->len);
+-	}
+-
+-	if (ar->len == 0) {
+-		*errp = -ENOSPC;
+-		return 0;
++		if (ext4_claim_free_blocks(sbi, ar->len)) {
++			*errp = -ENOSPC;
++			return 0;
++		}
+ 	}
