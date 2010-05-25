@@ -1,87 +1,189 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/2] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when warranted
-Date: Tue, 25 May 2010 11:23:48 +0400
-Message-ID: <87zkzola0r.fsf@openvz.org>
-References: <20100525041737.GB5556@thunk.org>
-	<1274761117-26560-2-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Dave Chinner <david@fromorbit.com>
+Subject: [PATCH 2/6] writeback: Add tracing to balance_dirty_pages
+Date: Tue, 25 May 2010 20:54:08 +1000
+Message-ID: <1274784852-30502-3-git-send-email-david@fromorbit.com>
+References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, jens.axboe@oracle.com
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.154]:14825 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750800Ab0EYHXx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 03:23:53 -0400
-Received: by fg-out-1718.google.com with SMTP id e12so163394fga.1
-        for <linux-ext4@vger.kernel.org>; Tue, 25 May 2010 00:23:51 -0700 (PDT)
-In-Reply-To: <1274761117-26560-2-git-send-email-tytso@mit.edu> (Theodore
-	Ts'o's message of "Tue, 25 May 2010 00:18:37 -0400")
+Received: from bld-mail16.adl2.internode.on.net ([150.101.137.101]:36920 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751047Ab0EYKye (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 06:54:34 -0400
+In-Reply-To: <1274784852-30502-1-git-send-email-david@fromorbit.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o <tytso@mit.edu> writes:
+From: Dave Chinner <dchinner@redhat.com>
 
-> Dimitry Monakhov discovered an edge case where it was possible for the
-> EXT4_EOFBLOCKS_FL flag could get cleared unnecessarily.  This is true;
-> I have a test case that can be exercised via downloading and
-> decompressing the file:
->
-> wget ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-testcases/eofblocks-fl-test-case.img.bz2
-> bunzip2 eofblocks-fl-test-case.img
-> dd if=/dev/zero of=eofblocks-fl-test-case.img bs=1k seek=17925 bs=1k count=1 conv=notrunc
->
-> However, triggering it in real life is highly unlikely since it
-> requires an extremely fragmented sparse file with a hole in exactly
-> the right place in the extent tree.  (It actually took quite a bit of
-This condition was triggered during fsstress test. So I consider
-it as rare but possible in real life. Nor than less it is better
-to fix it now, than fix it in response from a midnight call from some
-crazy customer :)
-> work to generate this test case.)  Still, it's nice to get even
-> extreme corner cases to be correct, so this patch makes sure that we
-> don't clear the EXT4_EOFBLOCKS_FL incorrectly even in this corner
-> case.
->
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/extents.c |   18 +++++++++++++++---
->  1 files changed, 15 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index aeec5c7..c7c304f 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3319,7 +3319,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  	struct ext4_extent_header *eh;
->  	struct ext4_extent newex, *ex, *last_ex;
->  	ext4_fsblk_t newblock;
-> -	int err = 0, depth, ret, cache_type;
-> +	int i, err = 0, depth, ret, cache_type;
->  	unsigned int allocated = 0;
->  	struct ext4_allocation_request ar;
->  	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-> @@ -3508,8 +3508,20 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  			goto out2;
->  		}
->  		last_ex = EXT_LAST_EXTENT(eh);
-> -		if (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block)
-> -		    + ext4_ext_get_actual_len(last_ex))
-> +		/*
-> +		 * If the current leaf block was reached by looking at
-> +		 * the last index block all the way down the tree, and
-> +		 * we are extending the inode beyond the last extent
-> +		 * in the current leaf block, then clear the
-> +		 * EOFBLOCKS_FL flag.
-> +		 */
-> +		for (i=depth-1; i >= 0; i--) {
-> +			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
-> +				break;
-This approach definitely looks better.
-> +		}
-> +		if ((i < 0) &&
-> +		    (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block) + 
-> +		     ext4_ext_get_actual_len(last_ex)))
->  			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
->  	}
->  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+Tracing high level background writeback events is good, but it doesn't
+give the entire picture. Add IO dispatched by foreground throttling to the
+writeback events.
+
+Signed-off-by: Dave Chinner <dchinner@redhat.com>
+---
+ fs/fs-writeback.c                |    5 ++
+ include/trace/events/writeback.h |   80 ++++++++++++++++++++++++++++++++++++++
+ mm/page-writeback.c              |    4 ++
+ 3 files changed, 89 insertions(+), 0 deletions(-)
+
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index b44aba6..efa3d18 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -814,7 +814,11 @@ static long wb_writeback(struct bdi_writeback *wb,
+ 		wbc.more_io = 0;
+ 		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
+ 		wbc.pages_skipped = 0;
++
++		trace_wbc_writeback_start(&wbc);
+ 		writeback_inodes_wb(wb, &wbc);
++		trace_wbc_writeback_written(&wbc);
++
+ 		args->nr_pages -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
+ 		wrote += MAX_WRITEBACK_PAGES - wbc.nr_to_write;
+ 
+@@ -842,6 +846,7 @@ static long wb_writeback(struct bdi_writeback *wb,
+ 		if (!list_empty(&wb->b_more_io))  {
+ 			inode = list_entry(wb->b_more_io.prev,
+ 						struct inode, i_list);
++			trace_wbc_writeback_wait(&wbc);
+ 			inode_wait_for_writeback(inode);
+ 		}
+ 		spin_unlock(&inode_lock);
+diff --git a/include/trace/events/writeback.h b/include/trace/events/writeback.h
+index df76457..72c1a12 100644
+--- a/include/trace/events/writeback.h
++++ b/include/trace/events/writeback.h
+@@ -7,6 +7,9 @@
+ #include <linux/backing-dev.h>
+ #include <linux/writeback.h>
+ 
++struct wb_writeback_args;
++struct bdi_work;
++
+ TRACE_EVENT(writeback_queue,
+ 
+ 	TP_PROTO(struct backing_dev_info *bdi, struct wb_writeback_args *args),
+@@ -165,6 +168,83 @@ TRACE_EVENT(writeback_bdi_register,
+ 	TP_printk("%s: %s", __entry->name,
+ 			__entry->start ? "registered" : "unregistered")
+ );
++
++/* pass flags explicitly */
++DECLARE_EVENT_CLASS(wbc_class,
++	TP_PROTO(struct writeback_control *wbc),
++	TP_ARGS(wbc),
++	TP_STRUCT__entry(
++		__field(unsigned int, wbc)
++		__array(char, name, 16)
++		__field(long, nr_to_write)
++		__field(long, pages_skipped)
++		__field(int, sb)
++		__field(int, sync_mode)
++		__field(int, nonblocking)
++		__field(int, encountered_congestion)
++		__field(int, for_kupdate)
++		__field(int, for_background)
++		__field(int, for_reclaim)
++		__field(int, range_cyclic)
++		__field(int, more_io)
++		__field(unsigned long, older_than_this)
++		__field(long, range_start)
++		__field(long, range_end)
++	),
++
++	TP_fast_assign(
++		char *__name = "(none)";
++
++		__entry->wbc		= (unsigned long)wbc & 0xffff;
++		if (wbc->bdi)
++			strncpy(__entry->name, dev_name(wbc->bdi->dev), 16);
++		else
++			strncpy(__entry->name, __name, 16);
++		__entry->nr_to_write	= wbc->nr_to_write;
++		__entry->pages_skipped	= wbc->pages_skipped;
++		__entry->sb		= !!wbc->sb;
++		__entry->sync_mode	= wbc->sync_mode;
++		__entry->for_kupdate	= wbc->for_kupdate;
++		__entry->for_background	= wbc->for_background;
++		__entry->for_reclaim	= wbc->for_reclaim;
++		__entry->range_cyclic	= wbc->range_cyclic;
++		__entry->more_io	= wbc->more_io;
++		__entry->older_than_this = wbc->older_than_this ?
++						*wbc->older_than_this : 0;
++		__entry->range_start	= (long)wbc->range_start;
++		__entry->range_end	= (long)wbc->range_end;
++	),
++
++	TP_printk("dev %s wbc=%x towrt=%ld skip=%ld sb=%d mode=%d kupd=%d "
++		"bgrd=%d reclm=%d cyclic=%d more=%d older=0x%lx "
++		"start=0x%lx end=0x%lx",
++		__entry->name,
++		__entry->wbc,
++		__entry->nr_to_write,
++		__entry->pages_skipped,
++		__entry->sb,
++		__entry->sync_mode,
++		__entry->for_kupdate,
++		__entry->for_background,
++		__entry->for_reclaim,
++		__entry->range_cyclic,
++		__entry->more_io,
++		__entry->older_than_this,
++		__entry->range_start,
++		__entry->range_end)
++)
++
++#define DEFINE_WBC_EVENT(name) \
++DEFINE_EVENT(wbc_class, name, \
++	TP_PROTO(struct writeback_control *wbc), \
++	TP_ARGS(wbc))
++DEFINE_WBC_EVENT(wbc_writeback_start);
++DEFINE_WBC_EVENT(wbc_writeback_written);
++DEFINE_WBC_EVENT(wbc_writeback_wait);
++DEFINE_WBC_EVENT(wbc_balance_dirty_start);
++DEFINE_WBC_EVENT(wbc_balance_dirty_written);
++DEFINE_WBC_EVENT(wbc_balance_dirty_wait);
++
+ #endif /* _TRACE_WRITEBACK_H */
+ 
+ /* This part must be outside protection */
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index b289310..68eb727 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -34,6 +34,7 @@
+ #include <linux/syscalls.h>
+ #include <linux/buffer_head.h>
+ #include <linux/pagevec.h>
++#include <trace/events/writeback.h>
+ 
+ /*
+  * After a CPU has dirtied this many pages, balance_dirty_pages_ratelimited
+@@ -536,11 +537,13 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		 * threshold otherwise wait until the disk writes catch
+ 		 * up.
+ 		 */
++		trace_wbc_balance_dirty_start(&wbc);
+ 		if (bdi_nr_reclaimable > bdi_thresh) {
+ 			writeback_inodes_wbc(&wbc);
+ 			pages_written += write_chunk - wbc.nr_to_write;
+ 			get_dirty_limits(&background_thresh, &dirty_thresh,
+ 				       &bdi_thresh, bdi);
++			trace_wbc_balance_dirty_written(&wbc);
+ 		}
+ 
+ 		/*
+@@ -566,6 +569,7 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		if (pages_written >= write_chunk)
+ 			break;		/* We've done our duty */
+ 
++		trace_wbc_balance_dirty_wait(&wbc);
+ 		__set_current_state(TASK_INTERRUPTIBLE);
+ 		io_schedule_timeout(pause);
+ 
+-- 
+1.5.6.5
+
