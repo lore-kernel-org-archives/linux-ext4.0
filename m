@@ -1,62 +1,77 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: Avoid crashing on NULL ptr dereference on a filesystem error
-Date: Tue, 25 May 2010 00:18:36 -0400
-Message-ID: <1274761117-26560-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when warranted
+Date: Tue, 25 May 2010 00:18:37 -0400
+Message-ID: <1274761117-26560-2-git-send-email-tytso@mit.edu>
 References: <20100525041737.GB5556@thunk.org>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49557 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:49555 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750815Ab0EYESj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750773Ab0EYESj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 25 May 2010 00:18:39 -0400
 In-Reply-To: <20100525041737.GB5556@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the EOFBLOCK_FL flag is set when it should not be and the inode is
-zero length, then eh_entries is zero, and ex is NULL, so dereferencing
-ex to print ex->ee_block causes a kernel OOPS in
-ext4_ext_map_blocks().
+Dimitry Monakhov discovered an edge case where it was possible for the
+EXT4_EOFBLOCKS_FL flag could get cleared unnecessarily.  This is true;
+I have a test case that can be exercised via downloading and
+decompressing the file:
 
-On top of that, the error message which is printed isn't very helpful.
-So we fix this by printing something more explanatory which doesn't
-involve trying to print ex->ee_block.
+wget ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-testcases/eofblocks-fl-test-case.img.bz2
+bunzip2 eofblocks-fl-test-case.img
+dd if=/dev/zero of=eofblocks-fl-test-case.img bs=1k seek=17925 bs=1k count=1 conv=notrunc
 
-Addresses-Google-Bug: #2655740
+However, triggering it in real life is highly unlikely since it
+requires an extremely fragmented sparse file with a hole in exactly
+the right place in the extent tree.  (It actually took quite a bit of
+work to generate this test case.)  Still, it's nice to get even
+extreme corner cases to be correct, so this patch makes sure that we
+don't clear the EXT4_EOFBLOCKS_FL incorrectly even in this corner
+case.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c |   18 +++++++++++++++---
+ 1 files changed, 15 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 595ab6d..aeec5c7 100644
+index aeec5c7..c7c304f 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3370,8 +3370,9 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	 */
- 	if (unlikely(path[depth].p_ext == NULL && depth != 0)) {
- 		EXT4_ERROR_INODE(inode, "bad extent address "
--				 "iblock: %d, depth: %d pblock %lld",
--				 map->m_lblk, depth, path[depth].p_block);
-+				 "lblock: %lu, depth: %d pblock %lld",
-+				 (unsigned long) map->m_lblk, depth,
-+				 path[depth].p_block);
- 		err = -EIO;
- 		goto out2;
- 	}
-@@ -3501,8 +3502,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (unlikely(ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
- 		if (unlikely(!eh->eh_entries)) {
- 			EXT4_ERROR_INODE(inode,
--					 "eh->eh_entries == 0 ee_block %d",
--					 ex->ee_block);
-+					 "eh->eh_entries == 0 and "
-+					 "EOFBLOCKS_FL set");
- 			err = -EIO;
+@@ -3319,7 +3319,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	struct ext4_extent_header *eh;
+ 	struct ext4_extent newex, *ex, *last_ex;
+ 	ext4_fsblk_t newblock;
+-	int err = 0, depth, ret, cache_type;
++	int i, err = 0, depth, ret, cache_type;
+ 	unsigned int allocated = 0;
+ 	struct ext4_allocation_request ar;
+ 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+@@ -3508,8 +3508,20 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
  			goto out2;
  		}
+ 		last_ex = EXT_LAST_EXTENT(eh);
+-		if (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block)
+-		    + ext4_ext_get_actual_len(last_ex))
++		/*
++		 * If the current leaf block was reached by looking at
++		 * the last index block all the way down the tree, and
++		 * we are extending the inode beyond the last extent
++		 * in the current leaf block, then clear the
++		 * EOFBLOCKS_FL flag.
++		 */
++		for (i=depth-1; i >= 0; i--) {
++			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
++				break;
++		}
++		if ((i < 0) &&
++		    (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block) + 
++		     ext4_ext_get_actual_len(last_ex)))
+ 			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
+ 	}
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
 -- 
 1.6.6.1.1.g974db.dirty
 
