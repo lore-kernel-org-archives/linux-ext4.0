@@ -1,45 +1,51 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after
- transaction restart
-Date: Tue, 25 May 2010 17:44:47 -0400
-Message-ID: <20100525214447.GA14530@thunk.org>
-References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
- <20100525133241.GF5556@thunk.org>
- <87632ckqcy.fsf@openvz.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 3/6] ext4: Use our own write_cache_pages()
+Date: Wed, 26 May 2010 08:42:59 +1000
+Message-ID: <20100525224259.GM2150@dastard>
+References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
+ <1274784852-30502-4-git-send-email-david@fromorbit.com>
+ <20100525130626.GD5556@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
-	aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: tytso@mit.edu, linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jens.axboe@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52723 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758519Ab0EYVot (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 May 2010 17:44:49 -0400
+Received: from bld-mail17.adl2.internode.on.net ([150.101.137.102]:52422 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753903Ab0EYWnK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 18:43:10 -0400
 Content-Disposition: inline
-In-Reply-To: <87632ckqcy.fsf@openvz.org>
+In-Reply-To: <20100525130626.GD5556@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 25, 2010 at 06:28:29PM +0400, Dmitry Monakhov wrote:
-> tytso@mit.edu writes:
+On Tue, May 25, 2010 at 09:06:26AM -0400, tytso@mit.edu wrote:
+> On Tue, May 25, 2010 at 08:54:09PM +1000, Dave Chinner wrote:
+> > From: Theodore Ts'o <tytso@mit.edu>
+> > 
+> > Make a copy of write_cache_pages() for the benefit of
+> > ext4_da_writepages().  This allows us to simplify the code some, and
+> > will allow us to further customize the code in future patches.
 > 
-> > On Thu, Apr 22, 2010 at 08:31:11AM +0400, Dmitry Monakhov wrote:
-> >> @@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
-> >>  out:
-> >>  	ext4_ext_drop_refs(path);
-> >>  	kfree(path);
-> >> +	if (err == EAGAIN) {
-> >
-> > Surely this should be "err == -EAGAIN", no?  I'm curious how this
-> > patch worked for with this typo....
-> As usually it fix one thing, and broke another :(.
-> So in case of alloc/truncate restart truncate will be aborted,
-> so i_size != i_disk_size which must be caught by fsck (my test run
-> it every time) but this never happens which is very strange.
+> I'm going to be pushing this to Linus shortly, so it's likely you'll
+> be able to drop this from your patch series.
 
-What test case are you using?  And does it require a system crash to
-show up, or are you seeing an fsck problem after the test completes
-and you unmount the file system?
+Great!
 
-						- Ted
+> I just wanted to give
+> you a heads up about what I was planning on doing, which hopefully
+> simplified your life a little.
+
+And that's appreciated. I included it to make sure everyone could
+see how this all fitted together and others could test it if they so
+desired. i.e. make sure I wasn't breaking ext4 by reverting the
+changes to write_cache_pages. I'll leave it in the series until the
+ext4 change is upstream, then I'll drop it.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
