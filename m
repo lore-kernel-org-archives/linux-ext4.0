@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [07/25] ext4: Retry block allocation if we have free blocks left
-Date: Tue, 25 May 2010 11:09:05 -0700
-Message-ID: <20100525181212.773632342@clark.site>
+Subject: [06/25] ext4: Retry block reservation
+Date: Tue, 25 May 2010 11:09:04 -0700
+Message-ID: <20100525181212.667240375@clark.site>
 References: <20100525181259.GA18630@kroah.com>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
@@ -11,24 +11,30 @@ Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	"Jayson R. King" <dev@jaysonking.com>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:44338 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933004Ab0EYSRY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 14:17:24 -0400
 In-Reply-To: <20100525181259.GA18630@kroah.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
+
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit df22291ff0fde0d350cf15dac3e5cc33ac528875 upstream.
+commit 030ba6bc67b4f2bc5cd174f57785a1745c929abe upstream.
 
-When we truncate files, the meta-data blocks released are not reused
-untill we commit the truncate transaction.  That means delayed get_block
-request will return ENOSPC even if we have free blocks left.  Force a
-journal commit and retry block allocation if we get ENOSPC with free
-blocks left.
+During block reservation if we don't have enough blocks left, retry
+block reservation with smaller block counts.  This makes sure we try
+fallocate and DIO with smaller request size and don't fail early.  The
+delayed allocation reservation cannot try with smaller block count. So
+retry block reservation to handle temporary disk full conditions.  Also
+print free blocks details if we fail block allocation during writepages.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
@@ -38,176 +44,108 @@ Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/inode.c |   81 +++++++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 57 insertions(+), 24 deletions(-)
+ fs/ext4/balloc.c  |    8 +++++++-
+ fs/ext4/inode.c   |   14 +++++++++++---
+ fs/ext4/mballoc.c |    7 ++++++-
+ 3 files changed, 24 insertions(+), 5 deletions(-)
 
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1907,10 +1907,16 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		if (ext4_claim_free_blocks(sbi, *count)) {
++		while (*count && ext4_claim_free_blocks(sbi, *count)) {
++			/* let others to free the space */
++			yield();
++			*count = *count >> 1;
++		}
++		if (!*count) {
+ 			*errp = -ENOSPC;
+ 			return 0;	/*return with ENOSPC error */
+ 		}
++		num = *count;
+ 	}
+ 	/*
+ 	 * Check quota for allocation of this block.
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1661,6 +1661,7 @@ struct mpage_da_data {
- 	struct writeback_control *wbc;
- 	int io_done;
- 	long pages_written;
-+	int retval;
- };
+@@ -1549,6 +1549,7 @@ static int ext4_journalled_write_end(str
  
- /*
-@@ -1858,6 +1859,24 @@ static void ext4_da_block_invalidatepage
- 	return;
- }
+ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ {
++	int retries = 0;
+        struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+        unsigned long md_needed, mdblocks, total = 0;
  
-+static void ext4_print_free_blocks(struct inode *inode)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	printk(KERN_EMERG "Total free blocks count %lld\n",
-+			ext4_count_free_blocks(inode->i_sb));
-+	printk(KERN_EMERG "Free/Dirty block details\n");
-+	printk(KERN_EMERG "free_blocks=%lld\n",
-+			percpu_counter_sum(&sbi->s_freeblocks_counter));
-+	printk(KERN_EMERG "dirty_blocks=%lld\n",
-+			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
-+	printk(KERN_EMERG "Block reservation details\n");
-+	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
-+			EXT4_I(inode)->i_reserved_data_blocks);
-+	printk(KERN_EMERG "i_reserved_meta_blocks=%lu\n",
-+			EXT4_I(inode)->i_reserved_meta_blocks);
-+	return;
-+}
-+
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1872,7 +1891,7 @@ static int  mpage_da_map_blocks(struct m
+@@ -1557,6 +1558,7 @@ static int ext4_da_reserve_space(struct
+ 	 * in order to allocate nrblocks
+ 	 * worse case is one extent per block
+ 	 */
++repeat:
+ 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
+ 	mdblocks = ext4_calc_metadata_amount(inode, total);
+@@ -1567,6 +1569,10 @@ static int ext4_da_reserve_space(struct
+ 
+ 	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
++			yield();
++			goto repeat;
++		}
+ 		return -ENOSPC;
+ 	}
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+@@ -1864,20 +1870,18 @@ static void ext4_da_block_invalidatepage
+ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ {
  	int err = 0;
- 	struct buffer_head new;
++	struct buffer_head new;
  	struct buffer_head *lbh = &mpd->lbh;
--	sector_t next = lbh->b_blocknr;
-+	sector_t next;
+ 	sector_t next = lbh->b_blocknr;
+-	struct buffer_head new;
  
  	/*
  	 * We consider only non-mapped and non-allocated blocks
-@@ -1882,6 +1901,7 @@ static int  mpage_da_map_blocks(struct m
+ 	 */
+ 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
+ 		return 0;
+-
  	new.b_state = lbh->b_state;
  	new.b_blocknr = 0;
  	new.b_size = lbh->b_size;
-+	next = lbh->b_blocknr;
+-
  	/*
  	 * If we didn't accumulate anything
  	 * to write simply return
-@@ -1898,6 +1918,13 @@ static int  mpage_da_map_blocks(struct m
- 		 */
- 		if (err == -EAGAIN)
- 			return 0;
-+
-+		if (err == -ENOSPC &&
-+				ext4_count_free_blocks(mpd->inode->i_sb)) {
-+			mpd->retval = err;
-+			return 0;
-+		}
-+
- 		/*
- 		 * get block failure will cause us
- 		 * to loop in writepages. Because
-@@ -1915,8 +1942,7 @@ static int  mpage_da_map_blocks(struct m
+@@ -1910,6 +1914,10 @@ static int  mpage_da_map_blocks(struct m
+ 				  lbh->b_size >> mpd->inode->i_blkbits, err);
  		printk(KERN_EMERG "This should not happen.!! "
  					"Data will be lost\n");
- 		if (err == -ENOSPC) {
--			printk(KERN_CRIT "Total free blocks count %lld\n",
--				ext4_count_free_blocks(mpd->inode->i_sb));
-+			ext4_print_free_blocks(mpd->inode);
- 		}
++		if (err == -ENOSPC) {
++			printk(KERN_CRIT "Total free blocks count %lld\n",
++				ext4_count_free_blocks(mpd->inode->i_sb));
++		}
  		/* invlaidate all the pages */
  		ext4_da_block_invalidatepages(mpd, next,
-@@ -2141,39 +2167,36 @@ static int __mpage_da_writepage(struct p
-  */
- static int mpage_da_writepages(struct address_space *mapping,
- 			       struct writeback_control *wbc,
--			       get_block_t get_block)
-+			       struct mpage_da_data *mpd)
- {
--	struct mpage_da_data mpd;
- 	long to_write;
- 	int ret;
- 
--	if (!get_block)
-+	if (!mpd->get_block)
- 		return generic_writepages(mapping, wbc);
- 
--	mpd.wbc = wbc;
--	mpd.inode = mapping->host;
--	mpd.lbh.b_size = 0;
--	mpd.lbh.b_state = 0;
--	mpd.lbh.b_blocknr = 0;
--	mpd.first_page = 0;
--	mpd.next_page = 0;
--	mpd.get_block = get_block;
--	mpd.io_done = 0;
--	mpd.pages_written = 0;
-+	mpd->lbh.b_size = 0;
-+	mpd->lbh.b_state = 0;
-+	mpd->lbh.b_blocknr = 0;
-+	mpd->first_page = 0;
-+	mpd->next_page = 0;
-+	mpd->io_done = 0;
-+	mpd->pages_written = 0;
-+	mpd->retval = 0;
- 
- 	to_write = wbc->nr_to_write;
- 
--	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
-+	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
- 
- 	/*
- 	 * Handle last extent of pages
- 	 */
--	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--		if (mpage_da_map_blocks(&mpd) == 0)
--			mpage_da_submit_io(&mpd);
-+	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
-+		if (mpage_da_map_blocks(mpd) == 0)
-+			mpage_da_submit_io(mpd);
- 	}
- 
--	wbc->nr_to_write = to_write - mpd.pages_written;
-+	wbc->nr_to_write = to_write - mpd->pages_written;
- 	return ret;
- }
- 
-@@ -2420,6 +2443,7 @@ static int ext4_da_writepages(struct add
- {
- 	handle_t *handle = NULL;
- 	loff_t range_start = 0;
-+	struct mpage_da_data mpd;
- 	struct inode *inode = mapping->host;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	long to_write, pages_skipped = 0;
-@@ -2467,6 +2491,9 @@ static int ext4_da_writepages(struct add
- 	range_start =  wbc->range_start;
- 	pages_skipped = wbc->pages_skipped;
- 
-+	mpd.wbc = wbc;
-+	mpd.inode = mapping->host;
-+
- restart_loop:
- 	to_write = wbc->nr_to_write;
- 	while (!ret && to_write > 0) {
-@@ -2502,11 +2529,17 @@ restart_loop:
- 				goto out_writepages;
- 			}
+ 				lbh->b_size >> mpd->inode->i_blkbits);
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4651,7 +4651,12 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		if (ext4_claim_free_blocks(sbi, ar->len)) {
++		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
++			/* let others to free the space */
++			yield();
++			ar->len = ar->len >> 1;
++		}
++		if (!ar->len) {
+ 			*errp = -ENOSPC;
+ 			return 0;
  		}
--
- 		to_write -= wbc->nr_to_write;
--		ret = mpage_da_writepages(mapping, wbc,
--					  ext4_da_get_block_write);
-+
-+		mpd.get_block = ext4_da_get_block_write;
-+		ret = mpage_da_writepages(mapping, wbc, &mpd);
-+
- 		ext4_journal_stop(handle);
-+
-+		if (mpd.retval == -ENOSPC)
-+			jbd2_journal_force_commit_nested(sbi->s_journal);
-+
-+		/* reset the retry count */
- 		if (ret == MPAGE_DA_EXTENT_TAIL) {
- 			/*
- 			 * got one extent now try with
+
+
