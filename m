@@ -1,36 +1,40 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/2] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when warranted
-Date: Tue, 25 May 2010 17:19:01 +0400
-Message-ID: <87bpc4ktkq.fsf@openvz.org>
-References: <20100525041737.GB5556@thunk.org>
-	<1274761117-26560-2-git-send-email-tytso@mit.edu>
-	<87zkzola0r.fsf@openvz.org> <20100525130331.GC5556@thunk.org>
-	<87fx1gktvf.fsf@openvz.org> <20100525131544.GE5556@thunk.org>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after
+ transaction restart
+Date: Tue, 25 May 2010 09:32:41 -0400
+Message-ID: <20100525133241.GF5556@thunk.org>
+References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
+	aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.154]:25034 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755442Ab0EYNTI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 May 2010 09:19:08 -0400
-Received: by fg-out-1718.google.com with SMTP id d23so2327401fga.1
-        for <linux-ext4@vger.kernel.org>; Tue, 25 May 2010 06:19:05 -0700 (PDT)
-In-Reply-To: <20100525131544.GE5556@thunk.org> (tytso@mit.edu's message of
-	"Tue, 25 May 2010 09:15:44 -0400")
+Received: from thunk.org ([69.25.196.29]:38953 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755010Ab0EYNcr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 09:32:47 -0400
+Content-Disposition: inline
+In-Reply-To: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu writes:
+On Thu, Apr 22, 2010 at 08:31:11AM +0400, Dmitry Monakhov wrote:
+> @@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+>  out:
+>  	ext4_ext_drop_refs(path);
+>  	kfree(path);
+> +	if (err == EAGAIN) {
 
-> On Tue, May 25, 2010 at 05:12:36PM +0400, Dmitry Monakhov wrote:
->> Yes but changes was requested, so i've prepared new version.
->> I'll post it against Jan's xfsqa quota branch.
->
-> Is there a reason you don't just base it against the xfstests mainline
-> and send the patch directly to xfs@oss.sgi.com?  Your patch isn't
-> related to quota or has any dependency on other changes that might be
-> in Jan's branch, right?  Or am I missing something?
-They are related because test number always increasing, and i want to
-use the test to run with and w/o quota enabled.
+Surely this should be "err == -EAGAIN", no?  I'm curious how this
+patch worked for with this typo....
+
+> +		err = 0;
+> +		goto again;
+> +	}
+> +	ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC);
+>  	ext4_journal_stop(handle);
+>  
+>  	return err;
+
+					- Ted
