@@ -1,190 +1,50 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [02/25] ext4: invalidate pages if delalloc block allocation fails.
-Date: Tue, 25 May 2010 11:09:00 -0700
-Message-ID: <20100525181212.292677742@clark.site>
-References: <20100525181259.GA18630@kroah.com>
-Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Tso" <tytso@mit.edu>,
-	"Jayson R. King" <dev@jaysonking.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after
+ transaction restart
+Date: Tue, 25 May 2010 17:38:17 -0400
+Message-ID: <20100525213817.GO5556@thunk.org>
+References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
+ <20100525133241.GF5556@thunk.org>
+ <87632ckqcy.fsf@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
+	aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:44307 "EHLO coco.kroah.org"
+Received: from thunk.org ([69.25.196.29]:43296 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932354Ab0EYSRU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 May 2010 14:17:20 -0400
-In-Reply-To: <20100525181259.GA18630@kroah.com>
+	id S934271Ab0EYViW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 17:38:22 -0400
+Content-Disposition: inline
+In-Reply-To: <87632ckqcy.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.27-stable review patch.  If anyone has any objections, please let us know.
+On Tue, May 25, 2010 at 06:28:29PM +0400, Dmitry Monakhov wrote:
+> tytso@mit.edu writes:
+> 
+> > On Thu, Apr 22, 2010 at 08:31:11AM +0400, Dmitry Monakhov wrote:
+> >> @@ -2480,6 +2480,11 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+> >>  out:
+> >>  	ext4_ext_drop_refs(path);
+> >>  	kfree(path);
+> >> +	if (err == EAGAIN) {
+> >
+> > Surely this should be "err == -EAGAIN", no?  I'm curious how this
+> > patch worked for with this typo....
+> As usually it fix one thing, and broke another :(.
+> So in case of alloc/truncate restart truncate will be aborted,
+> so i_size != i_disk_size which must be caught by fsck (my test run
+> it every time) but this never happens which is very strange.
+> The only reason i can explain this that truncate was called second
+> time which is probable due to should_retry_alloc logic.
 
-------------------
+Does adding the optimization I suggested help?  I was nervous because
+we don't immediately abort the loop after the rm_leaf function returns
+-EAGAIN.  And disentangling the code to free the buffer references
+from the other processing that was happening was difficult, and I was
+worried about other potential side effects when the code tried to
+modify blocks that were already added to the transaction.
 
-
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-commit c4a0c46ec92c194c873232b88debce4e1a448483 upstream.
-
-We are a bit agressive in invalidating all the pages. But
-it is ok because we really don't know why the block allocation
-failed and it is better to come of the writeback path
-so that user can look for more info.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Jayson R. King <dev@jaysonking.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/ext4/inode.c |   85 ++++++++++++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 73 insertions(+), 12 deletions(-)
-
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1821,6 +1821,39 @@ static inline void __unmap_underlying_bl
- 		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
- }
- 
-+static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
-+					sector_t logical, long blk_cnt)
-+{
-+	int nr_pages, i;
-+	pgoff_t index, end;
-+	struct pagevec pvec;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
-+
-+	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	end   = (logical + blk_cnt - 1) >>
-+				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	while (index <= end) {
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
-+			block_invalidatepage(page, 0);
-+			ClearPageUptodate(page);
-+			unlock_page(page);
-+		}
-+	}
-+	return;
-+}
-+
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1830,7 +1863,7 @@ static inline void __unmap_underlying_bl
-  * The function skips space we know is already mapped to disk blocks.
-  *
-  */
--static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
- 	int err = 0;
- 	struct buffer_head *lbh = &mpd->lbh;
-@@ -1841,7 +1874,7 @@ static void mpage_da_map_blocks(struct m
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
--		return;
-+		return 0;
- 
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
-@@ -1852,10 +1885,38 @@ static void mpage_da_map_blocks(struct m
- 	 * to write simply return
- 	 */
- 	if (!new.b_size)
--		return;
-+		return 0;
- 	err = mpd->get_block(mpd->inode, next, &new, 1);
--	if (err)
--		return;
-+	if (err) {
-+
-+		/* If get block returns with error
-+		 * we simply return. Later writepage
-+		 * will redirty the page and writepages
-+		 * will find the dirty page again
-+		 */
-+		if (err == -EAGAIN)
-+			return 0;
-+		/*
-+		 * get block failure will cause us
-+		 * to loop in writepages. Because
-+		 * a_ops->writepage won't be able to
-+		 * make progress. The page will be redirtied
-+		 * by writepage and writepages will again
-+		 * try to write the same.
-+		 */
-+		printk(KERN_EMERG "%s block allocation failed for inode %lu "
-+				  "at logical offset %llu with max blocks "
-+				  "%zd with error %d\n",
-+				  __func__, mpd->inode->i_ino,
-+				  (unsigned long long)next,
-+				  lbh->b_size >> mpd->inode->i_blkbits, err);
-+		printk(KERN_EMERG "This should not happen.!! "
-+					"Data will be lost\n");
-+		/* invlaidate all the pages */
-+		ext4_da_block_invalidatepages(mpd, next,
-+				lbh->b_size >> mpd->inode->i_blkbits);
-+		return err;
-+	}
- 	BUG_ON(new.b_size == 0);
- 
- 	if (buffer_new(&new))
-@@ -1868,7 +1929,7 @@ static void mpage_da_map_blocks(struct m
- 	if (buffer_delay(lbh) || buffer_unwritten(lbh))
- 		mpage_put_bnr_to_bhs(mpd, next, &new);
- 
--	return;
-+	return 0;
- }
- 
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
-@@ -1937,8 +1998,8 @@ flush_it:
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	mpage_da_map_blocks(mpd);
--	mpage_da_submit_io(mpd);
-+	if (mpage_da_map_blocks(mpd) == 0)
-+		mpage_da_submit_io(mpd);
- 	mpd->io_done = 1;
- 	return;
- }
-@@ -1980,8 +2041,8 @@ static int __mpage_da_writepage(struct p
- 		 * and start IO on them using writepage()
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			mpage_da_map_blocks(mpd);
--			mpage_da_submit_io(mpd);
-+			if (mpage_da_map_blocks(mpd) == 0)
-+				mpage_da_submit_io(mpd);
- 			/*
- 			 * skip rest of the page in the page_vec
- 			 */
-@@ -2102,8 +2163,8 @@ static int mpage_da_writepages(struct ad
- 	 * Handle last extent of pages
- 	 */
- 	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--		mpage_da_map_blocks(&mpd);
--		mpage_da_submit_io(&mpd);
-+		if (mpage_da_map_blocks(&mpd) == 0)
-+			mpage_da_submit_io(&mpd);
- 	}
- 
- 	wbc->nr_to_write = to_write - mpd.pages_written;
-
-
+       	      	   		      	     - Ted
