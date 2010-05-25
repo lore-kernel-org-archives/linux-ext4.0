@@ -1,20 +1,23 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [09/25] vfs: Remove the range_cont writeback mode.
-Date: Tue, 25 May 2010 11:09:07 -0700
-Message-ID: <20100525181212.973814409@clark.site>
+Subject: [08/25] ext4: Use tag dirty lookup during mpage_da_submit_io
+Date: Tue, 25 May 2010 11:09:06 -0700
+Message-ID: <20100525181212.885517951@clark.site>
 References: <20100525181259.GA18630@kroah.com>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	"Theodore Tso" <tytso@mit.edu>,
 	"Jayson R. King" <dev@jaysonking.com>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:44348 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933290Ab0EYSR0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 May 2010 14:17:26 -0400
 In-Reply-To: <20100525181259.GA18630@kroah.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
@@ -22,44 +25,93 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit 74baaaaec8b4f22e1ae279f5ecca4ff705b28912 upstream.
+commit af6f029d3836eb7264cd3fbb13a6baf0e5fdb5ea upstream.
 
-Ext4 was the only user of range_cont writeback mode and ext4 switched
-to a different method. So remove the range_cont mode which is not used
-in the kernel.
+This enables us to drop the range_cont writeback mode
+use from ext4_da_writepages.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-CC: linux-fsdevel@vger.kernel.org
 Signed-off-by: Jayson R. King <dev@jaysonking.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- include/linux/writeback.h |    1 -
- mm/page-writeback.c       |    2 --
- 2 files changed, 3 deletions(-)
+ fs/ext4/inode.c |   30 +++++++++++++-----------------
+ 1 file changed, 13 insertions(+), 17 deletions(-)
 
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -62,7 +62,6 @@ struct writeback_control {
- 	unsigned for_writepages:1;	/* This is a writepages() call */
- 	unsigned range_cyclic:1;	/* range_start is cyclic */
- 	unsigned more_io:1;		/* more io to be dispatched */
--	unsigned range_cont:1;
- };
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1699,17 +1699,23 @@ static int mpage_da_submit_io(struct mpa
  
- /*
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -1027,8 +1027,6 @@ continue_unlock:
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		mapping->writeback_index = done_index;
+ 	pagevec_init(&pvec, 0);
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		/*
++		 * We can use PAGECACHE_TAG_DIRTY lookup here because
++		 * even though we have cleared the dirty flag on the page
++		 * We still keep the page in the radix tree with tag
++		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
++		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
++		 * which is called via the below writepage callback.
++		 */
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++					PAGECACHE_TAG_DIRTY,
++					min(end - index,
++					(pgoff_t)PAGEVEC_SIZE-1) + 1);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
  
--	if (wbc->range_cont)
--		wbc->range_start = index << PAGE_CACHE_SHIFT;
+-			index = page->index;
+-			if (index > end)
+-				break;
+-			index++;
+-
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
+ 
+@@ -2442,7 +2448,6 @@ static int ext4_da_writepages(struct add
+ 			      struct writeback_control *wbc)
+ {
+ 	handle_t *handle = NULL;
+-	loff_t range_start = 0;
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+@@ -2481,14 +2486,7 @@ static int ext4_da_writepages(struct add
+ 		wbc->nr_to_write = sbi->s_mb_stream_request;
+ 	}
+ 
+-	if (!wbc->range_cyclic)
+-		/*
+-		 * If range_cyclic is not set force range_cont
+-		 * and save the old writeback_index
+-		 */
+-		wbc->range_cont = 1;
+ 
+-	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
+ 
+ 	mpd.wbc = wbc;
+@@ -2559,9 +2557,8 @@ restart_loop:
+ 		wbc->nr_to_write = to_write;
+ 	}
+ 
+-	if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
++	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+ 		/* We skipped pages in this loop */
+-		wbc->range_start = range_start;
+ 		wbc->nr_to_write = to_write +
+ 				wbc->pages_skipped - pages_skipped;
+ 		wbc->pages_skipped = pages_skipped;
+@@ -2570,7 +2567,6 @@ restart_loop:
+ 
+ out_writepages:
+ 	wbc->nr_to_write = to_write - nr_to_writebump;
+-	wbc->range_start = range_start;
  	return ret;
  }
- EXPORT_SYMBOL(write_cache_pages);
+ 
 
 
