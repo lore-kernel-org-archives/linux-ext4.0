@@ -1,24 +1,24 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after transaction restart
-Date: Wed, 26 May 2010 12:53:45 +0400
-Message-ID: <87ljb7qc12.fsf@openvz.org>
+Date: Wed, 26 May 2010 13:12:11 +0400
+Message-ID: <87hblvqb6c.fsf@openvz.org>
 References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
 	<20100525133241.GF5556@thunk.org> <87632ckqcy.fsf@openvz.org>
-	<20100525213817.GO5556@thunk.org>
+	<20100525214447.GA14530@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
 	aneesh.kumar@linux.vnet.ibm.com, tytso@mit.ed
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:57947 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933793Ab0EZIxt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 May 2010 04:53:49 -0400
-Received: by fxm5 with SMTP id 5so4122139fxm.19
-        for <linux-ext4@vger.kernel.org>; Wed, 26 May 2010 01:53:47 -0700 (PDT)
-In-Reply-To: <20100525213817.GO5556@thunk.org> (tytso@mit.edu's message of
-	"Tue, 25 May 2010 17:38:17 -0400")
+Received: from fg-out-1718.google.com ([72.14.220.157]:11695 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751095Ab0EZJMR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 May 2010 05:12:17 -0400
+Received: by fg-out-1718.google.com with SMTP id d23so2699777fga.1
+        for <linux-ext4@vger.kernel.org>; Wed, 26 May 2010 02:12:15 -0700 (PDT)
+In-Reply-To: <20100525214447.GA14530@thunk.org> (tytso@mit.edu's message of
+	"Tue, 25 May 2010 17:44:47 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -40,31 +40,36 @@ tytso@mit.edu writes:
 >> So in case of alloc/truncate restart truncate will be aborted,
 >> so i_size != i_disk_size which must be caught by fsck (my test run
 >> it every time) but this never happens which is very strange.
->> The only reason i can explain this that truncate was called second
->> time which is probable due to should_retry_alloc logic.
->
-> Does adding the optimization I suggested help?  I was nervous because
-> we don't immediately abort the loop after the rm_leaf function returns
-> -EAGAIN.
-Sorry, but seems i don't get your idea.
-we have following code:
-2394: while (i >= 0 && err == 0) {
-                if (i == depth) {
-                        /* this is leaf block */
-                        err = ext4_ext_rm_leaf(handle, inode, path,
-                        start);
-                        /* root level has p_bh == NULL, brelse() eats this */
-                        brelse(path[i].p_bh);
-                        path[i].p_bh = NULL;
-                        i--;
-                        continue;
-                       ^^^^^^^^^^^^^^^^^
-<<< So if rm_leaf has failed we will quit from while loop
-                }
+Ohh i ment to say blocks beyond i_disk_size due to aborted truncate.
+> What test case are you using?  And does it require a system crash to
+> show up, or are you seeing an fsck problem after the test completes
+> and you unmount the file system?
+crash is not required.
+I use proposed xfsqa tests from the bug, may be i've changed some 
+numbers, but core idea stays the same.
+mount /dev/sdb1 /mnt
+fsstress ..... &
+sleep 300; killall -9 fsstress
+umount /mnt
+fsck -f /dev/sdb1
+After you have spotted the mistypo i've add explicit fault injection 
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -98,9 +98,15 @@ static int ext4_ext_truncate_extend_restart(handle_t
+>> > *handle,                                            int needed)
+ {
+        int err;
++       static int fault = 0;
 
->And disentangling the code to free the buffer references
-> from the other processing that was happening was difficult, and I was
-> worried about other potential side effects when the code tried to
-> modify blocks that were already added to the transaction.
->
->        	      	   		      	     - Ted
+        if (!ext4_handle_valid(handle))
+                return 0;
++       if (inode->i_size % 1234 == 0 && fault++ % 2) {
++               printk("EXT4 TRUNC fault inject inode:%ld\n",inode->i_ino);
++               dump_stack();
++               return -EAGAIN;
++       }
+
+And i've got complain from fsck about incorrect i_size which should be
+increased due to block beyond i_disk_size as expected.
+And when i've fixed the mistypo i've had different complain due to
+bitmap  difference.
