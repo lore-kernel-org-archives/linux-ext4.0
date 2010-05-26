@@ -1,91 +1,71 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] Journal superblock update should send a barrier
-Date: Wed, 26 May 2010 15:58:07 +0200
-Message-ID: <20100526135807.GB2268@atrey.karlin.mff.cuni.cz>
-References: <20100423002554.GB25327@quack.suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext4: restart ext4_ext_remove_space() after transaction restart V2
+Date: Wed, 26 May 2010 18:23:55 +0400
+Message-ID: <87k4qqlp1g.fsf@openvz.org>
+References: <1271910671-16627-1-git-send-email-dmonakhov@openvz.org>
+	<20100525133241.GF5556@thunk.org> <87632ckqcy.fsf@openvz.org>
+	<20100525214447.GA14530@thunk.org> <87hblvqb6c.fsf@openvz.org>
+	<87pr0ilw3n.fsf_-_@openvz.org> <20100526132352.GA29528@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz,
+	aneesh.kumar@linux.vnet.ibm.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:49910 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753915Ab0EZN6J (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 May 2010 09:58:09 -0400
-Content-Disposition: inline
-In-Reply-To: <20100423002554.GB25327@quack.suse.cz>
+Received: from fg-out-1718.google.com ([72.14.220.159]:7296 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755017Ab0EZOX7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 May 2010 10:23:59 -0400
+Received: by fg-out-1718.google.com with SMTP id e12so836577fga.1
+        for <linux-ext4@vger.kernel.org>; Wed, 26 May 2010 07:23:58 -0700 (PDT)
+In-Reply-To: <20100526132352.GA29528@thunk.org> (tytso@mit.edu's message of
+	"Wed, 26 May 2010 09:23:52 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Ted,
+tytso@mit.edu writes:
 
->   while reading through the checkpointing code I've realized that we
-> actually have to send a barrier before each update of journal superblock
-> after checkpointing. Attached patch does this. Just I'm not sure whether
-> the performance cost won't be too big. In principle, we could make this
-> more lightweight by using the fact that transaction commit also sends the
-> barrier. So we could check before sending a barrier for transaction commit
-> whether we are slowly running out of journal space and if so whether some
-> transaction isn't already checkpointed. If yes, we can happily submit
-> update of journal superblock after the barrier. In case journal is decently
-> large this should solve the checkpointing problem without introducing
-> noticeable overhead...
-  Did you have a chance to look at this?
+> One more thing.  Why do you need EXT4_STATE_EXT_TRUNC?
+>
+> The only place which tests it in any kind of real way is
+> ext4_ext_truncate_extend_restart(), and it is only called by one
+> function, ext4_ext_rm_leaf(), and *it* is only called in one place,
+> inside ext4_ext_remove_space(), and *it* surronds the call with
+> ext4_set_inode_state(inode, EXT4_STATE_EXT_TRUNC) and
+> ext4_clear_inode_state(inode, EXT4_STATE_EXT_TRUNC).
+>
+> And while a truncate is happening, no other block allocation can
+> happen, so the test in ext4_ext_map_blocks() doesn't seem to do much.
+This is the biggest myth about truncate. Personally i always use to
+thought like this. But later i've found that it is not so. See later.
+> (It only clears STATE_EXT_TRUNC if it is set and if the flags
+> EXT4_GET_BLOCKS_CREATE is set.  I'm not sure what the point of that
+> is, either.)
+This is the core idea of the patch.
 
-								Honza
+*Truncate* task set the bit to signal that truncate is under progress for
+inode.
 
-> >From e749e83627c35c683114fea32695e581a487e560 Mon Sep 17 00:00:00 2001
-> From: Jan Kara <jack@suse.cz>
-> Date: Fri, 23 Apr 2010 02:12:32 +0200
-> Subject: [PATCH] ext4: Send barrier before updating journal superblock after checkpointing
-> 
-> We have to send a disk barrier after we have finished checkpointing and before
-> we update the journal superblock and thus effectively remove transactions from
-> the journal. Otherwise the write of journal superblock can be reordered before
-> writes of checkpointed journal blocks and thus in case of crash these blocks
-> needn't be on the platter leading to filesystem corruption.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/jbd2/checkpoint.c |   19 +++++++++----------
->  1 files changed, 9 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index 30beb11..b2de17f 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -519,17 +519,16 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
->  	spin_unlock(&journal->j_state_lock);
->  
->  	/*
-> -	 * If there is an external journal, we need to make sure that
-> -	 * any data blocks that were recently written out --- perhaps
-> -	 * by jbd2_log_do_checkpoint() --- are flushed out before we
-> -	 * drop the transactions from the external journal.  It's
-> -	 * unlikely this will be necessary, especially with a
-> -	 * appropriately sized journal, but we need this to guarantee
-> -	 * correctness.  Fortunately jbd2_cleanup_journal_tail()
-> -	 * doesn't get called all that often.
-> +	 * We need to make sure that any data blocks that were recently written
-> +	 * out --- perhaps by jbd2_log_do_checkpoint() --- are flushed out
-> +	 * before we drop the transactions from the journal. Otherwise journal
-> +	 * superblock write could be reordered before writeout of data and thus
-> +	 * we could corrupt the filesystem in case of crash. It's unlikely this
-> +	 * will be necessary, especially with a appropriately sized journal,
-> +	 * but we need this to guarantee correctness.  Fortunately
-> +	 * jbd2_cleanup_journal_tail() doesn't get called all that often.
->  	 */
-> -	if ((journal->j_fs_dev != journal->j_dev) &&
-> -	    (journal->j_flags & JBD2_BARRIER))
-> +	if (journal->j_flags & JBD2_BARRIER)
->  		blkdev_issue_flush(journal->j_fs_dev, NULL);
->  	if (!(journal->j_flags & JBD2_ABORT))
->  		jbd2_journal_update_superblock(journal, 1);
-> -- 
-> 1.6.4.2
-> 
+Later if we face a needs to restart transaction which result in
+i_data_sem indernal drop/acquire.
+And when the sem was dropped new block may be allocated by a
+flusher task (delay allocation writeback in the middle of the file)
 
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+*Flusher* will discover than STATE_EXT_TRUNC is set and clear it
+is allocation is really necessary(EXT4_GET_BLOCKS_CREATE is set)
+By clearing STATE_EXT_TRUNC bit flusher let truncate task to know
+what it have to restart it's job. 
+
+*Back to truncate task*. We can may sure what allocation not happens by
+testing STATE_EXT_TRUNC bit. And it it was cleared we have to
+restart truncate from very beginning because all data we have collected
+may not longer be valid, even depth of the file may increase.
+
+For example if we about to truncate inode with following leaf block
+{ee_block:1000, ee_len:100}
+So if block allocation happens while we are restarting transaction
+leaf block may looks like follows:
+{ee_block:500, ee_len:10} {ee_block:1000, ee_len:10} 
+See that latest extent has changed it's position.
+This was not an issue for ext3 because it's blocks placed in deterministic
+positions.
