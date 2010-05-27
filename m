@@ -1,56 +1,117 @@
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond i_size
-Date: Thu, 27 May 2010 22:49:43 +0530
-Message-ID: <87d3whuus0.fsf@linux.vnet.ibm.com>
-References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org> <87och49oly.fsf@linux.vnet.ibm.com> <871ve0qb59.fsf@openvz.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 1/6] writeback: initial tracing support
+Date: Thu, 27 May 2010 14:32:33 -0700
+Message-ID: <20100527143233.836b2c47.akpm@linux-foundation.org>
+References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
+	<1274784852-30502-2-git-send-email-david@fromorbit.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, jens.axboe@oracle.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:58658 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755504Ab0E0RTu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 May 2010 13:19:50 -0400
-Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
-	by e23smtp08.au.ibm.com (8.14.3/8.13.1) with ESMTP id o4RHJlb9016915
-	for <linux-ext4@vger.kernel.org>; Fri, 28 May 2010 03:19:47 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o4RHJmua1515608
-	for <linux-ext4@vger.kernel.org>; Fri, 28 May 2010 03:19:48 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o4RHJmVA018506
-	for <linux-ext4@vger.kernel.org>; Fri, 28 May 2010 03:19:48 +1000
-In-Reply-To: <871ve0qb59.fsf@openvz.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:37225 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757203Ab0E0VdO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 May 2010 17:33:14 -0400
+In-Reply-To: <1274784852-30502-2-git-send-email-david@fromorbit.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 28 Apr 2010 11:38:58 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-> "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> writes:
+On Tue, 25 May 2010 20:54:07 +1000
+Dave Chinner <david@fromorbit.com> wrote:
+
+> From: From: Jens Axboe <jens.axboe@oracle.com>
 > 
-> > On Fri,  9 Apr 2010 21:22:28 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-> >> Zerrout trick allow us to optimize cases where it is more reasonable
-> >> to explicitly zeroout extent and mark it as initialized instead of
-> >> splitting to several small ones.
-> >> But this optimization is not acceptable is extent is beyond i_size
-> >> Because it is not possible to have initialized blocks after i_size.
-> >> Fsck treat this as incorrect inode size.
-> >> 
-> >
-> > With commit c8d46e41bc744c8fa0092112af3942fcd46c8b18 if we set
-> > EXT4_EOFBLOCKS_FL we should be able to have blocks beyond i_size.
-> > May be the zero out path should set the flag instead of doing all these
-> > changes. Zero-out is already complex with all the ENOSPC related
-> > consideration. I guess we should try to keep it simple.
-> For initialized extent beyond i_size? I've check fsck and seems that
-> is truly possible. So this optimization allow us to avoid some 
-> bad EIO situations. But we have to rework ext_get_blocks( ,create == 1)
-> to clear EXT4_EOFBLOCKS_FL if last block of latest_extent is requested.
-> I'll handle this.
-> >
+> Trace queue/sched/exec parts of the writeback loop.
 
+It would be most useful if this patchset's description provided sample
+tracing output, so we can see what the patch is actually providing us.
 
-I thought this patch is going to reworked to use EOFBLOCKS_FL. But i see
-Ted sent a pull request with the this patch. Did I miss something ?
+> -#define inode_to_bdi(inode)	((inode)->i_mapping->backing_dev_info)
+> -
+> -/*
+> - * We don't actually have pdflush, but this one is exported though /proc...
+> - */
+> -int nr_pdflush_threads;
+> -
+>  /*
+>   * Passed into wb_writeback(), essentially a subset of writeback_control
+>   */
+> @@ -63,6 +57,16 @@ struct bdi_work {
+>  	unsigned long state;		/* flag bits, see WS_* */
+>  };
+>  
+> +#define CREATE_TRACE_POINTS
+> +#include <trace/events/writeback.h>
+> +
+> +#define inode_to_bdi(inode)	((inode)->i_mapping->backing_dev_info)
 
--aneesh
+Could/should be implemented in C.
+
+> +/*
+> + * We don't actually have pdflush, but this one is exported though /proc...
+> + */
+> +int nr_pdflush_threads;
+
+So this is always zero now?
+
+We don't want to keep it forever.  Add a
+printk_once("nr_pdflush_threads is deprecated") when someone reads it,
+remove it in 2014.
+
+>
+> ...
+>
+> --- /dev/null
+> +++ b/include/trace/events/writeback.h
+> @@ -0,0 +1,171 @@
+> +#undef TRACE_SYSTEM
+> +#define TRACE_SYSTEM writeback
+> +
+> +#if !defined(_TRACE_WRITEBACK_H) || defined(TRACE_HEADER_MULTI_READ)
+
+Seems wrong.  If you define TRACE_HEADER_MULTI_READ then include this
+header twice, things explode.  Which negates the purpose of
+_TRACE_WRITEBACK_H.
+
+> +#define _TRACE_WRITEBACK_H
+> +
+> +#include <linux/backing-dev.h>
+> +#include <linux/writeback.h>
+> +
+> +TRACE_EVENT(writeback_queue,
+> +
+> +	TP_PROTO(struct backing_dev_info *bdi, struct wb_writeback_args *args),
+> +
+> +	TP_ARGS(bdi, args),
+> +
+> +	TP_STRUCT__entry(
+> +		__array(char,		name,		16)
+> +		__field(long,		nr_pages)
+> +		__field(int,		sb)
+> +		__field(int,		sync_mode)
+> +		__field(int,		for_kupdate)
+> +		__field(int,		range_cyclic)
+> +		__field(int,		for_background)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		strncpy(__entry->name, dev_name(bdi->dev), 16);
+> +		__entry->nr_pages	= args->nr_pages;
+> +		__entry->sb		= !!args->sb;
+> +		__entry->for_kupdate	= args->for_kupdate;
+> +		__entry->range_cyclic	= args->range_cyclic;
+> +		__entry->for_background	= args->for_background;
+> +	),
+> +
+> +	TP_printk("%s: pages=%ld, sb=%d, kupdate=%d, range_cyclic=%d "
+> +		  "for_background=%d", __entry->name, __entry->nr_pages,
+> +			__entry->sb, __entry->for_kupdate,
+> +			__entry->range_cyclic, __entry->for_background)
+> +);
+> +
+
