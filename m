@@ -1,10 +1,10 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 4/6] writeback: pay attention to wbc->nr_to_write in
- write_cache_pages
-Date: Thu, 27 May 2010 14:32:51 -0700
-Message-ID: <20100527143251.5193842d.akpm@linux-foundation.org>
+Subject: Re: [PATCH 6/6] writeback: limit write_cache_pages integrity
+ scanning to current EOF
+Date: Thu, 27 May 2010 14:33:41 -0700
+Message-ID: <20100527143341.d4258798.akpm@linux-foundation.org>
 References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
-	<1274784852-30502-5-git-send-email-david@fromorbit.com>
+	<1274784852-30502-7-git-send-email-david@fromorbit.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
@@ -13,75 +13,96 @@ Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
 	tytso@mit.edu, jens.axboe@oracle.com
 To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:53634 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:45783 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759251Ab0E0VdY (ORCPT
+	by vger.kernel.org with ESMTP id S1754998Ab0E0VeR (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 May 2010 17:33:24 -0400
-In-Reply-To: <1274784852-30502-5-git-send-email-david@fromorbit.com>
+	Thu, 27 May 2010 17:34:17 -0400
+In-Reply-To: <1274784852-30502-7-git-send-email-david@fromorbit.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 25 May 2010 20:54:10 +1000
+On Tue, 25 May 2010 20:54:12 +1000
 Dave Chinner <david@fromorbit.com> wrote:
 
 > From: Dave Chinner <dchinner@redhat.com>
 > 
-> If a filesystem writes more than one page in ->writepage, write_cache_pages
-> fails to notice this and continues to attempt writeback when wbc->nr_to_write
-> has gone negative - this trace was captured from XFS:
-> 
-> 
->     wbc_writeback_start: towrt=1024
->     wbc_writepage: towrt=1024
->     wbc_writepage: towrt=0
->     wbc_writepage: towrt=-1
->     wbc_writepage: towrt=-5
->     wbc_writepage: towrt=-21
->     wbc_writepage: towrt=-85
-> 
-> This has adverse effects on filesystem writeback behaviour. write_cache_pages()
-> needs to terminate after a certain number of pages are written, not after a
-> certain number of calls to ->writepage are made.  This is a regression
-> introduced by 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4, but cannot be reverted
+> sync can currently take a really long time if a concurrent writer is
+> extending a file. The problem is that the dirty pages on the address
+> space grow in the same direction as write_cache_pages scans, so if
+> the writer keeps ahead of writeback, the writeback will not
+> terminate until the writer stops adding dirty pages.
 
-It's conventional to identify commits by their title as well as their
-hash.  So 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 ("vfs: Add
-no_nrwrite_index_update writeback control flag").  Because that commit
-might have different hashes in different trees, I think.  A Linus idea.
+<looks at Jens>
 
-I do this ten times a day - It's a PITA.
+The really was a pretty basic bug.  It's writeback 101 to test that case :(
 
-> directly due to subsequent bug fixes that have gone in on top of it.
+> For a data integrity sync, we only need to write the pages dirty at
+> the time we start the writeback, so we can stop scanning once we get
+> to the page that was at the end of the file at the time the scan
+> started.
 > 
-> This commit adds a ->writepage tracepoint inside write_cache_pages() (how the
-> above trace was generated) and does the revert manually leaving the subsequent
-> bug fixes in tact. ext4 is not affected by this as a previous commit in the
-
-"intact".
-
-> series stops ext4 from using the generic function.
+> This will prevent operations like copying a large file preventing
+> sync from completing as it will not write back pages that were
+> dirtied after the sync was started. This does not impact the
+> existing integrity guarantees, as any dirty page (old or new)
+> within the EOF range at the start of the scan will still be
+> captured.
 > 
-> -			if (nr_to_write > 0) {
-> -				nr_to_write--;
-> -				if (nr_to_write == 0 &&
-> +			if (wbc->nr_to_write > 0) {
-> +				if (--wbc->nr_to_write == 0 &&
->  				    wbc->sync_mode == WB_SYNC_NONE) {
->  					/*
->  					 * We stop writing back only if we are
-> @@ -974,11 +973,8 @@ continue_unlock:
->  		end = writeback_index - 1;
->  		goto retry;
+> Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> ---
+>  mm/page-writeback.c |   15 +++++++++++++++
+>  1 files changed, 15 insertions(+), 0 deletions(-)
+> 
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 0fe713d..c97e973 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -855,7 +855,22 @@ int write_cache_pages(struct address_space *mapping,
+>  		if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
+>  			range_whole = 1;
+>  		cycled = 1; /* ignore range_cyclic tests */
+> +
+> +		/*
+> +		 * If this is a data integrity sync, cap the writeback to the
+> +		 * current end of file. Any extension to the file that occurs
+> +		 * after this is a new write and we don't need to write those
+> +		 * pages out to fulfil our data integrity requirements. If we
+> +		 * try to write them out, we can get stuck in this scan until
+> +		 * the concurrent writer stops adding dirty pages and extending
+> +		 * EOF.
+> +		 */
+> +		if (wbc->sync_mode == WB_SYNC_ALL &&
+> +		    wbc->range_end == LLONG_MAX) {
+> +			end = i_size_read(mapping->host) >> PAGE_CACHE_SHIFT;
+> +		}
 >  	}
-> -	if (!wbc->no_nrwrite_index_update) {
-> -		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
-> -			mapping->writeback_index = done_index;
-> -		wbc->nr_to_write = nr_to_write;
-> -	}
-> +	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
-> +		mapping->writeback_index = done_index;
->  
->  	return ret;
+> +
 
-'bout time we fixed that.  I wonder why it took so long to find.
+This is somewhat inefficient.  It's really trivial and fast to find the
+highest-index dirty page by walking straight down the
+PAGECACHE_TAG_DIRTY-tagged nodes.
+
+However pagevec_lookup_tag(..., PAGECACHE_TAG_DIRTY) should do a pretty
+good job of skipping over the (millions of) pages between the (last
+dirty page before `end') and (`end').  So it _should_ be OK.  Some thought
+and runtime testing would be good.
+
+
+
+That being said, I think the patch is insufficient.  If I create an
+enormous (possibly sparse) file with a 16TB hole (or a run of clean
+pages) in the middle and then start busily writing into that hole (run
+of clean pages), the problem will still occur.
+
+One obvious fix for that (a) would be to add another radix-tree tag and
+do two passes across the radix-tree.
+
+Another fix (b) would be to track the number of dirty pages per
+adddress_space, and only write that number of pages.
+
+Another fix would be to work out how the code handled this situation
+before we broke it, and restore that in some fashion.  I guess fix (b)
+above kinda does that.
+
+
