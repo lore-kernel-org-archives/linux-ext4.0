@@ -1,109 +1,66 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/6] writeback: pay attention to wbc->nr_to_write in
- write_cache_pages
-Date: Fri, 28 May 2010 10:56:02 +1000
-Message-ID: <20100528005602.GW12087@dastard>
+From: Steven Rostedt <rostedt@goodmis.org>
+Subject: Re: [PATCH 1/6] writeback: initial tracing support
+Date: Thu, 27 May 2010 21:18:21 -0400
+Message-ID: <1275009502.22648.582.camel@gandalf.stny.rr.com>
 References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
- <1274784852-30502-5-git-send-email-david@fromorbit.com>
- <20100527143251.5193842d.akpm@linux-foundation.org>
+	 <1274784852-30502-2-git-send-email-david@fromorbit.com>
+	 <20100527143233.836b2c47.akpm@linux-foundation.org>
+Reply-To: rostedt@goodmis.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, jens.axboe@oracle.com
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, jens.axboe@oracle.com
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100527143251.5193842d.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:45635 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754716Ab0E1BSY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 May 2010 21:18:24 -0400
+In-Reply-To: <20100527143233.836b2c47.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 27, 2010 at 02:32:51PM -0700, Andrew Morton wrote:
-> On Tue, 25 May 2010 20:54:10 +1000
-> Dave Chinner <david@fromorbit.com> wrote:
+On Thu, 2010-05-27 at 14:32 -0700, Andrew Morton wrote:
+
+> > --- /dev/null
+> > +++ b/include/trace/events/writeback.h
+> > @@ -0,0 +1,171 @@
+> > +#undef TRACE_SYSTEM
+> > +#define TRACE_SYSTEM writeback
+> > +
+> > +#if !defined(_TRACE_WRITEBACK_H) || defined(TRACE_HEADER_MULTI_READ)
 > 
-> > From: Dave Chinner <dchinner@redhat.com>
-> > 
-> > If a filesystem writes more than one page in ->writepage, write_cache_pages
-> > fails to notice this and continues to attempt writeback when wbc->nr_to_write
-> > has gone negative - this trace was captured from XFS:
-> > 
-> > 
-> >     wbc_writeback_start: towrt=1024
-> >     wbc_writepage: towrt=1024
-> >     wbc_writepage: towrt=0
-> >     wbc_writepage: towrt=-1
-> >     wbc_writepage: towrt=-5
-> >     wbc_writepage: towrt=-21
-> >     wbc_writepage: towrt=-85
-> > 
-> > This has adverse effects on filesystem writeback behaviour. write_cache_pages()
-> > needs to terminate after a certain number of pages are written, not after a
-> > certain number of calls to ->writepage are made.  This is a regression
-> > introduced by 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4, but cannot be reverted
-> 
-> It's conventional to identify commits by their title as well as their
-> hash.  So 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 ("vfs: Add
-> no_nrwrite_index_update writeback control flag").  Because that commit
-> might have different hashes in different trees, I think.  A Linus idea.
-> 
-> I do this ten times a day - It's a PITA.
+> Seems wrong.  If you define TRACE_HEADER_MULTI_READ then include this
+> header twice, things explode.  Which negates the purpose of
+> _TRACE_WRITEBACK_H.
 
-Will fix.
+That's intended. It is documented in
+samples/trace_events/trace-events-samples.h
+
+The purpose of the TRACE_HEADER_MULTI_READ is to read the trace header
+multi times. ;-)
+
+
+You can also read about it here:
+
+ http://lwn.net/Articles/379903/
+
+here:
+
+  http://lwn.net/Articles/381064/
+
+and here:
+
+   http://lwn.net/Articles/383362/
+
+-- Steve
 
 > 
-> > directly due to subsequent bug fixes that have gone in on top of it.
-> > 
-> > This commit adds a ->writepage tracepoint inside write_cache_pages() (how the
-> > above trace was generated) and does the revert manually leaving the subsequent
-> > bug fixes in tact. ext4 is not affected by this as a previous commit in the
-> 
-> "intact".
+> > +#define _TRACE_WRITEBACK_H
+> > +
+> > +#include <linux/backing-dev.h>
+> > +#include <linux/writeback.h>
+> > +
 
-*nod*
-
-> > series stops ext4 from using the generic function.
-> > 
-> > -			if (nr_to_write > 0) {
-> > -				nr_to_write--;
-> > -				if (nr_to_write == 0 &&
-> > +			if (wbc->nr_to_write > 0) {
-> > +				if (--wbc->nr_to_write == 0 &&
-> >  				    wbc->sync_mode == WB_SYNC_NONE) {
-> >  					/*
-> >  					 * We stop writing back only if we are
-> > @@ -974,11 +973,8 @@ continue_unlock:
-> >  		end = writeback_index - 1;
-> >  		goto retry;
-> >  	}
-> > -	if (!wbc->no_nrwrite_index_update) {
-> > -		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
-> > -			mapping->writeback_index = done_index;
-> > -		wbc->nr_to_write = nr_to_write;
-> > -	}
-> > +	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
-> > +		mapping->writeback_index = done_index;
-> >  
-> >  	return ret;
-> 
-> 'bout time we fixed that.  I wonder why it took so long to find.
-
-IMO, because without tracing it's almost impossible to see what is
-happening inside this code easily. I wasn't looking for this bug
-when I added the tracing - I was trying to discover why sync was
-locking up for minutes on end.
-
-Also a significant problem is that writeback changes often come in
-through a tree that no filesystem developer is actually testing
-(e.g. the block git tree) or a single FS tree (e.g. the ext4 tree),
-so problems in the generic code that manifest in only one or two
-filesystems slip under the radar all too easily. Hence they are
-often only discovered when some other, unrelated, obvious problem is
-investigated...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
