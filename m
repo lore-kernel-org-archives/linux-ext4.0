@@ -1,22 +1,26 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Nick Piggin <npiggin@suse.de>
 Subject: Re: [PATCH 6/6] writeback: limit write_cache_pages integrity
  scanning to current EOF
-Date: Fri, 28 May 2010 11:23:38 +1000
-Message-ID: <20100528012338.GX12087@dastard>
+Date: Fri, 28 May 2010 15:06:55 +1000
+Message-ID: <20100528050655.GY22536@laptop>
 References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
  <1274784852-30502-7-git-send-email-david@fromorbit.com>
  <20100527143341.d4258798.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, jens.axboe@oracle.com
+Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, jens.axboe@oracle.com
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:48388 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751088Ab0E1FHP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 May 2010 01:07:15 -0400
 Content-Disposition: inline
 In-Reply-To: <20100527143341.d4258798.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, May 27, 2010 at 02:33:41PM -0700, Andrew Morton wrote:
 > On Tue, 25 May 2010 20:54:12 +1000
@@ -29,94 +33,24 @@ On Thu, May 27, 2010 at 02:33:41PM -0700, Andrew Morton wrote:
 > > space grow in the same direction as write_cache_pages scans, so if
 > > the writer keeps ahead of writeback, the writeback will not
 > > terminate until the writer stops adding dirty pages.
-> 
-> <looks at Jens>
-> 
-> The really was a pretty basic bug.  It's writeback 101 to test that case :(
-> 
-> > For a data integrity sync, we only need to write the pages dirty at
-> > the time we start the writeback, so we can stop scanning once we get
-> > to the page that was at the end of the file at the time the scan
-> > started.
-> > 
-> > This will prevent operations like copying a large file preventing
-> > sync from completing as it will not write back pages that were
-> > dirtied after the sync was started. This does not impact the
-> > existing integrity guarantees, as any dirty page (old or new)
-> > within the EOF range at the start of the scan will still be
-> > captured.
-> > 
-> > Signed-off-by: Dave Chinner <dchinner@redhat.com>
-> > ---
-> >  mm/page-writeback.c |   15 +++++++++++++++
-> >  1 files changed, 15 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> > index 0fe713d..c97e973 100644
-> > --- a/mm/page-writeback.c
-> > +++ b/mm/page-writeback.c
-> > @@ -855,7 +855,22 @@ int write_cache_pages(struct address_space *mapping,
-> >  		if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
-> >  			range_whole = 1;
-> >  		cycled = 1; /* ignore range_cyclic tests */
-> > +
-> > +		/*
-> > +		 * If this is a data integrity sync, cap the writeback to the
-> > +		 * current end of file. Any extension to the file that occurs
-> > +		 * after this is a new write and we don't need to write those
-> > +		 * pages out to fulfil our data integrity requirements. If we
-> > +		 * try to write them out, we can get stuck in this scan until
-> > +		 * the concurrent writer stops adding dirty pages and extending
-> > +		 * EOF.
-> > +		 */
-> > +		if (wbc->sync_mode == WB_SYNC_ALL &&
-> > +		    wbc->range_end == LLONG_MAX) {
-> > +			end = i_size_read(mapping->host) >> PAGE_CACHE_SHIFT;
-> > +		}
-> >  	}
-> > +
-> 
-> This is somewhat inefficient.  It's really trivial and fast to find the
-> highest-index dirty page by walking straight down the
-> PAGECACHE_TAG_DIRTY-tagged nodes.
-> 
-> However pagevec_lookup_tag(..., PAGECACHE_TAG_DIRTY) should do a pretty
-> good job of skipping over the (millions of) pages between the (last
-> dirty page before `end') and (`end').  So it _should_ be OK.  Some thought
-> and runtime testing would be good.
 
-I've done plenty of testing here - the patch is part of my usual QA
-stack so it's probably run through XFSQA a few hundred times now.
-
-The behaviour w.r.t. writes into holes appears to be identical to
-the current behaviour (i.e. sync hangs until the write stops). I
-can't _see_ any difference in behaviour of increase in overhead, but
-we all know that this doesn't mean there isn't one.
-
-The test I ran to determine it's effectiveness against extending
-writes was running sync during an 8GB sequential write. It would
-hang every time until the write completes - typically around 50-60s
-- without this patch. With this patch sync returns within 3-4s every
-time.
+...
 
 > That being said, I think the patch is insufficient.  If I create an
 > enormous (possibly sparse) file with a 16TB hole (or a run of clean
 > pages) in the middle and then start busily writing into that hole (run
 > of clean pages), the problem will still occur.
 
-Yes, that's already been pointed out. This doesn't attempt to
-address that problem because....
+Yep.
 
+ 
 > One obvious fix for that (a) would be to add another radix-tree tag and
 > do two passes across the radix-tree.
 
-.... we're still waiting for Jan's mark and sweep patch that does
-this to make progress. This patch is just a simple fix for the most
-common cause of the problem and might get into the tree sooner.
+Yes this is the method I tried. Jan has taken it further and should
+have the latest patches around. A good test case for the starvation
+would be helpful.
 
-Personally I see no problems with using a mark+sweep algorithm for
-this - IMO ensuring that data integrity requirements are met is more
-important than ultimate performance.
 
 > Another fix (b) would be to track the number of dirty pages per
 > adddress_space, and only write that number of pages.
@@ -125,14 +59,12 @@ important than ultimate performance.
 > before we broke it, and restore that in some fashion.  I guess fix (b)
 > above kinda does that.
 
-Yes, b) is similar to the old code, but like the old code it doesn't
-work for the data integrity case because it doesn't guarantee the
-correct pages are written out. This patch does for the append case,
-and a) guarantees it in all cases....
+I took that out (and offered fix a in replacement but it was turned
+down at the time). Because b stands for broken.
 
-Cheers,
+IIRC we were writing out no more than 2x the dirty pages of the file
+during sync. The problem with that is more pages can be dirtied after
+we calculate the number, and then we might write out those newly dirty
+pages and miss old dirty pages.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+
