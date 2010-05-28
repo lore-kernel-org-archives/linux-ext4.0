@@ -1,64 +1,41 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] quota: check quota reservation on remove_dquot_ref
-Date: Fri, 28 May 2010 15:27:42 +0400
-Message-ID: <1275046062-457-2-git-send-email-dmonakhov@openvz.org>
-References: <1275046062-457-1-git-send-email-dmonakhov@openvz.org>
-Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Sandon Van Ness <sandon@van-ness.com>
+Subject: Is >16TB support considered stable?
+Date: Fri, 28 May 2010 09:52:34 -0700
+Message-ID: <4BFFF4D2.6020908@van-ness.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:41019 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753604Ab0E1L1u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 07:27:50 -0400
-In-Reply-To: <1275046062-457-1-git-send-email-dmonakhov@openvz.org>
+Received: from box.houkouonchi.jp ([208.97.140.21]:56666 "EHLO
+	box.houkouonchi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758336Ab0E1Q6g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 12:58:36 -0400
+Received: from [127.0.0.1] (houkouonchi.dreamhost.com [127.0.0.1])
+	by box.houkouonchi.net (Postfix) with ESMTPA id 192E4163DA5
+	for <linux-ext4@vger.kernel.org>; Fri, 28 May 2010 09:52:51 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Reserved space must being claimed before remove_dquot_ref() for a
-given inode. Filesystem is responsible for performing force blocks
-allocation in case of dealloc in ->quota_off. Let's add sanity check
-for that case. Do it similar to add_dquot_ref().
+I have a 36 TB (33.5276 TiB) device. I was originally planning to run
+JFS like I am doing on my 18 TB (16.6697 TiB) partition but the
+userspace tools for file-system creation (mkfs) on JFS do not correctly
+create file-systems over 32 TiB. XFS is not an option for me (I have had
+bad experiences and its too corruptible) and btrfs is too beta for me.
+My only options thus are ext4 or JFS (limited to 32 TiB).
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/quota/dquot.c |   14 +++++++++++++-
- 1 files changed, 13 insertions(+), 1 deletions(-)
+I would rather not waste ~ 1TiB of space which will likely go to other
+partitions that would normally only be 500 GiB but will now be 1.5 TiB
+if I can and with some of my testing of ext4 I think it could be a
+viable solution. I heard that with the pu branch 64-bit addressing
+exists so you can successfully create/fsck >16 TiB file-systems. I did
+read on the mailing lists that there were some problems on 32-bit
+machine but i will only use this file-sytem on x86_64.
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 99eefbb..f15fc9c 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -988,6 +988,7 @@ static void remove_dquot_ref(struct super_block *sb, int type,
- 		struct list_head *tofree_head)
- {
- 	struct inode *inode;
-+	int reserved = 0;
- 
- 	spin_lock(&inode_lock);
- 	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
-@@ -997,10 +998,21 @@ static void remove_dquot_ref(struct super_block *sb, int type,
- 		 *  only quota pointers and these have separate locking
- 		 *  (dqptr_sem).
- 		 */
--		if (!IS_NOQUOTA(inode))
-+		if (!IS_NOQUOTA(inode)) {
-+			if (unlikely(inode_get_rsv_space(inode) > 0))
-+				reserved = 1;
- 			remove_inode_dquot_ref(inode, type, tofree_head);
-+		}
- 	}
- 	spin_unlock(&inode_lock);
-+#ifdef CONFIG_QUOTA_DEBUG
-+	if (reserved) {
-+		printk(KERN_WARNING "VFS (%s): Writes happened after quota"
-+			" was disabled thus quota information is probably "
-+			"inconsistent. Please run quotacheck(8).\n", sb->s_id);
-+	}
-+#endif
-+
- }
- 
- /* Gather all references from inodes and drop them */
--- 
-1.6.6.1
+So here is my question to you guys:
 
+Is the pu branch pretty stable? Is it stable enough to have a 33 TiB
+file-system in the real-world and be as stable and work as well as a <16
+TiB file-system or am I better off losing out some of my space and
+making a 32 TiB (minus a little) JFS partition and just stick to what I
+know works and works well?
