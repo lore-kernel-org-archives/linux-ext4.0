@@ -1,35 +1,60 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/6] writeback: initial tracing support
-Date: Fri, 28 May 2010 03:45:00 -0400
-Message-ID: <20100528074500.GA14151@infradead.org>
-References: <1274784852-30502-1-git-send-email-david@fromorbit.com> <1274784852-30502-2-git-send-email-david@fromorbit.com> <20100527143233.836b2c47.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, tytso@mit.edu, jens.axboe@oracle.com
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100527143233.836b2c47.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/2] ext4: force block allocation on quota_off
+Date: Fri, 28 May 2010 15:27:41 +0400
+Message-ID: <1275046062-457-1-git-send-email-dmonakhov@openvz.org>
+Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 27, 2010 at 02:32:33PM -0700, Andrew Morton wrote:
-> > +#define inode_to_bdi(inode)	((inode)->i_mapping->backing_dev_info)
-> 
-> Could/should be implemented in C.
-> 
-> > +/*
-> > + * We don't actually have pdflush, but this one is exported though /proc...
-> > + */
-> > +int nr_pdflush_threads;
-> 
-> So this is always zero now?
-> 
-> We don't want to keep it forever.  Add a
-> printk_once("nr_pdflush_threads is deprecated") when someone reads it,
-> remove it in 2014.
+Perform full sync procedure to guarantee quota consistency.
 
-These two lines are just moved down a bit by the patch, I think any
-cleanups should be left to separate patches.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/super.c |   15 ++++++++++++++-
+ 1 files changed, 14 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e5166e5..4e8a7b5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1075,6 +1075,7 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
+ static int ext4_write_info(struct super_block *sb, int type);
+ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 				char *path, int remount);
++static int ext4_quota_off(struct super_block *sb, int type, int remount);
+ static int ext4_quota_on_mount(struct super_block *sb, int type);
+ static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
+ 			       size_t len, loff_t off);
+@@ -1096,7 +1097,7 @@ static const struct dquot_operations ext4_quota_operations = {
+ 
+ static const struct quotactl_ops ext4_qctl_operations = {
+ 	.quota_on	= ext4_quota_on,
+-	.quota_off	= vfs_quota_off,
++	.quota_off	= ext4_quota_off,
+ 	.quota_sync	= vfs_quota_sync,
+ 	.get_info	= vfs_get_dqinfo,
+ 	.set_info	= vfs_set_dqinfo,
+@@ -3986,6 +3987,18 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 	return err;
+ }
+ 
++static int ext4_quota_off(struct super_block *sb, int type, int remount)
++{
++	/* Force all delayed allocation blocks to be allocated */
++	if (test_opt(sb, DELALLOC) && !remount) {
++		down_read(&sb->s_umount);
++		sync_filesystem(sb);
++		up_read(&sb->s_umount);
++	}
++
++	return vfs_quota_off(sb, type, remount);
++}
++
+ /* Read data from quotafile - avoid pagecache and such because we cannot afford
+  * acquiring the locks... As quota files are never truncated and quota code
+  * itself serializes the operations (and noone else should touch the files)
+-- 
+1.6.6.1
+
