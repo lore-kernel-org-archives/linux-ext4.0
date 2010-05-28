@@ -1,51 +1,209 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Is >16TB support considered stable?
-Date: Fri, 28 May 2010 15:39:24 -0400
-Message-ID: <4C001BEC.9080906@redhat.com>
-References: <4BFFF4D2.6020908@van-ness.com>
+From: "Jayson R. King" <dev@jaysonking.com>
+Subject: [PATCH 2.6.27.y 2/3] ext4: Fix file fragmentation during large file
+ write.
+Date: Fri, 28 May 2010 14:26:57 -0500
+Message-ID: <4C001901.1070207@jaysonking.com>
+References: <4C001888.8020006@jaysonking.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Sandon Van Ness <sandon@van-ness.com>
+Cc: "Jayson R. King" <dev@jaysonking.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Kay Diederichs <Kay.Diederichs@uni-konstanz.de>
+To: Stable team <stable@kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Greg Kroah-Hartman <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752631Ab0E1Tj1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 May 2010 15:39:27 -0400
-In-Reply-To: <4BFFF4D2.6020908@van-ness.com>
+Received: from bosmailout19.eigbox.net ([66.96.184.19]:39845 "EHLO
+	bosmailout19.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754635Ab0E1UD4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 16:03:56 -0400
+In-Reply-To: <4C001888.8020006@jaysonking.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/28/2010 12:52 PM, Sandon Van Ness wrote:
-> I have a 36 TB (33.5276 TiB) device. I was originally planning to run
-> JFS like I am doing on my 18 TB (16.6697 TiB) partition but the
-> userspace tools for file-system creation (mkfs) on JFS do not correctly
-> create file-systems over 32 TiB. XFS is not an option for me (I have had
-> bad experiences and its too corruptible) and btrfs is too beta for me.
-> My only options thus are ext4 or JFS (limited to 32 TiB).
->
-> I would rather not waste ~ 1TiB of space which will likely go to other
-> partitions that would normally only be 500 GiB but will now be 1.5 TiB
-> if I can and with some of my testing of ext4 I think it could be a
-> viable solution. I heard that with the pu branch 64-bit addressing
-> exists so you can successfully create/fsck>16 TiB file-systems. I did
-> read on the mailing lists that there were some problems on 32-bit
-> machine but i will only use this file-sytem on x86_64.
->
-> So here is my question to you guys:
->
-> Is the pu branch pretty stable? Is it stable enough to have a 33 TiB
-> file-system in the real-world and be as stable and work as well as a<16
-> TiB file-system or am I better off losing out some of my space and
-> making a 32 TiB (minus a little) JFS partition and just stick to what I
-> know works and works well?
->    
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date: Thu Oct 16 10:10:36 2008 -0400
+Subject: ext4: Fix file fragmentation during large file write.
 
-Not sure which version of XFS you had trouble with, but it is certainly 
-the most stable file system for anything over 16TB....
+commit 22208dedbd7626e5fc4339c417f8d24cc21f79d7 upstream.
 
-Regards,
+The range_cyclic writeback mode uses the address_space writeback_index
+as the start index for writeback.  With delayed allocation we were
+updating writeback_index wrongly resulting in highly fragmented file.
+This patch reduces the number of extents reduced from 4000 to 27 for a
+3GB file.
 
-Ric
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+[dev@jaysonking.com: Some changed lines from the original version of this patch were dropped, since they were rolled up with another cherry-picked patch applied to 2.6.27.y earlier.]
+[dev@jaysonking.com: Use of wbc->no_nrwrite_index_update was dropped, since write_cache_pages_da() implies it.]
+Signed-off-by: Jayson R. King <dev@jaysonking.com>
 
+---
+ fs/ext4/inode.c |   77 ++++++++++++++++++++++++++--------------------
+ 1 file changed, 45 insertions(+), 32 deletions(-)
+
+diff -udrNp linux-2.6.27.orig/fs/ext4/inode.c linux-2.6.27/fs/ext4/inode.c
+--- linux-2.6.27.orig/fs/ext4/inode.c	2010-05-28 12:52:08.450963139 -0500
++++ linux-2.6.27/fs/ext4/inode.c	2010-05-28 12:52:18.258962978 -0500
+@@ -1721,7 +1721,11 @@ static int mpage_da_submit_io(struct mpa
+ 
+ 			pages_skipped = mpd->wbc->pages_skipped;
+ 			err = mapping->a_ops->writepage(page, mpd->wbc);
+-			if (!err)
++			if (!err && (pages_skipped == mpd->wbc->pages_skipped))
++				/*
++				 * have successfully written the page
++				 * without skipping the same
++				 */
+ 				mpd->pages_written++;
+ 			/*
+ 			 * In error case, we have to continue because
+@@ -2295,7 +2299,6 @@ static int mpage_da_writepages(struct ad
+ 			       struct writeback_control *wbc,
+ 			       struct mpage_da_data *mpd)
+ {
+-	long to_write;
+ 	int ret;
+ 
+ 	if (!mpd->get_block)
+@@ -2310,19 +2313,18 @@ static int mpage_da_writepages(struct ad
+ 	mpd->pages_written = 0;
+ 	mpd->retval = 0;
+ 
+-	to_write = wbc->nr_to_write;
+-
+ 	ret = write_cache_pages_da(mapping, wbc, mpd);
+-
+ 	/*
+ 	 * Handle last extent of pages
+ 	 */
+ 	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
+ 		if (mpage_da_map_blocks(mpd) == 0)
+ 			mpage_da_submit_io(mpd);
+-	}
+ 
+-	wbc->nr_to_write = to_write - mpd->pages_written;
++		mpd->io_done = 1;
++		ret = MPAGE_DA_EXTENT_TAIL;
++	}
++	wbc->nr_to_write -= mpd->pages_written;
+ 	return ret;
+ }
+ 
+@@ -2567,11 +2569,13 @@ static int ext4_da_writepages_trans_bloc
+ static int ext4_da_writepages(struct address_space *mapping,
+ 			      struct writeback_control *wbc)
+ {
++	pgoff_t	index;
++	int range_whole = 0;
+ 	handle_t *handle = NULL;
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
++	long pages_written = 0, pages_skipped;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+-	long to_write, pages_skipped = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+ 
+ 	/*
+@@ -2605,16 +2609,20 @@ static int ext4_da_writepages(struct add
+ 		nr_to_writebump = sbi->s_mb_stream_request - wbc->nr_to_write;
+ 		wbc->nr_to_write = sbi->s_mb_stream_request;
+ 	}
++	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
++		range_whole = 1;
+ 
+-
+-	pages_skipped = wbc->pages_skipped;
++	if (wbc->range_cyclic)
++		index = mapping->writeback_index;
++	else
++		index = wbc->range_start >> PAGE_CACHE_SHIFT;
+ 
+ 	mpd.wbc = wbc;
+ 	mpd.inode = mapping->host;
+ 
+-restart_loop:
+-	to_write = wbc->nr_to_write;
+-	while (!ret && to_write > 0) {
++	pages_skipped = wbc->pages_skipped;
++
++	while (!ret && wbc->nr_to_write > 0) {
+ 
+ 		/*
+ 		 * we  insert one extent at a time. So we need
+@@ -2647,46 +2655,51 @@ restart_loop:
+ 				goto out_writepages;
+ 			}
+ 		}
+-		to_write -= wbc->nr_to_write;
+-
+ 		mpd.get_block = ext4_da_get_block_write;
+ 		ret = mpage_da_writepages(mapping, wbc, &mpd);
+ 
+ 		ext4_journal_stop(handle);
+ 
+-		if (mpd.retval == -ENOSPC)
++		if (mpd.retval == -ENOSPC) {
++			/* commit the transaction which would
++			 * free blocks released in the transaction
++			 * and try again
++			 */
+ 			jbd2_journal_force_commit_nested(sbi->s_journal);
+-
+-		/* reset the retry count */
+-		if (ret == MPAGE_DA_EXTENT_TAIL) {
++			wbc->pages_skipped = pages_skipped;
++			ret = 0;
++		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
+ 			/*
+ 			 * got one extent now try with
+ 			 * rest of the pages
+ 			 */
+-			to_write += wbc->nr_to_write;
++			pages_written += mpd.pages_written;
++			wbc->pages_skipped = pages_skipped;
+ 			ret = 0;
+-		} else if (wbc->nr_to_write) {
++		} else if (wbc->nr_to_write)
+ 			/*
+ 			 * There is no more writeout needed
+ 			 * or we requested for a noblocking writeout
+ 			 * and we found the device congested
+ 			 */
+-			to_write += wbc->nr_to_write;
+ 			break;
+-		}
+-		wbc->nr_to_write = to_write;
+ 	}
++	if (pages_skipped != wbc->pages_skipped)
++		printk(KERN_EMERG "This should not happen leaving %s "
++				"with nr_to_write = %ld ret = %d\n",
++				__func__, wbc->nr_to_write, ret);
+ 
+-	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+-		/* We skipped pages in this loop */
+-		wbc->nr_to_write = to_write +
+-				wbc->pages_skipped - pages_skipped;
+-		wbc->pages_skipped = pages_skipped;
+-		goto restart_loop;
+-	}
++	/* Update index */
++	index += pages_written;
++	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
++		/*
++		 * set the writeback_index so that range_cyclic
++		 * mode will write it back later
++		 */
++		mapping->writeback_index = index;
+ 
+ out_writepages:
+-	wbc->nr_to_write = to_write - nr_to_writebump;
++	wbc->nr_to_write -= nr_to_writebump;
+ 	return ret;
+ }
+ 
