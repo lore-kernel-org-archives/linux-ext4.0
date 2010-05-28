@@ -1,96 +1,105 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/6] writeback: initial tracing support
-Date: Fri, 28 May 2010 10:44:16 +1000
-Message-ID: <20100528004416.GV12087@dastard>
+Subject: Re: [PATCH 4/6] writeback: pay attention to wbc->nr_to_write in
+ write_cache_pages
+Date: Fri, 28 May 2010 10:56:02 +1000
+Message-ID: <20100528005602.GW12087@dastard>
 References: <1274784852-30502-1-git-send-email-david@fromorbit.com>
- <1274784852-30502-2-git-send-email-david@fromorbit.com>
- <20100527143233.836b2c47.akpm@linux-foundation.org>
+ <1274784852-30502-5-git-send-email-david@fromorbit.com>
+ <20100527143251.5193842d.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	tytso@mit.edu, jens.axboe@oracle.com
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bld-mail14.adl6.internode.on.net ([150.101.137.99]:56452 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754260Ab0E1Aof (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 May 2010 20:44:35 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20100527143233.836b2c47.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20100527143251.5193842d.akpm@linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 27, 2010 at 02:32:33PM -0700, Andrew Morton wrote:
-> On Tue, 25 May 2010 20:54:07 +1000
+On Thu, May 27, 2010 at 02:32:51PM -0700, Andrew Morton wrote:
+> On Tue, 25 May 2010 20:54:10 +1000
 > Dave Chinner <david@fromorbit.com> wrote:
 > 
-> > From: From: Jens Axboe <jens.axboe@oracle.com>
+> > From: Dave Chinner <dchinner@redhat.com>
 > > 
-> > Trace queue/sched/exec parts of the writeback loop.
+> > If a filesystem writes more than one page in ->writepage, write_cache_pages
+> > fails to notice this and continues to attempt writeback when wbc->nr_to_write
+> > has gone negative - this trace was captured from XFS:
+> > 
+> > 
+> >     wbc_writeback_start: towrt=1024
+> >     wbc_writepage: towrt=1024
+> >     wbc_writepage: towrt=0
+> >     wbc_writepage: towrt=-1
+> >     wbc_writepage: towrt=-5
+> >     wbc_writepage: towrt=-21
+> >     wbc_writepage: towrt=-85
+> > 
+> > This has adverse effects on filesystem writeback behaviour. write_cache_pages()
+> > needs to terminate after a certain number of pages are written, not after a
+> > certain number of calls to ->writepage are made.  This is a regression
+> > introduced by 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4, but cannot be reverted
 > 
-> It would be most useful if this patchset's description provided sample
-> tracing output, so we can see what the patch is actually providing us.
+> It's conventional to identify commits by their title as well as their
+> hash.  So 17bc6c30cf6bfffd816bdc53682dd46fc34a2cf4 ("vfs: Add
+> no_nrwrite_index_update writeback control flag").  Because that commit
+> might have different hashes in different trees, I think.  A Linus idea.
+> 
+> I do this ten times a day - It's a PITA.
 
-This is just a forward port of Jen's patch. I guess I'll have to
-clean it up some more...
+Will fix.
 
 > 
-> > -#define inode_to_bdi(inode)	((inode)->i_mapping->backing_dev_info)
-> > -
-> > -/*
-> > - * We don't actually have pdflush, but this one is exported though /proc...
-> > - */
-> > -int nr_pdflush_threads;
-> > -
-> >  /*
-> >   * Passed into wb_writeback(), essentially a subset of writeback_control
-> >   */
-> > @@ -63,6 +57,16 @@ struct bdi_work {
-> >  	unsigned long state;		/* flag bits, see WS_* */
-> >  };
+> > directly due to subsequent bug fixes that have gone in on top of it.
+> > 
+> > This commit adds a ->writepage tracepoint inside write_cache_pages() (how the
+> > above trace was generated) and does the revert manually leaving the subsequent
+> > bug fixes in tact. ext4 is not affected by this as a previous commit in the
+> 
+> "intact".
+
+*nod*
+
+> > series stops ext4 from using the generic function.
+> > 
+> > -			if (nr_to_write > 0) {
+> > -				nr_to_write--;
+> > -				if (nr_to_write == 0 &&
+> > +			if (wbc->nr_to_write > 0) {
+> > +				if (--wbc->nr_to_write == 0 &&
+> >  				    wbc->sync_mode == WB_SYNC_NONE) {
+> >  					/*
+> >  					 * We stop writing back only if we are
+> > @@ -974,11 +973,8 @@ continue_unlock:
+> >  		end = writeback_index - 1;
+> >  		goto retry;
+> >  	}
+> > -	if (!wbc->no_nrwrite_index_update) {
+> > -		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
+> > -			mapping->writeback_index = done_index;
+> > -		wbc->nr_to_write = nr_to_write;
+> > -	}
+> > +	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+> > +		mapping->writeback_index = done_index;
 > >  
-> > +#define CREATE_TRACE_POINTS
-> > +#include <trace/events/writeback.h>
-> > +
-> > +#define inode_to_bdi(inode)	((inode)->i_mapping->backing_dev_info)
+> >  	return ret;
 > 
-> Could/should be implemented in C.
+> 'bout time we fixed that.  I wonder why it took so long to find.
 
-OK.
+IMO, because without tracing it's almost impossible to see what is
+happening inside this code easily. I wasn't looking for this bug
+when I added the tracing - I was trying to discover why sync was
+locking up for minutes on end.
 
-> 
-> > +/*
-> > + * We don't actually have pdflush, but this one is exported though /proc...
-> > + */
-> > +int nr_pdflush_threads;
-> 
-> So this is always zero now?
-
-I guess so. I'd forgotten that this was in the original patch....
-
-> We don't want to keep it forever.  Add a
-> printk_once("nr_pdflush_threads is deprecated") when someone reads it,
-> remove it in 2014.
-
-OK.
-
-> > --- /dev/null
-> > +++ b/include/trace/events/writeback.h
-> > @@ -0,0 +1,171 @@
-> > +#undef TRACE_SYSTEM
-> > +#define TRACE_SYSTEM writeback
-> > +
-> > +#if !defined(_TRACE_WRITEBACK_H) || defined(TRACE_HEADER_MULTI_READ)
-> 
-> Seems wrong.  If you define TRACE_HEADER_MULTI_READ then include this
-> header twice, things explode.  Which negates the purpose of
-> _TRACE_WRITEBACK_H.
-
-Every other trace event header does this, so if it's wrong then the
-same mistake is in at least 30 files now. I don't know enough about
-the tracing code to know why this is done, and I'm not keen to
-address such a mistake here...
+Also a significant problem is that writeback changes often come in
+through a tree that no filesystem developer is actually testing
+(e.g. the block git tree) or a single FS tree (e.g. the ext4 tree),
+so problems in the generic code that manifest in only one or two
+filesystems slip under the radar all too easily. Hence they are
+often only discovered when some other, unrelated, obvious problem is
+investigated...
 
 Cheers,
 
