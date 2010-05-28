@@ -1,41 +1,45 @@
-From: Sandon Van Ness <sandon@van-ness.com>
-Subject: Is >16TB support considered stable?
-Date: Fri, 28 May 2010 09:52:34 -0700
-Message-ID: <4BFFF4D2.6020908@van-ness.com>
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: [PATCH V2 1/7] Cleancache (was Transcendent Memory):
+	cleancache_poolid in superblock
+Date: Fri, 28 May 2010 10:35:30 -0700
+Message-ID: <20100528173530.GA12186__4585.79648188806$1275068240$gmane$org@ca-server1.us.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from box.houkouonchi.jp ([208.97.140.21]:56666 "EHLO
-	box.houkouonchi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758336Ab0E1Q6g (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 12:58:36 -0400
-Received: from [127.0.0.1] (houkouonchi.dreamhost.com [127.0.0.1])
-	by box.houkouonchi.net (Postfix) with ESMTPA id 192E4163DA5
-	for <linux-ext4@vger.kernel.org>; Fri, 28 May 2010 09:52:51 -0700 (PDT)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:54254 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755474Ab0E1RhL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 13:37:11 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I have a 36 TB (33.5276 TiB) device. I was originally planning to run
-JFS like I am doing on my 18 TB (16.6697 TiB) partition but the
-userspace tools for file-system creation (mkfs) on JFS do not correctly
-create file-systems over 32 TiB. XFS is not an option for me (I have had
-bad experiences and its too corruptible) and btrfs is too beta for me.
-My only options thus are ext4 or JFS (limited to 32 TiB).
+[PATCH V2 1/7] Cleancache (was Transcendent Memory): cleancache_poolid in superblock
 
-I would rather not waste ~ 1TiB of space which will likely go to other
-partitions that would normally only be 500 GiB but will now be 1.5 TiB
-if I can and with some of my testing of ext4 I think it could be a
-viable solution. I heard that with the pu branch 64-bit addressing
-exists so you can successfully create/fsck >16 TiB file-systems. I did
-read on the mailing lists that there were some problems on 32-bit
-machine but i will only use this file-sytem on x86_64.
+Add cleancache_poolid to superblock structure... not tied
+to CONFIG_CLEANCACHE so as to avoid unnecessary clutter.
 
-So here is my question to you guys:
+Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
 
-Is the pu branch pretty stable? Is it stable enough to have a 33 TiB
-file-system in the real-world and be as stable and work as well as a <16
-TiB file-system or am I better off losing out some of my space and
-making a 32 TiB (minus a little) JFS partition and just stick to what I
-know works and works well?
+Diffstat:
+ fs.h                                     |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- linux-2.6.34/include/linux/fs.h	2010-05-16 15:17:36.000000000 -0600
++++ linux-2.6.34-cleancache/include/linux/fs.h	2010-05-24 12:14:44.000000000 -0600
+@@ -1383,6 +1383,11 @@ struct super_block {
+ 	 * generic_show_options()
+ 	 */
+ 	char *s_options;
++
++	/*
++	 * Saved pool identifier for cleancache (-1 means none)
++	 */
++	int cleancache_poolid;
+ };
+ 
+ extern struct timespec current_fs_time(struct super_block *sb);
