@@ -1,65 +1,98 @@
-From: "Jayson R. King" <dev@jaysonking.com>
-Subject: Re: [PATCH 2.6.27.y 2/3] ext4: Fix file fragmentation during large
- file write.
-Date: Fri, 28 May 2010 21:12:36 -0500
-Message-ID: <4C007814.3000207@jaysonking.com>
-References: <4C001888.8020006@jaysonking.com> <4C001901.1070207@jaysonking.com> <20100529010657.GM26177@thunk.org>
+From: Sandon Van Ness <sandon@van-ness.com>
+Subject: Re: Is >16TB support considered stable?
+Date: Fri, 28 May 2010 19:47:41 -0700
+Message-ID: <4C00804D.7010000@van-ness.com>
+References: <4BFFF4D2.6020908@van-ness.com> <4C001BEC.9080906@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Jayson R. King" <dev@jaysonking.com>,
-	Stable team <stable@kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Kay Diederichs <Kay.Diederichs@uni-konstanz.de>
-To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bosmailout12.eigbox.net ([66.96.186.12]:42088 "EHLO
-	bosmailout12.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750879Ab0E2CqP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 22:46:15 -0400
-In-Reply-To: <20100529010657.GM26177@thunk.org>
+Received: from box.houkouonchi.jp ([208.97.140.21]:57369 "EHLO
+	box.houkouonchi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750761Ab0E2Cro (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 May 2010 22:47:44 -0400
+Received: from [127.0.0.1] (houkouonchi.dreamhost.com [127.0.0.1])
+	by box.houkouonchi.net (Postfix) with ESMTPA id 14F9A1211BA
+	for <linux-ext4@vger.kernel.org>; Fri, 28 May 2010 19:47:44 -0700 (PDT)
+In-Reply-To: <4C001BEC.9080906@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/28/2010 08:06 PM, tytso@mit.edu wrote:
-> On Fri, May 28, 2010 at 02:26:57PM -0500, Jayson R. King wrote:
->> From: Aneesh Kumar K.V<aneesh.kumar@linux.vnet.ibm.com>
->> Date: Thu Oct 16 10:10:36 2008 -0400
->> Subject: ext4: Fix file fragmentation during large file write.
+On 05/28/2010 12:39 PM, Ric Wheeler wrote:
+> On 05/28/2010 12:52 PM, Sandon Van Ness wrote:
+>> I have a 36 TB (33.5276 TiB) device. I was originally planning to run
+>> JFS like I am doing on my 18 TB (16.6697 TiB) partition but the
+>> userspace tools for file-system creation (mkfs) on JFS do not correctly
+>> create file-systems over 32 TiB. XFS is not an option for me (I have had
+>> bad experiences and its too corruptible) and btrfs is too beta for me.
+>> My only options thus are ext4 or JFS (limited to 32 TiB).
 >>
->> commit 22208dedbd7626e5fc4339c417f8d24cc21f79d7 upstream.
+>> I would rather not waste ~ 1TiB of space which will likely go to other
+>> partitions that would normally only be 500 GiB but will now be 1.5 TiB
+>> if I can and with some of my testing of ext4 I think it could be a
+>> viable solution. I heard that with the pu branch 64-bit addressing
+>> exists so you can successfully create/fsck>16 TiB file-systems. I did
+>> read on the mailing lists that there were some problems on 32-bit
+>> machine but i will only use this file-sytem on x86_64.
 >>
->> The range_cyclic writeback mode uses the address_space writeback_index
->> as the start index for writeback.  With delayed allocation we were
->> updating writeback_index wrongly resulting in highly fragmented file.
->> This patch reduces the number of extents reduced from 4000 to 27 for a
->> 3GB file.
+>> So here is my question to you guys:
+>>
+>> Is the pu branch pretty stable? Is it stable enough to have a 33 TiB
+>> file-system in the real-world and be as stable and work as well as a<16
+>> TiB file-system or am I better off losing out some of my space and
+>> making a 32 TiB (minus a little) JFS partition and just stick to what I
+>> know works and works well?
+>>    
 >
-> This isn't a critical bug fix either.  I don't really care a whole
-> lot, since I don't plan to support ext4 with all of these patches but
-> if you haven't been doing a full set of testing with these patches,
-> I'd be very concerned about whether ext4 would be stable after
-> applying this patch series.
+> Not sure which version of XFS you had trouble with, but it is
+> certainly the most stable file system for anything over 16TB....
 >
-> What sort of testing _have_ you done?
+> Regards,
+>
+> Ric
+>
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+Doing an fsck on XFS takes foerever and a ton of ram. An FSCK on my 18TB
+file-system with about 7 million inodes and 15TB of data) on JFS takes
+about 12 minutes on my system. Another reason is I have seen bad things
+happen with XFS. A couple years ago I was using it and when the
+file-system got badly fragmented i got kernel panics due to not being
+able to allocate blocks or memory (it was a while back so I forget). I
+spent 24 hours defraging it getting the fragmentation down from like
+99.9995% to 99.2% and the problem went away. XFS seems to excessively
+fragment (that horribly fragmented system was running mythtv and after
+switching to JFS I see way less fragmented files).
 
-I've ran dbench for hours on an ext4 volume followed by fsck on the 
-volume. Without the patches (particularly, just the last patch, "ext4: 
-Implement range_cyclic..."), a typical, sustained moderate to high ext4 
-fs load on .27 would often lead to a deadlock. A good demonstration is 
-to run "dbench 500" which will usually cause a deadlock in a couple of 
-minutes.
+Posts like this scare me where corruption takes out the *entire*
+file-system:
+http://oss.sgi.com/archives/xfs/2010-01/msg00238.html
 
-I wasn't aware of a way to apply the deadlock fix in "ext4: Implement 
-range_cyclic..." without also introducing this patch, since some of the 
-blocks it touches are created by this patch.
+We had 'coraid' file-servers at work that used XFS and they suffered a
+problem where there was a kernel panic everytime a specific file was
+accessed.
 
-Thanks for looking.
+I have pretty much seen some corruption and lost files *every* single
+time that I have had a loss of power or crash on an XFS and I have
+pretty much never seen this on JFS.
 
-Rgds,
+Basically I have had and heard of *a lot* of bad experiences with XFS
+and I will not use XFS under any circumstances. My choices at this point
+are JFS (and have 1TiB less of data os part of the file-system that I
+otherwise would have had) or ext4 if people think its stable enough.
 
-Jayson
+So back to my original question. What do people think about the
+stability of the pu branch right now and file-systems over 16 TiB? The
+optimum solution to me would be for mkfs.jfs to get fixed to correctly
+create >32 TiB file-systems but I have extreme doubts of that ever
+happening soon if ever.
+
+I would run ZFS if the linux implementation didn't suck. I have a need
+for speed of DAS so the system has to run ilnux. I am actually using my
+old 20x1 TB drives in an 18 TB raidz2 zfs volume as that will be NAS and
+be running opensolaris.
