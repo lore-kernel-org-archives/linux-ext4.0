@@ -1,36 +1,40 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: quota locking inversion with ext2
-Date: Mon, 31 May 2010 19:29:40 +0200
-Message-ID: <20100531172939.GB5334@quack.suse.cz>
-References: <20100531094704.GB10283@lst.de>
+Subject: Re: nobh mount option in ext3/4?
+Date: Mon, 31 May 2010 19:55:58 +0200
+Message-ID: <20100531175557.GC5334@quack.suse.cz>
+References: <20100531124051.GA17262@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
 To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:53811 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:54320 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756850Ab0EaR3w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 May 2010 13:29:52 -0400
+	id S1754630Ab0EaR4L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 May 2010 13:56:11 -0400
 Content-Disposition: inline
-In-Reply-To: <20100531094704.GB10283@lst.de>
+In-Reply-To: <20100531124051.GA17262@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 31-05-10 11:47:04, Christoph Hellwig wrote:
-> ext2 + quota isn't too happy during xfstests 230:
-  Hmm, this looks new. At least I haven't seen such lockdep trace last
-week. Thanks for sending it to me.
-  Looking at the lockdep trace is seems that tty->atomic_write_lock can be
-held while we take page fault. So effectively it depends on the filesystem.
-But quota (if you have CONFIG_PRINT_QUOTA_WARNING enabled, which is
-obsolete by now) has to print quota warning to console so somewhere deep
-inside the filesystem we have to take tty->atomic_write_lock.
-  I currently don't know how to get rid of this dependency :( and I'm not
-sure how much effort should we put into solving this when it's an obsolete
-way of doing things...
+On Mon 31-05-10 14:40:51, Christoph Hellwig wrote:
+> ext3 and ext4 heave inherited the nobh option from ext2, but the
+> implementation is rather interesting.  Except for the usual
+> option parsing / display it's only respected in
+> ext3_writeback_writepage/ext4_writepage and the truncate_page
+> implementation.  Given that we don't take any more than usual
+> care to not create buffers heads during read this is not going
+> to effect a whole lot.
+> 
+> Is there a good reason to keep these options and the associated
+> code complexity?  I'd be rather surprised if it gets any sufficient
+> testing..
+  IMHO nobh can go away from ext3/ext4. I would be also in favor of
+removing all the nobh logic from VFS and ext2 but for ext2 it saves some
+low memory so some people might actually use it.
 
-									Honza
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
