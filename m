@@ -1,47 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 35/53] ext4: fix quota accounting in case of fallocate
-Date: Sun, 30 May 2010 22:49:48 -0400
-Message-ID: <1275274206-3900-35-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 26/53] ext4: Fixed inode allocator to correctly track a flex_bg's used_dirs
+Date: Sun, 30 May 2010 22:49:39 -0400
+Message-ID: <1275274206-3900-26-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Eric Sandeen <sandeen@redhat.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44661 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44719 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755509Ab0EaCuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:22 -0400
+	id S1755527Ab0EaCu2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:28 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Eric Sandeen <sandeen@redhat.com>
 
-commit 35121c9860316d7799cea0fbc359a9186e7c2747 upstream (as of v2.6.34-git13)
+commit c4caae25187ff3f5e837c6f04eb1acc2723c72d3 upstream (as of v2.6.34-rc3)
 
-allocated_meta_data is already included in 'used' variable.
+When used_dirs was introduced for the flex_groups struct, it looks
+like the accounting was not put into place properly, in some places
+manipulating free_inodes rather than used_dirs.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/ext4/ialloc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 45e6961..fc06fcd 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1149,7 +1149,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 		 */
- 		if (allocated_meta_blocks)
- 			vfs_dq_claim_block(inode, allocated_meta_blocks);
--		vfs_dq_release_reservation_block(inode, mdb_free + used);
-+		vfs_dq_release_reservation_block(inode, mdb_free + used -
-+						allocated_meta_blocks);
- 	}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 179e45c..8b4bb11 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -268,7 +268,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 					ext4_group_t f;
  
- 	/*
+ 					f = ext4_flex_group(sbi, block_group);
+-					atomic_dec(&sbi->s_flex_groups[f].free_inodes);
++					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
+ 				}
+ 
+ 			}
+@@ -779,7 +779,7 @@ static int ext4_claim_inode(struct super_block *sb,
+ 		if (sbi->s_log_groups_per_flex) {
+ 			ext4_group_t f = ext4_flex_group(sbi, group);
+ 
+-			atomic_inc(&sbi->s_flex_groups[f].free_inodes);
++			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+ 		}
+ 	}
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
 -- 
 1.6.6.1.1.g974db.dirty
 
