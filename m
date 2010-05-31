@@ -1,94 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 49/53] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when warranted
-Date: Sun, 30 May 2010 22:50:02 -0400
-Message-ID: <1275274206-3900-49-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 27/53] ext4: Fix possible lost inode write in no journal mode
+Date: Sun, 30 May 2010 22:49:40 -0400
+Message-ID: <1275274206-3900-27-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+	Curt Wohlgemuth <curtw@google.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44581 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44647 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755467Ab0EaCuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:16 -0400
+	id S1755494Ab0EaCuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:22 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-commit 786ec7915e530936b9eb2e3d12274145cab7aa7d upstream (as of v2.6.34-git13)
+From: Curt Wohlgemuth <curtw@google.com>
 
-Dimitry Monakhov discovered an edge case where it was possible for the
-EXT4_EOFBLOCKS_FL flag could get cleared unnecessarily.  This is true;
-I have a test case that can be exercised via downloading and
-decompressing the file:
+commit 8b472d739b2ddd8ab7fb278874f696cd95b25a5e upstream (as of v2.6.34-rc6)
 
-wget ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-testcases/eofblocks-fl-test-case.img.bz2
-bunzip2 eofblocks-fl-test-case.img
-dd if=/dev/zero of=eofblocks-fl-test-case.img bs=1k seek=17925 bs=1k count=1 conv=notrunc
+In the no-journal case, ext4_write_inode() will fetch the bh and call
+sync_dirty_buffer() on it.  However, if the bh has already been
+written and the bh reclaimed for some other purpose, AND if the inode
+is the only one in the inode table block in use, then
+ext4_get_inode_loc() will not read the inode table block from disk,
+but as an optimization, fill the block with zero's assuming that its
+caller will copy in the on-disk version of the inode.  This is not
+done by ext4_write_inode(), so the contents of the inode can simply
+get lost.  The fix is to use __ext4_get_inode_loc() with in_mem set to
+0, instead of ext4_get_inode_loc().  Long term the API needs to be
+fixed so it's obvious why latter is not safe.
 
-However, triggering it in real life is highly unlikely since it
-requires an extremely fragmented sparse file with a hole in exactly
-the right place in the extent tree.  (It actually took quite a bit of
-work to generate this test case.)  Still, it's nice to get even
-extreme corner cases to be correct, so this patch makes sure that we
-don't clear the EXT4_EOFBLOCKS_FL incorrectly even in this corner
-case.
+Addresses-Google-Bug: #2526446
 
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |   26 ++++++++++++++++++--------
- 1 files changed, 18 insertions(+), 8 deletions(-)
+ fs/ext4/inode.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d985da0..c100a0b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3229,7 +3229,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	struct ext4_extent_header *eh;
- 	struct ext4_extent newex, *ex, *last_ex;
- 	ext4_fsblk_t newblock;
--	int err = 0, depth, ret, cache_type;
-+	int i, err = 0, depth, ret, cache_type;
- 	unsigned int allocated = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-@@ -3410,19 +3410,29 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4bee50f..f81025f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5260,7 +5260,7 @@ int ext4_write_inode(struct inode *inode, int wait)
+ 	} else {
+ 		struct ext4_iloc iloc;
  
- 	if (unlikely(ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
--		if (eh->eh_entries) {
--			last_ex = EXT_LAST_EXTENT(eh);
--			if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
--					    + ext4_ext_get_actual_len(last_ex))
--				ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
--		} else {
--			WARN_ON(eh->eh_entries == 0);
-+		if (unlikely(!eh->eh_entries)) {
- 			ext4_error(inode->i_sb, __func__,
- 				   "inode#%lu, eh->eh_entries = 0 and "
- 				   "EOFBLOCKS_FL set", inode->i_ino);
- 			err = -EIO;
- 			goto out2;
- 		}
-+		last_ex = EXT_LAST_EXTENT(eh);
-+		/*
-+		 * If the current leaf block was reached by looking at
-+		 * the last index block all the way down the tree, and
-+		 * we are extending the inode beyond the last extent
-+		 * in the current leaf block, then clear the
-+		 * EOFBLOCKS_FL flag.
-+		 */
-+		for (i = depth-1; i >= 0; i--) {
-+			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
-+				break;
-+		}
-+		if ((i < 0) &&
-+		    (iblock + ar.len > le32_to_cpu(last_ex->ee_block) +
-+		     ext4_ext_get_actual_len(last_ex)))
-+			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
- 	}
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err) {
+-		err = ext4_get_inode_loc(inode, &iloc);
++		err = __ext4_get_inode_loc(inode, &iloc, 0);
+ 		if (err)
+ 			return err;
+ 		if (wait)
 -- 
 1.6.6.1.1.g974db.dirty
 
