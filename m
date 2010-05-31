@@ -1,122 +1,62 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 13/53] ext4: Drop EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE flag
-Date: Sun, 30 May 2010 22:49:26 -0400
-Message-ID: <1275274206-3900-13-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 34/53] ext4: allow defrag (EXT4_IOC_MOVE_EXT) in 32bit compat mode
+Date: Sun, 30 May 2010 22:49:47 -0400
+Message-ID: <1275274206-3900-34-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Christian Borntraeger <borntraeger@de.ibm.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44588 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44645 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755479Ab0EaCuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:16 -0400
+	id S1755496Ab0EaCuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:22 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Christian Borntraeger <borntraeger@de.ibm.com>
 
-commit 1296cc85c26e94eb865d03f82140f27d598de467 upstream (as of v2.6.33-rc6)
+commit b684b2ee9409f2890a8b3aea98525bbe5f84e276 upstream (as of v2.6.34-git13)
 
-We should update reserve space if it is delalloc buffer
-and that is indicated by EXT4_GET_BLOCKS_DELALLOC_RESERVE flag.
-So use EXT4_GET_BLOCKS_DELALLOC_RESERVE in place of
-EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE
+I have an x86_64 kernel with i386 userspace. e4defrag fails on the
+EXT4_IOC_MOVE_EXT ioctl because it is not wired up for the compat
+case. It seems that struct move_extent is compat save, only types
+with fixed widths are used:
+{
+        __u32 reserved;         /* should be zero */
+        __u32 donor_fd;         /* donor file descriptor */
+        __u64 orig_start;       /* logical start offset in block for orig */
+        __u64 donor_start;      /* logical start offset in block for donor */
+        __u64 len;              /* block length to be moved */
+        __u64 moved_len;        /* moved block length */
+};
 
-[ Stable note: This fixes a corruption cuased by the following
-  reproduction case:
+Lets just wire up EXT4_IOC_MOVE_EXT for the compat case.
 
-  rm -f $TEST_FN
-  touch $TEST_FN
-  fallocate -n -o 656712 -l 858907 $TEST_FN
-  dd if=/dev/zero of=$TEST_FN conv=notrunc bs=1 seek=1011020 count=36983
-  sync
-  dd if=/dev/zero of=$TEST_FN conv=notrunc bs=1 seek=332121 count=24005
-  dd if=/dev/zero of=$TEST_FN conv=notrunc bs=1 seek=1040179 count=93319
-
-  If the filesystem is then unmounted and e2fsck run forced, the
-  i_blocks field for the file $TEST_FN will be found to be incorrect. ]
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Christian Borntraeger <borntraeger@de.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+CC: Akira Fujita <a-fujita@rs.jp.nec.com>
 ---
- fs/ext4/ext4.h    |    7 ++-----
- fs/ext4/extents.c |    4 ++--
- fs/ext4/inode.c   |    8 ++++----
- 3 files changed, 8 insertions(+), 11 deletions(-)
+ fs/ext4/ioctl.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0787596..a2adb4d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -361,14 +361,11 @@ struct ext4_new_group_data {
- 	   so set the magic i_delalloc_reserve_flag after taking the 
- 	   inode allocation semaphore for */
- #define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0004
--	/* Call ext4_da_update_reserve_space() after successfully 
--	   allocating the blocks */
--#define EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE	0x0008
- 	/* caller is from the direct IO path, request to creation of an
- 	unitialized extents if not allocated, split the uninitialized
- 	extent if blocks has been preallocated already*/
--#define EXT4_GET_BLOCKS_DIO			0x0010
--#define EXT4_GET_BLOCKS_CONVERT			0x0020
-+#define EXT4_GET_BLOCKS_DIO			0x0008
-+#define EXT4_GET_BLOCKS_CONVERT			0x0010
- #define EXT4_GET_BLOCKS_DIO_CREATE_EXT		(EXT4_GET_BLOCKS_DIO|\
- 					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
- 	/* Convert extent to initialized after direct IO complete */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a7b2f2e..f0db45b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3148,7 +3148,7 @@ out:
- 	 * But fallocate would have already updated quota and block
- 	 * count for this offset. So cancel these reservation
- 	 */
--	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
- 		ext4_da_update_reserve_space(inode, allocated, 0);
- 
- map_out:
-@@ -3394,7 +3394,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	 * Update reserved blocks/metadata blocks after successful
- 	 * block allocation which had been deferred till now.
- 	 */
--	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
- 		ext4_da_update_reserve_space(inode, allocated, 1);
- 
- 	/*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 79c907b..1e49fae 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1358,7 +1358,7 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
- 		 * reserve space here.
- 		 */
- 		if ((retval > 0) &&
--			(flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
-+			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
- 			ext4_da_update_reserve_space(inode, retval, 1);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 016d024..66fa0b0 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -375,6 +375,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 		break;
+ 	case EXT4_IOC_GROUP_ADD:
+ 		break;
++	case EXT4_IOC_MOVE_EXT:
++		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
  	}
- 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-@@ -2261,10 +2261,10 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	 * variables are updated after the blocks have been allocated.
- 	 */
- 	new.b_state = 0;
--	get_blocks_flags = (EXT4_GET_BLOCKS_CREATE |
--			    EXT4_GET_BLOCKS_DELALLOC_RESERVE);
-+	get_blocks_flags = EXT4_GET_BLOCKS_CREATE;
- 	if (mpd->b_state & (1 << BH_Delay))
--		get_blocks_flags |= EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE;
-+		get_blocks_flags |= EXT4_GET_BLOCKS_DELALLOC_RESERVE;
-+
- 	blks = ext4_get_blocks(handle, mpd->inode, next, max_blocks,
- 			       &new, get_blocks_flags);
- 	if (blks < 0) {
 -- 
 1.6.6.1.1.g974db.dirty
 
