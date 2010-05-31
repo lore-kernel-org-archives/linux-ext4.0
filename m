@@ -1,235 +1,122 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 45/53] ext4: check for a good block group before loading buddy pages
-Date: Sun, 30 May 2010 22:49:58 -0400
-Message-ID: <1275274206-3900-45-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 13/53] ext4: Drop EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE flag
+Date: Sun, 30 May 2010 22:49:26 -0400
+Message-ID: <1275274206-3900-13-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44589 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44588 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755481Ab0EaCuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755479Ab0EaCuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 30 May 2010 22:50:16 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit 8a57d9d61a6e361c7bb159dda797672c1df1a691 upstream (as of v2.6.34-git13)
+commit 1296cc85c26e94eb865d03f82140f27d598de467 upstream (as of v2.6.33-rc6)
 
-This adds a new field in ext4_group_info to cache the largest available
-block range in a block group; and don't load the buddy pages until *after*
-we've done a sanity check on the block group.
+We should update reserve space if it is delalloc buffer
+and that is indicated by EXT4_GET_BLOCKS_DELALLOC_RESERVE flag.
+So use EXT4_GET_BLOCKS_DELALLOC_RESERVE in place of
+EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE
 
-With large allocation requests (e.g., fallocate(), 8MiB) and relatively full
-partitions, it's easy to have no block groups with a block extent large
-enough to satisfy the input request length.  This currently causes the loop
-during cr == 0 in ext4_mb_regular_allocator() to load the buddy bitmap pages
-for EVERY block group.  That can be a lot of pages.  The patch below allows
-us to call ext4_mb_good_group() BEFORE we load the buddy pages (although we
-have check again after we lock the block group).
+[ Stable note: This fixes a corruption cuased by the following
+  reproduction case:
 
-Addresses-Google-Bug: #2578108
-Addresses-Google-Bug: #2704453
+  rm -f $TEST_FN
+  touch $TEST_FN
+  fallocate -n -o 656712 -l 858907 $TEST_FN
+  dd if=/dev/zero of=$TEST_FN conv=notrunc bs=1 seek=1011020 count=36983
+  sync
+  dd if=/dev/zero of=$TEST_FN conv=notrunc bs=1 seek=332121 count=24005
+  dd if=/dev/zero of=$TEST_FN conv=notrunc bs=1 seek=1040179 count=93319
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+  If the filesystem is then unmounted and e2fsck run forced, the
+  i_blocks field for the file $TEST_FN will be found to be incorrect. ]
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    1 +
- fs/ext4/mballoc.c |   70 +++++++++++++++++++++++++++++++++++++++++++----------
- 2 files changed, 58 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h    |    7 ++-----
+ fs/ext4/extents.c |    4 ++--
+ fs/ext4/inode.c   |    8 ++++----
+ 3 files changed, 8 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b196a9a..8e2f5cc 100644
+index 0787596..a2adb4d 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1657,6 +1657,7 @@ struct ext4_group_info {
- 	ext4_grpblk_t	bb_first_free;	/* first free block */
- 	ext4_grpblk_t	bb_free;	/* total free blocks */
- 	ext4_grpblk_t	bb_fragments;	/* nr of freespace fragments */
-+	ext4_grpblk_t	bb_largest_free_order;/* order of largest frag in BG */
- 	struct          list_head bb_prealloc_list;
- #ifdef DOUBLE_CHECK
- 	void            *bb_bitmap;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 43d84b7..5b6bd5c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -658,6 +658,27 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
- 	}
- }
+@@ -361,14 +361,11 @@ struct ext4_new_group_data {
+ 	   so set the magic i_delalloc_reserve_flag after taking the 
+ 	   inode allocation semaphore for */
+ #define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0004
+-	/* Call ext4_da_update_reserve_space() after successfully 
+-	   allocating the blocks */
+-#define EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE	0x0008
+ 	/* caller is from the direct IO path, request to creation of an
+ 	unitialized extents if not allocated, split the uninitialized
+ 	extent if blocks has been preallocated already*/
+-#define EXT4_GET_BLOCKS_DIO			0x0010
+-#define EXT4_GET_BLOCKS_CONVERT			0x0020
++#define EXT4_GET_BLOCKS_DIO			0x0008
++#define EXT4_GET_BLOCKS_CONVERT			0x0010
+ #define EXT4_GET_BLOCKS_DIO_CREATE_EXT		(EXT4_GET_BLOCKS_DIO|\
+ 					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
+ 	/* Convert extent to initialized after direct IO complete */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index a7b2f2e..f0db45b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3148,7 +3148,7 @@ out:
+ 	 * But fallocate would have already updated quota and block
+ 	 * count for this offset. So cancel these reservation
+ 	 */
+-	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
++	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+ 		ext4_da_update_reserve_space(inode, allocated, 0);
  
-+/*
-+ * Cache the order of the largest free extent we have available in this block
-+ * group.
-+ */
-+static void
-+mb_set_largest_free_order(struct super_block *sb, struct ext4_group_info *grp)
-+{
-+	int i;
-+	int bits;
-+
-+	grp->bb_largest_free_order = -1; /* uninit */
-+
-+	bits = sb->s_blocksize_bits + 1;
-+	for (i = bits; i >= 0; i--) {
-+		if (grp->bb_counters[i] > 0) {
-+			grp->bb_largest_free_order = i;
-+			break;
-+		}
-+	}
-+}
-+
- static noinline_for_stack
- void ext4_mb_generate_buddy(struct super_block *sb,
- 				void *buddy, void *bitmap, ext4_group_t group)
-@@ -700,6 +721,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ map_out:
+@@ -3394,7 +3394,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	 * Update reserved blocks/metadata blocks after successful
+ 	 * block allocation which had been deferred till now.
+ 	 */
+-	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
++	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+ 		ext4_da_update_reserve_space(inode, allocated, 1);
+ 
+ 	/*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 79c907b..1e49fae 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1358,7 +1358,7 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
+ 		 * reserve space here.
  		 */
- 		grp->bb_free = free;
+ 		if ((retval > 0) &&
+-			(flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
++			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
+ 			ext4_da_update_reserve_space(inode, retval, 1);
  	}
-+	mb_set_largest_free_order(sb, grp);
- 
- 	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
- 
-@@ -725,6 +747,9 @@ void ext4_mb_generate_buddy(struct super_block *sb,
-  * contain blocks_per_page (PAGE_CACHE_SIZE / blocksize)  blocks.
-  * So it can have information regarding groups_per_page which
-  * is blocks_per_page/2
-+ *
-+ * Locking note:  This routine takes the block group lock of all groups
-+ * for this page; do not hold this lock when calling this routine!
-  */
- 
- static int ext4_mb_init_cache(struct page *page, char *incore)
-@@ -910,6 +935,11 @@ out:
- 	return err;
- }
- 
-+/*
-+ * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
-+ * block group lock of all groups for this page; do not hold the BG lock when
-+ * calling this routine!
-+ */
- static noinline_for_stack
- int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- {
-@@ -1004,6 +1034,11 @@ err:
- 	return ret;
- }
- 
-+/*
-+ * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
-+ * block group lock of all groups for this page; do not hold the BG lock when
-+ * calling this routine!
-+ */
- static noinline_for_stack int
- ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 					struct ext4_buddy *e4b)
-@@ -1300,6 +1335,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			buddy = buddy2;
- 		} while (1);
- 	}
-+	mb_set_largest_free_order(sb, e4b->bd_info);
- 	mb_check_buddy(e4b);
- }
- 
-@@ -1428,6 +1464,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 		e4b->bd_info->bb_counters[ord]++;
- 		e4b->bd_info->bb_counters[ord]++;
- 	}
-+	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
- 
- 	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
- 	mb_check_buddy(e4b);
-@@ -1823,16 +1860,22 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
- 	}
- }
- 
-+/* This is now called BEFORE we load the buddy bitmap. */
- static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 				ext4_group_t group, int cr)
- {
- 	unsigned free, fragments;
--	unsigned i, bits;
- 	int flex_size = ext4_flex_bg_size(EXT4_SB(ac->ac_sb));
- 	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
- 
- 	BUG_ON(cr < 0 || cr >= 4);
--	BUG_ON(EXT4_MB_GRP_NEED_INIT(grp));
+ 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+@@ -2261,10 +2261,10 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	 * variables are updated after the blocks have been allocated.
+ 	 */
+ 	new.b_state = 0;
+-	get_blocks_flags = (EXT4_GET_BLOCKS_CREATE |
+-			    EXT4_GET_BLOCKS_DELALLOC_RESERVE);
++	get_blocks_flags = EXT4_GET_BLOCKS_CREATE;
+ 	if (mpd->b_state & (1 << BH_Delay))
+-		get_blocks_flags |= EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE;
++		get_blocks_flags |= EXT4_GET_BLOCKS_DELALLOC_RESERVE;
 +
-+	/* We only do this if the grp has never been initialized */
-+	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
-+		int ret = ext4_mb_init_group(ac->ac_sb, group);
-+		if (ret)
-+			return 0;
-+	}
- 
- 	free = grp->bb_free;
- 	fragments = grp->bb_fragments;
-@@ -1845,17 +1888,16 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 	case 0:
- 		BUG_ON(ac->ac_2order == 0);
- 
-+		if (grp->bb_largest_free_order < ac->ac_2order)
-+			return 0;
-+
- 		/* Avoid using the first bg of a flexgroup for data files */
- 		if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&
- 		    (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&
- 		    ((group % flex_size) == 0))
- 			return 0;
- 
--		bits = ac->ac_sb->s_blocksize_bits + 1;
--		for (i = ac->ac_2order; i <= bits; i++)
--			if (grp->bb_counters[i] > 0)
--				return 1;
--		break;
-+		return 1;
- 	case 1:
- 		if ((free / fragments) >= ac->ac_g_ex.fe_len)
- 			return 1;
-@@ -2026,14 +2068,11 @@ repeat:
- 		group = ac->ac_g_ex.fe_group;
- 
- 		for (i = 0; i < ngroups; group++, i++) {
--			struct ext4_group_info *grp;
--
- 			if (group == ngroups)
- 				group = 0;
- 
--			/* quick check to skip empty groups */
--			grp = ext4_get_group_info(sb, group);
--			if (grp->bb_free == 0)
-+			/* This now checks without needing the buddy page */
-+			if (!ext4_mb_good_group(ac, group, cr))
- 				continue;
- 
- 			err = ext4_mb_load_buddy(sb, group, &e4b);
-@@ -2041,8 +2080,12 @@ repeat:
- 				goto out;
- 
- 			ext4_lock_group(sb, group);
-+
-+			/*
-+			 * We need to check again after locking the
-+			 * block group
-+			 */
- 			if (!ext4_mb_good_group(ac, group, cr)) {
--				/* someone did allocation from this group */
- 				ext4_unlock_group(sb, group);
- 				ext4_mb_unload_buddy(&e4b);
- 				continue;
-@@ -2255,6 +2298,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
- 	init_rwsem(&meta_group_info[i]->alloc_sem);
- 	meta_group_info[i]->bb_free_root.rb_node = NULL;
-+	meta_group_info[i]->bb_largest_free_order = -1;  /* uninit */
- 
- #ifdef DOUBLE_CHECK
- 	{
+ 	blks = ext4_get_blocks(handle, mpd->inode, next, max_blocks,
+ 			       &new, get_blocks_flags);
+ 	if (blks < 0) {
 -- 
 1.6.6.1.1.g974db.dirty
 
