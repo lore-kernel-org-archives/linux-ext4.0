@@ -1,163 +1,65 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 04/53] ext4, jbd2: Add barriers for file systems with exernal journals
-Date: Sun, 30 May 2010 22:49:17 -0400
-Message-ID: <1275274206-3900-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 02/53] jbd: jbd-debug and jbd2-debug should be writable
+Date: Sun, 30 May 2010 22:49:15 -0400
+Message-ID: <1275274206-3900-2-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+	Yin Kangkai <kangkai.yin@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44562 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44553 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755444Ab0EaCuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755439Ab0EaCuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 30 May 2010 22:50:14 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-commit cc3e1bea5d87635c519da657303690f5538bb4eb upstream (as of v2.6.33-rc3)
+From: Yin Kangkai <kangkai.yin@intel.com>
 
-This is a bit complicated because we are trying to optimize when we
-send barriers to the fs data disk.  We could just throw in an extra
-barrier to the data disk whenever we send a barrier to the journal
-disk, but that's not always strictly necessary.
+commit 765f8361902d015c864d5e62019b2f139452d7ef upstream (as of v2.6.33-rc2)
 
-We only need to send a barrier during a commit when there are data
-blocks which are must be written out due to an inode written in
-ordered mode, or if fsync() depends on the commit to force data blocks
-to disk.  Finally, before we drop transactions from the beginning of
-the journal during a checkpoint operation, we need to guarantee that
-any blocks that were flushed out to the data disk are firmly on the
-rust platter before we drop the transaction from the journal.
+jbd-debug and jbd2-debug is currently read-only (S_IRUGO), which is not
+correct. Make it writable so that we can start debuging.
 
-Thanks to Oleg Drokin for pointing out this flaw in ext3/ext4.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Yin Kangkai <kangkai.yin@intel.com>
+Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/fsync.c      |   16 ++++++++++++++--
- fs/jbd2/checkpoint.c |   15 +++++++++++++++
- fs/jbd2/commit.c     |   19 +++++++++++--------
- include/linux/jbd2.h |    1 +
- 4 files changed, 41 insertions(+), 10 deletions(-)
+ fs/jbd/journal.c  |    2 +-
+ fs/jbd2/journal.c |    3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index d6049e4..43336b5 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -88,9 +88,21 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
- 		return ext4_force_commit(inode->i_sb);
- 
- 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
--	if (jbd2_log_start_commit(journal, commit_tid))
-+	if (jbd2_log_start_commit(journal, commit_tid)) {
-+		/*
-+		 * When the journal is on a different device than the
-+		 * fs data disk, we need to issue the barrier in
-+		 * writeback mode.  (In ordered mode, the jbd2 layer
-+		 * will take care of issuing the barrier.  In
-+		 * data=journal, all of the data blocks are written to
-+		 * the journal device.)
-+		 */
-+		if (ext4_should_writeback_data(inode) &&
-+		    (journal->j_fs_dev != journal->j_dev) &&
-+		    (journal->j_flags & JBD2_BARRIER))
-+			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
- 		jbd2_log_wait_commit(journal, commit_tid);
--	else if (journal->j_flags & JBD2_BARRIER)
-+	} else if (journal->j_flags & JBD2_BARRIER)
- 		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
- 	return ret;
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 4160afa..bd224ee 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -1913,7 +1913,7 @@ static void __init jbd_create_debugfs_entry(void)
+ {
+ 	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
+ 	if (jbd_debugfs_dir)
+-		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO,
++		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO | S_IWUSR,
+ 					       jbd_debugfs_dir,
+ 					       &journal_enable_debug);
  }
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index ca0f5eb..8868493 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -22,6 +22,7 @@
- #include <linux/jbd2.h>
- #include <linux/errno.h>
- #include <linux/slab.h>
-+#include <linux/blkdev.h>
- #include <trace/events/jbd2.h>
- 
- /*
-@@ -515,6 +516,20 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
- 	journal->j_tail_sequence = first_tid;
- 	journal->j_tail = blocknr;
- 	spin_unlock(&journal->j_state_lock);
-+
-+	/*
-+	 * If there is an external journal, we need to make sure that
-+	 * any data blocks that were recently written out --- perhaps
-+	 * by jbd2_log_do_checkpoint() --- are flushed out before we
-+	 * drop the transactions from the external journal.  It's
-+	 * unlikely this will be necessary, especially with a
-+	 * appropriately sized journal, but we need this to guarantee
-+	 * correctness.  Fortunately jbd2_cleanup_journal_tail()
-+	 * doesn't get called all that often.
-+	 */
-+	if ((journal->j_fs_dev != journal->j_dev) &&
-+	    (journal->j_flags & JBD2_BARRIER))
-+		blkdev_issue_flush(journal->j_fs_dev, NULL);
- 	if (!(journal->j_flags & JBD2_ABORT))
- 		jbd2_journal_update_superblock(journal, 1);
- 	return 0;
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 8896c1d..c126363 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -259,6 +259,7 @@ static int journal_submit_data_buffers(journal_t *journal,
- 			ret = err;
- 		spin_lock(&journal->j_list_lock);
- 		J_ASSERT(jinode->i_transaction == commit_transaction);
-+		commit_transaction->t_flushed_data_blocks = 1;
- 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
- 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 	}
-@@ -708,8 +709,17 @@ start_journal_io:
- 		}
- 	}
- 
--	/* Done it all: now write the commit record asynchronously. */
-+	/* 
-+	 * If the journal is not located on the file system device,
-+	 * then we must flush the file system device before we issue
-+	 * the commit record
-+	 */
-+	if (commit_transaction->t_flushed_data_blocks &&
-+	    (journal->j_fs_dev != journal->j_dev) &&
-+	    (journal->j_flags & JBD2_BARRIER))
-+		blkdev_issue_flush(journal->j_fs_dev, NULL);
- 
-+	/* Done it all: now write the commit record asynchronously. */
- 	if (JBD2_HAS_INCOMPAT_FEATURE(journal,
- 				      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
- 		err = journal_submit_commit_record(journal, commit_transaction,
-@@ -720,13 +730,6 @@ start_journal_io:
- 			blkdev_issue_flush(journal->j_dev, NULL);
- 	}
- 
--	/*
--	 * This is the right place to wait for data buffers both for ASYNC
--	 * and !ASYNC commit. If commit is ASYNC, we need to wait only after
--	 * the commit block went to disk (which happens above). If commit is
--	 * SYNC, we need to wait for data buffers before we start writing
--	 * commit block, which happens below in such setting.
--	 */
- 	err = journal_finish_inode_data_buffers(journal, commit_transaction);
- 	if (err) {
- 		printk(KERN_WARNING
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index f1011f7..638ce45 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -653,6 +653,7 @@ struct transaction_s
- 	 * waiting for it to finish.
- 	 */
- 	unsigned int t_synchronous_commit:1;
-+	unsigned int t_flushed_data_blocks:1;
- 
- 	/*
- 	 * For use by the filesystem to store fs-specific data
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b7ca3a9..17af879 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2115,7 +2115,8 @@ static void __init jbd2_create_debugfs_entry(void)
+ {
+ 	jbd2_debugfs_dir = debugfs_create_dir("jbd2", NULL);
+ 	if (jbd2_debugfs_dir)
+-		jbd2_debug = debugfs_create_u8(JBD2_DEBUG_NAME, S_IRUGO,
++		jbd2_debug = debugfs_create_u8(JBD2_DEBUG_NAME,
++					       S_IRUGO | S_IWUSR,
+ 					       jbd2_debugfs_dir,
+ 					       &jbd2_journal_enable_debug);
+ }
 -- 
 1.6.6.1.1.g974db.dirty
 
