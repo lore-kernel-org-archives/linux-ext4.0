@@ -1,63 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 38/53] ext4: stop issuing discards if not supported by device
-Date: Sun, 30 May 2010 22:49:51 -0400
-Message-ID: <1275274206-3900-38-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 23/53] ext4: Fix the NULL reference in double_down_write_data_sem()
+Date: Sun, 30 May 2010 22:49:36 -0400
+Message-ID: <1275274206-3900-23-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44654 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44715 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755508Ab0EaCuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:22 -0400
+	id S1755525Ab0EaCu2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:28 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-commit a30eec2a8650a77f754e84b2e15f062fe652baa7 upstream (as of v2.6.34-git13)
+commit 7247c0caa23d94a1cb6b307edba9dc45fb0798d4 upstream (as of v2.6.33-git11)
 
-Turn off issuance of discard requests if the device does
-not support it - similar to the action we take for barriers.
-This will save a little computation time if a non-discardable
-device is mounted with -o discard, and also makes it obvious
-that it's not doing what was asked at mount time ...
+If EXT4_IOC_MOVE_EXT ioctl is called with NULL donor_fd, fget() in
+ext4_ioctl() gets inappropriate file structure for donor; so we need
+to do this check earlier, before calling double_down_write_data_sem().
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
+ fs/ext4/move_extent.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 6c59921..43d84b7 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2536,6 +2536,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 			 entry->count, entry->group, entry);
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 535f4d7..2a7bb53 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -953,14 +953,6 @@ mext_check_arguments(struct inode *orig_inode,
+ 	unsigned int blkbits = orig_inode->i_blkbits;
+ 	unsigned int blocksize = 1 << blkbits;
  
- 		if (test_opt(sb, DISCARD)) {
-+			int ret;
- 			ext4_fsblk_t discard_block;
- 
- 			discard_block = entry->start_blk +
-@@ -2543,7 +2544,12 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 			trace_ext4_discard_blocks(sb,
- 					(unsigned long long)discard_block,
- 					entry->count);
--			sb_issue_discard(sb, discard_block, entry->count);
-+			ret = sb_issue_discard(sb, discard_block, entry->count);
-+			if (ret == EOPNOTSUPP) {
-+				ext4_warning(sb, __func__,
-+					"discard not supported, disabling");
-+				clear_opt(EXT4_SB(sb)->s_mount_opt, DISCARD);
-+			}
- 		}
- 
- 		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
--- 
-1.6.6.1.1.g974db.dirty
-
+-	/* Regular file check */
+-	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
+-		ext4_debug("ext4 move extent: The argument files should be "
+-			"regular file [ino:orig %lu, donor %lu]\n",
+-			orig_inode->i_ino, donor_inode->i_ino);
+-		return -EINVAL;
+-	}
