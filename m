@@ -1,59 +1,169 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 21/53] ext4: make "offset" consistent in ext4_check_dir_entry()
-Date: Sun, 30 May 2010 22:49:34 -0400
-Message-ID: <1275274206-3900-21-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 12/53] ext4: Fix quota accounting error with fallocate
+Date: Sun, 30 May 2010 22:49:25 -0400
+Message-ID: <1275274206-3900-12-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44694 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44747 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755508Ab0EaCu1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:27 -0400
+	id S1755551Ab0EaCub (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:31 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-commit b8b8afe236e97b6359d46d3a3f8c46455e192271 upstream (as of v2.6.33-git11)
+commit 5f634d064c709ea02c3cdaa850a08323a4a4bf28 upstream (as of v2.6.33-rc6)
 
-The callers of ext4_check_dir_entry() usually pass in the "file
-offset" (ext4_readdir, htree_dirblock_to_tree, search_dirblock,
-ext4_dx_find_entry, empty_dir), but a few callers (add_dirent_to_buf,
-ext4_delete_entry) only pass in the buffer offset.
+When we fallocate a region of the file which we had recently written,
+and which is still in the page cache marked as delayed allocated blocks
+we need to make sure we don't do the quota update on writepage path.
+This is because the needed quota updated would have already be done
+by fallocate.
 
-To accomodate those last two (which would be hard to fix otherwise),
-this patch changes ext4_check_dir_entry() to print the physical block
-number and the relative offset as well as the passed-in offset.
-
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/dir.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |    2 ++
+ fs/ext4/extents.c |   21 +++++++++++++++++++++
+ fs/ext4/inode.c   |   44 +++++++++++++++++++++++++++++++-------------
+ 3 files changed, 54 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 9dc9316..92ae84f 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -84,9 +84,11 @@ int ext4_check_dir_entry(const char *function, struct inode *dir,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 23bfbbc..0787596 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1440,6 +1440,8 @@ extern int ext4_block_truncate_page(handle_t *handle,
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int flush_aio_dio_completed_IO(struct inode *inode);
++extern void ext4_da_update_reserve_space(struct inode *inode,
++					int used, int quota_claim);
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+ extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5f03f9f..a7b2f2e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3138,7 +3138,19 @@ out:
+ 		unmap_underlying_metadata_blocks(inode->i_sb->s_bdev,
+ 					newblock + max_blocks,
+ 					allocated - max_blocks);
++		allocated = max_blocks;
+ 	}
++
++	/*
++	 * If we have done fallocate with the offset that is already
++	 * delayed allocated, we would have block reservation
++	 * and quota reservation done in the delayed write path.
++	 * But fallocate would have already updated quota and block
++	 * count for this offset. So cancel these reservation
++	 */
++	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
++		ext4_da_update_reserve_space(inode, allocated, 0);
++
+ map_out:
+ 	set_buffer_mapped(bh_result);
+ out1:
+@@ -3374,9 +3386,18 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	/* previous routine could use block we allocated */
+ 	newblock = ext_pblock(&newex);
+ 	allocated = ext4_ext_get_actual_len(&newex);
++	if (allocated > max_blocks)
++		allocated = max_blocks;
+ 	set_buffer_new(bh_result);
  
- 	if (error_msg != NULL)
- 		ext4_error(dir->i_sb, function,
--			"bad entry in directory #%lu: %s - "
--			"offset=%u, inode=%u, rec_len=%d, name_len=%d",
--			dir->i_ino, error_msg, offset,
-+			"bad entry in directory #%lu: %s - block=%llu"
-+			"offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
-+			dir->i_ino, error_msg, 
-+			(unsigned long long) bh->b_blocknr,     
-+			(unsigned) (offset%bh->b_size), offset,
- 			le32_to_cpu(de->inode),
- 			rlen, de->name_len);
- 	return error_msg == NULL ? 1 : 0;
--- 
-1.6.6.1.1.g974db.dirty
-
+ 	/*
++	 * Update reserved blocks/metadata blocks after successful
++	 * block allocation which had been deferred till now.
++	 */
++	if (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE)
++		ext4_da_update_reserve_space(inode, allocated, 1);
++
++	/*
+ 	 * Cache the extent and update transaction to commit on fdatasync only
+ 	 * when it is _not_ an uninitialized extent.
+ 	 */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index af9b185..79c907b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1095,11 +1095,12 @@ static int ext4_calc_metadata_amount(struct inode *inode, sector_t lblock)
+  * Called with i_data_sem down, which is important since we can call
+  * ext4_discard_preallocations() from here.
+  */
+-static void ext4_da_update_reserve_space(struct inode *inode, int used)
++void ext4_da_update_reserve_space(struct inode *inode,
++					int used, int quota_claim)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+-	int mdb_free = 0;
++	int mdb_free = 0, allocated_meta_blocks = 0;
+ 
+ 	spin_lock(&ei->i_block_reservation_lock);
+ 	if (unlikely(used > ei->i_reserved_data_blocks)) {
+@@ -1115,6 +1116,7 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+ 	ei->i_reserved_data_blocks -= used;
+ 	used += ei->i_allocated_meta_blocks;
+ 	ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks;
++	allocated_meta_blocks = ei->i_allocated_meta_blocks;
+ 	ei->i_allocated_meta_blocks = 0;
+ 	percpu_counter_sub(&sbi->s_dirtyblocks_counter, used);
+ 
+@@ -1132,9 +1134,23 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 
+ 	/* Update quota subsystem */
+-	vfs_dq_claim_block(inode, used);
+-	if (mdb_free)
+-		vfs_dq_release_reservation_block(inode, mdb_free);
++	if (quota_claim) {
++		vfs_dq_claim_block(inode, used);
++		if (mdb_free)
++			vfs_dq_release_reservation_block(inode, mdb_free);
++	} else {
++		/*
++		 * We did fallocate with an offset that is already delayed
++		 * allocated. So on delayed allocated writeback we should
++		 * not update the quota for allocated blocks. But then
++		 * converting an fallocate region to initialized region would
++		 * have caused a metadata allocation. So claim quota for
++		 * that
++		 */
++		if (allocated_meta_blocks)
++			vfs_dq_claim_block(inode, allocated_meta_blocks);
++		vfs_dq_release_reservation_block(inode, mdb_free + used);
++	}
+ 
+ 	/*
+ 	 * If we have done all the pending block allocations and if
+@@ -1334,18 +1350,20 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
+ 			 */
+ 			EXT4_I(inode)->i_state &= ~EXT4_STATE_EXT_MIGRATE;
+ 		}
+-	}
+ 
++		/*
++		 * Update reserved blocks/metadata blocks after successful
++		 * block allocation which had been deferred till now. We don't
++		 * support fallocate for non extent files. So we can update
++		 * reserve space here.
++		 */
++		if ((retval > 0) &&
++			(flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
++			ext4_da_update_reserve_space(inode, retval, 1);
++	}
+ 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+ 		EXT4_I(inode)->i_delalloc_reserved_flag = 0;
+ 
+-	/*
+-	 * Update reserved blocks/metadata blocks after successful
+-	 * block allocation which had been deferred till now.
+-	 */
+-	if ((retval > 0) && (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
+-		ext4_da_update_reserve_space(inode, retval);
