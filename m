@@ -1,41 +1,45 @@
-From: "Zhang, Jingyu" <jingyu.zhang@shawgrp.com>
-Subject: (unknown)
-Date: Sun, 30 May 2010 17:24:27 -0500
-Message-ID: <91917C2B3D999345BF00F6A91990BA100367ADCE@entbtrxmb02.shawgrp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: unlisted-recipients:; (no To-header on input)
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 46/53] ext4: Show journal_checksum option
+Date: Sun, 30 May 2010 22:49:59 -0400
+Message-ID: <1275274206-3900-46-git-send-email-tytso@mit.edu>
+References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.shawgrp.com ([65.82.126.114]:54946 "EHLO shawgrp.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754741Ab0E3XIH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 30 May 2010 19:08:07 -0400
-Content-class: urn:content-classes:message
-Subject: 
+Received: from thunk.org ([69.25.196.29]:44541 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755415Ab0EaCuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:14 -0400
+In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
- 
+From: Jan Kara <jack@suse.cz>
 
- 
+commit 39a4bade8c1826b658316d66ee81c09b0a4d7d42 upstream (as of v2.6.34-git13)
 
-Your mailbox has exceeded the storage limit which is 20 GB as set by your administrator,you are currently running on 20.9 GB,you may not be able to send or receive new mail until you re-validate your mailbox.To re-validate your mailbox please CLICK HERE :  http://flovv.com/spikeflow/flowlist.html?eform=1412&flowMasterId=1412 
+We failed to show journal_checksum option in /proc/mounts. Fix it.
 
- 
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-Thanks System Administrator.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ea9ad5b..03e5cae 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -877,6 +877,8 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	seq_puts(seq, test_opt(sb, BARRIER) ? "1" : "0");
+ 	if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
+ 		seq_puts(seq, ",journal_async_commit");
++	else if (test_opt(sb, JOURNAL_CHECKSUM))
++		seq_puts(seq, ",journal_checksum");
+ 	if (test_opt(sb, NOBH))
+ 		seq_puts(seq, ",nobh");
+ 	if (test_opt(sb, I_VERSION))
+-- 
+1.6.6.1.1.g974db.dirty
 
-****Internet Email Confidentiality Footer****
-Privileged/Confidential Information may be contained in this
-message. If you are not the addressee indicated in this message (or
-responsible for delivery of the message to such person), you may
-not copy or deliver this message to anyone. In such case, you
-should destroy this message and notify the sender by reply email.
-Please advise immediately if you or your employer do not consent to
-Internet email for messages of this kind. Opinions, conclusions and
-other information in this message that do not relate to the
-official business of The Shaw Group Inc. or its subsidiaries shall
-be understood as neither given nor endorsed by it.
-______________________________________ The Shaw Group Inc.
-http://www.shawgrp.com  
