@@ -1,58 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 27/53] ext4: Fix possible lost inode write in no journal mode
-Date: Sun, 30 May 2010 22:49:40 -0400
-Message-ID: <1275274206-3900-27-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 52/53] ext4: Fix compat EXT4_IOC_ADD_GROUP
+Date: Sun, 30 May 2010 22:50:05 -0400
+Message-ID: <1275274206-3900-52-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>,
+	Ben Hutchings <ben@decadent.org.uk>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44647 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44794 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755494Ab0EaCuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:22 -0400
+	id S1755402Ab0EaCuz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:55 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+From: Ben Hutchings <ben@decadent.org.uk>
 
-commit 8b472d739b2ddd8ab7fb278874f696cd95b25a5e upstream (as of v2.6.34-rc6)
+commit 4d92dc0f00a775dc2e1267b0e00befb783902fe7 upstream (as of v2.6.34-git13)
 
-In the no-journal case, ext4_write_inode() will fetch the bh and call
-sync_dirty_buffer() on it.  However, if the bh has already been
-written and the bh reclaimed for some other purpose, AND if the inode
-is the only one in the inode table block in use, then
-ext4_get_inode_loc() will not read the inode table block from disk,
-but as an optimization, fill the block with zero's assuming that its
-caller will copy in the on-disk version of the inode.  This is not
-done by ext4_write_inode(), so the contents of the inode can simply
-get lost.  The fix is to use __ext4_get_inode_loc() with in_mem set to
-0, instead of ext4_get_inode_loc().  Long term the API needs to be
-fixed so it's obvious why latter is not safe.
+struct ext4_new_group_input needs to be converted because u64 has
+only 32-bit alignment on some 32-bit architectures, notably i386.
 
-Addresses-Google-Bug: #2526446
-
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h  |   16 ++++++++++++++++
+ fs/ext4/ioctl.c |   25 +++++++++++++++++++++++--
+ 2 files changed, 39 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4bee50f..f81025f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5260,7 +5260,7 @@ int ext4_write_inode(struct inode *inode, int wait)
- 	} else {
- 		struct ext4_iloc iloc;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9bc1a33..b762a05 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -29,6 +29,9 @@
+ #include <linux/wait.h>
+ #include <linux/blockgroup_lock.h>
+ #include <linux/percpu_counter.h>
++#ifdef __KERNEL__
++#include <linux/compat.h>
++#endif
  
--		err = ext4_get_inode_loc(inode, &iloc);
-+		err = __ext4_get_inode_loc(inode, &iloc, 0);
- 		if (err)
- 			return err;
- 		if (wait)
+ /*
+  * The fourth extended filesystem constants/structures
+@@ -403,6 +406,18 @@ struct ext4_new_group_input {
+ 	__u16 unused;
+ };
+ 
++#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
++struct compat_ext4_new_group_input {
++	u32 group;
++	compat_u64 block_bitmap;
++	compat_u64 inode_bitmap;
++	compat_u64 inode_table;
++	u32 blocks_count;
++	u16 reserved_blocks;
++	u16 unused;
++};
++#endif
++
+ /* The struct ext4_new_group_input in kernel space, with free_blocks_count */
+ struct ext4_new_group_data {
+ 	__u32 group;
+@@ -473,6 +488,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC32_GETRSVSZ		_IOR('f', 5, int)
+ #define EXT4_IOC32_SETRSVSZ		_IOW('f', 6, int)
+ #define EXT4_IOC32_GROUP_EXTEND		_IOW('f', 7, unsigned int)
++#define EXT4_IOC32_GROUP_ADD		_IOW('f', 8, struct compat_ext4_new_group_input)
+ #ifdef CONFIG_JBD2_DEBUG
+ #define EXT4_IOC32_WAIT_FOR_READONLY	_IOR('f', 99, int)
+ #endif
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 66fa0b0..6ddec84 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -373,8 +373,29 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case EXT4_IOC32_SETRSVSZ:
+ 		cmd = EXT4_IOC_SETRSVSZ;
+ 		break;
+-	case EXT4_IOC_GROUP_ADD:
+-		break;
++	case EXT4_IOC32_GROUP_ADD: {
++		struct compat_ext4_new_group_input __user *uinput;
++		struct ext4_new_group_input input;
++		mm_segment_t old_fs;
++		int err;
++
++		uinput = compat_ptr(arg);
++		err = get_user(input.group, &uinput->group);
++		err |= get_user(input.block_bitmap, &uinput->block_bitmap);
++		err |= get_user(input.inode_bitmap, &uinput->inode_bitmap);
++		err |= get_user(input.inode_table, &uinput->inode_table);
++		err |= get_user(input.blocks_count, &uinput->blocks_count);
++		err |= get_user(input.reserved_blocks,
++				&uinput->reserved_blocks);
++		if (err)
++			return -EFAULT;
++		old_fs = get_fs();
++		set_fs(KERNEL_DS);
++		err = ext4_ioctl(file, EXT4_IOC_GROUP_ADD,
++				 (unsigned long) &input);
++		set_fs(old_fs);
++		return err;
++	}
+ 	case EXT4_IOC_MOVE_EXT:
+ 		break;
+ 	default:
 -- 
 1.6.6.1.1.g974db.dirty
 
