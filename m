@@ -1,63 +1,218 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 28/53] ext4: Fix buffer head leaks after calls to ext4_get_inode_loc()
-Date: Sun, 30 May 2010 22:49:41 -0400
-Message-ID: <1275274206-3900-28-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 40/53] ext4: Do not zero out uninitialized extents beyond i_size
+Date: Sun, 30 May 2010 22:49:53 -0400
+Message-ID: <1275274206-3900-40-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44643 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44583 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755491Ab0EaCuV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:21 -0400
+	id S1755469Ab0EaCuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:16 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-commit fd2dd9fbaf9e498ec63eef298921e36556f7214c upstream (as of v2.6.34-rc6)
+commit 21ca087a3891efab4d45488db8febee474d26c68 upstream (as of v2.6.34-git13)
 
-Calls to ext4_get_inode_loc() returns with a reference to a buffer
-head in iloc->bh.  The callers of this function in ext4_write_inode()
-when in no journal mode and in ext4_xattr_fiemap() don't release the
-buffer head after using it.
+The extents code will sometimes zero out blocks and mark them as
+initialized instead of splitting an extent into several smaller ones.
+This optimization however, causes problems if the extent is beyond
+i_size because fsck will complain if there are uninitialized blocks
+after i_size as this can not be distinguished from an inode that has
+an incorrect i_size field.
 
-Addresses-Google-Bug: #2548165
+https://bugzilla.kernel.org/show_bug.cgi?id=15742
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |    1 +
- fs/ext4/inode.c   |    1 +
- 2 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/extents.c |   67 ++++++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 51 insertions(+), 16 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f47a7c1..4378941 100644
+index f4844ed..cd4cccc 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3778,6 +3778,7 @@ static int ext4_xattr_fiemap(struct inode *inode,
- 		physical += offset;
- 		length = EXT4_SB(inode->i_sb)->s_inode_size - offset;
- 		flags |= FIEMAP_EXTENT_DATA_INLINE;
-+		brelse(iloc.bh);
- 	} else { /* external block */
- 		physical = EXT4_I(inode)->i_file_acl << blockbits;
- 		length = inode->i_sb->s_blocksize;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f81025f..45e6961 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5273,6 +5273,7 @@ int ext4_write_inode(struct inode *inode, int wait)
- 				   (unsigned long long)iloc.bh->b_blocknr);
- 			err = -EIO;
- 		}
-+		brelse(iloc.bh);
- 	}
- 	return err;
- }
+@@ -2533,11 +2533,21 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	struct ext4_extent *ex2 = NULL;
+ 	struct ext4_extent *ex3 = NULL;
+ 	struct ext4_extent_header *eh;
+-	ext4_lblk_t ee_block;
++	ext4_lblk_t ee_block, eof_block;
+ 	unsigned int allocated, ee_len, depth;
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
+ 	int ret = 0;
++	int may_zeroout;
++
++	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
++		"block %llu, max_blocks %u\n", inode->i_ino,
++		(unsigned long long)iblock, max_blocks);
++
++	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
++		inode->i_sb->s_blocksize_bits;
++	if (eof_block < iblock + max_blocks)
++		eof_block = iblock + max_blocks;
+ 
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+@@ -2546,16 +2556,23 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	allocated = ee_len - (iblock - ee_block);
+ 	newblock = iblock - ee_block + ext_pblock(ex);
++
+ 	ex2 = ex;
+ 	orig_ex.ee_block = ex->ee_block;
+ 	orig_ex.ee_len   = cpu_to_le16(ee_len);
+ 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+ 
++	/*
++	 * It is safe to convert extent to initialized via explicit
++	 * zeroout only if extent is fully insde i_size or new_size.
++	 */
++	may_zeroout = ee_block + ee_len <= eof_block;
++
+ 	err = ext4_ext_get_access(handle, inode, path + depth);
+ 	if (err)
+ 		goto out;
+ 	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
+-	if (ee_len <= 2*EXT4_EXT_ZERO_LEN) {
++	if (ee_len <= 2*EXT4_EXT_ZERO_LEN && may_zeroout) {
+ 		err =  ext4_ext_zeroout(inode, &orig_ex);
+ 		if (err)
+ 			goto fix_extent_len;
+@@ -2586,7 +2603,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	if (allocated > max_blocks) {
+ 		unsigned int newdepth;
+ 		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
+-		if (allocated <= EXT4_EXT_ZERO_LEN) {
++		if (allocated <= EXT4_EXT_ZERO_LEN && may_zeroout) {
+ 			/*
+ 			 * iblock == ee_block is handled by the zerouout
+ 			 * at the beginning.
+@@ -2662,7 +2679,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3, 0);
+-		if (err == -ENOSPC) {
++		if (err == -ENOSPC && may_zeroout) {
+ 			err =  ext4_ext_zeroout(inode, &orig_ex);
+ 			if (err)
+ 				goto fix_extent_len;
+@@ -2686,8 +2703,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		 * update the extent length after successful insert of the
+ 		 * split extent
+ 		 */
+-		orig_ex.ee_len = cpu_to_le16(ee_len -
+-						ext4_ext_get_actual_len(ex3));
++		ee_len -= ext4_ext_get_actual_len(ex3);
++		orig_ex.ee_len = cpu_to_le16(ee_len);
++		may_zeroout = ee_block + ee_len <= eof_block;
++
+ 		depth = newdepth;
+ 		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode, iblock, path);
+@@ -2711,7 +2730,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		 * otherwise give the extent a chance to merge to left
+ 		 */
+ 		if (le16_to_cpu(orig_ex.ee_len) <= EXT4_EXT_ZERO_LEN &&
+-							iblock != ee_block) {
++			iblock != ee_block && may_zeroout) {
+ 			err =  ext4_ext_zeroout(inode, &orig_ex);
+ 			if (err)
+ 				goto fix_extent_len;
+@@ -2780,7 +2799,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
+-	if (err == -ENOSPC) {
++	if (err == -ENOSPC && may_zeroout) {
+ 		err =  ext4_ext_zeroout(inode, &orig_ex);
+ 		if (err)
+ 			goto fix_extent_len;
+@@ -2840,14 +2859,21 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	struct ext4_extent *ex2 = NULL;
+ 	struct ext4_extent *ex3 = NULL;
+ 	struct ext4_extent_header *eh;
+-	ext4_lblk_t ee_block;
++	ext4_lblk_t ee_block, eof_block;
+ 	unsigned int allocated, ee_len, depth;
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
++	int may_zeroout;
++
++	ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
++		"block %llu, max_blocks %u\n", inode->i_ino,
++		(unsigned long long)iblock, max_blocks);
++
++	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
++		inode->i_sb->s_blocksize_bits;
++	if (eof_block < iblock + max_blocks)
++		eof_block = iblock + max_blocks;
+ 
+-	ext_debug("ext4_split_unwritten_extents: inode %lu,"
+-		  "iblock %llu, max_blocks %u\n", inode->i_ino,
+-		  (unsigned long long)iblock, max_blocks);
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+ 	ex = path[depth].p_ext;
+@@ -2855,12 +2881,19 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 	allocated = ee_len - (iblock - ee_block);
+ 	newblock = iblock - ee_block + ext_pblock(ex);
++
+ 	ex2 = ex;
+ 	orig_ex.ee_block = ex->ee_block;
+ 	orig_ex.ee_len   = cpu_to_le16(ee_len);
+ 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+ 
+ 	/*
++	 * It is safe to convert extent to initialized via explicit
++	 * zeroout only if extent is fully insde i_size or new_size.
++	 */
++	may_zeroout = ee_block + ee_len <= eof_block;
++
++	/*
+  	 * If the uninitialized extent begins at the same logical
+  	 * block where the write begins, and the write completely
+  	 * covers the extent, then we don't need to split it.
+@@ -2894,7 +2927,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
+-		if (err == -ENOSPC) {
++		if (err == -ENOSPC && may_zeroout) {
+ 			err =  ext4_ext_zeroout(inode, &orig_ex);
+ 			if (err)
+ 				goto fix_extent_len;
+@@ -2918,8 +2951,10 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 		 * update the extent length after successful insert of the
+ 		 * split extent
+ 		 */
+-		orig_ex.ee_len = cpu_to_le16(ee_len -
+-						ext4_ext_get_actual_len(ex3));
++		ee_len -= ext4_ext_get_actual_len(ex3);
++		orig_ex.ee_len = cpu_to_le16(ee_len);
++		may_zeroout = ee_block + ee_len <= eof_block;
++
+ 		depth = newdepth;
+ 		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode, iblock, path);
+@@ -2965,7 +3000,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+-	if (err == -ENOSPC) {
++	if (err == -ENOSPC && may_zeroout) {
+ 		err =  ext4_ext_zeroout(inode, &orig_ex);
+ 		if (err)
+ 			goto fix_extent_len;
 -- 
 1.6.6.1.1.g974db.dirty
 
