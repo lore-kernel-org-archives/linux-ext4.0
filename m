@@ -1,306 +1,198 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 10/53] ext4: Calculate metadata requirements more accurately
-Date: Sun, 30 May 2010 22:49:23 -0400
-Message-ID: <1275274206-3900-10-git-send-email-tytso@mit.edu>
-References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: stable@kernel.org
+From: Kay Diederichs <kay.diederichs@uni-konstanz.de>
+Subject: Re: [PATCH 2.6.27.y 1/3] ext4: Use our own write_cache_pages()
+Date: Mon, 31 May 2010 08:35:29 +0200
+Message-ID: <4C0358B1.1050605@uni-konstanz.de>
+References: <4C001888.8020006@jaysonking.com> <4C0018E1.5060007@jaysonking.com> <20100529004913.GL26177@thunk.org> <4C0070D8.8060500@jaysonking.com> <20100530212502.GQ26177@thunk.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms040103020008070002020202"
+To: tytso@mit.edu, "Jayson R. King" <dev@jaysonking.com>,
+	Stable team <stable@kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	"Aneesh Kumar K.V" <a
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44545 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755434Ab0EaCuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:14 -0400
-In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
+Received: from purin.rz.uni-konstanz.de ([134.34.240.45]:23300 "EHLO
+	purin.rz.uni-konstanz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755199Ab0EaGpT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 May 2010 02:45:19 -0400
+In-Reply-To: <20100530212502.GQ26177@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-commit 9d0be50230b333005635967f7ecd4897dbfd181b upstream (as of v2.6.33-rc3)
+This is a cryptographically signed message in MIME format.
 
-In the past, ext4_calc_metadata_amount(), and its sub-functions
-ext4_ext_calc_metadata_amount() and ext4_indirect_calc_metadata_amount()
-badly over-estimated the number of metadata blocks that might be
-required for delayed allocation blocks.  This didn't matter as much
-when functions which managed the reserved metadata blocks were more
-aggressive about dropping reserved metadata blocks as delayed
-allocation blocks were written, but unfortunately they were too
-aggressive.  This was fixed in commit 0637c6f, but as a result the
-over-estimation by ext4_calc_metadata_amount() would lead to reserving
-2-3 times the number of pending delayed allocation blocks as
-potentially required metadata blocks.  So if there are 1 megabytes of
-blocks which have been not yet been allocation, up to 3 megabytes of
-space would get reserved out of the user's quota and from the file
-system free space pool until all of the inode's data blocks have been
-allocated.
+--------------ms040103020008070002020202
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
-This commit addresses this problem by much more accurately estimating
-the number of metadata blocks that will be required.  It will still
-somewhat over-estimate the number of blocks needed, since it must make
-a worst case estimate not knowing which physical blocks will be
-needed, but it is much more accurate than before.
+Am 30.05.2010 23:25, schrieb tytso@mit.edu:
+> On Fri, May 28, 2010 at 08:41:44PM -0500, Jayson R. King wrote:
+>>
+>> The difference is that, 2.6.27's write_cache_pages() in
+>> page-writeback.c still updates wbc->nr_to_write, since the patch
+>> which changed that behavior was dropped from .27-rc2 due to the XFS
+>> regression it causes on mainline. ext4 appears to want the behavior
+>> of write_cache_pages which does not update wbc->nr_to_write. This
+>> write_cache_pages_da() does what ext4 wants, without introducing the
+>> XFS regression. So I believe it is needed.
+>
+> Ah, OK.  So I understand the motivation now, and that's a valid
+> concern.  The question is now: how much the goal of the 2.6.27 stable
+> branch to fix bugs, and how much is it to get the best possible
+> performance, at least with respect to ext4?  It's going to be harder
+> and harder to backport fixes to 2.6.27, and I can speak from
+> experience that it's very easy to introduce regressions while trying
+> to do backports, since sometimes an individual upstream commit can end
+> up introducing a regression, and while we do try to document
+> regression fixes in later commits, sometimes the documentation isn't
+> complete.
+>
+> I just spent the better part of a day trying to fix up a backport
+> series for 2.6.32.  When I was engaged in this particular exercise, it
+> turns out a particular commit to fix a quota deadlock introduced a
+> regression, and the fix to that introduced yet another, and there were
+> three or four patches that all needed to be pulled in at once.  Except
+> initially I missed one, and that caused an i_blocks corruption issue
+> when using fallocate() that took me several hours and a reverse
+> git-bisection to find.  (And this is one set of fixes that will
+> probably never be able to go into 2.6.27.y, since these changes also
+> interlock with probably a dozen or so quota changes that have also
+> gone in over the last couple of kernel releases.)
+>
+> I'll also add that simply testing using dbench, as you said you used
+> in another e-mail message, really isn't good enough to find all
+> possible regressions (it wouldn't have found the i_blocks corruption
+> problem in my initial set of 2.6.32 ext4 backports patches, for
+> example, since dbench only tests a very limited set of fs operations,
+> which doesn't include fallocate, or quotas, or mmap for that matter.)
+>
+> What I would recommend is using the XFSQA (also sometimes known
+> xfstests) test suite to make sure that your changes are sound.  Dbench
+> will sometimes find issues, yes, but in my experience it's not the
+> best tool.  The fsstress program, which is called in a number of
+> different configurations by xfstests, has found all sorts of problems
+> that other thing shaven't been able to find.  Run it on at least a
+> 2-core system, or preferably a 4-core or 8-core system if you have it.
+> I generally run tests using both 4k and 1k blocksize file systems to
+> make sure there aren't problems where the fs blocksize is less than
+> the pagesize.
+>
+> If you are willing to take on the support burden of ext4 for 2.6.27,
+> and do a lot of testing, I at least wouldn't have any objection to
+> these patches.  It's really a question of risk vs. reward for the
+> users of the 2.6.27 stable tree, plus a question of someone willing to
+> take on the support/debugging burden, and how much testing is done to
+> appropriate tilt the risk/reward balance.
+>
+> Regards,
+>
+> 						- Ted
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h         |    2 +
- fs/ext4/ext4_extents.h |    3 +-
- fs/ext4/extents.c      |   49 ++++++++++++++++++++++++-------------
- fs/ext4/inode.c        |   62 +++++++++++++++++++++++++++--------------------
- fs/ext4/super.c        |    1 +
- 5 files changed, 73 insertions(+), 44 deletions(-)
+For what it's worth: my 2.6.27.45 fileservers deadlock reproducibly=20
+after 1 to 2 minutes of heavy NFS load, when using ext4 (never had a=20
+problem with ext3). Jayson King's patch series (posted Feb 27) fixed=20
+this, and I've been running it since May 1 without problems.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4a825c1..23bfbbc 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -693,6 +693,8 @@ struct ext4_inode_info {
- 	unsigned int i_reserved_meta_blocks;
- 	unsigned int i_allocated_meta_blocks;
- 	unsigned short i_delalloc_reserved_flag;
-+	sector_t i_da_metadata_calc_last_lblock;
-+	int i_da_metadata_calc_len;
- 
- 	/* on-disk additional length */
- 	__u16 i_extra_isize;
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 2ca6864..bdb6ce7 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -225,7 +225,8 @@ static inline void ext4_ext_mark_initialized(struct ext4_extent *ext)
- 	ext->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ext));
- }
- 
--extern int ext4_ext_calc_metadata_amount(struct inode *inode, int blocks);
-+extern int ext4_ext_calc_metadata_amount(struct inode *inode,
-+					 sector_t lblocks);
- extern ext4_fsblk_t ext_pblock(struct ext4_extent *ex);
- extern ext4_fsblk_t idx_pblock(struct ext4_extent_idx *);
- extern void ext4_ext_store_pblock(struct ext4_extent *, ext4_fsblk_t);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index b14fb6d..5f03f9f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -296,29 +296,44 @@ static inline int ext4_ext_space_root_idx(struct inode *inode, int check)
-  * to allocate @blocks
-  * Worse case is one block per extent
-  */
--int ext4_ext_calc_metadata_amount(struct inode *inode, int blocks)
-+int ext4_ext_calc_metadata_amount(struct inode *inode, sector_t lblock)
- {
--	int lcap, icap, rcap, leafs, idxs, num;
--	int newextents = blocks;
--
--	rcap = ext4_ext_space_root_idx(inode, 0);
--	lcap = ext4_ext_space_block(inode, 0);
--	icap = ext4_ext_space_block_idx(inode, 0);
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	int idxs, num = 0;
- 
--	/* number of new leaf blocks needed */
--	num = leafs = (newextents + lcap - 1) / lcap;
-+	idxs = ((inode->i_sb->s_blocksize - sizeof(struct ext4_extent_header))
-+		/ sizeof(struct ext4_extent_idx));
- 
- 	/*
--	 * Worse case, we need separate index block(s)
--	 * to link all new leaf blocks
-+	 * If the new delayed allocation block is contiguous with the
-+	 * previous da block, it can share index blocks with the
-+	 * previous block, so we only need to allocate a new index
-+	 * block every idxs leaf blocks.  At ldxs**2 blocks, we need
-+	 * an additional index block, and at ldxs**3 blocks, yet
-+	 * another index blocks.
- 	 */
--	idxs = (leafs + icap - 1) / icap;
--	do {
--		num += idxs;
--		idxs = (idxs + icap - 1) / icap;
--	} while (idxs > rcap);
-+	if (ei->i_da_metadata_calc_len &&
-+	    ei->i_da_metadata_calc_last_lblock+1 == lblock) {
-+		if ((ei->i_da_metadata_calc_len % idxs) == 0)
-+			num++;
-+		if ((ei->i_da_metadata_calc_len % (idxs*idxs)) == 0)
-+			num++;
-+		if ((ei->i_da_metadata_calc_len % (idxs*idxs*idxs)) == 0) {
-+			num++;
-+			ei->i_da_metadata_calc_len = 0;
-+		} else
-+			ei->i_da_metadata_calc_len++;
-+		ei->i_da_metadata_calc_last_lblock++;
-+		return num;
-+	}
- 
--	return num;
-+	/*
-+	 * In the worst case we need a new set of index blocks at
-+	 * every level of the inode's extent tree.
-+	 */
-+	ei->i_da_metadata_calc_len = 1;
-+	ei->i_da_metadata_calc_last_lblock = lblock;
-+	return ext_depth(inode) + 1;
- }
- 
- static int
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 533bb84..2e3f422 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1051,38 +1051,44 @@ qsize_t *ext4_get_reserved_space(struct inode *inode)
- 	return &EXT4_I(inode)->i_reserved_quota;
- }
- #endif
-+
- /*
-  * Calculate the number of metadata blocks need to reserve
-- * to allocate @blocks for non extent file based file
-+ * to allocate a new block at @lblocks for non extent file based file
-  */
--static int ext4_indirect_calc_metadata_amount(struct inode *inode, int blocks)
-+static int ext4_indirect_calc_metadata_amount(struct inode *inode,
-+					      sector_t lblock)
- {
--	int icap = EXT4_ADDR_PER_BLOCK(inode->i_sb);
--	int ind_blks, dind_blks, tind_blks;
--
--	/* number of new indirect blocks needed */
--	ind_blks = (blocks + icap - 1) / icap;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	int dind_mask = EXT4_ADDR_PER_BLOCK(inode->i_sb) - 1;
-+	int blk_bits;
- 
--	dind_blks = (ind_blks + icap - 1) / icap;
-+	if (lblock < EXT4_NDIR_BLOCKS)
-+		return 0;
- 
--	tind_blks = 1;
-+	lblock -= EXT4_NDIR_BLOCKS;
- 
--	return ind_blks + dind_blks + tind_blks;
-+	if (ei->i_da_metadata_calc_len &&
-+	    (lblock & dind_mask) == ei->i_da_metadata_calc_last_lblock) {
-+		ei->i_da_metadata_calc_len++;
-+		return 0;
-+	}
-+	ei->i_da_metadata_calc_last_lblock = lblock & dind_mask;
-+	ei->i_da_metadata_calc_len = 1;
-+	blk_bits = roundup_pow_of_two(lblock + 1);
-+	return (blk_bits / EXT4_ADDR_PER_BLOCK_BITS(inode->i_sb)) + 1;
- }
- 
- /*
-  * Calculate the number of metadata blocks need to reserve
-- * to allocate given number of blocks
-+ * to allocate a block located at @lblock
-  */
--static int ext4_calc_metadata_amount(struct inode *inode, int blocks)
-+static int ext4_calc_metadata_amount(struct inode *inode, sector_t lblock)
- {
--	if (!blocks)
--		return 0;
--
- 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
--		return ext4_ext_calc_metadata_amount(inode, blocks);
-+		return ext4_ext_calc_metadata_amount(inode, lblock);
- 
--	return ext4_indirect_calc_metadata_amount(inode, blocks);
-+	return ext4_indirect_calc_metadata_amount(inode, lblock);
- }
- 
- /*
-@@ -1120,6 +1126,7 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
- 		 */
- 		mdb_free = ei->i_reserved_meta_blocks;
- 		ei->i_reserved_meta_blocks = 0;
-+		ei->i_da_metadata_calc_len = 0;
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
- 	}
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-@@ -1844,12 +1851,15 @@ static int ext4_journalled_write_end(struct file *file,
- 	return ret ? ret : copied;
- }
- 
--static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
-+/*
-+ * Reserve a single block located at lblock
-+ */
-+static int ext4_da_reserve_space(struct inode *inode, sector_t lblock)
- {
- 	int retries = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	unsigned long md_needed, md_reserved, total = 0;
-+	unsigned long md_needed, md_reserved;
- 
- 	/*
- 	 * recalculate the amount of metadata blocks to reserve
-@@ -1859,8 +1869,7 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- repeat:
- 	spin_lock(&ei->i_block_reservation_lock);
- 	md_reserved = ei->i_reserved_meta_blocks;
--	md_needed = ext4_calc_metadata_amount(inode, nrblocks);
--	total = md_needed + nrblocks;
-+	md_needed = ext4_calc_metadata_amount(inode, lblock);
- 	spin_unlock(&ei->i_block_reservation_lock);
- 
- 	/*
-@@ -1868,7 +1877,7 @@ repeat:
- 	 * later. Real quota accounting is done at pages writeout
- 	 * time.
- 	 */
--	if (vfs_dq_reserve_block(inode, total)) {
-+	if (vfs_dq_reserve_block(inode, md_needed + 1)) {
- 		/* 
- 		 * We tend to badly over-estimate the amount of
- 		 * metadata blocks which are needed, so if we have
-@@ -1880,8 +1889,8 @@ repeat:
- 		return -EDQUOT;
- 	}
- 
--	if (ext4_claim_free_blocks(sbi, total)) {
--		vfs_dq_release_reservation_block(inode, total);
-+	if (ext4_claim_free_blocks(sbi, md_needed + 1)) {
-+		vfs_dq_release_reservation_block(inode, md_needed + 1);
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
- 		retry:
- 			if (md_reserved)
-@@ -1892,7 +1901,7 @@ repeat:
- 		return -ENOSPC;
- 	}
- 	spin_lock(&ei->i_block_reservation_lock);
--	ei->i_reserved_data_blocks += nrblocks;
-+	ei->i_reserved_data_blocks++;
- 	ei->i_reserved_meta_blocks += md_needed;
- 	spin_unlock(&ei->i_block_reservation_lock);
- 
-@@ -1933,6 +1942,7 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
- 		 */
- 		to_free += ei->i_reserved_meta_blocks;
- 		ei->i_reserved_meta_blocks = 0;
-+		ei->i_da_metadata_calc_len = 0;
- 	}
- 
- 	/* update fs dirty blocks counter */
-@@ -2546,7 +2556,7 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 		 * XXX: __block_prepare_write() unmaps passed block,
- 		 * is it OK?
- 		 */
--		ret = ext4_da_reserve_space(inode, 1);
-+		ret = ext4_da_reserve_space(inode, iblock);
- 		if (ret)
- 			/* not enough space to reserve */
- 			return ret;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 92943f2..252f30b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -702,6 +702,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei->i_reserved_data_blocks = 0;
- 	ei->i_reserved_meta_blocks = 0;
- 	ei->i_allocated_meta_blocks = 0;
-+	ei->i_da_metadata_calc_len = 0;
- 	ei->i_delalloc_reserved_flag = 0;
- 	spin_lock_init(&(ei->i_block_reservation_lock));
- #ifdef CONFIG_QUOTA
--- 
-1.6.6.1.1.g974db.dirty
+ From my experience, I'd say that the ext4 deadlock needs to be fixed;=20
+otherwise ext4 in 2.6.27 should not be called stable.
 
+best wishes,
+Kay
+
+
+--------------ms040103020008070002020202
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIOlTCC
+BM8wggQ4oAMCAQICDwCUsAABAAJijbUfbuxyZDANBgkqhkiG9w0BAQUFADCBvDELMAkGA1UE
+BhMCREUxEDAOBgNVBAgTB0hhbWJ1cmcxEDAOBgNVBAcTB0hhbWJ1cmcxOjA4BgNVBAoTMVRD
+IFRydXN0Q2VudGVyIGZvciBTZWN1cml0eSBpbiBEYXRhIE5ldHdvcmtzIEdtYkgxIjAgBgNV
+BAsTGVRDIFRydXN0Q2VudGVyIENsYXNzIDEgQ0ExKTAnBgkqhkiG9w0BCQEWGmNlcnRpZmlj
+YXRlQHRydXN0Y2VudGVyLmRlMB4XDTA4MDcxODExMzg1NFoXDTEwMTIzMTIyNTk1OVowfDEL
+MAkGA1UEBhMCREUxHDAaBgNVBAoTE1RDIFRydXN0Q2VudGVyIEdtYkgxJTAjBgNVBAsTHFRD
+IFRydXN0Q2VudGVyIENsYXNzIDEgTDEgQ0ExKDAmBgNVBAMTH1RDIFRydXN0Q2VudGVyIENs
+YXNzIDEgTDEgQ0EgVkkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAJQFP39OlsR+FrO6
+sIC5tx+k3aTjsL4oCLrsrd2Z9nVMzrHxnvShlmxLhgElFThIoRzo7gr1mZbx2/Gu3X51SEBN
+TkP3bV2U0jn9yxGo97oYWA/+cRUKEEsxfvbPX5DL992EupcEptQAVutm32so3dGi+nqe2mFX
+wx8wpDAnCkDRAgMBAAGjggIQMIICDDCBjgYIKwYBBQUHAQEEgYEwfzBMBggrBgEFBQcwAoZA
+aHR0cDovL3d3dy50cnVzdGNlbnRlci5kZS9jZXJ0c2VydmljZXMvY2FjZXJ0cy90Y19jbGFz
+c18xX2NhLmNydDAvBggrBgEFBQcwAYYjaHR0cDovL29jc3AudGNjbGFzczEudHJ1c3RjZW50
+ZXIuZGUwDwYDVR0TAQH/BAUwAwEB/zBKBgNVHSAEQzBBMD8GCSqCFAAsAQEBATAyMDAGCCsG
+AQUFBwIBFiRodHRwOi8vd3d3LnRydXN0Y2VudGVyLmRlL2d1aWRlbGluZXMwDgYDVR0PAQH/
+BAQDAgGGMB0GA1UdDgQWBBROm/Wy+91qa9xKB6/Ju2T/FksmnzCB7AYDVR0fBIHkMIHhMIHe
+oIHboIHYhjtodHRwOi8vY3JsLnRjY2xhc3MxLnRydXN0Y2VudGVyLmRlL2NybC92Mi90Y19j
+bGFzc18xX2NhLmNybIaBmGxkYXA6Ly93d3cudHJ1c3RjZW50ZXIuZGUvQ049VEMlMjBUcnVz
+dENlbnRlciUyMENsYXNzJTIwMSUyMENBLE89VEMlMjBUcnVzdENlbnRlciUyMEFHLG91PXJv
+b3RjZXJ0cyxkYz10cnVzdGNlbnRlcixkYz1kZT9jZXJ0aWZpY2F0ZVJldm9jYXRpb25MaXN0
+P2Jhc2U/MA0GCSqGSIb3DQEBBQUAA4GBAG4ApLln3RLqDiymjdk8SFs8S6acQryrkZB/DJ2Q
+H6n+6LYqEjirh+/Zj8uweQL6p6d9g/dl4S1wpIGCVC33AdcM8qer/Cn0qcQ6bdduesfTcdQv
+5uZlSsyEdKNa44DVtOh3IkTLtFdcDiY4tQFriM7kVC5Xuhyfxo58V1vOM8r+MIIE3TCCBEag
+AwIBAgIPAMYpAAEAAi4JCW7o2XnMMA0GCSqGSIb3DQEBBQUAMHwxCzAJBgNVBAYTAkRFMRww
+GgYDVQQKExNUQyBUcnVzdENlbnRlciBHbWJIMSUwIwYDVQQLExxUQyBUcnVzdENlbnRlciBD
+bGFzcyAxIEwxIENBMSgwJgYDVQQDEx9UQyBUcnVzdENlbnRlciBDbGFzcyAxIEwxIENBIFZJ
+MB4XDTA5MDYxMTA3MzM1NVoXDTEwMDYxMjA3MzM1NVowWTELMAkGA1UEBhMCREUxGzAZBgNV
+BAMTEkRyLiBLYXkgRGllZGVyaWNoczEtMCsGCSqGSIb3DQEJARYea2F5LmRpZWRlcmljaHNA
+dW5pLWtvbnN0YW56LmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq8l+Wnxi
+cqMo9KicOd1kqdaq3pAymwWO/J7ejbVjKChe10XnaITas8R1k9FrF54FsvssThDwmwsDWFjh
+eE0Fyegt+fk2tpXX4YnjqUcrlHkO5YHGQ0ogcrhvaMEKYoKLriH/Nip0o8ljtMesL33gSPeV
+BOpyFwngqYUCt0rZPBytI+wxpN+SAEAO6erxvC4pASYpGTU5KBYPi5o5yf+9damc3flRF6Jl
+tbX+5aBFkra8CiWjH3q44DnnPn/DI+0HZs5goQWPmvzLA5GMy5T+3oXCGOKNFYFp7Y2AFdDf
+2NyqSAo5KSd1D5qhCGWVedTeot435M5lqYWPJDFJj8Ew5QIDAQABo4IB/jCCAfowgZcGCCsG
+AQUFBwEBBIGKMIGHMFEGCCsGAQUFBzAChkVodHRwOi8vd3d3LnRydXN0Y2VudGVyLmRlL2Nl
+cnRzZXJ2aWNlcy9jYWNlcnRzL3RjX2NsYXNzMV9MMV9DQV9WSS5jcnQwMgYIKwYBBQUHMAGG
+Jmh0dHA6Ly9vY3NwLlZJLnRjY2xhc3MxLnRydXN0Y2VudGVyLmRlMB8GA1UdIwQYMBaAFE6b
+9bL73Wpr3EoHr8m7ZP8WSyafMAwGA1UdEwEB/wQCMAAwSgYDVR0gBEMwQTA/BgkqghQALAEB
+AQEwMjAwBggrBgEFBQcCARYkaHR0cDovL3d3dy50cnVzdGNlbnRlci5kZS9ndWlkZWxpbmVz
+MA4GA1UdDwEB/wQEAwIE8DAdBgNVHQ4EFgQUac6i+TKOEt89dgE1SZwkDGCIPEcwVAYDVR0f
+BE0wSzBJoEegRYZDaHR0cDovL2NybC5WSS50Y2NsYXNzMS50cnVzdGNlbnRlci5kZS9jcmwv
+djIvdGNfY2xhc3MxX0wxX0NBX1ZJLmNybDAzBgNVHSUELDAqBggrBgEFBQcDAgYIKwYBBQUH
+AwQGCCsGAQUFBwMHBgorBgEEAYI3FAICMCkGA1UdEQQiMCCBHmtheS5kaWVkZXJpY2hzQHVu
+aS1rb25zdGFuei5kZTANBgkqhkiG9w0BAQUFAAOBgQBxO9sd6s4Lh9a2S70xvqvPkMZE6im+
+kI61FLhAhJqOqY3okJuO6xIdMjgbwblAuoEkHRaDTSna/2clqwH1k/PiHn0TLHwWRCLIW3iO
+WjwkIewI1Jn3xsmxrvc3TLec69BcKHDwcsuE2rSv2GzM9qH0Vx7EuVehRrCa1oZNgQsEZzCC
+BN0wggRGoAMCAQICDwDGKQABAAIuCQlu6Nl5zDANBgkqhkiG9w0BAQUFADB8MQswCQYDVQQG
+EwJERTEcMBoGA1UEChMTVEMgVHJ1c3RDZW50ZXIgR21iSDElMCMGA1UECxMcVEMgVHJ1c3RD
+ZW50ZXIgQ2xhc3MgMSBMMSBDQTEoMCYGA1UEAxMfVEMgVHJ1c3RDZW50ZXIgQ2xhc3MgMSBM
+MSBDQSBWSTAeFw0wOTA2MTEwNzMzNTVaFw0xMDA2MTIwNzMzNTVaMFkxCzAJBgNVBAYTAkRF
+MRswGQYDVQQDExJEci4gS2F5IERpZWRlcmljaHMxLTArBgkqhkiG9w0BCQEWHmtheS5kaWVk
+ZXJpY2hzQHVuaS1rb25zdGFuei5kZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
+AKvJflp8YnKjKPSonDndZKnWqt6QMpsFjvye3o21YygoXtdF52iE2rPEdZPRaxeeBbL7LE4Q
+8JsLA1hY4XhNBcnoLfn5NraV1+GJ46lHK5R5DuWBxkNKIHK4b2jBCmKCi64h/zYqdKPJY7TH
+rC994Ej3lQTqchcJ4KmFArdK2TwcrSPsMaTfkgBADunq8bwuKQEmKRk1OSgWD4uaOcn/vXWp
+nN35UReiZbW1/uWgRZK2vAolox96uOA55z5/wyPtB2bOYKEFj5r8ywORjMuU/t6FwhjijRWB
+ae2NgBXQ39jcqkgKOSkndQ+aoQhllXnU3qLeN+TOZamFjyQxSY/BMOUCAwEAAaOCAf4wggH6
+MIGXBggrBgEFBQcBAQSBijCBhzBRBggrBgEFBQcwAoZFaHR0cDovL3d3dy50cnVzdGNlbnRl
+ci5kZS9jZXJ0c2VydmljZXMvY2FjZXJ0cy90Y19jbGFzczFfTDFfQ0FfVkkuY3J0MDIGCCsG
+AQUFBzABhiZodHRwOi8vb2NzcC5WSS50Y2NsYXNzMS50cnVzdGNlbnRlci5kZTAfBgNVHSME
+GDAWgBROm/Wy+91qa9xKB6/Ju2T/FksmnzAMBgNVHRMBAf8EAjAAMEoGA1UdIARDMEEwPwYJ
+KoIUACwBAQEBMDIwMAYIKwYBBQUHAgEWJGh0dHA6Ly93d3cudHJ1c3RjZW50ZXIuZGUvZ3Vp
+ZGVsaW5lczAOBgNVHQ8BAf8EBAMCBPAwHQYDVR0OBBYEFGnOovkyjhLfPXYBNUmcJAxgiDxH
+MFQGA1UdHwRNMEswSaBHoEWGQ2h0dHA6Ly9jcmwuVkkudGNjbGFzczEudHJ1c3RjZW50ZXIu
+ZGUvY3JsL3YyL3RjX2NsYXNzMV9MMV9DQV9WSS5jcmwwMwYDVR0lBCwwKgYIKwYBBQUHAwIG
+CCsGAQUFBwMEBggrBgEFBQcDBwYKKwYBBAGCNxQCAjApBgNVHREEIjAggR5rYXkuZGllZGVy
+aWNoc0B1bmkta29uc3RhbnouZGUwDQYJKoZIhvcNAQEFBQADgYEAcTvbHerOC4fWtku9Mb6r
+z5DGROopvpCOtRS4QISajqmN6JCbjusSHTI4G8G5QLqBJB0Wg00p2v9nJasB9ZPz4h59Eyx8
+FkQiyFt4jlo8JCHsCNSZ98bJsa73N0y3nOvQXChw8HLLhNq0r9hszPah9FcexLlXoUawmtaG
+TYELBGcxggPBMIIDvQIBATCBjzB8MQswCQYDVQQGEwJERTEcMBoGA1UEChMTVEMgVHJ1c3RD
+ZW50ZXIgR21iSDElMCMGA1UECxMcVEMgVHJ1c3RDZW50ZXIgQ2xhc3MgMSBMMSBDQTEoMCYG
+A1UEAxMfVEMgVHJ1c3RDZW50ZXIgQ2xhc3MgMSBMMSBDQSBWSQIPAMYpAAEAAi4JCW7o2XnM
+MAkGBSsOAwIaBQCgggIGMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkF
+MQ8XDTEwMDUzMTA2MzUyOVowIwYJKoZIhvcNAQkEMRYEFKXaSbpCMmI2WvAh2mB6CJgse9MW
+MF8GCSqGSIb3DQEJDzFSMFAwCwYJYIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMC
+AgIAgDANBggqhkiG9w0DAgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDCBoAYJKwYBBAGC
+NxAEMYGSMIGPMHwxCzAJBgNVBAYTAkRFMRwwGgYDVQQKExNUQyBUcnVzdENlbnRlciBHbWJI
+MSUwIwYDVQQLExxUQyBUcnVzdENlbnRlciBDbGFzcyAxIEwxIENBMSgwJgYDVQQDEx9UQyBU
+cnVzdENlbnRlciBDbGFzcyAxIEwxIENBIFZJAg8AxikAAQACLgkJbujZecwwgaIGCyqGSIb3
+DQEJEAILMYGSoIGPMHwxCzAJBgNVBAYTAkRFMRwwGgYDVQQKExNUQyBUcnVzdENlbnRlciBH
+bWJIMSUwIwYDVQQLExxUQyBUcnVzdENlbnRlciBDbGFzcyAxIEwxIENBMSgwJgYDVQQDEx9U
+QyBUcnVzdENlbnRlciBDbGFzcyAxIEwxIENBIFZJAg8AxikAAQACLgkJbujZecwwDQYJKoZI
+hvcNAQEBBQAEggEAFT8SsilS6ROAqq5+UNZN6B8mpHPIh+tsn+rwf+XWn2sipM4FU4+HxaT3
+ehJtCbLN2oLFh5bPPDcXpxk28CWBBj+SZ4eErwiT/fcNRnWg6XZtIYYR4T4W/Eh0xeNnRxwZ
+qdT+bl61DWzZ2zKUJ8JS0fiPZHaDtCsKsqpuUF58CNMVUeEX+7zRIFoMijr8CdRGoa+gG6II
+ogQUHkuyAzCxngBbUYTH4Had5jnPB7oFsIlzuf6G4lgCTGxgrGSdmoHHEkKP5pLpFGJsVSmo
+GG9H7pwEPNbin29UiVfCReOUbRepw2HXC3m1XRcd8HRNAn4Ft76VPGOf97zP0p2Kn2H3+AAA
+AAAAAA==
+--------------ms040103020008070002020202--
