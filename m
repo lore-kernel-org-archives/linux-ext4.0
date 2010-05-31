@@ -1,51 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 32/53] ext4: Remove unnecessary call to ext4_get_group_desc() in mballoc
-Date: Sun, 30 May 2010 22:49:45 -0400
-Message-ID: <1275274206-3900-32-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 29/53] ext4: Issue the discard operation *before* releasing the blocks to be reused
+Date: Sun, 30 May 2010 22:49:42 -0400
+Message-ID: <1275274206-3900-29-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jing Zhang <zj.barak@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44665 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44702 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755511Ab0EaCuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 May 2010 22:50:22 -0400
+	id S1755520Ab0EaCu1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 May 2010 22:50:27 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jing Zhang <zj.barak@gmail.com>
+commit b90f687018e6d6c77d981b09203780f7001407e5 upstream (as of v2.6.34-rc6)
 
-commit 62e823a2cba18509ee826d775270e8ef9071b5bc upstream (as of v2.6.34-git13)
+Otherwise, we can end up having data corruption because the blocks
+could get reused and then discarded!
 
-Signed-off-by: Jing Zhang <zj.barak@gmail.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=15579
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c |   24 +++++++++++-------------
+ 1 files changed, 11 insertions(+), 13 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 65c2b79..438324a 100644
+index 8216789..65c2b79 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2027,7 +2027,6 @@ repeat:
+@@ -2537,6 +2537,17 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 		mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
+ 			 entry->count, entry->group, entry);
  
- 		for (i = 0; i < ngroups; group++, i++) {
- 			struct ext4_group_info *grp;
--			struct ext4_group_desc *desc;
- 
- 			if (group == ngroups)
- 				group = 0;
-@@ -2050,7 +2049,6 @@ repeat:
- 			}
- 
- 			ac->ac_groups_scanned++;
--			desc = ext4_get_group_desc(sb, group, NULL);
- 			if (cr == 0)
- 				ext4_mb_simple_scan_group(ac, &e4b);
- 			else if (cr == 1 &&
--- 
-1.6.6.1.1.g974db.dirty
-
++		if (test_opt(sb, DISCARD)) {
++			ext4_fsblk_t discard_block;
++
++			discard_block = entry->start_blk +
++				ext4_group_first_block_no(sb, entry->group);
++			trace_ext4_discard_blocks(sb,
++					(unsigned long long)discard_block,
++					entry->count);
++			sb_issue_discard(sb, discard_block, entry->count);
++		}
++
+ 		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
+ 		/* we expect to find existing buddy because it's pinned */
+ 		BUG_ON(err != 0);
+@@ -2558,19 +2569,6 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 			page_cache_release(e4b.bd_bitmap_page);
+ 		}
+ 		ext4_unlock_group(sb, entry->group);
+-		if (test_opt(sb, DISCARD)) {
+-			ext4_fsblk_t discard_block;
+-			struct ext4_super_block *es = EXT4_SB(sb)->s_es;
