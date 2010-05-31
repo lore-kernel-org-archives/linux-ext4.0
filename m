@@ -1,112 +1,163 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.32.y 42/53] ext4: init statistics after journal recovery
-Date: Sun, 30 May 2010 22:49:55 -0400
-Message-ID: <1275274206-3900-42-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.32.y 04/53] ext4, jbd2: Add barriers for file systems with exernal journals
+Date: Sun, 30 May 2010 22:49:17 -0400
+Message-ID: <1275274206-3900-4-git-send-email-tytso@mit.edu>
 References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44548 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44562 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755421Ab0EaCuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755444Ab0EaCuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 30 May 2010 22:50:14 -0400
 In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+commit cc3e1bea5d87635c519da657303690f5538bb4eb upstream (as of v2.6.33-rc3)
 
-commit 84061e07c5fbbbf9dc8aef8fb750fc3a2dfc31f3 upstream (as of v2.6.34-git13)
+This is a bit complicated because we are trying to optimize when we
+send barriers to the fs data disk.  We could just throw in an extra
+barrier to the data disk whenever we send a barrier to the journal
+disk, but that's not always strictly necessary.
 
-Currently block/inode/dir counters initialized before journal was
-recovered. In fact after journal recovery this info will probably
-change. And freeblocks it critical for correct delalloc mode
-accounting.
+We only need to send a barrier during a commit when there are data
+blocks which are must be written out due to an inode written in
+ordered mode, or if fsync() depends on the commit to force data blocks
+to disk.  Finally, before we drop transactions from the beginning of
+the journal during a checkpoint operation, we need to guarantee that
+any blocks that were flushed out to the data disk are firmly on the
+rust platter before we drop the transaction from the journal.
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15768
+Thanks to Oleg Drokin for pointing out this flaw in ext3/ext4.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Acked-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |   41 ++++++++++++++++++-----------------------
- 1 files changed, 18 insertions(+), 23 deletions(-)
+ fs/ext4/fsync.c      |   16 ++++++++++++++--
+ fs/jbd2/checkpoint.c |   15 +++++++++++++++
+ fs/jbd2/commit.c     |   19 +++++++++++--------
+ include/linux/jbd2.h |    1 +
+ 4 files changed, 41 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d85549c..bf3ca2c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2695,24 +2695,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index d6049e4..43336b5 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -88,9 +88,21 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+ 		return ext4_force_commit(inode->i_sb);
  
--	err = percpu_counter_init(&sbi->s_freeblocks_counter,
--			ext4_count_free_blocks(sb));
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_freeinodes_counter,
--				ext4_count_free_inodes(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirs_counter,
--				ext4_count_dirs(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
--	}
--	if (err) {
--		ext4_msg(sb, KERN_ERR, "insufficient memory");
--		goto failed_mount3;
--	}
--
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_max_writeback_mb_bump = 128;
+ 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
+-	if (jbd2_log_start_commit(journal, commit_tid))
++	if (jbd2_log_start_commit(journal, commit_tid)) {
++		/*
++		 * When the journal is on a different device than the
++		 * fs data disk, we need to issue the barrier in
++		 * writeback mode.  (In ordered mode, the jbd2 layer
++		 * will take care of issuing the barrier.  In
++		 * data=journal, all of the data blocks are written to
++		 * the journal device.)
++		 */
++		if (ext4_should_writeback_data(inode) &&
++		    (journal->j_fs_dev != journal->j_dev) &&
++		    (journal->j_flags & JBD2_BARRIER))
++			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ 		jbd2_log_wait_commit(journal, commit_tid);
+-	else if (journal->j_flags & JBD2_BARRIER)
++	} else if (journal->j_flags & JBD2_BARRIER)
+ 		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ 	return ret;
+ }
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index ca0f5eb..8868493 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -22,6 +22,7 @@
+ #include <linux/jbd2.h>
+ #include <linux/errno.h>
+ #include <linux/slab.h>
++#include <linux/blkdev.h>
+ #include <trace/events/jbd2.h>
  
-@@ -2832,7 +2814,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
- 
- no_journal:
--
-+	err = percpu_counter_init(&sbi->s_freeblocks_counter,
-+				  ext4_count_free_blocks(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_freeinodes_counter,
-+					  ext4_count_free_inodes(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_dirs_counter,
-+					  ext4_count_dirs(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
-+	if (err) {
-+		ext4_msg(sb, KERN_ERR, "insufficient memory");
-+		goto failed_mount_wq;
-+	}
- 	if (test_opt(sb, NOBH)) {
- 		if (!(test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)) {
- 			ext4_msg(sb, KERN_WARNING, "Ignoring nobh option - "
-@@ -2965,6 +2960,10 @@ failed_mount_wq:
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
+ /*
+@@ -515,6 +516,20 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	journal->j_tail_sequence = first_tid;
+ 	journal->j_tail = blocknr;
+ 	spin_unlock(&journal->j_state_lock);
++
++	/*
++	 * If there is an external journal, we need to make sure that
++	 * any data blocks that were recently written out --- perhaps
++	 * by jbd2_log_do_checkpoint() --- are flushed out before we
++	 * drop the transactions from the external journal.  It's
++	 * unlikely this will be necessary, especially with a
++	 * appropriately sized journal, but we need this to guarantee
++	 * correctness.  Fortunately jbd2_cleanup_journal_tail()
++	 * doesn't get called all that often.
++	 */
++	if ((journal->j_fs_dev != journal->j_dev) &&
++	    (journal->j_flags & JBD2_BARRIER))
++		blkdev_issue_flush(journal->j_fs_dev, NULL);
+ 	if (!(journal->j_flags & JBD2_ABORT))
+ 		jbd2_journal_update_superblock(journal, 1);
+ 	return 0;
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 8896c1d..c126363 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -259,6 +259,7 @@ static int journal_submit_data_buffers(journal_t *journal,
+ 			ret = err;
+ 		spin_lock(&journal->j_list_lock);
+ 		J_ASSERT(jinode->i_transaction == commit_transaction);
++		commit_transaction->t_flushed_data_blocks = 1;
+ 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
+ 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
  	}
-+	percpu_counter_destroy(&sbi->s_freeblocks_counter);
-+	percpu_counter_destroy(&sbi->s_freeinodes_counter);
-+	percpu_counter_destroy(&sbi->s_dirs_counter);
-+	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount3:
- 	if (sbi->s_flex_groups) {
- 		if (is_vmalloc_addr(sbi->s_flex_groups))
-@@ -2972,10 +2971,6 @@ failed_mount3:
- 		else
- 			kfree(sbi->s_flex_groups);
+@@ -708,8 +709,17 @@ start_journal_io:
+ 		}
  	}
--	percpu_counter_destroy(&sbi->s_freeblocks_counter);
--	percpu_counter_destroy(&sbi->s_freeinodes_counter);
--	percpu_counter_destroy(&sbi->s_dirs_counter);
--	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
+ 
+-	/* Done it all: now write the commit record asynchronously. */
++	/* 
++	 * If the journal is not located on the file system device,
++	 * then we must flush the file system device before we issue
++	 * the commit record
++	 */
++	if (commit_transaction->t_flushed_data_blocks &&
++	    (journal->j_fs_dev != journal->j_dev) &&
++	    (journal->j_flags & JBD2_BARRIER))
++		blkdev_issue_flush(journal->j_fs_dev, NULL);
+ 
++	/* Done it all: now write the commit record asynchronously. */
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal,
+ 				      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+@@ -720,13 +730,6 @@ start_journal_io:
+ 			blkdev_issue_flush(journal->j_dev, NULL);
+ 	}
+ 
+-	/*
+-	 * This is the right place to wait for data buffers both for ASYNC
+-	 * and !ASYNC commit. If commit is ASYNC, we need to wait only after
+-	 * the commit block went to disk (which happens above). If commit is
+-	 * SYNC, we need to wait for data buffers before we start writing
+-	 * commit block, which happens below in such setting.
+-	 */
+ 	err = journal_finish_inode_data_buffers(journal, commit_transaction);
+ 	if (err) {
+ 		printk(KERN_WARNING
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f1011f7..638ce45 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -653,6 +653,7 @@ struct transaction_s
+ 	 * waiting for it to finish.
+ 	 */
+ 	unsigned int t_synchronous_commit:1;
++	unsigned int t_flushed_data_blocks:1;
+ 
+ 	/*
+ 	 * For use by the filesystem to store fs-specific data
 -- 
 1.6.6.1.1.g974db.dirty
 
