@@ -1,78 +1,102 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 04/40] ext4: Fix fencepost error in chosing choosing group vs file preallocation.
-Date: Tue,  1 Jun 2010 08:02:51 -0400
-Message-ID: <1275393807-14369-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 37/40] ext4: restart ext4_ext_remove_space() after transaction restart
+Date: Tue,  1 Jun 2010 08:03:24 -0400
+Message-ID: <1275393807-14369-37-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Tao Ma <tao.ma@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47277 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47271 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756069Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756061Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 08:03:33 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <tao.ma@oracle.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-commit cc483f102c3f703e853c96f95a654f0106fb2603 upstream (as of v2.6.33-git11)
+commit 0617b83fa239db9743a18ce6cc0e556f4d0fd567 upstream (as of v2.6.34-git13)
 
-The ext4 multiblock allocator decides whether to use group or file
-preallocation based on the file size.  When the file size reaches
-s_mb_stream_request (default is 16 blocks), it changes to use a
-file-specific preallocation. This is cool, but it has a tiny problem.
+If i_data_sem was internally dropped due to transaction restart, it is
+necessary to restart path look-up because extents tree was possibly
+modified by ext4_get_block().
 
-See a simple script:
-mkfs.ext4 -b 1024 /dev/sda8 1000000
-mount -t ext4 -o nodelalloc /dev/sda8 /mnt/ext4
-for((i=0;i<5;i++))
-do
-cat /mnt/4096>>/mnt/ext4/a	#4096 is a file with 4096 characters.
-cat /mnt/4096>>/mnt/ext4/b
-done
-debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
+https://bugzilla.kernel.org/show_bug.cgi?id=15827
 
-And you get
-BLOCKS:
-(0-14):8705-8719, (15):2356, (16-19):8465-8468
-
-So there are 3 extents, a bit strange for the lonely 15th logical
-block.  As we write to the 16 blocks, we choose file preallocation in
-ext4_mb_group_or_file, but in ext4_mb_normalize_request, we meet with
-the 16*1024 range, so no preallocation will be carried. file b then
-reserves the space after '2356', so when when write 16, we start from
-another part.
-
-This patch just change the check in ext4_mb_group_or_file, so
-that for the lonely 15 we will still use group preallocation.
-After the patch, we will get:
-debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
-BLOCKS:
-(0-15):8705-8720, (16-19):8465-8468
-
-Looks more sane. Thanks.
-
-Signed-off-by: Tao Ma <tao.ma@oracle.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/extents.c |   16 +++++++++-------
+ 1 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d34afad..301b173 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3938,7 +3938,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 799416f..1fca430 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -107,11 +107,8 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
+ 	if (err <= 0)
+ 		return err;
+ 	err = ext4_truncate_restart_trans(handle, inode, needed);
+-	/*
+-	 * We have dropped i_data_sem so someone might have cached again
+-	 * an extent we are going to truncate.
+-	 */
+-	ext4_ext_invalidate_cache(inode);
++	if (err == 0)
++		err = -EAGAIN;
  
- 	/* don't use group allocation for large files */
- 	size = max(size, isize);
--	if (size >= sbi->s_mb_stream_request) {
-+	if (size > sbi->s_mb_stream_request) {
- 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
- 		return;
+ 	return err;
+ }
+@@ -2257,7 +2254,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ 	int depth = ext_depth(inode);
+ 	struct ext4_ext_path *path;
+ 	handle_t *handle;
+-	int i = 0, err = 0;
++	int i, err;
+ 
+ 	ext_debug("truncate since %u\n", start);
+ 
+@@ -2266,23 +2263,26 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
++again:
+ 	ext4_ext_invalidate_cache(inode);
+ 
+ 	/*
+ 	 * We start scanning from right side, freeing all the blocks
+ 	 * after i_size and walking into the tree depth-wise.
+ 	 */
++	depth = ext_depth(inode);
+ 	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+ 	if (path == NULL) {
+ 		ext4_journal_stop(handle);
+ 		return -ENOMEM;
  	}
++	path[0].p_depth = depth;
+ 	path[0].p_hdr = ext_inode_hdr(inode);
+ 	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+ 		err = -EIO;
+ 		goto out;
+ 	}
+-	path[0].p_depth = depth;
++	i = err = 0;
+ 
+ 	while (i >= 0 && err == 0) {
+ 		if (i == depth) {
+@@ -2376,6 +2376,8 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ out:
+ 	ext4_ext_drop_refs(path);
+ 	kfree(path);
++	if (err == -EAGAIN)
++		goto again;
+ 	ext4_journal_stop(handle);
+ 
+ 	return err;
 -- 
 1.6.6.1.1.g974db.dirty
 
