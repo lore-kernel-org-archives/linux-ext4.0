@@ -1,65 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 23/40] ext4: check s_log_groups_per_flex in online resize code
-Date: Tue,  1 Jun 2010 08:03:10 -0400
-Message-ID: <1275393807-14369-23-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 14/40] ext4: Fix possible lost inode write in no journal mode
+Date: Tue,  1 Jun 2010 08:03:01 -0400
+Message-ID: <1275393807-14369-14-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
+	Curt Wohlgemuth <curtw@google.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47332 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47395 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756102Ab0FAMDi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:38 -0400
+	id S1756126Ab0FAMDt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:03:49 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Curt Wohlgemuth <curtw@google.com>
 
-commit 42007efd569f1cf3bfb9a61da60ef6c2179508ca upstream (as of v2.6.34-git13)
+commit 8b472d739b2ddd8ab7fb278874f696cd95b25a5e upstream (as of v2.6.34-rc6)
 
-If groups_per_flex < 2, sbi->s_flex_groups[] doesn't get filled out,
-and every other access to this first tests s_log_groups_per_flex;
-same thing needs to happen in resize or we'll wander off into
-a null pointer when doing an online resize of the file system.
+In the no-journal case, ext4_write_inode() will fetch the bh and call
+sync_dirty_buffer() on it.  However, if the bh has already been
+written and the bh reclaimed for some other purpose, AND if the inode
+is the only one in the inode table block in use, then
+ext4_get_inode_loc() will not read the inode table block from disk,
+but as an optimization, fill the block with zero's assuming that its
+caller will copy in the on-disk version of the inode.  This is not
+done by ext4_write_inode(), so the contents of the inode can simply
+get lost.  The fix is to use __ext4_get_inode_loc() with in_mem set to
+0, instead of ext4_get_inode_loc().  Long term the API needs to be
+fixed so it's obvious why latter is not safe.
 
-Thanks to Christoph Biedl, who came up with the trivial testcase:
+Addresses-Google-Bug: #2526446
 
-# truncate --size 128M fsfile
-# mkfs.ext3 -F fsfile
-# tune2fs -O extents,uninit_bg,dir_index,flex_bg,huge_file,dir_nlink,extra_isize fsfile
-# e2fsck -yDf -C0 fsfile
-# truncate --size 132M fsfile
-# losetup /dev/loop0 fsfile
-# mount /dev/loop0 mnt
-# resize2fs -p /dev/loop0
-
-	https://bugzilla.kernel.org/show_bug.cgi?id=13549
-
-Reported-by: Alessandro Polverini <alex@nibbles.it>
-Test-case-by: Christoph Biedl  <bugzilla.kernel.bpeb@manchmal.in-ulm.de>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/resize.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/ext4/inode.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 3b2c554..433ea27 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -930,7 +930,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	percpu_counter_add(&sbi->s_freeinodes_counter,
- 			   EXT4_INODES_PER_GROUP(sb));
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ff04c74..28152f8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5204,7 +5204,7 @@ int ext4_write_inode(struct inode *inode, int wait)
+ 	} else {
+ 		struct ext4_iloc iloc;
  
--	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
-+	    sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group;
- 		flex_group = ext4_flex_group(sbi, input->group);
- 		atomic_add(input->free_blocks_count,
+-		err = ext4_get_inode_loc(inode, &iloc);
++		err = __ext4_get_inode_loc(inode, &iloc, 0);
+ 		if (err)
+ 			return err;
+ 		if (wait)
 -- 
 1.6.6.1.1.g974db.dirty
 
