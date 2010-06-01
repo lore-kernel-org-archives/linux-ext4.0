@@ -1,65 +1,81 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 23/28] ext4: Avoid crashing on NULL ptr dereference on a filesystem error
-Date: Tue,  1 Jun 2010 12:13:10 -0400
-Message-ID: <1275408795-17487-23-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 02/28] ext4: fix memory leaks in error path handling of ext4_ext_zeroout()
+Date: Tue,  1 Jun 2010 12:12:49 -0400
+Message-ID: <1275408795-17487-2-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+	Jing Zhang <zj.barak@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56868 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56871 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756804Ab0FAQNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756827Ab0FAQNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 12:13:21 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-commit f70f362b4a6fe47c239dbfb3efc0cc2c10e4f09c upstream (as of v2.6.34-git13)
+From: Jing Zhang <zj.barak@gmail.com>
 
-If the EOFBLOCK_FL flag is set when it should not be and the inode is
-zero length, then eh_entries is zero, and ex is NULL, so dereferencing
-ex to print ex->ee_block causes a kernel OOPS in
-ext4_ext_map_blocks().
+commit b720303df7352d4a7a1f61e467e0a124913c0d41 upstream (as of v2.6.34-git13)
 
-On top of that, the error message which is printed isn't very helpful.
-So we fix this by printing something more explanatory which doesn't
-involve trying to print ex->ee_block.
+When EIO occurs after bio is submitted, there is no memory free
+operation for bio, which results in memory leakage. And there is also
+no check against bio_alloc() for bio.
 
-Addresses-Google-Bug: #2655740
-
+Acked-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Signed-off-by: Jing Zhang <zj.barak@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c |   15 ++++++++-------
+ 1 files changed, 8 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a1d3f7c..8e8a7a4 100644
+index 236b834..228eeaf 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3381,8 +3381,9 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	 */
- 	if (unlikely(path[depth].p_ext == NULL && depth != 0)) {
- 		EXT4_ERROR_INODE(inode, "bad extent address "
--				 "iblock: %d, depth: %d pblock %lld",
--				 iblock, depth, path[depth].p_block);
-+				 "iblock: %lu, depth: %d pblock %lld",
-+				 (unsigned long) iblock, depth,
-+				 path[depth].p_block);
- 		err = -EIO;
- 		goto out2;
- 	}
-@@ -3512,8 +3513,8 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	if (unlikely(ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
- 		if (unlikely(!eh->eh_entries)) {
- 			EXT4_ERROR_INODE(inode,
--					 "eh->eh_entries == 0 ee_block %d",
--					 ex->ee_block);
-+					 "eh->eh_entries == 0 and "
-+					 "EOFBLOCKS_FL set");
- 			err = -EIO;
- 			goto out2;
+@@ -2544,7 +2544,7 @@ static void bi_complete(struct bio *bio, int error)
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
+ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ {
+-	int ret = -EIO;
++	int ret;
+ 	struct bio *bio;
+ 	int blkbits, blocksize;
+ 	sector_t ee_pblock;
+@@ -2568,6 +2568,9 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 			len = ee_len;
+ 
+ 		bio = bio_alloc(GFP_NOIO, len);
++		if (!bio)
++			return -ENOMEM;
++
+ 		bio->bi_sector = ee_pblock;
+ 		bio->bi_bdev   = inode->i_sb->s_bdev;
+ 
+@@ -2595,17 +2598,15 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ 		submit_bio(WRITE, bio);
+ 		wait_for_completion(&event);
+ 
+-		if (test_bit(BIO_UPTODATE, &bio->bi_flags))
+-			ret = 0;
+-		else {
+-			ret = -EIO;
+-			break;
++		if (!test_bit(BIO_UPTODATE, &bio->bi_flags)) {
++			bio_put(bio);
++			return -EIO;
  		}
+ 		bio_put(bio);
+ 		ee_len    -= done;
+ 		ee_pblock += done  << (blkbits - 9);
+ 	}
+-	return ret;
++	return 0;
+ }
+ 
+ #define EXT4_EXT_ZERO_LEN 7
 -- 
 1.6.6.1.1.g974db.dirty
 
