@@ -1,62 +1,102 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 05/28] ext4: allow defrag (EXT4_IOC_MOVE_EXT) in 32bit compat mode
-Date: Tue,  1 Jun 2010 12:12:52 -0400
-Message-ID: <1275408795-17487-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 25/28] ext4: restart ext4_ext_remove_space() after transaction restart
+Date: Tue,  1 Jun 2010 12:13:12 -0400
+Message-ID: <1275408795-17487-25-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Christian Borntraeger <borntraeger@de.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56946 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56877 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757163Ab0FAQNY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 12:13:24 -0400
+	id S1756959Ab0FAQNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 12:13:22 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Christian Borntraeger <borntraeger@de.ibm.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-commit b684b2ee9409f2890a8b3aea98525bbe5f84e276 upstream (as of v2.6.34-git13)
+commit 0617b83fa239db9743a18ce6cc0e556f4d0fd567 upstream (as of v2.6.34-git13)
 
-I have an x86_64 kernel with i386 userspace. e4defrag fails on the
-EXT4_IOC_MOVE_EXT ioctl because it is not wired up for the compat
-case. It seems that struct move_extent is compat save, only types
-with fixed widths are used:
-{
-        __u32 reserved;         /* should be zero */
-        __u32 donor_fd;         /* donor file descriptor */
-        __u64 orig_start;       /* logical start offset in block for orig */
-        __u64 donor_start;      /* logical start offset in block for donor */
-        __u64 len;              /* block length to be moved */
-        __u64 moved_len;        /* moved block length */
-};
+If i_data_sem was internally dropped due to transaction restart, it is
+necessary to restart path look-up because extents tree was possibly
+modified by ext4_get_block().
 
-Lets just wire up EXT4_IOC_MOVE_EXT for the compat case.
+https://bugzilla.kernel.org/show_bug.cgi?id=15827
 
-Signed-off-by: Christian Borntraeger <borntraeger@de.ibm.com>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-CC: Akira Fujita <a-fujita@rs.jp.nec.com>
+Acked-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ioctl.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/extents.c |   16 +++++++++-------
+ 1 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 016d024..66fa0b0 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -375,6 +375,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 		break;
- 	case EXT4_IOC_GROUP_ADD:
- 		break;
-+	case EXT4_IOC_MOVE_EXT:
-+		break;
- 	default:
- 		return -ENOIOCTLCMD;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5e663a7..bb03109 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -107,11 +107,8 @@ static int ext4_ext_truncate_extend_restart(handle_t *handle,
+ 	if (err <= 0)
+ 		return err;
+ 	err = ext4_truncate_restart_trans(handle, inode, needed);
+-	/*
+-	 * We have dropped i_data_sem so someone might have cached again
+-	 * an extent we are going to truncate.
+-	 */
+-	ext4_ext_invalidate_cache(inode);
++	if (err == 0)
++		err = -EAGAIN;
+ 
+ 	return err;
+ }
+@@ -2361,7 +2358,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ 	int depth = ext_depth(inode);
+ 	struct ext4_ext_path *path;
+ 	handle_t *handle;
+-	int i = 0, err = 0;
++	int i, err;
+ 
+ 	ext_debug("truncate since %u\n", start);
+ 
+@@ -2370,23 +2367,26 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
++again:
+ 	ext4_ext_invalidate_cache(inode);
+ 
+ 	/*
+ 	 * We start scanning from right side, freeing all the blocks
+ 	 * after i_size and walking into the tree depth-wise.
+ 	 */
++	depth = ext_depth(inode);
+ 	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+ 	if (path == NULL) {
+ 		ext4_journal_stop(handle);
+ 		return -ENOMEM;
  	}
++	path[0].p_depth = depth;
+ 	path[0].p_hdr = ext_inode_hdr(inode);
+ 	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+ 		err = -EIO;
+ 		goto out;
+ 	}
+-	path[0].p_depth = depth;
++	i = err = 0;
+ 
+ 	while (i >= 0 && err == 0) {
+ 		if (i == depth) {
+@@ -2480,6 +2480,8 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ out:
+ 	ext4_ext_drop_refs(path);
+ 	kfree(path);
++	if (err == -EAGAIN)
++		goto again;
+ 	ext4_journal_stop(handle);
+ 
+ 	return err;
 -- 
 1.6.6.1.1.g974db.dirty
 
