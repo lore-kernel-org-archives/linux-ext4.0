@@ -1,44 +1,75 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext2 issues with xfstests 113
-Date: Tue, 1 Jun 2010 12:26:19 +0200
-Message-ID: <20100601102618.GB4275@quack.suse.cz>
-References: <20100531094625.GA10283@lst.de>
- <20100531175747.GD5334@quack.suse.cz>
- <20100531180101.GA32160@lst.de>
- <20100531213101.GJ5334@quack.suse.cz>
- <20100601090337.GA28085@lst.de>
+Subject: Re: [PATCH 2/2] quota: check quota reservation on remove_dquot_ref
+Date: Tue, 1 Jun 2010 13:54:33 +0200
+Message-ID: <20100601115433.GD4275@quack.suse.cz>
+References: <20100531191130.GE5334@quack.suse.cz>
+ <1275377988-4299-1-git-send-email-dmonakhov@openvz.org>
+ <1275377988-4299-2-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42769 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755686Ab0FAK0c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 06:26:32 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20100601090337.GA28085@lst.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1275377988-4299-2-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 01-06-10 11:03:37, Christoph Hellwig wrote:
-> On Mon, May 31, 2010 at 11:31:01PM +0200, Jan Kara wrote:
-> >   Hmm, interesting because I've run test 113 again with a kernel somewhere
-> > between 2.6.34 and 2.6.35-rc1 and the filesystem is clean. So probably you
-> > are able to hit some kind of race I'm not able to. Could you check whether
-> > the corruption is caused by the O_DIRECT run or some other one?
-> 
-> 113 is an AIO test, so it must be using O_DIRECT.
-  Why? Looking at aio-stress source and 113 script, two of aio-stress runs
-use buffered IO and only the last one uses O_DIRECT...
-
-> >   Also could you get "e2image -r" of the filesystem, bzip2 it and put it
-> > somewhere for download?
-> 
-> I've jyst attached it as the compressed version is small enough (88k).
-  Thanks, I'll have a look whether I can guess something.
+On Tue 01-06-10 11:39:48, Dmitry Monakhov wrote:
+> Reserved space must being claimed before remove_dquot_ref() for a
+> given inode. Filesystem is responsible for performing force blocks
+> allocation in case of dealloc in ->quota_off. Let's add sanity check
+> for that case. Do it similar to add_dquot_ref().
+  Thanks. I've merged this patch since it's independent of the first one
+(and unless someone runs with CONFIG_QUOTA_DEBUG it shouldn't cause
+additional warnings either).
 
 								Honza
+
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/quota/dquot.c |   14 +++++++++++++-
+>  1 files changed, 13 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index 12c233d..dfb8c16 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -986,6 +986,7 @@ static void remove_dquot_ref(struct super_block *sb, int type,
+>  		struct list_head *tofree_head)
+>  {
+>  	struct inode *inode;
+> +	int reserved = 0;
+>  
+>  	spin_lock(&inode_lock);
+>  	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+> @@ -995,10 +996,21 @@ static void remove_dquot_ref(struct super_block *sb, int type,
+>  		 *  only quota pointers and these have separate locking
+>  		 *  (dqptr_sem).
+>  		 */
+> -		if (!IS_NOQUOTA(inode))
+> +		if (!IS_NOQUOTA(inode)) {
+> +			if (unlikely(inode_get_rsv_space(inode) > 0))
+> +				reserved = 1;
+>  			remove_inode_dquot_ref(inode, type, tofree_head);
+> +		}
+>  	}
+>  	spin_unlock(&inode_lock);
+> +#ifdef CONFIG_QUOTA_DEBUG
+> +	if (reserved) {
+> +		printk(KERN_WARNING "VFS (%s): Writes happened after quota"
+> +			" was disabled thus quota information is probably "
+> +			"inconsistent. Please run quotacheck(8).\n", sb->s_id);
+> +	}
+> +#endif
+> +
+>  }
+>  
+>  /* Gather all references from inodes and drop them */
+> -- 
+> 1.6.6.1
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
