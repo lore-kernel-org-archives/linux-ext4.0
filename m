@@ -1,153 +1,63 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 2.6.27.y 1/3] ext4: Use our own write_cache_pages()
-Date: Tue, 1 Jun 2010 09:54:29 -0400
-Message-ID: <AANLkTin3rfw04Shsmmd2O0URjWqbUhf-HOw4r2dXaprH@mail.gmail.com>
-References: <4C001888.8020006@jaysonking.com>
-	<4C0018E1.5060007@jaysonking.com>
-	<20100529004913.GL26177@thunk.org>
-	<4C0070D8.8060500@jaysonking.com>
-	<20100530212502.GQ26177@thunk.org>
-	<4C0358B1.1050605@uni-konstanz.de>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: Is >16TB support considered stable?
+Date: Tue, 01 Jun 2010 10:18:42 -0400
+Message-ID: <4C0516C2.8070007@gmail.com>
+References: <4BFFF4D2.6020908@van-ness.com> <4C001BEC.9080906@redhat.com> <4C00804D.7010000@van-ness.com> <87ljb3gwee.fsf@willster.local.flamingspork.com> <4C017BAC.2000000@van-ness.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, "Jayson R. King" <dev@jaysonking.com>,
-	Stable team <stable@kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Kay Diederichs <kay.diederichs@uni-konstanz.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Sandon Van Ness <sandon@van-ness.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:42800 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756651Ab0FAOAf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jun 2010 10:00:35 -0400
-In-Reply-To: <4C0358B1.1050605@uni-konstanz.de>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:63954 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753328Ab0FAOTC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jun 2010 10:19:02 -0400
+Received: by vws11 with SMTP id 11so1077146vws.19
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Jun 2010 07:19:01 -0700 (PDT)
+In-Reply-To: <4C017BAC.2000000@van-ness.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 31, 2010 at 2:35 AM, Kay Diederichs
-<kay.diederichs@uni-konstanz.de> wrote:
-> Am 30.05.2010 23:25, schrieb tytso@mit.edu:
+On 05/29/2010 04:40 PM, Sandon Van Ness wrote:
+> On 05/28/2010 09:32 PM, Stewart Smith wrote:
+>    
+>> On Fri, 28 May 2010 19:47:41 -0700, Sandon Van Ness<sandon@van-ness.com>  wrote:
 >>
->> On Fri, May 28, 2010 at 08:41:44PM -0500, Jayson R. King wrote:
+>>      
+>>> able to allocate blocks or memory (it was a while back so I forget). I
+>>> spent 24 hours defraging it getting the fragmentation down from like
+>>> 99.9995% to 99.2% and the problem went away. XFS seems to excessively
+>>> fragment (that horribly fragmented system was running mythtv and after
+>>> switching to JFS I see way less fragmented files).
 >>>
->>> The difference is that, 2.6.27's write_cache_pages() in
->>> page-writeback.c still updates wbc->nr_to_write, since the patch
->>> which changed that behavior was dropped from .27-rc2 due to the XFS
->>> regression it causes on mainline. ext4 appears to want the behavior
->>> of write_cache_pages which does not update wbc->nr_to_write. This
->>> write_cache_pages_da() does what ext4 wants, without introducing th=
-e
->>> XFS regression. So I believe it is needed.
+>>>        
+>> MythTV's IO path is well... hacked to get around all of ext3's quirks.
 >>
->> Ah, OK. =A0So I understand the motivation now, and that's a valid
->> concern. =A0The question is now: how much the goal of the 2.6.27 sta=
-ble
->> branch to fix bugs, and how much is it to get the best possible
->> performance, at least with respect to ext4? =A0It's going to be hard=
-er
->> and harder to backport fixes to 2.6.27, and I can speak from
->> experience that it's very easy to introduce regressions while trying
->> to do backports, since sometimes an individual upstream commit can e=
-nd
->> up introducing a regression, and while we do try to document
->> regression fixes in later commits, sometimes the documentation isn't
->> complete.
+>> You can:
+>> - mount XFS with allocsize=64m (or similar)
+>> - possibly use the XFS filestreams allocator
+>> - comment out the fsync() in the mythtv tree
+>> - LD_PRELOAD libeatmydata for myth.
 >>
->> I just spent the better part of a day trying to fix up a backport
->> series for 2.6.32. =A0When I was engaged in this particular exercise=
-, it
->> turns out a particular commit to fix a quota deadlock introduced a
->> regression, and the fix to that introduced yet another, and there we=
-re
->> three or four patches that all needed to be pulled in at once. =A0Ex=
-cept
->> initially I missed one, and that caused an i_blocks corruption issue
->> when using fallocate() that took me several hours and a reverse
->> git-bisection to find. =A0(And this is one set of fixes that will
->> probably never be able to go into 2.6.27.y, since these changes also
->> interlock with probably a dozen or so quota changes that have also
->> gone in over the last couple of kernel releases.)
+>> it turns out that writing a rather small amount of data and fsync()ing
+>> (and repeating 1,000,000 times) makes the allocator cry a bit with
+>> default settings. Especially if you were recording a few things at once.
 >>
->> I'll also add that simply testing using dbench, as you said you used
->> in another e-mail message, really isn't good enough to find all
->> possible regressions (it wouldn't have found the i_blocks corruption
->> problem in my initial set of 2.6.32 ext4 backports patches, for
->> example, since dbench only tests a very limited set of fs operations=
-,
->> which doesn't include fallocate, or quotas, or mmap for that matter.=
-)
->>
->> What I would recommend is using the XFSQA (also sometimes known
->> xfstests) test suite to make sure that your changes are sound. =A0Db=
-ench
->> will sometimes find issues, yes, but in my experience it's not the
->> best tool. =A0The fsstress program, which is called in a number of
->> different configurations by xfstests, has found all sorts of problem=
-s
->> that other thing shaven't been able to find. =A0Run it on at least a
->> 2-core system, or preferably a 4-core or 8-core system if you have i=
-t.
->> I generally run tests using both 4k and 1k blocksize file systems to
->> make sure there aren't problems where the fs blocksize is less than
->> the pagesize.
->>
->> If you are willing to take on the support burden of ext4 for 2.6.27,
->> and do a lot of testing, I at least wouldn't have any objection to
->> these patches. =A0It's really a question of risk vs. reward for the
->> users of the 2.6.27 stable tree, plus a question of someone willing =
-to
->> take on the support/debugging burden, and how much testing is done t=
-o
->> appropriate tilt the risk/reward balance.
->>
->> Regards,
->>
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 =A0- Ted
+>>      
+> Well JFS has absolutely no problems with files created via mythtv. I
+> also am not going to be using mythtv on this system at all and I was
+> just giving some examples of my past experience with XFS and why I will
+> never use it. Anyway please no more XFS discussion or suggestions for
+> other file-systems I was mainly curious on what the stability or peoples
+> experiences are with ext4 and 64-bit addressing. I have long since
+> decided I will never run XFS again as I can't ever trust it with my data
+> again. I mainly wrote this list to try to find out what the opinions
+> were on ext4 with>16 TiB file-systems.
 >
-> For what it's worth: my 2.6.27.45 fileservers deadlock reproducibly a=
-fter 1
-> to 2 minutes of heavy NFS load, when using ext4 (never had a problem =
-with
-> ext3). Jayson King's patch series (posted Feb 27) fixed this, and I'v=
-e been
-> running it since May 1 without problems.
->
-> From my experience, I'd say that the ext4 deadlock needs to be fixed;
-> otherwise ext4 in 2.6.27 should not be called stable.
->
-> best wishes,
-> Kay
+>    
 
-It has always been marked experimental in 2.6.27, not stable so I'm
-totally lost about this effort.
+The short answer is no.
 
-See http://lxr.linux.no/#linux+v2.6.27.47/fs/Kconfig
+Ric
 
- 139        config EXT4DEV_FS
- 140        tristate "Ext4dev/ext4 extended fs support development
-(EXPERIMENTAL)"
- 141        depends on EXPERIMENTAL
- 142        select JBD2
- 143        select CRC16
- 144        help
- 145          Ext4dev is a predecessor filesystem of the next generatio=
-n
- 146          extended fs ext4, based on ext3 filesystem code. It will =
-be
- 147          renamed ext4 fs later, once ext4dev is mature and stabili=
-zed.
- ...
- 164
- 165          If unsure, say N.
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
