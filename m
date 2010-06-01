@@ -1,230 +1,115 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 21/28] ext4: Use our own write_cache_pages()
-Date: Tue,  1 Jun 2010 12:13:08 -0400
-Message-ID: <1275408795-17487-21-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 28/28] ext4: Make fsync sync new parent directories in no-journal mode
+Date: Tue,  1 Jun 2010 12:13:15 -0400
+Message-ID: <1275408795-17487-28-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Dave Chinner <david@fromorbit.com>
+	Frank Mayhar <fmayhar@google.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56922 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56878 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757152Ab0FAQNY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 12:13:24 -0400
+	id S1756924Ab0FAQNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 12:13:22 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Make a copy of write_cache_pages() for the benefit of
-ext4_da_writepages().  This allows us to simplify the code some, and
-will allow us to further customize the code in future patches.
+From: Frank Mayhar <fmayhar@google.com>
 
-There are some nasty hacks in write_cache_pages(), which Linus has
-(correctly) characterized as vile.  I've just copied it into
-write_cache_pages_da(), without trying to clean those bits up lest I
-break something in the ext4's delalloc implementation, which is a bit
-fragile right now.  This will allow Dave Chinner to clean up
-write_cache_pages() in mm/page-writeback.c, without worrying about
-breaking ext4.  Eventually write_cache_pages_da() will go away when I
-rewrite ext4's delayed allocation and create a general
-ext4_writepages() which is used for all of ext4's writeback.  Until
-now this is the lowest risk way to clean up the core
-write_cache_pages() function.
+commit 14ece1028b3ed53ffec1b1213ffc6acaf79ad77c upstream (as of v2.6.34-git13)
 
+Add a new ext4 state to tell us when a file has been newly created; use
+that state in ext4_sync_file in no-journal mode to tell us when we need
+to sync the parent directory as well as the inode and data itself.  This
+fixes a problem in which a panic or power failure may lose the entire
+file even when using fsync, since the parent directory entry is lost.
+
+Addresses-Google-Bug: #2480057
+
+Signed-off-by: Frank Mayhar <fmayhar@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Dave Chinner <david@fromorbit.com>
 ---
- fs/ext4/inode.c |  141 ++++++++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 119 insertions(+), 22 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/fsync.c |   31 +++++++++++++++++++++++++++++--
+ fs/ext4/namei.c |    2 ++
+ 3 files changed, 32 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6aa0442..830336d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2426,17 +2426,6 @@ static int __mpage_da_writepage(struct page *page,
- 	struct buffer_head *bh, *head;
- 	sector_t logical;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2e31640..650ef37 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1157,6 +1157,7 @@ enum {
+ 	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
+ 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+ 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
++	EXT4_STATE_NEWENTRY,		/* File just added to dir */
+ };
  
--	if (mpd->io_done) {
--		/*
--		 * Rest of the page in the page_vec
--		 * redirty then and skip then. We will
--		 * try to write them again after
--		 * starting a new transaction
--		 */
--		redirty_page_for_writepage(wbc, page);
--		unlock_page(page);
--		return MPAGE_DA_EXTENT_TAIL;
--	}
- 	/*
- 	 * Can we merge this page to current extent?
- 	 */
-@@ -2831,6 +2820,124 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
- 	return ext4_chunk_trans_blocks(inode, max_blocks);
- }
+ #define EXT4_INODE_BIT_FNS(name, field)					\
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 42bd94a..61da601 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -35,6 +35,29 @@
+ #include <trace/events/ext4.h>
  
-+/*
-+ * write_cache_pages_da - walk the list of dirty pages of the given
-+ * address space and call the callback function (which usually writes
-+ * the pages).
-+ *
-+ * This is a forked version of write_cache_pages().  Differences:
-+ *	Range cyclic is ignored.
-+ *	no_nrwrite_index_update is always presumed true
+ /*
++ * If we're not journaling and this is a just-created file, we have to
++ * sync our parent directory (if it was freshly created) since
++ * otherwise it will only be written by writeback, leaving a huge
++ * window during which a crash may lose the file.  This may apply for
++ * the parent directory's parent as well, and so on recursively, if
++ * they are also freshly created.
 + */
-+static int write_cache_pages_da(struct address_space *mapping,
-+				struct writeback_control *wbc,
-+				struct mpage_da_data *mpd)
++static void ext4_sync_parent(struct inode *inode)
 +{
-+	int ret = 0;
-+	int done = 0;
-+	struct pagevec pvec;
-+	int nr_pages;
-+	pgoff_t index;
-+	pgoff_t end;		/* Inclusive */
-+	long nr_to_write = wbc->nr_to_write;
++	struct dentry *dentry = NULL;
 +
-+	pagevec_init(&pvec, 0);
-+	index = wbc->range_start >> PAGE_CACHE_SHIFT;
-+	end = wbc->range_end >> PAGE_CACHE_SHIFT;
-+
-+	while (!done && (index <= end)) {
-+		int i;
-+
-+		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
-+			      PAGECACHE_TAG_DIRTY,
-+			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
-+		if (nr_pages == 0)
++	while (inode && ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
++		ext4_clear_inode_state(inode, EXT4_STATE_NEWENTRY);
++		dentry = list_entry(inode->i_dentry.next,
++				    struct dentry, d_alias);
++		if (!dentry || !dentry->d_parent || !dentry->d_parent->d_inode)
 +			break;
-+
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+
-+			/*
-+			 * At this point, the page may be truncated or
-+			 * invalidated (changing page->mapping to NULL), or
-+			 * even swizzled back from swapper_space to tmpfs file
-+			 * mapping. However, page->index will not change
-+			 * because we have a reference on the page.
-+			 */
-+			if (page->index > end) {
-+				done = 1;
-+				break;
-+			}
-+
-+			lock_page(page);
-+
-+			/*
-+			 * Page truncated or invalidated. We can freely skip it
-+			 * then, even for data integrity operations: the page
-+			 * has disappeared concurrently, so there could be no
-+			 * real expectation of this data interity operation
-+			 * even if there is now a new, dirty page at the same
-+			 * pagecache address.
-+			 */
-+			if (unlikely(page->mapping != mapping)) {
-+continue_unlock:
-+				unlock_page(page);
-+				continue;
-+			}
-+
-+			if (!PageDirty(page)) {
-+				/* someone wrote it for us */
-+				goto continue_unlock;
-+			}
-+
-+			if (PageWriteback(page)) {
-+				if (wbc->sync_mode != WB_SYNC_NONE)
-+					wait_on_page_writeback(page);
-+				else
-+					goto continue_unlock;
-+			}
-+
-+			BUG_ON(PageWriteback(page));
-+			if (!clear_page_dirty_for_io(page))
-+				goto continue_unlock;
-+
-+			ret = __mpage_da_writepage(page, wbc, mpd);
-+			if (unlikely(ret)) {
-+				if (ret == AOP_WRITEPAGE_ACTIVATE) {
-+					unlock_page(page);
-+					ret = 0;
-+				} else {
-+					done = 1;
-+					break;
-+				}
-+			}
-+
-+			if (nr_to_write > 0) {
-+				nr_to_write--;
-+				if (nr_to_write == 0 &&
-+				    wbc->sync_mode == WB_SYNC_NONE) {
-+					/*
-+					 * We stop writing back only if we are
-+					 * not doing integrity sync. In case of
-+					 * integrity sync we have to keep going
-+					 * because someone may be concurrently
-+					 * dirtying pages, and we might have
-+					 * synced a lot of newly appeared dirty
-+					 * pages, but have not synced all of the
-+					 * old dirty pages.
-+					 */
-+					done = 1;
-+					break;
-+				}
-+			}
-+		}
-+		pagevec_release(&pvec);
-+		cond_resched();
++		inode = dentry->d_parent->d_inode;
++		sync_mapping_buffers(inode->i_mapping);
 +	}
-+	return ret;
 +}
 +
-+
- static int ext4_da_writepages(struct address_space *mapping,
- 			      struct writeback_control *wbc)
- {
-@@ -2839,7 +2946,6 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	handle_t *handle = NULL;
- 	struct mpage_da_data mpd;
- 	struct inode *inode = mapping->host;
--	int no_nrwrite_index_update;
- 	int pages_written = 0;
- 	long pages_skipped;
- 	unsigned int max_pages;
-@@ -2919,12 +3025,6 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	mpd.wbc = wbc;
- 	mpd.inode = mapping->host;
++/*
+  * akpm: A new design for ext4_sync_file().
+  *
+  * This is only called from sys_fsync(), sys_fdatasync() and sys_msync().
+@@ -67,8 +90,12 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+ 	if (ret < 0)
+ 		return ret;
+ 	
+-	if (!journal)
+-		return simple_fsync(file, dentry, datasync);
++	if (!journal) {
++		ret = simple_fsync(file, dentry, datasync);
++ 		if (!ret && !list_empty(&inode->i_dentry))
++ 			ext4_sync_parent(inode);
++		return ret;
++	}
  
--	/*
--	 * we don't want write_cache_pages to update
--	 * nr_to_write and writeback_index
--	 */
--	no_nrwrite_index_update = wbc->no_nrwrite_index_update;
--	wbc->no_nrwrite_index_update = 1;
- 	pages_skipped = wbc->pages_skipped;
+ 	/*
+ 	 * data=writeback,ordered:
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index efab592..2f31631 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1519,6 +1519,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
+ 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
+ 	brelse(bh);
++	if (retval == 0)
++		ext4_set_inode_state(inode, EXT4_STATE_NEWENTRY);
+ 	return retval;
+ }
  
- retry:
-@@ -2966,8 +3066,7 @@ retry:
- 		mpd.io_done = 0;
- 		mpd.pages_written = 0;
- 		mpd.retval = 0;
--		ret = write_cache_pages(mapping, wbc, __mpage_da_writepage,
--					&mpd);
-+		ret = write_cache_pages_da(mapping, wbc, &mpd);
- 		/*
- 		 * If we have a contiguous extent of pages and we
- 		 * haven't done the I/O yet, map the blocks and submit
-@@ -3033,8 +3132,6 @@ retry:
- 		mapping->writeback_index = index;
- 
- out_writepages:
--	if (!no_nrwrite_index_update)
--		wbc->no_nrwrite_index_update = 0;
- 	wbc->nr_to_write -= nr_to_writebump;
- 	wbc->range_start = range_start;
- 	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
 -- 
 1.6.6.1.1.g974db.dirty
 
