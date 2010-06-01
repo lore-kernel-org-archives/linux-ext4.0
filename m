@@ -1,166 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 03/40] ext4: Add flag to files with blocks intentionally past EOF
-Date: Tue,  1 Jun 2010 08:02:50 -0400
-Message-ID: <1275393807-14369-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 10/40] ext4: Fix the NULL reference in double_down_write_data_sem()
+Date: Tue,  1 Jun 2010 08:02:57 -0400
+Message-ID: <1275393807-14369-10-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jiaying Zhang <jiayingz@google.com>,
-	Eric Sandeen <sandeen@redhat.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47266 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47262 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756008Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752791Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 08:03:33 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jiaying Zhang <jiayingz@google.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-commit c8d46e41bc744c8fa0092112af3942fcd46c8b18 upstream (as of v2.6.33-git11)
+commit 7247c0caa23d94a1cb6b307edba9dc45fb0798d4 upstream (as of v2.6.33-git11)
 
-fallocate() may potentially instantiate blocks past EOF, depending
-on the flags used when it is called.
+If EXT4_IOC_MOVE_EXT ioctl is called with NULL donor_fd, fget() in
+ext4_ioctl() gets inappropriate file structure for donor; so we need
+to do this check earlier, before calling double_down_write_data_sem().
 
-e2fsck currently has a test for blocks past i_size, and it
-sometimes trips up - noticeably on xfstests 013 which runs fsstress.
-
-This patch from Jiayang does fix it up - it (along with
-e2fsprogs updates and other patches recently from Aneesh) has
-survived many fsstress runs in a row.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Jiaying Zhang <jiayingz@google.com>
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    6 ++++--
- fs/ext4/extents.c |   22 +++++++++++++++++++++-
- fs/ext4/inode.c   |    9 ++++++++-
- fs/ext4/ioctl.c   |    9 +++++++++
- 4 files changed, 42 insertions(+), 4 deletions(-)
+ fs/ext4/move_extent.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8e8783a..81b11cf 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -284,10 +284,12 @@ struct flex_groups {
- #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
- #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
- #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
-+#define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
-+#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index b2b2e67..379c0c0 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -953,14 +953,6 @@ mext_check_arguments(struct inode *orig_inode,
+ 	unsigned int blkbits = orig_inode->i_blkbits;
+ 	unsigned int blocksize = 1 << blkbits;
  
--#define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
- 
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9015ecb..b38058a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3185,7 +3185,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_extent_header *eh;
--	struct ext4_extent newex, *ex;
-+	struct ext4_extent newex, *ex, *last_ex;
- 	ext4_fsblk_t newblock;
- 	int err = 0, depth, ret, cache_type;
- 	unsigned int allocated = 0;
-@@ -3366,6 +3366,19 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 						     EXT4_STATE_DIO_UNWRITTEN);
- 		}
- 	}
-+
-+	if (unlikely(EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL)) {
-+		if (eh->eh_entries) {
-+			last_ex = EXT_LAST_EXTENT(eh);
-+			if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
-+					    + ext4_ext_get_actual_len(last_ex))
-+				EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
-+		} else {
-+			WARN_ON(eh->eh_entries == 0);
-+			ext4_error(inode->i_sb, __func__,
-+				"inode#%lu, eh->eh_entries = 0!", inode->i_ino);
-+			}
-+	}
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err) {
- 		/* free data blocks we just allocated */
-@@ -3499,6 +3512,13 @@ static void ext4_falloc_update_inode(struct inode *inode,
- 			i_size_write(inode, new_size);
- 		if (new_size > EXT4_I(inode)->i_disksize)
- 			ext4_update_i_disksize(inode, new_size);
-+	} else {
-+		/*
-+		 * Mark that we allocate beyond EOF so the subsequent truncate
-+		 * can proceed even if the new size is the same as i_size.
-+		 */
-+		if (new_size > i_size_read(inode))
-+			EXT4_I(inode)->i_flags |= EXT4_EOFBLOCKS_FL;
- 	}
- 
- }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7128506..26a3d54 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4434,6 +4434,8 @@ void ext4_truncate(struct inode *inode)
- 	if (!ext4_can_truncate(inode))
- 		return;
- 
-+	EXT4_I(inode)->i_flags &= ~EXT4_EOFBLOCKS_FL;
-+
- 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
- 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
- 
-@@ -5289,7 +5291,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	}
- 
- 	if (S_ISREG(inode->i_mode) &&
--	    attr->ia_valid & ATTR_SIZE && attr->ia_size < inode->i_size) {
-+	    attr->ia_valid & ATTR_SIZE &&
-+	    (attr->ia_size < inode->i_size ||
-+	     (EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL))) {
- 		handle_t *handle;
- 
- 		handle = ext4_journal_start(inode, 3);
-@@ -5320,6 +5324,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				goto err_out;
- 			}
- 		}
-+		/* ext4_truncate will clear the flag */
-+		if ((EXT4_I(inode)->i_flags & EXT4_EOFBLOCKS_FL))
-+			ext4_truncate(inode);
- 	}
- 
- 	rc = inode_setattr(inode, attr);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index b63d193..2220feb 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -92,6 +92,15 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			flags &= ~EXT4_EXTENTS_FL;
- 		}
- 
-+		if (flags & EXT4_EOFBLOCKS_FL) {
-+			/* we don't support adding EOFBLOCKS flag */
-+			if (!(oldflags & EXT4_EOFBLOCKS_FL)) {
-+				err = -EOPNOTSUPP;
-+				goto flags_out;
-+			}
-+		} else if (oldflags & EXT4_EOFBLOCKS_FL)
-+			ext4_truncate(inode);
-+
- 		handle = ext4_journal_start(inode, 1);
- 		if (IS_ERR(handle)) {
- 			err = PTR_ERR(handle);
--- 
-1.6.6.1.1.g974db.dirty
-
+-	/* Regular file check */
+-	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
+-		ext4_debug("ext4 move extent: The argument files should be "
+-			"regular file [ino:orig %lu, donor %lu]\n",
+-			orig_inode->i_ino, donor_inode->i_ino);
+-		return -EINVAL;
+-	}
