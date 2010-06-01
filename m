@@ -1,94 +1,78 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 36/40] ext4: Clear the EXT4_EOFBLOCKS_FL flag only when warranted
-Date: Tue,  1 Jun 2010 08:03:23 -0400
-Message-ID: <1275393807-14369-36-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 04/40] ext4: Fix fencepost error in chosing choosing group vs file preallocation.
+Date: Tue,  1 Jun 2010 08:02:51 -0400
+Message-ID: <1275393807-14369-4-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+	Tao Ma <tao.ma@oracle.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47260 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47277 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755710Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756069Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 08:03:33 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-commit 786ec7915e530936b9eb2e3d12274145cab7aa7d upstream (as of v2.6.34-git13)
+From: Tao Ma <tao.ma@oracle.com>
 
-Dimitry Monakhov discovered an edge case where it was possible for the
-EXT4_EOFBLOCKS_FL flag could get cleared unnecessarily.  This is true;
-I have a test case that can be exercised via downloading and
-decompressing the file:
+commit cc483f102c3f703e853c96f95a654f0106fb2603 upstream (as of v2.6.33-git11)
 
-wget ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-testcases/eofblocks-fl-test-case.img.bz2
-bunzip2 eofblocks-fl-test-case.img
-dd if=/dev/zero of=eofblocks-fl-test-case.img bs=1k seek=17925 bs=1k count=1 conv=notrunc
+The ext4 multiblock allocator decides whether to use group or file
+preallocation based on the file size.  When the file size reaches
+s_mb_stream_request (default is 16 blocks), it changes to use a
+file-specific preallocation. This is cool, but it has a tiny problem.
 
-However, triggering it in real life is highly unlikely since it
-requires an extremely fragmented sparse file with a hole in exactly
-the right place in the extent tree.  (It actually took quite a bit of
-work to generate this test case.)  Still, it's nice to get even
-extreme corner cases to be correct, so this patch makes sure that we
-don't clear the EXT4_EOFBLOCKS_FL incorrectly even in this corner
-case.
+See a simple script:
+mkfs.ext4 -b 1024 /dev/sda8 1000000
+mount -t ext4 -o nodelalloc /dev/sda8 /mnt/ext4
+for((i=0;i<5;i++))
+do
+cat /mnt/4096>>/mnt/ext4/a	#4096 is a file with 4096 characters.
+cat /mnt/4096>>/mnt/ext4/b
+done
+debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
 
+And you get
+BLOCKS:
+(0-14):8705-8719, (15):2356, (16-19):8465-8468
+
+So there are 3 extents, a bit strange for the lonely 15th logical
+block.  As we write to the 16 blocks, we choose file preallocation in
+ext4_mb_group_or_file, but in ext4_mb_normalize_request, we meet with
+the 16*1024 range, so no preallocation will be carried. file b then
+reserves the space after '2356', so when when write 16, we start from
+another part.
+
+This patch just change the check in ext4_mb_group_or_file, so
+that for the lonely 15 we will still use group preallocation.
+After the patch, we will get:
+debuge4fs -R 'stat a' /dev/sda8|grep BLOCKS -A 1
+BLOCKS:
+(0-15):8705-8720, (16-19):8465-8468
+
+Looks more sane. Thanks.
+
+Signed-off-by: Tao Ma <tao.ma@oracle.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |   26 ++++++++++++++++++--------
- 1 files changed, 18 insertions(+), 8 deletions(-)
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e2d9bfb..799416f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3223,7 +3223,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	struct ext4_extent_header *eh;
- 	struct ext4_extent newex, *ex, *last_ex;
- 	ext4_fsblk_t newblock;
--	int err = 0, depth, ret, cache_type;
-+	int i, err = 0, depth, ret, cache_type;
- 	unsigned int allocated = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-@@ -3404,19 +3404,29 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index d34afad..301b173 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3938,7 +3938,7 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
  
- 	if (unlikely(ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
--		if (eh->eh_entries) {
--			last_ex = EXT_LAST_EXTENT(eh);
--			if (iblock + ar.len > le32_to_cpu(last_ex->ee_block)
--					    + ext4_ext_get_actual_len(last_ex))
--				ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
--		} else {
--			WARN_ON(eh->eh_entries == 0);
-+		if (unlikely(!eh->eh_entries)) {
- 			ext4_error(inode->i_sb, __func__,
- 				   "inode#%lu, eh->eh_entries = 0 and "
- 				   "EOFBLOCKS_FL set", inode->i_ino);
- 			err = -EIO;
- 			goto out2;
- 		}
-+		last_ex = EXT_LAST_EXTENT(eh);
-+		/*
-+		 * If the current leaf block was reached by looking at
-+		 * the last index block all the way down the tree, and
-+		 * we are extending the inode beyond the last extent
-+		 * in the current leaf block, then clear the
-+		 * EOFBLOCKS_FL flag.
-+		 */
-+		for (i = depth-1; i >= 0; i--) {
-+			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
-+				break;
-+		}
-+		if ((i < 0) &&
-+		    (iblock + ar.len > le32_to_cpu(last_ex->ee_block) +
-+		     ext4_ext_get_actual_len(last_ex)))
-+			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
+ 	/* don't use group allocation for large files */
+ 	size = max(size, isize);
+-	if (size >= sbi->s_mb_stream_request) {
++	if (size > sbi->s_mb_stream_request) {
+ 		ac->ac_flags |= EXT4_MB_STREAM_ALLOC;
+ 		return;
  	}
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err) {
 -- 
 1.6.6.1.1.g974db.dirty
 
