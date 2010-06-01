@@ -1,55 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 38/40] ext4: Conditionally define compat ioctl numbers
-Date: Tue,  1 Jun 2010 08:03:25 -0400
-Message-ID: <1275393807-14369-38-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 06/40] ext4: explicitly remove inode from orphan list after failed direct io
+Date: Tue,  1 Jun 2010 08:02:53 -0400
+Message-ID: <1275393807-14369-6-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Ben Hutchings <ben@decadent.org.uk>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47257 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47263 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753408Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755698Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 08:03:33 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Ben Hutchings <ben@decadent.org.uk>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-commit 899ad0cea6ad7ff4ba24b16318edbc3cbbe03fad upstream (as of v2.6.34-git13)
+commit da1dafca84413145f5ac59998b4cdd06fb89f721 upstream (as of v2.6.33-git11)
 
-It is unnecessary, and in general impossible, to define the compat
-ioctl numbers except when building the filesystem with CONFIG_COMPAT
-defined.
+Otherwise non-empty orphan list will be triggered on umount.
 
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/inode.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1b4835f..ef12e95 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -468,6 +468,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- 
-+#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-  * ioctl commands in 32 bit emulation
-  */
-@@ -483,6 +484,7 @@ struct ext4_new_group_data {
- #endif
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
- #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
-+#endif
- 
- 
- /*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 26a3d54..4e8759a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3437,6 +3437,9 @@ retry:
+ 			 * but cannot extend i_size. Bail out and pretend
+ 			 * the write failed... */
+ 			ret = PTR_ERR(handle);
++			if (inode->i_nlink)
++				ext4_orphan_del(NULL, inode);
++
+ 			goto out;
+ 		}
+ 		if (inode->i_nlink)
 -- 
 1.6.6.1.1.g974db.dirty
 
