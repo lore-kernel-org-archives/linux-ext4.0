@@ -1,60 +1,52 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: e4defrag and immutable files
-Date: Tue, 1 Jun 2010 16:14:02 -0400
-Message-ID: <AANLkTil653uFeOct17hj10HbbjBabDPCW6hlAeTQxhxH@mail.gmail.com>
-References: <4C002427.3010706@zytor.com>
-	<4C05604D.2070401@oracle.com>
-	<20100601194924.GF4426@thunk.org>
+From: "Jayson R. King" <dev@jaysonking.com>
+Subject: Re: [PATCH 2.6.27.y 1/3] ext4: Use our own write_cache_pages()
+Date: Tue, 01 Jun 2010 15:06:37 -0500
+Message-ID: <4C05684D.5050204@jaysonking.com>
+References: <4C001888.8020006@jaysonking.com> <4C0018E1.5060007@jaysonking.com> <20100529004913.GL26177@thunk.org> <4C0070D8.8060500@jaysonking.com> <20100530212502.GQ26177@thunk.org> <4C0358B1.1050605@uni-konstanz.de> <AANLkTin3rfw04Shsmmd2O0URjWqbUhf-HOw4r2dXaprH@mail.gmail.com> <070DAF41-4DD5-4F20-B9F1-3B472147C499@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	"H. Peter Anvin" <hpa@zytor.com>, linux-ext4@vger.kernel.org,
-	Joel Becker <Joel.Becker@oracle.com>,
-	Mark Fasheh <mfasheh@suse.com>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Kay Diederichs <kay.diederichs@uni-konstanz.de>,
+	"Jayson R. King" <dev@jaysonking.com>,
+	Stable team <stable@kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:56083 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752981Ab0FAUOD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jun 2010 16:14:03 -0400
-Received: by gye5 with SMTP id 5so1501633gye.19
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Jun 2010 13:14:03 -0700 (PDT)
-In-Reply-To: <20100601194924.GF4426@thunk.org>
+Received: from bosmailout08.eigbox.net ([66.96.190.8]:47594 "EHLO
+	bosmailout08.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757005Ab0FAUhg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jun 2010 16:37:36 -0400
+In-Reply-To: <070DAF41-4DD5-4F20-B9F1-3B472147C499@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 1, 2010 at 3:49 PM,  <tytso@mit.edu> wrote:
-> On Tue, Jun 01, 2010 at 12:32:29PM -0700, Sunil Mushran wrote:
->>
->> We (ocfs2) are looking to add a new attribute to denote files that
->> have a fixed allocation on disk. But at the same time, allow writes
->> that do not change the allocation on disk. No truncating, extending,
->> filling holes, etc. We were thinking of calling it "Static" files.
+On 06/01/2010 09:49 AM, Theodore Tso wrote:
+> This is one of the things that confuses me, actually.  Why is it that there are a number of people who want to use ext4 on 2.6.27?   Even the enterprise distro's have moved on; SLES 11 SP1 upgraded their users from 2.6.27 to 2.6.32, for example.  I wonder if it's time to start a new "stable anchor point" around 2.6.32, given that Ubuntu's latest Long-Term Stable (Lucid LTS) is based on 2.6.32, as is SLES 11 SP1.  The RHEL 6 beta is also based on 2.6.32.  (And I just spent quite a bit of time over the past week backporting a lot of ext4 bug fixes to 2.6.32.y :-)
 >
-> That's an interesting set of semantics, and it might make sense to
-> conflate that with a local disk "don't move or defrag" the file
-> option. =A0I'm not crazy with the name "static", since it could mean =
-a
-> number of other things in other contexts, but I admit I can't think o=
-f
-> a better name.
+> If there are people who want to work on trying to backport more ext4 fixes to 2.6.27, they're of course free to do so.  I am really curious  as to *why*, though.
 
-=46ROZEN?
+2.6.27 is still a good kernel and ext4 is a good filesystem, IMO 
+(existing deadlock notwithstanding).
 
-PRE-ALLOCATED?
+Like Kay Diederichs mentioned, .27 has received ext4 updates in the 
+past, even as recently as April this year ("ext4: Avoid null pointer 
+dereference..."). Though this of course does not imply that .27 should 
+receive ext4 fixes (or other fixes) forever, but it is nice to fix the 
+most serious, show-stopping problems if it is feasable.
 
-=46ALLOCATE_ONLY?
+(maybe OT?: When I made an attempt to switch to kernel .31 or .32 
+earlier, the kernel would not boot for me. Surely, I can do some 
+investigating and get it to boot some day, but I wasn't motivated to 
+solve it at the time and stuck with .27 instead.)
 
-=46ROZEN_ALLOCATION?
+Thanks for the comments.
 
-STATIC_ALLOCATION?
+Rgds,
 
-I like the last 2 choices myself.
+Jayson
 
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
