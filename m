@@ -1,39 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext2 issues with xfstests 113
-Date: Mon, 31 May 2010 23:31:01 +0200
-Message-ID: <20100531213101.GJ5334@quack.suse.cz>
-References: <20100531094625.GA10283@lst.de>
- <20100531175747.GD5334@quack.suse.cz>
- <20100531180101.GA32160@lst.de>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: Use bitops to read/modify i_flags part2
+Date: Mon, 31 May 2010 23:06:08 -0400
+Message-ID: <20100601030608.GA4426@thunk.org>
+References: <1271687537-15655-1-git-send-email-dmonakhov@openvz.org>
+ <1274734174-28830-1-git-send-email-tytso@mit.edu>
+ <87ocfwsb3m.fsf_-_@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:59886 "EHLO mx1.suse.de"
+Received: from THUNK.ORG ([69.25.196.29]:59093 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751973Ab0EaVbS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 May 2010 17:31:18 -0400
+	id S1752957Ab0FADGP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 May 2010 23:06:15 -0400
 Content-Disposition: inline
-In-Reply-To: <20100531180101.GA32160@lst.de>
+In-Reply-To: <87ocfwsb3m.fsf_-_@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 31-05-10 20:01:01, Christoph Hellwig wrote:
-> On Mon, May 31, 2010 at 07:57:47PM +0200, Jan Kara wrote:
-> >   Are you able to reproduce this? Because for me ext2 runs went just
-> > fine...
-> 
-> I've done a couple of runs both on current mainline and the 2.6.34
-> based XFS tree and they all show this problem.
-  Hmm, interesting because I've run test 113 again with a kernel somewhere
-between 2.6.34 and 2.6.35-rc1 and the filesystem is clean. So probably you
-are able to hit some kind of race I'm not able to. Could you check whether
-the corruption is caused by the O_DIRECT run or some other one?
-  Also could you get "e2image -r" of the filesystem, bzip2 it and put it
-somewhere for download?
+On Mon, May 31, 2010 at 12:56:45PM +0400, Dmitry Monakhov wrote:
+> Bad news. Bug still exist because you've missed several important chunks 
+> (ext4_set_inode_flags, ext4_inode_blocks) while porting original patch.
+> And I've missed this too on review cycle.
+> Please add following patch to patch-queue.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+What I should have insisted on (if I had time to review this sort of
+patch earlier) is to split it up into that which could be implemented
+via a perl script (i.e.):
+
+#!/usr/bin/perl -i.bak
+
+while (<>) {
+    s/EXT4_I\(([^ ]*)\)->i_flags & EXT4_([^ ]*)_FL/ext4_test_inode_flag(\1, EXT4_INODE_\2)/;
+    s/EXT4_I\(([^ ]*)\)->i_flags \|= EXT4_([^ ]*)_FL/ext4_set_inode_flag(\1, EXT4_INODE_\2)/;
+    s/EXT4_I\(([^ ]*)\)->i_flags \&= ~EXT4_([^ ]*)_FL/ext4_clear_inode_flag(\1, EXT4_INODE_\2)/;
+    print;
+}
+
+with a piece before and after it for the more complicated bits.  This
+is why really large patches, really, *really* need to be split apart.
+(Or needs to have enough description of what was being done where so
+that I could split apart into more easily manageable --- and easily
+backported to stable kernel -- pieces.)
+
+But no worries, we'll treat this as the follow-on part of the patch,
+and then add these to the additional stable series patches.  These
+sorts of things happen, especially with these gigantic patches....
+
+      	 			   	      - Ted
