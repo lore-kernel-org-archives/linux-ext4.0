@@ -1,218 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 27/40] ext4: Do not zero out uninitialized extents beyond i_size
-Date: Tue,  1 Jun 2010 08:03:14 -0400
-Message-ID: <1275393807-14369-27-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 29/40] ext4: init statistics after journal recovery
+Date: Tue,  1 Jun 2010 08:03:16 -0400
+Message-ID: <1275393807-14369-29-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Dmitry Monakhov <dmonakhov@openvz.org>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47329 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47301 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756061Ab0FAMDi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:38 -0400
+	id S1756074Ab0FAMDf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:03:35 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-commit 21ca087a3891efab4d45488db8febee474d26c68 upstream (as of v2.6.34-git13)
+commit 84061e07c5fbbbf9dc8aef8fb750fc3a2dfc31f3 upstream (as of v2.6.34-git13)
 
-The extents code will sometimes zero out blocks and mark them as
-initialized instead of splitting an extent into several smaller ones.
-This optimization however, causes problems if the extent is beyond
-i_size because fsck will complain if there are uninitialized blocks
-after i_size as this can not be distinguished from an inode that has
-an incorrect i_size field.
+Currently block/inode/dir counters initialized before journal was
+recovered. In fact after journal recovery this info will probably
+change. And freeblocks it critical for correct delalloc mode
+accounting.
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15742
+https://bugzilla.kernel.org/show_bug.cgi?id=15768
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Acked-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |   67 ++++++++++++++++++++++++++++++++++++++++------------
- 1 files changed, 51 insertions(+), 16 deletions(-)
+ fs/ext4/super.c |   41 ++++++++++++++++++-----------------------
+ 1 files changed, 18 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 032c95b..39aab5c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2527,11 +2527,21 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	struct ext4_extent *ex2 = NULL;
- 	struct ext4_extent *ex3 = NULL;
- 	struct ext4_extent_header *eh;
--	ext4_lblk_t ee_block;
-+	ext4_lblk_t ee_block, eof_block;
- 	unsigned int allocated, ee_len, depth;
- 	ext4_fsblk_t newblock;
- 	int err = 0;
- 	int ret = 0;
-+	int may_zeroout;
-+
-+	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
-+		"block %llu, max_blocks %u\n", inode->i_ino,
-+		(unsigned long long)iblock, max_blocks);
-+
-+	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-+		inode->i_sb->s_blocksize_bits;
-+	if (eof_block < iblock + max_blocks)
-+		eof_block = iblock + max_blocks;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a6a8e5b..11e9376 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2710,24 +2710,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
  
- 	depth = ext_depth(inode);
- 	eh = path[depth].p_hdr;
-@@ -2540,16 +2550,23 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	allocated = ee_len - (iblock - ee_block);
- 	newblock = iblock - ee_block + ext_pblock(ex);
-+
- 	ex2 = ex;
- 	orig_ex.ee_block = ex->ee_block;
- 	orig_ex.ee_len   = cpu_to_le16(ee_len);
- 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
+-	err = percpu_counter_init(&sbi->s_freeblocks_counter,
+-			ext4_count_free_blocks(sb));
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_freeinodes_counter,
+-				ext4_count_free_inodes(sb));
+-	}
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_dirs_counter,
+-				ext4_count_dirs(sb));
+-	}
+-	if (!err) {
+-		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
+-	}
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "insufficient memory");
+-		goto failed_mount3;
+-	}
+-
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+ 	sbi->s_max_writeback_mb_bump = 128;
  
-+	/*
-+	 * It is safe to convert extent to initialized via explicit
-+	 * zeroout only if extent is fully insde i_size or new_size.
-+	 */
-+	may_zeroout = ee_block + ee_len <= eof_block;
-+
- 	err = ext4_ext_get_access(handle, inode, path + depth);
- 	if (err)
- 		goto out;
- 	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
--	if (ee_len <= 2*EXT4_EXT_ZERO_LEN) {
-+	if (ee_len <= 2*EXT4_EXT_ZERO_LEN && may_zeroout) {
- 		err =  ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
-@@ -2580,7 +2597,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	if (allocated > max_blocks) {
- 		unsigned int newdepth;
- 		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
--		if (allocated <= EXT4_EXT_ZERO_LEN) {
-+		if (allocated <= EXT4_EXT_ZERO_LEN && may_zeroout) {
- 			/*
- 			 * iblock == ee_block is handled by the zerouout
- 			 * at the beginning.
-@@ -2656,7 +2673,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
- 		ext4_ext_mark_uninitialized(ex3);
- 		err = ext4_ext_insert_extent(handle, inode, path, ex3, 0);
--		if (err == -ENOSPC) {
-+		if (err == -ENOSPC && may_zeroout) {
- 			err =  ext4_ext_zeroout(inode, &orig_ex);
- 			if (err)
- 				goto fix_extent_len;
-@@ -2680,8 +2697,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		 * update the extent length after successful insert of the
- 		 * split extent
- 		 */
--		orig_ex.ee_len = cpu_to_le16(ee_len -
--						ext4_ext_get_actual_len(ex3));
-+		ee_len -= ext4_ext_get_actual_len(ex3);
-+		orig_ex.ee_len = cpu_to_le16(ee_len);
-+		may_zeroout = ee_block + ee_len <= eof_block;
-+
- 		depth = newdepth;
- 		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode, iblock, path);
-@@ -2705,7 +2724,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		 * otherwise give the extent a chance to merge to left
- 		 */
- 		if (le16_to_cpu(orig_ex.ee_len) <= EXT4_EXT_ZERO_LEN &&
--							iblock != ee_block) {
-+			iblock != ee_block && may_zeroout) {
- 			err =  ext4_ext_zeroout(inode, &orig_ex);
- 			if (err)
- 				goto fix_extent_len;
-@@ -2774,7 +2793,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	goto out;
- insert:
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
--	if (err == -ENOSPC) {
-+	if (err == -ENOSPC && may_zeroout) {
- 		err =  ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
-@@ -2834,14 +2853,21 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	struct ext4_extent *ex2 = NULL;
- 	struct ext4_extent *ex3 = NULL;
- 	struct ext4_extent_header *eh;
--	ext4_lblk_t ee_block;
-+	ext4_lblk_t ee_block, eof_block;
- 	unsigned int allocated, ee_len, depth;
- 	ext4_fsblk_t newblock;
- 	int err = 0;
-+	int may_zeroout;
-+
-+	ext_debug("ext4_split_unwritten_extents: inode %lu, logical"
-+		"block %llu, max_blocks %u\n", inode->i_ino,
-+		(unsigned long long)iblock, max_blocks);
-+
-+	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-+		inode->i_sb->s_blocksize_bits;
-+	if (eof_block < iblock + max_blocks)
-+		eof_block = iblock + max_blocks;
+@@ -2827,7 +2809,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
  
--	ext_debug("ext4_split_unwritten_extents: inode %lu,"
--		  "iblock %llu, max_blocks %u\n", inode->i_ino,
--		  (unsigned long long)iblock, max_blocks);
- 	depth = ext_depth(inode);
- 	eh = path[depth].p_hdr;
- 	ex = path[depth].p_ext;
-@@ -2849,12 +2875,19 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	allocated = ee_len - (iblock - ee_block);
- 	newblock = iblock - ee_block + ext_pblock(ex);
-+
- 	ex2 = ex;
- 	orig_ex.ee_block = ex->ee_block;
- 	orig_ex.ee_len   = cpu_to_le16(ee_len);
- 	ext4_ext_store_pblock(&orig_ex, ext_pblock(ex));
- 
- 	/*
-+	 * It is safe to convert extent to initialized via explicit
-+	 * zeroout only if extent is fully insde i_size or new_size.
-+	 */
-+	may_zeroout = ee_block + ee_len <= eof_block;
-+
-+	/*
-  	 * If the uninitialized extent begins at the same logical
-  	 * block where the write begins, and the write completely
-  	 * covers the extent, then we don't need to split it.
-@@ -2888,7 +2921,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
- 		ext4_ext_mark_uninitialized(ex3);
- 		err = ext4_ext_insert_extent(handle, inode, path, ex3, flags);
--		if (err == -ENOSPC) {
-+		if (err == -ENOSPC && may_zeroout) {
- 			err =  ext4_ext_zeroout(inode, &orig_ex);
- 			if (err)
- 				goto fix_extent_len;
-@@ -2912,8 +2945,10 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 		 * update the extent length after successful insert of the
- 		 * split extent
- 		 */
--		orig_ex.ee_len = cpu_to_le16(ee_len -
--						ext4_ext_get_actual_len(ex3));
-+		ee_len -= ext4_ext_get_actual_len(ex3);
-+		orig_ex.ee_len = cpu_to_le16(ee_len);
-+		may_zeroout = ee_block + ee_len <= eof_block;
-+
- 		depth = newdepth;
- 		ext4_ext_drop_refs(path);
- 		path = ext4_ext_find_extent(inode, iblock, path);
-@@ -2959,7 +2994,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 	goto out;
- insert:
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
--	if (err == -ENOSPC) {
-+	if (err == -ENOSPC && may_zeroout) {
- 		err =  ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
+ no_journal:
+-
++	err = percpu_counter_init(&sbi->s_freeblocks_counter,
++				  ext4_count_free_blocks(sb));
++	if (!err)
++		err = percpu_counter_init(&sbi->s_freeinodes_counter,
++					  ext4_count_free_inodes(sb));
++	if (!err)
++		err = percpu_counter_init(&sbi->s_dirs_counter,
++					  ext4_count_dirs(sb));
++	if (!err)
++		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
++	if (err) {
++		ext4_msg(sb, KERN_ERR, "insufficient memory");
++		goto failed_mount_wq;
++	}
+ 	if (test_opt(sb, NOBH)) {
+ 		if (!(test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)) {
+ 			ext4_msg(sb, KERN_WARNING, "Ignoring nobh option - "
+@@ -2960,6 +2955,10 @@ failed_mount_wq:
+ 		jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+ 	}
++	percpu_counter_destroy(&sbi->s_freeblocks_counter);
++	percpu_counter_destroy(&sbi->s_freeinodes_counter);
++	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+ failed_mount3:
+ 	if (sbi->s_flex_groups) {
+ 		if (is_vmalloc_addr(sbi->s_flex_groups))
+@@ -2967,10 +2966,6 @@ failed_mount3:
+ 		else
+ 			kfree(sbi->s_flex_groups);
+ 	}
+-	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+-	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+-	percpu_counter_destroy(&sbi->s_dirs_counter);
+-	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
 -- 
 1.6.6.1.1.g974db.dirty
 
