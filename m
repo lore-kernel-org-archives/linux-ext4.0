@@ -1,142 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 12/28] ext4: clean up inode bitmaps manipulation in ext4_free_inode
-Date: Tue,  1 Jun 2010 12:12:59 -0400
-Message-ID: <1275408795-17487-12-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 27/28] ext4: Fix compat EXT4_IOC_ADD_GROUP
+Date: Tue,  1 Jun 2010 12:13:14 -0400
+Message-ID: <1275408795-17487-27-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Ben Hutchings <ben@decadent.org.uk>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56880 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56872 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756958Ab0FAQNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 12:13:22 -0400
+	id S1756708Ab0FAQNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 12:13:21 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Ben Hutchings <ben@decadent.org.uk>
 
-commit d17413c08cd2b1dd2bf2cfdbb0f7b736b2b2b15c upstrea (as of v2..34-git13)
+commit 4d92dc0f00a775dc2e1267b0e00befb783902fe7 upstream (as of v2.6.34-git13)
 
-- Reorganize locking scheme to batch two atomic operation in to one.
-  This also allow us to state what healthy group must obey following rule
-  ext4_free_inodes_count(sb, gdp) == ext4_count_free(inode_bitmap, NUM);
-- Fix possible undefined pointer dereference.
-- Even if group descriptor stats aren't accessible we have to update
-  inode bitmaps.
-- Move non-group members update out of group_lock.
+struct ext4_new_group_input needs to be converted because u64 has
+only 32-bit alignment on some 32-bit architectures, notably i386.
 
-Note: this commit has been observed to fix fs corruption problems
-under heavy fs load
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ialloc.c |   81 ++++++++++++++++++++++++-----------------------------
- 1 files changed, 37 insertions(+), 44 deletions(-)
+ fs/ext4/ext4.h  |   16 ++++++++++++++++
+ fs/ext4/ioctl.c |   25 +++++++++++++++++++++++--
+ 2 files changed, 39 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 57f6eef..52618d5 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -240,56 +240,49 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	if (fatal)
- 		goto error_return;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0419018..2e31640 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -29,6 +29,9 @@
+ #include <linux/wait.h>
+ #include <linux/blockgroup_lock.h>
+ #include <linux/percpu_counter.h>
++#ifdef __KERNEL__
++#include <linux/compat.h>
++#endif
  
--	/* Ok, now we can actually update the inode bitmaps.. */
--	cleared = ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
--					bit, bitmap_bh->b_data);
--	if (!cleared)
--		ext4_error(sb, "bit already cleared for inode %lu", ino);
--	else {
--		gdp = ext4_get_group_desc(sb, block_group, &bh2);
--
-+	fatal = -ESRCH;
-+	gdp = ext4_get_group_desc(sb, block_group, &bh2);
-+	if (gdp) {
- 		BUFFER_TRACE(bh2, "get_write_access");
- 		fatal = ext4_journal_get_write_access(handle, bh2);
--		if (fatal) goto error_return;
--
--		if (gdp) {
--			ext4_lock_group(sb, block_group);
--			count = ext4_free_inodes_count(sb, gdp) + 1;
--			ext4_free_inodes_set(sb, gdp, count);
--			if (is_directory) {
--				count = ext4_used_dirs_count(sb, gdp) - 1;
--				ext4_used_dirs_set(sb, gdp, count);
--				if (sbi->s_log_groups_per_flex) {
--					ext4_group_t f;
--
--					f = ext4_flex_group(sbi, block_group);
--					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
--				}
-+	}
-+	ext4_lock_group(sb, block_group);
-+	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
-+	if (fatal || !cleared) {
-+		ext4_unlock_group(sb, block_group);
-+		goto out;
-+	}
+ /*
+  * The fourth extended filesystem constants/structures
+@@ -409,6 +412,18 @@ struct ext4_new_group_input {
+ 	__u16 unused;
+ };
  
--			}
--			gdp->bg_checksum = ext4_group_desc_csum(sbi,
--							block_group, gdp);
--			ext4_unlock_group(sb, block_group);
--			percpu_counter_inc(&sbi->s_freeinodes_counter);
--			if (is_directory)
--				percpu_counter_dec(&sbi->s_dirs_counter);
--
--			if (sbi->s_log_groups_per_flex) {
--				ext4_group_t f;
--
--				f = ext4_flex_group(sbi, block_group);
--				atomic_inc(&sbi->s_flex_groups[f].free_inodes);
--			}
--		}
--		BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
--		err = ext4_handle_dirty_metadata(handle, NULL, bh2);
--		if (!fatal) fatal = err;
-+	count = ext4_free_inodes_count(sb, gdp) + 1;
-+	ext4_free_inodes_set(sb, gdp, count);
-+	if (is_directory) {
-+		count = ext4_used_dirs_count(sb, gdp) - 1;
-+		ext4_used_dirs_set(sb, gdp, count);
-+		percpu_counter_dec(&sbi->s_dirs_counter);
- 	}
--	BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
--	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
--	if (!fatal)
--		fatal = err;
--	sb->s_dirt = 1;
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
-+	ext4_unlock_group(sb, block_group);
++#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
++struct compat_ext4_new_group_input {
++	u32 group;
++	compat_u64 block_bitmap;
++	compat_u64 inode_bitmap;
++	compat_u64 inode_table;
++	u32 blocks_count;
++	u16 reserved_blocks;
++	u16 unused;
++};
++#endif
 +
-+	percpu_counter_inc(&sbi->s_freeinodes_counter);
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t f = ext4_flex_group(sbi, block_group);
+ /* The struct ext4_new_group_input in kernel space, with free_blocks_count */
+ struct ext4_new_group_data {
+ 	__u32 group;
+@@ -486,6 +501,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC32_GETRSVSZ		_IOR('f', 5, int)
+ #define EXT4_IOC32_SETRSVSZ		_IOW('f', 6, int)
+ #define EXT4_IOC32_GROUP_EXTEND		_IOW('f', 7, unsigned int)
++#define EXT4_IOC32_GROUP_ADD		_IOW('f', 8, struct compat_ext4_new_group_input)
+ #ifdef CONFIG_JBD2_DEBUG
+ #define EXT4_IOC32_WAIT_FOR_READONLY	_IOR('f', 99, int)
+ #endif
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 66fa0b0..6ddec84 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -373,8 +373,29 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case EXT4_IOC32_SETRSVSZ:
+ 		cmd = EXT4_IOC_SETRSVSZ;
+ 		break;
+-	case EXT4_IOC_GROUP_ADD:
+-		break;
++	case EXT4_IOC32_GROUP_ADD: {
++		struct compat_ext4_new_group_input __user *uinput;
++		struct ext4_new_group_input input;
++		mm_segment_t old_fs;
++		int err;
 +
-+		atomic_inc(&sbi->s_flex_groups[f].free_inodes);
-+		if (is_directory)
-+			atomic_dec(&sbi->s_flex_groups[f].used_dirs);
++		uinput = compat_ptr(arg);
++		err = get_user(input.group, &uinput->group);
++		err |= get_user(input.block_bitmap, &uinput->block_bitmap);
++		err |= get_user(input.inode_bitmap, &uinput->inode_bitmap);
++		err |= get_user(input.inode_table, &uinput->inode_table);
++		err |= get_user(input.blocks_count, &uinput->blocks_count);
++		err |= get_user(input.reserved_blocks,
++				&uinput->reserved_blocks);
++		if (err)
++			return -EFAULT;
++		old_fs = get_fs();
++		set_fs(KERNEL_DS);
++		err = ext4_ioctl(file, EXT4_IOC_GROUP_ADD,
++				 (unsigned long) &input);
++		set_fs(old_fs);
++		return err;
 +	}
-+	BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
-+	fatal = ext4_handle_dirty_metadata(handle, NULL, bh2);
-+out:
-+	if (cleared) {
-+		BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
-+		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-+		if (!fatal)
-+			fatal = err;
-+		sb->s_dirt = 1;
-+	} else
-+		ext4_error(sb, "bit already cleared for inode %lu", ino);
-+
- error_return:
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, fatal);
+ 	case EXT4_IOC_MOVE_EXT:
+ 		break;
+ 	default:
 -- 
 1.6.6.1.1.g974db.dirty
 
