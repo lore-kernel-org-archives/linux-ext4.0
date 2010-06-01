@@ -1,55 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 26/28] ext4: Conditionally define compat ioctl numbers
-Date: Tue,  1 Jun 2010 12:13:13 -0400
-Message-ID: <1275408795-17487-26-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 18/28] ext4: Prevent creation of files larger than RLIMIT_FSIZE using fallocate
+Date: Tue,  1 Jun 2010 12:13:05 -0400
+Message-ID: <1275408795-17487-18-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Ben Hutchings <ben@decadent.org.uk>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Nikanth Karthikesan <knikanth@suse.de>,
+	Amit Arora <aarora@in.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56882 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56956 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757052Ab0FAQNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 12:13:22 -0400
+	id S932156Ab0FAQNZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 12:13:25 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Ben Hutchings <ben@decadent.org.uk>
+From: Nikanth Karthikesan <knikanth@suse.de>
 
-commit 899ad0cea6ad7ff4ba24b16318edbc3cbbe03fad upstream (as of v2.6.34-git13)
+commit 6d19c42b7cf81c39632b6d4dbc514e8449bcd346 upstream (as of v2.6.34-git13)
 
-It is unnecessary, and in general impossible, to define the compat
-ioctl numbers except when building the filesystem with CONFIG_COMPAT
-defined.
+Currently using posix_fallocate one can bypass an RLIMIT_FSIZE limit
+and create a file larger than the limit. Add a check for that.
 
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+Signed-off-by: Nikanth Karthikesan <knikanth@suse.de>
+Signed-off-by: Amit Arora <aarora@in.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/extents.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7fe80c5..0419018 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -475,6 +475,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- 
-+#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-  * ioctl commands in 32 bit emulation
-  */
-@@ -490,6 +491,7 @@ struct ext4_new_group_data {
- #endif
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
- #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
-+#endif
- 
- 
- /*
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ee611da..8a8f9f0 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3708,6 +3708,11 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ 	 */
+ 	credits = ext4_chunk_trans_blocks(inode, max_blocks);
+ 	mutex_lock(&inode->i_mutex);
++	ret = inode_newsize_ok(inode, (len + offset));
++	if (ret) {
++		mutex_unlock(&inode->i_mutex);
++		return ret;
++	}
+ retry:
+ 	while (ret >= 0 && ret < max_blocks) {
+ 		block = block + ret;
 -- 
 1.6.6.1.1.g974db.dirty
 
