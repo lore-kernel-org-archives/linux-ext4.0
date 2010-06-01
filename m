@@ -1,47 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 10/40] ext4: Fix the NULL reference in double_down_write_data_sem()
-Date: Tue,  1 Jun 2010 08:02:57 -0400
-Message-ID: <1275393807-14369-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 13/40] ext4: Fixed inode allocator to correctly track a flex_bg's used_dirs
+Date: Tue,  1 Jun 2010 08:03:00 -0400
+Message-ID: <1275393807-14369-13-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47262 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47472 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752791Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:33 -0400
+	id S1756082Ab0FAMEF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:04:05 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-commit 7247c0caa23d94a1cb6b307edba9dc45fb0798d4 upstream (as of v2.6.33-git11)
+commit c4caae25187ff3f5e837c6f04eb1acc2723c72d3 upstream (as of v2.6.34-rc3)
 
-If EXT4_IOC_MOVE_EXT ioctl is called with NULL donor_fd, fget() in
-ext4_ioctl() gets inappropriate file structure for donor; so we need
-to do this check earlier, before calling double_down_write_data_sem().
+When used_dirs was introduced for the flex_groups struct, it looks
+like the accounting was not put into place properly, in some places
+manipulating free_inodes rather than used_dirs.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/move_extent.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+ fs/ext4/ialloc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index b2b2e67..379c0c0 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -953,14 +953,6 @@ mext_check_arguments(struct inode *orig_inode,
- 	unsigned int blkbits = orig_inode->i_blkbits;
- 	unsigned int blocksize = 1 << blkbits;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 179e45c..8b4bb11 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -268,7 +268,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 					ext4_group_t f;
  
--	/* Regular file check */
--	if (!S_ISREG(orig_inode->i_mode) || !S_ISREG(donor_inode->i_mode)) {
--		ext4_debug("ext4 move extent: The argument files should be "
--			"regular file [ino:orig %lu, donor %lu]\n",
--			orig_inode->i_ino, donor_inode->i_ino);
--		return -EINVAL;
--	}
+ 					f = ext4_flex_group(sbi, block_group);
+-					atomic_dec(&sbi->s_flex_groups[f].free_inodes);
++					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
+ 				}
+ 
+ 			}
+@@ -779,7 +779,7 @@ static int ext4_claim_inode(struct super_block *sb,
+ 		if (sbi->s_log_groups_per_flex) {
+ 			ext4_group_t f = ext4_flex_group(sbi, group);
+ 
+-			atomic_inc(&sbi->s_flex_groups[f].free_inodes);
++			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+ 		}
+ 	}
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+-- 
+1.6.6.1.1.g974db.dirty
+
