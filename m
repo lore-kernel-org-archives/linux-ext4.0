@@ -1,27 +1,44 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: nobh mount option in ext3/4?
-Date: Tue, 1 Jun 2010 11:10:41 +0200
-Message-ID: <20100601091041.GA28762@lst.de>
-References: <20100531124051.GA17262@lst.de> <20100531175557.GC5334@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext2 issues with xfstests 113
+Date: Tue, 1 Jun 2010 12:26:19 +0200
+Message-ID: <20100601102618.GB4275@quack.suse.cz>
+References: <20100531094625.GA10283@lst.de>
+ <20100531175747.GD5334@quack.suse.cz>
+ <20100531180101.GA32160@lst.de>
+ <20100531213101.GJ5334@quack.suse.cz>
+ <20100601090337.GA28085@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@lst.de>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:42769 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755686Ab0FAK0c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 06:26:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20100531175557.GC5334@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20100601090337.GA28085@lst.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 31, 2010 at 07:55:58PM +0200, Jan Kara wrote:
->   IMHO nobh can go away from ext3/ext4.
+On Tue 01-06-10 11:03:37, Christoph Hellwig wrote:
+> On Mon, May 31, 2010 at 11:31:01PM +0200, Jan Kara wrote:
+> >   Hmm, interesting because I've run test 113 again with a kernel somewhere
+> > between 2.6.34 and 2.6.35-rc1 and the filesystem is clean. So probably you
+> > are able to hit some kind of race I'm not able to. Could you check whether
+> > the corruption is caused by the O_DIRECT run or some other one?
+> 
+> 113 is an AIO test, so it must be using O_DIRECT.
+  Why? Looking at aio-stress source and 113 script, two of aio-stress runs
+use buffered IO and only the last one uses O_DIRECT...
 
-I'll send patches.
+> >   Also could you get "e2image -r" of the filesystem, bzip2 it and put it
+> > somewhere for download?
+> 
+> I've jyst attached it as the compressed version is small enough (88k).
+  Thanks, I'll have a look whether I can guess something.
 
->   I would be also in favor of
-> removing all the nobh logic from VFS and ext2 but for ext2 it saves some
-> low memory so some people might actually use it.
-
-I agree that we should get rid of it entirely, but that's the next step.
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
