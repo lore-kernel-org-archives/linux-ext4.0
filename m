@@ -1,235 +1,155 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 19/28] ext4: check for a good block group before loading buddy pages
-Date: Tue,  1 Jun 2010 12:13:06 -0400
-Message-ID: <1275408795-17487-19-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 14/28] quota: use flags interface for dquot alloc/free space
+Date: Tue,  1 Jun 2010 12:13:01 -0400
+Message-ID: <1275408795-17487-14-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56930 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56948 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757153Ab0FAQNY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1757167Ab0FAQNY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 12:13:24 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-commit 8a57d9d61a6e361c7bb159dda797672c1df1a691 upstream (as of v2.6.34-git13)
+commit 56246f9ae4cfa95b460f9dfbcfb1b772d85db046 upstream (as of 2.6.34-git13)
 
-This adds a new field in ext4_group_info to cache the largest available
-block range in a block group; and don't load the buddy pages until *after*
-we've done a sanity check on the block group.
+Switch __dquot_alloc_space and __dquot_free_space to take flags
+to indicate whether to warn and/or to reserve (or free reserve).
 
-With large allocation requests (e.g., fallocate(), 8MiB) and relatively full
-partitions, it's easy to have no block groups with a block extent large
-enough to satisfy the input request length.  This currently causes the loop
-during cr == 0 in ext4_mb_regular_allocator() to load the buddy bitmap pages
-for EVERY block group.  That can be a lot of pages.  The patch below allows
-us to call ext4_mb_good_group() BEFORE we load the buddy pages (although we
-have check again after we lock the block group).
+This is slightly more readable at the callpoints, and makes it
+cleaner to add a "nofail" option in the next patch.
 
-Addresses-Google-Bug: #2578108
-Addresses-Google-Bug: #2704453
-
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    1 +
- fs/ext4/mballoc.c |   70 +++++++++++++++++++++++++++++++++++++++++++----------
- 2 files changed, 58 insertions(+), 13 deletions(-)
+ fs/quota/dquot.c         |    8 +++++---
+ include/linux/quotaops.h |   25 ++++++++++++++-----------
+ 2 files changed, 19 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bf938cf..d266003 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1678,6 +1678,7 @@ struct ext4_group_info {
- 	ext4_grpblk_t	bb_first_free;	/* first free block */
- 	ext4_grpblk_t	bb_free;	/* total free blocks */
- 	ext4_grpblk_t	bb_fragments;	/* nr of freespace fragments */
-+	ext4_grpblk_t	bb_largest_free_order;/* order of largest frag in BG */
- 	struct          list_head bb_prealloc_list;
- #ifdef DOUBLE_CHECK
- 	void            *bb_bitmap;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 9c6a40d..086135d 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -658,6 +658,27 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
- 	}
- }
- 
-+/*
-+ * Cache the order of the largest free extent we have available in this block
-+ * group.
-+ */
-+static void
-+mb_set_largest_free_order(struct super_block *sb, struct ext4_group_info *grp)
-+{
-+	int i;
-+	int bits;
-+
-+	grp->bb_largest_free_order = -1; /* uninit */
-+
-+	bits = sb->s_blocksize_bits + 1;
-+	for (i = bits; i >= 0; i--) {
-+		if (grp->bb_counters[i] > 0) {
-+			grp->bb_largest_free_order = i;
-+			break;
-+		}
-+	}
-+}
-+
- static noinline_for_stack
- void ext4_mb_generate_buddy(struct super_block *sb,
- 				void *buddy, void *bitmap, ext4_group_t group)
-@@ -700,6 +721,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 		 */
- 		grp->bb_free = free;
- 	}
-+	mb_set_largest_free_order(sb, grp);
- 
- 	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
- 
-@@ -725,6 +747,9 @@ void ext4_mb_generate_buddy(struct super_block *sb,
-  * contain blocks_per_page (PAGE_CACHE_SIZE / blocksize)  blocks.
-  * So it can have information regarding groups_per_page which
-  * is blocks_per_page/2
-+ *
-+ * Locking note:  This routine takes the block group lock of all groups
-+ * for this page; do not hold this lock when calling this routine!
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 788b580..8c40c07 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1488,11 +1488,12 @@ static void inode_decr_space(struct inode *inode, qsize_t number, int reserve)
+ /*
+  * This operation can block, but only after everything is updated
   */
- 
- static int ext4_mb_init_cache(struct page *page, char *incore)
-@@ -910,6 +935,11 @@ out:
- 	return err;
- }
- 
-+/*
-+ * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
-+ * block group lock of all groups for this page; do not hold the BG lock when
-+ * calling this routine!
-+ */
- static noinline_for_stack
- int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
+-int __dquot_alloc_space(struct inode *inode, qsize_t number,
+-		int warn, int reserve)
++int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
  {
-@@ -1004,6 +1034,11 @@ err:
- 	return ret;
- }
+ 	int cnt, ret = 0;
+ 	char warntype[MAXQUOTAS];
++	int warn = flags & DQUOT_SPACE_WARN;
++	int reserve = flags & DQUOT_SPACE_RESERVE;
  
-+/*
-+ * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
-+ * block group lock of all groups for this page; do not hold the BG lock when
-+ * calling this routine!
-+ */
- static noinline_for_stack int
- ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 					struct ext4_buddy *e4b)
-@@ -1299,6 +1334,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			buddy = buddy2;
- 		} while (1);
- 	}
-+	mb_set_largest_free_order(sb, e4b->bd_info);
- 	mb_check_buddy(e4b);
- }
- 
-@@ -1427,6 +1463,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 		e4b->bd_info->bb_counters[ord]++;
- 		e4b->bd_info->bb_counters[ord]++;
- 	}
-+	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
- 
- 	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
- 	mb_check_buddy(e4b);
-@@ -1821,16 +1858,22 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
- 	}
- }
- 
-+/* This is now called BEFORE we load the buddy bitmap. */
- static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 				ext4_group_t group, int cr)
+ 	/*
+ 	 * First test before acquiring mutex - solves deadlocks when we
+@@ -1612,10 +1613,11 @@ EXPORT_SYMBOL(dquot_claim_space_nodirty);
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-void __dquot_free_space(struct inode *inode, qsize_t number, int reserve)
++void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
  {
- 	unsigned free, fragments;
--	unsigned i, bits;
- 	int flex_size = ext4_flex_bg_size(EXT4_SB(ac->ac_sb));
- 	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
+ 	unsigned int cnt;
+ 	char warntype[MAXQUOTAS];
++	int reserve = flags & DQUOT_SPACE_RESERVE;
  
- 	BUG_ON(cr < 0 || cr >= 4);
--	BUG_ON(EXT4_MB_GRP_NEED_INIT(grp));
+ 	/* First test before acquiring mutex - solves deadlocks when we
+          * re-enter the quota code and are already holding the mutex */
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index e6fa7ac..9edd53c 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -9,6 +9,9 @@
+ 
+ #include <linux/fs.h>
+ 
++#define DQUOT_SPACE_WARN	0x1
++#define DQUOT_SPACE_RESERVE	0x2
 +
-+	/* We only do this if the grp has never been initialized */
-+	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
-+		int ret = ext4_mb_init_group(ac->ac_sb, group);
-+		if (ret)
-+			return 0;
-+	}
+ static inline struct quota_info *sb_dqopt(struct super_block *sb)
+ {
+ 	return &sb->s_dquot;
+@@ -33,9 +36,8 @@ int dquot_scan_active(struct super_block *sb,
+ struct dquot *dquot_alloc(struct super_block *sb, int type);
+ void dquot_destroy(struct dquot *dquot);
  
- 	free = grp->bb_free;
- 	fragments = grp->bb_fragments;
-@@ -1843,17 +1886,16 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 	case 0:
- 		BUG_ON(ac->ac_2order == 0);
+-int __dquot_alloc_space(struct inode *inode, qsize_t number,
+-		int warn, int reserve);
+-void __dquot_free_space(struct inode *inode, qsize_t number, int reserve);
++int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags);
++void __dquot_free_space(struct inode *inode, qsize_t number, int flags);
  
-+		if (grp->bb_largest_free_order < ac->ac_2order)
-+			return 0;
-+
- 		/* Avoid using the first bg of a flexgroup for data files */
- 		if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&
- 		    (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&
- 		    ((group % flex_size) == 0))
- 			return 0;
+ int dquot_alloc_inode(const struct inode *inode);
  
--		bits = ac->ac_sb->s_blocksize_bits + 1;
--		for (i = ac->ac_2order; i <= bits; i++)
--			if (grp->bb_counters[i] > 0)
--				return 1;
--		break;
-+		return 1;
- 	case 1:
- 		if ((free / fragments) >= ac->ac_g_ex.fe_len)
- 			return 1;
-@@ -2024,14 +2066,11 @@ repeat:
- 		group = ac->ac_g_ex.fe_group;
+@@ -231,17 +233,17 @@ static inline int dquot_transfer(struct inode *inode, struct iattr *iattr)
+ }
  
- 		for (i = 0; i < ngroups; group++, i++) {
--			struct ext4_group_info *grp;
--
- 			if (group == ngroups)
- 				group = 0;
+ static inline int __dquot_alloc_space(struct inode *inode, qsize_t number,
+-		int warn, int reserve)
++		int flags)
+ {
+-	if (!reserve)
++	if (!(flags & DQUOT_SPACE_RESERVE))
+ 		inode_add_bytes(inode, number);
+ 	return 0;
+ }
  
--			/* quick check to skip empty groups */
--			grp = ext4_get_group_info(sb, group);
--			if (grp->bb_free == 0)
-+			/* This now checks without needing the buddy page */
-+			if (!ext4_mb_good_group(ac, group, cr))
- 				continue;
+ static inline void __dquot_free_space(struct inode *inode, qsize_t number,
+-		int reserve)
++		int flags)
+ {
+-	if (!reserve)
++	if (!(flags & DQUOT_SPACE_RESERVE))
+ 		inode_sub_bytes(inode, number);
+ }
  
- 			err = ext4_mb_load_buddy(sb, group, &e4b);
-@@ -2039,8 +2078,12 @@ repeat:
- 				goto out;
+@@ -257,7 +259,7 @@ static inline int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
  
- 			ext4_lock_group(sb, group);
-+
-+			/*
-+			 * We need to check again after locking the
-+			 * block group
-+			 */
- 			if (!ext4_mb_good_group(ac, group, cr)) {
--				/* someone did allocation from this group */
- 				ext4_unlock_group(sb, group);
- 				ext4_mb_unload_buddy(&e4b);
- 				continue;
-@@ -2253,6 +2296,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
- 	init_rwsem(&meta_group_info[i]->alloc_sem);
- 	meta_group_info[i]->bb_free_root = RB_ROOT;
-+	meta_group_info[i]->bb_largest_free_order = -1;  /* uninit */
+ static inline int dquot_alloc_space_nodirty(struct inode *inode, qsize_t nr)
+ {
+-	return __dquot_alloc_space(inode, nr, 1, 0);
++	return __dquot_alloc_space(inode, nr, DQUOT_SPACE_WARN);
+ }
  
- #ifdef DOUBLE_CHECK
- 	{
+ static inline int dquot_alloc_space(struct inode *inode, qsize_t nr)
+@@ -282,7 +284,7 @@ static inline int dquot_alloc_block(struct inode *inode, qsize_t nr)
+ 
+ static inline int dquot_prealloc_block_nodirty(struct inode *inode, qsize_t nr)
+ {
+-	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 0, 0);
++	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 0);
+ }
+ 
+ static inline int dquot_prealloc_block(struct inode *inode, qsize_t nr)
+@@ -297,7 +299,8 @@ static inline int dquot_prealloc_block(struct inode *inode, qsize_t nr)
+ 
+ static inline int dquot_reserve_block(struct inode *inode, qsize_t nr)
+ {
+-	return __dquot_alloc_space(inode, nr << inode->i_blkbits, 1, 1);
++	return __dquot_alloc_space(inode, nr << inode->i_blkbits,
++				DQUOT_SPACE_WARN|DQUOT_SPACE_RESERVE);
+ }
+ 
+ static inline int dquot_claim_block(struct inode *inode, qsize_t nr)
+@@ -334,7 +337,7 @@ static inline void dquot_free_block(struct inode *inode, qsize_t nr)
+ static inline void dquot_release_reservation_block(struct inode *inode,
+ 		qsize_t nr)
+ {
+-	__dquot_free_space(inode, nr << inode->i_blkbits, 1);
++	__dquot_free_space(inode, nr << inode->i_blkbits, DQUOT_SPACE_RESERVE);
+ }
+ 
+ #endif /* _LINUX_QUOTAOPS_ */
 -- 
 1.6.6.1.1.g974db.dirty
 
