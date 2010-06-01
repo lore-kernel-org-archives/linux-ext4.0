@@ -1,85 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 05/40] ext4: fix error handling in migrate
-Date: Tue,  1 Jun 2010 08:02:52 -0400
-Message-ID: <1275393807-14369-5-git-send-email-tytso@mit.edu>
-References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: stable@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47264 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753030Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:33 -0400
-In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext4: force block allocation on quota_off
+Date: Tue, 1 Jun 2010 14:11:08 +0200
+Message-ID: <20100601121107.GE4275@quack.suse.cz>
+References: <20100531191130.GE5334@quack.suse.cz>
+ <1275377988-4299-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1275377988-4299-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+On Tue 01-06-10 11:39:47, Dmitry Monakhov wrote:
+> Perform full sync procedure to guarantee quota consistency.
+  The patch looks OK to me. Acked-by: Jan Kara <jack@suse.cz>
+Ted, will you merge it or should I do it?
 
-commit f39490bcd1691d65dc33689222a12e1fc13dd824 upstream (as of v2.6.33-git11)
-
-Set i_nlink to zero for temporary inode from very beginning.
-otherwise we may fail to start new journal handle and this
-inode will be unreferenced but with i_nlink == 1
-Since we hold inode reference it can not be pruned.
-
-Also add missed journal_start retval check.
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/migrate.c |   29 ++++++++++++++---------------
- 1 files changed, 14 insertions(+), 15 deletions(-)
-
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 46a4101..8b87bd0 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -503,14 +503,10 @@ int ext4_ext_migrate(struct inode *inode)
- 	}
- 	i_size_write(tmp_inode, i_size_read(inode));
- 	/*
--	 * We don't want the inode to be reclaimed
--	 * if we got interrupted in between. We have
--	 * this tmp inode carrying reference to the
--	 * data blocks of the original file. We set
--	 * the i_nlink to zero at the last stage after
--	 * switching the original file to extent format
-+	 * Set the i_nlink to zero so it will be deleted later
-+	 * when we drop inode reference.
- 	 */
--	tmp_inode->i_nlink = 1;
-+	tmp_inode->i_nlink = 0;
- 
- 	ext4_ext_tree_init(handle, tmp_inode);
- 	ext4_orphan_add(handle, tmp_inode);
-@@ -537,6 +533,16 @@ int ext4_ext_migrate(struct inode *inode)
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	handle = ext4_journal_start(inode, 1);
-+	if (IS_ERR(handle)) {
-+		/*
-+		 * It is impossible to update on-disk structures without
-+		 * a handle, so just rollback in-core changes and live other
-+		 * work to orphan_list_cleanup()
-+		 */
-+		ext4_orphan_del(NULL, tmp_inode);
-+		retval = PTR_ERR(handle);
-+		goto out;
-+	}
- 
- 	ei = EXT4_I(inode);
- 	i_data = ei->i_data;
-@@ -618,15 +624,8 @@ err_out:
- 
- 	/* Reset the extent details */
- 	ext4_ext_tree_init(handle, tmp_inode);
--
--	/*
--	 * Set the i_nlink to zero so that
--	 * generic_drop_inode really deletes the
--	 * inode
--	 */
--	tmp_inode->i_nlink = 0;
+							Honza
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/super.c |   15 ++++++++++++++-
+>  1 files changed, 14 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 4e8983a..107fb03 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1065,6 +1065,7 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
+>  static int ext4_write_info(struct super_block *sb, int type);
+>  static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+>  				char *path);
+> +static int ext4_quota_off(struct super_block *sb, int type);
+>  static int ext4_quota_on_mount(struct super_block *sb, int type);
+>  static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
+>  			       size_t len, loff_t off);
+> @@ -1086,7 +1087,7 @@ static const struct dquot_operations ext4_quota_operations = {
+>  
+>  static const struct quotactl_ops ext4_qctl_operations = {
+>  	.quota_on	= ext4_quota_on,
+> -	.quota_off	= dquot_quota_off,
+> +	.quota_off	= ext4_quota_off,
+>  	.quota_sync	= dquot_quota_sync,
+>  	.get_info	= dquot_get_dqinfo,
+>  	.set_info	= dquot_set_dqinfo,
+> @@ -3981,6 +3982,18 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+>  	return err;
+>  }
+>  
+> +static int ext4_quota_off(struct super_block *sb, int type)
+> +{
+> +	/* Force all delayed allocation blocks to be allocated */
+> +	if (test_opt(sb, DELALLOC)) {
+> +		down_read(&sb->s_umount);
+> +		sync_filesystem(sb);
+> +		up_read(&sb->s_umount);
+> +	}
+> +
+> +	return dquot_quota_off(sb, type);
+> +}
+> +
+>  /* Read data from quotafile - avoid pagecache and such because we cannot afford
+>   * acquiring the locks... As quota files are never truncated and quota code
+>   * itself serializes the operations (and noone else should touch the files)
+> -- 
+> 1.6.6.1
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
