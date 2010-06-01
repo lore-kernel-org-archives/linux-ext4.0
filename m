@@ -1,47 +1,144 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 22/40] ext4: fix quota accounting in case of fallocate
-Date: Tue,  1 Jun 2010 08:03:09 -0400
-Message-ID: <1275393807-14369-22-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 28/40] ext4: clean up inode bitmaps manipulation in ext4_free_inode
+Date: Tue,  1 Jun 2010 08:03:15 -0400
+Message-ID: <1275393807-14369-28-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Dmitry Monakhov <dmonakhov@openvz.org>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47347 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47309 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756076Ab0FAMDl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:41 -0400
+	id S1756089Ab0FAMDf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:03:35 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Dmitry Monakhov <dmonakhov@openvz.org>
 
-commit 35121c9860316d7799cea0fbc359a9186e7c2747 upstream (as of v2.6.34-git13)
+commit d17413c08cd2b1dd2bf2cfdbb0f7b736b2b2b15c upstrea (as of v2..34-git13)
 
-allocated_meta_data is already included in 'used' variable.
+- Reorganize locking scheme to batch two atomic operation in to one.
+  This also allow us to state what healthy group must obey following rule
+  ext4_free_inodes_count(sb, gdp) == ext4_count_free(inode_bitmap, NUM);
+- Fix possible undefined pointer dereference.
+- Even if group descriptor stats aren't accessible we have to update
+  inode bitmaps.
+- Move non-group members update out of group_lock.
+
+Note: this commit has been observed to fix fs corruption problems
+under heavy fs load
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/ext4/ialloc.c |   83 ++++++++++++++++++++++++-----------------------------
+ 1 files changed, 38 insertions(+), 45 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3e06a5d..f01fe28 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1107,7 +1107,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 		 */
- 		if (allocated_meta_blocks)
- 			vfs_dq_claim_block(inode, allocated_meta_blocks);
--		vfs_dq_release_reservation_block(inode, mdb_free + used);
-+		vfs_dq_release_reservation_block(inode, mdb_free + used -
-+						allocated_meta_blocks);
- 	}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 8b4bb11..c55275a 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -244,57 +244,50 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	if (fatal)
+ 		goto error_return;
  
- 	/*
+-	/* Ok, now we can actually update the inode bitmaps.. */
+-	cleared = ext4_clear_bit_atomic(ext4_group_lock_ptr(sb, block_group),
+-					bit, bitmap_bh->b_data);
+-	if (!cleared)
+-		ext4_error(sb, "ext4_free_inode",
+-			   "bit already cleared for inode %lu", ino);
+-	else {
+-		gdp = ext4_get_group_desc(sb, block_group, &bh2);
+-
++	fatal = -ESRCH;
++	gdp = ext4_get_group_desc(sb, block_group, &bh2);
++	if (gdp) {
+ 		BUFFER_TRACE(bh2, "get_write_access");
+ 		fatal = ext4_journal_get_write_access(handle, bh2);
+-		if (fatal) goto error_return;
+-
+-		if (gdp) {
+-			ext4_lock_group(sb, block_group);
+-			count = ext4_free_inodes_count(sb, gdp) + 1;
+-			ext4_free_inodes_set(sb, gdp, count);
+-			if (is_directory) {
+-				count = ext4_used_dirs_count(sb, gdp) - 1;
+-				ext4_used_dirs_set(sb, gdp, count);
+-				if (sbi->s_log_groups_per_flex) {
+-					ext4_group_t f;
+-
+-					f = ext4_flex_group(sbi, block_group);
+-					atomic_dec(&sbi->s_flex_groups[f].used_dirs);
+-				}
++	}
++	ext4_lock_group(sb, block_group);
++	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
++	if (fatal || !cleared) {
++		ext4_unlock_group(sb, block_group);
++		goto out;
++	}
+ 
+-			}
+-			gdp->bg_checksum = ext4_group_desc_csum(sbi,
+-							block_group, gdp);
+-			ext4_unlock_group(sb, block_group);
+-			percpu_counter_inc(&sbi->s_freeinodes_counter);
+-			if (is_directory)
+-				percpu_counter_dec(&sbi->s_dirs_counter);
+-
+-			if (sbi->s_log_groups_per_flex) {
+-				ext4_group_t f;
+-
+-				f = ext4_flex_group(sbi, block_group);
+-				atomic_inc(&sbi->s_flex_groups[f].free_inodes);
+-			}
+-		}
+-		BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
+-		err = ext4_handle_dirty_metadata(handle, NULL, bh2);
+-		if (!fatal) fatal = err;
++	count = ext4_free_inodes_count(sb, gdp) + 1;
++	ext4_free_inodes_set(sb, gdp, count);
++	if (is_directory) {
++		count = ext4_used_dirs_count(sb, gdp) - 1;
++		ext4_used_dirs_set(sb, gdp, count);
++		percpu_counter_dec(&sbi->s_dirs_counter);
+ 	}
+-	BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
+-	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+-	if (!fatal)
+-		fatal = err;
+-	sb->s_dirt = 1;
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
++	ext4_unlock_group(sb, block_group);
++
++	percpu_counter_inc(&sbi->s_freeinodes_counter);
++	if (sbi->s_log_groups_per_flex) {
++		ext4_group_t f = ext4_flex_group(sbi, block_group);
++
++		atomic_inc(&sbi->s_flex_groups[f].free_inodes);
++		if (is_directory)
++			atomic_dec(&sbi->s_flex_groups[f].used_dirs);
++	}
++	BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
++	fatal = ext4_handle_dirty_metadata(handle, NULL, bh2);
++out:
++	if (cleared) {
++		BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
++		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
++		if (!fatal)
++			fatal = err;
++		sb->s_dirt = 1;
++	} else
++		ext4_error(sb, "ext4_free_inode",
++			   "bit already cleared for inode %lu", ino);
++
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, fatal);
 -- 
 1.6.6.1.1.g974db.dirty
 
