@@ -1,105 +1,79 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 24/40] ext4: don't return to userspace after freezing the fs with a mutex held
-Date: Tue,  1 Jun 2010 08:03:11 -0400
-Message-ID: <1275393807-14369-24-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 11/40] ext4: Code cleanup for EXT4_IOC_MOVE_EXT ioctl
+Date: Tue,  1 Jun 2010 08:02:58 -0400
+Message-ID: <1275393807-14369-11-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47331 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47376 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756098Ab0FAMDi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:38 -0400
+	id S1756118Ab0FAMDq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:03:46 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-commit 6b0310fbf087ad6e9e3b8392adca97cd77184084 upstream (as of v2.6.34-git13)
+commit c437b2733520599a2c6e0dbcdeae611319f84707 upstream (as of v2.6.33-git11)
 
-ext4_freeze() used jbd2_journal_lock_updates() which takes
-the j_barrier mutex, and then returns to userspace.  The
-kernel does not like this:
+a) Fix sparse warning in ext4_ioctl()
+b) Remove unneeded variable in mext_leaf_block()
+c) Fix spelling typo in mext_check_arguments()
 
-================================================
-[ BUG: lock held when returning to user space! ]
-------------------------------------------------
-lvcreate/1075 is leaving the kernel with locks still held!
-1 lock held by lvcreate/1075:
- #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
-jbd2_journal_lock_updates+0xe1/0xf0
-
-Use vfs_check_frozen() added to ext4_journal_start_sb() and
-ext4_force_commit() instead.
-
-Addresses-Red-Hat-Bugzilla: #568503
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |   20 ++++++++++----------
- 1 files changed, 10 insertions(+), 10 deletions(-)
+ fs/ext4/ioctl.c       |    3 ++-
+ fs/ext4/move_extent.c |    4 +---
+ 2 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 735c20d..a6a8e5b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -227,6 +227,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 2220feb..016d024 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -258,7 +258,8 @@ setversion_out:
+ 		if (me.moved_len > 0)
+ 			file_remove_suid(donor_filp);
  
-+	vfs_check_frozen(sb, SB_FREEZE_WRITE);
- 	/* Special case here: if the journal has aborted behind our
- 	 * backs (eg. EIO in the commit thread), then we still need to
- 	 * take the FS itself readonly cleanly. */
-@@ -3386,8 +3387,10 @@ int ext4_force_commit(struct super_block *sb)
- 		return 0;
+-		if (copy_to_user((struct move_extent *)arg, &me, sizeof(me)))
++		if (copy_to_user((struct move_extent __user *)arg, 
++				 &me, sizeof(me)))
+ 			err = -EFAULT;
+ mext_out:
+ 		fput(donor_filp);
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 379c0c0..d7e9688 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -477,7 +477,6 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
+ 	struct ext4_extent *oext, *o_start, *o_end, *prev_ext;
+ 	struct ext4_extent new_ext, start_ext, end_ext;
+ 	ext4_lblk_t new_ext_end;
+-	ext4_fsblk_t new_phys_end;
+ 	int oext_alen, new_ext_alen, end_ext_alen;
+ 	int depth = ext_depth(orig_inode);
+ 	int ret;
+@@ -491,7 +490,6 @@ mext_leaf_block(handle_t *handle, struct inode *orig_inode,
+ 	new_ext.ee_len = dext->ee_len;
+ 	new_ext_alen = ext4_ext_get_actual_len(&new_ext);
+ 	new_ext_end = le32_to_cpu(new_ext.ee_block) + new_ext_alen - 1;
+-	new_phys_end = ext_pblock(&new_ext) + new_ext_alen - 1;
  
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal)
-+	if (journal) {
-+		vfs_check_frozen(sb, SB_FREEZE_WRITE);
- 		ret = ext4_journal_force_commit(journal);
-+	}
- 
- 	return ret;
- }
-@@ -3436,18 +3439,16 @@ static int ext4_freeze(struct super_block *sb)
- 	 * the journal.
- 	 */
- 	error = jbd2_journal_flush(journal);
--	if (error < 0) {
--	out:
--		jbd2_journal_unlock_updates(journal);
--		return error;
--	}
-+	if (error < 0)
-+		goto out;
- 
- 	/* Journal blocked and flushed, clear needs_recovery flag. */
- 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	error = ext4_commit_super(sb, 1);
--	if (error)
--		goto out;
--	return 0;
-+out:
-+	/* we rely on s_frozen to stop further updates */
-+	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+	return error;
+ 	/*
+ 	 * Case: original extent is first
+@@ -932,7 +930,7 @@ out2:
  }
  
- /*
-@@ -3464,7 +3465,6 @@ static int ext4_unfreeze(struct super_block *sb)
- 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	ext4_commit_super(sb, 1);
- 	unlock_super(sb);
--	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
- 	return 0;
- }
- 
+ /**
+- * mext_check_argumants - Check whether move extent can be done
++ * mext_check_arguments - Check whether move extent can be done
+  *
+  * @orig_inode:		original inode
+  * @donor_inode:	donor inode
 -- 
 1.6.6.1.1.g974db.dirty
 
