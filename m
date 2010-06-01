@@ -1,124 +1,105 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 02/40] ext4: Fix BUG_ON at fs/buffer.c:652 in no journal mode
-Date: Tue,  1 Jun 2010 08:02:49 -0400
-Message-ID: <1275393807-14369-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 24/40] ext4: don't return to userspace after freezing the fs with a mutex held
+Date: Tue,  1 Jun 2010 08:03:11 -0400
+Message-ID: <1275393807-14369-24-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47268 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47331 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756012Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:33 -0400
+	id S1756098Ab0FAMDi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:03:38 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-commit 73b50c1c92666d326b5fa2c945d46509f2f6d91f upstream (as of v2.6.33-git11)
+commit 6b0310fbf087ad6e9e3b8392adca97cd77184084 upstream (as of v2.6.34-git13)
 
-Calls to ext4_handle_dirty_metadata should only pass in an inode
-pointer for inode-specific metadata, and not for shared metadata
-blocks such as inode table blocks, block group descriptors, the
-superblock, etc.
+ext4_freeze() used jbd2_journal_lock_updates() which takes
+the j_barrier mutex, and then returns to userspace.  The
+kernel does not like this:
 
-The BUG_ON can get tripped when updating a special device (such as a
-block device) that is opened (so that i_mapping is set in
-fs/block_dev.c) and the file system is mounted in no journal mode.
+================================================
+[ BUG: lock held when returning to user space! ]
+------------------------------------------------
+lvcreate/1075 is leaving the kernel with locks still held!
+1 lock held by lvcreate/1075:
+ #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
+jbd2_journal_lock_updates+0xe1/0xf0
 
-Addresses-Google-Bug: #2404870
+Use vfs_check_frozen() added to ext4_journal_start_sb() and
+ext4_force_commit() instead.
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Addresses-Red-Hat-Bugzilla: #568503
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4_jbd2.c |    2 +-
- fs/ext4/ialloc.c    |    2 +-
- fs/ext4/inode.c     |    6 +++---
- fs/ext4/namei.c     |    4 ++--
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ fs/ext4/super.c |   20 ++++++++++----------
+ 1 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index b57e5c7..98033d9 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -125,7 +125,7 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
- 			ext4_journal_abort_handle(where, __func__, bh,
- 						  handle, err);
- 	} else {
--		if (inode && bh)
-+		if (inode)
- 			mark_buffer_dirty_inode(bh, inode);
- 		else
- 			mark_buffer_dirty(bh);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 2fab5ad..179e45c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -904,7 +904,7 @@ repeat_in_this_group:
- 				BUFFER_TRACE(inode_bitmap_bh,
- 					"call ext4_handle_dirty_metadata");
- 				err = ext4_handle_dirty_metadata(handle,
--								 inode,
-+								 NULL,
- 							inode_bitmap_bh);
- 				if (err)
- 					goto fail;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6a7694e..7128506 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5102,7 +5102,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
- 			sb->s_dirt = 1;
- 			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_metadata(handle, inode,
-+			err = ext4_handle_dirty_metadata(handle, NULL,
- 					EXT4_SB(sb)->s_sbh);
- 		}
- 	}
-@@ -5131,7 +5131,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 735c20d..a6a8e5b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -227,6 +227,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
  
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--	rc = ext4_handle_dirty_metadata(handle, inode, bh);
-+	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
- 		err = rc;
- 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
-@@ -5685,7 +5685,7 @@ static int ext4_pin_inode(handle_t *handle, struct inode *inode)
- 			err = jbd2_journal_get_write_access(handle, iloc.bh);
- 			if (!err)
- 				err = ext4_handle_dirty_metadata(handle,
--								 inode,
-+								 NULL,
- 								 iloc.bh);
- 			brelse(iloc.bh);
- 		}
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 17a17e1..8bd1e20 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2024,7 +2024,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	/* Insert this inode at the head of the on-disk orphan list... */
- 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
- 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
--	err = ext4_handle_dirty_metadata(handle, inode, EXT4_SB(sb)->s_sbh);
-+	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
- 		err = rc;
-@@ -2096,7 +2096,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- 		if (err)
- 			goto out_brelse;
- 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
--		err = ext4_handle_dirty_metadata(handle, inode, sbi->s_sbh);
-+		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
- 	} else {
- 		struct ext4_iloc iloc2;
- 		struct inode *i_prev =
++	vfs_check_frozen(sb, SB_FREEZE_WRITE);
+ 	/* Special case here: if the journal has aborted behind our
+ 	 * backs (eg. EIO in the commit thread), then we still need to
+ 	 * take the FS itself readonly cleanly. */
+@@ -3386,8 +3387,10 @@ int ext4_force_commit(struct super_block *sb)
+ 		return 0;
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (journal)
++	if (journal) {
++		vfs_check_frozen(sb, SB_FREEZE_WRITE);
+ 		ret = ext4_journal_force_commit(journal);
++	}
+ 
+ 	return ret;
+ }
+@@ -3436,18 +3439,16 @@ static int ext4_freeze(struct super_block *sb)
+ 	 * the journal.
+ 	 */
+ 	error = jbd2_journal_flush(journal);
+-	if (error < 0) {
+-	out:
+-		jbd2_journal_unlock_updates(journal);
+-		return error;
+-	}
++	if (error < 0)
++		goto out;
+ 
+ 	/* Journal blocked and flushed, clear needs_recovery flag. */
+ 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	error = ext4_commit_super(sb, 1);
+-	if (error)
+-		goto out;
+-	return 0;
++out:
++	/* we rely on s_frozen to stop further updates */
++	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
++	return error;
+ }
+ 
+ /*
+@@ -3464,7 +3465,6 @@ static int ext4_unfreeze(struct super_block *sb)
+ 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	ext4_commit_super(sb, 1);
+ 	unlock_super(sb);
+-	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	return 0;
+ }
+ 
 -- 
 1.6.6.1.1.g974db.dirty
 
