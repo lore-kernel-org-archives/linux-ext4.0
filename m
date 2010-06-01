@@ -1,111 +1,55 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 13/28] ext4: init statistics after journal recovery
-Date: Tue,  1 Jun 2010 12:13:00 -0400
-Message-ID: <1275408795-17487-13-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 26/28] ext4: Conditionally define compat ioctl numbers
+Date: Tue,  1 Jun 2010 12:13:13 -0400
+Message-ID: <1275408795-17487-26-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Ben Hutchings <ben@decadent.org.uk>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56920 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56882 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757151Ab0FAQNY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 12:13:24 -0400
+	id S1757052Ab0FAQNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 12:13:22 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Ben Hutchings <ben@decadent.org.uk>
 
-commit 84061e07c5fbbbf9dc8aef8fb750fc3a2dfc31f3 upstream (as of v2.6.34-git13)
+commit 899ad0cea6ad7ff4ba24b16318edbc3cbbe03fad upstream (as of v2.6.34-git13)
 
-Currently block/inode/dir counters initialized before journal was
-recovered. In fact after journal recovery this info will probably
-change. And freeblocks it critical for correct delalloc mode
-accounting.
+It is unnecessary, and in general impossible, to define the compat
+ioctl numbers except when building the filesystem with CONFIG_COMPAT
+defined.
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15768
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Acked-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |   40 ++++++++++++++++++----------------------
- 1 files changed, 18 insertions(+), 22 deletions(-)
+ fs/ext4/ext4.h |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 00d09f5..d83cdcb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2794,24 +2794,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7fe80c5..0419018 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -475,6 +475,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
+ #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
  
--	err = percpu_counter_init(&sbi->s_freeblocks_counter,
--			ext4_count_free_blocks(sb));
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_freeinodes_counter,
--				ext4_count_free_inodes(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirs_counter,
--				ext4_count_dirs(sb));
--	}
--	if (!err) {
--		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
--	}
--	if (err) {
--		ext4_msg(sb, KERN_ERR, "insufficient memory");
--		goto failed_mount3;
--	}
--
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_max_writeback_mb_bump = 128;
++#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ /*
+  * ioctl commands in 32 bit emulation
+  */
+@@ -490,6 +491,7 @@ struct ext4_new_group_data {
+ #endif
+ #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
+ #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
++#endif
  
-@@ -2911,6 +2893,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
  
- no_journal:
-+	err = percpu_counter_init(&sbi->s_freeblocks_counter,
-+				  ext4_count_free_blocks(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_freeinodes_counter,
-+					  ext4_count_free_inodes(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_dirs_counter,
-+					  ext4_count_dirs(sb));
-+	if (!err)
-+		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
-+	if (err) {
-+		ext4_msg(sb, KERN_ERR, "insufficient memory");
-+		goto failed_mount_wq;
-+	}
- 	if (test_opt(sb, NOBH)) {
- 		if (!(test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)) {
- 			ext4_msg(sb, KERN_WARNING, "Ignoring nobh option - "
-@@ -3060,6 +3056,10 @@ failed_mount_wq:
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
- 	}
-+	percpu_counter_destroy(&sbi->s_freeblocks_counter);
-+	percpu_counter_destroy(&sbi->s_freeinodes_counter);
-+	percpu_counter_destroy(&sbi->s_dirs_counter);
-+	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount3:
- 	if (sbi->s_flex_groups) {
- 		if (is_vmalloc_addr(sbi->s_flex_groups))
-@@ -3067,10 +3067,6 @@ failed_mount3:
- 		else
- 			kfree(sbi->s_flex_groups);
- 	}
--	percpu_counter_destroy(&sbi->s_freeblocks_counter);
--	percpu_counter_destroy(&sbi->s_freeinodes_counter);
--	percpu_counter_destroy(&sbi->s_dirs_counter);
--	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
+ /*
 -- 
 1.6.6.1.1.g974db.dirty
 
