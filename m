@@ -1,104 +1,145 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH v2.6.34.y 08/28] ext4: don't return to userspace after freezing the fs with a mutex held
-Date: Tue,  1 Jun 2010 12:12:55 -0400
-Message-ID: <1275408795-17487-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH v2.6.34.y 04/28] ext4: rename ext4_mb_release_desc() to ext4_mb_unload_buddy()
+Date: Tue,  1 Jun 2010 12:12:51 -0400
+Message-ID: <1275408795-17487-4-git-send-email-tytso@mit.edu>
 References: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
+	Jing Zhang <zj.barak@gmail.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56867 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:56870 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756463Ab0FAQNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756587Ab0FAQNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 1 Jun 2010 12:13:21 -0400
 In-Reply-To: <1275408795-17487-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Jing Zhang <zj.barak@gmail.com>
 
-commit 6b0310fbf087ad6e9e3b8392adca97cd77184084 upstream (as of v2.6.34-git13)
+commit e39e07fdfd98be8650385f12a7b81d6adc547510 upstream (as of v2.6.34-git13)
 
-ext4_freeze() used jbd2_journal_lock_updates() which takes
-the j_barrier mutex, and then returns to userspace.  The
-kernel does not like this:
+This function cleans up after ext4_mb_load_buddy(), so the renaming
+makes the code clearer.
 
-================================================
-[ BUG: lock held when returning to user space! ]
-------------------------------------------------
-lvcreate/1075 is leaving the kernel with locks still held!
-1 lock held by lvcreate/1075:
- #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff811c6214>]
-jbd2_journal_lock_updates+0xe1/0xf0
-
-Use vfs_check_frozen() added to ext4_journal_start_sb() and
-ext4_force_commit() instead.
-
-Addresses-Red-Hat-Bugzilla: #568503
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Jing Zhang <zj.barak@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |   20 ++++++++++----------
- 1 files changed, 10 insertions(+), 10 deletions(-)
+ fs/ext4/mballoc.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e14d22c..00d09f5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -241,6 +241,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
- 
-+	vfs_check_frozen(sb, SB_FREEZE_WRITE);
- 	/* Special case here: if the journal has aborted behind our
- 	 * backs (eg. EIO in the commit thread), then we still need to
- 	 * take the FS itself readonly cleanly. */
-@@ -3485,8 +3486,10 @@ int ext4_force_commit(struct super_block *sb)
- 		return 0;
- 
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal)
-+	if (journal) {
-+		vfs_check_frozen(sb, SB_FREEZE_WRITE);
- 		ret = ext4_journal_force_commit(journal);
-+	}
- 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 0550ea3..8639d5a 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1150,7 +1150,7 @@ err:
  	return ret;
  }
-@@ -3535,18 +3538,16 @@ static int ext4_freeze(struct super_block *sb)
- 	 * the journal.
- 	 */
- 	error = jbd2_journal_flush(journal);
--	if (error < 0) {
--	out:
--		jbd2_journal_unlock_updates(journal);
--		return error;
--	}
-+	if (error < 0)
-+		goto out;
  
- 	/* Journal blocked and flushed, clear needs_recovery flag. */
- 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	error = ext4_commit_super(sb, 1);
--	if (error)
--		goto out;
--	return 0;
-+out:
-+	/* we rely on s_frozen to stop further updates */
-+	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+	return error;
- }
+-static void ext4_mb_release_desc(struct ext4_buddy *e4b)
++static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
+ {
+ 	if (e4b->bd_bitmap_page)
+ 		page_cache_release(e4b->bd_bitmap_page);
+@@ -1617,7 +1617,7 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
+ 	}
  
- /*
-@@ -3563,7 +3564,6 @@ static int ext4_unfreeze(struct super_block *sb)
- 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	ext4_commit_super(sb, 1);
- 	unlock_super(sb);
--	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	ext4_unlock_group(ac->ac_sb, group);
+-	ext4_mb_release_desc(e4b);
++	ext4_mb_unload_buddy(e4b);
+ 
  	return 0;
  }
+@@ -1672,7 +1672,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 		ext4_mb_use_best_found(ac, e4b);
+ 	}
+ 	ext4_unlock_group(ac->ac_sb, group);
+-	ext4_mb_release_desc(e4b);
++	ext4_mb_unload_buddy(e4b);
+ 
+ 	return 0;
+ }
+@@ -2042,7 +2042,7 @@ repeat:
+ 			if (!ext4_mb_good_group(ac, group, cr)) {
+ 				/* someone did allocation from this group */
+ 				ext4_unlock_group(sb, group);
+-				ext4_mb_release_desc(&e4b);
++				ext4_mb_unload_buddy(&e4b);
+ 				continue;
+ 			}
+ 
+@@ -2056,7 +2056,7 @@ repeat:
+ 				ext4_mb_complex_scan_group(ac, &e4b);
+ 
+ 			ext4_unlock_group(sb, group);
+-			ext4_mb_release_desc(&e4b);
++			ext4_mb_unload_buddy(&e4b);
+ 
+ 			if (ac->ac_status != AC_STATUS_CONTINUE)
+ 				break;
+@@ -2146,7 +2146,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	ext4_lock_group(sb, group);
+ 	memcpy(&sg, ext4_get_group_info(sb, group), i);
+ 	ext4_unlock_group(sb, group);
+-	ext4_mb_release_desc(&e4b);
++	ext4_mb_unload_buddy(&e4b);
+ 
+ 	seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
+ 			sg.info.bb_fragments, sg.info.bb_first_free);
+@@ -2566,7 +2566,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 		}
+ 		ext4_unlock_group(sb, entry->group);
+ 		kmem_cache_free(ext4_free_ext_cachep, entry);
+-		ext4_mb_release_desc(&e4b);
++		ext4_mb_unload_buddy(&e4b);
+ 	}
+ 
+ 	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
+@@ -3695,7 +3695,7 @@ out:
+ 	ext4_unlock_group(sb, group);
+ 	if (ac)
+ 		kmem_cache_free(ext4_ac_cachep, ac);
+-	ext4_mb_release_desc(&e4b);
++	ext4_mb_unload_buddy(&e4b);
+ 	put_bh(bitmap_bh);
+ 	return free;
+ }
+@@ -3799,7 +3799,7 @@ repeat:
+ 		if (bitmap_bh == NULL) {
+ 			ext4_error(sb, "Error reading block bitmap for %u",
+ 					group);
+-			ext4_mb_release_desc(&e4b);
++			ext4_mb_unload_buddy(&e4b);
+ 			continue;
+ 		}
+ 
+@@ -3808,7 +3808,7 @@ repeat:
+ 		ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa, ac);
+ 		ext4_unlock_group(sb, group);
+ 
+-		ext4_mb_release_desc(&e4b);
++		ext4_mb_unload_buddy(&e4b);
+ 		put_bh(bitmap_bh);
+ 
+ 		list_del(&pa->u.pa_tmp_list);
+@@ -4072,7 +4072,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 		ext4_mb_release_group_pa(&e4b, pa, ac);
+ 		ext4_unlock_group(sb, group);
+ 
+-		ext4_mb_release_desc(&e4b);
++		ext4_mb_unload_buddy(&e4b);
+ 		list_del(&pa->u.pa_tmp_list);
+ 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
+ 	}
+@@ -4608,7 +4608,7 @@ do_more:
+ 		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
+ 	}
+ 
+-	ext4_mb_release_desc(&e4b);
++	ext4_mb_unload_buddy(&e4b);
+ 
+ 	freed += count;
  
 -- 
 1.6.6.1.1.g974db.dirty
