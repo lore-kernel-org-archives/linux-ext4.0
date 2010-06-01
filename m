@@ -1,112 +1,115 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2.6.33.y 39/40] ext4: Fix compat EXT4_IOC_ADD_GROUP
-Date: Tue,  1 Jun 2010 08:03:26 -0400
-Message-ID: <1275393807-14369-39-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2.6.33.y 40/40] ext4: Make fsync sync new parent directories in no-journal mode
+Date: Tue,  1 Jun 2010 08:03:27 -0400
+Message-ID: <1275393807-14369-40-git-send-email-tytso@mit.edu>
 References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Ben Hutchings <ben@decadent.org.uk>,
+	Frank Mayhar <fmayhar@google.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47288 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47307 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756081Ab0FAMDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jun 2010 08:03:33 -0400
+	id S1756088Ab0FAMDf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jun 2010 08:03:35 -0400
 In-Reply-To: <1275393807-14369-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Ben Hutchings <ben@decadent.org.uk>
+From: Frank Mayhar <fmayhar@google.com>
 
-commit 4d92dc0f00a775dc2e1267b0e00befb783902fe7 upstream (as of v2.6.34-git13)
+commit 14ece1028b3ed53ffec1b1213ffc6acaf79ad77c upstream (as of v2.6.34-git13)
 
-struct ext4_new_group_input needs to be converted because u64 has
-only 32-bit alignment on some 32-bit architectures, notably i386.
+Add a new ext4 state to tell us when a file has been newly created; use
+that state in ext4_sync_file in no-journal mode to tell us when we need
+to sync the parent directory as well as the inode and data itself.  This
+fixes a problem in which a panic or power failure may lose the entire
+file even when using fsync, since the parent directory entry is lost.
 
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+Addresses-Google-Bug: #2480057
+
+Signed-off-by: Frank Mayhar <fmayhar@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h  |   16 ++++++++++++++++
- fs/ext4/ioctl.c |   25 +++++++++++++++++++++++--
- 2 files changed, 39 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/fsync.c |   31 +++++++++++++++++++++++++++++--
+ fs/ext4/namei.c |    2 ++
+ 3 files changed, 32 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ef12e95..e231c63 100644
+index e231c63..2ec215f 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -29,6 +29,9 @@
- #include <linux/wait.h>
- #include <linux/blockgroup_lock.h>
- #include <linux/percpu_counter.h>
-+#ifdef __KERNEL__
-+#include <linux/compat.h>
-+#endif
- 
- /*
-  * The fourth extended filesystem constants/structures
-@@ -403,6 +406,18 @@ struct ext4_new_group_input {
- 	__u16 unused;
+@@ -1148,6 +1148,7 @@ enum {
+ 	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
+ 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+ 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
++	EXT4_STATE_NEWENTRY,		/* File just added to dir */
  };
  
-+#if defined(__KERNEL__) && defined(CONFIG_COMPAT)
-+struct compat_ext4_new_group_input {
-+	u32 group;
-+	compat_u64 block_bitmap;
-+	compat_u64 inode_bitmap;
-+	compat_u64 inode_table;
-+	u32 blocks_count;
-+	u16 reserved_blocks;
-+	u16 unused;
-+};
-+#endif
+ #define EXT4_INODE_BIT_FNS(name, field)					\
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index eb52837..5240354 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -35,6 +35,29 @@
+ #include <trace/events/ext4.h>
+ 
+ /*
++ * If we're not journaling and this is a just-created file, we have to
++ * sync our parent directory (if it was freshly created) since
++ * otherwise it will only be written by writeback, leaving a huge
++ * window during which a crash may lose the file.  This may apply for
++ * the parent directory's parent as well, and so on recursively, if
++ * they are also freshly created.
++ */
++static void ext4_sync_parent(struct inode *inode)
++{
++	struct dentry *dentry = NULL;
 +
- /* The struct ext4_new_group_input in kernel space, with free_blocks_count */
- struct ext4_new_group_data {
- 	__u32 group;
-@@ -479,6 +494,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC32_GETRSVSZ		_IOR('f', 5, int)
- #define EXT4_IOC32_SETRSVSZ		_IOW('f', 6, int)
- #define EXT4_IOC32_GROUP_EXTEND		_IOW('f', 7, unsigned int)
-+#define EXT4_IOC32_GROUP_ADD		_IOW('f', 8, struct compat_ext4_new_group_input)
- #ifdef CONFIG_JBD2_DEBUG
- #define EXT4_IOC32_WAIT_FOR_READONLY	_IOR('f', 99, int)
- #endif
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 66fa0b0..6ddec84 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -373,8 +373,29 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case EXT4_IOC32_SETRSVSZ:
- 		cmd = EXT4_IOC_SETRSVSZ;
- 		break;
--	case EXT4_IOC_GROUP_ADD:
--		break;
-+	case EXT4_IOC32_GROUP_ADD: {
-+		struct compat_ext4_new_group_input __user *uinput;
-+		struct ext4_new_group_input input;
-+		mm_segment_t old_fs;
-+		int err;
-+
-+		uinput = compat_ptr(arg);
-+		err = get_user(input.group, &uinput->group);
-+		err |= get_user(input.block_bitmap, &uinput->block_bitmap);
-+		err |= get_user(input.inode_bitmap, &uinput->inode_bitmap);
-+		err |= get_user(input.inode_table, &uinput->inode_table);
-+		err |= get_user(input.blocks_count, &uinput->blocks_count);
-+		err |= get_user(input.reserved_blocks,
-+				&uinput->reserved_blocks);
-+		if (err)
-+			return -EFAULT;
-+		old_fs = get_fs();
-+		set_fs(KERNEL_DS);
-+		err = ext4_ioctl(file, EXT4_IOC_GROUP_ADD,
-+				 (unsigned long) &input);
-+		set_fs(old_fs);
-+		return err;
++	while (inode && ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
++		ext4_clear_inode_state(inode, EXT4_STATE_NEWENTRY);
++		dentry = list_entry(inode->i_dentry.next,
++				    struct dentry, d_alias);
++		if (!dentry || !dentry->d_parent || !dentry->d_parent->d_inode)
++			break;
++		inode = dentry->d_parent->d_inode;
++		sync_mapping_buffers(inode->i_mapping);
 +	}
- 	case EXT4_IOC_MOVE_EXT:
- 		break;
- 	default:
++}
++
++/*
+  * akpm: A new design for ext4_sync_file().
+  *
+  * This is only called from sys_fsync(), sys_fdatasync() and sys_msync().
+@@ -67,8 +90,12 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
+ 	if (ret < 0)
+ 		return ret;
+ 	
+-	if (!journal)
+-		return simple_fsync(file, dentry, datasync);
++	if (!journal) {
++		ret = simple_fsync(file, dentry, datasync);
++ 		if (!ret && !list_empty(&inode->i_dentry))
++ 			ext4_sync_parent(inode);
++		return ret;
++	}
+ 
+ 	/*
+ 	 * data=writeback,ordered:
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index e99c4f1..c3b6ad0 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1525,6 +1525,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
+ 	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
+ 	brelse(bh);
++	if (retval == 0)
++		ext4_set_inode_state(inode, EXT4_STATE_NEWENTRY);
+ 	return retval;
+ }
+ 
 -- 
 1.6.6.1.1.g974db.dirty
 
