@@ -1,89 +1,103 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Always journal quota file modifications
-Date: Wed, 02 Jun 2010 16:39:59 -0500
-Message-ID: <4C06CFAF.5000300@redhat.com>
-References: <1275488593-7237-1-git-send-email-jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16081] Data loss after crash during heavy I/O
+Date: Wed, 2 Jun 2010 21:57:00 GMT
+Message-ID: <201006022157.o52Lv0WV031337@demeter.kernel.org>
+References: <bug-16081-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17973 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933180Ab0FBVkI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Jun 2010 17:40:08 -0400
-In-Reply-To: <1275488593-7237-1-git-send-email-jack@suse.cz>
+Received: from demeter.kernel.org ([140.211.167.39]:54344 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753107Ab0FBV5B (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jun 2010 17:57:01 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o52Lv0eV031339
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jun 2010 21:57:00 GMT
+In-Reply-To: <bug-16081-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
-> When journaled quota options are not specified, we do writes
-> to quota files just in data=ordered mode. This actually causes
-> warnings from JBD2 about dirty journaled buffer because ext4_getblk
-> unconditionally treats a block allocated by it as metadata. Since
-> quota actually is filesystem metadata, the easiest way to get rid
-> of the warning is to always treat quota writes as metadata...
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+https://bugzilla.kernel.org/show_bug.cgi?id=16081
 
-Seems like a good approach to me, thanks Jan.
 
-(aside: how big an impact does this have on journal traffic for a busy
-quota-controlled fs?)
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-> ---
->  fs/ext4/super.c |   19 +++++--------------
->  1 files changed, 5 insertions(+), 14 deletions(-)
-> 
->   Ted, this patch fixes some JBD2 warning for me when running XFSQA
-> with quotas enabled. I think this is a move into a direction you are
-> trying to achieve as well. Will you merge the patch or should I do it?
-> 
-> 								Honza
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 4e8983a..a8cea08 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4030,7 +4030,6 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
->  	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
->  	int err = 0;
->  	int offset = off & (sb->s_blocksize - 1);
-> -	int journal_quota = EXT4_SB(sb)->s_qf_names[type] != NULL;
->  	struct buffer_head *bh;
->  	handle_t *handle = journal_current_handle();
->  
-> @@ -4055,24 +4054,16 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
->  	bh = ext4_bread(handle, inode, blk, 1, &err);
->  	if (!bh)
->  		goto out;
-> -	if (journal_quota) {
-> -		err = ext4_journal_get_write_access(handle, bh);
-> -		if (err) {
-> -			brelse(bh);
-> -			goto out;
-> -		}
-> +	err = ext4_journal_get_write_access(handle, bh);
-> +	if (err) {
-> +		brelse(bh);
-> +		goto out;
->  	}
->  	lock_buffer(bh);
->  	memcpy(bh->b_data+offset, data, len);
->  	flush_dcache_page(bh->b_page);
->  	unlock_buffer(bh);
-> -	if (journal_quota)
-> -		err = ext4_handle_dirty_metadata(handle, NULL, bh);
-> -	else {
-> -		/* Always do at least ordered writes for quotas */
-> -		err = ext4_jbd2_file_inode(handle, inode);
-> -		mark_buffer_dirty(bh);
-> -	}
-> +	err = ext4_handle_dirty_metadata(handle, NULL, bh);
->  	brelse(bh);
->  out:
->  	if (err) {
 
+--- Comment #13 from lkolbe@techfak.uni-bielefeld.de  2010-06-02 21:56:56 ---
+Funny thing is, dm-6 is the root-filesystem, and it's 4GB big. It lives on a VG
+consisting of one 100GB RAID-50 over 24 disks. Some relevant data:
+
+shepherd:~# lvm lvs -a -o+devices
+  LV          VG     Attr   LSize   Origin Snap%  Move Log Copy%  Convert
+Devices          
+  badp1       data   -wi-ao   9.00T                                      
+/dev/sdb(25600)  
+  badp2       data   -wi-ao   9.00T                                      
+/dev/sdb(2384896)
+  baspool     data   -wi-ao   1.00T                                      
+/dev/sdb(4769792)
+  bawork      data   -wi-ao 100.00G                                      
+/dev/sdb(0)      
+  db1_srv     data   -wi-ao 100.00G                                      
+/dev/sdb(4744192)
+  dir1_bawork data   -wi-ao 100.00G                                      
+/dev/sdb(5031936)
+  db1_log     system -wi-ao   4.00G                                      
+/dev/sda1(7168)  
+  db1_root    system -wi-ao   4.00G                                      
+/dev/sda1(6144)  
+  db1_swap    system -wi-ao   4.00G                                      
+/dev/sda1(8192)  
+  dir1_log    system -wi-ao   4.00G                                      
+/dev/sda1(4096)  
+  dir1_root   system -wi-ao   4.00G                                      
+/dev/sda1(3072)  
+  dir1_swap   system -wi-ao   4.00G                                      
+/dev/sda1(5120)  
+  log         system -wi-ao   4.00G                                      
+/dev/sda1(1024)  
+  root        system -wi-ao   4.00G                                      
+/dev/sda1(0)     
+  swap        system -wi-ao   4.00G                                      
+/dev/sda1(2048)  
+
+The requested dmsetup table:
+shepherd:~# dmsetup table
+data-dir1_bawork: 0 209715200 linear 8:16 41221620096
+system-db1_log: 0 8388608 linear 8:1 58720640
+system-db1_swap: 0 8388608 linear 8:1 67109248
+system-db1_root: 0 8388608 linear 8:1 50332032
+data-bawork: 0 209715200 linear 8:16 384
+data-db1_srv: 0 209715200 linear 8:16 38864421248
+data-baspool: 0 2147483648 linear 8:16 39074136448
+system-dir1_swap: 0 8388608 linear 8:1 41943424
+system-dir1_root: 0 8388608 linear 8:1 25166208
+data-badp2: 0 19327352832 linear 8:16 19537068416
+data-badp1: 0 19327352832 linear 8:16 209715584
+system-swap: 0 8388608 linear 8:1 16777600
+system-root: 0 8388608 linear 8:1 384
+system-dir1_log: 0 8388608 linear 8:1 33554816
+system-log 0 8388608 linear 8:1 8388992
+
+Adaptec version numbers are: BIOS, Firmware, Boot flash: 17899
+aacraid driver: 2461 (the version shipped with 2.6.32)
+
+I have (yet) no reason not to trust our storage - it's one 100GB RAID-50 and
+one ~19TB RAID-50 on 24 Hitachi HDE721010SLA330 with firmware ST6OA3AA, if that
+means anything to anyone.
+
+Since the last crash bacula has written 3.2TiB to data-badp1 and it's still
+running (when all backups are done, it should have written ~12TiB). We'll see
+if it survives tomorrow.
+
+If it crashes again, I'll try 8TiB-Filesystems.
+
+Thanks for taking your time!
+Lukas
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
