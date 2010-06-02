@@ -1,7 +1,7 @@
-From: Jamie Lokier <jamie@shareable.org>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
-Date: Wed, 2 Jun 2010 14:00:14 +0100
-Message-ID: <20100602130014.GB7238@shareable.org>
+Date: Wed, 2 Jun 2010 09:24:27 -0400
+Message-ID: <20100602132427.GA32110@infradead.org>
 References: <20100528173510.GA12166@ca-server1.us.oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -15,27 +15,27 @@ Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
 	npiggin@suse.de, dave.mccracken@oracle.com, riel@redhat.com,
 	avi@redhat.com, konrad.wilk@oracle.com
 To: Dan Magenheimer <dan.magenheimer@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:39138 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752933Ab0FBNAk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jun 2010 09:00:40 -0400
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
 In-Reply-To: <20100528173510.GA12166@ca-server1.us.oracle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dan Magenheimer wrote:
-> Most important, cleancache is "ephemeral".  Pages which are copied into
-> cleancache have an indefinite lifetime which is completely unknowable
-> by the kernel and so may or may not still be in cleancache at any later time.
-> Thus, as its name implies, cleancache is not suitable for dirty pages.  The
-> pseudo-RAM has complete discretion over what pages to preserve and what
-> pages to discard and when.
+Please give your patches some semi-resonable subject line.
 
-Fwiw, the feature sounds useful to userspace too, for those things
-with memory hungry caches like web browsers.  Any plans to make it
-available to userspace?
+>  fs/btrfs/super.c           |    2 
+>  fs/buffer.c                |    5 +
+>  fs/ext3/super.c            |    2 
+>  fs/ext4/super.c            |    2 
+>  fs/mpage.c                 |    7 +
+>  fs/ocfs2/super.c           |    3 
+>  fs/super.c                 |    8 +
 
-Thanks,
--- Jamie
+This is missing out a whole lot of filesystems.  Even more so why the
+hell do you need hooks into the filesystem?
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
