@@ -1,92 +1,120 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
-Date: Wed, 2 Jun 2010 16:02:40 -0700 (PDT)
-Message-ID: <489aa002-6d42-4dd5-bb66-81c665f8cdd1@default>
-References: <20100528173510.GA12166@ca-server1.us.oracle.comAANLkTilV-4_QaNq5O0WSplDx1Oq7JvkgVrEiR1rgf1up@mail.gmail.com>
- <1d88619a-bb1e-493f-ad96-bf204b60938d@default
- 20100602163827.GA5450@barrios-desktop>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Always journal quota file modifications
+Date: Thu, 3 Jun 2010 01:46:59 +0200
+Message-ID: <20100602234658.GA26830@quack.suse.cz>
+References: <1275488593-7237-1-git-send-email-jack@suse.cz>
+ <4C06CFAF.5000300@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
-        adilger@Sun.COM, tytso@mit.edu, mfasheh@suse.com,
-        joel.becker@oracle.com, matthew@wil.cx, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org, ngupta@vflare.org, jeremy@goop.org,
-        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
-        dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
-        konrad.wilk@oracle.com
-To: Minchan Kim <minchan.kim@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20100602163827.GA5450@barrios-desktop>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:54117 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758647Ab0FBXrQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Jun 2010 19:47:16 -0400
+Content-Disposition: inline
+In-Reply-To: <4C06CFAF.5000300@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> From: Minchan Kim [mailto:minchan.kim@gmail.com]
+On Wed 02-06-10 16:39:59, Eric Sandeen wrote:
+> Jan Kara wrote:
+> > When journaled quota options are not specified, we do writes
+> > to quota files just in data=ordered mode. This actually causes
+> > warnings from JBD2 about dirty journaled buffer because ext4_getblk
+> > unconditionally treats a block allocated by it as metadata. Since
+> > quota actually is filesystem metadata, the easiest way to get rid
+> > of the warning is to always treat quota writes as metadata...
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> Seems like a good approach to me, thanks Jan.
+> 
+> (aside: how big an impact does this have on journal traffic for a busy
+> quota-controlled fs?)
+  With quota a bit tricky thing is that amount of load depends on the
+amount of different groups / users doing IO (and to some extent on how
+much these users / groups share blocks of quota file). One can make a
+simplistic upper estimate: 1 journalled block per user / group who modified
+something in a transaction...
+  Just out of curiosity I have created 10000 files in 10 directories, each
+file belonging to a different user. Then I run:
+sync; time { for (( i = 0; i < 10000; i++ )); do echo "aaaaaaaa"
+>dir$((i/1000))/file$((i%1000)); done; sync; }
 
-> > I am also eagerly awaiting Nitin Gupta's cleancache backend
-> > and implementation to do in-kernel page cache compression.
->=20
-> Do Nitin say he will make backend of cleancache for
-> page cache compression?
->=20
-> It would be good feature.
-> I have a interest, too. :)
+and
 
-That was Nitin's plan for his GSOC project when we last discussed
-this.  Nitin is on the cc list and can comment if this has
-changed.
+sync; time { for (( i = 0; i < 10000; i++ )); do
+>dir$((i/1000))/file$((i%1000)); done; sync; }
 
-> > By "move", do you mean changing the virtual mappings?  Yes,
-> > this could be done as long as the source and destination are
-> > both directly addressable (that is, true physical RAM), but
-> > requires TLB manipulation and has some complicated corner
-> > cases.  The copy semantics simplifies the implementation on
-> > both the "frontend" and the "backend" and also allows the
-> > backend to do fancy things on-the-fly like page compression
-> > and page deduplication.
->=20
-> Agree. But I don't mean it.
-> If I use brd as backend, i want to do it follwing as.
->=20
-> <snip>
->=20
-> Of course, I know it's impossible without new metadata and
-> modification of page cache handling and it makes front and
-> backend's good layered design.
->=20
-> What I want is to remove copy overhead when backend is ram
-> and it's also part of main memory(ie, we have page descriptor).
->=20
-> Do you have an idea?
+  With journaled quotas enabled the times were pretty consistently around
+2.9s for writes and 2.1s for truncates, without quotas the times were
+around 2.7s for writes and 1.7s for truncates. So this gives some rough
+idea how much quota costs for this rather extreme use case.
 
-Copy overhead on modern processors is very low now due to
-very wide memory buses.  The additional metadata and code
-to handle coherency and concurrency, plus existing overhead
-for batching and asynchronous access to brd is likely much
-higher than the cost to avoid copying.
+  Another case where quota impact is measurable is when several threads
+bang files of the same user. Then we hit lock contention on the single dquot
+structure, most notably on journaling it whenever it gets modified. Dmitry
+was looking into addressing this...
 
-But if you did implement this without copying, I think
-you might need a different set of hooks in various places.
-I don't know.
+									Honza
 
-> > Or did you mean a cleancache_ops "backend"?  For tmem, there
-> > is one file linux/drivers/xen/tmem.c and it interfaces between
-> > the cleancache_ops calls and Xen hypercalls.  It should be in
-> > a Xenlinux pv_ops tree soon, or I can email it sooner.
->=20
-> I mean "backend". :)
-
-I dropped the code used for a RHEL6beta Xen tmem driver here:
-http://oss.oracle.com/projects/tmem/dist/files/RHEL6beta/tmem-backend.patch=
-=20
-
-Thanks,
-Dan
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> > ---
+> >  fs/ext4/super.c |   19 +++++--------------
+> >  1 files changed, 5 insertions(+), 14 deletions(-)
+> > 
+> >   Ted, this patch fixes some JBD2 warning for me when running XFSQA
+> > with quotas enabled. I think this is a move into a direction you are
+> > trying to achieve as well. Will you merge the patch or should I do it?
+> > 
+> > 								Honza
+> > 
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 4e8983a..a8cea08 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -4030,7 +4030,6 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+> >  	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
+> >  	int err = 0;
+> >  	int offset = off & (sb->s_blocksize - 1);
+> > -	int journal_quota = EXT4_SB(sb)->s_qf_names[type] != NULL;
+> >  	struct buffer_head *bh;
+> >  	handle_t *handle = journal_current_handle();
+> >  
+> > @@ -4055,24 +4054,16 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+> >  	bh = ext4_bread(handle, inode, blk, 1, &err);
+> >  	if (!bh)
+> >  		goto out;
+> > -	if (journal_quota) {
+> > -		err = ext4_journal_get_write_access(handle, bh);
+> > -		if (err) {
+> > -			brelse(bh);
+> > -			goto out;
+> > -		}
+> > +	err = ext4_journal_get_write_access(handle, bh);
+> > +	if (err) {
+> > +		brelse(bh);
+> > +		goto out;
+> >  	}
+> >  	lock_buffer(bh);
+> >  	memcpy(bh->b_data+offset, data, len);
+> >  	flush_dcache_page(bh->b_page);
+> >  	unlock_buffer(bh);
+> > -	if (journal_quota)
+> > -		err = ext4_handle_dirty_metadata(handle, NULL, bh);
+> > -	else {
+> > -		/* Always do at least ordered writes for quotas */
+> > -		err = ext4_jbd2_file_inode(handle, inode);
+> > -		mark_buffer_dirty(bh);
+> > -	}
+> > +	err = ext4_handle_dirty_metadata(handle, NULL, bh);
+> >  	brelse(bh);
+> >  out:
+> >  	if (err) {
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
