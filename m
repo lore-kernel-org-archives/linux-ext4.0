@@ -1,97 +1,147 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
-Date: Wed, 2 Jun 2010 09:07:10 -0700 (PDT)
-Message-ID: <28f2e0a1-dfb5-4bcc-b0d7-238b5eea3e92@default>
-References: <20100528173510.GA12166@ca-server1.us.oracle.com
- 20100602132427.GA32110@infradead.org>
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
+Date: Thu, 3 Jun 2010 01:38:52 +0900
+Message-ID: <20100602163827.GA5450@barrios-desktop>
+References: <20100528173510.GA12166@ca-server1.us.oracle.comAANLkTilV-4_QaNq5O0WSplDx1Oq7JvkgVrEiR1rgf1up@mail.gmail.com>
+ <1d88619a-bb1e-493f-ad96-bf204b60938d@default>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: quoted-printable
-Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
-        adilger@sun.com, tytso@mit.edu, mfasheh@suse.com,
-        joel.becker@oracle.com, matthew@wil.cx, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org, ngupta@vflare.org, jeremy@goop.org,
-        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
-        dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
-        konrad.wilk@oracle.com
-To: Christoph Hellwig <hch@infradead.org>
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, ngupta@vflare.org,
+	jeremy@goop.org, JBeulich@novell.com, kurt.hackel@oracle.com,
+	npiggin@suse.de, dave.mccracken@oracle.com, riel@redhat.com,
+	avi@redhat.com, konrad.wilk@oracle.com
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20100602132427.GA32110@infradead.org>
+Content-Disposition: inline
+In-Reply-To: <1d88619a-bb1e-493f-ad96-bf204b60938d@default>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-> From: Christoph Hellwig [mailto:hch@infradead.org]
-> Subject: Re: [PATCH V2 0/7] Cleancache (was Transcendent Memory):
-> overview
+Hi, Dan.=20
 
-Hi Christophe --
-
-Thanks for your feedback!
-
-> >  fs/btrfs/super.c           |    2
-> >  fs/buffer.c                |    5 +
-> >  fs/ext3/super.c            |    2
-> >  fs/ext4/super.c            |    2
-> >  fs/mpage.c                 |    7 +
-> >  fs/ocfs2/super.c           |    3
-> >  fs/super.c                 |    8 +
+On Wed, Jun 02, 2010 at 08:27:48AM -0700, Dan Magenheimer wrote:
+> Hi Minchan --
 >=20
-> This is missing out a whole lot of filesystems.  Even more so why the
-> hell do you need hooks into the filesystem?
+> > I think cleancache approach is cool. :)
+> > I have some suggestions and questions.
+>=20
+> Thanks for your interest!
+>=20
+> > > If a get_page is successful on a non-shared pool, the page is flush=
+ed
+> > (thus
+> > > making cleancache an "exclusive" cache). =A0On a shared pool, the p=
+age
+> >=20
+> > Do you have any reason about force "exclusive" on a non-shared pool?
+> > To free memory on pesudo-RAM?
+> > I want to make it "inclusive" by some reason but unfortunately I can'=
+t
+> > say why I want it now.
+>=20
+> The main reason is to free up memory in pseudo-RAM and to
+> avoid unnecessary cleancache_flush calls.  If you want
+> inclusive, the page can be put immediately following
+> the get.  If put-after-get for inclusive becomes common,
+> the interface could easily be extended to add a "get_no_flush"
+> call.
 
-Let me rephrase/regroup your question.  Let me know if
-I missed anything...
+Sounds good to me.=20
 
-1) Why is the VFS layer involved at all?
+> =20
+> > While you mentioned it's "exclusive", cleancache_get_page doesn't
+> > flush the page at below code.
+> > Is it a role of user who implement cleancache_ops->get_page?
+>=20
+> Yes, the flush is done by the cleancache implementation.
+>=20
+> > If backed device is ram(ie), Could we _move_ the pages from page cach=
+e
+> > to cleancache?
+> > I mean I don't want to copy page when get/put operation. we can just
+> > move page in case of backed device "ram". Is it possible?
+>=20
+> By "move", do you mean changing the virtual mappings?  Yes,
+> this could be done as long as the source and destination are
+> both directly addressable (that is, true physical RAM), but
+> requires TLB manipulation and has some complicated corner
+> cases.  The copy semantics simplifies the implementation on
+> both the "frontend" and the "backend" and also allows the
+> backend to do fancy things on-the-fly like page compression
+> and page deduplication.
 
-VFS hooks are necessary to avoid a disk read when a page
-is already in cleancache and to maintain coherency (via
-cleancache_flush operations) between cleancache, the
-page cache, and disk.  This very small, very clean set
-of hooks (placed by Chris Mason) all compile into
-nothingness if cleancache is config'ed off, and turn
-into "if (*p =3D=3D NULL)" if config'ed on but no "backend"
-claims cleancache_ops or if an fs doesn't opt-in
-(see below).
+Agree. But I don't mean it.=20
+If I use brd as backend, i want to do it follwing as.=20
 
-2) Why do the individual filesystems need to be modified?
+put_page :
 
-Some filesystems are built entirely on top of VFS and
-the hooks in VFS are sufficient, so don't require an
-fs "cleancache_init" hook; the initial implementation
-of cleancache didn't provide this hook.   But for some
-fs (such as btrfs) the VFS hooks are incomplete and
-one or more hooks in the fs-specific code is required.
-For some other fs's (such as tmpfs), cleancache may even
-be counterproductive.
+remove_from_page_cache(page);
+brd_insert_page(page);
 
-So it seemed prudent to require an fs to "opt in" to
-use cleancache, which requires at least one hook in
-any fs.
+get_page :
 
-3) Why are filesystems missing?
+brd_lookup_page(page);
+add_to_page_cache(page);
+
+Of course, I know it's impossible without new metadata and modification o=
+f=20
+page cache handling and it makes front and backend's good layered design.=
 =20
-Only because they haven't been tested.  The existence
-proof of four fs's (ext3/ext4/ocfs2/btfrs) should be
-sufficient to validate the concept, the opt-in approach
-means that untested filesystems are not affected, and
-the hooks in the four fs's should serve as examples to
-show that it should be very easy to add more fs's in the
-future.
 
-> Please give your patches some semi-resonable subject line.
+What I want is to remove copy overhead when backend is ram and it's also
+part of main memory(ie, we have page descriptor).=20
 
-Not sure what you mean... are the subject lines too short?
-Or should I leave off the back-reference to Transcendent Memory?
-Or please suggest something you think is more reasonable?
+Do you have an idea?
 
-Thanks,
-Dan
+>=20
+> > You send the patches which is core of cleancache but I don't see any
+> > use case.
+> > Could you send use case patches with this series?
+> > It could help understand cleancache's benefit.
+>=20
+> Do you mean the Xen Transcendent Memory ("tmem") implementation?
+> If so, this is four files in the Xen source tree (common/tmem.c,
+> common/tmem_xen.c, include/xen/tmem.h, include/xen/tmem_xen.h).
+> There is also an html document in the Xen source tree, which can
+> be viewed here:
+> http://oss.oracle.com/projects/tmem/dist/documentation/internals/xen4-i=
+nternals-v01.html=20
+>=20
+> Or did you mean a cleancache_ops "backend"?  For tmem, there
+> is one file linux/drivers/xen/tmem.c and it interfaces between
+> the cleancache_ops calls and Xen hypercalls.  It should be in
+> a Xenlinux pv_ops tree soon, or I can email it sooner.
+
+I mean "backend". :)=20
+
+>=20
+> I am also eagerly awaiting Nitin Gupta's cleancache backend
+> and implementation to do in-kernel page cache compression.
+
+Do Nitin say he will make backend of cleancache for
+page cache compression?=20
+
+It would be good feature.=20
+I have a interest, too. :)
+
+Thanks, Dan.=20
+
+>=20
+> Thanks,
+> Dan
+
+--=20
+Kind regards,
+Minchan Kim
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
 the body to majordomo@kvack.org.  For more info on Linux MM,
 see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
