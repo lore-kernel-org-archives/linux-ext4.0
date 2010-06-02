@@ -1,140 +1,92 @@
-From: Eric Whitney <eric.whitney@hp.com>
-Subject: j_state_lock patch data  (was: Re: ext4 dbench performance with CONFIG_PREEMPT_RT)
-Date: Wed, 02 Jun 2010 18:35:21 -0400
-Message-ID: <4C06DCA9.8090601@hp.com>
-References: <1270682478.3755.58.camel@localhost.localdomain> <20100408034631.GB23188@thunk.org> <20100412194628.GI12238@atrey.karlin.mff.cuni.cz> <20100413145247.GO1849@thunk.org>
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: RE: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
+Date: Wed, 2 Jun 2010 16:02:40 -0700 (PDT)
+Message-ID: <489aa002-6d42-4dd5-bb66-81c665f8cdd1@default>
+References: <20100528173510.GA12166@ca-server1.us.oracle.comAANLkTilV-4_QaNq5O0WSplDx1Oq7JvkgVrEiR1rgf1up@mail.gmail.com>
+ <1d88619a-bb1e-493f-ad96-bf204b60938d@default
+ 20100602163827.GA5450@barrios-desktop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: tytso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g5t0007.atlanta.hp.com ([15.192.0.44]:34966 "EHLO
-	g5t0007.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758103Ab0FBWeP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jun 2010 18:34:15 -0400
-In-Reply-To: <20100413145247.GO1849@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
+        adilger@Sun.COM, tytso@mit.edu, mfasheh@suse.com,
+        joel.becker@oracle.com, matthew@wil.cx, linux-btrfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org, ngupta@vflare.org, jeremy@goop.org,
+        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
+        dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
+        konrad.wilk@oracle.com
+To: Minchan Kim <minchan.kim@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20100602163827.GA5450@barrios-desktop>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Weeks ago, Ted asked if someone would be willing to run Steven Pratt's 
-and Keith Mannthey's ffsb filesystem workloads (as found at 
-http://btrfs.boxacle.net) on a large system running a non-RT kernel with 
-and without Ted's j_state_lock patch.  In a previous thread, John Stultz 
-had identified the j_state_lock as an important scalability limiter for 
-RT kernels running ext4 on 8 core systems.
+> From: Minchan Kim [mailto:minchan.kim@gmail.com]
 
-Ted wanted lock_stats as well as performance data, and I've collected 
-those on a 48 core x86-64 system running a 2.6.34 kernel.  (The 
-j_state_lock patch is now in 2.6.35, and I'll try to collect fresh data 
-in the near future.)
+> > I am also eagerly awaiting Nitin Gupta's cleancache backend
+> > and implementation to do in-kernel page cache compression.
+>=20
+> Do Nitin say he will make backend of cleancache for
+> page cache compression?
+>=20
+> It would be good feature.
+> I have a interest, too. :)
 
-Since my test system was bigger than the system Keith has been using 
-recently, I adjusted the thread counts, running 1, 48 (1 thread per 
-core), and 192 (4 threads per core) ffsb threads in my version of his 
-workloads.
+That was Nitin's plan for his GSOC project when we last discussed
+this.  Nitin is on the cc list and can comment if this has
+changed.
 
-The adjusted "boxacle" large_file_creates and random_writes workloads 
-benefited significantly from the patch on my test configuration.  Three 
-sets of uninstrumented runs for each workload yielded throughput results 
-that were generally consistent and close to those obtained for the 
-lock_stat runs.  (There were a few outliers - fewer than 10% of the 
-total - that showed throughput declines of more than 50% from the rest 
-of the runs.)
+> > By "move", do you mean changing the virtual mappings?  Yes,
+> > this could be done as long as the source and destination are
+> > both directly addressable (that is, true physical RAM), but
+> > requires TLB manipulation and has some complicated corner
+> > cases.  The copy semantics simplifies the implementation on
+> > both the "frontend" and the "backend" and also allows the
+> > backend to do fancy things on-the-fly like page compression
+> > and page deduplication.
+>=20
+> Agree. But I don't mean it.
+> If I use brd as backend, i want to do it follwing as.
+>=20
+> <snip>
+>=20
+> Of course, I know it's impossible without new metadata and
+> modification of page cache handling and it makes front and
+> backend's good layered design.
+>=20
+> What I want is to remove copy overhead when backend is ram
+> and it's also part of main memory(ie, we have page descriptor).
+>=20
+> Do you have an idea?
 
-Using statistics taken in the lock_stat runs:
+Copy overhead on modern processors is very low now due to
+very wide memory buses.  The additional metadata and code
+to handle coherency and concurrency, plus existing overhead
+for batching and asynchronous access to brd is likely much
+higher than the cost to avoid copying.
 
-The ffsb transaction rate for large_file_create at 48 threads improved 
-85% with the patch over the unmodified baseline, while the number of 
-contentions dropped 29%.  At 192 threads, the transaction rate improved 
-46%, and the number of contentions dropped 44%.
+But if you did implement this without copying, I think
+you might need a different set of hooks in various places.
+I don't know.
 
-The ffsb transaction rate for random_writes at 48 threads improved 35% 
-with the patch over the unmodified baseline, while the number of 
-contentions dropped 8%.  At 192 threads, the transaction rate improved 
-29%, and the number of contentions dropped 3%.
+> > Or did you mean a cleancache_ops "backend"?  For tmem, there
+> > is one file linux/drivers/xen/tmem.c and it interfaces between
+> > the cleancache_ops calls and Xen hypercalls.  It should be in
+> > a Xenlinux pv_ops tree soon, or I can email it sooner.
+>=20
+> I mean "backend". :)
 
-The single thread workloads and all versions of the mail_server workload 
-were not materially affected by the patch.  (The remaining workloads are 
-read-only, and also were not affected.)
+I dropped the code used for a RHEL6beta Xen tmem driver here:
+http://oss.oracle.com/projects/tmem/dist/files/RHEL6beta/tmem-backend.patch=
+=20
 
-On my test configuration, the lock_stats in the patched cases show the 
-j_state_lock is still the most heavily contended, and the system is 
-usually CPU-bound in system mode.
+Thanks,
+Dan
 
-Detailed data for the large_file_create and random_write lock_stat runs, 
-including lock_stats, vmstats, ffsb reports, logs, the patch, etc., can 
-be found at:
-http://free.linux.hp.com/~enw/jbd2scaling/2.6.34
-
-At that location, there are four directories containing the detailed 
-information for the four relevant lock_stat runs:
-large-file-creates
-large-file-creates.patched
-random_writes
-random_writes.patched
-
-There are also a set of links at the top level to make it easier to 
-compare lock_stat data without navigating through those directories - 
-the names simply begin with "lock_stat".
-
-The patch used is also there: j_state_lock.patch.txt
-
-Test system configuration:
-
-* 48 core x86-64 server (HP Proliant DL785) with 256 GB of memory
-* One Fibre Channel-attached 4 Gb/second MSA2000 RAID controller
-* Single 586 GB hardware RAID0 volume consisting of four disks
-* e2fsprogs v1.41.11
-* nobarrier mount option
-* deadline I/O scheduler
-
-Thanks to Steven and Keith for their workloads and benchmarking data.
-
-Eric
-
-
-
-
-
-
-tytso@mit.edu wrote:
-> On Mon, Apr 12, 2010 at 09:46:28PM +0200, Jan Kara wrote:
->>   I also had a look at jbd2_journal_start. What probably makes
->> things bad there is that lots of threads accumulate waiting for
->> transaction to get out of T_LOCKED state. When that happens, all the
->> threads are woken up and start pondering at j_state_lock which
->> creates contention. This is just a theory and I might be completely
->> wrong... Some lockstat data would be useful to confirm / refute
->> this.
-> 
-> Yeah, that sounds right.  We do have a classic thundering hurd problem
-> when we while are draining handles from the transaction in the
-> T_LOCKED state --- that is (for those who aren't jbd2 experts) when it
-> comes time to close out the current transaction, one of the first
-> things that fs/jbd2/commit.c will do is to set the transaction into
-> T_LOCKED state.  In that state we are waiting for currently active
-> handles to complete, and we don't allow any new handles to start until
-> the currently running transaction is completely drained of active
-> handles, at which point we can swap in a new transaction, and continue
-> the commit process on the previously running transaction.
-> 
-> On a non-real time kernel, the spinlock will tie up the currently
-> running CPU's until the transaction drains, which is usually pretty
-> fast, since we don't allow transactions to be held for that long (the
-> worst case being truncate/unlink operations).  Dbench is a worst case,
-> though since we have some large number of threads all doing file
-> system I/O (John, how was dbench configured?) and the spinlocks will
-> no longer tie up a CPU, but actually let some other dbench thread run,
-> so it magnifies the thundering hurd problem from 8 threads, to nearly
-> all of the CPU threads.
-> 
-> Also, the spinlock code has a "ticket" system which tries to protect
-> against the thundering hurd effect --- do the PI mutexes which replace
-> spinlocks in the -rt kernel have any technqiue to try to prevent
-> scheduler thrashing in the face of thundering hurd scenarios?
-> 
-> 	  	       	   	   - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
