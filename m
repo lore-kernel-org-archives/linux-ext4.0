@@ -1,42 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Always journal quota file modifications
-Date: Thu, 3 Jun 2010 13:54:40 +0200
-Message-ID: <20100603115439.GA3814@quack.suse.cz>
-References: <1275488593-7237-1-git-send-email-jack@suse.cz>
- <87eigo1o2q.fsf@openvz.org>
+From: Nick Piggin <npiggin@suse.de>
+Subject: [patch v3] fix truncate inode time modification breakage
+Date: Thu, 3 Jun 2010 22:01:46 +1000
+Message-ID: <20100603120146.GK6822@laptop>
+References: <20100601133923.GT9453@laptop>
+ <20100601134801.GA11061@lst.de>
+ <20100601135655.GU9453@laptop>
+ <20100602195538.GG6152@laptop>
+ <E1OK5dA-00070W-0s@pomaz-ex.szeredi.hu>
+ <20100603091434.GA6822@laptop>
+ <E1OK6iv-0007EN-5J@pomaz-ex.szeredi.hu>
+ <20100603100724.GE6822@laptop>
+ <E1OK87y-0007RX-5Q@pomaz-ex.szeredi.hu>
+ <20100603110914.GA14006@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37039 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239Ab0FCLy5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Jun 2010 07:54:57 -0400
+Cc: Miklos Szeredi <miklos@szeredi.hu>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@lst.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <87eigo1o2q.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20100603110914.GA14006@lst.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 03-06-10 13:07:41, Dmitry Monakhov wrote:
-> Jan Kara <jack@suse.cz> writes:
-> 
-> > When journaled quota options are not specified, we do writes
-> > to quota files just in data=ordered mode. This actually causes
-> > warnings from JBD2 about dirty journaled buffer because ext4_getblk
-> > unconditionally treats a block allocated by it as metadata. Since
-> > quota actually is filesystem metadata, the easiest way to get rid
-> > of the warning is to always treat quota writes as metadata...
-> Absolutely agree with the fix, but I have a theoretical question.
-> Is is possible to solve the issue without handling quota's bh
-> via ext4_handle_dirty_metadata()?
-> As soon as i understand ext4_jbd2_file_inode() not works here
-> because bh is belongs to blkdev page-cache. In other words is it
-> possible provide ordering for blkdev's blocks in jbd2?
-  You are right. It's not possible to provide ordering for blkdev's blocks
-in JBD2 (unlike JBD). So a different solution would be rather problematic.
+I think this should be the best way to fix 2.6.35. I'll look at what
+it takes to completely direct truncate time/mode changes from the vfs
+probably on top of Christophs latest truncate patchsets.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+--
+
+mtime and ctime should be changed only if the file size has actually
+changed. Patches changing ext2 and tmpfs from vmtruncate to new truncate
+sequence has caused regressions where they always update timestamps.
+
+There is some strange cases in POSIX where truncate(2) must not update
+times unless the size has acutally changed, see 6e656be89.
+
+This area is all still rather buggy in different ways in a lot of
+filesystems and needs a cleanup and audit (ideally the vfs will provide
+a simple attribute or call to direct all filesystems exactly which
+attributes to change). But coming up with the best solution will take a
+while and is not appropriate for rc anyway.
+
+So fix recent regression for now.
+
+Signed-off-by: Nick Piggin <npiggin@suse.de>
+
+---
+ fs/ext2/inode.c |    2 +-
+ mm/shmem.c      |    5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+Index: linux-2.6/mm/shmem.c
+===================================================================
+--- linux-2.6.orig/mm/shmem.c
++++ linux-2.6/mm/shmem.c
+@@ -764,10 +764,11 @@ done2:
+ static int shmem_notify_change(struct dentry *dentry, struct iattr *attr)
+ {
+ 	struct inode *inode = dentry->d_inode;
++	loff_t newsize = attr->ia_size;
+ 	int error;
+ 
+-	if (S_ISREG(inode->i_mode) && (attr->ia_valid & ATTR_SIZE)) {
+-		loff_t newsize = attr->ia_size;
++	if (S_ISREG(inode->i_mode) && (attr->ia_valid & ATTR_SIZE)
++					&& newsize != inode->i_size) {
+ 		struct page *page = NULL;
+ 
+ 		if (newsize < inode->i_size) {
+Index: linux-2.6/fs/ext2/inode.c
+===================================================================
+--- linux-2.6.orig/fs/ext2/inode.c
++++ linux-2.6/fs/ext2/inode.c
+@@ -1552,7 +1552,7 @@ int ext2_setattr(struct dentry *dentry,
+ 		if (error)
+ 			return error;
+ 	}
+-	if (iattr->ia_valid & ATTR_SIZE) {
++	if (iattr->ia_valid & ATTR_SIZE && iattr->ia_size != inode->i_size) {
+ 		error = ext2_setsize(inode, iattr->ia_size);
+ 		if (error)
+ 			return error;
