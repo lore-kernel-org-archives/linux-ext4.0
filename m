@@ -1,84 +1,78 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: [patch v3] fix truncate inode time modification breakage
-Date: Thu, 3 Jun 2010 22:01:46 +1000
-Message-ID: <20100603120146.GK6822@laptop>
-References: <20100601133923.GT9453@laptop>
- <20100601134801.GA11061@lst.de>
- <20100601135655.GU9453@laptop>
- <20100602195538.GG6152@laptop>
- <E1OK5dA-00070W-0s@pomaz-ex.szeredi.hu>
- <20100603091434.GA6822@laptop>
- <E1OK6iv-0007EN-5J@pomaz-ex.szeredi.hu>
- <20100603100724.GE6822@laptop>
- <E1OK87y-0007RX-5Q@pomaz-ex.szeredi.hu>
- <20100603110914.GA14006@lst.de>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: Always journal quota file modifications
+Date: Thu, 3 Jun 2010 08:53:12 -0400
+Message-ID: <20100603125312.GH24062@thunk.org>
+References: <1275488593-7237-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Miklos Szeredi <miklos@szeredi.hu>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@lst.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:56876 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752619Ab0FCN52 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Jun 2010 09:57:28 -0400
 Content-Disposition: inline
-In-Reply-To: <20100603110914.GA14006@lst.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1275488593-7237-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I think this should be the best way to fix 2.6.35. I'll look at what
-it takes to completely direct truncate time/mode changes from the vfs
-probably on top of Christophs latest truncate patchsets.
+On Wed, Jun 02, 2010 at 04:23:13PM +0200, Jan Kara wrote:
+> When journaled quota options are not specified, we do writes
+> to quota files just in data=ordered mode. This actually causes
+> warnings from JBD2 about dirty journaled buffer because ext4_getblk
+> unconditionally treats a block allocated by it as metadata. Since
+> quota actually is filesystem metadata, the easiest way to get rid
+> of the warning is to always treat quota writes as metadata...
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
---
+I'm worried about this patch in the short-term.  In the long-term I
+think the quota file should become a special file much like the
+journal, and then this makes a huge amount of sense.  But I worry
+about what might happen if (a) someone tries writing to the quota file
+directly from userspace, maybe right before quota is enabled (and
+before delayed allocation writes complete, such that some writes are
+happening via the journal in ext4_quota_write and some w/o going
+through the journal in ext4_writepage), and (b) what happens if quota
+is disabled, the quota file is deleted, and some blocks get reused ---
+and then system crashes before a journal commit can happen.
 
-mtime and ctime should be changed only if the file size has actually
-changed. Patches changing ext2 and tmpfs from vmtruncate to new truncate
-sequence has caused regressions where they always update timestamps.
+All of these problems go away if the quota file isn't visible from
+userspace, and it becomes a special file.  In the short term I think
+we could make this change, but I think we would also have to (1) treat
+the quota file as immutable while quotas are enabled (so it cannot be
+opened for writing), (2) force an fsync of the quota file and a
+journal commit before enabling quotas, and (3) force a journal commit
+after disabling quotas.
 
-There is some strange cases in POSIX where truncate(2) must not update
-times unless the size has acutally changed, see 6e656be89.
+The other thing we might try that might mostly fix things is to change
+ext4_should_journal_data() in ext4_jbd2.h to return true if it's a
+quota file --- but we don't know which files are the quota files when
+quotas are disabled, so we would still need to do (2) and (3).  But
+this would allow us to write to the quota file while quotas are
+enabled, if we think this is necessary --- although I think it's a bad
+idea, so I'd be in favor of simply not allowing quota files to be
+writable from userspace while quotas are enabled.  Jan, is this going
+to cause any problems with quotautils?
 
-This area is all still rather buggy in different ways in a lot of
-filesystems and needs a cleanup and audit (ideally the vfs will provide
-a simple attribute or call to direct all filesystems exactly which
-attributes to change). But coming up with the best solution will take a
-while and is not appropriate for rc anyway.
+OTOH, I think we have similar races with journaled quotas, and no one
+has complained (although the vast majority of the quota documentation
+on various HOWTO pages still don't talk about journaled quotas, so I
+don't know how many people are using journaled quotas.  :-/ )
 
-So fix recent regression for now.
+>   Ted, this patch fixes some JBD2 warning for me when running XFSQA
+> with quotas enabled. I think this is a move into a direction you are
+> trying to achieve as well. Will you merge the patch or should I do it?
 
-Signed-off-by: Nick Piggin <npiggin@suse.de>
+I'm happy to carry the patch, since I Have Plans to try to make quotas
+be a first class supported filesystem feature (i.e., make the quota
+file a special file, and make quota files be always journaled if they
+are journaled, and make the !@#! magic quota options handling in
+/proc/mounts go away) in the 2.6.36 timeframe.
 
----
- fs/ext2/inode.c |    2 +-
- mm/shmem.c      |    5 +++--
- 2 files changed, 4 insertions(+), 3 deletions(-)
+So the question is should we try to merge something like this for
+2.6.35 or 2.6.35.y, and if so, how much bullet-proofing do we feel is
+necessary for some of these races that I've outlined above.
 
-Index: linux-2.6/mm/shmem.c
-===================================================================
---- linux-2.6.orig/mm/shmem.c
-+++ linux-2.6/mm/shmem.c
-@@ -764,10 +764,11 @@ done2:
- static int shmem_notify_change(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
-+	loff_t newsize = attr->ia_size;
- 	int error;
- 
--	if (S_ISREG(inode->i_mode) && (attr->ia_valid & ATTR_SIZE)) {
--		loff_t newsize = attr->ia_size;
-+	if (S_ISREG(inode->i_mode) && (attr->ia_valid & ATTR_SIZE)
-+					&& newsize != inode->i_size) {
- 		struct page *page = NULL;
- 
- 		if (newsize < inode->i_size) {
-Index: linux-2.6/fs/ext2/inode.c
-===================================================================
---- linux-2.6.orig/fs/ext2/inode.c
-+++ linux-2.6/fs/ext2/inode.c
-@@ -1552,7 +1552,7 @@ int ext2_setattr(struct dentry *dentry,
- 		if (error)
- 			return error;
- 	}
--	if (iattr->ia_valid & ATTR_SIZE) {
-+	if (iattr->ia_valid & ATTR_SIZE && iattr->ia_size != inode->i_size) {
- 		error = ext2_setsize(inode, iattr->ia_size);
- 		if (error)
- 			return error;
+	      	      	    	       	    - Ted
