@@ -1,39 +1,50 @@
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
+From: tytso@mit.edu
 Subject: Re: [PATCH] ext4: Always journal quota file modifications
-Date: Thu, 3 Jun 2010 18:47:49 +0200
-Message-ID: <201006031847.49273.bernd.schubert@fastmail.fm>
-References: <1275488593-7237-1-git-send-email-jack@suse.cz> <20100603125312.GH24062@thunk.org>
+Date: Thu, 3 Jun 2010 13:10:58 -0400
+Message-ID: <20100603171058.GC13179@thunk.org>
+References: <1275488593-7237-1-git-send-email-jack@suse.cz>
+ <20100603125312.GH24062@thunk.org>
+ <20100603141948.GB3814@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out5.smtp.messagingengine.com ([66.111.4.29]:50037 "EHLO
-	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750958Ab0FCQzT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jun 2010 12:55:19 -0400
-Received: from compute1.internal (compute1.internal [10.202.2.41])
-	by gateway1.messagingengine.com (Postfix) with ESMTP id 6F42DF88D6
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Jun 2010 12:47:51 -0400 (EDT)
-Received: from bathl.localnet (stgt-4d0391f0.pool.mediaWays.net [77.3.145.240])
-	by mail.messagingengine.com (Postfix) with ESMTPSA id 1D2774D9477
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Jun 2010 12:47:51 -0400 (EDT)
-In-Reply-To: <20100603125312.GH24062@thunk.org>
+Received: from thunk.org ([69.25.196.29]:60543 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756611Ab0FCRLA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Jun 2010 13:11:00 -0400
+Content-Disposition: inline
+In-Reply-To: <20100603141948.GB3814@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> 
-> OTOH, I think we have similar races with journaled quotas, and no one
-> has complained (although the vast majority of the quota documentation
-> on various HOWTO pages still don't talk about journaled quotas, so I
-> don't know how many people are using journaled quotas.  :-/ )
+On Thu, Jun 03, 2010 at 04:19:48PM +0200, Jan Kara wrote:
+> > All of these problems go away if the quota file isn't visible from
+> > userspace, and it becomes a special file.  In the short term I think
+> > we could make this change, but I think we would also have to (1) treat
+> > the quota file as immutable while quotas are enabled (so it cannot be
+> > opened for writing), (2) force an fsync of the quota file and a
+> > journal commit before enabling quotas, and (3) force a journal commit
+> > after disabling quotas.
+>   Ted, that's what generic quota code actually does for you (unless
+> DQUOT_QUOTA_SYS_FILE flag is specified but that's not the case of ext?)
+> - see vfs_load_quota_inode. We do:
+> sync_filesystem(sb);
+> invalidate_bdev(sb->s_bdev);
+> ..
+> inode->i_flags |= S_NOQUOTA | S_NOATIME | S_IMMUTABLE;
+> ..
+>   So unless someone tries to screw us really hard, we should be fine.
 
-Lustre uses journal quotas since 1.6.5, which was released in 2008. While 
-there had been a number of quotas issues, I'm only aware of one issue related 
-to journaled quotas and that was also Lustre specific. Maybe Andreas knows 
-more.
+That's good to hear.  I think though we also need to call
+sync_filesystem(sb) in dquot_disable().  Currently it calls
+sb->s_op->sync_fs(), which forces out the superblock, and
+sync_blockdev() which forces out any dirty buffer heads, but it
+doesn't actually force a journal commit so that any pending journaled
+writes to the quota file are forced out.  We need to either explicitly
+sync the quota files, or use sync_filesystem(sb) and sync everything.
+The former might be more polite; in fact it might be sufficient in
+vfs_load_quota_inode() as well?  Or am I missing something?
 
-
-Cheers,
-Bernd
+		       	  	       - Ted
