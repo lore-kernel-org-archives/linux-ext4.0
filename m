@@ -1,72 +1,84 @@
-From: Nitin Gupta <ngupta@vflare.org>
-Subject: Re: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
-Date: Thu, 03 Jun 2010 11:55:18 +0530
-Message-ID: <4C074ACE.9020704@vflare.org>
-References: <20100528173510.GA12166%ca-server1.us.oracle.comAANLkTilV-4_QaNq5O0WSplDx1Oq7JvkgVrEiR1rgf1up@mail.gmail.com> <489aa002-6d42-4dd5-bb66-81c665f8cdd1@default> <4C07179F.5080106@vflare.org> <3721BEE2-DF2D-452A-8F01-E690E32C6B33@oracle.com>
-Reply-To: ngupta@vflare.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: write/write/fallocate quota leakage
+Date: Thu, 03 Jun 2010 12:21:01 +0400
+Message-ID: <87typk1q8i.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dan Magenheimer <dan.magenheimer@oracle.com>,
- Minchan Kim <minchan.kim@gmail.com>,
- chris.mason@oracle.com, viro@zeniv.linux.org.uk,
- akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
- mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
- linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
- ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
- JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
- dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
- konrad.wilk@oracle.com
-To: Andreas Dilger <andreas.dilger@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <3721BEE2-DF2D-452A-8F01-E690E32C6B33@oracle.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K. V." <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:62564 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751510Ab0FCIVJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jun 2010 04:21:09 -0400
+Received: by fxm8 with SMTP id 8so2490914fxm.19
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jun 2010 01:21:06 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/03/2010 10:23 AM, Andreas Dilger wrote:
-> On 2010-06-02, at 20:46, Nitin Gupta wrote:
->> On 06/03/2010 04:32 AM, Dan Magenheimer wrote:
->>>> From: Minchan Kim [mailto:minchan.kim@gmail.com]
->>>
->>>>> I am also eagerly awaiting Nitin Gupta's cleancache backend
->>>>> and implementation to do in-kernel page cache compression.
->>>>
->>>> Do Nitin say he will make backend of cleancache for
->>>> page cache compression?
->>>>
->>>> It would be good feature.
->>>> I have a interest, too. :)
->>>
->>> That was Nitin's plan for his GSOC project when we last discussed
->>> this.  Nitin is on the cc list and can comment if this has
->>> changed.
->>
->> Yes, I have just started work on in-kernel page cache compression
->> backend for cleancache :)
-> 
-> Is there a design doc for this implementation?
+--=-=-=
 
-Its all on physical paper :)
-Anyways, the design is quite simple as it simply has to act on cleancache
-callbacks.
+Recently one "write vs fallocate" quota leakage was fixed, but
+not completely. It is still possible if uninitialized extent which
+covers several delay allocated regions converted to initialized one.
 
-> I was thinking it would be quite clever to do compression in, say, 64kB or 128kB chunks in a mapping (to get decent compression) and then write these compressed chunks directly from the page cache to disk in btrfs and/or a revived compressed ext4.
-> 
+Take a look at test-case attached.
+The issue is clear enough, but I don't have a good solution for now.
+Off course we can add one more restriction to zeroout logic, but this is
+unproductive way because we have to keep zeroout logic simple as possible.
 
-Batching of pages to get good compression ratio seems doable.
+Aneesh, do you have any sound ideas?
 
-However, writing this compressed data (with/without batching) to disk seems
-quite difficult. Pages given out to cleancache are not part of pagecache and
-the disk might also contain uncompressed version of the same data. There is
-also the problem of efficient on-disk structure for storing variable sized
-compressed chunks. I'm not sure how we can deal with all these issues.
 
-Thanks,
-Nitin
+--=-=-=
+Content-Disposition: inline; filename=falloc_opt.c
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+/* EXT4 delalloc reservation leakage testcase
+ * To make that leackage more verbose please apply following patch
+ * http://download.openvz.org/~dmonakhov/junk/ext4-sanity-check.patch
+ */
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+	loff_t len, offset;
+	int fd, ret;
+	char buf[81920];
+	if (argc != 2) {
+		printf("Usage: %s <fname>\n", argv[0]);
+		return 1;
+	}
+	fd = open(argv[1], O_CREAT|O_RDWR, 0777);
+	ftruncate(fd, 40960);
+	fsync(fd);
+	ret = pwrite(fd, buf, 4096, 0);
+	if (ret != 4096) {
+		perror("write failed");
+		return 1;
+	}
+	/* Leve one page gap between dirty pages */
+	ret = pwrite(fd, buf, 8192, 8192);
+	if (ret != 8192) {
+		perror("write failed");
+		return 1;
+	}
+	/* Create uninitialized extent */
+	ret = fallocate(fd, 0x1, 0, 4096*5);
+	if (ret) {
+		perror("fallocate failed");
+		return 1;
+	}
+	/* Force block allocation.
+	 * Uninitialized extent will be converted to initialized one
+	 * during ext4_map_blocks() on writing first pages set.
+	 * Later second pages set will discover what blocks are already
+	 * initialized, so reservation for that pages will leak.
+	 */
+	fsync(fd);
+	return 0;
+}
+
+--=-=-=--
