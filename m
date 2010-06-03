@@ -1,36 +1,65 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: Use bitops to read/modify i_flags part2
-Date: Wed, 2 Jun 2010 22:55:59 -0400
-Message-ID: <20100603025559.GG24062@thunk.org>
-References: <1271687537-15655-1-git-send-email-dmonakhov@openvz.org>
- <1274734174-28830-1-git-send-email-tytso@mit.edu>
- <87ocfwsb3m.fsf_-_@openvz.org>
-Mime-Version: 1.0
+From: Andreas Dilger <andreas.dilger@oracle.com>
+Subject: Re: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
+Date: Wed, 2 Jun 2010 22:53:44 -0600
+Message-ID: <3721BEE2-DF2D-452A-8F01-E690E32C6B33@oracle.com>
+References: <20100528173510.GA12166%ca-server1.us.oracle.comAANLkTilV-4_QaNq5O0WSplDx1Oq7JvkgVrEiR1rgf1up@mail.gmail.com> <489aa002-6d42-4dd5-bb66-81c665f8cdd1@default> <4C07179F.5080106@vflare.org>
+Mime-Version: 1.0 (Apple Message framework v1078)
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34587 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933641Ab0FCC4D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Jun 2010 22:56:03 -0400
-Content-Disposition: inline
-In-Reply-To: <87ocfwsb3m.fsf_-_@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Cc: Dan Magenheimer <dan.magenheimer@oracle.com>,
+        Minchan Kim <minchan.kim@gmail.com>, chris.mason@oracle.com,
+        viro@zeniv.linux.org.uk, akpm@linux-foundation.org, adilger@sun.com,
+        tytso@mit.edu, mfasheh@suse.com, joel.becker@oracle.com,
+        matthew@wil.cx, linux-btrfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org, jeremy@goop.org, JBeulich@novell.com,
+        kurt.hackel@oracle.com, npiggin@suse.de, dave.mccracken@oracle.com,
+        riel@redhat.com, avi@redhat.com, konrad.wilk@oracle.com
+To: ngupta@vflare.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <4C07179F.5080106@vflare.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 31, 2010 at 12:56:45PM +0400, Dmitry Monakhov wrote:
-> "Theodore Ts'o" <tytso@mit.edu> writes:
-> 
-> > From: "Theodore Ts'o" <tytso@mit.edu>
-> >
-> > From: Dmitry Monakhov <dmonakhov@openvz.org>
-> Bad news. Bug still exist because you've missed several important chunks 
-> (ext4_set_inode_flags, ext4_inode_blocks) while porting original patch.
-> And I've missed this too on review cycle.
-> Please add following patch to patch-queue.
+On 2010-06-02, at 20:46, Nitin Gupta wrote:
+> On 06/03/2010 04:32 AM, Dan Magenheimer wrote:
+>>> From: Minchan Kim [mailto:minchan.kim@gmail.com]
+>>=20
+>>>> I am also eagerly awaiting Nitin Gupta's cleancache backend
+>>>> and implementation to do in-kernel page cache compression.
+>>>=20
+>>> Do Nitin say he will make backend of cleancache for
+>>> page cache compression?
+>>>=20
+>>> It would be good feature.
+>>> I have a interest, too. :)
+>>=20
+>> That was Nitin's plan for his GSOC project when we last discussed
+>> this.  Nitin is on the cc list and can comment if this has
+>> changed.
+>=20
+> Yes, I have just started work on in-kernel page cache compression
+> backend for cleancache :)
 
-Added to the ext4 patch queue (with minor updates to the commit
-description).
+Is there a design doc for this implementation?  I was thinking it would =
+be quite clever to do compression in, say, 64kB or 128kB chunks in a =
+mapping (to get decent compression) and then write these compressed =
+chunks directly from the page cache to disk in btrfs and/or a revived =
+compressed ext4.
 
-					- Ted
+That would mean that the on-disk compression algorithm needs to match =
+the in-memory algorithm, which implies that the in-memory compression =
+algorithm should be selectable on a per-mapping basis.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Lustre Technical Lead
+Oracle Corporation Canada Inc.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
