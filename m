@@ -1,98 +1,35 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: Always journal quota file modifications
-Date: Thu, 03 Jun 2010 18:13:03 +0400
-Message-ID: <87ocfsi4r4.fsf@openvz.org>
-References: <1275488593-7237-1-git-send-email-jack@suse.cz>
-	<20100603125312.GH24062@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16081] Data loss after crash during heavy I/O
+Date: Thu, 3 Jun 2010 14:19:47 GMT
+Message-ID: <201006031419.o53EJlbw025937@demeter.kernel.org>
+References: <bug-16081-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:50142 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754726Ab0FCONK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jun 2010 10:13:10 -0400
-Received: by bwz11 with SMTP id 11so46050bwz.19
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jun 2010 07:13:07 -0700 (PDT)
-In-Reply-To: <20100603125312.GH24062@thunk.org> (tytso@mit.edu's message of
-	"Thu, 3 Jun 2010 08:53:12 -0400")
+Received: from demeter.kernel.org ([140.211.167.39]:56263 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754326Ab0FCOTr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jun 2010 10:19:47 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o53EJloJ025938
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Jun 2010 14:19:47 GMT
+In-Reply-To: <bug-16081-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tytso@mit.edu writes:
+https://bugzilla.kernel.org/show_bug.cgi?id=16081
 
-> On Wed, Jun 02, 2010 at 04:23:13PM +0200, Jan Kara wrote:
->> When journaled quota options are not specified, we do writes
->> to quota files just in data=ordered mode. This actually causes
->> warnings from JBD2 about dirty journaled buffer because ext4_getblk
->> unconditionally treats a block allocated by it as metadata. Since
->> quota actually is filesystem metadata, the easiest way to get rid
->> of the warning is to always treat quota writes as metadata...
->> 
->> Signed-off-by: Jan Kara <jack@suse.cz>
->
-> I'm worried about this patch in the short-term.  In the long-term I
-> think the quota file should become a special file much like the
-> journal, and then this makes a huge amount of sense.  But I worry
-> about what might happen if (a) someone tries writing to the quota file
-> directly from userspace, maybe right before quota is enabled (and
-> before delayed allocation writes complete, such that some writes are
-> happening via the journal in ext4_quota_write and some w/o going
-> through the journal in ext4_writepage), and (b) what happens if quota
-> is disabled, the quota file is deleted, and some blocks get reused ---
-> and then system crashes before a journal commit can happen.
->
-> All of these problems go away if the quota file isn't visible from
-> userspace, and it becomes a special file.  In the short term I think
-> we could make this change, but I think we would also have to (1) treat
-> the quota file as immutable while quotas are enabled (so it cannot be
-> opened for writing), (2) force an fsync of the quota file and a
-> journal commit before enabling quotas, and (3) force a journal commit
-> after disabling quotas.
-3'rd is already true
-int vfs_quota_disable(...)
-{...
-        /* Sync the superblock so that buffers with quota data are written to
-         * disk (and so userspace sees correct data afterwards). */
-        if (sb->s_op->sync_fs)
-                sb->s_op->sync_fs(sb, 1);
-        sync_blockdev(sb->s_bdev);
-        /* Now the quota files are just ordinary files and we can set the
-         * inode flags back. Moreover we discard the pagecache so that
-...}
->
-> The other thing we might try that might mostly fix things is to change
-> ext4_should_journal_data() in ext4_jbd2.h to return true if it's a
-> quota file --- but we don't know which files are the quota files when
-> quotas are disabled, so we would still need to do (2) and (3).  But
-> this would allow us to write to the quota file while quotas are
-> enabled, if we think this is necessary --- although I think it's a bad
-> idea, so I'd be in favor of simply not allowing quota files to be
-> writable from userspace while quotas are enabled.  Jan, is this going
-> to cause any problems with quotautils?
->
-> OTOH, I think we have similar races with journaled quotas, and no one
-> has complained (although the vast majority of the quota documentation
-> on various HOWTO pages still don't talk about journaled quotas, so I
-> don't know how many people are using journaled quotas.  :-/ )
->
->>   Ted, this patch fixes some JBD2 warning for me when running XFSQA
->> with quotas enabled. I think this is a move into a direction you are
->> trying to achieve as well. Will you merge the patch or should I do it?
->
-> I'm happy to carry the patch, since I Have Plans to try to make quotas
-> be a first class supported filesystem feature (i.e., make the quota
-> file a special file, and make quota files be always journaled if they
-> are journaled, and make the !@#! magic quota options handling in
-> /proc/mounts go away) in the 2.6.36 timeframe.
->
-> So the question is should we try to merge something like this for
-> 2.6.35 or 2.6.35.y, and if so, how much bullet-proofing do we feel is
-> necessary for some of these races that I've outlined above.
->
-> 	      	      	    	       	    - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+
+--- Comment #17 from Eric Sandeen <sandeen@redhat.com>  2010-06-03 14:19:42 ---
+I'd just review the storage configuration as well, I guess, though not sure of
+any specifics to look for.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
