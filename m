@@ -1,51 +1,95 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/4] vfs: update ctime when changing the file's permission by setfacl
-Date: Fri,  4 Jun 2010 17:07:53 +0200
-Message-ID: <1275664075-4703-3-git-send-email-jack@suse.cz>
-References: <1275664075-4703-1-git-send-email-jack@suse.cz>
-Cc: David Woodhouse <dwmw2@infradead.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1275664075-4703-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: RE: [PATCH V2 3/7] Cleancache (was Transcendent Memory): VFS hooks
+Date: Fri, 4 Jun 2010 08:13:14 -0700 (PDT)
+Message-ID: <16b4dcd5-95d8-4cb0-885d-0189ef90c02b@default>
+References: <20100528173610.GA12270@ca-server1.us.oracle.com
+ 20100604132948.GC1879@barrios-desktop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
+        adilger@Sun.COM, tytso@mit.edu, mfasheh@suse.com,
+        joel.becker@oracle.com, matthew@wil.cx, linux-btrfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org, ngupta@vflare.org, jeremy@goop.org,
+        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
+        dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
+        konrad.wilk@oracle.com
+To: Minchan Kim <minchan.kim@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20100604132948.GC1879@barrios-desktop>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-generic_acl_set didn't update the ctime of the file when its permission was
-changed.
+> Hi, Dan.
+> I reviewed quickly. So I may be wrong. :)
 
-Steps to reproduce:
- # touch aaa
- # stat -c %Z aaa
- 1275289822
- # setfacl -m  'u::x,g::x,o::x' aaa
- # stat -c %Z aaa
- 1275289822                         <- unchanged
+Hi Minchan --
 
-But, according to the spec of the ctime, vfs must update it.
+Thanks for your thorough review!  I don't think anyone
+else yet has examined the semantics of the cleancache
+patch as deeply as you have.  Excellent!
 
-Port of ext3 patch by Miao Xie <miaox@cn.fujitsu.com>.
+> > +=09/*
+> > +=09 * if we're uptodate, flush out into the cleancache, otherwise
+> > +=09 * invalidate any existing cleancache entries.  We can't leave
+> > +=09 * stale data around in the cleancache once our page is gone
+> > +=09 */
+> > +=09if (PageUptodate(page))
+> > +=09=09cleancache_put_page(page);
+> > +=09else
+> > +=09=09cleancache_flush_page(mapping, page);
+>=20
+> I doubt it's right place related to PFRA.
 
-CC: Al Viro <viro@zeniv.linux.org.uk>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/generic_acl.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+I agree it doesn't seem to be the right place, but it does work
+and there doesn't seem to be a better place.
+=20
+> 1)
+> You mentiond PFRA in you description and I understood cleancache has
+> a cold clean page which is evicted by reclaimer.
+> But __remove_from_page_cache can be called by other call sites.
+>=20
+> For example, shmem_write page calls it for moving the page from page
+> cache
+> to swap cache. Although there isn't the page in page cache, it is in
+> swap cache.
+> So next read/write of shmem until swapout happens can be read/write in
+> swap cache.
+>=20
+> I didn't looked into whole of callsites. But please review again them.
 
-diff --git a/fs/generic_acl.c b/fs/generic_acl.c
-index 99800e5..6bc9e3a 100644
---- a/fs/generic_acl.c
-+++ b/fs/generic_acl.c
-@@ -94,6 +94,7 @@ generic_acl_set(struct dentry *dentry, const char *name, const void *value,
- 			if (error < 0)
- 				goto failed;
- 			inode->i_mode = mode;
-+			inode->i_ctime = CURRENT_TIME;
- 			if (error == 0) {
- 				posix_acl_release(acl);
- 				acl = NULL;
--- 
-1.6.4.2
+I think the "if (PageUptodate(page))" eliminates all the cases
+where bad things can happen.
 
+Note that there may be cases where some unnecessary puts/flushes
+occur.  The focus of the patch is on correctness first; it may
+be possible to increase performance (marginally) in the future by
+reducing unnecessary cases.
+
+> 3) Please consider system memory pressure.
+> And I hope Nitin consider this, too.
+
+This is definitely very important but remember that cleancache
+provides a great deal of flexibility:  Any page in cleancache
+can be thrown away at any time as every page is clean!  It
+can even accept a page and throw it away immediately.  Clearly
+the backend needs to do this intelligently so this will
+take some policy work.
+
+Since I saw you sent a separate response to Nitin, I'll
+let him answer for his in-kernel page cache compression
+work.  The solution to the similar problem for Xen is
+described in the tmem internals document that I think
+I pointed to earlier here:
+http://oss.oracle.com/projects/tmem/documentation/internals/=20
+
+Thanks,
+Dan
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
