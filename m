@@ -1,74 +1,208 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16122] New: 2.6.35-rc1: WARNING at fs/fs-writeback.c:1142
- __mark_inode_dirty+0x103/0x170
-Date: Fri, 4 Jun 2010 13:18:44 GMT
-Message-ID: <bug-16122-13602@https.bugzilla.kernel.org/>
+From: Minchan Kim <minchan.kim@gmail.com>
+Subject: Re: [PATCH V2 3/7] Cleancache (was Transcendent Memory): VFS hooks
+Date: Fri, 4 Jun 2010 22:29:48 +0900
+Message-ID: <20100604132948.GC1879@barrios-desktop>
+References: <20100528173610.GA12270@ca-server1.us.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:34085 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755257Ab0FDNSo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jun 2010 09:18:44 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o54DIiat010389
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Jun 2010 13:18:44 GMT
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, ngupta@vflare.org,
+	jeremy@goop.org, JBeulich@novell.com, kurt.hackel@oracle.com,
+	npiggin@suse.de, dave.mccracken@oracle.com, riel@redhat.com,
+	avi@redhat.com, konrad.wilk@oracle.com
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20100528173610.GA12270@ca-server1.us.oracle.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16122
+Hi, Dan. 
+I reviewed quickly. So I may be wrong. :) 
 
-           Summary: 2.6.35-rc1: WARNING at fs/fs-writeback.c:1142
-                    __mark_inode_dirty+0x103/0x170
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.35-rc1-00324-gad84563
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-        AssignedTo: fs_ext3@kernel-bugs.osdl.org
-        ReportedBy: Larry.Finger@lwfinger.net
-        Regression: Yes
+On Fri, May 28, 2010 at 10:36:10AM -0700, Dan Magenheimer wrote:
+> [PATCH V2 3/7] Cleancache (was Transcendent Memory): VFS hooks
+> 
+> Implement core hooks in VFS for: initializing cleancache
+> per filesystem; capturing clean pages evicted by page cache;
+> attempting to get pages from cleancache before filesystem
+> read; and ensuring coherency between pagecache, disk,
+> and cleancache.  All hooks become no-ops if CONFIG_CLEANCACHE
+> is unset, or become compare-pointer-to-NULL if
+> CONFIG_CLEANCACHE is set but no cleancache "backend" has
+> claimed cleancache_ops.
+> 
+> Signed-off-by: Chris Mason <chris.mason@oracle.com>
+> Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+> 
+> Diffstat:
+>  fs/buffer.c                              |    5 +++++
+>  fs/mpage.c                               |    7 +++++++
+>  fs/super.c                               |    8 ++++++++
+>  mm/filemap.c                             |   11 +++++++++++
+>  mm/truncate.c                            |   10 ++++++++++
+>  5 files changed, 41 insertions(+)
+> 
+> --- linux-2.6.34/fs/super.c	2010-05-16 15:17:36.000000000 -0600
+> +++ linux-2.6.34-cleancache/fs/super.c	2010-05-24 12:15:20.000000000 -0600
+> @@ -38,6 +38,7 @@
+>  #include <linux/mutex.h>
+>  #include <linux/file.h>
+>  #include <linux/backing-dev.h>
+> +#include <linux/cleancache.h>
+>  #include <asm/uaccess.h>
+>  #include "internal.h"
+>  
+> @@ -105,6 +106,7 @@ static struct super_block *alloc_super(s
+>  		s->s_qcop = sb_quotactl_ops;
+>  		s->s_op = &default_op;
+>  		s->s_time_gran = 1000000000;
+> +		s->cleancache_poolid = -1;
+>  	}
+>  out:
+>  	return s;
+> @@ -195,6 +197,11 @@ void deactivate_super(struct super_block
+>  		vfs_dq_off(s, 0);
+>  		down_write(&s->s_umount);
+>  		fs->kill_sb(s);
+> +		if (s->cleancache_poolid > 0) {
+> +			int cleancache_poolid = s->cleancache_poolid;
+> +			s->cleancache_poolid = -1; /* avoid races */
+> +			cleancache_flush_fs(cleancache_poolid);
+> +		}
+>  		put_filesystem(fs);
+>  		put_super(s);
+>  	}
+> @@ -221,6 +228,7 @@ void deactivate_locked_super(struct supe
+>  		spin_unlock(&sb_lock);
+>  		vfs_dq_off(s, 0);
+>  		fs->kill_sb(s);
+> +		cleancache_flush_fs(s->cleancache_poolid);
+>  		put_filesystem(fs);
+>  		put_super(s);
+>  	} else {
+> --- linux-2.6.34/fs/buffer.c	2010-05-16 15:17:36.000000000 -0600
+> +++ linux-2.6.34-cleancache/fs/buffer.c	2010-05-24 12:14:44.000000000 -0600
+> @@ -41,6 +41,7 @@
+>  #include <linux/bitops.h>
+>  #include <linux/mpage.h>
+>  #include <linux/bit_spinlock.h>
+> +#include <linux/cleancache.h>
+>  
+>  static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+>  
+> @@ -276,6 +277,10 @@ void invalidate_bdev(struct block_device
+>  
+>  	invalidate_bh_lrus();
+>  	invalidate_mapping_pages(mapping, 0, -1);
+> +	/* 99% of the time, we don't need to flush the cleancache on the bdev.
+> +	 * But, for the strange corners, lets be cautious
+> +	 */
+> +	cleancache_flush_inode(mapping);
+>  }
+>  EXPORT_SYMBOL(invalidate_bdev);
+>  
+> --- linux-2.6.34/fs/mpage.c	2010-05-16 15:17:36.000000000 -0600
+> +++ linux-2.6.34-cleancache/fs/mpage.c	2010-05-24 12:29:28.000000000 -0600
+> @@ -27,6 +27,7 @@
+>  #include <linux/writeback.h>
+>  #include <linux/backing-dev.h>
+>  #include <linux/pagevec.h>
+> +#include <linux/cleancache.h>
+>  
+>  /*
+>   * I/O completion handler for multipage BIOs.
+> @@ -286,6 +287,12 @@ do_mpage_readpage(struct bio *bio, struc
+>  		SetPageMappedToDisk(page);
+>  	}
+>  
+> +	if (fully_mapped && blocks_per_page == 1 && !PageUptodate(page) &&
+> +	    cleancache_get_page(page) == CLEANCACHE_GET_PAGE_SUCCESS) {
+> +		SetPageUptodate(page);
+> +		goto confused;
+> +	}
+> +
+>  	/*
+>  	 * This page will go to BIO.  Do we need to send this BIO off first?
+>  	 */
+> --- linux-2.6.34/mm/filemap.c	2010-05-16 15:17:36.000000000 -0600
+> +++ linux-2.6.34-cleancache/mm/filemap.c	2010-05-24 12:14:44.000000000 -0600
+> @@ -34,6 +34,7 @@
+>  #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
+>  #include <linux/memcontrol.h>
+>  #include <linux/mm_inline.h> /* for page_is_file_cache() */
+> +#include <linux/cleancache.h>
+>  #include "internal.h"
+>  
+>  /*
+> @@ -119,6 +120,16 @@ void __remove_from_page_cache(struct pag
+>  {
+>  	struct address_space *mapping = page->mapping;
+>  
+> +	/*
+> +	 * if we're uptodate, flush out into the cleancache, otherwise
+> +	 * invalidate any existing cleancache entries.  We can't leave
+> +	 * stale data around in the cleancache once our page is gone
+> +	 */
+> +	if (PageUptodate(page))
+> +		cleancache_put_page(page);
+> +	else
+> +		cleancache_flush_page(mapping, page);
+> +
+>  	radix_tree_delete(&mapping->page_tree, page->index);
 
+I doubt it's right place related to PFRA.
 
-On booting, I get the following:
+1)
+You mentiond PFRA in you description and I understood cleancache has 
+a cold clean page which is evicted by reclaimer. 
+But __remove_from_page_cache can be called by other call sites.
 
-[   16.480278] ------------[ cut here ]------------
-[   16.480288] WARNING: at fs/fs-writeback.c:1142
-__mark_inode_dirty+0x103/0x170()
-[   16.480291] Hardware name: HP Pavilion dv2700 Notebook PC
-[   16.480293] Modules linked in: loop(+) dm_mod ide_cd_mod cdrom
-snd_hda_codec_conexant arc4 ecb b43 ide_pci_generic rng_core mac80211 cfg80211
-rfkill snd_hda_intel led_class snd_hda_codec ssb snd_pcm mmc_core snd_timer
-amd74xx pcmcia k8temp snd i2c_nforce2 ide_core soundcore serio_raw hwmon sg
-pcmcia_core joydev snd_page_alloc forcedeth i2c_core ac battery button ext3 jbd
-mbcache ohci_hcd sd_mod ehci_hcd usbcore fan processor ahci libahci libata
-scsi_mod thermal
-[   16.480344] Pid: 2432, comm: udisks-part-id Not tainted
-2.6.35-rc1-Linus-00324-gad84563 #202
-[   16.480347] Call Trace:
-[   16.480354]  [<ffffffff8104623a>] warn_slowpath_common+0x7a/0xb0
-[   16.480358]  [<ffffffff81046285>] warn_slowpath_null+0x15/0x20
-[   16.480362]  [<ffffffff81128f53>] __mark_inode_dirty+0x103/0x170
-[   16.480367]  [<ffffffff8111d6cd>] touch_atime+0x12d/0x170
-[   16.480372]  [<ffffffff810ca131>] generic_file_aio_read+0x5c1/0x720
-[   16.480377]  [<ffffffff810e49d8>] ? handle_mm_fault+0x718/0x8b0
-[   16.480381]  [<ffffffff81107302>] do_sync_read+0xd2/0x110
-[   16.480387]  [<ffffffff8107ab85>] ? trace_hardirqs_on_caller+0x145/0x190
-[   16.480391]  [<ffffffff8107abdd>] ? trace_hardirqs_on+0xd/0x10
-[   16.480394]  [<ffffffff81107a23>] vfs_read+0xb3/0x170
-[   16.480399]  [<ffffffff81002d1c>] ? sysret_check+0x27/0x62
-[   16.480403]  [<ffffffff81107b2c>] sys_read+0x4c/0x80
-[   16.480407]  [<ffffffff81002ceb>] system_call_fastpath+0x16/0x1b
-[   16.480410] ---[ end trace f16a433c45bd0baa ]---
+For example, shmem_write page calls it for moving the page from page cache
+to swap cache. Although there isn't the page in page cache, it is in swap cache.
+So next read/write of shmem until swapout happens can be read/write in swap cache. 
+
+I didn't looked into whole of callsites. But please review again them. 
+
+2) 
+While I review this, I found GFP_ATOMIC of add_to_swap_cache. 
+I don't know why it is in there. But at least when you review them, 
+please consider gfp_flag of the context. 
+
+If PFRA is going on, it means there is system memory pressure. 
+So we can't allocate page easily. So each functions cold be use GFP_NOIO, 
+GFP_NOFS, GFP_ATOMIC and so one. It means your backend can't call alloc_pages 
+freely. 
+
+I think it's the best if you call your hooks in no limited place. 
+Maybe you already have done it. :)
+
+3)
+Please consider system memory pressure. 
+Without this, PFRA might reclaim the page but cleancache's backend(non-virtualized)
+may consume another page for putting clean page. It could change system behivor 
+althought it can reduce I/O cost. 
+I don't know which is important. Let us discuss it in another thread in next chance. 
+
+In this thread, my concern is that we need new hook which notify urgent memory
+reclaim. (ex, direct reclaim) 
+I think at least if system momory pressure is high, backend need to free own 
+cache memory. Of course, backend can monitor it but it's awkward. 
+I think frontend should it. 
+
+And I hope Nitin consider this, too. 
+
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Kind regards,
+Minchan Kim
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
