@@ -1,43 +1,57 @@
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: write/write/fallocate quota leakage
-Date: Fri, 04 Jun 2010 14:33:06 +0530
-Message-ID: <87ljavtbjp.fsf@linux.vnet.ibm.com>
-References: <87typk1q8i.fsf@openvz.org>
+From: Nitin Gupta <ngupta@vflare.org>
+Subject: Re: [PATCH V2 0/7] Cleancache (was Transcendent Memory): overview
+Date: Fri, 04 Jun 2010 15:06:49 +0530
+Message-ID: <4C08C931.3080306@vflare.org>
+References: <20100528173510.GA12166%ca-server1.us.oracle.comAANLkTilV-4_QaNq5O0WSplDx1Oq7JvkgVrEiR1rgf1up@mail.gmail.com> <489aa002-6d42-4dd5-bb66-81c665f8cdd1@default> <4C07179F.5080106@vflare.org> <3721BEE2-DF2D-452A-8F01-E690E32C6B33@oracle.com 4C074ACE.9020704@vflare.org> <6e97a82a-c754-493e-bbf5-58f0bb6a18b5@default>
+Reply-To: ngupta@vflare.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: andreas.dilger@oracle.com, Minchan Kim <minchan.kim@gmail.com>,
+	chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
+	JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
+	dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
+	konrad.wilk@oracle.com
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([122.248.162.7]:41335 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754835Ab0FDJDN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jun 2010 05:03:13 -0400
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp07.in.ibm.com (8.14.4/8.13.1) with ESMTP id o54938iQ031151
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Jun 2010 14:33:08 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o54937RJ3268646
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Jun 2010 14:33:07 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o5493739028018
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Jun 2010 19:03:07 +1000
-In-Reply-To: <87typk1q8i.fsf@openvz.org>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:51575 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754469Ab0FDJgu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jun 2010 05:36:50 -0400
+In-Reply-To: <6e97a82a-c754-493e-bbf5-58f0bb6a18b5@default>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 03 Jun 2010 12:21:01 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-> Recently one "write vs fallocate" quota leakage was fixed, but
-> not completely. It is still possible if uninitialized extent which
-> covers several delay allocated regions converted to initialized one.
+On 06/03/2010 09:13 PM, Dan Magenheimer wrote:
+>> On 06/03/2010 10:23 AM, Andreas Dilger wrote:
+>>> On 2010-06-02, at 20:46, Nitin Gupta wrote:
+>>
+>>> I was thinking it would be quite clever to do compression in, say,
+>>> 64kB or 128kB chunks in a mapping (to get decent compression) and
+>>> then write these compressed chunks directly from the page cache
+>>> to disk in btrfs and/or a revived compressed ext4.
+>>
+>> Batching of pages to get good compression ratio seems doable.
 > 
-> Take a look at test-case attached.
-> The issue is clear enough, but I don't have a good solution for now.
-> Off course we can add one more restriction to zeroout logic, but this is
-> unproductive way because we have to keep zeroout logic simple as possible.
-> 
-> Aneesh, do you have any sound ideas?
+> Is there evidence that batching a set of random individual 4K
+> pages will have a significantly better compression ratio than
+> compressing the pages separately?  I certainly understand that
+> if the pages are from the same file, compression is likely to
+> be better, but pages evicted from the page cache (which is
+> the source for all cleancache_puts) are likely to be quite a
+> bit more random than that, aren't they?
 > 
 
-I will have to look at this more closer. Will get back to you.
 
--aneesh
+Batching of pages from random files may not be so effective but
+it would be interesting to collect some data for this. Still,
+per-inode batching of pages seems doable and this should help
+us get over this problem.
+
+Thanks,
+Nitin
