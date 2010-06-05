@@ -1,32 +1,40 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 1/2] ext4: force block allocation on quota_off
-Date: Sat, 5 Jun 2010 10:55:30 -0400
-Message-ID: <20100605145530.GA9159@thunk.org>
-References: <20100531191130.GE5334@quack.suse.cz>
- <1275377988-4299-1-git-send-email-dmonakhov@openvz.org>
- <20100601121107.GE4275@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16122] 2.6.35-rc1: WARNING at fs/fs-writeback.c:1142
+ __mark_inode_dirty+0x103/0x170
+Date: Sat, 5 Jun 2010 20:52:59 GMT
+Message-ID: <201006052052.o55KqxZL018592@demeter.kernel.org>
+References: <bug-16122-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:50922 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756622Ab0FEOzj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Jun 2010 10:55:39 -0400
-Content-Disposition: inline
-In-Reply-To: <20100601121107.GE4275@quack.suse.cz>
+Received: from demeter.kernel.org ([140.211.167.39]:58406 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755244Ab0FEUxA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jun 2010 16:53:00 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o55KqxKI018593
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sat, 5 Jun 2010 20:52:59 GMT
+In-Reply-To: <bug-16122-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 01, 2010 at 02:11:08PM +0200, Jan Kara wrote:
-> On Tue 01-06-10 11:39:47, Dmitry Monakhov wrote:
-> > Perform full sync procedure to guarantee quota consistency.
->   The patch looks OK to me. Acked-by: Jan Kara <jack@suse.cz>
-> Ted, will you merge it or should I do it?
+https://bugzilla.kernel.org/show_bug.cgi?id=16122
 
-I'll take it, but I don't think either of these is critical enough to
-merge now that the merge window is closed.  Agreed?
 
-      	       	   	 	   - Ted
+Rafael J. Wysocki <rjw@sisk.pl> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |maciej.rutecki@gmail.com,
+                   |                            |rjw@sisk.pl
+             Blocks|                            |16055
+
+
+
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
