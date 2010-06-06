@@ -1,40 +1,235 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16122] 2.6.35-rc1: WARNING at fs/fs-writeback.c:1142
- __mark_inode_dirty+0x103/0x170
-Date: Sat, 5 Jun 2010 20:52:59 GMT
-Message-ID: <201006052052.o55KqxZL018592@demeter.kernel.org>
-References: <bug-16122-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Clean up s_dirt handling
+Date: Sat,  5 Jun 2010 23:08:34 -0400
+Message-ID: <1275793714-12678-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:58406 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755244Ab0FEUxA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jun 2010 16:53:00 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o55KqxKI018593
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 5 Jun 2010 20:52:59 GMT
-In-Reply-To: <bug-16122-13602@https.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:52929 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933970Ab0FFDIj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Jun 2010 23:08:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16122
+We don't need to set s_dirt in most of the ext4 code when journaling
+is enabled.  In ext3/4 some of the summary statistics for # of free
+inodes, blocks, and directories are calculated from the per-block
+group statistics when the file system is mounted or unmounted.  As a
+result the superblock doesn't have to be updated, either via the
+journal or by setting s_dirt.  There are a few exceptions, most
+notably when resizing the file system, where the superblock needs to
+be modified --- and in that case it should be done as a journalled
+operation if possible, and s_dirt set only in no-journal mode.
 
+This patch will optimize out some unneeded disk writes when using ext4
+with a journal.
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/balloc.c    |    6 +-----
+ fs/ext4/ext4.h      |    6 ++++++
+ fs/ext4/ext4_jbd2.c |   16 ++++++++++++++++
+ fs/ext4/ext4_jbd2.h |    5 +++++
+ fs/ext4/file.c      |    2 +-
+ fs/ext4/ialloc.c    |    4 ++--
+ fs/ext4/mballoc.c   |    4 ++--
+ fs/ext4/resize.c    |    6 ++----
+ fs/ext4/xattr.c     |    3 +--
+ 9 files changed, 36 insertions(+), 16 deletions(-)
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |maciej.rutecki@gmail.com,
-                   |                            |rjw@sisk.pl
-             Blocks|                            |16055
-
-
-
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 95b7594..bd30799 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -377,14 +377,11 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	ext4_grpblk_t bit;
+ 	unsigned int i;
+ 	struct ext4_group_desc *desc;
+-	struct ext4_super_block *es;
+-	struct ext4_sb_info *sbi;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int err = 0, ret, blk_free_count;
+ 	ext4_grpblk_t blocks_freed;
+ 	struct ext4_group_info *grp;
+ 
+-	sbi = EXT4_SB(sb);
+-	es = sbi->s_es;
+ 	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
+ 
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+@@ -477,7 +474,6 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	ret = ext4_handle_dirty_metadata(handle, NULL, gd_bh);
+ 	if (!err)
+ 		err = ret;
+-	sb->s_dirt = 1;
+ 
+ error_return:
+ 	brelse(bitmap_bh);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 19a4de5..8b56b53 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1860,6 +1860,12 @@ static inline void ext4_unlock_group(struct super_block *sb,
+ 	spin_unlock(ext4_group_lock_ptr(sb, group));
+ }
+ 
++static inline void ext4_mark_super_dirty(struct super_block *sb)
++{
++	if (EXT4_SB(sb)->s_journal == NULL)
++		sb->s_dirt =1;
++}
++
+ /*
+  * Inodes and files operations
+  */
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 53d2764..cfd27b3 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -143,3 +143,19 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+ 	}
+ 	return err;
+ }
++
++int __ext4_handle_dirty_super(const char *where, handle_t *handle,
++			      struct super_block *sb)
++{
++	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
++	int err = 0;
++
++	if (ext4_handle_valid(handle)) {
++		err = jbd2_journal_dirty_metadata(handle, bh);
++		if (err)
++			ext4_journal_abort_handle(where, __func__, bh,
++						  handle, err);
++	} else
++		sb->s_dirt = 1;
++	return err;
++}
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index dade0c0..8ae8168 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -141,6 +141,9 @@ int __ext4_journal_get_create_access(const char *where,
+ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+ 				 struct inode *inode, struct buffer_head *bh);
+ 
++int __ext4_handle_dirty_super(const char *where, handle_t *handle,
++			      struct super_block *sb);
++
+ #define ext4_journal_get_undo_access(handle, bh) \
+ 	__ext4_journal_get_undo_access(__func__, (handle), (bh))
+ #define ext4_journal_get_write_access(handle, bh) \
+@@ -152,6 +155,8 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+ 	__ext4_journal_get_create_access(__func__, (handle), (bh))
+ #define ext4_handle_dirty_metadata(handle, inode, bh) \
+ 	__ext4_handle_dirty_metadata(__func__, (handle), (inode), (bh))
++#define ext4_handle_dirty_super(handle, sb) \
++	__ext4_handle_dirty_super(__func__, (handle), (sb))
+ 
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+ int __ext4_journal_stop(const char *where, handle_t *handle);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 5313ae4..bd411c1 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -123,7 +123,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 		if (!IS_ERR(cp)) {
+ 			memcpy(sbi->s_es->s_last_mounted, cp,
+ 			       sizeof(sbi->s_es->s_last_mounted));
+-			sb->s_dirt = 1;
++			ext4_mark_super_dirty(sb);
+ 		}
+ 	}
+ 	return dquot_file_open(inode, filp);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 25c4b31..ac37750 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -279,7 +279,7 @@ out:
+ 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 		if (!fatal)
+ 			fatal = err;
+-		sb->s_dirt = 1;
++		ext4_mark_super_dirty(sb);
+ 	} else
+ 		ext4_error(sb, "bit already cleared for inode %lu", ino);
+ 
+@@ -965,7 +965,7 @@ got:
+ 	percpu_counter_dec(&sbi->s_freeinodes_counter);
+ 	if (S_ISDIR(mode))
+ 		percpu_counter_inc(&sbi->s_dirs_counter);
+-	sb->s_dirt = 1;
++	ext4_mark_super_dirty(sb);
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		flex_group = ext4_flex_group(sbi, group);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 12b3bc0..d9d2671 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2812,7 +2812,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
+ 
+ out_err:
+-	sb->s_dirt = 1;
++	ext4_mark_super_dirty(sb);
+ 	brelse(bitmap_bh);
+ 	return err;
+ }
+@@ -4680,7 +4680,7 @@ do_more:
+ 		put_bh(bitmap_bh);
+ 		goto do_more;
+ 	}
+-	sb->s_dirt = 1;
++	ext4_mark_super_dirty(sb);
+ error_return:
+ 	if (freed)
+ 		dquot_free_block(inode, freed);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 6df797e..27527ae 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -921,8 +921,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 			   &sbi->s_flex_groups[flex_group].free_inodes);
+ 	}
+ 
+-	ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
+-	sb->s_dirt = 1;
++	ext4_handle_dirty_super(handle, sb);
+ 
+ exit_journal:
+ 	mutex_unlock(&sbi->s_resize_lock);
+@@ -1045,13 +1044,12 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 		goto exit_put;
+ 	}
+ 	ext4_blocks_count_set(es, o_blocks_count + add);
+-	ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
+-	sb->s_dirt = 1;
+ 	mutex_unlock(&EXT4_SB(sb)->s_resize_lock);
+ 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	/* We add the blocks to the bitmap and set the group need init bit */
+ 	ext4_add_groupblocks(handle, sb, o_blocks_count, add);
++	ext4_handle_dirty_super(handle, sb);
+ 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	if ((err = ext4_journal_stop(handle)))
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 0433800..a6f3142 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -458,8 +458,7 @@ static void ext4_xattr_update_super_block(handle_t *handle,
+ 
+ 	if (ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh) == 0) {
+ 		EXT4_SET_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR);
+-		sb->s_dirt = 1;
+-		ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
++		ext4_handle_dirty_super(handle, sb);
+ 	}
+ }
+ 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.6.6.1.1.g974db.dirty
+
