@@ -1,105 +1,45 @@
-From: shenghui <crosslonelyover@gmail.com>
-Subject: Re: [PATCH] Documentation/filesystems/xip.txt: clarify the statement:
-	The block device option is mandatory for execute-in-place
-Date: Tue, 8 Jun 2010 07:15:34 -0400
-Message-ID: <AANLkTikNN8A0X2z8TL0MPHqjXrS-4uqrkVcoV_dqxeiv@mail.gmail.com>
-References: <AANLkTik9UM9ta3r7ZNt8Z-CNS6Vz-aIWb_qewgECFfoe@mail.gmail.com>
-	<20100608092458.GA5483@bicker>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond
+ i_size
+Date: Tue, 8 Jun 2010 17:46:51 -0400
+Message-ID: <20100608214651.GA6529@thunk.org>
+References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
+ <87och49oly.fsf@linux.vnet.ibm.com>
+ <871ve0qb59.fsf@openvz.org>
+ <87d3whuus0.fsf@linux.vnet.ibm.com>
+ <87mxvc1ppy.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, cotte@de.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:57687 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752431Ab0FHLPg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jun 2010 07:15:36 -0400
-In-Reply-To: <20100608092458.GA5483@bicker>
+Received: from thunk.org ([69.25.196.29]:41481 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932163Ab0FHVq5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Jun 2010 17:46:57 -0400
+Content-Disposition: inline
+In-Reply-To: <87mxvc1ppy.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/6/8 Dan Carpenter <error27@gmail.com>:
-> On Tue, Jun 08, 2010 at 04:37:04PM +0800, shenghui wrote:
->> diff --git a/Documentation/filesystems/xip.txt
->> b/Documentation/filesystems/xip.txt
->> index 0466ee5..bef4120 100644
->> --- a/Documentation/filesystems/xip.txt
->> +++ b/Documentation/filesystems/xip.txt
->> @@ -35,8 +35,7 @@ is performed. A struct block_device reference is
->> used to address the device,
->
-> I don't know about xip, but the patch is malformed. =C2=A0It's line w=
-rapped
-> here.
->
->> =C2=A0and a sector_t argument is used to identify the individual blo=
-ck. As an
->> =C2=A0alternative, memory technology devices can be used for this.
->>
->> -The block device operation is optional, these block devices support=
- it as of
->> -today:
->> +The block device operation is mandatory for execute-in-place, these
->> block devices support it as of today:
->
-> And here.
->
->> =C2=A0- dcssblk: s390 dcss block device driver
->>
->
-> There is documentation in Documentation/email-clients.txt. =C2=A0Send=
- a patch
-> to yourself, then save it as a raw document.
->
-> cd path/to/linux
-> cat raw-email | patch -p1
->
-> If it applies correctly resend your patch to the list.
->
-> regards,
-> dan carpenter
->
->
->
+On Thu, Jun 03, 2010 at 12:32:09PM +0400, Dmitry Monakhov wrote:
+> >
+> > I thought this patch is going to reworked to use EOFBLOCKS_FL. But i see
+> > Ted sent a pull request with the this patch. Did I miss something ?
 
-Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
----
- Documentation/filesystems/xip.txt |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+I added it to the patch queue a week before you sent your comment that
+we should rework this with EOFBLOCKS_FL, and I forgot to pull the
+patch back.
 
-diff --git a/Documentation/filesystems/xip.txt
-b/Documentation/filesystems/xip.txt
-index 0466ee5..caaa8b4 100644
---- a/Documentation/filesystems/xip.txt
-+++ b/Documentation/filesystems/xip.txt
-@@ -35,8 +35,8 @@ is performed. A struct block_device reference is
-used to address the device,
- and a sector_t argument is used to identify the individual block. As a=
-n
- alternative, memory technology devices can be used for this.
+> As far as i can see EXT4_EOFBLOCKS_FL flag is now allowed for
+> uninitialized extents only in e2fslib. So we have to change e2fslib
+> first and then revert the kernel zeroout restriction logic.
 
--The block device operation is optional, these block devices support it=
- as of
--today:
-+The block device operation is mandatory for execute-in-place, these bl=
-ock
-+devices support it as of today:
- - dcssblk: s390 dcss block device driver
+I think I'm missing something.  What change do you think is needed in
+e2fsprogs?
 
- An address space operation named get_xip_mem is used to retrieve refer=
-ences
---=20
-1.7.0.1
+						- Ted
 
 
---=20
 
-
-Thanks and Best Regards,
-shenghui
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
