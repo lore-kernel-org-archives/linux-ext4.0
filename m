@@ -1,45 +1,72 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: Do not zeroout uninitialized extents beyond
- i_size
-Date: Tue, 8 Jun 2010 17:46:51 -0400
-Message-ID: <20100608214651.GA6529@thunk.org>
-References: <1270833748-14381-1-git-send-email-dmonakhov@openvz.org>
- <87och49oly.fsf@linux.vnet.ibm.com>
- <871ve0qb59.fsf@openvz.org>
- <87d3whuus0.fsf@linux.vnet.ibm.com>
- <87mxvc1ppy.fsf@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16165] New: Wrong data returned on read after write if file
+ size was changed with ftruncate before
+Date: Tue, 8 Jun 2010 22:01:57 GMT
+Message-ID: <bug-16165-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41481 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932163Ab0FHVq5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Jun 2010 17:46:57 -0400
-Content-Disposition: inline
-In-Reply-To: <87mxvc1ppy.fsf@openvz.org>
+Received: from demeter.kernel.org ([140.211.167.39]:52280 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754928Ab0FHWB5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jun 2010 18:01:57 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o58M1vMb004791
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Jun 2010 22:01:57 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 03, 2010 at 12:32:09PM +0400, Dmitry Monakhov wrote:
-> >
-> > I thought this patch is going to reworked to use EOFBLOCKS_FL. But i see
-> > Ted sent a pull request with the this patch. Did I miss something ?
+https://bugzilla.kernel.org/show_bug.cgi?id=16165
 
-I added it to the patch queue a week before you sent your comment that
-we should rework this with EOFBLOCKS_FL, and I forgot to pull the
-patch back.
+           Summary: Wrong data returned on read after write if file size
+                    was changed with ftruncate before
+           Product: File System
+           Version: 2.5
+    Kernel Version: at least up to 2.6.34
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: Alexander.Eichner@sun.com
+        Regression: No
 
-> As far as i can see EXT4_EOFBLOCKS_FL flag is now allowed for
-> uninitialized extents only in e2fslib. So we have to change e2fslib
-> first and then revert the kernel zeroout restriction logic.
 
-I think I'm missing something.  What change do you think is needed in
-e2fsprogs?
+Created an attachment (id=26701)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=26701)
+Testcase showing the corruption
 
-						- Ted
+Hi,
 
+we use the direct async I/O API for file I/O in VirtualBox since 3.2 and got
+some reports about corrupted guest filesystems. It turned out that only users
+are affected which disk images are stored on a ext4 filesystem. I could create
+a testcase which reproduces the error. Further investigation showed that the
+data corruption happens if ftruncate is used, data is written to the so far
+unallocated offset and immediately read back. The buffer holding the read data
+contains only \0 afterwards. The data is there if the file is closed and
+another
+program is used to view the file content (less for example). Everything works
+if ftruncate is not used.
+The same testcase with ftruncate works on ext3 here. A simple testcase is
+attached.
 
+Compile with: gcc -D_GNU_SOURCE -o aio_corrupt aio_corrupt.c -laio
+Usage: aio_corrupt <path/to/the/file>
 
+Expected output: Success!
+Output on ext3: Success!
+Output on ext4: Corrupted buffer!
+
+Kind regards,
+Alexander Eichner
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
