@@ -1,72 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16165] New: Wrong data returned on read after write if file
- size was changed with ftruncate before
-Date: Tue, 8 Jun 2010 22:01:57 GMT
-Message-ID: <bug-16165-13602@https.bugzilla.kernel.org/>
+From: "H. Peter Anvin" <hpa@zytor.com>
+Subject: Re: e4defrag and immutable files
+Date: Tue, 08 Jun 2010 15:12:04 -0700
+Message-ID: <4C0EC034.6010603@zytor.com>
+References: <4C002427.3010706@zytor.com> <4C05604D.2070401@oracle.com> <20100601194924.GF4426@thunk.org> <4C06083B.7050102@zytor.com> <4C069CAA.50304@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Joel Becker <Joel.Becker@oracle.com>,
+	Mark Fasheh <mfasheh@suse.com>
+To: Sunil Mushran <sunil.mushran@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52280 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754928Ab0FHWB5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jun 2010 18:01:57 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o58M1vMb004791
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 8 Jun 2010 22:01:57 GMT
+Received: from terminus.zytor.com ([198.137.202.10]:50899 "EHLO mail.zytor.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756704Ab0FHWMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Jun 2010 18:12:10 -0400
+In-Reply-To: <4C069CAA.50304@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16165
+On 06/02/2010 11:02 AM, Sunil Mushran wrote:
+> On 06/02/2010 12:28 AM, H. Peter Anvin wrote:
+>> On 06/01/2010 12:49 PM, tytso@mit.edu wrote:
+>>> On Tue, Jun 01, 2010 at 12:32:29PM -0700, Sunil Mushran wrote:
+>>>>
+>>>> We (ocfs2) are looking to add a new attribute to denote files that
+>>>> have a fixed allocation on disk. But at the same time, allow writes
+>>>> that do not change the allocation on disk. No truncating, extending,
+>>>> filling holes, etc. We were thinking of calling it "Static" files.
+>>>
+>>> That's an interesting set of semantics, and it might make sense to
+>>> conflate that with a local disk "don't move or defrag" the file
+>>> option.  I'm not crazy with the name "static", since it could mean a
+>>> number of other things in other contexts, but I admit I can't think of
+>>> a better name.
+>>>
+>>
+>> For what it's worth, this sort of seems to be what one would expect if 
+>> a file is *both* "fixed" and "immutable".
+> 
+> "Immutable" means the contents do not change. But the file mappings
+> could change.
+> 
+> "Fixed mapping" means the mappings do not change but contents
+> could (as long as the ondisk mappings don't).
+> 
+> "Fixed metadata" means the entire inode (mappings included) cannot
+> change but the contents could (as long as the ondisk mappings don't).
+> (This does have the side effect of allowing writes without touching the
+> mtime. Like XFS' invisible i/o.)
+> 
 
-           Summary: Wrong data returned on read after write if file size
-                    was changed with ftruncate before
-           Product: File System
-           Version: 2.5
-    Kernel Version: at least up to 2.6.34
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: Alexander.Eichner@sun.com
-        Regression: No
+Actually, if you're going to have three flags you might as well make
+them orthogonal.  That is, separate "fixed contents", "fixed mappings",
+"fixed metadata" -- and don't consider the mapping as metadata for this
+purpose.
 
-
-Created an attachment (id=26701)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=26701)
-Testcase showing the corruption
-
-Hi,
-
-we use the direct async I/O API for file I/O in VirtualBox since 3.2 and got
-some reports about corrupted guest filesystems. It turned out that only users
-are affected which disk images are stored on a ext4 filesystem. I could create
-a testcase which reproduces the error. Further investigation showed that the
-data corruption happens if ftruncate is used, data is written to the so far
-unallocated offset and immediately read back. The buffer holding the read data
-contains only \0 afterwards. The data is there if the file is closed and
-another
-program is used to view the file content (less for example). Everything works
-if ftruncate is not used.
-The same testcase with ftruncate works on ext3 here. A simple testcase is
-attached.
-
-Compile with: gcc -D_GNU_SOURCE -o aio_corrupt aio_corrupt.c -laio
-Usage: aio_corrupt <path/to/the/file>
-
-Expected output: Success!
-Output on ext3: Success!
-Output on ext4: Corrupted buffer!
-
-Kind regards,
-Alexander Eichner
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+	-hpa
