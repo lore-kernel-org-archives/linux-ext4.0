@@ -1,36 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16122] 2.6.35-rc1: WARNING at fs/fs-writeback.c:1142
- __mark_inode_dirty+0x103/0x170
-Date: Wed, 9 Jun 2010 10:46:10 GMT
-Message-ID: <201006091046.o59Ak9T4020375@demeter.kernel.org>
-References: <bug-16122-13602@https.bugzilla.kernel.org/>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: delalloc makes data=writeback safer
+Date: Wed, 09 Jun 2010 16:19:27 +0400
+Message-ID: <877hm8jt4g.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:53336 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753049Ab0FIKqM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jun 2010 06:46:12 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o59AkANR020377
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Jun 2010 10:46:10 GMT
-In-Reply-To: <bug-16122-13602@https.bugzilla.kernel.org/>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:37661 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751761Ab0FIMTb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jun 2010 08:19:31 -0400
+Received: by fxm8 with SMTP id 8so3531647fxm.19
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Jun 2010 05:19:30 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16122
+Everybody know that writeback mode for ext3 is potentially result in
+stale data in case of unclean umount. The same is true for ext4 with
+nodelalloc.
+But as far as i can see things is getting better in case of delalloc.
+In case of delalloc we have following calltrace:
+[writeback thread]
+ext4_da_writepages
+  journal_start()
+  ext4_map_blocks() -> real block allocation
+  mpage_da_submit_io() -> submit_bh() -> submit_bio()
+  journal_stop()
+So journal will be closed only after data was issued. 
+And if journal->j_dev == journal->j_fs_dev (which is usually the case)
+data will be serialized with metadata. So it looks like it is impassible
+to see stale data even after unclean umount.
 
-
-
-
-
---- Comment #10 from Jens Axboe <axboe@kernel.dk>  2010-06-09 10:45:50 ---
-This puzzles me... Larry, can you try .34? I don't think this is a regression
-from .34.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Do I miss something? May be this was already discussed before, 
+if so please post a link to previous discussion.
