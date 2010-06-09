@@ -1,38 +1,64 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16165] Wrong data returned on read after write if file size was
- changed with ftruncate before
-Date: Tue, 8 Jun 2010 22:38:11 GMT
-Message-ID: <201006082238.o58McBIi013382@demeter.kernel.org>
-References: <bug-16165-13602@https.bugzilla.kernel.org/>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: e4defrag and immutable files
+Date: Tue, 8 Jun 2010 18:10:28 -0700
+Message-ID: <20100609011028.GD6795@mail.oracle.com>
+References: <4C002427.3010706@zytor.com>
+ <4C05604D.2070401@oracle.com>
+ <20100601194924.GF4426@thunk.org>
+ <4C06083B.7050102@zytor.com>
+ <4C069CAA.50304@oracle.com>
+ <4C0EC034.6010603@zytor.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Sunil Mushran <sunil.mushran@oracle.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>
+To: "H. Peter Anvin" <hpa@zytor.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:35199 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755851Ab0FHWiM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jun 2010 18:38:12 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o58McBsA013383
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 8 Jun 2010 22:38:11 GMT
-In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:43130 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751810Ab0FIBLs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jun 2010 21:11:48 -0400
+Content-Disposition: inline
+In-Reply-To: <4C0EC034.6010603@zytor.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16165
+On Tue, Jun 08, 2010 at 03:12:04PM -0700, H. Peter Anvin wrote:
+> On 06/02/2010 11:02 AM, Sunil Mushran wrote:
+> > "Immutable" means the contents do not change. But the file mappings
+> > could change.
+> > 
+> > "Fixed mapping" means the mappings do not change but contents
+> > could (as long as the ondisk mappings don't).
+> > 
+> > "Fixed metadata" means the entire inode (mappings included) cannot
+> > change but the contents could (as long as the ondisk mappings don't).
+> > (This does have the side effect of allowing writes without touching the
+> > mtime. Like XFS' invisible i/o.)
+> > 
+> 
+> Actually, if you're going to have three flags you might as well make
+> them orthogonal.  That is, separate "fixed contents", "fixed mappings",
+> "fixed metadata" -- and don't consider the mapping as metadata for this
+> purpose.
 
+	I think Sunil was defining terms, not suggesting three flags ;-)
+That said, it does allow all the possible characteristics in the
+discussion.  The only ugly think I can see is that we'll have three new
+flags, plus the old immutable flag that means the same as setting all
+three new flags.
 
-
-
-
---- Comment #4 from Alexander Eichner <Alexander.Eichner@sun.com>  2010-06-08 22:38:10 ---
-The 2.6.34 kernel is from the mainline ppa
-http://kernel.ubuntu.com/~kernel-ppa/mainline/v2.6.34-lucid/
-These kernels don't contain any additional patches according to
-https://wiki.ubuntu.com/KernelTeam/MainlineBuilds
+Joel
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+
+"But all my words come back to me
+ In shades of mediocrity.
+ Like emptiness in harmony
+ I need someone to comfort me."
+
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
