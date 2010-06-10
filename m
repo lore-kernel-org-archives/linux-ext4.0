@@ -1,58 +1,40 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH V2 2/7] Cleancache (was Transcendent Memory): core files
-Date: Wed, 9 Jun 2010 20:28:21 -0700 (PDT)
-Message-ID: <c773d65b-e107-428c-ba6f-04d4ca9f8361@default>
-References: <20100528173550.GA12219@ca-server1.us.oracle.com
- 4C1042E0.8080403@vflare.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16165] Wrong data returned on read after write if file size was
+ changed with ftruncate before
+Date: Thu, 10 Jun 2010 07:38:13 GMT
+Message-ID: <201006100738.o5A7cDY5016885@demeter.kernel.org>
+References: <bug-16165-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
-        adilger@sun.com, tytso@mit.edu, mfasheh@suse.com,
-        joel.becker@oracle.com, matthew@wil.cx, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org, jeremy@goop.org, JBeulich@novell.com,
-        kurt.hackel@oracle.com, npiggin@suse.de, dave.mccracken@oracle.com,
-        riel@redhat.com, avi@redhat.com, konrad.wilk@oracle.com
-To: ngupta@vflare.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <4C1042E0.8080403@vflare.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:44245 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752558Ab0FJHiP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jun 2010 03:38:15 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o5A7cDx3016886
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jun 2010 07:38:13 GMT
+In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> I just finished a rough (but working) implementation of in-kernel
-> page cache compression backend (called zcache). During this work,
-> I found some issues with cleancache, mostly related to (lack of)
-> comments/documentation:
+https://bugzilla.kernel.org/show_bug.cgi?id=16165
 
-Great to hear!  And excellent feedback on the missing
-documentation... I am working on this right now so your
-feedback is very timely.
 
-(documentation and funcition return values comments deleted
-as I will fix all of them)
 
-> > +
-> > +static inline int cleancache_init_fs(size_t pagesize)
-> > +
->=20
->  - It seems that returning pool_id of 0 is considered as error
-> condition (as it appears from deactivate_locked_super() changes).
-> This seems weird; I think only negative pool_id should considered
-> as error. Anyway, please add function comments for these.
 
-Hmmm... this is a bug.  0 is a valid pool_id.  I'll fix it
-for the next rev.
 
-> Page cache compression was a long-pending project. I'm glad its
-> coming into shape with the help of cleancache :)
+--- Comment #8 from Alexander Eichner <Alexander.Eichner@sun.com>  2010-06-10 07:38:08 ---
+The chance to reproduce this issue seems to be really dependent of the host.
+Just tried it on a Notebook with Ubuntu 10.04 and an ext4 root.
 
-Thanks!
-Dan
+# for I in `seq 1 50`; do ./aio_corrupt /mnt/test$I; done
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+The test failed only 4 times on 50 runs.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
