@@ -1,86 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: bug#6131: [PATCH]: fiemap support for efficient sparse file copy
-Date: Fri, 11 Jun 2010 09:03:29 -0500
-Message-ID: <4C124231.7020304@redhat.com>
-References: <4BE41FFF.4020809@oracle.com>	<871vdho68j.fsf@meyering.net>	<4BEC0BCC.3080906@oracle.com>	<87k4qyl6lw.fsf@meyering.net>	<4BF683CC.3060407@oracle.com>	<4BF6ABE7.3020600@oracle.com>	<877hmpeivx.fsf@meyering.net>	<4BFF763A.9010205@oracle.com>	<8763286kni.fsf@meyering.net>	<4C0275FA.1030901@oracle.com>	<874ohpywri.fsf@meyering.net>	<87y6exuc5i.fsf@meyering.net>	<874ohdu5b8.fsf@meyering.net>	<87eighs1t9.fsf@meyering.net>	<4C0FA93C.6020205@oracle.com>	<87iq5sp7eg.fsf@meyering.net>	<4C108CB9.8010805@oracle.com> <4C11798B.6090500@cs.ucla.edu> <4C1183FD.9010502@oracle.com> <4C11F451.8040304@oracle.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16165] Wrong data returned on read after write if file size was
+ changed with ftruncate before
+Date: Fri, 11 Jun 2010 14:26:55 GMT
+Message-ID: <201006111426.o5BEQtxh004828@demeter.kernel.org>
+References: <bug-16165-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	Paul Eggert <eggert@CS.UCLA.EDU>,
-	Jim Meyering <jim@meyering.net>, bug-coreutils@gnu.org,
-	Joel Becker <Joel.Becker@oracle.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Tao Ma <tao.ma@oracle.com>
-To: "jeff.liu" <jeff.liu@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48863 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750861Ab0FKODo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Jun 2010 10:03:44 -0400
-In-Reply-To: <4C11F451.8040304@oracle.com>
+Received: from demeter.kernel.org ([140.211.167.39]:58683 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755479Ab0FKO04 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jun 2010 10:26:56 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o5BEQtqh004829
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jun 2010 14:26:55 GMT
+In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jeff.liu wrote:
-> Sunil Mushran wrote:
->> On 06/10/2010 04:47 PM, Paul Eggert wrote:
->>> On 06/09/2010 11:56 PM, jeff.liu wrote:
->>>   
->>>> Yeah, I just realized that the behaviour I observed is caused by the
->>>> delay allocation mechanism of
->>>> the particular FS.
->>>>      
->>> If the file system is using delayed allocation, then can
->>> the fiemap ioctl tell us that a file contains a hole (because nothing
->>> has been
->>> allocated there), but read() would tell us that the file contains
->>> nonzero data at the same location
->>> (because it's sitting in a buffer somewhere)?  If so, we'd need to do
->>> something like invoke
->>> fdatasync() on the file before issuing the fiemap ioctl, to force
->>> allocation; or perhaps
->>> there's another ioctl that will do the allocation without having to
->>> actually do a sync.
->>>    
->> I guess we'll have to use FIEMAP_FLAG_SYNC.
-> Hi Sunil,
-> 
-> Thanks for the comments.
-> So we can ensure the source file synced before mapping in this way.
-> 
-> Hi Jim and Paul,
-> 
-> How about the tiny patch below?
+https://bugzilla.kernel.org/show_bug.cgi?id=16165
 
-I agree that this is needed, thanks.
 
--Eric
+Frank Mehnert <frank.mehnert@sun.com> changed:
 
-> From d6d619a169ff68a9a310a69d8089b9fbf83b5f91 Mon Sep 17 00:00:00 2001
-> From: Jie Liu <jeff.liu@oracle.com>
-> Date: Fri, 11 Jun 2010 16:29:02 +0800
-> Subject: [PATCH 1/1] copy.c: add FIEMAP_FLAG_SYNC to fiemap ioctl
-> 
-> * src/copy.c (fiemap_copy): Force kernel to sync the source
-> file before mapping.
-> 
-> Signed-off-by: Jie Liu <jeff.liu@oracle.com>
-> ---
->  src/copy.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/src/copy.c b/src/copy.c
-> index f149be4..f48c74d 100644
-> --- a/src/copy.c
-> +++ b/src/copy.c
-> @@ -191,6 +191,7 @@ fiemap_copy (int src_fd, int dest_fd, size_t buf_size,
->    do
->      {
->        fiemap->fm_length = FIEMAP_MAX_OFFSET;
-> +      fiemap->fm_flags = FIEMAP_FLAG_SYNC;
->        fiemap->fm_extent_count = count;
-> 
->        /* When ioctl(2) fails, fall back to the normal copy only if it
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |frank.mehnert@sun.com
 
+
+
+
+--- Comment #9 from Frank Mehnert <frank.mehnert@sun.com>  2010-06-11 14:26:51 ---
+When compiling the test case, please make sure to add a third parameter to
+open(), for example 0777, otherwise it wouldn't compile on Ubuntu (O_CREAT
+requires 3 parameters for open).
+
+Executed the testcase here on an up-to-date Ubuntu 10.04 installed on an
+ext4-formatted partition. The testcase does NOT fail if the test file already
+exists. But it fails about 130 out of 500 times if I remove the test file prior
+to each run. When using Linux 2.6.34 vanilla: 7080 out of 10000 runs reported a
+corrupted buffer. And, like expected, the test never fails on an ext3
+partition.
+
+So please make sure to run the testcase like this:
+
+# for i in `seq 1 500`; do rm -f /mnt/tst; ./aio_corrupt /mnt/tst; done
+
+where /mnt is an ext4 partition.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
