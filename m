@@ -1,57 +1,86 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: fiemap is broken for sparse file in ext4?
-Date: Fri, 11 Jun 2010 08:43:48 -0500
-Message-ID: <4C123D94.7060003@redhat.com>
-References: <4C119C2E.2090801@oracle.com> <4C11B6D8.8070909@redhat.com> <4C11C41C.9070000@oracle.com>
+Subject: Re: bug#6131: [PATCH]: fiemap support for efficient sparse file copy
+Date: Fri, 11 Jun 2010 09:03:29 -0500
+Message-ID: <4C124231.7020304@redhat.com>
+References: <4BE41FFF.4020809@oracle.com>	<871vdho68j.fsf@meyering.net>	<4BEC0BCC.3080906@oracle.com>	<87k4qyl6lw.fsf@meyering.net>	<4BF683CC.3060407@oracle.com>	<4BF6ABE7.3020600@oracle.com>	<877hmpeivx.fsf@meyering.net>	<4BFF763A.9010205@oracle.com>	<8763286kni.fsf@meyering.net>	<4C0275FA.1030901@oracle.com>	<874ohpywri.fsf@meyering.net>	<87y6exuc5i.fsf@meyering.net>	<874ohdu5b8.fsf@meyering.net>	<87eighs1t9.fsf@meyering.net>	<4C0FA93C.6020205@oracle.com>	<87iq5sp7eg.fsf@meyering.net>	<4C108CB9.8010805@oracle.com> <4C11798B.6090500@cs.ucla.edu> <4C1183FD.9010502@oracle.com> <4C11F451.8040304@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	linux-kernel@vger.kernel.org
-To: Tao Ma <tao.ma@oracle.com>
+Cc: Sunil Mushran <sunil.mushran@oracle.com>,
+	Paul Eggert <eggert@CS.UCLA.EDU>,
+	Jim Meyering <jim@meyering.net>, bug-coreutils@gnu.org,
+	Joel Becker <Joel.Becker@oracle.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Tao Ma <tao.ma@oracle.com>
+To: "jeff.liu" <jeff.liu@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35653 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48863 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760334Ab0FKNn5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Jun 2010 09:43:57 -0400
-In-Reply-To: <4C11C41C.9070000@oracle.com>
+	id S1750861Ab0FKODo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jun 2010 10:03:44 -0400
+In-Reply-To: <4C11F451.8040304@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Tao Ma wrote:
-> Hi Eric,
->     Thanks for the quick response.
+jeff.liu wrote:
+> Sunil Mushran wrote:
+>> On 06/10/2010 04:47 PM, Paul Eggert wrote:
+>>> On 06/09/2010 11:56 PM, jeff.liu wrote:
+>>>   
+>>>> Yeah, I just realized that the behaviour I observed is caused by the
+>>>> delay allocation mechanism of
+>>>> the particular FS.
+>>>>      
+>>> If the file system is using delayed allocation, then can
+>>> the fiemap ioctl tell us that a file contains a hole (because nothing
+>>> has been
+>>> allocated there), but read() would tell us that the file contains
+>>> nonzero data at the same location
+>>> (because it's sitting in a buffer somewhere)?  If so, we'd need to do
+>>> something like invoke
+>>> fdatasync() on the file before issuing the fiemap ioctl, to force
+>>> allocation; or perhaps
+>>> there's another ioctl that will do the allocation without having to
+>>> actually do a sync.
+>>>    
+>> I guess we'll have to use FIEMAP_FLAG_SYNC.
+> Hi Sunil,
 > 
-> On 06/11/2010 12:08 PM, Eric Sandeen wrote:
+> Thanks for the comments.
+> So we can ensure the source file synced before mapping in this way.
+> 
+> Hi Jim and Paul,
+> 
+> How about the tiny patch below?
 
-...
+I agree that this is needed, thanks.
 
->> What are you using to call fiemap?  Here it seems to be working:
-> I just wrote a simple test program by calling ioctl. It is attached.
-> btw, you need to call it immediately after dd so that we have a chance
-> that ext4 don't have time to allocate extents. ;)
->>
->> # dd if=/dev/zero of=testfile1 bs=1M count=1 seek=1;
->>
->> # filefrag -v testfile1
->> Filesystem type is: ef53
->> Filesystem cylinder groups is approximately 119
->> File size of testfile1 is 2097152 (512 blocks, blocksize 4096)
->>   ext logical physical expected length flags
->>     0     256   151946               1 merged
->>     1     257   151951   151946      2 merged
->>     2     259   152434   151952    253 merged,eof
->> testfile1: 4 extents found
-> I guess maybe filefrag use the diffrent ioctl flag, maybe
-> FIEMAP_FLAG_SYNC to let ext4 sync first.
-
-My tester isn't calling sync or using the sync flag, AFAIK.
-I'll take a look at yours.
-
-Thanks,
 -Eric
- 
-> Regards,
-> Tao
+
+> From d6d619a169ff68a9a310a69d8089b9fbf83b5f91 Mon Sep 17 00:00:00 2001
+> From: Jie Liu <jeff.liu@oracle.com>
+> Date: Fri, 11 Jun 2010 16:29:02 +0800
+> Subject: [PATCH 1/1] copy.c: add FIEMAP_FLAG_SYNC to fiemap ioctl
 > 
+> * src/copy.c (fiemap_copy): Force kernel to sync the source
+> file before mapping.
+> 
+> Signed-off-by: Jie Liu <jeff.liu@oracle.com>
+> ---
+>  src/copy.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/src/copy.c b/src/copy.c
+> index f149be4..f48c74d 100644
+> --- a/src/copy.c
+> +++ b/src/copy.c
+> @@ -191,6 +191,7 @@ fiemap_copy (int src_fd, int dest_fd, size_t buf_size,
+>    do
+>      {
+>        fiemap->fm_length = FIEMAP_MAX_OFFSET;
+> +      fiemap->fm_flags = FIEMAP_FLAG_SYNC;
+>        fiemap->fm_extent_count = count;
+> 
+>        /* When ioctl(2) fails, fall back to the normal copy only if it
 
