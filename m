@@ -1,42 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15768] Incorrectly calculated free blocks result in ENOSPC from
- writepage
-Date: Sun, 13 Jun 2010 11:44:33 GMT
-Message-ID: <201006131144.o5DBiXrF015861@demeter.kernel.org>
-References: <bug-15768-13602@https.bugzilla.kernel.org/>
+From: Sandon Van Ness <sandon@van-ness.com>
+Subject: Re: ext4 df free space reporting not reliable?
+Date: Sun, 13 Jun 2010 09:45:35 -0700
+Message-ID: <4C150B2F.7040208@van-ness.com>
+References: <20100613093807.GA31407@basil.fritz.box> <69DFE925-D32D-4CAA-B734-545DE0515FCE@mit.edu> <20100613103451.GF31464@basil.fritz.box>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:36742 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753055Ab0FMLof (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jun 2010 07:44:35 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o5DBiY1j015863
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 13 Jun 2010 11:44:34 GMT
-In-Reply-To: <bug-15768-13602@https.bugzilla.kernel.org/>
+Received: from box.houkouonchi.jp ([208.97.140.21]:53702 "EHLO
+	box.houkouonchi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753821Ab0FMQpw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jun 2010 12:45:52 -0400
+In-Reply-To: <20100613103451.GF31464@basil.fritz.box>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15768
+On 06/13/2010 03:34 AM, Andi Kleen wrote:
+>> Are you creating the files as root?  Sounds like the standard reserved
+>> blocks behavior that's been around since ext3, ext2, BSD's ufs, etc...
+>>     
+> Yes everything is root.
+>
+> I would expect root df to not report the reservation. Is that not the case?
+>
+> -Andi
+>   
 
+Is the root reserve (default 5% on ext3, not sure for ext3) set to 0?
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
+tune2fs -m0 /dev/sdX
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-         Resolution|PATCH_ALREADY_AVAILABLE     |CODE_FIX
-
-
-
-
---- Comment #6 from Rafael J. Wysocki <rjw@sisk.pl>  2010-06-13 11:44:30 ---
-Fixed by commit 84061e07c5fbbbf9dc8aef8fb750fc3a2dfc31f3 .
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+The file-system does not need to be unmounted to do this but this will
+change the amount reported as available as once it hits 0 with the root
+reserve only root can write to the FS.
