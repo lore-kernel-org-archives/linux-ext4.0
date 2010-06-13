@@ -1,39 +1,29 @@
-From: Theodore Tso <tytso@MIT.EDU>
+From: Andi Kleen <andi@firstfloor.org>
 Subject: Re: ext4 df free space reporting not reliable?
-Date: Sun, 13 Jun 2010 06:27:02 -0400
-Message-ID: <69DFE925-D32D-4CAA-B734-545DE0515FCE@mit.edu>
-References: <20100613093807.GA31407@basil.fritz.box>
-Mime-Version: 1.0 (Apple Message framework v1078)
+Date: Sun, 13 Jun 2010 12:34:51 +0200
+Message-ID: <20100613103451.GF31464@basil.fritz.box>
+References: <20100613093807.GA31407@basil.fritz.box> <69DFE925-D32D-4CAA-B734-545DE0515FCE@mit.edu>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andi Kleen <andi@firstfloor.org>
+Cc: Andi Kleen <andi@firstfloor.org>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-1.MIT.EDU ([18.9.25.12]:65089 "EHLO
-	dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753308Ab0FMK1I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Jun 2010 06:27:08 -0400
-In-Reply-To: <20100613093807.GA31407@basil.fritz.box>
+Received: from one.firstfloor.org ([213.235.205.2]:37577 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753290Ab0FMKew (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jun 2010 06:34:52 -0400
+Content-Disposition: inline
+In-Reply-To: <69DFE925-D32D-4CAA-B734-545DE0515FCE@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+> Are you creating the files as root?  Sounds like the standard reserved
+> blocks behavior that's been around since ext3, ext2, BSD's ufs, etc...
 
-On Jun 13, 2010, at 5:38 AM, Andi Kleen wrote:
+Yes everything is root.
 
-> Hi,
-> 
-> I have a ext4 file system on 2.6.34 that shows 0 blocks available
-> in "df" (it's nearly full but never got a ENOSPC). 
-> 
-> But when I delete a couple of files it still shows 0 blocks.
-> And I can actually create small files without problem, so clearly
-> there is at least some space available.
-> 
-> So is df reporting not accurate?
+I would expect root df to not report the reservation. Is that not the case?
 
-Are you creating the files as root?  Sounds like the standard reserved
-blocks behavior that's been around since ext3, ext2, BSD's ufs, etc...
-
-- Ted
-
+-Andi
+-- 
+ak@linux.intel.com -- Speaking for myself only.
