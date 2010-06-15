@@ -1,122 +1,158 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: remove vestiges of nobh support
-Date: Tue, 15 Jun 2010 16:12:34 +0200
-Message-ID: <20100615141234.GD18513@atrey.karlin.mff.cuni.cz>
-References: <20100607082039.GA29155@lst.de>
+Subject: Re: [PATCH] ext4: Do not update quota for reserved blocks on error
+	paths v3
+Date: Tue, 15 Jun 2010 17:51:21 +0200
+Message-ID: <20100615155121.GE18513@atrey.karlin.mff.cuni.cz>
+References: <1274959030-8001-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:46601 "EHLO
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:56544 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757846Ab0FOOMf (ORCPT
+	by vger.kernel.org with ESMTP id S1751201Ab0FOPvW (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jun 2010 10:12:35 -0400
+	Tue, 15 Jun 2010 11:51:22 -0400
 Content-Disposition: inline
-In-Reply-To: <20100607082039.GA29155@lst.de>
+In-Reply-To: <1274959030-8001-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> The nobh option was only supported for writeback mode, but given that all
-> write paths (except mmapped writed) actually create buffer heads, it
-> effectively was a no-op already.
-  Thanks. Merged into my tree.
+  Hi Dmitry,
 
-								Honza
+> If we have failed some where inside ext4_get_blocks() internals we may
+> have allocated some new blocks, which was not yet claimed to quota.
+> We have to free such blocks, but without touching quota. Quota will
+> be updated later on exit from ext4_get_blocks().
+> The bug hapens on heavily loaded node.
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Changes from v2:
+>  - After Eric's quota-patches metadata charged immediately to quota
+>    inside new_meta_blocks(), so we have to free quota credits regardless
+>    to BLOCKS_RESERVED flag.
+> Changes from v1:
+>  - Dectement i_allocated_meta_blocks for metadata blocks.
+>  - Add some sanity checks.
+  I had a look at the patch and I miss two things:
+Why do we need EXT4_FREE_BLOCKS_RESERVED flag? Cannot we just directly
+use i_delalloc_reserved?
+  Also adding EXT4_FREE_BLOCKS_METADATA to some calls will also result
+in avoiding to reallocate these blocks for the same transaction. Why
+do you do this?
+
+  Besides that a few style / language nitpicks:
+Please use empty line to separate variable declaration and code. It's
+a good custom followed in most places of the kernel.
+
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 377309c..e3cc230 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3528,12 +3532,16 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  	}
+>  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+>  	if (err) {
+> -		/* free data blocks we just allocated */
+> -		/* not a good idea to call discard here directly,
+> -		 * but otherwise we'd need to call it every free() */
+> +		int fb_flags = 0;
+> +		/* free data blocks we just allocated
+> +		 * Not a good idea to call discard here directly,
+> +		 * but otherwise we'd need to call it every free().
+> +		 * On delalloc blocks are not yet accounted to quota */
+  I have some troubles understanding the above comment so if you actually
+know what 'discard' and 'free()' mean in this context, please update it.
+Otherwise, just leave it...
+  Also suggested format for multiline comments is:
+/*
+ *  Some text
+ *  more text
+ */
+
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 502b07d..c3b4443 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+...
+>  }
+> -
+  This removal of empty line is unintended?
+
+>  }
+> -
+  And this one as well?
+>  /*
+>   * The ext4_ind_map_blocks() function handles non-extents inodes
+>   * (i.e., using the traditional indirect/double-indirect i_blocks
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 12b3bc0..c87243b 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4682,11 +4684,46 @@ do_more:
+>  	}
+>  	sb->s_dirt = 1;
+>  error_return:
+> -	if (freed)
+> -		dquot_free_block(inode, freed);
+> +	/*  Update quotas */
+          ^ Superfluous space
+
+> +	if (freed) {
+> +		if (!(res_fl & EXT4_FREE_BLOCKS_RESERVED)) {
+> +			dquot_free_block(inode, freed);
+> +			goto out;
+> +		}
+> +		/* Blocks reserved case */
+                ^ Do we really need this comment? It seems obvious...
+
+> +		if (res_fl & EXT4_FREE_BLOCKS_METADATA) {
+> +			/*
+> +			 * Meta data blocks was charged to quota and to
+                                            ^^^ were
+> +			 * inode's mblock alloc counter in
+                                   ^^^^^^^^^^^^ mballoc?
+> +			 * ext4_new_meta_blocks(). */
+                                                   ^^ put on a separate line
+> +			spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+> +			if (EXT4_I(inode)->i_allocated_meta_blocks <
+> +				freed)
+  Line wrap doesn't seem to be needed above...
+
+> +				goto rsv_error;
+> +			EXT4_I(inode)->i_allocated_meta_blocks -= freed;
+> +			spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> +			dquot_free_block(inode, freed);
+> +		} else {
+> +			/* Data blocks allocated was reserved, but not yet
+                                                 ^^^ were
+> +			 * claimed to quota. Caller is responsibleo for
+                                                                ^^^ remove 'o'
+> +			 * quota reservation update. */
+> +		}
+> +	}
+> +out:
+>  	brelse(bitmap_bh);
+>  	ext4_std_error(sb, err);
+>  	if (ac)
+>  		kmem_cache_free(ext4_ac_cachep, ac);
+>  	return;
+> +
+> +rsv_error:
+> +	ext4_msg(sb, KERN_ERR," inode %ld, reservation counters goes"
+                                                                ^^^^ are?
+> +		" inconsistent rsv_data=%u, rsv_mdata=%u, alloc_mblk=%u"
+> +		" freed=%lu", inode->i_ino,
+> +		EXT4_I(inode)->i_reserved_data_blocks,
+> +		EXT4_I(inode)->i_reserved_meta_blocks,
+> +		EXT4_I(inode)->i_allocated_meta_blocks, freed);
+> +	EXT4_I(inode)->i_allocated_meta_blocks = 0;
+> +	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> +	goto out;
+>  }
+> -- 
+> 1.6.6.1
 > 
-> Index: linux-2.6/fs/ext3/inode.c
-> ===================================================================
-> --- linux-2.6.orig/fs/ext3/inode.c	2010-06-07 09:56:07.519275527 +0200
-> +++ linux-2.6/fs/ext3/inode.c	2010-06-07 09:56:35.267022978 +0200
-> @@ -1625,10 +1625,7 @@ static int ext3_writeback_writepage(stru
->  		goto out_fail;
->  	}
->  
-> -	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
-> -		ret = nobh_writepage(page, ext3_get_block, wbc);
-> -	else
-> -		ret = block_write_full_page(page, ext3_get_block, wbc);
-> +	ret = block_write_full_page(page, ext3_get_block, wbc);
->  
->  	err = ext3_journal_stop(handle);
->  	if (!ret)
-> @@ -1922,17 +1919,6 @@ static int ext3_block_truncate_page(hand
->  	length = blocksize - (offset & (blocksize - 1));
->  	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
->  
-> -	/*
-> -	 * For "nobh" option,  we can only work if we don't need to
-> -	 * read-in the page - otherwise we create buffers to do the IO.
-> -	 */
-> -	if (!page_has_buffers(page) && test_opt(inode->i_sb, NOBH) &&
-> -	     ext3_should_writeback_data(inode) && PageUptodate(page)) {
-> -		zero_user(page, offset, length);
-> -		set_page_dirty(page);
-> -		goto unlock;
-> -	}
-> -
->  	if (!page_has_buffers(page))
->  		create_empty_buffers(page, blocksize, 0);
->  
-> Index: linux-2.6/fs/ext3/super.c
-> ===================================================================
-> --- linux-2.6.orig/fs/ext3/super.c	2010-06-07 09:56:07.529254714 +0200
-> +++ linux-2.6/fs/ext3/super.c	2010-06-07 09:56:35.268023746 +0200
-> @@ -661,9 +661,6 @@ static int ext3_show_options(struct seq_
->  	 */
->  	seq_puts(seq, ",barrier=");
->  	seq_puts(seq, test_opt(sb, BARRIER) ? "1" : "0");
-> -	if (test_opt(sb, NOBH))
-> -		seq_puts(seq, ",nobh");
-> -
->  	seq_printf(seq, ",data=%s", data_mode_string(test_opt(sb, DATA_FLAGS)));
->  	if (test_opt(sb, DATA_ERR_ABORT))
->  		seq_puts(seq, ",data_err=abort");
-> @@ -1255,10 +1252,12 @@ set_qf_format:
->  			*n_blocks_count = option;
->  			break;
->  		case Opt_nobh:
-> -			set_opt(sbi->s_mount_opt, NOBH);
-> +			ext3_msg(sb, KERN_WARNING,
-> +				"warning: ignoring deprecated nobh option");
->  			break;
->  		case Opt_bh:
-> -			clear_opt(sbi->s_mount_opt, NOBH);
-> +			ext3_msg(sb, KERN_WARNING,
-> +				"warning: ignoring deprecated bh option");
->  			break;
->  		default:
->  			ext3_msg(sb, KERN_ERR,
-> @@ -2001,14 +2000,6 @@ static int ext3_fill_super (struct super
->  		break;
->  	}
->  
-> -	if (test_opt(sb, NOBH)) {
-> -		if (!(test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_WRITEBACK_DATA)) {
-> -			ext3_msg(sb, KERN_WARNING,
-> -				"warning: ignoring nobh option - "
-> -				"it is supported only with writeback mode");
-> -			clear_opt(sbi->s_mount_opt, NOBH);
-> -		}
-> -	}
->  	/*
->  	 * The journal_load will have done any necessary log recovery,
->  	 * so we can safely mount the rest of the filesystem now.
-> Index: linux-2.6/include/linux/ext3_fs.h
-> ===================================================================
-> --- linux-2.6.orig/include/linux/ext3_fs.h	2010-06-07 09:56:07.540254365 +0200
-> +++ linux-2.6/include/linux/ext3_fs.h	2010-06-07 09:56:35.270022978 +0200
-> @@ -400,7 +400,6 @@ struct ext3_inode {
->  #define EXT3_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
->  #define EXT3_MOUNT_RESERVATION		0x10000	/* Preallocation */
->  #define EXT3_MOUNT_BARRIER		0x20000 /* Use block barriers */
-> -#define EXT3_MOUNT_NOBH			0x40000 /* No bufferheads */
->  #define EXT3_MOUNT_QUOTA		0x80000 /* Some quota option set */
->  #define EXT3_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
->  #define EXT3_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
