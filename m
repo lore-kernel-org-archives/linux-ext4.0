@@ -1,28 +1,25 @@
 From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: remove vestiges of nobh support
-Date: Tue, 15 Jun 2010 12:16:21 -0400
-Message-ID: <20100615161621.GA6463@thunk.org>
-References: <20100607082054.GB29155@lst.de>
+Subject: Re: [PATCH 3/4] ext4: update ctime when changing the file's
+ permission by setfacl
+Date: Tue, 15 Jun 2010 12:21:29 -0400
+Message-ID: <20100615162129.GB6463@thunk.org>
+References: <1275664075-4703-1-git-send-email-jack@suse.cz>
+ <1275664075-4703-4-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39859 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752650Ab0FOQQZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jun 2010 12:16:25 -0400
+Cc: linux-fsdevel@vger.kernel.org,
+	David Woodhouse <dwmw2@infradead.org>,
+	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20100607082054.GB29155@lst.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1275664075-4703-4-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 07, 2010 at 10:20:54AM +0200, Christoph Hellwig wrote:
-> The nobh option was only supported for writeback mode, but given that all
-> write paths actually create buffer heads it effectively was a no-op already.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+On Fri, Jun 04, 2010 at 05:07:54PM +0200, Jan Kara wrote:
+> ext4 didn't update the ctime of the file when its permission was changed.
 
-Added to the ext4 patch queue, thanks.
+I've added this to the ext4 tree, thanks.
 
-				- Ted
+						- Ted
