@@ -1,51 +1,44 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] [17/23] EXT3: Fix set but unused variables
-Date: Tue, 15 Jun 2010 16:01:32 +0200
-Message-ID: <20100615140132.GB18513@atrey.karlin.mff.cuni.cz>
-References: <20100610110.764742110@firstfloor.org> <20100610111053.43E78B1A2B@basil.firstfloor.org> <20100614172718.GC6666@thunk.org>
+Subject: Re: delalloc makes data=writeback safer
+Date: Tue, 15 Jun 2010 16:08:02 +0200
+Message-ID: <20100615140801.GC18513@atrey.karlin.mff.cuni.cz>
+References: <877hm8jt4g.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: tytso@mit.edu, Andi Kleen <andi@firstfloor.org>,
-	linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	linux-kernel@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:45345 "EHLO
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:38410 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757725Ab0FOOBe (ORCPT
+	by vger.kernel.org with ESMTP id S1753136Ab0FOOIC (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jun 2010 10:01:34 -0400
+	Tue, 15 Jun 2010 10:08:02 -0400
 Content-Disposition: inline
-In-Reply-To: <20100614172718.GC6666@thunk.org>
+In-Reply-To: <877hm8jt4g.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Thu, Jun 10, 2010 at 01:10:53PM +0200, Andi Kleen wrote:
-> > Index: linux-2.6.35-rc2-gcc/fs/jbd/recovery.c
-> > ===================================================================
-> > --- linux-2.6.35-rc2-gcc.orig/fs/jbd/recovery.c
-> > +++ linux-2.6.35-rc2-gcc/fs/jbd/recovery.c
-> > @@ -283,12 +283,10 @@ int journal_recover(journal_t *journal)
-> >  int journal_skip_recovery(journal_t *journal)
-> >  {
-> >  	int			err;
-> > -	journal_superblock_t *	sb;
-> >  
-> >  	struct recovery_info	info;
-> >  
-> >  	memset (&info, 0, sizeof(info));
-> > -	sb = journal->j_superblock;
+> Everybody know that writeback mode for ext3 is potentially result in
+> stale data in case of unclean umount. The same is true for ext4 with
+> nodelalloc.
+> But as far as i can see things is getting better in case of delalloc.
+> In case of delalloc we have following calltrace:
+> [writeback thread]
+> ext4_da_writepages
+>   journal_start()
+>   ext4_map_blocks() -> real block allocation
+>   mpage_da_submit_io() -> submit_bh() -> submit_bio()
+>   journal_stop()
+> So journal will be closed only after data was issued. 
+> And if journal->j_dev == journal->j_fs_dev (which is usually the case)
+> data will be serialized with metadata. So it looks like it is impassible
+> to see stale data even after unclean umount.
 > 
-> Oops, spoke too soon.  This will cause a compile error if
-> CONFIG_JBD_DEBUG is defined.
-> 
-> The following pesudo-patch is required:
-> 
->  #ifdef CONFIG_JBD_DEBUG
-> -		int dropped = info.end_transaction - be32_to_cpu(sb->s_sequence);
-> +		int dropped = info.end_transaction - 
-> +				be32_to_cpu(journal->j_superblock->s_sequence);
->  #endif
-  I have merged the patch with your fix to my tree.
+> Do I miss something? May be this was already discussed before, 
+> if so please post a link to previous discussion.
+  Well, we turn off delayed allocation when a filesystem gets close to
+ENOSPC so it's not completely reliable. But besides this, your observation
+looks correct to me.
 
 								Honza
 -- 
