@@ -1,25 +1,25 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH 3/4] ext4: update ctime when changing the file's
- permission by setfacl
-Date: Tue, 15 Jun 2010 12:21:29 -0400
-Message-ID: <20100615162129.GB6463@thunk.org>
-References: <1275664075-4703-1-git-send-email-jack@suse.cz>
- <1275664075-4703-4-git-send-email-jack@suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: no buffers in ext4_writepage?
+Date: Tue, 15 Jun 2010 12:29:57 -0400
+Message-ID: <20100615162957.GA14500@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-	David Woodhouse <dwmw2@infradead.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:40328 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753975Ab0FOQ36 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jun 2010 12:29:58 -0400
+Received: from hch by bombadil.infradead.org with local (Exim 4.72 #1 (Red Hat Linux))
+	id 1OOZ1R-0004Ls-Nm
+	for linux-ext4@vger.kernel.org; Tue, 15 Jun 2010 16:29:57 +0000
 Content-Disposition: inline
-In-Reply-To: <1275664075-4703-4-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 04, 2010 at 05:07:54PM +0200, Jan Kara wrote:
-> ext4 didn't update the ctime of the file when its permission was changed.
-
-I've added this to the ext4 tree, thanks.
-
-						- Ted
+ext4_writepage currently has a and else case after the
+page_has_buffers() check where it does I/O if there are no buffers
+attached.  But given how ext4 uses a write_begin method that always
+creates buffer, the normal set_page_dirty which creates buffers
+and a ->page_mkwrite that creates buffers I just can't see how that case
+can happen at all.
