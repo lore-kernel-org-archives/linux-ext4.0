@@ -1,38 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16165] Wrong data returned on read after write if file size was
- changed with ftruncate before
-Date: Wed, 16 Jun 2010 08:19:59 GMT
-Message-ID: <201006160819.o5G8Jxgo009854@demeter.kernel.org>
-References: <bug-16165-13602@https.bugzilla.kernel.org/>
+From: Cyrill Gorcunov <gorcunov@gmail.com>
+Subject: [PATCH] fs, ext4: Fix potential memory leak in ext4_fill_super
+Date: Wed, 16 Jun 2010 19:33:32 +0400
+Message-ID: <20100616153332.GA6751@lenovo>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55951 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750951Ab0FPIUA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jun 2010 04:20:00 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o5G8Jx5w009855
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jun 2010 08:19:59 GMT
-In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:44933 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755474Ab0FPPdn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jun 2010 11:33:43 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16165
+Under heavy memory pressure we may hit out of memory
+situation and as result kstrdup'ed options will not be
+freed. Fix it.
 
+Signed-off-by: Cyrill Gorcunov <gorcunov@openvz.org>
+---
+ fs/ext4/super.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-
-
-
---- Comment #10 from Frank Mehnert <frank.mehnert@sun.com>  2010-06-16 08:19:52 ---
-Please, could someone of the ext4 maintainers have a look? We believe that this
-bug is responsible for many data corruption reports we get for our latest
-VirtualBox release as we made the asynchronous file API the default for certain
-controller types.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Index: linux-2.6.git/fs/ext4/super.c
+=====================================================================
+--- linux-2.6.git.orig/fs/ext4/super.c
++++ linux-2.6.git/fs/ext4/super.c
+@@ -2448,7 +2448,7 @@ static int ext4_fill_super(struct super_
+ 	struct inode *root;
+ 	char *cp;
+ 	const char *descr;
+-	int ret = -EINVAL;
++	int ret = -ENOMEM;
+ 	int blocksize;
+ 	unsigned int db_count;
+ 	unsigned int i;
+@@ -2459,13 +2459,13 @@ static int ext4_fill_super(struct super_
+ 
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+-		return -ENOMEM;
++		goto out_free_orig;
+ 
+ 	sbi->s_blockgroup_lock =
+ 		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
+ 	if (!sbi->s_blockgroup_lock) {
+ 		kfree(sbi);
+-		return -ENOMEM;
++		goto out_free_orig;
+ 	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_mount_opt = 0;
+@@ -2482,6 +2482,7 @@ static int ext4_fill_super(struct super_
+ 	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
+ 		*cp = '!';
+ 
++	ret = -EINVAL;
+ 	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
+ 	if (!blocksize) {
+ 		ext4_msg(sb, KERN_ERR, "unable to set blocksize");
+@@ -3093,6 +3094,7 @@ out_fail:
+ 	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ 	lock_kernel();
++out_free_orig:
+ 	kfree(orig_data);
+ 	return ret;
+ }
