@@ -1,38 +1,34 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16233] Fwd: [2.6.34] INFO: task rsync:20019 blocked for more
- than 120 seconds.
-Date: Wed, 16 Jun 2010 20:16:01 GMT
-Message-ID: <201006162016.o5GKG181002846@demeter.kernel.org>
-References: <bug-16233-13602@https.bugzilla.kernel.org/>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: [LSF TOPIC] [ATTEND] Next3 snapshots in Ext4
+Date: Thu, 17 Jun 2010 10:32:39 +0300
+Message-ID: <AANLkTink_0Whv8q286Gy0yFXJ6pvFPK0UN-93uTUM9u6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
+To: lsf10-pc@lists.linuxfoundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54540 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932220Ab0FPUQC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jun 2010 16:16:02 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o5GKG1d0002850
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jun 2010 20:16:01 GMT
-In-Reply-To: <bug-16233-13602@https.bugzilla.kernel.org/>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:64172 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755711Ab0FQHcm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jun 2010 03:32:42 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16233
+Hi,
 
+I got comments from many people, including Ric, that would like to see
+Next3 snapshots merged into Ext4,
+so I would like to attend and discuss some of the issues related to the merge.
 
-Maciej Rutecki <maciej.rutecki@gmail.com> changed:
+Agenda from the top of my head:
+1. Overview of the Next3 snapshots implementation in Ext3
+2. How to deal with move-on-write of data blocks in extent mapped files?
+3. How to guaranty snapshots data consistency on copy-on-write of
+non-journaled data blocks?
+4. What are the implications of delayed allocation on consistency of snapshots?
+5. how to deal with file fragmentation due to move-on-write?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Blocks|                            |15310
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks,
+Amir.
