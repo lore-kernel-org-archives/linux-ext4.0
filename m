@@ -1,42 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Fri, 18 Jun 2010 13:59:38 GMT
-Message-ID: <201006181359.o5IDxchD008232@demeter.kernel.org>
-References: <bug-16019-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fio test triggering bad data on ext4
+Date: Fri, 18 Jun 2010 09:02:27 -0500
+Message-ID: <4C1B7C73.505@redhat.com>
+References: <4C1B292C.2080205@fusionio.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Jens Axboe <jaxboe@fusionio.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55706 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933429Ab0FRN7j (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jun 2010 09:59:39 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.3/8.14.3) with ESMTP id o5IDxcFs008233
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jun 2010 13:59:38 GMT
-In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:12002 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932364Ab0FROCe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jun 2010 10:02:34 -0400
+In-Reply-To: <4C1B292C.2080205@fusionio.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16019
+Jens Axboe wrote:
+> Hi,
+> 
+> I was writing a small fio job file to do writes and read verifies on a
+> device. It forks 32 processes, each writing randomly to 4 files with a
+> block size between 4k and 16k. When it has written 1024 of those blocks,
+> it'll verify the oldest 512 of them. Each block is checksummed for every
+> 512b. It uses libaio and O_DIRECT.
+> 
+> It works on ext2 and btrfs. I haven't run it to completion yet, but they
+> survive 15-20 minutes just fine. ext4 doesn't even go a full minutes
+> before this triggers:
 
-
-
-
-
---- Comment #34 from Eric Sandeen <sandeen@redhat.com>  2010-06-18 13:59:35 ---
-Ok.  So, I think i915 is certainly one root cause of this problem.  There could
-be others.
-
-David, are you certain that you can hit it without i915 loaded?  If so then
-there is more to track down.
+Jens, can you try XFS too?  Since ext3 can't do direct IO to a hole,
+(and I'm not sure about btrfs in that regard), ext4 may be most similar
+to xfs's behavior on the test ... wondering how it fares.
 
 Thanks,
-
 -Eric
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching someone on the CC list of the bug.
