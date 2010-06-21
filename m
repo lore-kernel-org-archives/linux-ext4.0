@@ -1,7 +1,7 @@
 From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: [PATCH V3 1/8] Cleancache: Documentation
-Date: Mon, 21 Jun 2010 16:18:39 -0700
-Message-ID: <20100621231839.GA19454__20811.3003791825$1277162450$gmane$org@ca-server1.us.oracle.com>
+Subject: [PATCH V3 4/8] Cleancache: VFS hooks for cleancache
+Date: Mon, 21 Jun 2010 16:20:10 -0700
+Message-ID: <20100621232010.GA19527__26765.8013188795$1277162513$gmane$org@ca-server1.us.oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
@@ -9,233 +9,195 @@ To: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
 	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
 	linux-btrfs@vger.
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:47001 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:47736 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751057Ab0FUXUm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jun 2010 19:20:42 -0400
+	with ESMTP id S1754125Ab0FUXVo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jun 2010 19:21:44 -0400
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[PATCH V3 1/8] Cleancache: Documentation
+[PATCH V3 4/8] Cleancache: VFS hooks for cleancache
 
-Add cleancache documentation to Documentation/vm and
-sysfs ABI documentation to Documentation/ABI
+Implement core hooks in VFS for: initializing cleancache
+per filesystem; capturing clean pages evicted by page cache;
+attempting to get pages from cleancache before filesystem
+read; and ensuring coherency between pagecache, disk,
+and cleancache.  All hooks become no-ops if CONFIG_CLEANCACHE
+is unset, or become compare-function-pointer-to-NULL if
+CONFIG_CLEANCACHE is set but no cleancache "backend" has
+claimed cleancache_ops.
 
+Signed-off-by: Chris Mason <chris.mason@oracle.com>
 Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
 
 Diffstat:
- ABI/testing/sysfs-kernel-mm-cleancache   |   11 +
- vm/cleancache.txt                        |  194 +++++++++++++++++++++
- 2 files changed, 205 insertions(+)
---- linux-2.6.35-rc2/Documentation/ABI/testing/sysfs-kernel-mm-cleancache	1969-12-31 17:00:00.000000000 -0700
-+++ linux-2.6.35-rc2-cleancache/Documentation/ABI/testing/sysfs-kernel-mm-cleancache	2010-06-11 09:10:25.000000000 -0600
-@@ -0,0 +1,11 @@
-+What:		/sys/kernel/mm/cleancache/
-+Date:		June 2010
-+Contact:	Dan Magenheimer <dan.magenheimer@oracle.com>
-+Description:
-+		/sys/kernel/mm/cleancache/ contains a number of files which
-+		record a count of various cleancache operations
-+		(sum across all filesystems):
-+			succ_gets
-+			failed_gets
-+			puts
-+			flushes
---- linux-2.6.35-rc2/Documentation/vm/cleancache.txt	1969-12-31 17:00:00.000000000 -0700
-+++ linux-2.6.35-rc2-cleancache/Documentation/vm/cleancache.txt	2010-06-21 16:51:54.000000000 -0600
-@@ -0,0 +1,194 @@
-+MOTIVATION
+ fs/buffer.c                              |    5 +++++
+ fs/mpage.c                               |    7 +++++++
+ fs/super.c                               |    7 +++++++
+ mm/filemap.c                             |   11 +++++++++++
+ mm/truncate.c                            |   10 ++++++++++
+ 5 files changed, 40 insertions(+)
+
+--- linux-2.6.35-rc2/fs/super.c	2010-06-05 21:43:24.000000000 -0600
++++ linux-2.6.35-rc2-cleancache/fs/super.c	2010-06-11 09:06:41.000000000 -0600
+@@ -30,6 +30,7 @@
+ #include <linux/idr.h>
+ #include <linux/mutex.h>
+ #include <linux/backing-dev.h>
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ 
+@@ -95,6 +96,7 @@ static struct super_block *alloc_super(s
+ 		s->s_maxbytes = MAX_NON_LFS;
+ 		s->s_op = &default_op;
+ 		s->s_time_gran = 1000000000;
++		s->cleancache_poolid = -1;
+ 	}
+ out:
+ 	return s;
+@@ -158,6 +160,11 @@ void deactivate_locked_super(struct supe
+ 	struct file_system_type *fs = s->s_type;
+ 	if (atomic_dec_and_test(&s->s_active)) {
+ 		fs->kill_sb(s);
++		if (s->cleancache_poolid >= 0) {
++			int cleancache_poolid = s->cleancache_poolid;
++			s->cleancache_poolid = -1; /* avoid races */
++			cleancache_flush_fs(cleancache_poolid);
++		}
+ 		put_filesystem(fs);
+ 		put_super(s);
+ 	} else {
+--- linux-2.6.35-rc2/fs/buffer.c	2010-06-05 21:43:24.000000000 -0600
++++ linux-2.6.35-rc2-cleancache/fs/buffer.c	2010-06-11 09:01:37.000000000 -0600
+@@ -41,6 +41,7 @@
+ #include <linux/bitops.h>
+ #include <linux/mpage.h>
+ #include <linux/bit_spinlock.h>
++#include <linux/cleancache.h>
+ 
+ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+ 
+@@ -277,6 +278,10 @@ void invalidate_bdev(struct block_device
+ 	invalidate_bh_lrus();
+ 	lru_add_drain_all();	/* make sure all lru add caches are flushed */
+ 	invalidate_mapping_pages(mapping, 0, -1);
++	/* 99% of the time, we don't need to flush the cleancache on the bdev.
++	 * But, for the strange corners, lets be cautious
++	 */
++	cleancache_flush_inode(mapping);
+ }
+ EXPORT_SYMBOL(invalidate_bdev);
+ 
+--- linux-2.6.35-rc2/fs/mpage.c	2010-06-05 21:43:24.000000000 -0600
++++ linux-2.6.35-rc2-cleancache/fs/mpage.c	2010-06-11 10:29:15.000000000 -0600
+@@ -27,6 +27,7 @@
+ #include <linux/writeback.h>
+ #include <linux/backing-dev.h>
+ #include <linux/pagevec.h>
++#include <linux/cleancache.h>
+ 
+ /*
+  * I/O completion handler for multipage BIOs.
+@@ -286,6 +287,12 @@ do_mpage_readpage(struct bio *bio, struc
+ 		SetPageMappedToDisk(page);
+ 	}
+ 
++	if (fully_mapped && blocks_per_page == 1 && !PageUptodate(page) &&
++	    cleancache_get_page(page) == 0) {
++		SetPageUptodate(page);
++		goto confused;
++	}
 +
-+Cleancache can be thought of as a page-granularity victim cache for clean
-+pages that the kernel's pageframe replacement algorithm (PFRA) would like
-+to keep around, but can't since there isn't enough memory.  So when the
-+PFRA "evicts" a page, it first attempts to put it into a synchronous
-+concurrency-safe page-oriented "pseudo-RAM" device (such as Xen's Transcendent
-+Memory, aka "tmem", or in-kernel compressed memory, aka "zmem", or other
-+RAM-like devices) which is not directly accessible or addressable by the
-+kernel and is of unknown and possibly time-varying size.  And when a
-+cleancache-enabled filesystem wishes to access a page in a file on disk,
-+it first checks cleancache to see if it already contains it; if it does,
-+the page is copied into the kernel and a disk access is avoided.
+ 	/*
+ 	 * This page will go to BIO.  Do we need to send this BIO off first?
+ 	 */
+--- linux-2.6.35-rc2/mm/filemap.c	2010-06-05 21:43:24.000000000 -0600
++++ linux-2.6.35-rc2-cleancache/mm/filemap.c	2010-06-11 09:01:37.000000000 -0600
+@@ -34,6 +34,7 @@
+ #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
+ #include <linux/memcontrol.h>
+ #include <linux/mm_inline.h> /* for page_is_file_cache() */
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ /*
+@@ -119,6 +120,16 @@ void __remove_from_page_cache(struct pag
+ {
+ 	struct address_space *mapping = page->mapping;
+ 
++	/*
++	 * if we're uptodate, flush out into the cleancache, otherwise
++	 * invalidate any existing cleancache entries.  We can't leave
++	 * stale data around in the cleancache once our page is gone
++	 */
++	if (PageUptodate(page))
++		cleancache_put_page(page);
++	else
++		cleancache_flush_page(mapping, page);
 +
-+A FAQ is included below:
-+
-+IMPLEMENTATION OVERVIEW
-+
-+A cleancache "backend" that interfaces to this pseudo-RAM links itself
-+to the kernel's cleancache "frontend" by setting the cleancache_ops funcs
-+appropriately and the functions it provides must conform to certain
-+semantics as follows:
-+
-+Most important, cleancache is "ephemeral".  Pages which are copied into
-+cleancache have an indefinite lifetime which is completely unknowable
-+by the kernel and so may or may not still be in cleancache at any later time.
-+Thus, as its name implies, cleancache is not suitable for dirty pages.
-+Cleancache has complete discretion over what pages to preserve and what
-+pages to discard and when.
-+
-+Mounting a cleancache-enabled filesystem should call "init_fs" to obtain a
-+pool id which, if positive, must be saved in the filesystem's superblock;
-+a negative return value indicates failure.  A "put_page" will copy a
-+(presumably about-to-be-evicted) page into cleancache and associate it with
-+the pool id, the file inode, and a page index into the file.  (The combination
-+of a pool id, an inode, and an index is sometimes called a "handle".)
-+A "get_page" will copy the page, if found, from cleancache into kernel memory.
-+A "flush_page" will ensure the page no longer is present in cleancache;
-+a "flush_inode" will flush all pages associated with the specified inode;
-+and, when a filesystem is unmounted, a "flush_fs" will flush all pages in
-+all inodes specified by the given pool id and also surrender the pool id.
-+
-+A "init_shared_fs", like init, obtains a pool id but tells cleancache
-+to treat the pool as shared using a 128-bit UUID as a key.  On systems
-+that may run multiple kernels (such as hard partitioned or virtualized
-+systems) that may share a clustered filesystem, and where cleancache
-+may be shared among those kernels, calls to init_shared_fs that specify the
-+same UUID will receive the same pool id, thus allowing the pages to
-+be shared.  Note that any security requirements must be imposed outside
-+of the kernel (e.g. by "tools" that control cleancache).  Or a
-+cleancache implementation can simply disable shared_init by always
-+returning a negative value.
-+
-+If a get_page is successful on a non-shared pool, the page is flushed (thus
-+making cleancache an "exclusive" cache).  On a shared pool, the page
-+is NOT flushed on a successful get_page so that it remains accessible to
-+other sharers.  The kernel is responsible for ensuring coherency between
-+cleancache (shared or not), the page cache, and the filesystem, using
-+cleancache flush operations as required.
-+
-+Note that cleancache must enforce put-put-get coherency and get-get
-+coherency.  For the former, if two puts are made to the same handle but
-+with different data, say AAA by the first put and BBB by the second, a
-+subsequent get can never return the stale data (AAA).  For get-get coherency,
-+if a get for a given handle fails, subsequent gets for that handle will
-+never succeed unless preceded by a successful put with that handle.
-+
-+Last, cleancache provides no SMP serialization guarantees; if two
-+different Linux threads are simultaneously putting and flushing a page
-+with the same handle, the results are indeterminate.
-+
-+CLEANCACHE PERFORMANCE METRICS
-+
-+Cleancache monitoring is done by sysfs files in the
-+/sys/kernel/mm/cleancache directory.  The effectiveness of cleancache
-+can be measured (across all filesystems) with:
-+
-+succ_gets	- number of gets that were successful
-+failed_gets	- number of gets that failed
-+puts		- number of puts attempted (all "succeed")
-+flushes		- number of flushes attempted
-+
-+A backend implementatation may provide additional metrics.
-+
-+FAQ
-+
-+1) Where's the value? (Andrew Morton)
-+
-+Cleancache (and its sister code "frontswap") provide interfaces for
-+a new pseudo-RAM memory type that conceptually lies between fast
-+kernel-directly-addressable RAM and slower DMA/asynchronous devices.
-+Disallowing direct kernel or userland reads/writes to this pseudo-RAM
-+is ideal when data is transformed to a different form and size (such
-+as wiht compression) or secretly moved (as might be useful for write-
-+balancing for some RAM-like devices).  Evicted page-cache pages (and
-+swap pages) are a great use for this kind of slower-than-RAM-but-much-
-+faster-than-disk pseudo-RAM and the cleancache (and frontswap)
-+"page-object-oriented" specification provides a nice way to read and
-+write -- and indirectly "name" -- the pages.
-+
-+In the virtual case, the whole point of virtualization is to statistically
-+multiplex physical resources across the varying demands of multiple
-+virtual machines.  This is really hard to do with RAM and efforts to
-+do it well with no kernel change have essentially failed (except in some
-+well-publicized special-case workloads).  Cleancache -- and frontswap --
-+with a fairly small impact on the kernel, provide a huge amount
-+of flexibility for more dynamic, flexible RAM multiplexing.
-+Specifically, the Xen Transcendent Memory backend allows otherwise
-+"fallow" hypervisor-owned RAM to not only be "time-shared" between multiple
-+virtual machines, but the pages can be compressed and deduplicated to
-+optimize RAM utilization.  And when guest OS's are induced to surrender
-+underutilized RAM (e.g. with "self-ballooning"), page cache pages
-+are the first to go, and cleancache allows those pages to be
-+saved and reclaimed if overall host system memory conditions allow.
-+
-+2) Why does cleancache have its sticky fingers so deep inside the
-+   filesystems and VFS? (Andrew Morton and Christophe Hellwig)
-+
-+The core hooks for cleancache in VFS are in most cases a single line
-+and the minimum set are placed precisely where needed to maintain
-+coherency (via cleancache_flush operatings) between cleancache,
-+the page cache, and disk.  All hooks compile into nothingness if
-+cleancache is config'ed off and turn into a function-pointer-
-+compare-to-NULL if config'ed on but no backend claims the ops
-+functions, or to a compare-struct-element-to-negative if a
-+backend claims the ops functions but a filesystem doesn't enable
-+cleancache.
-+
-+Some filesystems are built entirely on top of VFS and the hooks
-+in VFS are sufficient, so don't require a "init_fs" hook; the
-+initial implementation of cleancache didn't provide this hook.
-+But for some filesystems (such as btrfs), the VFS hooks are
-+incomplete and one or more hooks in fs-specific code are required.
-+And for some other filesystems, such as tmpfs, cleancache may
-+be counterproductive.  So it seemed prudent to require a filesystem
-+to "opt in" to use cleancache, which requires adding a hook in
-+each filesystem.  Not all filesystems are supported by cleancache
-+only because they haven't been tested.  The existing set should
-+be sufficient to validate the concept, the opt-in approach means
-+that untested filesystems are not affected, and the hooks in the
-+existing filesystems should make it very easy to add more
-+filesystems in the future.
-+
-+3) Why not make cleancache asynchronous and batched so it can
-+   more easily interface with real devices with DMA instead
-+   of copying each individual page? (Minchan Kim)
-+
-+The one-page-at-a-time copy semantics simplifies the implementation
-+on both the frontend and backend and also allows the backend to
-+do fancy things on-the-fly like page compression and
-+page deduplication.  And since the data is "gone" (copied into/out
-+of the pageframe) before the cleancache get/put call returns,
-+a great deal of race conditions and potential coherency issues
-+are avoided.  While the interface seems odd for a "real device"
-+or for real kernel-addressible RAM, it makes perfect sense for
-+pseudo-RAM.
-+
-+4) Why is non-shared cleancache "exclusive"?  And where is the
-+   page "flushed" after a "get"? (Minchan Kim)
-+
-+The main reason is to free up memory in pseudo-RAM and to avoid
-+unnecessary cleancache_flush calls.  If you want inclusive,
-+the page can be "put" immediately following the "get".  If
-+put-after-get for inclusive becomes common, the interface could
-+be easily extended to add a "get_no_flush" call.
-+
-+The flush is done by the cleancache backend implementation.
-+
-+5) What's the performance impact?
-+
-+Performance analysis has been presented at OLS'09 and LCA'10.
-+Briefly, performance gains can be significant on most workloads,
-+especially when memory pressure is high (e.g. when RAM is
-+overcommitted in a virtual workload); and because the hooks are
-+invoked primarily in place of or in addition to a disk read/write,
-+overhead is negligible even in worst case workloads.  Basically
-+cleancache replaces I/O with memory-copy-CPU-overhead; on older
-+single-core systems with slow memory-copy speeds, cleancache
-+has little value, but in newer multicore machines, especially
-+consolidated/virtualized machines, it has great value.
-+
-+6) Does cleanache work with KVM?
-+
-+The memory model of KVM is sufficiently different that a cleancache
-+backend may have little value for KVM.  This remains to be tested,
-+especially in an overcommitted system.
-+
-+7) Does cleancache work in userspace?  It sounds useful for
-+   memory hungry caches like web browsers.  (Jamie Lokier)
-+
-+No plans yet, though we agree it sounds useful, at least for
-+apps that bypass the page cache (e.g. O_DIRECT).
-+
-+Last updated: Dan Magenheimer, June 21 2010
+ 	radix_tree_delete(&mapping->page_tree, page->index);
+ 	page->mapping = NULL;
+ 	mapping->nrpages--;
+--- linux-2.6.35-rc2/mm/truncate.c	2010-06-05 21:43:24.000000000 -0600
++++ linux-2.6.35-rc2-cleancache/mm/truncate.c	2010-06-11 09:01:37.000000000 -0600
+@@ -19,6 +19,7 @@
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/buffer_head.h>	/* grr. try_to_release_page,
+ 				   do_invalidatepage */
++#include <linux/cleancache.h>
+ #include "internal.h"
+ 
+ 
+@@ -51,6 +52,7 @@ void do_invalidatepage(struct page *page
+ static inline void truncate_partial_page(struct page *page, unsigned partial)
+ {
+ 	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
++	cleancache_flush_page(page->mapping, page);
+ 	if (page_has_private(page))
+ 		do_invalidatepage(page, partial);
+ }
+@@ -108,6 +110,10 @@ truncate_complete_page(struct address_sp
+ 	clear_page_mlock(page);
+ 	remove_from_page_cache(page);
+ 	ClearPageMappedToDisk(page);
++	/* this must be after the remove_from_page_cache which
++	 * calls cleancache_put_page (and note page->mapping is now NULL)
++	 */
++	cleancache_flush_page(mapping, page);
+ 	page_cache_release(page);	/* pagecache ref */
+ 	return 0;
+ }
+@@ -215,6 +221,7 @@ void truncate_inode_pages_range(struct a
+ 	pgoff_t next;
+ 	int i;
+ 
++	cleancache_flush_inode(mapping);
+ 	if (mapping->nrpages == 0)
+ 		return;
+ 
+@@ -290,6 +297,7 @@ void truncate_inode_pages_range(struct a
+ 		pagevec_release(&pvec);
+ 		mem_cgroup_uncharge_end();
+ 	}
++	cleancache_flush_inode(mapping);
+ }
+ EXPORT_SYMBOL(truncate_inode_pages_range);
+ 
+@@ -428,6 +436,7 @@ int invalidate_inode_pages2_range(struct
+ 	int did_range_unmap = 0;
+ 	int wrapped = 0;
+ 
++	cleancache_flush_inode(mapping);
+ 	pagevec_init(&pvec, 0);
+ 	next = start;
+ 	while (next <= end && !wrapped &&
+@@ -486,6 +495,7 @@ int invalidate_inode_pages2_range(struct
+ 		mem_cgroup_uncharge_end();
+ 		cond_resched();
+ 	}
++	cleancache_flush_inode(mapping);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(invalidate_inode_pages2_range);
