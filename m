@@ -1,49 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Updated ext4 quota design document
-Date: Tue, 22 Jun 2010 16:20:47 +0200
-Message-ID: <20100622142047.GF3338@quack.suse.cz>
-References: <E1OQg7e-0001mI-AB@closure.thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH V3 3/8] Cleancache: core ops functions and configuration
+Date: Tue, 22 Jun 2010 10:43:20 -0400
+Message-ID: <20100622144320.GA13324@infradead.org>
+References: <20100621231939.GA19505@ca-server1.us.oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@Sun.COM, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, ngupta@vflare.org,
+	jeremy@goop.org, JBeulich@novell.com, kurt.hackel@oracle.com,
+	npiggin@suse.de, dave.mccracken@oracle.com, riel@redhat.com,
+	avi@redhat.com, konrad.wilk@oracle.com
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:41809 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758356Ab0FVOVL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jun 2010 10:21:11 -0400
+Received: from bombadil.infradead.org ([18.85.46.34]:59325 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754070Ab0FVOnb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 10:43:31 -0400
 Content-Disposition: inline
-In-Reply-To: <E1OQg7e-0001mI-AB@closure.thunk.org>
+In-Reply-To: <20100621231939.GA19505@ca-server1.us.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+On Mon, Jun 21, 2010 at 04:19:39PM -0700, Dan Magenheimer wrote:
+> [PATCH V3 3/8] Cleancache: core ops functions and configuration
+> 
+> Cleancache core ops functions and configuration
 
-On Mon 21-06-10 08:29:06, Theodore Ts'o wrote:
-> I've created an updated quota design document here:
-> 
-> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
-> 
-> No major changes from last time.
-> 
-> One new thing is a proposed (optional) change to the quota format,
-> to use the 32-bit dqpb_pad field in the v2r1 on-disk quota structure as
-> a 32-bit CRC of the quota entry.  This would allow the quota system to
-> detect corrupted quota entries.  Jan, what do you think?
-  It might be reasonable to checksum dquots so that we get closer to
-all-metadata-are-checksummed state. I'm just thinking whether checksumming
-each dquot is so useful. For example OCFS2 checksums each quota block. That
-has an advantage that also quota file tree blocks and headers are
-protected. Also it's possible to use the generic block checksumming
-framework in JBD2 for this case. OTOH ext4 seems to have chosen to checksum
-each group descriptor individually so checksumming each dquot structure
-would seem more consistent.
-  So I don't have a strong opinion which checksumming scheme should be
-chosen. I just wanted to point out that there's another reasonable option.
-Generic quota code can easily handle both (including leaving some bytes at
-the end of each block for checksums as it does for OCFS2 now).
+NACK for code that just adds random hooks all over VFS and even
+individual FS code, does an EXPORT_SYMBOL but doesn't actually introduce
+any users.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+And even if it had users these would have to be damn good ones given how
+invasive it is.  So what exactly is this going to help us?  Given your
+affiliation probably something Xen related, so some real use case would
+be interesting as well instead of just making Xen suck slightly less.
+
