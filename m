@@ -1,44 +1,48 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [PATCH 0/3 v5][RFC] ext3/4: enhance fsync performance when
- using CFQ
-Date: Tue, 22 Jun 2010 15:13:07 -0700
-Message-ID: <20100622221306.GA20090@mail.oracle.com>
-References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
-Mime-Version: 1.0
+From: Andreas Dilger <andreas.dilger@oracle.com>
+Subject: problems with large group descriptors and 64bit
+Date: Tue, 22 Jun 2010 17:24:34 -0600
+Message-ID: <C14E4BEF-0064-4E36-975F-B74272E246B1@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:20148 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:58759 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751528Ab0FVWOv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 18:14:51 -0400
-Content-Disposition: inline
-In-Reply-To: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+	with ESMTP id S1751635Ab0FVXYv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 19:24:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 22, 2010 at 05:34:59PM -0400, Jeff Moyer wrote:
-> Running iozone with the fsync flag, or fs_mark, the performance of CFQ is
-> far worse than that of deadline for enterprise class storage when dealing
-> with file sizes of 8MB or less.  I used the following command line as a
-> representative test case:
-> 
->   fs_mark -S 1 -D 10000 -N 100000 -d /mnt/test/fs_mark -s 65536 -t 1 -w 4096 -F
+I was just looking through the 64-bit patches that have landed on master, and I see some obvious bugs with the handling of large group descriptors.  In particular, there are some places that still assume they know the group descriptor size, even in the "opaque" routines added by Eric in commit efe0b401465a3ee836180614b5b435acbb84fc27.
 
-	I'd be interested in how ocfs2 does, because we use jbd2 too.
+lib/ext2fs/open.c assumes ext2_group_desc in a couple of places, instead of calling ext2fs_group_desc() to get the right offset:
+#ifdef WORDS_BIGENDIAN  
+                gdp = (struct ext2_group_desc *) dest;
+                for (j=0; j < groups_per_block*first_meta_bg; j++)
+                        ext2fs_swap_group_desc2(fs, gdp++);
+#endif
 
-Joel
 
--- 
+lib/ext2fs/blknum.c assumes 64BIT means ext4_group_desc, not s_desc_size:
+struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
+                                          struct opaque_ext2_group_desc *gdp,
+                                          dgrp_t group)
+{               
+        if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT)
+                return (struct ext2_group_desc *)
+                        ((struct ext4_group_desc *) gdp + group);
+        else
+                return (struct ext2_group_desc *) gdp + group;
+}
 
-Life's Little Instruction Book #139
 
-	"Never deprive someone of hope; it might be all they have."
 
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+
+Cheers, Andreas
+--
+Andreas Dilger
+Lustre Technical Lead
+Oracle Corporation Canada Inc.
+
