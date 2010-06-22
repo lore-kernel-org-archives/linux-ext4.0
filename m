@@ -1,51 +1,147 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Next3 on-disk format change request
-Date: Tue, 22 Jun 2010 13:30:54 +0300
-Message-ID: <AANLkTikAoKpZNGvtyYscPLVH1HrW3xaCZ84sVc62UGD4@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH 0/2] Fix aio completion vs unwritten extents
+Date: Tue, 22 Jun 2010 08:21:44 -0400
+Message-ID: <20100622122144.302857146@bombadil.infradead.org>
+To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:56896 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754010Ab0FVKa5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 06:30:57 -0400
-Received: by bwz7 with SMTP id 7so1331406bwz.19
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Jun 2010 03:30:55 -0700 (PDT)
+Received: from bombadil.infradead.org ([18.85.46.34]:46247 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755437Ab0FVMbN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 08:31:13 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Some filesystems (XFS and ext4) have support for a concept called
+unwritten extents, where we can write data into holes / preallocated
+space and only mark them as allocated when the data I/O has finished.
 
-As you may have read, Next3 release 1.0.11 automatically migrates to
-new on-disk format.
-(see http://next3.sf.net)
+Because the transaction to convert the extent can't be submitted from
+I/O completion, which normally happens from IRQ context it needs to
+be defered to a workqueue.  This is not a problem for buffered I/O
+where we keep the data in cache at least until the I/O operation has
+finished, but it is an issue for direct I/O.  XFS avoids that problem
+for synchronous direct I/O by waiting for all unwritten extent conversions
+to finish if we did one during direct I/O, but so far has ignored the
+problem for asynchronous I/O.  Unfortunately the race is very easy
+to hit by using QEMU with native AIO support on a sparse image, and
+the result is filesystem corruption in the guest.
 
-Also, I would like to ask you again to promote Next3/Ext4 merge as a
-topic on LSF,
-if you think it is an appropriate topic.
+This contains core direct I/O changes to allow the filesystem to delay
+AIO completion, as well as a patch to fix XFS.  ext4 also has the same
+issue, and from a quick look also doesn't properly complete unwritten
+extent conversions for synchronous direct I/O, but I'll leave that
+for someone more familar to figure out.
 
-My on-disk format change request is to re-assign a ro_compat feature
-for IS_SNAPSHOT (currently in s_flags).
+Below is a minimal reproducer for the issue.  Given that we're dealing
+with a race condition it doesn't always fail, but in 2 core laptop
+it triggers 100% reproducibly in 20 runs in a loop.
 
-The reason for this request is the following scenario, which was
-posted on next3-users list:
+---
 
-"If I use dd to restore a full snapshot image to another volume, can I
-mount it as Next3?"
+#define _GNU_SOURCE
 
-The answer to this question is that read-only mount is ok, but for
-read-write mount,
-fsck needs to be run first to fix the free blocks counters.
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-The restored image is identified with the IS_SNAPSHOT flag.
-If it was a ro_compat feature, it would prevent users from mistakingly
-mounting it read-write before the fix.
-Also, 'tune2fs -O ^is_snapshot' could be used to fix the counters,
-without running full fsck.
+#include <libaio.h>
 
-Please assign me a constant for the feature if you agree,
-Thanks,
-Amir.
+#define BUF_SIZE	4096
+#define IO_PATTERN	0xab
+
+int main(int argc, char *argv[])
+{
+	struct io_context *ctx = NULL;
+	struct io_event ev;
+	struct iocb iocb, *iocbs[] = { &iocb };
+	void *buf;
+	char cmp_buf[BUF_SIZE];
+	int fd, err = 0;
+
+	fd = open(argv[1], O_DIRECT | O_CREAT | O_TRUNC | O_RDWR, 0600);
+	if (fd == -1) {
+		perror("open");
+		return 1;
+	}
+
+	err = posix_memalign(&buf, BUF_SIZE, BUF_SIZE);
+	if (err) {
+		fprintf(stderr, "error %s during %s\n",
+			strerror(-err),
+			"posix_memalign");
+		return 1;
+	}
+	memset(buf, IO_PATTERN, BUF_SIZE);
+	memset(cmp_buf, IO_PATTERN, BUF_SIZE);
+
+	/*
+	 * Truncate to some random large file size.  Just make sure
+	 * it's not smaller than our I/O size.
+	 */
+	if (ftruncate(fd, 1024 * 1024 * 1024) < 0) {
+		perror("ftruncate");
+		return 1;
+	}
+
+
+	/*
+	 * Do a simple 4k write into a hole using aio.
+	 */
+	err = io_setup(1, &ctx);
+	if (err) {
+		fprintf(stderr, "error %s during %s\n",
+			strerror(-err),
+			"io_setup");
+		return 1;
+	}
+
+	io_prep_pwrite(&iocb, fd, buf, BUF_SIZE, 0);
+
+	err = io_submit(ctx, 1, iocbs);
+	if (err != 1) {
+		fprintf(stderr, "error %s during %s\n",
+			strerror(-err),
+			"io_submit");
+		return 1;
+	}
+
+	err = io_getevents(ctx, 1, 1, &ev, NULL);
+	if (err != 1) {
+		fprintf(stderr, "error %s during %s\n",
+			strerror(-err),
+			"io_getevents");
+		return 1;
+	}
+
+	/*
+	 * And then read it back.
+	 *
+	 * Using pread to keep it simple, but AIO has the same effect.
+	 */
+	if (pread(fd, buf, BUF_SIZE, 0) != BUF_SIZE) {
+		perror("pread");
+		return 1;
+	}
+
+	/*
+	 * And depending on the machine we'll just get zeroes back quite
+	 * often here.  That's because the unwritten extent conversion
+	 * hasn't finished.
+	 */
+	if (memcmp(buf, cmp_buf, BUF_SIZE)) {
+		unsigned long long *ubuf = (unsigned long long *)buf;
+		int i;
+
+		for (i = 0; i < BUF_SIZE / sizeof(unsigned long long); i++)
+			printf("%d: 0x%llx\n", i, ubuf[i]);
+			
+		return 1;
+	}
+
+	return 0;
+}
