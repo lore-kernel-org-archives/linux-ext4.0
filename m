@@ -1,80 +1,113 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: E2fsprogs master branch now has all 64-bit patch applied
-Date: Tue, 22 Jun 2010 10:17:49 -0600
-Message-ID: <2B02F50E-2878-48D4-835F-B6C57C4DC34E@dilger.ca>
-References: <AANLkTilD3D2QOXi1b7oXT2uFBx_vuO803HOX4JJXfWG0@mail.gmail.com> <20100621170556.GB6843@thunk.org> <AANLkTimN1pMUlpoVbQe1ueL_LiorWqPNgpEfRBNrbEp0@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: RE: [PATCH V3 3/8] Cleancache: core ops functions and configuration
+Date: Tue, 22 Jun 2010 09:20:07 -0700 (PDT)
+Message-ID: <6fae6075-c6ed-4df4-af7b-44fb3ed1bae1@default>
+References: <20100621231939.GA19505@ca-server1.us.oracle.com
+ 20100622144320.GA13324@infradead.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: tytso@mit.edu,
-	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>
-To: Hsuan-Ting <acht93@cs.ccu.edu.tw>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:62346 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752264Ab0FVQRw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 12:17:52 -0400
-In-Reply-To: <AANLkTimN1pMUlpoVbQe1ueL_LiorWqPNgpEfRBNrbEp0@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Cc: Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk,
+        akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+        mfasheh@suse.com, Joel Becker <joel.becker@oracle.com>, matthew@wil.cx,
+        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, ngupta@vflare.org,
+        jeremy@goop.org, JBeulich@novell.com,
+        Kurt Hackel <kurt.hackel@oracle.com>, npiggin@suse.de,
+        Dave Mccracken <dave.mccracken@oracle.com>, riel@redhat.com,
+        avi@redhat.com, Konrad Wilk <konrad.wilk@oracle.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20100622144320.GA13324@infradead.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2010-06-22, at 03:15, Hsuan-Ting wrote:
-2010/6/22 <tytso@mit.edu>
->> This means that we may want to enable the 64-bit feature flag if there
->> is an expectation that the filesystem might be grown to a size large
->> enough where this would be an issue.
-> 
-> Sounds like I must enable 64-bit feature when mkfs.
-> Then it will work, right?
-> 
-> But base on my test, it will occur core dump when resize:
-> (gdb) bt
-> #0  0x00000000004160bf in ext2fs_test_bit64 ()
-> #1  0x0000000000416318 in ba_test_bmap ()
-> #2  0x0000000000410629 in ext2fs_test_generic_bmap ()
-> #3  0x0000000000410656 in ext2fs_test_block_bitmap_range2 ()
-> #4  0x000000000040873d in ext2fs_get_free_blocks2 ()
-> #5  0x000000000040936d in ext2fs_allocate_group_table ()
-> #6  0x0000000000404456 in adjust_fs_info ()
-> #7  0x0000000000404a81 in resize_fs ()
-> #8  0x00000000004069c7 in main ()
-> 
-> I do the following modification
-> (to enable "EXT4_FEATURE_INCOMPAT_64BIT" and "EXT2_FLAG_64BITS"):
-> 
-> misc/mke2fs.c :
-> @@ -1530,6 +1945,8 @@ static void PRS(int argc, char *argv[])
->                        EXT2_BLOCK_SIZE(&fs_param));
->                exit(1);
->        }
-> +       fs_param.s_feature_incompat |= EXT4_FEATURE_INCOMPAT_64BIT;
+Hi Christoph --
 
+Thanks for the comments... replying to both in one reply.
 
-You don't need to modify mke2fs for this, just run "mke2fs -O 64bit ..." to tell it to create the filesystem with this feature flag set.
+> Subject: Re: [PATCH V3 0/8] Cleancache: overview
+>=20
+> What all this fails to explain is that this actually is useful for?
 
-> resize/resize2fs.c :
-> @@ -585,6 +598,9 @@ static errcode_t adjust_superblock(ext2_resize_t
-> rfs, blk64_t new_size)
-> +       fs->super->s_feature_incompat |= EXT4_FEATURE_INCOMPAT_64BIT;
->        retval = adjust_fs_info(fs, rfs->old_fs, rfs->reserve_blocks, new_size);
+See FAQ #1 in patch 1/8 (and repeated in patch 0/8).
 
-You can't simply set this flag on an existing filesystem and expect anything except corruption to result.
+But, in a few words, it's useful for maintaining a cache
+of clean pages (for which the kernel has insufficient RAM)
+in "other" RAM that's not directly accessible or addressable
+by the kernel (such as hypervisor-owned RAM or kernel-owned
+RAM that is secretly compressed).  Like the kernel's page
+cache, use of cleancache avoids lots of disk reads ("refaults").
+And when kernel RAM is scarce but "other" RAM is plentiful,
+it avoids LOTS and LOTS of disk reads/refaults.
 
-> lib/ext2fs/openfs.c :
-> @@ -109,6 +109,8 @@ errcode_t ext2fs_open2(const char *name, const
-> char *io_options,
->        memset(fs, 0, sizeof(struct struct_ext2_filsys));
->        fs->magic = EXT2_ET_MAGIC_EXT2FS_FILSYS;
->        fs->flags = flags;
-> +       fs->flags |= EXT2_FLAG_64BITS;
-> 
-> Did I mistake something?
+> Subject: Re: [PATCH V3 3/8] Cleancache: core ops functions and
+> configuration
+>=20
+> On Mon, Jun 21, 2010 at 04:19:39PM -0700, Dan Magenheimer wrote:
+> > [PATCH V3 3/8] Cleancache: core ops functions and configuration
+> >
+> > Cleancache core ops functions and configuration
+>
+> NACK for code that just adds random hooks all over VFS and even
+> individual FS code, does an EXPORT_SYMBOL but doesn't actually
+> introduce any users.
 
-Yes, that you can't just set this flag on an existing filesystem and expect it to work.  The only possibility to do this is to have resize2fs move the inode tables in groups where there are group descriptor tables (as if it were growing the filesystem) and then write 64-byte group descriptors.
+There's a bit of a chicken and egg here.  Since cleancache
+touches code owned by a number of maintainers, it made sense to
+get that code reviewed first and respond to the feedback of those
+maintainers.  So if this is the only remaining objection, we
+will proceed next with introducing users.  See below for
+a brief description.
 
-Cheers, Andreas
+> And even if it had users these would have to be damn good ones given
+> how invasive it is.
 
+I need to quibble with your definition of "invasive".  The patch
+adds 43 lines of code (not counting comments and blank lines)
+in VFS/filesystem code.  These lines have basically stayed the
+same since 2.6.18 so the hooks are clearly not in code that
+is rapidly changing... so maintenance should not be an issue.
+The patch covers four filesystems and implements an interface
+that provides both reading/writing to an "external" cache AND
+coherency with that cache.
 
+And all of these lines of code either compile into nothingness
+when CONFIG_CLEANCACHE is off, or become compare function-pointer-
+to-NULL if no user ("backend") claims the ops function.
 
+I consider that very very NON-invasive.  (And should credit
+Chris Mason for the hook placement and Jeremy Fitzhardinge
+for the clean layering.)
 
+> So what exactly is this going to help us?  Given your
+> affiliation probably something Xen related, so some real use case would
+> be interesting as well instead of just making Xen suck slightly less.
 
+As I was typing this reply, I saw Nitin's reply talking
+about zcache.  That's the non-Xen-related "real" use case...
+it may even help KVM suck slightly less ;-)
+
+Making-Xen-suck-slightly-less is another user... Transcendent
+Memory ("tmem") has been in Xen for over a year now and distros
+are already shipping an earlier version of cleancache that works
+with Xen tmem.  Some shim code is required between cleancache and
+Xen tmem, and this shim will live in the drivers/xen directory.
+Excellent performance results for this "user" have been presented
+at OLS'09 and LCA'10.
+
+And the patch provides a very generic clean interface that
+will likely be useful for future TBD forms of "other RAM".
+While I honestly believe these additional users will eventually
+appear, the first two users (zcache and Xen tmem) should be
+sufficient to resolve your NACK.
+
+Thanks,
+Dan
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
