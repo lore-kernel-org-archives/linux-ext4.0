@@ -1,90 +1,49 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 2/2] xfs: move aio completion after unwritten extent conversion
-Date: Tue, 22 Jun 2010 08:21:46 -0400
-Message-ID: <20100622123113.205150586@bombadil.infradead.org>
-References: <20100622122144.302857146@bombadil.infradead.org>
-To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Updated ext4 quota design document
+Date: Tue, 22 Jun 2010 16:20:47 +0200
+Message-ID: <20100622142047.GF3338@quack.suse.cz>
+References: <E1OQg7e-0001mI-AB@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:46253 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755871Ab0FVMbN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2010 08:31:13 -0400
-Content-Disposition: inline; filename=xfs-unwritten-fix
+Received: from cantor.suse.de ([195.135.220.2]:41809 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758356Ab0FVOVL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jun 2010 10:21:11 -0400
+Content-Disposition: inline
+In-Reply-To: <E1OQg7e-0001mI-AB@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we write into an unwritten extent using AIO we need to complete the AIO
-request after the extent conversion has finished.  Without that a read could
-race to see see the extent still unwritten and return zeros.   For synchronous
-I/O we already take care of that by flushing the xfsconvertd workqueue (which
-might be a bit of overkill).
+  Hi,
 
-To do that add iocb and result fields to struct xfs_ioend, so that we can
-call aio_complete from xfs_end_io after the extent conversion has happened.
-Note that we need a new result field as io_error is used for positive errno
-values, while the AIO code can return negative error values and positive
-transfer sizes.
+On Mon 21-06-10 08:29:06, Theodore Ts'o wrote:
+> I've created an updated quota design document here:
+> 
+> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+> 
+> No major changes from last time.
+> 
+> One new thing is a proposed (optional) change to the quota format,
+> to use the 32-bit dqpb_pad field in the v2r1 on-disk quota structure as
+> a 32-bit CRC of the quota entry.  This would allow the quota system to
+> detect corrupted quota entries.  Jan, what do you think?
+  It might be reasonable to checksum dquots so that we get closer to
+all-metadata-are-checksummed state. I'm just thinking whether checksumming
+each dquot is so useful. For example OCFS2 checksums each quota block. That
+has an advantage that also quota file tree blocks and headers are
+protected. Also it's possible to use the generic block checksumming
+framework in JBD2 for this case. OTOH ext4 seems to have chosen to checksum
+each group descriptor individually so checksumming each dquot structure
+would seem more consistent.
+  So I don't have a strong opinion which checksumming scheme should be
+chosen. I just wanted to point out that there's another reasonable option.
+Generic quota code can easily handle both (including leaving some bytes at
+the end of each block for checksums as it does for OCFS2 now).
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_aops.c
-===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_aops.c	2010-06-22 14:05:02.522005722 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_aops.c	2010-06-22 14:08:30.065006205 +0200
-@@ -275,8 +275,11 @@ xfs_end_io(
- 		xfs_finish_ioend(ioend, 0);
- 		/* ensure we don't spin on blocked ioends */
- 		delay(1);
--	} else
-+	} else {
-+		if (ioend->io_iocb)
-+			aio_complete(ioend->io_iocb, ioend->io_result, 0);
- 		xfs_destroy_ioend(ioend);
-+	}
- }
- 
- /*
-@@ -309,6 +312,8 @@ xfs_alloc_ioend(
- 	atomic_inc(&XFS_I(ioend->io_inode)->i_iocount);
- 	ioend->io_offset = 0;
- 	ioend->io_size = 0;
-+	ioend->io_iocb = NULL;
-+	ioend->io_result = 0;
- 
- 	INIT_WORK(&ioend->io_work, xfs_end_io);
- 	return ioend;
-@@ -1604,6 +1609,7 @@ xfs_end_io_direct(
- 	bool		is_async)
- {
- 	xfs_ioend_t	*ioend = iocb->private;
-+	bool		complete_aio = is_async;
- 
- 	/*
- 	 * Non-NULL private data means we need to issue a transaction to
-@@ -1629,7 +1635,14 @@ xfs_end_io_direct(
- 	if (ioend->io_type == IO_READ) {
- 		xfs_finish_ioend(ioend, 0);
- 	} else if (private && size > 0) {
--		xfs_finish_ioend(ioend, is_sync_kiocb(iocb));
-+		if (is_async) {
-+			ioend->io_iocb = iocb;
-+			ioend->io_result = ret;
-+			complete_aio = false;
-+			xfs_finish_ioend(ioend, 0);
-+		} else {
-+			xfs_finish_ioend(ioend, 1);
-+		}
- 	} else {
- 		/*
- 		 * A direct I/O write ioend starts it's life in unwritten
-@@ -1648,7 +1661,7 @@ xfs_end_io_direct(
- 	 */
- 	iocb->private = NULL;
- 
--	if (is_async)
-+	if (complete_aio)
- 		aio_complete(iocb, ret, 0);
- }
- 
-
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
