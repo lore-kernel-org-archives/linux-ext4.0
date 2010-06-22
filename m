@@ -1,60 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Updated ext4 quota design document
-Date: Tue, 22 Jun 2010 22:29:27 +0200
-Message-ID: <20100622202927.GA9413@quack.suse.cz>
-References: <E1OQg7e-0001mI-AB@closure.thunk.org>
- <20100622142047.GF3338@quack.suse.cz>
- <20100622200853.GD6843@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [PATCH 0/3 v5][RFC] ext3/4: enhance fsync performance when using CFQ
+Date: Tue, 22 Jun 2010 17:34:59 -0400
+Message-ID: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: axboe@kernel.dk, vgoyal@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46431 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:62720 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754714Ab0FVU3w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jun 2010 16:29:52 -0400
-Content-Disposition: inline
-In-Reply-To: <20100622200853.GD6843@thunk.org>
+	id S1750934Ab0FVVfK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jun 2010 17:35:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 22-06-10 16:08:53, tytso@mit.edu wrote:
-> On Tue, Jun 22, 2010 at 04:20:47PM +0200, Jan Kara wrote:
-> >   It might be reasonable to checksum dquots so that we get closer to
-> > all-metadata-are-checksummed state. I'm just thinking whether checksumming
-> > each dquot is so useful. For example OCFS2 checksums each quota block. That
-> > has an advantage that also quota file tree blocks and headers are
-> > protected. Also it's possible to use the generic block checksumming
-> > framework in JBD2 for this case. OTOH ext4 seems to have chosen to checksum
-> > each group descriptor individually so checksumming each dquot structure
-> > would seem more consistent.
-> 
-> Well, the reason why I suggested just checksuming the each quota entry
-> is that it was the simplest thing to do, and wouldn't require making
-> huge changes to the rest of the quota_tree code.  It also means we
-> don't need to do any kind of special locking to make sure there isn't
-> another process modifying another quota entry in the same block at the
-> same time that we are calculating the per-block checksum --- i.e.,
-> some of the headaches that we're seeing with the DIF code.
-  With metadata which get journaled it should be quite easy. JBD already
-must know before you go and modify buffer contents - that's why
-journal_get_write_access and friends exist. It also makes sure that your
-data cannot be modified from the moment the buffer enters commit upto the
-moment the commit is finished. So you can use buffer commit hook to compute
-and store block checksum safely.
+Hi,
 
-> >   So I don't have a strong opinion which checksumming scheme should be
-> > chosen. I just wanted to point out that there's another reasonable option.
-> > Generic quota code can easily handle both (including leaving some bytes at
-> > the end of each block for checksums as it does for OCFS2 now).
-> 
-> I assume OCFS2 is just using dqdh_pad2 or dqdh_pad1 for its checksum?
-  No. quota_tree code sets info->dqi_usable_bs to something smaller than
-1 << info->dqi_qtree_depth. Thus quota code leaves a few bytes in each
-block unused and ocfs2 stores there the checksum.
+Running iozone with the fsync flag, or fs_mark, the performance of CFQ is
+far worse than that of deadline for enterprise class storage when dealing
+with file sizes of 8MB or less.  I used the following command line as a
+representative test case:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+  fs_mark -S 1 -D 10000 -N 100000 -d /mnt/test/fs_mark -s 65536 -t 1 -w 4096 -F
+
+When run using the deadline I/O scheduler, an average of the first 5 numbers
+will give you 448.4 files / second.  CFQ will yield only 106.7.  With
+this patch series applied (and the two patches I sent yesterday), CFQ now
+achieves 462.5 files / second.
+
+This patch set is still an RFC.  I'd like to make it perform better when
+there is a competing sequential reader present.  For now, I've addressed
+the concerns voiced about the previous posting.
+
+Review and testing would be greatly appreciated.
+
+Thanks!
+Jeff
+
+---
+
+New from the last round:
+
+- removed the think time calculation I added for the sync-noidle service tree
+- replaced above with a suggestion from Vivek to only guard against currently
+  active sequential readers when determining if we can preempt the sync-noidle
+  service tree.
+- bug fixes
+
+Over all, I think it's simpler now thanks to the suggestions from Jens and
+Vivek.
+
+[PATCH 1/3] block: Implement a blk_yield function to voluntarily give up the I/O scheduler.
+[PATCH 2/3] jbd: yield the device queue when waiting for commits
+[PATCH 3/3] jbd2: yield the device queue when waiting for journal commits
