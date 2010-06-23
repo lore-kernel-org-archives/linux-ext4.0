@@ -1,103 +1,61 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH] fix for consistency errors after crash
-Date: Wed, 23 Jun 2010 22:27:41 +0300
-Message-ID: <AANLkTimYavpuyNiaKYqUe3LFp0uzix_-ITV9ao0VagLs@mail.gmail.com>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: [PATCH] ext4: fix freeze deadlock under IO
+Date: Wed, 23 Jun 2010 14:37:27 -0500
+Message-ID: <4C226277.4060505@sandeen.net>
+References: <4C1A2839.5010407@cfl.rr.com> <20100617142731.GA10071@redhat.com> <4C1A4A74.9070105@cfl.rr.com> <20100617162747.GA21336@redhat.com> <4C1ACBF1.3050603@cfl.rr.com> <4C1BC125.4090902@sandeen.net> <4C1BC6D0.2030203@sandeen.net> <4C1BC7AD.1060900@sandeen.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:40961 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753405Ab0FWT1n convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 15:27:43 -0400
-Received: by bwz7 with SMTP id 7so128064bwz.19
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Jun 2010 12:27:41 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: Mike Snitzer <snitzer@redhat.com>,
+	device-mapper development <dm-devel@redhat.com>,
+	linux-fsdevel@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Dave Chinner <dchinner@redhat.com>
+To: Phillip Susi <psusi@cfl.rr.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4C1BC7AD.1060900@sandeen.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Sorry, posting the patch again with a better title.
-This bug needs to be fixed also in Ext3.
-just need to move the ext3_forget() line down to ext3_free_blocks() lin=
-e.
+Commit 6b0310fbf087ad6 caused a regression resulting in deadlocks
+when freezing a filesystem which had active IO; the vfs_check_frozen
+level (SB_FREEZE_WRITE) did not let the freeze-related IO syncing
+through.  Duh.
 
-Amir.
+Changing the test to FREEZE_TRANS should let the normal freeze
+syncing get through the fs, but still block any transactions from
+starting once the fs is completely frozen.
 
-On Wed, Jun 23, 2010 at 10:01 PM, Amir G.
-<amir73il@users.sourceforge.net> wrote:
-> Hi,
->
-> We have experienced bitmap inconsistencies after crash during file
-> delete under heavy load.
-> The crash is not file system related and I the following patch in
-> ext4_free_branches() fixes the recovery problem.
->
-> If the transaction is restarted and there is a crash before the new
-> transaction is committed,
-> then after recovery, the blocks that this indirect block points to
-> have been freed, but the indirect block itself
-> has not been freed and may still point to some of the free blocks
-> (because of the ext4_forget()).
->
-> So ext4_forget() should be called inside ext4_free_blocks() to avoid
-> this problem.
-> Are there any consequences to this patch that I am not aware of?
->
-> Amir.
->
-> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 42272d6..682e2fa 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4458,6 +4458,7 @@ static void ext4_free_branches(handle_t *handle=
-,
-> struct inode *inode,
-> =A0{
-> =A0 =A0 =A0 =A0ext4_fsblk_t nr;
-> =A0 =A0 =A0 =A0__le32 *p;
-> + =A0 =A0 =A0 int =A0 =A0 flags;
->
-> =A0 =A0 =A0 =A0if (ext4_handle_is_aborted(handle))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
-> @@ -4520,7 +4521,7 @@ static void ext4_free_branches(handle_t *handle=
-,
-> struct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * revoke records must=
- be emitted *before* clearing
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * this block's bit in=
- the bitmaps.
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_forget(handle, 1, =
-inode, bh, bh->b_blocknr);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags =3D
-> EXT4_FREE_BLOCKS_METADATA|EXT4_FREE_BLOCKS_FORGET;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * Everything below th=
-is this pointer has been
-> @@ -4546,8 +4547,7 @@ static void ext4_free_branches(handle_t *handle=
-,
-> struct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0blocks_for_truncate(inode));
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_free_blocks(handle=
-, inode, 0, nr, 1,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0EXT4_FREE_BLOCKS_METADATA);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_free_blocks(handle=
-, inode, 0, nr, 1, flags);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (parent_bh) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I tested this by running fsstress in the background while periodically
+snapshotting the fs and running fsck on the result.  I ran into
+occasional deadlocks, but different ones.  I think this is a
+fine fix for the problem at hand, and the other deadlocky things
+will need more investigation.
+
+Reported-by: Phillip Susi <psusi@cfl.rr.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4e8983a..a45ced9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -241,7 +241,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
+ 
+-	vfs_check_frozen(sb, SB_FREEZE_WRITE);
++	vfs_check_frozen(sb, SB_FREEZE_TRANS);
+ 	/* Special case here: if the journal has aborted behind our
+ 	 * backs (eg. EIO in the commit thread), then we still need to
+ 	 * take the FS itself readonly cleanly. */
+@@ -3491,7 +3491,7 @@ int ext4_force_commit(struct super_block *sb)
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+ 	if (journal) {
+-		vfs_check_frozen(sb, SB_FREEZE_WRITE);
++		vfs_check_frozen(sb, SB_FREEZE_TRANS);
+ 		ret = ext4_journal_force_commit(journal);
+ 	}
+ 
+
