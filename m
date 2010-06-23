@@ -1,52 +1,77 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16278] New: lvm snapshot causes deadlock in 2.6.35
-Date: Wed, 23 Jun 2010 16:55:42 GMT
-Message-ID: <bug-16278-13602@https.bugzilla.kernel.org/>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: [PATCH] call ext4_forget() and ext4_free_blocks() in the same
+	transaction
+Date: Wed, 23 Jun 2010 22:01:44 +0300
+Message-ID: <AANLkTinAEf7tTdc-XjcomfUX1gvltuWLjNP0kvJzYQhy@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:58647 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751696Ab0FWQzn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 12:55:43 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o5NGtg38023231
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Jun 2010 16:55:42 GMT
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:38169 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751303Ab0FWTBq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 15:01:46 -0400
+Received: by bwz7 with SMTP id 7so117301bwz.19
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Jun 2010 12:01:45 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16278
+Hi,
 
-           Summary: lvm snapshot causes deadlock in 2.6.35
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.35-rc[123]
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: psusi@cfl.rr.com
-        Regression: Yes
+We have experienced bitmap inconsistencies after crash during file
+delete under heavy load.
+The crash is not file system related and I the following patch in
+ext4_free_branches() fixes the recovery problem.
 
+If the transaction is restarted and there is a crash before the new
+transaction is committed,
+then after recovery, the blocks that this indirect block points to
+have been freed, but the indirect block itself
+has not been freed and may still point to some of the free blocks
+(because of the ext4_forget()).
 
-Copying from: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/595489
+So ext4_forget() should be called inside ext4_free_blocks() to avoid
+this problem.
+Are there any consequences to this patch that I am not aware of?
 
-Attempting to snapshot the root lv causes a deadlock in 2.6.35 when it suspends
-the root lv device to replace the table. The lvcreate -n snap -s -L 1g lv/root
-command hangs, can not be killed, and no further IO is possible, and the system
-must be hard booted with magic-sysrq.
+Amir.
 
-Narrowed down cause to commit 6b0310fbf087ad6: "ext4: don't return to userspace
-after freezing the fs with a mutex held".  After reversing this change, the
-problem goes away.
+Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 42272d6..682e2fa 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4458,6 +4458,7 @@ static void ext4_free_branches(handle_t *handle,
+struct inode *inode,
+ {
+        ext4_fsblk_t nr;
+        __le32 *p;
++       int     flags;
+
+        if (ext4_handle_is_aborted(handle))
+                return;
+@@ -4520,7 +4521,7 @@ static void ext4_free_branches(handle_t *handle,
+struct inode *inode,
+                         * revoke records must be emitted *before* clearing
+                         * this block's bit in the bitmaps.
+                         */
+-                       ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
++                       flags =
+EXT4_FREE_BLOCKS_METADATA|EXT4_FREE_BLOCKS_FORGET;
+
+                        /*
+                         * Everything below this this pointer has been
+@@ -4546,8 +4547,7 @@ static void ext4_free_branches(handle_t *handle,
+struct inode *inode,
+                                            blocks_for_truncate(inode));
+                        }
+
+-                       ext4_free_blocks(handle, inode, 0, nr, 1,
+-                                        EXT4_FREE_BLOCKS_METADATA);
++                       ext4_free_blocks(handle, inode, 0, nr, 1, flags);
+
+                        if (parent_bh) {
+                                /*
