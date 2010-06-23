@@ -1,120 +1,52 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 1/3] block: Implement a blk_yield function to voluntarily give up the I/O scheduler.
-Date: Wed, 23 Jun 2010 10:50:28 -0400
-Message-ID: <x49bpb1pzuz.fsf@segfault.boston.devel.redhat.com>
-References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
-	<1277242502-9047-2-git-send-email-jmoyer@redhat.com>
-	<20100622220406.690bb0c8.akpm@linux-foundation.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16278] New: lvm snapshot causes deadlock in 2.6.35
+Date: Wed, 23 Jun 2010 16:55:42 GMT
+Message-ID: <bug-16278-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20100622220406.690bb0c8.akpm@linux-foundation.org> (Andrew
-	Morton's message of "Tue, 22 Jun 2010 22:04:06 -0700")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:58647 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751696Ab0FWQzn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 12:55:43 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o5NGtg38023231
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Jun 2010 16:55:42 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton <akpm@linux-foundation.org> writes:
+https://bugzilla.kernel.org/show_bug.cgi?id=16278
 
-> On Tue, 22 Jun 2010 17:35:00 -0400 Jeff Moyer <jmoyer@redhat.com> wrote:
->
->> This patch implements a blk_yield to allow a process to voluntarily
->> give up its I/O scheduler time slice.  This is desirable for those processes
->> which know that they will be blocked on I/O from another process, such as
->> the file system journal thread.  Following patches will put calls to blk_yield
->> into jbd and jbd2.
->> 
->
-> I'm looking through this patch series trying to find the
-> analysis/description of the cause for this (bad) performance problem. 
-> But all I'm seeing is implementation stuff :(  It's hard to review code
-> with your eyes shut.
+           Summary: lvm snapshot causes deadlock in 2.6.35
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.35-rc[123]
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: psusi@cfl.rr.com
+        Regression: Yes
 
-Sorry about that, Andrew.  The problem case is (for example) iozone when
-run with small file sizes (up to 8MB) configured to fsync after each
-file is written.  Because the iozone process is issuing synchronous
-writes, it is put onto CFQ's SYNC service tree.  The significance of
-this is that CFQ will idle for up to 8ms waiting for requests on such
-queues.  So, what happens is that the iozone process will issue, say,
-64KB worth of write I/O.  That I/O will just land in the page cache.
-Then, the iozone process does an fsync which forces those I/Os to disk
-as synchronous writes.  Then, the file system's fsync method is invoked,
-and for ext3/4, it calls log_start_commit followed by log_wait_commit.
-Because those synchronous writes were forced out in the context of the
-iozone process, CFQ will now idle on iozone's cfqq waiting for more I/O.
-However, iozone's progress is gated by the journal thread, now.
 
-So, I tried two approaches to solving the problem.  The first, which
-Christoph brought up again in this thread, was to simply mark all
-journal I/O as BIO_RW_META, which would cause the iozone process' cfqq
-to be preempted when the journal issued its I/O.  However, Vivek pointed
-out that this was bad for interactive performance.
+Copying from: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/595489
 
-The second approach, of which this is the fourth iteration, was to allow
-the file system to explicitly tell the I/O scheduler that it is waiting
-on I/O from another process.
+Attempting to snapshot the root lv causes a deadlock in 2.6.35 when it suspends
+the root lv device to replace the table. The lvcreate -n snap -s -L 1g lv/root
+command hangs, can not be killed, and no further IO is possible, and the system
+must be hard booted with magic-sysrq.
 
-Does that help?  Let me know if you have any more questions, and thanks
-a ton for looking at this, Andrew.  I appreciate it.
+Narrowed down cause to commit 6b0310fbf087ad6: "ext4: don't return to userspace
+after freezing the fs with a mutex held".  After reversing this change, the
+problem goes away.
 
-The comments I've elided from my response make perfect sense, so I'll
-address them in the next posting.
-
->>  };
->>  #define CFQ_RB_ROOT	(struct cfq_rb_root) { .rb = RB_ROOT, .left = NULL, \
->> -			.count = 0, .min_vdisktime = 0, }
->> +			.count = 0, .min_vdisktime = 0, .last_expiry = 0UL, \
->> +			.last_pid = (pid_t)-1, }
->
-> May as well leave the 0 and NULL fields unmentioned (ie: don't do
-> crappy stuff because the old code did crappy stuff!)
-
-I don't actually understand why you take issue with this.
-
->> +{
->> +	struct cfq_data *cfqd = q->elevator->elevator_data;
->> +	struct cfq_io_context *cic, *new_cic;
->> +	struct cfq_queue *cfqq;
->> +
->> +	cic = cfq_cic_lookup(cfqd, current->io_context);
->> +	if (!cic)
->> +		return;
->> +
->> +	task_lock(tsk);
->> +	new_cic = cfq_cic_lookup(cfqd, tsk->io_context);
->> +	atomic_long_inc(&tsk->io_context->refcount);
->
-> How do we know tsk has an io_context?  Use get_io_context() and check
-> its result?
-
-I'll fix that up.  It works now only by luck (and the fact that there's
-a good chance the journal thread has an i/o context).
-
->> +	task_unlock(tsk);
->> +	if (!new_cic)
->> +		goto out_dec;
->> +
->> +	spin_lock_irq(q->queue_lock);
->> +
->> +	cfqq = cic_to_cfqq(cic, 1);
->> +	if (!cfqq)
->> +		goto out_unlock;
->> +
->> +	/*
->> +	 * If we are currently servicing the SYNC_NOIDLE_WORKLOAD, and we
->> +	 * are idling on the last queue in that workload, *and* there are no
->> +	 * potential dependent readers running currently, then go ahead and
->> +	 * yield the queue.
->> +	 */
->
-> Comment explains the code, but doesn't explain the *reason* for the code.
-
-Actually, it explains more than just what the code does.  It would be
-difficult for one to divine that the code actually only really cares
-about breaking up a currently running dependent reader.  I'll see if I
-can make that more clear.
-
-Cheers,
-Jeff
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
