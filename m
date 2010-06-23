@@ -1,243 +1,117 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 1/3] block: Implement a blk_yield function to
- voluntarily give up the I/O scheduler.
-Date: Tue, 22 Jun 2010 22:04:06 -0700
-Message-ID: <20100622220406.690bb0c8.akpm@linux-foundation.org>
-References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
-	<1277242502-9047-2-git-send-email-jmoyer@redhat.com>
+From: Hsuan-Ting <acht93@cs.ccu.edu.tw>
+Subject: Re: E2fsprogs master branch now has all 64-bit patch applied
+Date: Wed, 23 Jun 2010 16:42:29 +0800
+Message-ID: <AANLkTinjWSRx43xWHWv9WtaxotihDHvokI977zg5bT6l@mail.gmail.com>
+References: <AANLkTilD3D2QOXi1b7oXT2uFBx_vuO803HOX4JJXfWG0@mail.gmail.com>
+	<20100621170556.GB6843@thunk.org> <AANLkTimN1pMUlpoVbQe1ueL_LiorWqPNgpEfRBNrbEp0@mail.gmail.com>
+	<2B02F50E-2878-48D4-835F-B6C57C4DC34E@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu,
+	"development\"" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52168 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750809Ab0FWFEU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jun 2010 01:04:20 -0400
-In-Reply-To: <1277242502-9047-2-git-send-email-jmoyer@redhat.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:53068 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751766Ab0FWImv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 04:42:51 -0400
+Received: by vws9 with SMTP id 9so650831vws.19
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Jun 2010 01:42:50 -0700 (PDT)
+In-Reply-To: <2B02F50E-2878-48D4-835F-B6C57C4DC34E@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 22 Jun 2010 17:35:00 -0400 Jeff Moyer <jmoyer@redhat.com> wrote:
-
-> This patch implements a blk_yield to allow a process to voluntarily
-> give up its I/O scheduler time slice.  This is desirable for those processes
-> which know that they will be blocked on I/O from another process, such as
-> the file system journal thread.  Following patches will put calls to blk_yield
-> into jbd and jbd2.
-> 
-
-I'm looking through this patch series trying to find the
-analysis/description of the cause for this (bad) performance problem. 
-But all I'm seeing is implementation stuff :(  It's hard to review code
-with your eyes shut.
-
-
-> --- a/block/blk-core.c
-> +++ b/block/blk-core.c
-> @@ -324,6 +324,18 @@ void blk_unplug(struct request_queue *q)
->  }
->  EXPORT_SYMBOL(blk_unplug);
->  
-> +void generic_yield_iosched(struct request_queue *q, struct task_struct *tsk)
-> +{
-> +	elv_yield(q, tsk);
-> +}
-
-static?
-
+2010/6/23 Andreas Dilger <adilger@dilger.ca>:
+> On 2010-06-22, at 03:15, Hsuan-Ting wrote:
+> 2010/6/22 <tytso@mit.edu>
+>>> This means that we may want to enable the 64-bit feature flag if th=
+ere
+>>> is an expectation that the filesystem might be grown to a size larg=
+e
+>>> enough where this would be an issue.
+>>
+>> Sounds like I must enable 64-bit feature when mkfs.
+>> Then it will work, right?
+>>
+>> But base on my test, it will occur core dump when resize:
+>> (gdb) bt
+>> #0 =A00x00000000004160bf in ext2fs_test_bit64 ()
+>> #1 =A00x0000000000416318 in ba_test_bmap ()
+>> #2 =A00x0000000000410629 in ext2fs_test_generic_bmap ()
+>> #3 =A00x0000000000410656 in ext2fs_test_block_bitmap_range2 ()
+>> #4 =A00x000000000040873d in ext2fs_get_free_blocks2 ()
+>> #5 =A00x000000000040936d in ext2fs_allocate_group_table ()
+>> #6 =A00x0000000000404456 in adjust_fs_info ()
+>> #7 =A00x0000000000404a81 in resize_fs ()
+>> #8 =A00x00000000004069c7 in main ()
+>>
+>> I do the following modification
+>> (to enable "EXT4_FEATURE_INCOMPAT_64BIT" and "EXT2_FLAG_64BITS"):
+>>
+>> misc/mke2fs.c :
+>> @@ -1530,6 +1945,8 @@ static void PRS(int argc, char *argv[])
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_BLOCK_SIZE(&fs_p=
+aram));
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0exit(1);
+>> =A0 =A0 =A0 =A0}
+>> + =A0 =A0 =A0 fs_param.s_feature_incompat |=3D EXT4_FEATURE_INCOMPAT=
+_64BIT;
 >
-> ...
 >
-> +void blk_queue_yield(struct request_queue *q, yield_fn *yield)
-> +{
-> +	q->yield_fn = yield;
-> +}
-> +EXPORT_SYMBOL_GPL(blk_queue_yield);
+> You don't need to modify mke2fs for this, just run "mke2fs -O 64bit .=
+=2E." to tell it to create the filesystem with this feature flag set.
 
-There's a tradition in the block layer of using truly awful identifiers
-for functions-which-set-things.  But there's no good reason for
-retaining that tradition.  blk_queue_yield_set(), perhaps.
+Hi Andreas ,
 
-(what name would you give an accessor which _reads_ q->yield_fn?  yup,
-"blk_queue_yield()".  doh).
+If the size is not big enough, "-O 64bit" will get the following error =
+messages:
+"/dev/sda3: Cannot create filesystem with requested number of inodes
+while setting up superblock"
 
->  /**
->   * blk_queue_bounce_limit - set bounce buffer limit for queue
->   * @q: the request queue for the device
-> diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-> index dab836e..a9922b9 100644
-> --- a/block/cfq-iosched.c
-> +++ b/block/cfq-iosched.c
-> @@ -87,9 +87,12 @@ struct cfq_rb_root {
->  	unsigned total_weight;
->  	u64 min_vdisktime;
->  	struct rb_node *active;
-> +	unsigned long last_expiry;
-> +	pid_t last_pid;
+And base on my trace, I think "-O 64bit" won't always work.
+It will check the blocks count  as the following code in mke2fs.c:
+    if ((fs_blocks_count > MAX_32_NUM) &&
+        !(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) &&
+        get_bool_from_profile(fs_types, "auto_64-bit_support", 0)) {
+        fs_param.s_feature_incompat |=3D EXT4_FEATURE_INCOMPAT_64BIT;
+        fs_param.s_feature_compat &=3D ~EXT2_FEATURE_COMPAT_RESIZE_INOD=
+E;
+    }
+So I do the above modification to force 64bit feature enabling.
 
-These fields are pretty fundamental to understanding the
-implementation.  Some nice descriptions would be nice.
+I also find some strange things when mkfs:
+If the size(ex. 91.3G) isn't big enough it will use "floppy" settings
+in mke2fs.conf instead of "ext4".
 
->  };
->  #define CFQ_RB_ROOT	(struct cfq_rb_root) { .rb = RB_ROOT, .left = NULL, \
-> -			.count = 0, .min_vdisktime = 0, }
-> +			.count = 0, .min_vdisktime = 0, .last_expiry = 0UL, \
-> +			.last_pid = (pid_t)-1, }
+I do the following steps, it seems work but still has core dump message=
+s:
+1. remove "resize_inode" and "flex_bg" features ,and let "floppy"
+settings the same as "ext4" in mke2fs.conf
+2. build linera raid with a small partition of 1 disks (91.3G)
+3. mkfs.ext4 to this raid
+5. grow this linear raid (91.3G + 9 x 2TB disks)
+6. do resize2fs
+6. get the following core dump:
+[458783.472100] resize2fs[27376]: segfault at 7fa420f14000 ip
+0000000000416055 sp 00007fff533a99e8 error 4 in
+resize2fs[400000+1e000]
+Segmentation fault (core dumped)
+(gdb) bt
+#0  0x000000000041606f in ext2fs_test_bit64 ()
+Cannot access memory at address 0x7fff2be12328
+8. but the fs size have grown (16.3T)
 
-May as well leave the 0 and NULL fields unmentioned (ie: don't do
-crappy stuff because the old code did crappy stuff!)
+So I think if the 64bit feature is enabled when mkfs, it will reserve
+more room in file system
+And we can grow it up bigger than 16TB.
+It seems there are some issues in "master" still, I'll try "pu" branch =
+later.
 
->  /*
->   * Per process-grouping structure
-> @@ -147,6 +150,7 @@ struct cfq_queue {
->  	struct cfq_queue *new_cfqq;
->  	struct cfq_group *cfqg;
->  	struct cfq_group *orig_cfqg;
-> +	struct cfq_io_context *yield_to;
->  };
->  
->  /*
->
-> ...
->
-> +static int cfq_should_yield_now(struct cfq_queue *cfqq,
-> +				struct cfq_queue **yield_to)
+Thanks.
 
-The bool-returning function could return a bool type.
-
-> +{
-> +	struct cfq_queue *new_cfqq;
-> +
-> +	new_cfqq = cic_to_cfqq(cfqq->yield_to, 1);
-> +
-> +	/*
-> +	 * If the queue we're yielding to is in a different cgroup,
-> +	 * just expire our own time slice.
-> +	 */
-> +	if (new_cfqq->cfqg != cfqq->cfqg) {
-> +		*yield_to = NULL;
-> +		return 1;
-> +	}
-> +
-> +	/*
-> +	 * If the new queue has pending I/O, then switch to it
-> +	 * immediately.  Otherwise, see if we can idle until it is
-> +	 * ready to preempt us.
-> +	 */
-> +	if (!RB_EMPTY_ROOT(&new_cfqq->sort_list)) {
-> +		*yield_to = new_cfqq;
-> +		return 1;
-> +	}
-> +
-> +	*yield_to = NULL;
-> +	return 0;
-> +}
-> +
->  /*
->   * Select a queue for service. If we have a current active queue,
->   * check whether to continue servicing it, or retrieve and set a new one.
->
-> ...
->
-> +static inline int expiry_data_valid(struct cfq_rb_root *service_tree)
-> +{
-> +	return (service_tree->last_pid != (pid_t)-1 &&
-> +		service_tree->last_expiry != 0UL);
-> +}
-
-The compiler will inline this.
-
-> +static void cfq_yield(struct request_queue *q, struct task_struct *tsk)
-
--ENODESCRIPTION
-
-> +{
-> +	struct cfq_data *cfqd = q->elevator->elevator_data;
-> +	struct cfq_io_context *cic, *new_cic;
-> +	struct cfq_queue *cfqq;
-> +
-> +	cic = cfq_cic_lookup(cfqd, current->io_context);
-> +	if (!cic)
-> +		return;
-> +
-> +	task_lock(tsk);
-> +	new_cic = cfq_cic_lookup(cfqd, tsk->io_context);
-> +	atomic_long_inc(&tsk->io_context->refcount);
-
-How do we know tsk has an io_context?  Use get_io_context() and check
-its result?
-
-> +	task_unlock(tsk);
-> +	if (!new_cic)
-> +		goto out_dec;
-> +
-> +	spin_lock_irq(q->queue_lock);
-> +
-> +	cfqq = cic_to_cfqq(cic, 1);
-> +	if (!cfqq)
-> +		goto out_unlock;
-> +
-> +	/*
-> +	 * If we are currently servicing the SYNC_NOIDLE_WORKLOAD, and we
-> +	 * are idling on the last queue in that workload, *and* there are no
-> +	 * potential dependent readers running currently, then go ahead and
-> +	 * yield the queue.
-> +	 */
-
-Comment explains the code, but doesn't explain the *reason* for the code.
-
-> +	if (cfqd->active_queue == cfqq &&
-> +	    cfqd->serving_type == SYNC_NOIDLE_WORKLOAD) {
-> +		/*
-> +		 * If there's been no I/O from another process in the idle
-> +		 * slice time, then there is by definition no dependent
-> +		 * read going on for this service tree.
-> +		 */
-> +		if (expiry_data_valid(cfqq->service_tree) &&
-> +		    time_before(cfqq->service_tree->last_expiry +
-> +				cfq_slice_idle, jiffies) &&
-> +		    cfqq->service_tree->last_pid != cfqq->pid)
-> +			goto out_unlock;
-> +	}
-> +
-> +	cfq_log_cfqq(cfqd, cfqq, "yielding queue to %d", tsk->pid);
-> +	cfqq->yield_to = new_cic;
-> +	cfq_mark_cfqq_yield(cfqq);
-> +
-> +out_unlock:
-> +	spin_unlock_irq(q->queue_lock);
-> +out_dec:
-> +	put_io_context(tsk->io_context);
-> +}
-> +
->  static int __cfq_forced_dispatch_cfqq(struct cfq_queue *cfqq)
->  {
->  	int dispatched = 0;
->
-> ...
->
-> --- a/block/elevator.c
-> +++ b/block/elevator.c
-> @@ -866,6 +866,14 @@ void elv_completed_request(struct request_queue *q, struct request *rq)
->  	}
->  }
->  
-> +void elv_yield(struct request_queue *q, struct task_struct *tsk)
-> +{
-> +	struct elevator_queue *e = q->elevator;
-> +
-> +	if (e && e->ops->elevator_yield_fn)
-> +		e->ops->elevator_yield_fn(q, tsk);
-> +}
-
-Again, no documentation.  How are other programmers to know when, why
-and how they should use this?
-
->
-> ...
->
-
+                                       -HsuanTing
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
