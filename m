@@ -1,76 +1,134 @@
-From: Tao Ma <tao.ma@oracle.com>
-Subject: Re: [PATCH 0/3 v5][RFC] ext3/4: enhance fsync performance when using
- CFQ
-Date: Wed, 23 Jun 2010 17:30:42 +0800
-Message-ID: <4C21D442.8080703@oracle.com>
-References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+From: Hsuan-Ting <acht93@cs.ccu.edu.tw>
+Subject: Re: E2fsprogs master branch now has all 64-bit patch applied
+Date: Wed, 23 Jun 2010 19:00:26 +0800
+Message-ID: <AANLkTikD-TwAMuHbv_eEabl8GzEXvuU8lUhH9oHL5XVh@mail.gmail.com>
+References: <AANLkTilD3D2QOXi1b7oXT2uFBx_vuO803HOX4JJXfWG0@mail.gmail.com>
+	<20100621170556.GB6843@thunk.org> <AANLkTimN1pMUlpoVbQe1ueL_LiorWqPNgpEfRBNrbEp0@mail.gmail.com>
+	<2B02F50E-2878-48D4-835F-B6C57C4DC34E@dilger.ca> <AANLkTinjWSRx43xWHWv9WtaxotihDHvokI977zg5bT6l@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu,
+	"development\"" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:62396 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751059Ab0FWJbq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 05:31:46 -0400
-In-Reply-To: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:39565 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752216Ab0FWLAs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jun 2010 07:00:48 -0400
+Received: by vws9 with SMTP id 9so802241vws.19
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Jun 2010 04:00:47 -0700 (PDT)
+In-Reply-To: <AANLkTinjWSRx43xWHWv9WtaxotihDHvokI977zg5bT6l@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jeff,
+Hi Andreas ,
 
-On 06/23/2010 05:34 AM, Jeff Moyer wrote:
-> Hi,
->
-> Running iozone with the fsync flag, or fs_mark, the performance of CFQ is
-> far worse than that of deadline for enterprise class storage when dealing
-> with file sizes of 8MB or less.  I used the following command line as a
-> representative test case:
->
->    fs_mark -S 1 -D 10000 -N 100000 -d /mnt/test/fs_mark -s 65536 -t 1 -w 4096 -F
->
-> When run using the deadline I/O scheduler, an average of the first 5 numbers
-> will give you 448.4 files / second.  CFQ will yield only 106.7.  With
-> this patch series applied (and the two patches I sent yesterday), CFQ now
-> achieves 462.5 files / second.
-which 2 patches? Could you paste the link or the subject? Just want to 
-make my test env like yours. ;)
-As Joel mentioned in another mail, ocfs2 also use jbd/jbd2, so I'd like 
-to give it a try and give you some feedback about the test.
+  Sorry, please forgot what I said before.
+Base on the log(some build raid error), it seems
+I didn't stop the old raid before starting this new test.
+So this result isn't correct.
 
-Regards,
-Tao
+                                                        -HsuanTing
+
+Thanks.
+
+2010/6/23 Hsuan-Ting <acht93@cs.ccu.edu.tw>:
+> 2010/6/23 Andreas Dilger <adilger@dilger.ca>:
+>> On 2010-06-22, at 03:15, Hsuan-Ting wrote:
+>> 2010/6/22 <tytso@mit.edu>
+>>>> This means that we may want to enable the 64-bit feature flag if t=
+here
+>>>> is an expectation that the filesystem might be grown to a size lar=
+ge
+>>>> enough where this would be an issue.
+>>>
+>>> Sounds like I must enable 64-bit feature when mkfs.
+>>> Then it will work, right?
+>>>
+>>> But base on my test, it will occur core dump when resize:
+>>> (gdb) bt
+>>> #0 =A00x00000000004160bf in ext2fs_test_bit64 ()
+>>> #1 =A00x0000000000416318 in ba_test_bmap ()
+>>> #2 =A00x0000000000410629 in ext2fs_test_generic_bmap ()
+>>> #3 =A00x0000000000410656 in ext2fs_test_block_bitmap_range2 ()
+>>> #4 =A00x000000000040873d in ext2fs_get_free_blocks2 ()
+>>> #5 =A00x000000000040936d in ext2fs_allocate_group_table ()
+>>> #6 =A00x0000000000404456 in adjust_fs_info ()
+>>> #7 =A00x0000000000404a81 in resize_fs ()
+>>> #8 =A00x00000000004069c7 in main ()
+>>>
+>>> I do the following modification
+>>> (to enable "EXT4_FEATURE_INCOMPAT_64BIT" and "EXT2_FLAG_64BITS"):
+>>>
+>>> misc/mke2fs.c :
+>>> @@ -1530,6 +1945,8 @@ static void PRS(int argc, char *argv[])
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_BLOCK_SIZE(&fs_=
+param));
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0exit(1);
+>>> =A0 =A0 =A0 =A0}
+>>> + =A0 =A0 =A0 fs_param.s_feature_incompat |=3D EXT4_FEATURE_INCOMPA=
+T_64BIT;
+>>
+>>
+>> You don't need to modify mke2fs for this, just run "mke2fs -O 64bit =
+=2E.." to tell it to create the filesystem with this feature flag set.
 >
-> This patch set is still an RFC.  I'd like to make it perform better when
-> there is a competing sequential reader present.  For now, I've addressed
-> the concerns voiced about the previous posting.
+> Hi Andreas ,
 >
-> Review and testing would be greatly appreciated.
+> If the size is not big enough, "-O 64bit" will get the following erro=
+r messages:
+> "/dev/sda3: Cannot create filesystem with requested number of inodes
+> while setting up superblock"
 >
-> Thanks!
-> Jeff
+> And base on my trace, I think "-O 64bit" won't always work.
+> It will check the blocks count =A0as the following code in mke2fs.c:
+> =A0 =A0if ((fs_blocks_count > MAX_32_NUM) &&
+> =A0 =A0 =A0 =A0!(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_=
+64BIT) &&
+> =A0 =A0 =A0 =A0get_bool_from_profile(fs_types, "auto_64-bit_support",=
+ 0)) {
+> =A0 =A0 =A0 =A0fs_param.s_feature_incompat |=3D EXT4_FEATURE_INCOMPAT=
+_64BIT;
+> =A0 =A0 =A0 =A0fs_param.s_feature_compat &=3D ~EXT2_FEATURE_COMPAT_RE=
+SIZE_INODE;
+> =A0 =A0}
+> So I do the above modification to force 64bit feature enabling.
 >
-> ---
+> I also find some strange things when mkfs:
+> If the size(ex. 91.3G) isn't big enough it will use "floppy" settings
+> in mke2fs.conf instead of "ext4".
 >
-> New from the last round:
+> I do the following steps, it seems work but still has core dump messa=
+ges:
+> 1. remove "resize_inode" and "flex_bg" features ,and let "floppy"
+> settings the same as "ext4" in mke2fs.conf
+> 2. build linera raid with a small partition of 1 disks (91.3G)
+> 3. mkfs.ext4 to this raid
+> 5. grow this linear raid (91.3G + 9 x 2TB disks)
+> 6. do resize2fs
+> 6. get the following core dump:
+> [458783.472100] resize2fs[27376]: segfault at 7fa420f14000 ip
+> 0000000000416055 sp 00007fff533a99e8 error 4 in
+> resize2fs[400000+1e000]
+> Segmentation fault (core dumped)
+> (gdb) bt
+> #0 =A00x000000000041606f in ext2fs_test_bit64 ()
+> Cannot access memory at address 0x7fff2be12328
+> 8. but the fs size have grown (16.3T)
 >
-> - removed the think time calculation I added for the sync-noidle service tree
-> - replaced above with a suggestion from Vivek to only guard against currently
->    active sequential readers when determining if we can preempt the sync-noidle
->    service tree.
-> - bug fixes
+> So I think if the 64bit feature is enabled when mkfs, it will reserve
+> more room in file system
+> And we can grow it up bigger than 16TB.
+> It seems there are some issues in "master" still, I'll try "pu" branc=
+h later.
 >
-> Over all, I think it's simpler now thanks to the suggestions from Jens and
-> Vivek.
+> Thanks.
 >
-> [PATCH 1/3] block: Implement a blk_yield function to voluntarily give up the I/O scheduler.
-> [PATCH 2/3] jbd: yield the device queue when waiting for commits
-> [PATCH 3/3] jbd2: yield the device queue when waiting for journal commits
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 -HsuanTing
 >
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
