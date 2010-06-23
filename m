@@ -1,42 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Updated ext4 quota design document
-Date: Wed, 23 Jun 2010 14:30:14 +0200
-Message-ID: <20100623123014.GA13649@quack.suse.cz>
-References: <E1OQg7e-0001mI-AB@closure.thunk.org>
- <20100622142047.GF3338@quack.suse.cz>
- <20100622200853.GD6843@thunk.org>
- <20100622202927.GA9413@quack.suse.cz>
- <20100622215200.GE6843@thunk.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 0/3 v5][RFC] ext3/4: enhance fsync performance when using CFQ
+Date: Wed, 23 Jun 2010 09:03:52 -0400
+Message-ID: <x49mxulq4sn.fsf@segfault.boston.devel.redhat.com>
+References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+	<20100623092028.GA13900@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43168 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:58996 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750845Ab0FWMai (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jun 2010 08:30:38 -0400
-Content-Disposition: inline
-In-Reply-To: <20100622215200.GE6843@thunk.org>
+	id S1753017Ab0FWNEJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Jun 2010 09:04:09 -0400
+In-Reply-To: <20100623092028.GA13900@infradead.org> (Christoph Hellwig's
+	message of "Wed, 23 Jun 2010 05:20:28 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 22-06-10 17:52:00, tytso@mit.edu wrote:
-> On Tue, Jun 22, 2010 at 10:29:27PM +0200, Jan Kara wrote:
-> >   With metadata which get journaled it should be quite easy. JBD already
-> > must know before you go and modify buffer contents - that's why
-> > journal_get_write_access and friends exist. It also makes sure that your
-> > data cannot be modified from the moment the buffer enters commit upto the
-> > moment the commit is finished. So you can use buffer commit hook to compute
-> > and store block checksum safely.
-> 
-> True, but we're also interested in making sure this feature can be
-> used in the non-journal case as well....
-  Ah, I forgot about that... Doing per-block checksums in that case would
-be indeed more complicated. So computing checksum for each dquot is
-probably simpler.
+Christoph Hellwig <hch@infradead.org> writes:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> On Tue, Jun 22, 2010 at 05:34:59PM -0400, Jeff Moyer wrote:
+>> Hi,
+>> 
+>> Running iozone with the fsync flag, or fs_mark, the performance of CFQ is
+>> far worse than that of deadline for enterprise class storage when dealing
+>> with file sizes of 8MB or less.  I used the following command line as a
+>> representative test case:
+>> 
+>>   fs_mark -S 1 -D 10000 -N 100000 -d /mnt/test/fs_mark -s 65536 -t 1 -w 4096 -F
+>> 
+>> When run using the deadline I/O scheduler, an average of the first 5 numbers
+>> will give you 448.4 files / second.  CFQ will yield only 106.7.  With
+>> this patch series applied (and the two patches I sent yesterday), CFQ now
+>> achieves 462.5 files / second.
+>> 
+>> This patch set is still an RFC.  I'd like to make it perform better when
+>> there is a competing sequential reader present.  For now, I've addressed
+>> the concerns voiced about the previous posting.
+>
+> What happened to the initial idea of just using the BIO_RW_META flag
+> for log writes?  In the end log writes are the most important writes you
+> have in a journaled filesystem, and they should not be effect to any
+> kind of queue idling logic or other interruption.  Log I/O is usually
+> very little (unless you use old XFS code with a worst-case directory
+> manipulation workload), and very latency sensitive.
+
+Vivek showed that starting firefox in the presence of a processing doing
+fsyncs (using the RQ_META approach) took twice as long as without the
+patch:
+  http://lkml.org/lkml/2010/4/6/276
+
+Cheers,
+Jeff
