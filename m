@@ -1,33 +1,38 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: [PATCH, RFC] ext4: Store basic fs error information in the superblock
-Date: Thu, 24 Jun 2010 16:44:42 +0200
-Message-ID: <87sk4c8p7p.fsf@basil.nowhere.org>
-References: <1277349714-9697-1-git-send-email-tytso@mit.edu>
-	<871vbw8zzi.fsf@dmon-lap.sw.ru>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 0/3 v5][RFC] ext3/4: enhance fsync performance when using CFQ
+Date: Thu, 24 Jun 2010 10:56:28 -0400
+Message-ID: <x49r5jwh42r.fsf@segfault.boston.devel.redhat.com>
+References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+	<4C21D442.8080703@oracle.com> <4C22F316.3080009@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Joel Becker <joel.becker@oracle.com>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	"ocfs2-devel\@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
+To: Tao Ma <tao.ma@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:55790 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754063Ab0FXOor (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jun 2010 10:44:47 -0400
-In-Reply-To: <871vbw8zzi.fsf@dmon-lap.sw.ru> (Dmitry Monakhov's message of
-	"Thu, 24 Jun 2010 14:52:01 +0400")
+Received: from mx1.redhat.com ([209.132.183.28]:13490 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755796Ab0FXO4g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jun 2010 10:56:36 -0400
+In-Reply-To: <4C22F316.3080009@oracle.com> (Tao Ma's message of "Thu, 24 Jun
+	2010 13:54:30 +0800")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
->> bother to send them along.
-> Excellent choice. s_error_XXX fields finally allow one to detect errors
-> in determinant meaner. And most stress test finally will do it after
-> umount :).
+Tao Ma <tao.ma@oracle.com> writes:
 
- ... assuming you can still write the super block after the error.
--Andi
+> Hi Jeff,
+>
+[...]
+> I am sorry to say that the patch make jbd2 locked up when I tested
+> fs_mark using ocfs2.
+> I have attached the log from my netconsole server. After I reverted
+> the patch [3/3], the box works again.
 
+Thanks for the report, Tao, I'll try to reproduce it here and get back
+to you.
 
--- 
-ak@linux.intel.com -- Speaking for myself only.
+Cheers,
+Jeff
