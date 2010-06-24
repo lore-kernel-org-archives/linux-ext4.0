@@ -1,43 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16165] Wrong data returned on read after write if file size was
- changed with ftruncate before
-Date: Thu, 24 Jun 2010 15:53:27 GMT
-Message-ID: <201006241553.o5OFrRkG025158@demeter.kernel.org>
-References: <bug-16165-13602@https.bugzilla.kernel.org/>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: problems with large group descriptors and 64bit
+Date: Thu, 24 Jun 2010 13:41:17 -0400
+Message-ID: <20100624174117.GD22760@shell>
+References: <C14E4BEF-0064-4E36-975F-B74272E246B1@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <andreas.dilger@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:53413 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754671Ab0FXPx2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jun 2010 11:53:28 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o5OFrRAK025166
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Jun 2010 15:53:28 GMT
-In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:54358 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755090Ab0FXRlW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jun 2010 13:41:22 -0400
+Content-Disposition: inline
+In-Reply-To: <C14E4BEF-0064-4E36-975F-B74272E246B1@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16165
+On Tue, Jun 22, 2010 at 05:24:34PM -0600, Andreas Dilger wrote:
+> I was just looking through the 64-bit patches that have landed on master, and I see some obvious bugs with the handling of large group descriptors.  In particular, there are some places that still assume they know the group descriptor size, even in the "opaque" routines added by Eric in commit efe0b401465a3ee836180614b5b435acbb84fc27.
+> 
+> lib/ext2fs/open.c assumes ext2_group_desc in a couple of places, instead of calling ext2fs_group_desc() to get the right offset:
+> #ifdef WORDS_BIGENDIAN  
+>                 gdp = (struct ext2_group_desc *) dest;
+>                 for (j=0; j < groups_per_block*first_meta_bg; j++)
+>                         ext2fs_swap_group_desc2(fs, gdp++);
+> #endif
 
+Yeah, Eric and I pointed this one out when they went in but didn't
+hear back.  I never compiled with big-endian, much less tested it.  I
+suspect getting 64-bit working on big-endian will require fixing a
+number of other bugs.
 
+> lib/ext2fs/blknum.c assumes 64BIT means ext4_group_desc, not s_desc_size:
+> struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
+>                                           struct opaque_ext2_group_desc *gdp,
+>                                           dgrp_t group)
+> {               
+>         if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT)
+>                 return (struct ext2_group_desc *)
+>                         ((struct ext4_group_desc *) gdp + group);
+>         else
+>                 return (struct ext2_group_desc *) gdp + group;
+> }
 
+I'm not sure I understand.  Are there more than two possible sizes for
+group descriptors?  Or is the existing code correct but you'd like to
+use s_desc_size directly for simplicity?  Or something else?
 
+Thanks,
 
---- Comment #15 from Eric Sandeen <sandeen@redhat.com>  2010-06-24 15:53:20 ---
-(In reply to comment #14)
-> And like in the mail thread it fails for XFS too.
-
-How about with these 2 patches from the xfs list?
-
-[PATCH 1/2] direct-io: move aio_complete into ->end_io
-[PATCH 2/2] xfs: move aio completion after unwritten extent conversion
-
-(thread starts at http://oss.sgi.com/archives/xfs/2010-06/msg00269.html)
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+-VAL
