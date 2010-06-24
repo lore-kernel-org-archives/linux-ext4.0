@@ -1,100 +1,38 @@
-From: jiayingz@google.com (Jiaying Zhang)
-Subject: [PATCH] EXT4: move aio completion after unwritten extent conversion
-Date: Thu, 24 Jun 2010 15:15:34 -0700 (PDT)
-Message-ID: <20100624221534.299B62008@ruihe.smo.corp.google.com>
-Cc: c@google.com
-To: hch@infradead.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16165] Wrong data returned on read after write if file size was
+ changed with ftruncate before
+Date: Thu, 24 Jun 2010 22:20:34 GMT
+Message-ID: <201006242220.o5OMKYsr016652@demeter.kernel.org>
+References: <bug-16165-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:52905 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752028Ab0FXWUf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jun 2010 18:20:35 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o5OMKYO2016653
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Jun 2010 22:20:34 GMT
+In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+https://bugzilla.kernel.org/show_bug.cgi?id=16165
 
 
-    EXT4: move aio completion after unwritten extent conversion
-    
-    This patch is to be applied upon Christoph's "direct-io: move aio_complete
-    into ->end_io" patch. It adds iocb and result fields to struct ext4_io_end_t,
-    so that we can call aio_complete from  ext4_end_io_nolock() after the extent
-    conversion has finished.
-    
-    I have verified with Christoph's aio-dio test that used to fail after a few
-    runs on an original kernel but now succeeds on the patched kernel.
 
-    See http://thread.gmane.org/gmane.comp.file-systems.ext4/19659 for details.
-    
-    Signed-off-by: Jiaying Zhang <jiayingz@google.com>
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 19a4de5..4c9f05d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -167,13 +167,15 @@ struct mpage_da_data {
- };
- #define	EXT4_IO_UNWRITTEN	0x1
- typedef struct ext4_io_end {
--	struct list_head	list;		/* per-file finished AIO list */
-+	struct list_head	list;		/* per-file finished IO list */
- 	struct inode		*inode;		/* file being written to */
- 	unsigned int		flag;		/* unwritten or not */
- 	struct page		*page;		/* page struct for buffer write */
- 	loff_t			offset;		/* offset in the file */
- 	ssize_t			size;		/* size of the extent */
- 	struct work_struct	work;		/* data work queue */
-+	struct kiocb		*iocb;		/* iocb struct for AIO */
-+	int			result;		/* error value for AIO */
- } ext4_io_end_t;
- 
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0afc8c1..3fb64b9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3668,6 +3668,8 @@ static int ext4_end_io_nolock(ext4_io_end_t *io)
- 		return ret;
- 	}
- 
-+	if (io->iocb)
-+		aio_complete(io->iocb, io->result, 0);
- 	/* clear the DIO AIO unwritten flag */
- 	io->flag = 0;
- 	return ret;
-@@ -3767,6 +3769,8 @@ static ext4_io_end_t *ext4_init_io_end (struct inode *inode, gfp_t flags)
- 		io->offset = 0;
- 		io->size = 0;
- 		io->page = NULL;
-+		io->iocb = NULL;
-+		io->result = 0;
- 		INIT_WORK(&io->work, ext4_end_io_work);
- 		INIT_LIST_HEAD(&io->list);
- 	}
-@@ -3796,12 +3800,18 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 	if (io_end->flag != EXT4_IO_UNWRITTEN){
- 		ext4_free_io_end(io_end);
- 		iocb->private = NULL;
--		goto out;
-+out:
-+		if (is_async)
-+			aio_complete(iocb, ret, 0);
-+		return;
- 	}
- 
- 	io_end->offset = offset;
- 	io_end->size = size;
--	io_end->flag = EXT4_IO_UNWRITTEN;
-+	if (is_async) {
-+		io_end->iocb = iocb;
-+		io_end->result = ret;
-+	}
- 	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
- 
- 	/* queue the work to convert unwritten extents to written */
-@@ -3813,9 +3823,6 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 	list_add_tail(&io_end->list, &ei->i_completed_io_list);
- 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
- 	iocb->private = NULL;
--out:
--	if (is_async)
--		aio_complete(iocb, ret, 0);
- }
- 
- static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+
+--- Comment #16 from Eric Sandeen <sandeen@redhat.com>  2010-06-24 22:20:25 ---
+And for ext4 perhaps try this on top of the above:
+
+[PATCH] EXT4: move aio completion after unwritten extent conversion
+http://marc.info/?l=linux-ext4&m=127741775019003&w=2
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
