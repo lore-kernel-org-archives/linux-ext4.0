@@ -1,45 +1,27 @@
-From: Eric Whitney <eric.whitney@hp.com>
-Subject: ext4 scalability testing results
-Date: Fri, 25 Jun 2010 17:54:22 -0400
-Message-ID: <4C25258E.6060207@hp.com>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] [PATCH v2.6.32.y 01/53] ext4: Fix potential quota
+ deadlock
+Date: Fri, 25 Jun 2010 15:29:02 -0700
+Message-ID: <20100625222902.GB10683@kroah.com>
+References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: stable@kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
+	Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t0017.houston.hp.com ([15.201.24.20]:41924 "EHLO
-	g4t0017.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751895Ab0FYVux (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jun 2010 17:50:53 -0400
-Received: from g4t0018.houston.hp.com (g4t0018.houston.hp.com [16.234.32.27])
-	by g4t0017.houston.hp.com (Postfix) with ESMTP id 41D6F3838A
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jun 2010 21:50:53 +0000 (UTC)
-Received: from ldl (ldl.fc.hp.com [15.11.146.30])
-	by g4t0018.houston.hp.com (Postfix) with ESMTP id 33CE110769
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jun 2010 21:50:53 +0000 (UTC)
-Received: from localhost (ldl.fc.hp.com [127.0.0.1])
-	by ldl (Postfix) with ESMTP id EA51BCF0020
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jun 2010 15:50:52 -0600 (MDT)
-Received: from ldl ([127.0.0.1])
-	by localhost (ldl.fc.hp.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id JATfneJqDAQB for <linux-ext4@vger.kernel.org>;
-	Fri, 25 Jun 2010 15:50:52 -0600 (MDT)
-Received: from [192.168.0.14] (squirrel.fc.hp.com [15.11.146.57])
-	(Authenticated sender: enw@fc.hp.com)
-	by ldl (Postfix) with ESMTPA id 9AB24CF0013
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jun 2010 15:50:52 -0600 (MDT)
+Received: from kroah.org ([198.145.64.141]:33326 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751990Ab0FYX3T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jun 2010 19:29:19 -0400
+Content-Disposition: inline
+In-Reply-To: <1275274206-3900-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As discussed in recent ext4 developer concalls, I've added 2.6.34 XFS 
-results for the Boxacle large_file_creates and random_writes workloads 
-to the ext4 results collected earlier.
+I never received a [02/53] of these patches, did it get lost somewhere?
 
-To make it easier to navigate through the data, I've also added graphs 
-and constructed a simple web page with links to the raw results, lock 
-stats, etc.
+thanks,
 
-It's at: http://free.linux.hp.com/~enw/ext4/2.6.34
-
-Eric
-
+greg k-h
