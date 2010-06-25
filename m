@@ -1,43 +1,46 @@
-From: Andreas Dilger <andreas.dilger@oracle.com>
-Subject: Re: problems with large group descriptors and 64bit
-Date: Thu, 24 Jun 2010 18:35:16 -0600
-Message-ID: <BE781EC4-8A82-478F-8D10-BC19C0664567@oracle.com>
-References: <C14E4BEF-0064-4E36-975F-B74272E246B1@oracle.com> <20100624174117.GD22760@shell>
-Mime-Version: 1.0 (iPhone Mail 8A293)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.orgdevelopment" <linux-ext4@vger.kernel.org>
-To: Valerie Aurora <vaurora@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:62375 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752932Ab0FYAgk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jun 2010 20:36:40 -0400
-In-Reply-To: <20100624174117.GD22760@shell>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/2] direct-io: move aio_complete into ->end_io
+Date: Fri, 25 Jun 2010 02:36:10 -0400
+Message-ID: <20100625063610.GA4128@infradead.org>
+References: <20100622122144.302857146@bombadil.infradead.org>
+ <20100622123113.011371666@bombadil.infradead.org>
+ <20100624215922.GE3345@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100624215922.GE3345@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Thu, Jun 24, 2010 at 11:59:22PM +0200, Jan Kara wrote:
+>   Umm, I don't get this. Looking at the ->end_io callback it has been
+> always called with i_alloc_sem held. It's only aio_complete() which will
+> be called with i_alloc_sem held after your changes. Or am I missing
+> something?
 
-On 2010-06-24, at 11:41 AM, Valerie Aurora <vaurora@redhat.com> wrote:
+No, that part of the commit message is flat out wrong.  Not sure what
+I was thinking when I wrote it.
 
-> On Tue, Jun 22, 2010 at 05:24:34PM -0600, Andreas Dilger wrote:
-> 
->> lib/ext2fs/blknum.c assumes 64BIT means ext4_group_desc, not s_desc_size:
->> struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
->>                                          struct opaque_ext2_group_desc *gdp,
->>                                          dgrp_t group)
->> {               
->>        if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT)
->>                return (struct ext2_group_desc *)
->>                        ((struct ext4_group_desc *) gdp + group);
->>        else
->>                return (struct ext2_group_desc *) gdp + group;
->> }
-> 
-> I'm not sure I understand.  Are there more than two possible sizes for
-> group descriptors?  Or is the existing code correct but you'd like to
-> use s_desc_size directly for simplicity?
+>   Moreover the async testing you do does not seem to be completely right.
+> dio->is_async is a flag that controls whether dio code waits for IO to be
+> completed or not. In particular it is not set for AIO that spans beyond
+> current i_size so it does not seem to be exactly what you need (at least
+> for ext4 it isn't). I think that is_sync_kiocb() is a test that should be
+> used to recognize AIO - and that has an advantage that you don't have to
+> pass the is_async flag around.
 
-When the 64BIT flag is set the size kid the group descriptor is given by s_group_desc, which is currently the same as struct ext4_group_desc, but it might be larger in the future. 
+No.  is_sync_kiocb() means the ioctb was not intended as sync I/O from
+the start.  But we can only call aio_complete when we returned
+-EIOCBQUEUED from ->aio_read/write.  Take a look at the comment near the
+end of direct_io_worker().
+
+AIO beyond i_size is not supported using blockdev_direct_IO yet.  I
+think I can add it fairly easily for XFS, but that will require
+passing a new DIO_* flag to __blockdev_direct_IO which will make
+is_async true for writes beyond i_size.
+
