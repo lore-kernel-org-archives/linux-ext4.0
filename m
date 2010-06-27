@@ -1,104 +1,35 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH 5/8] ext4: call ext4_forget() from ext4_free_blocks()
-Date: Sun, 27 Jun 2010 05:40:23 +0300
-Message-ID: <AANLkTimNATxwmz03ob6UoKzjqeKI6DLuA4FjYvmL9kbi@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16165] Wrong data returned on read after write if file size was
+ changed with ftruncate before
+Date: Sun, 27 Jun 2010 09:05:35 GMT
+Message-ID: <201006270905.o5R95Z3B000959@demeter.kernel.org>
+References: <bug-16165-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:44588 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754056Ab0F0CkZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Jun 2010 22:40:25 -0400
-Received: by bwz10 with SMTP id 10so258465bwz.19
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Jun 2010 19:40:23 -0700 (PDT)
+Received: from demeter.kernel.org ([140.211.167.39]:50680 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752701Ab0F0JFg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Jun 2010 05:05:36 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o5R95ZO5000960
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 27 Jun 2010 09:05:35 GMT
+In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+https://bugzilla.kernel.org/show_bug.cgi?id=16165
 
-There is a lurking bug that needs to be fixed in ext4_free_branches().
-it can cause double freeing of blocks after crash.
-please see bug description below.
 
-Amir.
 
-On Wed, Jun 23, 2010 at 10:01 PM, Amir G.
-<amir73il@users.sourceforge.net> wrote:
-> Hi,
->
-> We have experienced bitmap inconsistencies after crash during file
-> delete under heavy load.
-> The crash is not file system related and I the following patch in
-> ext4_free_branches() fixes the recovery problem.
->
-> If the transaction is restarted and there is a crash before the new
-> transaction is committed,
-> then after recovery, the blocks that this indirect block points to
-> have been freed, but the indirect block itself
-> has not been freed and may still point to some of the free blocks
-> (because of the ext4_forget()).
->
-> So ext4_forget() should be called inside ext4_free_blocks() to avoid
-> this problem.
-> Are there any consequences to this patch that I am not aware of?
->
-> Amir.
->
-> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 42272d6..682e2fa 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4458,6 +4458,7 @@ static void ext4_free_branches(handle_t *handle=
-,
-> struct inode *inode,
-> =A0{
-> =A0 =A0 =A0 =A0ext4_fsblk_t nr;
-> =A0 =A0 =A0 =A0__le32 *p;
-> + =A0 =A0 =A0 int =A0 =A0 flags;
->
-> =A0 =A0 =A0 =A0if (ext4_handle_is_aborted(handle))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return;
-> @@ -4520,7 +4521,7 @@ static void ext4_free_branches(handle_t *handle=
-,
-> struct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * revoke records must=
- be emitted *before* clearing
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * this block's bit in=
- the bitmaps.
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_forget(handle, 1, =
-inode, bh, bh->b_blocknr);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags =3D
-> EXT4_FREE_BLOCKS_METADATA|EXT4_FREE_BLOCKS_FORGET;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * Everything below th=
-is this pointer has been
-> @@ -4546,8 +4547,7 @@ static void ext4_free_branches(handle_t *handle=
-,
-> struct inode *inode,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0blocks_for_truncate(inode));
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_free_blocks(handle=
-, inode, 0, nr, 1,
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0EXT4_FREE_BLOCKS_METADATA);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_free_blocks(handle=
-, inode, 0, nr, 1, flags);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (parent_bh) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--- Comment #17 from Alexander Eichner <Alexander.Eichner@sun.com>  2010-06-27 09:05:28 ---
+These patches fix the data corruption here. Thanks!
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
