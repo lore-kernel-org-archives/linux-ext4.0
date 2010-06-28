@@ -1,68 +1,41 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH][BUG] ext4: do not execute ext4_std_error with EFBIG at
- ext4_setattr
-Date: Mon, 28 Jun 2010 09:58:53 -0500
-Message-ID: <4C28B8AD.6040001@redhat.com>
-References: <20100628114256.0c633779.toshi.okajima@jp.fujitsu.com>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] [PATCH v2.6.32.y 01/53] ext4: Fix potential quota
+ deadlock
+Date: Mon, 28 Jun 2010 08:48:45 -0700
+Message-ID: <20100628154845.GB13997@kroah.com>
+References: <1275274206-3900-1-git-send-email-tytso@mit.edu>
+ <20100625222902.GB10683@kroah.com>
+ <20100626231943.GS6843@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: stable@kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
+	Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7923 "EHLO mx1.redhat.com"
+Received: from kroah.org ([198.145.64.141]:55209 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751193Ab0F1O7B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jun 2010 10:59:01 -0400
-In-Reply-To: <20100628114256.0c633779.toshi.okajima@jp.fujitsu.com>
+	id S1754632Ab0F1PuI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jun 2010 11:50:08 -0400
+Content-Disposition: inline
+In-Reply-To: <20100626231943.GS6843@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Toshiyuki Okajima wrote:
-> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+On Sat, Jun 26, 2010 at 07:19:43PM -0400, tytso@mit.edu wrote:
+> On Fri, Jun 25, 2010 at 03:29:02PM -0700, Greg KH wrote:
+> > I never received a [02/53] of these patches, did it get lost somewhere?
 > 
-> You know, do_truncate() can call ext4_setattr() (via notify_change()).
-> And, ext4_setattr() can return with -EFBIG if the argument(length) of 
-> do_truncate() is more than sbi->s_bitmap_maxbytes. At that time, 
-> it also calls ext4_std_error() with -EFBIG.
-> 
-> Besides, a panic happens when ext4_setattr() returns with -EFBIG
-> after we mount an ext4 filesystem with errors=panic.
+> Hmm... it must have.  I just recent the 2/53 patch to stable.kernel.org.
 
-...
+Thanks, got it.
 
-> This changes prevent this problem from happening.
+> Did you also get the 2.6.33 and 2.6.34 stable patch series?
 
-Whoops, that one was my fault; thanks for catching it.
+Nope.
 
-I might just "return error" at that spot, but this works fine too.
+Care to resend them?
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
- 
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> ---
->  fs/ext4/inode.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 42272d6..e87bb45 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5485,7 +5485,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  
->  			if (attr->ia_size > sbi->s_bitmap_maxbytes) {
->  				error = -EFBIG;
-> -				goto err_out;
-> +				goto err_out2;
->  			}
->  		}
->  	}
-> @@ -5544,6 +5544,7 @@ err_out:
->  	ext4_std_error(inode->i_sb, error);
->  	if (!error)
->  		error = rc;
-> +err_out2:
->  	return error;
->  }
->  
+thanks,
 
+greg k-h
