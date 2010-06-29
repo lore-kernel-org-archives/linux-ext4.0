@@ -1,208 +1,127 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: [PATCH 0/3] Extended file stat functions
-Date: Tue, 29 Jun 2010 21:02:59 +0100
-Message-ID: <20100629200259.23196.81509.stgit@warthog.procyon.org.uk>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 2/3] AFS: Use i_generation not i_version for the vnode
+	uniquifier
+Date: Tue, 29 Jun 2010 21:03:10 +0100
+Message-ID: <20100629200310.23196.32472.stgit@warthog.procyon.org.uk>
+References: <20100629200259.23196.81509.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, sjayaraman-l3A5Bk7waGM@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org, smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: dhowells@redhat.com, linux-cifs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	samba-technical@lists.samba.org, sjayaraman@suse.de,
+	linux-ext4@vger.kernel.org
+To: viro@ZenIV.linux.org.uk, smfrench@gmail.com, jlayton@redhat.com,
+	mcao@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20100629200259.23196.81509.stgit@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Implement a pair of new system calls to provide extended and further extensible
-stat functions.
+Store the AFS vnode uniquifier in the i_generation field, not the i_version
+field of the inode struct.  i_version can then be given the AFS data version
+number.
 
-The third of the associated patches provides these new system calls:
-
-	struct xstat_dev {
-		unsigned int	major;
-		unsigned int	minor;
-	};
-
-	struct xstat_time {
-		unsigned long long	tv_sec;
-		unsigned long long	tv_nsec;
-	};
-
-	struct xstat {
-		unsigned int		struct_version;
-	#define XSTAT_STRUCT_VERSION	0
-		unsigned int		st_mode;
-		unsigned int		st_nlink;
-		unsigned int		st_uid;
-		unsigned int		st_gid;
-		unsigned int		st_blksize;
-		struct xstat_dev	st_rdev;
-		struct xstat_dev	st_dev;
-		unsigned long long	st_ino;
-		unsigned long long	st_size;
-		struct xstat_time	st_atime;
-		struct xstat_time	st_mtime;
-		struct xstat_time	st_ctime;
-		struct xstat_time	st_crtime;
-		unsigned long long	st_blocks;
-		unsigned long long	st_inode_version;
-		unsigned long long	st_data_version;
-		unsigned long long	query_flags;
-	#define XSTAT_QUERY_CREATION_TIME	0x00000001ULL
-	#define XSTAT_QUERY_INODE_VERSION	0x00000002ULL
-	#define XSTAT_QUERY_DATA_VERSION	0x00000004ULL
-		unsigned long long	extra_results[0];
-	};
-
-	ssize_t ret = xstat(int dfd,
-			    const char *filename,
-			    unsigned atflag,
-			    struct xstat *buffer,
-			    size_t buflen);
-
-	ssize_t ret = fxstat(int fd,
-			     struct xstat *buffer,
-			     size_t buflen);
-
-which are more fully documented in that patch's description.
-
-The bonuses of these new stat functions are:
-
- (1) The fields in the xstat struct are cleaned up.  There are no split or
-     duplicated fields.
-
- (2) Some extra information is made available (file creation time, inode
-     version number and data version number) where provided by the underlying
-     filesystem.
-
-     These are implemented here for Ext4 and AFS, but could also be provided
-     for CIFS, NTFS and BtrFS and probably others.
-
- (3) The structure is versioned and extensible, meaning that further new system
-     calls shouldn't be required.
-
-Note that no lstat() equivalent is required as that can be implemented through
-xstat() with atflag == 0.
-
-
-The first patch makes const a bunch of system call userspace string/buffer
-arguments.  I can then make sys_xstat()'s filename pointer const too (though
-the entire first patch is not required for that).
-
-The second patch makes the AFS filesystem use i_generation for the vnode ID
-uniquifier rather than i_version, and assigns i_version to hold the AFS data
-version number, making them more logical for when I want to get at them from
-afs_getattr().
-
-
-There's a test program attached to the description for patch 3.  It can be run
-as follows:
-
-	[root@andromeda ~]# /tmp/xstat /afs/archive/linuxdev/fedora9/i386/repodata/
-	xstat(/afs/archive/linuxdev/fedora9/i386/repodata/) = 152
-	sv=0 qf=6 cr=0.0 iv=7a5 dv=5
-	  Size: 2048            Blocks: 0          IO Block: 4096   directory
-	Device: 00:13           Inode: 83          Links: 2
-	Access: (0755/drwxr-xr-x)  Uid: 75338   Gid: 0
-	Access: 2008-11-05 20:00:12.000000000+0000
-	Modify: 2008-11-05 20:00:12.000000000+0000
-	Change: 2008-11-05 20:00:12.000000000+0000
-	Inode version: 7a5h
-	Data version: 5h
-
-
-Things that need consideration:
-
- (1) Is it worth retaining the ability to arbitrarily add extra bits onto the
-     end of the stat buffer?  And what's the best way to do this?
-
-     I've defined a way that from userspace involves assigning bits in
-     query_flags to extra results that you might want.  But this could instead
-     be done, say, by just upping the struct version number any time we want to
-     pass back more information.  Alternatively, we could go for a tagged data
-     method, perhaps using the same format as the recvmsg() control message
-     field.
-
-     If we use tagged data then rather than being selective, we could just
-     return as many tagged data items as we feel the user might want and we can
-     cram into the buffer.  That could be rather slow, though.
-
- (2) What extra bits of information might we like to see available through the
-     stat interface?  Security labels?  NFS file IDs?  Xattrs?
-
-     If we went for a tagged data method, xstat() could be modified to take a
-     list of tags as an argument, and could then return arbitrarily-sized
-     tagged results, including fs-specific stuff.
-
- (3) Does st_blksize really need to be 64 bits on a 64-bit system?  Or can it
-     be 32-bits?  Are we really likely to see something with a 4Gb+ blocksize?
-
- (4) Should the inode number and data version number fields be 128-bit?
-
-David
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
-David Howells (3):
-      Add a pair of system calls to make extended file stats available
-      AFS: Use i_generation not i_version for the vnode uniquifier
-      Mark arguments to certain syscalls as being const
+ fs/afs/dir.c      |    8 ++++----
+ fs/afs/fsclient.c |    3 ++-
+ fs/afs/inode.c    |   10 +++++-----
+ 3 files changed, 11 insertions(+), 10 deletions(-)
 
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index b42d5cc..afb9ff8 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -542,11 +542,11 @@ static struct dentry *afs_lookup(struct inode *dir, struct dentry *dentry,
+ 	dentry->d_op = &afs_fs_dentry_operations;
+ 
+ 	d_add(dentry, inode);
+-	_leave(" = 0 { vn=%u u=%u } -> { ino=%lu v=%llu }",
++	_leave(" = 0 { vn=%u u=%u } -> { ino=%lu v=%u }",
+ 	       fid.vnode,
+ 	       fid.unique,
+ 	       dentry->d_inode->i_ino,
+-	       (unsigned long long)dentry->d_inode->i_version);
++	       dentry->d_inode->i_generation);
+ 
+ 	return NULL;
+ }
+@@ -626,10 +626,10 @@ static int afs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 		 * been deleted and replaced, and the original vnode ID has
+ 		 * been reused */
+ 		if (fid.unique != vnode->fid.unique) {
+-			_debug("%s: file deleted (uq %u -> %u I:%llu)",
++			_debug("%s: file deleted (uq %u -> %u I:%u)",
+ 			       dentry->d_name.name, fid.unique,
+ 			       vnode->fid.unique,
+-			       (unsigned long long)dentry->d_inode->i_version);
++			       dentry->d_inode->i_generation);
+ 			spin_lock(&vnode->lock);
+ 			set_bit(AFS_VNODE_DELETED, &vnode->flags);
+ 			spin_unlock(&vnode->lock);
+diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
+index 4bd0218..346e328 100644
+--- a/fs/afs/fsclient.c
++++ b/fs/afs/fsclient.c
+@@ -89,7 +89,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
+ 			i_size_write(&vnode->vfs_inode, size);
+ 			vnode->vfs_inode.i_uid = status->owner;
+ 			vnode->vfs_inode.i_gid = status->group;
+-			vnode->vfs_inode.i_version = vnode->fid.unique;
++			vnode->vfs_inode.i_generation = vnode->fid.unique;
+ 			vnode->vfs_inode.i_nlink = status->nlink;
+ 
+ 			mode = vnode->vfs_inode.i_mode;
+@@ -102,6 +102,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
+ 		vnode->vfs_inode.i_ctime.tv_sec	= status->mtime_server;
+ 		vnode->vfs_inode.i_mtime	= vnode->vfs_inode.i_ctime;
+ 		vnode->vfs_inode.i_atime	= vnode->vfs_inode.i_ctime;
++		vnode->vfs_inode.i_version	= data_version;
+ 	}
+ 
+ 	expected_version = status->data_version;
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index d00b312..ee3190a 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -73,7 +73,8 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_ctime.tv_nsec	= 0;
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+-	inode->i_version	= vnode->fid.unique;
++	inode->i_generation	= vnode->fid.unique;
++	inode->i_version	= vnode->status.data_version;
+ 	inode->i_mapping->a_ops	= &afs_fs_aops;
+ 
+ 	/* check to see whether a symbolic link is really a mountpoint */
+@@ -98,7 +99,7 @@ static int afs_iget5_test(struct inode *inode, void *opaque)
+ 	struct afs_iget_data *data = opaque;
+ 
+ 	return inode->i_ino == data->fid.vnode &&
+-		inode->i_version == data->fid.unique;
++		inode->i_generation == data->fid.unique;
+ }
+ 
+ /*
+@@ -110,7 +111,7 @@ static int afs_iget5_set(struct inode *inode, void *opaque)
+ 	struct afs_vnode *vnode = AFS_FS_I(inode);
+ 
+ 	inode->i_ino = data->fid.vnode;
+-	inode->i_version = data->fid.unique;
++	inode->i_generation = data->fid.unique;
+ 	vnode->fid = data->fid;
+ 	vnode->volume = data->volume;
+ 
+@@ -306,8 +307,7 @@ int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 
+ 	inode = dentry->d_inode;
+ 
+-	_enter("{ ino=%lu v=%llu }", inode->i_ino,
+-		(unsigned long long)inode->i_version);
++	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
+ 
+ 	generic_fillattr(inode, stat);
+ 	return 0;
 
- arch/alpha/kernel/osf_sys.c             |    6 +
- arch/alpha/kernel/process.c             |    2 
- arch/arm/kernel/sys_arm.c               |    4 -
- arch/arm/kernel/sys_oabi-compat.c       |    6 +
- arch/avr32/include/asm/syscalls.h       |    2 
- arch/avr32/kernel/process.c             |    3 -
- arch/blackfin/kernel/process.c          |    2 
- arch/frv/kernel/process.c               |    3 -
- arch/h8300/kernel/process.c             |    2 
- arch/ia64/include/asm/unistd.h          |    2 
- arch/ia64/kernel/process.c              |    2 
- arch/m32r/kernel/process.c              |    3 -
- arch/m68k/kernel/process.c              |    2 
- arch/m68knommu/kernel/process.c         |    2 
- arch/microblaze/kernel/sys_microblaze.c |    2 
- arch/mips/kernel/syscall.c              |    2 
- arch/mn10300/kernel/process.c           |    2 
- arch/parisc/hpux/fs.c                   |    7 +
- arch/powerpc/kernel/process.c           |    2 
- arch/powerpc/kernel/sys_ppc32.c         |    2 
- arch/s390/kernel/compat_linux.c         |   10 +-
- arch/s390/kernel/compat_linux.h         |   10 +-
- arch/s390/kernel/entry.h                |    2 
- arch/s390/kernel/process.c              |    2 
- arch/sh/include/asm/syscalls_32.h       |    2 
- arch/sh/include/asm/syscalls_64.h       |    2 
- arch/sh/kernel/process_64.c             |    2 
- arch/sparc/kernel/sys_sparc32.c         |    7 +
- arch/um/kernel/exec.c                   |    6 +
- arch/um/kernel/internal.h               |    2 
- arch/um/kernel/syscall.c                |    2 
- arch/x86/ia32/sys_ia32.c                |   14 +--
- arch/x86/include/asm/sys_ia32.h         |   12 +-
- arch/x86/include/asm/syscalls.h         |    2 
- arch/x86/include/asm/unistd_32.h        |    4 +
- arch/x86/include/asm/unistd_64.h        |    4 +
- arch/x86/kernel/entry_64.S              |    4 -
- arch/x86/kernel/process.c               |    2 
- arch/xtensa/kernel/process.c            |    2 
- fs/afs/dir.c                            |    8 +-
- fs/afs/fsclient.c                       |    3 -
- fs/afs/inode.c                          |   22 ++--
- fs/compat.c                             |   23 +++--
- fs/ext4/ext4.h                          |    2 
- fs/ext4/file.c                          |    2 
- fs/ext4/inode.c                         |   27 +++++
- fs/ext4/namei.c                         |    2 
- fs/ext4/symlink.c                       |    2 
- fs/stat.c                               |  154 ++++++++++++++++++++++++++++---
- fs/utimes.c                             |    7 +
- include/linux/compat.h                  |    6 +
- include/linux/fs.h                      |    6 +
- include/linux/stat.h                    |   46 +++++++++
- include/linux/syscalls.h                |   25 +++--
- include/linux/time.h                    |    2 
- 55 files changed, 353 insertions(+), 133 deletions(-)
