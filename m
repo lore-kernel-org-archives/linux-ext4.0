@@ -1,55 +1,38 @@
-From: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
-Subject: Re: [PATCH] Ext4: Make file creation time, i_version and
-	i_generation available by xattrs
-Date: Tue, 29 Jun 2010 15:59:44 -0700
-Message-ID: <20100629225944.GA22924@samba1>
-References: <20100628164854.GA9979@samba1> <20100628162626.6026.26679.stgit@warthog.procyon.org.uk> <AANLkTikkaRYyUfHILDCKYzXdLi9ORuQs05Rf9TScF_Tz@mail.gmail.com> <26197.1277851477@redhat.com>
-Reply-To: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
+From: "Maciej W. Rozycki" <macro@linux-mips.org>
+Subject: Re: [PATCH 0/3] Extended file stat functions
+Date: Tue, 29 Jun 2010 23:59:57 +0100 (BST)
+Message-ID: <alpine.LFD.2.00.1006292356360.13070@eddie.linux-mips.org>
+References: <201006292324.32765.bernd.schubert@fastmail.fm> <201006292307.42440.bernd.schubert@fastmail.fm> <20100629200259.23196.81509.stgit@warthog.procyon.org.uk> <24517.1277845879@redhat.com> <24882.1277846892@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>, Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org,
-	aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, sjayaraman-l3A5Bk7waGM@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <26197.1277851477-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
+	viro@zeniv.linux.org.uk, smfrench@gmail.com, jlayton@redhat.com,
+	mcao@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com,
+	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+	sjayaraman@suse.de, linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Received: from localhost.localdomain ([127.0.0.1]:51824 "EHLO
+        localhost.localdomain" rhost-flags-OK-OK-OK-OK)
+        by eddie.linux-mips.org with ESMTP id S1492321Ab0F2W75 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org> + 3 others);
+        Wed, 30 Jun 2010 00:59:57 +0200
+In-Reply-To: <24882.1277846892@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 29, 2010 at 11:44:37PM +0100, David Howells wrote:
-> Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org> wrote:
+On Tue, 29 Jun 2010, David Howells wrote:
+
+> > Ah, great, so already there :) I was looking for st_gen, as it is called
+> > that way on BSD. And as BSD already has it for a long time, shouldn't linux
+> > use the BSD identifier?
 > 
-> > We already have code in Samba to detect "birthtime"
-> > (st_btime) as a returned member of a stat struct.
-> 
-> Is it, though?
-> 
-> Googling for st_btime suggests it could also be taken as the time last
-> archived.  That may just be a NetWareism though.
+> Sure.  I guess you'd also want it to be a u64?
 
-It's a *BSD'ism.
+ Note the Alpha port has had an st_gen member reserved in its struct stat 
+for many years now ;) -- which could have been DEC OSF/1 legacy.  I'm glad 
+to see this member seriously considered after these many years and 
+previously rejected proposals.
 
-http://www.daemon-systems.org/man/fstat.2.html
-
-     #if defined(_NETBSD_SOURCE)
-         struct timespec st_birthtimespec;   /* time of inode creation */
-     #else
-         time_t    st_birthtime;             /* time of inode creation */
-         long      st_birthtimensec;         /* nsec of inode creation */
-     #endif
-
-http://www.unix.com/man-page/FreeBSD/2/stat/
-
-st_birthtime  Time when the inode was created.
-
-Of course, for Samba's use we also have to be
-able to *write* to st_birthtime as Windows clients
-can change this. But that's what the EA is for
-(and I'm happy with a system that can only read
-st_birthtime, not write it).
-
-Jeremy.
+  Maciej
