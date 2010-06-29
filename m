@@ -1,127 +1,81 @@
-From: Hsuan-Ting <acht93@cs.ccu.edu.tw>
-Subject: Re: E2fsprogs master branch now has all 64-bit patch applied
-Date: Tue, 29 Jun 2010 21:41:08 +0800
-Message-ID: <AANLkTilF4XRqY43GRLxqKRsPeaiCL22C2SafzoypcSSH@mail.gmail.com>
-References: <AANLkTilD3D2QOXi1b7oXT2uFBx_vuO803HOX4JJXfWG0@mail.gmail.com>
-	<20100621170556.GB6843@thunk.org> <AANLkTimN1pMUlpoVbQe1ueL_LiorWqPNgpEfRBNrbEp0@mail.gmail.com>
-	<AANLkTimJVDB4hqCeD2dPBAD8krJScgiBP8-3sBmRaFB1@mail.gmail.com>
-	<B76CA57A-4379-494C-8DC6-DE041F2A4555@dilger.ca>
+From: tytso@mit.edu
+Subject: Re: Ext4 on SSD Intel X25-M
+Date: Tue, 29 Jun 2010 09:56:44 -0400
+Message-ID: <20100629135644.GE6094@thunk.org>
+References: <4C278EC2.1080903@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu,
-	"linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Nebojsa Trpkovic <trx.lists@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:45550 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754599Ab0F2Nla convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jun 2010 09:41:30 -0400
-Received: by ewy23 with SMTP id 23so337434ewy.19
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jun 2010 06:41:28 -0700 (PDT)
-In-Reply-To: <B76CA57A-4379-494C-8DC6-DE041F2A4555@dilger.ca>
+Received: from thunk.org ([69.25.196.29]:39558 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756047Ab0F2N4q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jun 2010 09:56:46 -0400
+Content-Disposition: inline
+In-Reply-To: <4C278EC2.1080903@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
+On Sun, Jun 27, 2010 at 07:47:46PM +0200, Nebojsa Trpkovic wrote:
+> I've noticed that there is a difference between
+> /sys/fs/ext4/sdXX/lifetime_write_kbytes
+> and host writes read from SSD itself.
+> 
+> In normal desktop operation "host writes" counter on SSD increases at
+> roughly ~2/3 compared to lifetime_write_kbytes.
 
-  I've follow your steps, fill nearly the whole filesystem before resiz=
-ing.
-After resizing and do fsck, the files seems OK.
-My test steps is as following:
+How are you measuring the "host writes" counter from the SSD?
 
-1. build a linear raid ( 1 X 2TB disk )
-2. fill nearly the whole filesystem
-(copy 133 * "test folders" to this volume,
- test folders include "kernel source" + 10G HD video + pdf files + smal=
-l video)
-3. grown the linear raid to >16TB (10 x 2TB)
-4. do resize ( resize -fpF /dev/md2 )
-5. after resize the "df" result isn't correct, and it will occur error
-when "rm" files
-("df" its "Used colum" show "114.3M", actually it must be "1.5T")
-("rm error" I add after these steps)
-6. do "fsck.ext4 -yvf", then "df" is correct
-7. copy 30 * "test folders" again to fill new space
-8. Do some roughly verification, the content of files and
-rm command  seems OK:
-(roughly verification: "diff -r" to compare one test kernel source
-with original, play video and open pdf files)
+> My best guess is that host itself uses a lot of optimisation to reduce
+> writing to NAND itself.
 
-Now I'm doing "llverfs -l" and run a script to recursive do "diff -r"
-for verifying all
-test kernel souce. If it occurs error, I'll update later.
+Possible, although if the counter is defined as "host writes", that
+should be before the NAND writes, since "host writes" would expect
+means the actual write commands coming from the host -- i.e., coming
+incoming SATA write commands.
 
-If you have any new idea of these error(df and fsck) or any opinions,
-please let me know.
-I'm still trying to find these error root cause.
+> Besides that, I've noticed that my commit=100 mount option helps also.
+> Changing (just for testing) to something realy big, like commit=9000,
+> gave even further improvement, but not worth staying with risk of losing
+> (that much) data. It seems that ext4 writes a lot to filesystem, but
+> many of those writes are overwrites. If we flush them to host just once
+> in 100 seconds, we're getting a lot of saving.
 
-Thanks.
+What metric are you using when you say that this "helps"?  The ext4
+measurement, the SSD counter which you are using, or both?
 
+> As I wanted to make even my swap TRIMable, I've put it in the file on
+> ext4 instead of separate partition. I've made it using dd with seek=500
+> bs=1M options. ext4's lifetime_write_kbytes increased by 500MB, and host
+> writes did not incrase at all, even after 100 seconds. Ok, I know that
+> ext4 did not write 500MB of data to filesystem, but this is one more
+> thing why one should not trust lifetime_write_kbytes.
 
-"rm error":
-[511874.472848] EXT4-fs error (device md2): mb_free_blocks:
-double-free of inode 16391's block 66051(bit 515 in group 2)
-[511874.483885] Aborting journal on device md2-8.
-[511874.488741] EXT4-fs (md2): Remounting filesystem read-only
-[511874.494928] EXT4-fs error (device md2) in
-ext4_reserve_inode_write: Journal has aborted
-[511874.503288] EXT4-fs error (device md2) in
-ext4_reserve_inode_write: Journal has aborted
-[511874.511791] EXT4-fs error (device md2) in ext4_ext_remove_space:
-Journal has aborted
-[511874.520125] EXT4-fs error (device md2) in
-ext4_reserve_inode_write: Journal has aborted
-[511874.528676] EXT4-fs error (device md2) in ext4_ext_truncate:
-Journal has aborted
-[511874.536581] EXT4-fs error (device md2) in
-ext4_reserve_inode_write: Journal has aborted
-[511874.545186] EXT4-fs error (device md2) in ext4_orphan_del: Journal
-has aborted
-[511874.552786] EXT4-fs error (device md2) in
-ext4_reserve_inode_write: Journal has aborted
+> So, the moral of my story would be not to trust lifetime_write_kbytes,
+> but to read host writes from SSD.
 
-2010/6/26 Andreas Dilger <adilger@dilger.ca>:
-> On 2010-06-25, at 04:33, Hsuan-Ting wrote:
->> My test case:
->> 1. build a linear raid (1 x 2TB disk)
->> 2. mkfs.ext4, mount it and"echo 123 > test" to
->> touch a test file.
->> 3. =A0grown the linear raid to >16TB (9 x 2TB + 1 x 1.5TB)
->> 4. do resize ( resize -fpF /dev/md2 )
->> After resizing, the content of the test file is correct.
->
-> This is mostly unsurprising, since there is very little chance that t=
-he single file is corrupted by a resize. =A0Better would be to fill nea=
-rly the whole filesystem (e.g. llverfs, previously posted to this list)=
- and verify the file contents after the resize.
->
->> But "fsck -nyv" will get the following error:
->> I think maybe I should modify "ext2_ino_t" type from
->> "__u32" to "__u64".
->> Maybe this modification will fix many overflow issue.
->
-> No, this will completely break the ext2/3/4 on-disk format. =A0What y=
-ou need to make sure is that when resize2fs is resizing the filesystem =
-that it limits the total number of inodes in the filesystem to 2^32-1. =
-=A0I guess that means the groups beyond the 2^32nd inode will have no i=
-node table at all, which is a bit strange, but something that we need t=
-o expect in e2fsck.
->
-> I guess the alternative would be to allocate the inode table, but we =
-couldn't (yet?) use those inodes without significant work to support 64=
--bit inode numbers. =A0Probably the first step in that direction would =
-be the "dirdata" patch that we have to allow storing extra data in dire=
-ctory entries.
->
-> Cheers, Andreas
->
->
->
->
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If you wrote 500MB to a swap file in ext4 using dd, why are you sure
+ext4 didn't write 500MB of data to the disk?  In fact, this would
+imply to me that that your "host writes" shouldn't be trusted.
+
+> I noticed that Intel's Solid State Drive Toolbox software (running in
+> Windows) gives the amount of Host Lifetime Writes that equales to
+> S.M.A.R.T attribute 225 (Load_Cycle_Count) multiplied with 32MB.
+> That's the way I track it in Linux.
+
+According to the S.M.A.R.T startd, Load_cycle_count is supposed to
+mean the number of times the platter has spun up and spin down.  It's
+not clear what it means for SDD's, so it may be that they have reused
+it for some other purpose.  However, it would be surprising to me that
+it was just host lifetime writes divided by 32MB.  It may be that you
+have noticed this correlation in Windows because Windows is very
+"chunky" in how it does its writes.
+
+However, if you write 500MB to a file in ext4 using dd, and ext4's
+lifetime_write_kbytes in /sysfs went up by 500MB, but the
+Load_Cycle_Count attribute did not go up, then I would deduce from
+that that your interpretation of Load_Cycle_Count is probably not
+correct...
+
+					- Ted
