@@ -1,81 +1,109 @@
-From: tytso@mit.edu
+From: Nebojsa Trpkovic <trx.lists@gmail.com>
 Subject: Re: Ext4 on SSD Intel X25-M
-Date: Tue, 29 Jun 2010 09:56:44 -0400
-Message-ID: <20100629135644.GE6094@thunk.org>
-References: <4C278EC2.1080903@gmail.com>
+Date: Tue, 29 Jun 2010 16:35:46 +0200
+Message-ID: <4C2A04C2.7040300@gmail.com>
+References: <4C278EC2.1080903@gmail.com> <20100629135644.GE6094@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Nebojsa Trpkovic <trx.lists@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39558 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756047Ab0F2N4q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jun 2010 09:56:46 -0400
-Content-Disposition: inline
-In-Reply-To: <4C278EC2.1080903@gmail.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:61274 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756151Ab0F2Of4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jun 2010 10:35:56 -0400
+Received: by fxm14 with SMTP id 14so1420782fxm.19
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jun 2010 07:35:53 -0700 (PDT)
+In-Reply-To: <20100629135644.GE6094@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 27, 2010 at 07:47:46PM +0200, Nebojsa Trpkovic wrote:
-> I've noticed that there is a difference between
-> /sys/fs/ext4/sdXX/lifetime_write_kbytes
-> and host writes read from SSD itself.
+> On 06/29/10 15:56, tytso@mit.edu wrote:
+> On Sun, Jun 27, 2010 at 07:47:46PM +0200, Nebojsa Trpkovic wrote:
+>> My best guess is that host itself uses a lot of optimisation to reduce
+>> writing to NAND itself.
 > 
-> In normal desktop operation "host writes" counter on SSD increases at
-> roughly ~2/3 compared to lifetime_write_kbytes.
+> Possible, although if the counter is defined as "host writes", that
+> should be before the NAND writes, since "host writes" would expect
+> means the actual write commands coming from the host -- i.e., coming
+> incoming SATA write commands.
 
-How are you measuring the "host writes" counter from the SSD?
+That's true. Maybe Intel gave wrong name to that variable, as they are
+trying to keep track of NAND wear, not SATA write commands. Then again,
+maybe it's just amount of SATA writes.
 
-> My best guess is that host itself uses a lot of optimisation to reduce
-> writing to NAND itself.
+>> Besides that, I've noticed that my commit=100 mount option helps also.
+>> Changing (just for testing) to something realy big, like commit=9000,
+>> gave even further improvement, but not worth staying with risk of losing
+>> (that much) data. It seems that ext4 writes a lot to filesystem, but
+>> many of those writes are overwrites. If we flush them to host just once
+>> in 100 seconds, we're getting a lot of saving.
+> 
+> What metric are you using when you say that this "helps"?  The ext4
+> measurement, the SSD counter which you are using, or both?
 
-Possible, although if the counter is defined as "host writes", that
-should be before the NAND writes, since "host writes" would expect
-means the actual write commands coming from the host -- i.e., coming
-incoming SATA write commands.
+I've made graph with rrdtool to track both lifetime_write_kbytes and
+host writes from SSD. It looks like this:
+http://img130.imageshack.us/img130/6905/systemg29year.png
+with lifetime_writes_kbytes decreasing on unclean shutdown.
+"host writes" counter read from SSD starts at bigger value because I've
+done some testing with SSD before I've made sda1 and formated it.
+Since then, trend is quite obvious. Differences in line slopes are due
+different type of usage from time to time.
 
-> Besides that, I've noticed that my commit=100 mount option helps also.
-> Changing (just for testing) to something realy big, like commit=9000,
-> gave even further improvement, but not worth staying with risk of losing
-> (that much) data. It seems that ext4 writes a lot to filesystem, but
-> many of those writes are overwrites. If we flush them to host just once
-> in 100 seconds, we're getting a lot of saving.
+>> As I wanted to make even my swap TRIMable, I've put it in the file on
+>> ext4 instead of separate partition. I've made it using dd with seek=500
+>> bs=1M options. ext4's lifetime_write_kbytes increased by 500MB, and host
+>> writes did not incrase at all, even after 100 seconds. Ok, I know that
+>> ext4 did not write 500MB of data to filesystem, but this is one more
+>> thing why one should not trust lifetime_write_kbytes.
+> 
+>> So, the moral of my story would be not to trust lifetime_write_kbytes,
+>> but to read host writes from SSD.
+> 
+> If you wrote 500MB to a swap file in ext4 using dd, why are you sure
+> ext4 didn't write 500MB of data to the disk?  In fact, this would
+> imply to me that that your "host writes" shouldn't be trusted.
 
-What metric are you using when you say that this "helps"?  The ext4
-measurement, the SSD counter which you are using, or both?
+I've used dd with bs=1M, seek=500 and count=1 option, making file of
+500MB but writting just last megabyte of it to avoid unnecessary SSD
+writes during swap-file cration.
 
-> As I wanted to make even my swap TRIMable, I've put it in the file on
-> ext4 instead of separate partition. I've made it using dd with seek=500
-> bs=1M options. ext4's lifetime_write_kbytes increased by 500MB, and host
-> writes did not incrase at all, even after 100 seconds. Ok, I know that
-> ext4 did not write 500MB of data to filesystem, but this is one more
-> thing why one should not trust lifetime_write_kbytes.
+>> I noticed that Intel's Solid State Drive Toolbox software (running in
+>> Windows) gives the amount of Host Lifetime Writes that equales to
+>> S.M.A.R.T attribute 225 (Load_Cycle_Count) multiplied with 32MB.
+>> That's the way I track it in Linux.
+> 
+> According to the S.M.A.R.T startd, Load_cycle_count is supposed to
+> mean the number of times the platter has spun up and spin down.  It's
+> not clear what it means for SDD's, so it may be that they have reused
+> it for some other purpose.  However, it would be surprising to me that
+> it was just host lifetime writes divided by 32MB.  It may be that you
+> have noticed this correlation in Windows because Windows is very
+> "chunky" in how it does its writes.
 
-> So, the moral of my story would be not to trust lifetime_write_kbytes,
-> but to read host writes from SSD.
+I've found out about that S.M.A.R.T value by constant comparing of "host
+writes" that I see in Intel's SSD Toolbox and my calculated graph of
+"host writes" (32MB * SMART value 225).
+Everytime I reboot my box and boot Windows 7 residing on external HDD, I
+start Intel SSD Toolbox that gives me "host writes" amount using nice
+looking GUI. Whenever I rebooted in Windows, I've seen those values to
+match. I guess that Intel just missuses S.M.A.R.T. value not needed for
+theier SSD violating S.M.A.R.T. standard, but at least, I can get that
+info in Linux without Intel SSD toolbox.
 
-If you wrote 500MB to a swap file in ext4 using dd, why are you sure
-ext4 didn't write 500MB of data to the disk?  In fact, this would
-imply to me that that your "host writes" shouldn't be trusted.
+> However, if you write 500MB to a file in ext4 using dd, and ext4's
+> lifetime_write_kbytes in /sysfs went up by 500MB, but the
+> Load_Cycle_Count attribute did not go up, then I would deduce from
+> that that your interpretation of Load_Cycle_Count is probably not
+> correct...
 
-> I noticed that Intel's Solid State Drive Toolbox software (running in
-> Windows) gives the amount of Host Lifetime Writes that equales to
-> S.M.A.R.T attribute 225 (Load_Cycle_Count) multiplied with 32MB.
-> That's the way I track it in Linux.
+I've explained this before. Maybe I'm wrong, but in my opinion
 
-According to the S.M.A.R.T startd, Load_cycle_count is supposed to
-mean the number of times the platter has spun up and spin down.  It's
-not clear what it means for SDD's, so it may be that they have reused
-it for some other purpose.  However, it would be surprising to me that
-it was just host lifetime writes divided by 32MB.  It may be that you
-have noticed this correlation in Windows because Windows is very
-"chunky" in how it does its writes.
+dd if=/dev/zero of=somefile bs=1M seek=500 count=1
 
-However, if you write 500MB to a file in ext4 using dd, and ext4's
-lifetime_write_kbytes in /sysfs went up by 500MB, but the
-Load_Cycle_Count attribute did not go up, then I would deduce from
-that that your interpretation of Load_Cycle_Count is probably not
-correct...
+should make 500MB file with just 1MB writen to disk. Even df should not
+register absence of 500MB of free space.
 
-					- Ted
+Nebojsa
