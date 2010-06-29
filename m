@@ -1,109 +1,71 @@
-From: Nebojsa Trpkovic <trx.lists@gmail.com>
-Subject: Re: Ext4 on SSD Intel X25-M
-Date: Tue, 29 Jun 2010 16:35:46 +0200
-Message-ID: <4C2A04C2.7040300@gmail.com>
-References: <4C278EC2.1080903@gmail.com> <20100629135644.GE6094@thunk.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 0/3 v5][RFC] ext3/4: enhance fsync performance when using CFQ
+Date: Tue, 29 Jun 2010 10:56:15 -0400
+Message-ID: <x49wrthlwfk.fsf@segfault.boston.devel.redhat.com>
+References: <1277242502-9047-1-git-send-email-jmoyer@redhat.com>
+	<4C21D442.8080703@oracle.com> <4C22F316.3080009@oracle.com>
+	<x49k4pk60ye.fsf@segfault.boston.devel.redhat.com>
+	<4C284419.3000905@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:61274 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756151Ab0F2Of4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jun 2010 10:35:56 -0400
-Received: by fxm14 with SMTP id 14so1420782fxm.19
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jun 2010 07:35:53 -0700 (PDT)
-In-Reply-To: <20100629135644.GE6094@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, vgoyal@redhat.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Joel Becker <joel.becker@oracle.com>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	"ocfs2-devel\@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
+To: Tao Ma <tao.ma@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <4C284419.3000905@oracle.com> (Tao Ma's message of "Mon, 28 Jun
+	2010 14:41:29 +0800")
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-> On 06/29/10 15:56, tytso@mit.edu wrote:
-> On Sun, Jun 27, 2010 at 07:47:46PM +0200, Nebojsa Trpkovic wrote:
->> My best guess is that host itself uses a lot of optimisation to reduce
->> writing to NAND itself.
-> 
-> Possible, although if the counter is defined as "host writes", that
-> should be before the NAND writes, since "host writes" would expect
-> means the actual write commands coming from the host -- i.e., coming
-> incoming SATA write commands.
+Tao Ma <tao.ma@oracle.com> writes:
 
-That's true. Maybe Intel gave wrong name to that variable, as they are
-trying to keep track of NAND wear, not SATA write commands. Then again,
-maybe it's just amount of SATA writes.
+> Hi Jeff,
+>
+> On 06/27/2010 09:48 PM, Jeff Moyer wrote:
+>> Tao Ma<tao.ma@oracle.com>  writes:
+>>> I am sorry to say that the patch make jbd2 locked up when I tested
+>>> fs_mark using ocfs2.
+>>> I have attached the log from my netconsole server. After I reverted
+>>> the patch [3/3], the box works again.
+>>
+>> I can't reproduce this, unfortunately.  Also, when building with the
+>> .config you sent me, the disassembly doesn't line up with the stack
+>> trace you posted.
+>>
+>> I'm not sure why yielding the queue would cause a deadlock.  The only
+>> explanation I can come up with is that I/O is not being issued.  I'm
+>> assuming that no other I/O will be completed to the file system in
+>> question.  Is that right?  Could you send along the output from sysrq-t?
+> yes, I just mounted it and begin the test, so there should be no
+> outstanding I/O. So do you need me to setup another disk for test?
+> I have attached the sysrq output in sysrq.log. please check.
 
->> Besides that, I've noticed that my commit=100 mount option helps also.
->> Changing (just for testing) to something realy big, like commit=9000,
->> gave even further improvement, but not worth staying with risk of losing
->> (that much) data. It seems that ext4 writes a lot to filesystem, but
->> many of those writes are overwrites. If we flush them to host just once
->> in 100 seconds, we're getting a lot of saving.
-> 
-> What metric are you using when you say that this "helps"?  The ext4
-> measurement, the SSD counter which you are using, or both?
+Well, if it doesn't take long to reproduce, then it might be helpful to
+see a blktrace of the run.  However, it might also just be worth waiting
+for the next version of the patch to see if that fixes your issue.
 
-I've made graph with rrdtool to track both lifetime_write_kbytes and
-host writes from SSD. It looks like this:
-http://img130.imageshack.us/img130/6905/systemg29year.png
-with lifetime_writes_kbytes decreasing on unclean shutdown.
-"host writes" counter read from SSD starts at bigger value because I've
-done some testing with SSD before I've made sda1 and formated it.
-Since then, trend is quite obvious. Differences in line slopes are due
-different type of usage from time to time.
+> btw, I also met with a NULL pointer deference in cfq_yield. I have
+> attached the null.log also. This seems to be related to the previous
+> deadlock and happens when I try to remount the same volume after
+> reboot and ocfs2 try to do some recovery.
 
->> As I wanted to make even my swap TRIMable, I've put it in the file on
->> ext4 instead of separate partition. I've made it using dd with seek=500
->> bs=1M options. ext4's lifetime_write_kbytes increased by 500MB, and host
->> writes did not incrase at all, even after 100 seconds. Ok, I know that
->> ext4 did not write 500MB of data to filesystem, but this is one more
->> thing why one should not trust lifetime_write_kbytes.
-> 
->> So, the moral of my story would be not to trust lifetime_write_kbytes,
->> but to read host writes from SSD.
-> 
-> If you wrote 500MB to a swap file in ext4 using dd, why are you sure
-> ext4 didn't write 500MB of data to the disk?  In fact, this would
-> imply to me that that your "host writes" shouldn't be trusted.
+ Pid: 4130, comm: ocfs2_wq Not tainted 2.6.35-rc3+ #5 0MM599/OptiPlex 745                  
+ RIP: 0010:[<ffffffff82161537>] 
+  [<ffffffff82161537>] cfq_yield+0x5f/0x135 
+ RSP: 0018:ffff880123061c60  EFLAGS: 00010246 
+ RAX: 0000000000000000 RBX: ffff88012c2b5ea8 RCX: ffff88012c3a30d0 
 
-I've used dd with bs=1M, seek=500 and count=1 option, making file of
-500MB but writting just last megabyte of it to avoid unnecessary SSD
-writes during swap-file cration.
+ffffffff82161528:	e8 69 eb ff ff       	callq  ffffffff82160096 <cfq_cic_lookup>
+ffffffff8216152d:	49 89 c6             	mov    %rax,%r14
+ffffffff82161530:	48 8b 85 00 06 00 00 	mov    0x600(%rbp),%rax
+ffffffff82161537:	f0 48 ff 00          	lock incq (%rax)
 
->> I noticed that Intel's Solid State Drive Toolbox software (running in
->> Windows) gives the amount of Host Lifetime Writes that equales to
->> S.M.A.R.T attribute 225 (Load_Cycle_Count) multiplied with 32MB.
->> That's the way I track it in Linux.
-> 
-> According to the S.M.A.R.T startd, Load_cycle_count is supposed to
-> mean the number of times the platter has spun up and spin down.  It's
-> not clear what it means for SDD's, so it may be that they have reused
-> it for some other purpose.  However, it would be surprising to me that
-> it was just host lifetime writes divided by 32MB.  It may be that you
-> have noticed this correlation in Windows because Windows is very
-> "chunky" in how it does its writes.
+I'm pretty sure that's a NULL pointer deref of the tsk->iocontext that
+was passed into the yield function.  I've since fixed that, so your
+recovery code should be safe in the newest version (which I've not yet
+posted).
 
-I've found out about that S.M.A.R.T value by constant comparing of "host
-writes" that I see in Intel's SSD Toolbox and my calculated graph of
-"host writes" (32MB * SMART value 225).
-Everytime I reboot my box and boot Windows 7 residing on external HDD, I
-start Intel SSD Toolbox that gives me "host writes" amount using nice
-looking GUI. Whenever I rebooted in Windows, I've seen those values to
-match. I guess that Intel just missuses S.M.A.R.T. value not needed for
-theier SSD violating S.M.A.R.T. standard, but at least, I can get that
-info in Linux without Intel SSD toolbox.
-
-> However, if you write 500MB to a file in ext4 using dd, and ext4's
-> lifetime_write_kbytes in /sysfs went up by 500MB, but the
-> Load_Cycle_Count attribute did not go up, then I would deduce from
-> that that your interpretation of Load_Cycle_Count is probably not
-> correct...
-
-I've explained this before. Maybe I'm wrong, but in my opinion
-
-dd if=/dev/zero of=somefile bs=1M seek=500 count=1
-
-should make 500MB file with just 1MB writen to disk. Even df should not
-register absence of 500MB of free space.
-
-Nebojsa
+Cheers,
+Jeff
