@@ -1,45 +1,40 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: lifetime_write_kbytes isn't preserved during unclean shutdown
-Date: Tue, 29 Jun 2010 23:46:57 -0600
-Message-ID: <519E1F03-CD95-41F4-B2EE-93983A4CC08A@dilger.ca>
-References: <4C2782A7.7040301@gmail.com> <20100628195739.GB6094@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Nebojsa Trpkovic <trx.lists@gmail.com>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:31382 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750866Ab0F3Fq6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2010 01:46:58 -0400
-In-Reply-To: <20100628195739.GB6094@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Subject: Re: [PATCH 3/3] Add a pair of system calls to make extended file stats available
+Date: Wed, 30 Jun 2010 10:20:53 +0200
+Message-ID: <201006301020.53978.arnd@arndb.de>
+References: <20100629200259.23196.81509.stgit@warthog.procyon.org.uk> <20100629200315.23196.68742.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: Text/Plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	sjayaraman-l3A5Bk7waGM@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20100629200315.23196.68742.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2010-06-28, at 13:57, tytso@mit.edu wrote:
-> On Sun, Jun 27, 2010 at 06:56:07PM +0200, Nebojsa Trpkovic wrote:
->> I've noticed that lifetime_write_kbytes isn't preserved during unclean
->> shutdown.
+On Tuesday 29 June 2010 22:03:15 David Howells wrote:
+>         ssize_t ret = xstat(int dfd,
+>                             const char *filename,
+>                             unsigned atflag,
+>                             struct xstat *buffer,
+>                             size_t buflen);
 > 
-> Yes, right now we are only updating the superblock's lifetime write
-> kbytes at unmount time.  It should be possible to do a better job; but
-> I don't want to increase writes to the disk just to keep the
-> s_lifetime value up-to-date.  So what we should probably do is update
-> it when we are going to be updating the superblock anyway (i.e., when
-> we update the orphaned inode linked list)
+>         ssize_t ret = fxstat(int fd,
+>                              struct xstat *buffer,
+>                              size_t buflen);
+> 
+> 
+> The dfd, filename, atflag and fd parameters indicate the file to query.  There
+> is no equivalent of lstat() as that can be emulated with xstat(), passing 0
+> instead of AT_SYMLINK_NOFOLLOW as atflag.
 
-Could we also update the superblock blocks/inodes free counters at that time as well?
+Do we actually need the fxstat variant? IIRC, some *at syscalls just
+operate on dfd when filename==NULL, which would be trivial to do here.
 
-> and maybe on some periodic basis (say once an hour) otherwise.
-
-I don't think that is the right thing to do, unless the filesystem is still active for other reasons.  We don't necessarily want to spin up the disks every hour if the filesystem is inactive, I'd rather write out the superblock for an existing transaction while it is still active than generate a new transaction for no particular reason.
-
-One way to do this would be to have a JBD transaction pre-commit callback, and if the superblock has not been written in N seconds then it can be added as part of that transaction (if it will fit).  If it is already in the transaction it can be updated via the existing bh callbacks that OCFS2 is using.
-
-Cheers, Andreas
-
-
-
-
-
+	Arnd
