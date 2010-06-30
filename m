@@ -1,64 +1,34 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: Re: [PATCH] ext2:delete misused ext2_free_blocks
-Date: Thu, 1 Jul 2010 00:57:54 +0200
-Message-ID: <20100630225754.GT19184@bicker>
-References: <1277893287-25916-1-git-send-email-wppan@redflag-linux.com>
+From: "H. Peter Anvin" <hpa@zytor.com>
+Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
+Date: Wed, 30 Jun 2010 16:27:10 -0700
+Message-ID: <4C2BD2CE.1090201@zytor.com>
+References: <FB78A152-53D3-4000-ABDB-9D6051ECB887@dilger.ca> <52423201-3DF9-4045-8E8B-FAA915053D56@dilger.ca> <20100630011656.18960.4255.stgit@warthog.procyon.org.uk> <26505.1277899544@redhat.com> <30875.1277939713@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, hch@lst.de, viro@zeniv.linux.org.uk, npiggin@suse.de,
-	jblunck@suse.de, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: Peter Pan <wppan@redflag-linux.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>, viro@ZenIV.linux.org.uk,
+	smfrench@gmail.com, jlayton@redhat.com, mcao@us.ibm.com,
+	aneesh.kumar@linux.vnet.ibm.com, linux-cifs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	samba-technical@lists.samba.org, sjayaraman@suse.de,
+	linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:38518 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754477Ab0F3W7q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2010 18:59:46 -0400
-Content-Disposition: inline
-In-Reply-To: <1277893287-25916-1-git-send-email-wppan@redflag-linux.com>
+Received: from terminus.zytor.com ([198.137.202.10]:49924 "EHLO mail.zytor.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752766Ab0F3X2H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jun 2010 19:28:07 -0400
+In-Reply-To: <30875.1277939713@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 30, 2010 at 06:21:27PM +0800, Peter Pan wrote:
-> if ext2_new_blocks returns error, no blocks need to be freed.
+On 06/30/2010 04:15 PM, David Howells wrote:
+> 
+> gcc for 32-bit platforms can handle 64-bit numbers.  gcc doesn't handle 128-bit
+> numbers.
 > 
 
-Hi Peter,
+gcc for 64-bit platforms does handle 128-bit numbers, but I don't think
+it does on 32-bit platforms.
 
-Your patch isn't right.  The original code is OK as is.
-
-Are you seeing a kernel panic?  Perhaps we can help you fix it.
-
-regards,
-dan carpenter
-
-> Signed-off-by: Peter Pan <wppan@redflag-linux.com>
-> ---
->  fs/ext2/inode.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> index 3675088..f858847 100644
-> --- a/fs/ext2/inode.c
-> +++ b/fs/ext2/inode.c
-> @@ -385,6 +385,8 @@ static int ext2_alloc_blocks(struct inode *inode,
->  	ext2_fsblk_t current_block = 0;
->  	int ret = 0;
->  
-> +	*err = -ENOSPC;
-> +
->  	/*
->  	 * Here we try to allocate the requested multiple blocks at once,
->  	 * on a best-effort basis.
-> @@ -421,8 +423,6 @@ static int ext2_alloc_blocks(struct inode *inode,
->  	*err = 0;
->  	return ret;
->  failed_out:
-> -	for (i = 0; i <index; i++)
-> -		ext2_free_blocks(inode, new_blocks[i], 1);
->  	return ret;
->  }
->  
-> -- 
-> 1.6.6
+	-hpa
