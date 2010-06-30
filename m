@@ -1,44 +1,41 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Subject: Re: [PATCH 3/3] Add a pair of system calls to make extended file stats available [ver #2]
-Date: Wed, 30 Jun 2010 03:45:59 -0600
-Message-ID: <B82FC7EE-93D2-4D86-906D-5D6AFA502709@dilger.ca>
-References: <20100630011656.18960.4255.stgit@warthog.procyon.org.uk> <20100630011712.18960.3723.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: viro@ZenIV.linux.org.uk, smfrench@gmail.com, jlayton@redhat.com,
-	mcao@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com,
-	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-	sjayaraman@suse.de, linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:24018 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752273Ab0F3JqB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2010 05:46:01 -0400
-In-Reply-To: <20100630011712.18960.3723.stgit@warthog.procyon.org.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Date: Wed, 30 Jun 2010 10:47:26 +0100
+Message-ID: <29130.1277891246@redhat.com>
+References: <CE3451EE-F8B2-47EF-AC1C-4EEEBE68B30F@dilger.ca> <20100630011656.18960.4255.stgit@warthog.procyon.org.uk> <20100630011712.18960.3723.stgit@warthog.procyon.org.uk> <1277862536.9326.3.camel@heimdal.trondhjem.org>
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Trond Myklebust <trond.myklebust-41N18TsMXrtuMpJDpNschA@public.gmane.org>,
+	viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org, smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	sjayaraman-l3A5Bk7waGM@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CE3451EE-F8B2-47EF-AC1C-4EEEBE68B30F-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2010-06-29, at 19:17, David Howells wrote:
-> int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
-> 		 struct kstat *stat)
-> {
-> +	if (S_ISDIR(inode->i_mode)) {
-> +		stat->result_flags |= XSTAT_QUERY_DATA_VERSION;
-> +		stat->data_version = inode->i_version;
-> +	}
+Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org> wrote:
 
-Note that when ext4 is mounted with the "i_version" option that the i_version field is also updated on regular files, for use by NFSv4.  See, for example, ext4_mark_iloc_dirty().
+> > Yes, but could we please also add a flag that allows you to specify that
+> > the kernel _must_ provide up to date attributes.
+> 
+> To my reading, if the query_flags are set in the input buffer, then the
+> attributes MUST be fetched.  If they are unset, then they MAY be fetched,
+> and the corresponding query_flags will be set in the return buffer.  If the
+> query_flags are not set in the return buffer then I assume the output values
+> are undefined.
 
-I had a hard time finding this, even though I knew it was there somewhere, because it isn't modifying "i_version" directly, but rather calling a helper function inode_inc_iversion().
+I think Trond may have a point, looking at nfs_getattr().
 
-It probably makes sense to always return i_version, unless it is 0.
+There can be three levels:
 
-Cheers, Andreas
+ (1) Don't check with the server, just go with what we've got in the cache if
+     it's available.  Results returned may be approximate.
 
+ (2) Check with the server if the cached attributes are out of date or if
+     something is requested that we don't keep in RAM.
 
+ (3) Check with the server anyway.
 
-
-
+David
