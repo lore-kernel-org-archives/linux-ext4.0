@@ -1,59 +1,47 @@
-From: tytso@mit.edu
-Subject: Re: lifetime_write_kbytes isn't preserved during unclean shutdown
-Date: Wed, 30 Jun 2010 09:31:08 -0400
-Message-ID: <20100630133108.GD1333@thunk.org>
-References: <4C2782A7.7040301@gmail.com>
- <20100628195739.GB6094@thunk.org>
- <519E1F03-CD95-41F4-B2EE-93983A4CC08A@dilger.ca>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
+Date: Wed, 30 Jun 2010 15:31:39 +0200
+Message-ID: <201006301531.39365.arnd@arndb.de>
+References: <52423201-3DF9-4045-8E8B-FAA915053D56@dilger.ca> <26505.1277899544@redhat.com> <20100630121127.GA22713@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nebojsa Trpkovic <trx.lists@gmail.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: David Howells <dhowells@redhat.com>,
+	Andreas Dilger <adilger@dilger.ca>, viro@zeniv.linux.org.uk,
+	smfrench@gmail.com, jlayton@redhat.com, mcao@us.ibm.com,
+	aneesh.kumar@linux.vnet.ibm.com, linux-cifs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	samba-technical@lists.samba.org, sjayaraman@suse.de,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33206 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752495Ab0F3NbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jun 2010 09:31:12 -0400
-Content-Disposition: inline
-In-Reply-To: <519E1F03-CD95-41F4-B2EE-93983A4CC08A@dilger.ca>
+Received: from moutng.kundenserver.de ([212.227.17.8]:62562 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752495Ab0F3Nbt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2010 09:31:49 -0400
+In-Reply-To: <20100630121127.GA22713@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 29, 2010 at 11:46:57PM -0600, Andreas Dilger wrote:
-> On 2010-06-28, at 13:57, tytso@mit.edu wrote:
-> > On Sun, Jun 27, 2010 at 06:56:07PM +0200, Nebojsa Trpkovic wrote:
-> >> I've noticed that lifetime_write_kbytes isn't preserved during unclean
-> >> shutdown.
-> > 
-> > Yes, right now we are only updating the superblock's lifetime write
-> > kbytes at unmount time.  It should be possible to do a better job; but
-> > I don't want to increase writes to the disk just to keep the
-> > s_lifetime value up-to-date.  So what we should probably do is update
-> > it when we are going to be updating the superblock anyway (i.e., when
-> > we update the orphaned inode linked list)
-> 
-> Could we also update the superblock blocks/inodes free counters at
-> that time as well?
+On Wednesday 30 June 2010, Christoph Hellwig wrote:
+> The cost of adding a syscall is much smaller
 
-Remind me again why you wanted it.  You had some use case where you
-wanted to be able to read the file system's block device directly and
-have vaguely correct free inode/block numbers in the superblock?
+Ack. No need for different struct layout version since we
+can add another stat syscall every ten years.
 
-> I don't think that is the right thing to do, unless the filesystem
-> is still active for other reasons.  We don't necessarily want to
-> spin up the disks every hour if the filesystem is inactive, I'd
-> rather write out the superblock for an existing transaction while it
-> is still active than generate a new transaction for no particular
-> reason.
-> 
-> One way to do this would be to have a JBD transaction pre-commit
-> callback, and if the superblock has not been written in N seconds
-> then it can be added as part of that transaction (if it will fit).
-> If it is already in the transaction it can be updated via the
-> existing bh callbacks that OCFS2 is using.
+> So adding a few fields of padding at the end for new members is fine,
+> but doing overkill of versioning including queries for supported
+> versions doesn't.
 
-That seems reasonable way of doing things.  I think N seconds should
-be in the region of every 5-60 minutes, though.  And yes, absolutely
-we wouldn't want to spin up the disk if there was no other activity.
+The ability to request and return a subset of the fields seems useful
+regardless and it can be used to avoid the need for this kind of padding.
+A sufficient amount of padding wouldn't be too bad either, but I guess
+we should not have both the padding _and_ the option for extending the
+structure after the padding.
 
-   	    	    	    	- Ted
+With the padding, the 'size' argument can go away, though I'd argue that
+even without the padding we can safely add extra fixed-length fields
+when needed and not need a size argument.
+
+	Arnd
