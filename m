@@ -1,62 +1,59 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [RFC] ext4: Don't send extra barrier during fsync if there are
- no dirty pages.
-Date: Wed, 30 Jun 2010 09:21:04 -0400
-Message-ID: <4C2B44C0.3090002@redhat.com>
-References: <20100429235102.GC15607@tux1.beaverton.ibm.com> <1272934667.2544.3.camel@mingming-laptop> <4BE02C45.6010608@redhat.com> <20100504154553.GA22777@infradead.org> <20100630124832.GA1333@thunk.org>
+From: tytso@mit.edu
+Subject: Re: lifetime_write_kbytes isn't preserved during unclean shutdown
+Date: Wed, 30 Jun 2010 09:31:08 -0400
+Message-ID: <20100630133108.GD1333@thunk.org>
+References: <4C2782A7.7040301@gmail.com>
+ <20100628195739.GB6094@thunk.org>
+ <519E1F03-CD95-41F4-B2EE-93983A4CC08A@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: tytso@mit.edu, Christoph Hellwig <hch@infradead.org>,
-	Mingming Cao <cmm@us.ibm.com>, djwong@us.ibm.com,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel
+Content-Type: text/plain; charset=us-ascii
+Cc: Nebojsa Trpkovic <trx.lists@gmail.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40505 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:33206 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755287Ab0F3NVM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jun 2010 09:21:12 -0400
-In-Reply-To: <20100630124832.GA1333@thunk.org>
+	id S1752495Ab0F3NbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jun 2010 09:31:12 -0400
+Content-Disposition: inline
+In-Reply-To: <519E1F03-CD95-41F4-B2EE-93983A4CC08A@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/30/2010 08:48 AM, tytso@mit.edu wrote:
-> On Tue, May 04, 2010 at 11:45:53AM -0400, Christoph Hellwig wrote:
->> On Tue, May 04, 2010 at 10:16:37AM -0400, Ric Wheeler wrote:
->>> Checking per inode is actually incorrect - we do not want to short cut
->>> the need to flush the target storage device's write cache just because a
->>> specific file has no dirty pages.  If a power hit occurs, having sent
->>> the pages from to the storage device is not sufficient.
->>
->> As long as we're only using the information for fsync doing it per inode
->> is the correct thing.  We only want to flush the cache if the inode
->> (data or metadata) is dirty in some way.  Note that this includes writes
->> via O_DIRECT which are quite different to track - I've not found the
->> original patch in my mbox so I can't comment if this is done right.
->
-> I agree.
->
-> I wonder if it's worthwhile to think about a new system call which
-> allows users to provide an array of fd's which are collectively should
-> be fsync'ed out at the same time.  Otherwise, we end up issuing
-> multiple barrier operations in cases where the application needs to
-> do:
->
-> 	fsync(control_fd);
-> 	fsync(data_fd);
->
-> 						- Ted
+On Tue, Jun 29, 2010 at 11:46:57PM -0600, Andreas Dilger wrote:
+> On 2010-06-28, at 13:57, tytso@mit.edu wrote:
+> > On Sun, Jun 27, 2010 at 06:56:07PM +0200, Nebojsa Trpkovic wrote:
+> >> I've noticed that lifetime_write_kbytes isn't preserved during unclean
+> >> shutdown.
+> > 
+> > Yes, right now we are only updating the superblock's lifetime write
+> > kbytes at unmount time.  It should be possible to do a better job; but
+> > I don't want to increase writes to the disk just to keep the
+> > s_lifetime value up-to-date.  So what we should probably do is update
+> > it when we are going to be updating the superblock anyway (i.e., when
+> > we update the orphaned inode linked list)
+> 
+> Could we also update the superblock blocks/inodes free counters at
+> that time as well?
 
-The problem with not issuing a cache flush when you have dirty meta data or data 
-is that it does not have any tie to the state of the volatile write cache of the 
-target storage device.
+Remind me again why you wanted it.  You had some use case where you
+wanted to be able to read the file system's block device directly and
+have vaguely correct free inode/block numbers in the superblock?
 
-We do need to have fsync() issue the cache flush command even when there is no 
-dirty state for the inode in our local page cache in order to flush data that 
-was pushed out/cleaned and not followed by a flush.
+> I don't think that is the right thing to do, unless the filesystem
+> is still active for other reasons.  We don't necessarily want to
+> spin up the disks every hour if the filesystem is inactive, I'd
+> rather write out the superblock for an existing transaction while it
+> is still active than generate a new transaction for no particular
+> reason.
+> 
+> One way to do this would be to have a JBD transaction pre-commit
+> callback, and if the superblock has not been written in N seconds
+> then it can be added as part of that transaction (if it will fit).
+> If it is already in the transaction it can be updated via the
+> existing bh callbacks that OCFS2 is using.
 
-It would definitely be *very* useful to have an array of fd's that all need 
-fsync()'ed at home time....
+That seems reasonable way of doing things.  I think N seconds should
+be in the region of every 5-60 minutes, though.  And yes, absolutely
+we wouldn't want to spin up the disk if there was no other activity.
 
-Ric
-
+   	    	    	    	- Ted
