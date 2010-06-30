@@ -1,136 +1,45 @@
-From: Lachlan McIlroy <lmcilroy@redhat.com>
-Subject: Re: [PATCH V2] e2fsck: fix floating point precision error
-Date: Wed, 30 Jun 2010 01:15:23 -0400 (EDT)
-Message-ID: <830707684.485431277874923676.JavaMail.root@zmail05.collab.prod.int.phx2.redhat.com>
-References: <1018916550.485351277874834611.JavaMail.root@zmail05.collab.prod.int.phx2.redhat.com>
-Reply-To: Lachlan McIlroy <lmcilroy@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Lachlan McIlroy <lmcilroy@redhat.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: lifetime_write_kbytes isn't preserved during unclean shutdown
+Date: Tue, 29 Jun 2010 23:46:57 -0600
+Message-ID: <519E1F03-CD95-41F4-B2EE-93983A4CC08A@dilger.ca>
+References: <4C2782A7.7040301@gmail.com> <20100628195739.GB6094@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1078)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Nebojsa Trpkovic <trx.lists@gmail.com>, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx4-phx2.redhat.com ([209.132.183.25]:35576 "EHLO
-	mx02.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750869Ab0F3FPY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jun 2010 01:15:24 -0400
-In-Reply-To: <1018916550.485351277874834611.JavaMail.root@zmail05.collab.prod.int.phx2.redhat.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:31382 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750866Ab0F3Fq6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2010 01:46:58 -0400
+In-Reply-To: <20100628195739.GB6094@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix floating point precision error in e2fsck.
-
-Commit 641b66bc7ee0a880b0eb0125dff5f8ed8dd5a160 fixed a floating
-point precision error which can result in a search algorithm looping
-forever.  It can also result in an array index being out of bounds
-and causing a segfault.  Here are two more cases that need to be
-fixed.  I've just used the same fix from the that commit.
-
-Version 2: this time it's a patch against latest git, sorry for that.
-
-Signed-off-by: Lachlan McIlroy <lmcilroy@redhat.com>
-
-
-diff --git a/e2fsck/ea_refcount.c b/e2fsck/ea_refcount.c
-index 39f2db7..b10cfff 100644
---- a/e2fsck/ea_refcount.c
-+++ b/e2fsck/ea_refcount.c
-@@ -196,9 +196,14 @@ retry:
- 				range = 0;
- 			else if (blk > highval)
- 				range = 1;
--			else
-+			else {
- 				range = ((float) (blk - lowval)) /
- 					(highval - lowval);
-+				if (range > 0.9)
-+					range = 0.9;
-+				if (range < 0.1)
-+					range = 0.1;
-+			}
- 			mid = low + ((int) (range * (high-low)));
- 		}
- #endif
-diff --git a/resize/extent.c b/resize/extent.c
-index 0da8df6..94eb689 100644
---- a/resize/extent.c
-+++ b/resize/extent.c
-@@ -167,9 +167,14 @@ __u64 ext2fs_extent_translate(ext2_extent extent, __u64 old_loc)
- 				range = 0;
- 			else if (old_loc > highval)
- 				range = 1;
--			else
-+			else {
- 				range = ((float) (old_loc - lowval)) /
- 					(highval - lowval);
-+				if (range > 0.9)
-+					range = 0.9;
-+				if (range < 0.1)
-+					range = 0.1;
-+			}
- 			mid = low + ((__u64) (range * (high-low)));
- 		}
- #endif
-
------ "Lachlan McIlroy" <lmcilroy@redhat.com> wrote:
-
-> Fix floating point precision error in e2fsck.
+On 2010-06-28, at 13:57, tytso@mit.edu wrote:
+> On Sun, Jun 27, 2010 at 06:56:07PM +0200, Nebojsa Trpkovic wrote:
+>> I've noticed that lifetime_write_kbytes isn't preserved during unclean
+>> shutdown.
 > 
-> Commit 641b66bc7ee0a880b0eb0125dff5f8ed8dd5a160 fixed a floating
-> point precision error which can result in a search algorithm looping
-> forever.  It can also result in an array index being out of bounds
-> and causing a segfault.  Here are two more cases that need to be
-> fixed.  I've just used the same fix from the that commit.
-> 
-> diff -up e2fsprogs-1.39/e2fsck/ea_refcount.c.orig
-> e2fsprogs-1.39/e2fsck/ea_refcount.c
-> --- e2fsprogs-1.39/e2fsck/ea_refcount.c.orig	2010-06-30
-> 11:14:51.516239079 +1000
-> +++ e2fsprogs-1.39/e2fsck/ea_refcount.c	2010-06-30 11:22:22.277362222
-> +1000
-> @@ -193,9 +193,14 @@ retry:
->  				range = 0;
->  			else if (blk > highval)
->  				range = 1;
-> -			else 
-> +			else {
->  				range = ((float) (blk - lowval)) /
->  					(highval - lowval);
-> +				if (range > 0.9)
-> +					range = 0.9;
-> +				if (range < 0.1)
-> +					range = 0.1;
-> +			}
->  			mid = low + ((int) (range * (high-low)));
->  		}
->  #endif
-> diff -up e2fsprogs-1.39/resize/extent.c.orig
-> e2fsprogs-1.39/resize/extent.c
-> --- e2fsprogs-1.39/resize/extent.c.orig	2010-06-30 11:25:58.969188333
-> +1000
-> +++ e2fsprogs-1.39/resize/extent.c	2010-06-30 11:26:40.449327216
-> +1000
-> @@ -167,9 +167,14 @@ __u32 ext2fs_extent_translate(ext2_exten
->  				range = 0;
->  			else if (old_loc > highval)
->  				range = 1;
-> -			else 
-> +			else {
->  				range = ((float) (old_loc - lowval)) /
->  					(highval - lowval);
-> +				if (range > 0.9)
-> +					range = 0.9;
-> +				if (range < 0.1)
-> +					range = 0.1;
-> +			}
->  			mid = low + ((int) (range * (high-low)));
->  		}
->  #endif
-> 
-> Lachlan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Yes, right now we are only updating the superblock's lifetime write
+> kbytes at unmount time.  It should be possible to do a better job; but
+> I don't want to increase writes to the disk just to keep the
+> s_lifetime value up-to-date.  So what we should probably do is update
+> it when we are going to be updating the superblock anyway (i.e., when
+> we update the orphaned inode linked list)
+
+Could we also update the superblock blocks/inodes free counters at that time as well?
+
+> and maybe on some periodic basis (say once an hour) otherwise.
+
+I don't think that is the right thing to do, unless the filesystem is still active for other reasons.  We don't necessarily want to spin up the disks every hour if the filesystem is inactive, I'd rather write out the superblock for an existing transaction while it is still active than generate a new transaction for no particular reason.
+
+One way to do this would be to have a JBD transaction pre-commit callback, and if the superblock has not been written in N seconds then it can be added as part of that transaction (if it will fit).  If it is already in the transaction it can be updated via the existing bh callbacks that OCFS2 is using.
+
+Cheers, Andreas
+
+
+
+
+
