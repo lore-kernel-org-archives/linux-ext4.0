@@ -1,83 +1,35 @@
-From: Peter Pan <panweiping3@gmail.com>
-Subject: Re: [PATCH] ext2:delete misused ext2_free_blocks
-Date: Thu, 01 Jul 2010 09:56:41 +0800
-Message-ID: <4C2BF5D9.8040100__35905.7726491757$1277949724$gmane$org@gmail.com>
-References: <1277893287-25916-1-git-send-email-wppan@redflag-linux.com> <20100630225754.GT19184@bicker>
+From: "H. Peter Anvin" <hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
+Date: Wed, 30 Jun 2010 20:20:37 -0700
+Message-ID: <4C2C0985.2050104@zytor.com>
+References: <4C2BD2CE.1090201@zytor.com> <FB78A152-53D3-4000-ABDB-9D6051ECB887@dilger.ca> <52423201-3DF9-4045-8E8B-FAA915053D56@dilger.ca> <20100630011656.18960.4255.stgit@warthog.procyon.org.uk> <26505.1277899544@redhat.com> <30875.1277939713@redhat.com> <8331.1277943337@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-To: Dan Carpenter <error27@gmail.com>,
-	Peter Pan <wppan@redflag-linux.com>, jack@suse.cz, hch@lst.de,
-	viro@zeniv.linux.org.uk, npiggin@suse.de, jblunck@suse.de,
-	linux-fsdevel@vger.kernel.
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:38985 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751266Ab0GACBg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2010 22:01:36 -0400
-In-Reply-To: <20100630225754.GT19184@bicker>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org,
+	aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, sjayaraman-l3A5Bk7waGM@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <8331.1277943337-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 07/01/2010 06:57 AM, Dan Carpenter wrote:
-> On Wed, Jun 30, 2010 at 06:21:27PM +0800, Peter Pan wrote:
->    
->> if ext2_new_blocks returns error, no blocks need to be freed.
->>
->>      
-> Hi Peter,
->
-> Your patch isn't right.  The original code is OK as is.
->
-> Are you seeing a kernel panic?  Perhaps we can help you fix it.
->    
-Oh, I know that the original code is good now.
-I didn't see a kernel panic, thank you for your guide.
-> regards,
-> dan carpenter
->
->    
->> Signed-off-by: Peter Pan<wppan@redflag-linux.com>
->> ---
->>   fs/ext2/inode.c |    4 ++--
->>   1 files changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
->> index 3675088..f858847 100644
->> --- a/fs/ext2/inode.c
->> +++ b/fs/ext2/inode.c
->> @@ -385,6 +385,8 @@ static int ext2_alloc_blocks(struct inode *inode,
->>   	ext2_fsblk_t current_block = 0;
->>   	int ret = 0;
->>
->> +	*err = -ENOSPC;
->> +
->>   	/*
->>   	 * Here we try to allocate the requested multiple blocks at once,
->>   	 * on a best-effort basis.
->> @@ -421,8 +423,6 @@ static int ext2_alloc_blocks(struct inode *inode,
->>   	*err = 0;
->>   	return ret;
->>   failed_out:
->> -	for (i = 0; i<index; i++)
->> -		ext2_free_blocks(inode, new_blocks[i], 1);
->>   	return ret;
->>   }
->>
->> -- 
->> 1.6.6
->>      
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
->    
+On 06/30/2010 05:15 PM, David Howells wrote:
+> H. Peter Anvin <hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org> wrote:
+> 
+>> gcc for 64-bit platforms does handle 128-bit numbers, but I don't think
+>> it does on 32-bit platforms.
+> 
+> How do you specify them?  If I say "long long long" gcc moans that it can't
+> support it on x86_64.
+> 
 
-Regards
+__int128
 
 -- 
-Peter Pan
-Red Flag Software Co.,Ltd
-
+H. Peter Anvin, Intel Open Source Technology Center
+I work for Intel.  I don't speak on their behalf.
