@@ -1,30 +1,54 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
-Date: Thu, 01 Jul 2010 01:15:37 +0100
-Message-ID: <8331.1277943337@redhat.com>
-References: <4C2BD2CE.1090201@zytor.com> <FB78A152-53D3-4000-ABDB-9D6051ECB887@dilger.ca> <52423201-3DF9-4045-8E8B-FAA915053D56@dilger.ca> <20100630011656.18960.4255.stgit@warthog.procyon.org.uk> <26505.1277899544@redhat.com> <30875.1277939713@redhat.com>
-Cc: dhowells@redhat.com, Andreas Dilger <adilger@dilger.ca>,
-	viro@ZenIV.linux.org.uk, smfrench@gmail.com, jlayton@redhat.com,
-	mcao@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com,
-	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-	sjayaraman@suse.de, linux-ext4@vger.kernel.org
-To: "H. Peter Anvin" <hpa@zytor.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12542 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753391Ab0GAAPw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jun 2010 20:15:52 -0400
-In-Reply-To: <4C2BD2CE.1090201@zytor.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Joel Becker <Joel.Becker-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 3/3] Add a pair of system calls to make extended file
+ stats available
+Date: Wed, 30 Jun 2010 18:12:17 -0700
+Message-ID: <20100701011217.GA5147@mail.oracle.com>
+References: <20100629224844.GF4150@mail.oracle.com>
+ <AANLkTimSU_pCXW5zR8__Q3-fzgxwEUX8rPqLeZtPD_hX@mail.gmail.com>
+ <20100629200259.23196.81509.stgit@warthog.procyon.org.uk>
+ <20100629200315.23196.68742.stgit@warthog.procyon.org.uk>
+ <26026.1277851016@redhat.com>
+ <32322.1277854192@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ulrich Drepper <drepper-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org,
+	aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, sjayaraman-l3A5Bk7waGM@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <32322.1277854192-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-H. Peter Anvin <hpa@zytor.com> wrote:
+On Wed, Jun 30, 2010 at 12:29:52AM +0100, David Howells wrote:
+> Joel Becker <Joel.Becker-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
+> 
+> > 	The less variable length stuff the better, I think.  At least,
+> > for the stuff stat(2) already returns, you should have a fixed-size
+> > structure.  Even if I only pass the GIVE_ME_UIDS flag, I don't want to
+> > have to deal with the variable size stuff until I've actually asked for
+> > esoteric things.  I'll know that the non-UIDS fields are garbage by the
+> > fact that I didn't ask for them.
+> 
+> I was thinking of the fixed length xstat struct plus appendable extensions to
+> be defined later.
 
-> gcc for 64-bit platforms does handle 128-bit numbers, but I don't think
-> it does on 32-bit platforms.
+	I meant this.
 
-How do you specify them?  If I say "long long long" gcc moans that it can't
-support it on x86_64.
+Joel
 
-David
+-- 
+
+Life's Little Instruction Book #267
+
+	"Lie on your back and look at the stars."
+
+Joel Becker
+Consulting Software Developer
+Oracle
+E-mail: joel.becker-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+Phone: (650) 506-8127
