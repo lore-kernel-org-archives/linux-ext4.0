@@ -1,42 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Thu, 1 Jul 2010 05:04:39 GMT
-Message-ID: <201007010504.o6154daO029967@demeter.kernel.org>
-References: <bug-16019-13602@https.bugzilla.kernel.org/>
+From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
+Date: Thu, 1 Jul 2010 10:09:32 +0200
+Message-ID: <201007011009.33197.arnd@arndb.de>
+References: <FB78A152-53D3-4000-ABDB-9D6051ECB887@dilger.ca> <30875.1277939713@redhat.com> <84225B35-7365-4DE2-8920-5741011B347C@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:42816 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752297Ab0GAFEk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Jul 2010 01:04:40 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o6154dqG029968
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Jul 2010 05:04:39 GMT
-In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, mcao-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org,
+	aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, sjayaraman-l3A5Bk7waGM@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <84225B35-7365-4DE2-8920-5741011B347C-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16019
+On Thursday 01 July 2010 06:57:07 Andreas Dilger wrote:
+> If a future kernel gets a new static field at st_extra_results (say
+> unsigned long long st_ino_high) with a new flag XSTAT_REQUEST_INO_HIGH
+> 0x000040000ULL the kernel will think that the old app is requesting 
+> this field, and will fill in the 64-bit field at st_extra_results[1]
+> (which the old app didn't allocate space for, nor does it understand)
+> and may get a segfault, or stack smashing, or random heap corruption.
 
+That depends on whether the struct contains a 'buflen' field or not
+(it may be part of the struct, as a syscall argument, or in a second struct).
+I argue that it should not contain a buflen field and that users should
+consequently not set bits that they don't know about to prevent the
+scenario you describe.
 
+If the buflen stays in, it will prevent the stack smashing part,
+but add extra complexity in the interface, which can cause other
+problems.
 
-
-
---- Comment #38 from Klaus Lichtenwalder <lichtenwalder@acm.org>  2010-07-01 05:04:30 ---
-I don'r know whether this is related, but one in a while I have a lockup of the
-X server. I can move the mouse, and switch to the tty consoles, and log in, but
-for a working X I have to reboot. Yesterday I saw in dmesg:
-[drm:i915_hangcheck_elapsed] *ERROR* Hangcheck timer elapsed... GPU hung
-render error detected, EIR: 0x00000000
-[drm:i915_do_wait_request] *ERROR* i915_do_wait_request returns -5 (awaiting
-302900 at 302900)
-
-Klaus
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching someone on the CC list of the bug.
+	Arnd
