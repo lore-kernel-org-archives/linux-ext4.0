@@ -1,140 +1,296 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/8] ext4: Cleanup ext4_check_dir_entry so __func__ is now implicit
-Date: Fri,  2 Jul 2010 14:46:55 -0400
-Message-ID: <1278096418-14184-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 7/8] ext4: Save error information to the superblock for analysis
+Date: Fri,  2 Jul 2010 14:46:57 -0400
+Message-ID: <1278096418-14184-7-git-send-email-tytso@mit.edu>
 References: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52310 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:52314 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759782Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1759780Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 2 Jul 2010 14:47:02 -0400
 In-Reply-To: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use a macro definition for check_block_validity() to clean up the .c
-files a wee bit.
-
-Also start passing the line number to ext4_check_dir since we're going
-to need it in upcoming patch.
+Save number of file system errors, and the time function name, line
+number, block number, and inode number of the first and most recent
+errors reported on the file system in the superblock.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/dir.c   |   11 ++++++-----
- fs/ext4/ext4.h  |    8 +++++---
- fs/ext4/namei.c |   14 ++++++--------
- 3 files changed, 17 insertions(+), 16 deletions(-)
+ fs/ext4/block_validity.c |    8 +++-
+ fs/ext4/ext4.h           |   17 +++++++++-
+ fs/ext4/ext4_jbd2.c      |    5 +++
+ fs/ext4/inode.c          |    2 +
+ fs/ext4/super.c          |   80 +++++++++++++++++++++++++++++++++++-----------
+ 5 files changed, 90 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 2965c39..af581f0 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -61,10 +61,11 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 5b6973f..3db5084 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -229,16 +229,20 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
+ 
+ 	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
+ 	    (start_blk + count < start_blk) ||
+-	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
++	    (start_blk + count > ext4_blocks_count(sbi->s_es))) {
++		sbi->s_es->s_last_error_block = cpu_to_le64(start_blk);
+ 		return 0;
++	}
+ 	while (n) {
+ 		entry = rb_entry(n, struct ext4_system_zone, node);
+ 		if (start_blk + count - 1 < entry->start_blk)
+ 			n = n->rb_left;
+ 		else if (start_blk >= (entry->start_blk + entry->count))
+ 			n = n->rb_right;
+-		else
++		else {
++			sbi->s_es->s_last_error_block = cpu_to_le64(start_blk);
+ 			return 0;
++		}
+ 	}
+ 	return 1;
  }
- 
- 
--int ext4_check_dir_entry(const char *function, struct inode *dir,
--			 struct ext4_dir_entry_2 *de,
--			 struct buffer_head *bh,
--			 unsigned int offset)
-+int __ext4_check_dir_entry(const char *function, unsigned int line,
-+			   struct inode *dir,
-+			   struct ext4_dir_entry_2 *de,
-+			   struct buffer_head *bh,
-+			   unsigned int offset)
- {
- 	const char *error_msg = NULL;
- 	const int rlen = ext4_rec_len_from_disk(de->rec_len,
-@@ -194,7 +195,7 @@ revalidate:
- 		while (!error && filp->f_pos < inode->i_size
- 		       && offset < sb->s_blocksize) {
- 			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
--			if (!ext4_check_dir_entry("ext4_readdir", inode, de,
-+			if (!ext4_check_dir_entry(inode, de,
- 						  bh, offset)) {
- 				/*
- 				 * On error, skip the f_pos to the next block
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5a41881..73465b2 100644
+index 0889381..6b96125 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1515,9 +1515,11 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
- 		ext4_init_block_bitmap(sb, NULL, group, desc)
+@@ -1011,9 +1011,24 @@ struct ext4_super_block {
+ 					      snapshot's future use */
+ 	__le32	s_snapshot_list;	/* inode number of the head of the
+ 					   on-disk snapshot list */
+-	__u32   s_reserved[155];        /* Padding to the end of the block */
++#define EXT4_S_ERR_START offsetof(struct ext4_super_block, s_error_count)
++	__le32	s_error_count;		/* number of fs errors */
++	__le32	s_first_error_time;	/* first time an error happened */
++	__le32	s_first_error_ino;	/* inode involved in first error */
++	__le64	s_first_error_block;	/* block involved of first error */
++	__u8	s_first_error_func[32];	/* function where the error happened */
++	__le32	s_first_error_line;	/* line number where error happened */
++	__le32	s_last_error_time;	/* most recent time of an error */
++	__le32	s_last_error_ino;	/* inode involved in last error */
++	__le32	s_last_error_line;	/* line number where error happened */
++	__le64	s_last_error_block;	/* block involved of last error */
++	__u8	s_last_error_func[32];	/* function where the error happened */
++#define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_reserved)
++	__le32   s_reserved[128];        /* Padding to the end of the block */
+ };
  
- /* dir.c */
--extern int ext4_check_dir_entry(const char *, struct inode *,
--				struct ext4_dir_entry_2 *,
--				struct buffer_head *, unsigned int);
-+extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
-+				  struct ext4_dir_entry_2 *,
-+				  struct buffer_head *, unsigned int);
-+#define ext4_check_dir_entry(dir, de, bh, offset) \
-+	__ext4_check_dir_entry(__func__, __LINE__, (dir), (de), (bh), (offset))
- extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5a61f77..ea8b59d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -605,7 +605,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 					   dir->i_sb->s_blocksize -
- 					   EXT4_DIR_REC_LEN(0));
- 	for (; de < top; de = ext4_next_entry(de, dir->i_sb->s_blocksize)) {
--		if (!ext4_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
-+		if (!ext4_check_dir_entry(dir, de, bh,
- 					(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
- 						+((char *)de - bh->b_data))) {
- 			/* On error, skip the f_pos to the next block. */
-@@ -844,8 +844,7 @@ static inline int search_dirblock(struct buffer_head *bh,
- 		if ((char *) de + namelen <= dlimit &&
- 		    ext4_match (namelen, name, de)) {
- 			/* found a match - just to be sure, do a full check */
--			if (!ext4_check_dir_entry("ext4_find_entry",
--						  dir, de, bh, offset))
-+			if (!ext4_check_dir_entry(dir, de, bh, offset))
- 				return -1;
- 			*res_dir = de;
- 			return 1;
-@@ -1019,7 +1018,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
- 			int off = (block << EXT4_BLOCK_SIZE_BITS(sb))
- 				  + ((char *) de - bh->b_data);
++#define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
++
+ #ifdef __KERNEL__
  
--			if (!ext4_check_dir_entry(__func__, dir, de, bh, off)) {
-+			if (!ext4_check_dir_entry(dir, de, bh, off)) {
- 				brelse(bh);
- 				*err = ERR_BAD_DX_DIR;
- 				goto errout;
-@@ -1303,8 +1302,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 		de = (struct ext4_dir_entry_2 *)bh->b_data;
- 		top = bh->b_data + blocksize - reclen;
- 		while ((char *) de <= top) {
--			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
--						  bh, offset))
-+			if (!ext4_check_dir_entry(dir, de, bh, offset))
- 				return -EIO;
- 			if (ext4_match(namelen, name, de))
- 				return -EEXIST;
-@@ -1671,7 +1669,7 @@ static int ext4_delete_entry(handle_t *handle,
- 	pde = NULL;
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	while (i < bh->b_size) {
--		if (!ext4_check_dir_entry("ext4_delete_entry", dir, de, bh, i))
-+		if (!ext4_check_dir_entry(dir, de, bh, i))
+ /*
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 23425cd..6e272ef 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -134,6 +134,11 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 		if (inode && inode_needs_sync(inode)) {
+ 			sync_dirty_buffer(bh);
+ 			if (buffer_req(bh) && !buffer_uptodate(bh)) {
++				struct ext4_super_block *es;
++
++				es = EXT4_SB(inode->i_sb)->s_es;
++				es->s_last_error_block =
++					cpu_to_le64(bh->b_blocknr);
+ 				ext4_error_inode(inode, where, line,
+ 						 bh->b_blocknr,
+ 					"IO error syncing itable block");
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 69ea663..755ba86 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -341,6 +341,7 @@ static int __ext4_check_blockref(const char *function, unsigned int line,
+ 				 struct inode *inode,
+ 				 __le32 *p, unsigned int max)
+ {
++	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+ 	__le32 *bref = p;
+ 	unsigned int blk;
+ 
+@@ -349,6 +350,7 @@ static int __ext4_check_blockref(const char *function, unsigned int line,
+ 		if (blk &&
+ 		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
+ 						    blk, 1))) {
++			es->s_last_error_block = cpu_to_le64(blk);
+ 			ext4_error_inode(inode, function, line, blk,
+ 					 "invalid block");
  			return -EIO;
- 		if (de == de_del)  {
- 			BUFFER_TRACE(bh, "get_write_access");
-@@ -1954,7 +1952,7 @@ static int empty_dir(struct inode *inode)
- 			}
- 			de = (struct ext4_dir_entry_2 *) bh->b_data;
- 		}
--		if (!ext4_check_dir_entry("empty_dir", inode, de, bh, offset)) {
-+		if (!ext4_check_dir_entry(inode, de, bh, offset)) {
- 			de = (struct ext4_dir_entry_2 *)(bh->b_data +
- 							 sb->s_blocksize);
- 			offset = (offset | (sb->s_blocksize - 1)) + 1;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bcf74b3..a94d3f5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -307,6 +307,35 @@ void ext4_journal_abort_handle(const char *caller, unsigned int line,
+ 	jbd2_journal_abort_handle(handle);
+ }
+ 
++static void __save_error_info(struct super_block *sb, const char *func,
++			    unsigned int line)
++{
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
++
++	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
++	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
++	es->s_last_error_time = cpu_to_le32(get_seconds());
++	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
++	es->s_last_error_line = cpu_to_le32(line);
++	if (!es->s_first_error_time) {
++		es->s_first_error_time = es->s_last_error_time;
++		strncpy(es->s_first_error_func, func,
++			sizeof(es->s_first_error_func));
++		es->s_first_error_line = cpu_to_le32(line);
++		es->s_first_error_ino = es->s_last_error_ino;
++		es->s_first_error_block = es->s_last_error_block;
++	}
++	es->s_error_count = cpu_to_le32(le32_to_cpu(es->s_error_count) + 1);
++}
++
++static void save_error_info(struct super_block *sb, const char *func,
++			    unsigned int line)
++{
++	__save_error_info(sb, func, line);
++	ext4_commit_super(sb, 1);
++}
++
++
+ /* Deal with the reporting of failure conditions on a filesystem such as
+  * inconsistencies detected or read IO failures.
+  *
+@@ -324,11 +353,6 @@ void ext4_journal_abort_handle(const char *caller, unsigned int line,
+ 
+ static void ext4_handle_error(struct super_block *sb)
+ {
+-	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+-
+-	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+-	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return;
+ 
+@@ -343,7 +367,6 @@ static void ext4_handle_error(struct super_block *sb)
+ 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+ 		sb->s_flags |= MS_RDONLY;
+ 	}
+-	ext4_commit_super(sb, 1);
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		panic("EXT4-fs (device %s): panic forced after error\n",
+ 			sb->s_id);
+@@ -369,7 +392,11 @@ void ext4_error_inode(struct inode *inode, const char *function,
+ 		      const char *fmt, ...)
+ {
+ 	va_list args;
++	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+ 
++	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
++	es->s_last_error_block = cpu_to_le64(block);
++	save_error_info(inode->i_sb, function, line);
+ 	va_start(args, fmt);
+ 	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: inode #%lu: ",
+ 	       inode->i_sb->s_id, function, line, inode->i_ino);
+@@ -387,9 +414,13 @@ void ext4_error_file(struct file *file, const char *function,
+ 		     unsigned int line, const char *fmt, ...)
+ {
+ 	va_list args;
++	struct ext4_super_block *es;
+ 	struct inode *inode = file->f_dentry->d_inode;
+ 	char pathname[80], *path;
+ 
++	es = EXT4_SB(inode->i_sb)->s_es;
++	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
++	save_error_info(inode->i_sb, function, line);
+ 	va_start(args, fmt);
+ 	path = d_path(&(file->f_path), pathname, sizeof(pathname));
+ 	if (!path)
+@@ -459,6 +490,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+ 	errstr = ext4_decode_error(sb, errno, nbuf);
+ 	printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
+ 	       sb->s_id, function, line, errstr);
++	save_error_info(sb, function, line);
+ 
+ 	ext4_handle_error(sb);
+ }
+@@ -478,6 +510,7 @@ void __ext4_abort(struct super_block *sb, const char *function,
+ {
+ 	va_list args;
+ 
++	save_error_info(sb, function, line);
+ 	va_start(args, fmt);
+ 	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: ", sb->s_id,
+ 	       function, line);
+@@ -485,18 +518,16 @@ void __ext4_abort(struct super_block *sb, const char *function,
+ 	printk("\n");
+ 	va_end(args);
+ 
++	if ((sb->s_flags & MS_RDONLY) == 0) {
++		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
++		sb->s_flags |= MS_RDONLY;
++		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
++		if (EXT4_SB(sb)->s_journal)
++			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
++		save_error_info(sb, function, line);
++	}
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		panic("EXT4-fs panic from previous error\n");
+-
+-	if (sb->s_flags & MS_RDONLY)
+-		return;
+-
+-	ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+-	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+-	sb->s_flags |= MS_RDONLY;
+-	EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
+-	if (EXT4_SB(sb)->s_journal)
+-		jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+ }
+ 
+ void ext4_msg (struct super_block * sb, const char *prefix,
+@@ -534,6 +565,9 @@ __acquires(bitlock)
+ 	va_list args;
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+ 
++	es->s_last_error_ino = cpu_to_le32(ino);
++	es->s_last_error_block = cpu_to_le64(block);
++	__save_error_info(sb, function, line);
+ 	va_start(args, fmt);
+ 	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
+ 	       sb->s_id, function, line, grp);
+@@ -546,11 +580,10 @@ __acquires(bitlock)
+ 	va_end(args);
+ 
+ 	if (test_opt(sb, ERRORS_CONT)) {
+-		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+-		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+ 		ext4_commit_super(sb, 0);
+ 		return;
+ 	}
++
+ 	ext4_unlock_group(sb, grp);
+ 	ext4_handle_error(sb);
+ 	/*
+@@ -3332,8 +3365,17 @@ static int ext4_load_journal(struct super_block *sb,
+ 
+ 	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER))
+ 		err = jbd2_journal_wipe(journal, !really_read_only);
+-	if (!err)
++	if (!err) {
++		char *save = kmalloc(EXT4_S_ERR_LEN, GFP_KERNEL);
++		if (save)
++			memcpy(save, ((char *) es) +
++			       EXT4_S_ERR_START, EXT4_S_ERR_LEN);
+ 		err = jbd2_journal_load(journal);
++		if (save)
++			memcpy(((char *) es) + EXT4_S_ERR_START,
++			       save, EXT4_S_ERR_LEN);
++		kfree(save);
++	}
+ 
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "error loading journal");
 -- 
 1.7.0.4
 
