@@ -1,7 +1,8 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 08/16] richacl: Permission check algorithm
-Date: Sat,  3 Jul 2010 00:13:39 +0530
-Message-ID: <1278096227-16784-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 09/16] richacl: Helper functions for implementing richacl
+	inode operations
+Date: Sat,  3 Jul 2010 00:13:40 +0530
+Message-ID: <1278096227-16784-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,134 +27,260 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruen@suse.de>
 
-As in the standard POSIX file permission model, each process is the
-owner, group, or other file class.  A process is
-
-  - in the owner file class if it owns the file,
-  - in the group file class if it is in the file's owning group or it
-    matches any of the user or group entries, and
-  - in the other file class otherwise.
-
-Each file class is associated with a file mask.
-
-A richacl grants a requested access if the NFSv4 acl in the richacl
-grants the requested permissions (according to the NFSv4 permission
-check algorithm) and the file mask that applies to the process includes
-the requested permissions.
+These functions are supposed to be used by file systems so that the file
+system independent code remains in the vfs.
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/richacl_base.c       |   87 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    2 +
- 2 files changed, 89 insertions(+), 0 deletions(-)
+ fs/Makefile             |    2 +-
+ fs/richacl_inode.c      |  194 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   21 +++++
+ 3 files changed, 216 insertions(+), 1 deletions(-)
+ create mode 100644 fs/richacl_inode.c
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index bb9b762..7ef3695 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -368,3 +368,90 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	return clone;
- }
- EXPORT_SYMBOL_GPL(richacl_chmod);
+diff --git a/fs/Makefile b/fs/Makefile
+index 9ecd045..b38cfc7 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -52,7 +52,7 @@ obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
+ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
+ 
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o
++richacl-y			:= richacl_base.o richacl_inode.o
+ 
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+new file mode 100644
+index 0000000..42f7f68
+--- /dev/null
++++ b/fs/richacl_inode.c
+@@ -0,0 +1,194 @@
++/*
++ * Copyright (C) 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@suse.de>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/richacl.h>
 +
 +/**
-+ * richacl_permission  -  richacl permission check algorithm
-+ * @inode:	inode to check
-+ * @acl:	rich acl of the inode
-+ * @mask:	requested access (ACE4_* bitmask)
-+ *
-+ * Checks if the current process is granted @mask flags in @acl.
++ * richacl_may_create  -  helper for implementing iop->may_create
 + */
 +int
-+richacl_permission(struct inode *inode, const struct richacl *acl,
-+		   unsigned int mask)
++richacl_may_create(struct inode *dir, int isdir,
++		int (*richacl_permission)(struct inode *, unsigned int))
 +{
-+	const struct richace *ace;
-+	unsigned int file_mask, requested = mask, denied = 0;
-+	int in_owning_group = in_group_p(inode->i_gid);
-+	int in_owner_or_group_class = in_owning_group;
-+
-+	/*
-+	 * A process is
-+	 *   - in the owner file class if it owns the file,
-+	 *   - in the group file class if it is in the file's owning group or
-+	 *     it matches any of the user or group entries, and
-+	 *   - in the other file class otherwise.
-+	 */
-+
-+	/*
-+	 * Check if the acl grants the requested access and determine which
-+	 * file class the process is in.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		unsigned int ace_mask = ace->e_mask;
-+
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_owner(ace)) {
-+			if (current_fsuid() != inode->i_uid)
-+				continue;
-+			goto is_owner;
-+		} else if (richace_is_group(ace)) {
-+			if (!in_owning_group)
-+				continue;
-+		} else if (richace_is_unix_id(ace)) {
-+			if (ace->e_flags & ACE4_IDENTIFIER_GROUP) {
-+				if (!in_group_p(ace->u.e_id))
-+					continue;
-+			} else {
-+				if (current_fsuid() != ace->u.e_id)
-+					continue;
-+			}
-+		} else
-+			goto is_everyone;
-+
-+is_owner:
-+		/* The process is in the owner or group file class. */
-+		in_owner_or_group_class = 1;
-+
-+is_everyone:
-+		/* Check which mask flags the ACE allows or denies. */
-+		if (richace_is_deny(ace))
-+			denied |= ace_mask & mask;
-+		mask &= ~ace_mask;
-+
-+		/*
-+		 * Keep going until we know which file class
-+		 * the process is in.
-+		 */
-+		if (!mask && in_owner_or_group_class)
-+			break;
-+	}
-+	denied |= mask;
-+
-+	/*
-+	 * The file class a process is in determines which file mask applies.
-+	 * Check if that file mask also grants the requested access.
-+	 */
-+	if (current_fsuid() == inode->i_uid)
-+		file_mask = acl->a_owner_mask;
-+	else if (in_owner_or_group_class)
-+		file_mask = acl->a_group_mask;
++	if (IS_RICHACL(dir))
++		return richacl_permission(dir,
++				ACE4_EXECUTE | (isdir ?
++				ACE4_ADD_SUBDIRECTORY : ACE4_ADD_FILE));
 +	else
-+		file_mask = acl->a_other_mask;
-+	denied |= requested & ~file_mask;
-+
-+	return denied ? -EACCES : 0;
++		return generic_permission(dir, MAY_WRITE | MAY_EXEC,
++					  dir->i_op->check_acl);
 +}
-+EXPORT_SYMBOL_GPL(richacl_permission);
++EXPORT_SYMBOL(richacl_may_create);
++
++static int
++check_sticky(struct inode *dir, struct inode *inode)
++{
++	if (!(dir->i_mode & S_ISVTX))
++		return 0;
++	if (inode->i_uid == current_fsuid())
++		return 0;
++	if (dir->i_uid == current_fsuid())
++		return 0;
++	return !capable(CAP_FOWNER);
++}
++
++/**
++ * richacl_may_delete  -  helper for implementing iop->may_delete
++ */
++int
++richacl_may_delete(struct inode *dir, struct inode *inode, int replace,
++		   int (*richacl_permission)(struct inode *, unsigned int))
++{
++	int error;
++
++	if (IS_RICHACL(inode)) {
++		error = richacl_permission(dir,
++				ACE4_EXECUTE | ACE4_DELETE_CHILD);
++		if (!error && check_sticky(dir, inode))
++			error = -EPERM;
++		if (error && !richacl_permission(inode, ACE4_DELETE))
++			error = 0;
++		if (!error && replace)
++			error = richacl_permission(dir,
++					ACE4_EXECUTE | (S_ISDIR(inode->i_mode) ?
++					ACE4_ADD_SUBDIRECTORY : ACE4_ADD_FILE));
++	} else {
++		error = generic_permission(dir, MAY_WRITE | MAY_EXEC,
++					   dir->i_op->check_acl);
++		if (!error && check_sticky(dir, inode))
++			error = -EPERM;
++	}
++
++	return error;
++}
++EXPORT_SYMBOL(richacl_may_delete);
++
++/**
++ * richacl_inode_permission  -  helper for implementing iop->permission
++ * @inode:	inode to check
++ * @acl:	rich acl of the inode (may be NULL)
++ * @mask:	requested access (ACE4_* bitmask)
++ *
++ * This function is supposed to be used by file systems for implementing the
++ * permission inode operation.
++ */
++int
++richacl_inode_permission(struct inode *inode, const struct richacl *acl,
++			 unsigned int mask)
++{
++	if (acl) {
++		if (!richacl_permission(inode, acl, mask))
++			return 0;
++	} else {
++		int mode = inode->i_mode;
++
++		if (current_fsuid() == inode->i_uid)
++			mode >>= 6;
++		else if (in_group_p(inode->i_gid))
++			mode >>= 3;
++		if (!(mask & ~richacl_mode_to_mask(mode)))
++			return 0;
++	}
++
++	/*
++	 * Keep in sync with the capability checks in generic_permission().
++	 */
++	if (!(mask & ~ACE4_POSIX_MODE_ALL)) {
++		/*
++		 * Read/write DACs are always overridable.
++		 * Executable DACs are overridable if at
++		 * least one exec bit is set.
++		 */
++		if (!(mask & ACE4_POSIX_MODE_EXEC) || execute_ok(inode))
++			if (capable(CAP_DAC_OVERRIDE))
++				return 0;
++	}
++	/*
++	 * Searching includes executable on directories, else just read.
++	 */
++	if (!(mask & ~(ACE4_READ_DATA | ACE4_LIST_DIRECTORY | ACE4_EXECUTE)) &&
++	    (S_ISDIR(inode->i_mode) || !(mask & ACE4_EXECUTE)))
++		if (capable(CAP_DAC_READ_SEARCH))
++			return 0;
++
++	return -EACCES;
++}
++EXPORT_SYMBOL_GPL(richacl_inode_permission);
++
++/**
++ * richacl_inode_change_ok  -  helper for implementing iop->setattr
++ * @inode:	inode to check
++ * @attr:	requested inode attribute changes
++ * @richacl_permission:	permission function taking an inode and ACE4_* flags
++ *
++ * Keep in sync with inode_change_ok().
++ */
++int
++richacl_inode_change_ok(struct inode *inode, struct iattr *attr,
++			int (*richacl_permission)(struct inode *, unsigned int))
++{
++	unsigned int ia_valid = attr->ia_valid;
++
++	/* If force is set do it anyway. */
++	if (ia_valid & ATTR_FORCE)
++		return 0;
++
++	/* Make sure a caller can chown. */
++	if ((ia_valid & ATTR_UID) &&
++	    (current_fsuid() != inode->i_uid ||
++	     attr->ia_uid != inode->i_uid) &&
++	    (current_fsuid() != attr->ia_uid ||
++	     richacl_permission(inode, ACE4_WRITE_OWNER)) &&
++	    !capable(CAP_CHOWN))
++		goto error;
++
++	/* Make sure caller can chgrp. */
++	if ((ia_valid & ATTR_GID)) {
++		int in_group = in_group_p(attr->ia_gid);
++		if ((current_fsuid() != inode->i_uid ||
++		    (!in_group && attr->ia_gid != inode->i_gid)) &&
++		    (!in_group ||
++		     richacl_permission(inode, ACE4_WRITE_OWNER)) &&
++		    !capable(CAP_CHOWN))
++			goto error;
++	}
++
++	/* Make sure a caller can chmod. */
++	if (ia_valid & ATTR_MODE) {
++		if (current_fsuid() != inode->i_uid &&
++		    richacl_permission(inode, ACE4_WRITE_ACL) &&
++		    !capable(CAP_FOWNER))
++			goto error;
++		/* Also check the setgid bit! */
++		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
++				inode->i_gid) && !capable(CAP_FSETID))
++			attr->ia_mode &= ~S_ISGID;
++	}
++
++	/* Check for setting the inode time. */
++	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET)) {
++		if (current_fsuid() != inode->i_uid &&
++		    richacl_permission(inode, ACE4_WRITE_ATTRIBUTES) &&
++		    !capable(CAP_FOWNER))
++			goto error;
++	}
++	return 0;
++error:
++	return -EPERM;
++}
++EXPORT_SYMBOL_GPL(richacl_inode_change_ok);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 1ea33ee..3a8e6ab 100644
+index 3a8e6ab..ef82693 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -270,5 +270,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(int);
- extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
-+extern int richacl_permission(struct inode *, const struct richacl *,
-+			      unsigned int);
+@@ -273,4 +273,25 @@ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
  
++/* richacl_inode.c */
++
++#ifdef CONFIG_FS_RICHACL
++extern int richacl_may_create(struct inode *, int,
++			      int (*)(struct inode *, unsigned int));
++extern int richacl_may_delete(struct inode *, struct inode *, int,
++			      int (*)(struct inode *, unsigned int));
++extern int richacl_inode_permission(struct inode *, const struct richacl *,
++				    unsigned int);
++extern int richacl_inode_change_ok(struct inode *, struct iattr *,
++				   int (*)(struct inode *, unsigned int));
++#else
++static inline int
++richacl_inode_change_ok(struct inode *inode, struct iattr *attr,
++			int (*richacl_permission)(struct inode *inode,
++						  unsigned int mask))
++{
++	return -EPERM;
++}
++#endif
++
  #endif /* __RICHACL_H */
 -- 
 1.7.2.rc1
