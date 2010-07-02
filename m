@@ -1,507 +1,259 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 6/8] ext4: Pass line numbers to ext4_error() and friends
-Date: Fri,  2 Jul 2010 14:46:56 -0400
-Message-ID: <1278096418-14184-6-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/8] ext4: Pass line number to ext4_journal_abort_handle()
+Date: Fri,  2 Jul 2010 14:46:54 -0400
+Message-ID: <1278096418-14184-4-git-send-email-tytso@mit.edu>
 References: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52327 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:52325 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759791Ab0GBSrE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Jul 2010 14:47:04 -0400
+	id S1759790Ab0GBSrD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Jul 2010 14:47:03 -0400
 In-Reply-To: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This allows the error messages to include the line number
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/dir.c         |    7 +++----
- fs/ext4/ext4.h        |   44 +++++++++++++++++++++++++++-----------------
- fs/ext4/ext4_jbd2.c   |   12 +++++-------
- fs/ext4/ext4_jbd2.h   |    4 ++--
- fs/ext4/extents.c     |   10 +++++-----
- fs/ext4/inode.c       |   44 +++++++++++++++++++++++---------------------
- fs/ext4/move_extent.c |   10 +++++-----
- fs/ext4/super.c       |   47 ++++++++++++++++++++++++++++-------------------
- 8 files changed, 98 insertions(+), 80 deletions(-)
+ fs/ext4/ext4_jbd2.c |   48 +++++++++++++++++++++++++-----------------------
+ fs/ext4/ext4_jbd2.h |   43 +++++++++++++++++++++++--------------------
+ fs/ext4/super.c     |    9 +++++----
+ 3 files changed, 53 insertions(+), 47 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index af581f0..62e8af0 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -84,11 +84,10 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
- 		error_msg = "inode out of bounds";
- 
- 	if (error_msg != NULL)
--		ext4_error_inode(function, dir,
--			"bad entry in directory: %s - block=%llu"
-+		ext4_error_inode(dir, function, line, bh->b_blocknr,
-+			"bad entry in directory: %s - "
- 			"offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
--			error_msg, (unsigned long long) bh->b_blocknr,
--			(unsigned) (offset%bh->b_size), offset,
-+			error_msg, (unsigned) (offset%bh->b_size), offset,
- 			le32_to_cpu(de->inode),
- 			rlen, de->name_len);
- 	return error_msg == NULL ? 1 : 0;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 73465b2..0889381 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -57,10 +57,13 @@
- #endif
- 
- #define EXT4_ERROR_INODE(inode, fmt, a...) \
--	ext4_error_inode(__func__, (inode), (fmt), ## a)
-+	ext4_error_inode((inode), __func__, __LINE__, 0, (fmt), ## a)
-+
-+#define EXT4_ERROR_INODE_BLOCK(inode, block, fmt, a...)			\
-+	ext4_error_inode((inode), __func__, __LINE__, (block), (fmt), ## a)
- 
- #define EXT4_ERROR_FILE(file, fmt, a...)	\
--	ext4_error_file(__func__, (file), (fmt), ## a)
-+	ext4_error_file(__func__, __LINE__, (file), (fmt), ## a)
- 
- /* data type for block offset of block group */
- typedef int ext4_grpblk_t;
-@@ -1623,22 +1626,29 @@ extern int ext4_group_extend(struct super_block *sb,
- 				ext4_fsblk_t n_blocks_count);
- 
- /* super.c */
--extern void __ext4_error(struct super_block *, const char *, const char *, ...)
--	__attribute__ ((format (printf, 3, 4)));
--#define ext4_error(sb, message...)	__ext4_error(sb, __func__, ## message)
--extern void ext4_error_inode(const char *, struct inode *, const char *, ...)
--	__attribute__ ((format (printf, 3, 4)));
--extern void ext4_error_file(const char *, struct file *, const char *, ...)
--	__attribute__ ((format (printf, 3, 4)));
--extern void __ext4_std_error(struct super_block *, const char *, int);
--extern void __ext4_abort(struct super_block *, const char *, const char *, ...)
--	__attribute__ ((format (printf, 3, 4)));
-+extern void __ext4_error(struct super_block *, const char *, unsigned int,
-+			 const char *, ...)
-+	__attribute__ ((format (printf, 4, 5)));
-+#define ext4_error(sb, message...)	__ext4_error(sb, __func__,	\
-+						     __LINE__, ## message)
-+extern void ext4_error_inode(struct inode *, const char *, unsigned int,
-+			     ext4_fsblk_t, const char *, ...)
-+	__attribute__ ((format (printf, 5, 6)));
-+extern void ext4_error_file(struct file *, const char *, unsigned int,
-+			    const char *, ...)
-+	__attribute__ ((format (printf, 4, 5)));
-+extern void __ext4_std_error(struct super_block *, const char *,
-+			     unsigned int, int);
-+extern void __ext4_abort(struct super_block *, const char *, unsigned int,
-+		       const char *, ...)
-+	__attribute__ ((format (printf, 4, 5)));
- #define ext4_abort(sb, message...)	__ext4_abort(sb, __func__, \
--						     ## message)
--extern void __ext4_warning(struct super_block *, const char *,
-+						       __LINE__, ## message)
-+extern void __ext4_warning(struct super_block *, const char *, unsigned int,
- 			  const char *, ...)
--	__attribute__ ((format (printf, 3, 4)));
--#define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, ## message)
-+	__attribute__ ((format (printf, 4, 5)));
-+#define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, \
-+						       __LINE__, ## message)
- extern void ext4_msg(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
- extern void __ext4_grp_locked_error(const char *, unsigned int, \
-@@ -1781,7 +1791,7 @@ static inline unsigned int ext4_flex_bg_size(struct ext4_sb_info *sbi)
- #define ext4_std_error(sb, errno)				\
- do {								\
- 	if ((errno))						\
--		__ext4_std_error((sb), __func__, (errno));	\
-+		__ext4_std_error((sb), __func__, __LINE__, (errno));	\
- } while (0)
- 
- #ifdef CONFIG_SMP
 diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 9de37b9..23425cd 100644
+index df26a01..9de37b9 100644
 --- a/fs/ext4/ext4_jbd2.c
 +++ b/fs/ext4/ext4_jbd2.c
-@@ -94,8 +94,8 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
- 	if (err) {
- 		ext4_journal_abort_handle(where, line, __func__,
- 					  bh, handle, err);
--		__ext4_abort(inode->i_sb, where,
--			     "error %d when attempting revoke", err);
-+		__ext4_abort(inode->i_sb, where, line,
-+			   "error %d when attempting revoke", err);
+@@ -6,29 +6,29 @@
+ 
+ #include <trace/events/ext4.h>
+ 
+-int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
+-				struct buffer_head *bh)
++int __ext4_journal_get_undo_access(const char *where, unsigned int line,
++				   handle_t *handle, struct buffer_head *bh)
+ {
+ 	int err = 0;
+ 
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_undo_access(handle, bh);
+ 		if (err)
+-			ext4_journal_abort_handle(where, __func__, bh,
++			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
  	}
- 	BUFFER_TRACE(bh, "exit");
  	return err;
-@@ -134,11 +134,9 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 		if (inode && inode_needs_sync(inode)) {
- 			sync_dirty_buffer(bh);
- 			if (buffer_req(bh) && !buffer_uptodate(bh)) {
--				ext4_error(inode->i_sb,
--					   "IO error syncing inode, "
--					   "inode=%lu, block=%llu",
--					   inode->i_ino,
--					   (unsigned long long) bh->b_blocknr);
-+				ext4_error_inode(inode, where, line,
-+						 bh->b_blocknr,
-+					"IO error syncing itable block");
- 				err = -EIO;
- 			}
+ }
+ 
+-int __ext4_journal_get_write_access(const char *where, handle_t *handle,
+-				struct buffer_head *bh)
++int __ext4_journal_get_write_access(const char *where, unsigned int line,
++				    handle_t *handle, struct buffer_head *bh)
+ {
+ 	int err = 0;
+ 
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_write_access(handle, bh);
+ 		if (err)
+-			ext4_journal_abort_handle(where, __func__, bh,
++			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
+ 	}
+ 	return err;
+@@ -46,9 +46,9 @@ int __ext4_journal_get_write_access(const char *where, handle_t *handle,
+  * If the handle isn't valid we're not journaling, but we still need to
+  * call into ext4_journal_revoke() to put the buffer head.
+  */
+-int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+-		  struct inode *inode, struct buffer_head *bh,
+-		  ext4_fsblk_t blocknr)
++int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
++		  int is_metadata, struct inode *inode,
++		  struct buffer_head *bh, ext4_fsblk_t blocknr)
+ {
+ 	int err;
+ 
+@@ -79,8 +79,8 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+ 			BUFFER_TRACE(bh, "call jbd2_journal_forget");
+ 			err = jbd2_journal_forget(handle, bh);
+ 			if (err)
+-				ext4_journal_abort_handle(where, __func__, bh,
+-							  handle, err);
++				ext4_journal_abort_handle(where, line, __func__,
++							  bh, handle, err);
+ 			return err;
  		}
+ 		return 0;
+@@ -92,7 +92,8 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+ 	BUFFER_TRACE(bh, "call jbd2_journal_revoke");
+ 	err = jbd2_journal_revoke(handle, blocknr, bh);
+ 	if (err) {
+-		ext4_journal_abort_handle(where, __func__, bh, handle, err);
++		ext4_journal_abort_handle(where, line, __func__,
++					  bh, handle, err);
+ 		__ext4_abort(inode->i_sb, where,
+ 			     "error %d when attempting revoke", err);
+ 	}
+@@ -100,7 +101,7 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+ 	return err;
+ }
+ 
+-int __ext4_journal_get_create_access(const char *where,
++int __ext4_journal_get_create_access(const char *where, unsigned int line,
+ 				handle_t *handle, struct buffer_head *bh)
+ {
+ 	int err = 0;
+@@ -108,22 +109,23 @@ int __ext4_journal_get_create_access(const char *where,
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_create_access(handle, bh);
+ 		if (err)
+-			ext4_journal_abort_handle(where, __func__, bh,
+-						  handle, err);
++			ext4_journal_abort_handle(where, line, __func__,
++						  bh, handle, err);
+ 	}
+ 	return err;
+ }
+ 
+-int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+-				 struct inode *inode, struct buffer_head *bh)
++int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
++				 handle_t *handle, struct inode *inode,
++				 struct buffer_head *bh)
+ {
+ 	int err = 0;
+ 
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_dirty_metadata(handle, bh);
+ 		if (err)
+-			ext4_journal_abort_handle(where, __func__, bh,
+-						  handle, err);
++			ext4_journal_abort_handle(where, line, __func__,
++						  bh, handle, err);
+ 	} else {
+ 		if (inode)
+ 			mark_buffer_dirty_inode(bh, inode);
+@@ -144,8 +146,8 @@ int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+ 	return err;
+ }
+ 
+-int __ext4_handle_dirty_super(const char *where, handle_t *handle,
+-			      struct super_block *sb)
++int __ext4_handle_dirty_super(const char *where, unsigned int line,
++			      handle_t *handle, struct super_block *sb)
+ {
+ 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+ 	int err = 0;
+@@ -153,8 +155,8 @@ int __ext4_handle_dirty_super(const char *where, handle_t *handle,
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_dirty_metadata(handle, bh);
+ 		if (err)
+-			ext4_journal_abort_handle(where, __func__, bh,
+-						  handle, err);
++			ext4_journal_abort_handle(where, line, __func__,
++						  bh, handle, err);
+ 	} else
+ 		sb->s_dirt = 1;
+ 	return err;
 diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 6883c6b..b0bd792 100644
+index 38d1e66..6883c6b 100644
 --- a/fs/ext4/ext4_jbd2.h
 +++ b/fs/ext4/ext4_jbd2.h
-@@ -162,7 +162,7 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
+@@ -122,41 +122,44 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode);
+ /*
+  * Wrapper functions with which ext4 calls into JBD.
+  */
+-void ext4_journal_abort_handle(const char *caller, const char *err_fn,
++void ext4_journal_abort_handle(const char *caller, unsigned int line,
++			       const char *err_fn,
+ 		struct buffer_head *bh, handle_t *handle, int err);
+ 
+-int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
+-				struct buffer_head *bh);
++int __ext4_journal_get_undo_access(const char *where, unsigned int line,
++				   handle_t *handle, struct buffer_head *bh);
+ 
+-int __ext4_journal_get_write_access(const char *where, handle_t *handle,
+-				struct buffer_head *bh);
++int __ext4_journal_get_write_access(const char *where, unsigned int line,
++				    handle_t *handle, struct buffer_head *bh);
+ 
+-int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
+-		  struct inode *inode, struct buffer_head *bh,
+-		  ext4_fsblk_t blocknr);
++int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
++		  int is_metadata, struct inode *inode,
++		  struct buffer_head *bh, ext4_fsblk_t blocknr);
+ 
+-int __ext4_journal_get_create_access(const char *where,
++int __ext4_journal_get_create_access(const char *where, unsigned int line,
+ 				handle_t *handle, struct buffer_head *bh);
+ 
+-int __ext4_handle_dirty_metadata(const char *where, handle_t *handle,
+-				 struct inode *inode, struct buffer_head *bh);
++int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
++				 handle_t *handle, struct inode *inode,
++				 struct buffer_head *bh);
+ 
+-int __ext4_handle_dirty_super(const char *where, handle_t *handle,
+-			      struct super_block *sb);
++int __ext4_handle_dirty_super(const char *where, unsigned int line,
++			      handle_t *handle, struct super_block *sb);
+ 
+ #define ext4_journal_get_undo_access(handle, bh) \
+-	__ext4_journal_get_undo_access(__func__, (handle), (bh))
++	__ext4_journal_get_undo_access(__func__, __LINE__, (handle), (bh))
+ #define ext4_journal_get_write_access(handle, bh) \
+-	__ext4_journal_get_write_access(__func__, (handle), (bh))
++	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
+ #define ext4_forget(handle, is_metadata, inode, bh, block_nr) \
+-	__ext4_forget(__func__, (handle), (is_metadata), (inode), (bh),\
+-		      (block_nr))
++	__ext4_forget(__func__, __LINE__, (handle), (is_metadata), (inode), \
++		      (bh), (block_nr))
+ #define ext4_journal_get_create_access(handle, bh) \
+-	__ext4_journal_get_create_access(__func__, (handle), (bh))
++	__ext4_journal_get_create_access(__func__, __LINE__, (handle), (bh))
+ #define ext4_handle_dirty_metadata(handle, inode, bh) \
+-	__ext4_handle_dirty_metadata(__func__, (handle), (inode), (bh))
++	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
++				     (bh))
+ #define ext4_handle_dirty_super(handle, sb) \
+-	__ext4_handle_dirty_super(__func__, (handle), (sb))
++	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
  
  handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
--int __ext4_journal_stop(const char *where, handle_t *handle);
-+int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
- 
- #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
- 
-@@ -215,7 +215,7 @@ static inline handle_t *ext4_journal_start(struct inode *inode, int nblocks)
- }
- 
- #define ext4_journal_stop(handle) \
--	__ext4_journal_stop(__func__, (handle))
-+	__ext4_journal_stop(__func__, __LINE__, (handle))
- 
- static inline handle_t *ext4_journal_current_handle(void)
- {
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 346de3d..2c01d73 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -401,9 +401,9 @@ static int ext4_valid_extent_entries(struct inode *inode,
- 	return 1;
- }
- 
--static int __ext4_ext_check(const char *function, struct inode *inode,
--					struct ext4_extent_header *eh,
--					int depth)
-+static int __ext4_ext_check(const char *function, unsigned int line,
-+			    struct inode *inode, struct ext4_extent_header *eh,
-+			    int depth)
- {
- 	const char *error_msg;
- 	int max = 0;
-@@ -436,7 +436,7 @@ static int __ext4_ext_check(const char *function, struct inode *inode,
- 	return 0;
- 
- corrupted:
--	ext4_error_inode(function, inode,
-+	ext4_error_inode(inode, function, line, 0,
- 			"bad header/extent: %s - magic %x, "
- 			"entries %u, max %u(%u), depth %u(%u)",
- 			error_msg, le16_to_cpu(eh->eh_magic),
-@@ -447,7 +447,7 @@ corrupted:
- }
- 
- #define ext4_ext_check(inode, eh, depth)	\
--	__ext4_ext_check(__func__, inode, eh, depth)
-+	__ext4_ext_check(__func__, __LINE__, inode, eh, depth)
- 
- int ext4_ext_check_inode(struct inode *inode)
- {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 64baadb..69ea663 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -337,7 +337,8 @@ static int ext4_block_to_path(struct inode *inode,
- 	return n;
- }
- 
--static int __ext4_check_blockref(const char *function, struct inode *inode,
-+static int __ext4_check_blockref(const char *function, unsigned int line,
-+				 struct inode *inode,
- 				 __le32 *p, unsigned int max)
- {
- 	__le32 *bref = p;
-@@ -348,8 +349,8 @@ static int __ext4_check_blockref(const char *function, struct inode *inode,
- 		if (blk &&
- 		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
- 						    blk, 1))) {
--			ext4_error_inode(function, inode,
--					 "invalid block reference %u", blk);
-+			ext4_error_inode(inode, function, line, blk,
-+					 "invalid block");
- 			return -EIO;
- 		}
- 	}
-@@ -358,11 +359,13 @@ static int __ext4_check_blockref(const char *function, struct inode *inode,
- 
- 
- #define ext4_check_indirect_blockref(inode, bh)                         \
--	__ext4_check_blockref(__func__, inode, (__le32 *)(bh)->b_data,  \
-+	__ext4_check_blockref(__func__, __LINE__, inode,		\
-+			      (__le32 *)(bh)->b_data,			\
- 			      EXT4_ADDR_PER_BLOCK((inode)->i_sb))
- 
- #define ext4_check_inode_blockref(inode)                                \
--	__ext4_check_blockref(__func__, inode, EXT4_I(inode)->i_data,   \
-+	__ext4_check_blockref(__func__, __LINE__, inode,		\
-+			      EXT4_I(inode)->i_data,			\
- 			      EXT4_NDIR_BLOCKS)
- 
- /**
-@@ -1129,21 +1132,22 @@ void ext4_da_update_reserve_space(struct inode *inode,
- }
- 
- static int __check_block_validity(struct inode *inode, const char *func,
--				  struct ext4_map_blocks *map)
-+				unsigned int line,
-+				struct ext4_map_blocks *map)
- {
- 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
- 				   map->m_len)) {
--		ext4_error_inode(func, inode,
--			   "lblock %lu mapped to illegal pblock %llu "
--			   "(length %d)", (unsigned long) map->m_lblk,
--				 map->m_pblk, map->m_len);
-+		ext4_error_inode(inode, func, line, map->m_pblk,
-+				 "lblock %lu mapped to illegal pblock "
-+				 "(length %d)", (unsigned long) map->m_lblk,
-+				 map->m_len);
- 		return -EIO;
- 	}
- 	return 0;
- }
- 
- #define check_block_validity(inode, map)	\
--	__check_block_validity((inode), __func__, (map))
-+	__check_block_validity((inode), __func__, __LINE__, (map))
- 
- /*
-  * Return the number of contiguous dirty pages in a given inode
-@@ -4471,9 +4475,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			 * (should be rare).
- 			 */
- 			if (!bh) {
--				EXT4_ERROR_INODE(inode,
--						 "Read failure block=%llu",
--						 (unsigned long long) nr);
-+				EXT4_ERROR_INODE_BLOCK(inode, nr,
-+						       "Read failure");
- 				continue;
- 			}
- 
-@@ -4788,8 +4791,8 @@ static int __ext4_get_inode_loc(struct inode *inode,
- 
- 	bh = sb_getblk(sb, block);
- 	if (!bh) {
--		EXT4_ERROR_INODE(inode, "unable to read inode block - "
--				 "block %llu", block);
-+		EXT4_ERROR_INODE_BLOCK(inode, block,
-+				       "unable to read itable block");
- 		return -EIO;
- 	}
- 	if (!buffer_uptodate(bh)) {
-@@ -4887,8 +4890,8 @@ make_io:
- 		submit_bh(READ_META, bh);
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
--			EXT4_ERROR_INODE(inode, "unable to read inode "
--					 "block %llu", block);
-+			EXT4_ERROR_INODE_BLOCK(inode, block,
-+					       "unable to read itable block");
- 			brelse(bh);
- 			return -EIO;
- 		}
-@@ -5389,9 +5392,8 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		if (wbc->sync_mode == WB_SYNC_ALL)
- 			sync_dirty_buffer(iloc.bh);
- 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
--			EXT4_ERROR_INODE(inode,
--				"IO error syncing inode (block=%llu)",
--				(unsigned long long) iloc.bh->b_blocknr);
-+			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
-+					 "IO error syncing inode");
- 			err = -EIO;
- 		}
- 		brelse(iloc.bh);
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 52abfa1..5f1ed9f 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -148,17 +148,17 @@ mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
-  */
- static int
- mext_check_null_inode(struct inode *inode1, struct inode *inode2,
--		const char *function)
-+		      const char *function, unsigned int line)
- {
- 	int ret = 0;
- 
- 	if (inode1 == NULL) {
--		__ext4_error(inode2->i_sb, function,
-+		__ext4_error(inode2->i_sb, function, line,
- 			"Both inodes should not be NULL: "
- 			"inode1 NULL inode2 %lu", inode2->i_ino);
- 		ret = -EIO;
- 	} else if (inode2 == NULL) {
--		__ext4_error(inode1->i_sb, function,
-+		__ext4_error(inode1->i_sb, function, line,
- 			"Both inodes should not be NULL: "
- 			"inode1 %lu inode2 NULL", inode1->i_ino);
- 		ret = -EIO;
-@@ -1084,7 +1084,7 @@ mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
- 
- 	BUG_ON(inode1 == NULL && inode2 == NULL);
- 
--	ret = mext_check_null_inode(inode1, inode2, __func__);
-+	ret = mext_check_null_inode(inode1, inode2, __func__, __LINE__);
- 	if (ret < 0)
- 		goto out;
- 
-@@ -1121,7 +1121,7 @@ mext_inode_double_unlock(struct inode *inode1, struct inode *inode2)
- 
- 	BUG_ON(inode1 == NULL && inode2 == NULL);
- 
--	ret = mext_check_null_inode(inode1, inode2, __func__);
-+	ret = mext_check_null_inode(inode1, inode2, __func__, __LINE__);
- 	if (ret < 0)
- 		goto out;
- 
+ int __ext4_journal_stop(const char *where, handle_t *handle);
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 87db5ec..bcf74b3 100644
+index 39aeb45..87db5ec 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -262,7 +262,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
-  * that sync() will call the filesystem's write_super callback if
-  * appropriate.
-  */
--int __ext4_journal_stop(const char *where, handle_t *handle)
-+int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
- {
- 	struct super_block *sb;
- 	int err;
-@@ -279,7 +279,7 @@ int __ext4_journal_stop(const char *where, handle_t *handle)
- 	if (!err)
- 		err = rc;
- 	if (err)
--		__ext4_std_error(sb, where, err);
-+		__ext4_std_error(sb, where, line, err);
+@@ -283,8 +283,9 @@ int __ext4_journal_stop(const char *where, handle_t *handle)
  	return err;
  }
  
-@@ -350,12 +350,13 @@ static void ext4_handle_error(struct super_block *sb)
- }
- 
- void __ext4_error(struct super_block *sb, const char *function,
--		const char *fmt, ...)
-+		  unsigned int line, const char *fmt, ...)
- {
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
-+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: comm %s: ",
-+	       sb->s_id, function, line, current->comm);
- 	vprintk(fmt, args);
- 	printk("\n");
- 	va_end(args);
-@@ -363,14 +364,18 @@ void __ext4_error(struct super_block *sb, const char *function,
- 	ext4_handle_error(sb);
- }
- 
--void ext4_error_inode(const char *function, struct inode *inode,
-+void ext4_error_inode(struct inode *inode, const char *function,
-+		      unsigned int line, ext4_fsblk_t block,
- 		      const char *fmt, ...)
- {
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT4-fs error (device %s): %s: inode #%lu: (comm %s) ",
--	       inode->i_sb->s_id, function, inode->i_ino, current->comm);
-+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: inode #%lu: ",
-+	       inode->i_sb->s_id, function, line, inode->i_ino);
-+	if (block)
-+		printk("block %llu: ", block);
-+	printk("comm %s: ", current->comm);
- 	vprintk(fmt, args);
- 	printk("\n");
- 	va_end(args);
-@@ -378,8 +383,8 @@ void ext4_error_inode(const char *function, struct inode *inode,
- 	ext4_handle_error(inode->i_sb);
- }
- 
--void ext4_error_file(const char *function, struct file *file,
--		     const char *fmt, ...)
-+void ext4_error_file(struct file *file, const char *function,
-+		     unsigned int line, const char *fmt, ...)
- {
- 	va_list args;
- 	struct inode *inode = file->f_dentry->d_inode;
-@@ -390,8 +395,10 @@ void ext4_error_file(const char *function, struct file *file,
- 	if (!path)
- 		path = "(unknown)";
- 	printk(KERN_CRIT
--	       "EXT4-fs error (device %s): %s: inode #%lu (comm %s path %s): ",
--	       inode->i_sb->s_id, function, inode->i_ino, current->comm, path);
-+	       "EXT4-fs error (device %s): %s:%d: inode #%lu "
-+	       "(comm %s path %s): ",
-+	       inode->i_sb->s_id, function, line, inode->i_ino,
-+	       current->comm, path);
- 	vprintk(fmt, args);
- 	printk("\n");
- 	va_end(args);
-@@ -436,7 +443,8 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
- /* __ext4_std_error decodes expected errors from journaling functions
-  * automatically and invokes the appropriate error response.  */
- 
--void __ext4_std_error(struct super_block *sb, const char *function, int errno)
-+void __ext4_std_error(struct super_block *sb, const char *function,
-+		      unsigned int line, int errno)
+-void ext4_journal_abort_handle(const char *caller, const char *err_fn,
+-		struct buffer_head *bh, handle_t *handle, int err)
++void ext4_journal_abort_handle(const char *caller, unsigned int line,
++			       const char *err_fn, struct buffer_head *bh,
++			       handle_t *handle, int err)
  {
  	char nbuf[16];
- 	const char *errstr;
-@@ -449,8 +457,8 @@ void __ext4_std_error(struct super_block *sb, const char *function, int errno)
+ 	const char *errstr = ext4_decode_error(NULL, err, nbuf);
+@@ -300,8 +301,8 @@ void ext4_journal_abort_handle(const char *caller, const char *err_fn,
+ 	if (is_handle_aborted(handle))
  		return;
  
- 	errstr = ext4_decode_error(sb, errno, nbuf);
--	printk(KERN_CRIT "EXT4-fs error (device %s) in %s: %s\n",
--	       sb->s_id, function, errstr);
-+	printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
-+	       sb->s_id, function, line, errstr);
+-	printk(KERN_ERR "%s: aborting transaction: %s in %s\n",
+-	       caller, errstr, err_fn);
++	printk(KERN_ERR "%s:%d: aborting transaction: %s in %s\n",
++	       caller, line, errstr, err_fn);
  
- 	ext4_handle_error(sb);
+ 	jbd2_journal_abort_handle(handle);
  }
-@@ -466,12 +474,13 @@ void __ext4_std_error(struct super_block *sb, const char *function, int errno)
-  */
- 
- void __ext4_abort(struct super_block *sb, const char *function,
--		  const char *fmt, ...)
-+		unsigned int line, const char *fmt, ...)
- {
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
-+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: ", sb->s_id,
-+	       function, line);
- 	vprintk(fmt, args);
- 	printk("\n");
- 	va_end(args);
-@@ -503,13 +512,13 @@ void ext4_msg (struct super_block * sb, const char *prefix,
- }
- 
- void __ext4_warning(struct super_block *sb, const char *function,
--		  const char *fmt, ...)
-+		    unsigned int line, const char *fmt, ...)
- {
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_WARNING "EXT4-fs warning (device %s): %s: ",
--	       sb->s_id, function);
-+	printk(KERN_WARNING "EXT4-fs warning (device %s): %s:%d: ",
-+	       sb->s_id, function, line);
- 	vprintk(fmt, args);
- 	printk("\n");
- 	va_end(args);
 -- 
 1.7.0.4
 
