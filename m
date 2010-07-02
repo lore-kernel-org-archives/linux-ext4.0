@@ -1,30 +1,35 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 1/3] xstat: Add a pair of system calls to make extended file stats available [ver #4]
-Date: Fri, 02 Jul 2010 15:35:55 +0100
-Message-ID: <991.1278081355@redhat.com>
-References: <20100702110346.GB11732@laptop> <20100701235727.19035.84584.stgit@warthog.procyon.org.uk>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] Add a pair of system calls to make extended file stats available [ver #3]
+Date: Fri, 2 Jul 2010 09:49:52 -0600
+Message-ID: <2DBA0FC9-192C-49F2-8DB5-F33090B1C221@dilger.ca>
+References: <20100630233614.32422.97038.stgit@warthog.procyon.org.uk> <AANLkTinms69HPgZF4blqr962Ami3oS9FC-txQj9P37SC@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
 	linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
-To: Nick Piggin <npiggin@suse.de>
+	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+	linux-api@vger.kernel.org
+To: Michael Kerrisk <mtk.manpages@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65256 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755037Ab0GBOgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Jul 2010 10:36:03 -0400
-In-Reply-To: <20100702110346.GB11732@laptop>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:16949 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755160Ab0GBPty convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Jul 2010 11:49:54 -0400
+In-Reply-To: <AANLkTinms69HPgZF4blqr962Ami3oS9FC-txQj9P37SC@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Nick Piggin <npiggin@suse.de> wrote:
+On 2010-07-01, at 23:36, Michael Kerrisk wrote:
+> * Include information from the "inode_info" structure, most notably
+> i_flags, but perhaps other info as well.
 
-> > Add a pair of system calls to make extended file stats available,
-> > including file creation time, inode version and data version where
-> > available through the underlying filesystem.
-> 
-> Can you describe the expected atomicity requirements for the requests,
-> please?
+This one is actually pretty interesting, though instead of exporting the i_flags directly (the S_* flags), it would be much better to export the FS_*_FL values.  The FS_*_FL values (e.g. FS_IMMUTABLE_FL) are already exposed to userspace via FS_IOC_{GET,SET}FLAGS and are stored on disk in ext2/3/4, so are guaranteed never to change.  The S_* flags DO in fact change between kernel releases.
 
-As for stat(), lstat() and fstat().
 
-David
+Cheers, Andreas
+
+
+
+
+
