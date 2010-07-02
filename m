@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 02/16] vfs: Add generic IS_ACL() test for acl support
-Date: Sat,  3 Jul 2010 00:13:33 +0530
-Message-ID: <1278096227-16784-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 03/16] vfs: Add IS_RICHACL() test for richacl support
+Date: Sat,  3 Jul 2010 00:13:34 +0530
+Message-ID: <1278096227-16784-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,92 +26,45 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruen@suse.de>
 
-When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
-models will need the same exception, so introduce a separate IS_ACL()
-test.
-
-The IS_POSIX_ACL() test is still needed so that nfsd can determine when
-the underlying file system supports POSIX ACLs (as opposed to some other
-kind).
+Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
+which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
+or IS_RICHACL() is true.
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/namei.c         |    6 +++---
- fs/nfs/nfs4proc.c  |    2 +-
- include/linux/fs.h |    8 +++++++-
- 3 files changed, 11 insertions(+), 5 deletions(-)
+ include/linux/fs.h |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 29e3461..a8d19ab 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1554,7 +1554,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
- 	int error;
- 	struct dentry *dir = nd->path.dentry;
- 
--	if (!IS_POSIXACL(dir->d_inode))
-+	if (!IS_ACL(dir->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
- 	if (error)
-@@ -2077,7 +2077,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
- 		error = PTR_ERR(dentry);
- 		goto out_unlock;
- 	}
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = may_mknod(mode);
- 	if (error)
-@@ -2154,7 +2154,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
- 	if (IS_ERR(dentry))
- 		goto out_unlock;
- 
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 70015dd..aa8a694 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2028,7 +2028,7 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
- 	if (nd->flags & LOOKUP_CREATE) {
- 		attr.ia_mode = nd->intent.open.create_mode;
- 		attr.ia_valid = ATTR_MODE;
--		if (!IS_POSIXACL(dir))
-+		if (!IS_ACL(dir))
- 			attr.ia_mode &= ~current_umask();
- 	} else {
- 		attr.ia_valid = 0;
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 1ecb3a2..f49dd5c 100644
+index f49dd5c..d7725ae 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -200,7 +200,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -270,6 +270,12 @@ struct inodes_stat_t {
- #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
- #define IS_PRIVATE(inode)	((inode)->i_flags & S_PRIVATE)
+@@ -209,6 +209,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_RICHACL	(1<<25) /* Supports richacls */
+ #define MS_ACTIVE	(1<<30)
+ #define MS_NOUSER	(1<<31)
  
-+/*
-+ * IS_ACL() tells the VFS to not apply the umask
-+ * and use iop->check_acl for acl permission checks when defined.
-+ */
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
-+
+@@ -264,6 +265,7 @@ struct inodes_stat_t {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
+ 
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+@@ -274,7 +276,7 @@ struct inodes_stat_t {
+  * IS_ACL() tells the VFS to not apply the umask
+  * and use iop->check_acl for acl permission checks when defined.
+  */
+-#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
+ 
  /* the read-only stuff doesn't really belong here, but any other place is
     probably as bad and I don't want to create yet another include file. */
- 
 -- 
 1.7.2.rc1
 
