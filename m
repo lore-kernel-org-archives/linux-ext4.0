@@ -1,29 +1,24 @@
-From: Alasdair G Kergon <agk@redhat.com>
-Subject: Re: [PATCH 4/4] Support discard if at least one underlying device
-	supports it
-Date: Fri, 2 Jul 2010 21:54:20 +0100
-Message-ID: <20100702205420.GM23989@agk-dp.fab.redhat.com>
-References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com> <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com> <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com> <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com> <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com> <20100702181430.GD26916@redhat.com> <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com> <Pine.LNX.4.64.1007021554550.11102@hs20-bc2-1.build.redhat.com> <20100702204709.GB21915@redhat.com>
+From: "Mrs.Rosemary George" <rosemarygeorgeloanfirm@hotmail.com>
+Subject: LOAN
+Date: Sat, 3 Jul 2010 00:03:54 +0300
+Message-ID: <20100702210101.M3709__29398.6300974668$1278105364$gmane$org@mail.phjh.tpc.edu.tw>
+Reply-To: rosemarygeorgeloanfirm@hotmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mikulas Patocka <mpatocka@redhat.com>, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	axboe@kernel.dk, dmonakhov@openvz.org
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100702204709.GB21915@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset=euc-jp
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [163.20.135.129] ([163.20.135.129]:60845 "EHLO
+	mail.phjh.tpc.edu.tw" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1751470Ab0GBVP7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Jul 2010 17:15:59 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 02, 2010 at 04:47:09PM -0400, Mike Snitzer wrote:
 
-> If a region doesn't support the discard
-> DM has no business processing anything related to the discard (barriers
-> included).  It is as simple as that.
- 
-Indeed - if an I/O is going to fail, discover that as early as we can, trying
-to avoid the relatively-expensive barrier process whenever we reasonably can.
 
-Alasdair
+Good day.
+       HALL MARK TRUST FINANCIAL HOME is offering you loans at low interest 
+rate of 2% if interested contact us via 
+email:rosemarygeorgeloanfirm@hotmail.com
 
