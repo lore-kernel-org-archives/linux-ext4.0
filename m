@@ -1,138 +1,23 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 8/8] ext4: Once a day, printk file system error information to dmesg
-Date: Fri,  2 Jul 2010 14:46:58 -0400
-Message-ID: <1278096418-14184-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/8] ext4: clean up ext4_abort() so __func__ is now implicit
+Date: Fri,  2 Jul 2010 14:46:52 -0400
+Message-ID: <1278096418-14184-2-git-send-email-tytso@mit.edu>
 References: <1278096418-14184-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52317 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:52309 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759786Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Jul 2010 14:47:02 -0400
+	id S1759775Ab0GBSrB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Jul 2010 14:47:01 -0400
+Received: from root (helo=closure.thunk.org)
+	by thunker.thunk.org with local-esmtp   (Exim 4.50 #1 (Debian))
+	id 1OUlGN-0008TD-Em
+	for <linux-ext4@vger.kernel.org>; Fri, 02 Jul 2010 14:46:59 -0400
+Received: from tytso by closure.thunk.org with local (Exim 4.71)
+	(envelope-from <tytso@thunk.org>)
+	id 1OUlGM-0003hK-Fv
+	for linux-ext4@vger.kernel.org; Fri, 02 Jul 2010 14:46:58 -0400
 In-Reply-To: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-This allows us to grab any file system error messages by scraping
-/var/log/messages.  This will make it easy for us to do error analysis
-across the very large number of machines as we deploy ext4 across the
-fleet.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-
-I originally wasn't going to send this patch upstream, but then I
-thought that perhaps it might be useful in cases where the customer has
-the file system set up with errors=continue, and there might not be any
-indication that the file system contains errorrs in /var/log/message.
-This way it guarantees there will be a periodic reminder that the file
-system has inconsistencies in the log.
-
-What do people think?  Is this too annoying?
-
- fs/ext4/ext4.h  |    3 ++
- fs/ext4/super.c |   59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 62 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6b96125..5d3d768 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1166,6 +1166,9 @@ struct ext4_sb_info {
- 
- 	/* workqueue for dio unwritten */
- 	struct workqueue_struct *dio_unwritten_wq;
-+
-+	/* timer for periodic error stats printing */
-+	struct timer_list s_err_report;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a94d3f5..ed00c14 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -325,6 +325,12 @@ static void __save_error_info(struct super_block *sb, const char *func,
- 		es->s_first_error_ino = es->s_last_error_ino;
- 		es->s_first_error_block = es->s_last_error_block;
- 	}
-+	/*
-+	 * Start the daily error reporting function if it hasn't been
-+	 * started already
-+	 */
-+	if (!es->s_error_count)
-+		mod_timer(&EXT4_SB(sb)->s_err_report, jiffies + 24*60*60*HZ);
- 	es->s_error_count = cpu_to_le32(le32_to_cpu(es->s_error_count) + 1);
- }
- 
-@@ -2480,6 +2486,53 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
- 	return 1;
- }
- 
-+/*
-+ * This function is called once a day if we have errors logged
-+ * on the file system
-+ */
-+static void print_daily_error_info(unsigned long arg)
-+{
-+	struct super_block *sb = (struct super_block *) arg;
-+	struct ext4_sb_info *sbi;
-+	struct ext4_super_block *es;
-+
-+	sbi = EXT4_SB(sb);
-+	es = sbi->s_es;
-+
-+	if (es->s_error_count)
-+		ext4_msg(sb, KERN_NOTICE, "error count: %u",
-+			 le32_to_cpu(es->s_error_count));
-+	if (es->s_first_error_time) {
-+		printk(KERN_NOTICE "EXT4-fs (%s): initial error at %u: %.*s:%d",
-+		       sb->s_id, le32_to_cpu(es->s_first_error_time),
-+		       (int) sizeof(es->s_first_error_func),
-+		       es->s_first_error_func,
-+		       le32_to_cpu(es->s_first_error_line));
-+		if (es->s_first_error_ino)
-+			printk(": inode %u",
-+			       le32_to_cpu(es->s_first_error_ino));
-+		if (es->s_first_error_block)
-+			printk(": block %llu", (unsigned long long)
-+			       le64_to_cpu(es->s_first_error_block));
-+		printk("\n");
-+	}
-+	if (es->s_last_error_time) {
-+		printk(KERN_NOTICE "EXT4-fs (%s): last error at %u: %.*s:%d",
-+		       sb->s_id, le32_to_cpu(es->s_last_error_time),
-+		       (int) sizeof(es->s_last_error_func),
-+		       es->s_last_error_func,
-+		       le32_to_cpu(es->s_last_error_line));
-+		if (es->s_last_error_ino)
-+			printk(": inode %u",
-+			       le32_to_cpu(es->s_last_error_ino));
-+		if (es->s_last_error_block)
-+			printk(": block %llu", (unsigned long long)
-+			       le64_to_cpu(es->s_last_error_block));
-+		printk("\n");
-+	}
-+	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
-+}
-+
- static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 				__releases(kernel_lock)
- 				__acquires(kernel_lock)
-@@ -3083,6 +3136,12 @@ no_journal:
- 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
- 		"Opts: %s", descr, orig_data);
- 
-+	init_timer(&sbi->s_err_report);
-+	sbi->s_err_report.function = print_daily_error_info;
-+	sbi->s_err_report.data = (unsigned long) sb;
-+	if (es->s_error_count)
-+		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
-+
- 	lock_kernel();
- 	kfree(orig_data);
- 	return 0;
--- 
-1.7.0.4
 
