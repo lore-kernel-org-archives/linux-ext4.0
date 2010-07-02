@@ -1,227 +1,140 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/8] ext4: Enhance ext4_grp_locked_error() to take block and function numbers
-Date: Fri,  2 Jul 2010 14:46:53 -0400
-Message-ID: <1278096418-14184-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/8] ext4: Cleanup ext4_check_dir_entry so __func__ is now implicit
+Date: Fri,  2 Jul 2010 14:46:55 -0400
+Message-ID: <1278096418-14184-5-git-send-email-tytso@mit.edu>
 References: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52318 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:52310 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759788Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1759782Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 2 Jul 2010 14:47:02 -0400
 In-Reply-To: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Also use a macro definition so that __func__ and __LINE__ is implicit.
+Use a macro definition for check_block_validity() to clean up the .c
+files a wee bit.
+
+Also start passing the line number to ext4_check_dir since we're going
+to need it in upcoming patch.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |   10 +++++++---
- fs/ext4/inode.c   |   13 +++++++------
- fs/ext4/mballoc.c |   41 +++++++++++++++++++++--------------------
- fs/ext4/super.c   |   13 ++++++++++---
- 4 files changed, 45 insertions(+), 32 deletions(-)
+ fs/ext4/dir.c   |   11 ++++++-----
+ fs/ext4/ext4.h  |    8 +++++---
+ fs/ext4/namei.c |   14 ++++++--------
+ 3 files changed, 17 insertions(+), 16 deletions(-)
 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 2965c39..af581f0 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -61,10 +61,11 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
+ }
+ 
+ 
+-int ext4_check_dir_entry(const char *function, struct inode *dir,
+-			 struct ext4_dir_entry_2 *de,
+-			 struct buffer_head *bh,
+-			 unsigned int offset)
++int __ext4_check_dir_entry(const char *function, unsigned int line,
++			   struct inode *dir,
++			   struct ext4_dir_entry_2 *de,
++			   struct buffer_head *bh,
++			   unsigned int offset)
+ {
+ 	const char *error_msg = NULL;
+ 	const int rlen = ext4_rec_len_from_disk(de->rec_len,
+@@ -194,7 +195,7 @@ revalidate:
+ 		while (!error && filp->f_pos < inode->i_size
+ 		       && offset < sb->s_blocksize) {
+ 			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
+-			if (!ext4_check_dir_entry("ext4_readdir", inode, de,
++			if (!ext4_check_dir_entry(inode, de,
+ 						  bh, offset)) {
+ 				/*
+ 				 * On error, skip the f_pos to the next block
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d8ec824..5a41881 100644
+index 5a41881..73465b2 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1639,9 +1639,13 @@ extern void __ext4_warning(struct super_block *, const char *,
- #define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, ## message)
- extern void ext4_msg(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
--extern void ext4_grp_locked_error(struct super_block *, ext4_group_t,
--				const char *, const char *, ...)
--	__attribute__ ((format (printf, 4, 5)));
-+extern void __ext4_grp_locked_error(const char *, unsigned int, \
-+				    struct super_block *, ext4_group_t, \
-+				    unsigned long, ext4_fsblk_t, \
-+				    const char *, ...)
-+	__attribute__ ((format (printf, 7, 8)));
-+#define ext4_grp_locked_error(sb, grp, message...) \
-+	__ext4_grp_locked_error(__func__, __LINE__, (sb), (grp), ## message)
- extern void ext4_update_dynamic_rev(struct super_block *sb);
- extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
- 					__u32 compat);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b485987..64baadb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1128,8 +1128,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 		ext4_discard_preallocations(inode);
- }
+@@ -1515,9 +1515,11 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
+ 		ext4_init_block_bitmap(sb, NULL, group, desc)
  
--static int check_block_validity(struct inode *inode, const char *func,
--				struct ext4_map_blocks *map)
-+static int __check_block_validity(struct inode *inode, const char *func,
-+				  struct ext4_map_blocks *map)
- {
- 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
- 				   map->m_len)) {
-@@ -1142,6 +1142,9 @@ static int check_block_validity(struct inode *inode, const char *func,
- 	return 0;
- }
+ /* dir.c */
+-extern int ext4_check_dir_entry(const char *, struct inode *,
+-				struct ext4_dir_entry_2 *,
+-				struct buffer_head *, unsigned int);
++extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
++				  struct ext4_dir_entry_2 *,
++				  struct buffer_head *, unsigned int);
++#define ext4_check_dir_entry(dir, de, bh, offset) \
++	__ext4_check_dir_entry(__func__, __LINE__, (dir), (de), (bh), (offset))
+ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 				    __u32 minor_hash,
+ 				    struct ext4_dir_entry_2 *dirent);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5a61f77..ea8b59d 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -605,7 +605,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 					   dir->i_sb->s_blocksize -
+ 					   EXT4_DIR_REC_LEN(0));
+ 	for (; de < top; de = ext4_next_entry(de, dir->i_sb->s_blocksize)) {
+-		if (!ext4_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
++		if (!ext4_check_dir_entry(dir, de, bh,
+ 					(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
+ 						+((char *)de - bh->b_data))) {
+ 			/* On error, skip the f_pos to the next block. */
+@@ -844,8 +844,7 @@ static inline int search_dirblock(struct buffer_head *bh,
+ 		if ((char *) de + namelen <= dlimit &&
+ 		    ext4_match (namelen, name, de)) {
+ 			/* found a match - just to be sure, do a full check */
+-			if (!ext4_check_dir_entry("ext4_find_entry",
+-						  dir, de, bh, offset))
++			if (!ext4_check_dir_entry(dir, de, bh, offset))
+ 				return -1;
+ 			*res_dir = de;
+ 			return 1;
+@@ -1019,7 +1018,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
+ 			int off = (block << EXT4_BLOCK_SIZE_BITS(sb))
+ 				  + ((char *) de - bh->b_data);
  
-+#define check_block_validity(inode, map)	\
-+	__check_block_validity((inode), __func__, (map))
-+
- /*
-  * Return the number of contiguous dirty pages in a given inode
-  * starting at page frame idx.
-@@ -1244,7 +1247,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
--		int ret = check_block_validity(inode, __func__, map);
-+		int ret = check_block_validity(inode, map);
- 		if (ret != 0)
- 			return ret;
- 	}
-@@ -1324,9 +1327,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 
- 	up_write((&EXT4_I(inode)->i_data_sem));
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
--		int ret = check_block_validity(inode,
--					       "ext4_map_blocks_after_alloc",
--					       map);
-+		int ret = check_block_validity(inode, map);
- 		if (ret != 0)
- 			return ret;
- 	}
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b2948b0..3dfad95 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -446,10 +446,11 @@ static void mb_free_blocks_double(struct inode *inode, struct ext4_buddy *e4b,
- 			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
- 			blocknr += first + i;
- 			ext4_grp_locked_error(sb, e4b->bd_group,
--				   __func__, "double-free of inode"
--				   " %lu's block %llu(bit %u in group %u)",
--				   inode ? inode->i_ino : 0, blocknr,
--				   first + i, e4b->bd_group);
-+					      inode ? inode->i_ino : 0,
-+					      blocknr,
-+					      "freeing block already freed "
-+					      "(bit %u)",
-+					      first + i);
+-			if (!ext4_check_dir_entry(__func__, dir, de, bh, off)) {
++			if (!ext4_check_dir_entry(dir, de, bh, off)) {
+ 				brelse(bh);
+ 				*err = ERR_BAD_DX_DIR;
+ 				goto errout;
+@@ -1303,8 +1302,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 		de = (struct ext4_dir_entry_2 *)bh->b_data;
+ 		top = bh->b_data + blocksize - reclen;
+ 		while ((char *) de <= top) {
+-			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
+-						  bh, offset))
++			if (!ext4_check_dir_entry(dir, de, bh, offset))
+ 				return -EIO;
+ 			if (ext4_match(namelen, name, de))
+ 				return -EEXIST;
+@@ -1671,7 +1669,7 @@ static int ext4_delete_entry(handle_t *handle,
+ 	pde = NULL;
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
+ 	while (i < bh->b_size) {
+-		if (!ext4_check_dir_entry("ext4_delete_entry", dir, de, bh, i))
++		if (!ext4_check_dir_entry(dir, de, bh, i))
+ 			return -EIO;
+ 		if (de == de_del)  {
+ 			BUFFER_TRACE(bh, "get_write_access");
+@@ -1954,7 +1952,7 @@ static int empty_dir(struct inode *inode)
+ 			}
+ 			de = (struct ext4_dir_entry_2 *) bh->b_data;
  		}
- 		mb_clear_bit(first + i, e4b->bd_info->bb_bitmap);
- 	}
-@@ -712,9 +713,9 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 	grp->bb_fragments = fragments;
- 
- 	if (free != grp->bb_free) {
--		ext4_grp_locked_error(sb, group,  __func__,
--			"EXT4-fs: group %u: %u blocks in bitmap, %u in gd",
--			group, free, grp->bb_free);
-+		ext4_grp_locked_error(sb, group, 0, 0,
-+				      "%u blocks in bitmap, %u in gd",
-+				      free, grp->bb_free);
- 		/*
- 		 * If we intent to continue, we consider group descritor
- 		 * corrupt and update bb_free using bitmap value
-@@ -1296,10 +1297,10 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
- 			blocknr += block;
- 			ext4_grp_locked_error(sb, e4b->bd_group,
--				   __func__, "double-free of inode"
--				   " %lu's block %llu(bit %u in group %u)",
--				   inode ? inode->i_ino : 0, blocknr, block,
--				   e4b->bd_group);
-+					      inode ? inode->i_ino : 0,
-+					      blocknr,
-+					      "freeing already freed block "
-+					      "(bit %u)", block);
- 		}
- 		mb_clear_bit(block, EXT4_MB_BITMAP(e4b));
- 		e4b->bd_info->bb_counters[order]++;
-@@ -1788,8 +1789,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
- 			 * free blocks even though group info says we
- 			 * we have free blocks
- 			 */
--			ext4_grp_locked_error(sb, e4b->bd_group,
--					__func__, "%d free blocks as per "
-+			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
-+					"%d free blocks as per "
- 					"group info. But bitmap says 0",
- 					free);
- 			break;
-@@ -1798,8 +1799,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
- 		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
- 		BUG_ON(ex.fe_len <= 0);
- 		if (free < ex.fe_len) {
--			ext4_grp_locked_error(sb, e4b->bd_group,
--					__func__, "%d free blocks as per "
-+			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
-+					"%d free blocks as per "
- 					"group info. But got %d blocks",
- 					free, ex.fe_len);
- 			/*
-@@ -3584,8 +3585,7 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
- 			pa, (unsigned long) pa->pa_lstart,
- 			(unsigned long) pa->pa_pstart,
- 			(unsigned long) pa->pa_len);
--		ext4_grp_locked_error(sb, group,
--					__func__, "free %u, pa_free %u",
-+		ext4_grp_locked_error(sb, group, 0, 0, "free %u, pa_free %u",
- 					free, pa->pa_free);
- 		/*
- 		 * pa is already deleted so we use the value obtained
-@@ -4395,6 +4395,7 @@ static noinline_for_stack int
- ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 		      struct ext4_free_data *new_entry)
- {
-+	ext4_group_t group = e4b->bd_group;
- 	ext4_grpblk_t block;
- 	struct ext4_free_data *entry;
- 	struct ext4_group_info *db = e4b->bd_info;
-@@ -4427,9 +4428,9 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 		else if (block >= (entry->start_blk + entry->count))
- 			n = &(*n)->rb_right;
- 		else {
--			ext4_grp_locked_error(sb, e4b->bd_group, __func__,
--					"Double free of blocks %d (%d %d)",
--					block, entry->start_blk, entry->count);
-+			ext4_grp_locked_error(sb, group, 0,
-+				ext4_group_first_block_no(sb, group) + block,
-+				"Block already on to-be-freed list");
- 			return 0;
- 		}
- 	}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 11441e4..39aeb45 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -514,8 +514,10 @@ void __ext4_warning(struct super_block *sb, const char *function,
- 	va_end(args);
- }
- 
--void ext4_grp_locked_error(struct super_block *sb, ext4_group_t grp,
--			   const char *function, const char *fmt, ...)
-+void __ext4_grp_locked_error(const char *function, unsigned int line,
-+			     struct super_block *sb, ext4_group_t grp,
-+			     unsigned long ino, ext4_fsblk_t block,
-+			     const char *fmt, ...)
- __releases(bitlock)
- __acquires(bitlock)
- {
-@@ -523,7 +525,12 @@ __acquires(bitlock)
- 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
- 
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
-+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
-+	       sb->s_id, function, line, grp);
-+	if (ino)
-+		printk("inode %lu: ", ino);
-+	if (block)
-+		printk("block %llu:", (unsigned long long) block);
- 	vprintk(fmt, args);
- 	printk("\n");
- 	va_end(args);
+-		if (!ext4_check_dir_entry("empty_dir", inode, de, bh, offset)) {
++		if (!ext4_check_dir_entry(inode, de, bh, offset)) {
+ 			de = (struct ext4_dir_entry_2 *)(bh->b_data +
+ 							 sb->s_blocksize);
+ 			offset = (offset | (sb->s_blocksize - 1)) + 1;
 -- 
 1.7.0.4
 
