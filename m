@@ -1,59 +1,259 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 00/16]  New ACL format for better NFSv4 acl interoperability
-Date: Sat,  3 Jul 2010 00:13:31 +0530
-Message-ID: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
-	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
-	staubach@redhat.com, bfields@citi.umich.edu, jlayton@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:37628 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754059Ab0GBSoM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Jul 2010 14:44:12 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH -V2 01/16] vfs: Hooks for more fine-grained directory
+	permission checking
+Date: Sat,  3 Jul 2010 00:13:32 +0530
+Message-ID: <1278096227-16784-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
+To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de, adilger@sun.com,
+	sandeen@redhat.com, tytso@mit.edu, staubach@redhat.com,
+	bfields@citi.umich.edu, jlayton@redhat.com
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+From: Andreas Gruenbacher <agruen@suse.de>
 
-The following set of patches implements a new acl model for linux. Rich ACLs
-are an implementation of NFSv4 ACLs, extended by file masks to fit into the
-standard POSIX file permission model.  They are designed to work seamlessly
-locally as well as across the NFSv4 and CIFS/SMB2 network file system protocols.
+Add iop->may_create and iop->may_delete for overriding the POSIX file
+permission checks when creating and deleting files.  File systems can
+implement these hooks to support permission models which use different
+rules for file creation and deletion.
 
-Since posting the patches the previous time [0], Andreas Gruenbacher and I have 
-worked on cleaning up the code, splitting things up into smaller pieces, and 
-adding more documentation.
+When these hooks are not used, the vfs behavior remains unchanged.
 
-[0] http://article.gmane.org/gmane.comp.file-systems.ext4/17414
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c         |   82 +++++++++++++++++++++++++++++++++++++++++-----------
+ include/linux/fs.h |    4 ++
+ 2 files changed, 69 insertions(+), 17 deletions(-)
 
-The patch set consists of three parts.
+diff --git a/fs/namei.c b/fs/namei.c
+index 1821d81..29e3461 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1292,6 +1292,26 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+ }
+ 
+ /*
++ * Do the directory specific tests of inode_permission() and call the
++ * may_delete inode operation.  The may_delete inode operation must do the
++ * sticky check when needed.
++ */
++static int may_delete_iop(struct inode *dir, struct inode *inode, int replace)
++{
++	int error;
++
++	if (IS_RDONLY(dir))
++		return -EROFS;
++	if (IS_IMMUTABLE(dir))
++		return -EACCES;
++	error = dir->i_op->may_delete(dir, inode, replace);
++	if (!error)
++		error = security_inode_permission(dir, MAY_WRITE | MAY_EXEC);
++
++	return error;
++}
++
++/*
+  *	Check whether we can remove a link victim from directory dir, check
+  *  whether the type of victim is right.
+  *  1. We can't do it if dir is read-only (done in permission())
+@@ -1310,7 +1330,8 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
+  */
+-static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
++static int may_delete(struct inode *dir, struct dentry *victim,
++		      int isdir, int replace)
+ {
+ 	int error;
+ 
+@@ -1319,14 +1340,19 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+ 
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(victim, dir);
+-
+-	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	if (dir->i_op->may_delete)
++		error = may_delete_iop(dir, victim->d_inode, replace);
++	else {
++		error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
++		if (!error && check_sticky(dir, victim->d_inode))
++			error = -EPERM;
++	}
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+ 		return -EPERM;
+-	if (check_sticky(dir, victim->d_inode)||IS_APPEND(victim->d_inode)||
+-	    IS_IMMUTABLE(victim->d_inode) || IS_SWAPFILE(victim->d_inode))
++	if (IS_APPEND(victim->d_inode) || IS_IMMUTABLE(victim->d_inode) ||
++		IS_SWAPFILE(victim->d_inode))
+ 		return -EPERM;
+ 	if (isdir) {
+ 		if (!S_ISDIR(victim->d_inode->i_mode))
+@@ -1342,6 +1368,25 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+ 	return 0;
+ }
+ 
++/*
++ * Do the directory specific tests of inode_permission() and call the
++ * may_create inode operation.
++ */
++static int may_create_iop(struct inode *dir, int isdir)
++{
++	int error;
++
++	if (IS_RDONLY(dir))
++		return -EROFS;
++	if (IS_IMMUTABLE(dir))
++		return -EACCES;
++	error = dir->i_op->may_create(dir, isdir);
++	if (!error)
++		error = security_inode_permission(dir, MAY_WRITE | MAY_EXEC);
++
++	return error;
++}
++
+ /*	Check whether we can create an object with dentry child in directory
+  *  dir.
+  *  1. We can't do it if child already exists (open has special treatment for
+@@ -1350,13 +1395,16 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+  *  3. We should have write and exec permissions on dir
+  *  4. We can't do it if dir is immutable (done in permission())
+  */
+-static inline int may_create(struct inode *dir, struct dentry *child)
++static inline int may_create(struct inode *dir, struct dentry *child, int isdir)
+ {
+ 	if (child->d_inode)
+ 		return -EEXIST;
+ 	if (IS_DEADDIR(dir))
+ 		return -ENOENT;
+-	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	if (dir->i_op->may_create)
++		return may_create_iop(dir, isdir);
++	else
++		return inode_permission(dir, MAY_WRITE | MAY_EXEC);
+ }
+ 
+ /*
+@@ -1404,7 +1452,7 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
+ int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
+ 		struct nameidata *nd)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -1967,7 +2015,7 @@ EXPORT_SYMBOL_GPL(lookup_create);
+ 
+ int vfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2071,7 +2119,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, int, mode, unsigned, dev)
+ 
+ int vfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 1);
+ 
+ 	if (error)
+ 		return error;
+@@ -2161,7 +2209,7 @@ void dentry_unhash(struct dentry *dentry)
+ 
+ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 1);
++	int error = may_delete(dir, dentry, 1, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2248,7 +2296,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 0);
++	int error = may_delete(dir, dentry, 0, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2356,7 +2404,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
+ 
+ int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2429,7 +2477,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 	if (!inode)
+ 		return -ENOENT;
+ 
+-	error = may_create(dir, new_dentry);
++	error = may_create(dir, new_dentry, S_ISDIR(inode->i_mode));
+ 	if (error)
+ 		return error;
+ 
+@@ -2640,14 +2688,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (old_dentry->d_inode == new_dentry->d_inode)
+  		return 0;
+  
+-	error = may_delete(old_dir, old_dentry, is_dir);
++	error = may_delete(old_dir, old_dentry, is_dir, 0);
+ 	if (error)
+ 		return error;
+ 
+ 	if (!new_dentry->d_inode)
+-		error = may_create(new_dir, new_dentry);
++		error = may_create(new_dir, new_dentry, is_dir);
+ 	else
+-		error = may_delete(new_dir, new_dentry, is_dir);
++		error = may_delete(new_dir, new_dentry, is_dir, 1);
+ 	if (error)
+ 		return error;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 471e1ff..1ecb3a2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1539,6 +1539,10 @@ struct inode_operations {
+ 			  loff_t len);
+ 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
+ 		      u64 len);
++	int (*may_create) (struct inode *, int);
++	int (*may_delete) (struct inode *, struct inode *, int);
++
++
+ };
+ 
+ struct seq_file;
+-- 
+1.7.2.rc1
 
-The first set of patches, posted as a follow up, contains the Rich ACL model
-and Ext4 implementation. The second set [1] contains mapping of Rich ACL to
-NFSv4 ACL (how to apply file mask to access mask) and implementation of
-Richacl ACL for NFS server and client. The third set [2] contains POSIX ACL
-to Rich ACL mapping and its ext4 usage.
+_______________________________________________
+NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instead.
+(To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org.)
 
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-upstream
-[2] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-fullset
-
-A user-space utility for displaying and changing richacls is available at [3]
-(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-
-[3] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/richacl.git master
-
-To test richacl on ext4 use -o richacl mount option. This mount option may later be
-dropped in favour of a feature flag.
-
-More details regarding richacl can be found at 
-http://acl.bestbits.at/richacl/
-
-Changes from V1:
-1) Split the patches into smaller patches
-2) Added extensive documentation to the patches.
-
--aneesh
-
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
