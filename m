@@ -1,64 +1,60 @@
-From: Mikulas Patocka <mpatocka@redhat.com>
-Subject: Re: [PATCH 4/4] Support discard if at least one underlying device
- supports it
-Date: Fri, 2 Jul 2010 15:49:49 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com>
-References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com>
- <20100702181430.GD26916@redhat.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: dm-devel@redhat.com, Alasdair G Kergon <agk@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Mike Snitzer <snitzer@redhat.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [PATCH 2/6] jbd: yield the device queue when waiting for commits
+Date: Fri,  2 Jul 2010 15:58:15 -0400
+Message-ID: <1278100699-24132-3-git-send-email-jmoyer@redhat.com>
+References: <1278100699-24132-1-git-send-email-jmoyer@redhat.com>
+Cc: axboe@kernel.dk, linux-kernel@vger.kernel.org, vgoyal@redhat.com,
+	tao.ma@oracle.com, Jeff Moyer <jmoyer@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7839 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2840 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756603Ab0GBTt4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Jul 2010 15:49:56 -0400
-In-Reply-To: <20100702181430.GD26916@redhat.com>
+	id S1756777Ab0GBT6c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Jul 2010 15:58:32 -0400
+In-Reply-To: <1278100699-24132-1-git-send-email-jmoyer@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> As we discussed, we have a challenge where we need DM to avoid issuing
-> a barrier before the discard IFF a target doesn't support the discard
-> (which the barrier is paired with).
-> 
-> My understanding is that blkdev_issue_discard() only cares if the
-> discard was supported.  Barrier is used just to decorate the discard
-> (for correctness).  So by returning -EOPNOTSUPP we're saying the discard
-> isn't supported; we're not making any claims about the implict barrier,
-> so best to avoid the barrier entirely.
-> 
-> Otherwise we'll be issuing unnecessary barriers (and associated
-> performance loss).
-> 
-> So yet another TODO item... Anyway:
-> 
-> Acked-by: Mike Snitzer <snitzer@redhat.com>
+This patch gets CFQ back in line with deadline for iozone runs, especially
+those testing small files + fsync timings.
 
-Unnecessary barriers are issued anyway. With each freed extent.
+Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+---
+ fs/jbd/journal.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-The code must issue a "SYNCHRONIZE CACHE" to flush cache for previous 
-writes, then "UNMAP" and then another "SYNCHRONIZE CACHE" to commit that 
-unmap to disk. And this in loop for all extents in 
-"release_blocks_on_commit".
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 93d1e47..7bf7528 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -36,6 +36,7 @@
+ #include <linux/poison.h>
+ #include <linux/proc_fs.h>
+ #include <linux/debugfs.h>
++#include <linux/blkdev.h>
+ 
+ #include <asm/uaccess.h>
+ #include <asm/page.h>
+@@ -183,6 +184,7 @@ loop:
+ 			should_sleep = 0;
+ 		if (should_sleep) {
+ 			spin_unlock(&journal->j_state_lock);
++			blk_yield(journal->j_dev->bd_disk->queue, NULL);
+ 			schedule();
+ 			spin_lock(&journal->j_state_lock);
+ 		}
+@@ -549,6 +551,11 @@ int log_wait_commit(journal_t *journal, tid_t tid)
+ 	while (tid_gt(tid, journal->j_commit_sequence)) {
+ 		jbd_debug(1, "JBD: want %d, j_commit_sequence=%d\n",
+ 				  tid, journal->j_commit_sequence);
++		/*
++		 * Give up our I/O scheduler time slice to allow the journal
++		 * thread to issue I/O.
++		 */
++		blk_yield(journal->j_dev->bd_disk->queue, journal->j_task);
+ 		wake_up(&journal->j_wait_commit);
+ 		spin_unlock(&journal->j_state_lock);
+ 		wait_event(journal->j_wait_done_commit,
+-- 
+1.6.5.2
 
-One idea behind "discard barriers" was to submit a discard request and not 
-wait for it. Then the request would need a barrier so that it doesn't get 
-reordered with further writes (that may potentially write to the same area 
-as the discarded area). But discard isn't used this way anyway, 
-sb_issue_discard waits for completion, so the barrier isn't needed.
-
-Even if ext4 developers wanted asynchronous discard requests, they should 
-fire all the discards at once and then submit one zero-sized barrier. Not 
-barrier with each discard request.
-
-This is up to ext4 developers to optimize and remove the barriers and we 
-can't do anything with it. Just send "SYNCHRONIZE 
-CACHE"+"UNMAP"+"SYNCHRONIZE CACHE" like the barrier specification wants...
-
-Mikulas
