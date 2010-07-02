@@ -1,8 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 01/16] vfs: Hooks for more fine-grained directory
-	permission checking
-Date: Sat,  3 Jul 2010 00:13:32 +0530
-Message-ID: <1278096227-16784-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 02/16] vfs: Add generic IS_ACL() test for acl support
+Date: Sat,  3 Jul 2010 00:13:33 +0530
+Message-ID: <1278096227-16784-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,226 +26,92 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruen@suse.de>
 
-Add iop->may_create and iop->may_delete for overriding the POSIX file
-permission checks when creating and deleting files.  File systems can
-implement these hooks to support permission models which use different
-rules for file creation and deletion.
+When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
+models will need the same exception, so introduce a separate IS_ACL()
+test.
 
-When these hooks are not used, the vfs behavior remains unchanged.
+The IS_POSIX_ACL() test is still needed so that nfsd can determine when
+the underlying file system supports POSIX ACLs (as opposed to some other
+kind).
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/namei.c         |   82 +++++++++++++++++++++++++++++++++++++++++-----------
- include/linux/fs.h |    4 ++
- 2 files changed, 69 insertions(+), 17 deletions(-)
+ fs/namei.c         |    6 +++---
+ fs/nfs/nfs4proc.c  |    2 +-
+ include/linux/fs.h |    8 +++++++-
+ 3 files changed, 11 insertions(+), 5 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index 1821d81..29e3461 100644
+index 29e3461..a8d19ab 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -1292,6 +1292,26 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
- }
- 
- /*
-+ * Do the directory specific tests of inode_permission() and call the
-+ * may_delete inode operation.  The may_delete inode operation must do the
-+ * sticky check when needed.
-+ */
-+static int may_delete_iop(struct inode *dir, struct inode *inode, int replace)
-+{
-+	int error;
-+
-+	if (IS_RDONLY(dir))
-+		return -EROFS;
-+	if (IS_IMMUTABLE(dir))
-+		return -EACCES;
-+	error = dir->i_op->may_delete(dir, inode, replace);
-+	if (!error)
-+		error = security_inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+
-+	return error;
-+}
-+
-+/*
-  *	Check whether we can remove a link victim from directory dir, check
-  *  whether the type of victim is right.
-  *  1. We can't do it if dir is read-only (done in permission())
-@@ -1310,7 +1330,8 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
-+static int may_delete(struct inode *dir, struct dentry *victim,
-+		      int isdir, int replace)
- {
+@@ -1554,7 +1554,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
  	int error;
+ 	struct dentry *dir = nd->path.dentry;
  
-@@ -1319,14 +1340,19 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
- 
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(victim, dir);
--
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	if (dir->i_op->may_delete)
-+		error = may_delete_iop(dir, victim->d_inode, replace);
-+	else {
-+		error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+		if (!error && check_sticky(dir, victim->d_inode))
-+			error = -EPERM;
-+	}
+-	if (!IS_POSIXACL(dir->d_inode))
++	if (!IS_ACL(dir->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
  	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
--	if (check_sticky(dir, victim->d_inode)||IS_APPEND(victim->d_inode)||
--	    IS_IMMUTABLE(victim->d_inode) || IS_SWAPFILE(victim->d_inode))
-+	if (IS_APPEND(victim->d_inode) || IS_IMMUTABLE(victim->d_inode) ||
-+		IS_SWAPFILE(victim->d_inode))
- 		return -EPERM;
- 	if (isdir) {
- 		if (!S_ISDIR(victim->d_inode->i_mode))
-@@ -1342,6 +1368,25 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
- 	return 0;
- }
- 
-+/*
-+ * Do the directory specific tests of inode_permission() and call the
-+ * may_create inode operation.
-+ */
-+static int may_create_iop(struct inode *dir, int isdir)
-+{
-+	int error;
-+
-+	if (IS_RDONLY(dir))
-+		return -EROFS;
-+	if (IS_IMMUTABLE(dir))
-+		return -EACCES;
-+	error = dir->i_op->may_create(dir, isdir);
-+	if (!error)
-+		error = security_inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+
-+	return error;
-+}
-+
- /*	Check whether we can create an object with dentry child in directory
-  *  dir.
-  *  1. We can't do it if child already exists (open has special treatment for
-@@ -1350,13 +1395,16 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
-  *  3. We should have write and exec permissions on dir
-  *  4. We can't do it if dir is immutable (done in permission())
-  */
--static inline int may_create(struct inode *dir, struct dentry *child)
-+static inline int may_create(struct inode *dir, struct dentry *child, int isdir)
- {
- 	if (child->d_inode)
- 		return -EEXIST;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
--	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	if (dir->i_op->may_create)
-+		return may_create_iop(dir, isdir);
-+	else
-+		return inode_permission(dir, MAY_WRITE | MAY_EXEC);
- }
- 
- /*
-@@ -1404,7 +1452,7 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
- int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
- 		struct nameidata *nd)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 0);
- 
+@@ -2077,7 +2077,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
+ 		error = PTR_ERR(dentry);
+ 		goto out_unlock;
+ 	}
+-	if (!IS_POSIXACL(nd.path.dentry->d_inode))
++	if (!IS_ACL(nd.path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = may_mknod(mode);
  	if (error)
- 		return error;
-@@ -1967,7 +2015,7 @@ EXPORT_SYMBOL_GPL(lookup_create);
+@@ -2154,7 +2154,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
+ 	if (IS_ERR(dentry))
+ 		goto out_unlock;
  
- int vfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 0);
- 
+-	if (!IS_POSIXACL(nd.path.dentry->d_inode))
++	if (!IS_ACL(nd.path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = mnt_want_write(nd.path.mnt);
  	if (error)
- 		return error;
-@@ -2071,7 +2119,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, int, mode, unsigned, dev)
- 
- int vfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 1);
- 
- 	if (error)
- 		return error;
-@@ -2161,7 +2209,7 @@ void dentry_unhash(struct dentry *dentry)
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, 1, 0);
- 
- 	if (error)
- 		return error;
-@@ -2248,7 +2296,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 
- int vfs_unlink(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, 0, 0);
- 
- 	if (error)
- 		return error;
-@@ -2356,7 +2404,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
- 
- int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, 0);
- 
- 	if (error)
- 		return error;
-@@ -2429,7 +2477,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	if (!inode)
- 		return -ENOENT;
- 
--	error = may_create(dir, new_dentry);
-+	error = may_create(dir, new_dentry, S_ISDIR(inode->i_mode));
- 	if (error)
- 		return error;
- 
-@@ -2640,14 +2688,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (old_dentry->d_inode == new_dentry->d_inode)
-  		return 0;
-  
--	error = may_delete(old_dir, old_dentry, is_dir);
-+	error = may_delete(old_dir, old_dentry, is_dir, 0);
- 	if (error)
- 		return error;
- 
- 	if (!new_dentry->d_inode)
--		error = may_create(new_dir, new_dentry);
-+		error = may_create(new_dir, new_dentry, is_dir);
- 	else
--		error = may_delete(new_dir, new_dentry, is_dir);
-+		error = may_delete(new_dir, new_dentry, is_dir, 1);
- 	if (error)
- 		return error;
- 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 70015dd..aa8a694 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2028,7 +2028,7 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ 	if (nd->flags & LOOKUP_CREATE) {
+ 		attr.ia_mode = nd->intent.open.create_mode;
+ 		attr.ia_valid = ATTR_MODE;
+-		if (!IS_POSIXACL(dir))
++		if (!IS_ACL(dir))
+ 			attr.ia_mode &= ~current_umask();
+ 	} else {
+ 		attr.ia_valid = 0;
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 471e1ff..1ecb3a2 100644
+index 1ecb3a2..f49dd5c 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -1539,6 +1539,10 @@ struct inode_operations {
- 			  loff_t len);
- 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
- 		      u64 len);
-+	int (*may_create) (struct inode *, int);
-+	int (*may_delete) (struct inode *, struct inode *, int);
-+
-+
- };
+@@ -200,7 +200,7 @@ struct inodes_stat_t {
+ #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+ 				   MS_VERBOSE is deprecated. */
+ #define MS_SILENT	32768
+-#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
++#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
+ #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+ #define MS_PRIVATE	(1<<18)	/* change to private */
+ #define MS_SLAVE	(1<<19)	/* change to slave */
+@@ -270,6 +270,12 @@ struct inodes_stat_t {
+ #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
+ #define IS_PRIVATE(inode)	((inode)->i_flags & S_PRIVATE)
  
- struct seq_file;
++/*
++ * IS_ACL() tells the VFS to not apply the umask
++ * and use iop->check_acl for acl permission checks when defined.
++ */
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
+ 
 -- 
 1.7.2.rc1
 
