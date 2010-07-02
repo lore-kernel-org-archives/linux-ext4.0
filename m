@@ -1,59 +1,76 @@
-From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Subject: Re: [PATCH 3/3] xstat: Implement a requestable extra result to procure some inode flags [ver #4]
-Date: Fri, 2 Jul 2010 11:45:41 -0600
-Message-ID: <C80B6032-0FB2-4D63-B940-3FE86B52992B@dilger.ca>
-References: <20100701235727.19035.84584.stgit@warthog.procyon.org.uk> <20100701235738.19035.21536.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0 (Apple Message framework v1078)
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: Re: [PATCH 3/4] Support discard for multiple devices
+Date: Fri, 2 Jul 2010 13:50:37 -0400
+Message-ID: <20100702175037.GA26916@redhat.com>
+References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20100701235738.19035.21536.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: dm-devel@redhat.com, Alasdair G Kergon <agk@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Mikulas Patocka <mpatocka@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:15349 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756072Ab0GBRuo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Jul 2010 13:50:44 -0400
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-07-01, at 17:57, David Howells wrote:
-> [This is, for the moment, to be considered an example.  Do we actually want to
-> export these flags?  Should they be a full member of struct xstat?]
+On Fri, Jul 02 2010 at 11:19am -0400,
+Mikulas Patocka <mpatocka@redhat.com> wrote:
 
-I would say this should be a full-fledged member of struct xstat.  I think they are fairly standard (available on many filesystems today), and requiring an ioctl to access them is unpleasant.
+> Support discard for multiple devices
+> 
+> The previous code supported discards only if there was one underlying device.
+> (i.e. multiple linear targets pointing to the same device would support
+> discards, multiple linear targets pointing to different devices wouldn't).
+> 
+> This restriction is not necessary, so this patch removes it.
+> 
+> As we checked, barrier+discard requests are handled by the barrier thread,
+> so it's safe to use these requests on devices with multiple underlying devices.
+> 
+> Signed-off-by: Mikulas Patocka <mpatocka@redhat.com>
+> 
+> ---
+>  drivers/md/dm-table.c |    6 ------
+>  1 file changed, 6 deletions(-)
+> 
+> Index: linux-2.6.35-rc3-fast/drivers/md/dm-table.c
+> ===================================================================
+> --- linux-2.6.35-rc3-fast.orig/drivers/md/dm-table.c	2010-07-02 16:05:22.000000000 +0200
+> +++ linux-2.6.35-rc3-fast/drivers/md/dm-table.c	2010-07-02 16:07:45.000000000 +0200
+> @@ -911,12 +911,6 @@ int dm_table_complete(struct dm_table *t
+>  	int r = 0;
+>  	unsigned int leaf_nodes;
+>  
+> -	/*
+> -	 * We only support discards if there is exactly one underlying device.
+> -	 */
+> -	if (!list_is_singular(&t->devices))
+> -		t->discards_supported = 0;
+> -
+>  	/* how many indexes will the btree have ? */
+>  	leaf_nodes = dm_div_up(t->num_targets, KEYS_PER_NODE);
+>  	t->depth = 1 + int_log(leaf_nodes, CHILDREN_PER_NODE);
+> 
 
-> (1) User settable flags (to be consistent with the BSD st_flags field):
-> 
-> 	UF_NODUMP	Do not dump this file.
-> 	UF_IMMUTABLE	This file is immutable.
-> 	UF_APPEND	This file is append-only.
-> 	UF_OPAQUE	This directory is opaque (unionfs).
-> 	UF_NOUNLINK	This file can't be removed or renamed.
-> 	UF_COMPRESSED	This file is compressed.
-> 	UF_HIDDEN	This file shouldn't be displayed in a GUI.
-> 
->    The UF_SETTABLE constant is the union of the above flags.
-> 
-> (2) Superuser settable flags (to be consistent with the BSD st_flags field):
-> 
-> 	SF_ARCHIVED	This file has been archived.
-> 	SF_IMMUTABLE	This file is immutable.
-> 	SF_APPEND	This file is append-only.
-> 	SF_NOUNLINK	This file can't be removed or renamed.
-> 	SF_HIDDEN	This file is a snapshot inode.
-> 
->    The SF_SETTABLE constant is the union of the above flags.
-> 
-> (3) Linux-specific flags:
-> 
-> 	XSTAT_LF_MAGIC_FILE	Magic file, such as found in procfs and sysfs.
-> 	XSTAT_LF_SYNC		File is written synchronously.
-> 	XSTAT_LF_NOATIME	Atime is not updated on this file.
-> 	XSTAT_LF_JOURNALLED_DATA Data modifications to this file are journalled.
-> 	XSTAT_LF_ENCRYPTED	This file is encrypted.
-> 	XSTAT_LF_SYSTEM		This file is a system file (FAT/NTFS/CIFS).
-> 	XSTAT_LF_TEMPORARY	This file is a temporary file (NTFS/CIFS).
-> 	XSTAT_LF_OFFLINE	file is currently unavailable (CIFS).
+Removing this constraint means that a discard request that spans targets
+will return -EOPNOTSUPP.
 
-Yuck on the names.  Why not stick with the "UF_" and "SF_" prefixes?  Since we don't need to keep _binary_ compatibility with these flag values (only name portability) we can use the same flag values as the FS_*_FL definitions in fs.h.  That is what all of the existing filesystems already use (ext2/3/4, ocfs, btrfs, reiserfs, xfs, jfs).
+I'd prefer that we first make basic discard splitting work (like I
+already have a DM patch to do that I'll rebase shortly).
 
-Cheers, Andreas
+But given the new-found desire for DM to return -EOPNOTSUPP as a means
+to convey that a subset of the device does not support discards:
+
+This change will start to force this issue with DM consumers higher up
+the IO stack (e.g. ext4 and other filesystems).  So I'm cc'ing FS
+development lists, if they don't care now they will at some point.
+
+Acked-by: Mike Snitzer <snitzer@redhat.com>
