@@ -1,101 +1,227 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/8] ext4: clean up ext4_abort() so __func__ is now implicit
-Date: Fri,  2 Jul 2010 14:46:51 -0400
-Message-ID: <1278096418-14184-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/8] ext4: Enhance ext4_grp_locked_error() to take block and function numbers
+Date: Fri,  2 Jul 2010 14:46:53 -0400
+Message-ID: <1278096418-14184-3-git-send-email-tytso@mit.edu>
+References: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52311 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:52318 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759611Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1759788Ab0GBSrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 2 Jul 2010 14:47:02 -0400
+In-Reply-To: <1278096418-14184-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use a macro definition for ext4_abort() to clean up the .c files a wee
-bit.
+Also use a macro definition so that __func__ and __LINE__ is implicit.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h      |    4 +++-
- fs/ext4/ext4_jbd2.c |    4 ++--
- fs/ext4/super.c     |   11 +++++------
- 3 files changed, 10 insertions(+), 9 deletions(-)
+ fs/ext4/ext4.h    |   10 +++++++---
+ fs/ext4/inode.c   |   13 +++++++------
+ fs/ext4/mballoc.c |   41 +++++++++++++++++++++--------------------
+ fs/ext4/super.c   |   13 ++++++++++---
+ 4 files changed, 45 insertions(+), 32 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3864a27..d8ec824 100644
+index d8ec824..5a41881 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1629,8 +1629,10 @@ extern void ext4_error_inode(const char *, struct inode *, const char *, ...)
- extern void ext4_error_file(const char *, struct file *, const char *, ...)
+@@ -1639,9 +1639,13 @@ extern void __ext4_warning(struct super_block *, const char *,
+ #define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, ## message)
+ extern void ext4_msg(struct super_block *, const char *, const char *, ...)
  	__attribute__ ((format (printf, 3, 4)));
- extern void __ext4_std_error(struct super_block *, const char *, int);
--extern void ext4_abort(struct super_block *, const char *, const char *, ...)
-+extern void __ext4_abort(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
-+#define ext4_abort(sb, message...)	__ext4_abort(sb, __func__, \
-+						     ## message)
- extern void __ext4_warning(struct super_block *, const char *,
- 			  const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index cfd27b3..df26a01 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -93,8 +93,8 @@ int __ext4_forget(const char *where, handle_t *handle, int is_metadata,
- 	err = jbd2_journal_revoke(handle, blocknr, bh);
- 	if (err) {
- 		ext4_journal_abort_handle(where, __func__, bh, handle, err);
--		ext4_abort(inode->i_sb, __func__,
--			   "error %d when attempting revoke", err);
-+		__ext4_abort(inode->i_sb, where,
-+			     "error %d when attempting revoke", err);
+-extern void ext4_grp_locked_error(struct super_block *, ext4_group_t,
+-				const char *, const char *, ...)
+-	__attribute__ ((format (printf, 4, 5)));
++extern void __ext4_grp_locked_error(const char *, unsigned int, \
++				    struct super_block *, ext4_group_t, \
++				    unsigned long, ext4_fsblk_t, \
++				    const char *, ...)
++	__attribute__ ((format (printf, 7, 8)));
++#define ext4_grp_locked_error(sb, grp, message...) \
++	__ext4_grp_locked_error(__func__, __LINE__, (sb), (grp), ## message)
+ extern void ext4_update_dynamic_rev(struct super_block *sb);
+ extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
+ 					__u32 compat);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b485987..64baadb 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1128,8 +1128,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
+ 		ext4_discard_preallocations(inode);
+ }
+ 
+-static int check_block_validity(struct inode *inode, const char *func,
+-				struct ext4_map_blocks *map)
++static int __check_block_validity(struct inode *inode, const char *func,
++				  struct ext4_map_blocks *map)
+ {
+ 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
+ 				   map->m_len)) {
+@@ -1142,6 +1142,9 @@ static int check_block_validity(struct inode *inode, const char *func,
+ 	return 0;
+ }
+ 
++#define check_block_validity(inode, map)	\
++	__check_block_validity((inode), __func__, (map))
++
+ /*
+  * Return the number of contiguous dirty pages in a given inode
+  * starting at page frame idx.
+@@ -1244,7 +1247,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+-		int ret = check_block_validity(inode, __func__, map);
++		int ret = check_block_validity(inode, map);
+ 		if (ret != 0)
+ 			return ret;
  	}
- 	BUFFER_TRACE(bh, "exit");
- 	return err;
+@@ -1324,9 +1327,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+-		int ret = check_block_validity(inode,
+-					       "ext4_map_blocks_after_alloc",
+-					       map);
++		int ret = check_block_validity(inode, map);
+ 		if (ret != 0)
+ 			return ret;
+ 	}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index b2948b0..3dfad95 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -446,10 +446,11 @@ static void mb_free_blocks_double(struct inode *inode, struct ext4_buddy *e4b,
+ 			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+ 			blocknr += first + i;
+ 			ext4_grp_locked_error(sb, e4b->bd_group,
+-				   __func__, "double-free of inode"
+-				   " %lu's block %llu(bit %u in group %u)",
+-				   inode ? inode->i_ino : 0, blocknr,
+-				   first + i, e4b->bd_group);
++					      inode ? inode->i_ino : 0,
++					      blocknr,
++					      "freeing block already freed "
++					      "(bit %u)",
++					      first + i);
+ 		}
+ 		mb_clear_bit(first + i, e4b->bd_info->bb_bitmap);
+ 	}
+@@ -712,9 +713,9 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 	grp->bb_fragments = fragments;
+ 
+ 	if (free != grp->bb_free) {
+-		ext4_grp_locked_error(sb, group,  __func__,
+-			"EXT4-fs: group %u: %u blocks in bitmap, %u in gd",
+-			group, free, grp->bb_free);
++		ext4_grp_locked_error(sb, group, 0, 0,
++				      "%u blocks in bitmap, %u in gd",
++				      free, grp->bb_free);
+ 		/*
+ 		 * If we intent to continue, we consider group descritor
+ 		 * corrupt and update bb_free using bitmap value
+@@ -1296,10 +1297,10 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+ 			blocknr += block;
+ 			ext4_grp_locked_error(sb, e4b->bd_group,
+-				   __func__, "double-free of inode"
+-				   " %lu's block %llu(bit %u in group %u)",
+-				   inode ? inode->i_ino : 0, blocknr, block,
+-				   e4b->bd_group);
++					      inode ? inode->i_ino : 0,
++					      blocknr,
++					      "freeing already freed block "
++					      "(bit %u)", block);
+ 		}
+ 		mb_clear_bit(block, EXT4_MB_BITMAP(e4b));
+ 		e4b->bd_info->bb_counters[order]++;
+@@ -1788,8 +1789,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 			 * free blocks even though group info says we
+ 			 * we have free blocks
+ 			 */
+-			ext4_grp_locked_error(sb, e4b->bd_group,
+-					__func__, "%d free blocks as per "
++			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
++					"%d free blocks as per "
+ 					"group info. But bitmap says 0",
+ 					free);
+ 			break;
+@@ -1798,8 +1799,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
+ 		BUG_ON(ex.fe_len <= 0);
+ 		if (free < ex.fe_len) {
+-			ext4_grp_locked_error(sb, e4b->bd_group,
+-					__func__, "%d free blocks as per "
++			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
++					"%d free blocks as per "
+ 					"group info. But got %d blocks",
+ 					free, ex.fe_len);
+ 			/*
+@@ -3584,8 +3585,7 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 			pa, (unsigned long) pa->pa_lstart,
+ 			(unsigned long) pa->pa_pstart,
+ 			(unsigned long) pa->pa_len);
+-		ext4_grp_locked_error(sb, group,
+-					__func__, "free %u, pa_free %u",
++		ext4_grp_locked_error(sb, group, 0, 0, "free %u, pa_free %u",
+ 					free, pa->pa_free);
+ 		/*
+ 		 * pa is already deleted so we use the value obtained
+@@ -4395,6 +4395,7 @@ static noinline_for_stack int
+ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		      struct ext4_free_data *new_entry)
+ {
++	ext4_group_t group = e4b->bd_group;
+ 	ext4_grpblk_t block;
+ 	struct ext4_free_data *entry;
+ 	struct ext4_group_info *db = e4b->bd_info;
+@@ -4427,9 +4428,9 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		else if (block >= (entry->start_blk + entry->count))
+ 			n = &(*n)->rb_right;
+ 		else {
+-			ext4_grp_locked_error(sb, e4b->bd_group, __func__,
+-					"Double free of blocks %d (%d %d)",
+-					block, entry->start_blk, entry->count);
++			ext4_grp_locked_error(sb, group, 0,
++				ext4_group_first_block_no(sb, group) + block,
++				"Block already on to-be-freed list");
+ 			return 0;
+ 		}
+ 	}
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 422a4ce..11441e4 100644
+index 11441e4..39aeb45 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -248,7 +248,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- 	journal = EXT4_SB(sb)->s_journal;
- 	if (journal) {
- 		if (is_journal_aborted(journal)) {
--			ext4_abort(sb, __func__, "Detected aborted journal");
-+			ext4_abort(sb, "Detected aborted journal");
- 			return ERR_PTR(-EROFS);
- 		}
- 		return jbd2_journal_start(journal, nblocks);
-@@ -464,8 +464,8 @@ void __ext4_std_error(struct super_block *sb, const char *function, int errno)
-  * case we take the easy way out and panic immediately.
-  */
+@@ -514,8 +514,10 @@ void __ext4_warning(struct super_block *sb, const char *function,
+ 	va_end(args);
+ }
  
--void ext4_abort(struct super_block *sb, const char *function,
--		const char *fmt, ...)
-+void __ext4_abort(struct super_block *sb, const char *function,
-+		  const char *fmt, ...)
+-void ext4_grp_locked_error(struct super_block *sb, ext4_group_t grp,
+-			   const char *function, const char *fmt, ...)
++void __ext4_grp_locked_error(const char *function, unsigned int line,
++			     struct super_block *sb, ext4_group_t grp,
++			     unsigned long ino, ext4_fsblk_t block,
++			     const char *fmt, ...)
+ __releases(bitlock)
+ __acquires(bitlock)
  {
- 	va_list args;
+@@ -523,7 +525,12 @@ __acquires(bitlock)
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
  
-@@ -660,8 +660,7 @@ static void ext4_put_super(struct super_block *sb)
- 		err = jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
- 		if (err < 0)
--			ext4_abort(sb, __func__,
--				   "Couldn't clean up the journal");
-+			ext4_abort(sb, "Couldn't clean up the journal");
- 	}
- 
- 	ext4_release_system_zone(sb);
-@@ -3605,7 +3604,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	}
- 
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
--		ext4_abort(sb, __func__, "Abort forced by user");
-+		ext4_abort(sb, "Abort forced by user");
- 
- 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
- 		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+ 	va_start(args, fmt);
+-	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
++	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
++	       sb->s_id, function, line, grp);
++	if (ino)
++		printk("inode %lu: ", ino);
++	if (block)
++		printk("block %llu:", (unsigned long long) block);
+ 	vprintk(fmt, args);
+ 	printk("\n");
+ 	va_end(args);
 -- 
 1.7.0.4
 
