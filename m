@@ -1,8 +1,8 @@
 From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2 00/16]  New ACL format for better NFSv4 acl interoperability
-Date: Sat, 03 Jul 2010 16:20:33 +0530
-Message-ID: <87d3v42612.fsf@linux.vnet.ibm.com>
-References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V2 16/16] ext4: Add temporary richacl mount option for ext4.
+Date: Sat, 03 Jul 2010 16:23:09 +0530
+Message-ID: <87aaq825wq.fsf@linux.vnet.ibm.com>
+References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1278096227-16784-17-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, nfsv4@linux-nfs.org,
@@ -11,110 +11,167 @@ To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
 	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
 	bfields@citi.umich.edu, jlayton@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:45135 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754089Ab0GCKuv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jul 2010 06:50:51 -0400
-In-Reply-To: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:57140 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755117Ab0GCKx0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Jul 2010 06:53:26 -0400
+In-Reply-To: <1278096227-16784-17-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat,  3 Jul 2010 00:13:31 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> Hi,
+On Sat,  3 Jul 2010 00:13:47 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> This helps in easy testing of the patchset. The mount
+> option will be later removed in favour of a feature flag.
 > 
-> The following set of patches implements a new acl model for linux. Rich ACLs
-> are an implementation of NFSv4 ACLs, extended by file masks to fit into the
-> standard POSIX file permission model.  They are designed to work seamlessly
-> locally as well as across the NFSv4 and CIFS/SMB2 network file system protocols.
+> ***Should be folded before merging***
 > 
-> Since posting the patches the previous time [0], Andreas Gruenbacher and I have 
-> worked on cleaning up the code, splitting things up into smaller pieces, and 
-> adding more documentation.
-> 
-> [0] http://article.gmane.org/gmane.comp.file-systems.ext4/17414
-> 
-> The patch set consists of three parts.
-> 
-> The first set of patches, posted as a follow up, contains the Rich ACL model
-> and Ext4 implementation. The second set [1] contains mapping of Rich ACL to
-> NFSv4 ACL (how to apply file mask to access mask) and implementation of
-> Richacl ACL for NFS server and client. The third set [2] contains POSIX ACL
-> to Rich ACL mapping and its ext4 usage.
-> 
-> [1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-upstream
-> [2] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-fullset
-> 
-> A user-space utility for displaying and changing richacls is available at [3]
-> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-> 
-> [3] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/richacl.git master
-> 
-> To test richacl on ext4 use -o richacl mount option. This mount option may later be
-> dropped in favour of a feature flag.
-> 
-> More details regarding richacl can be found at 
-> http://acl.bestbits.at/richacl/
-> 
-> Changes from V1:
-> 1) Split the patches into smaller patches
-> 2) Added extensive documentation to the patches.
-> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-We also need the below patch set to make sure the permission check
-function does the right thing. This patch is a part of second patch set
-[1] pointed above. We add it as a part of the later series because it is
-better explained with isolate owner and group patchset. 
+The feature flag patch is below. I am not sure whether it should be an
+incompat feature or a compat feature. The patch mark it as an incompat
+feature.
 
-commit 01a3a0c12dc4b87cdee11cd101b3ceefaa331e41
-Author: Andreas Gruenbacher <agruen@suse.de>
-Date:   Mon Jun 28 21:32:24 2010 +0530
+commit 5e5c5b80787bb9d9dec685321d221a8fe252a04e
+Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date:   Fri Jul 2 00:07:25 2010 +0530
 
-    richacl: Restrict access check algorithm
+    ext4: Add Ext4 incompat richacl feature flag
     
-    We want to avoid applying the file masks to an acl when changing the
-    file permission bits or performing an access check.  On the other hand,
-    when we *do* apply the file masks to the acl, we want the resulting acl
-    to produce the same access check results with the standard nfs4 access
-    check algorithm as the richacl access check algorithm with the original
-    acl.  This is already the case, except in the following scenario:
+    This feature flag can be used to enable richacl on
+    the file system. Once enabled the "acl" mount option
+    will enable richacl instead of posix acl. The patch also
+    removes the richacl mount option.
     
-    With file masks equivalent to file mode 0600, the following acl would
-    grant the owner rw access if the owner is in the owning group:
-    
-       group@:rw::allow
-    
-    There is no way to express this in an nfs4 acl; the result is always a
-    more restrictive acl.  There are two approaches to deal with this
-    difference: either accept that it exists and that applying the file
-    masks is imperfect, or change the richacl access check algorithm so that
-    such accesses are denied.
-    
-    This patch denies such accesses and makes sure that the richacl access
-    check algorithm grants the same accesses as the nfsv4 acl with the file
-    masks applied.
-    
-    Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
     Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index b368b51..79fb00f 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -424,6 +424,16 @@ richacl_permission(struct inode *inode, const struct richacl *acl,
- 		} else
- 			goto is_everyone;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d54cd0c..7009a05 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -888,7 +888,6 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+ #define EXT4_MOUNT_DISCARD		0x40000000 /* Issue DISCARD requests */
+-#define EXT4_MOUNT_RICHACL		0x80000000 /* Temp richacl enable */
  
-+		/*
-+		 * Apply the group file mask to entries other than OWNER@ and
-+		 * EVERYONE@. This is not required for correct access checking
-+		 * but ensures that we grant the same permissions as the acl
-+		 * computed by richacl_apply_masks() would grant.  See
-+		 * richacl_apply_masks() for a more detailed explanation.
-+		 */
-+		if (richace_is_allow(ace))
-+			ace_mask &= acl->a_group_mask;
-+
- is_owner:
- 		/* The process is in the owner or group file class. */
- 		in_owner_or_group_class = 1;
-
+ #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
+ #define set_opt(o, opt)			o |= EXT4_MOUNT_##opt
+@@ -1281,6 +1280,7 @@ EXT4_INODE_BIT_FNS(state, state_flags)
+ #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
+ #define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400 /* EA in inode */
+ #define EXT4_FEATURE_INCOMPAT_DIRDATA		0x1000 /* data in dirent */
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x2000
+ 
+ #define EXT4_FEATURE_COMPAT_SUPP	EXT2_FEATURE_COMPAT_EXT_ATTR
+ #define EXT4_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1288,7 +1288,8 @@ EXT4_INODE_BIT_FNS(state, state_flags)
+ 					 EXT4_FEATURE_INCOMPAT_META_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_EXTENTS| \
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+-					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
++					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c5861c9..6317f00 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -926,16 +926,14 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",nouser_xattr");
+ 	}
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	if ((sb->s_flags & MS_POSIXACL) && !(def_mount_opts & EXT4_DEFM_ACL))
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	if ((sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
++	    !(def_mount_opts & EXT4_DEFM_ACL))
+ 		seq_puts(seq, ",acl");
+-	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
++	if (!(sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
++	    (def_mount_opts & EXT4_DEFM_ACL))
+ 		seq_puts(seq, ",noacl");
+ #endif
+-#ifdef CONFIG_EXT4_FS_RICHACL
+-	if (sb->s_flags & MS_RICHACL)
+-		seq_puts(seq, ",richacl");
+-#endif
+ 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
+ 		seq_printf(seq, ",commit=%u",
+ 			   (unsigned) (sbi->s_commit_interval / HZ));
+@@ -1174,7 +1172,7 @@ enum {
+ 	Opt_block_validity, Opt_noblock_validity,
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+-	Opt_discard, Opt_nodiscard, Opt_richacl,
++	Opt_discard, Opt_nodiscard,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1245,7 +1243,6 @@ static const match_table_t tokens = {
+ 	{Opt_dioread_lock, "dioread_lock"},
+ 	{Opt_discard, "discard"},
+ 	{Opt_nodiscard, "nodiscard"},
+-	{Opt_richacl, "richacl"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1274,30 +1271,24 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 
+ static void enable_acl(struct super_block *sb)
+ {
+-#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
+ 	ext4_msg(sb, KERN_ERR, "acl options not supported");
+ 	return;
+ #endif
+-	sb->s_flags |= MS_POSIXACL;
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL))
++		sb->s_flags |= MS_RICHACL;
++	else
++		sb->s_flags |= MS_POSIXACL;
++	return;
+ }
+ 
+ static void disable_acl(struct super_block *sb)
+ {
+-#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
+ 	ext4_msg(sb, KERN_ERR, "acl options not supported");
+ 	return;
+ #endif
+-	sb->s_flags &= ~MS_POSIXACL;
+-	return;
+-}
+-
+-static void enable_richacl(struct super_block *sb)
+-{
+-#if !defined(CONFIG_EXT4_FS_RICHACL)
+-	ext4_msg(sb, KERN_ERR, "richacl options not supported");
+-	return;
+-#endif
+-	sb->s_flags |= MS_RICHACL;
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
+ 	return;
+ }
+ 
+@@ -1736,9 +1727,6 @@ set_qf_format:
+ 		case Opt_dioread_lock:
+ 			clear_opt(sbi->s_mount_opt, DIOREAD_NOLOCK);
+ 			break;
+-		case Opt_richacl:
+-			enable_richacl(sb);
+-			break;
+ 		default:
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "Unrecognized mount option \"%s\" "
+@@ -2569,7 +2557,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (def_mount_opts & EXT4_DEFM_XATTR_USER)
+ 		set_opt(sbi->s_mount_opt, XATTR_USER);
+ #endif
+-#if defined(CONFIG_EXT4_FS_POSIX_ACL)
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
+ 	if (def_mount_opts & EXT4_DEFM_ACL)
+ 		enable_acl(sb);
+ #endif
