@@ -1,114 +1,47 @@
-From: Mikulas Patocka <mpatocka@redhat.com>
-Subject: Re: [PATCH 4/4] Support discard if at least one underlying device
- supports it
-Date: Mon, 5 Jul 2010 07:32:26 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.1007050718250.17168@hs20-bc2-1.build.redhat.com>
-References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com>
- <20100702181430.GD26916@redhat.com> <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021554550.11102@hs20-bc2-1.build.redhat.com>
- <20100702204709.GB21915@redhat.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: dm-devel@redhat.com, Alasdair G Kergon <agk@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	axboe@kernel.dk, dmonakhov@openvz.org
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100702204709.GB21915@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Define s_jnl_backup_type in superblock
+Date: Mon,  5 Jul 2010 09:15:49 -0400
+Message-ID: <1278335749-9593-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:37952 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753513Ab0GENPw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Jul 2010 09:15:52 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+This has been in use by e2fsprogs for a while; define it to keep the
+super block fields in sync.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-On Fri, 2 Jul 2010, Mike Snitzer wrote:
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5d3d768..4c7d472 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -984,7 +984,7 @@ struct ext4_super_block {
+ 	__le32	s_last_orphan;		/* start of list of inodes to delete */
+ 	__le32	s_hash_seed[4];		/* HTREE hash seed */
+ 	__u8	s_def_hash_version;	/* Default hash version to use */
+-	__u8	s_reserved_char_pad;
++	__u8	s_jnl_backup_type;
+ 	__le16  s_desc_size;		/* size of group descriptor */
+ /*100*/	__le32	s_default_mount_opts;
+ 	__le32	s_first_meta_bg;	/* First metablock block group */
+@@ -1002,7 +1002,7 @@ struct ext4_super_block {
+ 	__le64  s_mmp_block;            /* Block for multi-mount protection */
+ 	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+ 	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
+-	__u8	s_reserved_char_pad2;
++	__u8	s_reserved_char_pad;
+ 	__le16  s_reserved_pad;
+ 	__le64	s_kbytes_written;	/* nr of lifetime kilobytes written */
+ 	__le32	s_snapshot_inum;	/* Inode number of active snapshot */
+-- 
+1.7.0.4
 
-> On Fri, Jul 02 2010 at  4:00pm -0400,
-> Mikulas Patocka <mpatocka@redhat.com> wrote:
-> 
-> > 
-> > 
-> > On Fri, 2 Jul 2010, Mikulas Patocka wrote:
-> > 
-> > > > As we discussed, we have a challenge where we need DM to avoid issuing
-> > > > a barrier before the discard IFF a target doesn't support the discard
-> > > > (which the barrier is paired with).
-> > > > 
-> > > > My understanding is that blkdev_issue_discard() only cares if the
-> > > > discard was supported.  Barrier is used just to decorate the discard
-> > > > (for correctness).  So by returning -EOPNOTSUPP we're saying the discard
-> > > > isn't supported; we're not making any claims about the implict barrier,
-> > > > so best to avoid the barrier entirely.
-> > > > 
-> > > > Otherwise we'll be issuing unnecessary barriers (and associated
-> > > > performance loss).
-> > > > 
-> > > > So yet another TODO item... Anyway:
-> > > > 
-> > > > Acked-by: Mike Snitzer <snitzer@redhat.com>
-> > > 
-> > > Unnecessary barriers are issued anyway. With each freed extent.
-> > > 
-> > > The code must issue a "SYNCHRONIZE CACHE" to flush cache for previous 
-> > > writes, then "UNMAP" and then another "SYNCHRONIZE CACHE" to commit that 
-> > > unmap to disk. And this in loop for all extents in 
-> > > "release_blocks_on_commit".
-> > > 
-> > > One idea behind "discard barriers" was to submit a discard request and not 
-> > > wait for it. Then the request would need a barrier so that it doesn't get 
-> > > reordered with further writes (that may potentially write to the same area 
-> > > as the discarded area). But discard isn't used this way anyway, 
-> > > sb_issue_discard waits for completion, so the barrier isn't needed.
-> > > 
-> > > Even if ext4 developers wanted asynchronous discard requests, they should 
-> > > fire all the discards at once and then submit one zero-sized barrier. Not 
-> > > barrier with each discard request.
-> > > 
-> > > This is up to ext4 developers to optimize and remove the barriers and we 
-> > > can't do anything with it. Just send "SYNCHRONIZE 
-> > > CACHE"+"UNMAP"+"SYNCHRONIZE CACHE" like the barrier specification wants...
-> > > 
-> > > Mikulas
-> > 
-> > BTW. I understand that the current dm implementation will send two useless 
-> > consecutive "SYNCHRONIZE CACHE" commands discard is directed to the part 
-> > of the device that doesn't support it.
-> 
-> Issue 1 ^^^
-> 
-> > But the problem is that when you use discard on a part of the device that 
-> > supports discard, it also sends two useless "SYNCHRONIZE CACHE" commands 
-> > --- they are useless for functionality, but mandated by the barrier 
-> > specification.
-> 
-> Issue 2 ^^^
-> 
-> Those are 2 different issues.  Please don't join them as if they are one
-> in the same.  DM should treat a discard as a first class request (which
-> may or may not have a barrier).
-
-What I mean --- if you fix Issue 2, Issue 1 is no longer a problem.
-
-> If a region doesn't support the discard
-> DM has no business processing anything related to the discard (barriers
-> included).  It is as simple as that.
-
-You can optimize out the second SYNCHRONIZE CACHE, but not the first one 
-(because when it is sent, we don't know if the discard will succeed or 
-not).
-
-Basically, the fix is to prefix the second dm_flush in process_barrier 
-with if (md->barrier_error != -EOPNOTSUPP).
-
-The "barrier+discard" concept is problematic anyway. If we specify that 
-"barrier+discard" request doesn't have to do the barrier if discard fails 
-(as it is currently), then the request is useless to maintain disk 
-integrity because the discard may fail anytime (and so the barrier).
-
-I think they will eventually remove "barrier+discard" from the filesystems 
-at all.
-
-Mikulas
