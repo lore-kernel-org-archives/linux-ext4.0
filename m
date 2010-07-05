@@ -1,35 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Always journal quota file modifications
-Date: Mon, 05 Jul 2010 15:08:12 -0500
-Message-ID: <4C323BAC.5030101@redhat.com>
-References: <1275488593-7237-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: extent counting fun
+Date: Mon, 5 Jul 2010 17:46:36 -0600
+Message-ID: <AF4CA4E6-4ADE-41E3-843D-02266228E2CB@dilger.ca>
+References: <4C323184.8020401@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34470 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752793Ab0GEUIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Jul 2010 16:08:22 -0400
-In-Reply-To: <1275488593-7237-1-git-send-email-jack@suse.cz>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:43149 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755320Ab0GEXqf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jul 2010 19:46:35 -0400
+In-Reply-To: <4C323184.8020401@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
-> When journaled quota options are not specified, we do writes
-> to quota files just in data=ordered mode. This actually causes
-> warnings from JBD2 about dirty journaled buffer because ext4_getblk
-> unconditionally treats a block allocated by it as metadata. Since
-> quota actually is filesystem metadata, the easiest way to get rid
-> of the warning is to always treat quota writes as metadata...
+On 2010-07-05, at 13:24, Eric Sandeen wrote:
+> [root@host ~]# filefrag -B /mnt/test/file
+> /mnt/test/file: 34 extents found
+> [root@host ~]# filefrag /mnt/test/file
+> /mnt/test/file: 1058 extents found, perfection would be 1 extent
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Hum, is it 34 or 1058? :)
 
-Where are we at on this one?  I was trawling through my old RH bugs
-today, and have one that this patch will resolve.  Ted, did you
-get comfortable with it?
+What do the extents look like on disk?  Is this just because it is running on a block-mapped file and is skipping a singleton block periodically for indirect blocks, or is there a bug in the way the extents are being reported?
 
-Thanks,
--Eric
+> Older filefrag counted contiguous metadata as part of a contiguous
+> extent... newer filefrag works in fiemap query-only mode by default,
+> and just takes what fiemap tells it.  The inconsistency is weird
+> though, and led to a Red Hat bug that I'm inclined to NOTABUG... but
+> do people think this needs to be made any more consistent?
+> 
+> Should we hack ext3_fiemap() to include the checks for contiguous
+> metadata?  Or was that too shady/clever to start with ...? :)
+
+I wouldn't object to having FIEMAP add a flag for metadata blocks.  I've always thought it would be useful to be able to query/dump metadata blocks (e.g. indirect/index blocks) and the inode itself.
+
+Cheers, Andreas
+
+
+
+
+
