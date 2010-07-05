@@ -1,46 +1,61 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: extent counting fun
-Date: Mon, 5 Jul 2010 17:46:36 -0600
-Message-ID: <AF4CA4E6-4ADE-41E3-843D-02266228E2CB@dilger.ca>
-References: <4C323184.8020401@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
+From: Brad Boyer <flar@allandria.com>
+Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
+Date: Mon, 5 Jul 2010 16:52:11 -0700
+Message-ID: <20100705235211.GB12517@cynthia.pants.nu>
+References: <20100630011656.18960.4255.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:43149 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755320Ab0GEXqf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jul 2010 19:46:35 -0400
-In-Reply-To: <4C323184.8020401@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: viro@ZenIV.linux.org.uk, smfrench@gmail.com, jlayton@redhat.com,
+	mcao@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com,
+	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+	sjayaraman@suse.de, linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100630011656.18960.4255.stgit@warthog.procyon.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2010-07-05, at 13:24, Eric Sandeen wrote:
-> [root@host ~]# filefrag -B /mnt/test/file
-> /mnt/test/file: 34 extents found
-> [root@host ~]# filefrag /mnt/test/file
-> /mnt/test/file: 1058 extents found, perfection would be 1 extent
-> 
-> Hum, is it 34 or 1058? :)
+On Wed, Jun 30, 2010 at 02:16:56AM +0100, David Howells wrote:
+> 	struct xstat {
+> 		unsigned int		struct_version;
+> 	#define XSTAT_STRUCT_VERSION	0
+> 		unsigned int		st_mode;
+> 		unsigned int		st_nlink;
+> 		unsigned int		st_uid;
+> 		unsigned int		st_gid;
+> 		unsigned int		st_blksize;
+> 		struct xstat_dev	st_rdev;
+> 		struct xstat_dev	st_dev;
+> 		unsigned long long	st_ino;
+> 		unsigned long long	st_size;
+> 		struct xstat_time	st_atime;
+> 		struct xstat_time	st_mtime;
+> 		struct xstat_time	st_ctime;
+> 		struct xstat_time	st_btime;
+> 		unsigned long long	st_blocks;
+> 		unsigned long long	st_gen;
+> 		unsigned long long	st_data_version;
+> 		unsigned long long	query_flags;
+> 	#define XSTAT_QUERY_SIZE		0x00000001ULL
+> 	#define XSTAT_QUERY_NLINK		0x00000002ULL
+> 	#define XSTAT_QUERY_AMC_TIMES		0x00000004ULL
+> 	#define XSTAT_QUERY_CREATION_TIME	0x00000008ULL
+> 	#define XSTAT_QUERY_BLOCKS		0x00000010ULL
+> 	#define XSTAT_QUERY_INODE_GENERATION	0x00000020ULL
+> 	#define XSTAT_QUERY_DATA_VERSION	0x00000040ULL
+> 	#define XSTAT_QUERY__ORDINARY_SET	0x00000017ULL
+> 	#define XSTAT_QUERY__GET_ANYWAY		0x0000007fULL
+> 	#define XSTAT_QUERY__DEFINED_SET	0x0000007fULL
+> 		unsigned long long	extra_results[0];
+> 	};
 
-What do the extents look like on disk?  Is this just because it is running on a block-mapped file and is skipping a singleton block periodically for indirect blocks, or is there a bug in the way the extents are being reported?
+Would it be worthwhile to have a field for which security features are
+enabled for a file? Maybe with bits for if the file has ACLs (and which
+type if the richacl code goes in) or for the selinux labels or other
+similar types of data? The current version of ls I have does a huge
+pile of getxattr calls along with all the lstat64 calls.
 
-> Older filefrag counted contiguous metadata as part of a contiguous
-> extent... newer filefrag works in fiemap query-only mode by default,
-> and just takes what fiemap tells it.  The inconsistency is weird
-> though, and led to a Red Hat bug that I'm inclined to NOTABUG... but
-> do people think this needs to be made any more consistent?
-> 
-> Should we hack ext3_fiemap() to include the checks for contiguous
-> metadata?  Or was that too shady/clever to start with ...? :)
-
-I wouldn't object to having FIEMAP add a flag for metadata blocks.  I've always thought it would be useful to be able to query/dump metadata blocks (e.g. indirect/index blocks) and the inode itself.
-
-Cheers, Andreas
-
-
-
-
-
+	Brad Boyer
+	flar@allandria.com
