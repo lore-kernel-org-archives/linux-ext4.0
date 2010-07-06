@@ -1,56 +1,49 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] fix for consistency errors after crash
-Date: Tue, 06 Jul 2010 11:00:43 -0500
-Message-ID: <4C33532B.8010009@redhat.com>
-References: <AANLkTimYavpuyNiaKYqUe3LFp0uzix_-ITV9ao0VagLs@mail.gmail.com> <AANLkTilxxsCSTIFLzg95xooW70SCNfWiDUVqpAT32FbX@mail.gmail.com>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: [PATCH] disallow FS recursion from sb_issue_discard allocation
+Date: Tue, 6 Jul 2010 12:11:56 -0400
+Message-ID: <20100706161155.GA24461@redhat.com>
+References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com>
+ <20100702181430.GD26916@redhat.com>
+ <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021554550.11102@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021605410.13662@hs20-bc2-1.build.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Amir G." <amir73il@users.sourceforge.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25817 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754177Ab0GFQA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Jul 2010 12:00:57 -0400
-In-Reply-To: <AANLkTilxxsCSTIFLzg95xooW70SCNfWiDUVqpAT32FbX@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mikulas Patocka <mpatocka@redhat.com>, dm-devel@redhat.com,
+	Alasdair G Kergon <agk@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jens Axboe <jaxboe@fusionio.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.64.1007021605410.13662@hs20-bc2-1.build.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Amir G. wrote:
-> Hi Eric,
-> 
-> I've seen you guys had some open RH bugs on ext3, who all share in
-> common the "bit already free" error.
-> 
-> This bug I reported can explain many different problems in ext[34].
-> 
-> Essentially, every time there is a kernel crash (or hard reboot)
-> during delete/truncate of a large file,
-> it may result in "bit already clear" error after reboot.
-> 
-> The problem is very simple and so is the fix.
-> I proved the problem with 100% recreation chances using a small patch,
-> instead of running statistical stress tests.
-> All I did was to add a print and 10 seconds delay after transaction
-> restart in ext3_free_branches and reboot > 5 seconds after the
-> transaction restarts, so that kjournald will have time to commit the
-> old transaction.
-> After the reboot, I always get "bit already clear" errors, because the
-> "half large truncate" transaction is not handled properly.
-> 
-> I did not get any response from ext4 guys so far and since this bug
-> dates back to ext3,
-> I was hoping you guys could take a look and put your weight on pushing
-> the fix upstream.
+Filesystems can call sb_issue_discard on a memory reclaim path
+(e.g. ext4 calls sb_issue_discard during journal commit).
 
-Hi Amir, I really do appreciate the effort, the patch, and the ping.  :)
+Use GFP_NOFS in sb_issue_discard to avoid recursing back into the FS.
 
-I'll have to set aside some time to give it a hard look, but linking
-it back to existing bugs of mine raises that priority, thanks.  :)
+Reported-by: Mikulas Patocka <mpatocka@redhat.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+---
+ include/linux/blkdev.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
--Eric
-
-> Thanks,
-> Amir.
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index baf5258..dbb510c 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -933,7 +933,7 @@ static inline int sb_issue_discard(struct super_block *sb,
+ {
+ 	block <<= (sb->s_blocksize_bits - 9);
+ 	nr_blocks <<= (sb->s_blocksize_bits - 9);
+-	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_KERNEL,
++	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_NOFS,
+ 				   BLKDEV_IFL_WAIT | BLKDEV_IFL_BARRIER);
+ }
+ 
