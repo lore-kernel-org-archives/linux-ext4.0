@@ -1,93 +1,50 @@
-From: "Daniel Taylor" <Daniel.Taylor@wdc.com>
-Subject: RE: inconsistent file placement
-Date: Tue, 6 Jul 2010 15:15:00 -0700
-Message-ID: <469D2D911E4BF043BFC8AD32E8E30F5B24AEDB@wdscexbe07.sc.wdc.com>
-References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com> <20100706185548.GA26677@thunk.org> <4C337D16.9000200@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] Rearrange i_flags to be consistent with FS_IOC_GETFLAGS
+Date: Wed, 7 Jul 2010 09:03:13 +1000
+Message-ID: <20100706230312.GB25018@dastard>
+References: <20100706001032.GA25018@dastard>
+ <20100705154319.31193.56706.stgit@warthog.procyon.org.uk>
+ <29431.1278423623@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: <linux-ext4@vger.kernel.org>
-To: "Eric Sandeen" <sandeen@redhat.com>, <tytso@mit.edu>,
-	<amir73il@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wdscspam2.wdc.com ([129.253.170.131]:27940 "EHLO
-	wdscspam2.wdc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755271Ab0GFWPD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 18:15:03 -0400
-Content-class: urn:content-classes:message
-In-Reply-To: <4C337D16.9000200@redhat.com>
+Received: from bld-mail16.adl2.internode.on.net ([150.101.137.101]:34036 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752176Ab0GFXDR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 19:03:17 -0400
+Content-Disposition: inline
+In-Reply-To: <29431.1278423623@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
- 
-
-> -----Original Message-----
-> From: Eric Sandeen [mailto:sandeen@redhat.com] 
-> Sent: Tuesday, July 06, 2010 12:00 PM
-> To: tytso@mit.edu
-> Cc: Daniel Taylor; linux-ext4@vger.kernel.org
-> Subject: Re: inconsistent file placement
+On Tue, Jul 06, 2010 at 02:40:23PM +0100, David Howells wrote:
+> Dave Chinner <david@fromorbit.com> wrote:
 > 
-> tytso@mit.edu wrote:
-> > On Mon, Jul 05, 2010 at 06:49:34PM -0700, Daniel Taylor wrote:
-> >> I realize that it is enerally not a good idea to tune
-> >> an operating system, or subsystem, for benchmarking, but
-> >> there's something that I don't understand about ext[234]
-> >> that is badly affecting our product.  File placement on
-> >> newly-created file systems is inconsistent.  I can't,
-> >> yet, call it a bug, but I really need to understand what
-> >> is happening, and I cannot find, in the source code, the
-> >> source of the randomization (related to "goal"???).
-> > 
-> > In ext3, it really is random.  The randomness you're looking for can
-> > be found in fs/ext3/ialloc.c:find_group_orlov(), when it calls
-> > get_random_bytes().  This is responsible for "spreading" directories
-> > so they are spread across the block groups, to try to prevent
-> > fragmented files.  Yes, if all you care about is benchmarks 
-> which only
-> > use 10% of the entire file system, and for which the 
-> benchmarks don't
-> > adequately simulate file system aging, the algorithms in ext3 will
-> > cause a lot of variability.
+> > Further, it opens up the possibility that further down the track
+> > someone modifies S_* flag values (say when adding some XFS
+> > functionality) and corrupts extN filesystems all over the place.
+> > There isn't even compiler guards to catch someone modifying the S_*
+> > flags in a way that makes it incompatible with the extN on-disk
+> > definitions.
 > 
-> However, from the test description it looks like it is writing
-> a file to the root dir, so there should be no parent-dir 
-> random spreading,
-> right?
-> 
-> -Eric
-> 
-> 
+> That occurred to me after I sent the patch.  I can add some preprocessor guards
+> for this.
 
-In all of my recent tests, there has only been one file created, in
-the root directory of the freshly created and mounted file system.
+I'd prefer generic flags are not dependent on fixed values from a
+specific filesystem several layers down the storage stack.
 
-mkfs.ext[234] -b 65536 /dev/sda4
-mount <some options tested> /dev/sda4 /DataVolume
-touch /DataVolume/hex.txt
-"for i in 1 2 3 4 5; do dd if=/hex.txt bs=64K; \
-done >>/DataVolume/hex.txt"
-umount /DataVolume
-dumpe2fs /dev/sda4 >/<log file>
+Also, if the problem you are trying to solve is overhead of
+calculating the flags for stat() on RISC architectures, then I'd
+argue that XFS is just as important target for such an optimisation
+because it is widely used in small ARM and MIPS based NAS
+appliances....
 
-where /hex.txt is a 1G file on the NFS root.
+Cheers,
 
-I tried with, and without, orlov on ext3 (-o orlov and -o oldalloc)
-and didn't see any change in the behavior.  In ext4, there seemed
-to be less variability, but it is still present, and the "less" may
-just be the small sample size.
-
-Now, at least, I understand that the placement algorithm does not
-always start at first free block.
-
-It is an unfortunate fact of life that simplistic benchmarks often
-drive sales.  This product will be a consumer NAS and when our
-internal runs of the common NAS benchmarks get inconsistent results,
-it creates a lot of concern.
-
-There's an option for ext4 (delayed allocation) that looks like it
-bypasses the "pid % 16" coloration.  I'll tinker some more with
-that and see how it goes.
-
-Thank you all for your input.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
