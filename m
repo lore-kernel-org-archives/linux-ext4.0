@@ -1,92 +1,66 @@
-From: Tao Ma <tao.ma@oracle.com>
-Subject: Re: [PATCH 0/6 v6][RFC] jbd[2]: enhance fsync performance when using
- CFQ
-Date: Tue, 06 Jul 2010 14:27:49 +0800
-Message-ID: <4C32CCE5.2090907@oracle.com>
-References: <1278100699-24132-1-git-send-email-jmoyer@redhat.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: inconsistent file placement
+Date: Tue, 6 Jul 2010 08:52:48 +0200
+Message-ID: <AANLkTilxmM6mxH23pAjTeVIaM3mjilY8H3oJLfAhw0cp@mail.gmail.com>
+References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, axboe@kernel.dk,
-	linux-kernel@vger.kernel.org, vgoyal@redhat.com,
-	"ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Daniel Taylor <Daniel.Taylor@wdc.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:22377 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753398Ab0GFG3e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 02:29:34 -0400
-In-Reply-To: <1278100699-24132-1-git-send-email-jmoyer@redhat.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:40626 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753911Ab0GFGwu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 02:52:50 -0400
+Received: by bwz1 with SMTP id 1so3246560bwz.19
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Jul 2010 23:52:49 -0700 (PDT)
+In-Reply-To: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jeff,
+On Tue, Jul 6, 2010 at 3:49 AM, Daniel Taylor <Daniel.Taylor@wdc.com> w=
+rote:
+> I realize that it is enerally not a good idea to tune
+> an operating system, or subsystem, for benchmarking, but
+> there's something that I don't understand about ext[234]
+> that is badly affecting our product. =A0File placement on
+> newly-created file systems is inconsistent. =A0I can't,
+> yet, call it a bug, but I really need to understand what
+> is happening, and I cannot find, in the source code, the
+> source of the randomization (related to "goal"???).
+>
+> Disk drive performance for writing/reading large files
+> is rather sensitive to outer-/inner-diameter cylinder
+> placement. =A0When I create the same file multiple times
+> on newly-created ext[234] file systems on the same disk
+> partition, I find that it does not consistently occupy
+> the same blocks. =A0In fact, there is enough difference in
+> location to cause real differences in performance from
+> test to test, which I cannot justify to management.
+>
 
-On 07/03/2010 03:58 AM, Jeff Moyer wrote:
-> Hi,
->
-> Running iozone or fs_mark with fsync enabled, the performance of CFQ is
-> far worse than that of deadline for enterprise class storage when dealing
-> with file sizes of 8MB or less.  I used the following command line as a
-> representative test case:
->
->    fs_mark -S 1 -D 10000 -N 100000 -d /mnt/test/fs_mark -s 65536 -t 1 -w 4096 -F
->
-I ran the script with "35-rc4 + this patch version" for an ocfs2 volume, 
-and get no hang now. Thanks for the work. I also have some number for 
-you. See below.
->
-> Because the iozone process is issuing synchronous writes, it is put
-> onto CFQ's SYNC service tree.  The significance of this is that CFQ
-> will idle for up to 8ms waiting for requests on such queues.  So,
-> what happens is that the iozone process will issue, say, 64KB worth
-> of write I/O.  That I/O will just land in the page cache.  Then, the
-> iozone process does an fsync which forces those I/Os to disk as
-> synchronous writes.  Then, the file system's fsync method is invoked,
-> and for ext3/4, it calls log_start_commit followed by log_wait_commit.
-> Because those synchronous writes were forced out in the context of the
-> iozone process, CFQ will now idle on iozone's cfqq waiting for more I/O.
-> However, iozone's progress is gated by the journal thread, now.
->
-> With this patch series applied (in addition to the two other patches I
-> sent [1]), CFQ now achieves 530.82 files / second.
->
-> I also wanted to improve the performance of the fsync-ing process in the
-> presence of a competing sequential reader.  The workload I used for that
-> was a fio job that did sequential buffered 4k reads while running the fs_mark
-> process.  The run-time was 30 seconds, except where otherwise noted.
->
-> Deadline got 450 files/second while achieving a throughput of 78.2 MB/s for
-> the sequential reader.  CFQ, unpatched, did not finish an fs_mark run
-> in 30 seconds.  I had to bump the time of the test up to 5 minutes, and then
-> CFQ saw an fs_mark performance of 6.6 files/second and sequential reader
-> throughput of 137.2MB/s.
->
-> The fs_mark process was being starved as the WRITE_SYNC I/O is marked
-> with RQ_NOIDLE, and regular WRITES are part of the async workload by
-> default.  So, a single request would be served from either the fs_mark
-> process or the journal thread, and then they would give up the I/O
-> scheduler.
->
-> After applying this patch set, CFQ can now perform 113.2 files/second while
-> achieving a throughput of 78.6 MB/s for the sequential reader.  In table
-> form, the results (all averages of 5 runs) look like this:
->
->                   just    just
->                  fs_mark  fio        mixed	
-> -------------------------------+--------------
-> deadline        529.44   151.4 | 450.0    78.2
-> vanilla cfq     107.88   164.4 |   6.6   137.2
-> patched cfq     530.82   158.7 | 113.2    78.6
-Just some updates from the test of ocfs2.
-                   fs_mark
-  ------------------------
-  deadline        386.3
-  vanilla cfq     59.7
-  patched cfq     366.2
+The ext[23] (and I suppose 4 as well) uses the process pid % 16 to
+define a 'color' for the process.
+New files first block goal depends on that 'color' - the goal is one
+of 16 different offsets in the block group
+where the new file's inode was allocated (usually the block group of
+its parent directory).
 
-So there is really a fantastic improvement at least from what fs_mark 
-gives us. Great thanks.
+The logic behind this allocator is that multiple files created
+concurrently in the same directory would
+have less chance of stepping over each other's allocations.
 
-Regards,
-Tao
+I am not sure what you are trying to test or how this behavior badly
+affects your product.
+If you specify your needs maybe someone can help you solve your problem=
+=2E
+I think that ext4 has some advanced features, like pre-allocation,
+that may be able to help you.
+
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
