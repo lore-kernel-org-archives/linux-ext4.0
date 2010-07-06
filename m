@@ -1,47 +1,53 @@
-From: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-Subject: Re: [PATCH V3 0/8] Cleancache: overview
-Date: Tue, 6 Jul 2010 16:58:20 -0400
-Message-ID: <20100706205820.GB32627@phenom.dumpdata.com>
-References: <20100621231809.GA11111@ca-server1.us.oracle.com>
+From: tytso@mit.edu
+Subject: Re: inconsistent file placement
+Date: Tue, 6 Jul 2010 18:01:01 -0400
+Message-ID: <20100706220101.GA6603@thunk.org>
+References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com>
+ <20100706185548.GA26677@thunk.org>
+ <4C337D16.9000200@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
-        adilger@sun.com, tytso@mit.edu, mfasheh@suse.com,
-        joel.becker@oracle.com, matthew@wil.cx, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org, ngupta@vflare.org, jeremy@goop.org,
-        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
-        dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com
-To: Dan Magenheimer <dan.magenheimer@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Daniel Taylor <Daniel.Taylor@wdc.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:58089 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755645Ab0GFWB0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Jul 2010 18:01:26 -0400
 Content-Disposition: inline
-In-Reply-To: <20100621231809.GA11111@ca-server1.us.oracle.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4C337D16.9000200@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 21, 2010 at 04:18:09PM -0700, Dan Magenheimer wrote:
-> [PATCH V3 0/8] Cleancache: overview
+On Tue, Jul 06, 2010 at 01:59:34PM -0500, Eric Sandeen wrote:
+> However, from the test description it looks like it is writing
+> a file to the root dir, so there should be no parent-dir random spreading,
+> right?
 
-Dan,
+Hmm, yes, I missed that part of Daniel's e-mail.  He's just writing a
+single file.  In that case, Amir is right, the only thing which would
+be causing this is the colour offset, at least for ext2 and ext3.
+This is avoid fragmented files caused by two or more processes running
+on different CPU's all writing into the same block group.
 
-Two comments:
- - Mention where one can get the implementor of the cleancache API.
-   Either a link to where the patches reside or a git branch.
-   If you need pointers on branch names:
-   http://lkml.org/lkml/2010/6/7/269
+In the case of ext4, we don't use a pid-determined colour algorithm if
+delayed allocation is used, and the randomness is caused by the
+writeback system deciding to write out different chunks of pages
+first.  The way to fix this when writing large files is to use
+fallocate(2) when writing a large file, so it can be allocated
+contiguously.
 
--  Point out the presentation you did on this. It has an excellent
-   overview of how this API works, and most importantly: a) images
-   and b). performance numbers.
+In any case, Daniel, if you want the best results for your benchmark,
+use ext4, and tweak the script slightly:
 
-Otherwise, please consider all of these patches to have
-Reviewed-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+touch /DataVolume/hex.txt
+fallocate -l 5G /DataVolume/hex.txt
+for i in 0 1 2 3 4
+do
+    dd if=/hex.txt of=/DataVolume/hex.txt bs=64k conv=notrunc \
+       oflag=direct,append
+done
 
-tag.
+Best regards,
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
