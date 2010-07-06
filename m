@@ -1,53 +1,93 @@
-From: tytso@mit.edu
-Subject: Re: inconsistent file placement
-Date: Tue, 6 Jul 2010 18:01:01 -0400
-Message-ID: <20100706220101.GA6603@thunk.org>
-References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com>
- <20100706185548.GA26677@thunk.org>
- <4C337D16.9000200@redhat.com>
+From: "Daniel Taylor" <Daniel.Taylor@wdc.com>
+Subject: RE: inconsistent file placement
+Date: Tue, 6 Jul 2010 15:15:00 -0700
+Message-ID: <469D2D911E4BF043BFC8AD32E8E30F5B24AEDB@wdscexbe07.sc.wdc.com>
+References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com> <20100706185548.GA26677@thunk.org> <4C337D16.9000200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Daniel Taylor <Daniel.Taylor@wdc.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: <linux-ext4@vger.kernel.org>
+To: "Eric Sandeen" <sandeen@redhat.com>, <tytso@mit.edu>,
+	<amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58089 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755645Ab0GFWB0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Jul 2010 18:01:26 -0400
-Content-Disposition: inline
+Received: from wdscspam2.wdc.com ([129.253.170.131]:27940 "EHLO
+	wdscspam2.wdc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755271Ab0GFWPD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 18:15:03 -0400
+Content-class: urn:content-classes:message
 In-Reply-To: <4C337D16.9000200@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 06, 2010 at 01:59:34PM -0500, Eric Sandeen wrote:
+ 
+
+> -----Original Message-----
+> From: Eric Sandeen [mailto:sandeen@redhat.com] 
+> Sent: Tuesday, July 06, 2010 12:00 PM
+> To: tytso@mit.edu
+> Cc: Daniel Taylor; linux-ext4@vger.kernel.org
+> Subject: Re: inconsistent file placement
+> 
+> tytso@mit.edu wrote:
+> > On Mon, Jul 05, 2010 at 06:49:34PM -0700, Daniel Taylor wrote:
+> >> I realize that it is enerally not a good idea to tune
+> >> an operating system, or subsystem, for benchmarking, but
+> >> there's something that I don't understand about ext[234]
+> >> that is badly affecting our product.  File placement on
+> >> newly-created file systems is inconsistent.  I can't,
+> >> yet, call it a bug, but I really need to understand what
+> >> is happening, and I cannot find, in the source code, the
+> >> source of the randomization (related to "goal"???).
+> > 
+> > In ext3, it really is random.  The randomness you're looking for can
+> > be found in fs/ext3/ialloc.c:find_group_orlov(), when it calls
+> > get_random_bytes().  This is responsible for "spreading" directories
+> > so they are spread across the block groups, to try to prevent
+> > fragmented files.  Yes, if all you care about is benchmarks 
+> which only
+> > use 10% of the entire file system, and for which the 
+> benchmarks don't
+> > adequately simulate file system aging, the algorithms in ext3 will
+> > cause a lot of variability.
+> 
 > However, from the test description it looks like it is writing
-> a file to the root dir, so there should be no parent-dir random spreading,
+> a file to the root dir, so there should be no parent-dir 
+> random spreading,
 > right?
+> 
+> -Eric
+> 
+> 
 
-Hmm, yes, I missed that part of Daniel's e-mail.  He's just writing a
-single file.  In that case, Amir is right, the only thing which would
-be causing this is the colour offset, at least for ext2 and ext3.
-This is avoid fragmented files caused by two or more processes running
-on different CPU's all writing into the same block group.
+In all of my recent tests, there has only been one file created, in
+the root directory of the freshly created and mounted file system.
 
-In the case of ext4, we don't use a pid-determined colour algorithm if
-delayed allocation is used, and the randomness is caused by the
-writeback system deciding to write out different chunks of pages
-first.  The way to fix this when writing large files is to use
-fallocate(2) when writing a large file, so it can be allocated
-contiguously.
-
-In any case, Daniel, if you want the best results for your benchmark,
-use ext4, and tweak the script slightly:
-
+mkfs.ext[234] -b 65536 /dev/sda4
+mount <some options tested> /dev/sda4 /DataVolume
 touch /DataVolume/hex.txt
-fallocate -l 5G /DataVolume/hex.txt
-for i in 0 1 2 3 4
-do
-    dd if=/hex.txt of=/DataVolume/hex.txt bs=64k conv=notrunc \
-       oflag=direct,append
-done
+"for i in 1 2 3 4 5; do dd if=/hex.txt bs=64K; \
+done >>/DataVolume/hex.txt"
+umount /DataVolume
+dumpe2fs /dev/sda4 >/<log file>
 
-Best regards,
+where /hex.txt is a 1G file on the NFS root.
 
-					- Ted
+I tried with, and without, orlov on ext3 (-o orlov and -o oldalloc)
+and didn't see any change in the behavior.  In ext4, there seemed
+to be less variability, but it is still present, and the "less" may
+just be the small sample size.
+
+Now, at least, I understand that the placement algorithm does not
+always start at first free block.
+
+It is an unfortunate fact of life that simplistic benchmarks often
+drive sales.  This product will be a consumer NAS and when our
+internal runs of the common NAS benchmarks get inconsistent results,
+it creates a lot of concern.
+
+There's an option for ext4 (delayed allocation) that looks like it
+bypasses the "pid % 16" coloration.  I'll tinker some more with
+that and see how it goes.
+
+Thank you all for your input.
