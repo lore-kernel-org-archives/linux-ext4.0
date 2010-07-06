@@ -1,49 +1,66 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: [PATCH] disallow FS recursion from sb_issue_discard allocation
-Date: Tue, 6 Jul 2010 12:11:56 -0400
-Message-ID: <20100706161155.GA24461@redhat.com>
-References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com>
- <20100702181430.GD26916@redhat.com>
- <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021554550.11102@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021605410.13662@hs20-bc2-1.build.redhat.com>
+From: tytso@mit.edu
+Subject: Re: inconsistent file placement
+Date: Tue, 6 Jul 2010 14:55:48 -0400
+Message-ID: <20100706185548.GA26677@thunk.org>
+References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mikulas Patocka <mpatocka@redhat.com>, dm-devel@redhat.com,
-	Alasdair G Kergon <agk@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jens Axboe <jaxboe@fusionio.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Daniel Taylor <Daniel.Taylor@wdc.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:39953 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752554Ab0GFSzw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Jul 2010 14:55:52 -0400
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.1007021605410.13662@hs20-bc2-1.build.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Filesystems can call sb_issue_discard on a memory reclaim path
-(e.g. ext4 calls sb_issue_discard during journal commit).
+On Mon, Jul 05, 2010 at 06:49:34PM -0700, Daniel Taylor wrote:
+> I realize that it is enerally not a good idea to tune
+> an operating system, or subsystem, for benchmarking, but
+> there's something that I don't understand about ext[234]
+> that is badly affecting our product.  File placement on
+> newly-created file systems is inconsistent.  I can't,
+> yet, call it a bug, but I really need to understand what
+> is happening, and I cannot find, in the source code, the
+> source of the randomization (related to "goal"???).
 
-Use GFP_NOFS in sb_issue_discard to avoid recursing back into the FS.
+In ext3, it really is random.  The randomness you're looking for can
+be found in fs/ext3/ialloc.c:find_group_orlov(), when it calls
+get_random_bytes().  This is responsible for "spreading" directories
+so they are spread across the block groups, to try to prevent
+fragmented files.  Yes, if all you care about is benchmarks which only
+use 10% of the entire file system, and for which the benchmarks don't
+adequately simulate file system aging, the algorithms in ext3 will
+cause a lot of variability.
 
-Reported-by: Mikulas Patocka <mpatocka@redhat.com>
-Signed-off-by: Mike Snitzer <snitzer@redhat.com>
----
- include/linux/blkdev.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Yes, if you use FAT-style algorithms which try to use the first free
+inode, and first free block which is available, for the purposes of
+competitive benchmarking (especially if the benchmarks are crap), you
+can probably win against the competition.  Unfortunately, long-term
+your product will probably far more likely to suffer from file system
+aging as the blocks at the beginning of the file system are badly
+fragmented.  Please don't do that, though (or, if you must, please
+have a switch so that users can switch it from "competitive
+benchmarking mode" to "friendly to real life users" mode).
 
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index baf5258..dbb510c 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -933,7 +933,7 @@ static inline int sb_issue_discard(struct super_block *sb,
- {
- 	block <<= (sb->s_blocksize_bits - 9);
- 	nr_blocks <<= (sb->s_blocksize_bits - 9);
--	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_KERNEL,
-+	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_NOFS,
- 				   BLKDEV_IFL_WAIT | BLKDEV_IFL_BARRIER);
- }
- 
+Ext4 uses very different algorithms, and it's not strictly speaking
+random since it uses a cur-down md4 hash of the directory name to
+decide where to place the directory inode (and the location of the
+directory inode, affects both the files created in that inode as well
+as the blocks allocated to those files, as in ext3).  So as long as
+the directory hash seed in the superblock stays constant, and the
+directory and file names created stay constant, the inode and block
+layout will also be consistent.
+
+All of this having been said, it may very well be possible to improve
+on the anti-fragmentation algorithms while still trying to allocate
+block groups closer to the beginning of the disk to take advantage of
+the inner-diamater/outer-diameter placement effect.  There's probably
+room for some research work here.  But please do be careful before
+twiddling too much with the allocator algorithms, they are somewhat
+subtle....
+
+						- Ted
