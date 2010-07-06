@@ -1,17 +1,17 @@
 From: "MICROSOFT EMAIL PROMOTION" <info.winner@microsoft.com>
 Subject: Congratulations: You have won
-Date: Tue, 6 Jul 2010 04:54:45 -0200 (FNT)
-Message-ID: <10118.41.206.15.1.1278399285.squirrel__2026.08552431247$1278407940$gmane$org@41.206.15.1>
+Date: Tue, 6 Jul 2010 04:57:29 -0200 (FNT)
+Message-ID: <45689.41.206.15.2.1278399449.squirrel__34624.453521292$1278409270$gmane$org@41.206.15.2>
 Reply-To: mrglenn.bradley@yahoo.com.hk
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.avellaneda-ba.gov.ar ([200.71.230.2]:55369 "EHLO
+Received: from mail.avellaneda-ba.gov.ar ([200.71.230.2]:59705 "EHLO
 	ns2.avellaneda-ba.gov.ar" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751126Ab0GFJSw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 05:18:52 -0400
+	by vger.kernel.org with ESMTP id S1753074Ab0GFJlB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 05:41:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
