@@ -1,59 +1,72 @@
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-Subject: Re: [Ocfs2-devel] [PATCH] OCFS2: Allow huge (> 16 TiB) volumes to
-	mount
-Date: Tue, 6 Jul 2010 17:13:27 -0700
-Message-ID: <AANLkTilgO6V0ugvm3vvI5sHNC3zNxYa1zu_VxjCSoVIg@mail.gmail.com>
-References: <87mxud74tw.fsf@gmail.com>
-	<20100706200438.GF17961@mail.oracle.com>
+From: Nitin Gupta <ngupta@vflare.org>
+Subject: Re: [PATCH V3 3/8] Cleancache: core ops functions and configuration
+Date: Wed, 07 Jul 2010 06:32:56 +0530
+Message-ID: <4C33D240.80102@vflare.org>
+References: <20100621231939.GA19505@ca-server1.us.oracle.com> <1277223988.9782.20.camel@nimitz> <20100706205121.GA32627@phenom.dumpdata.com>
+Reply-To: ngupta@vflare.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: ocfs2-devel@oss.oracle.com, linux-kernel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Dave Hansen <dave@sr71.net>,
+	Dan Magenheimer <dan.magenheimer@oracle.com>,
+	chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@Sun.COM, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
+	JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
+	dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com
+To: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:51396 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755008Ab0GGAN2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 20:13:28 -0400
-In-Reply-To: <20100706200438.GF17961@mail.oracle.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:45276 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753535Ab0GGBCh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jul 2010 21:02:37 -0400
+In-Reply-To: <20100706205121.GA32627@phenom.dumpdata.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 6, 2010 at 1:04 PM, Joel Becker <Joel.Becker@oracle.com> wr=
-ote:
+On 07/07/2010 02:21 AM, Konrad Rzeszutek Wilk wrote:
+> On Tue, Jun 22, 2010 at 09:26:28AM -0700, Dave Hansen wrote:
+>> On Mon, 2010-06-21 at 16:19 -0700, Dan Magenheimer wrote:
+>>> --- linux-2.6.35-rc2/include/linux/cleancache.h 1969-12-31 17:00:00.000000000 -0700
+>>> +++ linux-2.6.35-rc2-cleancache/include/linux/cleancache.h      2010-06-21 14:45:18.000000000 -0600
+>>> @@ -0,0 +1,88 @@
+>>> +#ifndef _LINUX_CLEANCACHE_H
+>>> +#define _LINUX_CLEANCACHE_H
+>>> +
+>>> +#include <linux/fs.h>
+>>> +#include <linux/mm.h>
+>>> +
+>>> +struct cleancache_ops {
+>>> +       int (*init_fs)(size_t);
+>>> +       int (*init_shared_fs)(char *uuid, size_t);
+>>> +       int (*get_page)(int, ino_t, pgoff_t, struct page *);
+>>> +       void (*put_page)(int, ino_t, pgoff_t, struct page *);
+>>> +       void (*flush_page)(int, ino_t, pgoff_t);
+>>> +       void (*flush_inode)(int, ino_t);
+>>> +       void (*flush_fs)(int);
+>>> +};
+>>> + 
+>>
+>> How would someone go about testing this code?  Is there an example
+>> cleancache implementation?
+> 
+> Dan,
+> 
+> Can you reference with a link or a git branch the patches that utilize
+> this?
+> 
+> And also mention that in the 0/X patch so that folks can reference your
+> cleancache implementation?
+> 
 >
-> Thus, I propose the following jbd2 patch. =A0jbd2 people, what do you
-> think:
->
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index bc2ff59..7922d87 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1365,6 +1365,8 @@ int jbd2_journal_check_used_features (journal_t
-> *journal,
->
-> =A0 =A0 =A0 =A0if (!compat && !ro && !incompat)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return 1;
-> + =A0 =A0 =A0 if (journal_get_superblock(journal))
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0
-> =A0 =A0 =A0 =A0if (journal->j_format_version =3D=3D 1)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return 0;
 
-As an alternative, could jbd2_journal_init_inode() just call
-journal_get_superblock() itself?  That would naturally make the
-feature bits valid as soon as the journal is initialized.  It would
-also preserve all error checking, instead of converting superblock
-read errors into "this journal has no features".
+FYI.
 
-JBD2 developers, please advise.  OCFS2 needs to examine JBD2 journal
-feature bits *before* the journal is recovered, which is not possible
-at present.  What is the best approach to fixing this?
+I am working on 'zcache' which uses cleancache_ops to provide page cache
+compression support. I will be posting it to LKML before end of next week.
 
-Thanks.
-
- - Pat
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Nitin
