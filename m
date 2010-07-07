@@ -1,46 +1,88 @@
-From: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-Subject: Re: [PATCH V3 3/8] Cleancache: core ops functions and configuration
-Date: Wed, 7 Jul 2010 09:27:44 -0400
-Message-ID: <20100707132744.GB4823@phenom.dumpdata.com>
-References: <20100621231939.GA19505@ca-server1.us.oracle.com>
- <1277223988.9782.20.camel@nimitz>
- <20100706205121.GA32627@phenom.dumpdata.com>
- <4C33D240.80102@vflare.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fio test triggering bad data on ext4
+Date: Wed, 07 Jul 2010 09:26:57 -0500
+Message-ID: <4C348EB1.4010101@redhat.com>
+References: <4C1B292C.2080205@fusionio.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Hansen <dave@sr71.net>, Dan Magenheimer <dan.magenheimer@oracle.com>,
-        chris.mason@oracle.com, viro@zeniv.linux.org.uk,
-        akpm@linux-foundation.org, adilger@Sun.COM, tytso@mit.edu,
-        mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
-        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
-        JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
-        dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com
-To: Nitin Gupta <ngupta@vflare.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <4C33D240.80102@vflare.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Jens Axboe <jaxboe@fusionio.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9523 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755178Ab0GGO1K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Jul 2010 10:27:10 -0400
+In-Reply-To: <4C1B292C.2080205@fusionio.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> > Can you reference with a link or a git branch the patches that utilize
-> > this?
-> > 
-> > And also mention that in the 0/X patch so that folks can reference your
-> > cleancache implementation?
-> > 
-> >
+Jens Axboe wrote:
+> Hi,
 > 
-> FYI.
+> I was writing a small fio job file to do writes and read verifies on a
+> device. It forks 32 processes, each writing randomly to 4 files with a
+> block size between 4k and 16k. When it has written 1024 of those blocks,
+> it'll verify the oldest 512 of them. Each block is checksummed for every
+> 512b. It uses libaio and O_DIRECT.
 > 
-> I am working on 'zcache' which uses cleancache_ops to provide page cache
-> compression support. I will be posting it to LKML before end of next week.
+> It works on ext2 and btrfs. I haven't run it to completion yet, but they
+> survive 15-20 minutes just fine. ext4 doesn't even go a full minutes
+> before this triggers:
+> 
+> Bad verify header 0 at 10137600
+> fio: pid=9943, err=84/file:io_u.c:1212, func=io_u_queued_complete, error=Invalid or incomplete multibyte or wide character
+> 
+> writers: (groupid=0, jobs=32): err=84 (file:io_u.c:1212, func=io_u_queued_complete, error=Invalid or incomplete multibyte or wide character): pid=9943
 
-Yes! That too, please. Thanks for pointing this out.
+FYI:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I asked Jens to test hch's and Jiaying's aio completion patches with this,
+and apparently those fixed this problem for him.
+
+-Eric
+ 
+> which tells us that where we expected to find the correct verify magic
+> in the header, it was all zeroes. The job file used is below, and to
+> reproduce you want to use the latest fio (1.40) since some earlier
+> versions don't do verify_interval properly for non-pattern verifies. You
+> can get fio here:
+> 
+> http://brick.kernel.dk/snaps/fio-1.40.tar.gz
+> 
+> or from git at:
+> 
+> git://git.kernel.dk/fio.git
+> 
+> The kernel used is 2.6.35-rc3 and I ran this on a raid0 that had 8 SSD
+> drives.
+> 
+> --- snip job file ---
+> 
+> [global]
+> direct=1
+> group_reporting=1
+> exitall
+> runtime=4h
+> time_based=1
+> 
+> # writers, will repeatedly randomly write and verify data
+> [writers]
+> rw=randwrite
+> bsrange=4k-16k
+> ioengine=libaio
+> iodepth=4
+> directory=/data
+> verify=crc32c
+> verify_backlog=1024
+> verify_backlog_batch=512
+> verify_interval=512
+> size=512m
+> nrfiles=4
+> filesize=64m-256m
+> numjobs=32
+> create_serialize=0
+> 
+> --- snip job file ---
+> 
+
