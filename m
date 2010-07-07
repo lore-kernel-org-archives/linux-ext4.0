@@ -1,88 +1,78 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: fio test triggering bad data on ext4
-Date: Wed, 07 Jul 2010 09:26:57 -0500
-Message-ID: <4C348EB1.4010101@redhat.com>
-References: <4C1B292C.2080205@fusionio.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
-To: Jens Axboe <jaxboe@fusionio.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9523 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755178Ab0GGO1K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Jul 2010 10:27:10 -0400
-In-Reply-To: <4C1B292C.2080205@fusionio.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Subject: Re: [PATCH] Add a pair of system calls to make extended file stats available [ver #3]
+Date: Wed, 7 Jul 2010 08:57:54 -0600
+Message-ID: <9A36AB6B-7EC3-4789-89CD-D00715BEF34C@dilger.ca>
+References: <AANLkTinms69HPgZF4blqr962Ami3oS9FC-txQj9P37SC@mail.gmail.com> <20100630233614.32422.97038.stgit@warthog.procyon.org.uk> <4859.1278341989@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <4859.1278341989-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Jens Axboe wrote:
-> Hi,
+On 2010-07-05, at 08:59, David Howells wrote:
+> Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
 > 
-> I was writing a small fio job file to do writes and read verifies on a
-> device. It forks 32 processes, each writing randomly to 4 files with a
-> block size between 4k and 16k. When it has written 1024 of those blocks,
-> it'll verify the oldest 512 of them. Each block is checksummed for every
-> 512b. It uses libaio and O_DIRECT.
+>> * Include information from the "inode_info" structure, most notably
+>> i_flags, but perhaps other info as well.
 > 
-> It works on ext2 and btrfs. I haven't run it to completion yet, but they
-> survive 15-20 minutes just fine. ext4 doesn't even go a full minutes
-> before this triggers:
+> This thought has occurred to me, but are the contents of i_flags identical for
+> all filesystems?  Certainly, i_flags doesn't seem to match the FS_IOC_GETFLAGS
+> mask.  For example:
 > 
-> Bad verify header 0 at 10137600
-> fio: pid=9943, err=84/file:io_u.c:1212, func=io_u_queued_complete, error=Invalid or incomplete multibyte or wide character
+> 	#define	FS_SECRM_FL			0x00000001
 > 
-> writers: (groupid=0, jobs=32): err=84 (file:io_u.c:1212, func=io_u_queued_complete, error=Invalid or incomplete multibyte or wide character): pid=9943
+> vs:
+> 
+> 	#define S_SYNC		1	/* Writes are synced at once */
+> 
+> (1) Does it make sense to rearrange the S_xxxx flags to match the numbers for
+>   FS_xxxx_FL?
 
-FYI:
+I saw your patch to that effect.  I'm of mixed feelings about this, since the S_* flags have traditionally been changed on an ad-hoc basis and I don't necessarily want to let this leak into the on-disk format of these flags for ext*.
 
-I asked Jens to test hch's and Jiaying's aio completion patches with this,
-and apparently those fixed this problem for him.
+One way to ensure that this holds true is to have a compile-time assertion that the respective S_* flags match FS_*_FL and EXT_*_FL.
 
--Eric
- 
-> which tells us that where we expected to find the correct verify magic
-> in the header, it was all zeroes. The job file used is below, and to
-> reproduce you want to use the latest fio (1.40) since some earlier
-> versions don't do verify_interval properly for non-pattern verifies. You
-> can get fio here:
-> 
-> http://brick.kernel.dk/snaps/fio-1.40.tar.gz
-> 
-> or from git at:
-> 
-> git://git.kernel.dk/fio.git
-> 
-> The kernel used is 2.6.35-rc3 and I ran this on a raid0 that had 8 SSD
-> drives.
-> 
-> --- snip job file ---
-> 
-> [global]
-> direct=1
-> group_reporting=1
-> exitall
-> runtime=4h
-> time_based=1
-> 
-> # writers, will repeatedly randomly write and verify data
-> [writers]
-> rw=randwrite
-> bsrange=4k-16k
-> ioengine=libaio
-> iodepth=4
-> directory=/data
-> verify=crc32c
-> verify_backlog=1024
-> verify_backlog_batch=512
-> verify_interval=512
-> size=512m
-> nrfiles=4
-> filesize=64m-256m
-> numjobs=32
-> create_serialize=0
-> 
-> --- snip job file ---
-> 
+We use a macro in Lustre for compile-time assertions that depends on the detection of duplicate values in a switch() statement:
 
+/** Compile-time assertion.
+* Check an invariant described by a constant expression at compile time by
+* forcing a compiler error if it does not hold.  @cond must be a constant
+* expression as defined by the ISO C Standard:
+*
+*       6.8.4.2  The switch statement
+*       ....
+*       [#3] The expression of each case label shall be  an  integer
+*       constant   expression  and  no  two  of  the  case  constant
+*       expressions in the same switch statement shall have the same
+*       value after conversion...
+*
+*/
+#define CLASSERT(cond) do {switch(42) {case (cond): case 0: break;}} while (0)
+
+> (2) Does it make sense to do the BSD st_flags compatibility in userspace?
+> 
+> (3) Can we add a couple more flags to make Samba's life easier?  Say an
+>   archived bit and a hidden bit?
+
+I wouldn't object to that.  The BSD flags indicate that the hidden bit should only affect GUI display managers, not "ls".
+
+> (4) Do I actually need to provide a mask saying what st_flags are applicable
+>   to the file you've just queried?
+
+Hmm, good question.
+
+> (5) How often are these flags required?  E.g. does it make more sense to keep
+>   them as an additional result, or does it make sense to stick them in the
+>   kstat and xstat structs, knowing that these are allocated on the kernel
+>   stack maybe as three times if an ecryptfs file?
+
+If they aren't requested by userspace, the cost is mostly irrelevant.  I think on OSX these flags are returned for every "ls" call, to mark the inodes with xattrs every time.
+
+Cheers, Andreas
