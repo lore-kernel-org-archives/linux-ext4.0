@@ -1,37 +1,53 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: Ext3: batched discard support
-Date: Wed, 7 Jul 2010 15:14:16 -0400
-Message-ID: <AANLkTil_Y6rjgbAjQcOqTeFUt1WO46MNKFp5Qe4iSK3z@mail.gmail.com>
-References: <1278508727-29135-1-git-send-email-lczerner@redhat.com>
+From: Jens Axboe <jaxboe@fusionio.com>
+Subject: Re: fio test triggering bad data on ext4
+Date: Wed, 07 Jul 2010 21:39:33 +0200
+Message-ID: <4C34D7F5.2060309@fusionio.com>
+References: <4C1B292C.2080205@fusionio.com> <4C348EB1.4010101@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
-	eshishki@redhat.com, sandeen@redhat.com
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Transfer-Encoding: 7bit
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger@sun.com" <adilger@sun.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:41763 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754902Ab0GGTOQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Jul 2010 15:14:16 -0400
-Received: by iwn7 with SMTP id 7so9522iwn.19
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Jul 2010 12:14:16 -0700 (PDT)
-In-Reply-To: <1278508727-29135-1-git-send-email-lczerner@redhat.com>
+Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:57317 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754607Ab0GGTje (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Jul 2010 15:39:34 -0400
+In-Reply-To: <4C348EB1.4010101@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 7, 2010 at 9:18 AM, Lukas Czerner <lczerner@redhat.com> wrote:
->
-> Hello again,
->
-> I have composed a set of patches to add batched discard support for Ext3 file
-> system. Functionality is basically the same as in "batched discard support
-> for Ext4" (see http://www.spinics.net/lists/linux-ext4/msg19827.html ).
->
-> There are two patches:
+On 07/07/10 16.26, Eric Sandeen wrote:
+> Jens Axboe wrote:
+>> Hi,
+>>
+>> I was writing a small fio job file to do writes and read verifies on a
+>> device. It forks 32 processes, each writing randomly to 4 files with a
+>> block size between 4k and 16k. When it has written 1024 of those blocks,
+>> it'll verify the oldest 512 of them. Each block is checksummed for every
+>> 512b. It uses libaio and O_DIRECT.
+>>
+>> It works on ext2 and btrfs. I haven't run it to completion yet, but they
+>> survive 15-20 minutes just fine. ext4 doesn't even go a full minutes
+>> before this triggers:
+>>
+>> Bad verify header 0 at 10137600
+>> fio: pid=9943, err=84/file:io_u.c:1212, func=io_u_queued_complete, error=Invalid or incomplete multibyte or wide character
+>>
+>> writers: (groupid=0, jobs=32): err=84 (file:io_u.c:1212, func=io_u_queued_complete, error=Invalid or incomplete multibyte or wide character): pid=9943
+> 
+> FYI:
+> 
+> I asked Jens to test hch's and Jiaying's aio completion patches with this,
+> and apparently those fixed this problem for him.
 
-I'm inclined to review these, but before I do, I thought ext3 was
-closed to patches like this.
+At least for a shorter run, but long enough that all the holes should
+have been filled at this point. So it at least fixes my test case.
+I can try and expand the run a bit if there's any interest in that,
+and see if that still verifies correctly.
 
-Or is it still accepting more new functionality than I thought?
+-- 
+Jens Axboe
 
-Greg
