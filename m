@@ -1,54 +1,53 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] Rearrange i_flags to be consistent with FS_IOC_GETFLAGS
-Date: Wed, 7 Jul 2010 11:55:30 +1000
-Message-ID: <20100707015530.GE25018@dastard>
-References: <20100706230312.GB25018@dastard>
- <20100706001032.GA25018@dastard>
- <20100705154319.31193.56706.stgit@warthog.procyon.org.uk>
- <29431.1278423623@redhat.com>
- <5045.1278459925@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: inconsistent file placement
+Date: Tue, 06 Jul 2010 21:29:53 -0500
+Message-ID: <4C33E6A1.7090408@redhat.com>
+References: <469D2D911E4BF043BFC8AD32E8E30F5B24AED8@wdscexbe07.sc.wdc.com> <20100706185548.GA26677@thunk.org> <4C337D16.9000200@redhat.com> <469D2D911E4BF043BFC8AD32E8E30F5B24AEDB@wdscexbe07.sc.wdc.com> <20100706231412.GA7646@thunk.org> <469D2D911E4BF043BFC8AD32E8E30F5B24AEDF@wdscexbe07.sc.wdc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <5045.1278459925@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, amir73il@gmail.com, linux-ext4@vger.kernel.org
+To: Daniel Taylor <Daniel.Taylor@wdc.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:22436 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752907Ab0GGCaB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Jul 2010 22:30:01 -0400
+In-Reply-To: <469D2D911E4BF043BFC8AD32E8E30F5B24AEDF@wdscexbe07.sc.wdc.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 07, 2010 at 12:45:25AM +0100, David Howells wrote:
-> Dave Chinner <david@fromorbit.com> wrote:
+Daniel Taylor wrote:
+>> -----Original Message-----
+>> From: tytso@mit.edu [mailto:tytso@mit.edu] 
+...
+
+ 
+>> Speaking of fallocate.... if this is a NAS box than the file is
+>> probably written using CIFS, right?  Are you using a modern version of
+>> Samba?  
 > 
-> > I'd prefer generic flags are not dependent on fixed values from a
-> > specific filesystem several layers down the storage stack.
+> Currently, we're on 3.2.5 of smdb, but that's because the later versions
+> work less well with ext3.  We will be testing them with ext4 now that
+> we see the other options it offers.
 > 
-> They're not so dependent.
+> Soon as I can get the fallocate utility cross-built, there are some
+> experiments that I want to run, but those will take a couple of days.
+> 
+> Thanks again for all of your help.
 
-History says otherwise. :)
+http://sandeen.fedorapeople.org/utilities/fallocate.c
 
-> They're based on the FS_IOC_[GS]ETFLAGS ioctl which
-> even XFS translates its flags for.
+should be a simple compilable utility, or if for some reason
+you don't have it in your glibc, you can call the syscall directly
+with:
 
-Sure, because the ioctl flags values are derived
-from the ext2 on-disk format flags and hence don't match anything
-XFS related at all.
+http://sandeen.fedorapeople.org/utilities/fallocate-via-syscall.c
 
-> These ioctl flags must now remain
-> invariant.  Whilst they might have originated as Ext2/3/4 flags, they're now
-> independent of that.
+(you may need to define SYS_fallocate & massage appropriately
+depending on the architecture)
 
-Yes, the ioctl flags must remain invariant. OTOH, the generic inode
-flags (S_*) have no such invariant requirement and have a history of
-frequent change. IMO, that means some flags should not be tied to
-the value of a specific subsystem just so a subsystem specific
-optimisation can be made. It just seems like a dangerous layering
-violation to be making...
+The tool in util-linux-ng is similar, and I think started with
+this code, but its a quick hack so look out for bugs ;)
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+-Eric
