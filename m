@@ -1,367 +1,287 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: [PATCH] Cleancache: shim to Xen Transcendent Memory
-Date: Thu, 8 Jul 2010 09:42:08 -0700
-Message-ID: <20100708164208.GA11763__37788.843867793$1278607484$gmane$org@ca-server1.us.oracle.com>
+From: Michael Kerrisk <mtk.manpages@gmail.com>
+Subject: Re: [PATCH] Add a pair of system calls to make extended file stats
+	available [ver #3]
+Date: Thu, 8 Jul 2010 21:44:09 +0200
+Message-ID: <AANLkTikP-u1adVItGDgUZdee14Z13k8MLRC5V7UN-gpV@mail.gmail.com>
+References: <20100630233614.32422.97038.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
-	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
-	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
-	linux-btrfs@vger.
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-ext4@vger.kernel.org, linux-api@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:55633 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751650Ab0GHQoe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jul 2010 12:44:34 -0400
-Content-Disposition: inline
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:54398 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757409Ab0GHToN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jul 2010 15:44:13 -0400
+In-Reply-To: <20100630233614.32422.97038.stgit@warthog.procyon.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[PATCH] Cleancache: shim to Xen Transcendent Memory
+Hi David,
 
-This companion patch to the cleancache V3 patchset (see
-http://lkml.org/lkml/2010/6/21/411) provides one consumer
-for the proposed cleancache internal kernel API.  This
-user is Xen Transcendent Memory ("tmem"), supported in Xen 4.0+.
-(A second user, zcache, will be posted by Nitin Gupta soon.)
+A couple of comments below.
 
-This patch affects Xen directories only; while broader review
-is welcome, the patch is provided primarily to answer concerns
-expressed about the apparent non-existence of consumers for
-the proposed cleancache patch.
+On Thu, Jul 1, 2010 at 1:36 AM, David Howells <dhowells@redhat.com> wro=
+te:
+> Add a pair of system calls to make extended file stats available, inc=
+luding
+> file creation time, inode version and data version where available th=
+rough the
+> underlying filesystem.
+>
+> [This depends on the previously posted pair of patches to (a) constif=
+y a number
+> =A0of syscall string and buffer arguments and (b) rearrange AFS's use=
+ of
+> =A0i_version and i_generation].
+>
+> The following structures are defined for their use:
+>
+> =A0 =A0 =A0 =A0struct xstat_parameters {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0request_=
+mask;
 
-Xen tmem provides "hypervisor RAM" as an ephemeral page-oriented
-pseudo-RAM store for cleancache pages, shared cleancache pages,
-and frontswap pages.  Tmem provides enterprise-quality concurrency,
-full save/restore and live migration support, compression
-and deduplication.
+Poor name, since it's a value-result arg? Better maybe something like
+"field_mask"?
 
-A presentation showing up to 8% faster performance and up to 52%
-reduction in sectors read on a kernel compile workload, despite
-aggressive in-kernel page reclamation ("self-ballooning") can be
-found at:
+> =A0 =A0 =A0 =A0};
+>
+> =A0 =A0 =A0 =A0struct xstat_dev {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0ma=
+jor, minor;
+> =A0 =A0 =A0 =A0};
+>
+> =A0 =A0 =A0 =A0struct xstat_time {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0tv_sec, =
+tv_nsec;
+> =A0 =A0 =A0 =A0};
+>
+> =A0 =A0 =A0 =A0struct xstat {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0st=
+_mode;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0st=
+_nlink;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0st=
+_uid;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0st=
+_gid;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat_dev =A0 =A0 =A0 =A0st_rde=
+v;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat_dev =A0 =A0 =A0 =A0st_dev=
+;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat_time =A0 =A0 =A0 st_atime=
+;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat_time =A0 =A0 =A0 st_mtime=
+;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat_time =A0 =A0 =A0 st_ctime=
+;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat_time =A0 =A0 =A0 st_btime=
+;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_ino;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_size;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_blksi=
+ze;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_block=
+s;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_gen;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_data_=
+version;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_resul=
+t_mask;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0st_extra=
+_results[0];
+> =A0 =A0 =A0 =A0};
+>
+> where st_btime is the file creation time, st_gen is the inode generat=
+ion
+> (i_generation), st_data_version is the data version number (i_version=
+),
+> request_mask and st_result_mask are bitmasks of data desired/provided=
+ and
+> st_extra_results[] is where as-yet undefined fields are appended.
+>
+> The defined bits in request_mask and st_result_mask are:
+>
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_MODE =A0 =A0 =A0 =A0 =A0 =A0 =A0Want/got=
+ st_mode
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_NLINK =A0 =A0 =A0 =A0 =A0 =A0 Want/got s=
+t_nlink
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_UID =A0 =A0 =A0 =A0 =A0 =A0 =A0 Want/got=
+ st_uid
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_GID =A0 =A0 =A0 =A0 =A0 =A0 =A0 Want/got=
+ st_gid
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_RDEV =A0 =A0 =A0 =A0 =A0 =A0 =A0Want/got=
+ st_rdev
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_ATIME =A0 =A0 =A0 =A0 =A0 =A0 Want/got s=
+t_atime
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_MTIME =A0 =A0 =A0 =A0 =A0 =A0 Want/got s=
+t_mtime
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_CTIME =A0 =A0 =A0 =A0 =A0 =A0 Want/got s=
+t_ctime
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_INO =A0 =A0 =A0 =A0 =A0 =A0 =A0 Want/got=
+ st_ino
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_SIZE =A0 =A0 =A0 =A0 =A0 =A0 =A0Want/got=
+ st_size
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_BLOCKS =A0 =A0 =A0 =A0 =A0 =A0Want/got s=
+t_blocks
+> =A0 =A0 =A0 =A0XSTAT_REQUEST__BASIC_STATS =A0 =A0 =A0The stuff in the=
+ normal stat struct
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_BTIME =A0 =A0 =A0 =A0 =A0 =A0 Want/got s=
+t_btime
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_GEN =A0 =A0 =A0 =A0 =A0 =A0 =A0 Want/got=
+ st_gen
+> =A0 =A0 =A0 =A0XSTAT_REQUEST_DATA_VERSION =A0 =A0 =A0Want/got st_data=
+_version
+> =A0 =A0 =A0 =A0XSTAT_REQUEST__EXTENDED_STATS =A0 The stuff in the xst=
+at struct
+> =A0 =A0 =A0 =A0XSTAT_REQUEST__ALL_STATS =A0 =A0 =A0 =A0The defined se=
+t of requestables
+>
+> The system calls are:
+>
+> =A0 =A0 =A0 =A0ssize_t ret =3D xstat(int dfd,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0const char *fi=
+lename,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned flags=
+,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0const struct x=
+stat_parameters *params,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct xstat *=
+buffer,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0size_t buflen)=
+;
+>
+> =A0 =A0 =A0 =A0ssize_t ret =3D fxstat(unsigned fd,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 unsigned flag=
+s,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 const struct =
+xstat_parameters *params,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct xstat =
+*buffer,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 size_t buflen=
+);
+>
+>
+> The dfd, filename, flags and fd parameters indicate the file to query=
+=2E =A0There
+> is no equivalent of lstat() as that can be emulated with xstat() by p=
+assing
+> AT_SYMLINK_NOFOLLOW in flags.
+>
+> AT_FORCE_ATTR_SYNC can also be set in flags. =A0This will require a n=
+etwork
+> filesystem to synchronise its attributes with the server.
+>
+> When the system call is executed, the request_mask bitmask is read fr=
+om the
+> parameter block to work out what the user is requesting. =A0If params=
+ is NULL,
+> then request_mask will be assumed to be XSTAT_REQUEST__GET_ANYWAY.
 
-http://oss.oracle.com/projects/tmem/dist/documentation/presentations/TranscendentMemoryXenSummit2010.pdf
+There is no XSTAT_REQUEST__GET_ANYWAY, AFAICS. I guess here you meant
+XSTAT_REQUEST__EXTENDED_STATS? Or?
 
-Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
 
-Diffstat:
- arch/x86/include/asm/xen/hypercall.h     |    7 
- drivers/xen/Makefile                     |    2 
- drivers/xen/tmem.c                       |  238 +++++++++++++++++++++
- include/xen/interface/xen.h              |   20 +
- 4 files changed, 266 insertions(+), 1 deletion(-)
+> The request_mask should be set by the caller to specify extra results=
+ that the
+> caller may desire. =A0These come in a number of classes:
+>
+> =A0(0) dev, blksize.
+>
+> =A0 =A0 These are local data and are always available.
+>
+> =A0(1) mode, nlinks, uid, gid, [amc]time, ino, size, blocks.
+>
+> =A0 =A0 These will be returned whether the caller asks for them or no=
+t. =A0The
+> =A0 =A0 corresponding bits in result_mask will be set to indicate the=
+ir presence.
+>
+> =A0 =A0 If the caller didn't ask for them, then they may be approxima=
+ted. =A0For
+> =A0 =A0 example, NFS won't waste any time updating them from the serv=
+er, unless as
+> =A0 =A0 a byproduct of updating something requested.
+>
+> =A0(2) rdev.
+>
+> =A0 =A0 As for class (1), but this won't be returned if the file is n=
+ot a blockdev
+> =A0 =A0 or chardev. =A0The bit will be cleared if the value is not re=
+turned.
+>
+> =A0(3) File creation time, inode generation and data version.
+>
+> =A0 =A0 These will be returned if available whether the caller asked =
+for them or
+> =A0 =A0 not. =A0The corresponding bits in result_mask will be set or =
+cleared as
+> =A0 =A0 appropriate to indicate their presence.
+>
+> =A0 =A0 If the caller didn't ask for them, then they may be approxima=
+ted. =A0For
+> =A0 =A0 example, NFS won't waste any time updating them from the serv=
+er, unless
+> =A0 =A0 as a byproduct of updating something requested.
+>
+> =A0(4) Extra results.
+>
+> =A0 =A0 These will only be returned if the caller asked for them by s=
+etting their
+> =A0 =A0 bits in request_mask. =A0They will be placed in the buffer af=
+ter the xstat
+> =A0 =A0 struct in ascending result_mask bit order. =A0Any bit set in =
+request_mask
+> =A0 =A0 mask will be left set in result_mask if the result is availab=
+le and
+> =A0 =A0 cleared otherwise.
+>
+> =A0 =A0 The pointer into the results list will be rounded up to the n=
+earest 8-byte
+> =A0 =A0 boundary after each result is written in. =A0The size of each=
+ extra result
+> =A0 =A0 is specific to the definition for that result.
+>
+> =A0 =A0 No extra results are currently defined.
+>
+> If the buffer is insufficiently big, the syscall returns the amount o=
+f space it
+> will need to write the complete result set and returns a partial resu=
+lt in the
+> buffer.
 
-diff -Napur linux-2.6.35-rc4/arch/x86/include/asm/xen/hypercall.h linux-2.6.35-rc4-cleancache_tmem/arch/x86/include/asm/xen/hypercall.h
---- linux-2.6.35-rc4/arch/x86/include/asm/xen/hypercall.h	2010-07-04 21:22:50.000000000 -0600
-+++ linux-2.6.35-rc4-cleancache_tmem/arch/x86/include/asm/xen/hypercall.h	2010-07-07 15:37:46.000000000 -0600
-@@ -417,6 +417,13 @@ HYPERVISOR_nmi_op(unsigned long op, unsi
- 	return _hypercall2(int, nmi_op, op, arg);
- }
- 
-+static inline int
-+HYPERVISOR_tmem_op(
-+	struct tmem_op *op)
-+{
-+	return _hypercall1(int, tmem_op, op);
-+}
-+
- static inline void
- MULTI_fpu_taskswitch(struct multicall_entry *mcl, int set)
- {
-diff -Napur linux-2.6.35-rc4/drivers/xen/Makefile linux-2.6.35-rc4-cleancache_tmem/drivers/xen/Makefile
---- linux-2.6.35-rc4/drivers/xen/Makefile	2010-07-04 21:22:50.000000000 -0600
-+++ linux-2.6.35-rc4-cleancache_tmem/drivers/xen/Makefile	2010-07-07 09:38:21.000000000 -0600
-@@ -1,5 +1,6 @@
- obj-y	+= grant-table.o features.o events.o manage.o
- obj-y	+= xenbus/
-+obj-y	+= tmem.o
- 
- nostackp := $(call cc-option, -fno-stack-protector)
- CFLAGS_features.o			:= $(nostackp)
-@@ -9,4 +10,4 @@ obj-$(CONFIG_XEN_XENCOMM)	+= xencomm.o
- obj-$(CONFIG_XEN_BALLOON)	+= balloon.o
- obj-$(CONFIG_XEN_DEV_EVTCHN)	+= evtchn.o
- obj-$(CONFIG_XENFS)		+= xenfs/
--obj-$(CONFIG_XEN_SYS_HYPERVISOR)	+= sys-hypervisor.o
-\ No newline at end of file
-+obj-$(CONFIG_XEN_SYS_HYPERVISOR)	+= sys-hypervisor.o
-diff -Napur linux-2.6.35-rc4/drivers/xen/tmem.c linux-2.6.35-rc4-cleancache_tmem/drivers/xen/tmem.c
---- linux-2.6.35-rc4/drivers/xen/tmem.c	1969-12-31 17:00:00.000000000 -0700
-+++ linux-2.6.35-rc4-cleancache_tmem/drivers/xen/tmem.c	2010-07-07 16:24:08.000000000 -0600
-@@ -0,0 +1,238 @@
-+/*
-+ * Xen implementation for transcendent memory (tmem)
-+ *
-+ * Copyright (C) 2009-2010 Oracle Corp.  All rights reserved.
-+ * Author: Dan Magenheimer
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/types.h>
-+#include <linux/init.h>
-+#include <linux/pagemap.h>
-+#include <linux/cleancache.h>
-+
-+#include <xen/xen.h>
-+#include <xen/interface/xen.h>
-+#include <asm/xen/hypercall.h>
-+#include <asm/xen/page.h>
-+#include <asm/xen/hypervisor.h>
-+
-+#define TMEM_CONTROL               0
-+#define TMEM_NEW_POOL              1
-+#define TMEM_DESTROY_POOL          2
-+#define TMEM_NEW_PAGE              3
-+#define TMEM_PUT_PAGE              4
-+#define TMEM_GET_PAGE              5
-+#define TMEM_FLUSH_PAGE            6
-+#define TMEM_FLUSH_OBJECT          7
-+#define TMEM_READ                  8
-+#define TMEM_WRITE                 9
-+#define TMEM_XCHG                 10
-+
-+/* Bits for HYPERVISOR_tmem_op(TMEM_NEW_POOL) */
-+#define TMEM_POOL_PERSIST          1
-+#define TMEM_POOL_SHARED           2
-+#define TMEM_POOL_PAGESIZE_SHIFT   4
-+
-+
-+struct tmem_pool_uuid {
-+	u64 uuid_lo;
-+	u64 uuid_hi;
-+};
-+
-+#define TMEM_POOL_PRIVATE_UUID	{ 0, 0 }
-+
-+/* flags for tmem_ops.new_pool */
-+#define TMEM_POOL_PERSIST          1
-+#define TMEM_POOL_SHARED           2
-+
-+/* xen tmem foundation ops/hypercalls */
-+
-+static inline int xen_tmem_op(u32 tmem_cmd, u32 tmem_pool, u64 object,
-+	u32 index, unsigned long gmfn, u32 tmem_offset, u32 pfn_offset, u32 len)
-+{
-+	struct tmem_op op;
-+	int rc = 0;
-+
-+	op.cmd = tmem_cmd;
-+	op.pool_id = tmem_pool;
-+	op.u.gen.object = object;
-+	op.u.gen.index = index;
-+	op.u.gen.tmem_offset = tmem_offset;
-+	op.u.gen.pfn_offset = pfn_offset;
-+	op.u.gen.len = len;
-+	set_xen_guest_handle(op.u.gen.gmfn, (void *)gmfn);
-+	rc = HYPERVISOR_tmem_op(&op);
-+	return rc;
-+}
-+
-+static int xen_tmem_new_pool(struct tmem_pool_uuid uuid,
-+				u32 flags, unsigned long pagesize)
-+{
-+	struct tmem_op op;
-+	int rc = 0, pageshift;
-+
-+	for (pageshift = 0; pagesize != 1; pageshift++)
-+		pagesize >>= 1;
-+	flags |= (pageshift - 12) << TMEM_POOL_PAGESIZE_SHIFT;
-+	op.cmd = TMEM_NEW_POOL;
-+	op.u.new.uuid[0] = uuid.uuid_lo;
-+	op.u.new.uuid[1] = uuid.uuid_hi;
-+	op.u.new.flags = flags;
-+	rc = HYPERVISOR_tmem_op(&op);
-+	return rc;
-+}
-+
-+/* xen generic tmem ops */
-+
-+static int xen_tmem_put_page(u32 pool_id, u64 object, u32 index,
-+	unsigned long pfn)
-+{
-+	unsigned long gmfn = xen_pv_domain() ? pfn_to_mfn(pfn) : pfn;
-+
-+	return xen_tmem_op(TMEM_PUT_PAGE, pool_id, object, index,
-+		gmfn, 0, 0, 0);
-+}
-+
-+static int xen_tmem_get_page(u32 pool_id, u64 object, u32 index,
-+	unsigned long pfn)
-+{
-+	unsigned long gmfn = xen_pv_domain() ? pfn_to_mfn(pfn) : pfn;
-+
-+	return xen_tmem_op(TMEM_GET_PAGE, pool_id, object, index,
-+		gmfn, 0, 0, 0);
-+}
-+
-+static int xen_tmem_flush_page(u32 pool_id, u64 object, u32 index)
-+{
-+	return xen_tmem_op(TMEM_FLUSH_PAGE, pool_id, object, index,
-+		0, 0, 0, 0);
-+}
-+
-+static int xen_tmem_flush_object(u32 pool_id, u64 object)
-+{
-+	return xen_tmem_op(TMEM_FLUSH_OBJECT, pool_id, object, 0, 0, 0, 0, 0);
-+}
-+
-+static int xen_tmem_destroy_pool(u32 pool_id)
-+{
-+	return xen_tmem_op(TMEM_DESTROY_POOL, pool_id, 0, 0, 0, 0, 0, 0);
-+}
-+
-+int tmem_enabled;
-+
-+static int __init enable_tmem(char *s)
-+{
-+	tmem_enabled = 1;
-+	return 1;
-+}
-+
-+__setup("tmem", enable_tmem);
-+
-+/* cleancache ops */
-+
-+static void tmem_cleancache_put_page(int pool, ino_t inode, pgoff_t index,
-+				     struct page *page)
-+{
-+	u32 ind = (u32) index;
-+	unsigned long pfn = page_to_pfn(page);
-+
-+	if (pool < 0)
-+		return;
-+	if (ind != index)
-+		return;
-+	mb(); /* ensure page is quiescent; tmem may address it with an alias */
-+	(void)xen_tmem_put_page((u32)pool, (u64)inode, ind, pfn);
-+}
-+
-+static int tmem_cleancache_get_page(int pool, ino_t inode, pgoff_t index,
-+				    struct page *page)
-+{
-+	u32 ind = (u32) index;
-+	unsigned long pfn = page_to_pfn(page);
-+	int ret;
-+
-+	/* translate return values to linux semantics */
-+	if (pool < 0)
-+		return -1;
-+	if (ind != index)
-+		return -1;
-+	ret = xen_tmem_get_page((u32)pool, (u64)inode, ind, pfn);
-+	if (ret == 1)
-+		return 0;
-+	else
-+		return -1;
-+}
-+
-+static void tmem_cleancache_flush_page(int pool, ino_t inode, pgoff_t index)
-+{
-+	u32 ind = (u32) index;
-+
-+	if (pool < 0)
-+		return;
-+	if (ind != index)
-+		return;
-+	(void)xen_tmem_flush_page((u32)pool, (u64)inode, ind);
-+}
-+
-+static void tmem_cleancache_flush_inode(int pool, ino_t inode)
-+{
-+	if (pool < 0)
-+		return;
-+	(void)xen_tmem_flush_object((u32)pool, (u64)inode);
-+}
-+
-+static void tmem_cleancache_flush_fs(int pool)
-+{
-+	if (pool < 0)
-+		return;
-+	(void)xen_tmem_destroy_pool((u32)pool);
-+}
-+
-+static int tmem_cleancache_init_fs(size_t pagesize)
-+{
-+	struct tmem_pool_uuid uuid_private = TMEM_POOL_PRIVATE_UUID;
-+
-+	return xen_tmem_new_pool(uuid_private, 0, pagesize);
-+}
-+
-+static int tmem_cleancache_init_shared_fs(char *uuid, size_t pagesize)
-+{
-+	struct tmem_pool_uuid shared_uuid;
-+
-+	shared_uuid.uuid_lo = *(u64 *)uuid;
-+	shared_uuid.uuid_hi = *(u64 *)(&uuid[8]);
-+	return xen_tmem_new_pool(shared_uuid, TMEM_POOL_SHARED, pagesize);
-+}
-+
-+static int use_cleancache = 1;
-+
-+static int __init no_cleancache(char *s)
-+{
-+	use_cleancache = 0;
-+	return 1;
-+}
-+
-+__setup("nocleancache", no_cleancache);
-+
-+static int __init xen_tmem_init(void)
-+{
-+	if (!xen_domain())
-+		return 0;
-+#ifdef CONFIG_CLEANCACHE
-+	if (tmem_enabled && use_cleancache) {
-+		cleancache_ops.put_page = tmem_cleancache_put_page;
-+		cleancache_ops.get_page = tmem_cleancache_get_page;
-+		cleancache_ops.flush_page = tmem_cleancache_flush_page;
-+		cleancache_ops.flush_inode = tmem_cleancache_flush_inode;
-+		cleancache_ops.flush_fs = tmem_cleancache_flush_fs;
-+		cleancache_ops.init_shared_fs = tmem_cleancache_init_shared_fs;
-+		cleancache_ops.init_fs = tmem_cleancache_init_fs;
-+		printk(KERN_INFO "cleancache enabled, RAM provided by "
-+				 "Xen Transcendent Memory\n");
-+	}
-+#endif
-+	return 0;
-+}
-+
-+module_init(xen_tmem_init)
-diff -Napur linux-2.6.35-rc4/include/xen/interface/xen.h linux-2.6.35-rc4-cleancache_tmem/include/xen/interface/xen.h
---- linux-2.6.35-rc4/include/xen/interface/xen.h	2010-07-04 21:22:50.000000000 -0600
-+++ linux-2.6.35-rc4-cleancache_tmem/include/xen/interface/xen.h	2010-07-07 16:24:06.000000000 -0600
-@@ -58,6 +58,7 @@
- #define __HYPERVISOR_event_channel_op     32
- #define __HYPERVISOR_physdev_op           33
- #define __HYPERVISOR_hvm_op               34
-+#define __HYPERVISOR_tmem_op              38
- 
- /* Architecture-specific hypercall definitions. */
- #define __HYPERVISOR_arch_0               48
-@@ -461,6 +462,25 @@ typedef uint8_t xen_domain_handle_t[16];
- #define __mk_unsigned_long(x) x ## UL
- #define mk_unsigned_long(x) __mk_unsigned_long(x)
- 
-+struct tmem_op {
-+	uint32_t cmd;
-+	int32_t pool_id;
-+	union {
-+		struct {  /* for cmd == TMEM_NEW_POOL */
-+			uint64_t uuid[2];
-+			uint32_t flags;
-+		} new;
-+		struct {
-+			uint64_t object;
-+			uint32_t index;
-+			uint32_t tmem_offset;
-+			uint32_t pfn_offset;
-+			uint32_t len;
-+			GUEST_HANDLE(void) gmfn; /* guest machine page frame */
-+		} gen;
-+	} u;
-+};
-+
- #else /* __ASSEMBLY__ */
- 
- /* In assembly code we cannot use C numeric constant suffixes. */
+This case is almost certainly a user error, so why not simply return
+an error (-1 and ERANGE or E2BIG)? The above approach invites
+userspace errors of the form:
+
+if (xtat(...) < 0) { /* How users often check for error */
+    /* I'll handle the error */
+} else {
+    /* The call succeeded; I'm fine */
+}
+
+Instead, more complex error-handling is required for *every* call:
+
+ret =3D xstat(..., buflen);
+if (ret < 0 || ret > buflen)
+    /* I'll handle the error */
+} else {
+    /* The call succeeded; I'm fine */
+}
+
+If you are looking for a way to inform the user about the required
+buffer size, I think it would be better to take a leaf from the
+getxattr(2) book: if 'buflen' is zero, then do nothing with the output
+arg, but return the size that would be required.
+
+Cheers,
+
+Michael
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
