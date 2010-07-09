@@ -1,55 +1,75 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Repost (from LKML): EXT3 FS and 64K blocks error
-Date: Fri, 9 Jul 2010 08:03:35 -0400
-Message-ID: <7D7CBABC-08DF-4D5D-9655-D378529882B0@mit.edu>
-References: <469D2D911E4BF043BFC8AD32E8E30F5B24AEE9@wdscexbe07.sc.wdc.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>
-To: "Daniel Taylor" <Daniel.Taylor@wdc.com>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] Add a pair of system calls to make extended file stats available [ver #3]
+Date: Fri, 09 Jul 2010 14:59:06 +0100
+Message-ID: <21105.1278683946@redhat.com>
+References: <AANLkTikP-u1adVItGDgUZdee14Z13k8MLRC5V7UN-gpV@mail.gmail.com> <20100630233614.32422.97038.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+	linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+	linux-api@vger.kernel.org
+To: Michael Kerrisk <mtk.manpages@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-3.MIT.EDU ([18.9.25.14]:50672 "EHLO
-	dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753849Ab0GIMDj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jul 2010 08:03:39 -0400
-In-Reply-To: <469D2D911E4BF043BFC8AD32E8E30F5B24AEE9@wdscexbe07.sc.wdc.com>
+Received: from mx1.redhat.com ([209.132.183.28]:65081 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753054Ab0GIN7N convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jul 2010 09:59:13 -0400
+In-Reply-To: <AANLkTikP-u1adVItGDgUZdee14Z13k8MLRC5V7UN-gpV@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Michael Kerrisk <mtk.manpages@gmail.com> wrote:
 
-On Jul 8, 2010, at 8:10 PM, Daniel Taylor wrote:
+> > =A0 =A0 =A0 =A0struct xstat_parameters {
+> > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unsigned long long =A0 =A0 =A0reques=
+t_mask;
+>=20
+> Poor name, since it's a value-result arg? Better maybe something like
+> "field_mask"?
 
-> We're getting the following error with an EXT3 file sytem that
-> has 64K blocks (2.6.32.12, on a powerpc), although I don't see
-> any fixes for later kernels in a diff against 2.6.35-rc3):
-> 
-> ext3_readdir: bad entry in directory #11: rec_len is smaller than minimal -
-> offset=0, inode=0, rec_len=0, name_len=0
-> 
-> That message is generated in fs/ext3/dir.c:ext3_check_dir_entry()
-> when called from fs/ext3/dir.c:ext3_readdir(), AFAICT.
-> 
-> Did something get missed when EXT3 handling for 64K blocks was
-> implemented or when a new feature was added?
-> 
-> FWIW, I do NOT see this on EXT4.
+No.  The contents of xstat_parameters aren't changed.  request_mask is =
+what
+you're asking for, result_mask in the xstat struct is what you actually=
+ got.
 
-I very much doubt anyone has ever tested 64k blocks on ext3.  There were
-some extensions made to support 64k blocks with ext4, that had to do
-with encoding the directory entry rec_len fields (which is 16 bits and will
-overflow when trying to store the value 65536, as you have discovered).
+result_mask may be more or less than request_mask as the filesystem isn=
+'t
+obliged to supply anything you didn't ask for, and may not be able to s=
+upply
+something you did ask for, and may give you stuff anyway that you didn'=
+t ask
+for if it's trivial to do so.
 
-Bottom line, it's not so much that EXT3 handling for 64k blocks was ever
-*implemented*, as much as no one really thought about it much when
-they set the #define's for maximum block size supported.  :-)
+> There is no XSTAT_REQUEST__GET_ANYWAY, AFAICS. I guess here you meant
+> XSTAT_REQUEST__EXTENDED_STATS? Or?
 
-64k block sizes hasn't received much testing on ext4 as far as I know, but 
-there was one developer who noted the dirent encoding problem and
-proposed a fix.
+Yep.  I forgot to change that in the patch description.
 
-Is there a particular reason why you care about this with ext3?   Ext4 does
-provide a superset of the features in ext3...
+> This case is almost certainly a user error, so why not simply return
+> an error (-1 and ERANGE or E2BIG)? The above approach invites
+> userspace errors of the form:
+>=20
+> if (xtat(...) < 0) { /* How users often check for error */
+>     /* I'll handle the error */
+> } else {
+>     /* The call succeeded; I'm fine */
+> }
 
--- Ted
+I suppose.
 
+> If you are looking for a way to inform the user about the required
+> buffer size, I think it would be better to take a leaf from the
+> getxattr(2) book: if 'buflen' is zero, then do nothing with the outpu=
+t
+> arg, but return the size that would be required.
+
+That's reasonable.
+
+David
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
