@@ -1,35 +1,93 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Repost (from LKML): EXT3 FS and 64K blocks error
-Date: Fri, 9 Jul 2010 20:26:11 -0400
-Message-ID: <20100710002611.GA17032@thunk.org>
-References: <469D2D911E4BF043BFC8AD32E8E30F5B24AEE9@wdscexbe07.sc.wdc.com>
- <7D7CBABC-08DF-4D5D-9655-D378529882B0@mit.edu>
- <469D2D911E4BF043BFC8AD32E8E30F5B24AEEE@wdscexbe07.sc.wdc.com>
+From: shenghui <crosslonelyover@gmail.com>
+Subject: [PATCH] avoid NULL deference in ext2_xattr_get
+Date: Sat, 10 Jul 2010 16:07:28 +0800
+Message-ID: <AANLkTimwrORk9yfJlSMpVdn1V0sg0tssKhxc-3q1xoMX@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Daniel Taylor <Daniel.Taylor@wdc.com>
+Content-Type: text/plain; charset=UTF-8
+To: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46214 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755950Ab0GJA0O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 Jul 2010 20:26:14 -0400
-Content-Disposition: inline
-In-Reply-To: <469D2D911E4BF043BFC8AD32E8E30F5B24AEEE@wdscexbe07.sc.wdc.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:35931 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752430Ab0GJIH3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 10 Jul 2010 04:07:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 09, 2010 at 03:32:22PM -0700, Daniel Taylor wrote:
-> We're switching to ext4.  I just thought someone might want to take
-> a look at the error message.  I can do some more testing, next
-> week, if there are suggestions of what to try.
+Hi,
 
-I can try to dig up the patch we used to fix 64k block sizes for ext4,
-and backport it to ext3, but to be honest I'm pretty overbooked
-already as it is, and in general we've been trying to keep ext3
-stable, which means in practice, bug fixes only.  The question is
-whether 64k blocksize support is considered a bug fix or a new
-feature....  so if you're switching to ext4 anyway, I'd probably just
-not bother trying to fix it for ext3...
+         I walked through ext2 code, and found one potential NULL deference
+in ext2/xattr.c.  The version is 2.6.35-rc4, while earlier versions have the
+same problem.
+         If you configure EXT2_XATTR_DEBUG, you'll get:
+# define ea_idebug(inode, f...) do { \
+                printk(KERN_DEBUG "inode %s:%ld: ", \
+                        inode->i_sb->s_id, inode->i_ino); \
+                printk(f); \
+                printk("\n"); \
+        } while (0)
 
-					- Ted
+In ext2/xttr.c ext2_xattr_get, NULL pointer check is done after
+ea_idebug call, so some may hit NULL deference here.
+ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
+                void *buffer, size_t buffer_size)
+ {
+         struct buffer_head *bh = NULL;
+         struct ext2_xattr_entry *entry;
+         size_t name_len, size;
+         char *end;
+         int error;
+
+         ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
+                   name_index, name, buffer, (long)buffer_size);
+
+         if (name == NULL)
+                 return -EINVAL;
+
+
+Following is my patch. Please check it.
+The patch is against kernel 2.6.35-rc4.
+
+
+>From adc1fa6535034db3b6d8deebda6ec7eaa8bfd2f8 Mon Sep 17 00:00:00 2001
+From: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Date: Sat, 10 Jul 2010 16:05:53 +0800
+Subject: [PATCH] avoid NULL deference in ext2_xattr_get
+
+
+Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
+---
+ fs/ext2/xattr.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 7c39157..81ec1c6 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -156,11 +156,12 @@ ext2_xattr_get(struct inode *inode, int
+name_index, const char *name,
+ 	char *end;
+ 	int error;
+
++	if (name == NULL)
++		return -EINVAL;
++
+ 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
+ 		  name_index, name, buffer, (long)buffer_size);
+
+-	if (name == NULL)
+-		return -EINVAL;
+ 	down_read(&EXT2_I(inode)->xattr_sem);
+ 	error = -ENODATA;
+ 	if (!EXT2_I(inode)->i_file_acl)
+-- 
+1.6.3.3
+
+
+
+
+-- 
+
+
+Thanks and Best Regards,
+shenghui
