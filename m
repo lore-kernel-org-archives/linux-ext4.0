@@ -1,80 +1,44 @@
-From: shenghui <crosslonelyover@gmail.com>
-Subject: Re: [PATCH & RESEND] avoid NULL deference in ext2_xattr_get
-Date: Sun, 11 Jul 2010 16:31:35 +0800
-Message-ID: <AANLkTinjdTVM-Xqfszyi8KBe-aD-2I-jcvDFFtz9seD3@mail.gmail.com>
-References: <201007111016021569718@gmail.com>
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+Subject: [PATCH 1/2] JBD2: Allow feature checks before journal recovery
+Date: Sun, 11 Jul 2010 10:03:03 -0700
+Message-ID: <871vbax86w.fsf@patl.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: kernel-janitors <kernel-janitors@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	error27 <error27@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: ocfs2-devel@oss.oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:50893 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751375Ab0GKIbh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Jul 2010 04:31:37 -0400
-In-Reply-To: <201007111016021569718@gmail.com>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:51323 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753982Ab0GKRDT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Jul 2010 13:03:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/7/11 crosslonelyover <crosslonelyover@gmail.com>:
-> Hi Dan Carpenter,
->
-> =C2=A0 =C2=A0 Thanks for your instructions. I regenerated the patch.
-> Please check it.
->
-> From 3149865e0d118b939c27659a4e4c884eaa6b3a4c Mon Sep 17 00:00:00 200=
-1
-> From: Wang Sheng-Hui <crosslonelyover@gmail.com>
-> Date: Sat, 10 Jul 2010 22:07:37 -0400
-> Subject: [PATCH] avoid NULL deference in ext2_xattr_get
->
->
-> Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
-> ---
-> =C2=A0fs/ext2/xattr.c | =C2=A0 =C2=A05 +++--
-> =C2=A01 files changed, 3 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-> index 7c39157..81ec1c6 100644
-> --- a/fs/ext2/xattr.c
-> +++ b/fs/ext2/xattr.c
-> @@ -156,11 +156,12 @@ ext2_xattr_get(struct inode *inode, int name_in=
-dex, const char *name,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0char *end;
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0int error;
->
-> + =C2=A0 =C2=A0 =C2=A0 if (name =3D=3D NULL)
-> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return -EINVAL;
-> +
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0ea_idebug(inode, "name=3D%d.%s, buffer=3D%=
-p, buffer_size=3D%ld",
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0name_in=
-dex, name, buffer, (long)buffer_size);
->
-> - =C2=A0 =C2=A0 =C2=A0 if (name =3D=3D NULL)
-> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return -EINVAL;
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0down_read(&EXT2_I(inode)->xattr_sem);
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0error =3D -ENODATA;
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!EXT2_I(inode)->i_file_acl)
-> --
-> 1.7.1.1
->
->
->
+Before we start accessing a huge (> 16 TiB) OCFS2 volume, we need to
+confirm that its journal supports 64-bit offsets.  So we need to check
+the journal's feature bits before recovering the journal.
 
-Please ignore this patch. Just for gmail format check.
-Thanks for David Beal's explanation!
+This is not possible with JBD2 at present, because the journal
+superblock (where the feature bits reside) is not loaded from disk until
+the journal is recovered.
 
---=20
+This patch loads the journal superblock in
+jbd2_journal_check_used_features() if it has not already been loaded,
+allowing us to check the feature bits before journal recovery.
 
+Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
 
-Thanks and Best Regards,
-shenghui
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index bc2ff59..c5a864f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1365,6 +1365,8 @@ int jbd2_journal_check_used_features (journal_t *journal, unsigned long compat,
+ 
+ 	if (!compat && !ro && !incompat)
+ 		return 1;
++	if (journal_get_superblock(journal))
++		return 0;
+ 	if (journal->j_format_version == 1)
+ 		return 0;
+ 
