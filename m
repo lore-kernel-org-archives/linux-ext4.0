@@ -1,9 +1,10 @@
 From: Joe Perches <joe@perches.com>
-Subject: [PATCH 26/36] fs/ext4: Remove unnecessary casts of private_data
-Date: Mon, 12 Jul 2010 13:50:18 -0700
-Message-ID: <57404f1380cc8d0609b5bd7ce178a8e9eddd2a06.1278967121.git.joe@perches.com>
+Subject: [PATCH 25/36] fs/ext3: Remove unnecessary casts of private_data
+Date: Mon, 12 Jul 2010 13:50:17 -0700
+Message-ID: <dd90d7b9b09a3332ebe5c3578b5c90a657edbe02.1278967121.git.joe@perches.com>
 References: <cover.1278967120.git.joe@perches.com>
-Cc: linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+Cc: linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
 To: Jiri Kosina <trivial@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
@@ -13,15 +14,14 @@ List-Id: linux-ext4.vger.kernel.org
 
 Signed-off-by: Joe Perches <joe@perches.com>
 ---
- fs/ext4/dir.c     |    2 +-
- fs/ext4/mballoc.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext3/dir.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index ea5e6cb..737bf12 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -343,7 +343,7 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index e2e72c3..d056787 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -337,7 +337,7 @@ int ext3_htree_store_dirent(struct file *dir_file, __u32 hash,
  	struct dir_private_info *info;
  	int len;
  
@@ -30,18 +30,5 @@ index ea5e6cb..737bf12 100644
  	p = &info->root.rb_node;
  
  	/* Create and allocate the fname structure */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 12b3bc0..204588d 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2221,7 +2221,7 @@ static int ext4_mb_seq_groups_open(struct inode *inode, struct file *file)
- 
- 	rc = seq_open(file, &ext4_mb_seq_groups_ops);
- 	if (rc == 0) {
--		struct seq_file *m = (struct seq_file *)file->private_data;
-+		struct seq_file *m = file->private_data;
- 		m->private = sb;
- 	}
- 	return rc;
 -- 
 1.7.1.337.g6068.dirty
