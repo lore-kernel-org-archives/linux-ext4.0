@@ -1,49 +1,71 @@
-From: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-Subject: Re: [PATCH] Cleancache: shim to Xen Transcendent Memory
-Date: Mon, 12 Jul 2010 11:05:22 -0400
-Message-ID: <20100712150522.GD5358@phenom.dumpdata.com>
-References: <20100708164208.GA11763@ca-server1.us.oracle.com>
+From: "crosslonelyover" <crosslonelyover@gmail.com>
+Subject: [PATCH] remove unnecesary while loop in ext2_xattr_get
+Date: Mon, 12 Jul 2010 23:09:09 +0800
+Message-ID: <201007122309063128435@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
-	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
-	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, ngupta@vflare.org,
-	jeremy@goop.org, JBeulich@novell.com, kurt.hackel@oracle.com,
-	npiggin@suse.de, dave.mccracken@oracle.com, riel@redhat.com,
-	avi@redhat.com
-To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: "linux-ext4" <linux-ext4@vger.kernel.org>,
+	"linux-kernel" <linux-kernel@vger.kernel.org>,
+	"kernel-janitors" <kernel-janitors@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:31416 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755499Ab0GLPGu (ORCPT
-	<rfc822;<linux-ext4@vger.kernel.org>>);
-	Mon, 12 Jul 2010 11:06:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20100708164208.GA11763@ca-server1.us.oracle.com>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:42534 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752997Ab0GLPIz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jul 2010 11:08:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 08, 2010 at 09:42:08AM -0700, Dan Magenheimer wrote:
-> Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
+Hi,
+     In ext2_xattr_get, we'll check the xattr entry one 
+by one in the following loop:
+         entry = FIRST_ENTRY(bh);
+         while (!IS_LAST_ENTRY(entry)) {
+                 struct ext2_xattr_entry *next =
+                         EXT2_XATTR_NEXT(entry);
+                 if ((char *)next >= end)
+                         goto bad_block;
+                 if (name_index == entry->e_name_index &&
+                     name_len == entry->e_name_len &&
+                     memcmp(name, entry->e_name, name_len) == 0)
+                         goto found;
+                 entry = next;
+         }
+We can only execute the code immediately following 
+the loop when !IS_LAST_ENTRY(entry) is true. So the
+followed while loop seems unnecessary. I think we can
+remove it.
+      Following is my patch. It's against 2.6.35-rc4.
+Please check it.
 
-One nitpick:
-..
-> +
-> +int tmem_enabled;
-> +
-> +static int __init enable_tmem(char *s)
-> +{
-> +	tmem_enabled = 1;
-> +	return 1;
-> +}
-> +
-> +__setup("tmem", enable_tmem);
 
-Perhaps 'tmem_setup' is more appropiate as it might be that this
-function in the future would be only used to disable tmem, not actually
-enable it?
+Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
+---
+ fs/ext2/xattr.c |    9 +--------
+ 1 files changed, 1 insertions(+), 8 deletions(-)
 
-Otherwise, it has been reviewed by me.
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 0b94d61..a6bccdb 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -201,14 +201,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_get",
+ 			goto found;
+ 		entry = next;
+ 	}
+-	/* Check the remaining name entries */
+-	while (!IS_LAST_ENTRY(entry)) {
+-		struct ext2_xattr_entry *next =
+-			EXT2_XATTR_NEXT(entry);
+-		if ((char *)next >= end)
+-			goto bad_block;
+-		entry = next;
+-	}
++
+ 	if (ext2_xattr_cache_insert(bh))
+ 		ea_idebug(inode, "cache insert failed");
+ 	error = -ENODATA;
+-- 
+1.7.1.1
+
+
