@@ -1,76 +1,49 @@
-From: "crosslonelyover" <crosslonelyover@gmail.com>
-Subject: [PATCH] check name_len before down_read xattr_sem and sb_read in ext2_xattr_get
-Date: Mon, 12 Jul 2010 22:29:09 +0800
-Message-ID: <201007122229025316610@gmail.com>
+From: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+Subject: Re: [PATCH] Cleancache: shim to Xen Transcendent Memory
+Date: Mon, 12 Jul 2010 11:05:22 -0400
+Message-ID: <20100712150522.GD5358@phenom.dumpdata.com>
+References: <20100708164208.GA11763@ca-server1.us.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "linux-ext4" <linux-ext4@vger.kernel.org>,
-	"linux-kernel" <linux-kernel@vger.kernel.org>,
-	"kernel-janitors" <kernel-janitors@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, ngupta@vflare.org,
+	jeremy@goop.org, JBeulich@novell.com, kurt.hackel@oracle.com,
+	npiggin@suse.de, dave.mccracken@oracle.com, riel@redhat.com,
+	avi@redhat.com
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:31416 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755499Ab0GLPGu (ORCPT
+	<rfc822;<linux-ext4@vger.kernel.org>>);
+	Mon, 12 Jul 2010 11:06:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20100708164208.GA11763@ca-server1.us.oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-       I walked through ext2_xattr_get, and felt that we can
-do some optimization on it. For name_len check, it's done
-after down xattr_sem and sb_read, both of which are time
-consuming operation compared with strlen:
-         down_read(&EXT2_I(inode)->xattr_sem);
- ...
-         bh = sb_bread(inode->i_sb, EXT2_I(inode)->i_file_acl);
- ...
-         /* find named attribute */
-         name_len = strlen(name);
+On Thu, Jul 08, 2010 at 09:42:08AM -0700, Dan Magenheimer wrote:
+> Signed-off-by: Dan Magenheimer <dan.magenheimer@oracle.com>
 
-         error = -ERANGE;
-         if (name_len > 255)
-                 goto cleanup;
+One nitpick:
+..
+> +
+> +int tmem_enabled;
+> +
+> +static int __init enable_tmem(char *s)
+> +{
+> +	tmem_enabled = 1;
+> +	return 1;
+> +}
+> +
+> +__setup("tmem", enable_tmem);
 
-       Most of the case, you'll get one valid block, but if the
-name len > 255, then the xattr_sem down and sb_bread operation
-can be seen as a waste of time. So I think we'd better do
-name len check as early as possible.
-       Following is my patch, and it's against 2.6.35-rc4.
-Please check it.
+Perhaps 'tmem_setup' is more appropiate as it might be that this
+function in the future would be only used to disable tmem, not actually
+enable it?
 
-Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
----
- fs/ext2/xattr.c |   12 +++++++-----
- 1 files changed, 7 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 7c39157..0b94d61 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -161,6 +161,13 @@ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
- 
- 	if (name == NULL)
- 		return -EINVAL;
-+
-+	/* find named attribute */
-+	name_len = strlen(name);
-+	error = -ERANGE;
-+	if (name_len > 255)
-+		goto cleanup;
-+
- 	down_read(&EXT2_I(inode)->xattr_sem);
- 	error = -ENODATA;
- 	if (!EXT2_I(inode)->i_file_acl)
-@@ -181,12 +188,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_get",
- 		error = -EIO;
- 		goto cleanup;
- 	}
--	/* find named attribute */
--	name_len = strlen(name);
- 
--	error = -ERANGE;
--	if (name_len > 255)
--		goto cleanup;
- 	entry = FIRST_ENTRY(bh);
- 	while (!IS_LAST_ENTRY(entry)) {
- 		struct ext2_xattr_entry *next =
--- 
-1.7.1.1
+Otherwise, it has been reviewed by me.
