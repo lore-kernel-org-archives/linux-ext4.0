@@ -1,295 +1,52 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
-Date: Tue, 13 Jul 2010 12:30:43 +0800
-Message-ID: <20100713043041.GD3949@zeus.themaw.net>
-References: <1276627208-17242-1-git-send-email-vaurora@redhat.com>
- <1276627208-17242-15-git-send-email-vaurora@redhat.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 2/2] OCFS2: Allow huge (> 16 TiB) volumes to mount
+Date: Mon, 12 Jul 2010 22:46:50 -0600
+Message-ID: <DA64905D-C83B-4CF5-9405-65F7F82F9563@dilger.ca>
+References: <871vbax86w.fsf@patl.com> <87zkxyvtjt.fsf@patl.com> <3BB069D5-B193-43A4-B678-B3CEA4873B58@dilger.ca> <AANLkTikAEycm5PKTLPuRFcB0e4qNp5EuQbKUx5aruNrh@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Jan Blunck <jblunck@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
+Content-Transfer-Encoding: 8BIT
+Cc: ocfs2-devel@oss.oracle.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:47305 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750747Ab0GMEay (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Jul 2010 00:30:54 -0400
-Content-Disposition: inline
-In-Reply-To: <1276627208-17242-15-git-send-email-vaurora@redhat.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:42214 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750747Ab0GMEqy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jul 2010 00:46:54 -0400
+In-Reply-To: <AANLkTikAEycm5PKTLPuRFcB0e4qNp5EuQbKUx5aruNrh@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 15, 2010 at 11:39:44AM -0700, Valerie Aurora wrote:
-> Add support for fallthru directory entries to ext2.
+On 2010-07-12, at 19:08, Patrick J. LoPresti wrote:
+> On Mon, Jul 12, 2010 at 5:21 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+>> On 2010-07-11, at 11:04, Patrick J. LoPresti wrote:
+>>> 
+>>> +     /* Absolute addressability check (borrowed from ext4/super.c) */
+>>> +     if ((max_block >
+>>> +          (sector_t)(~0LL) >> (osb->sb->s_blocksize_bits - 9)) ||
+>>> +         (max_block > (pgoff_t)(~0LL) >> (PAGE_CACHE_SHIFT -
+>>> +                                          osb->sb->s_blocksize_bits))) {
+>>> +             mlog(ML_ERROR, "Volume too large "
+>>> +                  "to mount safely on this system");
+>>> +             status = -EFBIG;
+>>> +             goto out;
+>>> +     }
+>> 
+>> This hunk of code is actually in several filesystems.  It wouldn't be a bad idea to make it a library function that can be called by the filesystem to check the kernel page cache and block layer can handle these large filesystems.
 > 
-> XXX What to do for d_ino for fallthrus?  If we return the inode from
-> the the underlying file system, it comes from a different inode
-> "namespace" and that will produce spurious matches.  This argues for
-> implementation of fallthrus as symlinks because they have to allocate
-> an inode (and inode number) anyway, and we can later reuse it if we
-> copy the file up.
+> True, but some of them do it differently (e.g. see the #if switch in
+> xfs_sb_validate_fsb_count).  Tracking down all variants and changing
+> them is a much larger task than my simple patch.
 > 
-> Cc: Theodore Tso <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-> Signed-off-by: Jan Blunck <jblunck@suse.de>
-> ---
->  fs/ext2/dir.c           |   92 ++++++++++++++++++++++++++++++++++++++++++++--
->  fs/ext2/ext2.h          |    1 +
->  fs/ext2/namei.c         |   22 +++++++++++
->  include/linux/ext2_fs.h |    1 +
->  4 files changed, 112 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-> index 030bd46..f3b4aff 100644
-> --- a/fs/ext2/dir.c
-> +++ b/fs/ext2/dir.c
-> @@ -219,7 +219,8 @@ static inline int ext2_match (int len, const char * const name,
->  {
->  	if (len != de->name_len)
->  		return 0;
-> -	if (!de->inode && (de->file_type != EXT2_FT_WHT))
-> +	if (!de->inode && ((de->file_type != EXT2_FT_WHT) &&
-> +			   (de->file_type != EXT2_FT_FALLTHRU)))
->  		return 0;
->  	return !memcmp(name, de->name, len);
->  }
-> @@ -256,6 +257,7 @@ static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
->  	[EXT2_FT_SOCK]		= DT_SOCK,
->  	[EXT2_FT_SYMLINK]	= DT_LNK,
->  	[EXT2_FT_WHT]		= DT_WHT,
-> +	[EXT2_FT_FALLTHRU]	= DT_UNKNOWN,
->  };
->  
->  #define S_SHIFT 12
-> @@ -342,6 +344,24 @@ ext2_readdir (struct file * filp, void * dirent, filldir_t filldir)
->  					ext2_put_page(page);
->  					return 0;
->  				}
-> +			} else if (de->file_type == EXT2_FT_FALLTHRU) {
-> +				int over;
-> +				unsigned char d_type = DT_UNKNOWN;
-> +
-> +				offset = (char *)de - kaddr;
-> +				/* XXX We don't know the inode number
-> +				 * of the directory entry in the
-> +				 * underlying file system.  Should
-> +				 * look it up, either on fallthru
-> +				 * creation at first readdir or now at
-> +				 * filldir time. */
-> +				over = filldir(dirent, de->name, de->name_len,
-> +					       (n<<PAGE_CACHE_SHIFT) | offset,
-> +					       123 /* Made up ino */, d_type);
-> +				if (over) {
-> +					ext2_put_page(page);
-> +					return 0;
-> +				}
->  			}
->  			filp->f_pos += ext2_rec_len_from_disk(de->rec_len);
->  		}
-> @@ -463,6 +483,10 @@ ino_t ext2_inode_by_dentry(struct inode *dir, struct dentry *dentry)
->  			spin_lock(&dentry->d_lock);
->  			dentry->d_flags |= DCACHE_WHITEOUT;
->  			spin_unlock(&dentry->d_lock);
-> +		} else if(!res && de->file_type == EXT2_FT_FALLTHRU) {
-> +			spin_lock(&dentry->d_lock);
-> +			dentry->d_flags |= DCACHE_FALLTHRU;
-> +			spin_unlock(&dentry->d_lock);
->  		}
->  		ext2_put_page(page);
->  	}
-> @@ -532,6 +556,7 @@ static ext2_dirent * ext2_append_entry(struct dentry * dentry,
->  				de->name_len = 0;
->  				de->rec_len = ext2_rec_len_to_disk(chunk_size);
->  				de->inode = 0;
-> +				de->file_type = 0;
->  				goto got_it;
->  			}
->  			if (de->rec_len == 0) {
-> @@ -545,6 +570,7 @@ static ext2_dirent * ext2_append_entry(struct dentry * dentry,
->  			name_len = EXT2_DIR_REC_LEN(de->name_len);
->  			rec_len = ext2_rec_len_from_disk(de->rec_len);
->  			if (!de->inode && (de->file_type != EXT2_FT_WHT) &&
-> +			    (de->file_type != EXT2_FT_FALLTHRU) &&
->  			    (rec_len >= reclen))
->  				goto got_it;
->  			if (rec_len >= name_len + reclen)
-> @@ -587,7 +613,8 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
->  
->  	err = -EEXIST;
->  	if (ext2_match (namelen, name, de)) {
-> -		if (de->file_type == EXT2_FT_WHT)
-> +		if ((de->file_type == EXT2_FT_WHT) ||
-> +		    (de->file_type == EXT2_FT_FALLTHRU))
->  			goto got_it;
->  		goto out_unlock;
->  	}
-> @@ -602,7 +629,8 @@ got_it:
->  							&page, NULL);
->  	if (err)
->  		goto out_unlock;
-> -	if (de->inode || ((de->file_type == EXT2_FT_WHT) &&
-> +	if (de->inode || (((de->file_type == EXT2_FT_WHT) ||
-> +			   (de->file_type == EXT2_FT_FALLTHRU)) &&
->  			  !ext2_match (namelen, name, de))) {
->  		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
->  		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
-> @@ -627,6 +655,60 @@ out_unlock:
->  }
->  
->  /*
-> + * Create a fallthru entry.
-> + */
-> +int ext2_fallthru_entry (struct inode *dir, struct dentry *dentry)
-> +{
-> +	const char *name = dentry->d_name.name;
-> +	int namelen = dentry->d_name.len;
-> +	unsigned short rec_len, name_len;
-> +	ext2_dirent * de;
-> +	struct page *page;
-> +	loff_t pos;
-> +	int err;
-> +
-> +	de = ext2_append_entry(dentry, &page);
-> +	if (IS_ERR(de))
-> +		return PTR_ERR(de);
-> +
-> +	err = -EEXIST;
-> +	if (ext2_match (namelen, name, de))
-> +		goto out_unlock;
-> +
-> +	name_len = EXT2_DIR_REC_LEN(de->name_len);
-> +	rec_len = ext2_rec_len_from_disk(de->rec_len);
-> +
-> +	pos = page_offset(page) +
-> +		(char*)de - (char*)page_address(page);
-> +	err = __ext2_write_begin(NULL, page->mapping, pos, rec_len, 0,
-> +							&page, NULL);
-> +	if (err)
-> +		goto out_unlock;
-> +	if (de->inode || (de->file_type == EXT2_FT_WHT) ||
-> +	    (de->file_type == EXT2_FT_FALLTHRU)) {
-> +		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
-> +		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
-> +		de->rec_len = ext2_rec_len_to_disk(name_len);
-> +		de = de1;
-> +	}
+> Are you suggesting I need to do this before my patch is accepted at
+> all?  Or is this a refactoring that can happen later?
 
-And again, what's foing on here?
+I'm just suggesting it should be done at some point.  I thought it would be better to do it first, rather than add yet another copy of this code.  That said, I hate to block useful fixes because of cleanup (and I have no control over OCFS2 anyway :-).  However, I've found that once the fix is in people usually forget (or become too busy) to do the cleanup and it just lingers on unseen.
 
-> +	de->name_len = namelen;
-> +	memcpy(de->name, name, namelen);
-> +	de->inode = 0;
-> +	de->file_type = EXT2_FT_FALLTHRU;
-> +	err = ext2_commit_chunk(page, pos, rec_len);
-> +	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-> +	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
-> +	mark_inode_dirty(dir);
-> +	/* OFFSET_CACHE */
-> +out_put:
-> +	ext2_put_page(page);
-> +	return err;
-> +out_unlock:
-> +	unlock_page(page);
-> +	goto out_put;
-> +}
-> +
-> +/*
->   * ext2_delete_entry deletes a directory entry by merging it with the
->   * previous entry. Page is up-to-date. Releases the page.
->   */
-> @@ -711,7 +793,9 @@ int ext2_whiteout_entry (struct inode * dir, struct dentry * dentry,
->  	 */
->  	if (ext2_match (namelen, name, de))
->  		de->inode = 0;
-> -	if (de->inode || (de->file_type == EXT2_FT_WHT)) {
-> +	if (de->inode || (((de->file_type == EXT2_FT_WHT) ||
-> +			   (de->file_type == EXT2_FT_FALLTHRU)) &&
-> +			  !ext2_match (namelen, name, de))) {
->  		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
->  		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
->  		de->rec_len = ext2_rec_len_to_disk(name_len);
-> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-> index 44d190c..2fa32b3 100644
-> --- a/fs/ext2/ext2.h
-> +++ b/fs/ext2/ext2.h
-> @@ -108,6 +108,7 @@ extern struct ext2_dir_entry_2 * ext2_find_entry (struct inode *,struct qstr *,
->  extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
->  extern int ext2_whiteout_entry (struct inode *, struct dentry *,
->  				struct ext2_dir_entry_2 *, struct page *);
-> +extern int ext2_fallthru_entry (struct inode *, struct dentry *);
->  extern int ext2_empty_dir (struct inode *);
->  extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct page **);
->  extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, struct inode *, int);
-> diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-> index 12195a5..f28154c 100644
-> --- a/fs/ext2/namei.c
-> +++ b/fs/ext2/namei.c
-> @@ -349,6 +349,7 @@ static int ext2_whiteout(struct inode *dir, struct dentry *dentry,
->  		goto out;
->  
->  	spin_lock(&new_dentry->d_lock);
-> +	new_dentry->d_flags &= ~DCACHE_FALLTHRU;
->  	new_dentry->d_flags |= DCACHE_WHITEOUT;
->  	spin_unlock(&new_dentry->d_lock);
->  	d_add(new_dentry, NULL);
-> @@ -367,6 +368,26 @@ out:
->  	return err;
->  }
->  
-> +/*
-> + * Create a fallthru entry.
-> + */
-> +static int ext2_fallthru (struct inode *dir, struct dentry *dentry)
-> +{
-> +	int err;
-> +
-> +	dquot_initialize(dir);
-> +
-> +	err = ext2_fallthru_entry(dir, dentry);
-> +	if (err)
-> +		return err;
-> +
-> +	d_instantiate(dentry, NULL);
-> +	spin_lock(&dentry->d_lock);
-> +	dentry->d_flags |= DCACHE_FALLTHRU;
-> +	spin_unlock(&dentry->d_lock);
-> +	return 0;
-> +}
-> +
->  static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
->  	struct inode * new_dir,	struct dentry * new_dentry )
->  {
-> @@ -470,6 +491,7 @@ const struct inode_operations ext2_dir_inode_operations = {
->  	.rmdir		= ext2_rmdir,
->  	.mknod		= ext2_mknod,
->  	.whiteout	= ext2_whiteout,
-> +	.fallthru	= ext2_fallthru,
->  	.rename		= ext2_rename,
->  #ifdef CONFIG_EXT2_FS_XATTR
->  	.setxattr	= generic_setxattr,
-> diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
-> index 20468bd..cb3d400 100644
-> --- a/include/linux/ext2_fs.h
-> +++ b/include/linux/ext2_fs.h
-> @@ -577,6 +577,7 @@ enum {
->  	EXT2_FT_SOCK		= 6,
->  	EXT2_FT_SYMLINK		= 7,
->  	EXT2_FT_WHT		= 8,
-> +	EXT2_FT_FALLTHRU	= 9,
->  	EXT2_FT_MAX
->  };
->  
-> -- 
-> 1.6.3.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+Cheers, Andreas
+
+
+
+
+
