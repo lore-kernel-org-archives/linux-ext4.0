@@ -1,70 +1,91 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH 2/2] OCFS2: Allow huge (> 16 TiB) volumes
- to mount
-Date: Tue, 13 Jul 2010 01:10:13 -0700
-Message-ID: <20100713081013.GA31479@mail.oracle.com>
-References: <871vbax86w.fsf@patl.com>
- <87zkxyvtjt.fsf@patl.com>
- <3BB069D5-B193-43A4-B678-B3CEA4873B58@dilger.ca>
- <AANLkTikAEycm5PKTLPuRFcB0e4qNp5EuQbKUx5aruNrh@mail.gmail.com>
- <DA64905D-C83B-4CF5-9405-65F7F82F9563@dilger.ca>
- <AANLkTinsQjWD1t1lO_BHnM-afzYyl7TKKdIcNZEVMg6n@mail.gmail.com>
+From: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Subject: Re: [PATCH] check name_len before down_read xattr_sem and sb_read
+ in ext2_xattr_get
+Date: Tue, 13 Jul 2010 22:28:19 +0800
+Message-ID: <4C3C7803.2020006@gmail.com>
+References: <201007122229025316610@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com
-To: "Patrick J. LoPresti" <lopresti@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <AANLkTinsQjWD1t1lO_BHnM-afzYyl7TKKdIcNZEVMg6n@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	kernel-janitors <kernel-janitors@vger.kernel.org>, tytso@mit.edu,
+	adilger@sun.com, akpm@linux-fou
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <201007122229025316610@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 12, 2010 at 10:00:10PM -0700, Patrick J. LoPresti wrote:
-> On Mon, Jul 12, 2010 at 9:46 PM, Andreas Dilger <adilger@dilger.ca> w=
-rote:
-> > On 2010-07-12, at 19:08, Patrick J. LoPresti wrote:
-> >>
-> >> Are you suggesting I need to do this before my patch is accepted a=
-t
-> >> all? =A0Or is this a refactoring that can happen later?
-> >
-> > I'm just suggesting it should be done at some point. =A0I thought i=
-t would be better to do it first, rather than add yet another copy of t=
-his code. =A0That said, I hate to block useful fixes because of cleanup=
- (and I have no control over OCFS2 anyway :-). =A0However, I've found t=
-hat once the fix is in people usually forget (or become too busy) to do=
- the cleanup and it just lingers on unseen.
->=20
-> I hear you.
->=20
-> I do not object to factoring out the basic addressability test and
-> using it in my patch, leaving it for others -- like yourself :-) -- t=
-o
-> modify other file systems to invoke it.
+  =E4=BA=8E 2010-7-12 22:29, crosslonelyover =E5=86=99=E9=81=93:
+> Hi,
+>         I walked through ext2_xattr_get, and felt that we can
+> do some optimization on it. For name_len check, it's done
+> after down xattr_sem and sb_read, both of which are time
+> consuming operation compared with strlen:
+>           down_read(&EXT2_I(inode)->xattr_sem);
+>   ...
+>           bh =3D sb_bread(inode->i_sb, EXT2_I(inode)->i_file_acl);
+>   ...
+>           /* find named attribute */
+>           name_len =3D strlen(name);
+>
+>           error =3D -ERANGE;
+>           if (name_len>  255)
+>                   goto cleanup;
+>
+>         Most of the case, you'll get one valid block, but if the
+> name len>  255, then the xattr_sem down and sb_bread operation
+> can be seen as a waste of time. So I think we'd better do
+> name len check as early as possible.
+>         Following is my patch, and it's against 2.6.35-rc4.
+> Please check it.
+>
+> Signed-off-by: Wang Sheng-Hui<crosslonelyover@gmail.com>
+> ---
+>   fs/ext2/xattr.c |   12 +++++++-----
+>   1 files changed, 7 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 7c39157..0b94d61 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -161,6 +161,13 @@ ext2_xattr_get(struct inode *inode, int name_ind=
+ex, const char *name,
+>
+>   	if (name =3D=3D NULL)
+>   		return -EINVAL;
+> +
+> +	/* find named attribute */
+> +	name_len =3D strlen(name);
+> +	error =3D -ERANGE;
+> +	if (name_len>  255)
+> +		goto cleanup;
+> +
+>   	down_read(&EXT2_I(inode)->xattr_sem);
+>   	error =3D -ENODATA;
+>   	if (!EXT2_I(inode)->i_file_acl)
+> @@ -181,12 +188,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_g=
+et",
+>   		error =3D -EIO;
+>   		goto cleanup;
+>   	}
+> -	/* find named attribute */
+> -	name_len =3D strlen(name);
+>
+> -	error =3D -ERANGE;
+> -	if (name_len>  255)
+> -		goto cleanup;
+>   	entry =3D FIRST_ENTRY(bh);
+>   	while (!IS_LAST_ENTRY(entry)) {
+>   		struct ext2_xattr_entry *next =3D
+Hi, I noticed in ext2_xattr_set, name_len check is done
+before
+down_write(&EXT2_I(inode)->xattr_sem);
+So I think ext2_xattr_get should do in the same way.
 
-	I think you should modify ext3 and xfs, as they clearly are
-partaking of this functionality.  I'll happily review it for you.  Put
-the call in fs/libfs.c.  Call it generic_check_addressable(struct
-super_block *super).
-
-Joel
-
+Please check this patch.
 
 --=20
-
-"The only way to get rid of a temptation is to yield to it."
-         - Oscar Wilde=20
-
-Joel Becker
-Consulting Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks and Regards,
+shenghui
