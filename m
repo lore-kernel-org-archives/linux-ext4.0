@@ -1,33 +1,24 @@
-From: Brian King <brking@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH 1/1] jbd2: Fix I/O hang in jbd2_journal_release_jbd_inode
-Date: Wed, 14 Jul 2010 11:39:34 -0500
-Message-ID: <4C3DE846.4070007@linux.vnet.ibm.com>
+Date: Wed, 14 Jul 2010 11:40:27 -0500
+Message-ID: <4C3DE87B.1090809@redhat.com>
 References: <201007141456.o6EEuFe9004519@d01av03.pok.ibm.com> <4C3DE684.2040202@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, cmm@linux.vnet.ibm.com,
 	pmac@au1.ibm.com
-To: Eric Sandeen <sandeen@redhat.com>
+To: Brian King <brking@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:53889 "EHLO e9.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45872 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751399Ab0GNQjg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jul 2010 12:39:36 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by e9.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o6EGNV2C014332
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 12:23:31 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o6EGdZVl062638
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 12:39:35 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o6EGdYuY029417
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 12:39:35 -0400
+	id S1751962Ab0GNQkh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jul 2010 12:40:37 -0400
 In-Reply-To: <4C3DE684.2040202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/14/2010 11:32 AM, Eric Sandeen wrote:
+Eric Sandeen wrote:
 > Brian King wrote:
 >> I've been debugging a hang in jbd2_journal_release_jbd_inode
 >> which is being seen on Power 6 systems quite a lot. When we get
@@ -45,15 +36,24 @@ On 07/14/2010 11:32 AM, Eric Sandeen wrote:
 > The current unsigned int seems to be the wrong thing to use with
 > bit_waitqueue() and friends, does that change alone fix it?
 
-I am testing a patch without the added barriers, but don't have too much
-runtime on it yet. I'll spin a kernel with just the unsigned long change
-and see how that holds up.
+I guess I spoke too soon (not that familiar w/ the bit waitqueue stuff TBH)
+
+The wake_up_bit() comments are relevant I guess:
+
+ * In order for this to function properly, as it uses waitqueue_active()
+ * internally, some kind of memory barrier must be done prior to calling
+ * this. Typically, this will be smp_mb__after_clear_bit(), but in some
+ * cases where bitflags are manipulated non-atomically under a lock, one
+ * may need to use a less regular barrier, such fs/inode.c's smp_mb(),
+ * because spin_unlock() does not guarantee a memory barrier.
+
+So I think the patch makes sense to me but more comments from someone
+more familiar with these semantics would be great.  :)
 
 Thanks,
+-Eric
 
-Brian
 
-> 
 > -Eric
 > 
 >> to access it, and adds barriers around the accesses. Prior to applying
@@ -174,11 +174,8 @@ Brian
 >> the body of a message to majordomo@vger.kernel.org
 >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-
-
--- 
-Brian King
-Linux on Power Virtualization
-IBM Linux Technology Center
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
