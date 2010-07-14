@@ -1,174 +1,60 @@
-From: Brian King <brking@linux.vnet.ibm.com>
-Subject: Re: [PATCHv2 1/1] jbd2: Fix I/O hang in jbd2_journal_release_jbd_inode
-Date: Wed, 14 Jul 2010 15:08:02 -0500
-Message-ID: <4C3E1922.4010001@linux.vnet.ibm.com>
-References: <201007141456.o6EEuFe9004519@d01av03.pok.ibm.com> <20100714174458.GA2378@localhost.localdomain> <4C3E08E6.2050203@linux.vnet.ibm.com> <20100714190505.GB2378@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] mballoc: allocate stripe-multiple IOs on stripe boundaries
+Date: Wed, 14 Jul 2010 16:10:23 -0500
+Message-ID: <4C3E27BF.2000005@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, cmm@linux.vnet.ibm.com,
-	pmac@au1.ibm.com
-To: Josef Bacik <josef@redhat.com>
+Cc: Mike Snitzer <snitzer@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:41508 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37166 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757468Ab0GNUIF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jul 2010 16:08:05 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o6EJs81h029218
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 15:54:08 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o6EK84w2155018
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 16:08:04 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o6EK824u024800
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 16:08:03 -0400
-In-Reply-To: <20100714190505.GB2378@localhost.localdomain>
+	id S1753696Ab0GNVK2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jul 2010 17:10:28 -0400
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o6ELAReg015425
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 17:10:27 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/14/2010 02:05 PM, Josef Bacik wrote:
-> On Wed, Jul 14, 2010 at 01:58:46PM -0500, Brian King wrote:
->>
->> I've been debugging a hang in jbd2_journal_release_jbd_inode
->> which is being seen on Power 6 systems quite a lot. When we get
->> in the hung state, all I/O to the disk in question gets blocked
->> where we stay indefinitely. Looking at the task list, I can see
->> we are stuck in jbd2_journal_release_jbd_inode waiting on a
->> wake up. I added some debug code to detect this scenario and
->> dump additional data if we were stuck in jbd2_journal_release_jbd_inode
->> for longer than 30 minutes. When it hit, I was able to see that
->> i_flags was 0, suggesting we missed the wake up.
->>
->> This patch changes i_flags to be an unsigned long, uses bit operators
->> to access it, and adds barriers around the accesses. Prior to applying
->> this patch, we were regularly hitting this hang on numerous systems
->> in our test environment. After applying the patch, the hangs no longer
->> occur. Its still not clear to me why the j_list_lock doesn't protect us
->> in this path. It also appears a hang very similar to this was seen
->> in the past and then was no longer recreatable:
->>
->> http://forum.soft32.com/linux/20090310-ext4-hangs-ftopict478916.html
->>
->> Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
->> ---
->>
->>  fs/jbd2/commit.c     |   12 ++++++++----
->>  fs/jbd2/journal.c    |    5 ++++-
->>  include/linux/jbd2.h |    2 +-
->>  3 files changed, 13 insertions(+), 6 deletions(-)
->>
->> diff -puN include/linux/jbd2.h~jbd2_ji_commit_barrier_patch include/linux/jbd2.h
->> --- linux-2.6/include/linux/jbd2.h~jbd2_ji_commit_barrier_patch	2010-07-14 13:46:17.000000000 -0500
->> +++ linux-2.6-bjking1/include/linux/jbd2.h	2010-07-14 13:46:17.000000000 -0500
->> @@ -395,7 +395,7 @@ struct jbd2_inode {
->>  	struct inode *i_vfs_inode;
->>  
->>  	/* Flags of inode [j_list_lock] */
->> -	unsigned int i_flags;
->> +	unsigned long i_flags;
->>  };
->>  
->>  struct jbd2_revoke_table_s;
->> diff -puN fs/jbd2/commit.c~jbd2_ji_commit_barrier_patch fs/jbd2/commit.c
->> --- linux-2.6/fs/jbd2/commit.c~jbd2_ji_commit_barrier_patch	2010-07-14 13:46:17.000000000 -0500
->> +++ linux-2.6-bjking1/fs/jbd2/commit.c	2010-07-14 13:56:27.000000000 -0500
->> @@ -26,7 +26,9 @@
->>  #include <linux/backing-dev.h>
->>  #include <linux/bio.h>
->>  #include <linux/blkdev.h>
->> +#include <linux/bitops.h>
->>  #include <trace/events/jbd2.h>
->> +#include <asm/system.h>
->>  
->>  /*
->>   * Default IO end handler for temporary BJ_IO buffer_heads.
->> @@ -245,7 +247,7 @@ static int journal_submit_data_buffers(j
->>  	spin_lock(&journal->j_list_lock);
->>  	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
->>  		mapping = jinode->i_vfs_inode->i_mapping;
->> -		jinode->i_flags |= JI_COMMIT_RUNNING;
->> +		set_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
->>  		spin_unlock(&journal->j_list_lock);
->>  		/*
->>  		 * submit the inode data buffers. We use writepage
->> @@ -260,7 +262,8 @@ static int journal_submit_data_buffers(j
->>  		spin_lock(&journal->j_list_lock);
->>  		J_ASSERT(jinode->i_transaction == commit_transaction);
->>  		commit_transaction->t_flushed_data_blocks = 1;
->> -		jinode->i_flags &= ~JI_COMMIT_RUNNING;
->> +		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
->> +		smp_mb__after_clear_bit();
->>  		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
->>  	}
->>  	spin_unlock(&journal->j_list_lock);
->> @@ -281,7 +284,7 @@ static int journal_finish_inode_data_buf
->>  	/* For locking, see the comment in journal_submit_data_buffers() */
->>  	spin_lock(&journal->j_list_lock);
->>  	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
->> -		jinode->i_flags |= JI_COMMIT_RUNNING;
->> +		set_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
->>  		spin_unlock(&journal->j_list_lock);
->>  		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
->>  		if (err) {
->> @@ -297,7 +300,8 @@ static int journal_finish_inode_data_buf
->>  				ret = err;
->>  		}
->>  		spin_lock(&journal->j_list_lock);
->> -		jinode->i_flags &= ~JI_COMMIT_RUNNING;
->> +		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
->> +		smp_mb__after_clear_bit();
->>  		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
->>  	}
->>  
->> diff -puN fs/jbd2/journal.c~jbd2_ji_commit_barrier_patch fs/jbd2/journal.c
->> --- linux-2.6/fs/jbd2/journal.c~jbd2_ji_commit_barrier_patch	2010-07-14 13:46:17.000000000 -0500
->> +++ linux-2.6-bjking1/fs/jbd2/journal.c	2010-07-14 13:46:17.000000000 -0500
->> @@ -41,12 +41,14 @@
->>  #include <linux/hash.h>
->>  #include <linux/log2.h>
->>  #include <linux/vmalloc.h>
->> +#include <linux/bitops.h>
->>  
->>  #define CREATE_TRACE_POINTS
->>  #include <trace/events/jbd2.h>
->>  
->>  #include <asm/uaccess.h>
->>  #include <asm/page.h>
->> +#include <asm/system.h>
->>  
->>  EXPORT_SYMBOL(jbd2_journal_start);
->>  EXPORT_SYMBOL(jbd2_journal_restart);
->> @@ -2209,9 +2211,10 @@ void jbd2_journal_release_jbd_inode(jour
->>  restart:
->>  	spin_lock(&journal->j_list_lock);
->>  	/* Is commit writing out inode - we have to wait */
->> -	if (jinode->i_flags & JI_COMMIT_RUNNING) {
->> +	if (test_bit(__JI_COMMIT_RUNNING, &jinode->i_flags)) {
->>  		wait_queue_head_t *wq;
->>  		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
->> +		smp_mb();
->>  		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
->>  		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
->>  		spin_unlock(&journal->j_list_lock);
->> _
-> 
-> Seems reasonable to me, I assume you re-tested with this patch to make sure it
-> still fixes the problem?  You can add
+For some reason, today mballoc only allocates IOs which are exactly
+stripe-sized on a stripe boundary.  If you have a multiple (say, a
+128k IO on a 64k stripe) you may end up unaligned.
 
-I'm building a kernel with the updated patch and we will load it up on
-the failing systems and retest. It usually takes a number of hours
-before the problem hits on our test systems, so I may have some early
-results tomorrow.
+It seems to me that a simple change to align stripe-multiple IOs
+on stripe boundaries would be a very good idea, unless this breaks
+some other mballoc heuristic for some reason...
 
-Thanks,
+Reported-by: Mike Snitzer <snitzer@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Brian
-
-
--- 
-Brian King
-Linux on Power Virtualization
-IBM Linux Technology Center
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 12b3bc0..f64a439 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1821,8 +1821,7 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 
+ /*
+  * This is a special case for storages like raid5
+- * we try to find stripe-aligned chunks for stripe-size requests
+- * XXX should do so at least for multiples of stripe size as well
++ * we try to find stripe-aligned chunks for stripe-size-multiple requests
+  */
+ static noinline_for_stack
+ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+@@ -2094,8 +2093,8 @@ repeat:
+ 			ac->ac_groups_scanned++;
+ 			if (cr == 0)
+ 				ext4_mb_simple_scan_group(ac, &e4b);
+-			else if (cr == 1 &&
+-					ac->ac_g_ex.fe_len == sbi->s_stripe)
++			else if (cr == 1 && sbi->s_stripe &&
++					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
+ 				ext4_mb_scan_aligned(ac, &e4b);
+ 			else
+ 				ext4_mb_complex_scan_group(ac, &e4b);
 
 
