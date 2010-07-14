@@ -1,83 +1,148 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/2] Add batched discard support for ext4
-Date: Wed, 14 Jul 2010 13:43:30 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1007141340070.2980@localhost>
-References: <1278489212-12110-1-git-send-email-lczerner@redhat.com> <1278489212-12110-3-git-send-email-lczerner@redhat.com> <87tyo2a2f7.fsf@dmon-lap.sw.ru> <alpine.LFD.2.00.1007141101110.2980@localhost> <87lj9e7547.fsf@dmon-lap.sw.ru>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, eshishki@redhat.com,
-	jmoyer@redhat.com, rwheeler@redhat.com, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Brian King <brking@linux.vnet.ibm.com>
+Subject: [PATCH 1/1] jbd2: Fix I/O hang in jbd2_journal_release_jbd_inode
+Date: Wed, 14 Jul 2010 09:56:15 -0500
+Message-ID: <201007141456.o6EEuFe9004519@d01av03.pok.ibm.com>
+Cc: cmm@linux.vnet.ibm.com, pmac@au1.ibm.com, brking@linux.vnet.ibm.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37605 "EHLO mx1.redhat.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:51624 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754979Ab0GNLni (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jul 2010 07:43:38 -0400
-In-Reply-To: <87lj9e7547.fsf@dmon-lap.sw.ru>
+	id S1752084Ab0GNO4S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jul 2010 10:56:18 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by e1.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o6EEosmm006262
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 10:50:54 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o6EEuHih108776
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 10:56:17 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o6EEuF3v004568
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Jul 2010 11:56:16 -0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 14 Jul 2010, Dmitry Monakhov wrote:
 
-> Lukas Czerner <lczerner@redhat.com> writes:
-> 
-> > On Wed, 14 Jul 2010, Dmitry Monakhov wrote:
-> >
-> >> Lukas Czerner <lczerner@redhat.com> writes:
-> >> 
-> >> > Walk through each allocation group and trim all free extents. It can be
-> >> > invoked through TRIM ioctl on the file system. The main idea is to
-> >> > provide a way to trim the whole file system if needed, since some SSD's
-> >> > may suffer from performance loss after the whole device was filled (it
-> >> > does not mean that fs is full!).
-> >> >
-> >> > It search fro free extents in each allocation group. When the free
-> >> > extent is found, blocks are marked as used and then trimmed. Afterwards
-> >> > these blocks are marked as free in per-group bitmap.
-> >> Looks ok, except two small notes:
-> >> 1) trim_fs is a time consuming operation and we have to add
-> >>    condresced, and signal_pending checks to allow user to interrupt
-> >>    cmd if necessery. See patch attached.
-> >
-> > Hi, Dimitry
-> >
-> > thanks for your patch! Although I have one question:
-> >
-> >
-> >  	for (group = 0; group < ngroups; group++) {
-> > -		int err;
-> > -
-> > -		err = ext4_mb_load_buddy(sb, group, &e4b);
-> > -		if (err) {
-> > +		ret = ext4_mb_load_buddy(sb, group, &e4b);
-> > +		if (ret) {
-> >  			ext4_error(sb, "Error in loading buddy "
-> >  					"information for %u", group);
-> > -			continue;
-> > +			break;
-> >  		}
-> >
-> > Is there really need to jump out from the loop and exit in the case of
-> > load_buddy failure ? Next group may very well succeed in loading buddy,
-> > or am I missing something ?
-> Well, it may fail due to -ENOMEM which is not scary but in some places
-> it may fail due to EIO which is a very bad sign. So i think it is
-> slightly dangerous to continue if we have found a same group.
+I've been debugging a hang in jbd2_journal_release_jbd_inode
+which is being seen on Power 6 systems quite a lot. When we get
+in the hung state, all I/O to the disk in question gets blocked
+where we stay indefinitely. Looking at the task list, I can see
+we are stuck in jbd2_journal_release_jbd_inode waiting on a
+wake up. I added some debug code to detect this scenario and
+dump additional data if we were stuck in jbd2_journal_release_jbd_inode
+for longer than 30 minutes. When it hit, I was able to see that
+i_flags was 0, suggesting we missed the wake up.
 
-Ok, it seems reasonable.
+This patch changes i_flags to be an unsigned long, uses bit operators
+to access it, and adds barriers around the accesses. Prior to applying
+this patch, we were regularly hitting this hang on numerous systems
+in our test environment. After applying the patch, the hangs no longer
+occur. Its still not clear to me why the j_list_lock doesn't protect us
+in this path. It also appears a hang very similar to this was seen
+in the past and then was no longer recreatable:
 
-> >
-> >> 2) IMHO runtime trim support is useful sometimes, for example when
-> >>    user really care about data security i.e. unlinked file should be
-> >>    trimmed ASAP. I think we have to provide 'secdel' mount option
-> >>    similar to secdeletion flag for inode, but this is another story
-> >>    not directly connected with the patch.
-> >
-> > I like the idea, but IMO this should work for any underlying storage,
-> > not just for SSDs.
-> Off course. We may use blkdev_issue_zeroout() if disk does not support
-> discard with zeroing.
-> >
+http://forum.soft32.com/linux/20090310-ext4-hangs-ftopict478916.html
 
--Lukas
+Signed-off-by: Brian King <brking@linux.vnet.ibm.com>
+---
+
+ fs/jbd2/commit.c     |   14 ++++++++++----
+ fs/jbd2/journal.c    |    5 ++++-
+ include/linux/jbd2.h |    2 +-
+ 3 files changed, 15 insertions(+), 6 deletions(-)
+
+diff -puN include/linux/jbd2.h~jbd2_ji_commit_barrier_patch include/linux/jbd2.h
+--- linux-2.6/include/linux/jbd2.h~jbd2_ji_commit_barrier_patch	2010-07-07 09:01:12.000000000 -0500
++++ linux-2.6-bjking1/include/linux/jbd2.h	2010-07-07 09:01:12.000000000 -0500
+@@ -395,7 +395,7 @@ struct jbd2_inode {
+ 	struct inode *i_vfs_inode;
+ 
+ 	/* Flags of inode [j_list_lock] */
+-	unsigned int i_flags;
++	unsigned long i_flags;
+ };
+ 
+ struct jbd2_revoke_table_s;
+diff -puN fs/jbd2/commit.c~jbd2_ji_commit_barrier_patch fs/jbd2/commit.c
+--- linux-2.6/fs/jbd2/commit.c~jbd2_ji_commit_barrier_patch	2010-07-07 09:01:12.000000000 -0500
++++ linux-2.6-bjking1/fs/jbd2/commit.c	2010-07-07 09:01:12.000000000 -0500
+@@ -26,7 +26,9 @@
+ #include <linux/backing-dev.h>
+ #include <linux/bio.h>
+ #include <linux/blkdev.h>
++#include <linux/bitops.h>
+ #include <trace/events/jbd2.h>
++#include <asm/system.h>
+ 
+ /*
+  * Default IO end handler for temporary BJ_IO buffer_heads.
+@@ -245,7 +247,7 @@ static int journal_submit_data_buffers(j
+ 	spin_lock(&journal->j_list_lock);
+ 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
+ 		mapping = jinode->i_vfs_inode->i_mapping;
+-		jinode->i_flags |= JI_COMMIT_RUNNING;
++		set_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
+ 		spin_unlock(&journal->j_list_lock);
+ 		/*
+ 		 * submit the inode data buffers. We use writepage
+@@ -260,7 +262,9 @@ static int journal_submit_data_buffers(j
+ 		spin_lock(&journal->j_list_lock);
+ 		J_ASSERT(jinode->i_transaction == commit_transaction);
+ 		commit_transaction->t_flushed_data_blocks = 1;
+-		jinode->i_flags &= ~JI_COMMIT_RUNNING;
++		smp_mb__before_clear_bit();
++		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
++		smp_mb__before_clear_bit();
+ 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+@@ -281,7 +285,7 @@ static int journal_finish_inode_data_buf
+ 	/* For locking, see the comment in journal_submit_data_buffers() */
+ 	spin_lock(&journal->j_list_lock);
+ 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
+-		jinode->i_flags |= JI_COMMIT_RUNNING;
++		set_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
+ 		spin_unlock(&journal->j_list_lock);
+ 		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
+ 		if (err) {
+@@ -297,7 +301,9 @@ static int journal_finish_inode_data_buf
+ 				ret = err;
+ 		}
+ 		spin_lock(&journal->j_list_lock);
+-		jinode->i_flags &= ~JI_COMMIT_RUNNING;
++		smp_mb__before_clear_bit();
++		clear_bit(__JI_COMMIT_RUNNING, &jinode->i_flags);
++		smp_mb__before_clear_bit();
+ 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 	}
+ 
+diff -puN fs/jbd2/journal.c~jbd2_ji_commit_barrier_patch fs/jbd2/journal.c
+--- linux-2.6/fs/jbd2/journal.c~jbd2_ji_commit_barrier_patch	2010-07-07 09:01:12.000000000 -0500
++++ linux-2.6-bjking1/fs/jbd2/journal.c	2010-07-07 09:01:12.000000000 -0500
+@@ -41,12 +41,14 @@
+ #include <linux/hash.h>
+ #include <linux/log2.h>
+ #include <linux/vmalloc.h>
++#include <linux/bitops.h>
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/jbd2.h>
+ 
+ #include <asm/uaccess.h>
+ #include <asm/page.h>
++#include <asm/system.h>
+ 
+ EXPORT_SYMBOL(jbd2_journal_start);
+ EXPORT_SYMBOL(jbd2_journal_restart);
+@@ -2209,9 +2211,10 @@ void jbd2_journal_release_jbd_inode(jour
+ restart:
+ 	spin_lock(&journal->j_list_lock);
+ 	/* Is commit writing out inode - we have to wait */
+-	if (jinode->i_flags & JI_COMMIT_RUNNING) {
++	if (test_bit(__JI_COMMIT_RUNNING, &jinode->i_flags)) {
+ 		wait_queue_head_t *wq;
+ 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
++		smp_mb();
+ 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
+ 		spin_unlock(&journal->j_list_lock);
+_
