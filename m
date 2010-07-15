@@ -1,85 +1,55 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-Date: Thu, 15 Jul 2010 22:35:22 +0200
-Message-ID: <201007152235.22373.arnd@arndb.de>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <samba-technical-bounces@lists.samba.org>
-In-Reply-To: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-List-Unsubscribe: <https://lists.samba.org/mailman/options/samba-technical>,
-	<mailto:samba-technical-request@lists.samba.org?subject=unsubscribe>
-List-Archive: <http://lists.samba.org/pipermail/samba-technical>
-List-Post: <mailto:samba-technical@lists.samba.org>
-List-Help: <mailto:samba-technical-request@lists.samba.org?subject=help>
-List-Subscribe: <https://lists.samba.org/mailman/listinfo/samba-technical>,
-	<mailto:samba-technical-request@lists.samba.org?subject=subscribe>
-Sender: samba-technical-bounces@lists.samba.org
-Errors-To: samba-technical-bounces@lists.samba.org
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Thu, 15 Jul 2010 22:53:27 +0100
+Message-ID: <30646.1279230807@redhat.com>
+References: <201007152235.22373.arnd@arndb.de> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <201007152235.22373.arnd-r2nGTMty4D4@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thursday 15 July 2010 04:17:12 David Howells wrote:
-> (10) Can be extended by using more request flags and tagging further data after
->      the end of the standard return data.  Such things as the following could
->      be returned:
+Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org> wrote:
+
+> > This was initially proposed as a set of xattrs, but the general preferance
+> > is for an extended stat structure.
 > 
->         - BSD st_flags or FS_IOC_GETFLAGS.
->         - Volume ID / Remote Device ID [Steve French].
->         - Time granularity (NFSv4 time_delta) [Steve French].
->         - Mask of features available on file (eg: ACLs, seclabel) [Brad Boyer,
->           Michael Kerrisk].
-> 
-> This was initially proposed as a set of xattrs, but the general preferance is
-> for an extended stat structure.
+> I don't think I'd call this general preference. Three of the four
+> are fixed length and could easily be done inside the structure if you
+> leave a bit of space instead of a variable-length field at the end.
 
-I don't think I'd call this general preference. Three of the four
-are fixed length and could easily be done inside the structure if you
-leave a bit of space instead of a variable-length field at the end.
+?
 
-For the volume id, I could not find any file system that requires more
-than 32 bytes here, which is also reasonable to put into the structure.
-Make it 36 if you want to cover ascii encoded UUIDs.
+Maybe I wasn't clear: I meant having an extended stat() syscall rather than
+using a bunch of getxattr()'s was the general preference.
 
-That's at most 60 bytes for the extensions you're considering already,
-plus the 152 you have already is still less than a cache line on
-some machines. Padding it to 256 bytes would make it nice and round,
-if you want to be really sure, make it 384 bytes.
+> For the volume id, I could not find any file system that requires more
+> than 32 bytes here, which is also reasonable to put into the structure.
+> Make it 36 if you want to cover ascii encoded UUIDs.
 
-> The following structures are defined for the use of these new system calls:
-> 
->         struct xstat_parameters {
->                 unsigned long long      request_mask;
->         };
+You should also include a length.  Volume IDs may be binary rather than
+NUL-terminated strings.
 
-I'd also still argue that 32 bits would be better since you can
-put them into the argument list instead of having to use a pointer
-to xstat_parameters. You only use 15 bits so far, so the remaining
-17 bits should go a long way. It's not as important to me as the
-previous point though.
+> That's at most 60 bytes for the extensions you're considering already,
+> plus the 152
 
-> The system calls are:
-> 
->         ssize_t ret = xstat(int dfd,
->                             const char *filename,
->                             unsigned flags,
->                             const struct xstat_parameters *params,
->                             struct xstat *buffer,
->                             size_t buflen);
+160, I think.
 
-The resulting syscall I'd hope for would be
+> you have already is still less than a cache line on
+> some machines. Padding it to 256 bytes would make it nice and round,
+> if you want to be really sure, make it 384 bytes.
 
-int xstat(dfd, const char *filename, unsigned flags,
-	  unsigned mask, struct xstat *buf);
+Which we currently allocate on the kernel stack, plus up to a couple of kstat
+structs if something like eCryptFS is used.  Admittedly, the base xstat struct
+could be kmalloc()'d instead, but why use up all that space if you don't need
+it?
 
-Everything else in your patch looks very good and has my full support.
-
-	Arnd
+David
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
