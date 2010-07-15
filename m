@@ -1,74 +1,261 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] mballoc: allocate stripe-multiple IOs on stripe boundaries
-Date: Wed, 14 Jul 2010 15:33:30 -0600
-Message-ID: <9AD9AE85-D989-4E74-A330-B1D223A89F56@dilger.ca>
-References: <4C3E27BF.2000005@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Mike Snitzer <snitzer@redhat.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:45524 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754606Ab0GNVdc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jul 2010 17:33:32 -0400
-In-Reply-To: <4C3E27BF.2000005@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH 00/18] Extended file stat functions [ver #6]
+Date: Thu, 15 Jul 2010 03:17:09 +0100
+Message-ID: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Ah, good catch.  We don't notice this on Lustre, since we always use at most 1MB writes from the network and always configure with 1MB stripe size.
+Implement a pair of new system calls to provide extended and further extensible
+stat functions.
 
-On 2010-07-14, at 15:10, Eric Sandeen wrote:
-> For some reason, today mballoc only allocates IOs which are exactly
-> stripe-sized on a stripe boundary.  If you have a multiple (say, a
-> 128k IO on a 64k stripe) you may end up unaligned.
-> 
-> It seems to me that a simple change to align stripe-multiple IOs
-> on stripe boundaries would be a very good idea, unless this breaks
-> some other mballoc heuristic for some reason...
-> 
-> Reported-by: Mike Snitzer <snitzer@redhat.com>
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 12b3bc0..f64a439 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -1821,8 +1821,7 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
-> 
-> /*
-> * This is a special case for storages like raid5
-> - * we try to find stripe-aligned chunks for stripe-size requests
-> - * XXX should do so at least for multiples of stripe size as well
-> + * we try to find stripe-aligned chunks for stripe-size-multiple requests
-> */
-> static noinline_for_stack
-> void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
-> @@ -2094,8 +2093,8 @@ repeat:
-> 			ac->ac_groups_scanned++;
-> 			if (cr == 0)
-> 				ext4_mb_simple_scan_group(ac, &e4b);
-> -			else if (cr == 1 &&
-> -					ac->ac_g_ex.fe_len == sbi->s_stripe)
-> +			else if (cr == 1 && sbi->s_stripe &&
-> +					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
-> 				ext4_mb_scan_aligned(ac, &e4b);
-> 			else
-> 				ext4_mb_complex_scan_group(ac, &e4b);
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The second of the associated patches is the main patch that provides these new
+system calls:
+
+	ssize_t ret = xstat(int dfd,
+			    const char *filename,
+			    unsigned atflag,
+			    struct xstat_parameters *params,
+			    struct xstat *buffer,
+			    size_t bufsize);
+
+	ssize_t ret = fxstat(int fd,
+			     struct xstat_parameters *params,
+			     struct xstat *buffer,
+			     size_t bufsize);
+
+which are more fully documented in that patch's description.
+
+These new stat functions provide a number of useful features, in summary:
+
+ (1) More information: creation time, inode generation number, data version
+     number, flags/attributes.  A subset of these is available through each of:
+     CIFS, NFS, AFS, Ext4, BTRFS and others.
+
+ (2) Lightweight stat: Ask for just those details of interest, and allow a
+     netfs (such as NFS) to approximate anything not of interest, possibly
+     without going to the server.
+
+ (3) Heavyweight stat: Force a netfs to go to the server, even if it thinks its
+     cached attributes are up to date.
+
+ (4) Allow the filesystem to indicate what it can/cannot provide: A filesystem
+     can now say it doesn't support a standard stat feature if that isn't
+     available.
+
+ (5) Make the fields a consistent size on all arches, and make them large.
+
+ (6) Can be extended by using more request flags and appending further data
+     after the end of the standard return data.
+
+Note that no lstat() equivalent is required as that can be implemented through
+xstat() with atflag == 0.
 
 
-Cheers, Andreas
+==================
+ADDITIONAL PATCHES
+==================
+
+The first patch makes const a bunch of system call userspace string/buffer
+arguments.  I can then make sys_xstat()'s filename pointer const too (though
+the entire first patch is not required for that).
+
+The third patch makes the AFS filesystem use i_generation for the vnode ID
+uniquifier rather than i_version, and assigns i_version to hold the AFS data
+version number, making them more logical for when I want to get at them from
+afs_getattr().
+
+Patches 4-8 implement extended stat facilities for AFS, Ext4, NFS and CIFS, and
+make eCryptFS go to the lower filesystem for such details.
+
+Patches 9-11 set filesystem-level marks to be applied to all files on that
+filesystem.  These marks indicate special kernel inodes (such as are to be
+found in procfs, sysfs or the socket filesystem), remote inodes (such as are to
+be found in network filesystems) and automount inodes (such as are to be found
+in autofs*).
+
+Patch 12 implements a dentry operation to do automounting in __follow_mount()
+rather than abusing follow_link() on directories.  Patch 16 removes the
+directory follow_link kludges from pathwalk.  Patches 13-15 make AFS, NFS and
+CIFS use the d_automount() op.
+
+Patch 17 makes use of the d_automount path to add an AT_NO_AUTOMOUNT flag to
+suppress terminal path component automount, thus allowing you to stat the
+automount directory itself.  The automount directory is marked for what it is
+in st_inode_flags as returned by [f]xstat().  This will allow ls to avoid mass
+automounting in a directory full of automount points.
+
+Patch 18 is a way of providing extra results to [f]xstat() modelled on filldir.
+Currently no extra results are defined.
 
 
+=======
+TESTING
+=======
+
+There's a test program attached to the description for the main patch.  It can
+be run as follows:
+
+	[root@andromeda ~]# /tmp/xstat /afs/archive/linuxdev/fedora9/x86_64/kernel-devel-2.6.25.10-86.fc9.x86_64.rpm 
+	xstat(/afs/archive/linuxdev/fedora9/x86_64/kernel-devel-2.6.25.10-86.fc9.x86_64.rpm) = 160
+	results=77ef
+	  Size: 5413882         Blocks: 0          IO Block: 4096    regular file
+	Device: 00:15           Inode: 2288        Links: 1    
+	Access: (0644/-rw-r--r--)  Uid: 75338   
+	Gid: 0
+	Access: 2008-11-05 19:47:22.000000000+0000
+	Modify: 2008-11-05 19:47:22.000000000+0000
+	Change: 2008-11-05 19:47:22.000000000+0000
+	Inode version: 795h
+	Data version: 2h
+	Inode flags: 0000000800000000 (-------- -------- -------- ----r--- -------- -------- -------- --------)
+	[
+
+David
+---
+
+David Howells (18):
+      xstat: Provide a mechanism to gather extra results for [f]xstat()
+      xstat: Add an AT_NO_AUTOMOUNT flag to suppress terminal automount
+      xstat: Remove the automount through follow_link() kludge code from pathwalk
+      xstat: CIFS: Use d_automount() rather than abusing follow_link()
+      xstat: NFS: Use d_automount() rather than abusing follow_link()
+      xstat: AFS: Use d_automount() rather than abusing follow_link()
+      xstat: Add a dentry op to handle automounting rather than abusing follow_link()
+      xstat: Make automounter filesystems return FS_AUTOMOUNT_FL
+      xstat: Make network filesystems return FS_REMOTE_FL
+      xstat: Make special system filesystems return FS_SPECIAL_FL
+      xstat: CIFS: Return extended attributes
+      xstat: NFS: Return extended attributes
+      xstat: Ext4: Return extended attributes
+      xstat: eCryptFS: Return extended attributes
+      xstat: AFS: Return extended attributes
+      AFS: Use i_generation not i_version for the vnode uniquifier
+      xstat: Add a pair of system calls to make extended file stats available
+      Mark arguments to certain syscalls as being const
 
 
-
+ Documentation/filesystems/Locking         |    2 
+ Documentation/filesystems/vfs.txt         |   13 +
+ arch/alpha/kernel/osf_sys.c               |    6 
+ arch/alpha/kernel/process.c               |    2 
+ arch/arm/kernel/sys_arm.c                 |    4 
+ arch/arm/kernel/sys_oabi-compat.c         |    6 
+ arch/avr32/include/asm/syscalls.h         |    2 
+ arch/avr32/kernel/process.c               |    3 
+ arch/blackfin/kernel/process.c            |    2 
+ arch/frv/kernel/process.c                 |    3 
+ arch/h8300/kernel/process.c               |    2 
+ arch/ia64/include/asm/unistd.h            |    2 
+ arch/ia64/kernel/perfmon.c                |    7 
+ arch/ia64/kernel/process.c                |    2 
+ arch/m32r/kernel/process.c                |    3 
+ arch/m68k/kernel/process.c                |    2 
+ arch/m68knommu/kernel/process.c           |    2 
+ arch/microblaze/kernel/sys_microblaze.c   |    2 
+ arch/mips/kernel/syscall.c                |    2 
+ arch/mn10300/kernel/process.c             |    2 
+ arch/parisc/hpux/fs.c                     |    7 
+ arch/powerpc/kernel/process.c             |    2 
+ arch/powerpc/kernel/sys_ppc32.c           |    2 
+ arch/powerpc/platforms/cell/spufs/inode.c |    1 
+ arch/s390/hypfs/inode.c                   |    1 
+ arch/s390/kernel/compat_linux.c           |   10 -
+ arch/s390/kernel/compat_linux.h           |   10 -
+ arch/s390/kernel/entry.h                  |    2 
+ arch/s390/kernel/process.c                |    2 
+ arch/sh/include/asm/syscalls_32.h         |    2 
+ arch/sh/include/asm/syscalls_64.h         |    2 
+ arch/sh/kernel/process_64.c               |    2 
+ arch/sparc/kernel/sys_sparc32.c           |    7 
+ arch/um/kernel/exec.c                     |    6 
+ arch/um/kernel/internal.h                 |    2 
+ arch/um/kernel/syscall.c                  |    2 
+ arch/x86/ia32/sys_ia32.c                  |   14 -
+ arch/x86/include/asm/sys_ia32.h           |   12 -
+ arch/x86/include/asm/syscalls.h           |    2 
+ arch/x86/include/asm/unistd_32.h          |    4 
+ arch/x86/include/asm/unistd_64.h          |    4 
+ arch/x86/kernel/entry_64.S                |    4 
+ arch/x86/kernel/process.c                 |    2 
+ arch/xtensa/kernel/process.c              |    2 
+ drivers/infiniband/hw/ipath/ipath_fs.c    |    1 
+ drivers/infiniband/hw/qib/qib_fs.c        |    1 
+ drivers/isdn/capi/capifs.c                |    1 
+ drivers/misc/ibmasm/ibmasmfs.c            |    1 
+ drivers/mtd/mtdchar.c                     |    1 
+ drivers/oprofile/oprofilefs.c             |    1 
+ drivers/usb/core/inode.c                  |    1 
+ drivers/usb/gadget/f_fs.c                 |    1 
+ drivers/usb/gadget/inode.c                |    1 
+ drivers/xen/xenfs/super.c                 |    1 
+ fs/afs/dir.c                              |    9 -
+ fs/afs/fsclient.c                         |    3 
+ fs/afs/inode.c                            |   23 +-
+ fs/afs/internal.h                         |    1 
+ fs/afs/mntpt.c                            |   46 +--
+ fs/afs/super.c                            |    1 
+ fs/anon_inodes.c                          |    1 
+ fs/autofs/init.c                          |    1 
+ fs/autofs4/init.c                         |    1 
+ fs/binfmt_misc.c                          |    1 
+ fs/ceph/super.c                           |    1 
+ fs/cifs/cifs_dfs_ref.c                    |  145 +++++-----
+ fs/cifs/cifsfs.c                          |    1 
+ fs/cifs/cifsfs.h                          |    8 -
+ fs/cifs/cifsglob.h                        |    5 
+ fs/cifs/dir.c                             |    4 
+ fs/cifs/inode.c                           |   84 +++++-
+ fs/coda/inode.c                           |    1 
+ fs/compat.c                               |   23 +-
+ fs/configfs/mount.c                       |    1 
+ fs/debugfs/inode.c                        |    1 
+ fs/ecryptfs/inode.c                       |    6 
+ fs/ext4/ext4.h                            |    2 
+ fs/ext4/file.c                            |    2 
+ fs/ext4/inode.c                           |   32 ++
+ fs/ext4/namei.c                           |    2 
+ fs/ext4/symlink.c                         |    2 
+ fs/fuse/control.c                         |    1 
+ fs/hostfs/hostfs_kern.c                   |    1 
+ fs/namei.c                                |  107 +++++--
+ fs/ncpfs/inode.c                          |    1 
+ fs/nfs/dir.c                              |    2 
+ fs/nfs/inode.c                            |   47 ++-
+ fs/nfs/internal.h                         |    1 
+ fs/nfs/namespace.c                        |   87 +++---
+ fs/nfs/super.c                            |    7 
+ fs/nfsd/nfsctl.c                          |    1 
+ fs/ocfs2/dlmfs/dlmfs.c                    |    1 
+ fs/openpromfs/inode.c                     |    1 
+ fs/pipe.c                                 |    1 
+ fs/proc/root.c                            |    1 
+ fs/smbfs/inode.c                          |    1 
+ fs/stat.c                                 |  420 +++++++++++++++++++++++++++--
+ fs/sysfs/mount.c                          |    1 
+ fs/utimes.c                               |    7 
+ include/linux/compat.h                    |    6 
+ include/linux/dcache.h                    |    5 
+ include/linux/fcntl.h                     |    2 
+ include/linux/fs.h                        |   20 +
+ include/linux/namei.h                     |    2 
+ include/linux/stat.h                      |  146 ++++++++++
+ include/linux/syscalls.h                  |   29 +-
+ include/linux/time.h                      |    2 
+ ipc/mqueue.c                              |    1 
+ kernel/cgroup.c                           |    1 
+ kernel/cpuset.c                           |    1 
+ net/socket.c                              |    1 
+ net/sunrpc/rpc_pipe.c                     |    1 
+ security/inode.c                          |    1 
+ security/selinux/selinuxfs.c              |    1 
+ security/smack/smackfs.c                  |    1 
+ 115 files changed, 1126 insertions(+), 372 deletions(-)
