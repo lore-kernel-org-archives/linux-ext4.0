@@ -1,55 +1,25 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Thu, 15 Jul 2010 22:53:27 +0100
-Message-ID: <30646.1279230807@redhat.com>
-References: <201007152235.22373.arnd@arndb.de> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <201007152235.22373.arnd-r2nGTMty4D4@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 0/2] Fix aio completion vs unwritten extents
+Date: Fri, 16 Jul 2010 02:04:05 -0400
+Message-ID: <20100716060405.GA32712@infradead.org>
+References: <20100622122144.302857146@bombadil.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:58846 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752184Ab0GPGEH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jul 2010 02:04:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20100622122144.302857146@bombadil.infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org> wrote:
+Given that this still hasn't been picked up in any other tree would
+people mind if we push patches 1 and 2 through the XFS tree?
 
-> > This was initially proposed as a set of xattrs, but the general preferance
-> > is for an extended stat structure.
-> 
-> I don't think I'd call this general preference. Three of the four
-> are fixed length and could easily be done inside the structure if you
-> leave a bit of space instead of a variable-length field at the end.
+I some more changes that sit ontop of this, and it would make my
+life a lot easier.
 
-?
-
-Maybe I wasn't clear: I meant having an extended stat() syscall rather than
-using a bunch of getxattr()'s was the general preference.
-
-> For the volume id, I could not find any file system that requires more
-> than 32 bytes here, which is also reasonable to put into the structure.
-> Make it 36 if you want to cover ascii encoded UUIDs.
-
-You should also include a length.  Volume IDs may be binary rather than
-NUL-terminated strings.
-
-> That's at most 60 bytes for the extensions you're considering already,
-> plus the 152
-
-160, I think.
-
-> you have already is still less than a cache line on
-> some machines. Padding it to 256 bytes would make it nice and round,
-> if you want to be really sure, make it 384 bytes.
-
-Which we currently allocate on the kernel stack, plus up to a couple of kstat
-structs if something like eCryptFS is used.  Admittedly, the base xstat struct
-could be kmalloc()'d instead, but why use up all that space if you don't need
-it?
-
-David
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
