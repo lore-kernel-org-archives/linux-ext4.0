@@ -1,105 +1,81 @@
-From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Fri, 16 Jul 2010 15:32:02 +0200
-Message-ID: <201007161532.02210.arnd@arndb.de>
-References: <201007161302.35775.arnd@arndb.de> <8527.1279275842@redhat.com> <10677.1279283886@redhat.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-15"
-Content-Transfer-Encoding: 7bit
-Cc: Mark Harris <mhlk-gcwzot8L0og@public.gmane.org>, Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <10677.1279283886-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Date: Fri, 16 Jul 2010 16:10:01 +0100
+Message-ID: <13226.1279293001@redhat.com>
+References: <201007161246.15923.arnd@arndb.de> <201007152235.22373.arnd@arndb.de> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30646.1279230807@redhat.com>
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>, Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <201007161246.15923.arnd-r2nGTMty4D4@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Friday 16 July 2010, David Howells wrote:
-> Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org> wrote:
-> 
-> > You could also define the tv_gran_units to be power-of-ten nanoseconds,
-> > making it a decimal floating point number like 
+Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org> wrote:
+
+> > > For the volume id, I could not find any file system that requires more
+> > > than 32 bytes here, which is also reasonable to put into the structure.
+> > > Make it 36 if you want to cover ascii encoded UUIDs.
 > > 
-> > enum {
-> >       XSTAT_NANOSECONDS_GRANULARITY = 0,
-> >       XSTAT_MICROSECONDS_GRANULARITY = 3,
-> >       XSTAT_MILLISECONDS_GRANULARITY = 6,
-> >       XSTAT_SECONDS_GRANULARITY = 9,
-> > };
+> > You should also include a length.  Volume IDs may be binary rather than
+> > NUL-terminated strings.
 > 
-> Are you thinking, then, of having tv_nsec be in terms of those units?
+> Yes, maybe. There are several possible encodings for this. I was actually
+> thinking of fixed-length string rather than zero-terminated, but that
+> is possible as well. If this gets added, we need to audit every possible
+> use to make sure each of them is covered. My point was mostly that if we
+> need at most 40 bytes, it doesn't have to be variable length at all.
 
-No, just tv_granularity. Most users won't need to care that this
-is not a regular timespec then.
+I suppose it depends what you want it for.  Steve French asked for it:
 
-> > That would make it easier to define an xstat_time_before() function, though
-> > it means that you could no longer do XSTAT_MINUTES_GRANULARITY and
-> > higher directly other than { .tv_gran_units = 10, .tv_granularity = 6, }.
-> 
-> So you're thinking of indicating time (in)equality based on overlapping time
-> granules?
+	> (4) Should the inode number and data version number fields be
+	>     128-bit?
+	>
+	This is tricky for SMB2, if you can also provide a device id (or an
+	object id of some sort for the superblock) then 64 bit inode number is
+	ok.
 
-Yes, for example rsync could use this to determine wether a local (e.g. FAT)
-and a remote (e.g. NFS) file are identical or not. Right now, you can pass
-the granularity in seconds as a command line argument, but it would be nice
-to have rsync do this automatically if possible.
+But I'm not sure what he wants to put in there.  He didn't respond to my reply:
 
-> Your suggestion would suffice, I think.  With a 2:2 split between exponent
-> (tv_gran_units) and mantissa (tv_granularity), you can do:
-> 
->         UNIT            SECONDS/UNIT    EXPONENT        MANTISSA
->         nanoseconds     0.000000001     -9              1
->         microseconds    0.000001        -6              1
->         millseconds     0.001           -3              1
->         seconds         1               0               1
->         minutes         60              1               6
->         hours           3600            2               36
->         days            86400           2               864
->         weeks           604800          2               6048
-> 
-> Any units beyond that are variable length and not worth considering, IMO.
+	A remote device ID?  That would be possible.  That could be used by
+	AFS to return the numeric volume ID (32 bits) and by NFS to return the
+	FSID (128 bits).  Would you be using the VolumeGUID (128 bits) for
+	SMB2?
 
-right.
- 
-> And if you don't want negative numbers in your exponent, you can make the base
-> unit nS instead of S.
+so I'm not sure what he's thinking of.
 
-either way works fine for me.
+Looking through various filesystems:
 
-> Is it worth allowing a filesystem to indicate that it has granularity smaller
-> than nS, even if the resolution can't be handled here?  We could even have:
-> 
->         struct xstat_time {
->                 signed long long        tv_sec;         /* seconds */
->                 unsigned int            tv_nsec;        /* nanoseconds */
->                 unsigned char           tv_psec4;       /* picoseconds/4 */
->                 signed char             tv_gran_exp;    /* exponent */
->                 unsigned short          tv_gran_mant;   /* mantissa */
->         };
-> 
-> Though it's probably still an unnecessary extravagance to have the pS field.
-> It's probably best left as padding for now; we can always change our minds
-> later...
+	FS	SOURCE				FORMAT	LENGTH (BYTES)
+	=======	===============================	=======	=============
+	-	__kernel_fsid_t			int	8
+	-	super_block::s_id		chars	32
+	ext234	superblock s_uuid 		UUID	16
+	ext234	superblock s_volume_name	chars	16
+	nfs2	FSID				int	4
+	nfs3	FSID				int	8
+	nfs4	FSID				int	16
+	afs	Volume Name + type		chars	64+1
+	afs	Numeric volume ID		int	4
+	cifs	VolumeGUID			UUID	16
+	btrfs	superblock fsid			bytes	16
+	fat	superblock system_id+version?	bytes	8+2
+	ntfs	volume_serial_number		int	8
+	ntfs	FILE_Volume object_id		UUID	16
+	xfs	superblock sb_fname		chars	12
+	xfs	superblock sb_uuid		UUID	16
+	jfs	superblock s_uuid		UUID	16
+	jfs	superblock s_label		bytes	16
+	isofs	medium_catalog_number		chars	13
+	isofs	volume_id			chars	32
+	udf	volIdent			chars	32
 
-There are also two extra bits in tv_nsec ;-). No, I don't think we
-need picoseconds any time soon.
 
-One byte padding might not be the worst thing to have in here, like
+it would seem that a 16-byte (128-bit) ID would suit quite well.  That would be
+able to contain most things and could be added to the super_block struct.  That
+would also give NFSD something to use as a default FSID and Samba something to
+used as a VolumeGUID.
 
-        struct xstat_time {
-                signed long long        tv_sec;         /* seconds */
-                unsigned int            tv_nsec;        /* nanoseconds */
-                unsigned short          tv_gran_mant;   /* mantissa */
-                signed char             tv_gran_exp;    /* exponent */
-                unsigned char           unused;
-        };
-
-	Arnd
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+David
