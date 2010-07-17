@@ -1,35 +1,63 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16019] Resume from hibernate corrupts ext4
-Date: Fri, 16 Jul 2010 21:15:11 GMT
-Message-ID: <201007162115.o6GLFBbV028800@demeter.kernel.org>
-References: <bug-16019-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <andreas.dilger@oracle.com>
+Subject: [PATCH] update contact address
+Date: Fri, 16 Jul 2010 18:09:04 -0600
+Message-ID: <ECFABD91-8980-47EC-A43C-A68E90CD2A7D@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
+Content-Type: multipart/mixed; boundary=Apple-Mail-91-370434150
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: trivial@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39509 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966094Ab0GPVPN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jul 2010 17:15:13 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o6GLFC1d028801
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Jul 2010 21:15:12 GMT
-In-Reply-To: <bug-16019-13602@https.bugzilla.kernel.org/>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:40299 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759483Ab0GQAKi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jul 2010 20:10:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16019
 
+--Apple-Mail-91-370434150
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
+I couldn't find a better place to send this.  There is no contact =
+information in the MAINTAINERS list itself.
 
+Cheers, Andreas
+--
+Andreas Dilger
+Lustre Technical Lead
+Oracle Corporation Canada Inc.
 
+--Apple-Mail-91-370434150
+Content-Disposition: attachment;
+	filename=maintainers.diff
+Content-Type: application/octet-stream;
+	x-unix-mode=0644;
+	name="maintainers.diff"
+Content-Transfer-Encoding: 7bit
 
---- Comment #39 from Klaus Lichtenwalder <lichtenwalder@acm.org>  2010-07-16 21:13:56 ---
-Well, it looks like the newest Fedora 13 kernel hibernates just fine without fs
-corruption
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 449d444..bfc9c69 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2169,7 +2169,7 @@ F:	include/linux/ext2*
+ 
+ EXT3 FILE SYSTEM
+ M:	Andrew Morton <akpm@linux-foundation.org>
+-M:	Andreas Dilger <adilger@sun.com>
++M:	Andreas Dilger <adilger.kernel@dilger.ca>
+ L:	linux-ext4@vger.kernel.org
+ S:	Maintained
+ F:	Documentation/filesystems/ext3.txt
+@@ -2178,7 +2178,7 @@ F:	include/linux/ext3*
+ 
+ EXT4 FILE SYSTEM
+ M:	"Theodore Ts'o" <tytso@mit.edu>
+-M:	Andreas Dilger <adilger@sun.com>
++M:	Andreas Dilger <adilger.kernel@dilger.ca>
+ L:	linux-ext4@vger.kernel.org
+ W:	http://ext4.wiki.kernel.org
+ Q:	http://patchwork.ozlabs.org/project/linux-ext4/list/
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching someone on the CC list of the bug.
+--Apple-Mail-91-370434150--
