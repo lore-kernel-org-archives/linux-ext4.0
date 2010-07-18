@@ -1,27 +1,77 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Sat, 17 Jul 2010 10:49:00 +0100
-Message-ID: <19785.1279360140@redhat.com>
-References: <20100717055130.GA2053@zoia.osj.us> <201007161302.35775.arnd@arndb.de> <20100716062251.GA9318@zoia.osj.us> <30646.1279230807@redhat.com> <8527.1279275842@redhat.com> <10677.1279283886@redhat.com>
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>,
-	Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Mark Harris <mhlk-gcwzot8L0og@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20100717055130.GA2053-EJgEOVOPJGBzbRFIqnYvSA@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Subject: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan >
+ 0
+Date: Sun, 18 Jul 2010 09:01:39 +0800
+Message-ID: <4C425273.5000702@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+To: linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+ linux-mm@kvack.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+ kernel-janitors <kernel-janitors@vger.kernel.org>,
+ a.gruenbacher
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Mark Harris <mhlk-gcwzot8L0og@public.gmane.org> wrote:
+Hi,
 
-> At least for the in-tree filesystems, I do not see any that keep
-> timestamps with a granularity larger than 2s.  For that, a simple
-> 32-bit tv_granularity in nanoseconds (not limited to 1e9) would
-> suffice, and there is no need for the complexity of dealing with
-> a separate exponent.
+The comment for struct shrinker in include/linux/mm.h says
+"shrink...It should return the number of objects which remain in the
+cache."
+Please notice the word "remain".
 
-That's a good point.
+In fs/mbcache.h, mb_cache_shrink_fn is used as the shrink function:
+ 	static struct shrinker mb_cache_shrinker = {	
+ 		.shrink = mb_cache_shrink_fn,
+ 		.seeks = DEFAULT_SEEKS,
+ 	};
+In mb_cache_shrink_fn, the return value for nr_to_scan > 0 is the
+number of mb_cache_entry before shrink operation. It may because the
+memory usage for mbcache is low, so the effect is not so obvious.
+I think we'd better fix the return value issue.
 
-David
+Following patch is against 2.6.35-rc5. Please check it.
+
+Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
+---
+ fs/mbcache.c |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
+
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index ec88ff3..412e7cc 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -228,6 +228,16 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+ 		__mb_cache_entry_forget(list_entry(l, struct mb_cache_entry,
+ 						   e_lru_list), gfp_mask);
+ 	}
++	spin_lock(&mb_cache_spinlock);
++	count = 0;
++	list_for_each(l, &mb_cache_list) {
++		struct mb_cache *cache =
++			list_entry(l, struct mb_cache, c_cache_list);
++		mb_debug("cache %s (%d)", cache->c_name,
++			  atomic_read(&cache->c_entry_count));
++		count += atomic_read(&cache->c_entry_count);
++	}
++	spin_unlock(&mb_cache_spinlock);
+ out:
+ 	return (count / 100) * sysctl_vfs_cache_pressure;
+ }
+-- 
+1.7.1.1
+
+
+
+
+
+-- 
+Thanks and Regards,
+shenghui
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
