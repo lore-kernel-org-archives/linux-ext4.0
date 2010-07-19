@@ -1,78 +1,48 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Mon, 19 Jul 2010 18:26:40 +0100
-Message-ID: <11817.1279560400@redhat.com>
-References: <AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn@mail.gmail.com> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com> <10783.1279556132@redhat.com>
+From: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+Date: Mon, 19 Jul 2010 10:46:55 -0700
+Message-ID: <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu@mail.gmail.com>
+References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com>
+	<10783.1279556132@redhat.com>
+	<AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn@mail.gmail.com>
+	<11817.1279560400@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+Cc: viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+In-Reply-To: <11817.1279560400-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org> wrote:
+On Mon, Jul 19, 2010 at 10:26 AM, David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> w=
+rote:
+>
+>> Ask your samba people, for example, if they'd _ever_ do just a "xsta=
+t()"?
+>
+> I suspect they would, though maybe they can say otherwise. =A0What ab=
+out SMB
+> directory enumeration? =A0I believe that is effectively getdents-with=
+-stat.
+> Having to do open+stat for each file for that would be painful.
 
-> > The new information is useful for some cases. =A0Samba for example.=
- =A0At
-> > least two of the fields I'm adding are also made available through =
-BSD's
-> > stat() call, and will automatically be used for some things by auto=
-conf
-> > magic if they become available.
->=20
-> .. that' a pointless argument. If the only way something gets used is
-> through autoconf, then clearly nobody cares.
+Yeah, but do you need xstat information at all for something like
+that? Most people try very hard to make do with the information
+returned by readdir itself (d_type and inode number), because if you
+end up looking up each name you've already pretty much lost in a
+performance model.
 
-That's not what I meant at all.  I meant there may be things out there =
-that
-will just use st_btime and st_gen as soon as they appear without anythi=
-ng
-having to be done to them because these fields already exist in the BSD=
- stat
-struct.
+(And I do agree that a "readdirplus()" is probably something that a
+lot of server people would find useful, but obviously that's another
+cross-filesystem nightmare. Only a few filesystems can cheaply give
+you anything but d_type/d_ino, and not all do even that),
 
-Samba is such an example as this.  It will use st_btime immediately if =
-it
-exists as the SMB protocol wants to pass the creation time around.
-
-> Yeah, maybe it adds a flag to "ls", but let's face is - that isn't ac=
-tually
-> _buying_ anything.
-
-Not having ls cause a mass automount just because you did an ls of a di=
-rectory
-full of automount points would be very nice.
-
-> So the only thing that matters for new system calls is who actually
-> really seriously wants to use the information, even if it's not there
-> by default. Is it _anybody_ else than samba?
-
-Perhaps.  As previously mentioned, BSD (and other unices) already make =
-some of
-these fields available (notably st_btime and st_gen).  We could also ma=
-ke a
-BSD-compatible st_flags available.
-
-> In other words, in the absense of some seriously generic users, it
-> sounds more like an ioctl to me to ask for something like "creation
-> time" or "inode version", when not all filesystems support anything
-> like that.
-
-I initially did them by getxattr(), but that didn't go down too well.
-
-> Ask your samba people, for example, if they'd _ever_ do just a "xstat=
-()"?
-
-I suspect they would, though maybe they can say otherwise.  What about =
-SMB
-directory enumeration?  I believe that is effectively getdents-with-sta=
-t.
-Having to do open+stat for each file for that would be painful.
-
-David
+                      Linus
