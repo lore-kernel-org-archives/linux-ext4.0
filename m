@@ -1,35 +1,90 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan > 0
-Date: Mon, 19 Jul 2010 20:40:08 +0200
-Message-ID: <201007192040.09062.agruen@suse.de>
-References: <4C425273.5000702@gmail.com> <20100718060106.GA579@infradead.org> <4C42A10B.2080904@gmail.com>
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: [PATCH 1/2] ext3: Fix buffer dirtying in data=journal mode
+Date: Mon, 19 Jul 2010 14:41:47 -0400
+Message-ID: <20100719184146.GC2456@localhost.localdomain>
+References: <1277116973-4183-1-git-send-email-jack@suse.cz> <1277116973-4183-2-git-send-email-jack@suse.cz> <20100719180222.GB2456@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Eric Sandeen <sandeen@redhat.com>, linux-fsdevel@vger.kernel.org,
-	viro@zeniv.linux.org.uk, linux-mm@kvack.org,
-	"linux-ext4" <linux-ext4@vger.kernel.org>,
-	"kernel-janitors" <kernel-janitors@vger.kernel.org>,
-	a.gruenbacher@computer.org
-To: "Wang Sheng-Hui" <crosslonelyover@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <4C42A10B.2080904@gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Josef Bacik <josef@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:4142 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966423Ab0GSSlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Jul 2010 14:41:51 -0400
+Content-Disposition: inline
+In-Reply-To: <20100719180222.GB2456@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sunday 18 July 2010 08:36:59 Wang Sheng-Hui wrote:
-> =E4=BA=8E 2010-7-18 14:01, Christoph Hellwig =E5=86=99=E9=81=93:
-> > This should be using list_for_each_entry.
+On Mon, Jul 19, 2010 at 02:02:22PM -0400, Josef Bacik wrote:
+> On Mon, Jun 21, 2010 at 12:42:52PM +0200, Jan Kara wrote:
+> > block_prepare_write() can dirty freshly created buffer. This is a problem
+> > for data=journal mode because data buffers shouldn't be dirty unless they
+> > are undergoing checkpoint. So we have to tweak get_block function for
+> > data=journal mode to catch the case when block_prepare_write would dirty
+> > the buffer, do the work instead of block_prepare_write, and properly handle
+> > dirty buffer as data=journal mode requires it.
+> > 
+> > It might be cleaner to avoid using block_prepare_write() for data=journal
+> > mode writes but that would require us to duplicate most of the function
+> > which isn't nice either...
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext3/inode.c |   56 +++++++++++++++++++++++++++++++++++++++++++++++-------
+> >  1 files changed, 48 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> > index ea33bdf..2b61cc4 100644
+> > --- a/fs/ext3/inode.c
+> > +++ b/fs/ext3/inode.c
+> > @@ -993,6 +993,43 @@ out:
+> >  	return ret;
+> >  }
+> >  
+> > +static int ext3_journalled_get_block(struct inode *inode, sector_t iblock,
+> > +				     struct buffer_head *bh, int create)
+> > +{
+> > +	handle_t *handle = ext3_journal_current_handle();
+> > +	int ret;
+> > +
+> > +	/* This function should ever be used only for real buffers */
+> > +	BUG_ON(!bh->b_page);
+> > +
+> > +	ret = ext3_get_blocks_handle(handle, inode, iblock, 1, bh, create);
+> > +	if (ret > 0) {
+> > +		if (buffer_new(bh)) {
+> > +			struct page *page = bh->b_page;
+> > +
+> > +			/*
+> > +			 * This is a terrible hack to avoid block_prepare_write
+> > +			 * marking our buffer as dirty
+> > +			 */
+> > +			if (PageUptodate(page)) {
+> > +				ret = ext3_journal_get_write_access(handle, bh);
+> > +				if (ret < 0)
+> > +					goto out;
+> > +				unmap_underlying_metadata(bh->b_bdev,
+> > +							  bh->b_blocknr);
+> > +				clear_buffer_new(bh);
+> > +				set_buffer_uptodate(bh);
+> > +				ret = ext3_journal_dirty_metadata(handle, bh);
+> > +				if (ret < 0)
+> > +					goto out;
+> > +			}
+> > +		}
+> 
+> Hey Jan,
+> 
+> It looks like in __block_prepare_write we zero out the end of the page if we're
+> not writing to the entire block, but you short-circuit this behavior with this
+> get_block.  So it's possible that if we only write to half of the block, the
+> last half is going to have whatever stale data was in there before, right?
+> Thanks,
+> 
 
-It would make sense to change this throughout the whole file.
+Oops, ignore me, nothing changes for the !PageUptodate() case, which is where
+the page zero'ing part happens.  Carry on :),
 
-Thanks,
-Andreas
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Josef
