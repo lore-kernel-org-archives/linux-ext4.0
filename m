@@ -1,249 +1,188 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [PATCH -V2 00/16]  New ACL format for better NFSv4 acl interoperability
-Date: Mon, 19 Jul 2010 21:19:50 +0200
-Message-ID: <201007192119.50868.agruen@suse.de>
-References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: [PATCH 11/38] whiteout: ext2 whiteout support
+Date: Mon, 19 Jul 2010 18:14:16 -0400
+Message-ID: <20100719221416.GB11089@shell>
+References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-12-git-send-email-vaurora@redhat.com> <20100713042418.GC3949@zeus.themaw.net>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-15"
-Content-Transfer-Encoding: 7bit
-Cc: sfrench@us.ibm.com, ffilz@us.ibm.com, adilger@sun.com,
-	sandeen@redhat.com, tytso@mit.edu, staubach@redhat.com,
-	bfields@citi.umich.edu, jlayton@redhat.com,
-	linux-fsdevel@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Jan Blunck <jblunck@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Ian Kent <raven@themaw.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57156 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:18796 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965355Ab0GSTYr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Jul 2010 15:24:47 -0400
-In-Reply-To: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S965985Ab0GSWOe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Jul 2010 18:14:34 -0400
+Content-Disposition: inline
+In-Reply-To: <20100713042418.GC3949@zeus.themaw.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh,
+On Tue, Jul 13, 2010 at 12:24:20PM +0800, Ian Kent wrote:
+> On Tue, Jun 15, 2010 at 11:39:41AM -0700, Valerie Aurora wrote:
+> > From: Jan Blunck <jblunck@suse.de>
+> > 
+> > This patch adds whiteout support to EXT2. A whiteout is an empty directory
+> > entry (inode == 0) with the file type set to EXT2_FT_WHT. Therefore it
+> > allocates space in directories. Due to being implemented as a filetype it is
+> > necessary to have the EXT2_FEATURE_INCOMPAT_FILETYPE flag set.
+> > 
+> > XXX - Needs serious review.  Al wonders: What happens with a delete at
+> > the beginning of a block?  Will we find the matching dentry or the
+> > first empty space?
+> > 
+> > Signed-off-by: Jan Blunck <jblunck@suse.de>
+> > Signed-off-by: Valerie Aurora <vaurora@redhat.com>
+> > Cc: Theodore Tso <tytso@mit.edu>
+> > Cc: linux-ext4@vger.kernel.org
+> > ---
+> >  fs/ext2/dir.c           |   96 +++++++++++++++++++++++++++++++++++++++++++++--
+> >  fs/ext2/ext2.h          |    3 +
+> >  fs/ext2/inode.c         |   11 ++++-
+> >  fs/ext2/namei.c         |   67 +++++++++++++++++++++++++++++++-
+> >  fs/ext2/super.c         |    6 +++
+> >  include/linux/ext2_fs.h |    4 ++
+> >  6 files changed, 177 insertions(+), 10 deletions(-)
+> > 
+> > diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+> > index 57207a9..030bd46 100644
+> > --- a/fs/ext2/dir.c
+> > +++ b/fs/ext2/dir.c
+> > @@ -219,7 +219,7 @@ static inline int ext2_match (int len, const char * const name,
+> >  {
+> >  	if (len != de->name_len)
+> >  		return 0;
+> > -	if (!de->inode)
+> > +	if (!de->inode && (de->file_type != EXT2_FT_WHT))
+> >  		return 0;
+> >  	return !memcmp(name, de->name, len);
+> >  }
+> > @@ -255,6 +255,7 @@ static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
+> >  	[EXT2_FT_FIFO]		= DT_FIFO,
+> >  	[EXT2_FT_SOCK]		= DT_SOCK,
+> >  	[EXT2_FT_SYMLINK]	= DT_LNK,
+> > +	[EXT2_FT_WHT]		= DT_WHT,
+> >  };
+> >  
+> >  #define S_SHIFT 12
+> > @@ -448,6 +449,26 @@ ino_t ext2_inode_by_name(struct inode *dir, struct qstr *child)
+> >  	return res;
+> >  }
+> >  
+> > +/* Special version for filetype based whiteout support */
+> > +ino_t ext2_inode_by_dentry(struct inode *dir, struct dentry *dentry)
+> > +{
+> > +	ino_t res = 0;
+> > +	struct ext2_dir_entry_2 *de;
+> > +	struct page *page;
+> > +
+> > +	de = ext2_find_entry (dir, &dentry->d_name, &page);
+> > +	if (de) {
+> > +		res = le32_to_cpu(de->inode);
+> > +		if (!res && de->file_type == EXT2_FT_WHT) {
+> > +			spin_lock(&dentry->d_lock);
+> > +			dentry->d_flags |= DCACHE_WHITEOUT;
+> > +			spin_unlock(&dentry->d_lock);
+> > +		}
+> > +		ext2_put_page(page);
+> > +	}
+> > +	return res;
+> > +}
+> > +
+> >  /* Releases the page */
+> >  void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
+> >  		   struct page *page, struct inode *inode, int update_times)
+> > @@ -523,7 +544,8 @@ static ext2_dirent * ext2_append_entry(struct dentry * dentry,
+> >  				goto got_it;
+> >  			name_len = EXT2_DIR_REC_LEN(de->name_len);
+> >  			rec_len = ext2_rec_len_from_disk(de->rec_len);
+> > -			if (!de->inode && rec_len >= reclen)
+> > +			if (!de->inode && (de->file_type != EXT2_FT_WHT) &&
+> > +			    (rec_len >= reclen))
+> >  				goto got_it;
+> >  			if (rec_len >= name_len + reclen)
+> >  				goto got_it;
+> > @@ -564,8 +586,11 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+> >  		return PTR_ERR(de);
+> >  
+> >  	err = -EEXIST;
+> > -	if (ext2_match (namelen, name, de))
+> > +	if (ext2_match (namelen, name, de)) {
+> > +		if (de->file_type == EXT2_FT_WHT)
+> > +			goto got_it;
+> >  		goto out_unlock;
+> > +	}
+> >  
+> >  got_it:
+> >  	name_len = EXT2_DIR_REC_LEN(de->name_len);
+> > @@ -577,7 +602,8 @@ got_it:
+> >  							&page, NULL);
+> >  	if (err)
+> >  		goto out_unlock;
+> > -	if (de->inode) {
+> > +	if (de->inode || ((de->file_type == EXT2_FT_WHT) &&
+> > +			  !ext2_match (namelen, name, de))) {
+> >  		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
+> >  		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
+> >  		de->rec_len = ext2_rec_len_to_disk(name_len);
+> > @@ -646,6 +672,68 @@ out:
+> >  	return err;
+> >  }
+> >  
+> > +int ext2_whiteout_entry (struct inode * dir, struct dentry * dentry,
+> > +			 struct ext2_dir_entry_2 * de, struct page * page)
+> > +{
+> > +	const char *name = dentry->d_name.name;
+> > +	int namelen = dentry->d_name.len;
+> > +	unsigned short rec_len, name_len;
+> > +	loff_t pos;
+> > +	int err;
+> > +
+> > +	if (!de) {
+> > +		de = ext2_append_entry(dentry, &page);
+> > +		BUG_ON(!de);
+> > +	}
+> > +
+> > +	err = -EEXIST;
+> > +	if (ext2_match (namelen, name, de) &&
+> > +	    (de->file_type == EXT2_FT_WHT)) {
+> > +		ext2_error(dir->i_sb, __func__,
+> > +			   "entry is already a whiteout in directory #%lu",
+> > +			   dir->i_ino);
+> > +		goto out_unlock;
+> > +	}
+> > +
+> > +	name_len = EXT2_DIR_REC_LEN(de->name_len);
+> > +	rec_len = ext2_rec_len_from_disk(de->rec_len);
+> > +
+> > +	pos = page_offset(page) +
+> > +		(char*)de - (char*)page_address(page);
+> > +	err = __ext2_write_begin(NULL, page->mapping, pos, rec_len, 0,
+> > +							&page, NULL);
+> > +	if (err)
+> > +		goto out_unlock;
+> > +	/*
+> > +	 * We whiteout an existing entry. Do what ext2_delete_entry() would do,
+> > +	 * except that we don't need to merge with the previous entry since
+> > +	 * we are going to reuse it.
+> > +	 */
+> > +	if (ext2_match (namelen, name, de))
+> > +		de->inode = 0;
+> > +	if (de->inode || (de->file_type == EXT2_FT_WHT)) {
+> > +		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
+> > +		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
+> > +		de->rec_len = ext2_rec_len_to_disk(name_len);
+> > +		de = de1;
+> > +	}
+> 
+> This looks odd, can someone tell me what's actually going with de and de1
+> here please?
 
-here is a patch on top of the richacl-upstream queue.
+This patch needs serious review (as noted).  I will corner some ext*
+developer at some point to look at it.
 
-So far, we were assuming that acls are always masked, and the file masks
-could be set so that they would not mask any permissions.  This is fine
-for permission checking, but richacl_apply_masks() didn't recognize when
-the file masks were set to mask nothing, and was still transforming such
-acls unnecessarily.  This could lead to correct but surprising results.
-
-Instead of using a flag here we could check if the file masks are set to
-"ineffective" values, but that would require the same computation as
-richacl_compute_max_masks(), which can be a slow on large acls.  It is a
-lot easier to instead remember if the file masks are "effective".
-
-(We still need to compute the file masks in nfsd where no file masks are
-supplied so that the file permission bits will be set to a reasonable
-value. user space will always pass valid file masks in, so we are covered
-in that side.)
-
-Thanks,
-Andreas
-
---------------------------------------------------------------------------------
-
-[PATCH] richacl: Allow acls to be masked or unmasked
-
-Use a flag to indicate when the file masks can mask something
-(e.g., after a chmod).  richacl_apply_masks() can skip transforming acls
-without this flag, which speeds things up and avoids modifying those
-acls unnecessarily.
-
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
----
- fs/richacl_base.c       |   46 +++++++++++++++++++++++++++++++---------------
- fs/richacl_compat.c     |   31 ++++++++++++++++++-------------
- fs/richacl_inode.c      |    1 +
- include/linux/richacl.h |    1 +
- 4 files changed, 51 insertions(+), 28 deletions(-)
-
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 79fb00f..baaecf2 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -329,6 +329,8 @@ restart:
- 			}
- 		}
- 	}
-+
-+	acl->a_flags &= ~ACL4_MASKED;
- }
- EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
- 
-@@ -354,7 +356,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)) &&
-+	    (acl->a_flags & ACL4_MASKED))
- 		return acl;
- 
- 	clone = richacl_clone(acl);
-@@ -362,6 +365,7 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (!clone)
- 		return ERR_PTR(-ENOMEM);
- 
-+	clone->a_flags |= ACL4_MASKED;
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-@@ -385,11 +389,18 @@ richacl_permission(struct inode *inode, const struct richacl *acl,
- 		   unsigned int mask)
- {
- 	const struct richace *ace;
--	unsigned int file_mask, requested = mask, denied = 0;
-+	unsigned int requested = mask, denied = 0;
- 	int in_owning_group = in_group_p(inode->i_gid);
- 	int in_owner_or_group_class = in_owning_group;
- 
- 	/*
-+	 * We don't need to know which class the process is in when the acl is
-+	 * not masked.
-+	 */
-+	if (!(acl->a_flags & ACL4_MASKED))
-+		in_owner_or_group_class = 1;
-+
-+	/*
- 	 * A process is
- 	 *   - in the owner file class if it owns the file,
- 	 *   - in the group file class if it is in the file's owning group or
-@@ -431,7 +442,7 @@ richacl_permission(struct inode *inode, const struct richacl *acl,
- 		 * computed by richacl_apply_masks() would grant.  See
- 		 * richacl_apply_masks() for a more detailed explanation.
- 		 */
--		if (richace_is_allow(ace))
-+		if ((acl->a_flags & ACL4_MASKED) && richace_is_allow(ace))
- 			ace_mask &= acl->a_group_mask;
- 
- is_owner:
-@@ -453,17 +464,22 @@ is_everyone:
- 	}
- 	denied |= mask;
- 
--	/*
--	 * The file class a process is in determines which file mask applies.
--	 * Check if that file mask also grants the requested access.
--	 */
--	if (current_fsuid() == inode->i_uid)
--		file_mask = acl->a_owner_mask;
--	else if (in_owner_or_group_class)
--		file_mask = acl->a_group_mask;
--	else
--		file_mask = acl->a_other_mask;
--	denied |= requested & ~file_mask;
-+	if (acl->a_flags & ACL4_MASKED) {
-+		unsigned int file_mask;
-+
-+		/*
-+		 * The file class a process is in determines which file mask
-+		 * applies.  Check if that file mask also grants the requested
-+		 * access.
-+		 */
-+		if (current_fsuid() == inode->i_uid)
-+			file_mask = acl->a_owner_mask;
-+		else if (in_owner_or_group_class)
-+			file_mask = acl->a_group_mask;
-+		else
-+			file_mask = acl->a_other_mask;
-+		denied |= requested & ~file_mask;
-+	}
- 
- 	return denied ? -EACCES : 0;
- }
-@@ -563,7 +579,7 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
- 	mode_t mode;
- 
- 	if (acl->a_count != 1 ||
--	    acl->a_flags ||
-+	    acl->a_flags != ACL4_MASKED ||
- 	    !richace_is_everyone(ace) ||
- 	    !richace_is_allow(ace) ||
- 	    ace->e_flags & ~ACE4_SPECIAL_WHO)
-diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-index 9adbd62..4aa0b7d 100644
---- a/fs/richacl_compat.c
-+++ b/fs/richacl_compat.c
-@@ -699,20 +699,25 @@ __richacl_apply_masks(struct richacl_alloc *x)
- int
- richacl_apply_masks(struct richacl **acl)
- {
--	struct richacl_alloc x = {
--		.acl = *acl,
--		.count = (*acl)->a_count,
--	};
- 	int retval = 0;
- 
--	if (richacl_move_everyone_aces_down(&x) ||
--	    richacl_propagate_everyone(&x) ||
--	    __richacl_apply_masks(&x) ||
--	    richacl_isolate_owner_class(&x) ||
--	    richacl_isolate_group_class(&x))
--		retval = -ENOMEM;
-+	if ((*acl)->a_flags & ACL4_MASKED) {
-+		struct richacl_alloc x = {
-+			.acl = *acl,
-+			.count = (*acl)->a_count,
-+		};
-+
-+		if (richacl_move_everyone_aces_down(&x) ||
-+		    richacl_propagate_everyone(&x) ||
-+		    __richacl_apply_masks(&x) ||
-+		    richacl_isolate_owner_class(&x) ||
-+		    richacl_isolate_group_class(&x))
-+			retval = -ENOMEM;
-+
-+		x.acl->a_flags &= ~ACL4_MASKED;
-+		*acl = x.acl;
-+	}
- 
--	*acl = x.acl;
- 	return retval;
- }
- EXPORT_SYMBOL_GPL(richacl_apply_masks);
-@@ -730,12 +735,12 @@ richacl_from_mode(mode_t mode)
- 	acl = richacl_alloc(1);
- 	if (!acl)
- 		return NULL;
--	ace = acl->a_entries;
--
-+	acl->a_flags = ACL4_MASKED;
- 	acl->a_owner_mask = richacl_mode_to_mask(mode >> 6);
- 	acl->a_group_mask = richacl_mode_to_mask(mode >> 3);
- 	acl->a_other_mask = richacl_mode_to_mask(mode);
- 
-+	ace = acl->a_entries;
- 	ace->e_type  = ACE4_ACCESS_ALLOWED_ACE_TYPE;
- 	ace->e_flags = ACE4_SPECIAL_WHO;
- 	ace->e_mask = ACE4_POSIX_MODE_ALL;
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index 1e9c901..6be821a 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -224,6 +224,7 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 		 * Ensure that the acl will not grant any permissions beyond
- 		 * the create mode.
- 		 */
-+		acl->a_flags |= ACL4_MASKED;
- 		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6);
- 		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
- 		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 74b4c80..8ff317c 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -51,6 +51,7 @@ struct richacl {
- #define ACL4_AUTO_INHERIT		0x01
- #define ACL4_PROTECTED			0x02
- /*#define ACL4_DEFAULTED			0x04*/
-+#define ACL4_MASKED			0x08
- 
- #define ACL4_VALID_FLAGS (	\
- 	ACL4_AUTO_INHERIT |	\
--- 
-1.7.1.rc2
+-VAL
