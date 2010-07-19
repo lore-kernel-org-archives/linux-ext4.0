@@ -1,155 +1,101 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Mon, 19 Jul 2010 17:15:32 +0100
-Message-ID: <10783.1279556132@redhat.com>
-References: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/2 RESEND] fix return value for mb_cache_shrink_fn when
+ nr_to_scan > 0
+Date: Mon, 19 Jul 2010 11:27:21 -0500
+Message-ID: <4C447CE9.20904@redhat.com>
+References: <4C430830.9020903@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+	linux-mm@kvack.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+	kernel-janitors <kernel-janitors@vger.kernel.org>,
+	Christoph Hellwig <hch@infradead.org>
+To: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4C430830.9020903@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org> wrote:
+On 07/18/2010 08:57 AM, Wang Sheng-Hui wrote:
+> Sorry to resend this patch. For the 2nd patch should
+> be applied after this patch, I just send them together.
+> 
+> Following is the explanation of the patch:
+> The comment for struct shrinker in include/linux/mm.h says
+> "shrink...It should return the number of objects which remain in the
+> cache."
+> Please notice the word "remain".
+> 
+> In fs/mbcache.h, mb_cache_shrink_fn is used as the shrink function:
+>        static struct shrinker mb_cache_shrinker = {
+>                .shrink = mb_cache_shrink_fn,
+>                .seeks = DEFAULT_SEEKS,
+>        };
+> In mb_cache_shrink_fn, the return value for nr_to_scan > 0 is the
+> number of mb_cache_entry before shrink operation. It may because the
+> memory usage for mbcache is low, so the effect is not so obvious.
+> 
+> Per Eric Sandeen, we should do the counting only once.
+> Per Christoph Hellwig, we should use list_for_each_entry instead of
+> list_for_each here.
+> 
+> Following patch is against 2.6.35-rc4. Please check it.
+> 
+> 
+> Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
 
->  - that whole xstat buffer handling is just a mess. I think you
-> already fixed the "xstat_parameters" crud and just made it a simple
-> unsigned long and a direct argument,
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-I was thinking more of an unsigned int argument, since it can't have mo=
-re than
-32 flags in it if it is also to work on 32-bit arches.
+Thanks,
+-Eric
 
-> but the "buffer+buflen" thing is still disgusting.
->
->    Why not just leave a few empty fields at the end, and make the rul=
-e
-> be: "We don't just add random crap, so don't expect it to grow widely
-> in the future".
+> ---
+>  fs/mbcache.c |   22 +++++++++++-----------
+>  1 files changed, 11 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/mbcache.c b/fs/mbcache.c
+> index ec88ff3..5697d9e 100644
+> --- a/fs/mbcache.c
+> +++ b/fs/mbcache.c
+> @@ -201,21 +201,13 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+>  {
+>  	LIST_HEAD(free_list);
+>  	struct list_head *l, *ltmp;
+> +	struct mb_cache *cache;
+>  	int count = 0;
+> 
+> -	spin_lock(&mb_cache_spinlock);
+> -	list_for_each(l, &mb_cache_list) {
+> -		struct mb_cache *cache =
+> -			list_entry(l, struct mb_cache, c_cache_list);
+> -		mb_debug("cache %s (%d)", cache->c_name,
+> -			  atomic_read(&cache->c_entry_count));
+> -		count += atomic_read(&cache->c_entry_count);
+> -	}
+>  	mb_debug("trying to free %d entries", nr_to_scan);
+> -	if (nr_to_scan == 0) {
+> -		spin_unlock(&mb_cache_spinlock);
+> +	if (nr_to_scan == 0)
+>  		goto out;
+> -	}
+> +
+>  	while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
+>  		struct mb_cache_entry *ce =
+>  			list_entry(mb_cache_lru_list.next,
+> @@ -229,6 +221,14 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+>  						   e_lru_list), gfp_mask);
+>  	}
+>  out:
+> +	spin_lock(&mb_cache_spinlock);
+> +	list_for_each_entry(cache, &mb_cache_list, c_cache_list) {
+> +		mb_debug("cache %s (%d)", cache->c_name,
+> +			  atomic_read(&cache->c_entry_count));
+> +		count += atomic_read(&cache->c_entry_count);
+> +	}
+> +	spin_unlock(&mb_cache_spinlock);
+> +
+>  	return (count / 100) * sysctl_vfs_cache_pressure;
+>  }
+> 
 
-Because it gets allocated on the kernel stack.  It's already 160 bytes,=
- and
-expanding it will eat more kernel stack space.  Now, I can offset that =
-by: (a)
-embedding it in struct kstat so that we allocate less stack space in xs=
-tat()
-overall, and (b) allocating kstat/xstat structs with kmalloc() rather t=
-han on
-the stack in all the stat syscalls.
-
->  - you use "long long" all over the place. Don't do that. If you want
-> a fixed size, say so, and use "u64/s64". That's the _real_ fixed size=
-,
-> and "long long" just _happens_ to be the same size on all current
-> architectures.
-
-I was following struct stat/stat64 in arch/x86/include/asm/stat.h which=
- do the
-same.  Also, if this is going to be seen by userspace, isn't it better =
-to use
-uint32_t and suchlike?
-
->  - why create that new kind of xstat() that realistically absolutely
-> nobody will use outside of some very special cases, and that has no
-> real advantages for 99.9% of all people?
-
-The new information is useful for some cases.  Samba for example.  At l=
-east
-two of the fields I'm adding are also made available through BSD's stat=
-()
-call, and will automatically be used for some things by autoconf magic =
-if they
-become available.
-
-I'm still trying to get a handle on what people think will be truly use=
-ful.  I
-can see things *could* be useful, particularly to GUI file managers and=
- ls,
-but not everyone is of the same opinion.
-
-Perhaps you or others can offer answers to the following questions as t=
-hese
-might help:
-
- (1) Should I offer information that's effectively free to come by, but=
- could
-     be got through:
-
-     (a) An extra statfs() call - such as whether a file is remote, whe=
-ther
-     	 it's some kernel special file?  Or what the volume label is for =
-this
-     	 file?
-
-     (b) An extra getxattr() call - such as a file's security label.
-
-     (c) An extra ioctl() call - such as FS_IOC_GETFLAGS.
-
- (2) Should I offer information that's appropriate to non-UNIX filesyst=
-ems
-     such as FAT, NTFS or CIFS.  Some of this may map onto other fields=
-, such
-     as FS_IOC_GETFLAGS.
-
- (3) Should I offer information about which results that I've returned =
-are
-     actually useful, as opposed to being fabricated on the spot?  Such=
- as
-     UID/GID in FAT or blocks in UBIFS.  This may be of use to df or a =
-GUI.
-     For instance, a GUI, seeing that UID/GID aren't useful, could ask =
-the
-     filesystem to provide information about what it considers to be va=
-lid
-     ownership information.
-
->    You could make it a "atomic stat+open" by replacing the useless
-> "size" return value with a "fd" return value, add a flag saying "we'r=
-e
-> also interested in opening it" (in the same result set flags), and
-> instead of that stupid "buflen" input, give the "mode" input that ope=
-n
-> needs.
-
-Which would be used by even fewer people, I suspect.  However, it's cer=
-tainly
-an interesting idea.  I suspect it doesn't gain much over open()+fstat(=
-)
-though, given that you'd still have to do most of the work of fstat() a=
-fter
-doing the open() thing anyway.
-
-Also, I'm not sure how much use the atomicity is, given that the file m=
-ay have
-changed state between the gathering of the stat data and userspace gett=
-ing to
-do anything with it.
-
-> > =A0 =A0 =A0 =A0ssize_t ret =3D fxstat(unsigned fd,
->=20
-> Quite frankly, my gut feel is that once you do "xstat(dfd, filename,
-> ...)" then it's damn stupid to do a separate "fxstat()", when you
-> might as well say that "xtstat(dfd, NULL, ...)" is the same as
-> "fxstat(fd, ...)"
-
-This has been suggested and denounced as stupid already.  That said, I =
-agree
-with you.
-
-> Now, the difference between adding one or two system calls may not be
-> huge, but just from a cleanliness angle, I really don't see the point
-> of having another fstat variant when the extended xstat() already ver=
-y
-> naturally supports the thing. And let's face it, using a NULL path
-> pointer just makes sense if you don't have a path. You already passed
-> it a target file descriptor in the dfd.
-
-Agreed.
-
-David
