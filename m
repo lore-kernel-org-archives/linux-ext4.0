@@ -1,44 +1,69 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16401] 2.6.35-r5 ext3 corruptions
-Date: Mon, 19 Jul 2010 23:41:58 GMT
-Message-ID: <201007192341.o6JNfwZi012446@demeter.kernel.org>
-References: <bug-16401-13602@https.bugzilla.kernel.org/>
+From: shenghui <crosslonelyover@gmail.com>
+Subject: Re: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan >
+	0
+Date: Tue, 20 Jul 2010 09:02:57 +0800
+Message-ID: <AANLkTimh4UjM3LWPjBjMA5UGecQYyPSxIvJBInijAP-j@mail.gmail.com>
+References: <4C425273.5000702@gmail.com>
+	<20100718060106.GA579@infradead.org>
+	<4C42A10B.2080904@gmail.com>
+	<201007192039.06670.agruen@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:42883 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757358Ab0GSXl7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jul 2010 19:41:59 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o6JNfwDo012449
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jul 2010 23:41:59 GMT
-In-Reply-To: <bug-16401-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Cc: Christoph Hellwig <hch@infradead.org>, Eric Sandeen <sandeen@redhat.com>, linux-fsdevel@vger.kernel.org,
+	viro@zeniv.linux.org.uk, linux-mm@kvack.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	kernel-janitors <kernel-janitors@vger.kernel.org>
+To: Andreas Gruenbacher <agruen@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <201007192039.06670.agruen@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16401
+2010/7/20 Andreas Gruenbacher <agruen@suse.de>:
+> On Sunday 18 July 2010 08:36:59 Wang Sheng-Hui wrote:
+>> I regenerated the patch. Please check it.
+>
+> The logic for calculating how many objects to free is still wrong:
+> mb_cache_shrink_fn returns the number of entries scaled by
+> sysctl_vfs_cache_pressure / 100. =C2=A0It should also scale nr_to_scan by=
+ the
+> inverse of that. =C2=A0The sysctl_vfs_cache_pressure =3D=3D 0 case (never=
+ scale) may
+> require special attention.
+>
+> See dcache_shrinker() in fs/dcache.c.
+>
+> Thanks,
+> Andreas
+>
+
+Sorry, I haven't found any special attention on
+sysctl_vfs_cache_pressure =3D=3D 0 case or scale
+nr_to_scan in fs/dcache.c
+
+ 900static int shrink_dcache_memory(int nr, gfp_t gfp_mask)
+ 901{
+ 902        if (nr) {
+ 903                if (!(gfp_mask & __GFP_FS))
+ 904                        return -1;
+ 905                prune_dcache(nr);
+ 906        }
+ 907        return (dentry_stat.nr_unused / 100) * sysctl_vfs_cache_pressur=
+e;
+ 908}
 
 
 
 
+--=20
 
---- Comment #1 from Dave Chinner <david@fromorbit.com>  2010-07-19 23:41:54 ---
-The problem appears to have been specific to a single filesystem that was
-corrupted in some way that e2fsck did not detect. e2fsck would report the fs as
-clean (even with a forced check) but the problem would come back, always on
-inodes around the 211,000 number.
 
-The filesystem eventually trashed itself, but I made a fat-fingered mistake and
-backed up the wrong image whenthe problem first manifested. Hence I can't
-reproduce the problem now because I had to re-image the root drive.
+Thanks and Best Regards,
+shenghui
 
->From this, I'd say this is not a regression, so closing this bug is fine by
-me...
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
