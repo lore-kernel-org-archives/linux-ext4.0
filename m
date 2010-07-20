@@ -1,37 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16401] 2.6.35-r5 ext3 corruptions
-Date: Tue, 20 Jul 2010 15:18:41 GMT
-Message-ID: <201007201518.o6KFIfI5016146@demeter.kernel.org>
-References: <bug-16401-13602@https.bugzilla.kernel.org/>
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V2 00/16]  New ACL format for better NFSv4 acl interoperability
+Date: Tue, 20 Jul 2010 20:53:36 +0530
+Message-ID: <m3y6d6b2iv.fsf@linux.vnet.ibm.com>
+References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <201007192119.50868.agruen@suse.de> <m34ofucxes.fsf@linux.vnet.ibm.com> <201007201211.53289.agruen@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:59348 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932077Ab0GTPSx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2010 11:18:53 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o6KFIfno016148
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Jul 2010 15:18:41 GMT
-In-Reply-To: <bug-16401-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: sfrench@us.ibm.com, ffilz@us.ibm.com, adilger@sun.com,
+	sandeen@redhat.com, tytso@mit.edu, bfields@citi.umich.edu,
+	jlayton@redhat.com, linux-fsdevel@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Andreas Gruenbacher <agruen@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <201007201211.53289.agruen@suse.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16401
+On Tue, 20 Jul 2010 12:11:53 +0200, Andreas Gruenbacher <agruen@suse.de> wrote:
+> On Tuesday 20 July 2010 11:31:07 Aneesh Kumar K. V wrote:
+> > We need to update ACL4_VALID_FLAGS to now consider ACL4_MASKED as a
+> > valid flag.  This is also needed for userspace.
+> 
+> Good point, I missed that.
 
+I updated the patch and will push the change to korg after running some
+test.
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
+> 
+> > On a related note, should we move ACL4_MASKED and ACL4_POSIX_MAPPED to
+> > be the higher bits ? That would make sure we will be able to accomodate
+> > new flag value NFSv4 define.
+> 
+> That makes sense, except that ACL4_POSIX_MAPPED hasn't entered the scene in 
+> the patches posted here, and I'm still not convinced that we'll actually need 
+> it.
+> 
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+The userspace change did result in a different output for the below ex:
 
+richacl --set 'flags:a 101:w::deny 101:rw::allow 101:w:a:deny 101:rw:a:allow' f
 
+this now gives
 
+/mnt/d# richacl  --get --numeric  f
+f:
+ flags:a
+   101:-w-----------::deny
+   101:rw-----------::allow
+   101:-w-----------:a:deny
+   101:rw-----------:a:allow
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+that 'w' in rw::allow is redundant, because we have a deny entry before.
+
+-aneesh
