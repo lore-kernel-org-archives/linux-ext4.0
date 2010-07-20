@@ -1,70 +1,39 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan
- > 0
-Date: Tue, 20 Jul 2010 10:13:56 -0500
-Message-ID: <4C45BD34.8030905@redhat.com>
-References: <4C425273.5000702@gmail.com> <20100718060106.GA579@infradead.org> <4C42A10B.2080904@gmail.com> <201007192039.06670.agruen@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Wang Sheng-Hui <crosslonelyover@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-mm@kvack.org,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        kernel-janitors <kernel-janitors@vger.kernel.org>
-To: Andreas Gruenbacher <agruen@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <201007192039.06670.agruen@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: [PATCHES/RFC v1.0.12] e2fsprogs: Next3 patch series
+Date: Tue, 20 Jul 2010 18:16:01 +0300
+Message-ID: <1279638973-14561-1-git-send-email-amir73il@users.sf.net>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, andreas.dilger@oracle.com, jack@suse.cz
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:33333 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932242Ab0GTPP3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2010 11:15:29 -0400
+Received: by wwj40 with SMTP id 40so966783wwj.1
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Jul 2010 08:15:28 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Gruenbacher wrote:
-> On Sunday 18 July 2010 08:36:59 Wang Sheng-Hui wrote:
->> I regenerated the patch. Please check it.
-> 
-> The logic for calculating how many objects to free is still wrong: 
-> mb_cache_shrink_fn returns the number of entries scaled by 
-> sysctl_vfs_cache_pressure / 100.  It should also scale nr_to_scan by the 
-> inverse of that.  The sysctl_vfs_cache_pressure == 0 case (never scale) may 
-> require special attention.
+Hi guys,
 
-I don't think that's right:
+The following patches apply and tested on e2fsprogs master branch (on July 20).
 
-vfs_cache_pressure
-------------------
+Please help me review and push these patches upstream.
 
-Controls the tendency of the kernel to reclaim the memory which is used for
-caching of directory and inode objects.
+Thanks,
+Amir.
 
-At the default value of vfs_cache_pressure=100 the kernel will attempt to
-reclaim dentries and inodes at a "fair" rate with respect to pagecache and
-swapcache reclaim.  Decreasing vfs_cache_pressure causes the kernel to prefer
-to retain dentry and inode caches. When vfs_cache_pressure=0, the kernel will
-never reclaim dentries and inodes due to memory pressure and this can easily
-lead to out-of-memory conditions. Increasing vfs_cache_pressure beyond 100
-causes the kernel to prefer to reclaim dentries and inodes.
+[PATCH 01/12] e2fsprogs: Next3 on-disk format changes
+[PATCH 02/12] e2fsprogs: Create a big journal for Next3
+[PATCH 03/12] e2fsprogs: Create/check exclude inode for Next3
+[PATCH 04/12] e2fsprogs: Next3 snapshot control with chattr/lsattr -X
+[PATCH 05/12] e2fsprogs: Avoid offline modifications to a file system with snapshots
+[PATCH 06/12] e2fsprogs: Cleanup Next3 snapshot list when removing has_snapshot feature
+[PATCH 07/12] e2fsprogs: Check Next3 exclude bitmap on fsck
+[PATCH 08/12] e2fsprogs: Check Next3 snapshot list on fsck
+[PATCH 09/12] e2fsprogs: Delete all snapshots on fsck -x
+[PATCH 10/12] e2fsprogs: Map maximum filesystem size with a single snapshot file
+[PATCH 11/12] e2fsprogs: Dump Next3 message buffer on fsck
+[PATCH 12/12] e2fsprogs: Migrate old to new on-disk format
 
 
-0 means "never reclaim," it doesn't mean "never scale."
-
-As for nr_to_scan, after the first call, the shrinker has a scaled
-version of the total count, so the requested nr_to_scan on the
-next call is already scaled based on that.
-
-I think the logic in the mbcache shrinker is fine.
-
--Eric
-
-> See dcache_shrinker() in fs/dcache.c.
-
-
-
-> 
-> Thanks,
-> Andreas
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
