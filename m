@@ -1,50 +1,94 @@
-From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Tue, 20 Jul 2010 02:28:25 -0600
-Message-ID: <4161BF3D-D410-4AEC-8185-975203182B94@dilger.ca>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com> <10783.1279556132@redhat.com> <AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn@mail.gmail.com> <11817.1279560400@redhat.com> <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V2 00/16] New ACL format for better NFSv4 acl
+	interoperability
+Date: Tue, 20 Jul 2010 15:01:07 +0530
+Message-ID: <m34ofucxes.fsf@linux.vnet.ibm.com>
+References: <1278096227-16784-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	<201007192119.50868.agruen@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: sandeen@redhat.com, adilger@sun.com, tytso@mit.edu, jlayton@redhat.com,
+	staubach@redhat.com, bfields@citi.umich.edu, nfsv4@linux-nfs.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sfrench@us.ibm.com, ffilz@us.ibm.com, linux-ext4@vger.kernel.org
+To: Andreas Gruenbacher <agruen@suse.de>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <201007192119.50868.agruen@suse.de>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 2010-07-19, at 11:46, Linus Torvalds wrote:
-> On Mon, Jul 19, 2010 at 10:26 AM, David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
->> I suspect they would, though maybe they can say otherwise.  What about SMB
->> directory enumeration?  I believe that is effectively getdents-with-stat.
->> Having to do open+stat for each file for that would be painful.
+On Mon, 19 Jul 2010 21:19:50 +0200, Andreas Gruenbacher <agruen@suse.de> wrote:
+> Aneesh,
 > 
-> Yeah, but do you need xstat information at all for something like
-> that? Most people try very hard to make do with the information
-> returned by readdir itself (d_type and inode number), because if you
-> end up looking up each name you've already pretty much lost in a
-> performance model.
+> here is a patch on top of the richacl-upstream queue.
+> 
+> So far, we were assuming that acls are always masked, and the file masks
+> could be set so that they would not mask any permissions.  This is fine
+> for permission checking, but richacl_apply_masks() didn't recognize when
+> the file masks were set to mask nothing, and was still transforming such
+> acls unnecessarily.  This could lead to correct but surprising results.
+> 
+> Instead of using a flag here we could check if the file masks are set to
+> "ineffective" values, but that would require the same computation as
+> richacl_compute_max_masks(), which can be a slow on large acls.  It is a
+> lot easier to instead remember if the file masks are "effective".
+> 
+> (We still need to compute the file masks in nfsd where no file masks are
+> supplied so that the file permission bits will be set to a reasonable
+> value. user space will always pass valid file masks in, so we are covered
+> in that side.)
 
-This lightweight stat() interface is exactly needed for things like "color ls",
-which is the default on all distros today.  "ls --color" always does a stat on the file just to get the file mode to color executable files differently.  For Lustre and other distributed filesystems, getting things like the current file size is hard work (i.e. multiple RPCs per file), yet "ls" doesn't care about the size or modification times unless "ls -l" is used.  Same goes for "find".
+We need to update ACL4_VALID_FLAGS to now consider ACL4_MASKED as a
+valid flag. This is also needed for userspace. On a related note,
+should we move ACL4_MASKED and ACL4_POSIX_MAPPED to be the higher
+bits ? That would make sure we will be able to accomodate new flag
+value NFSv4 define. Something like 
 
-> (And I do agree that a "readdirplus()" is probably something that a
-> lot of server people would find useful, but obviously that's another
-> cross-filesystem nightmare. Only a few filesystems can cheaply give
-> you anything but d_type/d_ino, and not all do even that),
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 929cc32..ff3c12b 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -50,16 +50,17 @@ struct richacl {
+ /* a_flags values */
+ #define ACL4_AUTO_INHERIT		0x01
+ #define ACL4_PROTECTED			0x02
+-/*#define ACL4_DEFAULTED			0x04*/
+-#define ACL4_MASKED			0x08
+-#define ACL4_POSIX_MAPPED		0x10
++#define ACL4_DEFAULTED			0x04
++/* flag value defined by Richacl */
++#define ACL4_MASKED			0x40
++#define ACL4_POSIX_MAPPED		0x80
+ 
+ #define ACL4_VALID_FLAGS (	\
+ 	ACL4_AUTO_INHERIT |	\
+ 	ACL4_PROTECTED |	\
++	ACL4_MASKED |		\
+ 	ACL4_POSIX_MAPPED)
+ 
+-
+ /* e_type values */
+ #define ACE4_ACCESS_ALLOWED_ACE_TYPE	0x0000
+ #define ACE4_ACCESS_DENIED_ACE_TYPE	0x0001
 
-Having a readdirplus() syscall would be even better, but again only with the ability to request specific attributes.  Otherwise the filesystem may be doing a lot of extra work to collect all of the file attributes, and then userspace will probably be throwing most of them away.
-
-Cheers, Andreas
 
 
+-aneesh
 
 
+_______________________________________________
+NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instead.
+(To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org.)
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
