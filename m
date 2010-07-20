@@ -1,61 +1,27 @@
-From: shenghui <crosslonelyover@gmail.com>
-Subject: Re: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan >
-	0
-Date: Tue, 20 Jul 2010 09:04:46 +0800
-Message-ID: <AANLkTimBCrq8cPJrTSKiG_wbd1ppu0twTAMXeezJEZs3@mail.gmail.com>
-References: <4C425273.5000702@gmail.com>
-	<20100718060106.GA579@infradead.org>
-	<4C42A10B.2080904@gmail.com>
-	<201007192039.06670.agruen@suse.de>
-	<AANLkTimh4UjM3LWPjBjMA5UGecQYyPSxIvJBInijAP-j@mail.gmail.com>
+From: "Sonia Porter" <sporter@jusd.k12.ca.us>
+Subject: Dear Webmail User
+Date: Mon, 19 Jul 2010 18:26:37 -0700
+Message-ID: <8A78544F83994B468EAC5A3D242C1E34C79054__3512.94645010984$1279590180$gmane$org@exchsrv02.jusd.dom>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-	linux-mm@kvack.org, linux-ext4 <linux-ext4@vger.kernel.org>,
-	kernel-janitors <kernel-janitors@vger.kernel.org>
-To: Andreas Gruenbacher <agruen@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTimh4UjM3LWPjBjMA5UGecQYyPSxIvJBInijAP-j@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: <info@upgrade.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.jusd.k12.ca.us ([204.100.155.6]:43451 "EHLO
+	mail.jusd.k12.ca.us" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932088Ab0GTBma convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jul 2010 21:42:30 -0400
+Content-class: urn:content-classes:message
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2010/7/20 shenghui <crosslonelyover@gmail.com>:
-> 2010/7/20 Andreas Gruenbacher <agruen@suse.de>:
->
-> Sorry, I haven't found any special attention on
-> sysctl_vfs_cache_pressure =3D=3D 0 case or scale
-> nr_to_scan in fs/dcache.c
->
-> =C2=A0900static int shrink_dcache_memory(int nr, gfp_t gfp_mask)
-> =C2=A0901{
-> =C2=A0902 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (nr) {
-> =C2=A0903 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (=
-!(gfp_mask & __GFP_FS))
-> =C2=A0904 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0return -1;
-> =C2=A0905 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0prun=
-e_dcache(nr);
-> =C2=A0906 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
-> =C2=A0907 =C2=A0 =C2=A0 =C2=A0 =C2=A0return (dentry_stat.nr_unused / =
-100) * sysctl_vfs_cache_pressure;
-> =C2=A0908}
->
+This message was sent automatically by a program on Web mail which periodically checks the size of in boxes, where new messages are received.The program is run weekly to ensure no one's in box grows too large. If your in box becomes too large,you will be unable to receive new email. Just before this message was sent,you had 18 Mega bytes (MB) or more of messages stored in your in box on your Web mail. To help's re-set your SPACE on our database prior to maintain your IN BOX.
+ 
+YOU MUST COPY AND PAST THE BELOW LINK TO INCREASE YOUR INBOX QUOTA AND UPGRADE YOUR WEBMAIL ACCOUNT
 
-And for sysctl_vfs_cache_pressure =3D=3D 0 case, it's
-enough to return 0 to indicate no cache entries left.
-
-
-
---=20
-
-
-Thanks and Best Regards,
-shenghui
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+http://www.eformit.com/eform.aspx?webmasterupgradesystem 
+ 
+ You will continue to receive this warning message periodically if your inbox size continues to be between 18 and 20 MB. If your in box size grows to 20MB,then a program on the Web mail will move your oldest email to a folder in your home directory to ensure that you will continue to be able to receive incoming email. You will be notified by email that this has taken place. If your in box grows to 25 MB, you will be unable to receive new email as it will be returned to the sender.After you read a message,it is best to REPLY and SAVE a copy.
+ 
+Thanks.
+Web mail Help Desk
