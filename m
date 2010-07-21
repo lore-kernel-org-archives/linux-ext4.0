@@ -1,89 +1,80 @@
-From: Wang Sheng-Hui <crosslonelyover@gmail.com>
-Subject: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan >
- 0
-Date: Wed, 21 Jul 2010 18:53:57 +0800
-Message-ID: <4C46D1C5.90200@gmail.com>
+From: =?UTF-8?B?VMO2csO2aw==?= Edwin <edwintorok@gmail.com>
+Subject: Re: 2.6.35-r5 ext3 corruptions
+Date: Wed, 21 Jul 2010 14:07:58 +0300
+Message-ID: <20100721140758.68ca16ab@debian>
+References: <20100715105745.GI30737@dastard>
+	<20100719224512.GD32635@dastard>
+	<20100721063222.GW32635@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: sandeen@redhat.com, agruen@suse.de, hch@infradead.org,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	kerne
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:63402 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751005Ab0GUKyI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 06:54:08 -0400
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:57674 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751657Ab0GULIW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 07:08:22 -0400
+In-Reply-To: <20100721063222.GW32635@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry. regerated the patch, please check it.
-I wrapped most code in single pair of spinlock ops for 2 reasons:
-1) get spinlock 2 times seems time consuming
-2) use single pair of spinlock ops can keep "count"
-   consistent for the shrink operation. 2 pairs may
-   get some new ces created by other processes. 
+On Wed, 21 Jul 2010 16:32:22 +1000
+Dave Chinner <david@fromorbit.com> wrote:
 
+> On Tue, Jul 20, 2010 at 08:45:12AM +1000, Dave Chinner wrote:
+> > On Thu, Jul 15, 2010 at 08:57:45PM +1000, Dave Chinner wrote:
+> > > Upgrading my test vms from 2.6.35-rc3 to 2.6.35-rc5 is resulting
+> > > in repeated errors on the root drive of a test VM:
+> > > 
+> > > { 1532.368808] EXT3-fs error (device sda1): ext3_lookup: deleted
+> > > inode referenced: 211043 [ 1532.370859] Aborting journal on
+> > > device sda1. [ 1532.376957] EXT3-fs (sda1): 
+> > > [ 1532.376976] EXT3-fs (sda1): error: ext3_journal_start_sb:
+> > > Detected aborted journal [ 1532.376980] EXT3-fs (sda1): error:
+> > > remounting filesystem read-only [ 1532.420361] error: remounting
+> > > filesystem read-only [ 1532.621209] EXT3-fs error (device sda1):
+> > > ext3_lookup: deleted inode referenced: 211043
+> > > 
+> > > The filesysetm is a mess when checked on reboot - lots of illegal
+> > > references to blocks, multiply linked blocks, etc, but repairs.
+> > > Files are lots, truncated, etc, so there is visible filesystem
+> > > damage.
+> > > 
+> > > I did lots of testing on 2.6.35-rc3 and came across no problems;
+> > > problems only seemed to start with 2.6.35-rc5, and I've reproduced
+> > > the problem on a vanilla 2.6.35-rc4.
+> > > 
+> > > The problem seems to occur randomly - sometimes during boot or
+> > > when idle after boot, sometimes a while after boot. I haven't
+> > > done any digging at all for the cause - all I've done so far is
+> > > confirm that it is reproducable and it's not my code causing the
+> > > problem.
+> > 
+> > Looks like this problem was isolated to a single VM and root
+> > filesystem. I could not reproduce it on anything other than the
+> > one filesystem that was failing.
+> 
+> Ok, so now I know *why* that one filesystem got busted - I built a
+> kernel without CONFIG_EXT3_DEFAULTS_TO_ORDERED set and it got a
+> forced reboot (echo b > proc/sysrq-trigger). That'll teach me for
+> trying to reproduce bugs Andrew is tripping over with his config
+> files.
+> 
+> Quite frankly, data=writeback mode for ext3 is a dangerous,
+> dangerous configuration to run by default. IMO, it shouldn't be the
+> default. Patch below.
 
+Hi,
 
-Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
----
- fs/mbcache.c |   24 ++++++++++++------------
- 1 files changed, 12 insertions(+), 12 deletions(-)
+I don't see CONFIG_EXT3_DEFAULTS_TO_ORDERED in my .config at all.
+What I have in my .config is:
+CONFIG_EXT4_FS=y
+CONFIG_EXT4_USE_FOR_EXT23=y
+CONFIG_EXT4_FS_XATTR=y
 
-diff --git a/fs/mbcache.c b/fs/mbcache.c
-index ec88ff3..ee57aa3 100644
---- a/fs/mbcache.c
-+++ b/fs/mbcache.c
-@@ -201,21 +201,15 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
- {
- 	LIST_HEAD(free_list);
- 	struct list_head *l, *ltmp;
-+	struct mb_cache *cache;
- 	int count = 0;
- 
--	spin_lock(&mb_cache_spinlock);
--	list_for_each(l, &mb_cache_list) {
--		struct mb_cache *cache =
--			list_entry(l, struct mb_cache, c_cache_list);
--		mb_debug("cache %s (%d)", cache->c_name,
--			  atomic_read(&cache->c_entry_count));
--		count += atomic_read(&cache->c_entry_count);
--	}
- 	mb_debug("trying to free %d entries", nr_to_scan);
--	if (nr_to_scan == 0) {
--		spin_unlock(&mb_cache_spinlock);
-+
-+	spin_lock(&mb_cache_spinlock);
-+	if (nr_to_scan == 0)
- 		goto out;
--	}
-+
- 	while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
- 		struct mb_cache_entry *ce =
- 			list_entry(mb_cache_lru_list.next,
-@@ -223,12 +217,18 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
- 		list_move_tail(&ce->e_lru_list, &free_list);
- 		__mb_cache_entry_unhash(ce);
- 	}
--	spin_unlock(&mb_cache_spinlock);
- 	list_for_each_safe(l, ltmp, &free_list) {
- 		__mb_cache_entry_forget(list_entry(l, struct mb_cache_entry,
- 						   e_lru_list), gfp_mask);
- 	}
- out:
-+	list_for_each_entry(cache, &mb_cache_list, c_cache_list) {
-+		mb_debug("cache %s (%d)", cache->c_name,
-+			  atomic_read(&cache->c_entry_count));
-+		count += atomic_read(&cache->c_entry_count);
-+	}
-+	spin_unlock(&mb_cache_spinlock);
-+
- 	return (count / 100) * sysctl_vfs_cache_pressure;
- }
- 
--- 
-1.6.3.3
+So what is the equivalent of that config option for ext4 used as ext3
+driver?
 
+Best regards,
+--Edwin
