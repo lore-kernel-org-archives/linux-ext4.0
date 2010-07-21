@@ -1,73 +1,89 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCHES/RFC v1.0.12] e2fsprogs: Next3 patch series
-Date: Wed, 21 Jul 2010 12:21:17 +0300
-Message-ID: <AANLkTinVzQizMo73ZVSL545_tucybjmoUUzyLSWtjqxR@mail.gmail.com>
-References: <1279638973-14561-1-git-send-email-amir73il@users.sf.net>
-	<AANLkTinlL0YEiDGWw0qjyYYzR31D_DBKQxFczSu4UYt6@mail.gmail.com>
-	<20100720163825.GC12998@quack.suse.cz>
-	<AANLkTikIpmopbJvdvm9cafuLYbtQkBlHhhL7u0PACPZQ@mail.gmail.com>
-	<AANLkTinbXP4klNS1LScsCQqyEALMYxq9iS5DwOwFJduf@mail.gmail.com>
+From: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Subject: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan >
+ 0
+Date: Wed, 21 Jul 2010 18:53:57 +0800
+Message-ID: <4C46D1C5.90200@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: sandeen@redhat.com, agruen@suse.de, hch@infradead.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	kerne
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:43334 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751755Ab0GUJVS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 05:21:18 -0400
-Received: by fxm14 with SMTP id 14so3357909fxm.19
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Jul 2010 02:21:17 -0700 (PDT)
-In-Reply-To: <AANLkTinbXP4klNS1LScsCQqyEALMYxq9iS5DwOwFJduf@mail.gmail.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:63402 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751005Ab0GUKyI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 06:54:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 21, 2010 at 12:11 AM, Greg Freemyer <greg.freemyer@gmail.co=
-m> wrote:
->
-> So are you just asking for comments right now, or are you asking that
-> the e2fsprogs patches get applied?
->
+Sorry. regerated the patch, please check it.
+I wrapped most code in single pair of spinlock ops for 2 reasons:
+1) get spinlock 2 times seems time consuming
+2) use single pair of spinlock ops can keep "count"
+   consistent for the shrink operation. 2 pairs may
+   get some new ces created by other processes. 
 
-I am asking that the patches will get applied. comments are always welc=
-ome.
 
-I am looking for 2 types of code review:
 
-1. check that the patch looks good in general and doesn't change
-behavior when the snapshot feature is disabled.
-that kind of review would approve that the patch may be applied to the
-master branch.
+Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
+---
+ fs/mbcache.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-2. check the behavior of the code when snapshot feature is enabled.
-this requires the reviewer to acquire some knowledge about the design
-of the snapshot feature.
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index ec88ff3..ee57aa3 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -201,21 +201,15 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+ {
+ 	LIST_HEAD(free_list);
+ 	struct list_head *l, *ltmp;
++	struct mb_cache *cache;
+ 	int count = 0;
+ 
+-	spin_lock(&mb_cache_spinlock);
+-	list_for_each(l, &mb_cache_list) {
+-		struct mb_cache *cache =
+-			list_entry(l, struct mb_cache, c_cache_list);
+-		mb_debug("cache %s (%d)", cache->c_name,
+-			  atomic_read(&cache->c_entry_count));
+-		count += atomic_read(&cache->c_entry_count);
+-	}
+ 	mb_debug("trying to free %d entries", nr_to_scan);
+-	if (nr_to_scan == 0) {
+-		spin_unlock(&mb_cache_spinlock);
++
++	spin_lock(&mb_cache_spinlock);
++	if (nr_to_scan == 0)
+ 		goto out;
+-	}
++
+ 	while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
+ 		struct mb_cache_entry *ce =
+ 			list_entry(mb_cache_lru_list.next,
+@@ -223,12 +217,18 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+ 		list_move_tail(&ce->e_lru_list, &free_list);
+ 		__mb_cache_entry_unhash(ce);
+ 	}
+-	spin_unlock(&mb_cache_spinlock);
+ 	list_for_each_safe(l, ltmp, &free_list) {
+ 		__mb_cache_entry_forget(list_entry(l, struct mb_cache_entry,
+ 						   e_lru_list), gfp_mask);
+ 	}
+ out:
++	list_for_each_entry(cache, &mb_cache_list, c_cache_list) {
++		mb_debug("cache %s (%d)", cache->c_name,
++			  atomic_read(&cache->c_entry_count));
++		count += atomic_read(&cache->c_entry_count);
++	}
++	spin_unlock(&mb_cache_spinlock);
++
+ 	return (count / 100) * sysctl_vfs_cache_pressure;
+ }
+ 
+-- 
+1.6.3.3
 
-> Maybe a separate e2fsprogs branch for next3 should be created like
-> there was for the 64-bit patches? =A0(That would be Ted/Jan's call, n=
-ot
-> mine.)
->
-
-That's not my call, but I do not think that would be necessary.
-the next3 e2fsprogs patches are really small and are restricted to a
-small number of files.
-for that reason, it wasn't so hard for me to rebase them from the
-maint branch to the master branch (64bit code).
-there is some dependency among the patches, but most of them are small
-and independent,
-so they don't have to be applied all at once. I also verified that
-every sub-series of the patches builds with no errors.
-
-To put it in other words, any review, of any type, of any patch, would
-be helpful.
-Thanks,
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
