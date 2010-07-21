@@ -1,70 +1,117 @@
-From: Frederic Weisbecker <fweisbec@gmail.com>
-Subject: Re: [BUG] ext4 trace events cause NULL pointer dereferences
-Date: Wed, 21 Jul 2010 16:21:16 +0200
-Message-ID: <20100721142112.GB5764@nowhere>
-References: <4C401CE3.7010004@cn.fujitsu.com> <20100721222508.8704.A69D9226@jp.fujitsu.com> <1279721766.4818.39.camel@gandalf.stny.rr.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext4: Fix buffer dirtying in data=journal mode
+Date: Wed, 21 Jul 2010 16:32:38 +0200
+Message-ID: <20100721143238.GA1215@atrey.karlin.mff.cuni.cz>
+References: <1277116973-4183-1-git-send-email-jack@suse.cz> <1277116973-4183-3-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	Li Zefan <lizf@cn.fujitsu.com>, Theodore Ts'o <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Steven Rostedt <rostedt@goodmis.org>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:56630 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755624Ab0GUOVU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 10:21:20 -0400
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:39138 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1758618Ab0GUOcl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Jul 2010 10:32:41 -0400
 Content-Disposition: inline
-In-Reply-To: <1279721766.4818.39.camel@gandalf.stny.rr.com>
+In-Reply-To: <1277116973-4183-3-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 21, 2010 at 10:16:06AM -0400, Steven Rostedt wrote:
-> On Wed, 2010-07-21 at 22:31 +0900, KOSAKI Motohiro wrote:
-> > Hi Steven,
+> block_prepare_write() can dirty freshly created buffer. This is a problem
+> for data=journal mode because data buffers shouldn't be dirty unless they
+> are undergoing checkpoint. So we have to tweak get_block function for
+> data=journal mode to catch the case when block_prepare_write would dirty
+> the buffer, do the work instead of block_prepare_write, and properly handle
+> dirty buffer as data=journal mode requires it.
 > 
-> >         if (ac)
-> > 	        trace_ext4_mb_release_group_pa(ac, pa);
-> > 
-> > But, I don't think this is proper fix because we don't want any overhead
-> > if the tracepoint is disabled.
-> > 
-> > So, How do we check NULL in TP_fast_assign()?
-> 
-> You could do:
-> 
-> 	TP_fast_assign(
-> 		if (ac) {
-> 	                __entry->dev            = ac->ac_sb->s_dev;
->         	        __entry->ino            = ac->ac_inode->i_ino;
->         	        __entry->pa_pstart      = pa->pa_pstart;
->         	        __entry->pa_len         = pa->pa_len;
-> 		}
->         ),
-> 
-> But this just makes the __entry null and wastes the ring buffer.
-> 
-> I may be able to add a __discard_entry that may help. Then we could do
-> something like this:
-> 
-> 	if (ac) {
->                 __entry->dev            = ac->ac_sb->s_dev;
->                 __entry->ino            = ac->ac_inode->i_ino;
->                 __entry->pa_pstart      = pa->pa_pstart;
->                 __entry->pa_len         = pa->pa_len;
-> 	} else
-> 		__discard_entry;
-> 
-> Does this seem reasonable?
-> 
-> But for now, the wasting the entry seems to be the only choice we have,
-> or to do as you suggested and have the "if (ac) trace_...", but I don't
-> like that.
-> 
-> -- Steve
+> It might be cleaner to avoid using block_prepare_write() for data=journal
+> mode writes but that would require us to duplicate most of the function
+> which isn't nice either...
+  Ted, how about this patch? Do you agree with it? Thanks.
 
+								Honza
 
-Is there no already existing branch in ext4 you could reuse in order to
-send the trace only if (ac) ?
-
+> CC: tytso@mit.edu
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c |   47 +++++++++++++++++++++++++++++++++++++++++++----
+>  1 files changed, 43 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 81d6054..526404b 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1388,6 +1388,43 @@ out:
+>  	return ret;
+>  }
+>  
+> +static int ext4_journalled_get_block(struct inode *inode, sector_t iblock,
+> +				     struct buffer_head *bh, int create)
+> +{
+> +	handle_t *handle = ext4_journal_current_handle();
+> +	int ret;
+> +
+> +	/* This function should ever be used only for real buffers */
+> +	BUG_ON(!bh->b_page);
+> +
+> +	ret = ext4_get_blocks(handle, inode, iblock, 1, bh,
+> +			      create ? EXT4_GET_BLOCKS_CREATE : 0);
+> +	if (ret > 0) {
+> +		if (buffer_new(bh)) {
+> +			struct page *page = bh->b_page;
+> +
+> +			/*
+> +			 * This is a terrible hack to avoid block_prepare_write
+> +			 * marking our buffer as dirty
+> +			 */
+> +			if (PageUptodate(page)) {
+> +				ret = ext4_journal_get_write_access(handle, bh);
+> +				if (ret < 0)
+> +					return ret;
+> +				unmap_underlying_metadata(bh->b_bdev,
+> +							  bh->b_blocknr);
+> +				clear_buffer_new(bh);
+> +				set_buffer_uptodate(bh);
+> +				ret = jbd2_journal_dirty_metadata(handle, bh);
+> +				if (ret < 0)
+> +					return ret;
+> +			}
+> +		}
+> +		ret = 0;
+> +	}
+> +	return ret;
+> +}
+> +
+>  /*
+>   * `handle' can be NULL if create is zero
+>   */
+> @@ -1599,12 +1636,14 @@ retry:
+>  	if (ext4_should_dioread_nolock(inode))
+>  		ret = block_write_begin(file, mapping, pos, len, flags, pagep,
+>  				fsdata, ext4_get_block_write);
+> -	else
+> +	else if (!ext4_should_journal_data(inode))
+>  		ret = block_write_begin(file, mapping, pos, len, flags, pagep,
+>  				fsdata, ext4_get_block);
+> -
+> -	if (!ret && ext4_should_journal_data(inode)) {
+> -		ret = walk_page_buffers(handle, page_buffers(page),
+> +	else {
+> +		ret = block_write_begin(file, mapping, pos, len, flags, pagep,
+> +				fsdata, ext4_journalled_get_block);
+> +		if (!ret)
+> +			ret = walk_page_buffers(handle, page_buffers(page),
+>  				from, to, NULL, do_journal_get_write_access);
+>  	}
+>  
+> -- 
+> 1.6.4.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
