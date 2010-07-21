@@ -1,93 +1,86 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: 2.6.35-r5 ext3 corruptions
-Date: Wed, 21 Jul 2010 16:32:22 +1000
-Message-ID: <20100721063222.GW32635@dastard>
-References: <20100715105745.GI30737@dastard>
- <20100719224512.GD32635@dastard>
+From: Daniel J Blueman <daniel.blueman@gmail.com>
+Subject: Re: udevd / ext4 issue mounting 2.6.35-rc5
+Date: Wed, 21 Jul 2010 09:43:43 +0100
+Message-ID: <AANLkTinQKhvnAIa-1qXxIWFHCeE0ajM-07eYOAH1QA_J@mail.gmail.com>
+References: <AANLkTilYEJMD_s5Iupru24WPXasxI_jE8JVJ35Nf8hrN@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	Ubuntu Kernel Team <kernel-team@lists.ubuntu.com>,
+	linux-kernel@vger.kernel.org
+To: "Luis R. Rodriguez" <mcgrof@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100719224512.GD32635@dastard>
+In-Reply-To: <AANLkTilYEJMD_s5Iupru24WPXasxI_jE8JVJ35Nf8hrN@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 20, 2010 at 08:45:12AM +1000, Dave Chinner wrote:
-> On Thu, Jul 15, 2010 at 08:57:45PM +1000, Dave Chinner wrote:
-> > Upgrading my test vms from 2.6.35-rc3 to 2.6.35-rc5 is resulting in
-> > repeated errors on the root drive of a test VM:
-> > 
-> > { 1532.368808] EXT3-fs error (device sda1): ext3_lookup: deleted inode referenced: 211043
-> > [ 1532.370859] Aborting journal on device sda1.
-> > [ 1532.376957] EXT3-fs (sda1): 
-> > [ 1532.376976] EXT3-fs (sda1): error: ext3_journal_start_sb: Detected aborted journal
-> > [ 1532.376980] EXT3-fs (sda1): error: remounting filesystem read-only
-> > [ 1532.420361] error: remounting filesystem read-only
-> > [ 1532.621209] EXT3-fs error (device sda1): ext3_lookup: deleted inode referenced: 211043
-> > 
-> > The filesysetm is a mess when checked on reboot - lots of illegal
-> > references to blocks, multiply linked blocks, etc, but repairs.
-> > Files are lots, truncated, etc, so there is visible filesystem
-> > damage.
-> > 
-> > I did lots of testing on 2.6.35-rc3 and came across no problems;
-> > problems only seemed to start with 2.6.35-rc5, and I've reproduced
-> > the problem on a vanilla 2.6.35-rc4.
-> > 
-> > The problem seems to occur randomly - sometimes during boot or when
-> > idle after boot, sometimes a while after boot. I haven't done any
-> > digging at all for the cause - all I've done so far is confirm that
-> > it is reproducable and it's not my code causing the problem.
-> 
-> Looks like this problem was isolated to a single VM and root
-> filesystem. I could not reproduce it on anything other than the
-> one filesystem that was failing.
+Hi Luis,
 
-Ok, so now I know *why* that one filesystem got busted - I built a
-kernel without CONFIG_EXT3_DEFAULTS_TO_ORDERED set and it got a
-forced reboot (echo b > proc/sysrq-trigger). That'll teach me for
-trying to reproduce bugs Andrew is tripping over with his config
-files.
+On 21 July 2010 01:36, Luis R. Rodriguez <mcgrof@gmail.com> wrote:
+> I have been reluctant to boot to 2.6.35-rc due to the large set of
+> regression list and the amount of work I needed to actually get done
+> on 2.6.35. Last I checked the regression list it was getting small so
+> I gave it a spin today. No luck. I get some bootup error from udevd
+> and ext2/ext3/ext4, something like this:
+>
+> EXT3-fs (sda1): error: couldn't mount because of unsupported optional
+> features (240)
+> EXT2-fs (sda1): error: couldn't mount because of unsupported optional
+> features (240)
+> EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (nul=
+l)
 
-Quite frankly, data=writeback mode for ext3 is a dangerous,
-dangerous configuration to run by default. IMO, it shouldn't be the
-default. Patch below.
+This succeeded.
 
-Cheers,
+> VFS: Mounted root (ext4 filesystem) readonly on device 8:1
+> Freeing unused kernel memory: 708k freed
+> Write protecting the kernel read-only data: 102040k
+> Freeing unused kernel memory: 764k freed
+> Freeing unused kernel memory: 1796k freed
+> udevd: failed to create queue file: No such file or directory
+> udevd: error creating queue file
 
-Dave.
+It looks like you need to enable:
 
--- 
-Dave Chinner
-david@fromorbit.com
+CONFIG_DEVTMPFS
+CONFIG_DEVTMPFS_MOUNT
 
-ext3: default to ordered mode
-
-From: Dave Chinner <dchinner@redhat.com>
-
-data=writeback mode is dangerous and is leads to filesystem
-corruption, data loss and stale data exposure when systems crash. It
-should not be the default, especially when all major distros ensure
-their ext3 filesystems default to ordered mode. Change the default
-mode to the safer data=ordered mode, because we should be caring
-far more about avoiding corruption than performance.
-
-Signed-off-by: Dave Chinner <dchinner@redhat.com>
----
- fs/ext3/Kconfig |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
-index 522b154..e8c6ba0 100644
---- a/fs/ext3/Kconfig
-+++ b/fs/ext3/Kconfig
-@@ -31,6 +31,7 @@ config EXT3_FS
- config EXT3_DEFAULTS_TO_ORDERED
- 	bool "Default to 'data=ordered' in ext3"
- 	depends on EXT3_FS
-+	default y
- 	help
- 	  The journal mode options for ext3 have different tradeoffs
- 	  between when data is guaranteed to be on disk and
+> The picture:
+>
+> http://bombadil.infradead.org/~mcgrof/images/2010/ext4-option-240-fai=
+ls-2.6.35-rc5.jpg
+>
+> I then decided to pull Linus' latest but it didn't help either. I
+> don't recall seeing this reported on the regression list yet.
+> Essentially I cannot move forward after this happens, even on single
+> user boot and disabling wireless, which was my main suspect first as
+> I'm using wireless-testing.git.
+>
+> I can certainly bisect but first wanted to see if this was already kn=
+own.
+>
+>
+> mcgrof@tux ~/wireless-testing (git::sfo-02)$ grep CONFIG_EXT .config
+> CONFIG_EXTRA_FIRMWARE=3D""
+> CONFIG_EXT2_FS=3Dy
+> CONFIG_EXT2_FS_XATTR=3Dy
+> CONFIG_EXT2_FS_POSIX_ACL=3Dy
+> CONFIG_EXT2_FS_SECURITY=3Dy
+> # CONFIG_EXT2_FS_XIP is not set
+> CONFIG_EXT3_FS=3Dy
+> # CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
+> CONFIG_EXT3_FS_XATTR=3Dy
+> CONFIG_EXT3_FS_POSIX_ACL=3Dy
+> CONFIG_EXT3_FS_SECURITY=3Dy
+> CONFIG_EXT4_FS=3Dy
+> CONFIG_EXT4_FS_XATTR=3Dy
+> CONFIG_EXT4_FS_POSIX_ACL=3Dy
+> CONFIG_EXT4_FS_SECURITY=3Dy
+> # CONFIG_EXT4_DEBUG is not set
+>
+> Let me know if you need more details.
+>
+> =A0Luis
+--=20
+Daniel J Blueman
