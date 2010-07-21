@@ -1,72 +1,103 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: 2.6.35-r5 ext3 corruptions
-Date: Wed, 21 Jul 2010 08:55:51 -0500
-Message-ID: <4C46FC67.4000900@redhat.com>
-References: <20100715105745.GI30737@dastard> <20100719224512.GD32635@dastard> <20100721063222.GW32635@dastard>
+Subject: Re: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan
+ > 0
+Date: Wed, 21 Jul 2010 09:00:07 -0500
+Message-ID: <4C46FD67.8070808@redhat.com>
+References: <4C46D1C5.90200@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18276 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754851Ab0GUN4J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Jul 2010 09:56:09 -0400
-In-Reply-To: <20100721063222.GW32635@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: agruen@suse.de, hch@infradead.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, kernel-janitors <kernel-janitors@vger.kernel.org>
+To: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <4C46D1C5.90200@gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dave Chinner wrote:
-
-> Ok, so now I know *why* that one filesystem got busted - I built a
-> kernel without CONFIG_EXT3_DEFAULTS_TO_ORDERED set and it got a
-> forced reboot (echo b > proc/sysrq-trigger). That'll teach me for
-> trying to reproduce bugs Andrew is tripping over with his config
-> files.
+Wang Sheng-Hui wrote:
+> Sorry. regerated the patch, please check it.
+> I wrapped most code in single pair of spinlock ops for 2 reasons:
+> 1) get spinlock 2 times seems time consuming
+> 2) use single pair of spinlock ops can keep "count"
+>   consistent for the shrink operation. 2 pairs may
+>   get some new ces created by other processes.
 > 
-> Quite frankly, data=writeback mode for ext3 is a dangerous,
-> dangerous configuration to run by default. IMO, it shouldn't be the
-> default. Patch below.
 
-I agree, though I might just remove the config option altogether,
-it just obfuscates what's going on, IMHO.
+Sorry, this patch appears to have whitespace cut & paste mangling.
 
-Still, as far as it goes, you can add:
+More comments below.
 
-Acked-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
+> ---
+> fs/mbcache.c |   24 ++++++++++++------------
+> 1 files changed, 12 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/mbcache.c b/fs/mbcache.c
+> index ec88ff3..ee57aa3 100644
+> --- a/fs/mbcache.c
+> +++ b/fs/mbcache.c
+> @@ -201,21 +201,15 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+> {
+>     LIST_HEAD(free_list);
+>     struct list_head *l, *ltmp;
+> +    struct mb_cache *cache;
+>     int count = 0;
+> 
+> -    spin_lock(&mb_cache_spinlock);
+> -    list_for_each(l, &mb_cache_list) {
+> -        struct mb_cache *cache =
+> -            list_entry(l, struct mb_cache, c_cache_list);
+> -        mb_debug("cache %s (%d)", cache->c_name,
+> -              atomic_read(&cache->c_entry_count));
+> -        count += atomic_read(&cache->c_entry_count);
+> -    }
+>     mb_debug("trying to free %d entries", nr_to_scan);
+> -    if (nr_to_scan == 0) {
+> -        spin_unlock(&mb_cache_spinlock);
+> +
+> +    spin_lock(&mb_cache_spinlock);
+> +    if (nr_to_scan == 0)
+>         goto out;
+> -    }
+> +
+>     while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
+>         struct mb_cache_entry *ce =
+>             list_entry(mb_cache_lru_list.next,
+> @@ -223,12 +217,18 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+>         list_move_tail(&ce->e_lru_list, &free_list);
+>         __mb_cache_entry_unhash(ce);
+>     }
+> -    spin_unlock(&mb_cache_spinlock);
 
-to the patch.
+you can't do this because
+
+>     list_for_each_safe(l, ltmp, &free_list) {
+>         __mb_cache_entry_forget(list_entry(l, struct mb_cache_entry,
+
+this takes the spinlock too and you'll deadlock.
+
+Did you test this patch?
 
 -Eric
 
-> ext3: default to ordered mode
+>                            e_lru_list), gfp_mask);
+>     }
+> out:
+> +    list_for_each_entry(cache, &mb_cache_list, c_cache_list) {
+> +        mb_debug("cache %s (%d)", cache->c_name,
+> +              atomic_read(&cache->c_entry_count));
+> +        count += atomic_read(&cache->c_entry_count);
+> +    }
+> +    spin_unlock(&mb_cache_spinlock);
+> +
+>     return (count / 100) * sysctl_vfs_cache_pressure;
+> }
 > 
-> From: Dave Chinner <dchinner@redhat.com>
-> 
-> data=writeback mode is dangerous and is leads to filesystem
-> corruption, data loss and stale data exposure when systems crash. It
-> should not be the default, especially when all major distros ensure
-> their ext3 filesystems default to ordered mode. Change the default
-> mode to the safer data=ordered mode, because we should be caring
-> far more about avoiding corruption than performance.
-> 
-> Signed-off-by: Dave Chinner <dchinner@redhat.com>
-> ---
->  fs/ext3/Kconfig |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
-> index 522b154..e8c6ba0 100644
-> --- a/fs/ext3/Kconfig
-> +++ b/fs/ext3/Kconfig
-> @@ -31,6 +31,7 @@ config EXT3_FS
->  config EXT3_DEFAULTS_TO_ORDERED
->  	bool "Default to 'data=ordered' in ext3"
->  	depends on EXT3_FS
-> +	default y
->  	help
->  	  The journal mode options for ext3 have different tradeoffs
->  	  between when data is guaranteed to be on disk and
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
