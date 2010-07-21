@@ -1,123 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv2 1/1] jbd2: Fix I/O hang in
-	jbd2_journal_release_jbd_inode
-Date: Wed, 21 Jul 2010 21:06:50 +0200
-Message-ID: <20100721190650.GA32415@atrey.karlin.mff.cuni.cz>
-References: <201007141456.o6EEuFe9004519@d01av03.pok.ibm.com> <20100714174458.GA2378@localhost.localdomain> <4C3E08E6.2050203@linux.vnet.ibm.com> <20100721190252.GG1215@atrey.karlin.mff.cuni.cz>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Dxnq1zWXvFF0Q93v"
-Cc: Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
-	cmm@linux.vnet.ibm.com, pmac@au1.ibm.com
-To: Brian King <brking@linux.vnet.ibm.com>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: [PATCH 2/2] mbcache: fix shrinker function return value
+Date: Wed, 21 Jul 2010 19:44:45 +0200
+Message-ID: <20100721202637.2D6633C539AB@imap.suse.de>
+References: <4C46FD67.8070808@redhat.com>
+Cc: Eric Sandeen <sandeen@redhat.com>, hch@infradead.org,
+	"linux-ext4" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	"kernel-janitors" <kernel-janitors@vger.kernel.org>,
+	"Wang Sheng-Hui" <crosslonelyover@gmail.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ksp.mff.cuni.cz ([195.113.26.206]:56142 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932182Ab0GUTGw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Jul 2010 15:06:52 -0400
-Content-Disposition: inline
-In-Reply-To: <20100721190252.GG1215@atrey.karlin.mff.cuni.cz>
+Received: from cantor.suse.de ([195.135.220.2]:44821 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750986Ab0GUU0i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Jul 2010 16:26:38 -0400
+In-Reply-To: <4C46FD67.8070808@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The shrinker function is supposed to return the number of cache
+entries after shrinking, not before shrinking.  Fix that.
 
---Dxnq1zWXvFF0Q93v
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Based on a patch from Wang Sheng-Hui <crosslonelyover@gmail.com>.
 
-> > 
-> > I've been debugging a hang in jbd2_journal_release_jbd_inode
-> > which is being seen on Power 6 systems quite a lot. When we get
-> > in the hung state, all I/O to the disk in question gets blocked
-> > where we stay indefinitely. Looking at the task list, I can see
-> > we are stuck in jbd2_journal_release_jbd_inode waiting on a
-> > wake up. I added some debug code to detect this scenario and
-> > dump additional data if we were stuck in jbd2_journal_release_jbd_inode
-> > for longer than 30 minutes. When it hit, I was able to see that
-> > i_flags was 0, suggesting we missed the wake up.
-> > 
-> > This patch changes i_flags to be an unsigned long, uses bit operators
-> > to access it, and adds barriers around the accesses. Prior to applying
-> > this patch, we were regularly hitting this hang on numerous systems
-> > in our test environment. After applying the patch, the hangs no longer
-> > occur. Its still not clear to me why the j_list_lock doesn't protect us
-> > in this path.
->   Thanks for debugging this! I was thinking hard about how it could happen that
-> wake_up_bit doesn't wake up the waiter but I haven't found any explanation. All
-> the waitqueue work seems to be properly wrapped inside the j_list_lock so
-> even the waitqueue_active check in wake_up_bit should be fine.
->   I'd really like to understand what in my mind-model of spinlocks etc. is
-> wrong. So could you maybe run a test with the attached debug patch and
-> dump 'wait.seen' value in the hung task?
->   And one more question - if you remove 'waitqueue_active' check from
-> kernel/wait.c:__wake_up_bit
->   is the problem still present? Thanks a lot in advance.
-  Oops, the patch was missing 'seen' declaration. Here's an updated version.
-
-
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
-
---Dxnq1zWXvFF0Q93v
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="0001-Debug-bit-wait-queues-in-JBD2.patch"
-
->From 473045202fa3f656258a8ea8ccdb39947dd385b6 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 21 Jul 2010 20:56:21 +0200
-Subject: [PATCH] Debug bit wait queues in JBD2.
-
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 ---
- fs/jbd2/journal.c    |    1 +
- include/linux/wait.h |    1 +
- kernel/wait.c        |    7 +++++--
- 3 files changed, 7 insertions(+), 2 deletions(-)
+ fs/mbcache.c |   27 ++++++++++-----------------
+ 1 files changed, 10 insertions(+), 17 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 0368808..0ecd858 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2211,6 +2211,7 @@ restart:
- 	if (jinode->i_flags & JI_COMMIT_RUNNING) {
- 		wait_queue_head_t *wq;
- 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
-+		wait.seen = 1;
- 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
- 		spin_unlock(&journal->j_list_lock);
-diff --git a/include/linux/wait.h b/include/linux/wait.h
-index 0836ccc..31f326c 100644
---- a/include/linux/wait.h
-+++ b/include/linux/wait.h
-@@ -45,6 +45,7 @@ struct wait_bit_key {
- struct wait_bit_queue {
- 	struct wait_bit_key key;
- 	wait_queue_t wait;
-+	int seen;
- };
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index 8a2cbd8..cf4e6cd 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -176,22 +176,12 @@ static int
+ mb_cache_shrink_fn(struct shrinker *shrink, int nr_to_scan, gfp_t gfp_mask)
+ {
+ 	LIST_HEAD(free_list);
+-	struct list_head *l, *ltmp;
++	struct mb_cache *cache;
++	struct mb_cache_entry *entry, *tmp;
+ 	int count = 0;
  
- struct __wait_queue_head {
-diff --git a/kernel/wait.c b/kernel/wait.c
-index c4bd3d8..46acfae 100644
---- a/kernel/wait.c
-+++ b/kernel/wait.c
-@@ -177,8 +177,11 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *arg)
- 		= container_of(wait, struct wait_bit_queue, wait);
+-	spin_lock(&mb_cache_spinlock);
+-	list_for_each(l, &mb_cache_list) {
+-		struct mb_cache *cache =
+-			list_entry(l, struct mb_cache, c_cache_list);
+-		mb_debug("cache %s (%d)", cache->c_name,
+-			  atomic_read(&cache->c_entry_count));
+-		count += atomic_read(&cache->c_entry_count);
+-	}
+ 	mb_debug("trying to free %d entries", nr_to_scan);
+-	if (nr_to_scan == 0) {
+-		spin_unlock(&mb_cache_spinlock);
+-		goto out;
+-	}
++	spin_lock(&mb_cache_spinlock);
+ 	while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
+ 		struct mb_cache_entry *ce =
+ 			list_entry(mb_cache_lru_list.next,
+@@ -199,12 +189,15 @@ mb_cache_shrink_fn(struct shrinker *shrink, int nr_to_scan, gfp_t gfp_mask)
+ 		list_move_tail(&ce->e_lru_list, &free_list);
+ 		__mb_cache_entry_unhash(ce);
+ 	}
++	list_for_each_entry(cache, &mb_cache_list, c_cache_list) {
++		mb_debug("cache %s (%d)", cache->c_name,
++			  atomic_read(&cache->c_entry_count));
++		count += atomic_read(&cache->c_entry_count);
++	}
+ 	spin_unlock(&mb_cache_spinlock);
+-	list_for_each_safe(l, ltmp, &free_list) {
+-		__mb_cache_entry_forget(list_entry(l, struct mb_cache_entry,
+-						   e_lru_list), gfp_mask);
++	list_for_each_entry_safe(entry, tmp, &free_list, e_lru_list) {
++		__mb_cache_entry_forget(entry, gfp_mask);
+ 	}
+-out:
+ 	return (count / 100) * sysctl_vfs_cache_pressure;
+ }
  
- 	if (wait_bit->key.flags != key->flags ||
--			wait_bit->key.bit_nr != key->bit_nr ||
--			test_bit(key->bit_nr, key->flags))
-+			wait_bit->key.bit_nr != key->bit_nr)
-+		return 0;
-+	if (wait_bit->seen == 1)
-+		wait_bit->seen = 2 + test_bit(key->bit_nr, key->flags);
-+	if (test_bit(key->bit_nr, key->flags))
- 		return 0;
- 	else
- 		return autoremove_wake_function(wait, mode, sync, key);
 -- 
-1.6.4.2
+1.7.2.rc3.57.g77b5b
 
-
---Dxnq1zWXvFF0Q93v--
