@@ -1,80 +1,118 @@
-From: =?UTF-8?B?VMO2csO2aw==?= Edwin <edwintorok@gmail.com>
-Subject: Re: 2.6.35-r5 ext3 corruptions
-Date: Wed, 21 Jul 2010 14:07:58 +0300
-Message-ID: <20100721140758.68ca16ab@debian>
-References: <20100715105745.GI30737@dastard>
-	<20100719224512.GD32635@dastard>
-	<20100721063222.GW32635@dastard>
+From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Subject: Re: [BUG] ext4 trace events cause NULL pointer dereferences
+Date: Wed, 21 Jul 2010 22:31:20 +0900 (JST)
+Message-ID: <20100721222508.8704.A69D9226@jp.fujitsu.com>
+References: <4C401CE3.7010004@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Cc: kosaki.motohiro@jp.fujitsu.com, "Theodore Ts'o" <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	Frederic Weisbecker <fweisbec@gmail.com>
+To: Li Zefan <lizf@cn.fujitsu.com>,
+	Steven Rostedt <rostedt@goodmis.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:57674 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751657Ab0GULIW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 07:08:22 -0400
-In-Reply-To: <20100721063222.GW32635@dastard>
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:50381 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755632Ab0GUNbY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 09:31:24 -0400
+In-Reply-To: <4C401CE3.7010004@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 21 Jul 2010 16:32:22 +1000
-Dave Chinner <david@fromorbit.com> wrote:
+Hi Steven,
 
-> On Tue, Jul 20, 2010 at 08:45:12AM +1000, Dave Chinner wrote:
-> > On Thu, Jul 15, 2010 at 08:57:45PM +1000, Dave Chinner wrote:
-> > > Upgrading my test vms from 2.6.35-rc3 to 2.6.35-rc5 is resulting
-> > > in repeated errors on the root drive of a test VM:
-> > > 
-> > > { 1532.368808] EXT3-fs error (device sda1): ext3_lookup: deleted
-> > > inode referenced: 211043 [ 1532.370859] Aborting journal on
-> > > device sda1. [ 1532.376957] EXT3-fs (sda1): 
-> > > [ 1532.376976] EXT3-fs (sda1): error: ext3_journal_start_sb:
-> > > Detected aborted journal [ 1532.376980] EXT3-fs (sda1): error:
-> > > remounting filesystem read-only [ 1532.420361] error: remounting
-> > > filesystem read-only [ 1532.621209] EXT3-fs error (device sda1):
-> > > ext3_lookup: deleted inode referenced: 211043
-> > > 
-> > > The filesysetm is a mess when checked on reboot - lots of illegal
-> > > references to blocks, multiply linked blocks, etc, but repairs.
-> > > Files are lots, truncated, etc, so there is visible filesystem
-> > > damage.
-> > > 
-> > > I did lots of testing on 2.6.35-rc3 and came across no problems;
-> > > problems only seemed to start with 2.6.35-rc5, and I've reproduced
-> > > the problem on a vanilla 2.6.35-rc4.
-> > > 
-> > > The problem seems to occur randomly - sometimes during boot or
-> > > when idle after boot, sometimes a while after boot. I haven't
-> > > done any digging at all for the cause - all I've done so far is
-> > > confirm that it is reproducable and it's not my code causing the
-> > > problem.
-> > 
-> > Looks like this problem was isolated to a single VM and root
-> > filesystem. I could not reproduce it on anything other than the
-> > one filesystem that was failing.
+> create file: file_108.dat
+> # sync
+> (panic)
 > 
-> Ok, so now I know *why* that one filesystem got busted - I built a
-> kernel without CONFIG_EXT3_DEFAULTS_TO_ORDERED set and it got a
-> forced reboot (echo b > proc/sysrq-trigger). That'll teach me for
-> trying to reproduce bugs Andrew is tripping over with his config
-> files.
 > 
-> Quite frankly, data=writeback mode for ext3 is a dangerous,
-> dangerous configuration to run by default. IMO, it shouldn't be the
-> default. Patch below.
+> Seems ac->ac_inode can be NULL:
+> 
+> DECLARE_EVENT_CLASS(ext4__mballoc,
+> 	...
+>         TP_fast_assign(
+>                 __entry->dev            = ac->ac_inode->i_sb->s_dev;
+>                 __entry->ino            = ac->ac_inode->i_ino;
+> 		...
+>         ),
+> 	...
+> );
 
-Hi,
+Can you teach us proper tracepint writing way?
 
-I don't see CONFIG_EXT3_DEFAULTS_TO_ORDERED in my .config at all.
-What I have in my .config is:
-CONFIG_EXT4_FS=y
-CONFIG_EXT4_USE_FOR_EXT23=y
-CONFIG_EXT4_FS_XATTR=y
 
-So what is the equivalent of that config option for ext4 used as ext3
-driver?
+ext4_mb_release_group_pa() has a concern when ac is NULL.
 
-Best regards,
---Edwin
+============================================================
+static noinline_for_stack int
+ext4_mb_release_group_pa(struct ext4_buddy *e4b,
+                                struct ext4_prealloc_space *pa,
+                                struct ext4_allocation_context *ac)
+{
+        struct super_block *sb = e4b->bd_sb;
+        ext4_group_t group;
+        ext4_grpblk_t bit;
+
+        trace_ext4_mb_release_group_pa(ac, pa);
+        BUG_ON(pa->pa_deleted == 0);
+        ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
+        BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
+        mb_free_blocks(pa->pa_inode, e4b, bit, pa->pa_len);
+        atomic_add(pa->pa_len, &EXT4_SB(sb)->s_mb_discarded);
+
+        if (ac) {                // here
+                ac->ac_sb = sb;
+                ac->ac_inode = NULL;
+                ac->ac_b_ex.fe_group = group;
+                ac->ac_b_ex.fe_start = bit;
+                ac->ac_b_ex.fe_len = pa->pa_len;
+                ac->ac_b_ex.fe_logical = 0;
+                trace_ext4_mballoc_discard(ac);
+        }
+
+        return 0;
+}
+===================================================
+
+but trace_ext4_mb_release_group_pa() doesn't care it.
+=====================================================
+TRACE_EVENT(ext4_mb_release_group_pa,
+        TP_PROTO(struct ext4_allocation_context *ac,
+                 struct ext4_prealloc_space *pa),
+
+        TP_ARGS(ac, pa),
+
+        TP_STRUCT__entry(
+                __field(        dev_t,  dev                     )
+                __field(        ino_t,  ino                     )
+                __field(        __u64,  pa_pstart               )
+                __field(        __u32,  pa_len                  )
+
+        ),
+
+        TP_fast_assign(
+                __entry->dev            = ac->ac_sb->s_dev;
+                __entry->ino            = ac->ac_inode->i_ino;
+                __entry->pa_pstart      = pa->pa_pstart;
+                __entry->pa_len         = pa->pa_len;
+        ),
+
+        TP_printk("dev %s pstart %llu len %u",
+                  jbd2_dev_to_name(__entry->dev), __entry->pa_pstart, __entry->pa_len)
+);
+=====================================================
+
+So, adding following branch should fix this issue.
+
+        if (ac)
+	        trace_ext4_mb_release_group_pa(ac, pa);
+
+But, I don't think this is proper fix because we don't want any overhead
+if the tracepoint is disabled.
+
+So, How do we check NULL in TP_fast_assign()?
+
+Thanks.
+
+
