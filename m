@@ -1,76 +1,109 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] JBD2: Allow feature checks before
-	journal recovery
-Date: Wed, 21 Jul 2010 19:50:24 +0200
-Message-ID: <20100721175024.GF1215@atrey.karlin.mff.cuni.cz>
-References: <871vbax86w.fsf@patl.com>
-	<20100721172721.GD1215@atrey.karlin.mff.cuni.cz>
-	<AANLkTikdCRfgDRLHZ7zr-ZALU8g8LwWc5We-CgbcQ8mF@mail.gmail.com>
+Subject: Re: [PATCHv2 1/1] jbd2: Fix I/O hang in
+	jbd2_journal_release_jbd_inode
+Date: Wed, 21 Jul 2010 21:02:52 +0200
+Message-ID: <20100721190252.GG1215@atrey.karlin.mff.cuni.cz>
+References: <201007141456.o6EEuFe9004519@d01av03.pok.ibm.com> <20100714174458.GA2378@localhost.localdomain> <4C3E08E6.2050203@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-To: "Patrick J. LoPresti" <lopresti@gmail.com>
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Type: multipart/mixed; boundary="tsOsTdHNUZQcU9Ye"
+Cc: Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	cmm@linux.vnet.ibm.com, pmac@au1.ibm.com
+To: Brian King <brking@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ksp.mff.cuni.cz ([195.113.26.206]:35550 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1758872Ab0GUTCx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Jul 2010 15:02:53 -0400
 Content-Disposition: inline
-In-Reply-To: <AANLkTikdCRfgDRLHZ7zr-ZALU8g8LwWc5We-CgbcQ8mF@mail.gmail.com>
-List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4C3E08E6.2050203@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> On Wed, Jul 21, 2010 at 10:27 AM, Jan Kara <jack@suse.cz> wrote:
-> >> Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
-> >>
-> >> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> >> index bc2ff59..c5a864f 100644
-> >> --- a/fs/jbd2/journal.c
-> >> +++ b/fs/jbd2/journal.c
-> >> @@ -1365,6 +1365,8 @@ int jbd2_journal_check_used_features (journal_t =
-*journal, unsigned long compat,
-> >>
-> >> =A0 =A0 =A0 if (!compat && !ro && !incompat)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 1;
-> >> + =A0 =A0 if (journal_get_superblock(journal))
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> >> =A0 =A0 =A0 if (journal->j_format_version =3D=3D 1)
-> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> >
-> > This looks OK in principle. It would be even nicer to avoid all the che=
-cks
-> > journal_get_superblock() when the superblock is actually loaded so that=
- we
-> > don't do them each time jbd2_journal_check_used_features is called...
-> =
 
-> How about this?
-> =
+--tsOsTdHNUZQcU9Ye
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
->          if (!compat && !ro && !incompat)
->                 return 1;
-> +        if (journal->j_format_version =3D=3D 0 &&
-> journal_get_superblock(journal) !=3D 0)
-> +               return 0;
->         if (journal->j_format_version =3D=3D 1)
->                 return 0;
-> =
-
-> journal_init_common() uses kzalloc() to allocate the journal_t, and
-> journal_get_superblock() fills it in, so I believe this is a valid
-> test.
-  Yes, this looks OK. Just add a comment before the check like
-/* Load journal super block if it isn't loaded yet */
+> 
+> I've been debugging a hang in jbd2_journal_release_jbd_inode
+> which is being seen on Power 6 systems quite a lot. When we get
+> in the hung state, all I/O to the disk in question gets blocked
+> where we stay indefinitely. Looking at the task list, I can see
+> we are stuck in jbd2_journal_release_jbd_inode waiting on a
+> wake up. I added some debug code to detect this scenario and
+> dump additional data if we were stuck in jbd2_journal_release_jbd_inode
+> for longer than 30 minutes. When it hit, I was able to see that
+> i_flags was 0, suggesting we missed the wake up.
+> 
+> This patch changes i_flags to be an unsigned long, uses bit operators
+> to access it, and adds barriers around the accesses. Prior to applying
+> this patch, we were regularly hitting this hang on numerous systems
+> in our test environment. After applying the patch, the hangs no longer
+> occur. Its still not clear to me why the j_list_lock doesn't protect us
+> in this path.
+  Thanks for debugging this! I was thinking hard about how it could happen that
+wake_up_bit doesn't wake up the waiter but I haven't found any explanation. All
+the waitqueue work seems to be properly wrapped inside the j_list_lock so
+even the waitqueue_active check in wake_up_bit should be fine.
+  I'd really like to understand what in my mind-model of spinlocks etc. is
+wrong. So could you maybe run a test with the attached debug patch and
+dump 'wait.seen' value in the hung task?
+  And one more question - if you remove 'waitqueue_active' check from
+kernel/wait.c:__wake_up_bit
+  is the problem still present? Thanks a lot in advance.
 
 								Honza
--- =
-
+-- 
 Jan Kara <jack@suse.cz>
 SuSE CR Labs
+
+--tsOsTdHNUZQcU9Ye
+Content-Type: text/x-diff; charset=us-ascii
+Content-Disposition: attachment; filename="0001-Debug-bit-wait-queues-in-JBD2.patch"
+
+>From 7f305dbbe7cdb2ebfd410956f08ba4244ac578bd Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 21 Jul 2010 20:56:21 +0200
+Subject: [PATCH] Debug bit wait queues in JBD2.
+
+---
+ fs/jbd2/journal.c |    1 +
+ kernel/wait.c     |    7 +++++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 0368808..0ecd858 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2211,6 +2211,7 @@ restart:
+ 	if (jinode->i_flags & JI_COMMIT_RUNNING) {
+ 		wait_queue_head_t *wq;
+ 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
++		wait.seen = 1;
+ 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
+ 		spin_unlock(&journal->j_list_lock);
+diff --git a/kernel/wait.c b/kernel/wait.c
+index c4bd3d8..46acfae 100644
+--- a/kernel/wait.c
++++ b/kernel/wait.c
+@@ -177,8 +177,11 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *arg)
+ 		= container_of(wait, struct wait_bit_queue, wait);
+ 
+ 	if (wait_bit->key.flags != key->flags ||
+-			wait_bit->key.bit_nr != key->bit_nr ||
+-			test_bit(key->bit_nr, key->flags))
++			wait_bit->key.bit_nr != key->bit_nr)
++		return 0;
++	if (wait_bit->seen == 1)
++		wait_bit->seen = 2 + test_bit(key->bit_nr, key->flags);
++	if (test_bit(key->bit_nr, key->flags))
+ 		return 0;
+ 	else
+ 		return autoremove_wake_function(wait, mode, sync, key);
+-- 
+1.6.4.2
+
+
+--tsOsTdHNUZQcU9Ye--
