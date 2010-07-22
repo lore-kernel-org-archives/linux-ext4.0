@@ -1,67 +1,76 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [PATCH 1/2] mbcache: Remove unused features
-Date: Thu, 22 Jul 2010 02:07:40 +0200
-Message-ID: <201007220207.40940.agruen@suse.de>
-References: <4C46FD67.8070808@redhat.com> <20100721202636.B94F83C539AA@imap.suse.de> <4F3D0C4D-BA6B-490E-B656-774578B3F67B@dilger.ca>
+From: Wang Sheng-Hui <crosslonelyover@gmail.com>
+Subject: re: [PATCH] fix return value for mb_cache_shrink_fn when nr_to_scan
+ > 0
+Date: Thu, 22 Jul 2010 08:54:38 +0800
+Message-ID: <4C4796CE.6080306@gmail.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: "linux-ext4" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Eric Sandeen <sandeen@redhat.com>, agruen@suse.de,
+	hch@infradead.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kv
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50304 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759124Ab0GVAHq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 20:07:46 -0400
-In-Reply-To: <4F3D0C4D-BA6B-490E-B656-774578B3F67B@dilger.ca>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:40177 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750719Ab0GVAyp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 20:54:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->From https://bugzilla.lustre.org/show_bug.cgi?id=22771#c24 :
-> On our production system, the hash table contain 64 entries (6 bits) for a
-> cache of 2307267 entries.
-> A count in each list give a good load balance : number of entries vary
-> between 35782 to 36496 while the optimal repartition is 2307267 / 64 =
-> 36051.
+Sorry, missed that. Regerated and passed checkpatch.pl check. 
+Please check it.
 
-Hehe, I like that sense of humor :)
 
-On Thursday 22 July 2010 01:18:39 Andreas Dilger wrote:
-> Is it possible to allow mbcache to be disabled, either for the whole
-> kernel, on a per-filesystem basis, or adaptively if the cache hit rate is
-> very low (any of these is fine, not all of them).
+Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
+---
+ fs/mbcache.c |   23 ++++++++++++-----------
+ 1 files changed, 12 insertions(+), 11 deletions(-)
 
-We could do that, but making the cache not degrade so badly would be a good 
-idea in any case.  The number of buckets is currently fixed for ext[234] so it 
-would make sense to either make that number dynamic or limit the maximum 
-number of cache entries.  The latter will probably be good enough for most 
-workloads.
-
-> Attached is a patch that allows manually disabling mbcache on a
-> per-filesystem basis with a mount option.
-
-> I don't think fixing the mbcache to be more efficient (more buckets, more
-> locks, etc) is really solving the problem which is that mbcache is adding
-> overhead without value in these situations.
-
-A mount option would be very ugly, but a kernel internal NO_MBCACHE flag 
-sounds more acceptable to me.
-
-> Better would be to
-> automatically disable it if e.g. some hundreds or thousands of objects
-> were inserted into the cache and there was < 1% cache hit rate.
-
-This assumes that the workload won't change.
-
-> That would help everyone, even those people who don't know they have a
-> problem.
-
-People who don't know they have a problem would also be helped by making the 
-cache not degrade so badly, right?
-
-Even better would be to use a more appropriate inode size, but you've pointed 
-that out in the bug already.
-
-Thanks,
-Andreas
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index ec88ff3..603170e 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -201,21 +201,14 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+ {
+ 	LIST_HEAD(free_list);
+ 	struct list_head *l, *ltmp;
++	struct mb_cache *cache;
+ 	int count = 0;
+ 
+-	spin_lock(&mb_cache_spinlock);
+-	list_for_each(l, &mb_cache_list) {
+-		struct mb_cache *cache =
+-			list_entry(l, struct mb_cache, c_cache_list);
+-		mb_debug("cache %s (%d)", cache->c_name,
+-			  atomic_read(&cache->c_entry_count));
+-		count += atomic_read(&cache->c_entry_count);
+-	}
+ 	mb_debug("trying to free %d entries", nr_to_scan);
+-	if (nr_to_scan == 0) {
+-		spin_unlock(&mb_cache_spinlock);
++	if (nr_to_scan == 0)
+ 		goto out;
+-	}
++
++	spin_lock(&mb_cache_spinlock);
+ 	while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
+ 		struct mb_cache_entry *ce =
+ 			list_entry(mb_cache_lru_list.next,
+@@ -229,6 +222,14 @@ mb_cache_shrink_fn(int nr_to_scan, gfp_t gfp_mask)
+ 						   e_lru_list), gfp_mask);
+ 	}
+ out:
++	spin_lock(&mb_cache_spinlock);
++	list_for_each_entry(cache, &mb_cache_list, c_cache_list) {
++		mb_debug("cache %s (%d)", cache->c_name,
++			  atomic_read(&cache->c_entry_count));
++		count += atomic_read(&cache->c_entry_count);
++	}
++	spin_unlock(&mb_cache_spinlock);
++
+ 	return (count / 100) * sysctl_vfs_cache_pressure;
+ }
+ 
+-- 
+1.6.3.3
