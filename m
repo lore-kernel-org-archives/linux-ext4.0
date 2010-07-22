@@ -1,71 +1,71 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- 	file stats available [ver #6]
-Date: Thu, 22 Jul 2010 22:53:34 +0300
-Message-ID: <4C48A1BE.8010503@panasas.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	<30448.1279800887@redhat.com>	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	<20100722162712.GB10352@jeremy-laptop>	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>	<4C488C41.60002@panasas.com> <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
+From: Brian King <brking@linux.vnet.ibm.com>
+Subject: Re: [PATCHv2 1/1] jbd2: Fix I/O hang in jbd2_journal_release_jbd_inode
+Date: Thu, 22 Jul 2010 16:30:54 -0500
+Message-ID: <4C48B88E.2010703@linux.vnet.ibm.com>
+References: <201007141456.o6EEuFe9004519@d01av03.pok.ibm.com> <20100714174458.GA2378@localhost.localdomain> <4C3E08E6.2050203@linux.vnet.ibm.com> <20100721190252.GG1215@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jan Engelhardt <jengelh@medozas.de>,
-	Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
-	David Howells <dhowells@redhat.com>,
-	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Cc: Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	cmm@linux.vnet.ibm.com, pmac@au1.ibm.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:28110 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752067Ab0GVTxk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jul 2010 15:53:40 -0400
-In-Reply-To: <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:48820 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754092Ab0GVVbF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jul 2010 17:31:05 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e33.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id o6MLQQLX012874
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jul 2010 15:26:26 -0600
+Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o6MLUwMR093754
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jul 2010 15:31:01 -0600
+Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o6MLUslB016801
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jul 2010 15:30:55 -0600
+In-Reply-To: <20100721190252.GG1215@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul. 22, 2010, 21:45 +0300, Greg Freemyer <greg.freemyer@gmail.com> wrote:
-> On Thu, Jul 22, 2010 at 2:21 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On Jul. 22, 2010, 20:24 +0300, Linus Torvalds <torvalds@linux-foundation.org> wrote:
->>> On Thu, Jul 22, 2010 at 10:03 AM, Jan Engelhardt <jengelh@medozas.de> wrote:
->>>>
->>>> I beg to differ. ctime is not completely useless. It reflects changes on
->>>> the inode for when you don't you change the content.
->>>
->>> Uh. Yes. Except that why is file metadata really different from file
->>> data? Most people really don't care. And a lot of people have asked
->>> for creation dates - and I seriously doubt that Windows people
->>> complain a lot about the fact that there you have mtime for metadata
->>> changes too.
->>>
->>> The point being that Unix ctime semantics certainly have well-defined
->>> semantics, but they are in no way "better" than having a real creation
->>> time, and are often worse.
+On 07/21/2010 02:02 PM, Jan Kara wrote:
 >>
->> Yeah, having create time would be important.
->> That said, having a non user-settable modify timestamp is crucial
->> for quickly determining whether a file has changed.
-> 
-> How would "cp --archive" and a host of backup/restore tools work
-> without user-settable modify timestamps?
-> 
-> Or are you proposing another timestamp?  I do computer forensics, I
-> like timestamps, but enough is enough.
+>> I've been debugging a hang in jbd2_journal_release_jbd_inode
+>> which is being seen on Power 6 systems quite a lot. When we get
+>> in the hung state, all I/O to the disk in question gets blocked
+>> where we stay indefinitely. Looking at the task list, I can see
+>> we are stuck in jbd2_journal_release_jbd_inode waiting on a
+>> wake up. I added some debug code to detect this scenario and
+>> dump additional data if we were stuck in jbd2_journal_release_jbd_inode
+>> for longer than 30 minutes. When it hit, I was able to see that
+>> i_flags was 0, suggesting we missed the wake up.
+>>
+>> This patch changes i_flags to be an unsigned long, uses bit operators
+>> to access it, and adds barriers around the accesses. Prior to applying
+>> this patch, we were regularly hitting this hang on numerous systems
+>> in our test environment. After applying the patch, the hangs no longer
+>> occur. Its still not clear to me why the j_list_lock doesn't protect us
+>> in this path.
+>   Thanks for debugging this! I was thinking hard about how it could happen that
+> wake_up_bit doesn't wake up the waiter but I haven't found any explanation. All
+> the waitqueue work seems to be properly wrapped inside the j_list_lock so
+> even the waitqueue_active check in wake_up_bit should be fine.
+>   I'd really like to understand what in my mind-model of spinlocks etc. is
+> wrong. So could you maybe run a test with the attached debug patch and
+> dump 'wait.seen' value in the hung task?
+>   And one more question - if you remove 'waitqueue_active' check from
+> kernel/wait.c:__wake_up_bit
+>   is the problem still present? Thanks a lot in advance.
 
-mtime and atime are already user settable and archive programs use
-this on the destination, but ctime would be different after
-copy/restore.
+I'll see about getting one of our systems loaded up with this change and see
+what happens. 
 
-When updating the archive, just comparing mtime to determine if the source
-changed is problematic as it can be set to any value after the change,
-but src.ctime would be greater than dest.ctime in this case.
+Thanks!
 
-With posix semantics (http://www.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap04.html#tag_04_07)
-this is not perfect either as there can be false-positives when the file stat changed but
-the file has not, e.g. when st_nlink changed.
+Brian
 
-Benny
+-- 
+Brian King
+Linux on Power Virtualization
+IBM Linux Technology Center
 
-> 
-> Greg
+
