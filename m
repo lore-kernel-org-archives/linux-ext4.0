@@ -1,66 +1,65 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-Date: Thu, 22 Jul 2010 14:45:07 -0400
-Message-ID: <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	<20100722162712.GB10352@jeremy-laptop>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
-	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
-	<4C488C41.60002@panasas.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended  file stats available [ver #6]
+Date: Thu, 22 Jul 2010 14:59:20 -0400
+Message-ID: <1279825160.3621.71.camel@heimdal.trondhjem.org>
+References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	 <20100722162712.GB10352@jeremy-laptop>
+	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	 <1279817930.3621.14.camel@heimdal.trondhjem.org>
+	 <20100722180204.GA32008@samba1>  <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jan Engelhardt <jengelh@medozas.de>,
-	Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jeremy Allison <jra@samba.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
 	David Howells <dhowells@redhat.com>,
+	Jan Engelhardt <jengelh@medozas.de>,
 	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
 	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
 	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:54970 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756634Ab0GVSpJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jul 2010 14:45:09 -0400
-In-Reply-To: <4C488C41.60002@panasas.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Volker.Lendecke@SerNet.DE
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 22, 2010 at 2:21 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On Jul. 22, 2010, 20:24 +0300, Linus Torvalds <torvalds@linux-foundation.org> wrote:
->> On Thu, Jul 22, 2010 at 10:03 AM, Jan Engelhardt <jengelh@medozas.de> wrote:
->>>
->>> I beg to differ. ctime is not completely useless. It reflects changes on
->>> the inode for when you don't you change the content.
->>
->> Uh. Yes. Except that why is file metadata really different from file
->> data? Most people really don't care. And a lot of people have asked
->> for creation dates - and I seriously doubt that Windows people
->> complain a lot about the fact that there you have mtime for metadata
->> changes too.
->>
->> The point being that Unix ctime semantics certainly have well-defined
->> semantics, but they are in no way "better" than having a real creation
->> time, and are often worse.
->
-> Yeah, having create time would be important.
-> That said, having a non user-settable modify timestamp is crucial
-> for quickly determining whether a file has changed.
+On Thu, 2010-07-22 at 20:04 +0200, Volker Lendecke wrote:
+> On Thu, Jul 22, 2010 at 11:02:04AM -0700, Jeremy Allison wrote:
+> > On Thu, Jul 22, 2010 at 12:58:50PM -0400, Trond Myklebust wrote:
+> > > 
+> > > That would make it impossible to export the filesystem with NFSv2 and
+> > > v3. They do rely on ctime checking for certain operations (e.g. deciding
+> > > when to invalidate access and acl caches). NFSv4 needs this too if the
+> > > filesystem has no dedicated change attribute.
+> > > 
+> > > Still, I suppose the market for exporting the same filesystem with both
+> > > NFS and Samba is limited...
+> > 
+> > Ask NetApp about that :-). They have built a rather large
+> > business on just that fact :-).
+> 
+> Jeremy, how many hours have you spent getting "posix
+> locking" to the point where it is now? :-)
+> 
+> Volker
+> 
+> P.S: For those not aware, "posix locking = yes" is
+> cross-protocol byte range locking done by smbd to co-operate
+> with local processes and NFS.
 
-How would "cp --archive" and a host of backup/restore tools work
-without user-settable modify timestamps?
+I said "limited", not "non-existent".
 
-Or are you proposing another timestamp?  I do computer forensics, I
-like timestamps, but enough is enough.
+The fact remains that most of us would be hard pressed to name an
+application that requires you to share the same dataset to both
+Windows/CIFS and posix NFS clients. Everything from ACL models through
+caseless vs case-aware filesystems and Windows vs posix locking
+semantics tends to discourage mixing the two environments.
 
-Greg
+   Trond
+
