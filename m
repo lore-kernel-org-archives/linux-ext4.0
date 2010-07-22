@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/7] tst_extents: Fix 64-bit bugs in do_goto_block()
-Date: Thu, 22 Jul 2010 10:03:12 -0400
-Message-ID: <1279807398-13680-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/7] libext2fs: Fix ext2fs_iblk_{add,sub}_blocks() when the i_blocks_hi is non-zero
+Date: Thu, 22 Jul 2010 10:03:13 -0400
+Message-ID: <1279807398-13680-3-git-send-email-tytso@mit.edu>
 References: <1279807398-13680-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 To: Renzo Davoli <renzo@cs.unibo.it>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34079 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:34069 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759467Ab0GVODW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1759421Ab0GVODW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 22 Jul 2010 10:03:22 -0400
 In-Reply-To: <1279807398-13680-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,47 +17,60 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/extent.c |   14 ++++++++------
- 1 files changed, 8 insertions(+), 6 deletions(-)
+ lib/ext2fs/i_block.c |   17 +++++++++--------
+ 1 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 030d73a..490dbe8 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1981,8 +1981,8 @@ void do_goto_block(int argc, char **argv)
- 	struct ext2fs_extent	extent;
- 	errcode_t		retval;
- 	int			op = EXT2_EXTENT_NEXT_LEAF;
--	blk_t			blk;
--	int			level = 0;
-+	blk64_t			blk;
-+	int			level = 0, err;
+diff --git a/lib/ext2fs/i_block.c b/lib/ext2fs/i_block.c
+index 822776d..39d93ee 100644
+--- a/lib/ext2fs/i_block.c
++++ b/lib/ext2fs/i_block.c
+@@ -31,6 +31,9 @@ errcode_t ext2fs_iblk_add_blocks(ext2_filsys fs, struct ext2_inode *inode,
+ {
+ 	unsigned long long b = inode->i_blocks;
  
- 	if (common_extent_args_process(argc, argv, 2, 3, "goto_block",
- 				       "block [level]", 0))
-@@ -1991,16 +1991,18 @@ void do_goto_block(int argc, char **argv)
- 	if (strtoblk(argv[0], argv[1], &blk))
- 		return;
++	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
++		b += ((long long) inode->osd2.linux2.l_i_blocks_hi) << 32;
++
+ 	if (!(fs->super->s_feature_ro_compat &
+ 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+ 	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
+@@ -38,11 +41,9 @@ errcode_t ext2fs_iblk_add_blocks(ext2_filsys fs, struct ext2_inode *inode,
  
--	if (argc == 3)
--		if (strtoblk(argv[0], argv[2], &level))
-+	if (argc == 3) {
-+		level = parse_ulong(argv[2], argv[0], "level", &err);
-+		if (err)
- 			return;
-+	}
+ 	b += num_blocks;
  
- 	retval = extent_goto(current_handle, level, (blk64_t) blk);
+-	if (fs->super->s_feature_ro_compat &
+-	    EXT4_FEATURE_RO_COMPAT_HUGE_FILE) {
+-		b += ((long long) inode->osd2.linux2.l_i_blocks_hi) << 32;
++	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
+ 		inode->osd2.linux2.l_i_blocks_hi = b >> 32;
+-	} else if (b > 0xFFFFFFFF)
++	else if (b > 0xFFFFFFFF)
+ 		return EOVERFLOW;
+ 	inode->i_blocks = b & 0xFFFFFFFF;
+ 	return 0;
+@@ -53,6 +54,9 @@ errcode_t ext2fs_iblk_sub_blocks(ext2_filsys fs, struct ext2_inode *inode,
+ {
+ 	unsigned long long b = inode->i_blocks;
  
- 	if (retval) {
- 		com_err(argv[0], retval,
--			"while trying to go to block %u, level %d",
--			blk, level);
-+			"while trying to go to block %llu, level %d",
-+			(unsigned long long) blk, level);
- 		return;
- 	}
++	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
++		b += ((long long) inode->osd2.linux2.l_i_blocks_hi) << 32;
++
+ 	if (!(fs->super->s_feature_ro_compat &
+ 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+ 	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
+@@ -63,11 +67,8 @@ errcode_t ext2fs_iblk_sub_blocks(ext2_filsys fs, struct ext2_inode *inode,
  
+ 	b -= num_blocks;
+ 
+-	if (fs->super->s_feature_ro_compat &
+-	    EXT4_FEATURE_RO_COMPAT_HUGE_FILE) {
+-		b += ((long long) inode->osd2.linux2.l_i_blocks_hi) << 32;
++	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_HUGE_FILE)
+ 		inode->osd2.linux2.l_i_blocks_hi = b >> 32;
+-	}
+ 	inode->i_blocks = b & 0xFFFFFFFF;
+ 	return 0;
+ }
 -- 
 1.7.0.4
 
