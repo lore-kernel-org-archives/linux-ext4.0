@@ -1,25 +1,64 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Thu, 22 Jul 2010 17:06:52 +0100
-Message-ID: <20728.1279814812@redhat.com>
-References: <alpine.LSU.2.01.1007221740570.12308@obet.zrqbmnf.qr> <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE> <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	Volker.Lendecke-3ekOc4rQMZmzQB+pC5nmwQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <alpine.LSU.2.01.1007221740570.12308-SHaQjdQMGhDmsUXKMKRlFA@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Engelhardt <jengelh@medozas.de>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+  file stats available [ver #6]
+Date: Thu, 22 Jul 2010 18:25:25 +0200 (CEST)
+Message-ID: <alpine.LSU.2.01.1007221818460.21589@obet.zrqbmnf.qr>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>  <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>  <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+ <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>  <E1Obxpd-00CRIo-SF@intern.SerNet.DE> <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from borg.medozas.de ([188.40.89.202]:42890 "EHLO borg.medozas.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751448Ab0GVQZ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Jul 2010 12:25:26 -0400
+In-Reply-To: <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org> wrote:
 
-> There just is no way currently to store creation times.
+On Thursday 2010-07-22 17:47, Linus Torvalds wrote:
+>On Thu, Jul 22, 2010 at 8:36 AM, Volker Lendecke
+><Volker.Lendecke@sernet.de> wrote:
+>>
+>> The nice thing about this is also that if this is supposed
+>> to be fully usable for Windows clients, the birthtime needs
+>> to be changeable. That's what NTFS semantics gives you, thus
+>> Windows clients tend to require it.
+>
+>Ok. So it's not really a creation date, exactly the same way ctime
+>isn't at all a creation date. [...]
+>Tell me why we shouldn't just do this right?
 
-What do you mean?  Ext4 and BtrFS can both do so; it's just that there's no
-user interface to it.
+Nobody said the c in ctime stands for creation. It stands for
+change (you probably knew that).
 
-David
+$ touch this
+$ stat this
+  File: `this'
+  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
+Device: fh/15d  Inode: 106777647   Links: 1
+Access: (0644/-rw-r--r--)  Uid: (25121/ jengelh)   Gid: (  100/   users)
+Access: 2010-07-22 18:18:52.665480058 +0200
+Modify: 2010-07-22 18:18:52.665480058 +0200
+Change: 2010-07-22 18:18:52.665480058 +0200
+
+# Only change inode, not content
+$ chmod 600 this
+$ stat this
+  File: `this'
+  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
+Device: fh/15d  Inode: 106777647   Links: 1
+Access: (0600/-rw-------)  Uid: (25121/ jengelh)   Gid: (  100/   users)
+Access: 2010-07-22 18:18:52.665480058 +0200
+Modify: 2010-07-22 18:18:52.665480058 +0200
+Change: 2010-07-22 18:18:58.533436339 +0200
+
+
+(Solaris exhibits the very same kind of behavior.)
