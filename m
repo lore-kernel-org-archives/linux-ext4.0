@@ -1,46 +1,38 @@
-From: Jan Engelhardt <jengelh@medozas.de>
+From: David Howells <dhowells@redhat.com>
 Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- file stats available [ver #6]
-Date: Thu, 22 Jul 2010 12:52:36 +0200 (CEST)
-Message-ID: <alpine.LSU.2.01.1007221248050.9353@obet.zrqbmnf.qr>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <20100718084824.GA27794@infradead.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-	drepper@redhat.com, torvalds@linux-foundation.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from borg.medozas.de ([188.40.89.202]:51809 "EHLO borg.medozas.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755177Ab0GVKwh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Jul 2010 06:52:37 -0400
-In-Reply-To: <20100718084824.GA27794@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	file stats available [ver #6]
+Date: Thu, 22 Jul 2010 13:14:47 +0100
+Message-ID: <30448.1279800887@redhat.com>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	dhowells@redhat.com, viro@ZenIV.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Engelhardt <jengelh@medozas.de>
+Return-path: <samba-technical-bounces@lists.samba.org>
+In-Reply-To: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+List-Unsubscribe: <https://lists.samba.org/mailman/options/samba-technical>,
+	<mailto:samba-technical-request@lists.samba.org?subject=unsubscribe>
+List-Archive: <http://lists.samba.org/pipermail/samba-technical>
+List-Post: <mailto:samba-technical@lists.samba.org>
+List-Help: <mailto:samba-technical-request@lists.samba.org?subject=help>
+List-Subscribe: <https://lists.samba.org/mailman/listinfo/samba-technical>,
+	<mailto:samba-technical-request@lists.samba.org?subject=subscribe>
+Sender: samba-technical-bounces@lists.samba.org
+Errors-To: samba-technical-bounces@lists.samba.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sunday 2010-07-18 10:48, Christoph Hellwig wrote:
+Jan Engelhardt <jengelh@medozas.de> wrote:
 
->Adding Uli to the Cc list to make sure this system call is useful
->for glibc / can be exported by it.  Otherwise it's rather pointless
->to add it.
->
->>  (6) BSD stat compatibility: Including more fields from the BSD stat such as
->>      creation time (st_btime) and inode generation number (st_gen) [Jeremy
->>      Allison, Bernd Schubert]
->
->How is this different from (1) and (4)?
+> Linux already has a creation time field, it's called otime (there is no "b"
+> in "creation"), and you will find scattered fragments of that all over the
+> kernel (foremost, fs/jfs/, now btrfs, and I also notice sysvipc having
+> something with that name).
 
-(4), the inode generation number, need not be related to time.
+It is?  It's called crtime in Ext4.  st_btime, however, would be compatible
+with BSD's stat, and Samba would just use it by way of autoconf magic if it
+appeared.
 
->>  (8) Allow the filesystem to indicate what it can/cannot provide: A filesystem
->>      can now say it doesn't support a standard stat feature if that isn't
->>      available.
->
->What for?
-
-Given xstat.otime=0, how would you determine whether the file is really 
-tagged with a date of 1970, or whether it's just the fs which didnot 
-store this kind of information.
+David
