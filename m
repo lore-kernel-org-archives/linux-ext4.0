@@ -1,69 +1,58 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Date: Thu, 22 Jul 2010 13:16:07 -0400
-Message-ID: <1279818967.3621.23.camel@heimdal.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+Date: Thu, 22 Jul 2010 10:32:31 -0700
+Message-ID: <AANLkTinmV7YuRof7dZGDmbXR_7J2hz2Z_DtsDu54dUGo@mail.gmail.com>
 References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	 <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	 <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	 <20100722162712.GB10352@jeremy-laptop>
-	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	 <alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	<E1Obxpd-00CRIo-SF@intern.SerNet.DE> <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	<20100722162712.GB10352@jeremy-laptop> <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<20100722171224.GA8630@merit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
 	David Howells <dhowells@redhat.com>,
+	Jan Engelhardt <jengelh@medozas.de>,
 	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
 	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
 	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Jan Engelhardt <jengelh@medozas.de>
+To: Jim Rees <rees@umich.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:52171 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751260Ab0GVRQc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:16:32 -0400
-In-Reply-To: <alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:44078 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759399Ab0GVRd1 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Jul 2010 13:33:27 -0400
+In-Reply-To: <20100722171224.GA8630@merit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2010-07-22 at 19:03 +0200, Jan Engelhardt wrote:
-> On Thursday 2010-07-22 18:40, Linus Torvalds wrote:
-> 
-> >On Thu, Jul 22, 2010 at 9:27 AM, Jeremy Allison <jra@samba.org> wrote:
-> >> On Thu, Jul 22, 2010 at 08:47:46AM -0700, Linus Torvalds wrote:
-> >>> Tell me why we shouldn't just do this right?
-> >>
-> >> No, ctime isn't the same as Windows "create time".
-> >
-> >Umm. What kind of reading problems do you guys have?
-> >
-> >I know effin well that ctime isn't the same as Windows create time.
-> >THAT WAS MY POINT.
-> >
-> >But the fact is, th Unix ctime semantics are insane and largely
-> >useless. There's a damn good reason almost nobody uses ctime under
-> >unix.
-> 
-> I beg to differ. ctime is not completely useless. It reflects changes on 
-> the inode for when you don't you change the content. It's like an mtime 
-> for the metadata. It comes useful when you go around in your filesystem 
-> trying to figure out who of your co-admins screwed up the permissions on 
-> /etc/passwd... and if the mtime is the same as that of the last backup, 
-> I can at least have a reasonable assurance that it was /only/ the 
-> metadata that was tampered with. (SHA1 check, yeah yeah, costly on large 
-> files.)
+On Thu, Jul 22, 2010 at 10:12 AM, Jim Rees <rees@umich.edu> wrote:
+>
+> I believe it was done that way so "dump" could backup just the inode =
+and not
+> the data if only the inode had changed. =A0Full history here:
+>
+> http://blog.plover.com/Unix/ctime.html
 
-Errr... Only if you eliminate utimes() from your syscall table.
-Otherwise it is trivial to reset the mtime after changing the file
-contents.
+Yes, the dump reasoning makes sense, and that history also shows that
+originally chmod just changed mtime (since that's the _sane_ thing to
+do). So if it wasn't for dump - that nobody uses any more and that was
+considered a hack even back when and never supported things like
+xattrs etc - unix probably wouldn't have a ctime at all (or would have
+implemented a "creation time" because people would have asked for it).
 
-Cheers
-  Trond
+So I'm sure there are reasons for ctime. That just doesn't mean that
+it's really "good", the same way there were reasons to name "creat()"
+without the "e".
 
+                                  Linus
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
