@@ -1,50 +1,51 @@
-From: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- file stats available [ver #6]
-Date: Thu, 22 Jul 2010 15:05:22 +0200 (CEST)
-Message-ID: <alpine.LSU.2.01.1007221457120.25261@obet.zrqbmnf.qr>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Volker Lendecke <Volker.Lendecke-PS7XAnAlDA+VvDNblw4Uiw@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <E1Obuiy-00C9jr-Al-dqLtpHMqGvUyWpdLl23E4A@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 0/7] Revised set of patches for fuse-ext2
+Date: Thu, 22 Jul 2010 10:03:11 -0400
+Message-ID: <1279807398-13680-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Renzo Davoli <renzo@cs.unibo.it>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:34072 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759438Ab0GVODW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Jul 2010 10:03:22 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thursday 2010-07-22 14:17, Volker Lendecke wrote:
->On Thu, Jul 22, 2010 at 01:14:47PM +0100, David Howells wrote:
->> Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org> wrote:
->> 
->> > Linux already has a creation time field, it's called otime (there is no "b"
->> > in "creation"), and you will find scattered fragments of that all over the
->> > kernel (foremost, fs/jfs/, now btrfs, and I also notice sysvipc having
->> > something with that name).
->> 
->> It is?  It's called crtime in Ext4.  st_btime, however, would be compatible
->> with BSD's stat, and Samba would just use it by way of autoconf magic if it
->> appeared.
+Hi Renzo,
 
-Of course you can find remnants of btime in Linux's BSD-style task 
-accounting, but Linux always looked more like SysV than BSD, speaking 
-for otime. And if you are using autoconf, the cost of using otime over 
-btime seems the same.
+I didn't like how you implemented the truncate function, so I tried
+implementing it myself.  I added a more generic ext2fs_punch() function
+which is then used by ext2fs_file_size2().
 
->Samba has the following check:
->
-># recent FreeBSD, NetBSD have creation timestamps called birthtime:             
->AC_CHECK_MEMBERS([struct stat.st_birthtimespec.tv_nsec])
->AC_CHECK_MEMBERS([struct stat.st_birthtime], AC_CHECK_MEMBERS([struct stat.st_birthtimensec]))
->
->and the supporting code around that. "birth" might also be
->where the "b" comes from :-)
+Can you try out how well this works for you?
 
-Well, in all reference to the Matrix movie, files aren't born. Except 
-for Directory Default ACLs and possibly security labels, they usually 
-don't inherit either :)  And on a CS level, it's more like copy than 
-inherit, because if the parent changes, the file does not (with the 
-potential exception of security relabeling, bla).
+        	    	    	 - Ted
+
+Renzo Davoli (1):
+  libext2fs: Add new function ext2fs_file_get_inode()
+
+Theodore Ts'o (6):
+  tst_extents: Fix 64-bit bugs in do_goto_block()
+  libext2fs: Fix ext2fs_iblk_{add,sub}_blocks() when the i_blocks_hi is
+    non-zero
+  libext2fs: Don't make a copy of the inode in ext2fs_extent_open2()
+  libext2fs: Add new function ext2fs_punch()
+  debugfs: Add new debugfs command punch (aka truncate)
+  libext2fs: Add ext2fs_file_size_size2() and truncate the file if
+    necessary
+
+ debugfs/debug_cmds.ct  |    3 +
+ debugfs/debugfs.8.in   |   12 ++
+ debugfs/debugfs.c      |   31 +++++
+ debugfs/debugfs.h      |    1 +
+ lib/ext2fs/Makefile.in |   32 ++++-
+ lib/ext2fs/ext2fs.h    |    8 ++
+ lib/ext2fs/extent.c    |   27 ++---
+ lib/ext2fs/fileio.c    |   28 +++--
+ lib/ext2fs/i_block.c   |   17 ++--
+ lib/ext2fs/punch.c     |  324 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 446 insertions(+), 37 deletions(-)
+ create mode 100644 lib/ext2fs/punch.c
+
