@@ -1,42 +1,50 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Thu, 22 Jul 2010 13:25:31 +0100
-Message-ID: <30638.1279801531@redhat.com>
-References: <alpine.LSU.2.01.1007221248050.9353@obet.zrqbmnf.qr> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <20100718084824.GA27794@infradead.org>
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, drepper-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
-To: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>
+From: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+ file stats available [ver #6]
+Date: Thu, 22 Jul 2010 15:05:22 +0200 (CEST)
+Message-ID: <alpine.LSU.2.01.1007221457120.25261@obet.zrqbmnf.qr>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Volker Lendecke <Volker.Lendecke-PS7XAnAlDA+VvDNblw4Uiw@public.gmane.org>
 Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <alpine.LSU.2.01.1007221248050.9353-SHaQjdQMGhDmsUXKMKRlFA@public.gmane.org>
+In-Reply-To: <E1Obuiy-00C9jr-Al-dqLtpHMqGvUyWpdLl23E4A@public.gmane.org>
 Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org> wrote:
+On Thursday 2010-07-22 14:17, Volker Lendecke wrote:
+>On Thu, Jul 22, 2010 at 01:14:47PM +0100, David Howells wrote:
+>> Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org> wrote:
+>> 
+>> > Linux already has a creation time field, it's called otime (there is no "b"
+>> > in "creation"), and you will find scattered fragments of that all over the
+>> > kernel (foremost, fs/jfs/, now btrfs, and I also notice sysvipc having
+>> > something with that name).
+>> 
+>> It is?  It's called crtime in Ext4.  st_btime, however, would be compatible
+>> with BSD's stat, and Samba would just use it by way of autoconf magic if it
+>> appeared.
 
-> >> (8) Allow the filesystem to indicate what it can/cannot provide: A
-> >>     filesystem can now say it doesn't support a standard stat feature if
-> >>     that isn't available.
-> >
-> >What for?
-> 
-> Given xstat.otime=0, how would you determine whether the file is really 
-> tagged with a date of 1970, or whether it's just the fs which didnot 
-> store this kind of information.
+Of course you can find remnants of btime in Linux's BSD-style task 
+accounting, but Linux always looked more like SysV than BSD, speaking 
+for otime. And if you are using autoconf, the cost of using otime over 
+btime seems the same.
 
-I was thinking more of stuff that's already in the Linux stat struct, some of
-which is fabricated because the underlying fs doesn't support it.
+>Samba has the following check:
+>
+># recent FreeBSD, NetBSD have creation timestamps called birthtime:             
+>AC_CHECK_MEMBERS([struct stat.st_birthtimespec.tv_nsec])
+>AC_CHECK_MEMBERS([struct stat.st_birthtime], AC_CHECK_MEMBERS([struct stat.st_birthtimensec]))
+>
+>and the supporting code around that. "birth" might also be
+>where the "b" comes from :-)
 
-Take RomFS for example: it fabricates all of st_mtime, st_atime, st_ctime,
-st_nlinks, st_blocks, st_uid and st_gid because none of them are stored in the
-medium
-
-Similarly, UbiFS fabricates st_blocks and complains in a comment that it makes
-no sense for that type of filesystem.
-
-There are other examples.
-
-David
+Well, in all reference to the Matrix movie, files aren't born. Except 
+for Directory Default ACLs and possibly security labels, they usually 
+don't inherit either :)  And on a CS level, it's more like copy than 
+inherit, because if the parent changes, the file does not (with the 
+potential exception of security relabeling, bla).
