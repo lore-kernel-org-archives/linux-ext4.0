@@ -1,93 +1,67 @@
-From: shenghui <crosslonelyover@gmail.com>
-Subject: Re: [PATCH] check name_len before down_read xattr_sem and sb_read in
-	ext2_xattr_get
-Date: Thu, 22 Jul 2010 08:03:18 +0800
-Message-ID: <AANLkTikXSOHrIw0SVJMYqsQy1aG5sCXkvvOFU4XLDNGv@mail.gmail.com>
-References: <201007122229025316610@gmail.com>
-	<20100721174457.GE1215@atrey.karlin.mff.cuni.cz>
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [PATCH 1/2] mbcache: Remove unused features
+Date: Thu, 22 Jul 2010 02:07:40 +0200
+Message-ID: <201007220207.40940.agruen@suse.de>
+References: <4C46FD67.8070808@redhat.com> <20100721202636.B94F83C539AA@imap.suse.de> <4F3D0C4D-BA6B-490E-B656-774578B3F67B@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	kernel-janitors <kernel-janitors@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: Text/Plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "linux-ext4" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:55122 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759120Ab0GVADU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 20:03:20 -0400
-In-Reply-To: <20100721174457.GE1215@atrey.karlin.mff.cuni.cz>
+Received: from cantor.suse.de ([195.135.220.2]:50304 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759124Ab0GVAHq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jul 2010 20:07:46 -0400
+In-Reply-To: <4F3D0C4D-BA6B-490E-B656-774578B3F67B@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/7/22 Jan Kara <jack@suse.cz>:
->> Hi,
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0I walked through ext2_xattr_get, and felt=
- that we can
->> do some optimization on it. For name_len check, it's done
->> after down xattr_sem and sb_read, both of which are time
->> consuming operation compared with strlen:
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0down_read(&EXT2_I(inode)->xattr_se=
-m);
->> =C2=A0...
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bh =3D sb_bread(inode->i_sb, EXT2_=
-I(inode)->i_file_acl);
->> =C2=A0...
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0/* find named attribute */
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0name_len =3D strlen(name);
->>
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0error =3D -ERANGE;
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (name_len > 255)
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto c=
-leanup;
->>
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0Most of the case, you'll get one valid bl=
-ock, but if the
->> name len > 255, then the xattr_sem down and sb_bread operation
->> can be seen as a waste of time. So I think we'd better do
->> name len check as early as possible.
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0Following is my patch, and it's against 2=
-=2E6.35-rc4.
->> Please check it.
->>
->> Signed-off-by: Wang Sheng-Hui <crosslonelyover@gmail.com>
->> ---
->> =C2=A0fs/ext2/xattr.c | =C2=A0 12 +++++++-----
->> =C2=A01 files changed, 7 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
->> index 7c39157..0b94d61 100644
->> --- a/fs/ext2/xattr.c
->> +++ b/fs/ext2/xattr.c
->> @@ -161,6 +161,13 @@ ext2_xattr_get(struct inode *inode, int name_in=
-dex, const char *name,
->>
->> =C2=A0 =C2=A0 =C2=A0 if (name =3D=3D NULL)
->> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return -EINVAL;
->> +
->> + =C2=A0 =C2=A0 /* find named attribute */
->> + =C2=A0 =C2=A0 name_len =3D strlen(name);
->> + =C2=A0 =C2=A0 error =3D -ERANGE;
->> + =C2=A0 =C2=A0 if (name_len > 255)
->> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 goto cleanup;
-> =C2=A0But you cannot go to cleanup here because you don't hold xattr_=
-sem...
->
+>From https://bugzilla.lustre.org/show_bug.cgi?id=22771#c24 :
+> On our production system, the hash table contain 64 entries (6 bits) for a
+> cache of 2307267 entries.
+> A count in each list give a good load balance : number of entries vary
+> between 35782 to 36496 while the optimal repartition is 2307267 / 64 =
+> 36051.
 
-Sorry, I'm a little confused by your words.
-The patch just checks name_len, and it
-doesn't need xattr_sem.
+Hehe, I like that sense of humor :)
 
+On Thursday 22 July 2010 01:18:39 Andreas Dilger wrote:
+> Is it possible to allow mbcache to be disabled, either for the whole
+> kernel, on a per-filesystem basis, or adaptively if the cache hit rate is
+> very low (any of these is fine, not all of them).
 
+We could do that, but making the cache not degrade so badly would be a good 
+idea in any case.  The number of buckets is currently fixed for ext[234] so it 
+would make sense to either make that number dynamic or limit the maximum 
+number of cache entries.  The latter will probably be good enough for most 
+workloads.
 
---=20
+> Attached is a patch that allows manually disabling mbcache on a
+> per-filesystem basis with a mount option.
 
+> I don't think fixing the mbcache to be more efficient (more buckets, more
+> locks, etc) is really solving the problem which is that mbcache is adding
+> overhead without value in these situations.
 
-Thanks and Best Regards,
-shenghui
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+A mount option would be very ugly, but a kernel internal NO_MBCACHE flag 
+sounds more acceptable to me.
+
+> Better would be to
+> automatically disable it if e.g. some hundreds or thousands of objects
+> were inserted into the cache and there was < 1% cache hit rate.
+
+This assumes that the workload won't change.
+
+> That would help everyone, even those people who don't know they have a
+> problem.
+
+People who don't know they have a problem would also be helped by making the 
+cache not degrade so badly, right?
+
+Even better would be to use a more appropriate inode size, but you've pointed 
+that out in the bug already.
+
+Thanks,
+Andreas
