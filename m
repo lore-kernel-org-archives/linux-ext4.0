@@ -1,89 +1,103 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] xfstests 240: test non-aligned AIO hole-filling
-Date: Fri, 23 Jul 2010 20:12:22 +1000
-Message-ID: <20100723101222.GH32635@dastard>
-References: <4C489676.2000605@redhat.com>
- <20100723024938.GD32635@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: 2.6.35-r5 ext3 corruptions
+Date: Fri, 23 Jul 2010 12:43:14 +0200
+Message-ID: <20100723104313.GA6431@atrey.karlin.mff.cuni.cz>
+References: <20100715105745.GI30737@dastard> <20100719224512.GD32635@dastard> <20100721063222.GW32635@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bld-mail19.adl2.internode.on.net ([150.101.137.104]:35601 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753718Ab0GWKMa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jul 2010 06:12:30 -0400
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20100723024938.GD32635@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20100721063222.GW32635@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 23, 2010 at 12:49:38PM +1000, Dave Chinner wrote:
-> On Thu, Jul 22, 2010 at 02:05:26PM -0500, Eric Sandeen wrote:
-> > This replicates file corruption we've seen with qemu-kvm when
-> > we use if=virtio,cache=none,aio=native for IO to a sparse
-> > ext4- or xfs-hosted file, and the partitions/filesystems
-> > within that file image are not block-aligned.  (think sector
-> > 63 here...)  This results in AIO IOs not aligned to the
-> > filesystem blocks.
+> On Tue, Jul 20, 2010 at 08:45:12AM +1000, Dave Chinner wrote:
+> > On Thu, Jul 15, 2010 at 08:57:45PM +1000, Dave Chinner wrote:
+> > > Upgrading my test vms from 2.6.35-rc3 to 2.6.35-rc5 is resulting in
+> > > repeated errors on the root drive of a test VM:
+> > > 
+> > > { 1532.368808] EXT3-fs error (device sda1): ext3_lookup: deleted inode referenced: 211043
+> > > [ 1532.370859] Aborting journal on device sda1.
+> > > [ 1532.376957] EXT3-fs (sda1): 
+> > > [ 1532.376976] EXT3-fs (sda1): error: ext3_journal_start_sb: Detected aborted journal
+> > > [ 1532.376980] EXT3-fs (sda1): error: remounting filesystem read-only
+> > > [ 1532.420361] error: remounting filesystem read-only
+> > > [ 1532.621209] EXT3-fs error (device sda1): ext3_lookup: deleted inode referenced: 211043
+> > > 
+> > > The filesysetm is a mess when checked on reboot - lots of illegal
+> > > references to blocks, multiply linked blocks, etc, but repairs.
+> > > Files are lots, truncated, etc, so there is visible filesystem
+> > > damage.
+> > > 
+> > > I did lots of testing on 2.6.35-rc3 and came across no problems;
+> > > problems only seemed to start with 2.6.35-rc5, and I've reproduced
+> > > the problem on a vanilla 2.6.35-rc4.
+> > > 
+> > > The problem seems to occur randomly - sometimes during boot or when
+> > > idle after boot, sometimes a while after boot. I haven't done any
+> > > digging at all for the cause - all I've done so far is confirm that
+> > > it is reproducable and it's not my code causing the problem.
 > > 
-> > This test modifies aiodio_sparse2.c to add an option to start
-> > the file IO at an offset.
-> > 
-> > When we do 4k writes to a 16k file in 2 threads, starting
-> > at offset 512, we get 0s interspersed in the file where they
-> > should not be:
-> > 
-> > 00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-> > *
-> > 00000200  01 01 01 01 01 01 01 01  01 01 01 01 01 01 01 01  |................|
-> > *
-> > 00001000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-> > *
-> > 00001200  01 01 01 01 01 01 01 01  01 01 01 01 01 01 01 01  |................|
-> > ....
-> > 
-> > Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+> > Looks like this problem was isolated to a single VM and root
+> > filesystem. I could not reproduce it on anything other than the
+> > one filesystem that was failing.
 > 
-> looks good - it needs to remove the $TEST_DIR/aiodio_sparse file
-> before the test starts, though, so that repeated tests fail
-> correctly. Otherwise:
+> Ok, so now I know *why* that one filesystem got busted - I built a
+> kernel without CONFIG_EXT3_DEFAULTS_TO_ORDERED set and it got a
+> forced reboot (echo b > proc/sysrq-trigger). That'll teach me for
+> trying to reproduce bugs Andrew is tripping over with his config
+> files.
 > 
-> Reviewed-by: Dave Chinner <dchinner@redhat.com>
-> 
-> Also, Eric, can you run this proof-of-concept test branch (on top of
-> the current XFS for-2.6.36 branch) and see if QEMU is happy with it?
-> It passes this test on my machine....
-> 
-> The following changes since commit d2ec2c790b3994bf0c4381cacc489b514705887c:
-> 
->   xfs: clean up xfs_bmap_get_bp (2010-07-22 12:52:08 +1000)
-> 
-> are available in the git repository at:
->   git://git.kernel.org/pub/scm/linux/kernel/git/dgc/xfsdev aio-unaligned
+> Quite frankly, data=writeback mode for ext3 is a dangerous,
+> dangerous configuration to run by default. IMO, it shouldn't be the
+> default. Patch below.
+  data=writeback can cause larger data loss and stale data exposure but it
+actually shouldn't cause filesystem corruption about which you write in the
+changelog below. I'd much rather attribute the metadata corruption to a missing
+barrier option or barrier support in the virtualization stack. But I guess it's
+hard to tell now.
+  Anyways, I agree with you that data=ordered is a saner default so I'll
+push your change.
 
-I just pushed another patch onto this series that will makes test
-240 pass reliably here rather than hanging. It's all a bit messy,
-but it does serve to illustrate the problem and a potential avenue
-to prevent it....
-
-Dave Chinner (5):
-      Merge branch 'master' into working
-      Merge branch 'for-2.6.36' into working
-      fs: get_blocks needs an unaligned mapping flag
-      xfs: serialise unaligned direct IO into unwritten extents
-      xfs: wait on IO completion inside an IO context
-
- fs/buffer.c                 |   17 ++++----
- fs/direct-io.c              |   25 ++++++++++-
- fs/ioctl.c                  |    2 +-
- fs/mpage.c                  |    6 ++-
- fs/xfs/linux-2.6/xfs_aops.c |   95 ++++++++++++++++++++++++++++++++++++++-----
- fs/xfs/xfs_inode.h          |   13 +++---
- include/linux/fs.h          |   10 ++++-
- 7 files changed, 136 insertions(+), 32 deletions(-)
-
+								Honza
+> -- 
+> Dave Chinner
+> david@fromorbit.com
+> 
+> ext3: default to ordered mode
+> 
+> From: Dave Chinner <dchinner@redhat.com>
+> 
+> data=writeback mode is dangerous and is leads to filesystem
+> corruption, data loss and stale data exposure when systems crash. It
+> should not be the default, especially when all major distros ensure
+> their ext3 filesystems default to ordered mode. Change the default
+> mode to the safer data=ordered mode, because we should be caring
+> far more about avoiding corruption than performance.
+> 
+> Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> ---
+>  fs/ext3/Kconfig |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
+> index 522b154..e8c6ba0 100644
+> --- a/fs/ext3/Kconfig
+> +++ b/fs/ext3/Kconfig
+> @@ -31,6 +31,7 @@ config EXT3_FS
+>  config EXT3_DEFAULTS_TO_ORDERED
+>  	bool "Default to 'data=ordered' in ext3"
+>  	depends on EXT3_FS
+> +	default y
+>  	help
+>  	  The journal mode options for ext3 have different tradeoffs
+>  	  between when data is guaranteed to be on disk and
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
