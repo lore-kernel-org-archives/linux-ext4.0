@@ -1,131 +1,142 @@
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-Subject: [PATCH 3/3] OCFS2: Allow huge (> 16 TiB) volumes to
-	mount
-Date: Thu, 22 Jul 2010 15:05:57 -0700
-Message-ID: <871vav2muy.fsf@patl.com>
-References: <874ofr2myq.fsf@patl.com> <8739vb2mxr.fsf@patl.com>
+From: tridge@samba.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+Date: Fri, 23 Jul 2010 11:03:47 +1000
+Message-ID: <19528.60019.28495.655512@samba.org>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	<20100722162712.GB10352@jeremy-laptop>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+Reply-To: tridge@samba.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: ocfs2-devel@oss.oracle.com
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
-List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
+Cc: Jeremy Allison <jra@samba.org>, linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, Volker.Lendecke@sernet.de,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	Jan Engelhardt <jengelh@medozas.de>,
+	David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The OCFS2 developers have already done all of the hard work to allow
-volumes larger than 16 TiB.  But there is still a "sanity check" in
-fs/ocfs2/super.c that prevents the mounting of such volumes, even when
-the cluster size and journal options would allow it.
+Hi Linus,
 
-This patch replaces that sanity check with a more sophisticated one to
-mount a huge volume provided that (a) it is addressable by the raw
-word/address size of the system (borrowing a test from ext4); (b) the
-volume is using JBD2; and (c) the JBD2_FEATURE_INCOMPAT_64BIT flag is
-set on the journal.
+ > My point is that we have three timestamps, and
+ > windows wants three timestamps (somebody claims that NTFS has four
+ > timestamps, but the Windows file time access functions certainly only
+ > shows three times, so any potential extra on-disk times have no
+ > relevance because they are invisible to pretty much everybody).
 
-I factored out the sanity check into its own function.  I also moved it
-from ocfs2_initialize_super() down to ocfs2_check_volume(); any earlier,
-and the journal will not have been initialized yet.
+Not quite. The underlying structure available to Windows programmers
+is this one:
 
-This patch is one of a pair, and it depends on the other ("JBD2: Allow
-feature checks before journal recovery").
+typedef struct _FILE_BASIC_INFORMATION {
+  LARGE_INTEGER CreationTime;
+  LARGE_INTEGER LastAccessTime;
+  LARGE_INTEGER LastWriteTime;
+  LARGE_INTEGER ChangeTime;
+  ULONG         FileAttributes;
+} FILE_BASIC_INFORMATION, *PFILE_BASIC_INFORMATION;
 
-I have tested this patch on small volumes, huge volumes, and huge
-volumes without 64-bit block support in the journal.  All of them appear
-to work or to fail gracefully, as appropriate.
+See http://msdn.microsoft.com/en-us/library/ff545762%28v=VS.85%29.aspx
 
-Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
+These are the definitions:
 
-diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
-index 0eaa929..76dac4c 100644
---- a/fs/ocfs2/super.c
-+++ b/fs/ocfs2/super.c
-@@ -1991,6 +1991,36 @@ static int ocfs2_setup_osb_uuid(struct ocfs2_super *osb, const unsigned char *uu
- 	return 0;
- }
- 
-+/* Make sure entire volume is addressable by our journal.  Requires
-+   osb_clusters_at_boot to be valid and for the journal to have been
-+   initialized by ocfs2_journal_init(). */
-+static int ocfs2_journal_addressable(struct ocfs2_super *osb)
-+{
-+	int status = 0;
-+	u64 max_block =
-+		ocfs2_clusters_to_blocks(osb->sb,
-+					 osb->osb_clusters_at_boot) - 1;
-+
-+	/* 32-bit block number is always OK. */
-+	if (max_block <= (u32)~0ULL)
-+		goto out;
-+
-+	/* Volume is "huge", so see if our journal is new enough to
-+	   support it. */
-+	if (!(OCFS2_HAS_COMPAT_FEATURE(osb->sb,
-+				       OCFS2_FEATURE_COMPAT_JBD2_SB) &&
-+	      jbd2_journal_check_used_features(osb->journal->j_journal, 0, 0,
-+					       JBD2_FEATURE_INCOMPAT_64BIT))) {
-+		mlog(ML_ERROR, "The journal cannot address the entire volume. "
-+		     "Enable the 'block64' journal option with tunefs.ocfs2");
-+		status = -EFBIG;
-+		goto out;
-+	}
-+
-+ out:
-+	return status;
-+}
-+
- static int ocfs2_initialize_super(struct super_block *sb,
- 				  struct buffer_head *bh,
- 				  int sector_size,
-@@ -2003,6 +2033,7 @@ static int ocfs2_initialize_super(struct super_block *sb,
- 	struct ocfs2_journal *journal;
- 	__le32 uuid_net_key;
- 	struct ocfs2_super *osb;
-+	u64 total_blocks;
- 
- 	mlog_entry_void();
- 
-@@ -2215,11 +2246,15 @@ static int ocfs2_initialize_super(struct super_block *sb,
- 		goto bail;
- 	}
- 
--	if (ocfs2_clusters_to_blocks(osb->sb, le32_to_cpu(di->i_clusters) - 1)
--	    > (u32)~0UL) {
--		mlog(ML_ERROR, "Volume might try to write to blocks beyond "
--		     "what jbd can address in 32 bits.\n");
--		status = -EINVAL;
-+	total_blocks = ocfs2_clusters_to_blocks(osb->sb,
-+						le32_to_cpu(di->i_clusters));
-+
-+	status = generic_check_addressable(osb->sb->s_blocksize_bits,
-+					   total_blocks);
-+	if (status) {
-+		mlog(ML_ERROR, "Volume too large "
-+		     "to mount safely on this system");
-+		status = -EFBIG;
- 		goto bail;
- 	}
- 
-@@ -2381,6 +2416,12 @@ static int ocfs2_check_volume(struct ocfs2_super *osb)
- 		goto finally;
- 	}
- 
-+	/* Now that journal has been initialized, check to make sure
-+	   entire volume is addressable. */
-+	status = ocfs2_journal_addressable(osb);
-+	if (status)
-+		goto finally;
-+
- 	/* If the journal was unmounted cleanly then we don't want to
- 	 * recover anything. Otherwise, journal_load will do that
- 	 * dirty work for us :) */
+CreationTime
+    Specifies the time that the file was created. 
+LastAccessTime
+    Specifies the time that the file was last accessed. 
+LastWriteTime
+    Specifies the time that the file was last written to. 
+ChangeTime
+    Specifies the last time the file was changed. 
+
+You are right that the more commonly used APIs (such as
+GetFileInformationByHandle()) omit the ChangeTime field in the return
+value. The ChangeTime is also not visible via the normal Windows GUI
+or command line tools.
+
+But there are APIs that are used by quite a few programs that do get
+all 4 timestamps. For example, GetFileInformationByHandleEx() returns
+all 4 fields. I include an example program that uses that API to show
+all the timestamps below.
+
+and yes, we think that real applications (such as Excel), look at
+these values separately.
+
+The other big difference from POSIX timestamps is that the
+CreationTime is settable on Windows, and some of the windows UI
+behaviour relies on this.
+
+Cheers, Tridge
+
+PS: Sorry for coming into this discussion so late
+
+
+/* 
+   show all 4 file times
+   tridge@samba.org, July 2010
+*/
+
+#define _WIN32_WINNT 0x0600
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "windows.h"
+#include "winbase.h"
+
+
+static void FileTime(const char *fname)
+{
+	HANDLE h;
+	FILE_BASIC_INFO info;
+	BOOL ret;
+
+        h = CreateFile(
+                fname, GENERIC_READ, 
+                FILE_SHARE_READ,
+                NULL,           
+                OPEN_EXISTING,  
+                0,
+                NULL
+        );
+	if (h == INVALID_HANDLE_VALUE) {
+		printf("Unable to open %s\n", fname);
+		exit(1);
+	}
+
+	ret = GetFileInformationByHandleEx(h, FileBasicInfo, &info, sizeof(info));
+
+	if (!ret) {
+		printf("Unable to get file information\n");
+		exit(1);
+	}
+
+	printf("CreationTime:   %llu\n", (unsigned long long)info.CreationTime.QuadPart);
+	printf("LastAccessTime: %llu\n", (unsigned long long)info.LastAccessTime.QuadPart);
+	printf("LastWriteTime:  %llu\n", (unsigned long long)info.LastWriteTime.QuadPart);
+	printf("ChangeTime:     %llu\n", (unsigned long long)info.ChangeTime.QuadPart);
+
+	CloseHandle(h);
+}
+
+int main(int argc, char* argv[])
+{
+	if (argc < 2) {
+		printf("Usage: filetime FILENAME\n");
+		exit(1);
+	}
+
+	FileTime(argv[1]);
+	return 0;
+}
