@@ -1,82 +1,46 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] xfstests 240: test non-aligned AIO hole-filling
-Date: Fri, 23 Jul 2010 13:58:11 +1000
-Message-ID: <20100723035811.GE32635@dastard>
-References: <4C489676.2000605@redhat.com>
- <20100723024938.GD32635@dastard>
- <4C490D4D.603@redhat.com>
+From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Subject: Re: [BUG] ext4 trace events cause NULL pointer dereferences
+Date: Fri, 23 Jul 2010 14:47:33 +0900 (JST)
+Message-ID: <20100723144549.88BA.A69D9226@jp.fujitsu.com>
+References: <20100722054957.GA11670@infradead.org> <20100723011315.GC16373@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: kosaki.motohiro@jp.fujitsu.com
+To: "Ted Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
+	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	Li Zefan <lizf@cn.fujitsu.com>,
+	Steven Rostedt <rostedt@goodmis.or
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bld-mail14.adl6.internode.on.net ([150.101.137.99]:59459 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755320Ab0GWD6Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jul 2010 23:58:16 -0400
-Content-Disposition: inline
-In-Reply-To: <4C490D4D.603@redhat.com>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:60923 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753429Ab0GWFrg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jul 2010 01:47:36 -0400
+In-Reply-To: <20100723011315.GC16373@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 22, 2010 at 10:32:29PM -0500, Eric Sandeen wrote:
-> Dave Chinner wrote:
+> On Thu, Jul 22, 2010 at 01:49:57AM -0400, Christoph Hellwig wrote:
+> > 
+> > I think ext4 is simply using an incorrectly typed tracepoint here.
+> > If you want it to be useful in any way it needs a sb paramter and
+> > an optional inode paramter, not the allocation context.
 > 
-> > On Thu, Jul 22, 2010 at 02:05:26PM -0500, Eric Sandeen wrote:
-> >   
-> >> This replicates file corruption we've seen with qemu-kvm when
-> >> we use if=virtio,cache=none,aio=native for IO to a sparse
-> >> ext4- or xfs-hosted file, and the partitions/filesystems
-> >> within that file image are not block-aligned.  (think sector
-> >> 63 here...)  This results in AIO IOs not aligned to the
-> >> filesystem blocks.
-> >>
-> >> This test modifies aiodio_sparse2.c to add an option to start
-> >> the file IO at an offset.
-> >>
-> >> When we do 4k writes to a 16k file in 2 threads, starting
-> >> at offset 512, we get 0s interspersed in the file where they
-> >> should not be:
-> >>
-> >> 00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-> >> *
-> >> 00000200  01 01 01 01 01 01 01 01  01 01 01 01 01 01 01 01  |................|
-> >> *
-> >> 00001000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
-> >> *
-> >> 00001200  01 01 01 01 01 01 01 01  01 01 01 01 01 01 01 01  |................|
-> >> ....
-> >>
-> >> Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
-> >>     
-> >
-> > looks good - it needs to remove the $TEST_DIR/aiodio_sparse file
-> > before the test starts, though, so that repeated tests fail
-> > correctly. Otherwise:
-> >
-> >   
-> hm, but:
+> I agree; this is the patch that I had whipped up to fix the problem.
+> (See below)
+
+I'm not familiar ext4 so much. but you patch seems very nice!
+thank you :)
+
 > 
-> +rm -f "$TEST_DIR/aiodio_sparse*"
-> +
-> +# 2 threads, 4k writes, 16k filesize, stride throug file by 4k, start at 512 offset
-> +$here/src/aio-dio-regress/aiodio_sparse2 -i 2 -w 4k -s 16k -n 4k -o 512 "$TEST_DIR/aiodio_sparse"
+> > Also the whole ext4_mb_release_group_pa function seems to be a bit
+> > misdesigned.  The code using ac is a totally separate block at the
+> > end of the function and does work that's unrelated to the rest
+> > of the function.  Just making it a separate helper can calling it
+> > only from those places that have the allocation context would make
+> > the code more clear.
 > 
-> It does remove it ... no?
+> I need to look more closely at this.  If I had time there would be a
+> lot of things that I'd be refactoring and cleaning up in mballoc.c....
 
-Sorry, my bad - that went in one eye and out the other when I read
-through the whole patch.
 
-When i was testing I was getting a repeatable fail - pass - fail -
-pass ... pattern occurring without any kernel patches applied, and
-the test warns about removing the file after failure, so I just
-connected the dots up in the obvious manner and got it completely
-wrong....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
