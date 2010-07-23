@@ -1,34 +1,73 @@
-From: Li Zefan <lizf@cn.fujitsu.com>
-Subject: Re: [BUG] ext4 trace events cause NULL pointer dereferences
-Date: Fri, 23 Jul 2010 17:19:04 +0800
-Message-ID: <4C495E88.8080106@cn.fujitsu.com>
-References: <20100722054957.GA11670@infradead.org> <20100723011315.GC16373@thunk.org> <20100723144549.88BA.A69D9226@jp.fujitsu.com> <4E28BC9A-BB77-45BC-862A-29601EF4AE2C@mit.edu>
+From: =?iso-8859-1?Q?Bj=F6rn?= Jacke <bj@SerNet.DE>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended file stats available [ver #6]
+Date: Fri, 23 Jul 2010 11:14:53 +0200
+Message-ID: <E1OcEL8-00DP7W-V3__3939.66272608868$1279876944$gmane$org@intern.SerNet.DE>
+References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+ <30448.1279800887@redhat.com>
+ <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+ <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+ <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+ <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+ <20100722162712.GB10352@jeremy-laptop>
+ <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+ <19528.60019.28495.655512@samba.org>
+ <20100723012130.GD16373@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Frederic Weisbecker <fweisbec@gmail.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Ted Ts'o <tytso@mit.edu>, tridge@samba.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jeremy Allison <jra@samba.org>, linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, Volk
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53516 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753033Ab0GWJOP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Jul 2010 05:14:15 -0400
-In-Reply-To: <4E28BC9A-BB77-45BC-862A-29601EF4AE2C@mit.edu>
+Received: from mail.SerNet.de ([193.175.80.2]:39012 "EHLO mail.SerNet.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753033Ab0GWJWN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Jul 2010 05:22:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20100723012130.GD16373@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Jul 23, 2010, at 1:47 AM, KOSAKI Motohiro wrote:
-> 
->> I'm not familiar ext4 so much. but you patch seems very nice!
->> thank you :)
-> 
-> So, can someone confirm that this fixes the NULL pointer dereference?  The patch itself makes sense, and it doesn't change the tracepoint output, so I'm inclined to include it, but I haven't been able to reproduce the failure myself using the reproduction recipe given at the beginning of this thread --- and I'd feel much better if someone who has been able to reproduce the crash can confirm this fixes things for them.
-> 
+On 2010-07-22 at 21:21 -0400 Ted Ts'o sent off:
+> Well, not POSIX, because POSIX doesn't have CreationTime at all.
+> BSD's birthtime doesn't allow it to be set, and the question here is
+> largely philosophical.
 
-Thanks for the fix. I'll test the patch after the weekend.
+actually, it can (partly :). But the way it can be done is an insane ha=
+ck:
 
+<quote "http://ace.delos.com/kirk/">
+To provide a sensible birth time for applications that are unaware of t=
+he birth
+time attribute, we changed the semantics of the "utimes" system call so=
+ that if
+the birth time was newer than the value of the modification time that i=
+t was
+setting, it sets the birth time to the same time as the modification ti=
+me. An
+application that is aware of the birth time attribute can set both the =
+birth
+time and the modification time by doing two calls to "utimes". First it=
+ calls
+"utimes" with a modification time equal to the saved birth time, then i=
+t calls
+"utimes" a second time with a modification time equal to the (presumabl=
+y newer)
+saved modification time.
+</quote>
+
+Thus it can also be only be set more in the past.
+
+Cheers
+Bj=F6rn
+--=20
+SerNet GmbH, Bahnhofsallee 1b, 37081 G=F6ttingen
+phone: +49-551-370000-0, fax: +49-551-370000-9
+AG G=F6ttingen, HRB 2816, GF: Dr. Johannes Loxen
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
