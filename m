@@ -1,46 +1,107 @@
-From: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
-Subject: Re: [BUG] ext4 trace events cause NULL pointer dereferences
-Date: Fri, 23 Jul 2010 14:47:33 +0900 (JST)
-Message-ID: <20100723144549.88BA.A69D9226@jp.fujitsu.com>
-References: <20100722054957.GA11670@infradead.org> <20100723011315.GC16373@thunk.org>
+From: Nitin Gupta <ngupta@vflare.org>
+Subject: Re: [PATCH V3 0/8] Cleancache: overview
+Date: Fri, 23 Jul 2010 13:06:43 +0530
+Message-ID: <4C49468B.40307@vflare.org>
+References: <20100621231809.GA11111@ca-server1.us.oracle.com>
+Reply-To: ngupta@vflare.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: kosaki.motohiro@jp.fujitsu.com
-To: "Ted Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
-	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	Li Zefan <lizf@cn.fujitsu.com>,
-	Steven Rostedt <rostedt@goodmis.or
+Cc: chris.mason@oracle.com, viro@zeniv.linux.org.uk,
+	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
+	mfasheh@suse.com, joel.becker@oracle.com, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
+	JBeulich@novell.com, kurt.hackel@oracle.com, npiggin@suse.de,
+	dave.mccracken@oracle.com, riel@redhat.com, avi@redhat.com,
+	konrad.wilk@oracle.com
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:60923 "EHLO
-	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753429Ab0GWFrg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jul 2010 01:47:36 -0400
-In-Reply-To: <20100723011315.GC16373@thunk.org>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:55630 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751122Ab0GWHgX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jul 2010 03:36:23 -0400
+In-Reply-To: <20100621231809.GA11111@ca-server1.us.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Thu, Jul 22, 2010 at 01:49:57AM -0400, Christoph Hellwig wrote:
-> > 
-> > I think ext4 is simply using an incorrectly typed tracepoint here.
-> > If you want it to be useful in any way it needs a sb paramter and
-> > an optional inode paramter, not the allocation context.
+On 06/22/2010 04:48 AM, Dan Magenheimer wrote:
+> [PATCH V3 0/8] Cleancache: overview
 > 
-> I agree; this is the patch that I had whipped up to fix the problem.
-> (See below)
-
-I'm not familiar ext4 so much. but you patch seems very nice!
-thank you :)
-
+<snip>
 > 
-> > Also the whole ext4_mb_release_group_pa function seems to be a bit
-> > misdesigned.  The code using ac is a totally separate block at the
-> > end of the function and does work that's unrelated to the rest
-> > of the function.  Just making it a separate helper can calling it
-> > only from those places that have the allocation context would make
-> > the code more clear.
+>  Documentation/ABI/testing/sysfs-kernel-mm-cleancache |   11 +
+>  Documentation/vm/cleancache.txt                      |  194 +++++++++++++++++++
+>  fs/btrfs/extent_io.c                                 |    9 
+>  fs/btrfs/super.c                                     |    2 
+>  fs/buffer.c                                          |    5 
+>  fs/ext3/super.c                                      |    2 
+>  fs/ext4/super.c                                      |    2 
+>  fs/mpage.c                                           |    7 
+>  fs/ocfs2/super.c                                     |    3 
+>  fs/super.c                                           |    7 
+>  include/linux/cleancache.h                           |   88 ++++++++
+>  include/linux/fs.h                                   |    5 
+>  mm/Kconfig                                           |   22 ++
+>  mm/Makefile                                          |    1 
+>  mm/cleancache.c                                      |  169 ++++++++++++++++
+>  mm/filemap.c                                         |   11 +
+>  mm/truncate.c                                        |   10 
+>  17 files changed, 548 insertions(+)
 > 
-> I need to look more closely at this.  If I had time there would be a
-> lot of things that I'd be refactoring and cleaning up in mballoc.c....
+> (following is a copy of Documentation/vm/cleancache.txt)
+> 
+> MOTIVATION
+> 
+> Cleancache can be thought of as a page-granularity victim cache for clean
+> pages that the kernel's pageframe replacement algorithm (PFRA) would like
+> to keep around, but can't since there isn't enough memory.  So when the
+> PFRA "evicts" a page, it first attempts to put it into a synchronous
+> concurrency-safe page-oriented "pseudo-RAM" device (such as Xen's Transcendent
+> Memory, aka "tmem", or in-kernel compressed memory, aka "zmem", or other
+> RAM-like devices) which is not directly accessible or addressable by the
+> kernel and is of unknown and possibly time-varying size.  And when a
+> cleancache-enabled filesystem wishes to access a page in a file on disk,
+> it first checks cleancache to see if it already contains it; if it does,
+> the page is copied into the kernel and a disk access is avoided.
+> 
 
 
+Since zcache is now one of its use cases, I think the major objection that
+remains against cleancache is its intrusiveness -- in particular, need to
+change individual filesystems (even though one liners). Changes below should
+help avoid these per-fs changes and make it more self contained. I haven't
+tested these changes myself, so there might be missed cases or other mysterious
+problems:
+
+1. Cleancache requires filesystem specific changes primarily to make a call to
+cleancache init and store (per-fs instance) pool_id. I think we can get rid of
+these by directly passing 'struct super_block' pointer which is also
+sufficient to identify FS instance a page belongs to. This should then be used
+as a 'handle' by cleancache_ops provider to find corresponding memory pool or
+create a new pool when a new handle is encountered.
+
+This leaves out case of ocfs2 for which cleancache needs 'uuid' to decide if a
+shared pool should be created. IMHO, this case (and cleancache.init_shared_fs)
+should be removed from cleancache_ops since it is applicable only for Xen's
+cleancache_ops provider.
+
+2. I think change in btrfs can be avoided by moving cleancache_get_page()
+from do_mpage_reapage() to filemap_fault() and this should work for all
+filesystems. See:
+
+handle_pte_fault() -> do_(non)linear_fault() -> __do_fault()
+						-> vma->vm_ops->fault()
+
+which is defined as filemap_fault() for all filesystems. If some future
+filesystem uses its own custom function (why?) then it will have to arrange for
+call to cleancache_get_page(), if it wants this feature.
+
+With above changes, cleancache will be fairly self-contained:
+ - cleancache_put_page() when page is removed from page-cache
+ - cleacacache_get_page() when PF occurs (and after page-cache is searched)
+ - cleancache_flush_*() on truncate_*()
+
+Thanks,
+Nitin
