@@ -1,62 +1,51 @@
-From: tridge-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Date: Fri, 23 Jul 2010 12:12:47 +1000
-Message-ID: <19528.64159.999224.437890@samba.org>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	<20100722162712.GB10352@jeremy-laptop>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<19528.60019.28495.655512@samba.org>
-	<20100723012130.GD16373@thunk.org>
-Reply-To: tridge-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org
+From: Drunkard Zhang <gongfan193@gmail.com>
+Subject: Re: openvz: Oops in ext4 when VPS starts
+Date: Fri, 23 Jul 2010 10:22:08 +0800
+Message-ID: <AANLkTinISdrdpYfgVzTAhgQmdJculdOJ5qNPdvNCBPjE@mail.gmail.com>
+References: <AANLkTilaycSLL2dDnXDVs1gCiD0B8K78i2rBdWJGZrRD@mail.gmail.com>
+	<20100722150145.GE14882@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Volker.Lendecke-3ekOc4rQMZmzQB+pC5nmwQ@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>,
-	David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20100723012130.GD16373-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "Ted Ts'o" <tytso@mit.edu>, Drunkard Zhang <gongfan193@gmail.com>,
+	linux-kernel@vger.kernel.org, devel@openvz.org,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:47466 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752343Ab0GWCWb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jul 2010 22:22:31 -0400
+In-Reply-To: <20100722150145.GE14882@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+2010/7/22 Ted Ts'o <tytso@mit.edu>:
+> On Thu, Jul 22, 2010 at 05:39:16PM +0800, Drunkard Zhang wrote:
+>> I run into a oops when mirgate /vz directory to ext4 lvm under gento=
+o + openvz.
+>
+> What were you doing precisely at the time of the oops? =C2=A0The oops=
+ logs
+> indicates it was a cp, but a cp of what? =C2=A0And is this somethign =
+you
+> can easily reproduce?
+>
+I did: "/etc/init.d/vz start" with vpsid 101 and 109, which from:
+http://bb.xnull.de/projects/gentoo/amd64/stage4-amd64-current.tar.bz2
+following the guide from:
+http://www.gentoo.org/proj/en/vps/openvz-howto.xml
 
- > Does it literally mean "file creation time" in terms of when the OS
- > created the file, or does it mean "file" in the sense of
- > application contents.  For example, if an application edits the
- > file and saves it out using "write file to foo.new; sync; rename
- > foo to foo.bak; rename foo.new to foo", should the creation time
- > for the newly written file "foo" be the time when the editor saved
- > out the file (i.e., when "foo.new" was created), or copied from the
- > original file "foo"'s creation time.
+Didn't change the content of stage4-amd64-current.tar.bz2 yet.
+It looks like when "/etc/init.d/vz start", it will cp all files from
+/vz/private/101/ to /vz/root/root/101/
 
-In Windows this is can be controlled by applications, but it also is
-done at the filesystem level in NTFS using a technique that Microsoft
-call "File System Tunneling". If you create a file with the same name
-within a short time (default 15s and settable in the registry) of when
-the file previously existed then it will get the same CreationTime as
-the previous file.
+The oops allways reproduced yesterday between reboot and kernel
+remake, but this morning when I trying to finger out the oops point
+using strace, I can't get the oops anymore. Sorry for interrupt,:-(
 
-For details see http://support.microsoft.com/kb/172190
-
-Some applications also do this regardless of the registry setting for
-MaximumTunnelEntryAgeInSeconds. They use the ability to set the
-CreationTime to get the same behaviour.
-
-Cheers, Tridge
+Maybe distcc caused problem? I used to make kernel... Sorry again.
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
