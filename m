@@ -1,30 +1,46 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: 2.6.35-r5 ext3 corruptions
-Date: Fri, 23 Jul 2010 06:58:24 -0400
-Message-ID: <20100723105824.GA2205@infradead.org>
-References: <20100715105745.GI30737@dastard>
- <20100719224512.GD32635@dastard>
- <20100721063222.GW32635@dastard>
- <20100723104313.GA6431@atrey.karlin.mff.cuni.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] check name_len before down_read xattr_sem and sb_read
+ in ext2_xattr_get
+Date: Fri, 23 Jul 2010 08:46:57 -0400
+Message-ID: <20100723124657.GA13090@thunk.org>
+References: <201007122229025316610@gmail.com>
+ <20100721174457.GE1215@atrey.karlin.mff.cuni.cz>
+ <AANLkTikXSOHrIw0SVJMYqsQy1aG5sCXkvvOFU4XLDNGv@mail.gmail.com>
+ <20100723083759.GA3305@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
+Cc: shenghui <crosslonelyover@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	kernel-janitors <kernel-janitors@vger.kernel.org>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20100723104313.GA6431@atrey.karlin.mff.cuni.cz>
+In-Reply-To: <20100723083759.GA3305@quack.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 23, 2010 at 12:43:14PM +0200, Jan Kara wrote:
-> changelog below. I'd much rather attribute the metadata corruption to a missing
-> barrier option or barrier support in the virtualization stack. But I guess it's
-> hard to tell now.
+On Fri, Jul 23, 2010 at 10:37:59AM +0200, Jan Kara wrote:
+>   Checking of name_len is fine as you did it. But I wanted to point out
+> that if name_len is greater than 255, you then go to 'cleanup' label which
+> tries to do up_read(&EXT2_I(inode)->xattr_sem). But that's a bug because
+> after you moved the code, we don't hold xattr_sem at the moment we check
+> name_len.
 
-Any recent qemu/kvm stack has perfectly working barrier support.  Xen
-is quite broken in that respect, but I hope no one is using that anyway.
+Yup, you could just return -ERANGE right there.
 
-But yes, with large write caches ext3 is rather broken due to the lack
-of barriers.  Fortunately enough at least the enterprise enable it
-anyway these days.
+The simpler fix though might be to just delete the check altogether.
+Neither ext3 nor ext4 checks for the length of the xattr name in their
+_xattr_get() function.  Instead they'll just do the search, and then
+return -ENODATA.  That seems legit; there can be no entries larger
+than 255, so saying the extended attribute doesn't exist is quite
+correct.  There is a check in the _xattr_set() functions for both ext3
+and ext4, which is quite correct and proper.
+
+Does that mean we'll end up doing a search before returning an error
+--- yes, but I don't think that matters.  Why should we care about
+optimizing an error case?  It's not like this is going to be in a
+timing sensitive part of an application....  (of course the same
+consideration could apply to your patch as well).
+
+	      	    	     	  	- Ted
