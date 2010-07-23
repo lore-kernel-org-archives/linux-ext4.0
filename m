@@ -1,261 +1,60 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [patch 6/6] jbd2: remove dependency on __GFP_NOFAIL
-Date: Fri, 23 Jul 2010 11:05:43 -0400
-Message-ID: <20100723150543.GG13090@thunk.org>
-References: <alpine.DEB.2.00.1007201936210.8728@chino.kir.corp.google.com>
- <alpine.DEB.2.00.1007201943340.8728@chino.kir.corp.google.com>
- <20100722141437.GA14882@thunk.org>
- <alpine.DEB.2.00.1007221108360.30080@chino.kir.corp.google.com>
- <20100722230935.GB16373@thunk.org>
- <alpine.DEB.2.00.1007221618001.4856@chino.kir.corp.google.com>
- <20100723141054.GE13090@thunk.org>
- <20100723145730.GD3305@quack.suse.cz>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: Ext4: batched discard support - simplified version
+Date: Fri, 23 Jul 2010 11:13:52 -0400
+Message-ID: <x49hbjqjknj.fsf@segfault.boston.devel.redhat.com>
+References: <1278489212-12110-1-git-send-email-lczerner@redhat.com>
+	<20100723143604.GF13090@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Rientjes <rientjes@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger@sun.com>, Jiri Kosina <jkosina@suse.cz>,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20100723145730.GD3305@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Lukas Czerner <lczerner@redhat.com>, eshishki@redhat.com,
+	rwheeler@redhat.com, linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38526 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759510Ab0GWPN4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Jul 2010 11:13:56 -0400
+In-Reply-To: <20100723143604.GF13090@thunk.org> (Ted Ts'o's message of "Fri,
+	23 Jul 2010 10:36:04 -0400")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Yeah, oops.  Nice catches.  I also hadn't done a test compile, so
-there were some missing #include's.
+"Ted Ts'o" <tytso@mit.edu> writes:
 
-So once more, this time with feeling...
+> On Wed, Jul 07, 2010 at 09:53:30AM +0200, Lukas Czerner wrote:
+>> 
+>> Hi all,
+>> 
+>> since my last post I have done some more testing with various SSD's and the
+>> trend is clear. Trim performance is getting better and the performance loss
+>> without trim is getting lower. So I have decided to abandon the initial idea
+>> to track free blocks within some internal data structure - it takes time and
+>> memory.
+>
+> Do you have some numbers about how bad trim actually might be on
+> various devices?
 
-					- Ted
+I'll let Lukas answer that when he gets back to the office next week.
+The performance of the trim command itself varies by vendor, of course.
 
->From d24408e1b50e47b21b7d2ec5857b710e9b752dc9 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Fri, 23 Jul 2010 11:03:45 -0400
-Subject: [PATCH] jbd2: Remove __GFP_NOFAIL from jbd2 layer
+> I can imagine some devices where it might be better (for wear
+> levelling and better write endurance if nothing else) where it's
+> better to do the trim right away instead of batching things.
 
-__GFP_NOFAIL is going away, so add our own retry loop.  Also add
-jbd2__journal_start() and jbd2__journal_restart() which take a gfp
-mask, so that file systems can optionally (re)start transaction
-handles using GFP_KERNEL.  If they do this, then they need to be
-prepared to handle receiving an PTR_ERR(-ENOMEM) error, and be ready
-to reflect that error up to userspace.
+I don't think so.  In all of the configurations tested, I'm pretty sure
+we saw a performance hit from doing the TRIMs right away.  The queue
+flush really hurts.  Of course, I have no idea what you had in mind for
+the amount of time in between batched discards.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/jbd2/journal.c     |   15 +++++++++--
- fs/jbd2/transaction.c |   61 +++++++++++++++++++++++++++++++++---------------
- include/linux/jbd2.h  |    4 ++-
- 3 files changed, 57 insertions(+), 23 deletions(-)
+> So what I'm thinking about doing is keeping the "discard" mount option
+> to mean non-batched discard.  If you want to use the explicit FITRIM
+> ioctl, I don't think we need to test to see if the dicard mount option
+> is set; if the user issues the ioctl, then we should do the batched
+> discard, and if we don't trust the user to do that, then well, the
+> ioctl should be restricted to privileged users only --- especially if
+> it could take up to a minute.
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index f7bf157..a79d334 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -41,6 +41,7 @@
- #include <linux/hash.h>
- #include <linux/log2.h>
- #include <linux/vmalloc.h>
-+#include <linux/backing-dev.h>
- 
- #define CREATE_TRACE_POINTS
- #include <trace/events/jbd2.h>
-@@ -48,8 +49,6 @@
- #include <asm/uaccess.h>
- #include <asm/page.h>
- 
--EXPORT_SYMBOL(jbd2_journal_start);
--EXPORT_SYMBOL(jbd2_journal_restart);
- EXPORT_SYMBOL(jbd2_journal_extend);
- EXPORT_SYMBOL(jbd2_journal_stop);
- EXPORT_SYMBOL(jbd2_journal_lock_updates);
-@@ -311,7 +310,17 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	 */
- 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
- 
--	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-+retry_alloc:
-+	new_bh = alloc_buffer_head(GFP_NOFS);
-+	if (!new_bh) {
-+		/*
-+		 * Failure is not an option, but __GFP_NOFAIL is going
-+		 * away; so we retry ourselves here.
-+		 */
-+		congestion_wait(BLK_RW_ASYNC, HZ/50);
-+		goto retry_alloc;
-+	}
-+
- 	/* keep subsequent assertions sane */
- 	new_bh->b_state = 0;
- 	init_buffer(new_bh, NULL, NULL);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index e214d68..001e95f 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -26,6 +26,8 @@
- #include <linux/mm.h>
- #include <linux/highmem.h>
- #include <linux/hrtimer.h>
-+#include <linux/backing-dev.h>
-+#include <linux/module.h>
- 
- static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh);
- 
-@@ -83,30 +85,38 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
-  * transaction's buffer credits.
-  */
- 
--static int start_this_handle(journal_t *journal, handle_t *handle)
-+static int start_this_handle(journal_t *journal, handle_t *handle,
-+			     int gfp_mask)
- {
- 	transaction_t *transaction;
- 	int needed;
- 	int nblocks = handle->h_buffer_credits;
- 	transaction_t *new_transaction = NULL;
--	int ret = 0;
- 	unsigned long ts = jiffies;
- 
- 	if (nblocks > journal->j_max_transaction_buffers) {
- 		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
- 		       current->comm, nblocks,
- 		       journal->j_max_transaction_buffers);
--		ret = -ENOSPC;
--		goto out;
-+		return -ENOSPC;
- 	}
- 
- alloc_transaction:
- 	if (!journal->j_running_transaction) {
--		new_transaction = kzalloc(sizeof(*new_transaction),
--						GFP_NOFS|__GFP_NOFAIL);
-+		new_transaction = kzalloc(sizeof(*new_transaction), gfp_mask);
- 		if (!new_transaction) {
--			ret = -ENOMEM;
--			goto out;
-+			/*
-+			 * If __GFP_FS is not present, then we may be
-+			 * being called from inside the fs writeback
-+			 * layer, so we MUST NOT fail.  Since
-+			 * __GFP_NOFAIL is going away, we will arrange
-+			 * to retry the allocation ourselves.
-+			 */
-+			if ((gfp_mask & __GFP_FS) == 0) {
-+				congestion_wait(BLK_RW_ASYNC, HZ/50);
-+				goto alloc_transaction;
-+			}
-+			return -ENOMEM;
- 		}
- 	}
- 
-@@ -123,8 +133,8 @@ repeat_locked:
- 	if (is_journal_aborted(journal) ||
- 	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
- 		spin_unlock(&journal->j_state_lock);
--		ret = -EROFS;
--		goto out;
-+		kfree(new_transaction);
-+		return -EROFS;
- 	}
- 
- 	/* Wait on the journal's transaction barrier if necessary */
-@@ -240,10 +250,8 @@ repeat_locked:
- 	spin_unlock(&journal->j_state_lock);
- 
- 	lock_map_acquire(&handle->h_lockdep_map);
--out:
--	if (unlikely(new_transaction))		/* It's usually NULL */
--		kfree(new_transaction);
--	return ret;
-+	kfree(new_transaction);
-+	return 0;
- }
- 
- static struct lock_class_key jbd2_handle_key;
-@@ -278,7 +286,7 @@ static handle_t *new_handle(int nblocks)
-  *
-  * Return a pointer to a newly allocated handle, or NULL on failure
-  */
--handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
-+handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int gfp_mask)
- {
- 	handle_t *handle = journal_current_handle();
- 	int err;
-@@ -298,7 +306,7 @@ handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
- 
- 	current->journal_info = handle;
- 
--	err = start_this_handle(journal, handle);
-+	err = start_this_handle(journal, handle, gfp_mask);
- 	if (err < 0) {
- 		jbd2_free_handle(handle);
- 		current->journal_info = NULL;
-@@ -308,6 +316,15 @@ handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
- out:
- 	return handle;
- }
-+EXPORT_SYMBOL(jbd2__journal_start);
-+
-+
-+handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
-+{
-+	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
-+}
-+EXPORT_SYMBOL(jbd2_journal_start);
-+
- 
- /**
-  * int jbd2_journal_extend() - extend buffer credits.
-@@ -394,8 +411,7 @@ out:
-  * transaction capabable of guaranteeing the requested number of
-  * credits.
-  */
--
--int jbd2_journal_restart(handle_t *handle, int nblocks)
-+int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
- {
- 	transaction_t *transaction = handle->h_transaction;
- 	journal_t *journal = transaction->t_journal;
-@@ -428,10 +444,17 @@ int jbd2_journal_restart(handle_t *handle, int nblocks)
- 
- 	lock_map_release(&handle->h_lockdep_map);
- 	handle->h_buffer_credits = nblocks;
--	ret = start_this_handle(journal, handle);
-+	ret = start_this_handle(journal, handle, gfp_mask);
- 	return ret;
- }
-+EXPORT_SYMBOL(jbd2__journal_restart);
-+
- 
-+int jbd2_journal_restart(handle_t *handle, int nblocks)
-+{
-+	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
-+}
-+EXPORT_SYMBOL(jbd2_journal_restart);
- 
- /**
-  * void jbd2_journal_lock_updates () - establish a transaction barrier.
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index a4d2e9f..5a72bc7 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1081,7 +1081,9 @@ static inline handle_t *journal_current_handle(void)
-  */
- 
- extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
--extern int	 jbd2_journal_restart (handle_t *, int nblocks);
-+extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
-+extern int	 jbd2_journal_restart(handle_t *, int nblocks);
-+extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
- extern int	 jbd2_journal_extend (handle_t *, int nblocks);
- extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
- extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_head *);
--- 
-1.7.0.4
+That sounds reasonable to me.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers,
+Jeff
