@@ -1,147 +1,94 @@
-From: "Luis R. Rodriguez" <mcgrof@gmail.com>
-Subject: Re: udevd / ext4 issue mounting 2.6.35-rc5
-Date: Fri, 23 Jul 2010 10:56:35 -0700
-Message-ID: <AANLkTimTdy2DmcdXtgFvtREMX8bMADk73Oz5bwpeHw6H@mail.gmail.com>
-References: <AANLkTilYEJMD_s5Iupru24WPXasxI_jE8JVJ35Nf8hrN@mail.gmail.com>
-	<AANLkTinQKhvnAIa-1qXxIWFHCeE0ajM-07eYOAH1QA_J@mail.gmail.com>
-	<AANLkTikY0eeq1Ufs-UOCiHYXu_314HUnw7ESK5ktocWV@mail.gmail.com>
-	<AANLkTimNFIc8Ygg4O2NPHCYHk1G3dLBhYA2N9JSeAbdt@mail.gmail.com>
-	<AANLkTikwQg6ZC-5tAzBExnNSx5J7Zgyc14sPXE7KqLW5@mail.gmail.com>
+From: Nitin Gupta <ngupta@vflare.org>
+Subject: Re: [PATCH V3 0/8] Cleancache: overview
+Date: Sat, 24 Jul 2010 00:06:01 +0530
+Message-ID: <4C49E111.2000106@vflare.org>
+References: <20100621231809.GA11111@ca-server1.us.oracle.com4C49468B.40307@vflare.org> <840b32ff-a303-468e-9d4e-30fc92f629f8@default 20100723140440.GA12423@infradead.org 364c83bd-ccb2-48cc-920d-ffcf9ca7df19@default> <c979fa45-8878-4e40-9060-c3e929eebbab@default>
+Reply-To: ngupta@vflare.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	Ubuntu Kernel Team <kernel-team@lists.ubuntu.com>,
-	linux-kernel@vger.kernel.org,
-	linux-wireless <linux-wireless@vger.kernel.org>
-To: Daniel J Blueman <daniel.blueman@gmail.com>,
-	"Luis R. Rodriguez" <mcgrof@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTikwQg6ZC-5tAzBExnNSx5J7Zgyc14sPXE7KqLW5@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>, akpm@linux-foundation.org,
+	Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk,
+	adilger@sun.com, tytso@mit.edu, mfasheh@suse.com,
+	Joel Becker <joel.becker@oracle.com>, matthew@wil.cx,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
+	JBeulich@novell.com, Kurt Hackel <kurt.hackel@oracle.com>,
+	npiggin@suse.de, Dave Mccracken <dave.mccracken@oracle.com>,
+	riel@redhat.com, avi@redhat.com,
+	Konrad Wilk <konrad.wilk@oracle.com>
+To: Dan Magenheimer <dan.magenheimer@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:51428 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751318Ab0GWSff (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jul 2010 14:35:35 -0400
+In-Reply-To: <c979fa45-8878-4e40-9060-c3e929eebbab@default>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 23, 2010 at 9:49 AM, Luis R. Rodriguez <mcgrof@gmail.com> w=
-rote:
-> On Thu, Jul 22, 2010 at 2:10 AM, Daniel J Blueman
-> <daniel.blueman@gmail.com> wrote:
->> On 22 July 2010 02:06, Luis R. Rodriguez <mcgrof@gmail.com> wrote:
->>> On Wed, Jul 21, 2010 at 1:43 AM, Daniel J Blueman
->>> <daniel.blueman@gmail.com> wrote:
->>>> Hi Luis,
->>>>
->>>> On 21 July 2010 01:36, Luis R. Rodriguez <mcgrof@gmail.com> wrote:
->>>>> I have been reluctant to boot to 2.6.35-rc due to the large set o=
-f
->>>>> regression list and the amount of work I needed to actually get d=
-one
->>>>> on 2.6.35. Last I checked the regression list it was getting smal=
-l so
->>>>> I gave it a spin today. No luck. I get some bootup error from ude=
-vd
->>>>> and ext2/ext3/ext4, something like this:
->>>>>
->>>>> EXT3-fs (sda1): error: couldn't mount because of unsupported opti=
-onal
->>>>> features (240)
->>>>> EXT2-fs (sda1): error: couldn't mount because of unsupported opti=
-onal
->>>>> features (240)
->>>>> EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: =
-(null)
->>>>
->>>> This succeeded.
->>>
->>> Heh, OK :)
->>>
->>>>> VFS: Mounted root (ext4 filesystem) readonly on device 8:1
->>>>> Freeing unused kernel memory: 708k freed
->>>>> Write protecting the kernel read-only data: 102040k
->>>>> Freeing unused kernel memory: 764k freed
->>>>> Freeing unused kernel memory: 1796k freed
->>>>> udevd: failed to create queue file: No such file or directory
->>>>> udevd: error creating queue file
->>>>
->>>> It looks like you need to enable:
->>>>
->>>> CONFIG_DEVTMPFS
->>>> CONFIG_DEVTMPFS_MOUNT
->>>
->>> Thanks, it also turned out that when I upgraded from Ubuntu 9.10 to
->>> Ubuntu 10.04 it replaced my own /sbin/installkernel so this was lik=
-ely
->>> another issue. My /sbin/installkernel changes allow for easy initra=
-mfs
->>> installation on Debian/Ubuntu but my patches have been ignored my t=
-he
->>> maintainer.
->>>
->>> --- installkernel-ubuntu-10.04 =C2=A02010-07-21 18:03:34.607678010 =
--0700
->>> +++ installkernel =C2=A0 =C2=A0 =C2=A0 2010-01-29 13:17:10.00000000=
-0 -0800
->>> @@ -36,7 +36,8 @@
->>> =C2=A0# Create backups of older versions before installing
->>> =C2=A0updatever () {
->>> =C2=A0 if [ -f "$dir/$1-$ver" ] ; then
->>> - =C2=A0 =C2=A0mv "$dir/$1-$ver" "$dir/$1-$ver.old"
->>> + =C2=A0 =C2=A0#mv "$dir/$1-$ver" "$dir/$1-$ver.old"
->>> + =C2=A0 =C2=A0rm -f "$dir/$1-$ver" "$dir/$1-$ver.old"
->>> =C2=A0 fi
->>>
->>> =C2=A0 cat "$2" > "$dir/$1-$ver"
->>> @@ -75,5 +76,16 @@
->>> =C2=A0if [ -f "$config" ] ; then
->>> =C2=A0 updatever config "$config"
->>> =C2=A0fi
->>> +
->>> +LSB_RED_ID=3D$(/usr/bin/lsb_release -i -s)
->>> +
->>> +case $LSB_RED_ID in
->>> +"Ubuntu")
->>> + =C2=A0 =C2=A0 =C2=A0 update-initramfs -c -k =C2=A0$ver
->>> + =C2=A0 =C2=A0 =C2=A0 update-grub
->>> + =C2=A0 =C2=A0 =C2=A0 ;;
->>> +*)
->>> + =C2=A0 =C2=A0 =C2=A0 ;;
->>> +esac
->>>
->>> =C2=A0exit 0
->>>
->>> But anyway I also now get another boot failure with:
->>>
->>> mount: mounting /dev on /root/dev failed: No such file or directory
->>> mount: mounting /sys on /root/sys failed: No such file or directory
+On 07/23/2010 11:07 PM, Dan Magenheimer wrote:
+>> From: Dan Magenheimer
+>> Subject: RE: [PATCH V3 0/8] Cleancache: overview
 >>
->> Hmm...the scripts in the initrd are not doing what is expected -
->> perhaps if you didn't use:
->> linux$ fakeroot make-kpkg --append-to-version -luis1 --initrd kernel=
--image
->
-> I am not using that to build my kernels I just build my kernels with
->
-> make
-> sudo make modules_install install
->
->> ...or if there are eg initrd script modifications on the filesystem
->> when it cooked the initd.
->
-> I haven't modified any initrd scripts.
->
->> You could just try eg:
->> http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-image-2.6.3=
-5-9-generic_2.6.35-9.14_amd64.deb
+>>> From: Christoph Hellwig [mailto:hch@infradead.org]
+>>> Subject: Re: [PATCH V3 0/8] Cleancache: overview
+>>>
+>>> On Fri, Jul 23, 2010 at 06:58:03AM -0700, Dan Magenheimer wrote:
+>>>> CHRISTOPH AND ANDREW, if you disagree and your concerns have
+>>>> not been resolved, please speak up.
+>>
+>> Hi Christoph --
+>>
+>> Thanks very much for the quick (instantaneous?) reply!
+>>
+>>> Anything that need modification of a normal non-shared fs is utterly
+>>> broken and you'll get a clear NAK, so the propsal before is a good
+>>> one.
+>>
+>> Unless/until all filesystems are 100% built on top of VFS,
+>> I have to disagree.  Abstractions (e.g. VFS) are never perfect.
+> 
+> After thinking about this some more, I can see a way
+> to enforce "opt-in" in the cleancache backend without
+> any changes to non-generic fs code.   I think it's a horrible
+> hack and we can try it, but I expect fs maintainers
+> would prefer the explicit one-line-patch opt-in.
+> 
+> 1) Cleancache backend maintains a list of "known working"
+>    filesystems (those that have been tested).
 
-=46un, so that kernel actually works but the one I am building from
-wireless-testing.git does not. The curious thing is it doesn't boot
-even if I remove my 802.11 module... so something is fishy. This is
-likely a config issue. After booting with the above kernel though I
-generated a new one with
+Checks against "known working list" indeed looks horrible.
+Isn't there any way to identify pagecache -> disk I/O boundaries
+which every filesystem obeys? I'm not yet sure but if this is
+doable, then we won't require such hacks.
 
-make localmodconfig
+> 
+> 2) Nitin's proposed changes pass the *sb as a parameter.
+>   The string name of the filesystem type is available via
+>   sb->s_type->name.  This can be compared against
+>   the "known working" list.
+>
 
-and then enabled my 802.11 modules. Still, no luck.. Going to reset my
-tree, I had manually merged Linus' latest stuff in but I don't think
-this should matter.
+sb->s_magic could also be used, or better if we can somehow
+get rid of these checks  :)
 
-  Luis
+> Using the sb pointer as a "handle" requires an extra
+> table search on every cleancache get/put/flush,
+> and fs/super.c changes are required for fs unmount
+> notification anyway (e.g. to call cleancache_flush_fs)
+> so I'd prefer to keep the cleancache_poolid addition
+> to the sb.  I'll assume this is OK since this is in generic
+> fs code.
+> 
+
+
+I will also try making changes to cleancache so it does not
+touch any fs specific code. Though IMHO one liners to fs-code
+should really be acceptable but unfortunately this doesn't seem
+to be the case.  Maybe generic cleancache will have better
+chances.
+
+Thanks,
+Nitin
