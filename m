@@ -1,73 +1,89 @@
-From: =?iso-8859-1?Q?Bj=F6rn?= Jacke <bj@SerNet.DE>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Date: Fri, 23 Jul 2010 11:14:53 +0200
-Message-ID: <E1OcEL8-00DP7W-V3__3939.66272608868$1279876944$gmane$org@intern.SerNet.DE>
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
- <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
- <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
- <20100722162712.GB10352@jeremy-laptop>
- <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
- <19528.60019.28495.655512@samba.org>
- <20100723012130.GD16373@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] xfstests 240: test non-aligned AIO hole-filling
+Date: Fri, 23 Jul 2010 20:12:22 +1000
+Message-ID: <20100723101222.GH32635@dastard>
+References: <4C489676.2000605@redhat.com>
+ <20100723024938.GD32635@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Ted Ts'o <tytso@mit.edu>, tridge@samba.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Jeremy Allison <jra@samba.org>, linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, Volk
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.SerNet.de ([193.175.80.2]:39012 "EHLO mail.SerNet.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753033Ab0GWJWN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Jul 2010 05:22:13 -0400
+Received: from bld-mail19.adl2.internode.on.net ([150.101.137.104]:35601 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753718Ab0GWKMa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jul 2010 06:12:30 -0400
 Content-Disposition: inline
-In-Reply-To: <20100723012130.GD16373@thunk.org>
+In-Reply-To: <20100723024938.GD32635@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-07-22 at 21:21 -0400 Ted Ts'o sent off:
-> Well, not POSIX, because POSIX doesn't have CreationTime at all.
-> BSD's birthtime doesn't allow it to be set, and the question here is
-> largely philosophical.
+On Fri, Jul 23, 2010 at 12:49:38PM +1000, Dave Chinner wrote:
+> On Thu, Jul 22, 2010 at 02:05:26PM -0500, Eric Sandeen wrote:
+> > This replicates file corruption we've seen with qemu-kvm when
+> > we use if=virtio,cache=none,aio=native for IO to a sparse
+> > ext4- or xfs-hosted file, and the partitions/filesystems
+> > within that file image are not block-aligned.  (think sector
+> > 63 here...)  This results in AIO IOs not aligned to the
+> > filesystem blocks.
+> > 
+> > This test modifies aiodio_sparse2.c to add an option to start
+> > the file IO at an offset.
+> > 
+> > When we do 4k writes to a 16k file in 2 threads, starting
+> > at offset 512, we get 0s interspersed in the file where they
+> > should not be:
+> > 
+> > 00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+> > *
+> > 00000200  01 01 01 01 01 01 01 01  01 01 01 01 01 01 01 01  |................|
+> > *
+> > 00001000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+> > *
+> > 00001200  01 01 01 01 01 01 01 01  01 01 01 01 01 01 01 01  |................|
+> > ....
+> > 
+> > Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+> 
+> looks good - it needs to remove the $TEST_DIR/aiodio_sparse file
+> before the test starts, though, so that repeated tests fail
+> correctly. Otherwise:
+> 
+> Reviewed-by: Dave Chinner <dchinner@redhat.com>
+> 
+> Also, Eric, can you run this proof-of-concept test branch (on top of
+> the current XFS for-2.6.36 branch) and see if QEMU is happy with it?
+> It passes this test on my machine....
+> 
+> The following changes since commit d2ec2c790b3994bf0c4381cacc489b514705887c:
+> 
+>   xfs: clean up xfs_bmap_get_bp (2010-07-22 12:52:08 +1000)
+> 
+> are available in the git repository at:
+>   git://git.kernel.org/pub/scm/linux/kernel/git/dgc/xfsdev aio-unaligned
 
-actually, it can (partly :). But the way it can be done is an insane ha=
-ck:
+I just pushed another patch onto this series that will makes test
+240 pass reliably here rather than hanging. It's all a bit messy,
+but it does serve to illustrate the problem and a potential avenue
+to prevent it....
 
-<quote "http://ace.delos.com/kirk/">
-To provide a sensible birth time for applications that are unaware of t=
-he birth
-time attribute, we changed the semantics of the "utimes" system call so=
- that if
-the birth time was newer than the value of the modification time that i=
-t was
-setting, it sets the birth time to the same time as the modification ti=
-me. An
-application that is aware of the birth time attribute can set both the =
-birth
-time and the modification time by doing two calls to "utimes". First it=
- calls
-"utimes" with a modification time equal to the saved birth time, then i=
-t calls
-"utimes" a second time with a modification time equal to the (presumabl=
-y newer)
-saved modification time.
-</quote>
+Dave Chinner (5):
+      Merge branch 'master' into working
+      Merge branch 'for-2.6.36' into working
+      fs: get_blocks needs an unaligned mapping flag
+      xfs: serialise unaligned direct IO into unwritten extents
+      xfs: wait on IO completion inside an IO context
 
-Thus it can also be only be set more in the past.
+ fs/buffer.c                 |   17 ++++----
+ fs/direct-io.c              |   25 ++++++++++-
+ fs/ioctl.c                  |    2 +-
+ fs/mpage.c                  |    6 ++-
+ fs/xfs/linux-2.6/xfs_aops.c |   95 ++++++++++++++++++++++++++++++++++++++-----
+ fs/xfs/xfs_inode.h          |   13 +++---
+ include/linux/fs.h          |   10 ++++-
+ 7 files changed, 136 insertions(+), 32 deletions(-)
 
-Cheers
-Bj=F6rn
---=20
-SerNet GmbH, Bahnhofsallee 1b, 37081 G=F6ttingen
-phone: +49-551-370000-0, fax: +49-551-370000-9
-AG G=F6ttingen, HRB 2816, GF: Dr. Johannes Loxen
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Dave Chinner
+david@fromorbit.com
