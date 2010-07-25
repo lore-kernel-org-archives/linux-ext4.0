@@ -1,54 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] mke2fs.8.in: correct the sign of a block-size constraint.
-Date: Sat, 24 Jul 2010 23:55:55 -0500
-Message-ID: <4C4BC3DB.5000008@redhat.com>
-References: <20100724220124.GO4032@pooh.frostnet.net>
+From: horhe <skrzynka_na_spami@kolekcja.mejor.pl>
+Subject: Re: [problem] strange values displayed by e2freefrag
+Date: Sun, 25 Jul 2010 13:42:51 +0200
+Message-ID: <i2h800$69c$1@dough.gmane.org>
+References: <i2fkse$lkr$1@dough.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-2
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Chris Frost <chris@frostnet.net>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62673 "EHLO mx1.redhat.com"
+Received: from lo.gmane.org ([80.91.229.12]:51626 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751100Ab0GYE4Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Jul 2010 00:56:16 -0400
-In-Reply-To: <20100724220124.GO4032@pooh.frostnet.net>
+	id S1750974Ab0GYLnI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Jul 2010 07:43:08 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Oczbl-0005b1-On
+	for linux-ext4@vger.kernel.org; Sun, 25 Jul 2010 13:43:05 +0200
+Received: from ip-194.54.191.238.spray.net.pl ([194.54.191.238])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Jul 2010 13:43:05 +0200
+Received: from skrzynka_na_spami by ip-194.54.191.238.spray.net.pl with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Jul 2010 13:43:05 +0200
+In-Reply-To: <i2fkse$lkr$1@dough.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Chris Frost wrote:
-> Small but technical typo correction.
-> 
-> There may be more preferred mark ups (e.g., no space between the negative
-> sign and "block-sized") or expressions (e.g., absolute value instead of
-> negation).
+After reboot, values are correct:
+Device: /dev/mapper/vg--bez--raidu-lvarchiwumnowe
+Blocksize: 4096 bytes
+Total blocks: 52166656
+Free blocks: 7632537 (14.6%)
 
-wow I didn't even know that behavior existed.
+Min. free extent: 4 KB
+Max. free extent: 128120 KB
+Avg. free extent: 3444 KB
 
-How about "If block-size is preceded by a negative sign ("-"), then mke2fs 
-will use heuristics to determine the appropriate block size, with the 
-constraint that the block size will be at least block-size bytes."
+HISTOGRAM OF FREE EXTENT SIZES:
+Extent Size Range :  Free extents   Free Blocks  Percent
+    4K...    8K-  :          1506          1506    0.02%
+    8K...   16K-  :          1564          3924    0.05%
+   16K...   32K-  :          1112          5710    0.07%
+   32K...   64K-  :           228          2474    0.03%
+   64K...  128K-  :           222          5058    0.07%
+  128K...  256K-  :           266         12227    0.16%
+  256K...  512K-  :           305         28058    0.37%
+  512K... 1024K-  :           487         84407    1.11%
+    1M...    2M-  :           600        232959    3.05%
+    2M...    4M-  :           769        566341    7.42%
+    4M...    8M-  :           790       1141959   14.96%
+    8M...   16M-  :           499       1352032   17.71%
+   16M...   32M-  :           337       1870576   24.51%
+   32M...   64M-  :           126       1345245   17.63%
+   64M...  128M-  :            44        979274   12.83%
 
--Eric
-
-> 
-> Signed-off-by: Chris Frost <chris@frostnet.net>
-> ---
->  misc/mke2fs.8.in |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> index 45a99f8..05cfe17 100644
-> --- a/misc/mke2fs.8.in
-> +++ b/misc/mke2fs.8.in
-> @@ -177,7 +177,7 @@ is negative, then
->  .B mke2fs
->  will use heuristics to determine the
->  appropriate block size, with the constraint that the block size will be
-> -at least
-> +at least \-
->  .I block-size
->  bytes.  This is useful for certain hardware devices which require that
->  the blocksize be a multiple of 2k.
+I was completly full partition, then i freed 15% space (about 30G), then
+i saw strange values from first post.
+I can't reproduce this problem, i filled up partition, removed files and
+problem doesn't apper.
+Regards,
+Marcin
 
