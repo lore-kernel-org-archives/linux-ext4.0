@@ -1,85 +1,76 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: Re: [PATCH 4/8] e2fsprogs: Next3 snapshot control with chattr/lsattr
-	-X
-Date: Mon, 26 Jul 2010 11:01:52 +0300
-Message-ID: <AANLkTi=oMJE1RYmgwPxo8s7mZH7zwUtOAUyF1O3kaemP@mail.gmail.com>
-References: <1F7FAC7E-3FCF-4E32-922D-02E7A068CC50@oracle.com>
-	<AANLkTilBJHoIUxbOI1RpBtBXLulcuv8VrSe6Vhwxegli@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: Ext4: batched discard support - simplified version
+Date: Mon, 26 Jul 2010 12:30:28 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1007261209310.2905@localhost>
+References: <1278489212-12110-1-git-send-email-lczerner@redhat.com> <20100723143604.GF13090@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <andreas.dilger@oracle.com>,
-	Theodore Tso <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, eshishki@redhat.com,
+	jmoyer@redhat.com, rwheeler@redhat.com, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:35148 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752865Ab0GZIBz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jul 2010 04:01:55 -0400
-Received: by bwz1 with SMTP id 1so2620669bwz.19
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jul 2010 01:01:53 -0700 (PDT)
-In-Reply-To: <AANLkTilBJHoIUxbOI1RpBtBXLulcuv8VrSe6Vhwxegli@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:57721 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752677Ab0GZKae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Jul 2010 06:30:34 -0400
+In-Reply-To: <20100723143604.GF13090@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 22, 2010 at 11:56 AM, Amir G.
-<amir73il@users.sourceforge.net> wrote:
-> On Mon, Jun 21, 2010 at 9:17 PM, Andreas Dilger
-> <andreas.dilger@oracle.com> wrote:
->>> +static struct flags_name snapshot_flags_array[] =3D {
->>> + =A0 =A0 { NEXT3_SNAPFILE_LIST_FL, "S", "on_liSt" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_ENABLED_FL, "n", "eNabled" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_ACTIVE_FL, "a", "Active" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_INUSE_FL, "p", "inuse_by_Previous" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_DELETED_FL, "s", "Deleted" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_SHRUNK_FL, "h", "sHrunk" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_OPEN_FL, "o", "mOunted" },
->>> + =A0 =A0 { NEXT3_SNAPFILE_TAGGED_FL, "t", "Tagged" },
->>> =A0 =A0 =A0 { 0, NULL, NULL }
->>> =A0};
->>
->> While clever, I don't think this necessarily makes for a good user i=
-nterface.
->> In comparison, flags "l, e, a, i, d, s, m ,t" respectively make much=
- easier to understand/remember name abbreviations.
->>
->
+On Fri, 23 Jul 2010, Ted Ts'o wrote:
 
-=46YI, I've just resent the snapshot control patch.
-The 'leaidsmt' flags where added to Andreas's request.
-Those are the default flags when lssnap/chsnap (symlinks to
-lsattr/chattr) are invoked.
-The 'Snapshot' flags are still supported when lssnap/chsnap -X (or
-lsattr/chattr -X) are invoked.
+> On Wed, Jul 07, 2010 at 09:53:30AM +0200, Lukas Czerner wrote:
+> > 
+> > Hi all,
+> > 
+> > since my last post I have done some more testing with various SSD's and the
+> > trend is clear. Trim performance is getting better and the performance loss
+> > without trim is getting lower. So I have decided to abandon the initial idea
+> > to track free blocks within some internal data structure - it takes time and
+> > memory.
+> 
+> Do you have some numbers about how bad trim actually might be on
+> various devices?  I can imagine some devices where it might be better
+> (for wear levelling and better write endurance if nothing else) where
+> it's better to do the trim right away instead of batching things.
 
-here is the usage of chsnap:
-# chsnap
-Usage: ./misc/chsnap [-+=3Dlet] snapshot files...
-Usage: ./misc/chsnap -X [-+=3DSnt] snapshot files...
+Hi,
+
+Yes, I have those numbers.
+
+http://people.redhat.com/jmoyer/discard/ext4_batched_discard/ext4_discard.html
+This page presents my test results on three different devices. I have
+tested the current ext4 discard implementation (do the trim right away).
+However, one tested device is still not on that page. With this
+(Vendor4) device I have got only about 1.83% performance loss, which is
+very good.
+
+http://people.redhat.com/jmoyer/discard/ext4_batched_discard/ext4_ioctltrim.html
+This page provides test results with my batched discard implementation.
+Take those numbers with discretion, because the patch still does not
+involve journaling and I have tested the "worst case" scenario, which
+involves issuing FITRIM in endless loop without any sleep.
+
+Generally the FITRIM ioctl can take from 2 seconds on fast devices to
+several (2-4) minutes on very slow devices, or under heavy load.
 
 
->
-> As for chattr -X flags, I intend to eliminate those altogether.
-> As Ted suggested, controlling the 'n' flag, will no longer be needed,
-> once auto-enable is implemented.
-> Instead of controlling the 'S' flag for snapshot take/delete, 'take'
-> will be invoked automatically on create()
-> of file in a snapshots directory and 'delete' will be invoked on
-> attempt to unlink() a snapshot file.
->
-> See new API design at:
-> http://sourceforge.net/apps/mediawiki/next3/index.php?title=3DUser-ke=
-rnel_API
->
+> 
+> So what I'm thinking about doing is keeping the "discard" mount option
+> to mean non-batched discard.  If you want to use the explicit FITRIM
+> ioctl, I don't think we need to test to see if the dicard mount option
+> is set; if the user issues the ioctl, then we should do the batched
+> discard, and if we don't trust the user to do that, then well, the
+> ioctl should be restricted to privileged users only --- especially if
+> it could take up to a minute.
 
-I still didn't get around to implementing the new API,
-so for now lssnap/chsnap are still using unused bits in the
-GETFLAGS/SETFLAGS ioctl
-to control/view snapshot status flags.
+I agree.
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 						- Ted
+> 
+
+Thanks.
+
+-Lukas
