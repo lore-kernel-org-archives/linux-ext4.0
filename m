@@ -1,36 +1,35 @@
-From: Andreas Dilger <andreas.dilger@oracle.com>
-Subject: Re: [PATCH][BUG] ext4: fix returning with 0 from write system call on ext4 with noextent
-Date: Sun, 25 Jul 2010 20:55:36 -0600
-Message-ID: <3CB5D95F-5CAB-4ED3-9837-3DF2DF69FA6D@oracle.com>
-References: <20100726111636.72264f8c.toshi.okajima@jp.fujitsu.com>
-Mime-Version: 1.0 (iPhone Mail 8A306)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger@sun.com" <adilger@sun.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sandeen@redhat.com" <sandeen@redhat.com>
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Li Zefan <lizf@cn.fujitsu.com>
+Subject: Re: [BUG] ext4 trace events cause NULL pointer dereferences
+Date: Mon, 26 Jul 2010 10:20:26 +0800
+Message-ID: <4C4CF0EA.2080104@cn.fujitsu.com>
+References: <20100722054957.GA11670@infradead.org> <20100723011315.GC16373@thunk.org> <20100723144549.88BA.A69D9226@jp.fujitsu.com> <4E28BC9A-BB77-45BC-862A-29601EF4AE2C@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	Frederic Weisbecker <fweisbec@gmail.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:46821 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753170Ab0GZC5J convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 Jul 2010 22:57:09 -0400
-In-Reply-To: <20100726111636.72264f8c.toshi.okajima@jp.fujitsu.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:60781 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753290Ab0GZDpv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Jul 2010 23:45:51 -0400
+In-Reply-To: <4E28BC9A-BB77-45BC-862A-29601EF4AE2C@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-07-25, at 20:16, Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
+Theodore Tso wrote:
+> On Jul 23, 2010, at 1:47 AM, KOSAKI Motohiro wrote:
 > 
-> -        if (pos > sbi->s_bitmap_maxbytes)
-> +        if (pos > sbi->s_bitmap_maxbytes
-> +           || (pos == sbi->s_bitmap_maxbytes && length > 0))
->            return -EFBIG;
+>> I'm not familiar ext4 so much. but you patch seems very nice!
+>> thank you :)
+> 
+> So, can someone confirm that this fixes the NULL pointer dereference?  The patch itself makes sense, and it doesn't change the tracepoint output, so I'm inclined to include it, but I haven't been able to reproduce the failure myself using the reproduction recipe given at the beginning of this thread --- and I'd feel much better if someone who has been able to reproduce the crash can confirm this fixes things for them.
+> 
 
-Minor note - the kernel coding style is to put the '||' at the end of the first line instead of the start of the second line. 
+The patch works!
 
-I thunk it would also be sufficient to do:
-
-        if (pos > sbi->s_bitmap_maxbytes + !!length)
-                 return -EFBIG;
+Tested-by: Li Zefan <lizf@cn.fujitsu.com>
