@@ -1,31 +1,68 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 09/18] xstat: Make special system filesystems return FS_SPECIAL_FL [ver #6]
-Date: Tue, 27 Jul 2010 14:41:24 +0100
-Message-ID: <17717.1280238084@redhat.com>
-References: <8426.1279548573@redhat.com> <20100718084955.GB27794@infradead.org> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021720.5544.19973.stgit@warthog.procyon.org.uk>
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <8426.1279548573-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] disallow FS recursion from sb_issue_discard allocation
+Date: Tue, 27 Jul 2010 09:44:14 -0400
+Message-ID: <20100727134414.GC18966@thunk.org>
+References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com>
+ <20100702181430.GD26916@redhat.com>
+ <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021554550.11102@hs20-bc2-1.build.redhat.com>
+ <Pine.LNX.4.64.1007021605410.13662@hs20-bc2-1.build.redhat.com>
+ <20100706161155.GA24461@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jens Axboe <jaxboe@fusionio.com>,
+	Mikulas Patocka <mpatocka@redhat.com>, dm-devel@redhat.com,
+	Alasdair G Kergon <agk@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Mike Snitzer <snitzer@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100706161155.GA24461@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
-
-> Also, not all the flags are per-filesystem.  The following are:
+On Tue, Jul 06, 2010 at 12:11:56PM -0400, Mike Snitzer wrote:
+> Filesystems can call sb_issue_discard on a memory reclaim path
+> (e.g. ext4 calls sb_issue_discard during journal commit).
 > 
-> 	FS_SPECIAL_FL		/* Special file as found in procfs/sysfs */
-> 	FS_REMOTE_FL		/* File is remote */
+> Use GFP_NOFS in sb_issue_discard to avoid recursing back into the FS.
+> 
+> Reported-by: Mikulas Patocka <mpatocka@redhat.com>
+> Signed-off-by: Mike Snitzer <snitzer@redhat.com>
 
-Actually, that last is not true; FS_REMOTE_FL is per-file, not per-fs.  You
-can have a filesystem that has fabricated files and remote files.  For
-instance, with kAFS at some point you will be go into /afs, do a lookup for a
-directory that doesn't exist, but whose name represents a cell+volume, the
-filesystem will fabricate a local directory and then attempt to mount a remote
-directory on to it.
+Hi Jens,
 
-David
+I never saw an ack from you on this patch.  Are you ok with it, and
+have you grabbed it for your tree?  Do you want me to include this in
+the ext4 tree, even though it's a patch to include/linux/blkdev.h?
+
+Thanks,
+
+						- Ted
+
+
+> ---
+>  include/linux/blkdev.h |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> index baf5258..dbb510c 100644
+> --- a/include/linux/blkdev.h
+> +++ b/include/linux/blkdev.h
+> @@ -933,7 +933,7 @@ static inline int sb_issue_discard(struct super_block *sb,
+>  {
+>  	block <<= (sb->s_blocksize_bits - 9);
+>  	nr_blocks <<= (sb->s_blocksize_bits - 9);
+> -	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_KERNEL,
+> +	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_NOFS,
+>  				   BLKDEV_IFL_WAIT | BLKDEV_IFL_BARRIER);
+>  }
+>  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
