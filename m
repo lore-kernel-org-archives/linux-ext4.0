@@ -1,263 +1,239 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/3] Add batched discard support for ext3
-Date: Tue, 27 Jul 2010 17:43:47 +0200
-Message-ID: <20100727154346.GB6820@quack.suse.cz>
-References: <1280234514-10287-1-git-send-email-lczerner@redhat.com>
- <1280234514-10287-3-git-send-email-lczerner@redhat.com>
+From: "Luis R. Rodriguez" <mcgrof@gmail.com>
+Subject: Re: udevd / ext4 issue mounting 2.6.35-rc5
+Date: Tue, 27 Jul 2010 09:03:36 -0700
+Message-ID: <AANLkTinbn5yjuekiVcHMkX7JLixohPTGuiFg+_wbDpUO@mail.gmail.com>
+References: <AANLkTilYEJMD_s5Iupru24WPXasxI_jE8JVJ35Nf8hrN@mail.gmail.com>
+	<AANLkTinQKhvnAIa-1qXxIWFHCeE0ajM-07eYOAH1QA_J@mail.gmail.com>
+	<AANLkTikY0eeq1Ufs-UOCiHYXu_314HUnw7ESK5ktocWV@mail.gmail.com>
+	<AANLkTimNFIc8Ygg4O2NPHCYHk1G3dLBhYA2N9JSeAbdt@mail.gmail.com>
+	<AANLkTikwQg6ZC-5tAzBExnNSx5J7Zgyc14sPXE7KqLW5@mail.gmail.com>
+	<AANLkTimTdy2DmcdXtgFvtREMX8bMADk73Oz5bwpeHw6H@mail.gmail.com>
+	<AANLkTi=9Y+v6ikUi=UH1BNKgcOFfp13Q1YowjJVrRSA9@mail.gmail.com>
+	<4C4ED26C.5030502@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
-	eshishki@redhat.com, sandeen@redhat.com, jack@suse.cz,
-	tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Daniel J Blueman <daniel.blueman@gmail.com>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>,
+	Ubuntu Kernel Team <kernel-team@lists.ubuntu.com>,
+	linux-ext4@vger.kernel.org,
+	linux-wireless <linux-wireless@vger.kernel.org>,
+	linux-kernel@vger.kernel.org
+To: Stefan Bader <stefan.bader@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54686 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751281Ab0G0PoO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Jul 2010 11:44:14 -0400
-Content-Disposition: inline
-In-Reply-To: <1280234514-10287-3-git-send-email-lczerner@redhat.com>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:40823 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750936Ab0G0QD5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jul 2010 12:03:57 -0400
+In-Reply-To: <4C4ED26C.5030502@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 27-07-10 14:41:53, Lukas Czerner wrote:
-> Walk through each allocation group and trim all free extents. It can be
-> invoked through TRIM ioctl on the file system. The main idea is to
-> provide a way to trim the whole file system if needed, since some SSD's
-> may suffer from performance loss after the whole device was filled (it
-> does not mean that fs is full!).
-> 
-> It search for free extents in each allocation group. When the free
-> extent is found, blocks are marked as used and then trimmed. Afterwards
-> these blocks are marked as free in per-group bitmap.
-  Thanks for the patch. It looks much better than the previous one. Some
-comments below.
+On Tue, Jul 27, 2010 at 5:34 AM, Stefan Bader
+<stefan.bader@canonical.com> wrote:
+> On 07/27/2010 01:43 AM, Luis R. Rodriguez wrote:
+>> On Fri, Jul 23, 2010 at 10:56 AM, Luis R. Rodriguez <mcgrof@gmail.co=
+m> wrote:
+>>> On Fri, Jul 23, 2010 at 9:49 AM, Luis R. Rodriguez <mcgrof@gmail.co=
+m> wrote:
+>>>> On Thu, Jul 22, 2010 at 2:10 AM, Daniel J Blueman
+>>>> <daniel.blueman@gmail.com> wrote:
+>>>>> On 22 July 2010 02:06, Luis R. Rodriguez <mcgrof@gmail.com> wrote=
+:
+>>>>>> On Wed, Jul 21, 2010 at 1:43 AM, Daniel J Blueman
+>>>>>> <daniel.blueman@gmail.com> wrote:
+>>>>>>> Hi Luis,
+>>>>>>>
+>>>>>>> On 21 July 2010 01:36, Luis R. Rodriguez <mcgrof@gmail.com> wro=
+te:
+>>>>>>>> I have been reluctant to boot to 2.6.35-rc due to the large se=
+t of
+>>>>>>>> regression list and the amount of work I needed to actually ge=
+t done
+>>>>>>>> on 2.6.35. Last I checked the regression list it was getting s=
+mall so
+>>>>>>>> I gave it a spin today. No luck. I get some bootup error from =
+udevd
+>>>>>>>> and ext2/ext3/ext4, something like this:
+>>>>>>>>
+>>>>>>>> EXT3-fs (sda1): error: couldn't mount because of unsupported o=
+ptional
+>>>>>>>> features (240)
+>>>>>>>> EXT2-fs (sda1): error: couldn't mount because of unsupported o=
+ptional
+>>>>>>>> features (240)
+>>>>>>>> EXT4-fs (sda1): mounted filesystem with ordered data mode. Opt=
+s: (null)
+>>>>>>>
+>>>>>>> This succeeded.
+>>>>>>
+>>>>>> Heh, OK :)
+>>>>>>
+>>>>>>>> VFS: Mounted root (ext4 filesystem) readonly on device 8:1
+>>>>>>>> Freeing unused kernel memory: 708k freed
+>>>>>>>> Write protecting the kernel read-only data: 102040k
+>>>>>>>> Freeing unused kernel memory: 764k freed
+>>>>>>>> Freeing unused kernel memory: 1796k freed
+>>>>>>>> udevd: failed to create queue file: No such file or directory
+>>>>>>>> udevd: error creating queue file
+>>>>>>>
+>>>>>>> It looks like you need to enable:
+>>>>>>>
+>>>>>>> CONFIG_DEVTMPFS
+>>>>>>> CONFIG_DEVTMPFS_MOUNT
+>>>>>>
+>>>>>> Thanks, it also turned out that when I upgraded from Ubuntu 9.10=
+ to
+>>>>>> Ubuntu 10.04 it replaced my own /sbin/installkernel so this was =
+likely
+>>>>>> another issue. My /sbin/installkernel changes allow for easy ini=
+tramfs
+>>>>>> installation on Debian/Ubuntu but my patches have been ignored m=
+y the
+>>>>>> maintainer.
+>>>>>>
+>>>>>> --- installkernel-ubuntu-10.04 =C2=A02010-07-21 18:03:34.6076780=
+10 -0700
+>>>>>> +++ installkernel =C2=A0 =C2=A0 =C2=A0 2010-01-29 13:17:10.00000=
+0000 -0800
+>>>>>> @@ -36,7 +36,8 @@
+>>>>>> =C2=A0# Create backups of older versions before installing
+>>>>>> =C2=A0updatever () {
+>>>>>> =C2=A0 if [ -f "$dir/$1-$ver" ] ; then
+>>>>>> - =C2=A0 =C2=A0mv "$dir/$1-$ver" "$dir/$1-$ver.old"
+>>>>>> + =C2=A0 =C2=A0#mv "$dir/$1-$ver" "$dir/$1-$ver.old"
+>>>>>> + =C2=A0 =C2=A0rm -f "$dir/$1-$ver" "$dir/$1-$ver.old"
+>>>>>> =C2=A0 fi
+>>>>>>
+>>>>>> =C2=A0 cat "$2" > "$dir/$1-$ver"
+>>>>>> @@ -75,5 +76,16 @@
+>>>>>> =C2=A0if [ -f "$config" ] ; then
+>>>>>> =C2=A0 updatever config "$config"
+>>>>>> =C2=A0fi
+>>>>>> +
+>>>>>> +LSB_RED_ID=3D$(/usr/bin/lsb_release -i -s)
+>>>>>> +
+>>>>>> +case $LSB_RED_ID in
+>>>>>> +"Ubuntu")
+>>>>>> + =C2=A0 =C2=A0 =C2=A0 update-initramfs -c -k =C2=A0$ver
+>>>>>> + =C2=A0 =C2=A0 =C2=A0 update-grub
+>>>>>> + =C2=A0 =C2=A0 =C2=A0 ;;
+>>>>>> +*)
+>>>>>> + =C2=A0 =C2=A0 =C2=A0 ;;
+>>>>>> +esac
+>>>>>>
+>>>>>> =C2=A0exit 0
+>>>>>>
+>>>>>> But anyway I also now get another boot failure with:
+>>>>>>
+>>>>>> mount: mounting /dev on /root/dev failed: No such file or direct=
+ory
+>>>>>> mount: mounting /sys on /root/sys failed: No such file or direct=
+ory
+>>>>>
+>>>>> Hmm...the scripts in the initrd are not doing what is expected -
+>>>>> perhaps if you didn't use:
+>>>>> linux$ fakeroot make-kpkg --append-to-version -luis1 --initrd ker=
+nel-image
+>>>>
+>>>> I am not using that to build my kernels I just build my kernels wi=
+th
+>>>>
+>>>> make
+>>>> sudo make modules_install install
+>>>>
+>>>>> ...or if there are eg initrd script modifications on the filesyst=
+em
+>>>>> when it cooked the initd.
+>>>>
+>>>> I haven't modified any initrd scripts.
+>>>>
+>>>>> You could just try eg:
+>>>>> http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-image-2.=
+6.35-9-generic_2.6.35-9.14_amd64.deb
+>>>
+>>> Fun, so that kernel actually works but the one I am building from
+>>> wireless-testing.git does not. The curious thing is it doesn't boot
+>>> even if I remove my 802.11 module... so something is fishy. This is
+>>> likely a config issue. After booting with the above kernel though I
+>>> generated a new one with
+>>>
+>>> make localmodconfig
+>>>
+>>> and then enabled my 802.11 modules. Still, no luck.. Going to reset=
+ my
+>>> tree, I had manually merged Linus' latest stuff in but I don't thin=
+k
+>>> this should matter.
+>>
+>> That didn't work, but it seems this was just my config, the same
+>> config worked on older kernels but I am not motivated enough to figu=
+re
+>> out what I actually did enable which fixed this. But just for the
+>> record
+>>
+>> config which did not work:
+>>
+>> http://bombadil.infradead.org/~mcgrof/configs/2010/config-issue/conf=
+ig-old.txt
+>>
+>> config which worked:
+>>
+>> http://bombadil.infradead.org/~mcgrof/configs/2010/config-issue/conf=
+ig.txt
+>>
+>> The diff:
+>>
+>> http://bombadil.infradead.org/~mcgrof/configs/2010/config-issue/diff=
+-34-35.patch
+>>
+>> =C2=A0 Luis
+>>
+>
+> Hm, I hope I did not miss some info in the threads above, but have yo=
+u tried to
+> use the config in /boot/ as a base for your new config with make oldc=
+onfig?
 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext3/balloc.c        |  229 +++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext3/super.c         |    1 +
->  include/linux/ext3_fs.h |    1 +
->  3 files changed, 231 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> index a177122..97c6867 100644
-> --- a/fs/ext3/balloc.c
-> +++ b/fs/ext3/balloc.c
-> @@ -20,6 +20,7 @@
->  #include <linux/ext3_jbd.h>
->  #include <linux/quotaops.h>
->  #include <linux/buffer_head.h>
-> +#include <linux/blkdev.h>
->  
->  /*
->   * balloc.c contains the blocks allocation and deallocation routines
-> @@ -1876,3 +1877,231 @@ unsigned long ext3_bg_num_gdb(struct super_block *sb, int group)
->  	return ext3_bg_num_gdb_meta(sb,group);
->  
->  }
-> +
-> +/**
-> + * ext3_trim_all_free -- function to trim all free space in alloc. group
-> + * @sb:			super block for file system
-> + * @group:		allocation group to trim
-> + * @gdp:		allocation group description structure
-> + * @minblocks:		minimum extent block count
-> + *
-> + * ext3_trim_all_free walks through group's block bitmap searching for free
-> + * blocks. When the free block is found, it tries to allocate this block and
-> + * consequent free block to get the biggest free extent possible, until it
-> + * reaches any used block. Then issue a TRIM command on this extent and free
-> + * the extent in the block bitmap. This is done until whole group is scanned.
-> + */
-> +ext3_grpblk_t ext3_trim_all_free(struct super_block *sb,
-> +			unsigned int group, ext3_grpblk_t minblocks)
-> +{
-> +	handle_t *handle;
-> +	ext3_grpblk_t max = EXT3_BLOCKS_PER_GROUP(sb);
-> +	ext3_grpblk_t next, count = 0, start, bit;
-> +	struct ext3_sb_info *sbi;
-> +	ext3_fsblk_t discard_block;
-> +	struct buffer_head *bitmap_bh = NULL;
-> +	struct buffer_head *gdp_bh;
-> +	ext3_grpblk_t free_blocks;
-> +	struct ext3_group_desc *gdp;
-> +	int err = 0, ret;
-> +	ext3_grpblk_t freed;
-> +
-> +	/**
-> +	 * We will update one block bitmap, and one group descriptor
-> +	 */
-> +	handle = ext3_journal_start_sb(sb, 2);
-> +	if (IS_ERR(handle)) {
-> +		err = PTR_ERR(handle);
-> +		ext3_warning(sb, __func__, "error %d on journal start", err);
-  I think there's no need to issue another warning here... When
-journal_start fails there should be notices about this in the log already.
+Yeah, that's how I started my own configs for 2.6.34, then I always
+use make localmodconfig to trim crap down. In this case my config just
+stopped working on newer kernels. What cured it was I took Daniel J
+Blueman's 2.6.35 ubuntu package:
 
-> +		return err;
-> +	}
-> +
-> +	bitmap_bh = read_block_bitmap(sb, group);
-> +	if (!bitmap_bh)
-> +		goto err_out;
-> +
-> +	BUFFER_TRACE(bitmap_bh, "getting undo access");
-> +	err = ext3_journal_get_undo_access(handle, bitmap_bh);
-> +	if (err)
-> +		goto err_out;
-> +
-> +	gdp = ext3_get_group_desc(sb, group, &gdp_bh);
-> +	if (!gdp)
-> +		goto err_out;
-> +
-> +	BUFFER_TRACE(gd_bh, "get_write_access");
-> +	err = ext3_journal_get_write_access(handle, gdp_bh);
-> +	if (err)
-> +		goto err_out;
-> +
-> +	free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
-> +	sbi = EXT3_SB(sb);
-> +
-> +	 /* Walk through the whole group */
-> +	start = 0;
-> +	while (start < max) {
-> +
-> +		start = bitmap_search_next_usable_block(start, bitmap_bh, max);
-> +		if (start < 0)
-> +			break;
-> +		next = start;
-> +
-> +		/**
-                ^^^ Use just /*. /** is reserved for comments processed by
-  kernel documentation generator and they have to have special format...
+http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-image-2.6.35-9=
+-generic_2.6.35-9.14_amd64.deb
 
-> +		 * Allocate contiguous free extents by setting bits in the
-> +		 * block bitmap
-> +		 */
-> +		while (next < max
-> +			&& claim_block(sb_bgl_lock(sbi, group),
-> +					next, bitmap_bh)) {
-> +			next++;
-> +		}
-> +
-> +		 /* We did not claimed any blocks */
-                               ^^^^ claim
+Then stole that config and used it as a starting reference, then did
+the localmodconfig after booting into it and cp'ing that config to my
+own and running oldconfig.
 
-> +		if (next == start)
-> +			continue;
-> +
-> +		discard_block = (ext3_fsblk_t)start +
-> +				ext3_group_first_block_no(sb, group);
-> +
-> +		/* Update counters */
-> +		spin_lock(sb_bgl_lock(sbi, group));
-> +		le16_add_cpu(&gdp->bg_free_blocks_count, start - next);
-> +		spin_unlock(sb_bgl_lock(sbi, group));
-> +		percpu_counter_sub(&sbi->s_freeblocks_counter, next - start);
-> +
-> +		/* Do not issue a TRIM on extents smaller than minblocks */
-> +		if ((next - start) < minblocks)
-> +			goto free_extent;
-> +
-> +		 /* Send the TRIM command down to the device */
-> +		sb_issue_discard(sb, discard_block, next - start);
-> +		count += (next - start);
-> +		cond_resched();
-  Maybe you could cond_resched() after freeing the blocks instead of here?
-So that we don't sleep with blocks unnecessarily allocated?
+> I think to remember make modules_install purges all existing modules =
+under
+> kernel before installing the new ones. So likely there is something e=
+ssential
+> going away when rebuilding the initrd. The messages sound like basic =
+root fs is
+> not there, so it misses all the mount points. But I admit to be too l=
+azy to walk
+> all the config.
 
-> +
-> +free_extent:
-> +
-> +		freed = 0;
-> +		jbd_lock_bh_state(bitmap_bh);
-> +
-> +		for (bit = start; bit < next; bit++) {
-> +
-> +			/**
-> +			 * @@@ This prevents newly-allocated data from being
-> +			 * freed and then reallocated within the same
-> +			 * transaction.
-> +			 */
-> +			BUFFER_TRACE(bitmap_bh, "set in b_committed_data");
-> +			J_ASSERT_BH(bitmap_bh,
-> +				bh2jh(bitmap_bh)->b_committed_data != NULL);
-> +			ext3_set_bit_atomic(sb_bgl_lock(sbi, group), bit,
-> +				bh2jh(bitmap_bh)->b_committed_data);
-  You don't have to do this. Since you didn't really allocate the blocks
-(you are actually never going to commit bitmap changes to the journal)
-blocks can be happily reallocated just after you clear the bits in the
-bitmap. There's no problem with that. Also you don't have to hold bh_state
-lock at all.
+Right, I thought it was the rootfs, the rootfs is provided through the
+tmpfs filesystem which both configs have. They also have devftmpfs.
+This is why I started to suspect something on the distribution side
+but low and behold linux-image-2.6.35-9-generic_2.6.35-9.14_amd64.deb
+worked well.
 
-> +
-> +			/**
-> +			 * We clear the bit in the bitmap after setting the
-> +			 * committed data bit, because this is the reverse
-> +			 * order to that which the allocator uses.
-> +			 */
-> +			BUFFER_TRACE(bitmap_bh, "clear bit");
-> +			if (!ext3_clear_bit_atomic(sb_bgl_lock(sbi, group),
-> +						bit, bitmap_bh->b_data)) {
-> +				jbd_unlock_bh_state(bitmap_bh);
-> +				ext3_error(sb, __func__,
-> +					"bit already cleared for block "E3FSBLK,
-> +					 (unsigned long)bit);
-> +				jbd_lock_bh_state(bitmap_bh);
-> +				BUFFER_TRACE(bitmap_bh, "bit already cleared");
-> +			} else {
-> +				freed++;
-> +			}
-> +		}
-> +
-> +		jbd_unlock_bh_state(bitmap_bh);
-> +
-> +		/* Update couters */
-> +		spin_lock(sb_bgl_lock(sbi, group));
-> +		le16_add_cpu(&gdp->bg_free_blocks_count, freed);
-> +		spin_unlock(sb_bgl_lock(sbi, group));
-> +		percpu_counter_add(&sbi->s_freeblocks_counter, next - start);
-> +
-> +		start = next;
-> +
-> +		if (signal_pending(current)) {
-> +			count = -ERESTARTSYS;
-> +			break;
-> +		}
-> +
-> +		/* No more suitable extents */
-> +		if ((free_blocks - count) < minblocks)
-> +			break;
-> +	}
-> +
-> +	/* We dirtied the bitmap block */
-> +	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
-> +	err = ext3_journal_dirty_metadata(handle, bitmap_bh);
-> +
-> +	/* And the group descriptor block */
-> +	BUFFER_TRACE(gdp_bh, "dirtied group descriptor block");
-> +	ret = ext3_journal_dirty_metadata(handle, gdp_bh);
-> +	if (!err)
-> +		err = ret;
-> +
-> +	ext3_debug("trimmed %d blocks in the group %d\n",
-> +		count, group);
-> +
-> +err_out:
-> +	if (err) {
-> +		ext3_std_error(sb, err);
-> +		count = -err;
-> +	}
-> +
-> +	ext3_journal_stop(handle);
-> +	brelse(bitmap_bh);
-> +
-> +	return count;
-> +}
-  Otherwise the patch looks OK.
+CONFIG_DEVTMPFS=3Dy
+CONFIG_DEVTMPFS_MOUNT=3Dy
+CONFIG_TMPFS=3Dy
+CONFIG_TMPFS_POSIX_ACL=3Dy
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Good news is its working now but certainly my old config did not work a=
+nymore.
+
+  Luis
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
