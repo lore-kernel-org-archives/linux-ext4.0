@@ -1,39 +1,31 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Always journal quota file modifications
-Date: Tue, 27 Jul 2010 09:37:04 -0400
-Message-ID: <20100727133704.GB18966@thunk.org>
-References: <1275488593-7237-1-git-send-email-jack@suse.cz>
- <4C323BAC.5030101@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:51192 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752661Ab0G0NhD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Jul 2010 09:37:03 -0400
-Content-Disposition: inline
-In-Reply-To: <4C323BAC.5030101@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 09/18] xstat: Make special system filesystems return FS_SPECIAL_FL [ver #6]
+Date: Tue, 27 Jul 2010 14:41:24 +0100
+Message-ID: <17717.1280238084@redhat.com>
+References: <8426.1279548573@redhat.com> <20100718084955.GB27794@infradead.org> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021720.5544.19973.stgit@warthog.procyon.org.uk>
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <8426.1279548573-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 05, 2010 at 03:08:12PM -0500, Eric Sandeen wrote:
-> Jan Kara wrote:
-> > When journaled quota options are not specified, we do writes
-> > to quota files just in data=ordered mode. This actually causes
-> > warnings from JBD2 about dirty journaled buffer because ext4_getblk
-> > unconditionally treats a block allocated by it as metadata. Since
-> > quota actually is filesystem metadata, the easiest way to get rid
-> > of the warning is to always treat quota writes as metadata...
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
+David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+
+> Also, not all the flags are per-filesystem.  The following are:
 > 
-> Where are we at on this one?  I was trawling through my old RH bugs
-> today, and have one that this patch will resolve.  Ted, did you
-> get comfortable with it?
+> 	FS_SPECIAL_FL		/* Special file as found in procfs/sysfs */
+> 	FS_REMOTE_FL		/* File is remote */
 
-I've added this to the ext4 patch queue.  (Going my backlog too,
-before the merge window opens.  :-)
+Actually, that last is not true; FS_REMOTE_FL is per-file, not per-fs.  You
+can have a filesystem that has fabricated files and remote files.  For
+instance, with kAFS at some point you will be go into /afs, do a lookup for a
+directory that doesn't exist, but whose name represents a cell+volume, the
+filesystem will fabricate a local directory and then attempt to mount a remote
+directory on to it.
 
-					- Ted
+David
