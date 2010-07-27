@@ -1,68 +1,28 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] disallow FS recursion from sb_issue_discard allocation
-Date: Tue, 27 Jul 2010 09:44:14 -0400
-Message-ID: <20100727134414.GC18966@thunk.org>
-References: <Pine.LNX.4.64.1007021107420.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021112340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021117580.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021118340.7296@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021119070.7296@hs20-bc2-1.build.redhat.com>
- <20100702181430.GD26916@redhat.com>
- <Pine.LNX.4.64.1007021540150.6197@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021554550.11102@hs20-bc2-1.build.redhat.com>
- <Pine.LNX.4.64.1007021605410.13662@hs20-bc2-1.build.redhat.com>
- <20100706161155.GA24461@redhat.com>
+Subject: Re: [PATCH] ext4: fix ext4_get_blocks references
+Date: Tue, 27 Jul 2010 09:47:54 -0400
+Message-ID: <20100727134754.GD18966@thunk.org>
+References: <4C49FA4E.80109@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jaxboe@fusionio.com>,
-	Mikulas Patocka <mpatocka@redhat.com>, dm-devel@redhat.com,
-	Alasdair G Kergon <agk@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:34271 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755988Ab0G0Nrt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Jul 2010 09:47:49 -0400
 Content-Disposition: inline
-In-Reply-To: <20100706161155.GA24461@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4C49FA4E.80109@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 06, 2010 at 12:11:56PM -0400, Mike Snitzer wrote:
-> Filesystems can call sb_issue_discard on a memory reclaim path
-> (e.g. ext4 calls sb_issue_discard during journal commit).
+On Fri, Jul 23, 2010 at 03:23:42PM -0500, Eric Sandeen wrote:
+> ext4_get_blocks got renamed to ext4_map_blocks, but left stale
+> comments and a prototype littered around.
 > 
-> Use GFP_NOFS in sb_issue_discard to avoid recursing back into the FS.
-> 
-> Reported-by: Mikulas Patocka <mpatocka@redhat.com>
-> Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Hi Jens,
+Thanks, I've added this patch to the ext4 patch queue.
 
-I never saw an ack from you on this patch.  Are you ok with it, and
-have you grabbed it for your tree?  Do you want me to include this in
-the ext4 tree, even though it's a patch to include/linux/blkdev.h?
-
-Thanks,
-
-						- Ted
-
-
-> ---
->  include/linux/blkdev.h |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-> index baf5258..dbb510c 100644
-> --- a/include/linux/blkdev.h
-> +++ b/include/linux/blkdev.h
-> @@ -933,7 +933,7 @@ static inline int sb_issue_discard(struct super_block *sb,
->  {
->  	block <<= (sb->s_blocksize_bits - 9);
->  	nr_blocks <<= (sb->s_blocksize_bits - 9);
-> -	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_KERNEL,
-> +	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_NOFS,
->  				   BLKDEV_IFL_WAIT | BLKDEV_IFL_BARRIER);
->  }
->  
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	     	   	      	     - Ted
