@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V3 16/17] vfs: Cache richacl in struct inode
-Date: Thu, 29 Jul 2010 23:27:54 +0530
-Message-ID: <1280426275-4602-17-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V3 17/17] ext4: Add temporary richacl mount option for ext4.
+Date: Thu, 29 Jul 2010 23:27:55 +0530
+Message-ID: <1280426275-4602-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1280426275-4602-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,293 +24,141 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruen@suse.de>
+This helps in easy testing of the patchset. The mount
+option will be later removed in favour of a feature flag.
 
-Cache richacls in struct inode and not individually in each filesystem.
+***Should be folded before merging***
 
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/ext4.h          |    4 ----
- fs/ext4/inode.c         |    3 ---
- fs/ext4/richacl.c       |   34 ++++------------------------------
- fs/ext4/richacl.h       |    3 ---
- fs/ext4/super.c         |   10 ----------
- fs/inode.c              |   24 +++++++++++++++++++-----
- include/linux/fs.h      |   12 ++++++++++--
- include/linux/richacl.h |   41 +++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 74 insertions(+), 57 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/super.c |   54 ++++++++++++++++++++++++++++++++++++++++++------------
+ 2 files changed, 43 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 966d0cb..651379b 100644
+index 651379b..b62bd61 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -836,10 +836,6 @@ struct ext4_inode_info {
- 	 */
- 	tid_t i_sync_tid;
- 	tid_t i_datasync_tid;
--#ifdef CONFIG_EXT4_FS_RICHACL
--	struct richacl   *i_richacl;
--#endif
--
- };
+@@ -884,6 +884,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+ #define EXT4_MOUNT_DISCARD		0x40000000 /* Issue DISCARD requests */
++#define EXT4_MOUNT_RICHACL		0x80000000 /* Temp richacl enable */
  
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 93550e3..66a8c57 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5021,9 +5021,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 
- 	ei->i_state_flags = 0;
--#ifdef CONFIG_EXT4_FS_RICHACL
--	ei->i_richacl = EXT4_RICHACL_NOT_CACHED;
--#endif
- 	ei->i_dir_start_lookup = 0;
- 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
- 	/* We now have enough fields to check if the inode was active or not.
-diff --git a/fs/ext4/richacl.c b/fs/ext4/richacl.c
-index 5dfba2b..5b9e839 100644
---- a/fs/ext4/richacl.c
-+++ b/fs/ext4/richacl.c
-@@ -22,32 +22,6 @@
- #include "acl.h"
- #include "richacl.h"
- 
--static inline struct richacl *
--ext4_iget_richacl(struct inode *inode)
--{
--	struct richacl *acl = EXT4_RICHACL_NOT_CACHED;
--	struct ext4_inode_info *ei = EXT4_I(inode);
--
--	spin_lock(&inode->i_lock);
--	if (ei->i_richacl != EXT4_RICHACL_NOT_CACHED)
--		acl = richacl_get(ei->i_richacl);
--	spin_unlock(&inode->i_lock);
--
--	return acl;
--}
--
--static inline void
--ext4_iset_richacl(struct inode *inode, struct richacl *acl)
--{
--	struct ext4_inode_info *ei = EXT4_I(inode);
--
--	spin_lock(&inode->i_lock);
--	if (ei->i_richacl != EXT4_RICHACL_NOT_CACHED)
--		richacl_put(ei->i_richacl);
--	ei->i_richacl = richacl_get(acl);
--	spin_unlock(&inode->i_lock);
--}
--
- static struct richacl *
- ext4_get_richacl(struct inode *inode)
- {
-@@ -58,8 +32,8 @@ ext4_get_richacl(struct inode *inode)
- 
- 	if (!IS_RICHACL(inode))
- 		return ERR_PTR(-EOPNOTSUPP);
--	acl = ext4_iget_richacl(inode);
--	if (acl != EXT4_RICHACL_NOT_CACHED)
-+	acl = get_cached_richacl(inode);
-+	if (acl != ACL_NOT_CACHED)
- 		return acl;
- 	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
- 	if (retval > 0) {
-@@ -79,7 +53,7 @@ ext4_get_richacl(struct inode *inode)
- 	kfree(value);
- 
- 	if (!IS_ERR_OR_NULL(acl))
--		ext4_iset_richacl(inode, acl);
-+		set_cached_richacl(inode, acl);
- 
- 	return acl;
- }
-@@ -114,7 +88,7 @@ ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
- 		retval = ext4_xattr_set(inode, name_index, "", value, size, 0);
- 	kfree(value);
- 	if (!retval)
--		ext4_iset_richacl(inode, acl);
-+		set_cached_richacl(inode, acl);
- 
- 	return retval;
- }
-diff --git a/fs/ext4/richacl.h b/fs/ext4/richacl.h
-index 00d89f2..1d52914 100644
---- a/fs/ext4/richacl.h
-+++ b/fs/ext4/richacl.h
-@@ -21,9 +21,6 @@
- 
- # define EXT4_IS_RICHACL(inode) IS_RICHACL(inode)
- 
--/* Value for i_richacl if RICHACL has not been cached */
--# define EXT4_RICHACL_NOT_CACHED ((void *)-1)
--
- extern int ext4_permission(struct inode *, int);
- extern int ext4_richacl_permission(struct inode *, unsigned int);
- extern int ext4_may_create(struct inode *, int);
+ #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
+ #define set_opt(o, opt)			o |= EXT4_MOUNT_##opt
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 520ab44..d0d3766 100644
+index d0d3766..784de34 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -741,9 +741,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei = kmem_cache_alloc(ext4_inode_cachep, GFP_NOFS);
- 	if (!ei)
- 		return NULL;
--#ifdef CONFIG_EXT4_FS_RICHACL
--	ei->i_richacl = EXT4_RICHACL_NOT_CACHED;
--#endif
- 	ei->vfs_inode.i_version = 1;
- 	ei->vfs_inode.i_data.writeback_index = 0;
- 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
-@@ -819,13 +816,6 @@ static void destroy_inodecache(void)
- static void ext4_clear_inode(struct inode *inode)
- {
- 	dquot_drop(inode);
--#ifdef CONFIG_EXT4_FS_RICHACL
--	if (EXT4_I(inode)->i_richacl &&
--		EXT4_I(inode)->i_richacl != EXT4_RICHACL_NOT_CACHED) {
--		richacl_put(EXT4_I(inode)->i_richacl);
--		EXT4_I(inode)->i_richacl = EXT4_RICHACL_NOT_CACHED;
--	}
--#endif
- 	ext4_discard_preallocations(inode);
- 	if (EXT4_JOURNAL(inode))
- 		jbd2_journal_release_jbd_inode(EXT4_SB(inode->i_sb)->s_journal,
-diff --git a/fs/inode.c b/fs/inode.c
-index 2bee20a..796f4a8 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -25,6 +25,7 @@
- #include <linux/mount.h>
- #include <linux/async.h>
- #include <linux/posix_acl.h>
-+#include <linux/richacl.h>
- 
- /*
-  * This is needed for the following functions:
-@@ -186,7 +187,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_private = NULL;
- 	inode->i_mapping = mapping;
- #ifdef CONFIG_FS_POSIX_ACL
--	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+	if (IS_POSIXACL(inode))
-+		inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
+@@ -922,6 +922,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
+ 		seq_puts(seq, ",noacl");
+ #endif
++#ifdef CONFIG_EXT4_FS_RICHACL
++	if (sb->s_flags & MS_RICHACL)
++		seq_puts(seq, ",richacl");
 +#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode))
-+		inode->i_richacl = ACL_NOT_CACHED;
- #endif
- 
- #ifdef CONFIG_FSNOTIFY
-@@ -228,10 +234,18 @@ void __destroy_inode(struct inode *inode)
- 	security_inode_free(inode);
- 	fsnotify_inode_delete(inode);
- #ifdef CONFIG_FS_POSIX_ACL
--	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_acl);
--	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_default_acl);
-+	if (IS_POSIXACL(inode)) {
-+		if (inode->i_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_acl);
-+		if (inode->i_default_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_default_acl);
-+	}
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode)) {
-+		if (inode->i_richacl != ACL_NOT_CACHED)
-+			richacl_put(inode->i_richacl);
-+	}
- #endif
- }
- EXPORT_SYMBOL(__destroy_inode);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2a65863..745adfd 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -728,6 +728,7 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
- #endif
- 
- struct posix_acl;
-+struct richacl;
- #define ACL_NOT_CACHED ((void *)(-1))
- 
- struct inode {
-@@ -793,10 +794,17 @@ struct inode {
- #ifdef CONFIG_SECURITY
- 	void			*i_security;
- #endif
-+	union {
- #ifdef CONFIG_FS_POSIX_ACL
--	struct posix_acl	*i_acl;
--	struct posix_acl	*i_default_acl;
-+		struct {
-+			struct posix_acl *i_acl;
-+			struct posix_acl *i_default_acl;
-+		};
- #endif
-+#ifdef CONFIG_FS_RICHACL
-+		struct richacl	*i_richacl;
-+#endif
-+	};
- 	void			*i_private; /* fs or device private pointer */
+ 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
+ 		seq_printf(seq, ",commit=%u",
+ 			   (unsigned) (sbi->s_commit_interval / HZ));
+@@ -1160,7 +1164,7 @@ enum {
+ 	Opt_block_validity, Opt_noblock_validity,
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+-	Opt_discard, Opt_nodiscard,
++	Opt_discard, Opt_nodiscard, Opt_richacl,
  };
  
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index bb0c9b2..93634bc 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -189,6 +189,47 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
+ static const match_table_t tokens = {
+@@ -1231,6 +1235,7 @@ static const match_table_t tokens = {
+ 	{Opt_dioread_lock, "dioread_lock"},
+ 	{Opt_discard, "discard"},
+ 	{Opt_nodiscard, "nodiscard"},
++	{Opt_richacl, "richacl"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1257,6 +1262,35 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
  }
  
-+#ifdef CONFIG_FS_RICHACL
-+static inline struct richacl *get_cached_richacl(struct inode *inode)
++static void enable_acl(struct super_block *sb)
 +{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl) {
-+		spin_lock(&inode->i_lock);
-+		acl = *p;
-+		if (acl != ACL_NOT_CACHED)
-+			acl = richacl_get(acl);
-+		spin_unlock(&inode->i_lock);
-+	}
-+	return acl;
-+}
-+
-+static inline void set_cached_richacl(struct inode *inode,
-+				      struct richacl *acl)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = richacl_get(acl);
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline void forget_cached_richacl(struct inode *inode)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);;
-+	old = inode->i_richacl;
-+	inode->i_richacl = ACL_NOT_CACHED;
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
++	ext4_msg(sb, KERN_ERR, "acl options not supported");
++	return;
 +#endif
++	sb->s_flags |= MS_POSIXACL;
++}
 +
- static inline int
- richacl_is_auto_inherit(const struct richacl *acl)
- {
++static void disable_acl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_POSIX_ACL)
++	ext4_msg(sb, KERN_ERR, "acl options not supported");
++	return;
++#endif
++	sb->s_flags &= ~MS_POSIXACL;
++	return;
++}
++
++static void enable_richacl(struct super_block *sb)
++{
++#if !defined(CONFIG_EXT4_FS_RICHACL)
++	ext4_msg(sb, KERN_ERR, "richacl options not supported");
++	return;
++#endif
++	sb->s_flags |= MS_RICHACL;
++	return;
++}
++
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1421,19 +1455,12 @@ static int parse_options(char *options, struct super_block *sb,
+ 			ext4_msg(sb, KERN_ERR, "(no)user_xattr options not supported");
+ 			break;
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 		case Opt_acl:
+-			sb->s_flags |= MS_POSIXACL;
++			enable_acl(sb);
+ 			break;
+ 		case Opt_noacl:
+-			sb->s_flags &= ~MS_POSIXACL;
++			disable_acl(sb);
+ 			break;
+-#else
+-		case Opt_acl:
+-		case Opt_noacl:
+-			ext4_msg(sb, KERN_ERR, "(no)acl options not supported");
+-			break;
+-#endif
+ 		case Opt_journal_update:
+ 			/* @@@ FIXME */
+ 			/* Eventually we will want to be able to create
+@@ -1699,6 +1726,9 @@ set_qf_format:
+ 		case Opt_dioread_lock:
+ 			clear_opt(sbi->s_mount_opt, DIOREAD_NOLOCK);
+ 			break;
++		case Opt_richacl:
++			enable_richacl(sb);
++			break;
+ 		default:
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "Unrecognized mount option \"%s\" "
+@@ -2529,9 +2559,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (def_mount_opts & EXT4_DEFM_XATTR_USER)
+ 		set_opt(sbi->s_mount_opt, XATTR_USER);
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
++#if defined(CONFIG_EXT4_FS_POSIX_ACL)
+ 	if (def_mount_opts & EXT4_DEFM_ACL)
+-		sb->s_flags |= MS_POSIXACL;
++		enable_acl(sb);
+ #endif
+ 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+ 		set_opt(sbi->s_mount_opt, JOURNAL_DATA);
 -- 
 1.7.0.4
 
