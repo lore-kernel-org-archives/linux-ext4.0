@@ -1,49 +1,66 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V2] mke2fs.8.in: clarify the sign of a block-size constraint.
-Date: Thu, 29 Jul 2010 11:59:42 -0500
-Message-ID: <4C51B37E.4020404@redhat.com>
-References: <20100724220124.GO4032@pooh.frostnet.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Chris Frost <chris@frostnet.net>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V3 00/17]  New ACL format for better NFSv4 acl
+Date: Thu, 29 Jul 2010 23:27:38 +0530
+Message-ID: <1280426275-4602-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
+	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
+	bfields@citi.umich.edu, jlayton@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21636 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753627Ab0G2Q7w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Jul 2010 12:59:52 -0400
-In-Reply-To: <20100724220124.GO4032@pooh.frostnet.net>
+Received: from e23smtp05.au.ibm.com ([202.81.31.147]:41756 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751417Ab0G2R6z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Jul 2010 13:58:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This bit of the mke2fs manpage is slightly confusing:
+Hi,
 
--b block-size
-    Specify the size of blocks in bytes. <snip>
-    If block-size is negative, then mke2fs will use heuristics 
-    to determine the appropriate block size, with the constraint 
-    that the block size will be at least block-size bytes.
+The following set of patches implements a new acl model for linux. Rich ACLs
+are an implementation of NFSv4 ACLs, extended by file masks to fit into the
+standard POSIX file permission model.  They are designed to work seamlessly
+locally as well as across the NFSv4 and CIFS/SMB2 network file system protocols.
 
-because it sounds like the block size will be at least a negative
-number.  Clarify just what the negative sign means.
+The patch set consists of three parts:
 
-Reported-by: Chris Frost <chris@frostnet.net>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+The first set of patches, posted as a follow up, contains the Rich ACL model
+and Ext4 implementation. The second set [1] contains mapping of Rich ACL to
+NFSv4 ACL (how to apply file mask to access mask) and implementation of
+Richacl ACL for NFS server and client. The third set [2] contains POSIX ACL
+to Rich ACL mapping and its ext4 usage.
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 45a99f8..b46e7e2 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -173,7 +173,7 @@ the expected usage of the filesystem (see the
- .B \-T
- option).  If
- .I block-size
--is negative, then
-+is preceded by a negative sign ('-'), then
- .B mke2fs
- will use heuristics to determine the
- appropriate block size, with the constraint that the block size will be
+[1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-upstream
+[2] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-fullset
+
+A user-space utility for displaying and changing richacls is available at [3]
+(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+
+[3] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/richacl.git master
+
+To test richacl on ext4 use -o richacl mount option. This mount option may later be
+dropped in favour of a feature flag.
+
+More details regarding richacl can be found at 
+http://acl.bestbits.at/richacl/
+
+Changes from V2:
+1) Git repo include check-acl branch that drop newly added inode_operations
+   callback in favour for additional access check flags (MAY_CREATE_FILE,
+   MAY_CREATE_DIR, MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_TAKE_OWNERSHIP,
+   MAY_CHMOD, and MAY_SET_TIMES)
+2) richacl is now cached in the vfs inode instead of file system inode.
+   (currently kept as a separate patch. We may want to fold that later)
+3) Added a new acl flag ACL4_MASKED. richacl_apply_masks() can skip transforming acls
+   without this flag, which speeds things up and avoids modifying those acls unnecessarily.
+4) Owner always allowed permissions are now explicitly included when synthesizing an acl
+   from file mode.
+
+Changes from V1:
+1) Split the patches into smaller patches
+2) Added extensive documentation to the patches.
+
+-aneesh
 
 
