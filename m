@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V3 07/17] richacl: Update the file masks in chmod()
-Date: Thu, 29 Jul 2010 23:27:45 +0530
-Message-ID: <1280426275-4602-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V3 08/17] richacl: Permission check algorithm
+Date: Thu, 29 Jul 2010 23:27:46 +0530
+Message-ID: <1280426275-4602-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1280426275-4602-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,85 +26,145 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruen@suse.de>
 
-Doing a chmod() sets the file mode, which includes the file permission
-bits.  When a file has a richacl, the permissions that the richacl
-grants need to be limited to what the new file permission bits allow.
+As in the standard POSIX file permission model, each process is the
+owner, group, or other file class.  A process is
 
-This is done by setting the file masks in the richacl to what the file
-permission bits map to.  The richacl access check algorithm takes the
-file masks into account, which ensures that the richacl cannot grant too
-many permissions.
+  - in the owner file class if it owns the file,
+  - in the group file class if it is in the file's owning group or it
+    matches any of the user or group entries, and
+  - in the other file class otherwise.
 
-It is possible to explicitly add permissions to the file masks which go
-beyond what the file permission bits can grant (like the ACE4_WRITE_ACL
-permission).  The POSIX.1 standard calls this an alternate file access
-control mechanism.  A subsequent chmod() would ensure that those
-permissions are disabled again.
+Each file class is associated with a file mask.
+
+A richacl grants a requested access if the NFSv4 acl in the richacl
+grants the requested permissions (according to the NFSv4 permission
+check algorithm) and the file mask that applies to the process includes
+the requested permissions.
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/richacl_base.c       |   40 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 41 insertions(+), 0 deletions(-)
+ fs/richacl_base.c       |   99 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    2 +
+ 2 files changed, 101 insertions(+), 0 deletions(-)
 
 diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 7c77ff0..bb17037 100644
+index bb17037..b91dec3 100644
 --- a/fs/richacl_base.c
 +++ b/fs/richacl_base.c
-@@ -333,3 +333,43 @@ restart:
- 	acl->a_flags &= ~ACL4_MASKED;
+@@ -373,3 +373,102 @@ richacl_chmod(struct richacl *acl, mode_t mode)
+ 	return clone;
  }
- EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+ EXPORT_SYMBOL_GPL(richacl_chmod);
 +
 +/**
-+ * richacl_chmod  -  update the file masks to reflect the new mode
-+ * @mode:	new file permission bits
++ * richacl_permission  -  richacl permission check algorithm
++ * @inode:	inode to check
++ * @acl:	rich acl of the inode
++ * @mask:	requested access (ACE4_* bitmask)
 + *
-+ * Return a copy of @acl where the file masks have been replaced by the file
-+ * masks corresponding to the file permission bits in @mode, or returns @acl
-+ * itself if the file masks are already up to date.  Takes over a reference
-+ * to @acl.
++ * Checks if the current process is granted @mask flags in @acl.
 + */
-+struct richacl *
-+richacl_chmod(struct richacl *acl, mode_t mode)
++int
++richacl_permission(struct inode *inode, const struct richacl *acl,
++		   unsigned int mask)
 +{
-+	unsigned int owner_mask, group_mask, other_mask;
-+	struct richacl *clone;
++	const struct richace *ace;
++	unsigned int requested = mask, denied = 0;
++	int in_owning_group = in_group_p(inode->i_gid);
++	int in_owner_or_group_class = in_owning_group;
 +
-+	owner_mask = richacl_mode_to_mask(mode >> 6) |
-+		     ACE4_POSIX_OWNER_ALLOWED;
-+	group_mask = richacl_mode_to_mask(mode >> 3);
-+	other_mask = richacl_mode_to_mask(mode);
++	/*
++	 * We don't need to know which class the process is in when the acl is
++	 * not masked.
++	 */
++	if (!(acl->a_flags & ACL4_MASKED))
++		in_owner_or_group_class = 1;
 +
-+	if (acl->a_owner_mask == owner_mask &&
-+	    acl->a_group_mask == group_mask &&
-+	    acl->a_other_mask == other_mask &&
-+	    (acl->a_flags & ACL4_MASKED))
-+		return acl;
++	/*
++	 * A process is
++	 *   - in the owner file class if it owns the file,
++	 *   - in the group file class if it is in the file's owning group or
++	 *     it matches any of the user or group entries, and
++	 *   - in the other file class otherwise.
++	 */
 +
-+	clone = richacl_clone(acl);
-+	richacl_put(acl);
-+	if (!clone)
-+		return ERR_PTR(-ENOMEM);
++	/*
++	 * Check if the acl grants the requested access and determine which
++	 * file class the process is in.
++	 */
++	richacl_for_each_entry(ace, acl) {
++		unsigned int ace_mask = ace->e_mask;
 +
-+	clone->a_flags |= ACL4_MASKED;
-+	clone->a_owner_mask = owner_mask;
-+	clone->a_group_mask = group_mask;
-+	clone->a_other_mask = other_mask;
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_owner(ace)) {
++			if (current_fsuid() != inode->i_uid)
++				continue;
++			goto is_owner;
++		} else if (richace_is_group(ace)) {
++			if (!in_owning_group)
++				continue;
++		} else if (richace_is_unix_id(ace)) {
++			if (ace->e_flags & ACE4_IDENTIFIER_GROUP) {
++				if (!in_group_p(ace->u.e_id))
++					continue;
++			} else {
++				if (current_fsuid() != ace->u.e_id)
++					continue;
++			}
++		} else
++			goto is_everyone;
 +
-+	return clone;
++is_owner:
++		/* The process is in the owner or group file class. */
++		in_owner_or_group_class = 1;
++
++is_everyone:
++		/* Check which mask flags the ACE allows or denies. */
++		if (richace_is_deny(ace))
++			denied |= ace_mask & mask;
++		mask &= ~ace_mask;
++
++		/*
++		 * Keep going until we know which file class
++		 * the process is in.
++		 */
++		if (!mask && in_owner_or_group_class)
++			break;
++	}
++	denied |= mask;
++
++	if (acl->a_flags & ACL4_MASKED) {
++		unsigned int file_mask;
++
++		/*
++		 * The file class a process is in determines which file mask
++		 * applies.  Check if that file mask also grants the requested
++		 * access.
++		 */
++		if (current_fsuid() == inode->i_uid)
++			file_mask = acl->a_owner_mask;
++		else if (in_owner_or_group_class)
++			file_mask = acl->a_group_mask;
++		else
++			file_mask = acl->a_other_mask;
++		denied |= requested & ~file_mask;
++	}
++
++	return denied ? -EACCES : 0;
 +}
-+EXPORT_SYMBOL_GPL(richacl_chmod);
++EXPORT_SYMBOL_GPL(richacl_permission);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index f491e59..3aa165b 100644
+index 3aa165b..c9d2761 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -288,5 +288,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
+@@ -289,5 +289,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
  extern unsigned int richacl_want_to_mask(int);
  extern void richacl_compute_max_masks(struct richacl *);
-+extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
++extern int richacl_permission(struct inode *, const struct richacl *,
++			      unsigned int);
  
  #endif /* __RICHACL_H */
 -- 
