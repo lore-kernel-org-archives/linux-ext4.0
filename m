@@ -1,35 +1,57 @@
-From: Phil Pishioneri <pgp@psu.edu>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- file stats available [ver #6]
-Date: Fri, 30 Jul 2010 14:19:37 -0400
-Message-ID: <4C5317B9.4030806@psu.edu>
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	 <20100722162712.GB10352@jeremy-laptop>	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	 <1279817930.3621.14.camel@heimdal.trondhjem.org>	 <20100722180204.GA32008@samba1>  <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>	 <1279825160.3621.71.camel@heimdal.trondhjem.org> <4C5311F4.2050100@psu.edu> <1280513506.12852.22.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended file stats available [ver #6]
+Date: Fri, 30 Jul 2010 14:38:19 -0400
+Message-ID: <20100730183819.GE21729@fieldses.org>
+References: <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+ <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+ <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+ <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+ <20100722162712.GB10352@jeremy-laptop>
+ <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+ <alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+ <AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
+ <13591.1280338082@redhat.com>
+ <20100729090401.4b0a21f8@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Volker.Lendecke@SerNet.DE, Jeremy Allison <jra@samba.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: David Howells <dhowells@redhat.com>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
-	David Howells <dhowells@redhat.com>,
 	Jan Engelhardt <jengelh@medozas.de>,
+	Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
 	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
 	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
 	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from f05s03.cac.psu.edu ([128.118.141.46]:34883 "EHLO
-	f05n03.cac.psu.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1760047Ab0G3SUz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jul 2010 14:20:55 -0400
-In-Reply-To: <1280513506.12852.22.camel@heimdal.trondhjem.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100729090401.4b0a21f8@notabene>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  On 7/30/10 2:11 PM, Trond Myklebust wrote:
-> Your Mac has a perfectly functional CIFS client,
+On Thu, Jul 29, 2010 at 09:04:01AM +1000, Neil Brown wrote:
+> On Wed, 28 Jul 2010 18:28:02 +0100
+> David Howells <dhowells@redhat.com> wrote:
+> 
+> > Neil Brown <neilb@suse.de> wrote:
+> > 
+> > > ctime and mtime have real cache-coherence semantics which require them being
+> > > updated by the kernel (whether the cache is on an NFS client, in a backup
+> > > archive, or in a .o translation of a .c file).
+> > 
+> > So does creation time, at least for CIFS caching.  Creation time has potential
+> > for spotting when the object at a pathname has changed for something else,
+> > given the lack of inode number and inode generation from windows servers.
+> > Creation time gives us one more datum to use.
+> 
+> This justifies for me why a CIFS client would want to extract the
+> creation-time from the CIFS protocol, but not why you want to expose it via a
+> generic interface.
+> The kernel/filesystem doesn't need to maintain creation-time to meet this
+> need, only the CIFS server needs to maintain it
 
-It didn't, at one point. Some version of Mac OS X would cause a client 
-kernel crash when unmounting the CIFS share. I think it's been fixed, 
-but we had to have some OS X clients switch to NFS because of it.
+For what it's worth, the NFSv4 server would also export creation time if
+we had it.
 
--Phil
+--b.
