@@ -1,44 +1,180 @@
-From: Phil Pishioneri <pgp@psu.edu>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-  file stats available [ver #6]
-Date: Fri, 30 Jul 2010 13:55:00 -0400
-Message-ID: <4C5311F4.2050100@psu.edu>
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	 <20100722162712.GB10352@jeremy-laptop>	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	 <1279817930.3621.14.camel@heimdal.trondhjem.org>	 <20100722180204.GA32008@samba1>  <E1Oc08W-00CZuz-Ns@intern.SerNet.DE> <1279825160.3621.71.camel@heimdal.trondhjem.org>
+From: Kay Diederichs <kay.diederichs@uni-konstanz.de>
+Subject: Re: ext4 performance regression 2.6.27-stable versus 2.6.32 and later
+Date: Fri, 30 Jul 2010 23:01:36 +0200
+Message-ID: <4C533DB0.5020608@uni-konstanz.de>
+References: <4C508A54.7070002@uni-konstanz.de> <20100730022055.GL4506@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Volker.Lendecke@SerNet.DE, Jeremy Allison <jra@samba.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	David Howells <dhowells@redhat.com>,
-	Jan Engelhardt <jengelh@medozas.de>,
-	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms000700000201030409030306"
+To: Ted Ts'o <tytso@mit.edu>, linux <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Karsten Schaefer <karsten.schaefer@uni-konstanz.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from f05s03.cac.psu.edu ([128.118.141.46]:51438 "EHLO
-	f05n03.cac.psu.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754220Ab0G3UFS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jul 2010 16:05:18 -0400
-In-Reply-To: <1279825160.3621.71.camel@heimdal.trondhjem.org>
+Received: from purin.rz.uni-konstanz.de ([134.34.240.45]:25790 "EHLO
+	purin.rz.uni-konstanz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511Ab0G3VBr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jul 2010 17:01:47 -0400
+In-Reply-To: <20100730022055.GL4506@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  On 7/22/10 2:59 PM, Trond Myklebust wrote:
-> The fact remains that most of us would be hard pressed to name an
-> application
+This is a cryptographically signed message in MIME format.
 
-Microsoft Office?
+--------------ms000700000201030409030306
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
-> that requires you to share the same dataset to both
-> Windows/CIFS and posix NFS clients.
+Am 30.07.2010 04:20, schrieb Ted Ts'o:
+> On Wed, Jul 28, 2010 at 09:51:48PM +0200, Kay Diederichs wrote:
+>>
+>> When looking at the I/O statistics while the benchmark is running, we
+>> see very choppy patterns for 2.6.32, but quite smooth stats for
+>> 2.6.27-stable.
+>
+> Could you try to do two things for me?  Using (preferably from a
+> recent e2fsprogs, such as 1.41.11 or 12) run filefrag -v on the files
+> created from your 2.6.27 run and your 2.6.32 run?
+>
+> Secondly can capture blktrace results from 2.6.27 and 2.6.32?  That
+> would be very helpful to understand what might be going on.
+>
+> Either would be helpful; both would be greatly appreciated.
+>
+> Thanks,
+>
+> 						- Ted
 
-NFS client: Mac OS X (NFSv3, since v4 on it is still alpha *cough*).
+Ted,
 
-> tends to discourage mixing the two environments.
+a typical example of filefrag -v output for 2.6.27.48 is
 
-Or is "discourage" not strong enough term to describe that we shouldn't 
-be doing this?
+  Filesystem type is: ef53
+File size of /mnt/md5/scratch/nfs-test/tmp/xds/frames/h2g28_1_00000.cbf=20
+is 6229688 (1521 blocks, blocksize 4096)
+  ext logical physical expected length flags
+    0       0 796160000            1024
+    1    1024 826381312 796161023    497 eof
 
--Phil
+(99 out of 100 files have 2 extents)
+
+whereas for 2.6.32.16 the result is typically
+Filesystem type is: ef53
+File size of /mnt/md5/scratch/nfs-test/tmp/xds/frames/h2g28_1_00000.cbf=20
+is 6229688 (1521 blocks, blocksize 4096)
+  ext logical physical expected length flags
+    0       0 826376200            1521 eof
+/mnt/md5/scratch/nfs-test/tmp/xds/frames/h2g28_1_00000.cbf: 1 extent foun=
+d
+
+(99 out of 100 files have 1 extent)
+
+We'll try the blktrace ASAP and report back.
+
+thanks,
+
+Kay
+
+
+--------------ms000700000201030409030306
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIQeDCC
+BUowggQyoAMCAQICDlWEAAEAAqRMpMa23uKCMA0GCSqGSIb3DQEBBQUAMHwxCzAJBgNVBAYT
+AkRFMRwwGgYDVQQKExNUQyBUcnVzdENlbnRlciBHbWJIMSUwIwYDVQQLExxUQyBUcnVzdENl
+bnRlciBDbGFzcyAxIEwxIENBMSgwJgYDVQQDEx9UQyBUcnVzdENlbnRlciBDbGFzcyAxIEwx
+IENBIElYMB4XDTEwMDYxNTA4MDkwMVoXDTExMDYxNjA4MDkwMVowKjELMAkGA1UEBhMCREUx
+GzAZBgNVBAMTEkRyLiBLYXkgRGllZGVyaWNoczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+AQoCggEBAMbAmv25QwsaAarHgt8nG5J9Dv9r7axiD28qwd686RlqZFXGTElUJlXz+AB0X+dZ
+5RO+ciIWfbfrqrnQWcr8twqAvAR/wEF1qCR1UKCo9/QkRbhHKSqkr0kwJ9Wauvos4druwBjf
+3ax/sv/BzwWDlcp3bC+tCvF5Nm2q/+VgNO8UFqGr4FgsaDO7yU5qLNp6yKswDvcytaOpkWe7
+1jB95KvCO+FMGBsHb3nSx12NLDrBJhXiAF3+maKlBHdjT9bnaPrtTxBzuofI23vaGNbFhH0j
+kS4jSSbNY/6vBfusQ/YiHjHvMSgvFxGKt32yBxOSR/TbSOWXr8RSlEeTXRXBRsUCAwEAAaOC
+AhowggIWMIGlBggrBgEFBQcBAQSBmDCBlTBRBggrBgEFBQcwAoZFaHR0cDovL3d3dy50cnVz
+dGNlbnRlci5kZS9jZXJ0c2VydmljZXMvY2FjZXJ0cy90Y19jbGFzczFfTDFfQ0FfSVguY3J0
+MEAGCCsGAQUFBzABhjRodHRwOi8vb2NzcC5peC50Y2NsYXNzMS50Y3VuaXZlcnNhbC1pLnRy
+dXN0Y2VudGVyLmRlMB8GA1UdIwQYMBaAFOm4KB1Gz/zN+E6bxe5LYOvYOz/RMAwGA1UdEwEB
+/wQCMAAwSgYDVR0gBEMwQTA/BgkqghQALAEBAQEwMjAwBggrBgEFBQcCARYkaHR0cDovL3d3
+dy50cnVzdGNlbnRlci5kZS9ndWlkZWxpbmVzMA4GA1UdDwEB/wQEAwIE8DAdBgNVHQ4EFgQU
+DoU//aucYNIa9+YkiJNimDHR2gcwYgYDVR0fBFswWTBXoFWgU4ZRaHR0cDovL2NybC5peC50
+Y2NsYXNzMS50Y3VuaXZlcnNhbC1pLnRydXN0Y2VudGVyLmRlL2NybC92Mi90Y19DbGFzczFf
+TDFfQ0FfSVguY3JsMDMGA1UdJQQsMCoGCCsGAQUFBwMCBggrBgEFBQcDBAYIKwYBBQUHAwcG
+CisGAQQBgjcUAgIwKQYDVR0RBCIwIIEea2F5LmRpZWRlcmljaHNAdW5pLWtvbnN0YW56LmRl
+MA0GCSqGSIb3DQEBBQUAA4IBAQBpatYElJZQHzepSm8kKLt2hD262LpUHXqpj7kjQC0w9Lu6
+HG3SV4PxuEgcXPEfcdrFsB/oJYajRdqmeLrWCreIBeYNDGGKyJq4EM9lQzNmajUFVRQsLwPS
+3sWElnXXXRRYOY8ZdlWuv+GJ0FEUaGNNX0yZkkpypn/ZBigZKWkWwU7DBleBmiMBivUICOSU
+89T9f56bq203R0gVcGrWm85AQP1AfGy0t33518BMHZ69Ykh6oGVyxSdRmdQMEFlyEQeHCkDb
+iACoIjj/EnlrWTgSnyK1ydyyf9t8Cs8o7WNfv3wKqPLDbJhseIpj2676wFCyoBM0SfzrRU/n
+rddMEt1bMIIFSjCCBDKgAwIBAgIOVYQAAQACpEykxrbe4oIwDQYJKoZIhvcNAQEFBQAwfDEL
+MAkGA1UEBhMCREUxHDAaBgNVBAoTE1RDIFRydXN0Q2VudGVyIEdtYkgxJTAjBgNVBAsTHFRD
+IFRydXN0Q2VudGVyIENsYXNzIDEgTDEgQ0ExKDAmBgNVBAMTH1RDIFRydXN0Q2VudGVyIENs
+YXNzIDEgTDEgQ0EgSVgwHhcNMTAwNjE1MDgwOTAxWhcNMTEwNjE2MDgwOTAxWjAqMQswCQYD
+VQQGEwJERTEbMBkGA1UEAxMSRHIuIEtheSBEaWVkZXJpY2hzMIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEAxsCa/blDCxoBqseC3ycbkn0O/2vtrGIPbyrB3rzpGWpkVcZMSVQm
+VfP4AHRf51nlE75yIhZ9t+uqudBZyvy3CoC8BH/AQXWoJHVQoKj39CRFuEcpKqSvSTAn1Zq6
++izh2u7AGN/drH+y/8HPBYOVyndsL60K8Xk2bar/5WA07xQWoavgWCxoM7vJTmos2nrIqzAO
+9zK1o6mRZ7vWMH3kq8I74UwYGwdvedLHXY0sOsEmFeIAXf6ZoqUEd2NP1udo+u1PEHO6h8jb
+e9oY1sWEfSORLiNJJs1j/q8F+6xD9iIeMe8xKC8XEYq3fbIHE5JH9NtI5ZevxFKUR5NdFcFG
+xQIDAQABo4ICGjCCAhYwgaUGCCsGAQUFBwEBBIGYMIGVMFEGCCsGAQUFBzAChkVodHRwOi8v
+d3d3LnRydXN0Y2VudGVyLmRlL2NlcnRzZXJ2aWNlcy9jYWNlcnRzL3RjX2NsYXNzMV9MMV9D
+QV9JWC5jcnQwQAYIKwYBBQUHMAGGNGh0dHA6Ly9vY3NwLml4LnRjY2xhc3MxLnRjdW5pdmVy
+c2FsLWkudHJ1c3RjZW50ZXIuZGUwHwYDVR0jBBgwFoAU6bgoHUbP/M34TpvF7ktg69g7P9Ew
+DAYDVR0TAQH/BAIwADBKBgNVHSAEQzBBMD8GCSqCFAAsAQEBATAyMDAGCCsGAQUFBwIBFiRo
+dHRwOi8vd3d3LnRydXN0Y2VudGVyLmRlL2d1aWRlbGluZXMwDgYDVR0PAQH/BAQDAgTwMB0G
+A1UdDgQWBBQOhT/9q5xg0hr35iSIk2KYMdHaBzBiBgNVHR8EWzBZMFegVaBThlFodHRwOi8v
+Y3JsLml4LnRjY2xhc3MxLnRjdW5pdmVyc2FsLWkudHJ1c3RjZW50ZXIuZGUvY3JsL3YyL3Rj
+X0NsYXNzMV9MMV9DQV9JWC5jcmwwMwYDVR0lBCwwKgYIKwYBBQUHAwIGCCsGAQUFBwMEBggr
+BgEFBQcDBwYKKwYBBAGCNxQCAjApBgNVHREEIjAggR5rYXkuZGllZGVyaWNoc0B1bmkta29u
+c3RhbnouZGUwDQYJKoZIhvcNAQEFBQADggEBAGlq1gSUllAfN6lKbyQou3aEPbrYulQdeqmP
+uSNALTD0u7ocbdJXg/G4SBxc8R9x2sWwH+glhqNF2qZ4utYKt4gF5g0MYYrImrgQz2VDM2Zq
+NQVVFCwvA9LexYSWddddFFg5jxl2Va6/4YnQURRoY01fTJmSSnKmf9kGKBkpaRbBTsMGV4Ga
+IwGK9QgI5JTz1P1/npurbTdHSBVwatabzkBA/UB8bLS3ffnXwEwdnr1iSHqgZXLFJ1GZ1AwQ
+WXIRB4cKQNuIAKgiOP8SeWtZOBKfIrXJ3LJ/23wKzyjtY1+/fAqo8sNsmGx4imPbrvrAULKg
+EzRJ/OtFT+et10wS3VswggXYMIIEwKADAgECAg4G6AABAAJKli0kDP7FyTANBgkqhkiG9w0B
+AQUFADB5MQswCQYDVQQGEwJERTEcMBoGA1UEChMTVEMgVHJ1c3RDZW50ZXIgR21iSDEkMCIG
+A1UECxMbVEMgVHJ1c3RDZW50ZXIgVW5pdmVyc2FsIENBMSYwJAYDVQQDEx1UQyBUcnVzdENl
+bnRlciBVbml2ZXJzYWwgQ0EgSTAeFw0wOTExMDMxNDA4MTlaFw0yNTEyMzEyMTU5NTlaMHwx
+CzAJBgNVBAYTAkRFMRwwGgYDVQQKExNUQyBUcnVzdENlbnRlciBHbWJIMSUwIwYDVQQLExxU
+QyBUcnVzdENlbnRlciBDbGFzcyAxIEwxIENBMSgwJgYDVQQDEx9UQyBUcnVzdENlbnRlciBD
+bGFzcyAxIEwxIENBIElYMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu+aQbs9i
+6ekLqrYQ1UflfF0rJ3GaaM1VbeSi7+T+8npjEcJXish9z45mH2VFS+uAYmm9Ro6LxW5alRgq
+3qfxH3UaJ6ttMlPj+01YYiz/GeXHoA2aLSGIWYTNHfHDyIo+sOXeCCTP/EAsukEjlLuAEok1
+SLaGBOABT4y6qZj8HIntH4qhx4aYJh5yZWv+z2XZDGRLGgn1QxFgZibjM1aayT0+NGp4xuVQ
+S8jNiOQ5bFAmnkAstjt8N7Kn9d3cs1HL9NyCArjXOt7aMFwN9ULdE2lTVOmAJkIzHqXXzG7K
+ZgmfhvA9vsaKYRDz0f9b5LLbLbJlDKl9F6y6J01CXM4JTwIDAQABo4ICWTCCAlUwgZoGCCsG
+AQUFBwEBBIGNMIGKMFIGCCsGAQUFBzAChkZodHRwOi8vd3d3LnRydXN0Y2VudGVyLmRlL2Nl
+cnRzZXJ2aWNlcy9jYWNlcnRzL3RjX3VuaXZlcnNhbF9yb290X0kuY3J0MDQGCCsGAQUFBzAB
+hihodHRwOi8vb2NzcC50Y3VuaXZlcnNhbC1JLnRydXN0Y2VudGVyLmRlMB8GA1UdIwQYMBaA
+FJKkdSyknr6BROt5/IrFlaXrEHVzMBIGA1UdEwEB/wQIMAYBAf8CAQAwUgYDVR0gBEswSTAG
+BgRVHSAAMD8GCSqCFAAsAQEBATAyMDAGCCsGAQUFBwIBFiRodHRwOi8vd3d3LnRydXN0Y2Vu
+dGVyLmRlL2d1aWRlbGluZXMwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBTpuCgdRs/8zfhO
+m8XuS2Dr2Ds/0TCB/QYDVR0fBIH1MIHyMIHvoIHsoIHphkZodHRwOi8vY3JsLnRjdW5pdmVy
+c2FsLUkudHJ1c3RjZW50ZXIuZGUvY3JsL3YyL3RjX3VuaXZlcnNhbF9yb290X0kuY3JshoGe
+bGRhcDovL3d3dy50cnVzdGNlbnRlci5kZS9DTj1UQyUyMFRydXN0Q2VudGVyJTIwVW5pdmVy
+c2FsJTIwQ0ElMjBJLE89VEMlMjBUcnVzdENlbnRlciUyMEdtYkgsT1U9cm9vdGNlcnRzLERD
+PXRydXN0Y2VudGVyLERDPWRlP2NlcnRpZmljYXRlUmV2b2NhdGlvbkxpc3Q/YmFzZT8wDQYJ
+KoZIhvcNAQEFBQADggEBADnIxJvuvpjuSHJvjedxtg6QjNOywRUhqEaQaF9KBPE6yWiEIdil
+5gR1XZ/S1PJLd0My3JXLYL8CVdCsHLDFFJebZQrDD6Ud7NhJOZW1qb769B6rVuem5QEIiDVf
+ZwXdRCRQEiJEY3nxm1dpzqvWM1FPjfBwO46tUToXfzWWa2hoY7YcCsn43x1ezysRpWPtzNDG
+0yBvqvxoSH5tHrg6RaoShvPHvQC16/7qEp9zM3jnKDlo06Vt2nbRTuFVlYCm4Bu4zaxW70VZ
+R5hS2zpuJrIxOWl1sS4k8KSdl4heMynGtbwHQDoMPbrPdIxLTnoh+hs4zcRDL2+033jumZLn
+OhwxggO+MIIDugIBATCBjjB8MQswCQYDVQQGEwJERTEcMBoGA1UEChMTVEMgVHJ1c3RDZW50
+ZXIgR21iSDElMCMGA1UECxMcVEMgVHJ1c3RDZW50ZXIgQ2xhc3MgMSBMMSBDQTEoMCYGA1UE
+AxMfVEMgVHJ1c3RDZW50ZXIgQ2xhc3MgMSBMMSBDQSBJWAIOVYQAAQACpEykxrbe4oIwCQYF
+Kw4DAhoFAKCCAgQwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcN
+MTAwNzMwMjEwMTM2WjAjBgkqhkiG9w0BCQQxFgQU1OA/bjElhD/RBTuLan+ZndKxsj4wXwYJ
+KoZIhvcNAQkPMVIwUDALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCA
+MA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGfBgkrBgEEAYI3EAQx
+gZEwgY4wfDELMAkGA1UEBhMCREUxHDAaBgNVBAoTE1RDIFRydXN0Q2VudGVyIEdtYkgxJTAj
+BgNVBAsTHFRDIFRydXN0Q2VudGVyIENsYXNzIDEgTDEgQ0ExKDAmBgNVBAMTH1RDIFRydXN0
+Q2VudGVyIENsYXNzIDEgTDEgQ0EgSVgCDlWEAAEAAqRMpMa23uKCMIGhBgsqhkiG9w0BCRAC
+CzGBkaCBjjB8MQswCQYDVQQGEwJERTEcMBoGA1UEChMTVEMgVHJ1c3RDZW50ZXIgR21iSDEl
+MCMGA1UECxMcVEMgVHJ1c3RDZW50ZXIgQ2xhc3MgMSBMMSBDQTEoMCYGA1UEAxMfVEMgVHJ1
+c3RDZW50ZXIgQ2xhc3MgMSBMMSBDQSBJWAIOVYQAAQACpEykxrbe4oIwDQYJKoZIhvcNAQEB
+BQAEggEAhfBAkQGWht+I5kIhJsoaAG7u/b4VUW3LkPvWK8qLnkn9GW1Rj4fVed2gaCISAzqF
+M/7KDmC0PCA8uUwICyRIB08Qe0dfBzzGqSp4SJFmL7b77QkpB05cJCDuGKxsJnbBAPQMhTnm
+LQcO4mdt2jy/YbVO7ED11FAXqYQHo6+zd+ncawhveZHgzYrBV2KTeEOeXcNJmaNf20X3XYmf
+uBzJd87pPVLRzNgZIKGFYhen0aKxD6OHwk4IthJ0Xfycd+wHZUaFc0a0fH4zTQO4kPw73y8O
+q9NDSULkU/nrW3/uXHIc+OgwMjyAoMzeuIsRB2YTKORdtIWAlp8OY4aJOKBEmQAAAAAAAA==
+--------------ms000700000201030409030306--
