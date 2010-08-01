@@ -1,9 +1,12 @@
 From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
  extended file stats available [ver #6]
-Date: Sun, 1 Aug 2010 09:17:32 -0400
-Message-ID: <20100801091732.25023580@corrin.poochiereds.net>
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+Date: Sun, 1 Aug 2010 09:40:18 -0400
+Message-ID: <20100801094018.522e2f53@corrin.poochiereds.net>
+References: <20100728111525.355a2bd3@notabene>
+	<alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
 	<30448.1279800887@redhat.com>
 	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
 	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
@@ -11,72 +14,87 @@ References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
 	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
 	<20100722162712.GB10352@jeremy-laptop>
 	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1279817930.3621.14.camel@heimdal.trondhjem.org>
-	<20100722180204.GA32008@samba1>
-	<E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
-	<1279825160.3621.71.camel@heimdal.trondhjem.org>
-	<4C5311F4.2050100@psu.edu>
-	<1280513506.12852.22.camel@heimdal.trondhjem.org>
+	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
+	<13591.1280338082@redhat.com>
+	<20100729090401.4b0a21f8@notabene>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Phil Pishioneri <pgp-8DAjSxpRXgY@public.gmane.org>, Volker.Lendecke-PS7XAnAlDA+VvDNblw4Uiw@public.gmane.org,
-	Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
+Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
 	Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
 	Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>,
+	Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>, Volker.Lendecke-3ekOc4rQMZmzQB+pC5nmwQ@public.gmane.org,
 	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
 	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
 	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
 	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Trond Myklebust <trond.myklebust-41N18TsMXrtuMpJDpNschA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1280513506.12852.22.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Neil Brown <neilb-l3A5Bk7waGM@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20100729090401.4b0a21f8@notabene>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 30 Jul 2010 14:11:46 -0400
-Trond Myklebust <trond.myklebust-41N18TsMXrtuMpJDpNschA@public.gmane.org> wrote:
+On Thu, 29 Jul 2010 09:04:01 +1000
+Neil Brown <neilb-l3A5Bk7waGM@public.gmane.org> wrote:
 
-> On Fri, 2010-07-30 at 13:55 -0400, Phil Pishioneri wrote:
-> > On 7/22/10 2:59 PM, Trond Myklebust wrote:
-> > > The fact remains that most of us would be hard pressed to name an
-> > > application
-> > 
-> > Microsoft Office?
-> > 
-> > > that requires you to share the same dataset to both
-> > > Windows/CIFS and posix NFS clients.
-> > 
-> > NFS client: Mac OS X (NFSv3, since v4 on it is still alpha *cough*).
-> > 
-> > > tends to discourage mixing the two environments.
-> > 
-> > Or is "discourage" not strong enough term to describe that we shouldn't 
-> > be doing this?
-> > 
-> > -Phil
+> On Wed, 28 Jul 2010 18:28:02 +0100
+> David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
 > 
-> Your Mac has a perfectly functional CIFS client, as do your Linux boxes.
-> They both interoperate just fine with Samba, and would presumably
-> continue to do so if someone were to decide to reuse the ctime field on
-> your Samba box as storage for a create time.
+> > Neil Brown <neilb-l3A5Bk7waGM@public.gmane.org> wrote:
+> > 
+> > > ctime and mtime have real cache-coherence semantics which require them being
+> > > updated by the kernel (whether the cache is on an NFS client, in a backup
+> > > archive, or in a .o translation of a .c file).
+> > 
+> > So does creation time, at least for CIFS caching.  Creation time has potential
+> > for spotting when the object at a pathname has changed for something else,
+> > given the lack of inode number and inode generation from windows servers.
+> > Creation time gives us one more datum to use.
 > 
->   Trond
+> This justifies for me why a CIFS client would want to extract the
+> creation-time from the CIFS protocol, but not why you want to expose it via a
+> generic interface.
+> The kernel/filesystem doesn't need to maintain creation-time to meet this
+> need, only the CIFS server needs to maintain it - the kernel/filesystem just
+> needs to provide somewhere to store it - xattrs.
+> 
+> Given that we have an extensible attribute framework, it seems wrong to be
+> adding new attributes to *stat.  If a given filesystem wants to store certain
+> attributes more efficiently, then it is welcome to intercept xattr calls and
+> store (say) "cifs.birthtime" directly at a known offset in the inode.
 > 
 
-It's not so much particular applications that require access to the
-same data via NFS and CIFS. There is, however a common desire to share
-the same data to different client OS'.
+The problem with the above approach is that you're assuming that the
+data in question is always accessed via the CIFS server. If someone
+comes along and messes with the data outside of CIFS, then samba won't
+have knowledge of that and the birthtime will be wrong.
 
-All of the unix CIFS clients that I know of (including Linux's) trail
-NFS in several areas. For instance, if you need to have the same data
-accessible by multiple users using their own credentials then you need
-multiple mounts.
+There's some history behind this as well -- samba tracks windows ACLs
+via xattr and it can be very problematic keeping those up to date when
+the data is accessed outside of samba.
+
+I think presenting this data via xattr makes the most sense. It's
+simple and as Neil points out, it also provides us with a clealy
+settable interface. If we ever get an xstat-like syscall, we can always
+present the same data via that as well.
+
+I also think it's quite reasonable to consider tracking birthtime in a
+generic inode field. In the absence of that, filesystems could track
+this themselves in their filesystem-specific inode structs.
+
+Furthermore, I'll go ahead and propose the following (simple) semantics:
+
+1) birthtime is initialized to the current time when a new inode is
+created
+
+2) it's settable via the xattr to an arbitrary value
+
+Either way, the xattr for this ought to be named the same on all
+filesystems. Samba shouldn't need to know or care what the underlying
+filesystem is, as long as it presents the correct xattr.
+
+That should make samba happy, and be reasonably simple to implement.
 
 -- 
 Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
