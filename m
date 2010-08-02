@@ -1,132 +1,137 @@
 From: Kay Diederichs <Kay.Diederichs@uni-konstanz.de>
 Subject: Re: ext4 performance regression 2.6.27-stable versus 2.6.32 and later
-Date: Mon, 02 Aug 2010 16:52:32 +0200
-Message-ID: <4C56DBB0.9080405@uni-konstanz.de>
-References: <4C508A54.7070002@uni-konstanz.de> <20100729232856.GP655@dastard>
+Date: Mon, 02 Aug 2010 17:28:01 +0200
+Message-ID: <4C56E401.6050400@uni-konstanz.de>
+References: <4C508A54.7070002@uni-konstanz.de> <20100730022055.GL4506@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux <linux-kernel@vger.kernel.org>,
+To: Ted Ts'o <tytso@mit.edu>,
+	Kay Diederichs <Kay.Diederichs@uni-konstanz.de>,
+	linux <linux-kernel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Karsten Schaefer <karsten.schaefer@uni-konstanz.de>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20100729232856.GP655@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	Karsten Schaefer <
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from pyrimidin.rz.uni-konstanz.de ([134.34.240.46]:8712 "EHLO
+	pyrimidin.rz.uni-konstanz.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751490Ab0HBP2E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Aug 2010 11:28:04 -0400
+In-Reply-To: <20100730022055.GL4506@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Dave Chinner schrieb:
+Ted Ts'o schrieb:
 > On Wed, Jul 28, 2010 at 09:51:48PM +0200, Kay Diederichs wrote:
->> Dear all,
->>
->> we reproducibly find significantly worse ext4 performance when our
->> fileservers run 2.6.32 or later kernels, when compared to the
->> 2.6.27-stable series.
->>
->> The hardware is RAID5 of 5 1TB WD10EACS disks (giving almost 4TB) in an
->> external eSATA enclosure (STARDOM ST6600); disks are not partitioned but
->> rather the complete disks are used:
->> md5 : active raid5 sde[0] sdg[5] sdd[3] sdc[2] sdf[1]
->>     3907045376 blocks super 1.2 level 5, 512k chunk, algorithm 2 [5/5]
->> [UUUUU]
->>
->> The enclosure is connected using a Silicon Image (supported by
->> sata_sil24) PCIe-X1 adapter to one of our fileservers (either the backup
->> fileserver, 32bit desktop hardware with Intel(R) Pentium(R) D CPU
->> 3.40GHz, or a production-fileserver 64bit Precision WorkStation 670 w/ 2
->> Xeon 3.2GHz).
->>
->> The ext4 filesystem was created using
->> mke2fs -j -T largefile -E stride=128,stripe_width=512 -O extent,uninit_bg
->> It is mounted with noatime,data=writeback
->>
->> As operating system we usually use RHEL5.5, but to exclude problems with
->> self-compiled kernels, we also booted USB sticks with latest Fedora12
->> and FC13 .
->>
->> Our benchmarks consist of copying 100 6MB files from and to the RAID5,
->> over NFS (NVSv3, GB ethernet, TCP, async export), and tar-ing and
->> rsync-ing kernel trees back and forth. Before and after each individual
->> benchmark part, we "sync" and "echo 3 > /proc/sys/vm/drop_caches" on
->> both the client and the server.
->>
->> The problem:
->> with 2.6.27.48 we typically get:
->>  44 seconds for preparations
->>  23 seconds to rsync 100 frames with 597M from nfs directory
->>  33 seconds to rsync 100 frames with 595M to nfs directory
->>  50 seconds to untar 24353 kernel files with 323M to nfs directory
->>  56 seconds to rsync 24353 kernel files with 323M from nfs directory
->>  67 seconds to run xds_par in nfs directory (reads and writes 600M)
->> 301 seconds to run the script
->>
->> with 2.6.32.16 we find:
->>  49 seconds for preparations
->>  23 seconds to rsync 100 frames with 597M from nfs directory
->> 261 seconds to rsync 100 frames with 595M to nfs directory
->>  74 seconds to untar 24353 kernel files with 323M to nfs directory
->>  67 seconds to rsync 24353 kernel files with 323M from nfs directory
->> 290 seconds to run xds_par in nfs directory (reads and writes 600M)
->> 797 seconds to run the script
->>
->> This is quite reproducible (times varying about 1-2% or so). All times
->> include reading and writing on the client side (stock CentOS5.5 Nehalem
->> machines with fast single SATA disks). The 2.6.32.16 times are the same
->> with FC12 and FC13 (booted from USB stick).
->>
->> The 2.6.27-versus-2.6.32+ regression cannot be due to barriers because
->> md RAID5 does not support barriers ("JBD: barrier-based sync failed on
->> md5 - disabling barriers").
->>
->> What we tried: noop and deadline schedulers instead of cfq;
->> modifications of /sys/block/sd[c-g]/queue/max_sectors_kb; switching
->> on/off NCQ; blockdev --setra 8192 /dev/md5; increasing
->> /sys/block/md5/md/stripe_cache_size
->>
 >> When looking at the I/O statistics while the benchmark is running, we
 >> see very choppy patterns for 2.6.32, but quite smooth stats for
 >> 2.6.27-stable.
->>
->> It is not an NFS problem; we see the same effect when transferring the
->> data using an rsync daemon. We believe, but are not sure, that the
->> problem does not exist with ext3 - it's not so quick to re-format a 4 TB
->> volume.
->>
->> Any ideas? We cannot believe that a general ext4 regression should have
->> gone unnoticed. So is it due to the interaction of ext4 with md-RAID5 ?
 > 
-> Try reverting 50797481a7bdee548589506d7d7b48b08bc14dcd (ext4: Avoid
-> group preallocation for closed files). IIRC it caused the same sort
-> of isevere performance regressions for postmark....
+> Could you try to do two things for me?  Using (preferably from a
+> recent e2fsprogs, such as 1.41.11 or 12) run filefrag -v on the files
+> created from your 2.6.27 run and your 2.6.32 run?
 > 
-> Cheers,
+> Secondly can capture blktrace results from 2.6.27 and 2.6.32?  That
+> would be very helpful to understand what might be going on.
 > 
-> Dave.
+> Either would be helpful; both would be greatly appreciated.
+> 
+> Thanks,
+> 
+> 						- Ted
 
-Dave,
+Ted,
 
-as you suggested, we reverted "ext4: Avoid group preallocation for
-closed files" and this indeed fixes a big part of the problem: after
-booting the NFS server we get
+we pared down the benchmark to the last step (called "run xds_par in nfs
+directory (reads 600M, and writes 50M)") because this captures most of
+the problem. Here we report kernel messages with stacktrace, and the
+blktrace output that you requested.
 
-NFS-Server: turn5 2.6.32.16p i686
-NFS-Client: turn10 2.6.18-194.8.1.el5 x86_64
+Kernel messages: with 2.6.32.16 we observe
 
-exported directory on the nfs-server:
-/dev/md5 /mnt/md5 ext4
-rw,seclabel,noatime,barrier=1,stripe=512,data=writeback 0 0
+[ 6961.838032] INFO: task jbd2/md5-8:2010 blocked for more than 120 seconds.
+[ 6961.838111] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+disables this message.
+[ 6961.838191] jbd2/md5-8    D 00000634     0  2010      2 0x00000000
+[ 6961.838200]  f5171e78 00000046 231a9999 00000634 ddf91f2c f652cc4c
+00000001 f5171e1c
+[ 6961.838307]  c0a6f140 c0a6f140 c0a6f140 c0a6a6ac f6354c20 f6354ecc
+c2008140 00000000
+[ 6961.838412]  00637f84 00000003 f652cc58 00000000 00000292 00000048
+c20036ac f6354ecc
+[ 6961.838518] Call Trace:
+[ 6961.838556]  [<c056c39e>] jbd2_journal_commit_transaction+0x1d9/0x1187
+[ 6961.838627]  [<c040220a>] ? __switch_to+0xd5/0x147
+[ 6961.838681]  [<c07a390a>] ? schedule+0x837/0x885
+[ 6961.838734]  [<c0455e5f>] ? autoremove_wake_function+0x0/0x38
+[ 6961.838799]  [<c0448c84>] ? try_to_del_timer_sync+0x58/0x60
+[ 6961.838859]  [<c0572426>] kjournald2+0xa2/0x1be
+[ 6961.838909]  [<c0455e5f>] ? autoremove_wake_function+0x0/0x38
+[ 6961.838971]  [<c0572384>] ? kjournald2+0x0/0x1be
+[ 6961.839035]  [<c0455c11>] kthread+0x66/0x6b
+[ 6961.839089]  [<c0455bab>] ? kthread+0x0/0x6b
+[ 6961.839139]  [<c0404167>] kernel_thread_helper+0x7/0x10
+[ 6961.839215] INFO: task sync:11600 blocked for more than 120 seconds.
+[ 6961.839286] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+disables this message.
+[ 6961.839367] sync          D 00000632     0 11600  11595 0x00000000
+[ 6961.839375]  ddf91ea4 00000086 dca59d8b 00000632 76f570ee 00000048
+00001dec 773fd796
+[ 6961.839486]  c0a6f140 c0a6f140 c0a6f140 c200819c f4ce0000 f4ce02ac
+c2008140 00000000
+[ 6961.839600]  ddf91ea8 dca5c36b 00000632 dca5bb77 c2008180 773fd796
+00000282 f4ce02ac
+[ 6961.839727] Call Trace:
+[ 6961.839762]  [<c04f4de6>] bdi_sched_wait+0xd/0x11
+[ 6961.841438]  [<c07a3ede>] __wait_on_bit+0x3b/0x62
+[ 6961.843109]  [<c04f4dd9>] ? bdi_sched_wait+0x0/0x11
+[ 6961.844782]  [<c07a3fb5>] out_of_line_wait_on_bit+0xb0/0xb8
+[ 6961.846479]  [<c04f4dd9>] ? bdi_sched_wait+0x0/0x11
+[ 6961.848181]  [<c0455e97>] ? wake_bit_function+0x0/0x48
+[ 6961.849906]  [<c04f4c75>] wait_on_bit+0x25/0x31
+[ 6961.851601]  [<c04f4e5d>] sync_inodes_sb+0x73/0x121
+[ 6961.853287]  [<c04f8acc>] __sync_filesystem+0x48/0x69
+[ 6961.854983]  [<c04f8b72>] sync_filesystems+0x85/0xc7
+[ 6961.856670]  [<c04f8c04>] sys_sync+0x20/0x32
+[ 6961.858363]  [<c040351b>] sysenter_do_call+0x12/0x28
 
- 48 seconds for preparations
- 28 seconds to rsync 100 frames with 597M from nfs directory
- 57 seconds to rsync 100 frames with 595M to nfs directory
- 70 seconds to untar 24353 kernel files with 323M to nfs directory
- 57 seconds to rsync 24353 kernel files with 323M from nfs directory
-133 seconds to run xds_par in nfs directory
-425 seconds to run the script
+Blktrace: blktrace was run for 2.6.27.48, 2.6.32.16 and a patched
+2.6.32.16 (called 2.6.32.16p below and in the .tar file), where the
+patch just reverts "ext4: Avoid group preallocation for closed files".
+This revert removes a substantial part of the regression.
 
+For 2.6.32.16p and 2.6.27.48 there are two runs: run1 is directly after
+booting, then the directory is unexported, unmounted, mounted, exported,
+and then run2 is done. For 2.6.32.16 there is just run1; all subsequent
+runs yield approximately the same results, i.e. they are as slow as run1.
 
-For blktrace details, see my next email which is a response to Ted's.
+Some numbers (time, and number of lines with flush|nfsd|sync in the
+blkparse output):
+            2.6.27.48        2.6.32.16      2.6.32.16p
+           run1   run2      run1   run2     run1  run2
+wallclock  113s    61s      280s  ~280s     137s   61s
+flush     25362   9285     71861           32656 12066
+nfsd       7595   8580      8685            8359  8444
+sync       2860   3925       303             212   169
 
-best,
+The total time seems to be dominated by the number of flushes.
+It should be noted that all these runs used barrier=0 ; barrier=1 does
+not have a significant effect, though.
+
+So we find:
+a) in 2.6.32.16, there is a problem which manifests itself in kernel
+messages associated with the jbd2/md5-8 and sync tasks, and vastly
+increased number of flush operations
+b) reverting patch "ext4: Avoid group preallocation for closed files"
+cures part of the problem
+c) even after reverting that patch, the first run takes much longer than
+the subsequent runs, despite "sync", "echo 3 >
+/proc/sys/vm/drop_caches", and umounting/re-mounting the filesystem.
+
+The blktrace files are at
+http://strucbio.biologie.uni-konstanz.de/~dikay/blktraces.tar.bz2 .
+
+Should we test any other patches?
+
+thanks,
 
 Kay
