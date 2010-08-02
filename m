@@ -1,136 +1,309 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: BUG? ext3: Allocate blocks over quota limit with mmap
-Date: Mon, 2 Aug 2010 14:46:45 +0200
-Message-ID: <20100802124644.GC3278@quack.suse.cz>
-References: <4C50E297.5090205@rs.jp.nec.com>
- <4C56534A.5030806@rs.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, adilger@dilger.ca,
-	Jan Kara <jack@suse.cz>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] jbd2: Use atomic variables to avoid taking t_handle_lock in jbd2_journal_stop
+Date: Mon,  2 Aug 2010 08:48:26 -0400
+Message-ID: <1280753306-23871-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, John Stultz <johnstul@us.ibm.com>,
+	Keith Maanthey <kmannth@us.ibm.com>,
+	Eric Whitney <eric.whitney@hp.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52037 "EHLO mx2.suse.de"
+Received: from thunk.org ([69.25.196.29]:54265 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753664Ab0HBMrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Aug 2010 08:47:13 -0400
-Content-Disposition: inline
-In-Reply-To: <4C56534A.5030806@rs.jp.nec.com>
+	id S1753277Ab0HBMs2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Aug 2010 08:48:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 02-08-10 14:10:34, Akira Fujita wrote:
-> Hi ext3 maintainers,
-> 
-> Could you look into this?
-> If this is not a problem, it is good though.
-  It's a bug and I'm aware of problems of this sort for some time already.
-But I never realized this particular effect which is really nasty. Thanks
-for letting me now. I'll give more priority to rebasing my patches fixing
-this and pushing them upstream.
+By using an atomic_t for t_updates and t_outstanding credits, this
+should allow us to not need to take transaction t_handle_lock in
+jbd2_journal_stop().
 
-									Honza
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: John Stultz <johnstul@us.ibm.com>
+Cc: Keith Maanthey <kmannth@us.ibm.com>
+Cc: Eric Whitney <eric.whitney@hp.com>
+---
 
-> (2010/07/29 11:08), Akira Fujita wrote:
-> > Hi,
-> > 
-> > I found a problem that user can allocate blocks over quota limitation
-> > on ext3 (and ext2) with mmap.
-> > You can reproduce this with the following steps:
-> > 
-> > 1. Enable user quota on ext3
-> >   [akira@bsd086 mnt]$ uname -r
-> >   2.6.35-rc6
-> > 
-> >   [root@bsd086 mnt]# cat /proc/mounts  | grep  /dev/sda9
-> >   /dev/sda9 /mnt/mp1 ext3 rw,relatime,errors=continue,barrier=0,data=ordered,usrquota 0 0
-> > 
-> >   [root@bsd086 mnt]# quotaon -p /mnt/mp1
-> >   group quota on /mnt/mp1 (/dev/sda9) is off
-> >   user quota on /mnt/mp1 (/dev/sda9) is on
-> > 
-> >   [root@bsd086 mnt]# repquota -v /mnt/mp1
-> >   *** Report for user quotas on device /dev/sda9
-> >   Block grace time: 7days; Inode grace time: 7days
-> >                           Block limits                File limits
-> >   User            used    soft    hard  grace    used  soft  hard  grace
-> >   ----------------------------------------------------------------------
-> >   root      --    1229       0       0              4     0     0
-> >   akira     --       0     100    1000              0     0     0
-> > 
-> > 
-> > 2. Create sparse file on ext3
-> >   [akira@bsd086 mnt]$ df -T /mnt/mp1
-> >   Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> >   /dev/sda9     ext3       23300      1236     20861   6% /mnt/mp1
-> > 
-> >   [akira@bsd086 mnt]$ dd if=/dev/zero of=/mnt/mp1/file bs=4096 seek=1MB count=1
-> > 
-> > [akira@bsd086 mnt]$ ls -ls /mnt/mp1
-> >   total 26
-> >    7 -rw------- 1 root  root        7168 Jul 28 15:53 aquota.user
-> >    7 -rw-rw-r-- 1 akira akira 4096004096 Jul 28 15:53 file
-> >   12 drwx------ 2 root  root       12288 Jul 28 14:49 lost+found
-> > 
-> >   [root@bsd086 mnt]# repquota -v /mnt/mp1
-> >   *** Report for user quotas on device /dev/sda9
-> >   Block grace time: 7days; Inode grace time: 7days
-> >                           Block limits                File limits
-> >   User            used    soft    hard  grace    used  soft  hard  grace
-> >   ----------------------------------------------------------------------
-> >   root      --    1228       0       0              3     0     0
-> >   akira     --       8     100    1000              2     0     0
-> > 
-> > 3. Write data to "file" with mmap and msync.
-> >    (In this time, write size is 50MB. It's larger than partition size )
-> > 	e.g.
-> >          long long contents = 0x0002;
-> > 	fd = (file, O_APPEND | O_RDWR, 0666);
-> > 	p = mmap(NULL, psize, PROT_WRITE, MAP_SHARED, fd, offset);
-> > 	memset(p, contents++, psize);
-> > 	offset += psize
-> > 	munmap(p, psize);
-> > 	close(fd);
-> > 
-> > 4. Then run out disk space, user uses all of the blocks.
-> >   [akira@bsd086 mnt]$ df -T /mnt/mp1
-> >   Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> >   /dev/sda9     ext3       23300     23300         0 100% /mnt/mp1
-> >                                      ~~~~~
-> >   [root@bsd086 mnt]# repquota -v /mnt/mp1
-> >   *** Report for user quotas on device /dev/sda9
-> >   Block grace time: 7days; Inode grace time: 7days
-> >                           Block limits                File limits
-> >   User            used    soft    hard  grace    used  soft  hard  grace
-> >   ----------------------------------------------------------------------
-> >   root      --    1228       0       0              3     0     0
-> >   akira     +-   22065     100    1000  6days       2     0     0
-> >                  ~~~~~
-> > 
-> > memset() after mmap() triggers the pagefault and then __do_fault
-> > marks whole pages correspond to offset we specified as dirty.
-> > After 5 seconds (or call sync), the kjournald tries to write out all of dirtied pages
-> > with getting blocks to disk.
-> > kjournald has CAP_SYS_RESOURCE capability, therefore it can ignore
-> > quota limitation (also can use blocks for root user).
-> > As a result, user can have blocks over quota limitation,
-> > though quota is enabled.
-> > Note: ext4 has own page_mkwrite, so this problem does not happen on it.
-> > 
-> > I guess behavior of kjournald is correct (write out all dirty pages of file),
-> > so we need some consideration for pagefault behavior for ext3 and ext2.
-> > 
-> > Is this a bug?
-> > 
-> > Regards,
-> > Akira Fujita
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
+It would be interesting to get some quick performance tests with and
+without this patch on (a) dbench w/ PREEMPT-RT, (b) Keith's 8-way, and
+(c) Eric's 48-core machine.  I have some other ideas for how to improve
+things in start_this_handle(), but they're going to be tricker, and I
+want to do some hard testing using xfstests on a big machine to make
+sure this is really safe before I keep going.  This has passed light
+testing, but I haven't had a chance to do stress tests on a large SMP
+machine yet.  That'll come later this week, hopefully.
+
+ fs/jbd2/checkpoint.c  |    2 +-
+ fs/jbd2/commit.c      |   13 +++++----
+ fs/jbd2/transaction.c |   69 +++++++++++++++++++++++++++---------------------
+ include/linux/jbd2.h  |    8 +++---
+ 4 files changed, 51 insertions(+), 41 deletions(-)
+
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 076d1cc..f8cdc02 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -775,7 +775,7 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
+ 	J_ASSERT(transaction->t_log_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_io_list == NULL);
+-	J_ASSERT(transaction->t_updates == 0);
++	J_ASSERT(atomic_read(&transaction->t_updates) == 0);
+ 	J_ASSERT(journal->j_committing_transaction != transaction);
+ 	J_ASSERT(journal->j_running_transaction != transaction);
+ 
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index af05681..fbd2c56 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -417,12 +417,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 					      stats.run.rs_locked);
+ 
+ 	spin_lock(&commit_transaction->t_handle_lock);
+-	while (commit_transaction->t_updates) {
++	while (atomic_read(&commit_transaction->t_updates)) {
+ 		DEFINE_WAIT(wait);
+ 
+ 		prepare_to_wait(&journal->j_wait_updates, &wait,
+ 					TASK_UNINTERRUPTIBLE);
+-		if (commit_transaction->t_updates) {
++		if (atomic_read(&commit_transaction->t_updates)) {
+ 			spin_unlock(&commit_transaction->t_handle_lock);
+ 			spin_unlock(&journal->j_state_lock);
+ 			schedule();
+@@ -433,7 +433,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	}
+ 	spin_unlock(&commit_transaction->t_handle_lock);
+ 
+-	J_ASSERT (commit_transaction->t_outstanding_credits <=
++	J_ASSERT (atomic_read(&commit_transaction->t_outstanding_credits) <=
+ 			journal->j_max_transaction_buffers);
+ 
+ 	/*
+@@ -527,11 +527,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	stats.run.rs_logging = jiffies;
+ 	stats.run.rs_flushing = jbd2_time_diff(stats.run.rs_flushing,
+ 					       stats.run.rs_logging);
+-	stats.run.rs_blocks = commit_transaction->t_outstanding_credits;
++	stats.run.rs_blocks =
++		atomic_read(&commit_transaction->t_outstanding_credits);
+ 	stats.run.rs_blocks_logged = 0;
+ 
+ 	J_ASSERT(commit_transaction->t_nr_buffers <=
+-		 commit_transaction->t_outstanding_credits);
++		 atomic_read(&commit_transaction->t_outstanding_credits));
+ 
+ 	err = 0;
+ 	descriptor = NULL;
+@@ -616,7 +617,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		 * the free space in the log, but this counter is changed
+ 		 * by jbd2_journal_next_log_block() also.
+ 		 */
+-		commit_transaction->t_outstanding_credits--;
++		atomic_dec(&commit_transaction->t_outstanding_credits);
+ 
+ 		/* Bump b_count to prevent truncate from stumbling over
+                    the shadowed buffer!  @@@ This can go if we ever get
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 001e95f..9c64c7e 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -55,6 +55,8 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
+ 	transaction->t_tid = journal->j_transaction_sequence++;
+ 	transaction->t_expires = jiffies + journal->j_commit_interval;
+ 	spin_lock_init(&transaction->t_handle_lock);
++	atomic_set(&transaction->t_updates, 0);
++	atomic_set(&transaction->t_outstanding_credits, 0);
+ 	INIT_LIST_HEAD(&transaction->t_inode_list);
+ 	INIT_LIST_HEAD(&transaction->t_private_list);
+ 
+@@ -177,7 +179,7 @@ repeat_locked:
+ 	 * checkpoint to free some more log space.
+ 	 */
+ 	spin_lock(&transaction->t_handle_lock);
+-	needed = transaction->t_outstanding_credits + nblocks;
++	needed = atomic_read(&transaction->t_outstanding_credits) + nblocks;
+ 
+ 	if (needed > journal->j_max_transaction_buffers) {
+ 		/*
+@@ -240,11 +242,12 @@ repeat_locked:
+ 	}
+ 
+ 	handle->h_transaction = transaction;
+-	transaction->t_outstanding_credits += nblocks;
+-	transaction->t_updates++;
++	atomic_add(nblocks, &transaction->t_outstanding_credits);
++	atomic_inc(&transaction->t_updates);
+ 	transaction->t_handle_count++;
+ 	jbd_debug(4, "Handle %p given %d credits (total %d, free %d)\n",
+-		  handle, nblocks, transaction->t_outstanding_credits,
++		  handle, nblocks,
++		  atomic_read(&transaction->t_outstanding_credits),
+ 		  __jbd2_log_space_left(journal));
+ 	spin_unlock(&transaction->t_handle_lock);
+ 	spin_unlock(&journal->j_state_lock);
+@@ -369,7 +372,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 	}
+ 
+ 	spin_lock(&transaction->t_handle_lock);
+-	wanted = transaction->t_outstanding_credits + nblocks;
++	wanted = atomic_read(&transaction->t_outstanding_credits) + nblocks;
+ 
+ 	if (wanted > journal->j_max_transaction_buffers) {
+ 		jbd_debug(3, "denied handle %p %d blocks: "
+@@ -384,7 +387,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 	}
+ 
+ 	handle->h_buffer_credits += nblocks;
+-	transaction->t_outstanding_credits += nblocks;
++	atomic_add(nblocks, &transaction->t_outstanding_credits);
+ 	result = 0;
+ 
+ 	jbd_debug(3, "extended handle %p by %d\n", handle, nblocks);
+@@ -426,15 +429,14 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
+ 	 * First unlink the handle from its current transaction, and start the
+ 	 * commit on that.
+ 	 */
+-	J_ASSERT(transaction->t_updates > 0);
++	J_ASSERT(atomic_read(&transaction->t_updates) > 0);
+ 	J_ASSERT(journal_current_handle() == handle);
+ 
+ 	spin_lock(&journal->j_state_lock);
+ 	spin_lock(&transaction->t_handle_lock);
+-	transaction->t_outstanding_credits -= handle->h_buffer_credits;
+-	transaction->t_updates--;
+-
+-	if (!transaction->t_updates)
++	atomic_sub(handle->h_buffer_credits,
++		   &transaction->t_outstanding_credits);
++	if (atomic_dec_and_test(&transaction->t_updates))
+ 		wake_up(&journal->j_wait_updates);
+ 	spin_unlock(&transaction->t_handle_lock);
+ 
+@@ -481,7 +483,7 @@ void jbd2_journal_lock_updates(journal_t *journal)
+ 			break;
+ 
+ 		spin_lock(&transaction->t_handle_lock);
+-		if (!transaction->t_updates) {
++		if (!atomic_read(&transaction->t_updates)) {
+ 			spin_unlock(&transaction->t_handle_lock);
+ 			break;
+ 		}
+@@ -1258,7 +1260,8 @@ int jbd2_journal_stop(handle_t *handle)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal = transaction->t_journal;
+-	int err;
++	int err, wait_for_commit = 0;
++	tid_t tid;
+ 	pid_t pid;
+ 
+ 	J_ASSERT(journal_current_handle() == handle);
+@@ -1266,7 +1269,7 @@ int jbd2_journal_stop(handle_t *handle)
+ 	if (is_handle_aborted(handle))
+ 		err = -EIO;
+ 	else {
+-		J_ASSERT(transaction->t_updates > 0);
++		J_ASSERT(atomic_read(&transaction->t_updates) > 0);
+ 		err = 0;
+ 	}
+ 
+@@ -1334,14 +1337,8 @@ int jbd2_journal_stop(handle_t *handle)
+ 	if (handle->h_sync)
+ 		transaction->t_synchronous_commit = 1;
+ 	current->journal_info = NULL;
+-	spin_lock(&transaction->t_handle_lock);
+-	transaction->t_outstanding_credits -= handle->h_buffer_credits;
+-	transaction->t_updates--;
+-	if (!transaction->t_updates) {
+-		wake_up(&journal->j_wait_updates);
+-		if (journal->j_barrier_count)
+-			wake_up(&journal->j_wait_transaction_locked);
+-	}
++	atomic_sub(handle->h_buffer_credits,
++		   &transaction->t_outstanding_credits);
+ 
+ 	/*
+ 	 * If the handle is marked SYNC, we need to set another commit
+@@ -1350,15 +1347,13 @@ int jbd2_journal_stop(handle_t *handle)
+ 	 * transaction is too old now.
+ 	 */
+ 	if (handle->h_sync ||
+-			transaction->t_outstanding_credits >
+-				journal->j_max_transaction_buffers ||
+-			time_after_eq(jiffies, transaction->t_expires)) {
++	    (atomic_read(&transaction->t_outstanding_credits) >
++	     journal->j_max_transaction_buffers) ||
++	    time_after_eq(jiffies, transaction->t_expires)) {
+ 		/* Do this even for aborted journals: an abort still
+ 		 * completes the commit thread, it just doesn't write
+ 		 * anything to disk. */
+-		tid_t tid = transaction->t_tid;
+ 
+-		spin_unlock(&transaction->t_handle_lock);
+ 		jbd_debug(2, "transaction too old, requesting commit for "
+ 					"handle %p\n", handle);
+ 		/* This is non-blocking */
+@@ -1369,11 +1364,25 @@ int jbd2_journal_stop(handle_t *handle)
+ 		 * to wait for the commit to complete.
+ 		 */
+ 		if (handle->h_sync && !(current->flags & PF_MEMALLOC))
+-			err = jbd2_log_wait_commit(journal, tid);
+-	} else {
+-		spin_unlock(&transaction->t_handle_lock);
++			wait_for_commit = 1;
+ 	}
+ 
++	/*
++	 * Once we drop t_updates, if it goes to zero the transaction
++	 * could start commiting on us and eventually disappear.  So
++	 * once we do this, we must not dereference transaction
++	 * pointer again.
++	 */
++	tid = transaction->t_tid;
++	if (atomic_dec_and_test(&transaction->t_updates)) {
++		wake_up(&journal->j_wait_updates);
++		if (journal->j_barrier_count)
++			wake_up(&journal->j_wait_transaction_locked);
++	}
++
++	if (wait_for_commit)
++		err = jbd2_log_wait_commit(journal, tid);
++
+ 	lock_map_release(&handle->h_lockdep_map);
+ 
+ 	jbd2_free_handle(handle);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 5a72bc7..a72ce21 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -601,13 +601,13 @@ struct transaction_s
+ 	 * Number of outstanding updates running on this transaction
+ 	 * [t_handle_lock]
+ 	 */
+-	int			t_updates;
++	atomic_t		t_updates;
+ 
+ 	/*
+ 	 * Number of buffers reserved for use by all handles in this transaction
+ 	 * handle but not yet modified. [t_handle_lock]
+ 	 */
+-	int			t_outstanding_credits;
++	atomic_t		t_outstanding_credits;
+ 
+ 	/*
+ 	 * Forward and backward links for the circular list of all transactions
+@@ -1258,8 +1258,8 @@ static inline int jbd_space_needed(journal_t *journal)
+ {
+ 	int nblocks = journal->j_max_transaction_buffers;
+ 	if (journal->j_committing_transaction)
+-		nblocks += journal->j_committing_transaction->
+-					t_outstanding_credits;
++		nblocks += atomic_read(&journal->j_committing_transaction->
++				       t_outstanding_credits);
+ 	return nblocks;
+ }
+ 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.0.4
+
