@@ -1,51 +1,136 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: BUG? ext3: Allocate blocks over quota limit with mmap
-Date: Mon, 2 Aug 2010 14:43:59 +0200
-Message-ID: <20100802124359.GB3278@quack.suse.cz>
+Date: Mon, 2 Aug 2010 14:46:45 +0200
+Message-ID: <20100802124644.GC3278@quack.suse.cz>
 References: <4C50E297.5090205@rs.jp.nec.com>
  <4C56534A.5030806@rs.jp.nec.com>
- <87ocdlvbaz.fsf@dmon-lap.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, akpm@linux-foundation.org,
-	adilger@dilger.ca, Jan Kara <jack@suse.cz>,
+Cc: akpm@linux-foundation.org, adilger@dilger.ca,
+	Jan Kara <jack@suse.cz>,
 	ext4 development <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:34598 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:52037 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752407Ab0HBMog (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Aug 2010 08:44:36 -0400
+	id S1753664Ab0HBMrN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Aug 2010 08:47:13 -0400
 Content-Disposition: inline
-In-Reply-To: <87ocdlvbaz.fsf@dmon-lap.sw.ru>
+In-Reply-To: <4C56534A.5030806@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 02-08-10 09:22:12, Dmitry Monakhov wrote:
-> Akira Fujita <a-fujita@rs.jp.nec.com> writes:
+On Mon 02-08-10 14:10:34, Akira Fujita wrote:
+> Hi ext3 maintainers,
 > 
-> > Hi ext3 maintainers,
-> >
-> > Could you look into this?
-> > If this is not a problem, it is good though.
-> Actually this is a problem. Because this issue makes quota just a fake
-> limit. I've done this test for ext4 and was satisfied with result,
-> but was too lazy to perform it on ext3/2 :(
-> At least we have to have testcase for that in xfstest-qa.
-> It seems that private page_mkwrite will be sufficient.
-> I'm working on that.
-  Yes, it's a long standing bug. Another manifestation of the bug is that
-we just throw away user's data without warning if we really cannot find
-space for it. Fixing it isn't completely trivial - doing block allocation
-during page_mkwrite really sucks performance-wise (tried that) so we
-basically have to implement delayed allocation for ext3 (and other
-filesystems) for mmaped writes and do reservation on page_mkwrite time and
-allocation on writepage time. I already have patches doing that but they
-depended on the truncate rewrite patch series and that was dragging on and
-on for half an year or so. Now I guess it's right time to rebase them and
-start pushing them again...
+> Could you look into this?
+> If this is not a problem, it is good though.
+  It's a bug and I'm aware of problems of this sort for some time already.
+But I never realized this particular effect which is really nasty. Thanks
+for letting me now. I'll give more priority to rebasing my patches fixing
+this and pushing them upstream.
 
-								Honza
+									Honza
+
+> (2010/07/29 11:08), Akira Fujita wrote:
+> > Hi,
+> > 
+> > I found a problem that user can allocate blocks over quota limitation
+> > on ext3 (and ext2) with mmap.
+> > You can reproduce this with the following steps:
+> > 
+> > 1. Enable user quota on ext3
+> >   [akira@bsd086 mnt]$ uname -r
+> >   2.6.35-rc6
+> > 
+> >   [root@bsd086 mnt]# cat /proc/mounts  | grep  /dev/sda9
+> >   /dev/sda9 /mnt/mp1 ext3 rw,relatime,errors=continue,barrier=0,data=ordered,usrquota 0 0
+> > 
+> >   [root@bsd086 mnt]# quotaon -p /mnt/mp1
+> >   group quota on /mnt/mp1 (/dev/sda9) is off
+> >   user quota on /mnt/mp1 (/dev/sda9) is on
+> > 
+> >   [root@bsd086 mnt]# repquota -v /mnt/mp1
+> >   *** Report for user quotas on device /dev/sda9
+> >   Block grace time: 7days; Inode grace time: 7days
+> >                           Block limits                File limits
+> >   User            used    soft    hard  grace    used  soft  hard  grace
+> >   ----------------------------------------------------------------------
+> >   root      --    1229       0       0              4     0     0
+> >   akira     --       0     100    1000              0     0     0
+> > 
+> > 
+> > 2. Create sparse file on ext3
+> >   [akira@bsd086 mnt]$ df -T /mnt/mp1
+> >   Filesystem    Type   1K-blocks      Used Available Use% Mounted on
+> >   /dev/sda9     ext3       23300      1236     20861   6% /mnt/mp1
+> > 
+> >   [akira@bsd086 mnt]$ dd if=/dev/zero of=/mnt/mp1/file bs=4096 seek=1MB count=1
+> > 
+> > [akira@bsd086 mnt]$ ls -ls /mnt/mp1
+> >   total 26
+> >    7 -rw------- 1 root  root        7168 Jul 28 15:53 aquota.user
+> >    7 -rw-rw-r-- 1 akira akira 4096004096 Jul 28 15:53 file
+> >   12 drwx------ 2 root  root       12288 Jul 28 14:49 lost+found
+> > 
+> >   [root@bsd086 mnt]# repquota -v /mnt/mp1
+> >   *** Report for user quotas on device /dev/sda9
+> >   Block grace time: 7days; Inode grace time: 7days
+> >                           Block limits                File limits
+> >   User            used    soft    hard  grace    used  soft  hard  grace
+> >   ----------------------------------------------------------------------
+> >   root      --    1228       0       0              3     0     0
+> >   akira     --       8     100    1000              2     0     0
+> > 
+> > 3. Write data to "file" with mmap and msync.
+> >    (In this time, write size is 50MB. It's larger than partition size )
+> > 	e.g.
+> >          long long contents = 0x0002;
+> > 	fd = (file, O_APPEND | O_RDWR, 0666);
+> > 	p = mmap(NULL, psize, PROT_WRITE, MAP_SHARED, fd, offset);
+> > 	memset(p, contents++, psize);
+> > 	offset += psize
+> > 	munmap(p, psize);
+> > 	close(fd);
+> > 
+> > 4. Then run out disk space, user uses all of the blocks.
+> >   [akira@bsd086 mnt]$ df -T /mnt/mp1
+> >   Filesystem    Type   1K-blocks      Used Available Use% Mounted on
+> >   /dev/sda9     ext3       23300     23300         0 100% /mnt/mp1
+> >                                      ~~~~~
+> >   [root@bsd086 mnt]# repquota -v /mnt/mp1
+> >   *** Report for user quotas on device /dev/sda9
+> >   Block grace time: 7days; Inode grace time: 7days
+> >                           Block limits                File limits
+> >   User            used    soft    hard  grace    used  soft  hard  grace
+> >   ----------------------------------------------------------------------
+> >   root      --    1228       0       0              3     0     0
+> >   akira     +-   22065     100    1000  6days       2     0     0
+> >                  ~~~~~
+> > 
+> > memset() after mmap() triggers the pagefault and then __do_fault
+> > marks whole pages correspond to offset we specified as dirty.
+> > After 5 seconds (or call sync), the kjournald tries to write out all of dirtied pages
+> > with getting blocks to disk.
+> > kjournald has CAP_SYS_RESOURCE capability, therefore it can ignore
+> > quota limitation (also can use blocks for root user).
+> > As a result, user can have blocks over quota limitation,
+> > though quota is enabled.
+> > Note: ext4 has own page_mkwrite, so this problem does not happen on it.
+> > 
+> > I guess behavior of kjournald is correct (write out all dirty pages of file),
+> > so we need some consideration for pagefault behavior for ext3 and ext2.
+> > 
+> > Is this a bug?
+> > 
+> > Regards,
+> > Akira Fujita
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
