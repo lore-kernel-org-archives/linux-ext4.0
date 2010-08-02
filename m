@@ -1,137 +1,128 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Add mount options in superblock
-Date: Sun,  1 Aug 2010 23:15:04 -0400
-Message-ID: <1280718904-7590-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: BUG? ext3: Allocate blocks over quota limit with mmap
+Date: Mon, 02 Aug 2010 14:10:34 +0900
+Message-ID: <4C56534A.5030806@rs.jp.nec.com>
+References: <4C50E297.5090205@rs.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: akpm@linux-foundation.org, adilger@dilger.ca,
+	Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:54975 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752027Ab0HBDPJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 1 Aug 2010 23:15:09 -0400
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:37465 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752526Ab0HBFLP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Aug 2010 01:11:15 -0400
+In-Reply-To: <4C50E297.5090205@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow mount options to be stored in the superblock.  Also add default
-mount option bits for nobarrier, block_validity, discard, and nodelalloc.
+Hi ext3 maintainers,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h  |    9 +++++++--
- fs/ext4/super.c |   29 +++++++++++++++++++++++------
- 2 files changed, 30 insertions(+), 8 deletions(-)
+Could you look into this?
+If this is not a problem, it is good though.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9ca3637..ed14e1d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1025,8 +1025,9 @@ struct ext4_super_block {
- 	__le32	s_last_error_line;	/* line number where error happened */
- 	__le64	s_last_error_block;	/* block involved of last error */
- 	__u8	s_last_error_func[32];	/* function where the error happened */
--#define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_reserved)
--	__le32   s_reserved[128];        /* Padding to the end of the block */
-+#define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
-+	__u8	s_mount_opts[64];
-+	__le32	s_reserved[112];        /* Padding to the end of the block */
- };
- 
- #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
-@@ -1341,6 +1342,10 @@ EXT4_INODE_BIT_FNS(state, state_flags)
- #define EXT4_DEFM_JMODE_DATA	0x0020
- #define EXT4_DEFM_JMODE_ORDERED	0x0040
- #define EXT4_DEFM_JMODE_WBACK	0x0060
-+#define EXT4_DEFM_NOBARRIER	0x0100
-+#define EXT4_DEFM_BLOCK_VALIDITY 0x0200
-+#define EXT4_DEFM_DISCARD	0x0400
-+#define EXT4_DEFM_NODELALLOC	0x0800
- 
- /*
-  * Default journal batch times
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3e3f648..3fd65eb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1003,10 +1003,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_puts(seq, ",journal_checksum");
- 	if (test_opt(sb, I_VERSION))
- 		seq_puts(seq, ",i_version");
--	if (!test_opt(sb, DELALLOC))
-+	if (!test_opt(sb, DELALLOC) &&
-+	    !(def_mount_opts & EXT4_DEFM_NODELALLOC))
- 		seq_puts(seq, ",nodelalloc");
- 
--
- 	if (sbi->s_stripe)
- 		seq_printf(seq, ",stripe=%lu", sbi->s_stripe);
- 	/*
-@@ -1030,7 +1030,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (test_opt(sb, NO_AUTO_DA_ALLOC))
- 		seq_puts(seq, ",noauto_da_alloc");
- 
--	if (test_opt(sb, DISCARD))
-+	if (test_opt(sb, DISCARD) && !(def_mount_opts & EXT4_DEFM_DISCARD))
- 		seq_puts(seq, ",discard");
- 
- 	if (test_opt(sb, NOLOAD))
-@@ -1039,6 +1039,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (test_opt(sb, DIOREAD_NOLOCK))
- 		seq_puts(seq, ",dioread_nolock");
- 
-+	if (test_opt(sb, BLOCK_VALIDITY) &&
-+	    !(def_mount_opts & EXT4_DEFM_BLOCK_VALIDITY))
-+		seq_puts(seq, ",block_validity");
-+
- 	ext4_show_quota_options(seq, sb);
- 
- 	return 0;
-@@ -2655,6 +2659,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
- 	else
- 		set_opt(sbi->s_mount_opt, ERRORS_RO);
-+	if (def_mount_opts & EXT4_DEFM_BLOCK_VALIDITY)
-+		set_opt(sbi->s_mount_opt, BLOCK_VALIDITY);
-+	if (def_mount_opts & EXT4_DEFM_DISCARD)
-+		set_opt(sbi->s_mount_opt, DISCARD);
- 
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
-@@ -2662,15 +2670,23 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
- 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
- 
--	set_opt(sbi->s_mount_opt, BARRIER);
-+	if ((def_mount_opts & EXT4_DEFM_NOBARRIER) == 0)
-+		set_opt(sbi->s_mount_opt, BARRIER);
- 
- 	/*
- 	 * enable delayed allocation by default
- 	 * Use -o nodelalloc to turn it off
- 	 */
--	if (!IS_EXT3_SB(sb))
-+	if (!IS_EXT3_SB(sb) &&
-+	    ((def_mount_opts & EXT4_DEFM_NODELALLOC) == 0))
- 		set_opt(sbi->s_mount_opt, DELALLOC);
- 
-+	if (!parse_options((char *) sbi->s_es->s_mount_opts, sb,
-+			   &journal_devnum, &journal_ioprio, NULL, 0)) {
-+		ext4_msg(sb, KERN_WARNING,
-+			 "failed to parse options in superblock: %s",
-+			 sbi->s_es->s_mount_opts);
-+	}
- 	if (!parse_options((char *) data, sb, &journal_devnum,
- 			   &journal_ioprio, NULL, 0))
- 		goto failed_mount;
-@@ -3141,7 +3157,8 @@ no_journal:
- 		descr = "out journal";
- 
- 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
--		"Opts: %s", descr, orig_data);
-+		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-+		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
- 
- 	init_timer(&sbi->s_err_report);
- 	sbi->s_err_report.function = print_daily_error_info;
--- 
-1.7.0.4
+Regards,
+Akira Fujita
 
+
+(2010/07/29 11:08), Akira Fujita wrote:
+> Hi,
+> 
+> I found a problem that user can allocate blocks over quota limitation
+> on ext3 (and ext2) with mmap.
+> You can reproduce this with the following steps:
+> 
+> 1. Enable user quota on ext3
+>   [akira@bsd086 mnt]$ uname -r
+>   2.6.35-rc6
+> 
+>   [root@bsd086 mnt]# cat /proc/mounts  | grep  /dev/sda9
+>   /dev/sda9 /mnt/mp1 ext3 rw,relatime,errors=continue,barrier=0,data=ordered,usrquota 0 0
+> 
+>   [root@bsd086 mnt]# quotaon -p /mnt/mp1
+>   group quota on /mnt/mp1 (/dev/sda9) is off
+>   user quota on /mnt/mp1 (/dev/sda9) is on
+> 
+>   [root@bsd086 mnt]# repquota -v /mnt/mp1
+>   *** Report for user quotas on device /dev/sda9
+>   Block grace time: 7days; Inode grace time: 7days
+>                           Block limits                File limits
+>   User            used    soft    hard  grace    used  soft  hard  grace
+>   ----------------------------------------------------------------------
+>   root      --    1229       0       0              4     0     0
+>   akira     --       0     100    1000              0     0     0
+> 
+> 
+> 2. Create sparse file on ext3
+>   [akira@bsd086 mnt]$ df -T /mnt/mp1
+>   Filesystem    Type   1K-blocks      Used Available Use% Mounted on
+>   /dev/sda9     ext3       23300      1236     20861   6% /mnt/mp1
+> 
+>   [akira@bsd086 mnt]$ dd if=/dev/zero of=/mnt/mp1/file bs=4096 seek=1MB count=1
+> 
+> [akira@bsd086 mnt]$ ls -ls /mnt/mp1
+>   total 26
+>    7 -rw------- 1 root  root        7168 Jul 28 15:53 aquota.user
+>    7 -rw-rw-r-- 1 akira akira 4096004096 Jul 28 15:53 file
+>   12 drwx------ 2 root  root       12288 Jul 28 14:49 lost+found
+> 
+>   [root@bsd086 mnt]# repquota -v /mnt/mp1
+>   *** Report for user quotas on device /dev/sda9
+>   Block grace time: 7days; Inode grace time: 7days
+>                           Block limits                File limits
+>   User            used    soft    hard  grace    used  soft  hard  grace
+>   ----------------------------------------------------------------------
+>   root      --    1228       0       0              3     0     0
+>   akira     --       8     100    1000              2     0     0
+> 
+> 3. Write data to "file" with mmap and msync.
+>    (In this time, write size is 50MB. It's larger than partition size )
+> 	e.g.
+>          long long contents = 0x0002;
+> 	fd = (file, O_APPEND | O_RDWR, 0666);
+> 	p = mmap(NULL, psize, PROT_WRITE, MAP_SHARED, fd, offset);
+> 	memset(p, contents++, psize);
+> 	offset += psize
+> 	munmap(p, psize);
+> 	close(fd);
+> 
+> 4. Then run out disk space, user uses all of the blocks.
+>   [akira@bsd086 mnt]$ df -T /mnt/mp1
+>   Filesystem    Type   1K-blocks      Used Available Use% Mounted on
+>   /dev/sda9     ext3       23300     23300         0 100% /mnt/mp1
+>                                      ~~~~~
+>   [root@bsd086 mnt]# repquota -v /mnt/mp1
+>   *** Report for user quotas on device /dev/sda9
+>   Block grace time: 7days; Inode grace time: 7days
+>                           Block limits                File limits
+>   User            used    soft    hard  grace    used  soft  hard  grace
+>   ----------------------------------------------------------------------
+>   root      --    1228       0       0              3     0     0
+>   akira     +-   22065     100    1000  6days       2     0     0
+>                  ~~~~~
+> 
+> memset() after mmap() triggers the pagefault and then __do_fault
+> marks whole pages correspond to offset we specified as dirty.
+> After 5 seconds (or call sync), the kjournald tries to write out all of dirtied pages
+> with getting blocks to disk.
+> kjournald has CAP_SYS_RESOURCE capability, therefore it can ignore
+> quota limitation (also can use blocks for root user).
+> As a result, user can have blocks over quota limitation,
+> though quota is enabled.
+> Note: ext4 has own page_mkwrite, so this problem does not happen on it.
+> 
+> I guess behavior of kjournald is correct (write out all dirty pages of file),
+> so we need some consideration for pagefault behavior for ext3 and ext2.
+> 
+> Is this a bug?
+> 
+> Regards,
+> Akira Fujita
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
