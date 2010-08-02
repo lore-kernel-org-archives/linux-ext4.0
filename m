@@ -1,52 +1,137 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4 performance regression 2.6.27-stable versus 2.6.32 and
- later
-Date: Sun, 1 Aug 2010 19:02:25 -0400
-Message-ID: <20100801230225.GC27573@thunk.org>
-References: <4C508A54.7070002@uni-konstanz.de>
- <20100730022055.GL4506@thunk.org>
- <4C533DB0.5020608@uni-konstanz.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Karsten Schaefer <karsten.schaefer@uni-konstanz.de>
-To: Kay Diederichs <kay.diederichs@uni-konstanz.de>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Add mount options in superblock
+Date: Sun,  1 Aug 2010 23:15:04 -0400
+Message-ID: <1280718904-7590-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:35833 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:54975 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751811Ab0HAXC1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 1 Aug 2010 19:02:27 -0400
-Content-Disposition: inline
-In-Reply-To: <4C533DB0.5020608@uni-konstanz.de>
+	id S1752027Ab0HBDPJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Aug 2010 23:15:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 30, 2010 at 11:01:36PM +0200, Kay Diederichs wrote:
-> whereas for 2.6.32.16 the result is typically
-> Filesystem type is: ef53
-> File size of
-> /mnt/md5/scratch/nfs-test/tmp/xds/frames/h2g28_1_00000.cbf is
-> 6229688 (1521 blocks, blocksize 4096)
->  ext logical physical expected length flags
->    0       0 826376200            1521 eof
-> /mnt/md5/scratch/nfs-test/tmp/xds/frames/h2g28_1_00000.cbf: 1 extent found
+Allow mount options to be stored in the superblock.  Also add default
+mount option bits for nobarrier, block_validity, discard, and nodelalloc.
 
-OK, so 2.6.32 is actually doing a better job laying out the files....
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h  |    9 +++++++--
+ fs/ext4/super.c |   29 +++++++++++++++++++++++------
+ 2 files changed, 30 insertions(+), 8 deletions(-)
 
-The blktrace will be interesting, but at this point I'm wondering if
-this is a generic kernel-wide writeback regression.  At $WORK we've
-noticed some performance regressions between 2.6.26-based kernels and
-2.6.33- and 2.6.34-based kernels with both ext2 and ext4 (in no
-journal mode) that we've been trying to track down.  We have a pretty
-large number of patches applied to both 2.6.26 and 2.6.33/34 which is
-why I haven't mentioned it up until now, but at this point it seems
-pretty clear there are some writeback issues in the mainline kernel.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9ca3637..ed14e1d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1025,8 +1025,9 @@ struct ext4_super_block {
+ 	__le32	s_last_error_line;	/* line number where error happened */
+ 	__le64	s_last_error_block;	/* block involved of last error */
+ 	__u8	s_last_error_func[32];	/* function where the error happened */
+-#define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_reserved)
+-	__le32   s_reserved[128];        /* Padding to the end of the block */
++#define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
++	__u8	s_mount_opts[64];
++	__le32	s_reserved[112];        /* Padding to the end of the block */
+ };
+ 
+ #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
+@@ -1341,6 +1342,10 @@ EXT4_INODE_BIT_FNS(state, state_flags)
+ #define EXT4_DEFM_JMODE_DATA	0x0020
+ #define EXT4_DEFM_JMODE_ORDERED	0x0040
+ #define EXT4_DEFM_JMODE_WBACK	0x0060
++#define EXT4_DEFM_NOBARRIER	0x0100
++#define EXT4_DEFM_BLOCK_VALIDITY 0x0200
++#define EXT4_DEFM_DISCARD	0x0400
++#define EXT4_DEFM_NODELALLOC	0x0800
+ 
+ /*
+  * Default journal batch times
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3e3f648..3fd65eb 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1003,10 +1003,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",journal_checksum");
+ 	if (test_opt(sb, I_VERSION))
+ 		seq_puts(seq, ",i_version");
+-	if (!test_opt(sb, DELALLOC))
++	if (!test_opt(sb, DELALLOC) &&
++	    !(def_mount_opts & EXT4_DEFM_NODELALLOC))
+ 		seq_puts(seq, ",nodelalloc");
+ 
+-
+ 	if (sbi->s_stripe)
+ 		seq_printf(seq, ",stripe=%lu", sbi->s_stripe);
+ 	/*
+@@ -1030,7 +1030,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	if (test_opt(sb, NO_AUTO_DA_ALLOC))
+ 		seq_puts(seq, ",noauto_da_alloc");
+ 
+-	if (test_opt(sb, DISCARD))
++	if (test_opt(sb, DISCARD) && !(def_mount_opts & EXT4_DEFM_DISCARD))
+ 		seq_puts(seq, ",discard");
+ 
+ 	if (test_opt(sb, NOLOAD))
+@@ -1039,6 +1039,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	if (test_opt(sb, DIOREAD_NOLOCK))
+ 		seq_puts(seq, ",dioread_nolock");
+ 
++	if (test_opt(sb, BLOCK_VALIDITY) &&
++	    !(def_mount_opts & EXT4_DEFM_BLOCK_VALIDITY))
++		seq_puts(seq, ",block_validity");
++
+ 	ext4_show_quota_options(seq, sb);
+ 
+ 	return 0;
+@@ -2655,6 +2659,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
+ 	else
+ 		set_opt(sbi->s_mount_opt, ERRORS_RO);
++	if (def_mount_opts & EXT4_DEFM_BLOCK_VALIDITY)
++		set_opt(sbi->s_mount_opt, BLOCK_VALIDITY);
++	if (def_mount_opts & EXT4_DEFM_DISCARD)
++		set_opt(sbi->s_mount_opt, DISCARD);
+ 
+ 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+ 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
+@@ -2662,15 +2670,23 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
+ 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
+ 
+-	set_opt(sbi->s_mount_opt, BARRIER);
++	if ((def_mount_opts & EXT4_DEFM_NOBARRIER) == 0)
++		set_opt(sbi->s_mount_opt, BARRIER);
+ 
+ 	/*
+ 	 * enable delayed allocation by default
+ 	 * Use -o nodelalloc to turn it off
+ 	 */
+-	if (!IS_EXT3_SB(sb))
++	if (!IS_EXT3_SB(sb) &&
++	    ((def_mount_opts & EXT4_DEFM_NODELALLOC) == 0))
+ 		set_opt(sbi->s_mount_opt, DELALLOC);
+ 
++	if (!parse_options((char *) sbi->s_es->s_mount_opts, sb,
++			   &journal_devnum, &journal_ioprio, NULL, 0)) {
++		ext4_msg(sb, KERN_WARNING,
++			 "failed to parse options in superblock: %s",
++			 sbi->s_es->s_mount_opts);
++	}
+ 	if (!parse_options((char *) data, sb, &journal_devnum,
+ 			   &journal_ioprio, NULL, 0))
+ 		goto failed_mount;
+@@ -3141,7 +3157,8 @@ no_journal:
+ 		descr = "out journal";
+ 
+ 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+-		"Opts: %s", descr, orig_data);
++		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
++		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+ 
+ 	init_timer(&sbi->s_err_report);
+ 	sbi->s_err_report.function = print_daily_error_info;
+-- 
+1.7.0.4
 
-There are half a dozen or so patch series on LKML that are addressing
-writeback in one way or another, and writeback is a major topic at the
-upcoming Linux Storage and Filesystem workshop.  So if this is the
-cause, hopefully there will be some improvements in this area in the
-near future.
-
-						- Ted
