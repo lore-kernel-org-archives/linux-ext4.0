@@ -1,64 +1,56 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH V3 0/8] Cleancache: overview
-Date: Tue, 03 Aug 2010 19:22:36 +0300
-Message-ID: <4C58424C.1020208@panasas.com>
-References: <20100621231809.GA11111@ca-server1.us.oracle.com4C49468B.40307@vflare.org> <840b32ff-a303-468e-9d4e-30fc92f629f8@default 20100723140440.GA12423@infradead.org 364c83bd-ccb2-48cc-920d-ffcf9ca7df19@default> <fc254547-5926-4cb9-98e1-7a79f7284e30@default>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: persistent preallocation
+Date: Tue, 03 Aug 2010 11:25:57 -0500
+Message-ID: <4C584315.6060701@redhat.com>
+References: <Pine.A41.4.64.1008031256060.1073402@stalin.acc.umu.se> <87aap4aqrf.fsf@dmon-lap.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>, ngupta@vflare.org,
- akpm@linux-foundation.org, Chris Mason <chris.mason@oracle.com>,
- viro@zeniv.linux.org.uk, adilger@sun.com, tytso@mit.edu,
- mfasheh@suse.com, Joel Becker <joel.becker@oracle.com>, matthew@wil.cx,
- linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
- ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
- JBeulich@novell.com, Kurt Hackel <kurt.hackel@oracle.com>,
- npiggin@suse.de, Dave Mccracken <dave.mccracken@oracle.com>,
- riel@redhat.com, avi@redhat.com, Konrad Wilk <konrad.wilk@oracle.com>
-To: Dan Magenheimer <dan.magenheimer@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <fc254547-5926-4cb9-98e1-7a79f7284e30@default>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?UTF-8?B?Qm8gQnJhbnTDqW4=?= <bosse@acc.umu.se>,
+	linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:29915 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757127Ab0HCQ0H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Aug 2010 12:26:07 -0400
+In-Reply-To: <87aap4aqrf.fsf@dmon-lap.sw.ru>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/24/2010 12:17 AM, Dan Magenheimer wrote:
->>> On Fri, Jul 23, 2010 at 06:58:03AM -0700, Dan Magenheimer wrote:
->>>> CHRISTOPH AND ANDREW, if you disagree and your concerns have
->>>> not been resolved, please speak up.
+On 08/03/2010 06:18 AM, Dmitry Monakhov wrote:
+> Bo Brant=C3=A9n <bosse@acc.umu.se> writes:
+>=20
+>> Hello,
 >>
->> Hi Christoph --
->>
->> Thanks very much for the quick (instantaneous?) reply!
->>
->>> Anything that need modification of a normal non-shared fs is utterly
->>> broken and you'll get a clear NAK, so the propsal before is a good
->>> one.
->>
->> No, the per-fs opt-in is very sensible; and its design is
->> very minimal.
-> 
-> Not to belabor the point, but maybe the right way to think about
-> this is:
-> 
-> Cleancache is a new optional feature provided by the VFS layer
-> that potentially dramatically increases page cache effectiveness
-> for many workloads in many environments at a negligible cost.
-> 
-> Filesystems that are well-behaved and conform to certain restrictions
-> can utilize cleancache simply by making a call to cleancache_init_fs
-> at mount time.  Unusual, misbehaving, or poorly layered filesystems
-> must either add additional hooks and/or undergo extensive additional
-> testing... or should just not enable the optional cleancache.
+>> I have a question on the implementation of persistent preallocation,
+>> the reason to not return the disk block is because it can contain ol=
+d
+>> data but I wonder if an implementation has to return zeros instead o=
+r
+> Please look at fallocate(2) syscall.
+>> if it could return any garbage as long as it is not _that_ garbage?
+> Off course it is not a garbage, it is old user's data which may be
+> very very useful (old passwords, cookies, and etc)for person who has
+> time to analyze it :)
 
-OK, So I maintain a filesystem in Kernel. How do I know if my FS
-is not "Unusual, misbehaving, or poorly layered"
+I think the question was, could the implementation return 0xFF rather
+than what is actually on disk (and rather than 0's) when reading a
+preallocated block.
 
-Thanks
-Boaz
+You could certainly write it that way, but I don't know why you would
+want to...
 
+IOW it wouldn't be posix_fallocate() or fallocate(), it'd be
+junk_preallocate() or something.
+
+-Eric
+
+>>
+>> Bo Branten
+>>
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
