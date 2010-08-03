@@ -1,44 +1,52 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [Ocfs2-devel] [PATCH, RFC 0/3] *** SUBJECT HERE ***
-Date: Tue, 3 Aug 2010 18:57:47 -0400
-Message-ID: <20100803225747.GG9453@thunk.org>
-References: <1280851315-9167-1-git-send-email-tytso@mit.edu>
- <20100803190703.GA15416@mail.oracle.com>
- <20100803200755.GD9453@thunk.org>
- <20100803211916.GB15416@mail.oracle.com>
+Subject: Re: Any qualms about reverting 3d0518f4, ext4: New rec_len
+ encoding for very large blocksizes ?
+Date: Tue, 3 Aug 2010 19:12:19 -0400
+Message-ID: <20100803231219.GH9453@thunk.org>
+References: <4C58987B.2040602@redhat.com>
+ <38BC6435-5556-422C-BFA3-A964F6C6E6B9@dilger.ca>
+ <4C589CF2.9030406@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com, Keith Maanthey <kmannth@us.ibm.com>,
-	John Stultz <johnstul@us.ibm.com>,
-	Eric Whitney <eric.whitney@hp.com>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Wei Yongjun <yjwei@cn.fujitsu.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38080 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48447 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757682Ab0HCW5r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Aug 2010 18:57:47 -0400
+	id S1756417Ab0HCXMU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Aug 2010 19:12:20 -0400
 Content-Disposition: inline
-In-Reply-To: <20100803211916.GB15416@mail.oracle.com>
+In-Reply-To: <4C589CF2.9030406@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 03, 2010 at 02:19:16PM -0700, Joel Becker wrote:
-> On Tue, Aug 03, 2010 at 04:07:55PM -0400, Ted Ts'o wrote:
-> > If you are set up to do some performance measurements on OCFS2, I'd
-> > appreciate if you could give it a try and let me know how the patches
-> > fare on OCFS2.
+On Tue, Aug 03, 2010 at 05:49:22PM -0500, Eric Sandeen wrote:
 > 
-> 	We're lining up a 16-way box here.  Do you have a happy dbench
-> command line or similar that you would like to see run?
+> As far as I know, reverting it won't break 64kb dir blocks...?
 
-The problem with dbench is that the core VFS can end up being the
-bottleneck.  OTOH, it's very easy to run.  What would be great if you
-could try using the Flexible File System Benchmark (FFSB), which is
-what Eric and Steve used:
+I seem to recall there was some confusion about what was the correct
+way of recording a rec_len of 64k --- 0 or 65535.  So after reverting
+the patch, we need to make sure we didn't end up breaking
+compatibility with (a) existing file systems and (b) what older
+versions of mke2fs may have generated.
 
-     http://free.linux.hp.com/~enw/ext4/2.6.34/
-     http://btrfs.boxacle.net/
+> >> (this does 200 iterations) and got this for the file creations:
+> >> 
+> >> ext4 stock:   Average = 21206.8 files/s
+> >> ext4 patched: Average = 22822.1 files/s
+> >> 
+> >> This is a 7.6% improvement...
 
-It's a bit more work to set it up, though.
+Wow.  I assume that was because actually ending up burning enough CPU
+time that it slowed bonnie's performance?  I'm not sure how how
+realistic is a benchmark that is simply creating vast numbers of small
+files in a tight loop, but certainly on non-Itanium systems where the
+page size is nowhere near 64k, it's arguably pointless.  (Can you even
+configure an Itanic to have to have a page size > 64k?)
 
-							- Ted
+So one way of dealing wih this is making it an inline, and then
+#ifdef'ing out the more complex code if the page size is < 64k....
+
+	       	   		     	    - Ted
