@@ -1,48 +1,93 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: persistent preallocation
-Date: Tue, 03 Aug 2010 15:18:28 +0400
-Message-ID: <87aap4aqrf.fsf@dmon-lap.sw.ru>
-References: <Pine.A41.4.64.1008031256060.1073402@stalin.acc.umu.se>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC] ext4: Don't send extra barrier during fsync if there are
+ no dirty pages.
+Date: Tue, 3 Aug 2010 15:21:54 +0200
+Message-ID: <20100803132154.GG3322@quack.suse.cz>
+References: <20100429235102.GC15607@tux1.beaverton.ibm.com>
+ <1272934667.2544.3.camel@mingming-laptop>
+ <4BE02C45.6010608@redhat.com>
+ <20100504154553.GA22777@infradead.org>
+ <20100630124832.GA1333@thunk.org>
+ <4C2B44C0.3090002@redhat.com>
+ <20100630134429.GE1333@thunk.org>
+ <20100721171609.GC1215@atrey.karlin.mff.cuni.cz>
+ <20100803000939.GA2109@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Bo =?utf-8?Q?Brant=C3=A9n?= <bosse@acc.umu.se>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:39622 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755986Ab0HCLSd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Aug 2010 07:18:33 -0400
-Received: by eya25 with SMTP id 25so1561470eya.19
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Aug 2010 04:18:32 -0700 (PDT)
-In-Reply-To: <Pine.A41.4.64.1008031256060.1073402@stalin.acc.umu.se> ("Bo
-	=?utf-8?Q?Brant=C3=A9n=22's?= message of "Tue, 3 Aug 2010 12:58:21 +0200
- (CEST)")
+Received: from cantor2.suse.de ([195.135.220.15]:49716 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750879Ab0HCNW1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Aug 2010 09:22:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20100803000939.GA2109@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bo Brant=C3=A9n <bosse@acc.umu.se> writes:
+On Mon 02-08-10 17:09:39, Darrick J. Wong wrote:
+> On Wed, Jul 21, 2010 at 07:16:09PM +0200, Jan Kara wrote:
+> >   Hi,
+> > 
+> > > On Wed, Jun 30, 2010 at 09:21:04AM -0400, Ric Wheeler wrote:
+> > > > 
+> > > > The problem with not issuing a cache flush when you have dirty meta
+> > > > data or data is that it does not have any tie to the state of the
+> > > > volatile write cache of the target storage device.
+> > > 
+> > > We track whether or not there is any metadata updates associated with
+> > > the inode already; if it does, we force a journal commit, and this
+> > > implies a barrier operation.
+> > > 
+> > > The case we're talking about here is one where either (a) there is no
+> > > journal, or (b) there have been no metadata updates (I'm simplifying a
+> > > little here; in fact we track whether there have been fdatasync()- vs
+> > > fsync()- worthy metadata updates), and so there hasn't been a journal
+> > > commit to do the cache flush.
+> > > 
+> > > In this case, we want to track when is the last time an fsync() has
+> > > been issued, versus when was the last time data blocks for a
+> > > particular inode have been pushed out to disk.
+> > > 
+> > > To use an example I used as motivation for why we might want an
+> > > fsync2(int fd[], int flags[], int num) syscall, consider the situation
+> > > of:
+> > > 
+> > > 	fsync(control_fd);
+> > > 	fdatasync(data_fd);
+> > > 
+> > > The first fsync() will have executed a cache flush operation.  So when
+> > > we do the fdatasync() (assuming that no metadata needs to be flushed
+> > > out to disk), there is no need for the cache flush operation.
+> > > 
+> > > If we had an enhanced fsync command, we would also be able to
+> > > eliminate a second journal commit in the case where data_fd also had
+> > > some metadata that needed to be flushed out to disk.
+> >   Current implementation already avoids journal commit because of
+> > fdatasync(data_fd). We remeber a transaction ID when inode metadata has
+> > last been updated and do not force a transaction commit if it is already
+> > committed. Thus the first fsync might force a transaction commit but second
+> > fdatasync likely won't.
+> >   We could actually improve the scheme to work for data as well. I wrote
+> > a proof-of-concept patches (attached) and they nicely avoid second barrier
+> > when doing:
+> > echo "aaa" >file1; echo "aaa" >file2; fsync file2; fsync file1
+> > 
+> >   Ted, would you be interested in something like this?
+> 
+> Well... on my fsync-happy workloads, this seems to cut the barrier count down
+> by about 20%, and speeds it up by about 20%.
+  Nice, thanks for measurement.
 
-> Hello,
->
-> I have a question on the implementation of persistent preallocation,
-> the reason to not return the disk block is because it can contain old
-> data but I wonder if an implementation has to return zeros instead or
-Please look at fallocate(2) syscall.
-> if it could return any garbage as long as it is not _that_ garbage?
-Off course it is not a garbage, it is old user's data which may be
-very very useful (old passwords, cookies, and etc)for person who has
-time to analyze it :)
->
-> Bo Branten
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
