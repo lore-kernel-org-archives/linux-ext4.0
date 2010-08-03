@@ -1,81 +1,71 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: [PATCH V3 0/8] Cleancache: overview
-Date: Tue, 3 Aug 2010 12:09:54 -0700 (PDT)
-Message-ID: <af8b0006-0eb7-468a-bbf8-36ecec9bec35@default>
-References: <20100621231809.GA11111%ca-server1.us.oracle.com4C49468B.40307@vflare.org>
- <840b32ff-a303-468e-9d4e-30fc92f629f8@default>
- <20100723140440.GA12423@infradead.org>
- <364c83bd-ccb2-48cc-920d-ffcf9ca7df19@default>
- <a7f4db53-c348-4cff-8762-7ea4031e4813@default
- 22A6238E-0BA4-4AB9-A4FA-28B206A47513@oracle.com>
+From: Eric Whitney <eric.whitney@hp.com>
+Subject: Re: [PATCH] jbd2: Use atomic variables to avoid taking t_handle_lock
+ in jbd2_journal_stop
+Date: Tue, 03 Aug 2010 15:22:21 -0400
+Message-ID: <4C586C6D.6090508@hp.com>
+References: <1280753306-23871-1-git-send-email-tytso@mit.edu> <1280790152.3966.14.camel@localhost.localdomain> <20100803000609.GI25653@thunk.org> <1280796823.3966.74.camel@localhost.localdomain> <1280803949.3966.86.camel@localhost.localdomain> <20100803160611.GB3387@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-        Christoph Hellwig
- <hch@infradead.org>, ngupta@vflare.org,
-        akpm@linux-foundation.org, Chris
- Mason <chris.mason@oracle.com>,
-        viro@zeniv.linux.org.uk, adilger@Sun.COM, tytso@mit.edu,
-        mfasheh@suse.com, Joel Becker <joel.becker@oracle.com>, matthew@wil.cx,
-        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
-        JBeulich@novell.com, Kurt Hackel <kurt.hackel@oracle.com>,
-        npiggin@suse.de, Dave Mccracken <dave.mccracken@oracle.com>,
-        riel@redhat.com, avi@redhat.com, Konrad Wilk <konrad.wilk@oracle.com>
-To: Andreas Dilger <andreas.dilger@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <22A6238E-0BA4-4AB9-A4FA-28B206A47513@oracle.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: john stultz <johnstul@us.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Keith Maanthey <kmannth@us.ibm.com>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from g1t0026.austin.hp.com ([15.216.28.33]:5357 "EHLO
+	g1t0026.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756550Ab0HCTT4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Aug 2010 15:19:56 -0400
+In-Reply-To: <20100803160611.GB3387@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> From: Andreas Dilger
-> Sent: Tuesday, August 03, 2010 12:34 PM
-> To: Dan Magenheimer
-> Subject: Re: [PATCH V3 0/8] Cleancache: overview
->=20
-> On 2010-08-03, at 11:35, Dan Magenheimer wrote:
-> > - The FS should be block-device-based (e.g. a ram-based FS
-> >  such as tmpfs should not enable cleancache)
->=20
-> When you say "block device based", does this exclude network
-> filesystems?  It would seem cleancache, like fscache, is actually best
-> suited to high-latency network filesystems.
 
-I don't think it should exclude network FSs and agree cleancache
-might be well-suited for them.  So if "block device based"
-leaves out the possibility of network FSs, I am just
-displaying my general ignorance of FSs and I/O, and
-welcome clarification from FS developers.  What I really
-meant is: Don't use cleancache for RAM-based filesystems.
-=20
-> > - To ensure coherency/correctness, inode numbers must be unique
-> >  (e.g. no emulating 64-bit inode space on 32-bit inode numbers)
->=20
-> Does it need to be restricted to inode numbers at all (i.e. can it use
-> an opaque internal identifier like the NFS file handle)?  Disallowing
-> cleancache on a filesystem that uses 64-bit (or larger) inodes on a 32-
-> bit system reduces its usefulness.
 
-True... Earlier versions of the patch did not use ino_t but
-instead used an opaque always-64-bit-unsigned "object id".
-The patch changed to use ino_t in response to Al Viro's comment
-to "use sane types".
+Ted Ts'o wrote:
+> On Mon, Aug 02, 2010 at 07:52:29PM -0700, john stultz wrote:
+>> With the non-vfs scalability patched kernels, we see that the j_state
+>> lock and atomic changes pull start_this_handle out of the top contender
+>> handle, but there is still quite a large amount of contention on the
+>> dput paths.
+>>
+>> So yea, the change does help, but its just not the top cause of
+>> contention when aren't using the vfs patches, so we don't see as much
+>> benefit at this point.
+> 
+> Great, thanks for uploading the lockstats.  Since dbench is so
+> metadata heavy, it makes a lot of sense that further jbd2
+> optimizations probably won't make much difference until the VFS
+> bottlenecks can be solved.
+> 
+> Other benchmarks, such as the FFSB benchmarks used by Steven Pratt and
+> Eric Whitney, would probably show more of a difference.
+> 
+> In any case, I've just sent two more patches which completely remove
+> any exclusive spinlocks from start_this_handle() by converting
+> j_state_lock to a rwlock_t, and dropping the need to take
+> t_handle_lock.  This will add more cache line bouncing, so on NUMA
+> workloads this may make things worse, but I guess we'll have to see.
+> Anyone have access to an SGI Altix?  I'm assuming the old Sequent NUMA
+> boxes are long gone by now...
+> 
+> 					- Ted
 
-The <pool_id,object_id,pg_offset> triple must uniquely
-and permanently (unless explicitly flushed) describe
-exactly one page of FS data.  So if usefulness is increased
-by changing object_id back to an explicit 64-bit value,
-I'm happy to do that.  The only disadvantage I can
-see is that 32-bit systems pass an extra 32 bits on
-every call that may always be zero on most FSs.
+Ted:
 
-Thanks,
-Dan
+The 48 core system I'm running on is an eight node NUMA box with three 
+hop worst case latency, and it tends to let you know if you're bouncing 
+cache lines too enthusiastically.  If someone's got access to a larger 
+system with more hops across the topology, that would naturally be even 
+better.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I'm taking my 2.6.35 ext4 baseline now.  It takes me about 36 hours of 
+running time to get in a complete set of runs, so with luck I should 
+have data and lockstats to post in a few days.
+
+Eric
+
+P.S.  And yes, I think I'll make a set of non-accidental no-journal runs 
+this time as well...
+
+
