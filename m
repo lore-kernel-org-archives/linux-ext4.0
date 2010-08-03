@@ -1,53 +1,141 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Use atomic variables to avoid taking
- t_handle_lock in jbd2_journal_stop
-Date: Tue, 3 Aug 2010 12:06:11 -0400
-Message-ID: <20100803160611.GB3387@thunk.org>
-References: <1280753306-23871-1-git-send-email-tytso@mit.edu>
- <1280790152.3966.14.camel@localhost.localdomain>
- <20100803000609.GI25653@thunk.org>
- <1280796823.3966.74.camel@localhost.localdomain>
- <1280803949.3966.86.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH, RFC 3/3] jbd2: Remove t_handle_lock from start_this_handle()
+Date: Tue,  3 Aug 2010 12:01:55 -0400
+Message-ID: <1280851315-9167-4-git-send-email-tytso@mit.edu>
+References: <1280851315-9167-1-git-send-email-tytso@mit.edu>
+Cc: John Stultz <johnstul@us.ibm.com>,
 	Keith Maanthey <kmannth@us.ibm.com>,
-	Eric Whitney <eric.whitney@hp.com>
-To: john stultz <johnstul@us.ibm.com>
+	Eric Whitney <eric.whitney@hp.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47570 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47571 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756274Ab0HCSgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756371Ab0HCSgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 Aug 2010 14:36:22 -0400
-Content-Disposition: inline
-In-Reply-To: <1280803949.3966.86.camel@localhost.localdomain>
+In-Reply-To: <1280851315-9167-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 02, 2010 at 07:52:29PM -0700, john stultz wrote:
-> With the non-vfs scalability patched kernels, we see that the j_state
-> lock and atomic changes pull start_this_handle out of the top contender
-> handle, but there is still quite a large amount of contention on the
-> dput paths.
-> 
-> So yea, the change does help, but its just not the top cause of
-> contention when aren't using the vfs patches, so we don't see as much
-> benefit at this point.
+This should remove the last exclusive lock from start_this_handle(),
+so that we should now be able to start multiple transactions at the
+same time on large SMP systems.
 
-Great, thanks for uploading the lockstats.  Since dbench is so
-metadata heavy, it makes a lot of sense that further jbd2
-optimizations probably won't make much difference until the VFS
-bottlenecks can be solved.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/commit.c      |    3 ++-
+ fs/jbd2/transaction.c |   32 ++++++++++++++++++++++----------
+ include/linux/jbd2.h  |    2 +-
+ 3 files changed, 25 insertions(+), 12 deletions(-)
 
-Other benchmarks, such as the FFSB benchmarks used by Steven Pratt and
-Eric Whitney, would probably show more of a difference.
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 67bb0a2..f52e5e8 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -1004,7 +1004,8 @@ restart_loop:
+ 	 * File the transaction statistics
+ 	 */
+ 	stats.ts_tid = commit_transaction->t_tid;
+-	stats.run.rs_handle_count = commit_transaction->t_handle_count;
++	stats.run.rs_handle_count =
++		atomic_read(&commit_transaction->t_handle_count);
+ 	trace_jbd2_run_stats(journal->j_fs_dev->bd_dev,
+ 			     commit_transaction->t_tid, &stats.run);
+ 
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index d66d00b..5c83a91 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -57,6 +57,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
+ 	spin_lock_init(&transaction->t_handle_lock);
+ 	atomic_set(&transaction->t_updates, 0);
+ 	atomic_set(&transaction->t_outstanding_credits, 0);
++	atomic_set(&transaction->t_handle_count, 0);
+ 	INIT_LIST_HEAD(&transaction->t_inode_list);
+ 	INIT_LIST_HEAD(&transaction->t_private_list);
+ 
+@@ -178,8 +179,8 @@ repeat_locked:
+ 	 * buffers requested by this operation, we need to stall pending a log
+ 	 * checkpoint to free some more log space.
+ 	 */
+-	spin_lock(&transaction->t_handle_lock);
+-	needed = atomic_read(&transaction->t_outstanding_credits) + nblocks;
++	needed = atomic_add_return(nblocks,
++				   &transaction->t_outstanding_credits);
+ 
+ 	if (needed > journal->j_max_transaction_buffers) {
+ 		/*
+@@ -190,7 +191,7 @@ repeat_locked:
+ 		DEFINE_WAIT(wait);
+ 
+ 		jbd_debug(2, "Handle %p starting new commit...\n", handle);
+-		spin_unlock(&transaction->t_handle_lock);
++		atomic_sub(nblocks, &transaction->t_outstanding_credits);
+ 		prepare_to_wait(&journal->j_wait_transaction_locked, &wait,
+ 				TASK_UNINTERRUPTIBLE);
+ 		__jbd2_log_start_commit(journal, transaction->t_tid);
+@@ -227,29 +228,40 @@ repeat_locked:
+ 	 */
+ 	if (__jbd2_log_space_left(journal) < jbd_space_needed(journal)) {
+ 		jbd_debug(2, "Handle %p waiting for checkpoint...\n", handle);
+-		spin_unlock(&transaction->t_handle_lock);
++		atomic_sub(nblocks, &transaction->t_outstanding_credits);
+ 		__jbd2_log_wait_for_space(journal);
+ 		goto repeat_locked;
+ 	}
+ 
+ 	/* OK, account for the buffers that this operation expects to
+-	 * use and add the handle to the running transaction. */
+-
+-	if (time_after(transaction->t_start, ts)) {
++	 * use and add the handle to the running transaction. 
++	 *
++	 * In order for t_max_wait to be reliable, it must be
++	 * protected by a lock.  But doing so will mean that
++	 * start_this_handle() can not be run in parallel on SMP
++	 * systems, which limits our scalability.  So we only enable
++	 * it when debugging is enabled.  We may want to use a
++	 * separate flag, eventually, so we can enable this
++	 * independently of debugging.
++	 */
++#ifdef CONFIG_JBD2_DEBUG
++	if (jbd2_journal_enable_debug &&
++	    time_after(transaction->t_start, ts)) {
+ 		ts = jbd2_time_diff(ts, transaction->t_start);
++		spin_lock(&transaction->t_handle_lock);
+ 		if (ts > transaction->t_max_wait)
+ 			transaction->t_max_wait = ts;
++		spin_unlock(&transaction->t_handle_lock);
+ 	}
++#endif
+ 
+ 	handle->h_transaction = transaction;
+-	atomic_add(nblocks, &transaction->t_outstanding_credits);
+ 	atomic_inc(&transaction->t_updates);
+-	transaction->t_handle_count++;
++	atomic_inc(&transaction->t_handle_count);
+ 	jbd_debug(4, "Handle %p given %d credits (total %d, free %d)\n",
+ 		  handle, nblocks,
+ 		  atomic_read(&transaction->t_outstanding_credits),
+ 		  __jbd2_log_space_left(journal));
+-	spin_unlock(&transaction->t_handle_lock);
+ 	read_unlock(&journal->j_state_lock);
+ 
+ 	lock_map_acquire(&handle->h_lockdep_map);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 15d5743..01743b5 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -629,7 +629,7 @@ struct transaction_s
+ 	/*
+ 	 * How many handles used this transaction? [t_handle_lock]
+ 	 */
+-	int t_handle_count;
++	atomic_t		t_handle_count;
+ 
+ 	/*
+ 	 * This transaction is being forced and some process is
+-- 
+1.7.0.4
 
-In any case, I've just sent two more patches which completely remove
-any exclusive spinlocks from start_this_handle() by converting
-j_state_lock to a rwlock_t, and dropping the need to take
-t_handle_lock.  This will add more cache line bouncing, so on NUMA
-workloads this may make things worse, but I guess we'll have to see.
-Anyone have access to an SGI Altix?  I'm assuming the old Sequent NUMA
-boxes are long gone by now...
-
-					- Ted
