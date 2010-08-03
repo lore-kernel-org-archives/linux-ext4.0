@@ -1,52 +1,39 @@
-From: Andreas Dilger <andreas.dilger@oracle.com>
-Subject: Re: [PATCH V3 0/8] Cleancache: overview
-Date: Tue, 3 Aug 2010 12:34:19 -0600
-Message-ID: <22A6238E-0BA4-4AB9-A4FA-28B206A47513@oracle.com>
-References: <20100621231809.GA11111%ca-server1.us.oracle.com4C49468B.40307@vflare.org> <840b32ff-a303-468e-9d4e-30fc92f629f8@default> <20100723140440.GA12423@infradead.org> <364c83bd-ccb2-48cc-920d-ffcf9ca7df19@default> <a7f4db53-c348-4cff-8762-7ea4031e4813@default>
-Mime-Version: 1.0 (Apple Message framework v1081)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Add mount options in superblock
+Date: Tue, 3 Aug 2010 14:31:47 -0400
+Message-ID: <20100803183147.GC9453@thunk.org>
+References: <1280718904-7590-1-git-send-email-tytso@mit.edu>
+ <C270D256-EC9B-4449-9CBA-4C7DD51D0B22@dilger.ca>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Boaz Harrosh <bharrosh@panasas.com>, Christoph Hellwig <hch@infradead.org>,
-        ngupta@vflare.org, akpm@linux-foundation.org,
-        Chris Mason <chris.mason@oracle.com>, viro@zeniv.linux.org.uk,
-        adilger@sun.com, tytso@mit.edu, mfasheh@suse.com,
-        Joel Becker <joel.becker@oracle.com>, matthew@wil.cx,
-        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
-        JBeulich@novell.com, Kurt Hackel <kurt.hackel@oracle.com>,
-        npiggin@suse.de, Dave Mccracken <dave.mccracken@oracle.com>,
-        riel@redhat.com, avi@redhat.com, Konrad Wilk <konrad.wilk@oracle.com>
-To: Dan Magenheimer <dan.magenheimer@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <a7f4db53-c348-4cff-8762-7ea4031e4813@default>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:47562 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756262Ab0HCSgS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Aug 2010 14:36:18 -0400
+Content-Disposition: inline
+In-Reply-To: <C270D256-EC9B-4449-9CBA-4C7DD51D0B22@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-08-03, at 11:35, Dan Magenheimer wrote:
-> - The FS should be block-device-based (e.g. a ram-based FS
->  such as tmpfs should not enable cleancache)
+On Tue, Aug 03, 2010 at 11:55:39AM -0600, Andreas Dilger wrote:
+> On 2010-08-01, at 21:15, Theodore Ts'o wrote:
+> > Allow mount options to be stored in the superblock.  Also add default
+> > mount option bits for nobarrier, block_validity, discard, and nodelalloc.
+> 
+> Don't we already store mount options in s_default_mount_opts?  It
+> seems more efficient to store them as binary flags instead of as a
+> string.
 
-When you say "block device based", does this exclude network =
-filesystems?  It would seem cleancache, like fscache, is actually best =
-suited to high-latency network filesystems.
+For mount options that are going to be around for a long time, this
+makes sense and it is indeed the preferred mechanism.  The problem is
+that if we are adding and removing mount options, perhaps for internal
+testing purposes using binary bitfields don't work as well, because
+(a) it means we have to synchronize e2fsprogs with the kernel updates,
+and (b) once used, it's hard to recycle a binary bit position since
+there might be old file systems around.  So the 64 byte character
+array is intended to be used as an adjunct for the binary bitfield.
 
-> - To ensure coherency/correctness, inode numbers must be unique
->  (e.g. no emulating 64-bit inode space on 32-bit inode numbers)
-
-Does it need to be restricted to inode numbers at all (i.e. can it use =
-an opaque internal identifier like the NFS file handle)?  Disallowing =
-cleancache on a filesystem that uses 64-bit (or larger) inodes on a =
-32-bit system reduces its usefulness.
-
-Cheers, Andreas
---
-Andreas Dilger
-Lustre Technical Lead
-Oracle Corporation Canada Inc.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+      	 	     	     	   	   - Ted
