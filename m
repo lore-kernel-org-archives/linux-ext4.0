@@ -1,71 +1,69 @@
-From: Eric Whitney <eric.whitney@hp.com>
-Subject: Re: [PATCH] jbd2: Use atomic variables to avoid taking t_handle_lock
- in jbd2_journal_stop
-Date: Tue, 03 Aug 2010 15:22:21 -0400
-Message-ID: <4C586C6D.6090508@hp.com>
-References: <1280753306-23871-1-git-send-email-tytso@mit.edu> <1280790152.3966.14.camel@localhost.localdomain> <20100803000609.GI25653@thunk.org> <1280796823.3966.74.camel@localhost.localdomain> <1280803949.3966.86.camel@localhost.localdomain> <20100803160611.GB3387@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [Ocfs2-devel] [PATCH, RFC 0/3] *** SUBJECT HERE ***
+Date: Tue, 3 Aug 2010 16:07:55 -0400
+Message-ID: <20100803200755.GD9453@thunk.org>
+References: <1280851315-9167-1-git-send-email-tytso@mit.edu>
+ <20100803190703.GA15416@mail.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: john stultz <johnstul@us.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Keith Maanthey <kmannth@us.ibm.com>
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com, Keith Maanthey <kmannth@us.ibm.com>,
+	John Stultz <johnstul@us.ibm.com>,
+	Eric Whitney <eric.whitney@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g1t0026.austin.hp.com ([15.216.28.33]:5357 "EHLO
-	g1t0026.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756550Ab0HCTT4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Aug 2010 15:19:56 -0400
-In-Reply-To: <20100803160611.GB3387@thunk.org>
+Received: from thunk.org ([69.25.196.29]:44025 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756684Ab0HCUH5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Aug 2010 16:07:57 -0400
+Content-Disposition: inline
+In-Reply-To: <20100803190703.GA15416@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-Ted Ts'o wrote:
-> On Mon, Aug 02, 2010 at 07:52:29PM -0700, john stultz wrote:
->> With the non-vfs scalability patched kernels, we see that the j_state
->> lock and atomic changes pull start_this_handle out of the top contender
->> handle, but there is still quite a large amount of contention on the
->> dput paths.
->>
->> So yea, the change does help, but its just not the top cause of
->> contention when aren't using the vfs patches, so we don't see as much
->> benefit at this point.
+On Tue, Aug 03, 2010 at 12:07:03PM -0700, Joel Becker wrote:
 > 
-> Great, thanks for uploading the lockstats.  Since dbench is so
-> metadata heavy, it makes a lot of sense that further jbd2
-> optimizations probably won't make much difference until the VFS
-> bottlenecks can be solved.
-> 
-> Other benchmarks, such as the FFSB benchmarks used by Steven Pratt and
-> Eric Whitney, would probably show more of a difference.
-> 
-> In any case, I've just sent two more patches which completely remove
-> any exclusive spinlocks from start_this_handle() by converting
-> j_state_lock to a rwlock_t, and dropping the need to take
-> t_handle_lock.  This will add more cache line bouncing, so on NUMA
-> workloads this may make things worse, but I guess we'll have to see.
-> Anyone have access to an SGI Altix?  I'm assuming the old Sequent NUMA
-> boxes are long gone by now...
-> 
-> 					- Ted
+> 	The atomic changes make absolute sense.  Ack on them.  I had two
+> reactions to the rwlock: first, a lot of your rwlock changes are on
+> the write_lock() side.  You get journal start/stop parallelized, but
+> what about all the underlying access/dirty/commit paths?  Second,
+> rwlocks are known to behave worse than spinlocks when they ping the
+> cache line across CPUs.
+> 	That said, I have a hunch that you've tested both of the above
+> concerns.  You mention 48 core systems, and clearly if cachelines were
+> going to be a problem, you would have noticed.  So if the rwlock changes
+> are faster on 48 core than the spinlocks, I say ack ack ack.
 
-Ted:
+We don't have the results from the 48-core machine yet.  I was going
+to try to get measurements from the 48-core machine I have access to
+at $WORK, but it doesn't have enough hard drive spindles on it.  :-(
 
-The 48 core system I'm running on is an eight node NUMA box with three 
-hop worst case latency, and it tends to let you know if you're bouncing 
-cache lines too enthusiastically.  If someone's got access to a larger 
-system with more hops across the topology, that would naturally be even 
-better.
+But yes, I am worried about the cache-line bounce issue, and I'm
+hoping that we'll get some input from people who can run some
+measurements on an 8-core and 48-core machine.
 
-I'm taking my 2.6.35 ext4 baseline now.  It takes me about 36 hours of 
-running time to get in a complete set of runs, so with luck I should 
-have data and lockstats to post in a few days.
+I haven't worried about the commit paths yet because they haven't
+shown up as being significant on any of the lockstat reports.
+Remember that with jbd2, the commit code only runs on in kjournald,
+and in general only once every 5 seconds or for every fsync.  In
+contrast, essentially every single file system syscall that modifies
+the filesystem is going to end up calling start_this_handle().  So if
+you have multiple threads all creating files, or writing to files, or
+even just changing the mtime or permissions, it's going to call
+start_this_handle(), so we're seeing nearly all of the contention on
+start_this_handle() and to a lesser extent, jbd2_journal_stop(), the
+function which retires a handle.
 
-Eric
+Things would probably be different on a workload that tries to
+simulate a mail transfer agent or a database which is _not_ using
+O_DIRECT on a preallocated table space file, since there will be many
+more fsync() calls and thus much more pressure on the commit code.
+But I didn't want to do any premature optimization until we see how
+bad it actually gets in those cases.
 
-P.S.  And yes, I think I'll make a set of non-accidental no-journal runs 
-this time as well...
+If you are set up to do some performance measurements on OCFS2, I'd
+appreciate if you could give it a try and let me know how the patches
+fare on OCFS2.
 
+Thanks,
 
+						- Ted
