@@ -1,71 +1,81 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH, RFC 0/3] *** SUBJECT HERE ***
-Date: Tue, 3 Aug 2010 12:07:03 -0700
-Message-ID: <20100803190703.GA15416@mail.oracle.com>
-References: <1280851315-9167-1-git-send-email-tytso@mit.edu>
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: RE: [PATCH V3 0/8] Cleancache: overview
+Date: Tue, 3 Aug 2010 12:09:54 -0700 (PDT)
+Message-ID: <af8b0006-0eb7-468a-bbf8-36ecec9bec35@default>
+References: <20100621231809.GA11111%ca-server1.us.oracle.com4C49468B.40307@vflare.org>
+ <840b32ff-a303-468e-9d4e-30fc92f629f8@default>
+ <20100723140440.GA12423@infradead.org>
+ <364c83bd-ccb2-48cc-920d-ffcf9ca7df19@default>
+ <a7f4db53-c348-4cff-8762-7ea4031e4813@default
+ 22A6238E-0BA4-4AB9-A4FA-28B206A47513@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com, Keith Maanthey <kmannth@us.ibm.com>,
-	John Stultz <johnstul@us.ibm.com>,
-	Eric Whitney <eric.whitney@hp.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:33809 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757174Ab0HCTID (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Aug 2010 15:08:03 -0400
-Content-Disposition: inline
-In-Reply-To: <1280851315-9167-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+        Christoph Hellwig
+ <hch@infradead.org>, ngupta@vflare.org,
+        akpm@linux-foundation.org, Chris
+ Mason <chris.mason@oracle.com>,
+        viro@zeniv.linux.org.uk, adilger@Sun.COM, tytso@mit.edu,
+        mfasheh@suse.com, Joel Becker <joel.becker@oracle.com>, matthew@wil.cx,
+        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org, jeremy@goop.org,
+        JBeulich@novell.com, Kurt Hackel <kurt.hackel@oracle.com>,
+        npiggin@suse.de, Dave Mccracken <dave.mccracken@oracle.com>,
+        riel@redhat.com, avi@redhat.com, Konrad Wilk <konrad.wilk@oracle.com>
+To: Andreas Dilger <andreas.dilger@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <22A6238E-0BA4-4AB9-A4FA-28B206A47513@oracle.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 03, 2010 at 12:01:52PM -0400, Theodore Ts'o wrote:
-> The first patch in this patch series hasn't changed since when I had
-> last posted it, but I'm including it again for the benefit of the folks
-> on ocfs2-dev.
+> From: Andreas Dilger
+> Sent: Tuesday, August 03, 2010 12:34 PM
+> To: Dan Magenheimer
+> Subject: Re: [PATCH V3 0/8] Cleancache: overview
+>=20
+> On 2010-08-03, at 11:35, Dan Magenheimer wrote:
+> > - The FS should be block-device-based (e.g. a ram-based FS
+> >  such as tmpfs should not enable cleancache)
+>=20
+> When you say "block device based", does this exclude network
+> filesystems?  It would seem cleancache, like fscache, is actually best
+> suited to high-latency network filesystems.
 
-	Thanks!
+I don't think it should exclude network FSs and agree cleancache
+might be well-suited for them.  So if "block device based"
+leaves out the possibility of network FSs, I am just
+displaying my general ignorance of FSs and I/O, and
+welcome clarification from FS developers.  What I really
+meant is: Don't use cleancache for RAM-based filesystems.
+=20
+> > - To ensure coherency/correctness, inode numbers must be unique
+> >  (e.g. no emulating 64-bit inode space on 32-bit inode numbers)
+>=20
+> Does it need to be restricted to inode numbers at all (i.e. can it use
+> an opaque internal identifier like the NFS file handle)?  Disallowing
+> cleancache on a filesystem that uses 64-bit (or larger) inodes on a 32-
+> bit system reduces its usefulness.
 
-> Thanks to some work done by Eric Whitney, when he accidentally ran the
-> command "mkfs.ext4 -t xfs", and created a ext4 file system without a
-> journal, it appears that main scalability bottleneck for ext4 is in the
-> jbd2 layer.
+True... Earlier versions of the patch did not use ino_t but
+instead used an opaque always-64-bit-unsigned "object id".
+The patch changed to use ino_t in response to Al Viro's comment
+to "use sane types".
 
-	I'm certain, as you've surmised, that a lot of this affects
-ocfs2 as well.  jbd2 improvements make both filesystems better.
-	
-> This patch series removes all exclusive spinlocks when starting and
-> stopping jbd2 handles, which should improve things even more.  Since
-> OCFS2 uses the jbd2 layer, and the second patch in this patch series
-> touches ocfs2 a wee bit, I'd appreciate it if you could take a look and
-> let me know what you think.  Hopefully, this should also improve OCFS2's
-> scalability.
+The <pool_id,object_id,pg_offset> triple must uniquely
+and permanently (unless explicitly flushed) describe
+exactly one page of FS data.  So if usefulness is increased
+by changing object_id back to an explicit 64-bit value,
+I'm happy to do that.  The only disadvantage I can
+see is that 32-bit systems pass an extra 32 bits on
+every call that may always be zero on most FSs.
 
-	The atomic changes make absolute sense.  Ack on them.  I had two
-reactions to the rwlock: first, a lot of your rwlock changes are on
-the write_lock() side.  You get journal start/stop parallelized, but
-what about all the underlying access/dirty/commit paths?  Second,
-rwlocks are known to behave worse than spinlocks when they ping the
-cache line across CPUs.
-	That said, I have a hunch that you've tested both of the above
-concerns.  You mention 48 core systems, and clearly if cachelines were
-going to be a problem, you would have noticed.  So if the rwlock changes
-are faster on 48 core than the spinlocks, I say ack ack ack.
-	From the ocfs2 perspective, the code is perfectly safe, and any
-speedup you see on ext4 ought to be mirrored on ocfs2.
+Thanks,
+Dan
 
-Joel
-
--- 
-
-A good programming language should have features that make the
-kind of people who use the phrase "software engineering" shake
-their heads disapprovingly.
-	- Paul Graham
-
-Joel Becker
-Consulting Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
