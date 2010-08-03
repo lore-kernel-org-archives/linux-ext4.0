@@ -1,7 +1,8 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 0/3] *** SUBJECT HERE ***
-Date: Tue,  3 Aug 2010 12:01:52 -0400
-Message-ID: <1280851315-9167-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 2/3] jbd2: Change j_state_lock to be a rwlock_t
+Date: Tue,  3 Aug 2010 12:01:54 -0400
+Message-ID: <1280851315-9167-3-git-send-email-tytso@mit.edu>
+References: <1280851315-9167-1-git-send-email-tytso@mit.edu>
 Cc: John Stultz <johnstul@us.ibm.com>,
 	Keith Maanthey <kmannth@us.ibm.com>,
 	Eric Whitney <eric.whitney@hp.com>,
@@ -9,56 +10,820 @@ Cc: John Stultz <johnstul@us.ibm.com>,
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	ocfs2-devel@oss.oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47588 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47576 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756487Ab0HCSgY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Aug 2010 14:36:24 -0400
+	id S1756432Ab0HCSgX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Aug 2010 14:36:23 -0400
+In-Reply-To: <1280851315-9167-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The first patch in this patch series hasn't changed since when I had
-last posted it, but I'm including it again for the benefit of the folks
-on ocfs2-dev.
+Lockstat reports have shown that j_state_lock is a major source of
+lock contention, especially on systems with more than 4 CPU cores.  So
+change it to be a read/write spinlock.
 
-Thanks to some work done by Eric Whitney, when he accidentally ran the
-command "mkfs.ext4 -t xfs", and created a ext4 file system without a
-journal, it appears that main scalability bottleneck for ext4 is in the
-jbd2 layer.  In fact, his testing on a 48-core system shows that on some
-workloads, ext4 is roughly comparable with XFS!
-
-The lockstat results indicate that the main bottlenecks are in the
-j_state_lock and t_handle_lock, especially in start_this_handle() in
-fs/jbd2/transaction.c.  A previous patch, which removed an unneeded
-grabbing of j_state_lock jbd2_journal_stop() relieved pressure on that
-lock and was noted to make a significant difference for dbench on a
-kernel with CONFIG_PREEMPT_RT enabled, as well as on a 48-core AMD
-system from HP.   This patch is already in 2.6.35, and the benchmark
-results can be found here: http://free.linux.hp.com/~enw/ext4/2.6.34/
-
-This patch series removes all exclusive spinlocks when starting and
-stopping jbd2 handles, which should improve things even more.  Since
-OCFS2 uses the jbd2 layer, and the second patch in this patch series
-touches ocfs2 a wee bit, I'd appreciate it if you could take a look and
-let me know what you think.  Hopefully, this should also improve OCFS2's
-scalability.
-
-Best regards,
-
-     					- Ted
-
-Theodore Ts'o (3):
-  jbd2: Use atomic variables to avoid taking t_handle_lock in
-    jbd2_journal_stop
-  jbd2: Change j_state_lock to be a rwlock_t
-  jbd2: Remove t_handle_lock from start_this_handle()
-
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
  fs/ext4/inode.c       |    4 +-
  fs/ext4/super.c       |    4 +-
- fs/jbd2/checkpoint.c  |   18 +++---
- fs/jbd2/commit.c      |   42 +++++++-------
- fs/jbd2/journal.c     |   94 +++++++++++++++----------------
- fs/jbd2/transaction.c |  149 ++++++++++++++++++++++++++++---------------------
+ fs/jbd2/checkpoint.c  |   16 ++++----
+ fs/jbd2/commit.c      |   26 +++++++-------
+ fs/jbd2/journal.c     |   94 ++++++++++++++++++++++++-------------------------
+ fs/jbd2/transaction.c |   52 +++++++++++++-------------
  fs/ocfs2/journal.c    |    4 +-
- include/linux/jbd2.h  |   12 ++--
- 8 files changed, 174 insertions(+), 153 deletions(-)
+ include/linux/jbd2.h  |    2 +-
+ 8 files changed, 100 insertions(+), 102 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 533b607..ab2247d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5066,7 +5066,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 		transaction_t *transaction;
+ 		tid_t tid;
+ 
+-		spin_lock(&journal->j_state_lock);
++		read_lock(&journal->j_state_lock);
+ 		if (journal->j_running_transaction)
+ 			transaction = journal->j_running_transaction;
+ 		else
+@@ -5075,7 +5075,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 			tid = transaction->t_tid;
+ 		else
+ 			tid = journal->j_commit_sequence;
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		ei->i_sync_tid = tid;
+ 		ei->i_datasync_tid = tid;
+ 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3fd65eb..81cb3fc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3232,7 +3232,7 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
+ 	journal->j_min_batch_time = sbi->s_min_batch_time;
+ 	journal->j_max_batch_time = sbi->s_max_batch_time;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	if (test_opt(sb, BARRIER))
+ 		journal->j_flags |= JBD2_BARRIER;
+ 	else
+@@ -3241,7 +3241,7 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
+ 		journal->j_flags |= JBD2_ABORT_ON_SYNCDATA_ERR;
+ 	else
+ 		journal->j_flags &= ~JBD2_ABORT_ON_SYNCDATA_ERR;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ static journal_t *ext4_get_journal(struct super_block *sb,
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index f8cdc02..1c23a0f 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -118,13 +118,13 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
+ void __jbd2_log_wait_for_space(journal_t *journal)
+ {
+ 	int nblocks, space_left;
+-	assert_spin_locked(&journal->j_state_lock);
++	/* assert_spin_locked(&journal->j_state_lock); */
+ 
+ 	nblocks = jbd_space_needed(journal);
+ 	while (__jbd2_log_space_left(journal) < nblocks) {
+ 		if (journal->j_flags & JBD2_ABORT)
+ 			return;
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		mutex_lock(&journal->j_checkpoint_mutex);
+ 
+ 		/*
+@@ -138,7 +138,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 		 * filesystem, so abort the journal and leave a stack
+ 		 * trace for forensic evidence.
+ 		 */
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 		spin_lock(&journal->j_list_lock);
+ 		nblocks = jbd_space_needed(journal);
+ 		space_left = __jbd2_log_space_left(journal);
+@@ -149,7 +149,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 			if (journal->j_committing_transaction)
+ 				tid = journal->j_committing_transaction->t_tid;
+ 			spin_unlock(&journal->j_list_lock);
+-			spin_unlock(&journal->j_state_lock);
++			write_unlock(&journal->j_state_lock);
+ 			if (chkpt) {
+ 				jbd2_log_do_checkpoint(journal);
+ 			} else if (jbd2_cleanup_journal_tail(journal) == 0) {
+@@ -167,7 +167,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 				WARN_ON(1);
+ 				jbd2_journal_abort(journal, 0);
+ 			}
+-			spin_lock(&journal->j_state_lock);
++			write_lock(&journal->j_state_lock);
+ 		} else {
+ 			spin_unlock(&journal->j_list_lock);
+ 		}
+@@ -474,7 +474,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	 * next transaction ID we will write, and where it will
+ 	 * start. */
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	spin_lock(&journal->j_list_lock);
+ 	transaction = journal->j_checkpoint_transactions;
+ 	if (transaction) {
+@@ -496,7 +496,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	/* If the oldest pinned transaction is at the tail of the log
+            already then there's not much we can do right now. */
+ 	if (journal->j_tail_sequence == first_tid) {
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		return 1;
+ 	}
+ 
+@@ -516,7 +516,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	journal->j_free += freed;
+ 	journal->j_tail_sequence = first_tid;
+ 	journal->j_tail = blocknr;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 
+ 	/*
+ 	 * If there is an external journal, we need to make sure that
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index fbd2c56..67bb0a2 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -152,9 +152,9 @@ static int journal_submit_commit_record(journal_t *journal,
+ 		printk(KERN_WARNING
+ 		       "JBD2: Disabling barriers on %s, "
+ 		       "not supported by device\n", journal->j_devname);
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 		journal->j_flags &= ~JBD2_BARRIER;
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 
+ 		/* And try again, without the barrier */
+ 		lock_buffer(bh);
+@@ -182,9 +182,9 @@ retry:
+ 		printk(KERN_WARNING
+ 		       "JBD2: %s: disabling barries on %s - not supported "
+ 		       "by device\n", __func__, journal->j_devname);
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 		journal->j_flags &= ~JBD2_BARRIER;
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 
+ 		lock_buffer(bh);
+ 		clear_buffer_dirty(bh);
+@@ -400,7 +400,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	jbd_debug(1, "JBD: starting commit of transaction %d\n",
+ 			commit_transaction->t_tid);
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	commit_transaction->t_state = T_LOCKED;
+ 
+ 	/*
+@@ -424,9 +424,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 					TASK_UNINTERRUPTIBLE);
+ 		if (atomic_read(&commit_transaction->t_updates)) {
+ 			spin_unlock(&commit_transaction->t_handle_lock);
+-			spin_unlock(&journal->j_state_lock);
++			write_unlock(&journal->j_state_lock);
+ 			schedule();
+-			spin_lock(&journal->j_state_lock);
++			write_lock(&journal->j_state_lock);
+ 			spin_lock(&commit_transaction->t_handle_lock);
+ 		}
+ 		finish_wait(&journal->j_wait_updates, &wait);
+@@ -497,7 +497,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	start_time = ktime_get();
+ 	commit_transaction->t_log_start = journal->j_head;
+ 	wake_up(&journal->j_wait_transaction_locked);
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 
+ 	jbd_debug (3, "JBD: commit phase 2\n");
+ 
+@@ -519,9 +519,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	 * transaction!  Now comes the tricky part: we need to write out
+ 	 * metadata.  Loop over the transaction's entire buffer list:
+ 	 */
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	commit_transaction->t_state = T_COMMIT;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 
+ 	trace_jbd2_commit_logging(journal, commit_transaction);
+ 	stats.run.rs_logging = jiffies;
+@@ -978,7 +978,7 @@ restart_loop:
+ 	 * __jbd2_journal_drop_transaction(). Otherwise we could race with
+ 	 * other checkpointing code processing the transaction...
+ 	 */
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	spin_lock(&journal->j_list_lock);
+ 	/*
+ 	 * Now recheck if some buffers did not get attached to the transaction
+@@ -986,7 +986,7 @@ restart_loop:
+ 	 */
+ 	if (commit_transaction->t_forget) {
+ 		spin_unlock(&journal->j_list_lock);
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		goto restart_loop;
+ 	}
+ 
+@@ -1038,7 +1038,7 @@ restart_loop:
+ 				journal->j_average_commit_time*3) / 4;
+ 	else
+ 		journal->j_average_commit_time = commit_time;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 
+ 	if (commit_transaction->t_checkpoint_list == NULL &&
+ 	    commit_transaction->t_checkpoint_io_list == NULL) {
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index a79d334..e7bf0fd 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -142,7 +142,7 @@ static int kjournald2(void *arg)
+ 	/*
+ 	 * And now, wait forever for commit wakeup events.
+ 	 */
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 
+ loop:
+ 	if (journal->j_flags & JBD2_UNMOUNT)
+@@ -153,10 +153,10 @@ loop:
+ 
+ 	if (journal->j_commit_sequence != journal->j_commit_request) {
+ 		jbd_debug(1, "OK, requests differ\n");
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		del_timer_sync(&journal->j_commit_timer);
+ 		jbd2_journal_commit_transaction(journal);
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 		goto loop;
+ 	}
+ 
+@@ -168,9 +168,9 @@ loop:
+ 		 * be already stopped.
+ 		 */
+ 		jbd_debug(1, "Now suspending kjournald2\n");
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		refrigerator();
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 	} else {
+ 		/*
+ 		 * We assume on resume that commits are already there,
+@@ -190,9 +190,9 @@ loop:
+ 		if (journal->j_flags & JBD2_UNMOUNT)
+ 			should_sleep = 0;
+ 		if (should_sleep) {
+-			spin_unlock(&journal->j_state_lock);
++			write_unlock(&journal->j_state_lock);
+ 			schedule();
+-			spin_lock(&journal->j_state_lock);
++			write_lock(&journal->j_state_lock);
+ 		}
+ 		finish_wait(&journal->j_wait_commit, &wait);
+ 	}
+@@ -210,7 +210,7 @@ loop:
+ 	goto loop;
+ 
+ end_loop:
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	del_timer_sync(&journal->j_commit_timer);
+ 	journal->j_task = NULL;
+ 	wake_up(&journal->j_wait_done_commit);
+@@ -233,16 +233,16 @@ static int jbd2_journal_start_thread(journal_t *journal)
+ 
+ static void journal_kill_thread(journal_t *journal)
+ {
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	journal->j_flags |= JBD2_UNMOUNT;
+ 
+ 	while (journal->j_task) {
+ 		wake_up(&journal->j_wait_commit);
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 	}
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ /*
+@@ -452,7 +452,7 @@ int __jbd2_log_space_left(journal_t *journal)
+ {
+ 	int left = journal->j_free;
+ 
+-	assert_spin_locked(&journal->j_state_lock);
++	/* assert_spin_locked(&journal->j_state_lock); */
+ 
+ 	/*
+ 	 * Be pessimistic here about the number of those free blocks which
+@@ -497,9 +497,9 @@ int jbd2_log_start_commit(journal_t *journal, tid_t tid)
+ {
+ 	int ret;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	ret = __jbd2_log_start_commit(journal, tid);
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	return ret;
+ }
+ 
+@@ -518,7 +518,7 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
+ 	transaction_t *transaction = NULL;
+ 	tid_t tid;
+ 
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ 	if (journal->j_running_transaction && !current->journal_info) {
+ 		transaction = journal->j_running_transaction;
+ 		__jbd2_log_start_commit(journal, transaction->t_tid);
+@@ -526,12 +526,12 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
+ 		transaction = journal->j_committing_transaction;
+ 
+ 	if (!transaction) {
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		return 0;	/* Nothing to retry */
+ 	}
+ 
+ 	tid = transaction->t_tid;
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 	jbd2_log_wait_commit(journal, tid);
+ 	return 1;
+ }
+@@ -545,7 +545,7 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
+ {
+ 	int ret = 0;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	if (journal->j_running_transaction) {
+ 		tid_t tid = journal->j_running_transaction->t_tid;
+ 
+@@ -564,7 +564,7 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
+ 			*ptid = journal->j_committing_transaction->t_tid;
+ 		ret = 1;
+ 	}
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	return ret;
+ }
+ 
+@@ -576,26 +576,24 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ {
+ 	int err = 0;
+ 
++	read_lock(&journal->j_state_lock);
+ #ifdef CONFIG_JBD2_DEBUG
+-	spin_lock(&journal->j_state_lock);
+ 	if (!tid_geq(journal->j_commit_request, tid)) {
+ 		printk(KERN_EMERG
+ 		       "%s: error: j_commit_request=%d, tid=%d\n",
+ 		       __func__, journal->j_commit_request, tid);
+ 	}
+-	spin_unlock(&journal->j_state_lock);
+ #endif
+-	spin_lock(&journal->j_state_lock);
+ 	while (tid_gt(tid, journal->j_commit_sequence)) {
+ 		jbd_debug(1, "JBD: want %d, j_commit_sequence=%d\n",
+ 				  tid, journal->j_commit_sequence);
+ 		wake_up(&journal->j_wait_commit);
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		wait_event(journal->j_wait_done_commit,
+ 				!tid_gt(tid, journal->j_commit_sequence));
+-		spin_lock(&journal->j_state_lock);
++		read_lock(&journal->j_state_lock);
+ 	}
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 
+ 	if (unlikely(is_journal_aborted(journal))) {
+ 		printk(KERN_EMERG "journal commit I/O error\n");
+@@ -612,7 +610,7 @@ int jbd2_journal_next_log_block(journal_t *journal, unsigned long long *retp)
+ {
+ 	unsigned long blocknr;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	J_ASSERT(journal->j_free > 1);
+ 
+ 	blocknr = journal->j_head;
+@@ -620,7 +618,7 @@ int jbd2_journal_next_log_block(journal_t *journal, unsigned long long *retp)
+ 	journal->j_free--;
+ 	if (journal->j_head == journal->j_last)
+ 		journal->j_head = journal->j_first;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	return jbd2_journal_bmap(journal, blocknr, retp);
+ }
+ 
+@@ -840,7 +838,7 @@ static journal_t * journal_init_common (void)
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+ 	spin_lock_init(&journal->j_list_lock);
+-	spin_lock_init(&journal->j_state_lock);
++	rwlock_init(&journal->j_state_lock);
+ 
+ 	journal->j_commit_interval = (HZ * JBD2_DEFAULT_MAX_COMMIT_AGE);
+ 	journal->j_min_batch_time = 0;
+@@ -1106,14 +1104,14 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
+ 		set_buffer_uptodate(bh);
+ 	}
+ 
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ 	jbd_debug(1,"JBD: updating superblock (start %ld, seq %d, errno %d)\n",
+ 		  journal->j_tail, journal->j_tail_sequence, journal->j_errno);
+ 
+ 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
+ 	sb->s_start    = cpu_to_be32(journal->j_tail);
+ 	sb->s_errno    = cpu_to_be32(journal->j_errno);
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 
+ 	BUFFER_TRACE(bh, "marking dirty");
+ 	mark_buffer_dirty(bh);
+@@ -1134,12 +1132,12 @@ out:
+ 	 * any future commit will have to be careful to update the
+ 	 * superblock again to re-record the true start of the log. */
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	if (sb->s_start)
+ 		journal->j_flags &= ~JBD2_FLUSHED;
+ 	else
+ 		journal->j_flags |= JBD2_FLUSHED;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ /*
+@@ -1551,7 +1549,7 @@ int jbd2_journal_flush(journal_t *journal)
+ 	transaction_t *transaction = NULL;
+ 	unsigned long old_tail;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 
+ 	/* Force everything buffered to the log... */
+ 	if (journal->j_running_transaction) {
+@@ -1564,10 +1562,10 @@ int jbd2_journal_flush(journal_t *journal)
+ 	if (transaction) {
+ 		tid_t tid = transaction->t_tid;
+ 
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		jbd2_log_wait_commit(journal, tid);
+ 	} else {
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 	}
+ 
+ 	/* ...and flush everything in the log out to disk. */
+@@ -1591,12 +1589,12 @@ int jbd2_journal_flush(journal_t *journal)
+ 	 * the magic code for a fully-recovered superblock.  Any future
+ 	 * commits of data to the journal will restore the current
+ 	 * s_start value. */
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	old_tail = journal->j_tail;
+ 	journal->j_tail = 0;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	jbd2_journal_update_superblock(journal, 1);
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	journal->j_tail = old_tail;
+ 
+ 	J_ASSERT(!journal->j_running_transaction);
+@@ -1604,7 +1602,7 @@ int jbd2_journal_flush(journal_t *journal)
+ 	J_ASSERT(!journal->j_checkpoint_transactions);
+ 	J_ASSERT(journal->j_head == journal->j_tail);
+ 	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	return 0;
+ }
+ 
+@@ -1668,12 +1666,12 @@ void __jbd2_journal_abort_hard(journal_t *journal)
+ 	printk(KERN_ERR "Aborting journal on device %s.\n",
+ 	       journal->j_devname);
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	journal->j_flags |= JBD2_ABORT;
+ 	transaction = journal->j_running_transaction;
+ 	if (transaction)
+ 		__jbd2_log_start_commit(journal, transaction->t_tid);
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ /* Soft abort: record the abort error status in the journal superblock,
+@@ -1758,12 +1756,12 @@ int jbd2_journal_errno(journal_t *journal)
+ {
+ 	int err;
+ 
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ 	if (journal->j_flags & JBD2_ABORT)
+ 		err = -EROFS;
+ 	else
+ 		err = journal->j_errno;
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 	return err;
+ }
+ 
+@@ -1778,12 +1776,12 @@ int jbd2_journal_clear_err(journal_t *journal)
+ {
+ 	int err = 0;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	if (journal->j_flags & JBD2_ABORT)
+ 		err = -EROFS;
+ 	else
+ 		journal->j_errno = 0;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	return err;
+ }
+ 
+@@ -1796,10 +1794,10 @@ int jbd2_journal_clear_err(journal_t *journal)
+  */
+ void jbd2_journal_ack_err(journal_t *journal)
+ {
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	if (journal->j_errno)
+ 		journal->j_flags |= JBD2_ACK_ERR;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ int jbd2_journal_blocks_per_page(struct inode *inode)
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 9c64c7e..d66d00b 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -130,18 +130,18 @@ repeat:
+ 	 * We need to hold j_state_lock until t_updates has been incremented,
+ 	 * for proper journal barrier handling
+ 	 */
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ repeat_locked:
+ 	if (is_journal_aborted(journal) ||
+ 	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		kfree(new_transaction);
+ 		return -EROFS;
+ 	}
+ 
+ 	/* Wait on the journal's transaction barrier if necessary */
+ 	if (journal->j_barrier_count) {
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		wait_event(journal->j_wait_transaction_locked,
+ 				journal->j_barrier_count == 0);
+ 		goto repeat;
+@@ -149,7 +149,7 @@ repeat_locked:
+ 
+ 	if (!journal->j_running_transaction) {
+ 		if (!new_transaction) {
+-			spin_unlock(&journal->j_state_lock);
++			read_unlock(&journal->j_state_lock);
+ 			goto alloc_transaction;
+ 		}
+ 		jbd2_get_transaction(journal, new_transaction);
+@@ -167,7 +167,7 @@ repeat_locked:
+ 
+ 		prepare_to_wait(&journal->j_wait_transaction_locked,
+ 					&wait, TASK_UNINTERRUPTIBLE);
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		schedule();
+ 		finish_wait(&journal->j_wait_transaction_locked, &wait);
+ 		goto repeat;
+@@ -194,7 +194,7 @@ repeat_locked:
+ 		prepare_to_wait(&journal->j_wait_transaction_locked, &wait,
+ 				TASK_UNINTERRUPTIBLE);
+ 		__jbd2_log_start_commit(journal, transaction->t_tid);
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 		schedule();
+ 		finish_wait(&journal->j_wait_transaction_locked, &wait);
+ 		goto repeat;
+@@ -250,7 +250,7 @@ repeat_locked:
+ 		  atomic_read(&transaction->t_outstanding_credits),
+ 		  __jbd2_log_space_left(journal));
+ 	spin_unlock(&transaction->t_handle_lock);
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 
+ 	lock_map_acquire(&handle->h_lockdep_map);
+ 	kfree(new_transaction);
+@@ -362,7 +362,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 
+ 	result = 1;
+ 
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ 
+ 	/* Don't extend a locked-down transaction! */
+ 	if (handle->h_transaction->t_state != T_RUNNING) {
+@@ -394,7 +394,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ unlock:
+ 	spin_unlock(&transaction->t_handle_lock);
+ error_out:
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ out:
+ 	return result;
+ }
+@@ -432,7 +432,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
+ 	J_ASSERT(atomic_read(&transaction->t_updates) > 0);
+ 	J_ASSERT(journal_current_handle() == handle);
+ 
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ 	spin_lock(&transaction->t_handle_lock);
+ 	atomic_sub(handle->h_buffer_credits,
+ 		   &transaction->t_outstanding_credits);
+@@ -442,7 +442,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int gfp_mask)
+ 
+ 	jbd_debug(2, "restarting handle %p\n", handle);
+ 	__jbd2_log_start_commit(journal, transaction->t_tid);
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 
+ 	lock_map_release(&handle->h_lockdep_map);
+ 	handle->h_buffer_credits = nblocks;
+@@ -472,7 +472,7 @@ void jbd2_journal_lock_updates(journal_t *journal)
+ {
+ 	DEFINE_WAIT(wait);
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	++journal->j_barrier_count;
+ 
+ 	/* Wait until there are no running updates */
+@@ -490,12 +490,12 @@ void jbd2_journal_lock_updates(journal_t *journal)
+ 		prepare_to_wait(&journal->j_wait_updates, &wait,
+ 				TASK_UNINTERRUPTIBLE);
+ 		spin_unlock(&transaction->t_handle_lock);
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		schedule();
+ 		finish_wait(&journal->j_wait_updates, &wait);
+-		spin_lock(&journal->j_state_lock);
++		write_lock(&journal->j_state_lock);
+ 	}
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 
+ 	/*
+ 	 * We have now established a barrier against other normal updates, but
+@@ -519,9 +519,9 @@ void jbd2_journal_unlock_updates (journal_t *journal)
+ 	J_ASSERT(journal->j_barrier_count != 0);
+ 
+ 	mutex_unlock(&journal->j_barrier);
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	--journal->j_barrier_count;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ 	wake_up(&journal->j_wait_transaction_locked);
+ }
+ 
+@@ -1314,9 +1314,9 @@ int jbd2_journal_stop(handle_t *handle)
+ 
+ 		journal->j_last_sync_writer = pid;
+ 
+-		spin_lock(&journal->j_state_lock);
++		read_lock(&journal->j_state_lock);
+ 		commit_time = journal->j_average_commit_time;
+-		spin_unlock(&journal->j_state_lock);
++		read_unlock(&journal->j_state_lock);
+ 
+ 		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
+ 						   transaction->t_start_time));
+@@ -1748,7 +1748,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 		goto zap_buffer_unlocked;
+ 
+ 	/* OK, we have data buffer in journaled mode */
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	jbd_lock_bh_state(bh);
+ 	spin_lock(&journal->j_list_lock);
+ 
+@@ -1801,7 +1801,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 			jbd2_journal_put_journal_head(jh);
+ 			spin_unlock(&journal->j_list_lock);
+ 			jbd_unlock_bh_state(bh);
+-			spin_unlock(&journal->j_state_lock);
++			write_unlock(&journal->j_state_lock);
+ 			return ret;
+ 		} else {
+ 			/* There is no currently-running transaction. So the
+@@ -1815,7 +1815,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 				jbd2_journal_put_journal_head(jh);
+ 				spin_unlock(&journal->j_list_lock);
+ 				jbd_unlock_bh_state(bh);
+-				spin_unlock(&journal->j_state_lock);
++				write_unlock(&journal->j_state_lock);
+ 				return ret;
+ 			} else {
+ 				/* The orphan record's transaction has
+@@ -1839,7 +1839,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 		jbd2_journal_put_journal_head(jh);
+ 		spin_unlock(&journal->j_list_lock);
+ 		jbd_unlock_bh_state(bh);
+-		spin_unlock(&journal->j_state_lock);
++		write_unlock(&journal->j_state_lock);
+ 		return 0;
+ 	} else {
+ 		/* Good, the buffer belongs to the running transaction.
+@@ -1858,7 +1858,7 @@ zap_buffer:
+ zap_buffer_no_jh:
+ 	spin_unlock(&journal->j_list_lock);
+ 	jbd_unlock_bh_state(bh);
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ zap_buffer_unlocked:
+ 	clear_buffer_dirty(bh);
+ 	J_ASSERT_BH(bh, !buffer_jbddirty(bh));
+@@ -2165,9 +2165,9 @@ int jbd2_journal_begin_ordered_truncate(journal_t *journal,
+ 	/* Locks are here just to force reading of recent values, it is
+ 	 * enough that the transaction was not committing before we started
+ 	 * a transaction adding the inode to orphan list */
+-	spin_lock(&journal->j_state_lock);
++	read_lock(&journal->j_state_lock);
+ 	commit_trans = journal->j_committing_transaction;
+-	spin_unlock(&journal->j_state_lock);
++	read_unlock(&journal->j_state_lock);
+ 	spin_lock(&journal->j_list_lock);
+ 	inode_trans = jinode->i_transaction;
+ 	spin_unlock(&journal->j_list_lock);
+diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+index 47878cf..9c1b92e 100644
+--- a/fs/ocfs2/journal.c
++++ b/fs/ocfs2/journal.c
+@@ -760,13 +760,13 @@ void ocfs2_set_journal_params(struct ocfs2_super *osb)
+ 	if (osb->osb_commit_interval)
+ 		commit_interval = osb->osb_commit_interval;
+ 
+-	spin_lock(&journal->j_state_lock);
++	write_lock(&journal->j_state_lock);
+ 	journal->j_commit_interval = commit_interval;
+ 	if (osb->s_mount_opt & OCFS2_MOUNT_BARRIER)
+ 		journal->j_flags |= JBD2_BARRIER;
+ 	else
+ 		journal->j_flags &= ~JBD2_BARRIER;
+-	spin_unlock(&journal->j_state_lock);
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ int ocfs2_journal_init(struct ocfs2_journal *journal, int *dirty)
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a72ce21..15d5743 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -764,7 +764,7 @@ struct journal_s
+ 	/*
+ 	 * Protect the various scalars in the journal
+ 	 */
+-	spinlock_t		j_state_lock;
++	rwlock_t		j_state_lock;
+ 
+ 	/*
+ 	 * Number of processes waiting to create a barrier lock [j_state_lock]
+-- 
+1.7.0.4
 
