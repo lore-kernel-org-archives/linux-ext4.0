@@ -1,53 +1,66 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/3] Add batched discard support for ext3
-Date: Wed, 4 Aug 2010 13:39:28 -0600
-Message-ID: <6EE76C8F-765F-41F3-927E-BFC156A7D324@dilger.ca>
-References: <1280929475-12823-1-git-send-email-lczerner@redhat.com> <1280929475-12823-2-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
-	eshishki@redhat.com, sandeen@redhat.com, jack@suse.cz,
-	tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
+Date: Wed, 4 Aug 2010 18:48:31 -0400
+Message-ID: <20100804224831.GB29353@shell>
+References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com> <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="zYM0uCDKw75PZbzx"
+Cc: viro@zeniv.linux.org.uk, jblunck@suse.de, hch@infradead.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Miklos Szeredi <miklos@szeredi.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:20574 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751970Ab0HDTjc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Aug 2010 15:39:32 -0400
-In-Reply-To: <1280929475-12823-2-git-send-email-lczerner@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:40782 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754585Ab0HDWsq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Aug 2010 18:48:46 -0400
+Content-Disposition: inline
+In-Reply-To: <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-08-04, at 07:44, Lukas Czerner wrote:
-> +		/*
-> +		 * Clear bits in the bitmap
-> +		 */
-> +		for (bit = start; bit < next; bit++) {
-> +			BUFFER_TRACE(bitmap_bh, "clear bit");
-> +			if (!ext3_clear_bit_atomic(sb_bgl_lock(sbi, group),
-> +						bit, bitmap_bh->b_data)) {
-> +				ext3_error(sb, __func__,
-> +					"bit already cleared for block "E3FSBLK,
-> +					 (unsigned long)bit);
-> +				BUFFER_TRACE(bitmap_bh, "bit already cleared");
-> +			} else {
-> +				freed++;
-> +			}
-> +		}
-> +
-> +		/* Update couters */
-> +		spin_lock(sb_bgl_lock(sbi, group));
-> +		le16_add_cpu(&gdp->bg_free_blocks_count, freed);
-> +		spin_unlock(sb_bgl_lock(sbi, group));
-> +		percpu_counter_add(&sbi->s_freeblocks_counter, next - start);
 
-It wouldn't be a terrible idea to put this code into a helper function that is shared with ext3_free_blocks_sb() so that it is kept in sync.  There are a lot of places that need to be kept coordinated (disk bitmap, memory bitmap, group descriptor, percpu counter) so I'd like that to be localized to one part of the code.
+--zYM0uCDKw75PZbzx
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
+On Wed, Aug 04, 2010 at 04:44:10PM +0200, Miklos Szeredi wrote:
+> On Tue, 15 Jun 2010, Valerie Aurora wrote:
+> > Add support for fallthru directory entries to ext2.
+> 
+> If a previously used ext2 filesystem with is mounted again then
+> fallthroughs don't appear to work as expected.  Stat returns ENOENT
+> for these entries.
+> 
+> Can't see anything obviously wrong with the code.
 
-Cheers, Andreas
+Hm, I wrote one test case for this that worked (attached).  Can you
+give me more details on your test case?  Thanks,
 
+-VAL
 
+--zYM0uCDKw75PZbzx
+Content-Type: application/x-sh
+Content-Disposition: attachment; filename="ext2_remount_fallthrus.sh"
+Content-Transfer-Encoding: quoted-printable
 
-
-
+#!/bin/bash=0A=0Aecho -n "Check if ext2 fallthrus still fall through after =
+a umount/remount... "=0A=0Amount -o ro,loop ./img/ro ./mnt/union=0A=0Add if=
+=3D/dev/zero of=3D./img/rw bs=3D4096 seek=3D255 count=3D1 >/dev/null 2>&1=
+=0A/sbin/mkfs.ext2 -F -O whiteout,fallthru ./img/rw >/dev/null 2>&1=0Amount=
+ -o loop,union ./img/rw ./mnt/union/=0A=0A# Create some fallthrus=0Als ./mn=
+t/union/ >/dev/null=0A=0A# See if we can lookup through a fallthru=0Astat .=
+/mnt/union/ro_file >/dev/null=0A=0Aif [ "$?" !=3D "0" ]; then=0A    echo "L=
+ookup of fallthru failed!"=0A    exit 1=0Afi=0A=0A# Mount it somewhere else=
+ and make sure we haven't copied up the file=0Aumount ./mnt/union=0Amount -=
+o loop ./img/rw ./mnt/scratch=0A=0Astat ./mnt/scratch/ro_file >/dev/null 2>=
+&1=0A=0Aif [ "$?" =3D "0" ]; then=0A    echo "Test won't work, stat copied =
+up the file instead of making a fallthru!"=0A    exit 1=0Afi=0A=0A# Unmount=
+ it, remount it as a union, see if fallthru still works=0Aumount ./mnt/scra=
+tch=0Amount -o loop,union ./img/rw ./mnt/union/=0A=0Astat ./mnt/union/ro_fi=
+le >/dev/null=0A=0Aif [ "$?" !=3D "0" ]; then=0A    echo "Lookup of fallthr=
+u after umount/mount failed!"=0A    exit 1=0Afi=0A=0Aumount ./mnt/union=0Ai=
+f [ "$?" !=3D "0" ]; then=0A    echo "umount failed!"=0A    exit 1=0Afi=0Au=
+mount ./mnt/union=0Aif [ "$?" !=3D "0" ]; then=0A    echo "umount failed!"=
+=0A    exit 1=0Afi=0A=0Aexit 0=0A
+--zYM0uCDKw75PZbzx--
