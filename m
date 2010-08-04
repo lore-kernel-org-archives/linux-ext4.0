@@ -1,50 +1,107 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
-Date: Wed, 04 Aug 2010 16:44:10 +0200
-Message-ID: <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu>
-References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com>
-Cc: viro@zeniv.linux.org.uk, miklos@szeredi.hu, jblunck@suse.de,
-	hch@infradead.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, vaurora@redhat.com, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-reply-to: <1276627208-17242-15-git-send-email-vaurora@redhat.com> (message
-	from Valerie Aurora on Tue, 15 Jun 2010 11:39:44 -0700)
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/3] Add ioctl FITRIM.
+Date: Wed, 04 Aug 2010 18:57:48 +0400
+Message-ID: <8762zq8lxv.fsf@dmon-lap.sw.ru>
+References: <1280929475-12823-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
+	eshishki@redhat.com, sandeen@redhat.com, jack@suse.cz,
+	tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:37227 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932902Ab0HDO55 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Aug 2010 10:57:57 -0400
+Received: by eya25 with SMTP id 25so1998198eya.19
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Aug 2010 07:57:56 -0700 (PDT)
+In-Reply-To: <1280929475-12823-1-git-send-email-lczerner@redhat.com> (Lukas
+	Czerner's message of "Wed, 4 Aug 2010 15:44:33 +0200")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 15 Jun 2010, Valerie Aurora wrote:
-> Add support for fallthru directory entries to ext2.
+Lukas Czerner <lczerner@redhat.com> writes:
 
-If a previously used ext2 filesystem with is mounted again then
-fallthroughs don't appear to work as expected.  Stat returns ENOENT
-for these entries.
-
-Can't see anything obviously wrong with the code.
-
-> 
-> XXX What to do for d_ino for fallthrus?  If we return the inode from
-> the the underlying file system, it comes from a different inode
-> "namespace" and that will produce spurious matches.  This argues for
-> implementation of fallthrus as symlinks because they have to allocate
-> an inode (and inode number) anyway, and we can later reuse it if we
-> copy the file up.
-
-That's an idea, but I guess it won't make everyone happy since it
-wastes both disk space and memory.
-
-One of the key differentiators for union mounts concept was that it
-doesn't duplicate inodes and dentries from the layers.  With the
-directory copyup on lookup that's already partially lost, but that can
-be justified by the fact that non-directories usually far outnumber
-directories.
-
-Another idea is to use an internal inode and make all fallthroughs be
-hard links to that.
-
-I think the same would work for whiteouts as well.  I don't like the
-fact that whiteouts are invisible even when not mounted as part of a
-union.
-
-Miklos
+> Adds an filesystem independent ioctl to allow implementation of file
+> system batched discard support.
+>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ioctl.c         |   31 +++++++++++++++++++++++++++++++
+>  include/linux/fs.h |    2 ++
+>  2 files changed, 33 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/ioctl.c b/fs/ioctl.c
+> index 2d140a7..6c01c3c 100644
+> --- a/fs/ioctl.c
+> +++ b/fs/ioctl.c
+> @@ -540,6 +540,33 @@ static int ioctl_fsthaw(struct file *filp)
+>  	return thaw_super(sb);
+>  }
+>  
+> +static int ioctl_fstrim(struct file *filp, unsigned long arg)
+BTW why do we have to trim fs in one shot ?
+IMHO it is much suitable to provide start,len parameters as we 
+do in most functions(truncate, bdevdiscard, getdents).
+It allow userspace caller to implement a fancy looking progress bars.
+> +{
+> +	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
+> +	unsigned int minlen;
+> +	int err;
+> +
+> +	if (!capable(CAP_SYS_ADMIN))
+> +		return -EPERM;
+> +
+> +	/* If filesystem doesn't support trim feature, return. */
+> +	if (sb->s_op->trim_fs == NULL)
+> +		return -EOPNOTSUPP;
+> +
+> +	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
+> +	if (sb->s_bdev == NULL)
+> +		return -EINVAL;
+> +
+> +	err = get_user(minlen, (unsigned int __user *) arg);
+> +	if (err)
+> +		return err;
+> +
+> +	err = sb->s_op->trim_fs(minlen, sb);
+> +	if (err)
+> +		return err;
+> +	return 0;
+> +}
+> +
+>  /*
+>   * When you add any new common ioctls to the switches above and below
+>   * please update compat_sys_ioctl() too.
+> @@ -590,6 +617,10 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+>  		error = ioctl_fsthaw(filp);
+>  		break;
+>  
+> +	case FITRIM:
+> +		error = ioctl_fstrim(filp, arg);
+> +		break;
+> +
+>  	case FS_IOC_FIEMAP:
+>  		return ioctl_fiemap(filp, arg);
+>  
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 68ca1b0..01632e4 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -315,6 +315,7 @@ struct inodes_stat_t {
+>  #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
+>  #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
+>  #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
+> +#define FITRIM		_IOWR('X', 121, int)	/* Trim */
+>  
+>  #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+>  #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+> @@ -1580,6 +1581,7 @@ struct super_operations {
+>  	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
+>  #endif
+>  	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
+> +	int (*trim_fs) (unsigned int, struct super_block *);
+>  };
+>  
+>  /*
