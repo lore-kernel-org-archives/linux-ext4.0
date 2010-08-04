@@ -1,46 +1,50 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/3] Add batched discard support for ext3
-Date: Wed, 4 Aug 2010 16:32:53 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008041631400.2932@localhost>
-References: <1280929475-12823-1-git-send-email-lczerner@redhat.com> <1280929475-12823-2-git-send-email-lczerner@redhat.com> <20100804140345.GA4139@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
-	sandeen@redhat.com, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2465 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758195Ab0HDOdD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Aug 2010 10:33:03 -0400
-In-Reply-To: <20100804140345.GA4139@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
+Date: Wed, 04 Aug 2010 16:44:10 +0200
+Message-ID: <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu>
+References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com>
+Cc: viro@zeniv.linux.org.uk, miklos@szeredi.hu, jblunck@suse.de,
+	hch@infradead.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, vaurora@redhat.com, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Valerie Aurora <vaurora@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-reply-to: <1276627208-17242-15-git-send-email-vaurora@redhat.com> (message
+	from Valerie Aurora on Tue, 15 Jun 2010 11:39:44 -0700)
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 4 Aug 2010, Jan Kara wrote:
+On Tue, 15 Jun 2010, Valerie Aurora wrote:
+> Add support for fallthru directory entries to ext2.
 
->   Hi,
+If a previously used ext2 filesystem with is mounted again then
+fallthroughs don't appear to work as expected.  Stat returns ENOENT
+for these entries.
+
+Can't see anything obviously wrong with the code.
+
 > 
->   The patch looks good. Just one small thing:
-> 
-> On Wed 04-08-10 15:44:34, Lukas Czerner wrote:
-> > +	gdp = ext3_get_group_desc(sb, group, &gdp_bh);
-> > +	if (!gdp)
-> > +		goto err_out;
-> > +
-> > +	BUFFER_TRACE(gd_bh, "get_write_access");
->                      ^^^^^ gdp_bh
-> 
->   So you can add: Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> 								Honza
-> 
+> XXX What to do for d_ino for fallthrus?  If we return the inode from
+> the the underlying file system, it comes from a different inode
+> "namespace" and that will produce spurious matches.  This argues for
+> implementation of fallthrus as symlinks because they have to allocate
+> an inode (and inode number) anyway, and we can later reuse it if we
+> copy the file up.
 
-Hi,
+That's an idea, but I guess it won't make everyone happy since it
+wastes both disk space and memory.
 
-thanks a lot for your review. I will resend both patches shortly.
+One of the key differentiators for union mounts concept was that it
+doesn't duplicate inodes and dentries from the layers.  With the
+directory copyup on lookup that's already partially lost, but that can
+be justified by the fact that non-directories usually far outnumber
+directories.
 
-Regards.
+Another idea is to use an internal inode and make all fallthroughs be
+hard links to that.
 
--Lukas
+I think the same would work for whiteouts as well.  I don't like the
+fact that whiteouts are invisible even when not mounted as part of a
+union.
+
+Miklos
