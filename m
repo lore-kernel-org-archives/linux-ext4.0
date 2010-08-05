@@ -1,83 +1,72 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/3] Add ioctl FITRIM.
-Date: Thu, 5 Aug 2010 10:36:47 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008051009100.3063@localhost>
-References: <1280929475-12823-1-git-send-email-lczerner@redhat.com> <8762zq8lxv.fsf@dmon-lap.sw.ru> <alpine.LFD.2.00.1008041704420.2932@localhost> <8739utfssc.fsf@dmon-lap.sw.ru>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
-	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
+Date: Thu, 05 Aug 2010 12:36:55 +0200
+Message-ID: <E1Ogxol-0002xs-De@pomaz-ex.szeredi.hu>
+References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com> <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu> <20100804224831.GB29353@shell>
+Cc: miklos@szeredi.hu, viro@zeniv.linux.org.uk, jblunck@suse.de,
+	hch@infradead.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27995 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758810Ab0HEIg6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Aug 2010 04:36:58 -0400
-In-Reply-To: <8739utfssc.fsf@dmon-lap.sw.ru>
+Received: from fxip-0047f.externet.hu ([88.209.222.127]:42196 "EHLO
+	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752995Ab0HEKhI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 06:37:08 -0400
+In-reply-to: <20100804224831.GB29353@shell> (message from Valerie Aurora on
+	Wed, 4 Aug 2010 18:48:31 -0400)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 5 Aug 2010, Dmitry Monakhov wrote:
-
-> Lukas Czerner <lczerner@redhat.com> writes:
+On Wed, 4 Aug 2010, Valerie Aurora wrote:
+> --zYM0uCDKw75PZbzx
+> Content-Type: text/plain; charset=us-ascii
+> Content-Disposition: inline
 > 
-> > On Wed, 4 Aug 2010, Dmitry Monakhov wrote:
-> >
-> >> Lukas Czerner <lczerner@redhat.com> writes:
-> >> 
-> >> > Adds an filesystem independent ioctl to allow implementation of file
-> >> > system batched discard support.
-> >> >
-> >> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> >> > ---
-> >> >  fs/ioctl.c         |   31 +++++++++++++++++++++++++++++++
-> >> >  include/linux/fs.h |    2 ++
-> >> >  2 files changed, 33 insertions(+), 0 deletions(-)
-> >> >
-> >> > diff --git a/fs/ioctl.c b/fs/ioctl.c
-> >> > index 2d140a7..6c01c3c 100644
-> >> > --- a/fs/ioctl.c
-> >> > +++ b/fs/ioctl.c
-> >> > @@ -540,6 +540,33 @@ static int ioctl_fsthaw(struct file *filp)
-> >> >  	return thaw_super(sb);
-> >> >  }
-> >> >  
-> >> > +static int ioctl_fstrim(struct file *filp, unsigned long arg)
-> >> BTW why do we have to trim fs in one shot ?
-> >> IMHO it is much suitable to provide start,len parameters as we 
-> >> do in most functions(truncate, bdevdiscard, getdents).
-> >> It allow userspace caller to implement a fancy looking progress bars.
-> >
-> > Hi,
-> >
-> > do you think it is really needed when even with todays SSD's it takes
-> > just a couple of seconds ? And I suppose it will improve in future. But
-> > generally I think we can do that..I would like to hear some more
-> > opinions before I start looking at this.
-> Hi, Lukas
-> we may face a really long delays due to bad layouts and slow devices
-> Please read my response to Ted
-> I'm agree with you what this interface is important, BTW i already
-> enabled FITRIM support on my notebook, my speed difference is about 2-3%.
-> But let's provide right user interface from very beginning.
+> On Wed, Aug 04, 2010 at 04:44:10PM +0200, Miklos Szeredi wrote:
+> > On Tue, 15 Jun 2010, Valerie Aurora wrote:
+> > > Add support for fallthru directory entries to ext2.
+> > 
+> > If a previously used ext2 filesystem with is mounted again then
+> > fallthroughs don't appear to work as expected.  Stat returns ENOENT
+> > for these entries.
+> > 
+> > Can't see anything obviously wrong with the code.
+> 
+> Hm, I wrote one test case for this that worked (attached).  Can you
+> give me more details on your test case?  Thanks,
 
-Hi, Dimitry
+uml:~# mount -oloop -r ext3-2.img /mnt/img/
+uml:~# mount -oloop -r ext3.img /mnt/img/
+uml:~# losetup -f ovl.img 
+uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
+uml:~# "ls" /mnt/img
+bunion  lost+found  union
+uml:~# "ls" /mnt/img/union
+1  2  3
+uml:~# "ls" /mnt/img/union/1
+a  x
+uml:~# umount /mnt/img/
+uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
+uml:~# ls -l /mnt/img/  
+total 14
+drwxr-xr-x 2 root root  1024 Aug  5 09:56 bunion
+drwx------ 2 root root 12288 Aug  5 09:41 lost+found
+drwxr-xr-x 3 root root  1024 Aug  5 09:56 union
+uml:~# ls -l /mnt/img/union/
+ls: cannot access /mnt/img/union/3: No such file or directory
+ls: cannot access /mnt/img/union/2: No such file or directory
+total 1
+drwxr-xr-x 2 root root 1024 Aug  5 09:56 1
+?????????? ? ?    ?       ?            ? 2
+?????????? ? ?    ?       ?            ? 3
+uml:~# ls -l /mnt/img/union/1
+ls: cannot access /mnt/img/union/1/a: No such file or directory
+ls: cannot access /mnt/img/union/1/x: No such file or directory
+total 0
+?????????? ? ? ? ?            ? a
+?????????? ? ? ? ?            ? x
+uml:~# 
 
-I read the thread and really it makes sense to me. Sometimes it can be useful
-to have more fine-grained control beside just specifying minlen argument,
-which works quite well, however it is a little bit fuzzy because when you do
-not know how much space was actually trimmed.
-
-I think that there is no need to have two separate ioctls, even though
-it would be more effective to specify block group instead of block range.
-I am thinking about something like int optimize which will tell us to round
-the range to block group boundaries. But I can not tell if it would
-really help someone (probably not).
-
-So I will try to do something to be able to break the FITRIM to smaller
-pieces, uint64_t start, uint64_t len, uint64_t minlen seems good to me.
-
-Thanks
-
--Lukas
+Thanks,
+Miklos
