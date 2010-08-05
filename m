@@ -1,90 +1,52 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 2/2] ext3: Fix dirtying of journalled buffers in
- data=journal mode
-Date: Thu, 5 Aug 2010 12:09:41 -0700
-Message-ID: <20100805120941.d915ea09.akpm@linux-foundation.org>
-References: <1281026536-10413-1-git-send-email-jack@suse.cz>
-	<1281026536-10413-3-git-send-email-jack@suse.cz>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [RFC] ext4: Don't send extra barrier during fsync if there are no dirty pages.
+Date: Thu, 05 Aug 2010 15:13:44 -0400
+Message-ID: <x49pqxwc1p3.fsf@segfault.boston.devel.redhat.com>
+References: <20100429235102.GC15607@tux1.beaverton.ibm.com>
+	<1272934667.2544.3.camel@mingming-laptop>
+	<4BE02C45.6010608@redhat.com> <20100504154553.GA22777@infradead.org>
+	<20100630124832.GA1333@thunk.org> <4C5818A1.9070102@redhat.com>
+	<20100804233206.GA2901@thunk.org> <4C5A1FDC.3010700@redhat.com>
+	<20100805161745.GG2901@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Avi Kivity <avi@redhat.com>, Christoph Hellwig <hch@infradead.org>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Mingming Cao <cmm@us.ibm.com>, djwong@us.ibm.com,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52501 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755703Ab0HETKP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 15:10:15 -0400
-In-Reply-To: <1281026536-10413-3-git-send-email-jack@suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:3132 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758831Ab0HETNw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Aug 2010 15:13:52 -0400
+In-Reply-To: <20100805161745.GG2901@thunk.org> (Ted Ts'o's message of "Thu, 5
+	Aug 2010 12:17:45 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu,  5 Aug 2010 18:42:16 +0200
-Jan Kara <jack@suse.cz> wrote:
+"Ted Ts'o" <tytso@mit.edu> writes:
 
-> In data=journal mode, we still use block_write_begin() to prepare page for
-> writing. This function can occasionally mark buffer dirty which violates
-> journalling assumptions - when a buffer is part of a transaction, it should be
-> dirty and a buffer can be already part of a forget list of some transaction
-> when block_write_begin() gets called. This violation of journalling assumptions
-> then results in "JBD: Spotted dirty metadata buffer..." warnings.
-> 
-> In fact, temporary dirtying the buffer while the page is still locked does not
-> really cause problems to the journalling because we won't write the buffer
-> until the page gets unlocked. So we just have to make sure to clear dirty bits
-> before unlocking the page.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext3/inode.c |   18 +++++++++++++++++-
->  1 files changed, 17 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index 735f019..1a84abb 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1149,9 +1149,25 @@ static int walk_page_buffers(	handle_t *handle,
->  static int do_journal_get_write_access(handle_t *handle,
->  					struct buffer_head *bh)
->  {
-> +	int dirty = buffer_dirty(bh);
-> +	int ret;
-> +
->  	if (!buffer_mapped(bh) || buffer_freed(bh))
->  		return 0;
-> -	return ext3_journal_get_write_access(handle, bh);
-> +	/*
-> +	 * __block_prepare_write() could have dirtied some buffers. Clean
-> +	 * the dirty bit as jbd2_journal_get_write_access() could complain
-> +	 * otherwise about fs integrity issues. Setting of the dirty bit
-> +	 * by __block_prepare_write() isn't a real problem here as we clear
-> +	 * the bit before releasing a page lock and thus writeback cannot
-> +	 * ever write the buffer.
-> +	 */
-> +	if (dirty)
-> +		clear_buffer_dirty(bh);
+> On Thu, Aug 05, 2010 at 05:20:12AM +0300, Avi Kivity wrote:
+>> 
+>> Why not?  To be clear, I'm talking about an io_submit() with
+>> multiple IO_CMD_FSYNC requests, with a kernel implementation that is
+>> able to batch these requests.
+>
+> IO_CMD_FSYNC doesn't exist right now, but sure, it means we don't have
 
-mark_buffer_dirty() can run set_page_dirty() which will set the page
-dirty and increment dirty-page accounting.  If we then run
-clear_buffer_dirty() we can end up with a dirty page which has clean
-buffers and an off-by-one in dirty-page accounting.
+Well, there's IOCB_CMD_FSYNC.  But still, this isn't the same thing as
+what's requested.  If I understand correctly, what is requested is a
+mechanism to flush out all data for multiple file descriptors and follow
+that with a single barrier/flush (and yes, Ted did give a summary of the
+commands that would be required to accomplish that).
 
-Later, writeback will come along and will attempt to write the "dirty"
-page.  It will discover the cleanness of the buffers, will mark the
-page clean without doing any IO and will decrement the dirty-page
-accounting.  So everything gets fixed up again.
-
-So I don't see any problem here and this isn't the only place where
-this sort of thing occurs.  It's just somethnig to be aware of and to
-have a think about.
+There still remains the question of why this should be tied to the AIO
+submission interface.
 
 
-> +	ret = ext3_journal_get_write_access(handle, bh);
-> +	if (!ret && dirty)
-> +		ret = ext3_journal_dirty_metadata(handle, bh);
-> +	return ret;
->  }
->  
->  /*
-> -- 
-> 1.6.4.2
+Cheers,
+Jeff
