@@ -1,35 +1,40 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: re-inline ext4_rec_len_(to|from)_disk functions
-Date: Thu, 5 Aug 2010 01:37:18 -0400
-Message-ID: <20100805053718.GE2901@thunk.org>
-References: <4C598CA5.70707@redhat.com>
- <20100805001116.GB2901@thunk.org>
- <4C5A05A4.9030701@redhat.com>
+Subject: Re: [PATCH -v2 0/3] jbd2 scalability patches
+Date: Thu, 5 Aug 2010 01:42:11 -0400
+Message-ID: <20100805054211.GF2901@thunk.org>
+References: <1280939957-3277-1-git-send-email-tytso@mit.edu>
+ <1280973537.2678.37.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com, Keith Maanthey <kmannth@us.ibm.com>,
+	Eric Whitney <eric.whitney@hp.com>
+To: john stultz <johnstul@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35687 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33701 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751662Ab0HEFhX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Aug 2010 01:37:23 -0400
+	id S1753624Ab0HEFmO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Aug 2010 01:42:14 -0400
 Content-Disposition: inline
-In-Reply-To: <4C5A05A4.9030701@redhat.com>
+In-Reply-To: <1280973537.2678.37.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 04, 2010 at 07:28:20PM -0500, Eric Sandeen wrote:
-> I had resisted doing that because at least the original rationale in
-> the patch was for when the VM allows block size > page size ...
+Thanks, John, for doing these numbers!!!
 
-Well, that and apparently you can do completely insane/ludicrous page
-sizes on the Itanic.  "The architecture supports 11 different page
-sizes from 4k to 4GB."
+> vfs + j_state lock + jdb2 scalability queue
+> Throughput 1214.21 MB/sec 8 procs
+> Throughput 1175.49 MB/sec 4 procs
+> Throughput 716.294 MB/sec 2 procs
+> Throughput 402.988 MB/sec 1 procs
 
-> Side note, if you do this is PAGE_SIZE or PAGE_CACHE_SIZE the right macro?
+2.6.35-rc6-vfs + atomic
+Throughput 2648.42 MB/sec 8 procs
+Throughput 1586.68 MB/sec 4 procs
+Throughput 851.545 MB/sec 2 procs
+Throughput 453.106 MB/sec 1 procs
 
-Quite right, it should be PAGE_CACHE_SIZE (although I very much doubt
-the two will be different any time in the near future).
+Your earlier numbers were quite a bit higher than this latest set.  I
+assume that's due to hardware differences?
 
-    	     		      	      	       - Ted
+					- Ted
