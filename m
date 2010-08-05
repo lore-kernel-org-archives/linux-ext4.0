@@ -1,54 +1,74 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Crash after umount'ing a disconnected disk (Re: extfs
- reliability)
-Date: Thu, 5 Aug 2010 17:17:58 -0400
-Message-ID: <20100805211758.GA12358@thunk.org>
-References: <20100804180325.GL9453@thunk.org>
- <4C5B1137.1070001@vlnb.net>
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] ext3 & quota fixes and cleanups for 2.6.36
+Date: Fri, 6 Aug 2010 00:42:37 +0200
+Message-ID: <20100805224236.GB17416@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Vladislav Bolkhovitin <vst@vlnb.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36092 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754603Ab0HEVSC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Aug 2010 17:18:02 -0400
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4C5B1137.1070001@vlnb.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 05, 2010 at 11:29:59PM +0400, Vladislav Bolkhovitin wrote:
-> >Have you had a chance to check out whether this patch solves the
-> >problem you were complaining with respect to yanking out the last
-> >iSCSI or FC link to a hard drive, and then umounting the disk
-> >afterwards?
-> 
-> Looks like it works. I was able to reach that branch (see AAA in the
-> attached log) and it was handled well.
+  Hello Linus,
 
-OK, great!
+  could you please pull from
 
-> I've also got other (see the attached log file):
-> 
-> 1. A bunch of detected hung tasks with call traces.
-> 
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
 
-Is this unique to ext4?  It looks like a problem where we're either
-(a) not getting an I/O error from the block device in time before we
-get the hung task timeout (which might be the right thing, if the link
-eventually comes back --- what I've seen is there's a no clear
-consensus how long the last FC or iSCSI link should be done before we
-give up on an I/O operation), or (b) for some reason we're not
-noticing the I/O error and waiting forever.  I believe (a) is more
-likely here, but it's possible it's (b).  Do you eventually get file
-system I/O errors that abort the journal transaction?  You should...
+  to get quota cleanups and some ext3 cleanups and fixes. There's also
+MAINTAINERS update adding myself to ext2 & ext3 entries.
+  Shortlog below:
 
-> 2. "JBD: recovery failed" I reported before.
+Andi Kleen (1):
+      ext3: Fix set but unused variables
 
-I've searched my mail archives, and I'm not sure what you're talking
-about here.  Maybe this was in an e-mail that you sent that perhaps
-got lost?
+Andreas Dilger (1):
+      MAINTAINERS: Update address of Andreas Dilger
 
-						- Ted
+Christoph Hellwig (3):
+      quota: Clean up the namespace in dqblk_xfs.h
+      quota: clean up quota active checks
+      ext3: remove vestiges of nobh support
+
+Dave Chinner (1):
+      ext3: default to ordered mode
+
+Dmitry Monakhov (1):
+      quota: check quota reservation on remove_dquot_ref
+
+Jan Kara (4):
+      ext3: Avoid filesystem corruption after a crash under heavy delete load
+      MAINTAINERS: Update entries of ext2 and ext3
+      quota: Use mark_inode_dirty_sync instead of mark_inode_dirty
+      ext3: Fix dirtying of journalled buffers in data=journal mode
+
+Jiaying Zhang (1):
+      quota: Change quota error message to print out disk and function name
+
+The diffstat is
+
+ MAINTAINERS                     |    6 ++-
+ fs/ext3/Kconfig                 |    1 +
+ fs/ext3/inode.c                 |   80 ++++++++++++++++++++-----------------
+ fs/ext3/namei.c                 |    3 +-
+ fs/ext3/resize.c                |    2 -
+ fs/ext3/super.c                 |   17 ++------
+ fs/gfs2/quota.c                 |   10 ++--
+ fs/jbd/journal.c                |    7 ---
+ fs/jbd/recovery.c               |   11 +----
+ fs/quota/dquot.c                |   79 ++++++++++++++++++++++++++----------
+ fs/quota/quota_tree.c           |   85 +++++++++++++++++++--------------------
+ fs/quota/quota_tree.h           |    6 ---
+ fs/quota/quota_v1.c             |    3 +-
+ fs/quota/quota_v2.c             |   11 ++---
+ fs/xfs/linux-2.6/xfs_quotaops.c |   10 ++--
+ fs/xfs/quota/xfs_qm_syscalls.c  |   32 +++++++-------
+ include/linux/dqblk_xfs.h       |   24 +++++-----
+ include/linux/ext3_fs.h         |    1 -
+ include/linux/quotaops.h        |   26 +++++-------
+ 19 files changed, 208 insertions(+), 206 deletions(-)
+
+							Thanks
+								Honza
