@@ -1,300 +1,389 @@
-From: Andreas Dilger <andreas.dilger@oracle.com>
-Subject: [PATCH] allow internal journal size 2GB or larger
-Date: Thu, 5 Aug 2010 13:26:19 -0600
-Message-ID: <BDFF27EB-4448-4042-B8BD-7DD104AE9021@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: multipart/mixed; boundary=Apple-Mail-79--66014412
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Vladislav Bolkhovitin <vst@vlnb.net>
+Subject: Re: Crash after umount'ing a disconnected disk (Re: extfs reliability)
+Date: Thu, 05 Aug 2010 23:29:59 +0400
+Message-ID: <4C5B1137.1070001@vlnb.net>
+References: <20100804180325.GL9453@thunk.org>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------030708020700030501020905"
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:58249 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756175Ab0HET0y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 15:26:54 -0400
+Received: from moutng.kundenserver.de ([212.227.17.8]:60007 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759205Ab0HETaC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 15:30:02 -0400
+In-Reply-To: <20100804180325.GL9453@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail-79--66014412
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-The current libext2fs and e2fsck code does not handle an internal =
-journal inode size larger than 2GB because of 32-bit overflow.  The high =
-bits of the journal are not stored on disk correctly, nor are they =
-backed up into the superblock.  This is not a problem with a large =
-external journal device.
-
-Fix the code to correctly process the high bits of the journal size.  It =
-turns out there is also space in the superblock journal backup to hold =
-the high bits of the journal size (in s_jnl_blocks[15]), because there =
-are 17 words reserved for this field, but the i_blocks field only uses =
-EXT2_N_BLOCKS =3D 15 blocks [0-14], and the journal size is stored in =
-[16], so no change to the on-disk format is needed.
-
-Signed-off-by: Andreas Dilger <andreas.dilger@oracle.com>
-
-Cheers, Andreas
---
-Andreas Dilger
-Lustre Technical Lead
-Oracle Corporation Canada Inc.
-
---Apple-Mail-79--66014412
-Content-Disposition: attachment;
-	filename=e2fsprogs-bigjournal.diff
-Content-Type: application/octet-stream;
-	name="e2fsprogs-bigjournal.diff"
+This is a multi-part message in MIME format.
+--------------030708020700030501020905
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-diff --git a/debugfs/logdump.c b/debugfs/logdump.c
-index 1f6b7c9..d1e64fd 100644
---- a/debugfs/logdump.c
-+++ b/debugfs/logdump.c
-@@ -209,6 +209,7 @@ void do_logdump(int argc, char **argv)
- 			memset(&journal_inode, 0, sizeof(struct ext2_inode));
- 			memcpy(&journal_inode.i_block[0], es->s_jnl_blocks,
- 			       EXT2_N_BLOCKS*4);
-+			journal_inode.i_size_high = es->s_jnl_blocks[15];
- 			journal_inode.i_size = es->s_jnl_blocks[16];
- 			journal_inode.i_links_count = 1;
- 			journal_inode.i_mode = LINUX_S_IFREG | 0600;
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 75dafa6..5351442 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -288,6 +288,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
- 			memset(&j_inode->i_ext2, 0, sizeof(struct ext2_inode));
- 			memcpy(&j_inode->i_ext2.i_block[0], sb->s_jnl_blocks,
- 			       EXT2_N_BLOCKS*4);
-+			j_inode->i_ext2.i_size_high = sb->s_jnl_blocks[15];
- 			j_inode->i_ext2.i_size = sb->s_jnl_blocks[16];
- 			j_inode->i_ext2.i_links_count = 1;
- 			j_inode->i_ext2.i_mode = LINUX_S_IFREG | 0600;
-@@ -301,7 +302,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
- 			retval = EXT2_ET_NO_JOURNAL;
- 			goto try_backup_journal;
- 		}
--		if (j_inode->i_ext2.i_size / journal->j_blocksize <
-+		if (EXT2_I_SIZE(&j_inode->i_ext2) / journal->j_blocksize <
- 		    JFS_MIN_JOURNAL_BLOCKS) {
- 			retval = EXT2_ET_JOURNAL_TOO_SMALL;
- 			goto try_backup_journal;
-@@ -310,8 +311,8 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
- 		retval = ext2fs_block_iterate3(ctx->fs, j_inode->i_ino,
- 					       BLOCK_FLAG_HOLE, 0,
- 					       process_journal_block, &pb);
--		if ((pb.last_block+1) * ctx->fs->blocksize <
--		    j_inode->i_ext2.i_size) {
-+		if ((pb.last_block + 1) * ctx->fs->blocksize <
-+		    EXT2_I_SIZE(&j_inode->i_ext2)) {
- 			retval = EXT2_ET_JOURNAL_TOO_SMALL;
- 			goto try_backup_journal;
- 		}
-@@ -322,7 +323,8 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
- 				goto errout;
- 		}
- 
--		journal->j_maxlen = j_inode->i_ext2.i_size / journal->j_blocksize;
-+		journal->j_maxlen = EXT2_I_SIZE(&j_inode->i_ext2) /
-+			journal->j_blocksize;
- 
- #ifdef USE_INODE_IO
- 		retval = ext2fs_inode_io_intern2(ctx->fs, sb->s_journal_inum,
-@@ -942,6 +944,7 @@ void e2fsck_move_ext3_journal(e2fsck_t ctx)
- 		if (fix_problem(ctx, PR_0_BACKUP_JNL, &pctx)) {
- 			memcpy(sb->s_jnl_blocks, inode.i_block,
- 			       EXT2_N_BLOCKS*4);
-+			sb->s_jnl_blocks[15] = inode.i_size_high;
- 			sb->s_jnl_blocks[16] = inode.i_size;
- 			sb->s_jnl_backup_type = EXT3_JNL_BACKUP_BLOCKS;
- 			ext2fs_mark_super_dirty(fs);
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 6cb2214..7c41964 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1346,7 +1346,8 @@ print_unsupp_features:
- 	 * find the default journal size.
- 	 */
- 	if (sb->s_jnl_backup_type == EXT3_JNL_BACKUP_BLOCKS)
--		journal_size = sb->s_jnl_blocks[16] >> 20;
-+		journal_size = (sb->s_jnl_blocks[15] << (32 - 20)) |
-+			       (sb->s_jnl_blocks[16] >> 20);
- 	else
- 		journal_size = -1;
- 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index f2f9ac8..3e92ce2 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1244,11 +1244,11 @@ extern errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_t blk, int num,
- extern errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
- 				     blk64_t *ret_blk, int *ret_count); 
- extern errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
--						  __u32 size, int flags,
-+						  __u32 blocks, int flags,
- 						  char  **ret_jsb);
- extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
- 					   ext2_filsys journal_dev);
--extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
-+extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t blocks,
- 					  int flags);
- extern int ext2fs_default_journal_size(__u64 blocks);
- 
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 9466e78..fe52809 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -42,13 +42,13 @@
-  * returns it as an allocated block.
-  */
- errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
--					   __u32 size, int flags,
-+					   __u32 blocks, int flags,
- 					   char  **ret_jsb)
- {
- 	errcode_t		retval;
- 	journal_superblock_t	*jsb;
- 
--	if (size < 1024)
-+	if (blocks < 1024)
- 		return EXT2_ET_JOURNAL_TOO_SMALL;
- 
- 	if ((retval = ext2fs_get_mem(fs->blocksize, &jsb)))
-@@ -62,7 +62,7 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
- 	else
- 		jsb->s_header.h_blocktype = htonl(JFS_SUPERBLOCK_V2);
- 	jsb->s_blocksize = htonl(fs->blocksize);
--	jsb->s_maxlen = htonl(size);
-+	jsb->s_maxlen = htonl(blocks);
- 	jsb->s_nr_users = htonl(1);
- 	jsb->s_first = htonl(1);
- 	jsb->s_sequence = htonl(1);
-@@ -90,14 +90,14 @@ errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
-  * filesystems.
-  */
- static errcode_t write_journal_file(ext2_filsys fs, char *filename,
--				    blk_t size, int flags)
-+				    blk_t blocks, int flags)
- {
- 	errcode_t	retval;
- 	char		*buf = 0;
- 	int		fd, ret_size;
- 	blk_t		i;
- 
--	if ((retval = ext2fs_create_journal_superblock(fs, size, flags, &buf)))
-+	if ((retval = ext2fs_create_journal_superblock(fs, blocks, flags,&buf)))
- 		return retval;
- 
- 	/* Open the device or journal file */
-@@ -117,7 +117,7 @@ static errcode_t write_journal_file(ext2_filsys fs, char *filename,
- 		goto errout;
- 	memset(buf, 0, fs->blocksize);
- 
--	for (i = 1; i < size; i++) {
-+	for (i = 1; i < blocks; i++) {
- 		ret_size = write(fd, buf, fs->blocksize);
- 		if (ret_size < 0) {
- 			retval = errno;
-@@ -284,15 +284,16 @@ static int mkjournal_proc(ext2_filsys	fs,
-  * This function creates a journal using direct I/O routines.
-  */
- static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
--				     blk64_t size, int flags)
-+				     blk64_t blocks, int flags)
- {
- 	char			*buf;
- 	dgrp_t			group, start, end, i, log_flex;
- 	errcode_t		retval;
- 	struct ext2_inode	inode;
-+	unsigned long long	inode_size;
- 	struct mkjournal_struct	es;
- 
--	if ((retval = ext2fs_create_journal_superblock(fs, size, flags, &buf)))
-+	if ((retval = ext2fs_create_journal_superblock(fs, blocks, flags,&buf)))
- 		return retval;
- 
- 	if ((retval = ext2fs_read_bitmaps(fs)))
-@@ -304,7 +305,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 	if (inode.i_blocks > 0)
- 		return EEXIST;
- 
--	es.num_blocks = size;
-+	es.num_blocks = blocks;
- 	es.newblocks = 0;
- 	es.buf = buf;
- 	es.err = 0;
-@@ -360,7 +361,12 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 	if ((retval = ext2fs_read_inode(fs, journal_ino, &inode)))
- 		goto errout;
- 
-- 	inode.i_size += fs->blocksize * size;
-+	inode_size = (unsigned long long)fs->blocksize * blocks;
-+	inode.i_size = inode_size & 0xFFFFFFFF;
-+	inode.i_size_high = (inode_size >> 32) & 0xFFFFFFFF;
-+	if (inode.i_size_high)
-+		fs->super->s_feature_ro_compat |=
-+			EXT2_FEATURE_RO_COMPAT_LARGE_FILE;
- 	ext2fs_iblk_add_blocks(fs, &inode, es.newblocks);
- 	inode.i_mtime = inode.i_ctime = fs->now ? fs->now : time(0);
- 	inode.i_links_count = 1;
-@@ -371,6 +377,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 	retval = 0;
- 
- 	memcpy(fs->super->s_jnl_blocks, inode.i_block, EXT2_N_BLOCKS*4);
-+	fs->super->s_jnl_blocks[15] = inode.i_size_high;
- 	fs->super->s_jnl_blocks[16] = inode.i_size;
- 	fs->super->s_jnl_backup_type = EXT3_JNL_BACKUP_BLOCKS;
- 	ext2fs_mark_super_dirty(fs);
-@@ -466,7 +473,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
-  * POSIX routines if the filesystem is mounted, or using direct I/O
-  * functions if it is not.
-  */
--errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
-+errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t blocks, int flags)
- {
- 	errcode_t		retval;
- 	ext2_ino_t		journal_ino;
-@@ -503,7 +510,7 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
- 		if ((fd = open(jfile, O_CREAT|O_WRONLY, 0600)) < 0)
- 			return errno;
- 
--		if ((retval = write_journal_file(fs, jfile, size, flags)))
-+		if ((retval = write_journal_file(fs, jfile, blocks, flags)))
- 			goto errout;
- 
- 		/* Get inode number of the journal file */
-@@ -543,7 +550,7 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
- 		}
- 		journal_ino = EXT2_JOURNAL_INO;
- 		if ((retval = write_journal_inode(fs, journal_ino,
--						  size, flags)))
-+						  blocks, flags)))
- 			return retval;
- 	}
- 
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index de7585c..24635f8 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -81,16 +81,16 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
- 		sb->s_hash_seed[i] = ext2fs_swab32(sb->s_hash_seed[i]);
- 
- 	/* if journal backup is for a valid extent-based journal... */
--	if (!ext2fs_extent_header_verify(sb->s_jnl_blocks,
--					 sizeof(sb->s_jnl_blocks))) {
--		/* ... swap only the journal i_size */
--		sb->s_jnl_blocks[16] = ext2fs_swab32(sb->s_jnl_blocks[16]);
--		/* and the extent data is not swapped on read */
--		return;
-+	if (ext2fs_extent_header_verify(sb->s_jnl_blocks,
-+					sizeof(sb->s_jnl_blocks)) == 0) {
-+		/* ... swap only the journal i_size and i_size_high,
-+		 * and the extent data is not swapped on read */
-+		i = 15;
-+	} else {
-+		/* direct/indirect journal: swap it all */
-+		i = 0;
- 	}
---Apple-Mail-79--66014412--
+Ted Ts'o, on 08/04/2010 10:03 PM wrote:
+> Ping?
+>
+> Have you had a chance to check out whether this patch solves the
+> problem you were complaining with respect to yanking out the last
+> iSCSI or FC link to a hard drive, and then umounting the disk
+> afterwards?
+
+Looks like it works. I was able to reach that branch (see AAA in the 
+attached log) and it was handled well.
+
+I've also got other (see the attached log file):
+
+1. A bunch of detected hung tasks with call traces.
+
+2. "JBD: recovery failed" I reported before.
+
+The log is basically self talking. I did 2 runs.
+
+Thanks,
+Vlad
+
+--------------030708020700030501020905
+Content-Type: application/x-bzip;
+ name="messages.bz2"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="messages.bz2"
+
+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
+4UJCceDPqA==
+--------------030708020700030501020905--
