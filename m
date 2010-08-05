@@ -1,39 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16312] WARNING: at fs/fs-writeback.c:1127 __mark_inode_dirty
-Date: Thu, 5 Aug 2010 18:31:09 GMT
-Message-ID: <201008051831.o75IV9X2019015@demeter.kernel.org>
-References: <bug-16312-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Aditya Kali <adityakali@google.com>
+Subject: [PATCH] Adding error check for ext4_mb_regular_allocator call.
+Date: Thu,  5 Aug 2010 11:34:08 -0700
+Message-ID: <1281033248-29627-1-git-send-email-adityakali@google.com>
+Cc: tytso@mit.edu, Aditya Kali <adityakali@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:50207 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759079Ab0HESbJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 14:31:09 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o75IV9qc019016
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 5 Aug 2010 18:31:09 GMT
-In-Reply-To: <bug-16312-13602@https.bugzilla.kernel.org/>
+Received: from smtp-out.google.com ([74.125.121.35]:51114 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754773Ab0HESej (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 14:34:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16312
+If the bitmap block on disk is bad, the 'ext4_mb_load_buddy'
+returns error. This error is returned to the caller
+'ext4_mb_regular_allocator' and then to 'ext4_mb_new_blocks'. But
+'ext4_mb_new_blocks' did not check for the return value of
+'ext4_mb_regular_allocator' and would repeatedly try to load the
+bitmap block. The fix simply catches the return value and exits out
+of the 'repeat' loop after cleanup.
 
+Signed-off-by: Aditya Kali <adityakali@google.com>
+---
+ fs/ext4/mballoc.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
 
-
-
-
---- Comment #24 from Larry Finger <Larry.Finger@lwfinger.net>  2010-08-05 18:31:07 ---
-I will as soon as I can.
-
-The hard drive in the box with that particular problem failed and it is in the
-shop being repaired. That will take longer than it should as it is in warranty
-and the work has to be done at a central repair facility. The 20 minute job of
-replacing the hard drive in that notebook will take 3-4 weeks.
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 0e83dfd..f8e99b9 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4322,7 +4322,14 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		ext4_mb_normalize_request(ac, ar);
+ repeat:
+ 		/* allocate space in core */
+-		ext4_mb_regular_allocator(ac);
++		*errp = ext4_mb_regular_allocator(ac);
++		if (*errp) {
++			ext4_discard_allocated_blocks(ac);
++			ac->ac_b_ex.fe_len = 0;
++			ar->len = 0;
++			ext4_mb_show_ac(ac);
++			goto out4;
++		}
+ 
+ 		/* as we've just preallocated more space than
+ 		 * user requested orinally, we store allocated
+@@ -4363,6 +4370,7 @@ repeat:
+ 		ext4_mb_show_ac(ac);
+ 	}
+ 
++out4:
+ 	ext4_mb_release_context(ac);
+ 
+ out2:
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.1
+
