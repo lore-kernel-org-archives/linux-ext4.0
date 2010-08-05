@@ -1,44 +1,56 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16312] WARNING: at fs/fs-writeback.c:1127 __mark_inode_dirty
-Date: Thu, 5 Aug 2010 12:12:08 GMT
-Message-ID: <201008051212.o75CC8VG014184@demeter.kernel.org>
-References: <bug-16312-13602@https.bugzilla.kernel.org/>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/3] Add batched discard support for ext3
+Date: Thu, 5 Aug 2010 16:00:20 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1008051559140.3063@localhost>
+References: <1280929475-12823-1-git-send-email-lczerner@redhat.com> <1280929475-12823-2-git-send-email-lczerner@redhat.com> <6EE76C8F-765F-41F3-927E-BFC156A7D324@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
+	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:34021 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758900Ab0HEMMS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 08:12:18 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o75CC8of014204
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 5 Aug 2010 12:12:09 GMT
-In-Reply-To: <bug-16312-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:38154 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760532Ab0HEOAa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Aug 2010 10:00:30 -0400
+In-Reply-To: <6EE76C8F-765F-41F3-927E-BFC156A7D324@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16312
+On Wed, 4 Aug 2010, Andreas Dilger wrote:
 
+> On 2010-08-04, at 07:44, Lukas Czerner wrote:
+> > +		/*
+> > +		 * Clear bits in the bitmap
+> > +		 */
+> > +		for (bit = start; bit < next; bit++) {
+> > +			BUFFER_TRACE(bitmap_bh, "clear bit");
+> > +			if (!ext3_clear_bit_atomic(sb_bgl_lock(sbi, group),
+> > +						bit, bitmap_bh->b_data)) {
+> > +				ext3_error(sb, __func__,
+> > +					"bit already cleared for block "E3FSBLK,
+> > +					 (unsigned long)bit);
+> > +				BUFFER_TRACE(bitmap_bh, "bit already cleared");
+> > +			} else {
+> > +				freed++;
+> > +			}
+> > +		}
+> > +
+> > +		/* Update couters */
+> > +		spin_lock(sb_bgl_lock(sbi, group));
+> > +		le16_add_cpu(&gdp->bg_free_blocks_count, freed);
+> > +		spin_unlock(sb_bgl_lock(sbi, group));
+> > +		percpu_counter_add(&sbi->s_freeblocks_counter, next - start);
+> 
+> It wouldn't be a terrible idea to put this code into a helper function that is shared with ext3_free_blocks_sb() so that it is kept in sync.  There are a lot of places that need to be kept coordinated (disk bitmap, memory bitmap, group descriptor, percpu counter) so I'd like that to be localized to one part of the code.
+> 
+> 
+> Cheers, Andreas
+> 
 
-
-
-
---- Comment #22 from Tejun Heo <tj@kernel.org>  2010-08-05 12:11:59 ---
-Created an attachment (id=27356)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=27356)
-sd-delay-uevent.patch
-
-This would make sd announce the sd device after block device is set up, which
-probably is the right thing to do but it still is wrong to trigger WARN_ON()
-when a user program accesses a device node which isn't ready yet.  Can't that
-warning be removed by using a default bdi w/ BDI_CAP_NO_ACCT_AND_WRITEBACK set
-for block device nodes?
+Ok, I will see what I can do with that.
 
 Thanks.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+-Lukas
