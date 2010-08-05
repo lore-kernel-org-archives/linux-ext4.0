@@ -1,45 +1,35 @@
-From: Avi Kivity <avi@redhat.com>
-Subject: Re: [RFC] ext4: Don't send extra barrier during fsync if there are
- no dirty pages.
-Date: Thu, 05 Aug 2010 05:20:12 +0300
-Message-ID: <4C5A1FDC.3010700@redhat.com>
-References: <20100429235102.GC15607@tux1.beaverton.ibm.com> <1272934667.2544.3.camel@mingming-laptop> <4BE02C45.6010608@redhat.com> <20100504154553.GA22777@infradead.org> <20100630124832.GA1333@thunk.org> <4C5818A1.9070102@redhat.com> <20100804233206.GA2901@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: re-inline ext4_rec_len_(to|from)_disk functions
+Date: Thu, 5 Aug 2010 01:37:18 -0400
+Message-ID: <20100805053718.GE2901@thunk.org>
+References: <4C598CA5.70707@redhat.com>
+ <20100805001116.GB2901@thunk.org>
+ <4C5A05A4.9030701@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: "Ted Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Mingming Cao <cmm@us.ibm.com>, djwong@us.ibm.com,
-	linux-ext4 <linux-ext4@vger.ker
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30850 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:35687 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758600Ab0HECUX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Aug 2010 22:20:23 -0400
-In-Reply-To: <20100804233206.GA2901@thunk.org>
+	id S1751662Ab0HEFhX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Aug 2010 01:37:23 -0400
+Content-Disposition: inline
+In-Reply-To: <4C5A05A4.9030701@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  On 08/05/2010 02:32 AM, Ted Ts'o wrote:
-> On Tue, Aug 03, 2010 at 04:24:49PM +0300, Avi Kivity wrote:
->>   On 06/30/2010 03:48 PM, tytso@mit.edu wrote:
->>> I wonder if it's worthwhile to think about a new system call which
->>> allows users to provide an array of fd's which are collectively should
->>> be fsync'ed out at the same time.  Otherwise, we end up issuing
->>> multiple barrier operations in cases where the application needs to
->>> do:
->>>
->>> 	fsync(control_fd);
->>> 	fsync(data_fd);
->>>
->> The system call exists, it's called io_submit().
-> Um, not the same thing at all.
+On Wed, Aug 04, 2010 at 07:28:20PM -0500, Eric Sandeen wrote:
+> I had resisted doing that because at least the original rationale in
+> the patch was for when the VM allows block size > page size ...
 
-Why not?  To be clear, I'm talking about an io_submit() with multiple 
-IO_CMD_FSYNC requests, with a kernel implementation that is able to 
-batch these requests.
+Well, that and apparently you can do completely insane/ludicrous page
+sizes on the Itanic.  "The architecture supports 11 different page
+sizes from 4k to 4GB."
 
--- 
-I have a truly marvellous patch that fixes the bug which this
-signature is too narrow to contain.
+> Side note, if you do this is PAGE_SIZE or PAGE_CACHE_SIZE the right macro?
 
+Quite right, it should be PAGE_CACHE_SIZE (although I very much doubt
+the two will be different any time in the near future).
+
+    	     		      	      	       - Ted
