@@ -1,74 +1,92 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PULL REQUEST] ext3 & quota fixes and cleanups for 2.6.36
-Date: Fri, 6 Aug 2010 00:42:37 +0200
-Message-ID: <20100805224236.GB17416@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] e2fsprogs: added checking for in-inode xattrs
+Date: Thu, 5 Aug 2010 17:02:21 -0600
+Message-ID: <463F970D-D1D8-48B1-A020-A91334163041@dilger.ca>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: multipart/mixed; boundary=Apple-Mail-85--53052256
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:46872 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757512Ab0HEXIQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 19:08:16 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
 
-  could you please pull from
+--Apple-Mail-85--53052256
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs-2.6.git for_linus
+Add check for in-inode xattr to make sure that it is not referencing an =
+offset
+that is beyond the end of the inode.
 
-  to get quota cleanups and some ext3 cleanups and fixes. There's also
-MAINTAINERS update adding myself to ext2 & ext3 entries.
-  Shortlog below:
+Signed-off-by: Andreas Dilger <andreas.dilger@oracle.com>
 
-Andi Kleen (1):
-      ext3: Fix set but unused variables
+Cheers, Andreas
 
-Andreas Dilger (1):
-      MAINTAINERS: Update address of Andreas Dilger
 
-Christoph Hellwig (3):
-      quota: Clean up the namespace in dqblk_xfs.h
-      quota: clean up quota active checks
-      ext3: remove vestiges of nobh support
 
-Dave Chinner (1):
-      ext3: default to ordered mode
+--Apple-Mail-85--53052256
+Content-Disposition: attachment;
+	filename=e2fsprogs-bad-ininode-ea.patch
+Content-Type: application/octet-stream;
+	name="e2fsprogs-bad-ininode-ea.patch"
+Content-Transfer-Encoding: 7bit
 
-Dmitry Monakhov (1):
-      quota: check quota reservation on remove_dquot_ref
+Add check for in-inode xattr to make sure that it is not referencing an offset
+that is beyond the end of the inode.
 
-Jan Kara (4):
-      ext3: Avoid filesystem corruption after a crash under heavy delete load
-      MAINTAINERS: Update entries of ext2 and ext3
-      quota: Use mark_inode_dirty_sync instead of mark_inode_dirty
-      ext3: Fix dirtying of journalled buffers in data=journal mode
+Index: e2fsprogs-1.41.12/e2fsck/pass1.c
+===================================================================
+--- e2fsprogs-1.41.12.orig/e2fsck/pass1.c
++++ e2fsprogs-1.41.12/e2fsck/pass1.c
+@@ -319,6 +319,13 @@ static void check_ea_in_inode(e2fsck_t c
+ 			goto fix;
+ 		}
+ 
++		/* Value size cannot be larger than EA space in inode */
++		if (entry->e_value_offs > storage_size ||
++		    entry->e_value_offs + entry->e_value_size > storage_size) {
++			problem = PR_1_INODE_EA_BAD_VALUE;
++			goto fix;
++		}
++
+ 		hash = ext2fs_ext_attr_hash_entry(entry,
+ 						  start + entry->e_value_offs);
+ 
+Index: e2fsprogs-1.41.12/e2fsck/problem.c
+===================================================================
+--- e2fsprogs-1.41.12.orig/e2fsck/problem.c
++++ e2fsprogs-1.41.12/e2fsck/problem.c
+@@ -890,6 +890,11 @@ static struct e2fsck_problem problem_tab
+ 	     "(size %Is, lblk %r)\n"),
+ 	  PROMPT_CLEAR, PR_PREEN_OK },
+ 
++	/* Bad extended attribute value in inode */
++	{ PR_1_INODE_EA_BAD_VALUE,
++	  N_("@a in @i %i is corrupt (@n value)."),
++	  PROMPT_CLEAR, 0},
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+Index: e2fsprogs-1.41.12/e2fsck/problem.h
+===================================================================
+--- e2fsprogs-1.41.12.orig/e2fsck/problem.h
++++ e2fsprogs-1.41.12/e2fsck/problem.h
+@@ -520,6 +520,9 @@ struct problem_context {
+ /* EOFBLOCKS flag set when not necessary */
+ #define PR_1_EOFBLOCKS_FL_SET		0x010060
+ 
++/* Bad extended attribute value in inode */
++#define PR_1_INODE_EA_BAD_VALUE		0x010061
++
+ /*
+  * Pass 1b errors
+  */
 
-Jiaying Zhang (1):
-      quota: Change quota error message to print out disk and function name
-
-The diffstat is
-
- MAINTAINERS                     |    6 ++-
- fs/ext3/Kconfig                 |    1 +
- fs/ext3/inode.c                 |   80 ++++++++++++++++++++-----------------
- fs/ext3/namei.c                 |    3 +-
- fs/ext3/resize.c                |    2 -
- fs/ext3/super.c                 |   17 ++------
- fs/gfs2/quota.c                 |   10 ++--
- fs/jbd/journal.c                |    7 ---
- fs/jbd/recovery.c               |   11 +----
- fs/quota/dquot.c                |   79 ++++++++++++++++++++++++++----------
- fs/quota/quota_tree.c           |   85 +++++++++++++++++++--------------------
- fs/quota/quota_tree.h           |    6 ---
- fs/quota/quota_v1.c             |    3 +-
- fs/quota/quota_v2.c             |   11 ++---
- fs/xfs/linux-2.6/xfs_quotaops.c |   10 ++--
- fs/xfs/quota/xfs_qm_syscalls.c  |   32 +++++++-------
- include/linux/dqblk_xfs.h       |   24 +++++-----
- include/linux/ext3_fs.h         |    1 -
- include/linux/quotaops.h        |   26 +++++-------
- 19 files changed, 208 insertions(+), 206 deletions(-)
-
-							Thanks
-								Honza
+--Apple-Mail-85--53052256--
