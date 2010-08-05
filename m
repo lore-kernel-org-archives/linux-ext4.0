@@ -1,56 +1,64 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/3] Add batched discard support for ext3
-Date: Thu, 5 Aug 2010 16:00:20 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008051559140.3063@localhost>
-References: <1280929475-12823-1-git-send-email-lczerner@redhat.com> <1280929475-12823-2-git-send-email-lczerner@redhat.com> <6EE76C8F-765F-41F3-927E-BFC156A7D324@dilger.ca>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
-	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/3] Add ioctl FITRIM.
+Date: Thu, 5 Aug 2010 09:47:16 -0600
+Message-ID: <54658239-0690-45BB-9CBD-5B1975E4DEF0@dilger.ca>
+References: <1280929475-12823-1-git-send-email-lczerner@redhat.com> <8762zq8lxv.fsf@dmon-lap.sw.ru> <alpine.LFD.2.00.1008041704420.2932@localhost> <AANLkTikmNCLSuc--k=k4mFSGhgn82Q1n1-66SYnGJH-5@mail.gmail.com> <20100805002839.GD2901@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
+	eshishki@redhat.com, sandeen@redhat.com, jack@suse.cz,
+	Mark Lord <kernel@teksavvy.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38154 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760532Ab0HEOAa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Aug 2010 10:00:30 -0400
-In-Reply-To: <6EE76C8F-765F-41F3-927E-BFC156A7D324@dilger.ca>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:46792 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758190Ab0HEPrX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Aug 2010 11:47:23 -0400
+In-Reply-To: <20100805002839.GD2901@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 4 Aug 2010, Andreas Dilger wrote:
-
-> On 2010-08-04, at 07:44, Lukas Czerner wrote:
-> > +		/*
-> > +		 * Clear bits in the bitmap
-> > +		 */
-> > +		for (bit = start; bit < next; bit++) {
-> > +			BUFFER_TRACE(bitmap_bh, "clear bit");
-> > +			if (!ext3_clear_bit_atomic(sb_bgl_lock(sbi, group),
-> > +						bit, bitmap_bh->b_data)) {
-> > +				ext3_error(sb, __func__,
-> > +					"bit already cleared for block "E3FSBLK,
-> > +					 (unsigned long)bit);
-> > +				BUFFER_TRACE(bitmap_bh, "bit already cleared");
-> > +			} else {
-> > +				freed++;
-> > +			}
-> > +		}
-> > +
-> > +		/* Update couters */
-> > +		spin_lock(sb_bgl_lock(sbi, group));
-> > +		le16_add_cpu(&gdp->bg_free_blocks_count, freed);
-> > +		spin_unlock(sb_bgl_lock(sbi, group));
-> > +		percpu_counter_add(&sbi->s_freeblocks_counter, next - start);
+On 2010-08-04, at 18:28, Ted Ts'o wrote:
+> On Wed, Aug 04, 2010 at 11:26:56AM -0400, Greg Freemyer wrote:
+>> If true, a way to control the progress from userspace is important.
+>> 
+>> If in general it is only going to take a few seconds for a full FITRIM
+>> to run, it is much less important, but I suppose the the RT project
+>> might find even that problematic.
 > 
-> It wouldn't be a terrible idea to put this code into a helper function that is shared with ext3_free_blocks_sb() so that it is kept in sync.  There are a lot of places that need to be kept coordinated (disk bitmap, memory bitmap, group descriptor, percpu counter) so I'd like that to be localized to one part of the code.
+> Even if it without the RT project, if disk activity is slowed or
+> completely stopped for a few seconds, I can think of plenty of
+> workloads where this would be totally unacceptable.  Suppose you are
+> running a web site; it doesn't really matter whether it is at Google,
+> Facebook, Twitter, etc.  If this means that one or more web pages get
+> stalled by "a few seconds" while the FITRIM is going on, this is
+> generally not considered acceptable.  Even if it slows down the server
+> by 30-50%, for some sites this would also be quite unacceptable.
 > 
-> 
-> Cheers, Andreas
-> 
+> This is a hard problem to solve, though, especially if there is an
+> insistence to solve it in a fs-independent fashion.  I could imagine
+> doing this at work, by doing things one block group at a time, and
+> then I could measure, for our specific hardware, how badly disk
+> performance would get hit, and for how long, and then the userspace
+> daemon could control how many block groups to do per unit time.
+> But this would be of necessity ext2/3/4 specific....
 
-Ok, I will see what I can do with that.
+I think "blockgroup at a time" is simply the extN way of "range of blocks at a time".  Having an API that is requesting "trim free blocks from [M,N]" is a generic enough interface to apply to any filesystem.  If there is some way to query the "efficient trim increment size" (i.e. block group for extN, allocation group for xfs, ??? for btrfs) then userspace could do it that way, or simply pick some fraction of the filesystem and use a nice power-of-two value and hope it works out.
 
-Thanks.
+> So I'm not sure what to suggest here.  Maybe the answer is we can have
+> a fs-independent ioctl for desktop workloads, and one which gives more
+> fine-grained control for those who need it?  That seems ugly, but it
+> might be the best compromise.
 
--Lukas
+No, too ugly.
+
+Cheers, Andreas
+
+
+
+
+
