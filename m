@@ -1,89 +1,134 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext3: Fix dirtying of journalled buffers in
- data=journal mode
-Date: Thu, 5 Aug 2010 21:31:35 +0200
-Message-ID: <20100805193135.GI3535@quack.suse.cz>
-References: <1281026536-10413-1-git-send-email-jack@suse.cz>
- <1281026536-10413-3-git-send-email-jack@suse.cz>
- <20100805120941.d915ea09.akpm@linux-foundation.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] Adding error check for ext4_mb_regular_allocator call.
+Date: Thu, 5 Aug 2010 16:28:34 -0400
+Message-ID: <20100805202834.GK2901@thunk.org>
+References: <1281033248-29627-1-git-send-email-adityakali@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-ext4@vger.kernel.org
+To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:54288 "EHLO mx1.suse.de"
+Received: from thunk.org ([69.25.196.29]:55645 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755727Ab0HETcI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Aug 2010 15:32:08 -0400
+	id S934330Ab0HEU2j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Aug 2010 16:28:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20100805120941.d915ea09.akpm@linux-foundation.org>
+In-Reply-To: <1281033248-29627-1-git-send-email-adityakali@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-08-10 12:09:41, Andrew Morton wrote:
-> On Thu,  5 Aug 2010 18:42:16 +0200
-> Jan Kara <jack@suse.cz> wrote:
-> 
-> > In data=journal mode, we still use block_write_begin() to prepare page for
-> > writing. This function can occasionally mark buffer dirty which violates
-> > journalling assumptions - when a buffer is part of a transaction, it should be
-> > dirty and a buffer can be already part of a forget list of some transaction
-> > when block_write_begin() gets called. This violation of journalling assumptions
-> > then results in "JBD: Spotted dirty metadata buffer..." warnings.
-> > 
-> > In fact, temporary dirtying the buffer while the page is still locked does not
-> > really cause problems to the journalling because we won't write the buffer
-> > until the page gets unlocked. So we just have to make sure to clear dirty bits
-> > before unlocking the page.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext3/inode.c |   18 +++++++++++++++++-
-> >  1 files changed, 17 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > index 735f019..1a84abb 100644
-> > --- a/fs/ext3/inode.c
-> > +++ b/fs/ext3/inode.c
-> > @@ -1149,9 +1149,25 @@ static int walk_page_buffers(	handle_t *handle,
-> >  static int do_journal_get_write_access(handle_t *handle,
-> >  					struct buffer_head *bh)
-> >  {
-> > +	int dirty = buffer_dirty(bh);
-> > +	int ret;
-> > +
-> >  	if (!buffer_mapped(bh) || buffer_freed(bh))
-> >  		return 0;
-> > -	return ext3_journal_get_write_access(handle, bh);
-> > +	/*
-> > +	 * __block_prepare_write() could have dirtied some buffers. Clean
-> > +	 * the dirty bit as jbd2_journal_get_write_access() could complain
-> > +	 * otherwise about fs integrity issues. Setting of the dirty bit
-> > +	 * by __block_prepare_write() isn't a real problem here as we clear
-> > +	 * the bit before releasing a page lock and thus writeback cannot
-> > +	 * ever write the buffer.
-> > +	 */
-> > +	if (dirty)
-> > +		clear_buffer_dirty(bh);
-> 
-> mark_buffer_dirty() can run set_page_dirty() which will set the page
-> dirty and increment dirty-page accounting.  If we then run
-> clear_buffer_dirty() we can end up with a dirty page which has clean
-> buffers and an off-by-one in dirty-page accounting.
-> 
-> Later, writeback will come along and will attempt to write the "dirty"
-> page.  It will discover the cleanness of the buffers, will mark the
-> page clean without doing any IO and will decrement the dirty-page
-> accounting.  So everything gets fixed up again.
-> 
-> So I don't see any problem here and this isn't the only place where
-> this sort of thing occurs.  It's just somethnig to be aware of and to
-> have a think about.
-  Yes, JBD tends to do this a lot (with all the journaled buffers).
-Thanks for review!
+I cleaned up the error path handling in ext4_mb_new_blocks() as well
+as lightly editing your commit before adding it to the ext4 patch
+tree.
 
-								Honza
+						- Ted
+
+commit 6c7a120ac6c62316ab1fc78dfc0a7b13f3bfcbff
+Author: Aditya Kali <adityakali@google.com>
+Date:   Thu Aug 5 16:22:24 2010 -0400
+
+    ext4: Adding error check after calling ext4_mb_regular_allocator()
+    
+    If the bitmap block on disk is bad, ext4_mb_load_buddy() returns an
+    error. This error is returned to the caller,
+    ext4_mb_regular_allocator() and then to ext4_mb_new_blocks().  But
+    ext4_mb_new_blocks() did not check for the return value of
+    ext4_mb_regular_allocator() and would repeatedly try to load the
+    bitmap block. The fix simply catches the return value and exits out of
+    the 'repeat' loop after cleanup.
+    
+    We also take the opportunity to clean up the error handling in
+    ext4_mb_new_blocks().
+    
+    Google-Bug-Id: 2853530
+    
+    Signed-off-by: Aditya Kali <adityakali@google.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 3da2828..1f360f0 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4253,7 +4253,7 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+  * to usual allocation
+  */
+ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+-				 struct ext4_allocation_request *ar, int *errp)
++				struct ext4_allocation_request *ar, int *errp)
+ {
+ 	int freed;
+ 	struct ext4_allocation_context *ac = NULL;
+@@ -4297,7 +4297,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		inquota = ar->len;
+ 		if (ar->len == 0) {
+ 			*errp = -EDQUOT;
+-			goto out3;
++			goto out;
+ 		}
+ 	}
  
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+@@ -4305,13 +4305,13 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	if (!ac) {
+ 		ar->len = 0;
+ 		*errp = -ENOMEM;
+-		goto out1;
++		goto out;
+ 	}
+ 
+ 	*errp = ext4_mb_initialize_context(ac, ar);
+ 	if (*errp) {
+ 		ar->len = 0;
+-		goto out2;
++		goto out;
+ 	}
+ 
+ 	ac->ac_op = EXT4_MB_HISTORY_PREALLOC;
+@@ -4320,7 +4320,9 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		ext4_mb_normalize_request(ac, ar);
+ repeat:
+ 		/* allocate space in core */
+-		ext4_mb_regular_allocator(ac);
++		*errp = ext4_mb_regular_allocator(ac);
++		if (*errp)
++			goto errout;
+ 
+ 		/* as we've just preallocated more space than
+ 		 * user requested orinally, we store allocated
+@@ -4331,7 +4333,7 @@ repeat:
+ 	}
+ 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+ 		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
+-		if (*errp ==  -EAGAIN) {
++		if (*errp == -EAGAIN) {
+ 			/*
+ 			 * drop the reference that we took
+ 			 * in ext4_mb_use_best_found
+@@ -4342,12 +4344,10 @@ repeat:
+ 			ac->ac_b_ex.fe_len = 0;
+ 			ac->ac_status = AC_STATUS_CONTINUE;
+ 			goto repeat;
+-		} else if (*errp) {
++		} else if (*errp)
++		errout:
+ 			ext4_discard_allocated_blocks(ac);
+-			ac->ac_b_ex.fe_len = 0;
+-			ar->len = 0;
+-			ext4_mb_show_ac(ac);
+-		} else {
++		else {
+ 			block = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
+ 			ar->len = ac->ac_b_ex.fe_len;
+ 		}
+@@ -4356,19 +4356,19 @@ repeat:
+ 		if (freed)
+ 			goto repeat;
+ 		*errp = -ENOSPC;
++	}
++
++	if (*errp) {
+ 		ac->ac_b_ex.fe_len = 0;
+ 		ar->len = 0;
+ 		ext4_mb_show_ac(ac);
+ 	}
+-
+ 	ext4_mb_release_context(ac);
