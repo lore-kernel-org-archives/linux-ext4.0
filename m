@@ -1,54 +1,54 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [RFC] ext4: Don't send extra barrier during fsync if there are no dirty pages.
-Date: Thu, 05 Aug 2010 16:44:53 -0400
-Message-ID: <x49hbj8bxh6.fsf@segfault.boston.devel.redhat.com>
-References: <20100429235102.GC15607@tux1.beaverton.ibm.com>
-	<1272934667.2544.3.camel@mingming-laptop>
-	<4BE02C45.6010608@redhat.com> <20100504154553.GA22777@infradead.org>
-	<20100630124832.GA1333@thunk.org> <4C5818A1.9070102@redhat.com>
-	<20100804233206.GA2901@thunk.org> <4C5A1FDC.3010700@redhat.com>
-	<20100805161745.GG2901@thunk.org>
-	<x49pqxwc1p3.fsf@segfault.boston.devel.redhat.com>
-	<20100805203928.GM2901@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Crash after umount'ing a disconnected disk (Re: extfs
+ reliability)
+Date: Thu, 5 Aug 2010 17:17:58 -0400
+Message-ID: <20100805211758.GA12358@thunk.org>
+References: <20100804180325.GL9453@thunk.org>
+ <4C5B1137.1070001@vlnb.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Avi Kivity <avi@redhat.com>, Christoph Hellwig <hch@infradead.org>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Mingming Cao <cmm@us.ibm.com>, djwong@us.ibm.com,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Keith Mannthey <kmannth@us.ibm.com>,
-	Mingming Cao <mcao@us.ibm.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Vladislav Bolkhovitin <vst@vlnb.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20733 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:36092 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758865Ab0HEUpC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Aug 2010 16:45:02 -0400
-In-Reply-To: <20100805203928.GM2901@thunk.org> (Ted Ts'o's message of "Thu, 5
-	Aug 2010 16:39:28 -0400")
+	id S1754603Ab0HEVSC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Aug 2010 17:18:02 -0400
+Content-Disposition: inline
+In-Reply-To: <4C5B1137.1070001@vlnb.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Ted Ts'o" <tytso@mit.edu> writes:
+On Thu, Aug 05, 2010 at 11:29:59PM +0400, Vladislav Bolkhovitin wrote:
+> >Have you had a chance to check out whether this patch solves the
+> >problem you were complaining with respect to yanking out the last
+> >iSCSI or FC link to a hard drive, and then umounting the disk
+> >afterwards?
+> 
+> Looks like it works. I was able to reach that branch (see AAA in the
+> attached log) and it was handled well.
 
-> On Thu, Aug 05, 2010 at 03:13:44PM -0400, Jeff Moyer wrote:
->> > IO_CMD_FSYNC doesn't exist right now, but sure, it means we don't have
->> 
->> Well, there's IOCB_CMD_FSYNC.  But still, this isn't the same thing as
->> what's requested.  If I understand correctly, what is requested is a
->> mechanism to flush out all data for multiple file descriptors and follow
->> that with a single barrier/flush (and yes, Ted did give a summary of the
->> commands that would be required to accomplish that).
->> 
->> There still remains the question of why this should be tied to the AIO
->> submission interface.
->
-> I don't think it should, personally.  The only excuse might be if
-> someone wanted to do an asynchronous fsync(), but I don't think that
-> makes sense in most cases.
+OK, great!
 
-In case it wasn't clear, we are in agreement on this.
+> I've also got other (see the attached log file):
+> 
+> 1. A bunch of detected hung tasks with call traces.
+> 
 
-Cheers,
-Jeff
+Is this unique to ext4?  It looks like a problem where we're either
+(a) not getting an I/O error from the block device in time before we
+get the hung task timeout (which might be the right thing, if the link
+eventually comes back --- what I've seen is there's a no clear
+consensus how long the last FC or iSCSI link should be done before we
+give up on an I/O operation), or (b) for some reason we're not
+noticing the I/O error and waiting forever.  I believe (a) is more
+likely here, but it's possible it's (b).  Do you eventually get file
+system I/O errors that abort the journal transaction?  You should...
+
+> 2. "JBD: recovery failed" I reported before.
+
+I've searched my mail archives, and I'm not sure what you're talking
+about here.  Maybe this was in an e-mail that you sent that perhaps
+got lost?
+
+						- Ted
