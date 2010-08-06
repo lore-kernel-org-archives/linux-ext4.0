@@ -1,34 +1,57 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
-Date: Fri, 06 Aug 2010 19:44:17 +0200
-Message-ID: <E1OhQxt-0006Nx-HT@pomaz-ex.szeredi.hu>
-References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com> <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu> <20100804224831.GB29353@shell> <E1Ogxol-0002xs-De@pomaz-ex.szeredi.hu> <20100805233019.GA30761@shell> <E1OhI5C-0005PG-3G@pomaz-ex.szeredi.hu> <20100806171640.GC16599@shell>
-Cc: miklos@szeredi.hu, viro@zeniv.linux.org.uk, jblunck@suse.de,
-	hch@infradead.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [RFC v2] ext4: Don't send extra barrier during fsync if there
+ are no dirty pages.
+Date: Fri, 6 Aug 2010 14:04:54 -0400
+Message-ID: <20100806180454.GA24583@thunk.org>
+References: <20100429235102.GC15607@tux1.beaverton.ibm.com>
+ <1272934667.2544.3.camel@mingming-laptop>
+ <4BE02C45.6010608@redhat.com>
+ <1273002566.3755.10.camel@mingming-laptop>
+ <20100629205102.GM15515@tux1.beaverton.ibm.com>
+ <20100805164008.GH2901@thunk.org>
+ <20100806071356.GE2109@tux1.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>, Ric Wheeler <rwheeler@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fxip-0047f.externet.hu ([88.209.222.127]:34693 "EHLO
-	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754782Ab0HFRog (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 13:44:36 -0400
-In-reply-to: <20100806171640.GC16599@shell> (message from Valerie Aurora on
-	Fri, 6 Aug 2010 13:16:40 -0400)
+Received: from thunk.org ([69.25.196.29]:33859 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964829Ab0HFSFA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Aug 2010 14:05:00 -0400
+Content-Disposition: inline
+In-Reply-To: <20100806071356.GE2109@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 6 Aug 2010, Valerie Aurora wrote:
-> Oh, "mmount -b 8" == "mount -o union".
+On Fri, Aug 06, 2010 at 12:13:56AM -0700, Darrick J. Wong wrote:
+> Yes, it's a proxy for something else.  One of our larger products would like to
+> use fsync() to flush dirty data out to disk (right now it looks like they use
+> O_SYNC), but they're concerned that the many threads they use can create an
+> fsync() storm.  So, they wanted to know how to mitigate the effects of those
+> storms.  Not calling fsync() except when they really need to guarantee a disk
+> write is a good start, but I'd like to get ahead of them to pick off more low
+> hanging fruit like the barrier coordination and not sending barriers when
+> there's no dirty data ... before they run into it. :)
 
-Right.
+Do they need a barrier operation, or do they just want to initiate the
+I/O?  One of the reasons I found it hard to believe you would have
+multiple threads all fsync()'ing the same file is that keeping the the
+file consistent is very hard to do in such a scenario.  Maintaining
+ACID-level consistency without a single thread which coordinates when
+commit records gets written is I'm sure theoretically possible, but in
+practice, I wasn't sure any applications would actually be _written_
+that way.
 
->   Is this the mmount from mtools
-> or something else?
+If the goal is just to make sure I/O is getting initiated, without
+necessarily waiting for assurance that a specific file write has hit
+the disk platters, it may be that the Linux-specific
+sync_file_range(2) system call might be a far more efficient way of
+achieving those ends.  Without more details about what this product is
+doing, it's hard to say, of course.
 
-It's primitive utility that basically just wraps the mount(2) syscall
-without any fstab/mtab support:
-
-  http://www.kernel.org/pub/linux/kernel/people/mszeredi/mmount/
-
-Miklos
+						- Ted
