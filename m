@@ -1,85 +1,66 @@
-From: Jiaying Zhang <jiayingz@google.com>
-Subject: Re: [PATCH] ext4: queue conversion after adding to inode's completed
-	IO list
-Date: Fri, 6 Aug 2010 13:45:10 -0700
-Message-ID: <AANLkTimci7dABU-OCPtdE9OcfW9v02C9g5dM6Ygyajwb@mail.gmail.com>
-References: <4C5C67FD.5070208@redhat.com>
+From: Keith Mannthey <kmannth@us.ibm.com>
+Subject: Re: Raid FFSB Benchmark results for 2.6.35-rc5
+Date: Fri, 06 Aug 2010 14:21:59 -0700
+Message-ID: <1281129719.7357.30.camel@keith-laptop>
+References: <1281121633.7357.26.camel@keith-laptop>
+	 <20100806191439.GD24583@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:56383 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933061Ab0HFUpM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 16:45:12 -0400
-Received: from wpaz33.hot.corp.google.com (wpaz33.hot.corp.google.com [172.24.198.97])
-	by smtp-out.google.com with ESMTP id o76KjCk5008371
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 13:45:12 -0700
-Received: from gwb15 (gwb15.prod.google.com [10.200.2.15])
-	by wpaz33.hot.corp.google.com with ESMTP id o76Kj5hX014185
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 13:45:11 -0700
-Received: by gwb15 with SMTP id 15so3271120gwb.20
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Aug 2010 13:45:11 -0700 (PDT)
-In-Reply-To: <4C5C67FD.5070208@redhat.com>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:40043 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964823Ab0HFVWD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 17:22:03 -0400
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id o76LDNrX023347
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 15:13:23 -0600
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o76LLvVn061262
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 15:21:59 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o76LLvIm011851
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 15:21:57 -0600
+In-Reply-To: <20100806191439.GD24583@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lgtm. Thanks for the fixing patch.
+On Fri, 2010-08-06 at 15:14 -0400, Ted Ts'o wrote:
+> On Fri, Aug 06, 2010 at 12:07:13PM -0700, Keith Mannthey wrote:
+> > This is a collection of benchmark runs with the FFSB test suite. The
+> > results are comparable to other raid results on the boxacle server. 
+> > 
+> > The latest results can be found at: 
+> > http://btrfs.boxacle.net/repository/raid/2.6.35-rc5/2.6.35-rc5/2.6.35-rc5.html
+> > 
+> > I added XFS without barriers and EXT3 with barriers into the mix since
+> > my last data set. 
+> 
+> Thanks, it's good to know there haven't been any major regression on
+> the ext4 side.
+> 
+> If you could have a chance to run a set of benchmark runs with the
+> jbd2 scalability patches, I'd be hugely interested to see how much
+> difference they make.
 
-Jiaying
+Yes I am running with those today.  As the system is only a 16-way or so
+it will be interesting to see the impact. 
 
-On Fri, Aug 6, 2010 at 12:52 PM, Eric Sandeen <sandeen@redhat.com> wrot=
-e:
->
-> By queuing the io end on the unwritten workqueue before adding it
-> to our inode's list of completed IOs, I think we run the risk
-> of the work getting completed, and the IO freed, before we try
-> to add it to the inode's i_completed_io_list.
->
-> It should be safe to add it to the inode's list of completed
-> IOs, and -then- queue it for completion, I think.
->
-> Thanks to Dave Chinner for pointing out the race.
->
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
->
-> (At least I think this is right; I haven't actually demonstrated a ra=
-ce...)
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 0afc8c1..7f56c48 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3804,14 +3804,14 @@ static void ext4_end_io_dio(struct kiocb *ioc=
-b, loff_t offset,
-> =A0 =A0 =A0 =A0io_end->flag =3D EXT4_IO_UNWRITTEN;
-> =A0 =A0 =A0 =A0wq =3D EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
->
-> - =A0 =A0 =A0 /* queue the work to convert unwritten extents to writt=
-en */
-> - =A0 =A0 =A0 queue_work(wq, &io_end->work);
-> -
-> =A0 =A0 =A0 =A0/* Add the io_end to per-inode completed aio dio list*=
-/
-> =A0 =A0 =A0 =A0ei =3D EXT4_I(io_end->inode);
-> =A0 =A0 =A0 =A0spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-> =A0 =A0 =A0 =A0list_add_tail(&io_end->list, &ei->i_completed_io_list)=
-;
-> =A0 =A0 =A0 =A0spin_unlock_irqrestore(&ei->i_completed_io_lock, flags=
-);
-> +
-> + =A0 =A0 =A0 /* queue the work to convert unwritten extents to writt=
-en */
-> + =A0 =A0 =A0 queue_work(wq, &io_end->work);
-> =A0 =A0 =A0 =A0iocb->private =3D NULL;
-> =A0out:
-> =A0 =A0 =A0 =A0if (is_async)
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I also have a few barrier reduction patchset test runs as well.  I will
+work to put them all together and publish some ext4 only relevant run in
+the next few days.  
+
+Thanks,
+  Keith 
+
+
+> Thanks again!
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
