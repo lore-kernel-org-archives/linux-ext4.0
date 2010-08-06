@@ -1,92 +1,70 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
-Date: Fri, 06 Aug 2010 10:15:14 +0200
-Message-ID: <E1OhI5C-0005PG-3G@pomaz-ex.szeredi.hu>
-References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com> <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu> <20100804224831.GB29353@shell> <E1Ogxol-0002xs-De@pomaz-ex.szeredi.hu> <20100805233019.GA30761@shell>
-Cc: miklos@szeredi.hu, viro@zeniv.linux.org.uk, jblunck@suse.de,
-	hch@infradead.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [RFC v2] ext4: Don't send extra barrier during fsync if there
+ are no dirty pages.
+Date: Fri, 06 Aug 2010 06:17:42 -0400
+Message-ID: <4C5BE146.5060407@redhat.com>
+References: <20100429235102.GC15607@tux1.beaverton.ibm.com> <1272934667.2544.3.camel@mingming-laptop> <4BE02C45.6010608@redhat.com> <1273002566.3755.10.camel@mingming-laptop> <20100629205102.GM15515@tux1.beaverton.ibm.com> <20100805164008.GH2901@thunk.org> <20100805164504.GI2901@thunk.org> <20100806070424.GD2109@tux1.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fxip-0047f.externet.hu ([88.209.222.127]:42963 "EHLO
-	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759216Ab0HFIPg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 04:15:36 -0400
-In-reply-to: <20100805233019.GA30761@shell> (message from Valerie Aurora on
-	Thu, 5 Aug 2010 19:30:19 -0400)
+Received: from mx1.redhat.com ([209.132.183.28]:6398 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761115Ab0HFKRy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Aug 2010 06:17:54 -0400
+In-Reply-To: <20100806070424.GD2109@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 5 Aug 2010, Valerie Aurora wrote:
-> On Thu, Aug 05, 2010 at 12:36:55PM +0200, Miklos Szeredi wrote:
-> > On Wed, 4 Aug 2010, Valerie Aurora wrote:
-> > > --zYM0uCDKw75PZbzx
-> > > Content-Type: text/plain; charset=us-ascii
-> > > Content-Disposition: inline
-> > > 
-> > > On Wed, Aug 04, 2010 at 04:44:10PM +0200, Miklos Szeredi wrote:
-> > > > On Tue, 15 Jun 2010, Valerie Aurora wrote:
-> > > > > Add support for fallthru directory entries to ext2.
-> > > > 
-> > > > If a previously used ext2 filesystem with is mounted again then
-> > > > fallthroughs don't appear to work as expected.  Stat returns ENOENT
-> > > > for these entries.
-> > > > 
-> > > > Can't see anything obviously wrong with the code.
-> > > 
-> > > Hm, I wrote one test case for this that worked (attached).  Can you
-> > > give me more details on your test case?  Thanks,
-> 
-> Cool, thanks.  Yes, I suppose the fallthrus should be ignored if they
-> don't fall through to anything.
+  On 08/06/2010 03:04 AM, Darrick J. Wong wrote:
+> On Thu, Aug 05, 2010 at 12:45:04PM -0400, Ted Ts'o wrote:
+>> P.S.  If it wasn't clear, I'm still in favor of trying to coordinate
+>> barriers across the whole file system, since that is much more likely
+>> to help use cases that arise in real life.
+> Ok.  I have a rough sketch of a patch to do that, and I was going to send it
+> out today, but the test machine caught on fire while I was hammering it with
+> the fsync tests one last time and ... yeah.  I'm fairly sure the patch didn't
+> cause the fire, but I'll check anyway after I finish cleaning up.
+>
+> "[PATCH] ext4: Don't set my machine ablaze with barrier requests" :P
+>
+> (The patch did seem to cut barrier requests counts by about 20% though the
+> impact on performance was pretty small.)
+>
+> --D
 
-That's not the case here.  They _should_ fall through to ext3.img, yet
-apparently after ovl.img being mounted again they don't seem to work.
+Just a note, one thing that we have been doing is trying to get a reasonable 
+regression test in place for testing data integrity. That might be useful to 
+share as we float patches around barrier changes.
 
-Note, ovl.img starts out as a completely empty filesystem.
+Basic test:
 
-The difference between your test case and mine mitght be that yours
-not only reads the directory but stats the files as well, while mine
-does not.
+(1) Get a box with an external e-sata (or USB) connected drive
 
-Thanks,
-Miklos
+(2) Fire off some large load on that drive (Chris Mason had one, some of our QE 
+engineers have been using fs_mark (fs_mark -d /your_fs/test_dir -S 0 -t 8 -F)
 
+(3) Pull the power cable to that external box.
 
-> 
-> > uml:~# mount -oloop -r ext3-2.img /mnt/img/
-> > uml:~# mount -oloop -r ext3.img /mnt/img/
-> > uml:~# losetup -f ovl.img 
-> > uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
-> > uml:~# "ls" /mnt/img
-> > bunion  lost+found  union
-> > uml:~# "ls" /mnt/img/union
-> > 1  2  3
-> > uml:~# "ls" /mnt/img/union/1
-> > a  x
-> > uml:~# umount /mnt/img/
-> > uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
-> > uml:~# ls -l /mnt/img/  
-> > total 14
-> > drwxr-xr-x 2 root root  1024 Aug  5 09:56 bunion
-> > drwx------ 2 root root 12288 Aug  5 09:41 lost+found
-> > drwxr-xr-x 3 root root  1024 Aug  5 09:56 union
-> > uml:~# ls -l /mnt/img/union/
-> > ls: cannot access /mnt/img/union/3: No such file or directory
-> > ls: cannot access /mnt/img/union/2: No such file or directory
-> > total 1
-> > drwxr-xr-x 2 root root 1024 Aug  5 09:56 1
-> > ?????????? ? ?    ?       ?            ? 2
-> > ?????????? ? ?    ?       ?            ? 3
-> > uml:~# ls -l /mnt/img/union/1
-> > ls: cannot access /mnt/img/union/1/a: No such file or directory
-> > ls: cannot access /mnt/img/union/1/x: No such file or directory
-> > total 0
-> > ?????????? ? ? ? ?            ? a
-> > ?????????? ? ? ? ?            ? x
-> > uml:~# 
-> > 
-> > Thanks,
-> > Miklos
-> 
+Of course, you can use any system and drop power, but the above setup will make 
+sure that we kill the write cache on the device without letting the firmware 
+destage the cache contents.
+
+The test passes if you can now do the following:
+
+(1) Mount the file system without error
+
+(2) Unmount and force an fsck - that should run without reporting errors as well.
+
+Note that the above does not use fsync in the testing.
+
+Thanks!
+
+Ric
+
