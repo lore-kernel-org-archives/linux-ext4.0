@@ -1,272 +1,118 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/3] Add batched discard support for ext4
-Date: Fri,  6 Aug 2010 13:31:16 +0200
-Message-ID: <1281094276-11377-4-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/3] Add ioctl FITRIM.
+Date: Fri,  6 Aug 2010 13:31:14 +0200
+Message-ID: <1281094276-11377-2-git-send-email-lczerner@redhat.com>
 References: <1281094276-11377-1-git-send-email-lczerner@redhat.com>
 Cc: dmonakhov@openvz.org, jmoyer@redhat.com, rwheeler@redhat.com,
 	eshishki@redhat.com, sandeen@redhat.com, jack@suse.cz,
 	tytso@mit.edu, lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26576 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54988 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761241Ab0HFLcK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Aug 2010 07:32:10 -0400
+	id S1759228Ab0HFLcI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Aug 2010 07:32:08 -0400
 In-Reply-To: <1281094276-11377-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Walk through allocation groups and trim all free extents. It can be
-invoked through FITRIM ioctl on the file system. The main idea is to
-provide a way to trim the whole file system if needed, since some SSD's
-may suffer from performance loss after the whole device was filled (it
-does not mean that fs is full!).
+Adds an filesystem independent ioctl to allow implementation of file
+system batched discard support. It takes an array of three uint64_t
+as an argument, the meaning of each item is as follows:
 
-It search for free extents in allocation groups specified by Byte range
-start -> start+len. When the free extent is within this range, blocks
-are marked as used and then trimmed. Afterwards these blocks are marked
-as free in per-group bitmap.
+array[0] - (start) first Byte to trim
+array[1] - (len) number of Bytes to trim from start
+array[2] - (minlen) minimum extent length to trim, free extents shorter
+than this number of Bytes will be ignored. This number will be rounded
+up to the block size.
 
-Since fstrim is a long operation it is good to have an ability to
-interrupt it by a signal. This was added by Dmitry Monakhov.
-Thanks Dimitry.
+It is also possible to specify NULL as an argument. In this case the
+arguments will set itself as follows:
+
+args[0] = 0;
+args[1] = LLONG_MAX;
+args[2] = 0;
+
+So it will trim the whole file system at one run.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    |    2 +
- fs/ext4/mballoc.c |  194 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c   |    1 +
- 3 files changed, 197 insertions(+), 0 deletions(-)
+ fs/ioctl.c         |   34 ++++++++++++++++++++++++++++++++++
+ include/linux/fs.h |    2 ++
+ 2 files changed, 36 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 19a4de5..2f96dc5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1558,6 +1558,8 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
- extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
- extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
- 						ext4_group_t, int);
-+extern int ext4_trim_fs(struct super_block *, uint64_t, uint64_t, uint64_t);
-+
- /* inode.c */
- struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 0e83dfd..5210676 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4690,3 +4690,197 @@ error_return:
- 		kmem_cache_free(ext4_ac_cachep, ac);
- 	return;
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 2d140a7..a0e243c 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -540,6 +540,36 @@ static int ioctl_fsthaw(struct file *filp)
+ 	return thaw_super(sb);
  }
-+
-+/**
-+ * ext4_trim_extent -- function to TRIM one single free extent in the group
-+ * @sb:		super block for the file system
-+ * @start:	starting block of the free extent in the alloc. group
-+ * @count:	number of blocks to TRIM
-+ * @group:	alloc. group we are working with
-+ * @e4b:	ext4 buddy for the group
-+ *
-+ * Trim "count" blocks starting at "start" in the "group". To assure that no
-+ * one will allocate those blocks, mark it as used in buddy bitmap. This must
-+ * be called with under the group lock.
-+ */
-+static int ext4_trim_extent(struct super_block *sb, int start, int count,
-+		ext4_group_t group, struct ext4_buddy *e4b)
+ 
++static int ioctl_fstrim(struct file *filp, void __user *argp)
 +{
-+	ext4_fsblk_t discard_block;
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	struct ext4_free_extent ex;
-+	int ret = 0;
++	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
++	uint64_t args[3];
++	int err;
 +
-+	assert_spin_locked(ext4_group_lock_ptr(sb, group));
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
 +
-+	ex.fe_start = start;
-+	ex.fe_group = group;
-+	ex.fe_len = count;
++	/* If filesystem doesn't support trim feature, return. */
++	if (sb->s_op->trim_fs == NULL)
++		return -EOPNOTSUPP;
 +
-+	/*
-+	 * Mark blocks used, so no one can reuse them while
-+	 * being trimmed.
-+	 */
-+	mb_mark_used(e4b, &ex);
-+	ext4_unlock_group(sb, group);
-+
-+	discard_block = (ext4_fsblk_t)group *
-+			EXT4_BLOCKS_PER_GROUP(sb)
-+			+ start
-+			+ le32_to_cpu(es->s_first_data_block);
-+	trace_ext4_discard_blocks(sb,
-+			(unsigned long long)discard_block,
-+			count);
-+	ret = sb_issue_discard(sb, discard_block, count);
-+	if (ret == -EOPNOTSUPP) {
-+		ext4_warning(sb,
-+			"discard not supported!");
-+	} else if (ret < 0) {
-+		ext4_std_error(sb, ret);
-+	}
-+	cond_resched();
-+
-+	ext4_lock_group(sb, group);
-+	mb_free_blocks(NULL, e4b, start, ex.fe_len);
-+	return ret;
-+}
-+
-+/**
-+ * ext4_trim_all_free -- function to trim all free space in alloc. group
-+ * @sb:			super block for file system
-+ * @e4b:		ext4 buddy
-+ * @start:		first group block to examine
-+ * @max:		last group block to examine
-+ * @minblocks:		minimum extent block count
-+ *
-+ * ext4_trim_all_free walks through group's buddy bitmap searching for free
-+ * extents. When the free block is found, ext4_trim_extent is called to TRIM
-+ * the extent.
-+ *
-+ *
-+ * ext4_trim_all_free walks through group's block bitmap searching for free
-+ * extents. When the free extent is found, mark it as used in group buddy
-+ * bitmap. Then issue a TRIM command on this extent and free the extent in
-+ * the group buddy bitmap. This is done until whole group is scanned.
-+ */
-+ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
-+		ext4_grpblk_t start, ext4_grpblk_t max, ext4_grpblk_t minblocks)
-+{
-+	void *bitmap;
-+	ext4_grpblk_t next, count = 0;
-+	ext4_group_t group;
-+	int ret = 0;
-+
-+	BUG_ON(e4b == NULL);
-+
-+	bitmap = e4b->bd_bitmap;
-+	group = e4b->bd_group;
-+	start = (e4b->bd_info->bb_first_free > start) ?
-+		e4b->bd_info->bb_first_free : start;
-+	ext4_lock_group(sb, group);
-+
-+	while (start < max) {
-+
-+		start = mb_find_next_zero_bit(bitmap, max, start);
-+		if (start >= max)
-+			break;
-+		next = mb_find_next_bit(bitmap, max, start);
-+
-+		if ((next - start) >= minblocks) {
-+			ret = ext4_trim_extent(sb, start,
-+				next - start, group, e4b);
-+			if (ret < 0)
-+				break;
-+			count += next - start;
-+		}
-+		start = next + 1;
-+
-+		if (signal_pending(current)) {
-+			count = -ERESTARTSYS;
-+			break;
-+		}
-+
-+		if ((e4b->bd_info->bb_free - count) < minblocks)
-+			break;
-+	}
-+	ext4_unlock_group(sb, group);
-+
-+	ext4_debug("trimmed %d blocks in the group %d\n",
-+		count, group);
-+
-+	if (ret < 0)
-+		count = ret;
-+
-+	return count;
-+}
-+
-+/**
-+ * ext4_trim_fs() -- trim ioctl handle function
-+ * @sb:			superblock for filesystem
-+ * @start:		First Byte to trim
-+ * @len:		number of Bytes to trim from start
-+ * @minlen:		minimum extent length in Bytes
-+ *
-+ * ext4_trim_fs goes through all allocation groups containing Bytes from
-+ * start to start+len. For each such a group ext4_trim_all_free function
-+ * is invoked to trim all free space.
-+ */
-+int ext4_trim_fs(struct super_block *sb, uint64_t start, uint64_t len,
-+		uint64_t minlen)
-+{
-+	struct ext4_buddy e4b;
-+	ext4_fsblk_t first_group, last_group;
-+	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
-+	ext4_grpblk_t cnt, first_block, last_block;
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	int ret = 0;
-+
-+	start >>= sb->s_blocksize_bits;
-+	len >>= sb->s_blocksize_bits;
-+	minlen >>= sb->s_blocksize_bits;
-+
-+	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
++	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
++	if (sb->s_bdev == NULL)
 +		return -EINVAL;
 +
-+	/* Determine first and last group to examine based on start and len */
-+	first_group = (start - le32_to_cpu(es->s_first_data_block)) /
-+		      EXT4_BLOCKS_PER_GROUP(sb);
-+	last_group = (start + len - le32_to_cpu(es->s_first_data_block)) /
-+		     EXT4_BLOCKS_PER_GROUP(sb);
-+	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
++	if (argp == NULL) {
++		args[0] = 0;
++		args[1] = ULLONG_MAX;
++		args[2] = 0;
++	} else if (copy_from_user(args, argp, sizeof(args)))
++		return -EFAULT;
 +
-+	if (first_group > last_group)
-+		return -EINVAL;
-+
-+	first_block = start % EXT4_BLOCKS_PER_GROUP(sb);
-+	last_block = EXT4_BLOCKS_PER_GROUP(sb);
-+
-+	for (group = first_group; group <= last_group; group++) {
-+
-+		ret = ext4_mb_load_buddy(sb, group, &e4b);
-+		if (ret) {
-+			ext4_error(sb, "Error in loading buddy "
-+					"information for %u", group);
-+			break;
-+		}
-+
-+		if (len >= EXT4_BLOCKS_PER_GROUP(sb))
-+			len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
-+		else
-+			last_block = len;
-+
-+		if (e4b.bd_info->bb_free >= minlen) {
-+			cnt = ext4_trim_all_free(sb, &e4b, first_block,
-+						last_block, minlen);
-+			if (cnt < 0) {
-+				ret = cnt;
-+				ext4_mb_unload_buddy(&e4b);
-+				break;
-+			}
-+		}
-+		ext4_mb_unload_buddy(&e4b);
-+
-+		first_block = 0;
-+	}
-+	return ret;
++	err = sb->s_op->trim_fs(sb, args[0], args[1], args[2]);
++	if (err)
++		return err;
++	return 0;
 +}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e72d323..3b05b3a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1114,6 +1114,7 @@ static const struct super_operations ext4_sops = {
- 	.quota_write	= ext4_quota_write,
++
+ /*
+  * When you add any new common ioctls to the switches above and below
+  * please update compat_sys_ioctl() too.
+@@ -590,6 +620,10 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 		error = ioctl_fsthaw(filp);
+ 		break;
+ 
++	case FITRIM:
++		error = ioctl_fstrim(filp, argp);
++		break;
++
+ 	case FS_IOC_FIEMAP:
+ 		return ioctl_fiemap(filp, arg);
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e5106e4..0cc196f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -316,6 +316,7 @@ struct inodes_stat_t {
+ #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
+ #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
+ #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
++#define FITRIM		_IOW('X', 121, uint64_t)/* Trim */
+ 
+ #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+ #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+@@ -1582,6 +1583,7 @@ struct super_operations {
+ 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
  #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
-+	.trim_fs	= ext4_trim_fs
+ 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
++	int (*trim_fs) (struct super_block *, uint64_t, uint64_t, uint64_t);
  };
  
- static const struct super_operations ext4_nojournal_sops = {
+ /*
 -- 
 1.7.2
 
