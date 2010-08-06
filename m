@@ -1,104 +1,59 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 0/3] Batched discard support
-Date: Fri, 06 Aug 2010 17:05:13 +0400
-Message-ID: <87zkwzriwm.fsf@dmon-lap.sw.ru>
-References: <1281094276-11377-1-git-send-email-lczerner@redhat.com>
+From: Vladislav Bolkhovitin <vst@vlnb.net>
+Subject: Re: Crash after umount'ing a disconnected disk (Re: extfs reliability)
+Date: Fri, 06 Aug 2010 17:23:46 +0400
+Message-ID: <4C5C0CE2.7030009@vlnb.net>
+References: <20100804180325.GL9453@thunk.org> <4C5B1137.1070001@vlnb.net> <20100805211758.GA12358@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
-	eshishki@redhat.com, sandeen@redhat.com, jack@suse.cz,
-	tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:41896 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759365Ab0HFNFS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 09:05:18 -0400
-Received: by eya25 with SMTP id 25so2740493eya.19
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Aug 2010 06:05:17 -0700 (PDT)
-In-Reply-To: <1281094276-11377-1-git-send-email-lczerner@redhat.com> (Lukas
-	Czerner's message of "Fri, 6 Aug 2010 13:31:13 +0200")
+Received: from moutng.kundenserver.de ([212.227.126.186]:50685 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933976Ab0HFNXu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 09:23:50 -0400
+In-Reply-To: <20100805211758.GA12358@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lukas Czerner <lczerner@redhat.com> writes:
+Ted Ts'o, on 08/06/2010 01:17 AM wrote:
+> On Thu, Aug 05, 2010 at 11:29:59PM +0400, Vladislav Bolkhovitin wrote:
+>>> Have you had a chance to check out whether this patch solves the
+>>> problem you were complaining with respect to yanking out the last
+>>> iSCSI or FC link to a hard drive, and then umounting the disk
+>>> afterwards?
+>>
+>> Looks like it works. I was able to reach that branch (see AAA in the
+>> attached log) and it was handled well.
+>
+> OK, great!
+>
+>> I've also got other (see the attached log file):
+>>
+>> 1. A bunch of detected hung tasks with call traces.
+>>
+>
+> Is this unique to ext4?  It looks like a problem where we're either
+> (a) not getting an I/O error from the block device in time before we
+> get the hung task timeout (which might be the right thing, if the link
+> eventually comes back --- what I've seen is there's a no clear
+> consensus how long the last FC or iSCSI link should be done before we
+> give up on an I/O operation), or (b) for some reason we're not
+> noticing the I/O error and waiting forever.  I believe (a) is more
+> likely here, but it's possible it's (b).  Do you eventually get file
+> system I/O errors that abort the journal transaction?  You should...
 
-> Hi, all
->
-> because people were worried about possibly long stalls appearing
-> when FITRIM ioctl is working, I have changed the FITRIM interface
-> as Dimitry suggested. Now you can choose whether to trim whole
-> file system or just a part of it, resp. you can specify the range
-> of Bytes to trim.
-Agree with whole patch-set, except minor note for ext4'th path.
-Please feel free to add
-Reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org> to the series
+Yes, as you can see in the previously attached log.
 
-The only thing what is still not obvious for me is that, there are
-several types of discard request possible
-1) Simple discard 
-2) Secure discard which was proposed here http://lkml.org/lkml/2010/6/24/71
-Should we specify which type should be used in ioctl flags?
-But i hope that we can just stick maximum security scenario
-Use secure discard if possible.
+>> 2. "JBD: recovery failed" I reported before.
 >
-> To be specific you can create something like this:
->
-> int main(int argc, char **argv)
-> {
-> 	int fd;
-> 	uint64_t range[3];
->
-> 	range[0] = 40960;
-> 	range[1] = 134217728;
-> 	range[2] = 4096;
->
-> 	fd = open(argv[1], O_RDONLY);
-> 	if (fd < 0) {
-> 		perror("open");
-> 		return 1;
-> 	}
->
-> 	if (ioctl(fd, FITRIM, range)) {
-> 		if (errno == EOPNOTSUPP)
-> 			fprintf(stderr, "FITRIM not supported\n");
-> 		else
-> 			perror("FITRIM");
-> 		return 1;
-> 	}
->
-> 	return 0;
-> }
->
-> Range items have following meaning:
->
-> range[0] - (start) first Byte to trim
-> range[1] - (len) number of Bytes to trim from start
-> range[2] - (minlen) minimum extent length to trim, free extents shorter
-> than this number of Bytes will be ignored. This number will be rounded
-> up to the block size.
->
-> So in my example it will trim all free extents from block 10 of first
-> alloc. group to block 10 of second alloc. group, assuming we have
-> block_size = 4096.
->
-> Also, when you want to trim the whole fs, you can simply pass NULL
-> instead of range into the ioctl, or you can specify the range correctly
-> to cover the whole fs.
->
-> Regards
-> -Lukas
->
-> [PATCH 1/3] Add ioctl FITRIM.
-> [PATCH 2/3] Add batched discard support for ext3
-> [PATCH 3/3] Add batched discard support for ext4
->
->  fs/ext3/balloc.c        |  249 +++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext3/super.c         |    1 +
->  fs/ext4/ext4.h          |    2 +
->  fs/ext4/mballoc.c       |  194 ++++++++++++++++++++++++++++++++++++
->  fs/ext4/super.c         |    1 +
->  fs/ioctl.c              |   34 +++++++
->  include/linux/ext3_fs.h |    1 +
->  include/linux/fs.h      |    2 +
->  8 files changed, 484 insertions(+), 0 deletions(-)
+> I've searched my mail archives, and I'm not sure what you're talking
+> about here.  Maybe this was in an e-mail that you sent that perhaps
+> got lost?
+
+It's next to the message on which you originally replied. It was about 
+ext3, but this time I saw it with ext4.
+
+Thanks,
+Vlad
