@@ -1,45 +1,39 @@
-From: Keith Mannthey <kmannth@us.ibm.com>
-Subject: Raid FFSB Benchmark results for 2.6.35-rc5
-Date: Fri, 06 Aug 2010 12:07:13 -0700
-Message-ID: <1281121633.7357.26.camel@keith-laptop>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Raid FFSB Benchmark results for 2.6.35-rc5
+Date: Fri, 6 Aug 2010 15:14:39 -0400
+Message-ID: <20100806191439.GD24583@thunk.org>
+References: <1281121633.7357.26.camel@keith-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Keith Mannthey <kmannth@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:58970 "EHLO e2.ny.us.ibm.com"
+Received: from thunk.org ([69.25.196.29]:37937 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965531Ab0HFTHM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Aug 2010 15:07:12 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e2.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o76IrJaA001351
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 14:53:19 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o76J7BWY2007284
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 15:07:11 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o76J7BWi016724
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 15:07:11 -0400
-Received: from [9.76.72.32] (sig-9-76-72-32.mts.ibm.com [9.76.72.32])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id o76J79jo016617
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Aug 2010 15:07:10 -0400
+	id S965032Ab0HFTOp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Aug 2010 15:14:45 -0400
+Content-Disposition: inline
+In-Reply-To: <1281121633.7357.26.camel@keith-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a collection of benchmark runs with the FFSB test suite. The
-results are comparable to other raid results on the boxacle server. 
+On Fri, Aug 06, 2010 at 12:07:13PM -0700, Keith Mannthey wrote:
+> This is a collection of benchmark runs with the FFSB test suite. The
+> results are comparable to other raid results on the boxacle server. 
+> 
+> The latest results can be found at: 
+> http://btrfs.boxacle.net/repository/raid/2.6.35-rc5/2.6.35-rc5/2.6.35-rc5.html
+> 
+> I added XFS without barriers and EXT3 with barriers into the mix since
+> my last data set. 
 
-The latest results can be found at: 
-http://btrfs.boxacle.net/repository/raid/2.6.35-rc5/2.6.35-rc5/2.6.35-rc5.html
+Thanks, it's good to know there haven't been any major regression on
+the ext4 side.
 
-I added XFS without barriers and EXT3 with barriers into the mix since
-my last data set. 
+If you could have a chance to run a set of benchmark runs with the
+jbd2 scalability patches, I'd be hugely interested to see how much
+difference they make.
 
-In general things look about the same.  There are a few cases where ext4
-with barriers (default) has gotten better but ext4 without barriers has
-gotten worse. 
+Thanks again!
 
-Thanks,
-  Keith Mannthey 
-  LTC Local FileSystem 
-
+						- Ted
