@@ -1,59 +1,165 @@
-From: Vladislav Bolkhovitin <vst@vlnb.net>
-Subject: Re: Crash after umount'ing a disconnected disk (Re: extfs reliability)
-Date: Fri, 06 Aug 2010 17:23:46 +0400
-Message-ID: <4C5C0CE2.7030009@vlnb.net>
-References: <20100804180325.GL9453@thunk.org> <4C5B1137.1070001@vlnb.net> <20100805211758.GA12358@thunk.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 3/3] Add batched discard support for ext4
+Date: Fri, 6 Aug 2010 15:23:59 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1008061513160.3645@localhost>
+References: <1281094276-11377-1-git-send-email-lczerner@redhat.com> <1281094276-11377-4-git-send-email-lczerner@redhat.com> <871vabsxk0.fsf@dmon-lap.sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
+	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:50685 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933976Ab0HFNXu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 09:23:50 -0400
-In-Reply-To: <20100805211758.GA12358@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:26402 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933385Ab0HFNYM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Aug 2010 09:24:12 -0400
+In-Reply-To: <871vabsxk0.fsf@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted Ts'o, on 08/06/2010 01:17 AM wrote:
-> On Thu, Aug 05, 2010 at 11:29:59PM +0400, Vladislav Bolkhovitin wrote:
->>> Have you had a chance to check out whether this patch solves the
->>> problem you were complaining with respect to yanking out the last
->>> iSCSI or FC link to a hard drive, and then umounting the disk
->>> afterwards?
->>
->> Looks like it works. I was able to reach that branch (see AAA in the
->> attached log) and it was handled well.
->
-> OK, great!
->
->> I've also got other (see the attached log file):
->>
->> 1. A bunch of detected hung tasks with call traces.
->>
->
-> Is this unique to ext4?  It looks like a problem where we're either
-> (a) not getting an I/O error from the block device in time before we
-> get the hung task timeout (which might be the right thing, if the link
-> eventually comes back --- what I've seen is there's a no clear
-> consensus how long the last FC or iSCSI link should be done before we
-> give up on an I/O operation), or (b) for some reason we're not
-> noticing the I/O error and waiting forever.  I believe (a) is more
-> likely here, but it's possible it's (b).  Do you eventually get file
-> system I/O errors that abort the journal transaction?  You should...
+On Fri, 6 Aug 2010, Dmitry Monakhov wrote:
 
-Yes, as you can see in the previously attached log.
+> Lukas Czerner <lczerner@redhat.com> writes:
+> 
+> > Walk through allocation groups and trim all free extents. It can be
+> > invoked through FITRIM ioctl on the file system. The main idea is to
+> > provide a way to trim the whole file system if needed, since some SSD's
+> > may suffer from performance loss after the whole device was filled (it
+> > does not mean that fs is full!).
+> >
+> > It search for free extents in allocation groups specified by Byte range
+> > start -> start+len. When the free extent is within this range, blocks
+> > are marked as used and then trimmed. Afterwards these blocks are marked
+> > as free in per-group bitmap.
+> >
+> > Since fstrim is a long operation it is good to have an ability to
+> > interrupt it by a signal. This was added by Dmitry Monakhov.
+> > Thanks Dimitry.
+> >
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/ext4.h    |    2 +
+> >  fs/ext4/mballoc.c |  194 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  fs/ext4/super.c   |    1 +
+> >  3 files changed, 197 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 19a4de5..2f96dc5 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -1558,6 +1558,8 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+> >  extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
+> >  extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
+> >  						ext4_group_t, int);
+> > +extern int ext4_trim_fs(struct super_block *, uint64_t, uint64_t, uint64_t);
+> > +
+> >  /* inode.c */
+> >  struct buffer_head *ext4_getblk(handle_t *, struct inode *,
+> >  						ext4_lblk_t, int, int *);
+> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> > index 0e83dfd..5210676 100644
+> > --- a/fs/ext4/mballoc.c
+> > +++ b/fs/ext4/mballoc.c
+> > @@ -4690,3 +4690,197 @@ error_return:
+> >  		kmem_cache_free(ext4_ac_cachep, ac);
+> >  	return;
+> >  }
+> > +
+> > +/**
+> > + * ext4_trim_extent -- function to TRIM one single free extent in the group
+> > + * @sb:		super block for the file system
+> > + * @start:	starting block of the free extent in the alloc. group
+> > + * @count:	number of blocks to TRIM
+> > + * @group:	alloc. group we are working with
+> > + * @e4b:	ext4 buddy for the group
+> > + *
+> > + * Trim "count" blocks starting at "start" in the "group". To assure that no
+> > + * one will allocate those blocks, mark it as used in buddy bitmap. This must
+> > + * be called with under the group lock.
+> > + */
+> > +static int ext4_trim_extent(struct super_block *sb, int start, int count,
+> > +		ext4_group_t group, struct ext4_buddy *e4b)
+> > +{
+> > +	ext4_fsblk_t discard_block;
+> > +	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+> > +	struct ext4_free_extent ex;
+> > +	int ret = 0;
+> > +
+> > +	assert_spin_locked(ext4_group_lock_ptr(sb, group));
+> > +
+> > +	ex.fe_start = start;
+> > +	ex.fe_group = group;
+> > +	ex.fe_len = count;
+> > +
+> > +	/*
+> > +	 * Mark blocks used, so no one can reuse them while
+> > +	 * being trimmed.
+> > +	 */
+> > +	mb_mark_used(e4b, &ex);
+> > +	ext4_unlock_group(sb, group);
+> > +
+> > +	discard_block = (ext4_fsblk_t)group *
+> > +			EXT4_BLOCKS_PER_GROUP(sb)
+> > +			+ start
+> > +			+ le32_to_cpu(es->s_first_data_block);
+> > +	trace_ext4_discard_blocks(sb,
+> > +			(unsigned long long)discard_block,
+> > +			count);
+> > +	ret = sb_issue_discard(sb, discard_block, count);
+> > +	if (ret == -EOPNOTSUPP) {
+> > +		ext4_warning(sb,
+> > +			"discard not supported!");
+> > +	} else if (ret < 0) {
+> > +		ext4_std_error(sb, ret);
+> > +	}
+> > +	cond_resched();
+> OOps seems i'm was wrong when suggested to put cond_resched() here.
+> It is useless because we probably already slept inside sb_issue_discard()
+> But it is reasonable to move it to ext4_trim_all_free()
+> because fs size may be huge so simple bitmap traverse will take long
+> enough, but almost fully populated so there are no extents longer than
+> minlen so discard would not being called.
+> BTW: Since Jan already noted about that in ext3's patch so ext3 version
+> is good.
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index d3a0763..00e6147 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4688,7 +4688,6 @@ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+>  	} else if (ret < 0) {
+>  		ext4_std_error(sb, ret);
+>  	}
+> -	cond_resched();
+>  
+>  	ext4_lock_group(sb, group);
+>  	mb_free_blocks(NULL, e4b, start, ex.fe_len);
+> @@ -4745,6 +4744,11 @@ ext4_grpblk_t ext4_trim_all_free(struct super_block *sb, struct ext4_buddy *e4b,
+>  		}
+>  		start = next + 1;
+>  
+> +		if (need_resched()) {
+> +			ext4_unlock_group(sb, group);
+> +			cond_resched();
+> +			ext4_lock_group(sb, group);
+> +		}
+>  		if (signal_pending(current)) {
+>  			count = -ERESTARTSYS;
+>  			break;
+> 
+> 
 
->> 2. "JBD: recovery failed" I reported before.
->
-> I've searched my mail archives, and I'm not sure what you're talking
-> about here.  Maybe this was in an e-mail that you sent that perhaps
-> got lost?
+Hmm, are you sure about this ? Wouldn't make more sense to put just
+cond_resched() into the ext4_trim_fs loop, since there is no need to
+check for need_resched() and lock/unlock the group. Do you expect the
+group traversal to take that long ?
 
-It's next to the message on which you originally replied. It was about 
-ext3, but this time I saw it with ext4.
+There are other examples of traversing whole group, but none of it is
+trying to reschedule in the middle of the group.
 
-Thanks,
-Vlad
+Regards
+-Lukas
+
