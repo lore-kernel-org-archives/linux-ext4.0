@@ -1,165 +1,50 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: [PATCH 10/38] whiteout: Split of ext2_append_link() from ext2_add_link()
-Date: Fri,  6 Aug 2010 15:34:56 -0700
-Message-ID: <1281134124-17041-11-git-send-email-vaurora@redhat.com>
-References: <1281134124-17041-1-git-send-email-vaurora@redhat.com>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Jan Blunck <jblunck@suse.de>,
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
+Date: Fri, 6 Aug 2010 18:28:29 -0600
+Message-ID: <11B0076E-9611-459A-93D4-04DFA369FF52@dilger.ca>
+References: <1281134124-17041-1-git-send-email-vaurora@redhat.com> <1281134124-17041-15-git-send-email-vaurora@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Jan Blunck <jblunck@suse.de>,
 	Christoph Hellwig <hch@infradead.org>,
 	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Valerie Aurora <vaurora@redhat.com>,
 	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1281134124-17041-1-git-send-email-vaurora@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Valerie Aurora <vaurora@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:3873 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752251Ab0HGA2b convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2010 20:28:31 -0400
+In-Reply-To: <1281134124-17041-15-git-send-email-vaurora@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Blunck <jblunck@suse.de>
+On 2010-08-06, at 16:35, Valerie Aurora wrote:
+> XXX What to do for d_ino for fallthrus?  If we return the inode from
+> the the underlying file system, it comes from a different inode
+> "namespace" and that will produce spurious matches.  This argues for
+> implementation of fallthrus as symlinks because they have to allocate
+> an inode (and inode number) anyway, and we can later reuse it if we
+> copy the file up.
+> 
+> @@ -342,6 +344,24 @@ ext2_readdir (struct file * filp, void * dirent, +				/* XXX We don't know the inode number
+> +				 * of the directory entry in the
+> +				 * underlying file system.  Should
+> +				 * look it up, either on fallthru
+> +				 * creation at first readdir or now at
+> +				 * filldir time. */
+> +				over = filldir(dirent, de->name, de->name_len,
+> +					       (n<<PAGE_CACHE_SHIFT) | offset,
+> +					       123 /* Made up ino */, d_type);
 
-The ext2_append_link() is later used to find or append a directory
-entry to whiteout.
+I don't think it makes sense to use "123" for the inode number.  This is a valid inode number, and almost certainly one that will be in use in most filesystems.  One option for extN is to use EXT2_BAD_INO (1).
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
-Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-Cc: Theodore Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext2/dir.c |   70 ++++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 50 insertions(+), 20 deletions(-)
+Cheers, Andreas
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 7516957..57207a9 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -472,9 +472,10 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
- }
- 
- /*
-- *	Parent is locked.
-+ * Find or append a given dentry to the parent directory
-  */
--int ext2_add_link (struct dentry *dentry, struct inode *inode)
-+static ext2_dirent * ext2_append_entry(struct dentry * dentry,
-+				       struct page ** page)
- {
- 	struct inode *dir = dentry->d_parent->d_inode;
- 	const char *name = dentry->d_name.name;
-@@ -482,13 +483,10 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	unsigned chunk_size = ext2_chunk_size(dir);
- 	unsigned reclen = EXT2_DIR_REC_LEN(namelen);
- 	unsigned short rec_len, name_len;
--	struct page *page = NULL;
--	ext2_dirent * de;
-+	ext2_dirent * de = NULL;
- 	unsigned long npages = dir_pages(dir);
- 	unsigned long n;
- 	char *kaddr;
--	loff_t pos;
--	int err;
- 
- 	/*
- 	 * We take care of directory expansion in the same loop.
-@@ -498,20 +496,19 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	for (n = 0; n <= npages; n++) {
- 		char *dir_end;
- 
--		page = ext2_get_page(dir, n, 0);
--		err = PTR_ERR(page);
--		if (IS_ERR(page))
-+		*page = ext2_get_page(dir, n, 0);
-+		de = ERR_PTR(PTR_ERR(*page));
-+		if (IS_ERR(*page))
- 			goto out;
--		lock_page(page);
--		kaddr = page_address(page);
-+		lock_page(*page);
-+		kaddr = page_address(*page);
- 		dir_end = kaddr + ext2_last_byte(dir, n);
- 		de = (ext2_dirent *)kaddr;
- 		kaddr += PAGE_CACHE_SIZE - reclen;
- 		while ((char *)de <= kaddr) {
- 			if ((char *)de == dir_end) {
- 				/* We hit i_size */
--				name_len = 0;
--				rec_len = chunk_size;
-+				de->name_len = 0;
- 				de->rec_len = ext2_rec_len_to_disk(chunk_size);
- 				de->inode = 0;
- 				goto got_it;
-@@ -519,12 +516,11 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 			if (de->rec_len == 0) {
- 				ext2_error(dir->i_sb, __func__,
- 					"zero-length directory entry");
--				err = -EIO;
-+				de = ERR_PTR(-EIO);
- 				goto out_unlock;
- 			}
--			err = -EEXIST;
- 			if (ext2_match (namelen, name, de))
--				goto out_unlock;
-+				goto got_it;
- 			name_len = EXT2_DIR_REC_LEN(de->name_len);
- 			rec_len = ext2_rec_len_from_disk(de->rec_len);
- 			if (!de->inode && rec_len >= reclen)
-@@ -533,13 +529,48 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 				goto got_it;
- 			de = (ext2_dirent *) ((char *) de + rec_len);
- 		}
--		unlock_page(page);
--		ext2_put_page(page);
-+		unlock_page(*page);
-+		ext2_put_page(*page);
- 	}
-+
- 	BUG();
--	return -EINVAL;
- 
- got_it:
-+	return de;
-+	/* OFFSET_CACHE */
-+out_unlock:
-+	unlock_page(*page);
-+	ext2_put_page(*page);
-+out:
-+	return de;
-+}
-+
-+/*
-+ *	Parent is locked.
-+ */
-+int ext2_add_link (struct dentry *dentry, struct inode *inode)
-+{
-+	struct inode *dir = dentry->d_parent->d_inode;
-+	const char *name = dentry->d_name.name;
-+	int namelen = dentry->d_name.len;
-+	unsigned short rec_len, name_len;
-+	ext2_dirent * de;
-+	struct page *page;
-+	loff_t pos;
-+	int err;
-+
-+	de = ext2_append_entry(dentry, &page);
-+	if (IS_ERR(de))
-+		return PTR_ERR(de);
-+
-+	err = -EEXIST;
-+	if (ext2_match (namelen, name, de))
-+		goto out_unlock;
-+
-+got_it:
-+	name_len = EXT2_DIR_REC_LEN(de->name_len);
-+	rec_len = ext2_rec_len_from_disk(de->rec_len);
-+
- 	pos = page_offset(page) +
- 		(char*)de - (char*)page_address(page);
- 	err = __ext2_write_begin(NULL, page->mapping, pos, rec_len, 0,
-@@ -563,7 +594,6 @@ got_it:
- 	/* OFFSET_CACHE */
- out_put:
- 	ext2_put_page(page);
--out:
- 	return err;
- out_unlock:
- 	unlock_page(page);
--- 
-1.6.3.3
+
+
+
+
