@@ -1,80 +1,70 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [GIT PULL] ext4 update for 2.6.36
-Date: Sat, 7 Aug 2010 13:17:46 -0700
-Message-ID: <AANLkTinJQ7DQK8_0ngHrbZugFBCgyM5ETUPhcDSmYGP6@mail.gmail.com>
-References: <E1OhETF-0005P6-7v@tytso-glaptop>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/3] Add batched discard support for ext4
+Date: Sun, 8 Aug 2010 00:25:40 +0200
+Message-ID: <20100807222540.GA3573@quack.suse.cz>
+References: <1281094276-11377-1-git-send-email-lczerner@redhat.com>
+ <1281094276-11377-4-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=0015176f0f343317e5048d417bc6
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <E1OhETF-0005P6-7v@tytso-glaptop>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, dmonakhov@openvz.org,
+	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
+	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:47302 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752690Ab0HGW0P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Aug 2010 18:26:15 -0400
+Content-Disposition: inline
+In-Reply-To: <1281094276-11377-4-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---0015176f0f343317e5048d417bc6
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: quoted-printable
+On Fri 06-08-10 13:31:16, Lukas Czerner wrote:
+...
+> +/**
+> + * ext4_trim_fs() -- trim ioctl handle function
+> + * @sb:			superblock for filesystem
+> + * @start:		First Byte to trim
+> + * @len:		number of Bytes to trim from start
+> + * @minlen:		minimum extent length in Bytes
+> + *
+> + * ext4_trim_fs goes through all allocation groups containing Bytes from
+> + * start to start+len. For each such a group ext4_trim_all_free function
+> + * is invoked to trim all free space.
+> + */
+> +int ext4_trim_fs(struct super_block *sb, uint64_t start, uint64_t len,
+> +		uint64_t minlen)
+> +{
+> +	struct ext4_buddy e4b;
+> +	ext4_fsblk_t first_group, last_group;
+> +	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+> +	ext4_grpblk_t cnt, first_block, last_block;
+> +	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+> +	int ret = 0;
+> +
+> +	start >>= sb->s_blocksize_bits;
+> +	len >>= sb->s_blocksize_bits;
+> +	minlen >>= sb->s_blocksize_bits;
+> +
+> +	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+> +		return -EINVAL;
+> +
+> +	/* Determine first and last group to examine based on start and len */
+> +	first_group = (start - le32_to_cpu(es->s_first_data_block)) /
+> +		      EXT4_BLOCKS_PER_GROUP(sb);
+> +	last_group = (start + len - le32_to_cpu(es->s_first_data_block)) /
+> +		     EXT4_BLOCKS_PER_GROUP(sb);
+> +	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
+> +
+> +	if (first_group > last_group)
+> +		return -EINVAL;
+> +
+> +	first_block = start % EXT4_BLOCKS_PER_GROUP(sb);
+  I think you should substract "le32_to_cpu(es->s_first_data_block)" from
+the start before doing modulo.
 
-On Thu, Aug 5, 2010 at 9:23 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->
-> Which is hopefully what you want. =A0If you want exactly what is shown
-> below, you can also pull the "next" branch, which omits the merge, and
-> then you can deal with the merge conflict by hand. =A0The results should
-> be the same either way.
-
-I did that just to see what it looked like.
-
-One annoyance: I now get
-
-  fs/jbd2/transaction.c: In function =91start_this_handle=92:
-  fs/jbd2/transaction.c:98: warning: unused variable =91ts=92
-
-due to that 'ts' thing only being used for the CONFIG_JBD2_DEBUG case.
-Please fix. I'd suggest putting that CONFIG_JBD2_DEBUG code in a
-helper function of its own, and declaring 'ts' there instead.
-Suggested patch (but with a horrible helper function name) attached.
-
-               Linus
-
---0015176f0f343317e5048d417bc6
-Content-Type: application/octet-stream; name=diff
-Content-Disposition: attachment; filename=diff
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gckwolav0
-
-IGZzL2piZDIvdHJhbnNhY3Rpb24uYyB8ICAgMjkgKysrKysrKysrKysrKysrKysrLS0tLS0tLS0t
-LS0KIDEgZmlsZXMgY2hhbmdlZCwgMTggaW5zZXJ0aW9ucygrKSwgMTEgZGVsZXRpb25zKC0pCgpk
-aWZmIC0tZ2l0IGEvZnMvamJkMi90cmFuc2FjdGlvbi5jIGIvZnMvamJkMi90cmFuc2FjdGlvbi5j
-CmluZGV4IGQ5NWNjOWQuLjAzN2Q2NWQgMTAwNjQ0Ci0tLSBhL2ZzL2piZDIvdHJhbnNhY3Rpb24u
-YworKysgYi9mcy9qYmQyL3RyYW5zYWN0aW9uLmMKQEAgLTgxLDYgKzgxLDIzIEBAIGpiZDJfZ2V0
-X3RyYW5zYWN0aW9uKGpvdXJuYWxfdCAqam91cm5hbCwgdHJhbnNhY3Rpb25fdCAqdHJhbnNhY3Rp
-b24pCiAgKiBvZiB0aGF0IG9uZSB1cGRhdGUuCiAgKi8KIAorc3RhdGljIGlubGluZSB2b2lkIHN0
-YXJ0X2hhbmRsZV9kZWJ1Zyh0cmFuc2FjdGlvbl90ICp0cmFuc2FjdGlvbikKK3sKKyNpZmRlZiBD
-T05GSUdfSkJEMl9ERUJVRworCXVuc2lnbmVkIGxvbmcgdHMgPSBqaWZmaWVzOworCisJaWYgKGpi
-ZDJfam91cm5hbF9lbmFibGVfZGVidWcgJiYKKwkgICAgdGltZV9hZnRlcih0cmFuc2FjdGlvbi0+
-dF9zdGFydCwgdHMpKSB7CisJCXRzID0gamJkMl90aW1lX2RpZmYodHMsIHRyYW5zYWN0aW9uLT50
-X3N0YXJ0KTsKKwkJc3Bpbl9sb2NrKCZ0cmFuc2FjdGlvbi0+dF9oYW5kbGVfbG9jayk7CisJCWlm
-ICh0cyA+IHRyYW5zYWN0aW9uLT50X21heF93YWl0KQorCQkJdHJhbnNhY3Rpb24tPnRfbWF4X3dh
-aXQgPSB0czsKKwkJc3Bpbl91bmxvY2soJnRyYW5zYWN0aW9uLT50X2hhbmRsZV9sb2NrKTsKKwl9
-CisjZW5kaWYKK30KKworCiAvKgogICogc3RhcnRfdGhpc19oYW5kbGU6IEdpdmVuIGEgaGFuZGxl
-LCBkZWFsIHdpdGggYW55IGxvY2tpbmcgb3Igc3RhbGxpbmcKICAqIG5lZWRlZCB0byBtYWtlIHN1
-cmUgdGhhdCB0aGVyZSBpcyBlbm91Z2ggam91cm5hbCBzcGFjZSBmb3IgdGhlIGhhbmRsZQpAQCAt
-OTUsNyArMTEyLDYgQEAgc3RhdGljIGludCBzdGFydF90aGlzX2hhbmRsZShqb3VybmFsX3QgKmpv
-dXJuYWwsIGhhbmRsZV90ICpoYW5kbGUsCiAJaW50IG5lZWRlZDsKIAlpbnQgbmJsb2NrcyA9IGhh
-bmRsZS0+aF9idWZmZXJfY3JlZGl0czsKIAl0cmFuc2FjdGlvbl90ICpuZXdfdHJhbnNhY3Rpb24g
-PSBOVUxMOwotCXVuc2lnbmVkIGxvbmcgdHMgPSBqaWZmaWVzOwogCiAJaWYgKG5ibG9ja3MgPiBq
-b3VybmFsLT5qX21heF90cmFuc2FjdGlvbl9idWZmZXJzKSB7CiAJCXByaW50ayhLRVJOX0VSUiAi
-SkJEOiAlcyB3YW50cyB0b28gbWFueSBjcmVkaXRzICglZCA+ICVkKVxuIiwKQEAgLTI1MCwxNiAr
-MjY2LDcgQEAgcmVwZWF0OgogCSAqIHNlcGFyYXRlIGZsYWcsIGV2ZW50dWFsbHksIHNvIHdlIGNh
-biBlbmFibGUgdGhpcwogCSAqIGluZGVwZW5kZW50bHkgb2YgZGVidWdnaW5nLgogCSAqLwotI2lm
-ZGVmIENPTkZJR19KQkQyX0RFQlVHCi0JaWYgKGpiZDJfam91cm5hbF9lbmFibGVfZGVidWcgJiYK
-LQkgICAgdGltZV9hZnRlcih0cmFuc2FjdGlvbi0+dF9zdGFydCwgdHMpKSB7Ci0JCXRzID0gamJk
-Ml90aW1lX2RpZmYodHMsIHRyYW5zYWN0aW9uLT50X3N0YXJ0KTsKLQkJc3Bpbl9sb2NrKCZ0cmFu
-c2FjdGlvbi0+dF9oYW5kbGVfbG9jayk7Ci0JCWlmICh0cyA+IHRyYW5zYWN0aW9uLT50X21heF93
-YWl0KQotCQkJdHJhbnNhY3Rpb24tPnRfbWF4X3dhaXQgPSB0czsKLQkJc3Bpbl91bmxvY2soJnRy
-YW5zYWN0aW9uLT50X2hhbmRsZV9sb2NrKTsKLQl9Ci0jZW5kaWYKKwlzdGFydF9oYW5kbGVfZGVi
-dWcodHJhbnNhY3Rpb24pOwogCWhhbmRsZS0+aF90cmFuc2FjdGlvbiA9IHRyYW5zYWN0aW9uOwog
-CWF0b21pY19pbmMoJnRyYW5zYWN0aW9uLT50X3VwZGF0ZXMpOwogCWF0b21pY19pbmMoJnRyYW5z
-YWN0aW9uLT50X2hhbmRsZV9jb3VudCk7Cg==
---0015176f0f343317e5048d417bc6--
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
