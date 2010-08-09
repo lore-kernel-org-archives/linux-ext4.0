@@ -1,57 +1,53 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [RFC v2] ext4: Don't send extra barrier during fsync if there
-	are no dirty pages.
-Date: Mon, 9 Aug 2010 12:36:09 -0700
-Message-ID: <20100809193609.GF2109@tux1.beaverton.ibm.com>
-References: <20100429235102.GC15607@tux1.beaverton.ibm.com> <1272934667.2544.3.camel@mingming-laptop> <4BE02C45.6010608@redhat.com> <1273002566.3755.10.camel@mingming-laptop> <20100629205102.GM15515@tux1.beaverton.ibm.com> <20100805164008.GH2901@thunk.org> <20100806071356.GE2109@tux1.beaverton.ibm.com> <20100806180454.GA24583@thunk.org>
-Reply-To: djwong@us.ibm.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v2 1/3] jbd2: Use atomic variables to avoid taking
+ t_handle_lock in jbd2_journal_stop
+Date: Mon, 9 Aug 2010 21:45:55 +0200
+Message-ID: <20100809194554.GB5356@quack.suse.cz>
+References: <1280939957-3277-1-git-send-email-tytso@mit.edu>
+ <1280939957-3277-2-git-send-email-tytso@mit.edu>
+ <20100809170216.GB31969@atrey.karlin.mff.cuni.cz>
+ <20100809190513.GF3635@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: "Ted Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Ke
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com, John Stultz <johnstul@us.ibm.com>,
+	Keith Maanthey <kmannth@us.ibm.com>,
+	Eric Whitney <eric.whitney@hp.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e37.co.us.ibm.com ([32.97.110.158]:37481 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753381Ab0HITgj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Aug 2010 15:36:39 -0400
+Received: from cantor.suse.de ([195.135.220.2]:55893 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754343Ab0HITqd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Aug 2010 15:46:33 -0400
 Content-Disposition: inline
-In-Reply-To: <20100806180454.GA24583@thunk.org>
+In-Reply-To: <20100809190513.GF3635@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 06, 2010 at 02:04:54PM -0400, Ted Ts'o wrote:
-> On Fri, Aug 06, 2010 at 12:13:56AM -0700, Darrick J. Wong wrote:
-> > Yes, it's a proxy for something else.  One of our larger products would like to
-> > use fsync() to flush dirty data out to disk (right now it looks like they use
-> > O_SYNC), but they're concerned that the many threads they use can create an
-> > fsync() storm.  So, they wanted to know how to mitigate the effects of those
-> > storms.  Not calling fsync() except when they really need to guarantee a disk
-> > write is a good start, but I'd like to get ahead of them to pick off more low
-> > hanging fruit like the barrier coordination and not sending barriers when
-> > there's no dirty data ... before they run into it. :)
+On Mon 09-08-10 15:05:13, Ted Ts'o wrote:
+> On Mon, Aug 09, 2010 at 07:02:16PM +0200, Jan Kara wrote:
+> >         spin_lock(&journal->j_state_lock);
+> >         spin_lock(&transaction->t_handle_lock);
+> > -       transaction->t_outstanding_credits -= handle->h_buffer_credits;
+> > -       transaction->t_updates--;
+> > -
+> > -       if (!transaction->t_updates)
+> > +       atomic_sub(handle->h_buffer_credits,
+> > +                  &transaction->t_outstanding_credits);
+> > +       if (atomic_dec_and_test(&transaction->t_updates))
+> >
+> > After this a transaction can disappear so subsequent
+> > __jbd2_log_start_commit shouldn't dereference transaction->t_tid,
+> > right?
 > 
-> Do they need a barrier operation, or do they just want to initiate the
-> I/O?  One of the reasons I found it hard to believe you would have
-> multiple threads all fsync()'ing the same file is that keeping the the
-> file consistent is very hard to do in such a scenario.  Maintaining
-> ACID-level consistency without a single thread which coordinates when
-> commit records gets written is I'm sure theoretically possible, but in
-> practice, I wasn't sure any applications would actually be _written_
-> that way.
+> I think it should be ok because we're holding j_state_lock(), so the
+> transaction can't disappear until we release the j_state_lock.
+  Ah, OK. You're right. I just thought we eventually want to remove the
+lock but you're right that currently the code is fine. Sorry for the noise.
 
-> If the goal is just to make sure I/O is getting initiated, without
-> necessarily waiting for assurance that a specific file write has hit
-> the disk platters, it may be that the Linux-specific
-> sync_file_range(2) system call might be a far more efficient way of
-> achieving those ends.  Without more details about what this product is
-> doing, it's hard to say, of course.
+								Honza
 
-I don't know for sure, though given what I've seen of the app behavior I
-suspect they simply want the disk cache flushed, and don't need the full
-ordering semantics.  That said, I do think they want to make sure that data
-actually hits the disk platters.
-
---D
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
