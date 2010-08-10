@@ -1,71 +1,44 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 3/3] Add batched discard support for ext4
-Date: Tue, 10 Aug 2010 13:32:37 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008101332060.2831@localhost>
-References: <1281094276-11377-1-git-send-email-lczerner@redhat.com> <1281094276-11377-4-git-send-email-lczerner@redhat.com> <20100807222540.GA3573@quack.suse.cz>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Next3 snapshots for everyone :-)
+Date: Tue, 10 Aug 2010 15:56:05 +0200
+Message-ID: <AANLkTimEt6uweU=Cf5-sOi07LF4jBiFFLk-3Cp3fkizK@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	dmonakhov@openvz.org, jmoyer@redhat.com, rwheeler@redhat.com,
-	eshishki@redhat.com, sandeen@redhat.com, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <andreas.dilger@oracle.com>,
+	Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	lwn@lwn.net
+To: next3-users@lists.sourceforge.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30743 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756571Ab0HJLcp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Aug 2010 07:32:45 -0400
-In-Reply-To: <20100807222540.GA3573@quack.suse.cz>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:61527 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753439Ab0HJN4H (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2010 09:56:07 -0400
+Received: by pxi10 with SMTP id 10so59270pxi.19
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Aug 2010 06:56:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 8 Aug 2010, Jan Kara wrote:
+Hi All,
 
-> On Fri 06-08-10 13:31:16, Lukas Czerner wrote:
-> ...
-> > +/**
-> > + * ext4_trim_fs() -- trim ioctl handle function
-> > + * @sb:			superblock for filesystem
-> > + * @start:		First Byte to trim
-> > + * @len:		number of Bytes to trim from start
-> > + * @minlen:		minimum extent length in Bytes
-> > + *
-> > + * ext4_trim_fs goes through all allocation groups containing Bytes from
-> > + * start to start+len. For each such a group ext4_trim_all_free function
-> > + * is invoked to trim all free space.
-> > + */
-> > +int ext4_trim_fs(struct super_block *sb, uint64_t start, uint64_t len,
-> > +		uint64_t minlen)
-> > +{
-> > +	struct ext4_buddy e4b;
-> > +	ext4_fsblk_t first_group, last_group;
-> > +	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
-> > +	ext4_grpblk_t cnt, first_block, last_block;
-> > +	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-> > +	int ret = 0;
-> > +
-> > +	start >>= sb->s_blocksize_bits;
-> > +	len >>= sb->s_blocksize_bits;
-> > +	minlen >>= sb->s_blocksize_bits;
-> > +
-> > +	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
-> > +		return -EINVAL;
-> > +
-> > +	/* Determine first and last group to examine based on start and len */
-> > +	first_group = (start - le32_to_cpu(es->s_first_data_block)) /
-> > +		      EXT4_BLOCKS_PER_GROUP(sb);
-> > +	last_group = (start + len - le32_to_cpu(es->s_first_data_block)) /
-> > +		     EXT4_BLOCKS_PER_GROUP(sb);
-> > +	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
-> > +
-> > +	if (first_group > last_group)
-> > +		return -EINVAL;
-> > +
-> > +	first_block = start % EXT4_BLOCKS_PER_GROUP(sb);
->   I think you should substract "le32_to_cpu(es->s_first_data_block)" from
-> the start before doing modulo.
-> 
-> 									Honza
+Next3 version 1.0.12 was released today:
+http://next3.sf.net/
 
-Oh, right thanks.
+In this release, the installation process was made simpler and faster:
 
--Lukas
+- There is no need to patch and rebuild the kernel.
+- Patched e2fsprogs come pre-compiled with names like mkfs.next3,
+  fsck.next3 and can be installed along side the standard e2fsprogs.
+- The Makefile has a 'make test' that runs next3 tests on a loop mounted
+  image without installing any files on your system (only insmod).
+
+The release was tested on Ubuntu desktop releases 9.10 and 10.4
+and can work on any system with kernel versions 2.6.27 to 2.6.33.
+
+I would be glad to know if Next3 was tested on other distributions.
+Please send your feedbacks to next3-users@lists.sourceforge.net
+and state the distribution and kernel version which you are using.
+
+Thanks for helping me deliver simple and friendly Next3 snapshots to everyone,
+Amir.
