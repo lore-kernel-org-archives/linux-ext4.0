@@ -1,50 +1,39 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk
- addressability check
-Date: Tue, 10 Aug 2010 08:15:19 -0700
-Message-ID: <20100810151518.GC3025@mail.oracle.com>
-References: <874ofr2myq.fsf@patl.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH -v2 1/3] jbd2: Use atomic variables to avoid taking
+ t_handle_lock in jbd2_journal_stop
+Date: Tue, 10 Aug 2010 12:30:46 -0400
+Message-ID: <20100810163046.GM3635@thunk.org>
+References: <1280939957-3277-1-git-send-email-tytso@mit.edu>
+ <1280939957-3277-2-git-send-email-tytso@mit.edu>
+ <20100809170216.GB31969@atrey.karlin.mff.cuni.cz>
+ <20100809190513.GF3635@thunk.org>
+ <20100809194554.GB5356@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com, John Stultz <johnstul@us.ibm.com>,
+	Keith Maanthey <kmannth@us.ibm.com>,
+	Eric Whitney <eric.whitney@hp.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:41565 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932129Ab0HJPQa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2010 11:16:30 -0400
+Received: from thunk.org ([69.25.196.29]:51457 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932212Ab0HJQas (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Aug 2010 12:30:48 -0400
 Content-Disposition: inline
-In-Reply-To: <874ofr2myq.fsf@patl.com>
+In-Reply-To: <20100809194554.GB5356@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 22, 2010 at 03:03:41PM -0700, Patrick J. LoPresti wrote:
-> As part of adding support for OCFS2 to mount huge volumes, we need to
-> check that the sector_t and page cache of the system are capable of
-> addressing the entire volume.
-> 
-> An identical check already appears in ext3 and ext4.  This patch moves
-> the addressability check into its own function in fs/libfs.c and
-> modifies ext3 and ext4 to invoke it.
-> 
-> Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
+On Mon, Aug 09, 2010 at 09:45:55PM +0200, Jan Kara wrote:
+>   Ah, OK. You're right. I just thought we eventually want to remove the
+> lock but you're right that currently the code is fine. Sorry for the noise.
 
-ext4/jbd2 folks,
-	I would like to push these upstream.  Should they go through
-ocfs2.git or would you rather take them via your trees?
+I would love to get rid of the j_state_lock, but looking through the
+code, I couldn't figure out how to do this safely.  Hence my
+conversion of the j_state_lock to a rwlock_t, with the downside of
+this causing more cache line bounces.  If someone can suggest a way to
+drop needing a global spinlock (whether it is an exclusive or rwlock)
+in start_this_handle(), I'd love to hear them.
 
-Joel
-
--- 
-
-"In the arms of the angel, fly away from here,
- From this dark, cold hotel room and the endlessness that you fear.
- You are pulled from the wreckage of your silent reverie.
- In the arms of the angel, may you find some comfort here."
-
-Joel Becker
-Consulting Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+   			    	    	 - Ted
