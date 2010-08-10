@@ -1,88 +1,196 @@
-From: Eric Whitney <eric.whitney@hp.com>
-Subject: Re: [PATCH, RFC 0/3] *** SUBJECT HERE ***  (ext4 scalability patches)
-Date: Mon, 09 Aug 2010 23:40:42 -0400
-Message-ID: <4C60CA3A.5070807@hp.com>
-References: <1280851315-9167-1-git-send-email-tytso@mit.edu>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: [Q] ext4: the max file size of each case is correct?
+Date: Tue, 10 Aug 2010 23:23:21 +0900
+Message-ID: <20100810232321.0eb72247.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com, John Stultz <johnstul@us.ibm.com>,
-	Keith Maanthey <kmannth@us.ibm.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g6t0186.atlanta.hp.com ([15.193.32.63]:18278 "EHLO
-	g6t0186.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756506Ab0HJDkn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Aug 2010 23:40:43 -0400
-In-Reply-To: <1280851315-9167-1-git-send-email-tytso@mit.edu>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:48668 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751537Ab0HJFl5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2010 01:41:57 -0400
+Received: from m6.gw.fujitsu.co.jp ([10.0.50.76])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o7A5fskA016270
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Tue, 10 Aug 2010 14:41:54 +0900
+Received: from smail (m6 [127.0.0.1])
+	by outgoing.m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 3AAB945DE4E
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Aug 2010 14:41:54 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
+	by m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 1B7B145DE4C
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Aug 2010 14:41:54 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 056271DB8013
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Aug 2010 14:41:54 +0900 (JST)
+Received: from m108.s.css.fujitsu.com (m108.s.css.fujitsu.com [10.249.87.108])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id AF76C1DB8012
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Aug 2010 14:41:50 +0900 (JST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/03/2010 12:01 PM, Theodore Ts'o wrote:
-> The first patch in this patch series hasn't changed since when I had
-> last posted it, but I'm including it again for the benefit of the folks
-> on ocfs2-dev.
->
-> Thanks to some work done by Eric Whitney, when he accidentally ran the
-> command "mkfs.ext4 -t xfs", and created a ext4 file system without a
-> journal, it appears that main scalability bottleneck for ext4 is in the
-> jbd2 layer.  In fact, his testing on a 48-core system shows that on some
-> workloads, ext4 is roughly comparable with XFS!
->
-> The lockstat results indicate that the main bottlenecks are in the
-> j_state_lock and t_handle_lock, especially in start_this_handle() in
-> fs/jbd2/transaction.c.  A previous patch, which removed an unneeded
-> grabbing of j_state_lock jbd2_journal_stop() relieved pressure on that
-> lock and was noted to make a significant difference for dbench on a
-> kernel with CONFIG_PREEMPT_RT enabled, as well as on a 48-core AMD
-> system from HP.   This patch is already in 2.6.35, and the benchmark
-> results can be found here: http://free.linux.hp.com/~enw/ext4/2.6.34/
->
-> This patch series removes all exclusive spinlocks when starting and
-> stopping jbd2 handles, which should improve things even more.  Since
-> OCFS2 uses the jbd2 layer, and the second patch in this patch series
-> touches ocfs2 a wee bit, I'd appreciate it if you could take a look and
-> let me know what you think.  Hopefully, this should also improve OCFS2's
-> scalability.
->
-> Best regards,
->
->       					- Ted
->
-> Theodore Ts'o (3):
->    jbd2: Use atomic variables to avoid taking t_handle_lock in
->      jbd2_journal_stop
->    jbd2: Change j_state_lock to be a rwlock_t
->    jbd2: Remove t_handle_lock from start_this_handle()
->
->   fs/ext4/inode.c       |    4 +-
->   fs/ext4/super.c       |    4 +-
->   fs/jbd2/checkpoint.c  |   18 +++---
->   fs/jbd2/commit.c      |   42 +++++++-------
->   fs/jbd2/journal.c     |   94 +++++++++++++++----------------
->   fs/jbd2/transaction.c |  149 ++++++++++++++++++++++++++++---------------------
->   fs/ocfs2/journal.c    |    4 +-
->   include/linux/jbd2.h  |   12 ++--
->   8 files changed, 174 insertions(+), 153 deletions(-)
->
+Hi.
 
+I have tested the following cases in order to confirm the maximum file size.
+For the tests, I selected two parameters:
+(These parameters relate to the max file size.)
+1) Filesystem Feature
+  "extent"
+2) File(Inode) Flag
+  "EXT4_EXTENTS_FL"
+ (This parameter corresponds to the case where people shifts from ext3 into ext4.
+  (Files which are created with ext3 have no "EXT4_EXTENTS_FL" flag.))
 
-My 48 core test results for these patches as applied to 2.6.35 can be 
-found at:
+Table. the max file size which we can write or seek
+       at each filesystem feature tuning and file flag setting
++============+===============================+===============================+
+| \ File flag|                               |                               |
+|      \     |     !EXT4_EXTENTS_FL          |        EXT4_EXTETNS_FL        |
+|Fs Features\|                               |                               |
++------------+-------------------------------+-------------------------------+
+| !extent    |   write:      2194719883264   | write:       --------------   |
+|            |   seek:       2199023251456   | seek:        --------------   |
++------------+-------------------------------+-------------------------------+
+|  extent    |   write:      4402345721856   | write:       17592186044415   |
+|            |   seek:      17592186044415   | seek:        17592186044415   |
++------------+-------------------------------+-------------------------------+
+(
+The symbols (!extent, extent) mean: 
+ !extent: The filesystem feature "extent" is not set.
+	ex.  mkfs.ext3 <dev>; mount -t ext4 <dev>
+  extent: The filesystem feature "extent" is set.
+	ex.  mkfs.ext3 <dev>; tune2fs -Oextent,huge_file <dev>; mount -t ext4 <dev>
+The symbols ("!EXT4_EXTENTS_FL","EXT4_EXTENTS_FL") mean:
+ !EXT4_EXTENS_FL: The file flag, "EXT4_EXTENTS_FL" is not set.
+  EXT4_EXTENS_FL: The file flag, "EXT4_EXTENTS_FL" is set. 
+)
 
-http://free.linux.hp.com/~enw/ext4/2.6.35
+According to the table, if EXT4_EXTETNS_FL flag is not set, the max file
+size of write() is different from the one of seek().
 
-Both the Boxacle large_file_creates and random_writes workloads improved 
-significantly and consistently with these patches, and apparently in the 
-single threaded case as well as at increased scale.
-The graphs at the URL show one instance of several runs I made to 
-establish repeatability.
+These differences don't include in the ext4-specification, do they?
+I think the differences are not the ext4-specification.
 
-I've also taken unmodified 2.6.35 ext4, ext4 without a journal, and xfs 
-data for comparison.  In addition, I've collected lock stats and more 
-detailed performance data for reference.
+So, I made a fix patch of the differences. 
+================================================================================
+Subject: [PATCH] ext4: create own llseek function to handle the max file size correctly.
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-Thanks, Ted!
-Eric
+If the file has no EXT4_EXTENTS_FL flag, the maximum size which can be written
+(write systemcall) is different from the maximum size which can be seeked 
+(lseek systemcall).
 
+For example, the following 2 cases show us the differences:
+#1: mkfs.ext3 <dev>; mount -t ext4 <dev>
+#2: mkfs.ext3 <dev>; tune2fs -Oextent,huge_file <dev>; mount -t ext4 <dev>
+
+Table. the max file size which we can write or seek
+       at each filesystem feature tuning and file flag setting
++============+===============================+===============================+
+| \ File flag|                               |                               |
+|      \     |     !EXT4_EXTENTS_FL          |        EXT4_EXTETNS_FL        |
+|case       \|                               |                               |
++------------+-------------------------------+-------------------------------+
+| #1         |   write:      2194719883264   | write:       --------------   |
+|            |   seek:       2199023251456   | seek:        --------------   |
++------------+-------------------------------+-------------------------------+
+| #2         |   write:      4402345721856   | write:       17592186044415   |
+|            |   seek:      17592186044415   | seek:        17592186044415   |
++------------+-------------------------------+-------------------------------+
+
+The differences exist because ext4 has 2 max-file-size (sb->s_maxbytes, 
+EXT4_SB(sb)->s_bitmap_maxbytes) although generic_file_llseek uses only 
+sb->s_maxbytes.  (llseek of ext4_file_operations is generic_file_llseek.)
+Therefore we create own llseek function which uses 2 max-file-size.
+
+The new own function originates from generic_file_llseek_nolocked().
+If the file flag, "EXT4_EXTENTS_FL" is not set, the function alters 
+inode->i_sb->s_maxbytes into EXT4_SB(inode->i_sb)->s_bitmap_maxbytes.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+---
+ fs/ext4/dir.c  |    2 +-
+ fs/ext4/ext4.h |    1 +
+ fs/ext4/file.c |   39 ++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index ea5e6cb..62c9bba 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -39,7 +39,7 @@ static int ext4_release_dir(struct inode *inode,
+ 				struct file *filp);
+ 
+ const struct file_operations ext4_dir_operations = {
+-	.llseek		= generic_file_llseek,
++	.llseek		= ext4_llseek,
+ 	.read		= generic_read_dir,
+ 	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
+ 	.unlocked_ioctl = ext4_ioctl,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 19a4de5..e7050cd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1870,6 +1870,7 @@ extern const struct file_operations ext4_dir_operations;
+ /* file.c */
+ extern const struct inode_operations ext4_file_inode_operations;
+ extern const struct file_operations ext4_file_operations;
++extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
+ 
+ /* namei.c */
+ extern const struct inode_operations ext4_dir_inode_operations;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 5313ae4..f2e2d57 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -129,8 +129,45 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	return dquot_file_open(inode, filp);
+ }
+ 
++loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
++{
++	struct inode *inode = file->f_mapping->host;
++	loff_t maxbytes;
++
++	mutex_lock(&inode->i_mutex);
++	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
++		maxbytes = EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
++	else
++		maxbytes = inode->i_sb->s_maxbytes;
++	switch (origin) {
++	case SEEK_END:
++		offset += inode->i_size;
++		break;
++	case SEEK_CUR:
++		if (offset == 0) {
++			mutex_unlock(&inode->i_mutex);
++			return file->f_pos;
++		}
++		offset += file->f_pos;
++		break;
++       	}
++
++	if (offset < 0 || offset > maxbytes) {
++		mutex_unlock(&inode->i_mutex);
++		return -EINVAL;
++	}
++
++	if (offset != file->f_pos) {
++		file->f_pos = offset;
++		file->f_version = 0;
++	}
++	mutex_unlock(&inode->i_mutex);
++ 
++	return offset;
++}
++
+ const struct file_operations ext4_file_operations = {
+-	.llseek		= generic_file_llseek,
++	.llseek		= ext4_llseek,
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+-- 
+1.5.5.6
