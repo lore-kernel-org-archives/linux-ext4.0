@@ -1,101 +1,71 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 0/3] Batched discard support
-Date: Tue, 10 Aug 2010 13:31:55 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008101328400.2831@localhost>
-References: <1281094276-11377-1-git-send-email-lczerner@redhat.com> <87zkwzriwm.fsf@dmon-lap.sw.ru> <alpine.LFD.2.00.1008061539010.3645@localhost> <alpine.LFD.2.00.1008061624000.3645@localhost> <87d3tvrdhv.fsf@dmon-lap.sw.ru>
+Subject: Re: [PATCH 3/3] Add batched discard support for ext4
+Date: Tue, 10 Aug 2010 13:32:37 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1008101332060.2831@localhost>
+References: <1281094276-11377-1-git-send-email-lczerner@redhat.com> <1281094276-11377-4-git-send-email-lczerner@redhat.com> <20100807222540.GA3573@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
-	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+	dmonakhov@openvz.org, jmoyer@redhat.com, rwheeler@redhat.com,
+	eshishki@redhat.com, sandeen@redhat.com, tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32897 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30743 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754178Ab0HJLcH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Aug 2010 07:32:07 -0400
-In-Reply-To: <87d3tvrdhv.fsf@dmon-lap.sw.ru>
+	id S1756571Ab0HJLcp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Aug 2010 07:32:45 -0400
+In-Reply-To: <20100807222540.GA3573@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 6 Aug 2010, Dmitry Monakhov wrote:
+On Sun, 8 Aug 2010, Jan Kara wrote:
 
-> Lukas Czerner <lczerner@redhat.com> writes:
+> On Fri 06-08-10 13:31:16, Lukas Czerner wrote:
+> ...
+> > +/**
+> > + * ext4_trim_fs() -- trim ioctl handle function
+> > + * @sb:			superblock for filesystem
+> > + * @start:		First Byte to trim
+> > + * @len:		number of Bytes to trim from start
+> > + * @minlen:		minimum extent length in Bytes
+> > + *
+> > + * ext4_trim_fs goes through all allocation groups containing Bytes from
+> > + * start to start+len. For each such a group ext4_trim_all_free function
+> > + * is invoked to trim all free space.
+> > + */
+> > +int ext4_trim_fs(struct super_block *sb, uint64_t start, uint64_t len,
+> > +		uint64_t minlen)
+> > +{
+> > +	struct ext4_buddy e4b;
+> > +	ext4_fsblk_t first_group, last_group;
+> > +	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+> > +	ext4_grpblk_t cnt, first_block, last_block;
+> > +	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+> > +	int ret = 0;
+> > +
+> > +	start >>= sb->s_blocksize_bits;
+> > +	len >>= sb->s_blocksize_bits;
+> > +	minlen >>= sb->s_blocksize_bits;
+> > +
+> > +	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+> > +		return -EINVAL;
+> > +
+> > +	/* Determine first and last group to examine based on start and len */
+> > +	first_group = (start - le32_to_cpu(es->s_first_data_block)) /
+> > +		      EXT4_BLOCKS_PER_GROUP(sb);
+> > +	last_group = (start + len - le32_to_cpu(es->s_first_data_block)) /
+> > +		     EXT4_BLOCKS_PER_GROUP(sb);
+> > +	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
+> > +
+> > +	if (first_group > last_group)
+> > +		return -EINVAL;
+> > +
+> > +	first_block = start % EXT4_BLOCKS_PER_GROUP(sb);
+>   I think you should substract "le32_to_cpu(es->s_first_data_block)" from
+> the start before doing modulo.
 > 
-> > On Fri, 6 Aug 2010, Lukas Czerner wrote:
-> >
-> >> On Fri, 6 Aug 2010, Dmitry Monakhov wrote:
-> >> 
-> >> > Lukas Czerner <lczerner@redhat.com> writes:
-> >> > 
-> >> > > Hi, all
-> >> > >
-> >> > > because people were worried about possibly long stalls appearing
-> >> > > when FITRIM ioctl is working, I have changed the FITRIM interface
-> >> > > as Dimitry suggested. Now you can choose whether to trim whole
-> >> > > file system or just a part of it, resp. you can specify the range
-> >> > > of Bytes to trim.
-> >> > Agree with whole patch-set, except minor note for ext4'th path.
-> >> > Please feel free to add
-> >> > Reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org> to the series
-> >> > 
-> >> > The only thing what is still not obvious for me is that, there are
-> >> > several types of discard request possible
-> >> > 1) Simple discard 
-> >> > 2) Secure discard which was proposed here http://lkml.org/lkml/2010/6/24/71
-> >> > Should we specify which type should be used in ioctl flags?
-> >> > But i hope that we can just stick maximum security scenario
-> >> > Use secure discard if possible.
-> >> 
-> >> First of all, thanks for you review Dimitry. And second, to be honest I
-> >> am not entirely familiar with the Secure discard implementation. Right
-> >> now it just doing the simple discard like "send TRIM command", so it
-> >> does work just for devices which supports it. I suppose we can just
-> >> check blk_queue_discard() at some level and then decide whether to do
-> >> simple discard (TRIM), or secure discard "Write zeroes", when the device
-> >> does not support TRIM - if it is what you mean by secure discard.
-> >> 
-> >> Regards
-> >> -Lukas
-> >> 
-> >
-> > When I am thinking about this, it may not be a bad idea to create a
-> > completely new ioctl for this purpose of "zeroing all free space". We
-> > do the trimming for completely different reasons, and the "secure"
-> Actually you may be right here.
-> For example it is usual to give some one an usb stick, 
-> and always assumes what USB stick is WhatYouSeeIsWhatYouGet storage.
-> but this is obviously not true, a man now has full access to that
-> device, so  stale data is almost transparently available.
-> Off course i can use SECRM but it has runtime overhead.
-> So i can easily call SECDISCARD (even in emulation mode) before umount
-> in order to be on safe side and then share my USB stick without any
-> fears.
-> 
-> > thing is just an side effect, so we probably should not mix it together.
-> >
-> > The new ioclt (FISECER ?) and FITRIM can use the same infrastructure in
-> > ext3/4, but we should add a flag to distinguish what we need to do -
-> > TRIM or secure erase. What do you think ?
-> Or we can just add a behavior flags filed
-> DISCARD    :will works only for SDD and return ENOTSUPP for others
-> SECURE_DEL :will guarantee that data will be zeroed on success.
-> 
-> DISCARD ->    (simple discard) send discard requests
-> SECURE_DEL -> (simple emulation) write free space with zeroes
-> (DISCARD|SECURE_DEL) -> send discards request with secure flag enabled.
+> 									Honza
 
-Ok, so lets finish this simple discard thing first and then, when there
-will be a "real" interest in this we can do something about it.
+Oh, right thanks.
 
-Thanks, Dimitry.
 -Lukas
-
-> >
-> > Regards
-> > -lukas
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
