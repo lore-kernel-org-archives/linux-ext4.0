@@ -1,89 +1,101 @@
-From: Andreas Dilger <andreas.dilger@oracle.com>
-Subject: Re: [Q] ext
-Date: Tue, 10 Aug 2010 02:35:57 -0400
-Message-ID: <ADCE32D6-3919-45CA-BA50-1BE86583F74D@oracle.com>
-References: <20100810232321.0eb72247.toshi.okajima@jp.fujitsu.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	linux-ext4 development <linux-ext4@vger.kernel.org>
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 0/3] Batched discard support
+Date: Tue, 10 Aug 2010 13:31:55 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1008101328400.2831@localhost>
+References: <1281094276-11377-1-git-send-email-lczerner@redhat.com> <87zkwzriwm.fsf@dmon-lap.sw.ru> <alpine.LFD.2.00.1008061539010.3645@localhost> <alpine.LFD.2.00.1008061624000.3645@localhost> <87d3tvrdhv.fsf@dmon-lap.sw.ru>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	jmoyer@redhat.com, rwheeler@redhat.com, eshishki@redhat.com,
+	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:26591 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751117Ab0HJGhd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2010 02:37:33 -0400
-In-Reply-To: <20100810232321.0eb72247.toshi.okajima@jp.fujitsu.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32897 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754178Ab0HJLcH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Aug 2010 07:32:07 -0400
+In-Reply-To: <87d3tvrdhv.fsf@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, 6 Aug 2010, Dmitry Monakhov wrote:
 
-On 2010-08-10, at 10:23, Toshiyuki Okajima wrote:
-> Table. the max file size which we can write or seek
->       at each filesystem feature tuning and file flag setting
-> +===============================+===============================+
-> |                               |                               |
-> |     !EXT4_EXTENTS_FL          |        EXT4_EXTETNS_FL        |
-> |                               |                               |
-> +-------------------------------+-------------------------------+
-> |   write:      2194719883264   | write:       --------------   |
-> |   seek:       2199023251456   | seek:        --------------   |
-> +-------------------------------+-------------------------------+
-> |   write:      4402345721856   | write:       17592186044415   |
-> |   seek:      17592186044415   | seek:        17592186044415   |
-> +-------------------------------+-------------------------------+
+> Lukas Czerner <lczerner@redhat.com> writes:
+> 
+> > On Fri, 6 Aug 2010, Lukas Czerner wrote:
+> >
+> >> On Fri, 6 Aug 2010, Dmitry Monakhov wrote:
+> >> 
+> >> > Lukas Czerner <lczerner@redhat.com> writes:
+> >> > 
+> >> > > Hi, all
+> >> > >
+> >> > > because people were worried about possibly long stalls appearing
+> >> > > when FITRIM ioctl is working, I have changed the FITRIM interface
+> >> > > as Dimitry suggested. Now you can choose whether to trim whole
+> >> > > file system or just a part of it, resp. you can specify the range
+> >> > > of Bytes to trim.
+> >> > Agree with whole patch-set, except minor note for ext4'th path.
+> >> > Please feel free to add
+> >> > Reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org> to the series
+> >> > 
+> >> > The only thing what is still not obvious for me is that, there are
+> >> > several types of discard request possible
+> >> > 1) Simple discard 
+> >> > 2) Secure discard which was proposed here http://lkml.org/lkml/2010/6/24/71
+> >> > Should we specify which type should be used in ioctl flags?
+> >> > But i hope that we can just stick maximum security scenario
+> >> > Use secure discard if possible.
+> >> 
+> >> First of all, thanks for you review Dimitry. And second, to be honest I
+> >> am not entirely familiar with the Secure discard implementation. Right
+> >> now it just doing the simple discard like "send TRIM command", so it
+> >> does work just for devices which supports it. I suppose we can just
+> >> check blk_queue_discard() at some level and then decide whether to do
+> >> simple discard (TRIM), or secure discard "Write zeroes", when the device
+> >> does not support TRIM - if it is what you mean by secure discard.
+> >> 
+> >> Regards
+> >> -Lukas
+> >> 
+> >
+> > When I am thinking about this, it may not be a bad idea to create a
+> > completely new ioctl for this purpose of "zeroing all free space". We
+> > do the trimming for completely different reasons, and the "secure"
+> Actually you may be right here.
+> For example it is usual to give some one an usb stick, 
+> and always assumes what USB stick is WhatYouSeeIsWhatYouGet storage.
+> but this is obviously not true, a man now has full access to that
+> device, so  stale data is almost transparently available.
+> Off course i can use SECRM but it has runtime overhead.
+> So i can easily call SECDISCARD (even in emulation mode) before umount
+> in order to be on safe side and then share my USB stick without any
+> fears.
+> 
+> > thing is just an side effect, so we probably should not mix it together.
+> >
+> > The new ioclt (FISECER ?) and FITRIM can use the same infrastructure in
+> > ext3/4, but we should add a flag to distinguish what we need to do -
+> > TRIM or secure erase. What do you think ?
+> Or we can just add a behavior flags filed
+> DISCARD    :will works only for SDD and return ENOTSUPP for others
+> SECURE_DEL :will guarantee that data will be zeroed on success.
+> 
+> DISCARD ->    (simple discard) send discard requests
+> SECURE_DEL -> (simple emulation) write free space with zeroes
+> (DISCARD|SECURE_DEL) -> send discards request with secure flag enabled.
 
-Interesting.  The 2TB vs. 4TB difference for block-mapped files is due to the removal of the 2^32 sectors limit imposed by i_blocks, and is not strictly related to extents.
+Ok, so lets finish this simple discard thing first and then, when there
+will be a "real" interest in this we can do something about it.
 
-> +loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
-> +{
-> +	struct inode *inode = file->f_mapping->host;
-> +	loff_t maxbytes;
-> +
-> +	mutex_lock(&inode->i_mutex);
-> +	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-> +		maxbytes = EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
-> +	else
-> +		maxbytes = inode->i_sb->s_maxbytes;
+Thanks, Dimitry.
+-Lukas
 
-This part doesn't really have to be under i_mutex.  Otherwise, the patch looks reasonable.
-
-> +	switch (origin) {
-> +	case SEEK_END:
-> +		offset += inode->i_size;
-> +		break;
-> +	case SEEK_CUR:
-> +		if (offset == 0) {
-> +			mutex_unlock(&inode->i_mutex);
-> +			return file->f_pos;
-> +		}
-> +		offset += file->f_pos;
-> +		break;
-> +       	}
-> +
-> +	if (offset < 0 || offset > maxbytes) {
-> +		mutex_unlock(&inode->i_mutex);
-> +		return -EINVAL;
-> +	}
-> +
-> +	if (offset != file->f_pos) {
-> +		file->f_pos = offset;
-> +		file->f_version = 0;
-> +	}
-> +	mutex_unlock(&inode->i_mutex);
-> + 
-> +	return offset;
-> +}
-
-It's too bad that we have to duplicate the whole generic_file_llseek() code here, but I don't think there is a better solution.  However, it is worthwhile to add a comment to this function like:
-
-/* copied from generic_file_llseek() to handle both block-mapped and
- * extent-mapped maxbytes values.  Should otherwise be identical. */
-
-Cheers, Andreas
---
-Andreas Dilger
-Lustre Technical Lead
-Oracle Corporation Canada Inc.
-
+> >
+> > Regards
+> > -lukas
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
