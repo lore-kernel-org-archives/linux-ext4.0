@@ -1,39 +1,58 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH -v2 1/3] jbd2: Use atomic variables to avoid taking
- t_handle_lock in jbd2_journal_stop
-Date: Tue, 10 Aug 2010 12:30:46 -0400
-Message-ID: <20100810163046.GM3635@thunk.org>
-References: <1280939957-3277-1-git-send-email-tytso@mit.edu>
- <1280939957-3277-2-git-send-email-tytso@mit.edu>
- <20100809170216.GB31969@atrey.karlin.mff.cuni.cz>
- <20100809190513.GF3635@thunk.org>
- <20100809194554.GB5356@quack.suse.cz>
+From: Christoph Fritz <chf.fritz@googlemail.com>
+Subject: [PATCH] jbd2: fix warning if CONFIG_JBD2_DEBUG is not used
+Date: Wed, 11 Aug 2010 03:39:02 +0200
+Message-ID: <1281490742.4423.10.camel@lovely.krouter>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com, John Stultz <johnstul@us.ibm.com>,
-	Keith Maanthey <kmannth@us.ibm.com>,
-	Eric Whitney <eric.whitney@hp.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=iso-8859-7
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	dingdinghua <dingdinghua@nrchpc.ac.cn>,
+	Joel Becker <joel.becker@oracle.com>,
+	Mark Fasheh <mfasheh@suse.com>, linux-ext4@vger.kernel.org,
+	kernel-janitors <kernel-janitors@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51457 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932212Ab0HJQas (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Aug 2010 12:30:48 -0400
-Content-Disposition: inline
-In-Reply-To: <20100809194554.GB5356@quack.suse.cz>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34581 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758058Ab0HKBfd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2010 21:35:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 09, 2010 at 09:45:55PM +0200, Jan Kara wrote:
->   Ah, OK. You're right. I just thought we eventually want to remove the
-> lock but you're right that currently the code is fine. Sorry for the noise.
+Commit 8dd420466c7bfc459fa04680bd5690bfc41a4553 makes variable ts unuse=
+d
+when CONFIG_JBD2_DEBUG is not used. This patch ifdefs it too.
 
-I would love to get rid of the j_state_lock, but looking through the
-code, I couldn't figure out how to do this safely.  Hence my
-conversion of the j_state_lock to a rwlock_t, with the downside of
-this causing more cache line bounces.  If someone can suggest a way to
-drop needing a global spinlock (whether it is an exclusive or rwlock)
-in start_this_handle(), I'd love to hear them.
+fs/jbd2/transaction.c: In function =A1start_this_handle=A2:
+fs/jbd2/transaction.c:98: warning: unused variable =A1ts=A2
 
-   			    	    	 - Ted
+Signed-off-by: Christoph Fritz <chf.fritz@googlemail.com>
+---
+ fs/jbd2/transaction.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index d95cc9d..745d3b2 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -95,7 +95,9 @@ static int start_this_handle(journal_t *journal, hand=
+le_t *handle,
+ 	int needed;
+ 	int nblocks =3D handle->h_buffer_credits;
+ 	transaction_t *new_transaction =3D NULL;
++#ifdef CONFIG_JBD2_DEBUG
+ 	unsigned long ts =3D jiffies;
++#endif
+=20
+ 	if (nblocks > journal->j_max_transaction_buffers) {
+ 		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
+--=20
+1.7.1
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
