@@ -1,72 +1,51 @@
-From: Evan Jones <evanj@MIT.EDU>
-Subject: Intel SSD data loss: Any possible way this is user / software error?
-Date: Thu, 12 Aug 2010 17:02:19 -0400
-Message-ID: <4C64615B.70308@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk addressability check
+Date: Thu, 12 Aug 2010 15:32:27 -0600
+Message-ID: <209AEA97-E284-4ADB-8774-50C2630606B9@dilger.ca>
+References: <874ofr2myq.fsf@patl.com> <20100812174215.GC6561@mail.oracle.com> <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca> <20100812201534.GA22777@mail.oracle.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "Ted Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org Patrick J. LoPresti"
+	<lopresti@gmail.com>
+To: Joel Becker <Joel.Becker@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:54340 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933653Ab0HLVCW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Aug 2010 17:02:22 -0400
-Received: from outgoing.mit.edu (OUTGOING-AUTH.MIT.EDU [18.7.22.103])
-	by mailhub-auth-3.mit.edu (8.13.8/8.9.2) with ESMTP id o7CL2L6n016546
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Aug 2010 17:02:21 -0400
-Received: from [18.26.0.45] (algoza.csail.mit.edu [18.26.0.45])
-	(authenticated bits=0)
-        (User authenticated as evanj@CSAIL.MIT.EDU@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.13.6/8.12.4) with ESMTP id o7CL2K8D016295
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Aug 2010 17:02:21 -0400 (EDT)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:36077 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755126Ab0HLVcy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Aug 2010 17:32:54 -0400
+In-Reply-To: <20100812201534.GA22777@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I'm testing a few systems that attempt to log data to disk reliably. I 
-bought a brand new Intel SSD (X25-M G2) for this purpose. It appears to 
-me that this disk does *not* store data reliably when there are power 
-failures, even with write barriers, even with the cache disabled. I'm 
-surprised that this disk might be this broken (possible), but it may 
-also mean I've made a mistake. Is there any possible way that I have a 
-bug in the test described below? The test works as expected with a 
-couple SATA magnetic disks.
+On 2010-08-12, at 14:15, Joel Becker wrote:
+
+> On Thu, Aug 12, 2010 at 12:45:41PM -0600, Andreas Dilger wrote:
+>> On 2010-08-12, at 11:42, Joel Becker wrote:
+>>>> +int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
+>>>> +{
+>>>> +	u64 last_fs_block = num_blocks - 1;
+>>>> +
+>>>> +	BUG_ON(blocksize_bits < 9);
+>>>> +	BUG_ON(blocksize_bits > PAGE_CACHE_SHIFT);
+>> 
+>> I'd rather not have a BUG_ON() for a "check" function that may be called with on-disk values by some filesystem.  Some filesystems (AFAIR) also handle blocksize > PAGE_SIZE internally, so this helper would not be useful for them.
+> 
+> 	Filesystems that handle their own page cache certainly wouldn't
+> be interested in a generic helper anyway.  All of our pagecache assumes
+> blocks between 512<->PAGE_CACHE_SIZE.
+> 	If I change the BUG_ON()s to -EINVAL, does that work?  Or do you
+> have some way you'd like to allow non-pagecache filesystems to use this
+> as well?
+
+That's probably fine for now.  If anyone complains, we can always change it later, since they can't possibly depend on this function yet...
+
+Cheers, Andreas
 
 
-Configuration:
-
-* Linux 2.6.32 (a distributed with Ubuntu 10.04)
-* SATA SSD directly attached to the system's built-in controller (Intel 
-N10/ICH7)
-* ext4 with default options (meaning barrier=1)
-* Disable the write cache (hdparm -W 0 /dev/sdb)
 
 
-The test:
 
-1. Write a 64 MB file of zeros (first use fallocate, then zero fill)
-2. fsync()
-3. write() blocks of this file with a sequence number.
-4. fdatasync()
-5. Send UDP packet reporting the sequence number written.
-6. Go to 3.
-
-While this test is running, I pull the power out of the drive to 
-simulate a hard failure. On the magnetic disks I have, this works as 
-expected: On reboot, the log file contains the complete record that was 
-reported as last written (it may also contain part of the next record).
-
-On the X25-M, when I use large writes (128 kB), it loses data fairly 
-frequently (every couple attempts): I either see the last log record as 
-being before the reported one, or occasionally I get a media error when 
-reading back the file.
-
-I'm surprised that this disk could be this broken, but I suppose it is 
-possible. Any help is welcomed. Thanks,
-
-Evan Jones
-
--- 
-Evan Jones
-http://evanjones.ca/
