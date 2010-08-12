@@ -1,74 +1,38 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH 2/3] JBD2: Allow feature checks before
- journal recovery
-Date: Thu, 12 Aug 2010 10:43:19 -0700
-Message-ID: <20100812174318.GD6561@mail.oracle.com>
-References: <874ofr2myq.fsf@patl.com>
- <8739vb2mxr.fsf@patl.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Problem with 15TB logical volume
+Date: Thu, 12 Aug 2010 11:44:31 -0600
+Message-ID: <7C289A14-A86A-47F6-B092-AFF94CF734AA@dilger.ca>
+References: <20100812091635.GC2699@asrockhome.verdurin.salon> <4C63FA81.8060306@redhat.com> <20100812145130.GD2699@asrockhome.verdurin.salon>
+Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-Cc: ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, "Ted Ts'o" <tytso@mit.edu>,
-	"Patrick J. LoPresti" <lopresti@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <8739vb2mxr.fsf@patl.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Adam Huffman <bloch@verdurin.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:9131 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760456Ab0HLRod (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Aug 2010 13:44:33 -0400
+In-Reply-To: <20100812145130.GD2699@asrockhome.verdurin.salon>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 22, 2010 at 03:04:16PM -0700, Patrick J. LoPresti wrote:
-> Before we start accessing a huge (> 16 TiB) OCFS2 volume, we need to
-> confirm that its journal supports 64-bit offsets.  In particular, we
-> need to check the journal's feature bits before recovering the journal.
-> 
-> This is not possible with JBD2 at present, because the journal
-> superblock (where the feature bits reside) is not loaded from disk until
-> the journal is recovered.
-> 
-> This patch loads the journal superblock in
-> jbd2_journal_check_used_features() if it has not already been loaded,
-> allowing us to check the feature bits before journal recovery.
-> 
-> Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
+On 2010-08-12, at 08:51, Adam Huffman wrote:
+>>> mke4fs -E stride=32 stripe-width=384 -i 65536 -j -v \
+>>> /dev/mapper/vg2md3000isata-homes2 
+>>> 
+>>> mke4fs 1.41.9 (22-Aug-2009)
+>>> mke4fs: invalid blocks count - /dev/mapper/vg2md3000isata-homes2
 
-Dear jbd2 developers,
-	I've pushed this patch to the merge-window branch of ocfs2.git.
-I'm ready to send it to Linus, but I need your OK.
+I think if this was reported as:
 
-Joel
+mke4fs: invalid blocks count '/dev/mapper/vg2md3000isata-homes2'
 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index bc2ff59..5cfd8d4 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1365,6 +1365,10 @@ int jbd2_journal_check_used_features (journal_t *journal, unsigned long compat,
->  
->  	if (!compat && !ro && !incompat)
->  		return 1;
-> +	/* Load journal superblock if it is not loaded yet. */
-> +	if (journal->j_format_version == 0 &&
-> +	    journal_get_superblock(journal) != 0)
-> +		return 0;
->  	if (journal->j_format_version == 1)
->  		return 0;
->  
-> 
-> _______________________________________________
-> Ocfs2-devel mailing list
-> Ocfs2-devel@oss.oracle.com
-> http://oss.oracle.com/mailman/listinfo/ocfs2-devel
+it would definitely help.
 
--- 
+Cheers, Andreas
 
- Brain: I shall pollute the water supply with this DNAdefibuliser,
-        turning everyone into mindless slaves.
- Pinky: What about the people who drink bottled water?
- Brain: Pinky, people who pay 5 dollars for a bottle of water are
-        already mindless slaves.
 
-Joel Becker
-Consulting Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+
+
+
