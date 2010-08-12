@@ -2,7 +2,7 @@ From: Joel Becker <Joel.Becker@oracle.com>
 Subject: Re: [Ocfs2-devel] [PATCH 2/3] JBD2: Allow feature checks before
  journal recovery
 Date: Thu, 12 Aug 2010 16:03:53 -0700
-Message-ID: <20100812230353.GE22777__28054.2686036371$1281654290$gmane$org@mail.oracle.com>
+Message-ID: <20100812230353.GE22777__29351.388596888$1281654314$gmane$org@mail.oracle.com>
 References: <874ofr2myq.fsf@patl.com>
  <8739vb2mxr.fsf@patl.com>
  <20100812174318.GD6561@mail.oracle.com>
@@ -12,11 +12,15 @@ To: Jan Kara <jack@suse.cz>, "Ted Ts'o" <tytso@mit.edu>,
 	"Patrick J. LoPresti" <lopresti@gmail.com>,
 	ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org,
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:52840 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761034Ab0HLXEd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Aug 2010 19:04:33 -0400
 Content-Disposition: inline
 In-Reply-To: <20100812174318.GD6561@mail.oracle.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, Aug 12, 2010 at 10:43:19AM -0700, Joel Becker wrote:
 > On Thu, Jul 22, 2010 at 03:04:16PM -0700, Patrick J. LoPresti wrote:
