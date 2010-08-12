@@ -1,57 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] mke2fs: make "invalid blocks count" error more clear
-Date: Thu, 12 Aug 2010 14:40:44 -0400
-Message-ID: <4C64402C.3050205@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk addressability check
+Date: Thu, 12 Aug 2010 12:45:41 -0600
+Message-ID: <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca>
+References: <874ofr2myq.fsf@patl.com> <20100812174215.GC6561@mail.oracle.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "Ted Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org Patrick J. LoPresti"
+	<lopresti@gmail.com>
+To: Joel Becker <Joel.Becker@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59858 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753956Ab0HLSks (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Aug 2010 14:40:48 -0400
-Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o7CIelWv021963
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Aug 2010 14:40:47 -0400
-Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o7CIeiev005896
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Aug 2010 14:40:47 -0400
+Received: from rcsinet10.oracle.com ([148.87.113.121]:50912 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753742Ab0HLSql convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Aug 2010 14:46:41 -0400
+In-Reply-To: <20100812174215.GC6561@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mistakes on the commandline can lead to odd error messages:
+On 2010-08-12, at 11:42, Joel Becker wrote:
+>> +/**
+>> + * generic_check_addressable - Check addressability of file system
+>> + * @blocksize_bits:	log of file system block size
+>> + * @num_blocks:		number of blocks in file system
+>> + *
+>> + * Determine whether a file system with @num_blocks blocks (and a
+>> + * block size of 2**@blocksize_bits) is addressable by the sector_t
+>> + * and page cache of the system.  Return 0 if so and -EFBIG otherwise.
+>> + */
+>> +int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
+>> +{
+>> +	u64 last_fs_block = num_blocks - 1;
+>> +
+>> +	BUG_ON(blocksize_bits < 9);
+>> +	BUG_ON(blocksize_bits > PAGE_CACHE_SHIFT);
 
-# mke2fs -t ext4 -E stride=128 stripe-width=512 /dev/sda1
-mke2fs: invalid blocks count - /dev/sda1
+I'd rather not have a BUG_ON() for a "check" function that may be called with on-disk values by some filesystem.  Some filesystems (AFAIR) also handle blocksize > PAGE_SIZE internally, so this helper would not be useful for them.
 
-Making it a bit more explicit is more obvious:
+Cheers, Andreas
 
-mke2fs: invalid blocks count '/dev/sda1' on device 'stripe-width=512'
-
-(hint, the mistake was no comma separation for -E)
-
-Reported-by: Adam Huffman <bloch@verdurin.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index add7c0c..a34c1ba 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1415,8 +1415,9 @@ static void PRS(int argc, char *argv[])
- 		fs_blocks_count = parse_num_blocks2(argv[optind++],
- 						   fs_param.s_log_block_size);
- 		if (!fs_blocks_count) {
--			com_err(program_name, 0, _("invalid blocks count - %s"),
--				argv[optind - 1]);
-+			com_err(program_name, 0,
-+				_("invalid blocks count '%s' on device '%s'"),
-+				argv[optind - 1], device_name);
- 			exit(1);
- 		}
- 	}
 
 
