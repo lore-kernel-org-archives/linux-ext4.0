@@ -1,68 +1,98 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 23/39] fallthru: ext2 fallthru support
-Date: Fri, 13 Aug 2010 15:52:02 +0200
-Message-ID: <E1Ojufy-0004Df-PA@pomaz-ex.szeredi.hu>
-References: <1281282776-5447-1-git-send-email-vaurora@redhat.com> <1281282776-5447-24-git-send-email-vaurora@redhat.com>
-Cc: viro@zeniv.linux.org.uk, miklos@szeredi.hu, jblunck@suse.de,
-	hch@infradead.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, vaurora@redhat.com, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <1281282776-5447-24-git-send-email-vaurora@redhat.com> (message
-	from Valerie Aurora on Sun, 8 Aug 2010 11:52:40 -0400)
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Evan Jones <evanj@MIT.EDU>
+Subject: Re: Intel SSD data loss: Any possible way this is user / software error?
+Date: Fri, 13 Aug 2010 12:07:19 -0400
+Message-ID: <AD482FB5-0A56-43F2-BB70-8F218657DCE0@MIT.EDU>
+References: <4C64615B.70308@mit.edu> <4C65331A.9050203@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:45772 "EHLO
+	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755034Ab0HMQHe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Aug 2010 12:07:34 -0400
+In-Reply-To: <4C65331A.9050203@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun,  8 Aug 2010, Valerie Aurora wrote:
-> Add support for fallthru directory entries to ext2.
+On Aug 13, 2010, at 7:57 , Eric Sandeen wrote:
+> Just out of curiosity, what do you see when the write cache is on?
+> Seems counter-intuitive that it'd work better, but talking w/
+> Ric Wheeler, he was curious... maybe Intel didn't test with the
+> write cache off?
 
-This still doesn't work correctly, only now after unmounting/mounting
-the top layer the directory appears empty:
+Data loss is much easier to trigger with the write cache on. It  
+happens to me on the first try. With the write cache off, I've only  
+been able to get it to occur with large writes (64 kB or larger), and  
+only about once every 3 times.
 
-uml:~# mount -oloop -r ext3.img /mnt/img/
-uml:~# losetup /dev/loop2  ovl.img  
-uml:~# /host/store/git/e2fsprogs/misc/mke2fs -O whiteout,fallthru /dev/loop2
-mke2fs 1.41.12 (17-May-2010)
-Filesystem label=
-OS type: Linux
-Block size=1024 (log=0)
-Fragment size=1024 (log=0)
-Stride=0 blocks, Stripe width=0 blocks
-1280 inodes, 10240 blocks
-512 blocks (5.00%) reserved for the super user
-First data block=1
-Maximum filesystem blocks=10485760
-2 block groups
-8192 blocks per group, 8192 fragments per group
-640 inodes per group
-Superblock backups stored on blocks: 
-        8193
+Others have observed data loss with the write cache enabled using  
+Intel SSDs. However, no one else seems to report data loss with the  
+cache disabled, which makes me wonder if I am doing something wrong.  
+With the X25-E:
 
-Allocating group tables: done                            
-Writing inode tables: done                            
-Writing superblocks and filesystem accounting information: done
+http://www.mysqlperformanceblog.com/2009/03/02/ssd-xfs-lvm-fsync-write-cache-barrier-and-lost-transactions/
 
-This filesystem will be automatically checked every 24 mounts or
-180 days, whichever comes first.  Use tune2fs -c or -i to override.
-uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
-uml:~# "ls" /mnt/img
-lost+found  union
-uml:~# "ls" /mnt/img/union
-1  2  3
-uml:~# umount /mnt/img
-uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
-uml:~# ls -l /mnt/img/
-total 13
-drwx------ 2 root root 12288 Aug 13 13:42 lost+found
-drwxr-xr-x 2 root root  1024 Aug 13 13:42 union
-uml:~# ls -la /mnt/img/union/
-total 2
-drwxr-xr-x 2 root root 1024 Aug 13 13:42 .
-drwxr-xr-x 4 root root 1024 Aug 13 13:42 ..
-uml:~# grep /mnt/img /proc/self/mountinfo 
-21 12 7:0 / /mnt/img ro,relatime - ext3 /dev/loop0 ro,errors=continue,barrier=0,data=writeback
-22 21 7:2 / /mnt/img rw,relatime,union - ext2 /dev/loop2 rw,errors=continue
+And with the X25-M G2:
 
-Thanks,
-Miklos
+http://thread.gmane.org/gmane.os.solaris.opensolaris.zfs/33472
+
+
+> Also, would you be willing to publish the test you're using?
+
+The programs I have been using are here (but see below):
+
+http://people.csail.mit.edu/evanj/hg/index.cgi/hstore/file/tip/logging/minlogcrash.c
+http://people.csail.mit.edu/evanj/hg/index.cgi/hstore/file/tip/logging/logfilecrashserver.cc
+
+minlogcrash.c is actually a simplified version of my *real* test  
+program (below). However, that program has a lot of dependencies and  
+unrelated crap. Unfortunately, I'm away from my hardware for the next  
+10 days or so, so minlogcrash has not actually been crash tested. I  
+think it should be equivalent, but just in case, the crash tested  
+version is here:
+
+http://people.csail.mit.edu/evanj/hg/index.cgi/hstore/file/tip/logging/logfilecrash.cc
+
+
+My test procedure:
+
+1. Start logfilecrashserver on a workstation:
+
+./logfilecrashserver 12345
+
+2. Start minlogcrash on the system under test (using large writes is  
+more likely to lose data: 128 kB or so):
+
+./minlogcrash tmp workstation 12345 131072
+
+3. Once the workstation starts receiving log records, pull the power  
+from the back of the SSD.
+4. Power off the system (my system doesn't support hotplug, so losing  
+the power on the SSD makes it unhappy)
+5. Reconnected power to the SSD.
+6. Power the server back on.
+7. Observe the output of logfilecrash using hexdump.
+
+You should find that the file has *at least* the last record reported  
+by logfilecrashserver. It may have (part of) the next record. Error  
+modes I have observed: it is missing the last reported record  
+entirely; it has a truncated record; occasionally I get some sort of  
+media error in the kernel and I can't read the entire file.
+
+Finally full disclosure: I tested this a lot more with the Intel SSD  
+than with my magnetic disks. With the magnetic disks and barrier=0, I  
+was able to very easily see "lost writes", but with barrier=1 it  
+seemed to work. However, I still need to go back and re-test the  
+magnetic disks multiple times, to ensure they are behaving the way I  
+expect.
+
+Evan
+
+--
+Evan Jones
+http://evanjones.ca/
+
