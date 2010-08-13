@@ -1,98 +1,67 @@
-From: Evan Jones <evanj@MIT.EDU>
-Subject: Re: Intel SSD data loss: Any possible way this is user / software error?
-Date: Fri, 13 Aug 2010 12:07:19 -0400
-Message-ID: <AD482FB5-0A56-43F2-BB70-8F218657DCE0@MIT.EDU>
-References: <4C64615B.70308@mit.edu> <4C65331A.9050203@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-5.MIT.EDU ([18.7.68.34]:45772 "EHLO
-	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755034Ab0HMQHe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Aug 2010 12:07:34 -0400
-In-Reply-To: <4C65331A.9050203@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk
+ addressability check
+Date: Fri, 13 Aug 2010 18:30:07 +0200
+Message-ID: <20100813163006.GB4329@quack.suse.cz>
+References: <874ofr2myq.fsf@patl.com>
+ <20100812174215.GC6561@mail.oracle.com>
+ <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca>
+ <20100812201534.GA22777@mail.oracle.com>
+ <209AEA97-E284-4ADB-8774-50C2630606B9@dilger.ca>
+ <20100812222949.GC22777@mail.oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, Ted Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, ocfs2-devel@oss.oracle.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org Patrick J. LoPresti"
+	<lopresti@gmail.com>
+To: Joel Becker <Joel.Becker@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100812222949.GC22777@mail.oracle.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Aug 13, 2010, at 7:57 , Eric Sandeen wrote:
-> Just out of curiosity, what do you see when the write cache is on?
-> Seems counter-intuitive that it'd work better, but talking w/
-> Ric Wheeler, he was curious... maybe Intel didn't test with the
-> write cache off?
+On Thu 12-08-10 15:29:49, Joel Becker wrote:
+> diff --git a/fs/libfs.c b/fs/libfs.c
+> index dcaf972..f099566 100644
+> --- a/fs/libfs.c
+> +++ b/fs/libfs.c
+> @@ -955,6 +955,35 @@ int generic_file_fsync(struct file *file, int datasync)
+>  }
+>  EXPORT_SYMBOL(generic_file_fsync);
+>  
+> +/**
+> + * generic_check_addressable - Check addressability of file system
+> + * @blocksize_bits:	log of file system block size
+> + * @num_blocks:		number of blocks in file system
+> + *
+> + * Determine whether a file system with @num_blocks blocks (and a
+> + * block size of 2**@blocksize_bits) is addressable by the sector_t
+> + * and page cache of the system.  Return 0 if so and -EFBIG otherwise.
+> + */
+> +int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
+> +{
+> +	u64 last_fs_block = num_blocks - 1;
+> +
+> +	if (unlikely(num_blocks == 0))
+> +		return 0;
+> +
+> +	if ((blocksize_bits < 9) || (blocksize_bits > PAGE_CACHE_SHIFT))
+> +		return -EINVAL;
+> +
+> +	if ((last_fs_block >
+> +	     (sector_t)(~0ULL) >> (blocksize_bits - 9)) ||
+> +	    (last_fs_block >
+> +	     (pgoff_t)(~0ULL) >> (PAGE_CACHE_SHIFT - blocksize_bits))) {
+            ^^^ I don't get the pgoff_t check. Shouldn't it rather be
+(u64)(pgoff_t)(~0ULL) << (PAGE_CACHE_SHIFT - blocksize_bits)?
+Because on 32-bit arch we are able to address 16TB device, which is for 1KB
+blocksize 1<<34 blocks. But your math gives 1<<30 blocks...
 
-Data loss is much easier to trigger with the write cache on. It  
-happens to me on the first try. With the write cache off, I've only  
-been able to get it to occur with large writes (64 kB or larger), and  
-only about once every 3 times.
+									Honza
 
-Others have observed data loss with the write cache enabled using  
-Intel SSDs. However, no one else seems to report data loss with the  
-cache disabled, which makes me wonder if I am doing something wrong.  
-With the X25-E:
-
-http://www.mysqlperformanceblog.com/2009/03/02/ssd-xfs-lvm-fsync-write-cache-barrier-and-lost-transactions/
-
-And with the X25-M G2:
-
-http://thread.gmane.org/gmane.os.solaris.opensolaris.zfs/33472
-
-
-> Also, would you be willing to publish the test you're using?
-
-The programs I have been using are here (but see below):
-
-http://people.csail.mit.edu/evanj/hg/index.cgi/hstore/file/tip/logging/minlogcrash.c
-http://people.csail.mit.edu/evanj/hg/index.cgi/hstore/file/tip/logging/logfilecrashserver.cc
-
-minlogcrash.c is actually a simplified version of my *real* test  
-program (below). However, that program has a lot of dependencies and  
-unrelated crap. Unfortunately, I'm away from my hardware for the next  
-10 days or so, so minlogcrash has not actually been crash tested. I  
-think it should be equivalent, but just in case, the crash tested  
-version is here:
-
-http://people.csail.mit.edu/evanj/hg/index.cgi/hstore/file/tip/logging/logfilecrash.cc
-
-
-My test procedure:
-
-1. Start logfilecrashserver on a workstation:
-
-./logfilecrashserver 12345
-
-2. Start minlogcrash on the system under test (using large writes is  
-more likely to lose data: 128 kB or so):
-
-./minlogcrash tmp workstation 12345 131072
-
-3. Once the workstation starts receiving log records, pull the power  
-from the back of the SSD.
-4. Power off the system (my system doesn't support hotplug, so losing  
-the power on the SSD makes it unhappy)
-5. Reconnected power to the SSD.
-6. Power the server back on.
-7. Observe the output of logfilecrash using hexdump.
-
-You should find that the file has *at least* the last record reported  
-by logfilecrashserver. It may have (part of) the next record. Error  
-modes I have observed: it is missing the last reported record  
-entirely; it has a truncated record; occasionally I get some sort of  
-media error in the kernel and I can't read the entire file.
-
-Finally full disclosure: I tested this a lot more with the Intel SSD  
-than with my magnetic disks. With the magnetic disks and barrier=0, I  
-was able to very easily see "lost writes", but with barrier=1 it  
-seemed to work. However, I still need to go back and re-test the  
-magnetic disks multiple times, to ensure they are behaving the way I  
-expect.
-
-Evan
-
---
-Evan Jones
-http://evanjones.ca/
-
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
