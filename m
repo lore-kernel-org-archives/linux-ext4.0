@@ -1,60 +1,73 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16583] New: ext4: delayed block allocation failed and
- application not respond any more
-Date: Fri, 13 Aug 2010 20:01:48 GMT
-Message-ID: <bug-16583-13602@https.bugzilla.kernel.org/>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk
+ addressability check
+Date: Fri, 13 Aug 2010 13:47:01 -0700
+Message-ID: <20100813204701.GB19568@mail.oracle.com>
+References: <874ofr2myq.fsf@patl.com>
+ <20100812174215.GC6561@mail.oracle.com>
+ <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca>
+ <20100812201534.GA22777@mail.oracle.com>
+ <209AEA97-E284-4ADB-8774-50C2630606B9@dilger.ca>
+ <20100812222949.GC22777@mail.oracle.com>
+ <20100813163006.GB4329@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55263 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752230Ab0HMUBt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Aug 2010 16:01:49 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7DK1mXX027356
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Aug 2010 20:01:49 GMT
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, "Ted Ts'o" <tytso@mit.edu>,
+	ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org Patrick J. LoPresti"
+	<lopresti@gmail.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100813163006.GB4329@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16583
+On Fri, Aug 13, 2010 at 06:30:07PM +0200, Jan Kara wrote:
+> On Thu 12-08-10 15:29:49, Joel Becker wrote:
+> > +/**
+> > + * generic_check_addressable - Check addressability of file system
+> > + * @blocksize_bits:	log of file system block size
+> > + * @num_blocks:		number of blocks in file system
+> > + *
+> > + * Determine whether a file system with @num_blocks blocks (and a
+> > + * block size of 2**@blocksize_bits) is addressable by the sector_t
+> > + * and page cache of the system.  Return 0 if so and -EFBIG otherwise.
+> > + */
+> > +int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
+> > +{
+> > +	u64 last_fs_block = num_blocks - 1;
+> > +
+> > +	if (unlikely(num_blocks == 0))
+> > +		return 0;
+> > +
+> > +	if ((blocksize_bits < 9) || (blocksize_bits > PAGE_CACHE_SHIFT))
+> > +		return -EINVAL;
+> > +
+> > +	if ((last_fs_block >
+> > +	     (sector_t)(~0ULL) >> (blocksize_bits - 9)) ||
+> > +	    (last_fs_block >
+> > +	     (pgoff_t)(~0ULL) >> (PAGE_CACHE_SHIFT - blocksize_bits))) {
+>             ^^^ I don't get the pgoff_t check. Shouldn't it rather be
+> (u64)(pgoff_t)(~0ULL) << (PAGE_CACHE_SHIFT - blocksize_bits)?
+> Because on 32-bit arch we are able to address 16TB device, which is for 1KB
+> blocksize 1<<34 blocks. But your math gives 1<<30 blocks...
 
-           Summary: ext4: delayed block allocation failed and application
-                    not respond any more
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.35.1
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: andrej.gelenberg@udo.edu
-        Regression: No
+	This code is directly lifted from ext4.  But that said, I am
+starting to think you're right.  1 page == 4 x 1K blocks, rather than 4
+pages == 1 1K block.
 
-
-dmesg:
-
-EXT4-fs (dm-6): warning: mounting fs with errors, running e2fsck is recommended
-EXT4-fs (dm-6): recovery complete
-EXT4-fs (dm-6): mounted filesystem with ordered data mode. Opts: acl,commit=100
-EXT4-fs (dm-6): mounted filesystem with ordered data mode. Opts: acl,commit=100
-...
-EXT4-fs error (device dm-6): ext4_ext_search_left: inode #3510: (comm
-flush-254:6) ix (42117) != EXT_FIRST_INDEX (0) (depth 1)!
-EXT4-fs (dm-6): delayed block allocation failed for inode 3510 at logical
-offset 42117 with max blocks 77 with error -5
-This should not happen!!  Data will be lost
-
-transmission-daemon (which had the data on dm-6) don't respond anymore and i
-can't kill it with kill -9. I can't shutdown the system too (only mit sys-rq
-keys).
+Joel
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+
+"I always thought the hardest questions were those I could not answer.
+ Now I know they are the ones I can never ask."
+			- Charlie Watkins
+
+Joel Becker
+Consulting Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
