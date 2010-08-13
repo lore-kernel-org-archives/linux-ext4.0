@@ -1,45 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15391] EXT4_USE_FOR_EXT23 causes ext4 partition to be mounted
- as ext2
-Date: Fri, 13 Aug 2010 03:57:40 GMT
-Message-ID: <201008130357.o7D3veXS002906@demeter.kernel.org>
-References: <bug-15391-13602@https.bugzilla.kernel.org/>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [Ocfs2-devel] [PATCH 2/3] JBD2: Allow feature checks before
+ journal recovery
+Date: Fri, 13 Aug 2010 00:17:25 -0700
+Message-ID: <20100813071720.GA21279@mail.oracle.com>
+References: <874ofr2myq.fsf@patl.com>
+ <8739vb2mxr.fsf@patl.com>
+ <20100812174318.GD6561@mail.oracle.com>
+ <20100813033930.GG2763@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:50136 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751928Ab0HMD5l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Aug 2010 23:57:41 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7D3vfTx002910
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Aug 2010 03:57:41 GMT
-In-Reply-To: <bug-15391-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: "Ted Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	"Patrick J. LoPresti" <lopresti@gmail.com>,
+	ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100813033930.GG2763@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15391
+On Thu, Aug 12, 2010 at 11:39:30PM -0400, Ted Ts'o wrote:
+> On Thu, Aug 12, 2010 at 10:43:19AM -0700, Joel Becker wrote:
+> > On Thu, Jul 22, 2010 at 03:04:16PM -0700, Patrick J. LoPresti wrote:
+> > > Before we start accessing a huge (> 16 TiB) OCFS2 volume, we need to
+> > > confirm that its journal supports 64-bit offsets.  In particular, we
+> > > need to check the journal's feature bits before recovering the journal.
+> > > 
+> > > This is not possible with JBD2 at present, because the journal
+> > > superblock (where the feature bits reside) is not loaded from disk until
+> > > the journal is recovered.
+> > > 
+> > > This patch loads the journal superblock in
+> > > jbd2_journal_check_used_features() if it has not already been loaded,
+> > > allowing us to check the feature bits before journal recovery.
+> > > 
+> > > Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
+> > 
+> > Dear jbd2 developers,
+> > 	I've pushed this patch to the merge-window branch of ocfs2.git.
+> > I'm ready to send it to Linus, but I need your OK.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
+	Thanks Ted!
 
-Theodore Tso <tytso@mit.edu> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
-
-
-
---- Comment #2 from Theodore Tso <tytso@mit.edu>  2010-08-13 03:57:35 ---
-It's actually getting mounted using the ext4 file system driver.  It's just
-that is getting identified as ext2 in /proc/mounts.  Whether or not users see
-this depends on their init scripts, and especially whether they have an initrd.
-  It is only a cosmetic issue, so it's low priority, but I do agree we should
-try to fix it.
+Joel
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+
+"I don't even butter my bread; I consider that cooking."
+         - Katherine Cebrian
+
+Joel Becker
+Consulting Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
