@@ -1,78 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16165] Wrong data returned on read after write if file size was
- changed with ftruncate before
-Date: Mon, 16 Aug 2010 13:24:40 GMT
-Message-ID: <201008161324.o7GDOeAi006921@demeter.kernel.org>
-References: <bug-16165-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk addressability
+ check
+Date: Mon, 16 Aug 2010 09:44:35 -0500
+Message-ID: <4C694ED3.5070500__40358.0888211311$1281969899$gmane$org@redhat.com>
+References: <874ofr2myq.fsf@patl.com> <20100812174215.GC6561@mail.oracle.com> <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca> <20100812201534.GA22777@mail.oracle.com> <209AEA97-E284-4ADB-8774-50C2630606B9@dilger.ca> <20100812222949.GC22777@mail.oracle.com> <20100813163006.GB4329@quack.suse.cz> <4C6821A8.5080805@redhat.com> <20100816025436.GA9061@mail.oracle.com> <4C68B244.6080406@redhat.com> <20100816092114.GB9061@mail.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>, "Ted Ts'o" <tytso@mit.edu>,
+	ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55552 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752788Ab0HPNYl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Aug 2010 09:24:41 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7GDOeq7006922
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Aug 2010 13:24:40 GMT
-In-Reply-To: <bug-16165-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:56777 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754260Ab0HPOor (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Aug 2010 10:44:47 -0400
+In-Reply-To: <20100816092114.GB9061@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16165
+Joel Becker wrote:
+> On Sun, Aug 15, 2010 at 10:36:36PM -0500, Eric Sandeen wrote:
+>> Er, yeah.  I had 32 bits in my head since that's the case we're
+>> checking for... whoops.
+>>
+>> So I guess your
+>>
+>>  	    ... ||
+>> 	    ((last_fs_block >> (PAGE_CACHE_SHIFT - blocksize_bits)) >
+>> 	     (pgoff_t)(!0ULL))) {
+>>
+>> is right :)  (my feeble brain has a hard time reading that, though, TBH)
+> 
+> 	Well, note the bug in my quickly typed version: "(!0ULL)" vs
+> "(~0ULL)".  
 
+*nod* saw that but figured it was just a typo & didn't mention it ;)
 
-Michael Tokarev <mjt@tls.msk.ru> changed:
+> How about:
+> 
+> 	u64 last_fs_page = last_fs_block >> (PAGE_CACHE_SHIFT - blocksize_bits);
+> 
+> 	... ||
+> 	(last_fs_page > (pgoff_t)(~0ULL))) {
+> 
+> Is that more readable?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |mjt@tls.msk.ru
+To me, yes.  Maybe do similar for last_fs_sector.
 
+If it's getting too verbose I understand, but less dense is a lot easier
+to read, IMHO.  Just style though, really, so *shrug*
 
+Thanks,
+-Eric
 
+> Joel
+> 
 
---- Comment #23 from Michael Tokarev <mjt@tls.msk.ru>  2010-08-16 13:24:32 ---
-Yesterday I observed another data corruption that looks very close to this one,
-but slightly different (and much more serious).
-
-The scenario is this: oracle10 database, creating db and importing data. 
-Oracle uses ftruncate() to create file of a desired size, next it fills the
-file with block headers, so there's no unwritten data in the file.  So far so
-good.  There's also temporary tablespaces, which aren't filled during creation,
-but just ftruncate'd.
-
-The problem here happens when I extend a temp file during heavy database
-writes.  It were needed a few times because in order to create large indexes,
-large temporary space were needed.
-
-And each time I try extend temp file (say, from 10 to 20Gb), oracle performs
-the ftruncate on it, and continues writing to it and to other data files (which
-were pre-filled after ftruncate, even before system restart).  And during this
-time, there's a very likely chance to have _other_ data files to be corrupt
-while it is writing to the newly extended temp space.
-
-We observed several chunks of zeros (of size 1Mb each) written over _other_
-files during this time.  Re-read of those other files returns the same zeros.
-
-So, this delayed allocation corrupts _other_ data files which are already
-allocated and written.
-
-Avoiding gaps eliminates the problem.
-
-Note that oracle uses aio and direct-io and "gapful" files at least for the
-temporary ts.
-
-The kernel in question is 2.6.32.15.
-
-This is quite a major issue...
-
-But I repeat: i'm not sure it's related to this bugreport.  At least the roots
-are somewhere very close.
-
-BTW, when it started in XFS, anyone know?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
