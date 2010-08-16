@@ -1,79 +1,38 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Ocfs2-devel] [PATCH 1/3] ext3/ext4: Factor out disk
- addressability check
-Date: Mon, 16 Aug 2010 17:09:20 +0200
-Message-ID: <20100816150920.GA3708@quack.suse.cz>
-References: <874ofr2myq.fsf@patl.com>
- <20100812174215.GC6561@mail.oracle.com>
- <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca>
- <20100812201534.GA22777@mail.oracle.com>
- <209AEA97-E284-4ADB-8774-50C2630606B9@dilger.ca>
- <20100812222949.GC22777@mail.oracle.com>
- <20100813163006.GB4329@quack.suse.cz>
- <20100813204701.GB19568@mail.oracle.com>
- <20100813225246.GC19568@mail.oracle.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [RFC v3] ext4: Combine barrier requests coming from fsync
+Date: Mon, 16 Aug 2010 09:14:33 -0700
+Message-ID: <20100816161433.GK2109@tux1.beaverton.ibm.com>
+References: <20100429235102.GC15607@tux1.beaverton.ibm.com> <1272934667.2544.3.camel@mingming-laptop> <4BE02C45.6010608@redhat.com> <1273002566.3755.10.camel@mingming-laptop> <20100629205102.GM15515@tux1.beaverton.ibm.com> <20100805164008.GH2901@thunk.org> <20100805164504.GI2901@thunk.org> <20100806070424.GD2109@tux1.beaverton.ibm.com> <20100809195324.GG2109@tux1.beaverton.ibm.com> <20100809210723.GA28171@infradead.org>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
-	Ted Ts'o <tytso@mit.edu>, ocfs2-devel@oss.oracle.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	"linux-kernel@vger.kernel.org Patrick J. LoPresti"
-	<lopresti@gmail.com>
-To: Joel Becker <Joel.Becker@oracle.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48473 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754357Ab0HPPKB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Aug 2010 11:10:01 -0400
+Received: from e36.co.us.ibm.com ([32.97.110.154]:43423 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474Ab0HPQPE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Aug 2010 12:15:04 -0400
 Content-Disposition: inline
-In-Reply-To: <20100813225246.GC19568@mail.oracle.com>
+In-Reply-To: <20100809210723.GA28171@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 13-08-10 15:52:46, Joel Becker wrote:
-> On Fri, Aug 13, 2010 at 01:47:01PM -0700, Joel Becker wrote:
-> > On Fri, Aug 13, 2010 at 06:30:07PM +0200, Jan Kara wrote:
-> > > On Thu 12-08-10 15:29:49, Joel Becker wrote:
-> > > > +/**
-> > > > + * generic_check_addressable - Check addressability of file system
-> > > > + * @blocksize_bits:	log of file system block size
-> > > > + * @num_blocks:		number of blocks in file system
-> > > > + *
-> > > > + * Determine whether a file system with @num_blocks blocks (and a
-> > > > + * block size of 2**@blocksize_bits) is addressable by the sector_t
-> > > > + * and page cache of the system.  Return 0 if so and -EFBIG otherwise.
-> > > > + */
-> > > > +int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
-> > > > +{
-> > > > +	u64 last_fs_block = num_blocks - 1;
-> > > > +
-> > > > +	if (unlikely(num_blocks == 0))
-> > > > +		return 0;
-> > > > +
-> > > > +	if ((blocksize_bits < 9) || (blocksize_bits > PAGE_CACHE_SHIFT))
-> > > > +		return -EINVAL;
-> > > > +
-> > > > +	if ((last_fs_block >
-> > > > +	     (sector_t)(~0ULL) >> (blocksize_bits - 9)) ||
-> > > > +	    (last_fs_block >
-> > > > +	     (pgoff_t)(~0ULL) >> (PAGE_CACHE_SHIFT - blocksize_bits))) {
-> > >             ^^^ I don't get the pgoff_t check. Shouldn't it rather be
-> > > (u64)(pgoff_t)(~0ULL) << (PAGE_CACHE_SHIFT - blocksize_bits)?
-> > > Because on 32-bit arch we are able to address 16TB device, which is for 1KB
-> > > blocksize 1<<34 blocks. But your math gives 1<<30 blocks...
-> > 
-> > 	This code is directly lifted from ext4.  But that said, I am
-> > starting to think you're right.  1 page == 4 x 1K blocks, rather than 4
-> > pages == 1 1K block.
+On Mon, Aug 09, 2010 at 05:07:23PM -0400, Christoph Hellwig wrote:
+> Can you try with the new barrier implementation in the
 > 
-> 	Wouldn't it rather be:
+> 	[PATCH, RFC] relaxed barriers
 > 
-> 	    ... ||
-> 	    ((last_fs_block >> (PAGE_CACHE_SHIFT - blocksize_bits)) >
-> 	     (pgoff_t)(!0ULL))) {
-  Yes, this would be even better than what I suggested.
+> by making cache flushes just that and not complicated drain barrier
+> it should speed this case up a lot.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Indeed it does!  The barrier count increases to about 21000, but I also see
+much higher throughput, about 830 transactions per second (versus 12000 and 760
+respectively before Tejun's patch).
+
+--D
