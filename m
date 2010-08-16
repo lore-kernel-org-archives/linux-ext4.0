@@ -1,51 +1,106 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 4/4] Ext4 check for negative err from sb_issue_discard
-Date: Mon, 16 Aug 2010 11:57:29 -0500
-Message-ID: <4C696DF9.4000209@redhat.com>
-References: <1280935813-4478-1-git-send-email-lczerner@redhat.com> <1280935813-4478-4-git-send-email-lczerner@redhat.com>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [PATCH 1/3] ext3/ext4: Factor out disk
+ addressability check
+Date: Mon, 16 Aug 2010 12:13:19 -0700
+Message-ID: <20100816191319.GC5786@mail.oracle.com>
+References: <1F3EDC08-AC93-4D4D-8F83-A13C418DFC88@dilger.ca>
+	<20100812201534.GA22777@mail.oracle.com>
+	<209AEA97-E284-4ADB-8774-50C2630606B9@dilger.ca>
+	<20100812222949.GC22777@mail.oracle.com>
+	<20100813163006.GB4329@quack.suse.cz> <4C6821A8.5080805@redhat.com>
+	<20100816025436.GA9061@mail.oracle.com>
+	<4C68B244.6080406@redhat.com>
+	<20100816092114.GB9061@mail.oracle.com>
+	<4C694ED3.5070500@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com, rwheeler@redhat.com,
-	eshishki@redhat.com, jack@suse.cz, tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36322 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751707Ab0HPQ5g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Aug 2010 12:57:36 -0400
-In-Reply-To: <1280935813-4478-4-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andreas Dilger <adilger@dilger.ca>, "Ted Ts'o" <tytso@mit.edu>,
+        linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Disposition: inline
+In-Reply-To: <4C694ED3.5070500@redhat.com>
+List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-Lukas Czerner wrote:
-> sb_issue_discard is returning negative error code, so check for
-> negative value instead of positive.
+On Mon, Aug 16, 2010 at 09:44:35AM -0500, Eric Sandeen wrote:
+> Joel Becker wrote:
+> > How about:
+> > 
+> > 	u64 last_fs_page = last_fs_block >> (PAGE_CACHE_SHIFT - blocksize_bits);
+> > 
+> > 	... ||
+> > 	(last_fs_page > (pgoff_t)(~0ULL))) {
+> > 
+> > Is that more readable?
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/mballoc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index a16a813..a8fe7f1 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2589,7 +2589,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
->  					(unsigned long long)discard_block,
->  					entry->count);
->  			ret = sb_issue_discard(sb, discard_block, entry->count);
-> -			if (ret == EOPNOTSUPP) {
-> +			if (ret == -EOPNOTSUPP) {
->  				ext4_warning(sb,
->  					"discard not supported, disabling");
->  				clear_opt(EXT4_SB(sb)->s_mount_opt, DISCARD);
+> To me, yes.  Maybe do similar for last_fs_sector.
 
-Thanks for fixing that, Lukas.  Dumb thinko on my part, too much
-XFS (and weird positive-error usage) on the brain ;)
+	last_fs_sector would be shifting up, which could wrap a really
+large last_fs_blocks.  So I'm going to keep the sector_t check as-is.
+How's this:
 
-Ted, this can/should go in at any time, regardless of other discard
-changes.
+>From 8de5cb9164cdc179ba84a07b282a895d0eb794b0 Mon Sep 17 00:00:00 2001
+>From: Joel Becker <joel.becker@oracle.com>
+Date: Mon, 16 Aug 2010 12:10:17 -0700
+Subject: [PATCH] libfs: Fix shift bug in generic_check_addressable()
 
-Thanks,
--Eric
+generic_check_addressable() erroneously shifts pages down by a block
+factor when it should be shifting up.  To prevent overflow, we shift
+blocks down to pages.
+
+Signed-off-by: Joel Becker <joel.becker@oracle.com>
+---
+ fs/libfs.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/libfs.c b/fs/libfs.c
+index 8debe7b..62baa03 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -925,6 +925,8 @@ EXPORT_SYMBOL(generic_file_fsync);
+ int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
+ {
+ 	u64 last_fs_block = num_blocks - 1;
++	u64 last_fs_page =
++		last_fs_block >> (PAGE_CACHE_SHIFT - blocksize_bits);
+ 
+ 	if (unlikely(num_blocks == 0))
+ 		return 0;
+@@ -932,10 +934,8 @@ int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
+ 	if ((blocksize_bits < 9) || (blocksize_bits > PAGE_CACHE_SHIFT))
+ 		return -EINVAL;
+ 
+-	if ((last_fs_block >
+-	     (sector_t)(~0ULL) >> (blocksize_bits - 9)) ||
+-	    (last_fs_block >
+-	     (pgoff_t)(~0ULL) >> (PAGE_CACHE_SHIFT - blocksize_bits))) {
++	if ((last_fs_block > (sector_t)(~0ULL) >> (blocksize_bits - 9)) ||
++	    (last_fs_page > (pgoff_t)(~0ULL))) {
+ 		return -EFBIG;
+ 	}
+ 	return 0;
+-- 
+1.7.1
+
+-- 
+
+Life's Little Instruction Book #267
+
+	"Lie on your back and look at the stars."
+
+Joel Becker
+Consulting Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
