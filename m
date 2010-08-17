@@ -1,125 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfstests 241: run parallel dbench
-Date: Tue, 17 Aug 2010 14:39:41 -0500
-Message-ID: <4C6AE57D.7090807@redhat.com>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: [PATCH 23/39] fallthru: ext2 fallthru support
+Date: Tue, 17 Aug 2010 17:08:32 -0400
+Message-ID: <20100817210832.GG5556@shell>
+References: <1281282776-5447-1-git-send-email-vaurora@redhat.com> <1281282776-5447-24-git-send-email-vaurora@redhat.com> <E1Ojufy-0004Df-PA@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: xfs-oss <xfs@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, jblunck@suse.de, hch@infradead.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Miklos Szeredi <miklos@szeredi.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25639 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48494 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751316Ab0HQTjq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Aug 2010 15:39:46 -0400
+	id S1750728Ab0HQVIr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Aug 2010 17:08:47 -0400
+Content-Disposition: inline
+In-Reply-To: <E1Ojufy-0004Df-PA@pomaz-ex.szeredi.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4 was corrupting inode table bitmaps due to a mishmash of
-atomic & nonatomic bitops.  This got broken twice and fixed
-twice; let's add a test.
+On Fri, Aug 13, 2010 at 03:52:02PM +0200, Miklos Szeredi wrote:
+> On Sun,  8 Aug 2010, Valerie Aurora wrote:
+> > Add support for fallthru directory entries to ext2.
+> 
+> This still doesn't work correctly, only now after unmounting/mounting
+> the top layer the directory appears empty:
 
-On a 4-way box this reliably ends up with a corrupted filesystem
-if we get it wrong (upstream as of 2.6.35 at least is fine again)
+Thanks, I will look into this.
 
-Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
----
+-VAL
 
---- /dev/null
-+++ b/241
-@@ -0,0 +1,60 @@
-+#! /bin/bash
-+# FS QA Test No. 241
-+#
-+# Run parallel dbench & check for filesystem corruption
-+# This corrupted ext4 inode bitmaps due to races at one point
-+#
-+# Copyright (c) 2010 Red Hat, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=sandeen@sandeen.net
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1        # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+
-+_supported_fs generic
-+_supported_os Linux
-+
-+[ "$DBENCH_PROG" = "" ] && _notrun "dbench not found"
-+
-+echo "Silence is golden."
-+
-+# real QA test starts here
-+rm -f $seq.full
-+
-+rm -rf $TEST_DIR/dbench
-+mkdir $TEST_DIR/dbench
-+
-+dbench -t 30 -D $TEST_DIR/dbench 4 >> $seq.full
-+
-+status=$?
-+exit
-diff --git a/common.config b/common.config
-index 926846b..04bdcf6 100644
---- a/common.config
-+++ b/common.config
-@@ -149,6 +149,7 @@ export XFS_PARALLEL_REPAIR64_PROG="`set_prog_path xfs_prepair64`"
- export XFSDUMP_PROG="`set_prog_path xfsdump`"
- export XFSRESTORE_PROG="`set_prog_path xfsrestore`"
- export XFSINVUTIL_PROG="`set_prog_path xfsinvutil`"
-+export DBENCH_PROG="`set_prog_path dbench`"
- 
- # Generate a comparable xfsprogs version number in the form of
- # major * 10000 + minor * 100 + release
-diff --git a/common.dbench b/common.dbench
-index 026acdf..b59be71 100755
---- a/common.dbench
-+++ b/common.dbench
-@@ -17,7 +17,7 @@
- #
- 
- #check dbench is installed
--if [ "`whereis dbench`" == "dbench:"]; then
-+if [ "`whereis dbench`" == "dbench:" ]; then
-         echo $0 error dbench not installed.
-         exit
- fi
-diff --git a/group b/group
-index afe7614..2baa538 100644
---- a/group
-+++ b/group
-@@ -354,3 +354,4 @@ deprecated
- 238 auto quick metadata ioctl
- 239 auto aio rw
- 240 auto aio quick rw
-+241 auto
-
+> uml:~# mount -oloop -r ext3.img /mnt/img/
+> uml:~# losetup /dev/loop2  ovl.img  
+> uml:~# /host/store/git/e2fsprogs/misc/mke2fs -O whiteout,fallthru /dev/loop2
+> mke2fs 1.41.12 (17-May-2010)
+> Filesystem label=
+> OS type: Linux
+> Block size=1024 (log=0)
+> Fragment size=1024 (log=0)
+> Stride=0 blocks, Stripe width=0 blocks
+> 1280 inodes, 10240 blocks
+> 512 blocks (5.00%) reserved for the super user
+> First data block=1
+> Maximum filesystem blocks=10485760
+> 2 block groups
+> 8192 blocks per group, 8192 fragments per group
+> 640 inodes per group
+> Superblock backups stored on blocks: 
+>         8193
+> 
+> Allocating group tables: done                            
+> Writing inode tables: done                            
+> Writing superblocks and filesystem accounting information: done
+> 
+> This filesystem will be automatically checked every 24 mounts or
+> 180 days, whichever comes first.  Use tune2fs -c or -i to override.
+> uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
+> uml:~# "ls" /mnt/img
+> lost+found  union
+> uml:~# "ls" /mnt/img/union
+> 1  2  3
+> uml:~# umount /mnt/img
+> uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
+> uml:~# ls -l /mnt/img/
+> total 13
+> drwx------ 2 root root 12288 Aug 13 13:42 lost+found
+> drwxr-xr-x 2 root root  1024 Aug 13 13:42 union
+> uml:~# ls -la /mnt/img/union/
+> total 2
+> drwxr-xr-x 2 root root 1024 Aug 13 13:42 .
+> drwxr-xr-x 4 root root 1024 Aug 13 13:42 ..
+> uml:~# grep /mnt/img /proc/self/mountinfo 
+> 21 12 7:0 / /mnt/img ro,relatime - ext3 /dev/loop0 ro,errors=continue,barrier=0,data=writeback
+> 22 21 7:2 / /mnt/img rw,relatime,union - ext2 /dev/loop2 rw,errors=continue
+> 
+> Thanks,
+> Miklos
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
