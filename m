@@ -1,82 +1,78 @@
 From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: [PATCH 23/39] fallthru: ext2 fallthru support
-Date: Tue, 17 Aug 2010 17:08:32 -0400
-Message-ID: <20100817210832.GG5556@shell>
-References: <1281282776-5447-1-git-send-email-vaurora@redhat.com> <1281282776-5447-24-git-send-email-vaurora@redhat.com> <E1Ojufy-0004Df-PA@pomaz-ex.szeredi.hu>
+Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
+Date: Tue, 17 Aug 2010 18:27:32 -0400
+Message-ID: <20100817222731.GI5556@shell>
+References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com> <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu> <20100804230421.GC29353@shell> <E1OgyOZ-000321-Fp@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: viro@zeniv.linux.org.uk, jblunck@suse.de, hch@infradead.org,
 	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
+To: Miklos Szeredi <miklos@szeredi.hu>, Jan Kara <jack@suse.cz>,
+	Andreas Gruenbacher <agruen@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48494 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48976 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750728Ab0HQVIr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Aug 2010 17:08:47 -0400
+	id S1751323Ab0HQW1x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Aug 2010 18:27:53 -0400
 Content-Disposition: inline
-In-Reply-To: <E1Ojufy-0004Df-PA@pomaz-ex.szeredi.hu>
+In-Reply-To: <E1OgyOZ-000321-Fp@pomaz-ex.szeredi.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 13, 2010 at 03:52:02PM +0200, Miklos Szeredi wrote:
-> On Sun,  8 Aug 2010, Valerie Aurora wrote:
-> > Add support for fallthru directory entries to ext2.
+On Thu, Aug 05, 2010 at 01:13:55PM +0200, Miklos Szeredi wrote:
+> On Wed, 4 Aug 2010, Valerie Aurora wrote:
+> > > Another idea is to use an internal inode and make all fallthroughs be
+> > > hard links to that.
+> > > 
+> > > I think the same would work for whiteouts as well.  I don't like the
+> > > fact that whiteouts are invisible even when not mounted as part of a
+> > > union.
+> > 
+> > I don't know if this helps, but I just wrote support for removing ext2
+> > whiteouts and fallthrus using tune2fs and e2fsck.  I think this does
+> > what people want from a "visible" whiteout feature without adding more
+> > complexity to the VFS.  It also takes away all consideration of race
+> > conditions and dentry conversion that happens with online removal of
+> > whiteouts and fallthrus.
+> > 
+> > What are your thoughts on what a visible whiteout/fallthru would look
+> > like?
 > 
-> This still doesn't work correctly, only now after unmounting/mounting
-> the top layer the directory appears empty:
+> Best would be if it didn't need any modification to filesystems.  All
+> this having to upgrade util-linux, e2fsprogs, having incompatible
+> filesystem features is a pain for users (just been through that).
+> 
+> What we already have in most filesystems:
+> 
+>  - extended attributes, e.g. use the system.union.* namespace and
+>    denote whiteouts and falltroughs with such an attribute
 
-Thanks, I will look into this.
+Jan Kara helped convince me this might be better than fs-specific
+fallthrus and whiteouts.  See my email on get_unlinked_inode().
+
+>  - hard links to make sure a separate inode is not necessary for each
+>    whiteout/fallthrough entry
+
+The problem with hard links is that you run into hard link limits.  I
+don't think we can do hard links for whiteouts and fallthrus.  Each
+whiteout or fallthru will cost an inode if we implement them as
+extended attributes.  This cost has to be balanced against the cost of
+implementing them as dentries, which is mainly code complexity in
+individual file systems.
+
+>  - some way for the user to easily identify such files when not
+>    mounted as part of a union e.g. make it a symlink pointing to
+>    "(deleted)" or whatever
+
+Perhaps we can simply not interpret the whiteout/fallthru extended
+attributes when the file system is not unioned and let userland
+operate on them via getxattr()/setxattr().
+
+> Later the extended attributes can also be used for other things like
+> e.g. chmod()/chown() only copying up metadata, not data, and
+> indicating that data is still found on the lower layers.
+
+It would certainly be more extensible than in-dentry flags.
 
 -VAL
-
-> uml:~# mount -oloop -r ext3.img /mnt/img/
-> uml:~# losetup /dev/loop2  ovl.img  
-> uml:~# /host/store/git/e2fsprogs/misc/mke2fs -O whiteout,fallthru /dev/loop2
-> mke2fs 1.41.12 (17-May-2010)
-> Filesystem label=
-> OS type: Linux
-> Block size=1024 (log=0)
-> Fragment size=1024 (log=0)
-> Stride=0 blocks, Stripe width=0 blocks
-> 1280 inodes, 10240 blocks
-> 512 blocks (5.00%) reserved for the super user
-> First data block=1
-> Maximum filesystem blocks=10485760
-> 2 block groups
-> 8192 blocks per group, 8192 fragments per group
-> 640 inodes per group
-> Superblock backups stored on blocks: 
->         8193
-> 
-> Allocating group tables: done                            
-> Writing inode tables: done                            
-> Writing superblocks and filesystem accounting information: done
-> 
-> This filesystem will be automatically checked every 24 mounts or
-> 180 days, whichever comes first.  Use tune2fs -c or -i to override.
-> uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
-> uml:~# "ls" /mnt/img
-> lost+found  union
-> uml:~# "ls" /mnt/img/union
-> 1  2  3
-> uml:~# umount /mnt/img
-> uml:~# mmount -b 8 -t ext2 /dev/loop2 /mnt/img/
-> uml:~# ls -l /mnt/img/
-> total 13
-> drwx------ 2 root root 12288 Aug 13 13:42 lost+found
-> drwxr-xr-x 2 root root  1024 Aug 13 13:42 union
-> uml:~# ls -la /mnt/img/union/
-> total 2
-> drwxr-xr-x 2 root root 1024 Aug 13 13:42 .
-> drwxr-xr-x 4 root root 1024 Aug 13 13:42 ..
-> uml:~# grep /mnt/img /proc/self/mountinfo 
-> 21 12 7:0 / /mnt/img ro,relatime - ext3 /dev/loop0 ro,errors=continue,barrier=0,data=writeback
-> 22 21 7:2 / /mnt/img rw,relatime,union - ext2 /dev/loop2 rw,errors=continue
-> 
-> Thanks,
-> Miklos
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
