@@ -1,39 +1,49 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] xfstests 241: run parallel dbench
-Date: Wed, 18 Aug 2010 21:45:07 +1000
-Message-ID: <20100818114507.GS10429@dastard>
-References: <4C6AE57D.7090807@redhat.com>
+From: "Western Union Transfer" <cmarti@univ-reunion.fr>
+Subject: (unknown)
+Date: Wed, 18 Aug 2010 16:41:19 +0400 (RET)
+Message-ID: <8664.41.220.68.3.1282135279.squirrel__6983.9853480973$1282138355$gmane$org@webmail.univ-reunion.fr>
+Reply-To: westeruniontransfer209@live.co.uk
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bld-mail15.adl6.internode.on.net ([150.101.137.100]:40080 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751949Ab0HRLpN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Aug 2010 07:45:13 -0400
-Content-Disposition: inline
-In-Reply-To: <4C6AE57D.7090807@redhat.com>
+Received: from smtp1.univ-reunion.fr ([194.199.72.33]:60387 "EHLO
+	smtp1.univ-reunion.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751995Ab0HRNcF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Aug 2010 09:32:05 -0400
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 17, 2010 at 02:39:41PM -0500, Eric Sandeen wrote:
-> ext4 was corrupting inode table bitmaps due to a mishmash of
-> atomic & nonatomic bitops.  This got broken twice and fixed
-> twice; let's add a test.
-> 
-> On a 4-way box this reliably ends up with a corrupted filesystem
-> if we get it wrong (upstream as of 2.6.35 at least is fine again)
-> 
-> Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
 
-Looks good, except it's missing a 241.out file for the golden
-output.
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+My working partner has helped me to send your
+first payment of US$7,500 to you as
+instructed by Mr. David Cameron and will
+keep sending you US$7,500 twice a week until
+the payment of (US$360,000) is completed
+within six months and here is the information
+below:
+
+MONEY TRANSFER CONTROL NUMBER (MTCN):
+841-116-3297
+
+SENDER'S NAME: Mr.Alexander Onyibor
+AMOUNT: US$7,500
+
+To track your funds forward Western Union
+Money Transfer agent your Full Names and
+Mobile Number via Email to:
+
+Mr Gary Moore
+E-mail:westeruniontransfer209@live.co.uk
+D/L: Tel:+447045713697
+
+Please direct all enquiring to:
+westeruniontransfer209@live.co.uk
+
+Best Regards,
+Mrs. Mr Gary Moore.
+
