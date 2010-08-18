@@ -1,44 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] xfstests 241: run parallel dbench
-Date: Wed, 18 Aug 2010 09:26:32 -0500
-Message-ID: <4C6BED98.10203@redhat.com>
-References: <4C6AE57D.7090807@redhat.com> <20100818114507.GS10429@dastard>
+From: Richard Kennedy <richard@rsk.demon.co.uk>
+Subject: [PATCH] ext4: remove alignment padding from ext4_inode_info on 64
+ bit builds
+Date: Wed, 18 Aug 2010 16:08:08 +0100
+Message-ID: <1282144088.2068.16.camel@castor.rsk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53041 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753191Ab0HRO0n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Aug 2010 10:26:43 -0400
-In-Reply-To: <20100818114507.GS10429@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: lkml <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dave Chinner wrote:
-> On Tue, Aug 17, 2010 at 02:39:41PM -0500, Eric Sandeen wrote:
->> ext4 was corrupting inode table bitmaps due to a mishmash of
->> atomic & nonatomic bitops.  This got broken twice and fixed
->> twice; let's add a test.
->>
->> On a 4-way box this reliably ends up with a corrupted filesystem
->> if we get it wrong (upstream as of 2.6.35 at least is fine again)
->>
->> Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
-> 
-> Looks good, except it's missing a 241.out file for the golden
-> output.
+Reorder structure ext4_inode_info to remove 16 bytes of alignment
+padding on 64 bit builds. This shrinks its size from 904 to 888 bytes
+with (CONFIG_EXT4_S_XATTR=y && CONFIG_QUOTA=n).
+    
+This will allow this structure to use one fewer cache lines.
 
-grr "guilt add" :)
+Also change type of i_delalloc_reserved_flag to bool to better reflect
+its usage.
 
-Thanks, will add that to the commit.
+compiled & tested on x86_64
+    
+Signed-off-by: Richard Kennedy <richard@rsk.demon.co.uk>
+---
+patch against 2.6.36-rc1
 
--Eric
+Early testing shows more consistent results ( i.e. smaller standard
+deviations) on my AMD X2 setup, but I shall re-run these tests to check
+if this is repeatable.
+
+regards
+Richard
+
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 889ec9d..b63a8e3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -750,10 +750,11 @@ struct ext4_inode_info {
+ 	 * near to their parent directory's inode.
+ 	 */
+ 	ext4_group_t	i_block_group;
+-	unsigned long	i_state_flags;		/* Dynamic state flags */
+-	unsigned long	i_flags;
  
-> Cheers,
-> 
-> Dave.
-
+ 	ext4_lblk_t		i_dir_start_lookup;
++
++	unsigned long	i_state_flags;		/* Dynamic state flags */
++	unsigned long	i_flags;
+ #ifdef CONFIG_EXT4_FS_XATTR
+ 	/*
+ 	 * Extended attributes can be read independently of the main file
+@@ -816,13 +817,14 @@ struct ext4_inode_info {
+ 	unsigned int i_reserved_data_blocks;
+ 	unsigned int i_reserved_meta_blocks;
+ 	unsigned int i_allocated_meta_blocks;
+-	unsigned short i_delalloc_reserved_flag;
+-	sector_t i_da_metadata_calc_last_lblock;
+-	int i_da_metadata_calc_len;
++	bool i_delalloc_reserved_flag;
+ 
+ 	/* on-disk additional length */
+ 	__u16 i_extra_isize;
+ 
++	sector_t i_da_metadata_calc_last_lblock;
++	int i_da_metadata_calc_len;
++
+ 	spinlock_t i_block_reservation_lock;
+ #ifdef CONFIG_QUOTA
+ 	/* quota space reservation, managed internally by quota code */
