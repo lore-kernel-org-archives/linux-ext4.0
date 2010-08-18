@@ -1,52 +1,97 @@
-From: <Christine.Rey-Caillat@ac-orleans-tours.fr>
-Subject: Western Union
-Date: Wed, 18 Aug 2010 00:22:11 +0100
-Message-ID: <b48d0e834ead9c73.4c6b27b3__39627.3952363574$1282088663$gmane$org@ac-orleans-tours.fr>
-Reply-To: western.union.departments@w.cn
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [Q] ext
+Date: Wed, 18 Aug 2010 10:06:59 +0900
+Message-ID: <4C6B3233.90007@jp.fujitsu.com>
+References: <20100810232321.0eb72247.toshi.okajima@jp.fujitsu.com> <ADCE32D6-3919-45CA-BA50-1BE86583F74D@oracle.com>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	linux-ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <andreas.dilger@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from datura.ac-orleans-tours.fr ([195.83.89.149]:53921 "EHLO
-	datura.ac-orleans-tours.fr" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751871Ab0HQXoQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Aug 2010 19:44:16 -0400
-Content-Language: en
-Content-Disposition: inline
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:50150 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752500Ab0HRBGv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Aug 2010 21:06:51 -0400
+Received: from m1.gw.fujitsu.co.jp ([10.0.50.71])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o7I16odS022824
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Wed, 18 Aug 2010 10:06:50 +0900
+Received: from smail (m1 [127.0.0.1])
+	by outgoing.m1.gw.fujitsu.co.jp (Postfix) with ESMTP id EC33145DE4E
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Aug 2010 10:06:49 +0900 (JST)
+Received: from s1.gw.fujitsu.co.jp (s1.gw.fujitsu.co.jp [10.0.50.91])
+	by m1.gw.fujitsu.co.jp (Postfix) with ESMTP id CF45D45DD6F
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Aug 2010 10:06:49 +0900 (JST)
+Received: from s1.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s1.gw.fujitsu.co.jp (Postfix) with ESMTP id B8A20E08002
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Aug 2010 10:06:49 +0900 (JST)
+Received: from ml13.s.css.fujitsu.com (ml13.s.css.fujitsu.com [10.249.87.103])
+	by s1.gw.fujitsu.co.jp (Postfix) with ESMTP id 75301E08001
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Aug 2010 10:06:49 +0900 (JST)
+In-Reply-To: <ADCE32D6-3919-45CA-BA50-1BE86583F74D@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi.
 
+(2010/08/10 15:35), Andreas Dilger wrote:
+>
+> On 2010-08-10, at 10:23, Toshiyuki Okajima wrote:
+<snip>
+>> +loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+>> +{
+>> +	struct inode *inode = file->f_mapping->host;
+>> +	loff_t maxbytes;
+>> +
+>> +	mutex_lock(&inode->i_mutex);
+>> +	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+>> +		maxbytes = EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
+>> +	else
+>> +		maxbytes = inode->i_sb->s_maxbytes;
+>
+> This part doesn't really have to be under i_mutex.  Otherwise, the patch looks reasonable.
+OK.
 
-Good day,
- 
-My working partner has helped me to send your
-first payment of US$7,500 to you as
-instructed by Mr. David Cameron and will
-keep sending you US$7,500 twice a week until
-the payment of (US$360,000) is completed
-within six months and here is the information
-below:
- 
-MONEY TRANSFER CONTROL NUMBER (MTCN):
-522-905-9427
- 
-SENDER'S NAME: Mr. Mark Daniel
-AMOUNT: US$7,500
- 
-To track your funds forward Western Union
-Money Transfer agent your Full Names and
-Mobile Number via Email to:
- 
-Mr Gary Moore
-E-mail:western.union.departments@w.cn
-D/L Number: +44 (0) 702 403 4679
-Fax Number: +44 (0) 844 774 1410
- 
-Please direct all enquiring to:
-western.union.departments@w.cn
- 
-Best Regards,
-Mrs. Larisa Alexander.
+>
+>> +	switch (origin) {
+>> +	case SEEK_END:
+>> +		offset += inode->i_size;
+>> +		break;
+>> +	case SEEK_CUR:
+>> +		if (offset == 0) {
+>> +			mutex_unlock(&inode->i_mutex);
+>> +			return file->f_pos;
+>> +		}
+>> +		offset += file->f_pos;
+>> +		break;
+>> +       	}
+>> +
+>> +	if (offset<  0 || offset>  maxbytes) {
+>> +		mutex_unlock(&inode->i_mutex);
+>> +		return -EINVAL;
+>> +	}
+>> +
+>> +	if (offset != file->f_pos) {
+>> +		file->f_pos = offset;
+>> +		file->f_version = 0;
+>> +	}
+>> +	mutex_unlock(&inode->i_mutex);
+>> +
+>> +	return offset;
+>> +}
+>
+> It's too bad that we have to duplicate the whole generic_file_llseek() code here, but I don't think there is a better solution.  However, it is worthwhile to add a comment to this function like:
+>
+> /* copied from generic_file_llseek() to handle both block-mapped and
+>   * extent-mapped maxbytes values.  Should otherwise be identical. */
+I understand it.
+
+I apply your comments and then rebuild my patch.
+Immediately I'll send it.
+
+Thanks,
+Toshiyuki Okajima
+
