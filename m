@@ -1,40 +1,39 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
-Date: Wed, 18 Aug 2010 10:26:26 +0200
-Message-ID: <E1Oldyc-00062G-Ab@pomaz-ex.szeredi.hu>
-References: <1276627208-17242-1-git-send-email-vaurora@redhat.com> <1276627208-17242-15-git-send-email-vaurora@redhat.com> <E1OgfCU-0000ko-Lu@pomaz-ex.szeredi.hu> <20100804230421.GC29353@shell> <E1OgyOZ-000321-Fp@pomaz-ex.szeredi.hu> <20100817222731.GI5556@shell>
-Cc: miklos@szeredi.hu, jack@suse.cz, agruen@suse.de,
-	viro@zeniv.linux.org.uk, jblunck@suse.de, hch@infradead.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Valerie Aurora <vaurora@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] xfstests 241: run parallel dbench
+Date: Wed, 18 Aug 2010 21:45:07 +1000
+Message-ID: <20100818114507.GS10429@dastard>
+References: <4C6AE57D.7090807@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fxip-0047f.externet.hu ([88.209.222.127]:36551 "EHLO
-	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750859Ab0HRI0l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Aug 2010 04:26:41 -0400
-In-reply-to: <20100817222731.GI5556@shell> (message from Valerie Aurora on
-	Tue, 17 Aug 2010 18:27:32 -0400)
+Received: from bld-mail15.adl6.internode.on.net ([150.101.137.100]:40080 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751949Ab0HRLpN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Aug 2010 07:45:13 -0400
+Content-Disposition: inline
+In-Reply-To: <4C6AE57D.7090807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 17 Aug 2010, Valerie Aurora wrote:
-> >  - hard links to make sure a separate inode is not necessary for each
-> >    whiteout/fallthrough entry
+On Tue, Aug 17, 2010 at 02:39:41PM -0500, Eric Sandeen wrote:
+> ext4 was corrupting inode table bitmaps due to a mishmash of
+> atomic & nonatomic bitops.  This got broken twice and fixed
+> twice; let's add a test.
 > 
-> The problem with hard links is that you run into hard link limits.  I
-> don't think we can do hard links for whiteouts and fallthrus.  Each
-> whiteout or fallthru will cost an inode if we implement them as
-> extended attributes.  This cost has to be balanced against the cost of
-> implementing them as dentries, which is mainly code complexity in
-> individual file systems.
+> On a 4-way box this reliably ends up with a corrupted filesystem
+> if we get it wrong (upstream as of 2.6.35 at least is fine again)
+> 
+> Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
 
-get_unlinked_inode() is a great idea.  But I feel that individual
-inodes for each fallthrough is excessive.  It'll make the first
-readdir() really really expensive and wastes a lot of disk and memory
-for no good reason.
+Looks good, except it's missing a 241.out file for the golden
+output.
 
-Not sure how to fix the hard link limits problem though...
+Cheers,
 
-Thanks,
-Miklos
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
