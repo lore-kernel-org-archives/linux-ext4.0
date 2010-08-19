@@ -1,47 +1,46 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: buggy EOFBLOCKS_FL handling
-Date: Thu, 19 Aug 2010 10:44:32 -0400
-Message-ID: <20100819144432.GA23345@thunk.org>
-References: <E1OlvNi-00063m-09@tytso-glaptop>
- <FB932B24-52F7-4C97-9BF6-58A78DFA5FBF@dilger.ca>
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [RFC v3] ext4: Combine barrier requests coming from fsync
+Date: Thu, 19 Aug 2010 17:48:39 +0200
+Message-ID: <4C6D5257.9040305@kernel.org>
+References: <4BE02C45.6010608@redhat.com> <1273002566.3755.10.camel@mingming-laptop> <20100629205102.GM15515@tux1.beaverton.ibm.com> <20100805164008.GH2901@thunk.org> <20100805164504.GI2901@thunk.org> <20100806070424.GD2109@tux1.beaverton.ibm.com> <20100809195324.GG2109@tux1.beaverton.ibm.com> <20100809210723.GA28171@infradead.org> <20100816161433.GK2109@tux1.beaverton.ibm.com> <20100819020734.GL2109@tux1.beaverton.ibm.com> <20100819085349.GA8782@infradead.org> <4C6CF6BC.3030804@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>, "Ted Ts'o" <tytso@mit.edu>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:36391 "EHLO thunker.thunk.org"
+Received: from hera.kernel.org ([140.211.167.34]:50613 "EHLO hera.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751406Ab0HSOof (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Aug 2010 10:44:35 -0400
-Content-Disposition: inline
-In-Reply-To: <FB932B24-52F7-4C97-9BF6-58A78DFA5FBF@dilger.ca>
+	id S1751445Ab0HSPwj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Aug 2010 11:52:39 -0400
+In-Reply-To: <4C6CF6BC.3030804@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 18, 2010 at 11:13:00PM -0600, Andreas Dilger wrote:
-> On 2010-08-18, at 21:01, Theodore Ts'o wrote:
-> > It looks like how we handle the EOFBLOCKS_FL flag is buggy.  This means
-> > that when we fallocate a file to have 128k using the KEEP_SIZE flag, and
-> > then write exactly 128k, the EOFBLOCKS_FL isn't getting cleared
-> > correctly.
-> > 
-> > This is bad, because e2fsck will then complain about that inode.  If you
-> > have a large number of inodes that are written with fallocate using
-> > KEEP_SIZE, and then fill them up to their expected size, e2fsck will
-> > potentially complain about a _huge_ number of inodes.
-> 
-> Probably e2fsck also shouldn't complain if EOFBLOCKS_FL is set, but
-> the i_size is within the range implied by i_blocks.
+Hello, again.
 
-My current thinking is to have an EOFBLOCKS_relaxed mode setting in
-/etc/e2fsck.conf which controls whether we test for this case or not.
-Technically it *is* an error, but if there are file systems with a
-large number of files in this state, running e2fsck could take a
-***very*** long time (potentially, hours longer than would otherwise
-be expected).  Hopefully once the bug fix gets pushed out, eventually
-we'll be able to turn this feature off.  (Where eventually might be a
-year or two, given that it's probably too late to get this fixed in
-RHEL 6.  :-( )
+On 08/19/2010 11:17 AM, Tejun Heo wrote:
+> What was the configuration?  If dm was involved, both md and dm can
+> only process single flush request at a time.  Supporing multiple
+> flushes in flight wouldn't be too difficult.  It's just the way things
+> are implemented with the previous barrier implementation.  It can
+> definitely be improved.
 
-	   	    	    	      - Ted
+Oh, I just realized that the current bio-based dm implementation
+doesn't allow other bio's to be processed if a flush is in progress.
+So, it's not about not being able to handle multiple flushes.  The
+queue just stalls while flush is in progress and because it also waits
+for flush completion by waiting for all commands in progress to
+finish.  It basically ends up draining and stalling everything.
+Shouldn't be too hard to make it better.
 
+Thanks.
+
+-- 
+tejun
