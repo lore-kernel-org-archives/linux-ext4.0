@@ -1,62 +1,126 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [RFC v3] ext4: Combine barrier requests coming from fsync
-Date: Thu, 19 Aug 2010 11:17:48 +0200
-Message-ID: <4C6CF6BC.3030804@kernel.org>
-References: <4BE02C45.6010608@redhat.com> <1273002566.3755.10.camel@mingming-laptop> <20100629205102.GM15515@tux1.beaverton.ibm.com> <20100805164008.GH2901@thunk.org> <20100805164504.GI2901@thunk.org> <20100806070424.GD2109@tux1.beaverton.ibm.com> <20100809195324.GG2109@tux1.beaverton.ibm.com> <20100809210723.GA28171@infradead.org> <20100816161433.GK2109@tux1.beaverton.ibm.com> <20100819020734.GL2109@tux1.beaverton.ibm.com> <20100819085349.GA8782@infradead.org>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: Memory allocation failed, e2fsck: aborted
+Date: Thu, 19 Aug 2010 15:01:23 +0200
+Message-ID: <20100819130123.GU16603@skl-net.de>
+References: <20100818140422.GL27457@skl-net.de> <EDA85D20-C083-41FE-B561-8014C496C4CB@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>, "Ted Ts'o" <tytso@mit.edu>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Keith Mannthey <kmannth@us.ibm.com>,
-	Mingming Cao <mcao@us.ibm.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="lzfPtAjrR1KYNfg0"
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Marcus Hartmann <marcus.hartmann@tuebingen.mpg.de>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hera.kernel.org ([140.211.167.34]:41567 "EHLO hera.kernel.org"
+Received: from systemlinux.org ([83.151.29.59]:45684 "EHLO m18s25.vlinux.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750883Ab0HSJVp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Aug 2010 05:21:45 -0400
-In-Reply-To: <20100819085349.GA8782@infradead.org>
+	id S1751561Ab0HSNBg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Aug 2010 09:01:36 -0400
+Content-Disposition: inline
+In-Reply-To: <EDA85D20-C083-41FE-B561-8014C496C4CB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
 
-On 08/19/2010 10:53 AM, Christoph Hellwig wrote:
-> On Wed, Aug 18, 2010 at 07:07:34PM -0700, Darrick J. Wong wrote:
->> Oddly, I ran the entire suite of tests against a larger set of machines, and
->> with Tejun's RFC patchset I didn't see nearly as much of an improvement.  I
->> have been trying to put together a new tree based on "replace barrier with
->> sequenced flush" and Christoph's "explicitly flush/FUA" patch sets, though I've
->> gotten lost in the weeds. :(
-> 
-> Tejun's patches don't allow concurrent cache flushes to happen, while
-> my patch did.  Tejun said there are drivers that can't handly empty
-> flushes with a bio attached, making this nessecary.   
-> 
-> Tejun, any idea what drivers that would be?
+--lzfPtAjrR1KYNfg0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-What was the configuration?  If dm was involved, both md and dm can
-only process single flush request at a time.  Supporing multiple
-flushes in flight wouldn't be too difficult.  It's just the way things
-are implemented with the previous barrier implementation.  It can
-definitely be improved.
+On Wed, Aug 18, 14:20, Andreas Dilger wrote:
+> > This is an old 32 bit system with only 1G of ram and a 2.6.24 distro
+> > kernel. I added _lots_ of swap but this did not help.
+>=20
+> Yeah, it is possible to have filesystems that are too large for the
+> node they are running on.  There are low-priority discussions for how
+> to reduce memory usage of e2fsck, but they have never been a priority
+> to implement.
 
->> I also experienced some sort of crash with Tejun's relaxed barrier
->> patch on one of my systems.  I was hitting the BUG_ON in
->> drivers/scsi/scsi_lib.c, line 1115.
-> 
-> My kernel source doesn't have a BUG_ON line there, but only one two
-> lines above.  A req->nr_phys_segments that's zero sounds a bit like
-> empty flush requests, I'll need to look into it again.
+But e2fsck runs entirely in user space, so all memory should be
+swappable, no? I think the system did not swap at all.
 
-Yeah, definitely sounds like REQ_FS|REQ_FLUSH request causing problem.
-Can you post the kernel log?
+> > Since the file system is corrupt anyway, it is maybe easiest
+> > to delete inode 245859898 with debugfs, but maybe there is
+> > a better option. Moreover, since this might be some kind of
+> > e2fsck-trusts-corrupt-data issue, you might be interested in looking
+> > at this.
+>=20
+> No, I don't think this will help.  The problem is not with that inode,
+> just that it is needing to allocate a structure because of nlinks=3D2
+> (this is normal).
+>=20
+> In theory it might be possible to avoid allocating icount structures
+> for every directory inode (which have icount =3D=3D 2 normally), if we
+> used the "fs->inode_dir_map" bit as "+1" for the inode link count.
+>=20
+> In any case, this is a non-trivial fix.
 
-Thanks.
+I'm not sure I can follow. Are you saying we currently allocate two
+struct ext2_icount for a directory inode even if .  and .. are the
+only two references? So we could just omit this allocation in the
+common icount =3D=3D 2 case because we know it is a directory inode
+(so we have one additional reference) if fs->inode_dir_map is not NULL.
 
--- 
-tejun
+> > Further info: The ext3 file system lives on a lv within a vg whose
+> > single pv is the 12 disk raid6 array. The file system stores hard
+> > link based backups, so it contains _lots_ of hard links.
+>=20
+> Ah, that is also a major user of memory, and not necessarily one that
+> optimizing the internal bitmap will help significantly.  It may well
+> be that your swap cannot be used if a single allocation is in the same
+> neighbourhood as the total RAM size.
+
+Is playing with the memory overcommit knobs likely going to help?
+
+> Every file with nlink > 1 will need an additional 8 bytes of data, and
+> the insert_icount_el() function reallocates this structure every 100
+> elements, so it can use AT MOST 1/2 of all memory before the new copy
+> and the old one fill all available memory.
+>=20
+> It would probably make sense to modify the internal icount structure
+> to hold a 2-level tree of arrays of e.g. 8kB chunks, or other advanced
+> data structure so that it doesn't force reallocation and average .51
+> memory copies of the WHOLE LIST on every insert.  This is probably
+> doable with some light understanding of e2fsprogs, since the icount
+> interface is well encapsulated, but it isn't something I have time for
+> now.
+
+I'm interested in having a look at the icount structure and see what
+can be done to reduce memory usage. Here's a first question: There is
+ext2fs_create_icount() and ext2fs_create_icount_tdb(). Is is correct
+that they do the same thing, the only difference being that the tdb
+variant uses an on-disk database while ext2fs_create_icount stores
+everything in memory?
+
+If so we might want to discuss first whether it is more important
+to improve the performance of the on-disk database or to decrease
+the memory requirements of the in-memory variant. The answer likely
+depends on the amounts of disk space and RAM a typical system will
+have in 5 or 10 years from now.
+
+> If you are interested to hack/improve e2fsprogs I'd be willing to
+> guide you, but if not I'd just suggest connecting this array to
+> another node to run e2fsck, and consider spending the $200 needed to
+> get a 64-bit system with a few GB of RAM.
+
+Yeah right. There is already a 64bit system waiting to replace the
+old one. Moving the old disks would be a PITA though because of the
+lack of hot swap bays...
+
+Thanks for your help
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--lzfPtAjrR1KYNfg0
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFMbSsjWto1QDEAkw8RApZ4AJ9UBhZoTma2n61Ax69uprDGnUbDmgCgo4TC
+nM0A6uFvVLX4c7CRhw3E7Dw=
+=dsIO
+-----END PGP SIGNATURE-----
+
+--lzfPtAjrR1KYNfg0--
