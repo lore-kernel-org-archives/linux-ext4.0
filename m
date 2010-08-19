@@ -1,39 +1,62 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Memory allocation failed, e2fsck: aborted
-Date: Thu, 19 Aug 2010 13:16:20 -0400
-Message-ID: <20100819171620.GB3468@thunk.org>
-References: <20100818140422.GL27457@skl-net.de>
- <EDA85D20-C083-41FE-B561-8014C496C4CB@dilger.ca>
- <20100819005404.GO21182@thunk.org>
- <20100819131017.GV16603@skl-net.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] fix oops in ext4_mb_release_group_pa tracing
+Date: Thu, 19 Aug 2010 12:59:50 -0500
+Message-ID: <4C6D7116.2080905@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Marcus Hartmann <marcus.hartmann@tuebingen.mpg.de>
-To: Andre Noll <maan@systemlinux.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Josef Bacik <josef@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38220 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:22427 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751657Ab0HSRQX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Aug 2010 13:16:23 -0400
-Content-Disposition: inline
-In-Reply-To: <20100819131017.GV16603@skl-net.de>
+	id S1754342Ab0HSR7x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Aug 2010 13:59:53 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o7JHxqnK010647
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Aug 2010 13:59:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 19, 2010 at 03:10:17PM +0200, Andre Noll wrote:
-> Silly question: Would it be possible to simply mmap a large enough
-> file for the data and and use e.g. rbtrees for the lookups? If yes,
-> osl [1] could probably be an option. It's very simple but likely too
-> slow on inserts to be useful for e2fsprogs.
+Our QA reported an oops in the ext4_mb_release_group_pa tracing,
+and Josef Bacik pointed out that it was because we may have a
+non-null but uninitialized ac_inode in the allocation context.
 
-As I recall, you're on a 32-bit machine, right?  If so, a limitation
-you may run into is simply running out of address space.  If it's not
-an address space issue, we don't need to mmap anything; you could just
-try enabling swap, and use the existing e2fsck code.
+I can reproduce it when running xfstests with ext4 tracepoints on, 
+on a CONFIG_SLAB_DEBUG kernel.
 
-(I had assumed you had tried that before suggesting you use the
-scratch_files tdb approach....)
+We call trace_ext4_mb_release_group_pa from 2 places, 
+ext4_mb_discard_group_preallocations and 
+ext4_mb_discard_lg_preallocations
 
-					- Ted
+In both cases we allocate an ac as a container just for tracing (!)
+and never fill in the ac_inode.  There's no reason to be assigning,
+testing, or printing it as far as I can see, so just remove it from
+the tracepoint.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 01e9e00..e352c77 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -432,7 +432,6 @@ TRACE_EVENT(ext4_mb_release_group_pa,
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+-		__field(	ino_t,	ino			)
+ 		__field(	__u64,	pa_pstart		)
+ 		__field(	__u32,	pa_len			)
+ 
+@@ -440,8 +439,6 @@ TRACE_EVENT(ext4_mb_release_group_pa,
+ 
+ 	TP_fast_assign(
+ 		__entry->dev		= sb->s_dev;
+-		__entry->ino		= (ac && ac->ac_inode) ?
+-						ac->ac_inode->i_ino : 0;
+ 		__entry->pa_pstart	= pa->pa_pstart;
+ 		__entry->pa_len		= pa->pa_len;
+ 	),
+
