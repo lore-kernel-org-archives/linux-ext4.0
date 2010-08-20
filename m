@@ -1,55 +1,65 @@
-From: Ted Ts'o <tytso@mit.edu>
+From: Andre Noll <maan@systemlinux.org>
 Subject: Re: Memory allocation failed, e2fsck: aborted
-Date: Fri, 20 Aug 2010 08:46:42 -0400
-Message-ID: <20100820124642.GB4053@thunk.org>
-References: <20100818140422.GL27457@skl-net.de>
- <EDA85D20-C083-41FE-B561-8014C496C4CB@dilger.ca>
- <20100819130123.GU16603@skl-net.de>
- <ABE19F5B-74C8-47E9-B359-D3FB2C137087@dilger.ca>
+Date: Fri, 20 Aug 2010 16:36:47 +0200
+Message-ID: <20100820143647.GY16603@skl-net.de>
+References: <20100818140422.GL27457@skl-net.de> <EDA85D20-C083-41FE-B561-8014C496C4CB@dilger.ca> <20100819005404.GO21182@thunk.org> <20100819131017.GV16603@skl-net.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andre Noll <maan@systemlinux.org>,
-	linux-ext4 development <linux-ext4@vger.kernel.org>,
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="35rzUHtxHARXKmYf"
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
 	Marcus Hartmann <marcus.hartmann@tuebingen.mpg.de>
-To: Andreas Dilger <adilger@dilger.ca>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41093 "EHLO thunker.thunk.org"
+Received: from systemlinux.org ([83.151.29.59]:59809 "EHLO m18s25.vlinux.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751451Ab0HTOPM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Aug 2010 10:15:12 -0400
+	id S1751841Ab0HTOg7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Aug 2010 10:36:59 -0400
 Content-Disposition: inline
-In-Reply-To: <ABE19F5B-74C8-47E9-B359-D3FB2C137087@dilger.ca>
+In-Reply-To: <20100819131017.GV16603@skl-net.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 19, 2010 at 01:03:06PM -0600, Andreas Dilger wrote:
-> 
-> I think the problem isn't just the TOTAL amount of RAM being used,
-> but the fact that this piece of code is trying to do a SINGLE
-> allocation that is HUGE.  The second problem is that the constant
-> re-allocation of this huge array (every 100 insertions) means that
-> it can never really exceed 1/2 of RAM in size.
 
-Part of the problem is that the data structures are optimized for
-relatively few hard links and a reasonable number of directories
-compared to other types of inodes.  For people who are using hard-link
-backup schemes, these assumptions are violated in some fairly massive
-ways.
+--35rzUHtxHARXKmYf
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Something that might be interesting to do is to keep some statistics
-in the superblock about the number of hard links.  This would allow
-e2fsck to allocate the data structures appropriately up front, and
-maybe allow it to switch to some other representation if it turns out
-the file system is one which is dense with hard links.
+On Thu, Aug 19, 15:10, Andre Noll wrote:
+> > Something which *might* help (but will take a long time) is to add to
+> > your /etc/e2fsck.conf (if you have one; if not create one wiht these
+> > contents):
+> >=20
+> > [scratch_files]
+> >     directory =3D /var/cache/fsck
+> >=20
+> > (And then make sure /var/cache/fsck exists.)
+>=20
+> Thanks for the hint. It is running for an hour now and I will report
+> back tomorrow. ATM, it's at 1% and the two files in /var/cache/fsck
+> are ~50M large.
 
-> That said, any insert-optimized tree structure with a high fan-out
-> would be suitable.  Elements are almost never deleted, and we would
-> never need to compact the tree (it is freed as a whole when it is
-> done).
+It got much slower: 4.8% after one day. So I cancelled the fsck and
+am copying the raw device to a 64bit machine and run fsck there,
+as Andreas suggested.
 
-We could try to create a tree-optimized data structure, but I wonder
-if it's worth it.  IIRC berk_db has an in-memory and file-backed
-option, and it has a btree option.  Using that might be easier than
-trying to hand-code something special.
+Thanks
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
 
-							- Ted
+--35rzUHtxHARXKmYf
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD4DBQFMbpL/Wto1QDEAkw8RAmsUAJwL3l+wlBNcldanMRgtUb/ddTA53gCYkbR+
+Jp9RT4x87Qj1XAOEtRIpXw==
+=wxtH
+-----END PGP SIGNATURE-----
+
+--35rzUHtxHARXKmYf--
