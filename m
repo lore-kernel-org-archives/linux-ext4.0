@@ -1,59 +1,68 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16711] New: Oops with 2.6.36-rc1
-Date: Sat, 21 Aug 2010 10:07:31 GMT
-Message-ID: <bug-16711-13602@https.bugzilla.kernel.org/>
+From: Richard Kennedy <richard@rsk.demon.co.uk>
+Subject: Re: [PATCH] ext4: remove alignment padding from ext4_inode_info on
+ 64 bit builds
+Date: Sat, 21 Aug 2010 13:31:38 +0100
+Message-ID: <1282393898.1978.18.camel@castor.rsk>
+References: <1282144088.2068.16.camel@castor.rsk>
+	 <4C6EE173.3030204@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:58883 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751751Ab0HUKHc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Aug 2010 06:07:32 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7LA7V2l005903
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 21 Aug 2010 10:07:31 GMT
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, lkml <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <4C6EE173.3030204@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16711
+On Fri, 2010-08-20 at 15:11 -0500, Eric Sandeen wrote:
+> Richard Kennedy wrote:
+> > Reorder structure ext4_inode_info to remove 16 bytes of alignment
+> > padding on 64 bit builds. This shrinks its size from 904 to 888 bytes
+> > with (CONFIG_EXT4_S_XATTR=y && CONFIG_QUOTA=n).
+> >     
+> > This will allow this structure to use one fewer cache lines.
+> > 
+> > Also change type of i_delalloc_reserved_flag to bool to better reflect
+> > its usage.
+> > 
+> > compiled & tested on x86_64
+> 
+> 
+> Looks good to me; there is still a bit of padding at the end:
+> 
+>         qsize_t                    i_reserved_quota;     /*   864     8 */
+>         struct list_head           i_completed_io_list;  /*   872    16 */
+>         spinlock_t                 i_completed_io_lock;  /*   888     4 */
+> 
+>         /* XXX 4 bytes hole, try to pack */
+> 
+>         /* --- cacheline 14 boundary (896 bytes) --- */
+>         ext4_io_end_t *            cur_aio_dio;          /*   896     8 */
+>         tid_t                      i_sync_tid;           /*   904     4 */
+>         tid_t                      i_datasync_tid;       /*   908     4 */
+> 
+> 
+> but it wouldn't save a cacheline anyway...
+> 
+> -Eric
+> 
+Thanks Eric, yes there is padding but we don't have anything to fill the
+hole with :(
 
-           Summary: Oops with 2.6.36-rc1
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.36-rc1
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: devnull@plzk.org
-                CC: akpm@linux-foundation.org, eparis@redhat.com
-        Regression: Yes
+If it becomes important to save space, i_state_flags seem to be unused
+in ext4 so we could possibly drop that.
 
+With my patch applied, under slub I'm getting one more object per slab
+in the ext4_inode_cache
 
-The ubuntu/debian build of 2.6.36-rc1 from [1] doesn't boot on my macbook
-v.2.1. It's most likely not an EXT4 bug but I have no idea where to put it and
-cc people that probably know better. I am linking to a crappy cellphone shot of
-the oops, please see [2].
+[2.6.35] 17 objects of 960 bytes -- 4 pages per slab
+[+patch] 18 objects of 896 bytes -- 4 pages per slab
 
-Unfortunately, due to the kernel-package in ubuntu being broken once again, I
-can't build myself, hence no bisecting. All I can say is that 2.6.35-rc2 from
-the same ppa works.
+So I guess that is where most of the write test performance improvement
+came from.
 
-Let me know if additional info is needed.
-
-Regards,
-Tobias
-
-[1] http://kernel.ubuntu.com/~kernel-ppa/mainline/v2.6.36-rc1-maverick/
-[2] http://img841.imageshack.us/img841/6654/imag0030l.jpg
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+regards
+Richard
