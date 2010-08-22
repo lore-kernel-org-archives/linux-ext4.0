@@ -1,174 +1,203 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: Fix EOFBLOCKS_FL handling
-Date: Sat, 21 Aug 2010 17:07:26 -0400
-Message-ID: <1282424846-30689-1-git-send-email-tytso@mit.edu>
-References: <1282187058-23732-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Updated test case
+Date: Sat, 21 Aug 2010 19:40:10 -0500
+Message-ID: <4C7071EA.3040503@redhat.com>
+References: <E1OlvNi-00063m-09@tytso-glaptop> <20100821201146.GF10450@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:50268 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19442 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751747Ab0HUVH3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 21 Aug 2010 17:07:29 -0400
-In-Reply-To: <1282187058-23732-1-git-send-email-tytso@mit.edu>
+	id S1751668Ab0HVAkR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Aug 2010 20:40:17 -0400
+In-Reply-To: <20100821201146.GF10450@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It turns out we have several problems with how EOFBLOCKS_FL is
-handled.  First of all, there was a fencepost error where we were not
-clearing the EOFBLOCKS_FL when fill in the last uninitialized block,
-but rather when we allocate the next block _after_ the uninitalized
-block.  Secondly we were not testing to see if we needed to clear the
-EOFBLOCKS_FL when writing to the file O_DIRECT or when were converting
-an uninitialized block (which is the most common case).
+Ted Ts'o wrote:
+> This is an updated of my test program, with a new option that allows
+> us to seek to the middle of the unitialized extent.  This allows us to
+> test more cases.  Suggested test cases:
+> 
+> ./testcase
+> ./testcase -w 8192
+> ./testcase -s 8192 -w 8192
+> ./testcase -s 8192
+> ./testcase -s 409600
+> ./testcase -d
+> ./testcase -d -w 8192
+> ./testcase -d -s 8192
+> ./testcase -d -s 8192 -w 8192
+> ./testcase -d -s 409600
 
-Google-Bug-Id: 2928259
+This can be done easily with the xfs_io tool:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/extents.c |   91 ++++++++++++++++++++++++++++++++++++-----------------
- 1 files changed, 62 insertions(+), 29 deletions(-)
+# Buffered writes
+xfs_io    -f -F -c "falloc -k 0 40960" -c "pwrite     0 40960" eof1
+xfs_io    -f -F -c "falloc -k 0 40960" -c "pwrite  8192  8192" eof2
+xfs_io    -f -F -c "falloc -k 0 40960" -c "pwrite  8192 40960" eof3
+xfs_io    -f -F -c "falloc -k 0 40960" -c "pwrite 40960 40960" eof4
+# O_DIRECT writes
+xfs_io -d -f -F -c "falloc -k 0 40960" -c "pwrite     0 40960" eof5
+xfs_io -d -f -F -c "falloc -k 0 40960" -c "pwrite  8192  8192" eof6
+xfs_io -d -f -F -c "falloc -k 0 40960" -c "pwrite  8192 40960" eof7
+xfs_io -d -f -F -c "falloc -k 0 40960" -c "pwrite 40960 40960" eof8
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 06328d3..98797e2 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3180,6 +3180,50 @@ static void unmap_underlying_metadata_blocks(struct block_device *bdev,
-                 unmap_underlying_metadata(bdev, block + i);
- }
- 
-+/*
-+ * Handle EOFBLOCKS_FL flag, clearing it if necessary
-+ */
-+static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
-+			      struct ext4_map_blocks *map,
-+			      struct ext4_ext_path *path,
-+			      unsigned int len)
-+{
-+	int i, depth;
-+	struct ext4_extent_header *eh;
-+	struct ext4_extent *ex, *last_ex;
-+
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))
-+		return 0;
-+
-+	depth = ext_depth(inode);
-+	eh = path[depth].p_hdr;
-+	ex = path[depth].p_ext;
-+
-+	if (unlikely(!eh->eh_entries)) {
-+		EXT4_ERROR_INODE(inode, "eh->eh_entries == 0 and "
-+				 "EOFBLOCKS_FL set");
-+		return -EIO;
-+	}
-+	last_ex = EXT_LAST_EXTENT(eh);
-+	/*
-+	 * If the current leaf block was reached by looking at the
-+	 * last index block all the way down the tree, and we are
-+	 * extending the inode beyond the last extent in the current
-+	 * leaf block, then clear the EOFBLOCKS_FL flag.
-+	 */
-+	if (map->m_lblk + len < le32_to_cpu(last_ex->ee_block) +
-+	    ext4_ext_get_actual_len(last_ex))
-+		return 0;
-+	for (i = depth-1; i >= 0; i--) {
-+		if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
-+			break;
-+	}
-+	if (i >= 0)
-+		return 0;
-+	ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
-+	return ext4_mark_inode_dirty(handle, inode);
-+}
-+
- static int
- ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 			struct ext4_map_blocks *map,
-@@ -3217,8 +3261,12 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 	if ((flags & EXT4_GET_BLOCKS_CONVERT)) {
- 		ret = ext4_convert_unwritten_extents_endio(handle, inode,
- 							path);
--		if (ret >= 0)
-+		if (ret >= 0) {
- 			ext4_update_inode_fsync_trans(handle, inode, 1);
-+			err = check_eofblocks_fl(handle, inode, map, path,
-+						 map->m_len);
-+		} else
-+			err = ret;
- 		goto out2;
- 	}
- 	/* buffered IO case */
-@@ -3244,8 +3292,13 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 
- 	/* buffered write, writepage time, convert*/
- 	ret = ext4_ext_convert_to_initialized(handle, inode, map, path);
--	if (ret >= 0)
-+	if (ret >= 0) {
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
-+		err = check_eofblocks_fl(handle, inode, map, path, map->m_len);
-+		if (err < 0)
-+			goto out2;
-+	}
-+
- out:
- 	if (ret <= 0) {
- 		err = ret;
-@@ -3292,6 +3345,7 @@ out2:
- 	}
- 	return err ? err : allocated;
- }
-+
- /*
-  * Block allocation/map/preallocation routine for extents based files
-  *
-@@ -3315,9 +3369,9 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_extent_header *eh;
--	struct ext4_extent newex, *ex, *last_ex;
-+	struct ext4_extent newex, *ex;
- 	ext4_fsblk_t newblock;
--	int i, err = 0, depth, ret, cache_type;
-+	int err = 0, depth, ret, cache_type;
- 	unsigned int allocated = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-@@ -3497,31 +3551,10 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			map->m_flags |= EXT4_MAP_UNINIT;
- 	}
- 
--	if (unlikely(ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
--		if (unlikely(!eh->eh_entries)) {
--			EXT4_ERROR_INODE(inode,
--					 "eh->eh_entries == 0 and "
--					 "EOFBLOCKS_FL set");
--			err = -EIO;
--			goto out2;
--		}
--		last_ex = EXT_LAST_EXTENT(eh);
--		/*
--		 * If the current leaf block was reached by looking at
--		 * the last index block all the way down the tree, and
--		 * we are extending the inode beyond the last extent
--		 * in the current leaf block, then clear the
--		 * EOFBLOCKS_FL flag.
--		 */
--		for (i = depth-1; i >= 0; i--) {
--			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
--				break;
--		}
--		if ((i < 0) &&
--		    (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block) +
--		     ext4_ext_get_actual_len(last_ex)))
--			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
--	}
-+	err = check_eofblocks_fl(handle, inode, map, path, ar.len);
-+	if (err)
-+		goto out2;
-+
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err) {
- 		/* free data blocks we just allocated */
--- 
-1.7.1
+and if we want this to stay fixed, it needs to be part of a test suite.
+
+I'll send an xfstest but it'd be really great if could could work
+inside the xfstests framework when devising testcases...
+
+Ted, is just checking for fs corruption is enough or do you think a
+test needs the debugfs stat inspection step?  It'd be easy enough
+to special-case a debugfs step for ext4.
+
+> What I normally do is run it something like this:
+> 
+> mount /scratch ; pushd /scratch; ~/testcase <opts>; popd ; umount /scratch ; debugfs /dev/sdc1 -R "stat test-file"
+> 
+> What to look for is whether the flags field is either 0x480000 or
+> 0x80000.  The 0x400000 flag is the EOFBLOCKS_FL flag.  If last extent
+> is uninitialized, then the EOFBLOCKS_FL flag should be set.  
+
+only if that last extent is past i_size, though...
+
+> If the
+> last extent does not have the "uninit" flag, then the EOFBLOCKS_FL
+> should be clear.
+
+And the above should always be true.
+
+Thanks,
+-Eric
+
+
+
+>        	  					- Ted
+> 
+> /*
+>  * Testcase for Google Bug 2928259
+>  *
+>  * Run this program while the current directory is in an ext4 filesystem,
+>  * then umount the file system and do a forced fsck (i.e., fsck -f /dev/XXX).
+>  *
+>  * If you get a e2fsck reported corruption, then the kernel is buggy:
+>  *
+>  * Inode 12 should not have EOFBLOCKS_FL set (size 40960, lblk 9)
+>  * Clear<y>? yes
+>  */
+> 
+> #define _GNU_SOURCE
+> 
+> #include <stdio.h>
+> #include <unistd.h>
+> #include <stdlib.h>
+> #include <string.h>
+> #include <sys/types.h>
+> #include <sys/syscall.h>
+> #include <sys/stat.h>
+> #include <fcntl.h>
+> #include <getopt.h>
+> #include <errno.h>
+> 
+> #define FALLOC_FL_KEEP_SIZE     0x01
+> 
+> #ifndef SYS_fallocate
+> #ifdef __i386__
+> /* 32-bits */
+> #define SYS_fallocate 324
+> #elif __amd64__
+> /* 64-bits */
+> #define SYS_fallocate 285
+> #endif
+> #endif
+> 
+> int main(int argc, char **argv)
+> {
+> 	int fd, ret, c;
+> 	char *buf, *tmp;
+> 	unsigned long fsize = 40960;
+> 	unsigned long wsize = 40960;
+> 	off_t offset = 0;
+> 	struct stat st;
+> 	int flags = O_CREAT|O_TRUNC|O_RDWR;
+> 
+> 	while ((c = getopt(argc, argv, "df:s:w:")) != EOF) {
+> 		switch (c) {
+> 		case 'd':
+> 			flags |= O_DIRECT;
+> 			break;
+> 		case 'f':
+> 			fsize = strtoul(optarg, &tmp, 0);
+> 			if (*tmp) {
+> 				fprintf(stderr, "Bad fsize - %s\n", optarg);
+> 				exit(1);
+> 			}
+> 			break;
+> 		case 's':
+> 			offset = strtol(optarg, &tmp, 0);
+> 			if (*tmp) {
+> 				fprintf(stderr, "Bad offset - %s\n", optarg);
+> 				exit(1);
+> 			}
+> 			break;
+> 		case 'w':
+> 			wsize = strtoul(optarg, &tmp, 0);
+> 			if (*tmp) {
+> 				fprintf(stderr, "Bad wsize - %s\n", optarg);
+> 				exit(1);
+> 			}
+> 			break;
+> 		default:
+> 			fprintf(stderr, "Usage: testcase [-d] "
+> 				"-f fallocate_size -w write_size\n");
+> 		}
+> 	}
+> 
+> 	fd = open("test-file", flags, 0644);
+> 	if (fd < 0) {
+> 		perror("open");
+> 		exit(1);
+> 	}
+> 	ret = syscall(SYS_fallocate, fd, FALLOC_FL_KEEP_SIZE, 0ULL,
+> 		      (unsigned long long) fsize);
+> 	if (ret) {
+> 		perror("fallocate");
+> 		exit(1);
+> 	}
+> 	if ((ret = posix_memalign((void **) &buf, 4096, wsize)) != 0) {
+> 		errno = ret;
+> 		perror("posix_memalign");
+> 	}
+> 	if (lseek(fd, offset, SEEK_SET) < 0) {
+> 		perror("lseek");
+> 		exit(1);
+> 	}
+> 	memset(buf, 255, wsize);
+> 	ret = write(fd, buf, wsize);
+> 	if (ret < 0) {
+> 		perror("write");
+> 		exit(1);
+> 	} else if (ret != wsize) {
+> 		fprintf(stderr, "Short write: actual %d, expected %lu\n",
+> 			ret, wsize);
+> 		exit(1);
+> 	}
+> 	if (fstat(fd, &st) < 0) {
+> 		perror("fstat");
+> 		exit(1);
+> 	}
+> 	printf("test-file has inode number %lu\n", (unsigned long) st.st_ino);
+> 	printf("size is %lu, blocks*512 is %lu\n", (unsigned long) st.st_size,
+> 	       (unsigned long) st.st_blocks*512);
+> 	close(fd);
+> 	exit(0);
+> }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
