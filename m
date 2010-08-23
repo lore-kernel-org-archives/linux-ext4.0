@@ -1,41 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16711] Oops with 2.6.36-rc1
-Date: Mon, 23 Aug 2010 10:18:50 GMT
-Message-ID: <201008231018.o7NAIoYY007130@demeter1.kernel.org>
-References: <bug-16711-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH] mke2fs: use lazy inode init on some discard-able devices
+Date: Mon, 23 Aug 2010 06:49:22 -0400
+Message-ID: <D416033E-58F9-46F8-B8B0-546C949CB6BE@mit.edu>
+References: <4C6EF67A.5080502@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39605 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752708Ab0HWKSw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Aug 2010 06:18:52 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7NAIpSc007131
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Aug 2010 10:18:51 GMT
-In-Reply-To: <bug-16711-13602@https.bugzilla.kernel.org/>
+Received: from DMZ-MAILSEC-SCANNER-7.MIT.EDU ([18.7.68.36]:55013 "EHLO
+	dmz-mailsec-scanner-7.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750725Ab0HWKy0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Aug 2010 06:54:26 -0400
+In-Reply-To: <4C6EF67A.5080502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16711
+
+On Aug 20, 2010, at 5:41 PM, Eric Sandeen wrote:
+
+> If a device supports discard -and- returns 0s for discarded blocks,
+> then we can skip the inode table initialization -and- the inode table
+> zeroing at mkfs time, and skip the lazy init as well since they are
+> already zeroed out.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+This needs to be configurable in /etc/mke2fs.conf.  Without naming
+the manufacturer, I'm aware of at least one device which claims 
+that discard works, and will even return zeros --- but after a
+power cycle, if the block has not been reallocated, will once again
+return the old, pre-discard values that had been stored in that block.
+
+In other words, the discard is not power-cycle persistent...
+
+-- Ted
 
 
-Tobias <devnull@plzk.org> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |john.johansen@canonical.com
-
-
-
-
---- Comment #2 from Tobias <devnull@plzk.org>  2010-08-23 10:18:37 ---
-Apologies, I obviously can't read a trace. I guess I could move this to another
-category, but have no idea where to.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
