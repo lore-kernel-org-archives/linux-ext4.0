@@ -1,75 +1,72 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Updated test case
-Date: Sun, 22 Aug 2010 10:35:03 -0500
-Message-ID: <4C7143A7.1060901@redhat.com>
-References: <E1OlvNi-00063m-09@tytso-glaptop> <20100821201146.GF10450@thunk.org> <4C7071EA.3040503@redhat.com> <20100822114228.GB6329@thunk.org>
+From: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
+Subject: Re: [PATCH] ext3: set i_extra_isize of 11th inode
+Date: Mon, 23 Aug 2010 09:16:58 +0900
+Message-ID: <20100823091657.ACB6.61FB500B@jp.fujitsu.com>
+References: <20100820112011.E6FA.61FB500B@jp.fujitsu.com> <0347DFC8-03A9-45DF-9B9F-ED4005720C49@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="US-ASCII"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35933 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752137Ab0HVPfI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Aug 2010 11:35:08 -0400
-In-Reply-To: <20100822114228.GB6329@thunk.org>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:38530 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751249Ab0HWARJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Aug 2010 20:17:09 -0400
+Received: from m6.gw.fujitsu.co.jp ([10.0.50.76])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o7N0H7xk027431
+	for <linux-ext4@vger.kernel.org> (envelope-from m.mizuma@jp.fujitsu.com);
+	Mon, 23 Aug 2010 09:17:08 +0900
+Received: from smail (m6 [127.0.0.1])
+	by outgoing.m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 998B93A62C2
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Aug 2010 09:17:07 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
+	by m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 75A461EF086
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Aug 2010 09:17:07 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 5324C1DB8016
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Aug 2010 09:17:07 +0900 (JST)
+Received: from ml14.s.css.fujitsu.com (ml14.s.css.fujitsu.com [10.249.87.104])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id CA1551DB8012
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Aug 2010 09:17:06 +0900 (JST)
+In-Reply-To: <0347DFC8-03A9-45DF-9B9F-ED4005720C49@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted Ts'o wrote:
-> On Sat, Aug 21, 2010 at 07:40:10PM -0500, Eric Sandeen wrote:
->> I'll send an xfstest but it'd be really great if could could work
->> inside the xfstests framework when devising testcases...
+On Fri, 20 Aug 2010 01:42:25 -0600
+Andreas Dilger <adilger@dilger.ca> wrote:
+
+> On 2010-08-19, at 20:20, Masayoshi MIZUMA wrote:
+> > In ext3 filesystem, if following conditions 1., 2., 3. and 4. is satisfied,
+> > getfattr can't search the extended attribute (EA) after remount.
+> > 
+> > This happens because of following logic:
+> >    i_extra_isize is set to over 0 by ext3_new_inode() when we create
+> >    a file whose inode number is 11 after removing "lost+found". 
+> >    Therefore setfattr creates the EA in-inode.
+> >    After remount, i_extra_isize of 11th inode is set to 0 by ext3_iget()
+> >    when we lookup the file, so getfattr tries to search the EA out-inode.
+> >    However, the EA locates in-inode, so getfattr can't search the EA.
 > 
-> If you could put together an xfstests, that would be great.  I hadn't
-> because Mike's been trying to remind me that I really need to delegate
-> to others :-), and we do have someone at Google who can put the
-> xfstest script together.  You can probably do it faster than he can,
-> though.
+> This was a workaround for a bug in mke2fs a couple of years ago, and is probably no longer needed.
+I understand it. Thanks.
 
-Hah, I'm also supposed to delegate :D Let's see what your person can
-come up with, I'd really like to start seeing more people contribute to
-the test suite.  I'm happy to answer any questions.
-
-> I didn't use xfs_io because I don't know how to use it, and because
-> it's not one of those things which is regularly on our production
-> machines that we use for testing.  I probably start exploring all of
-> the things that can be done with it, though!
-
-Sure, I know it's kind of an oddball tool, but it's really a good swiss
-army knife for creating testcases like this.  Probably faster than
-writing C.  :)
-
->> Ted, is just checking for fs corruption is enough or do you think a
->> test needs the debugfs stat inspection step?  It'd be easy enough
->> to special-case a debugfs step for ext4.
 > 
-> Well, if we end up suppressing the EOFBLOCKS_FL test e2fsck (which is
-> what we've already done as an emergency workaround) we can't count on
-> e2fsck detecting the problem, which is why I phrased this the way I
-> did for Aditya's benefit.
-
-Ok.  Explicitly exercising blocks-past-EOF on any fallocate-capable
-fs is probably a good thing for the test to do, but since ext4 in
-particular had a bug, we can always do a debugfs step under
-an FSTYP==ext4 case, which is silent on success, and prints out
-something on failure (which would change the output and make the
-test fail)
-
--Eric
-
->>> What I normally do is run it something like this:
->>>
->>> mount /scratch ; pushd /scratch; ~/testcase <opts>; popd ; umount /scratch ; debugfs /dev/sdc1 -R "stat test-file"
->>>
->>> What to look for is whether the flags field is either 0x480000 or
->>> 0x80000.  The 0x400000 flag is the EOFBLOCKS_FL flag.  If last extent
->>> is uninitialized, then the EOFBLOCKS_FL flag should be set.  
->> only if that last extent is past i_size, though...
+> > @@ -2881,8 +2881,7 @@ struct inode *ext3_iget(struct super_block *sb, unsigned long ino)
+> > 		atomic_set(&ei->i_datasync_tid, tid);
+> > 	}
+> > 
+> > -	if (inode->i_ino >= EXT3_FIRST_INO(inode->i_sb) + 1 &&
+> > -	    EXT3_INODE_SIZE(inode->i_sb) > EXT3_GOOD_OLD_INODE_SIZE) {
+> > +	if (EXT3_INODE_SIZE(inode->i_sb) > EXT3_GOOD_OLD_INODE_SIZE) {
+> > 		/*
+> > 		 * When mke2fs creates big inodes it does not zero out
+> > 		 * the unused bytes above EXT3_GOOD_OLD_INODE_SIZE,
 > 
-> Good point, and I guess I did have at least one test case where that
-> wasn't true.
-> 
-> 						- Ted
+> This should also remove the above comment, which is no longer relevant.
+OK. I will resend the patch which is removed the above comment.
+
+Thanks,
+Masayoshi
 
