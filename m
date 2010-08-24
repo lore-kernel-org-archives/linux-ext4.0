@@ -1,226 +1,235 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 3/3] Add inode table initialization code into Ext4
-Date: Tue, 24 Aug 2010 11:01:47 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008241013350.2714@dhcp-lab-213.englab.brq.redhat.com>
-References: <1282326704-14838-1-git-send-email-lczerner@redhat.com> <1282326704-14838-4-git-send-email-lczerner@redhat.com> <1BF88ED4-1B61-4D6C-BD84-D8D28931D2C6@dilger.ca>
+From: David Rientjes <rientjes@google.com>
+Subject: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and kzalloc
+Date: Tue, 24 Aug 2010 03:50:19 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	rwheeler@redhat.com, sandeen@redhat.com, jack@suse.cz,
-	tytso@mit.edu
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
+	Frederic Weisbecker <fweisbec@gmail.com>,
+	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9832 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754515Ab0HXJB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Aug 2010 05:01:58 -0400
-In-Reply-To: <1BF88ED4-1B61-4D6C-BD84-D8D28931D2C6@dilger.ca>
+Received: from smtp-out.google.com ([74.125.121.35]:44555 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751466Ab0HXKu3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Aug 2010 06:50:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 23 Aug 2010, Andreas Dilger wrote:
+Add kmalloc_nofail(), kcalloc_nofail(), and kzalloc_nofail().  These
+functions are equivalent to kmalloc(), kcalloc(), and kzalloc(),
+respectively, except that they will never return NULL and instead loop
+forever trying to allocate memory.
 
-> On 2010-08-20, at 11:51, Lukas Czerner wrote:
-> > When file system is mounted with "inititable" mount option, new thread
-> > (called itableinitd) is created. This thread walks through allocation
-> > groups searching for the group with not yet initialized inode table.
-> > When such a group is found it write zeroes through whole inode table and
-> > put itself into sleep for defined number of seconds to not disturb other
-> > ongoing I/O. This is repeated until it walks through every allocation group
-> > then the iitableinitd thread is stopped.
-> 
-> Eric and I were discussing this in IRC, and for SSDs and thinly-provisioned storage (including loopback files, VM images, etc) it makes sense to only write zeroes into itable blocks if they are not already zero.  Otherwise, the backing storage will allocate thousands/millions of blocks that might not otherwise be needed.  One of the original reasons for the mke2fs lazy_itable_init option was to allow testing of large filesystems with sparse loopback files smaller than the filesystem being tested.
-> 
-> Reading the itable blocks before writing zeroes into them wouldn't be much (if any) slower than writing them.  It might make sense to just have a binary toggle, so that if any non-zero blocks are read from the filesystem the rest of the blocks will be zeroed out (to avoid doubling the total IO needed).  This has the added advantage that reads from erased SSDs (which return zero on read, the only sane action IMHO) or loopback files never need to do any writes.
-> 
-> The drawback is that reading the blocks will potentially pollute the cache if done incorrectly, but this can be handled with O_DIRECT reads.  It would also increase the CPU usage during the single zeroing pass.
-> 
-> > When regular inode allocation are going too fast, there is a chance that
-> > it hits the group with uninitialized inode table sooner than the
-> > itableinitd thread. In that case it just initializes the itable for
-> > itself the same way that itableinitd thread would do eventually.
-> 
-> I think this is the correct approach.  It should only take a fraction of a second to zero the few MB in the itable being accessed, and is still much faster than waiting for mke2fs to zero all of them.
-> 
-> > To prevent race conditions, each group is protected by the mutex.
-> 
-> > +/* Get pointer to lazyinit thread mutex li_mtx for particular group */
-> > +static inline struct mutex *ext4_li_mutex_ptr(struct super_block *sb,
-> > +						      ext4_group_t group)
-> > +{
-> > +	return &EXT4_SB(sb)->s_li_info->li_mtx[group];
-> > +}
-> 
-> Note that even allocating a single pointer per group is too much on a very large filesystem.  At 1TB this is 8192 groups * 32 bytes/ptr = 256kB (struct mutex may be even larger if debug is enabled).  This will fail allocation.
-> 
-> There is already the per-group alloc_sem in ext4_group_info that could be used.  Yes, it would mean that itable zeroing can conflict with block allocation for that group, but I consider this a very low-probability event, since blocks are normally allocated from the group where the inode was allocated, and this lock is only held once in the lifetime of the filesystem.
-> 
-> > @@ -123,6 +123,11 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t +	if (!(desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)) &&
-> > +	      ext4_itable_init_allowed(sb))
-> > +		ext4_init_inode_table(sb, block_group);
-> 
-> This should be marked "unlikely()" since it will only ever be true right after formatting.
-> 
-> > +/*
-> > + * Initializes an uninitialized inode table - just write zeroes through
-> > + * the whole inode table. Must be called without group spinlock. Since
-> > + * this is called from itableinitd thread as well as from ext4_new_inode
-> > + * there are mutexes in s_li_info to prevent race conditions.
-> 
-> This comment would need to be changed to reflect that the locks are not in s_li_info.
-> 
-> > Do not call
-> > + * this withou s_li_info uninitialized. It s_li_info is not initialized
-> 
-> Some typos here...  Should be:
-> 
-> "Do not call this with s_li_info uninitialized.  If s_li_info is not ..."
-> 
-> > + * user does not want to init inode tables, or they are already zeroed.
-> 
-> That said, it makes sense to allow this function to be called without the need
-> for s_li_info at all.  Consider the case of resizing a filesystem, this can be
-> used to zero out the inode table, instead of the much-less-efficient code in setup_new_group_blocks().  That code currently journals all of the itable blocks to handle crash recovery with a write cache, but with the improved barrier code that is no longer necessary.
-> 
-> > +extern int ext4_init_inode_table(struct super_block *sb, ext4_group_t group)
-> > +{
-> > +	BUG_ON(NULL == sbi->s_li_info);
-> 
-> It looks like s_li_info is only needed for the mutex, which is no longer needed, so this requirement can just be removed.
-> 
-> > +	if (sb->s_flags & MS_RDONLY) {
-> > +		ext4_warning(sb, "Filesystem mounter read only. "
-> 
-> s/mounter/mounted/
-> 
-> > +	handle = ext4_journal_start_sb(sb, 1);
-> > +	if (IS_ERR(handle)) {
-> > +		ret = PTR_ERR(handle);
-> > +		return ret;
-> > +	}
-> > +
-> > +	gdp = ext4_get_group_desc(sb, group, &group_desc_bh);
-> > +	if (!gdp)
-> > +		return ret;
-> > +
-> > +	blk = ext4_inode_table(sb, gdp);
-> > +	num = sbi->s_itb_per_group - 1;
-> > +
-> > +	ext4_li_lock(sb, group);
-> > +	ext4_lock_group(sb, group);
-> 
-> It's generally a bad idea to start a journal handle and then grab blocking locks while holding the handle.  I always try to get all of the potential failure cases out of the way before starting the journal handle, so that the only way it can fail is because the journal was aborted or the IO fails.
-> 
-> There will also be additional lock ordering issues with ext4_group_info->alloc_sem and the journal.  It looks like alloc_sem is gotten after the journal handle in ext4_add_groupblocks(), but alloc_sem looks to be held BEFORE the journal handle in the mballoc code (AFAICS, it isn't totally clear from the code).
-> 
-> > +
-> > +	if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED))) {
-> > +		BUFFER_TRACE(group_desc_bh, "get_write_access");
-> > +		ret = ext4_journal_get_write_access(handle,
-> > +						    group_desc_bh);
-> > +		if (ret)
-> > +			goto err_out;
-> > +
-> > +		ext4_unlock_group(sb, group);
-> > +		ret = sb_issue_zeroout(sb, blk, num);
-> 
-> Note that there is also ext4_ext_zeroout(), which is zeroing fallocate() chunks on disk in a slightly different manner (submit_bio() with a bio of a zeroed page).  It makes sense to have only a single mechanism for doing this, and of sb_issue_zeroout() is the right way to do that, ext4_ext_zeroout() should also be changed to use this.
-> 
-> > +static int ext4_lazyinit_thread(void *arg)
-> > +{
-> > +	spin_lock(&eli->li_state_lock);
-> > +	for (group = 0; group < ngroups; group++) {
-> > +
-> > +		if (eli->li_state & EXT4_LAZYINIT_QUIT)
-> > +			break;
-> > +
-> > +		gdp = ext4_get_group_desc(sb, group, NULL);
-> > +		if (!gdp)
-> > +			continue;
-> > +
-> > +		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED))
-> > +			continue;
-> 
-> For a very large filesystem, this may spin through a very large number of groups, so I wonder if it makes sense to yield the spinlock here.  That may not be needed if other "on demand" itable zeroing threads do not need to get li_state_lock, which then makes me wonder why this lock is needed if there are no other threads contending on it?
-> 
-> > +		ret = ext4_init_inode_table(sb, group);
-> > +		if (ret)
-> > +			goto exit_thread;
-> 
-> This can't call ext4_init_inode_table() with the spinlock held, since that is calling sleeping functions (journal start, disk IO, etc).
-> 
-> > +static int ext4_lazyinit_start_thread(struct ext4_li_info *eli)
-> > +{
-> > +	t = kthread_run(ext4_lazyinit_thread, eli, "itableinitd");
-> 
-> This name doesn't really tell an uninformed user what the thread is doing.  Something like "ext4init-08:01" or similar would tell the user that this thread is ext4-related, it is initializing something (granted, there isn't room to say it is zeroing the itable, but my hope is that this thread will also do other things like check the group descriptor checksums at startup also), and it is working on block device 08:01.
-> 
-> On that related note, it may make sense to handle the itable zeroing for all filesystems from a single thread, instead of possibly starting multiple threads all writing to the same block device and causing a lot of seeking.  That means that at thread startup time it should verify that only a single thread is started, and all registered filesystems should put their zeroing tasks onto a list (under spinlock) that the one thread checks before it exits.
+If the first allocation attempt fails, a warning will be emitted,
+including a call trace.  Subsequent failures will suppress this warning.
 
-So you are suggesting filesystem independent threat which can be used by
-any filesystem on any block device ? I really do not know, if other file
-systems will be interested in it.
+These were added as helper functions for documentation and auditability.
+No future callers should be added.
 
-One problem that might emerge when we have one thread for multiple
-devices is, that it can be fairly complicated to control the thread
-according to device load. So it might be better to have one thread per
-device (disk). But it is just my first guess, since I need to look more
-into it.
+Signed-off-by: David Rientjes <rientjes@google.com>
+---
+ drivers/md/dm-region-hash.c |    2 +-
+ fs/btrfs/inode.c            |    2 +-
+ fs/gfs2/log.c               |    2 +-
+ fs/gfs2/rgrp.c              |   18 ++++---------
+ fs/jbd/transaction.c        |   11 ++------
+ fs/reiserfs/journal.c       |    3 +-
+ include/linux/slab.h        |   55 +++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 68 insertions(+), 25 deletions(-)
 
-> 
-> 
-> > +static int ext4_has_uninit_itable(struct super_block *sb)
-> > +{
-> > +	ext4_group_t i, ngroups = EXT4_SB(sb)->s_groups_count;
-> > +	struct ext4_group_desc *gdp = NULL;
-> > +	int ret = 1;
-> > +
-> > +	for (i = 0; i < ngroups; i++) {
-> > +		gdp = ext4_get_group_desc(sb, i, NULL);
-> > +		if (!gdp)
-> > +			continue;
-> > +
-> > +		if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)))
-> > +			goto has_uinit_itb;
-> 
-> By the time this scan is done, you may as well have started the thread to do the same scan.  That will avoid traversing up to 131072 groups for a 16TB filesystem twice, if the previous thread was interrupted near the end.
-> 
-> > +static void ext4_stop_lazyinit_thread(struct ext4_li_info *eli)
-> > +{
-> > +	eli->li_state |= EXT4_LAZYINIT_QUIT;
-> > +
-> > +	while (eli->li_task) {
-> > +		wake_up(&eli->li_wait_daemon);
-> > +		spin_unlock(&eli->li_state_lock);
-> > +		wait_event(eli->li_wait_task, eli->li_task == NULL);
-> > +		spin_lock(&eli->li_state_lock);
-> > +	}
-> > +}
-> 
-> This isn't very clear from a readability or usability standpoint.  A function shouldn't unlock a lock it didn't get.  It isn't really clear what the spinlock is needed for in this case?  It can't be needed to access "eli", otherwise the whole loop is unsafe.
-
-Oh, the spinlock is probably not needed at all. I'll get rid of it.
-> 
-> > +	err = ext4_create_lazyinit_thread(sb);
-> > +	if (err)
-> > +		ext4_msg(sb, KERN_ERR, "failed to initalize itableinitd (%d)",
-> > +			 err);
-> 
-> This message shouldn't hard-code the name of the thread.  Maybe just write:
-> 
-> "failed to initialize inode table zeroing thread"
-> 
-> > @@ -3723,6 +3972,19 @@ static int ext4_remount(struct super_block *sb, int +	+	ext4_destroy_lazyinit_thread(sb);
-> > +	err = ext4_create_lazyinit_thread(sb);
-> 
-> Rather than killing the old thread and starting a new one (which will have to scan all of the groups again) it makes sense to just silently fail the startup of the new thread if one is already running.
-> 
-> 
-> Cheers, Andreas
-> 
-
-Andreas, thank you for you comments and suggestions, it was very helpful
-and I really appreciate it.
-
-Thanks!
--Lukas
+diff --git a/drivers/md/dm-region-hash.c b/drivers/md/dm-region-hash.c
+--- a/drivers/md/dm-region-hash.c
++++ b/drivers/md/dm-region-hash.c
+@@ -290,7 +290,7 @@ static struct dm_region *__rh_alloc(struct dm_region_hash *rh, region_t region)
+ 
+ 	nreg = mempool_alloc(rh->region_pool, GFP_ATOMIC);
+ 	if (unlikely(!nreg))
+-		nreg = kmalloc(sizeof(*nreg), GFP_NOIO | __GFP_NOFAIL);
++		nreg = kmalloc_nofail(sizeof(*nreg), GFP_NOIO);
+ 
+ 	nreg->state = rh->log->type->in_sync(rh->log, region, 1) ?
+ 		      DM_RH_CLEAN : DM_RH_NOSYNC;
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -1967,7 +1967,7 @@ void btrfs_add_delayed_iput(struct inode *inode)
+ 	if (atomic_add_unless(&inode->i_count, -1, 1))
+ 		return;
+ 
+-	delayed = kmalloc(sizeof(*delayed), GFP_NOFS | __GFP_NOFAIL);
++	delayed = kmalloc_nofail(sizeof(*delayed), GFP_NOFS);
+ 	delayed->inode = inode;
+ 
+ 	spin_lock(&fs_info->delayed_iput_lock);
+diff --git a/fs/gfs2/log.c b/fs/gfs2/log.c
+--- a/fs/gfs2/log.c
++++ b/fs/gfs2/log.c
+@@ -709,7 +709,7 @@ void gfs2_log_flush(struct gfs2_sbd *sdp, struct gfs2_glock *gl)
+ 	}
+ 	trace_gfs2_log_flush(sdp, 1);
+ 
+-	ai = kzalloc(sizeof(struct gfs2_ail), GFP_NOFS | __GFP_NOFAIL);
++	ai = kzalloc_nofail(sizeof(struct gfs2_ail), GFP_NOFS);
+ 	INIT_LIST_HEAD(&ai->ai_ail1_list);
+ 	INIT_LIST_HEAD(&ai->ai_ail2_list);
+ 
+diff --git a/fs/gfs2/rgrp.c b/fs/gfs2/rgrp.c
+--- a/fs/gfs2/rgrp.c
++++ b/fs/gfs2/rgrp.c
+@@ -1440,8 +1440,8 @@ static struct gfs2_rgrpd *rgblk_free(struct gfs2_sbd *sdp, u64 bstart,
+ 		rgrp_blk++;
+ 
+ 		if (!bi->bi_clone) {
+-			bi->bi_clone = kmalloc(bi->bi_bh->b_size,
+-					       GFP_NOFS | __GFP_NOFAIL);
++			bi->bi_clone = kmalloc_nofail(bi->bi_bh->b_size,
++					       GFP_NOFS);
+ 			memcpy(bi->bi_clone + bi->bi_offset,
+ 			       bi->bi_bh->b_data + bi->bi_offset,
+ 			       bi->bi_len);
+@@ -1759,9 +1759,6 @@ fail:
+  * @block: the block
+  *
+  * Figure out what RG a block belongs to and add that RG to the list
+- *
+- * FIXME: Don't use NOFAIL
+- *
+  */
+ 
+ void gfs2_rlist_add(struct gfs2_sbd *sdp, struct gfs2_rgrp_list *rlist,
+@@ -1789,8 +1786,8 @@ void gfs2_rlist_add(struct gfs2_sbd *sdp, struct gfs2_rgrp_list *rlist,
+ 	if (rlist->rl_rgrps == rlist->rl_space) {
+ 		new_space = rlist->rl_space + 10;
+ 
+-		tmp = kcalloc(new_space, sizeof(struct gfs2_rgrpd *),
+-			      GFP_NOFS | __GFP_NOFAIL);
++		tmp = kcalloc_nofail(new_space, sizeof(struct gfs2_rgrpd *),
++			      GFP_NOFS);
+ 
+ 		if (rlist->rl_rgd) {
+ 			memcpy(tmp, rlist->rl_rgd,
+@@ -1811,17 +1808,14 @@ void gfs2_rlist_add(struct gfs2_sbd *sdp, struct gfs2_rgrp_list *rlist,
+  * @rlist: the list of resource groups
+  * @state: the lock state to acquire the RG lock in
+  * @flags: the modifier flags for the holder structures
+- *
+- * FIXME: Don't use NOFAIL
+- *
+  */
+ 
+ void gfs2_rlist_alloc(struct gfs2_rgrp_list *rlist, unsigned int state)
+ {
+ 	unsigned int x;
+ 
+-	rlist->rl_ghs = kcalloc(rlist->rl_rgrps, sizeof(struct gfs2_holder),
+-				GFP_NOFS | __GFP_NOFAIL);
++	rlist->rl_ghs = kcalloc_nofail(rlist->rl_rgrps,
++				sizeof(struct gfs2_holder), GFP_NOFS);
+ 	for (x = 0; x < rlist->rl_rgrps; x++)
+ 		gfs2_holder_init(rlist->rl_rgd[x]->rd_gl,
+ 				state, 0,
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -98,14 +98,9 @@ static int start_this_handle(journal_t *journal, handle_t *handle)
+ 	}
+ 
+ alloc_transaction:
+-	if (!journal->j_running_transaction) {
+-		new_transaction = kzalloc(sizeof(*new_transaction),
+-						GFP_NOFS|__GFP_NOFAIL);
+-		if (!new_transaction) {
+-			ret = -ENOMEM;
+-			goto out;
+-		}
+-	}
++	if (!journal->j_running_transaction)
++		new_transaction = kzalloc_nofail(sizeof(*new_transaction),
++						GFP_NOFS);
+ 
+ 	jbd_debug(3, "New handle %p going live.\n", handle);
+ 
+diff --git a/fs/reiserfs/journal.c b/fs/reiserfs/journal.c
+--- a/fs/reiserfs/journal.c
++++ b/fs/reiserfs/journal.c
+@@ -2593,8 +2593,7 @@ static int journal_read(struct super_block *sb)
+ static struct reiserfs_journal_list *alloc_journal_list(struct super_block *s)
+ {
+ 	struct reiserfs_journal_list *jl;
+-	jl = kzalloc(sizeof(struct reiserfs_journal_list),
+-		     GFP_NOFS | __GFP_NOFAIL);
++	jl = kzalloc_nofail(sizeof(struct reiserfs_journal_list), GFP_NOFS);
+ 	INIT_LIST_HEAD(&jl->j_list);
+ 	INIT_LIST_HEAD(&jl->j_working_list);
+ 	INIT_LIST_HEAD(&jl->j_tail_bh_list);
+diff --git a/include/linux/slab.h b/include/linux/slab.h
+--- a/include/linux/slab.h
++++ b/include/linux/slab.h
+@@ -334,6 +334,61 @@ static inline void *kzalloc_node(size_t size, gfp_t flags, int node)
+ 	return kmalloc_node(size, flags | __GFP_ZERO, node);
+ }
+ 
++/**
++ * kmalloc_nofail - infinitely loop until kmalloc() succeeds.
++ * @size: how many bytes of memory are required.
++ * @flags: the type of memory to allocate (see kmalloc).
++ *
++ * NOTE: no new callers of this function should be implemented!
++ * All memory allocations should be failable whenever possible.
++ */
++static inline void *kmalloc_nofail(size_t size, gfp_t flags)
++{
++	void *ret;
++
++	for (;;) {
++		ret = kmalloc(size, flags);
++		if (ret)
++			return ret;
++		WARN_ONCE(1, "Out of memory, no fallback implemented "
++				"(size=%lu flags=0x%x)\n",
++				size, flags);
++	}
++}
++
++/**
++ * kcalloc_nofail - infinitely loop until kcalloc() succeeds.
++ * @n: number of elements.
++ * @size: element size.
++ * @flags: the type of memory to allocate (see kcalloc).
++ *
++ * NOTE: no new callers of this function should be implemented!
++ * All memory allocations should be failable whenever possible.
++ */
++static inline void *kcalloc_nofail(size_t n, size_t size, gfp_t flags)
++{
++	void *ret;
++
++	for (;;) {
++		ret = kcalloc(n, size, flags);
++		if (ret)
++			return ret;
++		WARN_ONCE(1, "Out of memory, no fallback implemented "
++				"(n=%lu size=%lu flags=0x%x)\n",
++				n, size, flags);
++	}
++}
++
++/**
++ * kzalloc_nofail - infinitely loop until kzalloc() succeeds.
++ * @size: how many bytes of memory are required.
++ * @flags: the type of memory to allocate (see kzalloc).
++ */
++static inline void *kzalloc_nofail(size_t size, gfp_t flags)
++{
++	return kmalloc_nofail(size, flags | __GFP_ZERO);
++}
++
+ void __init kmem_cache_init_late(void);
+ 
+ #endif	/* _LINUX_SLAB_H */
