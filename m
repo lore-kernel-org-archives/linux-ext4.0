@@ -1,40 +1,69 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Tue, 24 Aug 2010 13:12:51 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1008241311380.21242@chino.kir.corp.google.com>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <1282656558.2605.2742.camel@laptop> <20100824135522.GK31488@dastard>
+From: Dan Magenheimer <dan.magenheimer@oracle.com>
+Subject: RE: cleancache followup from LSF10/MM summit
+Date: Tue, 24 Aug 2010 13:42:55 -0700 (PDT)
+Message-ID: <43348bbd-649d-47db-8edd-c5cb08187f19@default>
+References: <66336896-4396-458f-b8a5-51282a925816@default
+ 20100824142718.GA24164@balbir.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100824135522.GK31488@dastard>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Boaz Harrosh
+ <bharrosh@panasas.com>, ngupta@vflare.org,
+        akpm@linux-foundation.org, Chris
+ Mason <chris.mason@oracle.com>,
+        viro@zeniv.linux.org.uk, Andreas Dilger
+ <andreas.dilger@oracle.com>,
+        tytso@mit.edu, mfasheh@suse.com, Joel Becker
+ <joel.becker@oracle.com>,
+        matthew@wil.cx, linux-btrfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org, jeremy@goop.org, JBeulich@novell.com,
+        Kurt Hackel <kurt.hackel@oracle.com>,
+        Dave Mccracken <dave.mccracken@oracle.com>, riel@redhat.com,
+        Konrad Wilk
+ <konrad.wilk@oracle.com>, Mel Gorman <mel@csn.ul.ie>,
+        Ying Han
+ <yinghan@google.com>, Greg Thelen <gthelen@google.com>,
+        npiggin@kernel.dk
+To: balbir@linux.vnet.ibm.com
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20100824142718.GA24164@balbir.in.ibm.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 24 Aug 2010, Dave Chinner wrote:
+Hi Balbir --
 
-> > git grep GFP_NOFAIL isn't auditable enough?
-> > 
-> > might as well declare these functions depricated if you really want to
-> > do this.
-> 
-> Also, if you are going to add tight loops, you might want to put a
-> backoff in the loops like "congestion_wait(BLK_RW_ASYNC, HZ/50);" so
-> that they don't spin....
-> 
+Thanks for reviewing!
 
-These loops don't actually loop at all, all users are passing 
-order < PAGE_ALLOC_COSTLY_ORDER which implicitly loop forever in the page 
-allocator without killing anything (they are all GFP_NOIO or GFP_NOFS, so 
-the oom killer isn't involved).
+> 1. Can't this be done at the MM layer - why the filesystem hooks? Is
+> it to enable faster block devices in the reclaim hierarchy?
+
+This is explained in FAQ #2 in: http://lkml.org/lkml/2010/6/21/411
+If I misunderstood your question or the FAQ doesn't answer it, please
+let me know.
+
+> 2. I don't see a mention of slabcache in your approach, reclaim free
+> pages or freeing potentially free slab pages.
+
+Cleancache works on clean mapped pages that are reclaimed ("evicted")
+due to (guest) memory pressure but later would result in a refault.
+The decision of what pages to reclaim are left entirely to the
+(guest) kernel, and the "backend" (zcache or Xen tmem) dynamically
+decides how many clean evicted pages to retain based on dynamic
+factors that are unknowable to the (guest) kernel (such as compression
+ratios for zcache and available fallow memory for Xen tmem).
+
+I'm not sure I see how this could apply to slabcache (and
+I couldn't find anything in your OLS paper that refers to it),
+but if you have some ideas, let's discuss (offlist?).
+
+Thanks,
+Dan
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
