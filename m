@@ -1,57 +1,51 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] mke2fs: use lazy inode init on some discard-able devices
-Date: Mon, 23 Aug 2010 18:27:26 -0600
-Message-ID: <352B89DD-8FEC-4BB8-8D77-13DC2F5B5B17@dilger.ca>
-References: <4C6EF67A.5080502@redhat.com> <D416033E-58F9-46F8-B8B0-546C949CB6BE@mit.edu> <4C728688.6080007@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: [PATCH] Fix EXT4_FEATURE_RO_COMPAT_HUGE_FILE check
+Date: Tue, 24 Aug 2010 01:34:16 +0000
+Message-ID: <4c7325f6.02558f0a.5a24.ffffc694@mx.google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:36271 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751445Ab0HXA12 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Aug 2010 20:27:28 -0400
-In-Reply-To: <4C728688.6080007@redhat.com>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:39997 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753001Ab0HXBwz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Aug 2010 21:52:55 -0400
+Received: by pvg2 with SMTP id 2so2492263pvg.19
+        for <linux-ext4@vger.kernel.org>; Mon, 23 Aug 2010 18:52:54 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-08-23, at 08:32, Eric Sandeen wrote:
-> Theodore Tso wrote:
->> On Aug 20, 2010, at 5:41 PM, Eric Sandeen wrote:
->> 
->>> If a device supports discard -and- returns 0s for discarded blocks,
->>> then we can skip the inode table initialization -and- the inode table
->>> zeroing at mkfs time, and skip the lazy init as well since they are
->>> already zeroed out.
->>> 
->>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->> 
->> This needs to be configurable in /etc/mke2fs.conf.  Without naming 
->> the manufacturer, I'm aware of at least one device which claims that
->> discard works, and will even return zeros --- but after a power
->> cycle, if the block has not been reallocated, will once again return
->> the old, pre-discard values that had been stored in that block.
->> 
->> In other words, the discard is not power-cycle persistent...
-> 
-> yes, I've seen issues like that too.
-> 
-> TBH in that case I'd rather just drop the patch than make another
-> tunable for the user to figure out...
+Creating a 4TB file on a filesystem with the 64bit flag set results in e2fsck consistently complaining about i_blocks being wrong, with confusing messages like this:
 
-What else we discussed is to have mke2fs validate whether the discard+zero works (i.e. write some small non-zero data, discard the whole device, read back previously written data).  Granted it wouldn't handle this "it only fails after a power-cycle" problem, but it should detect gratuitously broken hardware.
+Inode 29818882, i_blocks is 8388608816, should be 8388608816.  Fix? no
 
-That should be sufficiently safe until such a time that inode checksums are available.  Note also that non-zero inode table blocks are only a major problem if some additional corruption causes the itable_uninit numbers to become invalid (e.g. bad group checksum) at which case the old itable blocks will be used.
+That appears to be caused by ext2fs_inode_i_blocks() checking for the EXT4_FEATURE_RO_COMPAT_HUGE_FILE in the wrong place.  Fix it.
 
-We also discussed doing this at least for sparse files, which makes a lot of sense for testing in any case, even if the default is not to do this for SSD devices until they smarten up.
+Signed-off-by: Justin Maggard <jmaggard10@gmail.com>
+---
+ lib/ext2fs/blknum.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-
-Cheers, Andreas
-
-
-
-
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+index a48b696..560edc7 100644
+--- a/lib/ext2fs/blknum.c
++++ b/lib/ext2fs/blknum.c
+@@ -49,7 +49,7 @@ blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
+ 					struct ext2_inode *inode)
+ {
+ 	return (inode->i_blocks |
+-		((fs->super->s_feature_incompat &
++		((fs->super->s_feature_ro_compat &
+ 		  EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ?
+ 		 (__u64) inode->osd2.linux2.l_i_blocks_hi << 32 : 0)) -
+ 		(inode->i_file_acl ? fs->blocksize >> 9 : 0);
+@@ -62,7 +62,7 @@ blk64_t ext2fs_inode_i_blocks(ext2_filsys fs,
+ 					struct ext2_inode *inode)
+ {
+ 	return (inode->i_blocks |
+-		((fs->super->s_feature_incompat & 
++		((fs->super->s_feature_ro_compat & 
+ 		  EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ?
+ 		 (__u64)inode->osd2.linux2.l_i_blocks_hi << 32 : 0));
+ }
+-- 
+1.5.6.5
 
