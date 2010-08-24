@@ -1,40 +1,45 @@
-From: Justin Maggard <jmaggard10@gmail.com>
-Subject: Re: [PATCH] Fix EXT4_FEATURE_RO_COMPAT_HUGE_FILE check
-Date: Tue, 24 Aug 2010 12:32:12 -0700
-Message-ID: <AANLkTi=XH3R4Tzq=5zXRUUTxTo533HT5=tpwQ1xMs7uU@mail.gmail.com>
-References: <4c7325f6.02558f0a.5a24.ffffc694@mx.google.com>
-	<426FFD16-98B3-4427-BDA5-C80CE184781C@dilger.ca>
-	<4C73F627.2000809@redhat.com>
+From: David Rientjes <rientjes@google.com>
+Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
+ kzalloc
+Date: Tue, 24 Aug 2010 13:08:28 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1008241307190.21242@chino.kir.corp.google.com>
+References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <1282656558.2605.2742.camel@laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
+	Frederic Weisbecker <fweisbec@gmail.com>,
+	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Peter Zijlstra <peterz@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:33289 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751710Ab0HXTcN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Aug 2010 15:32:13 -0400
-Received: by vws3 with SMTP id 3so791540vws.19
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Aug 2010 12:32:13 -0700 (PDT)
-In-Reply-To: <4C73F627.2000809@redhat.com>
+Received: from smtp-out.google.com ([74.125.121.35]:45935 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755094Ab0HXUIl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Aug 2010 16:08:41 -0400
+In-Reply-To: <1282656558.2605.2742.camel@laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 24, 2010 at 9:41 AM, Eric Sandeen <sandeen@redhat.com> wrote:
-> Andreas Dilger wrote:
->
->> This isn't the first time that we've had problems like this, and it
->> won't be the last time unless there is a better API for checking
->> these flags.
->
-> *nod*
->
+On Tue, 24 Aug 2010, Peter Zijlstra wrote:
 
-On a related note (to my original problem)... is the bad i_blocks
-count fixup code in the check_blocks() function of pass1.c broken for
-large files, or am I misunderstanding the code?  pb.num_blocks and
-ext2fs_inode_i_blocks() are both >32 bits, but the fixup code appears
-to always try to shove pb.num_blocks into the 32-bit inode->i_blocks
-and set inode->osd2.linux2.l_i_blocks_hi = 0.
+> > These were added as helper functions for documentation and auditability.
+> > No future callers should be added.
+> 
+> git grep GFP_NOFAIL isn't auditable enough?
+> 
 
--Justin
+I'm trying to remove that bit, and __GFP_REPEAT, to simplify and remove 
+several branches from the page allocator.
+
+> might as well declare these functions depricated if you really want to
+> do this.
+> 
+> FWIW I think mason said he'd fix btrfs to not suck like this 'soon'.
+> 
+
+Great!
