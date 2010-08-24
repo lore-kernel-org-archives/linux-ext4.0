@@ -1,56 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Fix EXT4_FEATURE_RO_COMPAT_HUGE_FILE check
-Date: Tue, 24 Aug 2010 11:41:11 -0500
-Message-ID: <4C73F627.2000809@redhat.com>
-References: <4c7325f6.02558f0a.5a24.ffffc694@mx.google.com> <426FFD16-98B3-4427-BDA5-C80CE184781C@dilger.ca>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: [PATCH 14/38] fallthru: ext2 fallthru support
+Date: Tue, 24 Aug 2010 13:21:09 -0400
+Message-ID: <20100824172108.GA28718@shell>
+References: <eVJmW-3Lf-15@gated-at.bofh.it> <eVJmW-3Lf-19@gated-at.bofh.it> <fdNs6-5F1-7@gated-at.bofh.it> <fdVfY-pv-23@gated-at.bofh.it> <fe6Ep-cD-13@gated-at.bofh.it> <fiCPo-73x-17@gated-at.bofh.it> <fiMc1-6ip-7@gated-at.bofh.it> <E1OlrzM-0001lZ-0z@be1.7eggert.dyndns.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Justin Maggard <jmaggard10@gmail.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Miklos Szeredi <miklos@szeredi.hu>, jack@suse.cz, agruen@suse.de,
+	viro@zeniv.linux.org.uk, jblunck@suse.de, hch@infradead.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: 7eggert@gmx.de, David Woodhouse <dwmw2@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6260 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1836 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754343Ab0HXQlQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Aug 2010 12:41:16 -0400
-In-Reply-To: <426FFD16-98B3-4427-BDA5-C80CE184781C@dilger.ca>
+	id S1753283Ab0HXRVn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Aug 2010 13:21:43 -0400
+Content-Disposition: inline
+In-Reply-To: <E1OlrzM-0001lZ-0z@be1.7eggert.dyndns.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-
-> This isn't the first time that we've had problems like this, and it
-> won't be the last time unless there is a better API for checking
-> these flags.
-
-*nod*
- 
-> I've long thought about having something like:
-
-Same thing crossed my mind; seems like a very good idea.
-
-> #define EXT4_CHECK_COMPAT(sb, flag)    ((super)->s_feature_compat &     \
->                                           EXT4_FEATURE_COMPAT_ ## flag)
-> #define EXT4_CHECK_RO_COMPAT(sb, flag) ((super)->s_feature_ro_compat &     \
->                                           EXT4_FEATURE_RO_COMPAT_ ## flag)
-> #define EXT4_CHECK_INCOMPAT(sb, flag)  ((super)->s_feature_incompat &     \
->                                           EXT4_FEATURE_INCOMPAT_ ## flag)
-> #define EXT4_SET_COMPAT(sb, flag)    do { (super)->s_feature_compat |=     \
->                                          EXT4_FEATURE_COMPAT_ ## flag; } while(0)
-> #define EXT4_SET_RO_COMPAT(sb, flag) do { (super)->s_feature_ro_compat |=     \
->                                          EXT4_FEATURE_RO_COMPAT_ ##flag;} while(0)
-> #define EXT4_SET_INCOMPAT(sb, flag)  do { (super)->s_feature_incompat |=     \
->                                          EXT4_FEATURE_INCOMPAT_ ## flag;} while(0)
+On Thu, Aug 19, 2010 at 01:24:07AM +0200, Bodo Eggert wrote:
+> Miklos Szeredi <miklos@szeredi.hu> wrote:
+> > On Tue, 17 Aug 2010, Valerie Aurora wrote:
 > 
-> This will produce a compile error if the flag name and the macro name
-> don't match. Unfortunately, for e2fsprogs we will need 3 sets of such
-> macros because the feature flags are named EXT2_*, EXT3_*, and
-> EXT4_*, depending on when they were added. For the kernel code that
-> wouldn't be needed.
+> >> >  - hard links to make sure a separate inode is not necessary for each
+> >> >    whiteout/fallthrough entry
+> >> 
+> >> The problem with hard links is that you run into hard link limits.  I
+> >> don't think we can do hard links for whiteouts and fallthrus.  Each
+> >> whiteout or fallthru will cost an inode if we implement them as
+> >> extended attributes.  This cost has to be balanced against the cost of
+> >> implementing them as dentries, which is mainly code complexity in
+> >> individual file systems.
+> 
+> Not knowing the details, I'd suggest to implement a generic function to
+> create an attributed inode and let the fs override it to create an
+> unlinked-file-dentry instead.
+> 
+> Benefit: All fs supporting extended attributes will be able to support
+> whiteout. If the fs has other means of supporting whiteout, they may fake
+> the attribute.
 
-Time to name them consistently in e2fsprogs, then, I think?
+Yeah, I think that's the way to go.
 
--Eric
+> Possible problems:
+> - Having two ways of reporting a whiteout? Or can it be reported using a
+>   (static) fake inode?
 
-> Cheers, Andreas
+They are going to look the same at the VFS level and higher.
 
+> - How do you un-whiteout while (not) having an overlaying fs?
+
+The current version of whiteout support always hides DT_WHT dentries
+from userspace.  Perhaps a start is to only hide DT_WHT entries when
+the file system is union mounted.  Applications usually ignore all
+dentries with d_ino == 0 so it might not cause problems.
+
+Right now, you have to remove whiteouts offline using fsck.
+
+> > get_unlinked_inode() is a great idea.  But I feel that individual
+> > inodes for each fallthrough is excessive.  It'll make the first
+> > readdir() really really expensive and wastes a lot of disk and memory
+> > for no good reason.
+> > 
+> > Not sure how to fix the hard link limits problem though...
+> 
+> Do a hardlink if you can create a hard link, otherwise use a fresh inode
+> and use that for the next hardlink(s).
+
+Bleah!  Then you have a code path that is only tested when you hit
+LINK_MAX.  Sounds like a recipe for bugs for me.
+
+-VAL
