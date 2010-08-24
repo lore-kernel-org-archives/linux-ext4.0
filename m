@@ -1,69 +1,39 @@
-From: Dan Magenheimer <dan.magenheimer@oracle.com>
-Subject: RE: cleancache followup from LSF10/MM summit
-Date: Tue, 24 Aug 2010 13:42:55 -0700 (PDT)
-Message-ID: <43348bbd-649d-47db-8edd-c5cb08187f19@default>
-References: <66336896-4396-458f-b8a5-51282a925816@default
- 20100824142718.GA24164@balbir.in.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16711] Oops with 2.6.36-rc1
+Date: Tue, 24 Aug 2010 23:59:46 GMT
+Message-ID: <201008242359.o7ONxkim027123@demeter1.kernel.org>
+References: <bug-16711-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Boaz Harrosh
- <bharrosh@panasas.com>, ngupta@vflare.org,
-        akpm@linux-foundation.org, Chris
- Mason <chris.mason@oracle.com>,
-        viro@zeniv.linux.org.uk, Andreas Dilger
- <andreas.dilger@oracle.com>,
-        tytso@mit.edu, mfasheh@suse.com, Joel Becker
- <joel.becker@oracle.com>,
-        matthew@wil.cx, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org, jeremy@goop.org, JBeulich@novell.com,
-        Kurt Hackel <kurt.hackel@oracle.com>,
-        Dave Mccracken <dave.mccracken@oracle.com>, riel@redhat.com,
-        Konrad Wilk
- <konrad.wilk@oracle.com>, Mel Gorman <mel@csn.ul.ie>,
-        Ying Han
- <yinghan@google.com>, Greg Thelen <gthelen@google.com>,
-        npiggin@kernel.dk
-To: balbir@linux.vnet.ibm.com
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20100824142718.GA24164@balbir.in.ibm.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:38866 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751507Ab0HXX7r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Aug 2010 19:59:47 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7ONxkpm027125
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Aug 2010 23:59:46 GMT
+In-Reply-To: <bug-16711-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Balbir --
+https://bugzilla.kernel.org/show_bug.cgi?id=16711
 
-Thanks for reviewing!
 
-> 1. Can't this be done at the MM layer - why the filesystem hooks? Is
-> it to enable faster block devices in the reclaim hierarchy?
 
-This is explained in FAQ #2 in: http://lkml.org/lkml/2010/6/21/411
-If I misunderstood your question or the FAQ doesn't answer it, please
-let me know.
 
-> 2. I don't see a mention of slabcache in your approach, reclaim free
-> pages or freeing potentially free slab pages.
 
-Cleancache works on clean mapped pages that are reclaimed ("evicted")
-due to (guest) memory pressure but later would result in a refault.
-The decision of what pages to reclaim are left entirely to the
-(guest) kernel, and the "backend" (zcache or Xen tmem) dynamically
-decides how many clean evicted pages to retain based on dynamic
-factors that are unknowable to the (guest) kernel (such as compression
-ratios for zcache and available fallow memory for Xen tmem).
+--- Comment #3 from John Johansen <john.johansen@canonical.com>  2010-08-24 23:59:41 ---
+Tobias,
 
-I'm not sure I see how this could apply to slabcache (and
-I couldn't find anything in your OLS paper that refers to it),
-but if you have some ideas, let's discuss (offlist?).
+can you try booting with the kernel parameter of apparmor=0
 
-Thanks,
-Dan
+If apparmor is causing the problem then, this wil disable apparmor and cause
+the kernel to fall back to just DAC.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
