@@ -1,52 +1,42 @@
-From: Peter Zijlstra <peterz@infradead.org>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Wed, 25 Aug 2010 16:13:20 +0200
-Message-ID: <1282745600.2605.3751.camel@laptop>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
-	 <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com>
-	 <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com>
-	 <20100825112433.GB4453@thunk.org>
+From: Vitali Lovich <vlovich@gmail.com>
+Subject: question about i_dtime being used as an orphan list pointer
+Date: Wed, 25 Aug 2010 12:22:22 -0700
+Message-ID: <AANLkTi=3hK1RLRJ+2Kt0ju=HEr-LdkO9eX_YxLfp0wea@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-Cc: David Rientjes <rientjes@google.com>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:44471 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753047Ab0HYONt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 10:13:49 -0400
-In-Reply-To: <20100825112433.GB4453@thunk.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:52017 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752690Ab0HYTWn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 15:22:43 -0400
+Received: by yxg6 with SMTP id 6so319368yxg.19
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Aug 2010 12:22:42 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2010-08-25 at 07:24 -0400, Ted Ts'o wrote:
-> There are other places where we can fail safely (for example, in jbd's
-> start_this_handle, although that just pushes the layer up the stack,
-> and ultimately, to userspace where most userspace programs don't
-> really expect ENOMEM to get returned by a random disk write 
+So I've run into this problem where the clock was reset into the 1970s
+on my system, causing e2fsck to get confused & think a file I deleted
+actually had an orphan list inode pointer stored in the i_dtime
+instead of the deletion time, causing e2fsck to get all confused &
+return an error code.
 
-While talking with Chris about this, if you can indeed push the error
-out that far you can basically ensure this particular fs-op does not
-complicate the journal commit and thereby limit the number of extra
-entries in your journal, and thus the amount of memory required.
+My current idea for a workaround is to clamp the value to midnight
+2000 if get_seconds returns that, but I'm not really enamoured with
+that idea.
 
-So once stuff starts failing, push out ops back out of the filesystem
-code, force a journal commit, and then let these ops retry. There is no
-need to actually push the -ENOMEM all the way back to userspace.
+Looking at this further, I made the following observations (please let
+me know if I'm completely off base):
 
+Even a value of midnight 2010 corresponds to a limit of only about 1
+billion files (1 262 304 000).  Thus it seems if you delete a file on
+a partition with more than a billion files, it will make e2fsck think
+you've got a corrupt file-system even though you don't.
 
+A slightly related question I have is if anyone knows whether i_dtime
+is actually used as a timestamp for anything useful in kernel or
+user-space?  Can I just set d_time to 0xffffffff when it's deleted
+instead of giving it wall-clock time?
+
+Thanks for any feedback,
+Vitali
