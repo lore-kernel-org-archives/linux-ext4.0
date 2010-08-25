@@ -1,8 +1,8 @@
 From: Peter Zijlstra <peterz@infradead.org>
 Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
  kzalloc
-Date: Wed, 25 Aug 2010 15:31:30 +0200
-Message-ID: <1282743090.2605.3696.camel@laptop>
+Date: Wed, 25 Aug 2010 15:34:50 +0200
+Message-ID: <1282743290.2605.3704.camel@laptop>
 References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
 	 <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com>
 	 <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com>
@@ -28,34 +28,22 @@ Cc: David Rientjes <rientjes@google.com>,
 	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from casper.infradead.org ([85.118.1.10]:48989 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753117Ab0HYNfP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 09:35:15 -0400
 In-Reply-To: <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 On Wed, 2010-08-25 at 09:20 -0400, Theodore Tso wrote:
-> On Aug 25, 2010, at 8:52 AM, Peter Zijlstra wrote:
-> > Also, there's a good reason for disliking (a), its a deadlock scenario,
-> > suppose we need to write out data to get free pages, but the writing out
-> > is blocked on requiring free pages.
-> > 
-> > There's really nothing the page allocator can do to help you there, its
-> > a situation you have to avoid getting into.
-> 
 > Well, if all of these users start having their own private pools of
 > emergency memory, I'm not sure that's such a great idea either.
-> 
-> And in some cases, there *is* extra memory.  For example, if the
-> reason why the page allocator failed is because there isn't enough
-> memory in the current process's cgroup, maybe it's important enough
-> that the kernel code might decide to say, "violate the cgroup
-> constraints --- it's more important that we not bring down the entire
-> system" than to honor whatever yahoo decided that a particular cgroup
-> has been set down to something ridiculous like 512mb, when there's
-> plenty of free physical memory --- but not in that cgroup.
 
-I'm not sure, but I think the cgroup thing doesn't account kernel
-allocations, in which case the above problem doesn't exist.
+That's a secondary problem, and could be reduced by something like the
+memory reservation system I provided in the swap-over-nfs patches. Of
+course, when all these users can actually happen concurrently there's
+really nothing much you can do about it.
 
-For the cpuset case we punch through the cpuset constraints for kernel
-allocations (unless __GFP_HARDWALL).
+
