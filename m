@@ -1,86 +1,57 @@
-From: Vitali Lovich <vlovich@gmail.com>
-Subject: Re: question about i_dtime being used as an orphan list pointer
-Date: Wed, 25 Aug 2010 14:25:37 -0700
-Message-ID: <AANLkTi=6tfTpDLqiYpvkOwcWZsWRqru9bHOeOdP=ghf0@mail.gmail.com>
-References: <AANLkTi=3hK1RLRJ+2Kt0ju=HEr-LdkO9eX_YxLfp0wea@mail.gmail.com> <20100825203914.GF4453@thunk.org>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
+ kzalloc
+Date: Wed, 25 Aug 2010 23:27:57 +0200
+Message-ID: <1282771677.1975.138.camel@laptop>
+References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
+	 <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com>
+	 <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com>
+	 <20100825112433.GB4453@thunk.org> <1282736132.2605.3563.camel@laptop>
+	 <20100825115709.GD4453@thunk.org>  <1282740516.2605.3644.camel@laptop>
+	 <1282740778.2605.3652.camel@laptop>
+	 <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu>
+	 <1282743090.2605.3696.camel@laptop>
+	 <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com>
+	 <1282769729.1975.96.camel@laptop>
+	 <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:50163 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752355Ab0HYVZ6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 17:25:58 -0400
-Received: by gwj17 with SMTP id 17so406728gwj.19
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Aug 2010 14:25:57 -0700 (PDT)
-In-Reply-To: <20100825203914.GF4453@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@mit.edu>, Jens Axboe <jaxboe@fusionio.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Jan Kara <jack@suse.cz>,
+	Frederic Weisbecker <fweisbec@gmail.com>,
+	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: David Rientjes <rientjes@google.com>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+In-Reply-To: <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 25, 2010 at 1:39 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, Aug 25, 2010 at 12:22:22PM -0700, Vitali Lovich wrote:
->> So I've run into this problem where the clock was reset into the 197=
-0s
->> on my system, causing e2fsck to get confused & think a file I delete=
-d
->> actually had an orphan list inode pointer stored in the i_dtime
->> instead of the deletion time, causing e2fsck to get all confused &
->> return an error code.
->
-> Are you worried about solving this problem as a one shot deal, or as =
-a
-> long-term design issue. =C2=A0The long-term proper solution is run yo=
-ur
-> clock so it is correct. =C2=A0:-)
-Right :).  The problem is we haven't completely root-caused the issue
-of why the clock had the wrong time, so I wanted to put in a robust
-fix that makes the failure-mode more graceful.  I don't like using the
-number of inodes as the threshold since that might change thus getting
-back to that problem of putting inodes on the orphan list that
-shouldn't be.
+On Wed, 2010-08-25 at 14:11 -0700, David Rientjes wrote:
+> 
+> There's still no hard guarantee that the memory will allocatable 
+> (GFP_KERNEL, the compaction, then GFP_ATOMIC could all still fail), but I 
+> don't see how continuously looping the page allocator is possibly supposed 
+> to help in these situations. 
 
->
-> In the short term, probably the easist thing to do is just run e2fsck
-> -y and let those inodes get populated into lost+found, and then delet=
-e
-> them by hands afterwards.
-This is an embedded device - not an option to do anything by hand.
-When e2fsck fails we assume that there was a catastrophic failure & we
-brick the device to avoid any potential corruption of user data (this
-is only when e2fsck fails on the root or boot partitions right after
-we unmount them after an OS upgrade).
+Why do you think I'm a proponent of that behaviour?
 
->
-> For a long-term fix, it probably would make sense to patch ext3/ext4
-> so that when we delete a file, and the current time is less than
-> number of inodes, that we set dtime to 0xffffffff.
-Is the i_dtime actually used at all?  Could we just patch it to always
-set that as the i_dtime always?  I grepped the source, & no one is
-actually using the i_dtime field.
+I've been arguing that the existance of GFP_NOFAIL is the bug, and I
+started the whole discussion because your patchset didn't outline the
+purpose of its existance, it merely changes __GFP_NOFAIL usage into
+$foo_nofail() functions, which on its own is a rather daft change.
 
->
->> Even a value of midnight 2010 corresponds to a limit of only about 1
->> billion files (1 262 304 000). =C2=A0Thus it seems if you delete a f=
-ile on
->> a partition with more than a billion files, it will make e2fsck thin=
-k
->> you've got a corrupt file-system even though you don't.
->
-> And if you assuming the smallest possible inode ratio, that's a 4.5TB
-> file. =C2=A0If you use the default inode, that's a 18TB. =C2=A0Ext3 i=
-s limited
-> to 16TB, so that's not even an issue....
-Depends on the block size, but yes, I don't think this is a super
-important issue in general with respect to ext2/3 - not sure how this
-affects ext4 since it, AFAIK, supports much higher capacity
-partitions.
+Optimizing the page allocator by removing those conditional from its
+innards into an outer loop not used by most callers seems a fine goal,
+but you didn't state that.
 
-Thanks,
-Vitali
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Also, I like the postfix proposed by Andi better: _i_suck() :-)
