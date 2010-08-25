@@ -1,57 +1,40 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Wed, 25 Aug 2010 16:11:38 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com> <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com> <20100825112433.GB4453@thunk.org>
- <1282736132.2605.3563.camel@laptop> <20100825115709.GD4453@thunk.org>  <1282740516.2605.3644.camel@laptop> <1282740778.2605.3652.camel@laptop> <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu> <1282743090.2605.3696.camel@laptop>
- <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com> <1282769729.1975.96.camel@laptop> <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com> <1282771677.1975.138.camel@laptop>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>, Jens Axboe <jaxboe@fusionio.com>,
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] [RESEND] ext3: set i_extra_isize of 11th inode
+Date: Wed, 25 Aug 2010 17:39:11 -0600
+Message-ID: <8B4A0D91-D3E1-4328-890C-BD66189598B5@dilger.ca>
+References: <20100823095056.ACBA.61FB500B@jp.fujitsu.com> <20100824131735.GD3713@quack.suse.cz> <20100825090551.DEB3.61FB500B@jp.fujitsu.com> <20100825230442.GH2738@quack.suse.cz>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Peter Zijlstra <peterz@infradead.org>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <1282771677.1975.138.camel@laptop>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:36283 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752321Ab0HYXjM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 19:39:12 -0400
+In-Reply-To: <20100825230442.GH2738@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 25 Aug 2010, Peter Zijlstra wrote:
-
-> > There's still no hard guarantee that the memory will allocatable 
-> > (GFP_KERNEL, the compaction, then GFP_ATOMIC could all still fail), but I 
-> > don't see how continuously looping the page allocator is possibly supposed 
-> > to help in these situations. 
+On 2010-08-25, at 17:04, Jan Kara wrote:
+>> What size is the inode ? This problem happens if the size is larger than 128 byte. (I tested at 256 byte inode.)
 > 
-> Why do you think I'm a proponent of that behaviour?
-> 
+> Ah, that was the reason. Thanks. But looking at the implications, I'm a bit
+> reluctant to do the change you propose. If someone has a filesystem created
+> by old mkfs, he could suddently see corrupted xattrs in his lost+found
+> directory with the new kernel. Not that there would be a big chance this
+> happens but people run various strange environments...
 
-I don't, I was agreeing with what you're saying :)
+The fix to e2fsck for this issue has been around for a long time, AFAIK.  It was only needed in the kernel while the broken mke2fs was in wide use, and before a fixed e2fsck was available.
 
-> I've been arguing that the existance of GFP_NOFAIL is the bug, and I
-> started the whole discussion because your patchset didn't outline the
-> purpose of its existance, it merely changes __GFP_NOFAIL usage into
-> $foo_nofail() functions, which on its own is a rather daft change.
-> 
 
-I originally pushed these to the callers, but Andrew thought it would be 
-better so that we could audit the existing users that have no fallback 
-behavior, even though they could go implement it on their own (like 
-getblk() which actually does try _some_ memory freeing).  It eliminates 
-the flag from the page allocator and saves branches in the slowpath.  We 
-don't need this logic in the allocator itself, it can exist at a higher 
-level and, with deprecation, will hopefully be incentive enough for those 
-subsystems to fix the issue.
+Cheers, Andreas
 
-I'll repropose the patchset with __deprecated as you suggested.  Thanks!
+
+
+
+
