@@ -1,57 +1,71 @@
-From: andreas@rid-net.de
-Subject: defragmentation of boot related files
-Date: Wed, 25 Aug 2010 14:00:03 +0200
-Message-ID: <4C7505C3.1070509@rid-net.de>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
+ kzalloc
+Date: Wed, 25 Aug 2010 14:48:36 +0200
+Message-ID: <1282740516.2605.3644.camel@laptop>
+References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
+	 <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com>
+	 <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com>
+	 <20100825112433.GB4453@thunk.org> <1282736132.2605.3563.camel@laptop>
+	 <20100825115709.GD4453@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mo-p00-ob.rzone.de ([81.169.146.162]:48243 "EHLO
-	mo-p00-ob.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751435Ab0HYMAT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 08:00:19 -0400
-Received: from [10.0.0.108] (p5DD4A4C4.dip.t-dialin.net [93.212.164.196])
-	by post.strato.de (klopstock mo39) (RZmta 23.5)
-	with (DHE-RSA-AES128-SHA encrypted) ESMTP id q04c44m7PBrbgB
-	for <linux-ext4@vger.kernel.org>;
-	Wed, 25 Aug 2010 14:00:17 +0200 (MEST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+Cc: David Rientjes <rientjes@google.com>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Jan Kara <jack@suse.cz>,
+	Frederic Weisbecker <fweisbec@gmail.com>,
+	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20100825115709.GD4453@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-hi,
+On Wed, 2010-08-25 at 07:57 -0400, Ted Ts'o wrote:
+> On Wed, Aug 25, 2010 at 01:35:32PM +0200, Peter Zijlstra wrote:
+> > On Wed, 2010-08-25 at 07:24 -0400, Ted Ts'o wrote:
+> > > Part of the problem is that we have a few places in the kernel where
+> > > failure is really not an option --- or rather, if we're going to fail
+> > > while we're in the middle of doing a commit, our choices really are
+> > > (a) retry the loop in the jbd layer (which Andrew really doesn't
+> > > like), (b) keep our own private cache of free memory so we don't fail
+> > > and/or loop, (c) fail the file system and mark it read-only, or (d)
+> > > panic. 
+> > 
+> > d) do the allocation before you're committed to going fwd and can still
+> > fail and back out.
+> 
+> Sure in some cases that can be done, but the commit has to happen at
+> some point, or we run out of journal space, at which point we're back
+> to (c) or (d).
 
-I try to find ways to reduce the start time of programs or the whole 
-operating system. The idea to increase disk performance is to gather all 
-related files on disk physically close together. Unlike the last patches 
-from Kazuya Mio for "relevant file defragmentation" files used by system 
-boot are mostly not in the same directory.
+Well (b) sounds a lot saner than either of those. Simply revert to a
+state that is sub-optimal but has bounded memory use and reserve that
+memory up-front. That way you can always get out of a tight memory spot.
 
-First i look at the EXT4_IOC_MOVE_EXT call.
-To reduce the amount of disk seeks i want to move the extents from 
-several files into a single donor file. To do so i increment the 
-move_extent.donor_start by the size of each file. But i got an error.
+Its what the block layer has always done to avoid the memory deadlock
+situation, it has a private stash of BIOs that is big enough to always
+service some IO, and as long as IO is happening stuff keeps moving fwd
+and we don't deadlock.
 
-The error is caused by the lines in the kernel source 
-fs/ext4/move_extent.c:998
-998	/* Start offset should be same */
-999	if (orig_start != donor_start) {
-1000		ext4_debug("ext4 move extent: orig and donor's start "
-1001		     "offset are not same [ino:orig %lu, donor %lu]\n",
-1002                 orig_inode->i_ino, donor_inode->i_ino);
-1003            return -EINVAL;
-1004    }
+Filesystems might have a slightly harder time creating such a bounded
+state because there might be more involved like journals and the like,
+but still it should be possible to create something like that (my swap
+over nfs patches created such a state for the network rx side of
+things).
 
-Is there a reason why the offset of the original file and the donor file 
-must be the same?
-
-As i can see the patch for relevant file defragmentation in e4defrag 
-supports only directories. May it be possible to select any desired file?
-
-What would you suggest as the best way to put files physically together?
-
-If I could help, tell me. :)
-
-Regards,
-
-andy
+Also, we cannot let our fear of crappy userspace get in the way of doing
+sensible things. Your example of write(2) returning -ENOMEM is not
+correct though, the syscall (and the page_mkwrite callback for mmap()s)
+happens before we actually dirty the data and need to write things out,
+so we can always simply wait for memory to become available to dirty.
