@@ -1,53 +1,61 @@
-From: Peter Zijlstra <peterz@infradead.org>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Wed, 25 Aug 2010 14:52:58 +0200
-Message-ID: <1282740778.2605.3652.camel@laptop>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
-	 <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com>
-	 <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com>
-	 <20100825112433.GB4453@thunk.org> <1282736132.2605.3563.camel@laptop>
-	 <20100825115709.GD4453@thunk.org>  <1282740516.2605.3644.camel@laptop>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 3/3] Add inode table initialization code into Ext4
+Date: Wed, 25 Aug 2010 15:00:46 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1008251444590.2840@dhcp-lab-213.englab.brq.redhat.com>
+References: <1282326704-14838-1-git-send-email-lczerner@redhat.com> <1282326704-14838-4-git-send-email-lczerner@redhat.com> <1BF88ED4-1B61-4D6C-BD84-D8D28931D2C6@dilger.ca> <alpine.LFD.2.00.1008241013350.2714@dhcp-lab-213.englab.brq.redhat.com>
+ <189719E5-70AB-4FA8-8DA1-B2E6F5CA1AE7@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-Cc: David Rientjes <rientjes@google.com>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <1282740516.2605.3644.camel@laptop>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	rwheeler@redhat.com, sandeen@redhat.com, jack@suse.cz,
+	tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:4028 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752158Ab0HYNA4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Aug 2010 09:00:56 -0400
+In-Reply-To: <189719E5-70AB-4FA8-8DA1-B2E6F5CA1AE7@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2010-08-25 at 14:48 +0200, Peter Zijlstra wrote:
+On Wed, 25 Aug 2010, Andreas Dilger wrote:
 
-> > > On Wed, 2010-08-25 at 07:24 -0400, Ted Ts'o wrote:
+> On 2010-08-24, at 03:01, Lukas Czerner wrote:
+> > On Mon, 23 Aug 2010, Andreas Dilger wrote:
+> >> 
+> >> On that related note, it may make sense to handle the itable zeroing for all filesystems from a single thread, instead of possibly starting multiple threads all writing to the same block device and causing a lot of seeking.  That means that at thread startup time it should verify that only a single thread is started, and all registered filesystems should put their zeroing tasks onto a list (under spinlock) that the one thread checks before it exits.
 
-> > > > (a) retry the loop in the jbd layer (which Andrew really doesn't
-> > > > like), (b) keep our own private cache of free memory so we don't fail
-> > > > and/or loop, 
+I Agree.
 
-> Well (b) sounds a lot saner than either of those. Simply revert to a
-> state that is sub-optimal but has bounded memory use and reserve that
-> memory up-front. That way you can always get out of a tight memory spot.
+> > 
+> > So you are suggesting filesystem independent threat which can be used by
+> > any filesystem on any block device ? I really do not know, if other file
+> > systems will be interested in it.
+> 
+> No, I just mean for ext4 filesystems, not other types of filesystems.  What I'm thinking about is that a system gets newly installed with 3 or 4 ext4 filesystems (/, /var, /home, /usr) in LVM or partitions on the same disk.  If we have multiple zeroing threads going on the same disk at one time it will be slow and seeking, and will significantly impact interactive performance.
 
-Also, there's a good reason for disliking (a), its a deadlock scenario,
-suppose we need to write out data to get free pages, but the writing out
-is blocked on requiring free pages.
+That sounds good to me. Thanks.
 
-There's really nothing the page allocator can do to help you there, its
-a situation you have to avoid getting into.
+> 
+> > One problem that might emerge when we have one thread for multiple
+> > devices is, that it can be fairly complicated to control the thread
+> > according to device load. So it might be better to have one thread per
+> > device (disk). But it is just my first guess, since I need to look more
+> > into it.
+> 
+> While one thread per disk would possibly be faster, I don't think this is a critical performance issue, and determining the filesystem-to-disk mapping is complex and not easily done.  Having a single thread initialize the inode tables in series (one filesystem at a time) is fine, and it only needs to control the device load for a single filesystem.
+> 
+> Cheers, Andreas
 
+Ok, doing one file system at a time seems reasonable, but in this case
+mkfs should really zero out at least some of the inode tables, so we
+have some reserve before the thread reach the next file system.
 
+However, I think we might have a problem when there are more really big
+filesystems, so at the end we will surely need to do some optimization
+like "when there is too much traffic on one device, try another", or
+"round-robin".
+
+Regards.
+-Lukas
