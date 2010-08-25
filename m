@@ -1,44 +1,57 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16711] Oops with 2.6.36-rc1
-Date: Wed, 25 Aug 2010 07:52:46 GMT
-Message-ID: <201008250752.o7P7qkOe016438@demeter1.kernel.org>
-References: <bug-16711-13602@https.bugzilla.kernel.org/>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: [RFC][PATCH V2 0/5] ext4: inode preferred block allocation
+Date: Wed, 25 Aug 2010 17:50:37 +0900
+Message-ID: <4C74D95D.2090907@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:57176 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752313Ab0HYHwr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 03:52:47 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.4/8.14.3) with ESMTP id o7P7qkru016439
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Aug 2010 07:52:46 GMT
-In-Reply-To: <bug-16711-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org
+To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16711
+Hi,
 
+For adding new feature to e4defrag, we implemented new two ioctls to allocate
+preferred blocks by using inode PA. One is EXT4_IOC_CONTROL_PA to create or
+discard inode PA, and the other is EXT4_IOC_GET_PA to get inode PA information.
 
+By using these ioctls, e4defrag can solve relevant file fragmentation. This
+improves read performance in case of reading a lot of files that is in the
+same directory. The result of the simple test suite with the following command
+line shows 35% performance improvement.
+# time find <kernel source directory> -type -f -exec cat {} >/dev/null \;
 
+FS Use percentage  before defrag   after defrag
+               7%          57.5s          37.1s
+              57%          59.9s          38.6s
+              96%          66.7s          44.2s
 
+Here is v2 patch series with the following changes:
+- Add e4defrag patch to support solving relevant file fragmentation mode that
+  reallocates files near their parent directory
+- Fix overflow while checking physical block upper limit
+- Rebase on the current ext4 patch queue
 
---- Comment #4 from Tobias <devnull@plzk.org>  2010-08-25 07:52:43 ---
-Both rc1 and rc2 seem to oops regardless of apparmor being enabled or not.
+My previous post is here:
+http://marc.info/?l=linux-ext4&m=127123344916909&w=4
 
-Please see [1] for a boot attempt of rc1 with apparmor disabled and [2] for a
-failed rc2 boot. I am actually not sure if apparmor was disabled on this rc2
-boot, I tried several times and can only say that this is not the only trace
-that scrolls by, just the last one that stays on screen.
+This patch series consists of the following three kernel patches and
+two e2fsprogs patch. They can be applied to the following trees.
 
-Sorry for the horrible pics btw.
+ext4 patch queue:
+commit: 9db9d1a9d54b6968e22e8d164b8e7adbb6347bdf
+e2fsprogs:
+commit: ccc7cf032852dd5c84b227bafb481b1d158e2b5e
 
-[1]http://img819.imageshack.us/img819/221/imag0033qx.jpg
-[2]http://img842.imageshack.us/img842/4300/imag0037ij.jpg
+[RFC][PATCH V2 1/5] ext4: add EXT4_IOC_CONTROL_PA to create/discard inode PA
+[RFC][PATCH V2 2/5] ext4: sort and merge inode PA
+[RFC][PATCH V2 3/5] ext4: add EXT4_IOC_GET_PA to get inode PA information
+[RFC][PATCH V2 4/5] e4defrag: unified bugfix/improvement patches
+[RFC][PATCH V2 5/5] e4defrag: add solving relevant file fragmentation mode
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+All suggestions and comments are welcome.
+
+Regards,
+Kazuya Mio
