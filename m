@@ -1,15 +1,21 @@
-From: Christoph Lameter <cl@linux.com>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
  kzalloc
-Date: Wed, 25 Aug 2010 20:30:24 -0500 (CDT)
-Message-ID: <alpine.DEB.2.00.1008252028030.32421@router.home>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com> <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com> <20100825112433.GB4453@thunk.org>
- <1282736132.2605.3563.camel@laptop> <20100825115709.GD4453@thunk.org> <1282740516.2605.3644.camel@laptop> <20100825132417.GQ31488@dastard> <1282743342.2605.3707.camel@laptop> <alpine.DEB.2.00.1008251347550.16484@chino.kir.corp.google.com>
- <alpine.DEB.2.00.1008251604120.24931@router.home> <alpine.DEB.2.00.1008251418590.20253@chino.kir.corp.google.com> <alpine.DEB.2.00.1008251630270.25660@router.home> <alpine.DEB.2.00.1008251604540.31521@chino.kir.corp.google.com>
+Date: Wed, 25 Aug 2010 21:48:47 -0400
+Message-ID: <20100826014847.GQ4453@thunk.org>
+References: <1282740778.2605.3652.camel@laptop>
+ <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu>
+ <1282743090.2605.3696.camel@laptop>
+ <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com>
+ <1282769729.1975.96.camel@laptop>
+ <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com>
+ <1282771677.1975.138.camel@laptop>
+ <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com>
+ <20100826001901.GL4453@thunk.org>
+ <alpine.DEB.2.00.1008251724360.25783@chino.kir.corp.google.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: Peter Zijlstra <peterz@infradead.org>,
-	Dave Chinner <david@fromorbit.com>, Ted Ts'o <tytso@mit.edu>,
 	Jens Axboe <jaxboe@fusionio.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
@@ -24,28 +30,35 @@ Cc: Peter Zijlstra <peterz@infradead.org>,
 	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 To: David Rientjes <rientjes@google.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.DEB.2.00.1008251604540.31521@chino.kir.corp.google.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.2.00.1008251724360.25783@chino.kir.corp.google.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 25 Aug 2010, David Rientjes wrote:
+On Wed, Aug 25, 2010 at 05:30:42PM -0700, David Rientjes wrote:
+> 
+> We certainly hope that nobody will reimplement the same function without 
+> the __deprecated warning, especially for order < PAGE_ALLOC_COSTLY_ORDER 
+> where there's no looping at a higher level.  So perhaps the best 
+> alternative is to implement the same _nofail() functions but do a 
+> WARN_ON(get_order(size) > PAGE_ALLOC_COSTLY_ORDER) instead?
 
-> On Wed, 25 Aug 2010, Christoph Lameter wrote:
->
-> > If the higher order fails in slub then an order 0 alloc is attempted
-> > without __GFP_NORETRY. In both cases the nofail behavior of the page
-> > allocator determines the outcode.
-> >
->
-> Right, I thought you said the slab layer passes __GFP_NOFAIL when there's
-> no objects available.
+Yeah, that sounds better.
 
-Yes, the slab layer calls the page allocator when there are no objects
-available and passes the __GFP_NOFAIL that the user may have set in the
-call to the page allocator.
+> I think it's really sad that the caller can't know what the upper bounds 
+> of its memory requirement are ahead of time or at least be able to 
+> implement a memory freeing function when kmalloc() returns NULL.
 
-Why then add new functions that do the same?
+Oh, we can determine an upper bound.  You might just not like it.
+Actually ext3/ext4 shouldn't be as bad as XFS, which Dave estimated to
+be around 400k for a transaction.  My guess is that the worst case for
+ext3/ext4 is probably around 256k or so; like XFS, most of the time,
+it would be a lot less.  (At least, if data != journalled; if we are
+doing data journalling and every single data block begins with
+0xc03b3998U, we'll need to allocate a 4k page for every single data
+block written.)  We could dynamically calculate an upper bound if we
+had to.  Of course, if ext3/ext4 is attached to a network block
+device, then it could get a lot worse than 256k, of course.
 
-
-
+	      	      	      	    	- Ted
