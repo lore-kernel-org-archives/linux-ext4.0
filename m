@@ -1,42 +1,60 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] [RESEND] ext3: set i_extra_isize of 11th inode
-Date: Wed, 25 Aug 2010 19:51:50 -0600
-Message-ID: <68814CB7-75D6-4CCD-9E60-F4BA6A462BBC@dilger.ca>
-References: <20100823095056.ACBA.61FB500B@jp.fujitsu.com> <20100824131735.GD3713@quack.suse.cz> <20100825090551.DEB3.61FB500B@jp.fujitsu.com> <20100825230442.GH2738@quack.suse.cz> <8B4A0D91-D3E1-4328-890C-BD66189598B5@dilger.ca> <20100826003657.GN4453@thunk.org> <6B0D8B5D-C576-4DC2-B390-9D1EB8B6A5BA@dilger.ca> <20100826012117.GP4453@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>,
-	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+From: David Rientjes <rientjes@google.com>
+Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
+ kzalloc
+Date: Wed, 25 Aug 2010 20:09:21 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1008251951230.7034@chino.kir.corp.google.com>
+References: <1282740778.2605.3652.camel@laptop> <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu> <1282743090.2605.3696.camel@laptop> <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com> <1282769729.1975.96.camel@laptop>
+ <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com> <1282771677.1975.138.camel@laptop> <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com> <20100826001901.GL4453@thunk.org> <alpine.DEB.2.00.1008251724360.25783@chino.kir.corp.google.com>
+ <20100826014847.GQ4453@thunk.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: "Ted Ts'o" <tytso@mit.edu>, Peter Zijlstra <peterz@infradead.org>,
+	Jens Axboe <jaxboe@fusionio.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4 development <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+	Neil Brown <neilb@suse.de>, Alasdair G
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:16506 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752595Ab0HZBvw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 21:51:52 -0400
-In-Reply-To: <20100826012117.GP4453@thunk.org>
+Received: from smtp-out.google.com ([216.239.44.51]:24600 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750699Ab0HZDJ3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 23:09:29 -0400
+In-Reply-To: <20100826014847.GQ4453@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-08-25, at 19:21, Ted Ts'o wrote:
-> On Wed, Aug 25, 2010 at 06:55:49PM -0600, Andreas Dilger wrote:
->> 
->> I think you are missing the point.  I don't think it matters which
->> mke2fs is in use.  The problem is that ext3_iget() has a workaround
->> for this 5-year-old mke2fs bug that is actively causing a loss of
->> xattr data if lost+found is reallocated.
+On Wed, 25 Aug 2010, Ted Ts'o wrote:
+
+> > We certainly hope that nobody will reimplement the same function without 
+> > the __deprecated warning, especially for order < PAGE_ALLOC_COSTLY_ORDER 
+> > where there's no looping at a higher level.  So perhaps the best 
+> > alternative is to implement the same _nofail() functions but do a 
+> > WARN_ON(get_order(size) > PAGE_ALLOC_COSTLY_ORDER) instead?
 > 
-> Ah, OK.  But it's still the case that the right answer at this point
-> is to make ext3 code conform to ext4, and drop the workaround
-> altogether.
+> Yeah, that sounds better.
+> 
 
-That's exactly what the patch is doing. :-)
+Ok, and we'll make it a WARN_ON_ONCE() to be nice to the kernel log.  
+Although the current patchset does this with WARN_ON_ONCE(1, ...) instead, 
+this serves to ensure that we aren't dependent on the page allocator's 
+implementation to always loop for order < PAGE_ALLOC_COSTLY_ORDER in which 
+case the loop in the _nofail() functions would actually do something.
 
-Cheers, Andreas
+> > I think it's really sad that the caller can't know what the upper bounds 
+> > of its memory requirement are ahead of time or at least be able to 
+> > implement a memory freeing function when kmalloc() returns NULL.
+> 
+> Oh, we can determine an upper bound.  You might just not like it.
+> Actually ext3/ext4 shouldn't be as bad as XFS, which Dave estimated to
+> be around 400k for a transaction.  My guess is that the worst case for
+> ext3/ext4 is probably around 256k or so; like XFS, most of the time,
+> it would be a lot less.  (At least, if data != journalled; if we are
+> doing data journalling and every single data block begins with
+> 0xc03b3998U, we'll need to allocate a 4k page for every single data
+> block written.)  We could dynamically calculate an upper bound if we
+> had to.  Of course, if ext3/ext4 is attached to a network block
+> device, then it could get a lot worse than 256k, of course.
+> 
 
-
-
-
-
+On my 8GB machine, /proc/zoneinfo says the min watermark for ZONE_NORMAL 
+is 5086 pages, or ~20MB.  GFP_ATOMIC would allow access to ~12MB of that, 
+so perhaps we should consider this is an acceptable abuse of GFP_ATOMIC as 
+a fallback behavior when GFP_NOFS or GFP_NOIO fails?
