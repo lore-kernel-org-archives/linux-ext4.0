@@ -1,41 +1,58 @@
-From: andreas@rid-net.de
-Subject: Re: defragmentation of boot related files
-Date: Thu, 26 Aug 2010 22:16:28 +0200
-Message-ID: <4C76CB9C.2060207@rid-net.de>
-References: <4C7505C3.1070509@rid-net.de>	<4C762AF3.8020303@sx.jp.nec.com> <AANLkTi=zdx6QjsB+EJrOtmpr9BY-j24TGTJaeisAcqu7@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16538] lvm hangs when creating snapshots of the root partition
+ with 2.6.35
+Date: Thu, 26 Aug 2010 21:00:28 GMT
+Message-ID: <201008262100.o7QL0SUF005900@demeter1.kernel.org>
+References: <bug-16538-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Greg Freemyer <greg.freemyer@gmail.com>, k-mio@sx.jp.nec.com,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mo-p00-ob.rzone.de ([81.169.146.160]:19432 "EHLO
-	mo-p00-ob.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753902Ab0HZUQt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 16:16:49 -0400
-In-Reply-To: <AANLkTi=zdx6QjsB+EJrOtmpr9BY-j24TGTJaeisAcqu7@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:34596 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752349Ab0HZVAa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 17:00:30 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o7QL0StG005901
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 21:00:28 GMT
+In-Reply-To: <bug-16538-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-hi,
-
->> Usage: e4defrag -r directory...| device...
->>        e4defrag -r base_file move_file...<--- new
->>
-
-The new interface looks nice. As I see it's easy to implement cause only 
-the main-function must be modified. If you have no objections, I will do 
-it myself and send you the patch to review it.
-
-> I suspect the original idea would work better because it is more
-> likely to pack the libs / files into perfectly contiguous block
-> ranges.
-
-I don't know if it makes a difference for the block allocator. Even 
-though you know the size of all files to be moved.
-
-For a better result, may it be possible to create a base_file whose 
-inode is part of an empty block group?
+https://bugzilla.kernel.org/show_bug.cgi?id=3D16538
 
 
-  Andreas
+Andrew Morton <akpm@linux-foundation.org> changed:
+
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+             Status|NEW                         |RESOLVED
+                 CC|                            |akpm@linux-foundation.=
+org
+         Resolution|                            |CODE_FIX
+
+
+
+
+--- Comment #8 from Fran=C3=A7ois Valenduc <francois.valenduc@tvcablene=
+t.be>  2010-08-11 21:34:47 ---
+This problem is in fact fixed by the following commit:
+
+commit d2aa412a7e270bc679a586dda415344f2b8ad01e
+Author: Eric Sandeen <sandeen@sandeen.net>
+Date:   Sun Aug 1 17:33:29 2010 -0400
+
+    ext4: fix freeze deadlock under IO
+
+--=20
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching someone on the CC list of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
