@@ -1,41 +1,77 @@
-From: Christoph Lameter <cl@linux.com>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Thu, 26 Aug 2010 09:16:19 -0500 (CDT)
-Message-ID: <alpine.DEB.2.00.1008260914420.15852@router.home>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <1282656558.2605.2742.camel@laptop> <4C73CA24.3060707@fusionio.com> <alpine.DEB.2.00.1008241309170.21242@chino.kir.corp.google.com> <20100825112433.GB4453@thunk.org>
- <1282736132.2605.3563.camel@laptop> <20100825115709.GD4453@thunk.org> <1282740516.2605.3644.camel@laptop> <20100825132417.GQ31488@dastard> <1282743342.2605.3707.camel@laptop> <alpine.DEB.2.00.1008251347550.16484@chino.kir.corp.google.com>
- <alpine.DEB.2.00.1008251604120.24931@router.home> <alpine.DEB.2.00.1008251418590.20253@chino.kir.corp.google.com> <alpine.DEB.2.00.1008251630270.25660@router.home> <alpine.DEB.2.00.1008251604540.31521@chino.kir.corp.google.com> <alpine.DEB.2.00.1008252028030.32421@router.home>
- <alpine.DEB.2.00.1008252010260.10986@chino.kir.corp.google.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: defragmentation of boot related files
+Date: Thu, 26 Aug 2010 14:10:08 -0400
+Message-ID: <AANLkTi=zdx6QjsB+EJrOtmpr9BY-j24TGTJaeisAcqu7@mail.gmail.com>
+References: <4C7505C3.1070509@rid-net.de>
+	<4C762AF3.8020303@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	Dave Chinner <david@fromorbit.com>, Ted Ts'o <tytso@mit.edu>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: David Rientjes <rientjes@google.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.DEB.2.00.1008252010260.10986@chino.kir.corp.google.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: andreas@rid-net.de, linux-ext4@vger.kernel.org
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:64622 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751931Ab0HZSKJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 14:10:09 -0400
+Received: by iwn5 with SMTP id 5so1761826iwn.19
+        for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 11:10:08 -0700 (PDT)
+In-Reply-To: <4C762AF3.8020303@sx.jp.nec.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 25 Aug 2010, David Rientjes wrote:
+2010/8/26 Kazuya Mio <k-mio@sx.jp.nec.com>:
+> Hi Andreas,
+> Thanks for the comments.
+>
+> 2010/08/25 21:00, andreas@rid-net.de wrote:
+>> Is there a reason why the offset of the original file and the donor =
+file
+>> must be the same?
+>
+> e4defrag creates a donor file whose size is the same of the original =
+file by
+> fallocate. There is a possibility that the original file will be corr=
+upted
+> after moving an extent if the offset of the original file and the don=
+or file
+> are different. So they are checked in the kernel space, but it may be
+> unnecessary from the point of view of the ioctl.
+>
+>> As i can see the patch for relevant file defragmentation in e4defrag
+>> supports only directories. May it be possible to select any desired =
+file?
+>
+> That's interesting. I came up with the new interface of e4defrag -r.
+> What do you think the following implementation idea?
+>
+> Usage: e4defrag -r directory...| device...
+> =A0 =A0 =A0 e4defrag -r base_file move_file... =A0 =A0 <--- new
+>
+> 1. Defrag base_file to reduce fragmentation of extents (call EXT4_IOC=
+_MOVE_EXT)
+> 2. Preallocate physical blocks near the data blocks of base_file
+> 3. Move move_file's extents to the blocks that are allocated by (2).
+> 4. Repeat (2) and (3) for all files specified as move_file
+>
+> Regards,
+> Kazuya Mio
 
-> Because we can remove the flag, remove branches from the page allocator
-> slowpath, and none of these allocations actually are dependent on
-> __GFP_NOFAIL since they are all under PAGE_ALLOC_COSTLY_ORDER.
+I suspect the original idea would work better because it is more
+likely to pack the libs / files into perfectly contiguous block
+ranges.
 
-Then we can simply remove __GFP_NOFAIL? Functions are only needed for
-higher order allocs that can fail?
+I too have never understood why the donor offsets have to match the
+original offsets, although I had previously assumed the issue could be
+worked around via making the donor file sparse and only have the block
+range of interest allocated.
 
+This use case is a specific example of where it would be beneficial to
+eliminate that artificial limitation.
+
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
