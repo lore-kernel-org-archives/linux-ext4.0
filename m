@@ -1,48 +1,39 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: defragmentation of boot related files
-Date: Thu, 26 Aug 2010 17:50:59 +0900
-Message-ID: <4C762AF3.8020303@sx.jp.nec.com>
-References: <4C7505C3.1070509@rid-net.de>
+From: Dan Carpenter <error27@gmail.com>
+Subject: [patch] ext4: checking NULL instead of ERR_PTR
+Date: Thu, 26 Aug 2010 11:16:54 +0200
+Message-ID: <20100826091619.GC20072@bicker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: andreas@rid-net.de
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
+	Christoph Hellwig <hch@lst.de>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:37110 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753246Ab0HZIwo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 04:52:44 -0400
-In-Reply-To: <4C7505C3.1070509@rid-net.de>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:51352 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753489Ab0HZJRN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 05:17:13 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
-Thanks for the comments.
+d_path() returns an ERR_PTR and it doesn't return NULL.  This is in
+ext4_error_file() and no one actually calls ext4_error_file().
 
-2010/08/25 21:00, andreas@rid-net.de wrote:
-> Is there a reason why the offset of the original file and the donor file 
-> must be the same?
+Signed-off-by: Dan Carpenter <error27@gmail.com>
 
-e4defrag creates a donor file whose size is the same of the original file by
-fallocate. There is a possibility that the original file will be corrupted
-after moving an extent if the offset of the original file and the donor file
-are different. So they are checked in the kernel space, but it may be
-unnecessary from the point of view of the ioctl.
-
-> As i can see the patch for relevant file defragmentation in e4defrag 
-> supports only directories. May it be possible to select any desired file?
-
-That's interesting. I came up with the new interface of e4defrag -r.
-What do you think the following implementation idea?
-
-Usage: e4defrag -r directory...| device...
-       e4defrag -r base_file move_file...     <--- new
-
-1. Defrag base_file to reduce fragmentation of extents (call EXT4_IOC_MOVE_EXT)
-2. Preallocate physical blocks near the data blocks of base_file
-3. Move move_file's extents to the blocks that are allocated by (2).
-4. Repeat (2) and (3) for all files specified as move_file
-
-Regards,
-Kazuya Mio
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2614774..efaa27e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -429,7 +429,7 @@ void ext4_error_file(struct file *file, const char *function,
+ 	save_error_info(inode->i_sb, function, line);
+ 	va_start(args, fmt);
+ 	path = d_path(&(file->f_path), pathname, sizeof(pathname));
+-	if (!path)
++	if (IS_ERR(path))
+ 		path = "(unknown)";
+ 	printk(KERN_CRIT
+ 	       "EXT4-fs error (device %s): %s:%d: inode #%lu "
