@@ -1,47 +1,74 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Wed, 25 Aug 2010 20:19:01 -0400
-Message-ID: <20100826001901.GL4453@thunk.org>
-References: <20100825115709.GD4453@thunk.org>
- <1282740516.2605.3644.camel@laptop>
- <1282740778.2605.3652.camel@laptop>
- <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu>
- <1282743090.2605.3696.camel@laptop>
- <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com>
- <1282769729.1975.96.camel@laptop>
- <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com>
- <1282771677.1975.138.camel@laptop>
- <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com>
+From: Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>
+Subject: Re: [PATCH] [RESEND] ext3: set i_extra_isize of 11th inode
+Date: Thu, 26 Aug 2010 09:26:37 +0900
+Message-ID: <20100826092636.C31C.61FB500B@jp.fujitsu.com>
+References: <20100825090551.DEB3.61FB500B@jp.fujitsu.com> <20100825230442.GH2738@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	Jens Axboe <jaxboe@fusionio.com>,
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	"linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: David Rientjes <rientjes@google.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:40307 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751783Ab0HZA0L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 20:26:11 -0400
+Received: from m6.gw.fujitsu.co.jp ([10.0.50.76])
+	by fgwmail5.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o7Q0Q9vY012403
+	for <linux-ext4@vger.kernel.org> (envelope-from m.mizuma@jp.fujitsu.com);
+	Thu, 26 Aug 2010 09:26:10 +0900
+Received: from smail (m6 [127.0.0.1])
+	by outgoing.m6.gw.fujitsu.co.jp (Postfix) with ESMTP id B35D945DE52
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 09:26:09 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
+	by m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 8378345DE53
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 09:26:09 +0900 (JST)
+Received: from s6.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 6774B1DB8018
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 09:26:09 +0900 (JST)
+Received: from ml13.s.css.fujitsu.com (ml13.s.css.fujitsu.com [10.249.87.103])
+	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 180A91DB8017
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 09:26:09 +0900 (JST)
+In-Reply-To: <20100825230442.GH2738@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 25, 2010 at 04:11:38PM -0700, David Rientjes wrote:
-> 
-> I'll repropose the patchset with __deprecated as you suggested.  Thanks!
+On Thu, 26 Aug 2010 01:04:42 +0200
+Jan Kara <jack@suse.cz> wrote:
 
-And what Dave and I are saying is that we'll either need to do our on
-loop to avoid the deprecation warning, or the use of the deprecated
-function will probably be used forever...
+>   So I'd rather choose a safer approach for ext3 - see attached patch - it
+> fixes the problem for me.  For ext4 your patch is definitely a way to go,
+> so please port it to ext4 and send it to Ted Tso. Thanks.
+This problem doesn't happen at ext4. Because, the i_extra_isize of 11th
+inode is set to the suitable value by ext4_iget().
+-----------------------------------------------------------
+struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+{
+(snip)     
+        if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+                ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
+                if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
+                    EXT4_INODE_SIZE(inode->i_sb)) {
+                        ret = -EIO;
+                        goto bad_inode;
+                }    
+                if (ei->i_extra_isize == 0) { 
+                        /* The extra space is currently unused. Use it. */
+                        ei->i_extra_isize = sizeof(struct ext4_inode) -
+                                            EXT4_GOOD_OLD_INODE_SIZE;
+                } else {
+                        __le32 *magic = (void *)raw_inode +
+                                        EXT4_GOOD_OLD_INODE_SIZE +
+                                        ei->i_extra_isize;
+                        if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
+                                ext4_set_inode_state(inode, EXT4_STATE_XATTR);
+                }    
+        } else 
+                ei->i_extra_isize = 0; 
+-----------------------------------------------------------
+     
+Thanks,
+Masayoshi
 
-	      	       	     	 - Ted
