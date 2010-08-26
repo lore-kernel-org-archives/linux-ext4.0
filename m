@@ -1,83 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16711] Oops with 2.6.36-rc1
-Date: Thu, 26 Aug 2010 10:30:30 GMT
-Message-ID: <201008261030.o7QAUUJs016372@demeter1.kernel.org>
-References: <bug-16711-13602@https.bugzilla.kernel.org/>
+From: Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH 3/3] Add inode table initialization code into Ext4
+Date: Thu, 26 Aug 2010 19:03:22 +0800
+Message-ID: <AANLkTimRZ5Cbi7k+=-fQzc8ywpb6u-s19f7UdFdpMJFt@mail.gmail.com>
+References: <1282326704-14838-1-git-send-email-lczerner@redhat.com> <1282326704-14838-4-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
+	sandeen@redhat.com, jack@suse.cz, tytso@mit.edu, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:32846 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753046Ab0HZKaf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 06:30:35 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o7QAUV46016374
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 10:30:31 GMT
-In-Reply-To: <bug-16711-13602@https.bugzilla.kernel.org/>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:34467 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751092Ab0HZLDo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 07:03:44 -0400
+Received: by vws3 with SMTP id 3so1570451vws.19
+        for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 04:03:43 -0700 (PDT)
+In-Reply-To: <1282326704-14838-4-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16711
+Hi, all,
 
+On Sat, Aug 21, 2010 at 1:51 AM, Lukas Czerner <lczerner@redhat.com> wrote:
+> When lazy_itable_init extended option is passed to mke2fs, it
+> considerably speed up filesystem creation because inode tables are left
+> uninitialized, thus contains some old data. When this fs is mounted
+> filesystem code should initialize (zero out) uninitialized inode table.
+> So far this code was missing for ext4 and this patch adds this feature.
+>
+> When file system is mounted with "inititable" mount option, new thread
+> (called itableinitd) is created. This thread walks through allocation
+> groups searching for the group with not yet initialized inode table.
+> When such a group is found it write zeroes through whole inode table and
+> put itself into sleep for defined number of seconds to not disturb other
+> ongoing I/O. This is repeated until it walks through every allocation group
+> then the iitableinitd thread is stopped.
+This will slow down e2fsck speed that is gained from uninitialized
+italbe. Am I missing something? What about having another block group
+flag to tell itable that is just zeroed but not used, from itable that
+is already in use?
 
-
-
-
---- Comment #8 from Tobias <devnull@plzk.org>  2010-08-26 10:29:21 ---
-John,
-
-wrt #5: This is a Macbook 2.1, I replaced RAM and HDD a while back. lscpi
-output attached. I have an OSX install on it that it never used, and Ubuntu
-10.04. Ubuntu install consists of an unencrypted /boot partition and an
-encrypted partition where LVM provides / and /home. 
-
-fdisk -l shows:
-
-/dev/sda1               1          26      204819+  ee  GPT
-/dev/sda2   *          26        5248    41943040   af  HFS / HFS+
-/dev/sda3            5248        5308      487424   83  Linux
-/dev/sda4            5308       60802   445750272   ef  EFI (FAT-12/16/32)
-
-mount:
-
-/dev/mapper/vg-root on / type ext4 (rw,errors=remount-ro)
-proc on /proc type proc (rw,noexec,nosuid,nodev)
-none on /sys type sysfs (rw,noexec,nosuid,nodev)
-none on /sys/fs/fuse/connections type fusectl (rw)
-none on /sys/kernel/debug type debugfs (rw)
-none on /sys/kernel/security type securityfs (rw)
-none on /dev type devtmpfs (rw,mode=0755)
-none on /dev/pts type devpts (rw,noexec,nosuid,gid=5,mode=0620)
-none on /dev/shm type tmpfs (rw,nosuid,nodev)
-none on /var/run type tmpfs (rw,nosuid,mode=0755)
-none on /var/lock type tmpfs (rw,noexec,nosuid,nodev)
-none on /lib/init/rw type tmpfs (rw,nosuid,mode=0755)
-/dev/mapper/vg-home on /home type ext4 (rw)
-/dev/sda3 on /boot type ext3 (rw)
-binfmt_misc on /proc/sys/fs/binfmt_misc type binfmt_misc
-(rw,noexec,nosuid,nodev)
-gvfs-fuse-daemon on /home/tobias/.gvfs type fuse.gvfs-fuse-daemon
-(rw,nosuid,nodev,user=tobias)
-
-That said this is a stock setup.
-
-wrt #6: I think I am running into the same issue as described in [1]. People
-are saying it is fixed in maverick, so I am hoping for an upgrade or backport
-to lucid.
-What puzzles me is that the exact issue (trying to build a -git kernel) was
-reported to lkml from a maverick user [2], and the thread suggests that there
-are kernel patches available to fix this. Now I am unsure where if
-kernel-package or source itself are broken.
-
-Please let me know if there are things I can do to be of help (things that
-break my setup are no option unfortunately).
-
-[1] https://bugs.launchpad.net/ubuntu/+source/kernel-package/+bug/58307
-[2] http://marc.info/?t=128247993200002&r=1&w=2
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks,
+-Bergwolf
