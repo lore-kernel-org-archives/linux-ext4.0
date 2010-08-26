@@ -1,40 +1,46 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Wed, 25 Aug 2010 17:30:42 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1008251724360.25783__33380.9423413642$1282782675$gmane$org@chino.kir.corp.google.com>
-References: <20100825115709.GD4453@thunk.org> <1282740516.2605.3644.camel@laptop> <1282740778.2605.3652.camel@laptop> <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu> <1282743090.2605.3696.camel@laptop> <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com>
- <1282769729.1975.96.camel@laptop> <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com> <1282771677.1975.138.camel@laptop> <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com> <20100826001901.GL4453@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] [RESEND] ext3: set i_extra_isize of 11th inode
+Date: Wed, 25 Aug 2010 20:36:57 -0400
+Message-ID: <20100826003657.GN4453@thunk.org>
+References: <20100823095056.ACBA.61FB500B@jp.fujitsu.com>
+ <20100824131735.GD3713@quack.suse.cz>
+ <20100825090551.DEB3.61FB500B@jp.fujitsu.com>
+ <20100825230442.GH2738@quack.suse.cz>
+ <8B4A0D91-D3E1-4328-890C-BD66189598B5@dilger.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: "Ted Ts'o" <tytso@mit.edu>, Peter Zijlstra <peterz@infradead.org>,
-	Jens Axboe <jaxboe@fusionio.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:28303 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752943Ab0HZAav (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Aug 2010 20:30:51 -0400
-In-Reply-To: <20100826001901.GL4453@thunk.org>
+Received: from thunk.org ([69.25.196.29]:37088 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752789Ab0HZAhD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Aug 2010 20:37:03 -0400
+Content-Disposition: inline
+In-Reply-To: <8B4A0D91-D3E1-4328-890C-BD66189598B5@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 25 Aug 2010, Ted Ts'o wrote:
-
-> > I'll repropose the patchset with __deprecated as you suggested.  Thanks!
+On Wed, Aug 25, 2010 at 05:39:11PM -0600, Andreas Dilger wrote:
 > 
-> And what Dave and I are saying is that we'll either need to do our on
-> loop to avoid the deprecation warning, or the use of the deprecated
-> function will probably be used forever...
-> 
+> The fix to e2fsck for this issue has been around for a long time,
+> AFAIK.  It was only needed in the kernel while the broken mke2fs was
+> in wide use, and before a fixed e2fsck was available.
 
-We certainly hope that nobody will reimplement the same function without 
-the __deprecated warning, especially for order < PAGE_ALLOC_COSTLY_ORDER 
-where there's no looping at a higher level.  So perhaps the best 
-alternative is to implement the same _nofail() functions but do a 
-WARN_ON(get_order(size) > PAGE_ALLOC_COSTLY_ORDER) instead?
+The mke2fs in question was fixed in e2fsprogs 1.37, over five years
+ago.  Mizuma-san, why are you using such an __ancient__ mke2fs?  It
+would seem that instead of fixing the kernel, the better thing to do
+is to fix your version of e2fsprogs.  There have been enough other bug
+fixes to e2fsck that using such an ancient version of e2fsck, if you
+are willing to update the kernel, seems to not make a whole lot of
+sense.
 
-I think it's really sad that the caller can't know what the upper bounds 
-of its memory requirement are ahead of time or at least be able to 
-implement a memory freeing function when kmalloc() returns NULL.
+I certainly don't see the point of fixing making any changes in ext4
+to accomodate such a change, since e2fsprogs which is that old won't
+support ext4 file system features anyway.
+
+							- Ted
