@@ -1,145 +1,74 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [PATCH][BUG] ext4: fix infinite loop at ext4_da_writepages with the
- terminal extent block of too big file
-Date: Thu, 26 Aug 2010 13:30:13 +0900
-Message-ID: <20100826133013.73e55f49.toshi.okajima@jp.fujitsu.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [patch 1/5] mm: add nofail variants of kmalloc kcalloc and
+ kzalloc
+Date: Thu, 26 Aug 2010 16:38:00 +1000
+Message-ID: <20100826063759.GB705@dastard>
+References: <E25A6DCB-3188-4CF9-9DC4-631192B2F0E2@mit.edu>
+ <1282743090.2605.3696.camel@laptop>
+ <alpine.DEB.2.00.1008251340420.16484@chino.kir.corp.google.com>
+ <1282769729.1975.96.camel@laptop>
+ <alpine.DEB.2.00.1008251406260.20253@chino.kir.corp.google.com>
+ <1282771677.1975.138.camel@laptop>
+ <alpine.DEB.2.00.1008251606450.31521@chino.kir.corp.google.com>
+ <20100826001901.GL4453@thunk.org>
+ <alpine.DEB.2.00.1008251724360.25783@chino.kir.corp.google.com>
+ <20100826014847.GQ4453@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
+Content-Type: text/plain; charset=us-ascii
+To: Ted Ts'o <tytso@mit.edu>, David Rientjes <rientjes@google.com>,
+	Peter Zijlstra <peterz@infradead.org>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Ne
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:43269 "EHLO
-	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752686Ab0HZEhv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 00:37:51 -0400
-Received: from m2.gw.fujitsu.co.jp ([10.0.50.72])
-	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id o7Q4bkuH001105
-	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
-	Thu, 26 Aug 2010 13:37:47 +0900
-Received: from smail (m2 [127.0.0.1])
-	by outgoing.m2.gw.fujitsu.co.jp (Postfix) with ESMTP id AA07445DE4F
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 13:37:46 +0900 (JST)
-Received: from s2.gw.fujitsu.co.jp (s2.gw.fujitsu.co.jp [10.0.50.92])
-	by m2.gw.fujitsu.co.jp (Postfix) with ESMTP id 8833445DE51
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 13:37:46 +0900 (JST)
-Received: from s2.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
-	by s2.gw.fujitsu.co.jp (Postfix) with ESMTP id 4C2A81DB803A
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 13:37:46 +0900 (JST)
-Received: from ml14.s.css.fujitsu.com (ml14.s.css.fujitsu.com [10.249.87.104])
-	by s2.gw.fujitsu.co.jp (Postfix) with ESMTP id EDC111DB8038
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Aug 2010 13:37:45 +0900 (JST)
+Received: from bld-mail17.adl2.internode.on.net ([150.101.137.102]:47648 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751642Ab0HZGiG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2010 02:38:06 -0400
+Content-Disposition: inline
+In-Reply-To: <20100826014847.GQ4453@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+On Wed, Aug 25, 2010 at 09:48:47PM -0400, Ted Ts'o wrote:
+> On Wed, Aug 25, 2010 at 05:30:42PM -0700, David Rientjes wrote:
+> > 
+> > We certainly hope that nobody will reimplement the same function without 
+> > the __deprecated warning, especially for order < PAGE_ALLOC_COSTLY_ORDER 
+> > where there's no looping at a higher level.  So perhaps the best 
+> > alternative is to implement the same _nofail() functions but do a 
+> > WARN_ON(get_order(size) > PAGE_ALLOC_COSTLY_ORDER) instead?
+> 
+> Yeah, that sounds better.
+> 
+> > I think it's really sad that the caller can't know what the upper bounds 
+> > of its memory requirement are ahead of time or at least be able to 
+> > implement a memory freeing function when kmalloc() returns NULL.
+> 
+> Oh, we can determine an upper bound.  You might just not like it.
+> Actually ext3/ext4 shouldn't be as bad as XFS, which Dave estimated to
+> be around 400k for a transaction.
 
-On linux-2.6.36-rc2, if we execute the following script, we can encounter 
-the hangup of '/bin/sync' command:
-================================================================================
-#!/bin/sh
+For a 4k block size filesystem.
 
-echo -n "HANG UP TEST: "
-/bin/dd if=/dev/zero of=/tmp/img bs=1k count=1 seek=1M 2> /dev/null
-/sbin/mkfs.ext4 -Fq /tmp/img
-/bin/mount -o loop -t ext4 /tmp/img /mnt
-/bin/dd if=/dev/zero of=/mnt/file bs=1 count=1 \
-seek=$((16*1024*1024*1024*1024-4096)) 2> /dev/null
-/bin/sync
-/bin/umount /mnt
-echo "DONE"
-exit 0
-================================================================================
+If I use 64k block size directories (which XFS can even on 4k page
+size machines), the maximum transaction reservation goes up to at
+around 3MB, and that's just for blocks being _modified_. It's not
+the limit on the amount of memory that may need to be allocated
+during a transaction....
 
-We can see the following backtrace if we get the kdump when this hangup occurs:
-================================================================================
-kthread()
-=> bdi_writeback_thread()
-   => wb_do_writeback()
-      => wb_writeback()
-         => writeback_inodes_wb()
-            => writeback_sb_inodes()
-               => writeback_single_inode()
-                  => ext4_da_writepages()  ---+ 
-                                ^ infinite    |
-                                |   loop      |
-                                +-------------+
-================================================================================
+> My guess is that the worst case for
+> ext3/ext4 is probably around 256k or so; like XFS, most of the time,
+> it would be a lot less. 
 
-The reason why this hangup happens is described as follows:
-1) We write the last extent block of the file whose size is the maximum size.
-2) "BH_Delay" flag is set on the buffer_head of its block.
-3) - the member, "m_lblk" of struct mpage_da_data is 4294967295 (UINT_MAX)
-   - the member, "m_len" of struct mpage_da_data is 1
-  mpage_put_bnr_to_bhs() which is called via ext4_da_writepages() cannot
-  clear "BH_Delay" flag of the buffer_head because the type of m_lblk
-  is ext4_lblk_t and then m_lblk + m_len is overflow.
+Right, it usually is a lot less, but one of the big problems is that
+during low memory situations memory reclaim of the metadata page
+cache actually causes _more_ memory allocation during tranactions
+than otherwise would occur.......
 
-  Therefore an infinite loop occurs because ext4_da_writepages() cannot write 
-  the page (which corresponds to the block) since "BH_Delay" flag isn't cleared.
---------------------------------------------------------------------------------
-static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd,
-				struct ext4_map_blocks *map)
-{
-...
-	int blocks = map->m_len;
-...
-		do {
-			// cur_logical = 4294967295
-			// map->m_lblk = 4294967295
-			// blocks = 1
-			// *** map->m_lblk + blocks == 0 (OVERFLOW!) ***
-			// (cur_logical >= map->m_lblk + blocks) => true
-			if (cur_logical >= map->m_lblk + blocks)
-				break;
-			if (buffer_delay(bh) || buffer_unwritten(bh)) {
-				BUG_ON(bh->b_bdev != inode->i_sb->s_bdev);
-				if (buffer_delay(bh)) {
-					// *** cannot reach here! ***
-					clear_buffer_delay(bh);
-					bh->b_blocknr = pblock;
-				} else {
-					clear_buffer_unwritten(bh);
-					BUG_ON(bh->b_blocknr != pblock);
-				}
-			} else if (buffer_mapped(bh))
-				BUG_ON(bh->b_blocknr != pblock);
-			if (map->m_flags & EXT4_MAP_UNINIT)
-				set_buffer_uninit(bh);
-			cur_logical++;
-			pblock++;
-		} while ((bh = bh->b_this_page) != head);
---------------------------------------------------------------------------------
+Cheers,
 
-Therefore, in order to fix this hangup easily, we change the following 
-judgment only.(This change can prevent an overflow from occurring)
---------------------------------------------------------------------------------
-			if (cur_logical >= map->m_lblk + blocks)
-                           |                               |
-                           v                               v
-			if (cur_logical > map->m_lblk + blocks - 1)
---------------------------------------------------------------------------------
-
-NOTE: However, if we mount with nodelalloc option, we cannot experience this
-hangup while this script is running.
-
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
----
- fs/ext4/inode.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4b8debe..4124fa2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2103,7 +2103,7 @@ static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd,
- 			} while ((bh = bh->b_this_page) != head);
- 
- 			do {
--				if (cur_logical >= map->m_lblk + blocks)
-+				if (cur_logical > map->m_lblk + blocks - 1)
- 					break;
- 
- 				if (buffer_delay(bh) || buffer_unwritten(bh)) {
+Dave.
 -- 
-1.5.5.6
+Dave Chinner
+david@fromorbit.com
