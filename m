@@ -1,67 +1,53 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 3/3] Add inode table initialization code into Ext4
-Date: Thu, 26 Aug 2010 14:14:41 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1008261342280.4071@dhcp-lab-213.englab.brq.redhat.com>
-References: <1282326704-14838-1-git-send-email-lczerner@redhat.com> <1282326704-14838-4-git-send-email-lczerner@redhat.com> <AANLkTimRZ5Cbi7k+=-fQzc8ywpb6u-s19f7UdFdpMJFt@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] [RESEND] ext3: set i_extra_isize of 11th inode
+Date: Thu, 26 Aug 2010 14:27:54 +0200
+Message-ID: <20100826122754.GI3294@quack.suse.cz>
+References: <20100823095056.ACBA.61FB500B@jp.fujitsu.com>
+ <20100824131735.GD3713@quack.suse.cz>
+ <20100825090551.DEB3.61FB500B@jp.fujitsu.com>
+ <20100825230442.GH2738@quack.suse.cz>
+ <8B4A0D91-D3E1-4328-890C-BD66189598B5@dilger.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	rwheeler@redhat.com, sandeen@redhat.com, jack@suse.cz,
-	tytso@mit.edu, adilger@dilger.ca
-To: Peng Tao <bergwolf@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Masayoshi MIZUMA <m.mizuma@jp.fujitsu.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37024 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:49899 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751240Ab0HZMOt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Aug 2010 08:14:49 -0400
-In-Reply-To: <AANLkTimRZ5Cbi7k+=-fQzc8ywpb6u-s19f7UdFdpMJFt@mail.gmail.com>
+	id S1751240Ab0HZM2l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Aug 2010 08:28:41 -0400
+Content-Disposition: inline
+In-Reply-To: <8B4A0D91-D3E1-4328-890C-BD66189598B5@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 26 Aug 2010, Peng Tao wrote:
-
-> Hi, all,
+On Wed 25-08-10 17:39:11, Andreas Dilger wrote:
+> On 2010-08-25, at 17:04, Jan Kara wrote:
+> >> What size is the inode ? This problem happens if the size is larger than 128 byte. (I tested at 256 byte inode.)
+> > 
+> > Ah, that was the reason. Thanks. But looking at the implications, I'm a bit
+> > reluctant to do the change you propose. If someone has a filesystem created
+> > by old mkfs, he could suddently see corrupted xattrs in his lost+found
+> > directory with the new kernel. Not that there would be a big chance this
+> > happens but people run various strange environments...
 > 
-> On Sat, Aug 21, 2010 at 1:51 AM, Lukas Czerner <lczerner@redhat.com> wrote:
-> > When lazy_itable_init extended option is passed to mke2fs, it
-> > considerably speed up filesystem creation because inode tables are left
-> > uninitialized, thus contains some old data. When this fs is mounted
-> > filesystem code should initialize (zero out) uninitialized inode table.
-> > So far this code was missing for ext4 and this patch adds this feature.
-> >
-> > When file system is mounted with "inititable" mount option, new thread
-> > (called itableinitd) is created. This thread walks through allocation
-> > groups searching for the group with not yet initialized inode table.
-> > When such a group is found it write zeroes through whole inode table and
-> > put itself into sleep for defined number of seconds to not disturb other
-> > ongoing I/O. This is repeated until it walks through every allocation group
-> > then the iitableinitd thread is stopped.
-> This will slow down e2fsck speed that is gained from uninitialized
-> italbe. Am I missing something? What about having another block group
-> flag to tell itable that is just zeroed but not used, from itable that
-> is already in use?
-> 
-
-Hi,
-
-this is probably my bad. I should have used term "zeroed inode table" instead
-of "initialized inode table". You see, there are two flags.
-
-* EXT4_BG_INODE_UNINIT tells us that inode BITMAP was not used yet, thus
-  no inode was allocated from that group just yet, so kernel need not to
-  read this bitmap from the disk and rather construct fresh (zeroed)
-  inode bitmap in memory (see ext4_init_inode_bitmap).
-
-* EXT4_BG_INODE_ZEROED tells us whether or not inode TABLE was
-  zeroed out. This is the flag which is set by the mkfs when
-  lazy_itable_init extended option is set. This flag was not used
-  for anything useful in kernel, nor e2fsck until now.
-
-Se when the thread is done zeroing the inode table it sets the
-EXT4_BG_INODE_ZEROED flag, but leaves EXT4_BG_INODE_UNINIT as is, so
-e2fsck should not be any slower.
-
-I hope it helped.
-
-Regards.
--Lukas
+> The fix to e2fsck for this issue has been around for a long time, AFAIK.
+> It was only needed in the kernel while the broken mke2fs was in wide use,
+> and before a fixed e2fsck was available.
+  I agree but rather old e2fsprogs are still in use and if a filesystem
+created by these e2fsprogs would be (possibly on a different machine)
+accessed by the new kernel it would see corrupted xattrs. I've looked at our
+supported products (the oldest is currently SLES9 SP3) and it has e2fsprogs
+1.38. This should be new enough. But RHEL3 which is also still supported
+for another three years has e2fsprogs 1.32 so these are buggy. So I'd
+rather be on the safe side and fix the bug by consistently refusing to
+store extented attributes in inode for inodes <= EXT3_FIRST_INO + 1 as I
+don't think that really costs us much...
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
