@@ -1,34 +1,46 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Relatively simple ext4 todo item
-Date: Fri, 27 Aug 2010 17:25:56 -0400
-Message-ID: <E1Op6Qu-0005Df-J6@tytso-glaptop>
-To: linux-ext4@vger.kernel.org
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: EXT4 online resize limitations
+Date: Fri, 27 Aug 2010 16:33:06 -0700
+Message-ID: <AANLkTin-q=dOHRh2TB9PtUyvB2YcbLTz+en_aTp+voVU@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34783 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751235Ab0H0VZ6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Aug 2010 17:25:58 -0400
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:35490 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751722Ab0H0XdH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Aug 2010 19:33:07 -0400
+Received: by vws3 with SMTP id 3so3443041vws.19
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Aug 2010 16:33:06 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For folks who are interested in getting started with ext4, here's a
-relatively simple todo item.
+Is there any way to allow for a larger online resize with ext4?  On
+x86 hardware (4kb block size), it looks to me like the current
+limitation is up to 16TB for regular 32-bit filesystems (which isn't
+an issue), but only 8TB additional for filesystems with the 64bit flag
+set.  Is there any chance that can/will be improved?
 
-Wu Fenguang has reported a scalability issue with ext4 when running a VM
-stress test where there are multiple processes all hammering the file
-with random mmap requests.  (Although this would have shown up as well
-if we had multiple threads all trying to read from the same file
-descriptor at the same time.)  The point of contention is
-ext4_inode_info.i_block_reservation_lock(), and the problem is that
-we're using this spinlock to protect a simple singleton extent cache,
-i_cached_extent.  See the functions ext4_ext_put_gap_in_cache() and
-ext4_ext_in_cache().
+Also, while I was trying this out, I ran into a divide by zero error
+when running mke2fs with the 64bit flag enabled, and the resize=
+extended option set.  This is because EXT2_DESC_PER_BLOCK() tries to
+use s_desc_size if the 64bit flag is set, which isn't set at that
+time.  This diff against master works around it, but perhaps there's a
+more appropriate way?  Should EXT2_DESC_PER_BLOCK() make sure that the
+s_desc_size != 0?
 
-Your mission should you choose to accept it :-), is to replace
-i_cached_extent with an RCU protected data structure.  For bonus points,
-try making it support caching more than a single extent.  Also, while
-you're at it, fix a race condition with move_inode.c where we should
-make should the cached extents have been removed and an RCU grace period
-has elapsed before proceeding with the inode defragmentation.
-
-						- Ted
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index add7c0c..b1a6d62 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -722,6 +722,8 @@ static void parse_extended_opts(struct
+ext2_super_block *param,
+                        bpg = param->s_blocks_per_group;
+                        if (!bpg)
+                                bpg = blocksize * 8;
++                       if (!param->s_desc_size &&
+(param->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT))
++                               param->s_desc_size = EXT2_MIN_DESC_SIZE_64BIT;
+                        gdpb = EXT2_DESC_PER_BLOCK(param);
+                        group_desc_count = (__u32) ext2fs_div64_ceil(
+                                ext2fs_blocks_count(param), bpg);
