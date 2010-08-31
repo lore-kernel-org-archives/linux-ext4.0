@@ -1,100 +1,61 @@
-From: Bill Fink <billfink@mindspring.com>
-Subject: Re: [PATCH] ext4: fix 50% disk write performance regression
-Date: Tue, 31 Aug 2010 01:31:08 -0400
-Message-ID: <20100831013108.2e4acb59.billfink@mindspring.com>
-References: <20100829231126.8d8b2086.billfink@mindspring.com>
-	<4C7C7A72.3020001@redhat.com>
-	<20100831005309.2457743d.billfink@mindspring.com>
-	<4C7C8DAE.50902@redhat.com>
+From: Satoru Takeuchi <takeuchi_satoru@jp.fujitsu.com>
+Subject: [RFC][PATCH] make file's timestamp more accurate
+Date: Tue, 31 Aug 2010 17:42:50 +0900
+Message-ID: <4C7CC08A.9010302__2378.83800077743$1283244244$gmane$org@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org,
-	bill.fink@nasa.gov
-To: Eric Sandeen <sandeen@redhat.com>
+To: Andreas Dilger <adilger@sun.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Jiri Olsa <jolsa@redhat.com>,
+	John Stultz <johnstul@us.ibm.com>, "Ted Ts'o" <tytso@mit.edu>,
+	Thomas Gleixner <
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:37035 "EHLO
-	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753946Ab0HaFbq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Aug 2010 01:31:46 -0400
-In-Reply-To: <4C7C8DAE.50902@redhat.com>
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:52879 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753986Ab0HaInj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Aug 2010 04:43:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 31 Aug 2010, Eric Sandeen wrote:
+Hi,
 
-> Bill Fink wrote:
-> > On Mon, 30 Aug 2010, Eric Sandeen wrote:
-> > 
-> >> Can you give this a shot?
-> >>
-> >> The first hunk is, I think, the biggest problem.  Even if
-> >> we get the max number of pages we need, we keep scanning forward
-> >> until "done" without doing any more actual, useful work.
-> >>
-> >> The 2nd hunk is an oddity, some places assign nr_to_write
-> >> to LONG_MAX, and we get here and multiply -that- by 8... giving
-> >> us "-8" for nr_to_write, that can't help things when we
-> >> do later comparisons on that number...
-> >>
-> >> I also see us asking to find pages starting at "idx" and
-> >> the first dirty page we find is well ahead of that,
-> >> I'm not sure if that's indicative of a problem or not.
-> >>
-> >> Anyway, want to give this a shot, in place of the patch you sent,
-> >> and see how it fares compared to stock and/or with your patch?
-> >>
-> >> It's build-and-sanity tested but not really performance tested here.
-> >>
-> >> Thanks,
-> >> -Eric
-> > 
-> > Great!  It looks like that does the trick.
-> > 
-> > 2.6.35 + your patch:
-> > 
-> > i7test7% dd if=/dev/zero of=/i7raid/bill/testfile1 bs=1M count=32768
-> > 32768+0 records in
-> > 32768+0 records out
-> > 34359738368 bytes (34 GB) copied, 50.6702 s, 678 MB/s
-> > 
-> > That's the same performance as with my patch, and pretty darn
-> > close to the original 2.6.31 performance.
-> 
-> hah, that's good esp. considering my followup email that found
-> what I think is a problem with my patch.  ;)
-> 
-> What happens if you change:
-> 
-> 	if (!range_cyclic && range_whole && wbc->nr_to_write != LONG_MAX)
-> 		desired_nr_to_write = wbc->nr_to_write * 8;
->   	else
->   		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
-> 
-> to:
-> 
->         if (!range_cyclic && range_whole) {
->                 if (wbc->nr_to_write != LONG_MAX)
->                         desired_nr_to_write = wbc->nr_to_write * 8;
->                 else
->                         desired_nr_to_write = wbc->nr_to_write;
->         } else
->   		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
-> 
-> and see how that fares?  I think that makes a little more sense, if we
-> got there with LONG_MAX that means "write everything" and there's no need
-> to bump it up or to go counting pages.  It may not make any real difference.
+linux has supported nanosecond order file's timestamp since 2.5.48.
+However current file timestamp is got by current_fs_time() and
+is only updated once a tick. It can't say true nanosecond accuracy.
+In addition, gettimeofday() before a file operation updating
+{a,c,m}time would outstrip file's timestamp because of the difference
+about time source between gettimeofday() and file's timestamp.
+A certain kind of application would corrupted by this problem.
 
-That's also fine.
+I attached a most simple patch fixing this problem here. However
+it has several problems and I don't say it can be applied as is.
+The most big two problems is the following:
 
-	-Bill
+ - It would cause performance regression, especially in
+   not TSC capable system.
+ - Is gettimeofday()'s monotonicity reliable on all systems?
 
+The relative discussion:
+http://lkml.org/lkml/2010/7/13/443
 
+Does anybody have good idea? Should it be tunable, for example?
 
-> But I'm seeing really weird behavior in writeback, it starts out nicely
-> writing 32768 pages at a time, and then goes all wonky, revisiting pages
-> it's already done and doing IO in little chunks.   This is going to take
-> some staring I think.
-> 
-> -Eric
+Thanks,
+Satoru
+
+Index: linux-2.6.36-rc3/kernel/time.c
+===================================================================
+--- linux-2.6.36-rc3.orig/kernel/time.c 2010-08-31 16:07:43.000000000 +0900
++++ linux-2.6.36-rc3/kernel/time.c      2010-08-31 16:08:11.000000000 +0900
+@@ -227,7 +227,8 @@ SYSCALL_DEFINE1(adjtimex, struct timex _
+  */
+ struct timespec current_fs_time(struct super_block *sb)
+ {
+-       struct timespec now = current_kernel_time();
++       struct timespec now;
++       getnstimeofday(&now);
+        return timespec_trunc(now, sb->s_time_gran);
+ }
+ EXPORT_SYMBOL(current_fs_time);
+
