@@ -1,24 +1,27 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Bill Fink <billfink@mindspring.com>
 Subject: Re: [PATCH] ext4: fix 50% disk write performance regression
-Date: Mon, 30 Aug 2010 23:26:37 -0500
-Message-ID: <4C7C847D.6010301@redhat.com>
-References: <20100829231126.8d8b2086.billfink@mindspring.com> <4C7C7A72.3020001@redhat.com>
+Date: Tue, 31 Aug 2010 00:53:09 -0400
+Message-ID: <20100831005309.2457743d.billfink@mindspring.com>
+References: <20100829231126.8d8b2086.billfink@mindspring.com>
+	<4C7C7A72.3020001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org,
 	bill.fink@nasa.gov
-To: Bill Fink <billfink@mindspring.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15300 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750913Ab0HaE0s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Aug 2010 00:26:48 -0400
+Received: from elasmtp-galgo.atl.sa.earthlink.net ([209.86.89.61]:47204 "EHLO
+	elasmtp-galgo.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754479Ab0HaExy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Aug 2010 00:53:54 -0400
 In-Reply-To: <4C7C7A72.3020001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
+On Mon, 30 Aug 2010, Eric Sandeen wrote:
+
 > Can you give this a shot?
 > 
 > The first hunk is, I think, the biggest problem.  Even if
@@ -41,7 +44,25 @@ Eric Sandeen wrote:
 > 
 > Thanks,
 > -Eric
-> 
+
+Great!  It looks like that does the trick.
+
+2.6.35 + your patch:
+
+i7test7% dd if=/dev/zero of=/i7raid/bill/testfile1 bs=1M count=32768
+32768+0 records in
+32768+0 records out
+34359738368 bytes (34 GB) copied, 50.6702 s, 678 MB/s
+
+That's the same performance as with my patch, and pretty darn
+close to the original 2.6.31 performance.
+
+						-Thanks a bunch
+
+						-Bill
+
+
+
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 > index 4b8debe..33c2167 100644
 > --- a/fs/ext4/inode.c
@@ -66,24 +87,5 @@ Eric Sandeen wrote:
 > -	if (!range_cyclic && range_whole)
 > +	if (!range_cyclic && range_whole && wbc->nr_to_write != LONG_MAX)
 >  		desired_nr_to_write = wbc->nr_to_write * 8;
-
-sorry no, this isn't right, we should just leave it at nr_to_write for the
-LONG_MAX case, not go counting pages.  And something odd is going on where we
-are looking for dirty pages starting at an index we've already written out.
-
-Maybe:
-
-        if (!range_cyclic && range_whole) {
-                if (wbc->nr_to_write != LONG_MAX)
-                        desired_nr_to_write = wbc->nr_to_write * 8;
-                else
-                        desired_nr_to_write = wbc->nr_to_write;
-        } 
-
-I'll have to look at this more when I'm not quite so sleepy, sorry.  :)
-
--Eric
-
 >  	else
 >  		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
-> 
