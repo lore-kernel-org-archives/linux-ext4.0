@@ -1,60 +1,32 @@
-From: Jiri Slaby <jirislaby@gmail.com>
-Subject: Re: [patch v2 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Thu, 02 Sep 2010 09:59:13 +0200
-Message-ID: <4C7F5951.6040809@gmail.com>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
+From: "chxanders@gmail.com" <chxanders@gmail.com>
+Subject: Re: [PATCH 1/3] lib: introduce some memory copy macros and functions
+Date: Thu, 2 Sep 2010 15:16:09 +0700
+Message-ID: <AANLkTinT3X+7hA9UvS8nKqpVzz1u1e-7UZNbfL_1UeX8@mail.gmail.com>
+References: <4C7E2CA9.9060702@cn.fujitsu.com> <1283354736.2059.1206.camel@laptop>
+ <4C7F39B3.4000901@cn.fujitsu.com> <1283414119.2059.1785.camel@laptop> <1283414220.2059.1789.camel@laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
+Cc: miaox@cn.fujitsu.com, Ingo Molnar <mingo@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: David Rientjes <rientjes@google.com>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
-Sender: linux-raid-owner@vger.kernel.org
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	Linux Btrfs <linux-btrfs@vger.kernel.org>,
+	Linux Ext4 <linux-ext4@vger.kernel.org>
+To: Peter Zijlstra <peterz@infradead.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <1283414220.2059.1789.camel@laptop>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 09/02/2010 03:02 AM, David Rientjes wrote:
-> --- a/include/linux/slab.h
-> +++ b/include/linux/slab.h
-> @@ -334,6 +334,57 @@ static inline void *kzalloc_node(size_t size, gfp_t flags, int node)
->  	return kmalloc_node(size, flags | __GFP_ZERO, node);
->  }
->  
-> +/**
-> + * kmalloc_nofail - infinitely loop until kmalloc() succeeds.
-> + * @size: how many bytes of memory are required.
-> + * @flags: the type of memory to allocate (see kmalloc).
-> + *
-> + * NOTE: no new callers of this function should be implemented!
-> + * All memory allocations should be failable whenever possible.
-> + */
-> +static inline void *kmalloc_nofail(size_t size, gfp_t flags)
-> +{
-> +	void *ret;
-> +
-> +	for (;;) {
-> +		ret = kmalloc(size, flags);
-> +		if (ret)
-> +			return ret;
-> +		WARN_ON_ONCE(get_order(size) > PAGE_ALLOC_COSTLY_ORDER);
-
-This doesn't work as you expect. kmalloc will warn every time it fails.
-__GFP_NOFAIL used to disable the warning. Actually what's wrong with
-__GFP_NOFAIL? I cannot find a reason in the changelogs why the patches
-are needed.
-
-> +	}
-
-
-
--- 
-js
+On 2 September 2010 14:07, Chris Samuel <chris@csamuel.org> wrote:
+> On 02/09/10 16:50, Miao Xie wrote:
+>
+>> I just change the "2.1" to "2" in your patch, because the
+>> orignal code is LGPL v2.1, LGPL v2.1 permits us to apply
+>> the terms of the ordinary GNU General Public License instead
+>> of it.
+> Ahhh excellent, I hadn't realised that was possible; well spotted!
+Umm, isn't the only one that can do that the copyright holder?
+Disclaimer: I am not a laywer
