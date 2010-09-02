@@ -1,36 +1,63 @@
 From: Miao Xie <miaox@cn.fujitsu.com>
-Subject: Re: [PATCH 1/3] lib: introduce some memory copy macros and functions
-Date: Thu, 02 Sep 2010 13:44:19 +0800
-Message-ID: <4C7F39B3.4000901@cn.fujitsu.com>
-References: <4C7E2CA9.9060702@cn.fujitsu.com> <1283354736.2059.1206.camel@laptop>
+Subject: [PATCH V2 0/3] improve the performance of some memory copy functions
+Date: Thu, 02 Sep 2010 13:46:14 +0800
+Message-ID: <4C7F3A26.6020607@cn.fujitsu.com>
 Reply-To: miaox@cn.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=GB2312
 Content-Transfer-Encoding: 7bit
-Cc: Ingo Molnar <mingo@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Chris Mason <chris.mason@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
 	Linux Btrfs <linux-btrfs@vger.kernel.org>,
 	Linux Ext4 <linux-ext4@vger.kernel.org>
-To: Peter Zijlstra <peterz@infradead.org>
+To: Peter Zijlstra <peterz@infradead.org>,
+	Ingo Molnar <mingo@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilg
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1283354736.2059.1206.camel@laptop>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 01 Sep 2010 17:25:36 +0200, Peter Zijlstra wrote:
-> On Wed, 2010-09-01 at 18:36 +0800, Miao Xie wrote:
->> + * This program is free software; you can redistribute it and/or modify it
->> + * under the terms of the GNU General Public License as published by the Free
->> + * Software Foundation; either version 2.1 of the License, or (at your option)
->> + * any later version.
->
-> The kernel is GPL v2, see COPYING. GPL v2.1 is not a suitable license.
+Changes from V1 to V2:
+- change the version of GPL from version 2.1 to version 2
 
-Ok, I will change it.
+When I looked into the performance problem of the btrfs, I found some memory
+copy functions of the kernel(such as: x86_64's memmove)is very inefficient,
+but the glibc version is quite fast, in some cases it is 10 times faster than
+the kernel version.
 
-Thanks
-Miao
+This patchset introduced some macros and functions of the glibc, and improved
+memmove and memcpy of the generic version and memmove of x86_64 in the kernel.
+
+I have tested this patchset by doing 500 bytes memory copy for 50000 times
+on x86_64:
+			memmove
+2.6.36-rc1		2s 610445us	
+2.6.36-rc1 + patch	0s 257358us
+
+After appling this patchset, the performance of the file creation and deletion
+on some filesystems also become better. I have tested the file creation and
+deletion performance with the following benchmark tool on my x86_64 box.
+  http://marc.info/?l=linux-btrfs&m=128212635122920&q=p3
+
+Test steps:
+# ./creat_unlink 50000
+
+The result is following(Total time):
+Ext4:
+		2.6.36-rc1	2.6.36-rc1 + patchset
+file creation	0.771240	0.698983		9.4%UP
+file deletion	0.459065	0.425530		7.3%UP
+
+
+Btrfs:
+		2.6.36-rc1	2.6.36-rc1 + patchset
+file creation	0.966807	0.947592		1.9%UP
+file deletion	1.355671	1.217787		10.2%UP
+
+BTW: I don't know the performance of the other architectures because I don't
+have the machine of those architectures, so I just improved the generic vesion
+and x86_64 version. 
+
+Who can help me to test the performance on the other architectures and compare
+it with the new generic version?
