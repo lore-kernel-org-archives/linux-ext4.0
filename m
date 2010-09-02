@@ -1,82 +1,102 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Broken e2fsck i_blocks repair
-Date: Wed, 01 Sep 2010 19:08:43 -0500
-Message-ID: <4C7EEB0B.9000202@redhat.com>
-References: <AANLkTinT3O20u-iE4Mu2ikSPa4bdhVsM+a82p6Hoeu8K@mail.gmail.com> <3B2F6F16-EAC2-435B-89C9-BDB9931541DF@dilger.ca>
+From: David Rientjes <rientjes@google.com>
+Subject: [patch v2 3/5] fs: add nofail variant of alloc_buffer_head
+Date: Wed, 1 Sep 2010 18:03:13 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1009011759220.24694@chino.kir.corp.google.com>
+References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Justin Maggard <jmaggard10@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Steven Whitehouse <swhiteho@redhat.com>,
+	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
+	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23020 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754832Ab0IBAIu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Sep 2010 20:08:50 -0400
-In-Reply-To: <3B2F6F16-EAC2-435B-89C9-BDB9931541DF@dilger.ca>
+Received: from smtp-out.google.com ([74.125.121.35]:62792 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753390Ab0IBBDT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Sep 2010 21:03:19 -0400
+In-Reply-To: <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On 2010-09-01, at 16:01, Justin Maggard wrote:
->> I've mentioned this before on here, but I never verified whether or
->> not it was actually broken.  I have done so today.  I manually
->> modified the block count of a 3TB file using debugfs, then ran e2fsck
->> on it.  e2fsck claimed to repair it, but would throw an error on every
->> subsequent e2fsck run for the same issue.  The reason is
->> inode->osd2.linux2.l_i_blocks_hi is always set to 0 if e2fsck is told
->> to fix it.  This is an issue in both stable 1.41.12, and in master.
->> This patch fixes it for me, but is there anything else that needs to
->> get checked here?
-> 
-> It probably makes sense to audit all uses of "i_blocks" to see if
-> they behave similarly badly w.r.t. l_i_blocks_hi. A casual glance
-> indicates that there are a number of places that are similarly
-> broken.
-> 
-> I see there is a helper function
-> e2fsck/blknum.c:ext2fs_inode_i_blocks() that should be used for most
-> i_blocks accesses (excluding those places in e2fsck that check for
-> l_i_blocks_hi being non-zero without the appropriate feature flag
-> being set). It might make sense to rename this function
-> ext2fs_inode_i_blocks_get() and add similar
-> ext2fs_inode_i_blocks_set() routine to set it correctly.
+Add alloc_buffer_head_nofail().  This function is equivalent to
+alloc_buffer_head(), except that it will never return NULL and instead
+loop forever trying to allocate memory.
 
-maybe another thing to try to make opaque to make mistakes
-impossible...?
+If the first allocation attempt fails because the page allocator doesn't
+implicitly loop, a warning will be emitted, including a call trace.
+Subsequent failures will suppress this warning.
 
--Eric
+This was added as a helper function for documentation and auditability.
+No future callers should be added.
 
-> 
->> diff -urp e2fsprogs-1.41.12/e2fsck/pass1.c e2fsprogs-1.41.12-jm/e2fsck/pass1.c
->> --- e2fsprogs-1.41.12/e2fsck/pass1.c	2010-05-14 14:51:21.000000000 -0700
->> +++ e2fsprogs-1.41.12-jm/e2fsck/pass1.c	2010-09-01 15:54:42.000000000 -0700
->> @@ -2044,7 +2044,7 @@ static void check_blocks(e2fsck_t ctx, s
->> 		pctx->num = pb.num_blocks;
->> 		if (fix_problem(ctx, PR_1_BAD_I_BLOCKS, pctx)) {
->> 			inode->i_blocks = pb.num_blocks;
->> -			inode->osd2.linux2.l_i_blocks_hi = 0;
->> +			inode->osd2.linux2.l_i_blocks_hi = (pb.num_blocks >> 32);
->> 			dirty_inode++;
->> 		}
->> 		pctx->num = 0;
->>
->> -Justin
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: David Rientjes <rientjes@google.com>
+---
+ fs/buffer.c                 |   17 +++++++++++++++++
+ fs/gfs2/log.c               |    2 +-
+ fs/jbd/journal.c            |    2 +-
+ include/linux/buffer_head.h |    1 +
+ 4 files changed, 20 insertions(+), 2 deletions(-)
 
+diff --git a/fs/buffer.c b/fs/buffer.c
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3238,6 +3238,23 @@ struct buffer_head *alloc_buffer_head(gfp_t gfp_flags)
+ }
+ EXPORT_SYMBOL(alloc_buffer_head);
+ 
++/*
++ * NOTE: no new callers of this function should be implemented!
++ * All memory allocations should be failable whenever possible.
++ */
++struct buffer_head *alloc_buffer_head_nofail(gfp_t gfp_flags)
++{
++	struct buffer_head *ret;
++
++	for (;;) {
++		ret = alloc_buffer_head(gfp_flags);
++		if (ret)
++			return ret;
++		WARN_ON_ONCE(get_order(sizeof(struct buffer_head)) >
++						PAGE_ALLOC_COSTLY_ORDER);
++	}
++}
++
+ void free_buffer_head(struct buffer_head *bh)
+ {
+ 	BUG_ON(!list_empty(&bh->b_assoc_buffers));
+diff --git a/fs/gfs2/log.c b/fs/gfs2/log.c
+--- a/fs/gfs2/log.c
++++ b/fs/gfs2/log.c
+@@ -523,7 +523,7 @@ struct buffer_head *gfs2_log_fake_buf(struct gfs2_sbd *sdp,
+ 	u64 blkno = log_bmap(sdp, sdp->sd_log_flush_head);
+ 	struct buffer_head *bh;
+ 
+-	bh = alloc_buffer_head(GFP_NOFS | __GFP_NOFAIL);
++	bh = alloc_buffer_head_nofail(GFP_NOFS);
+ 	atomic_set(&bh->b_count, 1);
+ 	bh->b_state = (1 << BH_Mapped) | (1 << BH_Uptodate) | (1 << BH_Lock);
+ 	set_bh_page(bh, real->b_page, bh_offset(real));
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -301,7 +301,7 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	 */
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
+ 
+-	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
++	new_bh = alloc_buffer_head_nofail(GFP_NOFS);
+ 	/* keep subsequent assertions sane */
+ 	new_bh->b_state = 0;
+ 	init_buffer(new_bh, NULL, NULL);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -176,6 +176,7 @@ void __breadahead(struct block_device *, sector_t block, unsigned int size);
+ struct buffer_head *__bread(struct block_device *, sector_t block, unsigned size);
+ void invalidate_bh_lrus(void);
+ struct buffer_head *alloc_buffer_head(gfp_t gfp_flags);
++struct buffer_head *alloc_buffer_head_nofail(gfp_t gfp_flags);
+ void free_buffer_head(struct buffer_head * bh);
+ void unlock_buffer(struct buffer_head *bh);
+ void __lock_buffer(struct buffer_head *bh);
