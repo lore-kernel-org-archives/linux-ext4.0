@@ -1,62 +1,65 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch v2 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Thu, 2 Sep 2010 16:51:41 +0200
-Message-ID: <20100902145141.GA3273@quack.suse.cz>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com>
- <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
- <4C7F5951.6040809@gmail.com>
+From: Bernd Schubert <bs_lists@aakef.fastmail.fm>
+Subject: ext2fs_dir_iterate2 and ext2_dir_entry
+Date: Thu, 2 Sep 2010 22:40:41 +0200
+Message-ID: <201009022240.41751.bs_lists@aakef.fastmail.fm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Rientjes <rientjes@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jiri Slaby <jirislaby@gmail.com>
+Content-Type: text/plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50738 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755035Ab0IBOwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Sep 2010 10:52:32 -0400
-Content-Disposition: inline
-In-Reply-To: <4C7F5951.6040809@gmail.com>
+Received: from out1.smtp.messagingengine.com ([66.111.4.25]:58434 "EHLO
+	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932120Ab0IBUko (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Sep 2010 16:40:44 -0400
+Received: from compute3.internal (compute3.nyi.mail.srv.osa [10.202.2.43])
+	by gateway1.messagingengine.com (Postfix) with ESMTP id 99C78426
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Sep 2010 16:40:43 -0400 (EDT)
+Received: from bathl.localnet (stgt-4d038e05.pool.mediaWays.net [77.3.142.5])
+	by mail.messagingengine.com (Postfix) with ESMTPSA id 51E585E6B6E
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Sep 2010 16:40:43 -0400 (EDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 02-09-10 09:59:13, Jiri Slaby wrote:
-> On 09/02/2010 03:02 AM, David Rientjes wrote:
-> > --- a/include/linux/slab.h +++ b/include/linux/slab.h @@ -334,6 +334,57
-> > @@ static inline void *kzalloc_node(size_t size, gfp_t flags, int node)
-> > return kmalloc_node(size, flags | __GFP_ZERO, node); }
-> >  
-> > +/** + * kmalloc_nofail - infinitely loop until kmalloc() succeeds.  +
-> > * @size: how many bytes of memory are required.  + * @flags: the type
-> > of memory to allocate (see kmalloc).  + * + * NOTE: no new callers of
-> > this function should be implemented!  + * All memory allocations should
-> > be failable whenever possible.  + */ +static inline void
-> > *kmalloc_nofail(size_t size, gfp_t flags) +{ +	void *ret; + +	for
-> > (;;) { +		ret = kmalloc(size, flags); +		if (ret) +
-> > return ret; +		WARN_ON_ONCE(get_order(size) >
-> > PAGE_ALLOC_COSTLY_ORDER);
-> 
-> This doesn't work as you expect. kmalloc will warn every time it fails.
-> __GFP_NOFAIL used to disable the warning. Actually what's wrong with
-> __GFP_NOFAIL? I cannot find a reason in the changelogs why the patches
-> are needed.
-  David should probably add the reasoning to the changelogs so that he
-doesn't have to explain again and again ;). But if I understood it
-correctly, the concern is that the looping checks slightly impact fast path
-of the callers which do not need it. Generally, also looping for a long
-time inside allocator isn't a nice thing but some callers aren't able to do
-better for now to the patch is imperfect in this sence...
+We just run the problem that an e2fsck run long in the past converted files 
+into directories on a Lustre OST. At least we need to figure out which files 
+these are and the old e2fsck logs have been deleted for a long time already. 
+(No idea why we run into the problem today again, I guess some files just 
+haven't been accessed all the time). Now we could run "find -type d" and look 
+for directories where they don't belong to. And for that customer it even will 
+work out, as the number of used inodes is low.
+But for other customers, with dozens of million files per OST that would be 
+too slow. No Lustre already provides a lfsck tool that can restore consistency 
+and in principle we could extend it to also check of the object-ID type.
+Unfortunately, the database presently does not get this information and the 
+main reason for that is that (*func) as argument of ext2fs_dir_iterate2() does 
+not take ext2_dir_entry_2, but only ext2_dir_entry without the filetype.
 
-								Honza
+While tracing that down what needs to be done to upgrade it, I'm getting a bit 
+lost. 
+
+In ext2fs_dir_iterate2:
+
+ctx.func = func;
+
+
+then into ext2fs_block_iterate2(, &ctx):
+
+In ext2fs_block_iterate2() the previous &ctx is priv_data and priv_data is 
+again added as ctx:
+
+ctx.priv_data = priv_data;
+
+
+But from there on I don't see where the direntry is ever filled it. Any hints 
+would be appreciated.
+
+
+Thanks,
+Bernd
+
+
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Bernd Schubert
+DataDirect Networks
