@@ -1,39 +1,40 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: [PATCH V2 0/3] improve the performance of some memory copy
- functions
-Date: Thu, 2 Sep 2010 08:53:47 +0200
-Message-ID: <20100902065347.GA29972@elte.hu>
-References: <4C7F3A26.6020607@cn.fujitsu.com>
+From: Chris Samuel <chris@csamuel.org>
+Subject: Re: [PATCH 1/3] lib: introduce some memory copy macros and functions
+Date: Thu, 02 Sep 2010 17:07:24 +1000
+Message-ID: <4C7F4D2C.8000206@csamuel.org>
+References: <4C7E2CA9.9060702@cn.fujitsu.com> <1283354736.2059.1206.camel@laptop> <4C7F39B3.4000901@cn.fujitsu.com> <4C7F3C60.7000205@csamuel.org> <4C7F4938.6090202@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Cc: Peter Zijlstra <peterz@infradead.org>,
 	Ingo Molnar <mingo@redhat.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
+	Chris Mason <chris.mason@oracle.com>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Chris Mason <chris.mason@oracle.com>,
-	Yan Zheng <zheng.yan@oracle.com>,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	Linux Btrfs <linux-btrfs@vger.kernel.org>,
 	Linux Ext4 <linux-ext4@vger.kernel.org>
-To: Miao Xie <miaox@cn.fujitsu.com>
+To: miaox@cn.fujitsu.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:38963 "EHLO mx3.mail.elte.hu"
+Received: from csamuel.org ([74.50.50.137]:48239 "EHLO csamuel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751593Ab0IBGyI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Sep 2010 02:54:08 -0400
-Content-Disposition: inline
-In-Reply-To: <4C7F3A26.6020607@cn.fujitsu.com>
+	id S1751735Ab0IBHHp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Sep 2010 03:07:45 -0400
+In-Reply-To: <4C7F4938.6090202@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On 02/09/10 16:50, Miao Xie wrote:
 
-* Miao Xie <miaox@cn.fujitsu.com> wrote:
+> I just change the "2.1" to "2" in your patch, because the
+> orignal code is LGPL v2.1, LGPL v2.1 permits us to apply
+> the terms of the ordinary GNU General Public License instead
+> of it.
 
-> - change the version of GPL from version 2.1 to version 2
+Ahhh excellent, I hadn't realised that was possible; well spotted!
 
-How were you able to do this? If the code derives from glibc (as your 
-comments in the patches suggest), and if glibc is under the GPL v2.1, 
-then you probably cannot simply change the license to v2.
-
-	Ingo
+cheers,
+Chris
+-- 
+ Chris Samuel  :  http://www.csamuel.org/  :  Melbourne, VIC
