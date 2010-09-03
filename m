@@ -1,81 +1,44 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 2/2 V2] ext4: don't bump nr_to_write if LONG_MAX
-Date: Fri, 03 Sep 2010 16:37:48 -0500
-Message-ID: <4C816AAC.4090709@redhat.com>
-References: <4C7D0A00.40601@redhat.com> <4C7D0BED.3070404@redhat.com> <4C7D0FAB.9070501@redhat.com>
+Subject: Re: [PATCH 0/2] ext4: a couple writeback path fixes
+Date: Fri, 03 Sep 2010 17:11:30 -0500
+Message-ID: <4C817292.9070000@redhat.com>
+References: <4C7D0A00.40601@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36369 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52435 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754079Ab0ICVhw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Sep 2010 17:37:52 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o83Lbqg7015460
+	id S1753256Ab0ICWLd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Sep 2010 18:11:33 -0400
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o83MBXIx032358
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Sep 2010 17:37:52 -0400
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Sep 2010 18:11:33 -0400
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o83Lbm5f024280
+	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o83MBUgC014989
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Sep 2010 17:37:51 -0400
-In-Reply-To: <4C7D0FAB.9070501@redhat.com>
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Sep 2010 18:11:32 -0400
+In-Reply-To: <4C7D0A00.40601@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Eric Sandeen wrote:
-> In some cases we can reach ext4_da_writepages() with
-> wbc->nr_to_write == LONG_MAX, !range_cyclic, and range_whole=1;
-> in this case we will try to bump it up by a factor of 8, which
-> leads to a desired_nr_to_write value of -8.
+> I've found a couple small problems in the ext4_da_writepages path;
+> 
+> 1) ext4_num_dirty_pages() can continue looping after max_pages is reached
+>    - this leads to wasted cpu cycles during writeback
+> 
+> 2) bumping nr_to_write can wrap if we started with LONG_MAX
+>    - Not sure of all ramifications, but nr_to_write = -8 can't be good
+> 
+> -Eric
 
-Sorry Ted, hold off on this, it should have been LLONG_MAX of course,
-and I'm still looking for one other bit of brokennes I see.
+sigh just nak this whole thing for now, too many errors.
 
-The 1/2 patch should be good though.
+Will resubmit after more careful reading, patching, and testing.
+
+Sorry for the noise.
 
 -Eric
-
-> We still get through the logic without actually changing
-> wbc->nr_to_write because the other tests which would change
-> it don't trip due to the negative value, but it seems dangerous
-> to overflow  desired_nr_to_write in the interim, it's not an 
-> obvious situation.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> (V2 minor commit message edits)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 93497f6..2e72a4a 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3004,9 +3004,11 @@ static int ext4_da_writepages(struct address_space *mapping,
->  	 * sbi->max_writeback_mb_bump whichever is smaller.
->  	 */
->  	max_pages = sbi->s_max_writeback_mb_bump << (20 - PAGE_CACHE_SHIFT);
-> -	if (!range_cyclic && range_whole)
-> -		desired_nr_to_write = wbc->nr_to_write * 8;
-> -	else
-> +	if (!range_cyclic && range_whole) {
-> +		desired_nr_to_write = wbc->nr_to_write;
-> +		if (desired_nr_to_write != LONG_MAX)
-> +			desired_nr_to_write *= 8;
-> +	} else
->  		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
->  							   max_pages);
->  	if (desired_nr_to_write > max_pages)
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
