@@ -1,57 +1,83 @@
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Subject: Re: [PATCH 2/3] lib: improve the performance of memcpy and memmove
- of the general version
-Date: Sat, 4 Sep 2010 15:41:14 +0100
-Message-ID: <20100904154114.19501d6e@lxorguk.ukuu.org.uk>
-References: <4C7E2CAC.6080102@cn.fujitsu.com>
-	<82mxrzrsvq.fsf@mid.bfk.de>
-	<1283605142.9039.4.camel@ayu>
+From: David Rientjes <rientjes@google.com>
+Subject: Re: [patch v2 1/5] mm: add nofail variants of kmalloc kcalloc and
+ kzalloc
+Date: Sun, 5 Sep 2010 16:01:45 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1009051555560.5003@chino.kir.corp.google.com>
+References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com> <4C7F5951.6040809@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Florian Weimer <fweimer@bfk.de>, miaox@cn.fujitsu.com,
-	Ingo Molnar <mingo@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
 	Chris Mason <chris.mason@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>
-To: Calvin Walton <calvin.walton@gmail.com>
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
+	Frederic Weisbecker <fweisbec@gmail.com>,
+	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jiri Slaby <jirislaby@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:39398 "EHLO
-	www.etchedpixels.co.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752781Ab0IDOW7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Sep 2010 10:22:59 -0400
-In-Reply-To: <1283605142.9039.4.camel@ayu>
+Received: from smtp-out.google.com ([74.125.121.35]:43108 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750921Ab0IEXBx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Sep 2010 19:01:53 -0400
+In-Reply-To: <4C7F5951.6040809@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 04 Sep 2010 08:59:02 -0400
-Calvin Walton <calvin.walton@gmail.com> wrote:
+On Thu, 2 Sep 2010, Jiri Slaby wrote:
 
-> On Fri, 2010-09-03 at 11:03 +0000, Florian Weimer wrote:
-> > * Miao Xie:
-> > 
-> > >  EXPORT_SYMBOL(memcpy);
-> > 
-> > I think you need to change that to EXPORT_SYMBOL_GPL, because the code
-> > is now licensed under the GPL, and not the GPL plus kernel exceptions
-> > (whatever they are, but they undoubtly exist), unlike the original
-> > implementation.
+> > @@ -334,6 +334,57 @@ static inline void *kzalloc_node(size_t size, gfp_t flags, int node)
+> >  	return kmalloc_node(size, flags | __GFP_ZERO, node);
+> >  }
+> >  
+> > +/**
+> > + * kmalloc_nofail - infinitely loop until kmalloc() succeeds.
+> > + * @size: how many bytes of memory are required.
+> > + * @flags: the type of memory to allocate (see kmalloc).
+> > + *
+> > + * NOTE: no new callers of this function should be implemented!
+> > + * All memory allocations should be failable whenever possible.
+> > + */
+> > +static inline void *kmalloc_nofail(size_t size, gfp_t flags)
+> > +{
+> > +	void *ret;
+> > +
+> > +	for (;;) {
+> > +		ret = kmalloc(size, flags);
+> > +		if (ret)
+> > +			return ret;
+> > +		WARN_ON_ONCE(get_order(size) > PAGE_ALLOC_COSTLY_ORDER);
 > 
-> I wouldn't think so - the intent of EXPORT_SYMBOL_GPL is to mark symbols
-> that make it obvious that a module was derived from the Linux kernel, as
-> opposed to some sort of generic driver that was just ported to a new
-> interface. (It's not foolproof, it's more of a warning to developers.)
+> This doesn't work as you expect. kmalloc will warn every time it fails.
 
-EXPORT_SYMBOL_GPL was meant for symbols that were clearly internal
-workings. EXPORT_SYMBOL() doesn't in any way imply or excuse GPL
-compliance for any derivative work.
+It actually does work as I expect since the WARN_ON_ONCE() never even gets 
+triggered here for any of kmalloc_nofail()'s callers since they all have 
+sizes small enough that the conditional is never true.  The page allocator 
+implicitly loops forever if the order <= PAGE_ALLOC_COSTLY_ORDER, so this 
+warning is only emitted if the #define implementation of the page 
+allocator only changes.  That's intended, we want to know the consequences 
+of our change.
 
-Using the FSF memcpy seems a good technical idea, and it'll no doubt
-liven up the proprietary module makers lawyers as it'll make the FSF a
-party to any infringement disputes 8)
+> __GFP_NOFAIL used to disable the warning.
 
-Alan
+No, it didn't, it was unnecessary for all of the kmalloc_nofail() callers 
+since they already implicitly loop.  No warning is emitted (these are all 
+GFP_NOFS or GFP_NOIO users, there are no order-4 or larger GFP_ATOMIC 
+allocators using this interface).
+
+> Actually what's wrong with
+> __GFP_NOFAIL? I cannot find a reason in the changelogs why the patches
+> are needed.
+> 
+
+Couple reasons:
+
+ - it's unnecessary in the page allocator, it can be implemented at a 
+   higher level, which allows us to remove these branches from the 
+   slowpath,
+
+ - it's mostly unnecessary since all users have orders that will 
+   implicitly loop forever anyway (although __GFP_NOFAIL does guarantee 
+   that it won't fail even if we change the looping behavior internally,
+   these warnings help to isolate cases where it's needed), and
