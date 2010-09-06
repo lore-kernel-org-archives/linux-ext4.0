@@ -1,40 +1,48 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [patch v2 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Sun, 5 Sep 2010 16:03:52 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1009051602130.5003@chino.kir.corp.google.com>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com> <4C7F5951.6040809@gmail.com> <20100902145141.GA3273@quack.suse.cz> <20100903071506.6e6b4d63@notabene>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 17872] New: ext4 does not honour chattr +s attribute
+Date: Mon, 6 Sep 2010 02:35:16 GMT
+Message-ID: <bug-17872-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jan Kara <jack@suse.cz>, Jiri Slaby <jirislaby@gmail.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:18830 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754503Ab0IEXEF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Sep 2010 19:04:05 -0400
-In-Reply-To: <20100903071506.6e6b4d63@notabene>
+Received: from demeter.kernel.org ([140.211.167.39]:37184 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754563Ab0IFCfR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Sep 2010 22:35:17 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o862ZGio002114
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Sep 2010 02:35:16 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 3 Sep 2010, Neil Brown wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=17872
 
-> I'm actually a bit confused about this too.
-> I thought David said he was removing a branch on the *slow* path - which make
-> sense as you wouldn't even test NOFAIL until you had a failure.
-> Why are branches on the slow-path an issue??
+           Summary: ext4 does not honour chattr +s attribute
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.34
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: enhancement
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: usedonlytosignup@gmail.com
+        Regression: No
 
-They aren't necessarily an issue in the performance sense, this is a 
-cleanup series since all converted callers to using these new functions 
-(and the eventual removal of __GFP_NOFAIL entirely) are using the bit 
-unnecessarily since they all have orders that implicitly loop in the page 
-allocator forever already, with or without the flag.
+
+According to the man page setting this attribute will cause the files blocks to
+be zero'd if it is deleted. It says it does this for ext2 and ext3 and does not
+mention ext4, so I've marked it as "enhancement" though I think this is really
+a bug.
+
+Because it doesn't zero the blocks.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
