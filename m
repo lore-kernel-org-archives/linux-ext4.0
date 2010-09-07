@@ -1,47 +1,36 @@
-From: David Rientjes <rientjes@google.com>
-Subject: Re: [patch v2 1/5] mm: add nofail variants of kmalloc kcalloc and
- kzalloc
-Date: Mon, 6 Sep 2010 02:05:27 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1009060204001.10552@chino.kir.corp.google.com>
-References: <alpine.DEB.2.00.1008240340010.18908@chino.kir.corp.google.com> <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
+From: "Amir G." <amir73il@users.sourceforge.net>
+Subject: Re: [PATCH] allow internal journal size 2GB or larger
+Date: Tue, 7 Sep 2010 16:07:55 +0300
+Message-ID: <AANLkTik_wVFb9=X1frJ8LWdfHLEoSm1YRg=+2p+DYbty@mail.gmail.com>
+References: <BDFF27EB-4448-4042-B8BD-7DD104AE9021@oracle.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Neil Brown <neilb@suse.de>, Alasdair G Kergon <agk@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Jens Axboe <jaxboe@fusionio.com>, Jan Kara <jack@suse.cz>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	linux-raid@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <andreas.dilger@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([74.125.121.35]:12283 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753104Ab0IFJFe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Sep 2010 05:05:34 -0400
-In-Reply-To: <alpine.DEB.2.00.1009011757360.24694@chino.kir.corp.google.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:61449 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756536Ab0IGNH4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Sep 2010 09:07:56 -0400
+Received: by iwn5 with SMTP id 5so5323052iwn.19
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Sep 2010 06:07:55 -0700 (PDT)
+In-Reply-To: <BDFF27EB-4448-4042-B8BD-7DD104AE9021@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 1 Sep 2010, David Rientjes wrote:
+On Thu, Aug 5, 2010 at 10:26 PM, Andreas Dilger
+<andreas.dilger@oracle.com> wrote:
+>
+> The current libext2fs and e2fsck code does not handle an internal journal inode size larger than 2GB because of 32-bit overflow.
+>
 
-> Add kmalloc_nofail(), kcalloc_nofail(), and kzalloc_nofail().  These
-> functions are equivalent to kmalloc(), kcalloc(), and kzalloc(),
-> respectively, except that they will never return NULL and instead loop
-> forever trying to allocate memory.
-> 
-> If the first allocation attempt fails because the page allocator doesn't 
-> implicitly loop, a warning will be emitted, including a call trace.
-> Subsequent failures will suppress this warning.
-> 
-> These were added as helper functions for documentation and auditability.
-> No future callers should be added.
-> 
+I was surprised to see this problem description, since I have been
+using a 3GB journal with Next3 for a while and never observed this
+problem reported by fsck.
+Finally, I realized that the problem only happens when the journal
+inode size is larger than 4GB.
 
-Are there any objections to merging this series through -mm with the 
-exception of the fifth patch for ntfs?  That particular patch needs to 
-have its WARN_ON_ONCE() condition rewritten since it fallbacks to 
-vmalloc for high order allocs.
+Other than that, patch looks fine to me :-)
 
-Thanks.
+Amir.
