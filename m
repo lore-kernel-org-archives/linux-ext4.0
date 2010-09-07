@@ -1,41 +1,276 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 17361] Watchdog detected hard LOCKUP in
- jbd2_journal_get_write_access
-Date: Tue, 7 Sep 2010 22:27:43 GMT
-Message-ID: <201009072227.o87MRhZP027378@demeter1.kernel.org>
-References: <bug-17361-13602@https.bugzilla.kernel.org/>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: [PATCH] ext4: use dedicated slab caches for group_info structures
+Date: Tue, 7 Sep 2010 15:53:08 -0700
+Message-ID: <AANLkTim772XBnX=UA9ieLnPnC0XKsCP=QTNYtm0m+Xg5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52539 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754963Ab0IGW1o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Sep 2010 18:27:44 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o87MRh43027379
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Sep 2010 22:27:43 GMT
-In-Reply-To: <bug-17361-13602@https.bugzilla.kernel.org/>
+Received: from smtp-out.google.com ([74.125.121.35]:20348 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753399Ab0IGWxL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Sep 2010 18:53:11 -0400
+Received: from hpaq2.eem.corp.google.com (hpaq2.eem.corp.google.com [172.25.149.2])
+	by smtp-out.google.com with ESMTP id o87MrAOs024916
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Sep 2010 15:53:10 -0700
+Received: from qwe5 (qwe5.prod.google.com [10.241.194.5])
+	by hpaq2.eem.corp.google.com with ESMTP id o87Mr8wX026594
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Sep 2010 15:53:09 -0700
+Received: by qwe5 with SMTP id 5so5433313qwe.12
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Sep 2010 15:53:08 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=17361
+ext4_group_info structures are currently allocated with kmalloc().  With a
+typical 4K block size, these are 136 bytes each -- meaning they'll each
+consume a 256-byte slab object.  On a system with many ext4 large
+partitions, that's a lot of wasted kernel slab space.  (E.g., a single 1TB
+partition will have about 8000 block groups, using about 2MB of slab, of
+which nearly 1MB is wasted.)
+
+This patch creates an array of slab pointers created as needed -- depending
+on the superblock block size -- and uses these slabs to allocate the group
+info objects.
+
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+---
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 889ec9d..b364b9d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -205,6 +205,7 @@ typedef struct ext4_io_end {
+ #define EXT4_MIN_BLOCK_SIZE		1024
+ #define	EXT4_MAX_BLOCK_SIZE		65536
+ #define EXT4_MIN_BLOCK_LOG_SIZE		10
++#define EXT4_MAX_BLOCK_LOG_SIZE		16
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4b4ad4b..9168d62 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -338,6 +338,14 @@
+ static struct kmem_cache *ext4_pspace_cachep;
+ static struct kmem_cache *ext4_ac_cachep;
+ static struct kmem_cache *ext4_free_ext_cachep;
++
++/* We create slab caches for groupinfo data structures based on the
++ * superblock block size.  There will be one per mounted filesystem for
++ * each unique s_blocksize_bits */
++#define NR_GRPINFO_CACHES 	\
++	(EXT4_MAX_BLOCK_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE + 1)
++static struct kmem_cache *ext4_groupinfo_caches[NR_GRPINFO_CACHES];
++
+ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ 					ext4_group_t group);
+ static void ext4_mb_generate_from_freelist(struct super_block *sb,
+void *bitmap,
+@@ -2234,14 +2242,24 @@ static const struct file_operations
+ext4_mb_seq_groups_fops = {
+ };
 
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
++static struct kmem_cache *get_groupinfo_cache(int blocksize_bits)
++{
++	int cache_index = blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
++	struct kmem_cache *cachep = ext4_groupinfo_caches[cache_index];
++
++	BUG_ON(! cachep);
++	return cachep;
++}
++
+ /* Create and initialize ext4_group_info data for the given group. */
+ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			  struct ext4_group_desc *desc)
+ {
+-	int i, len;
++	int i;
+ 	int metalen = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_group_info **meta_group_info;
++	struct kmem_cache *cachep;
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |maciej.rutecki@gmail.com,
-                   |                            |rjw@sisk.pl
-     Kernel Version|                            |2.6.36-rc3
-             Blocks|                            |16444
+ 	/*
+ 	 * First check if this group is the first of a reserved block.
+@@ -2261,18 +2279,13 @@ int ext4_mb_add_groupinfo(struct super_block
+*sb, ext4_group_t group,
+ 			meta_group_info;
+ 	}
 
+-	/*
+-	 * calculate needed size. if change bb_counters size,
+-	 * don't forget about ext4_mb_generate_buddy()
+-	 */
+-	len = offsetof(typeof(**meta_group_info),
+-		       bb_counters[sb->s_blocksize_bits + 2]);
++	cachep = get_groupinfo_cache(sb->s_blocksize_bits);
 
+ 	meta_group_info =
+ 		sbi->s_group_info[group >> EXT4_DESC_PER_BLOCK_BITS(sb)];
+ 	i = group & (EXT4_DESC_PER_BLOCK(sb) - 1);
 
+-	meta_group_info[i] = kzalloc(len, GFP_KERNEL);
++	meta_group_info[i] = kmem_cache_alloc(cachep, GFP_KERNEL);
+ 	if (meta_group_info[i] == NULL) {
+ 		printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
+ 		goto exit_group_info;
+@@ -2331,6 +2344,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 	int num_meta_group_infos_max;
+ 	int array_size;
+ 	struct ext4_group_desc *desc;
++	struct kmem_cache *cachep;
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+ 	/* This is the number of blocks used by GDT */
+ 	num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -
+@@ -2388,8 +2402,9 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 	return 0;
+
+ err_freebuddy:
++	cachep = get_groupinfo_cache(sb->s_blocksize_bits);
+ 	while (i-- > 0)
+-		kfree(ext4_get_group_info(sb, i));
++		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
+ 	i = num_meta_group_infos;
+ 	while (i-- > 0)
+ 		kfree(sbi->s_group_info[i]);
+@@ -2406,19 +2421,48 @@ int ext4_mb_init(struct super_block *sb, int
+needs_recovery)
+ 	unsigned offset;
+ 	unsigned max;
+ 	int ret;
++	int cache_index;
++	struct kmem_cache *cachep;
++	char *namep = NULL;
+
+ 	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_offsets);
+
+ 	sbi->s_mb_offsets = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_offsets == NULL) {
+-		return -ENOMEM;
++		ret = -ENOMEM;
++		goto out;
+ 	}
+
+ 	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_maxs);
+ 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_maxs == NULL) {
+-		kfree(sbi->s_mb_offsets);
+-		return -ENOMEM;
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	cache_index = sb->s_blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
++	cachep = ext4_groupinfo_caches[cache_index];
++	if (! cachep) {
++		char name[32];
++		int len = offsetof(struct ext4_group_info,
++					bb_counters[sb->s_blocksize_bits + 2]);
++
++		sprintf(name, "ext4_groupinfo_%d", sb->s_blocksize_bits);
++		namep = kstrdup(name, GFP_KERNEL);
++		if (! namep) {
++			ret = -ENOMEM;
++			goto out;
++		}
++
++		/* Need to free the kmem_cache_name() when we
++		 * destroy the slab */
++		cachep = kmem_cache_create(namep, len, 0,
++					     SLAB_RECLAIM_ACCOUNT, NULL);
++		if (! cachep) {
++			ret = -ENOMEM;
++			goto out;
++		}
++		ext4_groupinfo_caches[cache_index] = cachep;
+ 	}
+
+ 	/* order 0 is regular bitmap */
+@@ -2439,9 +2483,7 @@ int ext4_mb_init(struct super_block *sb, int
+needs_recovery)
+ 	/* init file for buddy data */
+ 	ret = ext4_mb_init_backend(sb);
+ 	if (ret != 0) {
+-		kfree(sbi->s_mb_offsets);
+-		kfree(sbi->s_mb_maxs);
+-		return ret;
++		goto out;
+ 	}
+
+ 	spin_lock_init(&sbi->s_md_lock);
+@@ -2456,9 +2498,8 @@ int ext4_mb_init(struct super_block *sb, int
+needs_recovery)
+
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
+-		kfree(sbi->s_mb_offsets);
+-		kfree(sbi->s_mb_maxs);
+-		return -ENOMEM;
++		ret = -ENOMEM;
++		goto out;
+ 	}
+ 	for_each_possible_cpu(i) {
+ 		struct ext4_locality_group *lg;
+@@ -2475,7 +2516,16 @@ int ext4_mb_init(struct super_block *sb, int
+needs_recovery)
+
+ 	if (sbi->s_journal)
+ 		sbi->s_journal->j_commit_callback = release_blocks_on_commit;
+-	return 0;
++out:
++	if (ret) {
++		if (sbi->s_mb_offsets)
++			kfree(sbi->s_mb_offsets);
++		if (sbi->s_mb_maxs)
++			kfree(sbi->s_mb_maxs);
++		if (namep)
++			kfree(namep);
++	}
++	return ret;
+ }
+
+ /* need to called with the ext4 group lock held */
+@@ -2503,7 +2553,9 @@ int ext4_mb_release(struct super_block *sb)
+ 	int num_meta_group_infos;
+ 	struct ext4_group_info *grinfo;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct kmem_cache *cachep;
+
++	cachep = get_groupinfo_cache(sb->s_blocksize_bits);
+ 	if (sbi->s_group_info) {
+ 		for (i = 0; i < ngroups; i++) {
+ 			grinfo = ext4_get_group_info(sb, i);
+@@ -2513,7 +2565,7 @@ int ext4_mb_release(struct super_block *sb)
+ 			ext4_lock_group(sb, i);
+ 			ext4_mb_cleanup_pa(grinfo);
+ 			ext4_unlock_group(sb, i);
+-			kfree(grinfo);
++			kmem_cache_free(cachep, grinfo);
+ 		}
+ 		num_meta_group_infos = (ngroups +
+ 				EXT4_DESC_PER_BLOCK(sb) - 1) >>
+@@ -2691,6 +2743,7 @@ int __init init_ext4_mballoc(void)
+
+ void exit_ext4_mballoc(void)
+ {
++	int i;
+ 	/*
+ 	 * Wait for completion of call_rcu()'s on ext4_pspace_cachep
+ 	 * before destroying the slab cache.
+@@ -2699,6 +2752,15 @@ void exit_ext4_mballoc(void)
+ 	kmem_cache_destroy(ext4_pspace_cachep);
+ 	kmem_cache_destroy(ext4_ac_cachep);
+ 	kmem_cache_destroy(ext4_free_ext_cachep);
++
++	for (i = 0; i < NR_GRPINFO_CACHES; i++) {
++		struct kmem_cache *cachep = ext4_groupinfo_caches[i];
++		if (cachep) {
++			char *name = (char *)kmem_cache_name(cachep);
++			kmem_cache_destroy(cachep);
++			kfree(name);
++		}
++	}
+ 	ext4_remove_debugfs_entry();
+ }
