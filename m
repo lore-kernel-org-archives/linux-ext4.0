@@ -1,70 +1,88 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 4/5] Use sb_issue_zeroout in setup_new_group_blocks
-Date: Wed,  8 Sep 2010 18:59:19 +0200
-Message-ID: <1283965160-31597-5-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 2/5] Add inititable/noinititable mount options for ext4
+Date: Wed,  8 Sep 2010 18:59:17 +0200
+Message-ID: <1283965160-31597-3-git-send-email-lczerner@redhat.com>
 References: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
 Cc: rwheeler@redhat.com, sandeen@redhat.com, tytso@mit.edu,
 	adilger@dilger.ca, lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55595 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59647 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756239Ab0IHQ7l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Sep 2010 12:59:41 -0400
+	id S1756198Ab0IHQ7h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Sep 2010 12:59:37 -0400
 In-Reply-To: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use sn_issue_discard to zero out inode table and descriptor table
-blocks instead of old approach which involves journaling.
+Add new mount flag EXT4_MOUNT_INIT_INODE_TABLE and add new pair of mount
+options (inititable/noinititable). When mounted with inititable file
+system should try to initialize uninitialized inode tables, otherwise it
+should prevent initializing inode tables.
+For now, default is noinittable.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/resize.c |   44 +++++++++++---------------------------------
- 1 files changed, 11 insertions(+), 33 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/super.c |   12 ++++++++++++
+ 2 files changed, 13 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 6df797e..60161bc 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -226,23 +226,12 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 19a4de5..dbd6760 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -885,6 +885,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+ #define EXT4_MOUNT_DISCARD		0x40000000 /* Issue DISCARD requests */
++#define EXT4_MOUNT_INIT_INODE_TABLE	0x80000000 /* Initialize uninitialized itables */
  
- 	/* Zero out all of the reserved backup group descriptor table blocks */
--	for (i = 0, bit = gdblocks + 1, block = start + bit;
--	     i < reserved_gdb; i++, block++, bit++) {
--		struct buffer_head *gdb;
--
--		ext4_debug("clear reserved block %#04llx (+%d)\n", block, bit);
--
--		if ((err = extend_or_restart_transaction(handle, 1, bh)))
--			goto exit_bh;
-+	ext4_debug("clear inode table blocks %#04llx -> %#04llx\n",
-+			block, sbi->s_itb_per_group);
-+	err = sb_issue_zeroout(sb, gdblocks + start + 1, reserved_gdb);
-+	if (err)
-+		goto exit_journal;
+ #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
+ #define set_opt(o, opt)			o |= EXT4_MOUNT_##opt
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4e8983a..515e306 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -986,6 +986,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	if (test_opt(sb, DIOREAD_NOLOCK))
+ 		seq_puts(seq, ",dioread_nolock");
  
--		if (IS_ERR(gdb = bclean(handle, sb, block))) {
--			err = PTR_ERR(gdb);
--			goto exit_bh;
--		}
--		ext4_handle_dirty_metadata(handle, NULL, gdb);
--		ext4_set_bit(bit, bh->b_data);
--		brelse(gdb);
--	}
- 	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
- 		   input->block_bitmap - start);
- 	ext4_set_bit(input->block_bitmap - start, bh->b_data);
-@@ -251,23 +240,12 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
++	if (test_opt(sb, INIT_INODE_TABLE))
++		seq_puts(seq, ",init_inode_table");
++
+ 	ext4_show_quota_options(seq, sb);
  
- 	/* Zero out all of the inode table blocks */
--	for (i = 0, block = input->inode_table, bit = block - start;
--	     i < sbi->s_itb_per_group; i++, bit++, block++) {
--		struct buffer_head *it;
--
--		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
--
--		if ((err = extend_or_restart_transaction(handle, 1, bh)))
--			goto exit_bh;
+ 	return 0;
+@@ -1161,6 +1164,7 @@ enum {
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard,
++	Opt_init_inode_table, Opt_noinit_inode_table,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1231,6 +1235,8 @@ static const match_table_t tokens = {
+ 	{Opt_dioread_lock, "dioread_lock"},
+ 	{Opt_discard, "discard"},
+ 	{Opt_nodiscard, "nodiscard"},
++	{Opt_init_inode_table, "inititable"},
++	{Opt_noinit_inode_table, "noinititable"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1699,6 +1705,12 @@ set_qf_format:
+ 		case Opt_dioread_lock:
+ 			clear_opt(sbi->s_mount_opt, DIOREAD_NOLOCK);
+ 			break;
++		case Opt_init_inode_table:
++			set_opt(sbi->s_mount_opt, INIT_INODE_TABLE);
++			break;
++		case Opt_noinit_inode_table:
++			clear_opt(sbi->s_mount_opt, INIT_INODE_TABLE);
++			break;
+ 		default:
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "Unrecognized mount option \"%s\" "
+-- 
+1.7.2.2
+
