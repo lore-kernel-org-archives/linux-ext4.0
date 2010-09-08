@@ -1,116 +1,152 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 5/5] Use sb_issue_discard in ext4_ext_zeroout
-Date: Wed,  8 Sep 2010 18:59:20 +0200
-Message-ID: <1283965160-31597-6-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 0/5 v2] Lazy itable initialization for Ext4
+Date: Wed, 8 Sep 2010 19:49:02 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009081947250.30597@dhcp-lab-213.englab.brq.redhat.com>
 References: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
-Cc: rwheeler@redhat.com, sandeen@redhat.com, tytso@mit.edu,
-	adilger@dilger.ca, lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="571141147-1824814791-1283968145=:30597"
+Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
+	sandeen@redhat.com, tytso@mit.edu, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6284 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36828 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756405Ab0IHQ7n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Sep 2010 12:59:43 -0400
+	id S1750780Ab0IHRtI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Sep 2010 13:49:08 -0400
 In-Reply-To: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change ext4_ext4_zeroout to use sb_issue_discard instead of its
-own approach to zero out extents.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/extents.c |   68 ++++------------------------------------------------
- 1 files changed, 6 insertions(+), 62 deletions(-)
+--571141147-1824814791-1283968145=:30597
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 377309c..c426d9e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2536,77 +2536,21 @@ void ext4_ext_release(struct super_block *sb)
- #endif
- }
- 
--static void bi_complete(struct bio *bio, int error)
--{
--	complete((struct completion *)bio->bi_private);
--}
--
- /* FIXME!! we need to try to merge to left or right after zero-out  */
- static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
- {
-+	ext4_fsblk_t ee_pblock;
-+	unsigned int ee_len;
- 	int ret;
--	struct bio *bio;
--	int blkbits, blocksize;
--	sector_t ee_pblock;
--	struct completion event;
--	unsigned int ee_len, len, done, offset;
- 
--
--	blkbits   = inode->i_blkbits;
--	blocksize = inode->i_sb->s_blocksize;
- 	ee_len    = ext4_ext_get_actual_len(ex);
- 	ee_pblock = ext_pblock(ex);
- 
--	/* convert ee_pblock to 512 byte sectors */
--	ee_pblock = ee_pblock << (blkbits - 9);
--
--	while (ee_len > 0) {
--
--		if (ee_len > BIO_MAX_PAGES)
--			len = BIO_MAX_PAGES;
--		else
--			len = ee_len;
--
--		bio = bio_alloc(GFP_NOIO, len);
--		if (!bio)
--			return -ENOMEM;
--
--		bio->bi_sector = ee_pblock;
--		bio->bi_bdev   = inode->i_sb->s_bdev;
--
--		done = 0;
--		offset = 0;
--		while (done < len) {
--			ret = bio_add_page(bio, ZERO_PAGE(0),
--							blocksize, offset);
--			if (ret != blocksize) {
--				/*
--				 * We can't add any more pages because of
--				 * hardware limitations.  Start a new bio.
--				 */
--				break;
--			}
--			done++;
--			offset += blocksize;
--			if (offset >= PAGE_CACHE_SIZE)
--				offset = 0;
--		}
--
--		init_completion(&event);
--		bio->bi_private = &event;
--		bio->bi_end_io = bi_complete;
--		submit_bio(WRITE, bio);
--		wait_for_completion(&event);
-+	ret = sb_issue_zeroout(inode->i_sb, ee_pblock, ee_len);
-+	if (ret > 0)
-+		ret = 0;
- 
--		if (!test_bit(BIO_UPTODATE, &bio->bi_flags)) {
--			bio_put(bio);
--			return -EIO;
--		}
--		bio_put(bio);
--		ee_len    -= done;
--		ee_pblock += done  << (blkbits - 9);
--	}
--	return 0;
-+	return ret;
- }
- 
- #define EXT4_EXT_ZERO_LEN 7
--- 
-1.7.2.2
+Graph attached.
 
+-Lukas
+--571141147-1824814791-1283968145=:30597
+Content-Type: IMAGE/png; name=output.png
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.LFD.2.00.1009081949020.30597@dhcp-lab-213.englab.brq.redhat.com>
+Content-Description: 
+Content-Disposition: attachment; filename=output.png
+
+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
+
+--571141147-1824814791-1283968145=:30597--
