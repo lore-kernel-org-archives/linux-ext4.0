@@ -1,88 +1,47 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/5] Add inititable/noinititable mount options for ext4
-Date: Wed,  8 Sep 2010 18:59:17 +0200
-Message-ID: <1283965160-31597-3-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/5] Add helper function for blkdev_issue_zeroout
+Date: Wed,  8 Sep 2010 18:59:16 +0200
+Message-ID: <1283965160-31597-2-git-send-email-lczerner@redhat.com>
 References: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
 Cc: rwheeler@redhat.com, sandeen@redhat.com, tytso@mit.edu,
 	adilger@dilger.ca, lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59647 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5920 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756198Ab0IHQ7h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Sep 2010 12:59:37 -0400
+	id S1752410Ab0IHQ7g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Sep 2010 12:59:36 -0400
 In-Reply-To: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add new mount flag EXT4_MOUNT_INIT_INODE_TABLE and add new pair of mount
-options (inititable/noinititable). When mounted with inititable file
-system should try to initialize uninitialized inode tables, otherwise it
-should prevent initializing inode tables.
-For now, default is noinittable.
+This is done the same way as function sb_issue_discard for
+blkdev_issue_discard.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/super.c |   12 ++++++++++++
- 2 files changed, 13 insertions(+), 0 deletions(-)
+ include/linux/blkdev.h |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 19a4de5..dbd6760 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -885,6 +885,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
- #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
- #define EXT4_MOUNT_DISCARD		0x40000000 /* Issue DISCARD requests */
-+#define EXT4_MOUNT_INIT_INODE_TABLE	0x80000000 /* Initialize uninitialized itables */
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 09a8402..a22939d 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1023,6 +1023,14 @@ static inline int sb_issue_discard(struct super_block *sb,
+ 	return blkdev_issue_discard(sb->s_bdev, block, nr_blocks, GFP_KERNEL,
+ 				   BLKDEV_IFL_WAIT | BLKDEV_IFL_BARRIER);
+ }
++static inline int sb_issue_zeroout(struct super_block *sb,
++				   sector_t block, sector_t nr_blocks)
++{
++	block <<= (sb->s_blocksize_bits - 9);
++	nr_blocks <<= (sb->s_blocksize_bits - 9);
++	return blkdev_issue_zeroout(sb->s_bdev, block, nr_blocks, GFP_KERNEL,
++				   BLKDEV_IFL_WAIT | BLKDEV_IFL_BARRIER);
++}
  
- #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
- #define set_opt(o, opt)			o |= EXT4_MOUNT_##opt
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4e8983a..515e306 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -986,6 +986,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (test_opt(sb, DIOREAD_NOLOCK))
- 		seq_puts(seq, ",dioread_nolock");
+ extern int blk_verify_command(unsigned char *cmd, fmode_t has_write_perm);
  
-+	if (test_opt(sb, INIT_INODE_TABLE))
-+		seq_puts(seq, ",init_inode_table");
-+
- 	ext4_show_quota_options(seq, sb);
- 
- 	return 0;
-@@ -1161,6 +1164,7 @@ enum {
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard,
-+	Opt_init_inode_table, Opt_noinit_inode_table,
- };
- 
- static const match_table_t tokens = {
-@@ -1231,6 +1235,8 @@ static const match_table_t tokens = {
- 	{Opt_dioread_lock, "dioread_lock"},
- 	{Opt_discard, "discard"},
- 	{Opt_nodiscard, "nodiscard"},
-+	{Opt_init_inode_table, "inititable"},
-+	{Opt_noinit_inode_table, "noinititable"},
- 	{Opt_err, NULL},
- };
- 
-@@ -1699,6 +1705,12 @@ set_qf_format:
- 		case Opt_dioread_lock:
- 			clear_opt(sbi->s_mount_opt, DIOREAD_NOLOCK);
- 			break;
-+		case Opt_init_inode_table:
-+			set_opt(sbi->s_mount_opt, INIT_INODE_TABLE);
-+			break;
-+		case Opt_noinit_inode_table:
-+			clear_opt(sbi->s_mount_opt, INIT_INODE_TABLE);
-+			break;
- 		default:
- 			ext4_msg(sb, KERN_ERR,
- 			       "Unrecognized mount option \"%s\" "
 -- 
 1.7.2.2
 
