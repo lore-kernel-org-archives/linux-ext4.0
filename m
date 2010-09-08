@@ -1,48 +1,47 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH] Fix compile error in ext4_fallocate()
-Date: Wed, 08 Sep 2010 14:54:14 +0900
-Message-ID: <4C872506.6040505@sx.jp.nec.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16312] WARNING: at fs/fs-writeback.c:1127 __mark_inode_dirty
+Date: Wed, 8 Sep 2010 07:44:24 GMT
+Message-ID: <201009080744.o887iOgP026033@demeter1.kernel.org>
+References: <bug-16312-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:38542 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab0IHF4u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2010 01:56:50 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:49880 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758239Ab0IHHoZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2010 03:44:25 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o887iOc0026034
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 8 Sep 2010 07:44:24 GMT
+In-Reply-To: <bug-16312-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+https://bugzilla.kernel.org/show_bug.cgi?id=16312
 
-When I compiled 2.6.36-rc3 kernel with EXT4FS_DEBUG definition, I got the
-following compile error.
 
-  CC [M]  fs/ext4/extents.o
-fs/ext4/extents.c: In function 'ext4_fallocate':
-fs/ext4/extents.c:3772: error: 'block' undeclared (first use in this function)
-fs/ext4/extents.c:3772: error: (Each undeclared identifier is reported only once
-fs/ext4/extents.c:3772: error: for each function it appears in.)
-make[2]: *** [fs/ext4/extents.o] Error 1
+Florian Mickler <florian@mickler.org> changed:
 
-The patch fixes this problem.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |florian@mickler.org
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
- fs/ext4/extents.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8202784..590caa3 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3769,7 +3769,7 @@ retry:
- 			printk(KERN_ERR "%s: ext4_ext_map_blocks "
- 				    "returned error inode#%lu, block=%u, "
- 				    "max_blocks=%u", __func__,
--				    inode->i_ino, block, max_blocks);
-+				    inode->i_ino, map.m_lblk, max_blocks);
- #endif
- 			ext4_mark_inode_dirty(handle, inode);
- 			ret2 = ext4_journal_stop(handle);
+
+
+--- Comment #27 from Florian Mickler <florian@mickler.org>  2010-09-08 07:44:20 ---
+The patches here seem not to be mainline yet. 
+I can see some discussion about the patch set of Jan Kara on lkml[1].
+But I can't see Tejun's patch either in linus tree nor on lkml. 
+
+Are these still necessary? 
+
+[1]
+References: http://lkml.indiana.edu/hypermail/linux/kernel/1007.3/00884.html
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
