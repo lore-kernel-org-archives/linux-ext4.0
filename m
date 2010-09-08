@@ -1,282 +1,128 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: use dedicated slab caches for group_info
- structures
-Date: Wed, 8 Sep 2010 14:51:23 -0400
-Message-ID: <20100908185123.GC3235@thunk.org>
-References: <AANLkTim772XBnX=UA9ieLnPnC0XKsCP=QTNYtm0m+Xg5@mail.gmail.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 0/5 v2] Lazy itable initialization for Ext4
+Date: Wed, 8 Sep 2010 14:34:40 -0600
+Message-ID: <0D67E41D-A502-4BEA-B412-148CEA20815D@dilger.ca>
+References: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
+	sandeen@redhat.com, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33595 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752122Ab0IHSv0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Sep 2010 14:51:26 -0400
-Content-Disposition: inline
-In-Reply-To: <AANLkTim772XBnX=UA9ieLnPnC0XKsCP=QTNYtm0m+Xg5@mail.gmail.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:13158 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754869Ab0IHUem convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2010 16:34:42 -0400
+In-Reply-To: <1283965160-31597-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks, Curt.
+On 2010-09-08, at 10:59, Lukas Czerner wrote:
+>  Second patch adds new pair of mount
+> options (inititable/noinititable), so you can enable or disable this
+> feature. In default it is off (noinititable), so in order to try the new
+> code you should moutn the fs like this:
+typo             ^^^^^^
 
-This is what I've checked into the ext4 tree.  There are a few minor
-checkpatch cleanups, but it's basically what you've sent me.
+>  mount -o noinititable /dev/sda /mnt/
+typo       ^^^
 
-	   	     	      		     - Ted
+It should use "inititable" if you want to try the new code.
 
->From 6e8a8e99d450636f5dd65a129253927507c9a006 Mon Sep 17 00:00:00 2001
-From: Curt Wohlgemuth <curtw@google.com>
-Date: Wed, 8 Sep 2010 14:44:50 -0400
-Subject: [PATCH] ext4: use dedicated slab caches for group_info structures
+> To Andreas:
+> You suggested the approach with reading the table first to
+> determine if the device is sparse, or thinly provisioned, or trimmed SSD.
+> In this case the reading would be much more efficient than writing, so it
+> would be a win. But I just wonder, if we de believe the device, that
+> when returning zeroes it is safe to no zero the inode table, why not do it
+> at mkfs time instead of kernel ?
 
-ext4_group_info structures are currently allocated with kmalloc().
-With a typical 4K block size, these are 136 bytes each -- meaning
-they'll each consume a 256-byte slab object.  On a system with many
-ext4 large partitions, that's a lot of wasted kernel slab space.
-(E.g., a single 1TB partition will have about 8000 block groups, using
-about 2MB of slab, of which nearly 1MB is wasted.)
+Good question, but I think the answer is that reading the full itable at
+mke2fs time, just like writing it at mke2fs time, is _serialized_ time
+spent waiting for the filesystem to become useful.  Doing it in the
+background in the kernel can happen in parallel with other operations
+(e.g. formatting other disks, waiting for user input from the installer,
+downloading updates, etc).
 
-This patch creates an array of slab pointers created as needed --
-depending on the superblock block size -- and uses these slabs to
-allocate the group info objects.
+> To Ted:
+> You were suggesting that it would be nice if the thread will not run, or
+> just quits when the system runs on the battery power. I agree that in that
+> case we probably should not do this to save some battery life. But is it
+> necessary, or wise to do this in kernel ? What we should do when the
+> system runs on battery and user still want to run the lazy initialization
+> ? I would rather let the userspace handle it. For example just remount the
+> filesystem with -o noinititable.
 
-Google-Bug-Id: 2980809
+I would tend to agree with Ted.  There will be _some_ time that the system
+is plugged in to charge the battery, and this is very normal when installing
+the system initially, so delaying the zeroing will not affect most users.
+For the case where the user IS on battery power for some reason, I think it
+is better to avoid consuming the battery in that case.
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    |    1 +
- fs/ext4/mballoc.c |   97 +++++++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 77 insertions(+), 21 deletions(-)
+Maybe a good way to compromise is to just put the thread to sleep for 5- or
+10-minute intervals while on battery power, and only start zeroing once
+plugged in.  That solves the situation where (like me) the laptop stays on
+for months at a time with only suspend/resume, and is only rarely rebooted,
+but it is plugged in to recharge often.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 889ec9d..b364b9d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -205,6 +205,7 @@ typedef struct ext4_io_end {
- #define EXT4_MIN_BLOCK_SIZE		1024
- #define	EXT4_MAX_BLOCK_SIZE		65536
- #define EXT4_MIN_BLOCK_LOG_SIZE		10
-+#define EXT4_MAX_BLOCK_LOG_SIZE		16
- #ifdef __KERNEL__
- # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
- #else
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4b4ad4b..3d99432 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -338,6 +338,14 @@
- static struct kmem_cache *ext4_pspace_cachep;
- static struct kmem_cache *ext4_ac_cachep;
- static struct kmem_cache *ext4_free_ext_cachep;
-+
-+/* We create slab caches for groupinfo data structures based on the
-+ * superblock block size.  There will be one per mounted filesystem for
-+ * each unique s_blocksize_bits */
-+#define NR_GRPINFO_CACHES 	\
-+	(EXT4_MAX_BLOCK_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE + 1)
-+static struct kmem_cache *ext4_groupinfo_caches[NR_GRPINFO_CACHES];
-+
- static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- 					ext4_group_t group);
- static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
-@@ -2233,15 +2241,24 @@ static const struct file_operations ext4_mb_seq_groups_fops = {
- 	.release	= seq_release,
- };
- 
-+static struct kmem_cache *get_groupinfo_cache(int blocksize_bits)
-+{
-+	int cache_index = blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
-+	struct kmem_cache *cachep = ext4_groupinfo_caches[cache_index];
-+
-+	BUG_ON(!cachep);
-+	return cachep;
-+}
- 
- /* Create and initialize ext4_group_info data for the given group. */
- int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 			  struct ext4_group_desc *desc)
- {
--	int i, len;
-+	int i;
- 	int metalen = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_group_info **meta_group_info;
-+	struct kmem_cache *cachep = get_groupinfo_cache(sb->s_blocksize_bits);
- 
- 	/*
- 	 * First check if this group is the first of a reserved block.
-@@ -2261,18 +2278,11 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 			meta_group_info;
- 	}
- 
--	/*
--	 * calculate needed size. if change bb_counters size,
--	 * don't forget about ext4_mb_generate_buddy()
--	 */
--	len = offsetof(typeof(**meta_group_info),
--		       bb_counters[sb->s_blocksize_bits + 2]);
--
- 	meta_group_info =
- 		sbi->s_group_info[group >> EXT4_DESC_PER_BLOCK_BITS(sb)];
- 	i = group & (EXT4_DESC_PER_BLOCK(sb) - 1);
- 
--	meta_group_info[i] = kzalloc(len, GFP_KERNEL);
-+	meta_group_info[i] = kmem_cache_alloc(cachep, GFP_KERNEL);
- 	if (meta_group_info[i] == NULL) {
- 		printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
- 		goto exit_group_info;
-@@ -2331,6 +2341,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	int num_meta_group_infos_max;
- 	int array_size;
- 	struct ext4_group_desc *desc;
-+	struct kmem_cache *cachep;
- 
- 	/* This is the number of blocks used by GDT */
- 	num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -
-@@ -2388,8 +2399,9 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	return 0;
- 
- err_freebuddy:
-+	cachep = get_groupinfo_cache(sb->s_blocksize_bits);
- 	while (i-- > 0)
--		kfree(ext4_get_group_info(sb, i));
-+		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
- 	i = num_meta_group_infos;
- 	while (i-- > 0)
- 		kfree(sbi->s_group_info[i]);
-@@ -2406,19 +2418,48 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	unsigned offset;
- 	unsigned max;
- 	int ret;
-+	int cache_index;
-+	struct kmem_cache *cachep;
-+	char *namep = NULL;
- 
- 	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_offsets);
- 
- 	sbi->s_mb_offsets = kmalloc(i, GFP_KERNEL);
- 	if (sbi->s_mb_offsets == NULL) {
--		return -ENOMEM;
-+		ret = -ENOMEM;
-+		goto out;
- 	}
- 
- 	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_maxs);
- 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
- 	if (sbi->s_mb_maxs == NULL) {
--		kfree(sbi->s_mb_offsets);
--		return -ENOMEM;
-+		ret = -ENOMEM;
-+		goto out;
-+	}
-+
-+	cache_index = sb->s_blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
-+	cachep = ext4_groupinfo_caches[cache_index];
-+	if (!cachep) {
-+		char name[32];
-+		int len = offsetof(struct ext4_group_info,
-+					bb_counters[sb->s_blocksize_bits + 2]);
-+
-+		sprintf(name, "ext4_groupinfo_%d", sb->s_blocksize_bits);
-+		namep = kstrdup(name, GFP_KERNEL);
-+		if (!namep) {
-+			ret = -ENOMEM;
-+			goto out;
-+		}
-+
-+		/* Need to free the kmem_cache_name() when we
-+		 * destroy the slab */
-+		cachep = kmem_cache_create(namep, len, 0,
-+					     SLAB_RECLAIM_ACCOUNT, NULL);
-+		if (!cachep) {
-+			ret = -ENOMEM;
-+			goto out;
-+		}
-+		ext4_groupinfo_caches[cache_index] = cachep;
- 	}
- 
- 	/* order 0 is regular bitmap */
-@@ -2439,9 +2480,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	/* init file for buddy data */
- 	ret = ext4_mb_init_backend(sb);
- 	if (ret != 0) {
--		kfree(sbi->s_mb_offsets);
--		kfree(sbi->s_mb_maxs);
--		return ret;
-+		goto out;
- 	}
- 
- 	spin_lock_init(&sbi->s_md_lock);
-@@ -2456,9 +2495,8 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 
- 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
- 	if (sbi->s_locality_groups == NULL) {
--		kfree(sbi->s_mb_offsets);
--		kfree(sbi->s_mb_maxs);
--		return -ENOMEM;
-+		ret = -ENOMEM;
-+		goto out;
- 	}
- 	for_each_possible_cpu(i) {
- 		struct ext4_locality_group *lg;
-@@ -2475,7 +2513,13 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 
- 	if (sbi->s_journal)
- 		sbi->s_journal->j_commit_callback = release_blocks_on_commit;
--	return 0;
-+out:
-+	if (ret) {
-+		kfree(sbi->s_mb_offsets);
-+		kfree(sbi->s_mb_maxs);
-+		kfree(namep);
-+	}
-+	return ret;
- }
- 
- /* need to called with the ext4 group lock held */
-@@ -2503,6 +2547,7 @@ int ext4_mb_release(struct super_block *sb)
- 	int num_meta_group_infos;
- 	struct ext4_group_info *grinfo;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct kmem_cache *cachep = get_groupinfo_cache(sb->s_blocksize_bits);
- 
- 	if (sbi->s_group_info) {
- 		for (i = 0; i < ngroups; i++) {
-@@ -2513,7 +2558,7 @@ int ext4_mb_release(struct super_block *sb)
- 			ext4_lock_group(sb, i);
- 			ext4_mb_cleanup_pa(grinfo);
- 			ext4_unlock_group(sb, i);
--			kfree(grinfo);
-+			kmem_cache_free(cachep, grinfo);
- 		}
- 		num_meta_group_infos = (ngroups +
- 				EXT4_DESC_PER_BLOCK(sb) - 1) >>
-@@ -2691,6 +2736,7 @@ int __init init_ext4_mballoc(void)
- 
- void exit_ext4_mballoc(void)
- {
-+	int i;
- 	/*
- 	 * Wait for completion of call_rcu()'s on ext4_pspace_cachep
- 	 * before destroying the slab cache.
-@@ -2699,6 +2745,15 @@ void exit_ext4_mballoc(void)
- 	kmem_cache_destroy(ext4_pspace_cachep);
- 	kmem_cache_destroy(ext4_ac_cachep);
- 	kmem_cache_destroy(ext4_free_ext_cachep);
-+
-+	for (i = 0; i < NR_GRPINFO_CACHES; i++) {
-+		struct kmem_cache *cachep = ext4_groupinfo_caches[i];
-+		if (cachep) {
-+			char *name = (char *)kmem_cache_name(cachep);
-+			kmem_cache_destroy(cachep);
-+			kfree(name);
-+		}
-+	}
- 	ext4_remove_debugfs_entry();
- }
- 
--- 
-1.7.1
+Since we don't expect to need the itable zeroing unless there is corruption
+of the on-disk group descriptor data, I don't think that it is urgent to do
+this immediately after install.  If there is corruption within hours of
+installing a system, there are more serious problems with the system that
+we cannot fix.
+
+> In my benchmark I have set different values of multipliers
+> (EXT4_LI_WAIT_MULT) to see how it affects performance. As a tool for
+> performance measuring I have used postmark (see parameters bellow). I have
+> created average from five postmark runs to gen more stable results. In
+> each run I have created ext4 filesystem on the device (with
+> lazy_itable_init set properly), mounted with inititable/noinititable mount
+> option and run the postmark measuring the running time and number of
+> groups the ext4lazyinit thread initializes in one run. 
+> 
+> Type                              |NOPATCH      MULT=10      DIFF    |
+> ==================================+==================================+
+> Total_duration                    |130.00       132.40       1.85%   |
+> Duration_of_transactions          |77.80        80.80        3.86%   |
+> Transactions/s                    |642.73       618.82       -3.72%  |
+> [snip]
+> Read_B/s                          |21179620.40  20793522.40  -1.82%  |
+> Write_B/s                         |66279880.00  65071617.60  -1.82%  |
+> ==================================+==================================+
+> RUNTIME:	2m13	GROUPS ZEROED: 156
+
+This is a relatively minor overhead, and when one considers that this is
+a very metadata-heavy benchmark being run immediately after reformatting
+the filesystem, it is not a very realistic real-world situation.
+
+The good (expected) news is that there is no performance impact when the
+thread is not active, so this is a one-time hit.  In fairness, the
+"NOPATCH" test times should include the full mke2fs time as well, if one
+wants to consider the real-world impact of a much faster mke2fs run and
+a slightly-slower runtime for a few minutes.
+
+Do you have any idea of how long the zeroing takes to complete in
+the case of MULT=10 without any load, as a function of the filesystem
+size?  That would tell us what the minimum time after startup that the
+system might be slowed down by the zeroing thread.
+
+> The benchmark showed, that patch itself does not introduce any performance
+> loss (at least for postmark), when ext4lazyinit thread is not activated.
+> However, when it is activated, there is explicit performance loss due to
+> inode table zeroing, but with EXT4_LI_WAIT_MULT=10 it is just about 1.8%,
+> which may, or may not be much, so when I think about it now we should
+> probably make this settable via sysfs. What do you think ?
+
+I don't think it is necessary to have a sysfs parameter for this.  Instead
+I would suggest making the "inititable" mount option take an optional
+numeric parameter that specifies the MULT factor.  The ideal solution is
+to make the zeroing happen with a MULT=100 under IO load, but run full-out (i.e. MULT=0?) while there is no IO load.  That said, I don't think it is
+critical enough to delay this patch from landing to implement that.
+
+Cheers, Andreas
+
+
+
+
 
