@@ -1,43 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] e2fsck: Improve error message when device name misspelled
-Date: Wed,  8 Sep 2010 16:12:08 +0200
-Message-ID: <1283955128-6517-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: tytso@mit.edu
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: [PATCH] ext2: trivial: fix a typo on comment in ext2/inode.c
+Date: Thu,  9 Sep 2010 01:14:49 +0900
+Message-ID: <1283962489-15842-1-git-send-email-namhyung@gmail.com>
+Cc: linux-kernel@vger.kernel.org
+To: Jiri Kosina <trivial@kernel.org>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:38437 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754671Ab0IHOM5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Sep 2010 10:12:57 -0400
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:36318 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755279Ab0IHQO5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2010 12:14:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When a device name is misspelled, we output the full text about specifying
-alternate superblock. This is slightly misleading because when the device
-cannot be open because of ENOENT, this certainly won't help. So just print
-that device does not exist and exit.
+'ext3_get_branch' should be 'ext2_get_branch'.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Namhyung Kim <namhyung@gmail.com>
 ---
- e2fsck/unix.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext2/inode.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-  Ted, would you please include this minor improvement? One of our users
-complained about it. Thanks.
-
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 6cb2214..7eb269c 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1109,6 +1109,8 @@ failure:
- 		else if (retval == EBUSY)
- 			printf(_("Filesystem mounted or opened exclusively "
- 				 "by another program?\n"));
-+		else if (retval == ENOENT)
-+			printf(_("Possibly non-existent device?\n"));
- #ifdef EROFS
- 		else if (retval == EROFS)
- 			printf(_("Disk write-protected; use the -n option "
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 940c961..860d715 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -662,7 +662,7 @@ static int ext2_get_blocks(struct inode *inode,
+ 	mutex_lock(&ei->truncate_mutex);
+ 	/*
+ 	 * If the indirect block is missing while we are reading
+-	 * the chain(ext3_get_branch() returns -EAGAIN err), or
++	 * the chain(ext2_get_branch() returns -EAGAIN err), or
+ 	 * if the chain has been changed after we grab the semaphore,
+ 	 * (either because another process truncated this branch, or
+ 	 * another get_block allocated this branch) re-grab the chain to see if
 -- 
-1.6.4.2
+1.7.2.2
 
