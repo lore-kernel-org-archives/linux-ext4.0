@@ -1,173 +1,148 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 0/5 v2] Lazy itable initialization for Ext4
-Date: Thu, 9 Sep 2010 10:29:43 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1009091028250.2889@dhcp-lab-213.englab.brq.redhat.com>
-References: <1283965160-31597-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1009081947250.30597@dhcp-lab-213.englab.brq.redhat.com> <269DB810-0438-41D3-BB6D-F218190924B7@dilger.ca>
+Subject: Re: [PATCH 3/5] Add inode table initialization code for Ext4
+Date: Thu, 9 Sep 2010 11:08:48 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009091030340.2889@dhcp-lab-213.englab.brq.redhat.com>
+References: <1283965160-31597-1-git-send-email-lczerner@redhat.com> <1283965160-31597-4-git-send-email-lczerner@redhat.com> <B95B3853-8009-4664-A584-97C47569498E@dilger.ca>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571141147-1181417616-1284020986=:2889"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
 	rwheeler@redhat.com, sandeen@redhat.com, tytso@mit.edu
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27610 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27960 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751497Ab0III3t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Sep 2010 04:29:49 -0400
-In-Reply-To: <269DB810-0438-41D3-BB6D-F218190924B7@dilger.ca>
+	id S1751037Ab0IIJIy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Sep 2010 05:08:54 -0400
+In-Reply-To: <B95B3853-8009-4664-A584-97C47569498E@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---571141147-1181417616-1284020986=:2889
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-
 On Wed, 8 Sep 2010, Andreas Dilger wrote:
 
-> On 2010-09-08, at 11:49, Lukas Czerner wrote:
-> > Graph attached.
+> On 2010-09-08, at 10:59, Lukas Czerner wrote:
+> > +extern int ext4_init_inode_table(struct super_block *sb, ext4_group_t
+> > +{
+> > +	if (sb->s_flags & MS_RDONLY) {
+> > +		ext4_warning(sb, "Filesystem mounted read only. "
+> > +				 "Won't zeroout anything!");
+> > +		ret = 1;
+> > +		goto out;
+> > +	}
 > 
-> I assume the groups are "unpatched", "noinititable", "MULT=10, "MULT=5", and "MULT=2"?
+> Is it actually needed to print this error message?  This thread shouldn't
+> be run if the filesystem was originally mounted read-only (that is checked
+> in ext4_register_li_request()), and if it is later remounted read-only
+> (due to user action or filesystem error) I don't think it is critical to
+> print a message here.
+> 
+> The ext4lazyinit thread will be restarted when the filesystem is remounted
+> read-write in the future.
+
+Yeah, it is not needed, because when filesystem is mounted (or
+remounted) as read only the thread would not start, or would be
+destroyed. I'll get rid of that error message, but I would rather leave
+the check anyway, just to be sure.
+
+> 
+> > +	/*
+> > +	 * Skip zeroout if the inode table is full. But we set the ZEROED
+> > +	 * flag anyway, because obviously, when it is full it does not need
+> > +	 * further zeroing.
+> > +	 */
+> > +	if (unlikely(num == 0))
+> > +		goto skip_zeroout;
+> 
+> In fact, this is still safe as long as num < EXT4_INODES_PER_GROUP(sb).
+
+Yes, it is safe when num is zero, but in that case the barrier would be
+sent anyway, so I rather skip it. Or I can fix the
+blkdev_issue_zeroout() to check if nr_sects is zero and exit before the
+barrier, this might be a better solution.
+
+> 
+> > +	ext4_debug("going to zero out inode table in group %d\n",
+> > +		group);
+> 
+> the "group" should align with the '(' on the previous line.
+> 
+> > +/* Find next suitable group adn run ext4_init_inode_table */
+> > +static int ext4_run_li_request(struct ext4_li_request *elr)
+> > +{
+> > +	for (group = elr->lr_next_group; group < ngroups; group++) {
+> > +		gdp = ext4_get_group_desc(sb, group, NULL);
+> > +		if (!gdp) {
+> > +			ret = 1;
+> > +			break;
+> > +		}
+> > +
+> > +		if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)))
+> > +			break;
+> > +	}
+> 
+> There is nowhere in the code that lr_next_group is increased.  That should
+> probably be done in this function.  Otherwise, for a large filesystem with
+> 256k groups in it there will be an O(n^2) search for the next group to zero.
+
+I do not believe I forgot to set the lr_next_group, but obviously I
+did :). I'll fix that.
+
+> 
+> > +static int ext4_lazyinit_thread(void *arg)
+> > +{
+> > +	while (true) {
+> > +		list_for_each_safe(pos, n, &eli->li_request_list) {
+> > +			/* Handle jiffies overflow - is it even possible?*/
+> > +			if (timeout > jiffies)
+> > +				timeout = (ULONG_MAX - timeout) + jiffies;
+> > +			else
+> > +				timeout = jiffies - timeout;
+> 
+> I'm not sure this is needed.  When you compute "jiffies - timeout", it
+> doesn't matter if "jiffies" has suddenly wrapped, the result will be the
+> same.
+
+You're right, what I was thinking...
+
+> 
+> > +static ext4_group_t ext4_has_uninit_itable(struct super_block *sb)
+> > +{
+> > +	for (group = 0; group < ngroups; group++) {
+> > +		gdp = ext4_get_group_desc(sb, group, NULL);
+> > +		if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)))
+> > +			break;
+> 
+> It would be much more efficient to do this in ext4_check_descriptors(),
+> which is already walking through all of the groups checking the validity
+> of the group descriptors at mount time.
+
+Sounds good.
+
+> 
+> An alternative that would speed up mounting of large filesystems is to
+> do the ext4_check_descriptors() checks from the ext4lazyinit thread.
+> If any groups are found to be in error (which should be very rare)
+> they can be marked in the group descriptor with a new per-group
+> EXT4_BG_ERROR flag and skipped for any future allocations.  This would
+> need an additional in-memory flag that tracked if the group descriptor's
+> checksum and block pointers had been validated yet or not, so that they
+> are not used by anything before they are checked.  That is a change that
+> could be made at some later stage, after the initial patch is landed.
+
+Right now, when descriptors are bad filesystem is not mounted, which is
+a good thing because we do not want to work with corrupted filesystem
+and we are forcing user to run fsck to fix it (if it is possible). But
+in your scenario we will be actually using the filesystem with errors.
+Of course we will not be using corrupted groups, but user will probably
+ignore the error and try to use the filesystem as he was used to. Is it
+a good thing ? We won't be able to use data from corrupted groups
+and what we will tell user when he would like to work with them ?
+
 > 
 > Cheers, Andreas
 > 
 
-Of course, sorry about that. Fixed graph attached.
+Thanks a lot for you comments and suggestions Andreas, I really appreciate
+it.
 
+Regards.
 -Lukas
---571141147-1181417616-1284020986=:2889
-Content-Type: IMAGE/png; name=output.png
-Content-Transfer-Encoding: BASE64
-Content-ID: <alpine.LFD.2.00.1009091029430.2889@dhcp-lab-213.englab.brq.redhat.com>
-Content-Description: 
-Content-Disposition: attachment; filename=output.png
-
-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
-
---571141147-1181417616-1284020986=:2889--
