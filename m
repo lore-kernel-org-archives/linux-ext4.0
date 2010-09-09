@@ -1,148 +1,176 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 3/5] Add inode table initialization code for Ext4
-Date: Thu, 9 Sep 2010 11:08:48 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1009091030340.2889@dhcp-lab-213.englab.brq.redhat.com>
-References: <1283965160-31597-1-git-send-email-lczerner@redhat.com> <1283965160-31597-4-git-send-email-lczerner@redhat.com> <B95B3853-8009-4664-A584-97C47569498E@dilger.ca>
+Subject: Re: [PATCH 0/5 v2] Lazy itable initialization for Ext4
+Date: Thu, 9 Sep 2010 12:30:46 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009091109240.2889@dhcp-lab-213.englab.brq.redhat.com>
+References: <1283965160-31597-1-git-send-email-lczerner@redhat.com> <0D67E41D-A502-4BEA-B412-148CEA20815D@dilger.ca>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
 	rwheeler@redhat.com, sandeen@redhat.com, tytso@mit.edu
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27960 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52444 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751037Ab0IIJIy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Sep 2010 05:08:54 -0400
-In-Reply-To: <B95B3853-8009-4664-A584-97C47569498E@dilger.ca>
+	id S1754478Ab0IIKaw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Sep 2010 06:30:52 -0400
+In-Reply-To: <0D67E41D-A502-4BEA-B412-148CEA20815D@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Wed, 8 Sep 2010, Andreas Dilger wrote:
 
 > On 2010-09-08, at 10:59, Lukas Czerner wrote:
-> > +extern int ext4_init_inode_table(struct super_block *sb, ext4_group_t
-> > +{
-> > +	if (sb->s_flags & MS_RDONLY) {
-> > +		ext4_warning(sb, "Filesystem mounted read only. "
-> > +				 "Won't zeroout anything!");
-> > +		ret = 1;
-> > +		goto out;
-> > +	}
+> >  Second patch adds new pair of mount
+> > options (inititable/noinititable), so you can enable or disable this
+> > feature. In default it is off (noinititable), so in order to try the new
+> > code you should moutn the fs like this:
+> typo             ^^^^^^
 > 
-> Is it actually needed to print this error message?  This thread shouldn't
-> be run if the filesystem was originally mounted read-only (that is checked
-> in ext4_register_li_request()), and if it is later remounted read-only
-> (due to user action or filesystem error) I don't think it is critical to
-> print a message here.
+> >  mount -o noinititable /dev/sda /mnt/
+> typo       ^^^
 > 
-> The ext4lazyinit thread will be restarted when the filesystem is remounted
-> read-write in the future.
+> It should use "inititable" if you want to try the new code.
 
-Yeah, it is not needed, because when filesystem is mounted (or
-remounted) as read only the thread would not start, or would be
-destroyed. I'll get rid of that error message, but I would rather leave
-the check anyway, just to be sure.
+Of course, thanks.
 
 > 
-> > +	/*
-> > +	 * Skip zeroout if the inode table is full. But we set the ZEROED
-> > +	 * flag anyway, because obviously, when it is full it does not need
-> > +	 * further zeroing.
-> > +	 */
-> > +	if (unlikely(num == 0))
-> > +		goto skip_zeroout;
+> > To Andreas:
+> > You suggested the approach with reading the table first to
+> > determine if the device is sparse, or thinly provisioned, or trimmed SSD.
+> > In this case the reading would be much more efficient than writing, so it
+> > would be a win. But I just wonder, if we de believe the device, that
+> > when returning zeroes it is safe to no zero the inode table, why not do it
+> > at mkfs time instead of kernel ?
 > 
-> In fact, this is still safe as long as num < EXT4_INODES_PER_GROUP(sb).
+> Good question, but I think the answer is that reading the full itable at
+> mke2fs time, just like writing it at mke2fs time, is _serialized_ time
+> spent waiting for the filesystem to become useful.  Doing it in the
+> background in the kernel can happen in parallel with other operations
+> (e.g. formatting other disks, waiting for user input from the installer,
+> downloading updates, etc).
 
-Yes, it is safe when num is zero, but in that case the barrier would be
-sent anyway, so I rather skip it. Or I can fix the
-blkdev_issue_zeroout() to check if nr_sects is zero and exit before the
-barrier, this might be a better solution.
+I think that important thing is how long it will take to verify that the
+device is, or is not sparse. Obviously (in almost all cases) we won't be
+reading all inode tables from usual physical disk, because there will be
+some garbage, so we will just mark everything not zeroed.
 
-> 
-> > +	ext4_debug("going to zero out inode table in group %d\n",
-> > +		group);
-> 
-> the "group" should align with the '(' on the previous line.
-> 
-> > +/* Find next suitable group adn run ext4_init_inode_table */
-> > +static int ext4_run_li_request(struct ext4_li_request *elr)
-> > +{
-> > +	for (group = elr->lr_next_group; group < ngroups; group++) {
-> > +		gdp = ext4_get_group_desc(sb, group, NULL);
-> > +		if (!gdp) {
-> > +			ret = 1;
-> > +			break;
-> > +		}
-> > +
-> > +		if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)))
-> > +			break;
-> > +	}
-> 
-> There is nowhere in the code that lr_next_group is increased.  That should
-> probably be done in this function.  Otherwise, for a large filesystem with
-> 256k groups in it there will be an O(n^2) search for the next group to zero.
+In case of SSD we can just do the trim and verify that it really returns
+zeroes. If there are some devices which will return zeroes after trim,
+but after one power cycle it will return garbage, we do not care that
+much about it, because obviously when we do not believe the device in
+mkfs, we can't believe it in kernel.
 
-I do not believe I forgot to set the lr_next_group, but obviously I
-did :). I'll fix that.
+In the case of sparse and thinly provisioned devices reads will be
+fairly quick, so it should not take long to verify that it really return
+zeroes for all inode tables. The question is, how long exactly will it
+take.
 
 > 
-> > +static int ext4_lazyinit_thread(void *arg)
-> > +{
-> > +	while (true) {
-> > +		list_for_each_safe(pos, n, &eli->li_request_list) {
-> > +			/* Handle jiffies overflow - is it even possible?*/
-> > +			if (timeout > jiffies)
-> > +				timeout = (ULONG_MAX - timeout) + jiffies;
-> > +			else
-> > +				timeout = jiffies - timeout;
+> > To Ted:
+> > You were suggesting that it would be nice if the thread will not run, or
+> > just quits when the system runs on the battery power. I agree that in that
+> > case we probably should not do this to save some battery life. But is it
+> > necessary, or wise to do this in kernel ? What we should do when the
+> > system runs on battery and user still want to run the lazy initialization
+> > ? I would rather let the userspace handle it. For example just remount the
+> > filesystem with -o noinititable.
 > 
-> I'm not sure this is needed.  When you compute "jiffies - timeout", it
-> doesn't matter if "jiffies" has suddenly wrapped, the result will be the
-> same.
+> I would tend to agree with Ted.  There will be _some_ time that the system
+> is plugged in to charge the battery, and this is very normal when installing
+> the system initially, so delaying the zeroing will not affect most users.
+> For the case where the user IS on battery power for some reason, I think it
+> is better to avoid consuming the battery in that case.
+> 
+> Maybe a good way to compromise is to just put the thread to sleep for 5- or
+> 10-minute intervals while on battery power, and only start zeroing once
+> plugged in.  That solves the situation where (like me) the laptop stays on
+> for months at a time with only suspend/resume, and is only rarely rebooted,
+> but it is plugged in to recharge often.
+> 
+> Since we don't expect to need the itable zeroing unless there is corruption
+> of the on-disk group descriptor data, I don't think that it is urgent to do
+> this immediately after install.  If there is corruption within hours of
+> installing a system, there are more serious problems with the system that
+> we cannot fix.
 
-You're right, what I was thinking...
+I still do not see the reason why not to do simply
+
+ mount -o remount,noinititable <dir>
+
+I believe that there are daemons which are adjusting system settings
+when the system is running on battery. I really do not like the kernel
+solution for this because once it is hardcoded in kernel I can not do
+anything about it, even if I want to run ext4lazyinit no matter what.
+I really think that there is no way we should hard code it in the kernel
+without any possibility for user to decide on his own.
 
 > 
-> > +static ext4_group_t ext4_has_uninit_itable(struct super_block *sb)
-> > +{
-> > +	for (group = 0; group < ngroups; group++) {
-> > +		gdp = ext4_get_group_desc(sb, group, NULL);
-> > +		if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)))
-> > +			break;
+> > In my benchmark I have set different values of multipliers
+> > (EXT4_LI_WAIT_MULT) to see how it affects performance. As a tool for
+> > performance measuring I have used postmark (see parameters bellow). I have
+> > created average from five postmark runs to gen more stable results. In
+> > each run I have created ext4 filesystem on the device (with
+> > lazy_itable_init set properly), mounted with inititable/noinititable mount
+> > option and run the postmark measuring the running time and number of
+> > groups the ext4lazyinit thread initializes in one run. 
+> > 
+> > Type                              |NOPATCH      MULT=10      DIFF    |
+> > ==================================+==================================+
+> > Total_duration                    |130.00       132.40       1.85%   |
+> > Duration_of_transactions          |77.80        80.80        3.86%   |
+> > Transactions/s                    |642.73       618.82       -3.72%  |
+> > [snip]
+> > Read_B/s                          |21179620.40  20793522.40  -1.82%  |
+> > Write_B/s                         |66279880.00  65071617.60  -1.82%  |
+> > ==================================+==================================+
+> > RUNTIME:	2m13	GROUPS ZEROED: 156
 > 
-> It would be much more efficient to do this in ext4_check_descriptors(),
-> which is already walking through all of the groups checking the validity
-> of the group descriptors at mount time.
+> This is a relatively minor overhead, and when one considers that this is
+> a very metadata-heavy benchmark being run immediately after reformatting
+> the filesystem, it is not a very realistic real-world situation.
+> 
+> The good (expected) news is that there is no performance impact when the
+> thread is not active, so this is a one-time hit.  In fairness, the
+> "NOPATCH" test times should include the full mke2fs time as well, if one
+> wants to consider the real-world impact of a much faster mke2fs run and
+> a slightly-slower runtime for a few minutes.
+> 
+> Do you have any idea of how long the zeroing takes to complete in
+> the case of MULT=10 without any load, as a function of the filesystem
+> size?  That would tell us what the minimum time after startup that the
+> system might be slowed down by the zeroing thread.
 
-Sounds good.
+Well, that depends on how fast the device is. In this case zeroing one
+single group takes approx. 28ms without any load. So we can do a little
+math to figure out average time to complete the task (assume 4k block
+size).
+
+149GB filesystem - the one I was using in the test.
+1192 groups -> 1192 inode tables
+1 inode table takes (28ms zeroing + 28*10ms waiting) = 308ms
+1192 inode tables takes 367136ms = 367.136s = 6m7.136s
+
+In the real test it took 6m22s which is pretty close to my calculation.
 
 > 
-> An alternative that would speed up mounting of large filesystems is to
-> do the ext4_check_descriptors() checks from the ext4lazyinit thread.
-> If any groups are found to be in error (which should be very rare)
-> they can be marked in the group descriptor with a new per-group
-> EXT4_BG_ERROR flag and skipped for any future allocations.  This would
-> need an additional in-memory flag that tracked if the group descriptor's
-> checksum and block pointers had been validated yet or not, so that they
-> are not used by anything before they are checked.  That is a change that
-> could be made at some later stage, after the initial patch is landed.
+> > The benchmark showed, that patch itself does not introduce any performance
+> > loss (at least for postmark), when ext4lazyinit thread is not activated.
+> > However, when it is activated, there is explicit performance loss due to
+> > inode table zeroing, but with EXT4_LI_WAIT_MULT=10 it is just about 1.8%,
+> > which may, or may not be much, so when I think about it now we should
+> > probably make this settable via sysfs. What do you think ?
+> 
+> I don't think it is necessary to have a sysfs parameter for this.  Instead
+> I would suggest making the "inititable" mount option take an optional
+> numeric parameter that specifies the MULT factor.  The ideal solution is
+> to make the zeroing happen with a MULT=100 under IO load, but run full-out (i.e. MULT=0?) while there is no IO load.  That said, I don't think it is
+> critical enough to delay this patch from landing to implement that.
 
-Right now, when descriptors are bad filesystem is not mounted, which is
-a good thing because we do not want to work with corrupted filesystem
-and we are forcing user to run fsck to fix it (if it is possible). But
-in your scenario we will be actually using the filesystem with errors.
-Of course we will not be using corrupted groups, but user will probably
-ignore the error and try to use the filesystem as he was used to. Is it
-a good thing ? We won't be able to use data from corrupted groups
-and what we will tell user when he would like to work with them ?
+Right, mount option parameter would be even better.
 
 > 
 > Cheers, Andreas
 > 
 
-Thanks a lot for you comments and suggestions Andreas, I really appreciate
-it.
-
-Regards.
+Thanks!
 -Lukas
