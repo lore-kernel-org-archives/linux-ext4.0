@@ -1,213 +1,173 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix 50% disk write performance regression
-Date: Wed, 08 Sep 2010 22:29:42 -0500
-Message-ID: <4C8854A6.4050005@redhat.com>
-References: <20100829231126.8d8b2086.billfink@mindspring.com>	<4C7C7A72.3020001@redhat.com> <20100831005309.2457743d.billfink@mindspring.com> <4C7C8DAE.50902@redhat.com> <469D2D911E4BF043BFC8AD32E8E30F5BF2CF8F@wdscexbe07.sc.wdc.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 0/5 v2] Lazy itable initialization for Ext4
+Date: Thu, 9 Sep 2010 10:29:43 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009091028250.2889@dhcp-lab-213.englab.brq.redhat.com>
+References: <1283965160-31597-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1009081947250.30597@dhcp-lab-213.englab.brq.redhat.com> <269DB810-0438-41D3-BB6D-F218190924B7@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Daniel Taylor <Daniel.Taylor@wdc.com>
+Content-Type: MULTIPART/MIXED; BOUNDARY="571141147-1181417616-1284020986=:2889"
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	rwheeler@redhat.com, sandeen@redhat.com, tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2642 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27610 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751117Ab0IID3s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Sep 2010 23:29:48 -0400
-In-Reply-To: <469D2D911E4BF043BFC8AD32E8E30F5BF2CF8F@wdscexbe07.sc.wdc.com>
+	id S1751497Ab0III3t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Sep 2010 04:29:49 -0400
+In-Reply-To: <269DB810-0438-41D3-BB6D-F218190924B7@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Daniel Taylor wrote:
-> Just wondering if this patch is adequate or there's more to come.
->
-> I want to put a fix into our 2.6.32 kernel.
->
-> Thanks.
->
->   
-I'm working on a couple more things, but I think these 2 fixes are
-pretty straightforward if you really want to throw something in
-ahead of upstream (I think this applies, hand-edited from my
-full series a bit)
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-I've got a couple other things that seem to keep the writeback
-index marching forward properly...
+--571141147-1181417616-1284020986=:2889
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 
-Index: build/fs/ext4/inode.c
-===================================================================
---- build.orig/fs/ext4/inode.c
-+++ build/fs/ext4/inode.c
-@@ -1230,8 +1233,10 @@ static pgoff_t ext4_num_dirty_pages(stru
- 				break;
- 			idx++;
- 			num++;
--			if (num >= max_pages)
-+			if (num >= max_pages) {
-+				done = 1;
- 				break;
-+			}
- 		}
- 		pagevec_release(&pvec);
- 	}
-@@ -2912,9 +2909,13 @@ static int ext4_da_writepages(struct add
- 	 * sbi->max_writeback_mb_bump whichever is smaller.
- 	 */
- 	max_pages = sbi->s_max_writeback_mb_bump << (20 - PAGE_CACHE_SHIFT);
--	if (!range_cyclic && range_whole)
--		desired_nr_to_write = wbc->nr_to_write * 8;
--	else
-+
-+	if (!range_cyclic && range_whole) {
-+		if (wbc->nr_to_write == LLONG_MAX)
-+			desired_nr_to_write = wbc->nr_to_write;
-+		else
-+			desired_nr_to_write = wbc->nr_to_write * 8;
-+	} else
- 		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
- 							   max_pages);
- 	if (desired_nr_to_write > max_pages)
+On Wed, 8 Sep 2010, Andreas Dilger wrote:
 
--Eric
+> On 2010-09-08, at 11:49, Lukas Czerner wrote:
+> > Graph attached.
+> 
+> I assume the groups are "unpatched", "noinititable", "MULT=10, "MULT=5", and "MULT=2"?
+> 
+> Cheers, Andreas
+> 
 
->> -----Original Message-----
->> From: linux-ext4-owner@vger.kernel.org 
->> [mailto:linux-ext4-owner@vger.kernel.org] On Behalf Of Eric Sandeen
->> Sent: Monday, August 30, 2010 10:06 PM
->> To: Bill Fink
->> Cc: tytso@mit.edu; adilger@sun.com; 
->> linux-ext4@vger.kernel.org; bill.fink@nasa.gov
->> Subject: Re: [PATCH] ext4: fix 50% disk write performance regression
->>
->> Bill Fink wrote:
->>     
->>> On Mon, 30 Aug 2010, Eric Sandeen wrote:
->>>
->>>       
->>>> Can you give this a shot?
->>>>
->>>> The first hunk is, I think, the biggest problem.  Even if
->>>> we get the max number of pages we need, we keep scanning forward
->>>> until "done" without doing any more actual, useful work.
->>>>
->>>> The 2nd hunk is an oddity, some places assign nr_to_write
->>>> to LONG_MAX, and we get here and multiply -that- by 8... giving
->>>> us "-8" for nr_to_write, that can't help things when we
->>>> do later comparisons on that number...
->>>>
->>>> I also see us asking to find pages starting at "idx" and
->>>> the first dirty page we find is well ahead of that,
->>>> I'm not sure if that's indicative of a problem or not.
->>>>
->>>> Anyway, want to give this a shot, in place of the patch you sent,
->>>> and see how it fares compared to stock and/or with your patch?
->>>>
->>>> It's build-and-sanity tested but not really performance 
->>>>         
->> tested here.
->>     
->>>> Thanks,
->>>> -Eric
->>>>         
->>> Great!  It looks like that does the trick.
->>>
->>> 2.6.35 + your patch:
->>>
->>> i7test7% dd if=/dev/zero of=/i7raid/bill/testfile1 bs=1M count=32768
->>> 32768+0 records in
->>> 32768+0 records out
->>> 34359738368 bytes (34 GB) copied, 50.6702 s, 678 MB/s
->>>
->>> That's the same performance as with my patch, and pretty darn
->>> close to the original 2.6.31 performance.
->>>       
->> hah, that's good esp. considering my followup email that found
->> what I think is a problem with my patch.  ;)
->>
->> What happens if you change:
->>
->> 	if (!range_cyclic && range_whole && wbc->nr_to_write != 
->> LONG_MAX)
->> 		desired_nr_to_write = wbc->nr_to_write * 8;
->>   	else
->>   		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
->>
->> to:
->>
->>         if (!range_cyclic && range_whole) {
->>                 if (wbc->nr_to_write != LONG_MAX)
->>                         desired_nr_to_write = wbc->nr_to_write * 8;
->>                 else
->>                         desired_nr_to_write = wbc->nr_to_write;
->>         } else
->>   		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
->>
->> and see how that fares?  I think that makes a little more sense, if we
->> got there with LONG_MAX that means "write everything" and 
->> there's no need
->> to bump it up or to go counting pages.  It may not make any 
->> real difference.
->>
->> But I'm seeing really weird behavior in writeback, it starts 
->> out nicely
->> writing 32768 pages at a time, and then goes all wonky, 
->> revisiting pages
->> it's already done and doing IO in little chunks.   This is 
->> going to take
->> some staring I think.
->>
->> -Eric
->>
->>
->>
->>     
->>> 						-Thanks a bunch
->>>
->>> 						-Bill
->>>
->>>
->>>
->>>       
->>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>>> index 4b8debe..33c2167 100644
->>>> --- a/fs/ext4/inode.c
->>>> +++ b/fs/ext4/inode.c
->>>> @@ -1207,8 +1207,10 @@ static pgoff_t 
->>>>         
->> ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
->>     
->>>>  				break;
->>>>  			idx++;
->>>>  			num++;
->>>> -			if (num >= max_pages)
->>>> -				break;
->>>> +			if (num >= max_pages) {
->>>> +				pagevec_release(&pvec);
->>>> +				return num;
->>>> +			}
->>>>  		}
->>>>  		pagevec_release(&pvec);
->>>>  	}
->>>> @@ -3002,7 +3004,7 @@ static int ext4_da_writepages(struct 
->>>>         
->> address_space *mapping,
->>     
->>>>  	 * sbi->max_writeback_mb_bump whichever is smaller.
->>>>  	 */
->>>>  	max_pages = sbi->s_max_writeback_mb_bump << (20 - 
->>>>         
->> PAGE_CACHE_SHIFT);
->> :
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe 
->> linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>     
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+Of course, sorry about that. Fixed graph attached.
 
+-Lukas
+--571141147-1181417616-1284020986=:2889
+Content-Type: IMAGE/png; name=output.png
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.LFD.2.00.1009091029430.2889@dhcp-lab-213.englab.brq.redhat.com>
+Content-Description: 
+Content-Disposition: attachment; filename=output.png
+
+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
+
+--571141147-1181417616-1284020986=:2889--
