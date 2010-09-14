@@ -1,91 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext3: Accept in-inode xattrs for reserved inodes
-Date: Tue, 14 Sep 2010 14:32:46 +0200
-Message-ID: <1284467566-12661-3-git-send-email-jack@suse.cz>
-References: <1284467566-12661-1-git-send-email-jack@suse.cz>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Subject: NULL pointer dereference in print_daily_error_info
+Date: Tue, 14 Sep 2010 15:51:02 +0300
+Message-ID: <20100914125102.GA5318@swordfish.minsk.epam.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37689 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751943Ab0INMdv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Sep 2010 08:33:51 -0400
-In-Reply-To: <1284467566-12661-1-git-send-email-jack@suse.cz>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:41818 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752250Ab0INMuv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Sep 2010 08:50:51 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-So far we just ignore any in-inode xattrs in reserved inodes (with inode
-number <= EXT3_FIRST_INO + 1) to workaround a bug in old mke2fs (<= 1.37)
-which forgot to zero such inodes when inode size was greater than
-EXT3_GOOD_OLD_INODE_SIZE. This kernel behavior prevents us from ever
-using in-inode xattrs for such inodes because they would be ignored by
-older kernels.
+Hello,
+      
+This patch fixes NULL pointer dereference in print_daily_error_info, when   
+called
+on unmounted fs (EXT4_SB(sb) returns NULL). Deleting error reporting timer  
+in
+ext4_put_super fixes oops.
 
-So make kernel accept data in extended inode space even for reserved inodes
-if they look sane but never store data there. This way, we can remove all
-the special cases once kernels without this handling are old enough.
+IRQ:
+run_timer_softirq
+?run_timer_softirq
+print_daily_error_info
+?__do_softirq
+__do_softirq
+call_softirq
+do_softirq
+irq_exit
+smp_apic_timer_interrupt
+apic_timer_interrupt
+EOI
+intel_idle
+intel_idle
+...
 
-CC: Andreas Dilger <adilger.kernel@dilger.ca>
-Signed-off-by: Jan Kara <jack@suse.cz>
+
+By the way, isn't print_daily_error_info racy? Is it safe to call           
+print_daily_error_info
+(by timer event (softirq)) when we'are remounting fs, etc.?
+
+Please kindly review.
+
 ---
- fs/ext3/inode.c |   37 ++++++++++++++++++++++++-------------
- 1 files changed, 24 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 5e0faf4..1f3e83f 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -2914,24 +2914,35 @@ struct inode *ext3_iget(struct super_block *sb, unsigned long ino)
- 		atomic_set(&ei->i_datasync_tid, tid);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2614774..751997d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -719,6 +719,7 @@ static void ext4_put_super(struct super_block *sb)
+ 			ext4_abort(sb, "Couldn't clean up the journal");
  	}
  
--	if (inode->i_ino >= EXT3_FIRST_INO(inode->i_sb) + 1 &&
--	    EXT3_INODE_SIZE(inode->i_sb) > EXT3_GOOD_OLD_INODE_SIZE) {
--		/*
--		 * When mke2fs creates big inodes it does not zero out
--		 * the unused bytes above EXT3_GOOD_OLD_INODE_SIZE,
--		 * so ignore those first few inodes.
--		 */
-+	if (EXT3_INODE_SIZE(inode->i_sb) > EXT3_GOOD_OLD_INODE_SIZE) {
- 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
- 		if (EXT3_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
- 		    EXT3_INODE_SIZE(inode->i_sb)) {
--			brelse (bh);
--			ret = -EIO;
--			goto bad_inode;
-+			/*
-+			 * Old mke2fs (<= 1.37) did not zero i_extra_size for
-+			 * large reserved inodes. So just ignore bogus
-+			 * i_extra_size for these inodes.
-+			 */
-+			if (inode->i_ino >= EXT3_FIRST_INO(inode->i_sb) + 1) {
-+				brelse (bh);
-+				ret = -EIO;
-+				goto bad_inode;
-+			}
-+			ei->i_extra_isize = 0;
- 		}
- 		if (ei->i_extra_isize == 0) {
--			/* The extra space is currently unused. Use it. */
--			ei->i_extra_isize = sizeof(struct ext3_inode) -
--					    EXT3_GOOD_OLD_INODE_SIZE;
-+			/*
-+			 * We cannot use free space for reserved inodes because
-+			 * old kernels (until 2.6.36) would just ignore xattrs
-+			 * in that space. This workaround can be removed if we
-+			 * ever deem that mounting a filesystem with an old
-+			 * kernel is unlikely enough.
-+			 */
-+			if (inode->i_ino >= EXT3_FIRST_INO(inode->i_sb) + 1) {
-+				/* The extra space is unused. Use it. */
-+				ei->i_extra_isize = sizeof(struct ext3_inode) -
-+						    EXT3_GOOD_OLD_INODE_SIZE;
-+			}
- 		} else {
- 			__le32 *magic = (void *)raw_inode +
- 					EXT3_GOOD_OLD_INODE_SIZE +
--- 
-1.6.4.2
++	del_timer(&sbi->s_err_report);
+ 	ext4_release_system_zone(sb);
+ 	ext4_mb_release(sb);
+ 	ext4_ext_release(sb);
 
