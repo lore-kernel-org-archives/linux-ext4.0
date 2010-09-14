@@ -1,29 +1,38 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Don't bump up LLONG_MAX nr_to_write by a factor of 8
-Date: Mon, 13 Sep 2010 17:25:01 -0400
-Message-ID: <20100913212501.GD5827@thunk.org>
-References: <4C892F89.90201@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 17361] Watchdog detected hard LOCKUP in
+ jbd2_journal_get_write_access
+Date: Tue, 14 Sep 2010 05:48:11 GMT
+Message-ID: <201009140548.o8E5mBVc000760@demeter1.kernel.org>
+References: <bug-17361-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56335 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751954Ab0IMVZD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Sep 2010 17:25:03 -0400
-Content-Disposition: inline
-In-Reply-To: <4C892F89.90201@redhat.com>
+Received: from demeter.kernel.org ([140.211.167.39]:44387 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751255Ab0INFsM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Sep 2010 01:48:12 -0400
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o8E5mB74000761
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Sep 2010 05:48:11 GMT
+In-Reply-To: <bug-17361-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 09, 2010 at 02:03:37PM -0500, Eric Sandeen wrote:
-> I'm uneasy with lots of stuff going on in ext4_da_writepages(),
-> but bumping nr_to_write from LLONG_MAX to -8 clearly isn't
-> making anything better, so avoid the multiplier in that case.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=17361
 
-Added to the ext4 tree, thanks.
 
-						- Ted
+
+
+
+--- Comment #1 from Christian Casteyde <casteyde.christian@free.fr>  2010-09-14 05:48:04 ---
+Update :
+still present in 2.6.36-rc4.
+However, the call stack is a little different now. As the computer crashes very
+soon, I've taken a photo, see attachment.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
