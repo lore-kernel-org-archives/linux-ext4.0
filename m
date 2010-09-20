@@ -1,36 +1,35 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] Don't hold spinlock while calling
- ext4_issue_discard()
-Date: Mon, 20 Sep 2010 09:44:23 -0400
-Message-ID: <20100920134423.GH3554@thunk.org>
-References: <1284144691-15576-1-git-send-email-lczerner@redhat.com>
- <1284144691-15576-2-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix NULL pointer dereference in
+ print_daily_error_info
+Date: Mon, 20 Sep 2010 10:21:16 -0400
+Message-ID: <20100920142116.GI3554@thunk.org>
+References: <20100914125102.GA5318@swordfish.minsk.epam.com>
+ <20100914194641.GB3730@thunk.org>
+ <20100915063517.GA8456@swordfish.minsk.epam.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com, adilger@dilger.ca
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47036 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:50937 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753359Ab0ITNoZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Sep 2010 09:44:25 -0400
+	id S1756435Ab0ITOVY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Sep 2010 10:21:24 -0400
 Content-Disposition: inline
-In-Reply-To: <1284144691-15576-2-git-send-email-lczerner@redhat.com>
+In-Reply-To: <20100915063517.GA8456@swordfish.minsk.epam.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 10, 2010 at 08:51:31PM +0200, Lukas Czerner wrote:
-> We can't hold spinlock because we can get rescheduled.
+On Wed, Sep 15, 2010 at 09:35:18AM +0300, Sergey Senozhatsky wrote:
+> Fix NULL pointer dereference in print_daily_error_info, when   
+> called on unmounted fs (EXT4_SB(sb) returns NULL), by removing error 
+> reporting timer in ext4_put_super.
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
 
-Thanks, added to the ext4 patch queue.  For both patches I adjusted
-the patch summary to be a bit more descriptive:
+Thanks, added to the ext4 patch tree
 
-0dc23a4 ext4: don't hold spinlock while calling ext4_issue_discard()
-9c54307 ext4: Check for negative error code from sb_issue_discard
-
-It makes it easier to figure out which patches are which when you use
-"git log --oneline".
-
-					- Ted
+						- Ted
