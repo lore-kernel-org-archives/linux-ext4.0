@@ -1,34 +1,27 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16312] WARNING: at fs/fs-writeback.c:1127 __mark_inode_dirty
-Date: Mon, 20 Sep 2010 10:20:36 GMT
-Message-ID: <201009201020.o8KAKaBd023947@demeter1.kernel.org>
-References: <bug-16312-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Is it deliberate that the device mapper is not passing the DISCARD ioctls
+Date: Mon, 20 Sep 2010 09:14:56 -0400
+Message-ID: <E1OxgCu-0000XW-29@tytso-glaptop>
+To: linux-ext4@vger.kernel.org, dm-devel@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:54536 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755631Ab0ITKUh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Sep 2010 06:20:37 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o8KAKbJx023948
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Sep 2010 10:20:37 GMT
-In-Reply-To: <bug-16312-13602@https.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:57367 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754213Ab0ITNO6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Sep 2010 09:14:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16312
+Hi there,
 
+I was just testing discard support in mke2fs, and I was surprised that
+although the dm layer appears to pass discard requests through to the
+underlying block device driver when submitted through the bio layer
+(i.e., from kernel file systems), apparently the discard ioctls (i.e.,
+BLKDISCARD, BLKDISCARDSEC, BLKDISCARDZEROES) are not currently wired up
+in the dm layer.
 
+Is this deliberate, or an oversight?
 
+Thanks, regards,
 
-
---- Comment #35 from Jan Kara <jack@suse.cz>  2010-09-20 10:20:33 ---
-*** Bug 17461 has been marked as a duplicate of this bug. ***
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
