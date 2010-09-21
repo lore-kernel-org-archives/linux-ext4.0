@@ -1,34 +1,50 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] mke2fs: use lazy inode init on some discard-able devices
-Date: Mon, 20 Sep 2010 23:15:59 -0600
-Message-ID: <E586FDF0-22B6-4FCD-80EB-F33F851AE031@dilger.ca>
-References: <4C6EF67A.5080502@redhat.com> <20100920132324.GE3554@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: Is it deliberate that the device mapper is not passing the
+ DISCARD ioctls
+Date: Tue, 21 Sep 2010 12:42:25 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009211232010.3008@dhcp-lab-213.englab.brq.redhat.com>
+References: <E1OxgCu-0000XW-29@tytso-glaptop>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, dm-devel@redhat.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:27150 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752227Ab0IUFQL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Sep 2010 01:16:11 -0400
-In-Reply-To: <20100920132324.GE3554@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:4277 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752522Ab0IUKmf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Sep 2010 06:42:35 -0400
+In-Reply-To: <E1OxgCu-0000XW-29@tytso-glaptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 20, 2010 at 04:41:14PM -0500, Eric Sandeen wrote:
-> If a device supports discard -and- returns 0s for discarded blocks,
-> then we can skip the inode table initialization -and- the inode table
-> zeroing at mkfs time, and skip the lazy init as well since they are
-> already zeroed out.
+On Mon, 20 Sep 2010, Theodore Ts'o wrote:
 
-Eric, do you have my patch for skipping the journal zeroing?  If you are already skipping the inode table zeroing (which is my bigger of a deal) then you may as well skip zeroing the journal at the same time.
+> Hi there,
+> 
+> I was just testing discard support in mke2fs, and I was surprised that
+> although the dm layer appears to pass discard requests through to the
+> underlying block device driver when submitted through the bio layer
+> (i.e., from kernel file systems), apparently the discard ioctls (i.e.,
+> BLKDISCARD, BLKDISCARDSEC, BLKDISCARDZEROES) are not currently wired up
+> in the dm layer.
+> 
+> Is this deliberate, or an oversight?
+> 
+> Thanks, regards,
 
-Cheers, Andreas
+Hi Ted,
 
+I have tested this with 2.6.35 and it really did not work for me as
+well, but with 2.6.36-rc5 (latests kernel) it works just fine. Though,
+not sure when it was added. But according to the log it seems it was
+merged in with 8357422d4bf33bc2c35884d4016c3fc9efbbc1d2.
 
+-Lukas
 
-
-
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
