@@ -1,37 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] mke2fs: use lazy inode init on some discard-able devices
-Date: Tue, 21 Sep 2010 11:01:47 -0500
-Message-ID: <4C98D6EB.3040902@redhat.com>
-References: <4C6EF67A.5080502@redhat.com> <20100920132324.GE3554@thunk.org> <E586FDF0-22B6-4FCD-80EB-F33F851AE031@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: uninit_bg compatibility?
+Date: Tue, 21 Sep 2010 10:00:22 -0700
+Message-ID: <40E7666A-17B8-4D39-A078-8FE3379C2AA5@dilger.ca>
+References: <Pine.A41.4.64.1009211500110.1245260@stalin.acc.umu.se>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?iso-8859-1?Q?Bo_Brant=E9n?= <bosse@acc.umu.se>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37418 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757687Ab0IUQBv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Sep 2010 12:01:51 -0400
-In-Reply-To: <E586FDF0-22B6-4FCD-80EB-F33F851AE031@dilger.ca>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:39066 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757861Ab0IURAY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Sep 2010 13:00:24 -0400
+In-Reply-To: <Pine.A41.4.64.1009211500110.1245260@stalin.acc.umu.se>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/21/2010 12:15 AM, Andreas Dilger wrote:
-> On Fri, Aug 20, 2010 at 04:41:14PM -0500, Eric Sandeen wrote:
->> If a device supports discard -and- returns 0s for discarded blocks,
->> then we can skip the inode table initialization -and- the inode table
->> zeroing at mkfs time, and skip the lazy init as well since they are
->> already zeroed out.
-> 
-> Eric, do you have my patch for skipping the journal zeroing? If you
-are already skipping the inode table zeroing (which is my bigger of a
-deal) then you may as well skip zeroing the journal at the same time.
+On 2010-09-21, at 06:28, Bo Brant=E9n wrote:
+> when writing new files to an ext4 file system using the Windows drive=
+r fsck will later complain "Group descriptor nn checksum is invalid" an=
+d I think that is because it used an yet unused block group without kno=
+wing that they can be marked as uninitialized. So I thought a simple pa=
+tch would be to mount the file system read-only if that feature is in u=
+se untill the driver is updated with full write support but I can't fin=
+d the flag to use, there is no EXT4_FEATURE_RO_COMPAT_UNINIT_BG so I th=
+ought I ask here if anyone could clear this out.
 
-Hm good point.  Might be in my ext4 folder somewhere ;)
+The Windows driver (or any driver for that matter) should ONLY allow re=
+ad-only access if ANY feature in s_feature_ro_compat is unknown, and co=
+mpletely refuse to mount if any feature in s_feature_incompat is unknow=
+n.
 
--Eric
+The actual feature flag is called EXT4_FEATURE_RO_COMPAT_GDT_CSUM, but =
+that doesn't matter, since what the code should be doing is masking off=
+ the features that it DOES understand and checking if any feature bits =
+are remaining.
 
-> Cheers, Andreas
 
+Cheers, Andreas
+
+
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
