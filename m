@@ -1,50 +1,35 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: Is it deliberate that the device mapper is not passing the
- DISCARD ioctls
-Date: Tue, 21 Sep 2010 12:42:25 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1009211232010.3008@dhcp-lab-213.englab.brq.redhat.com>
-References: <E1OxgCu-0000XW-29@tytso-glaptop>
+From: =?ISO-8859-1?Q?Bo_Brant=E9n?= <bosse@acc.umu.se>
+Subject: uninit_bg compatibility?
+Date: Tue, 21 Sep 2010 15:28:51 +0200 (CEST)
+Message-ID: <Pine.A41.4.64.1009211500110.1245260@stalin.acc.umu.se>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, dm-devel@redhat.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4277 "EHLO mx1.redhat.com"
+Received: from mail.acc.umu.se ([130.239.18.156]:51427 "EHLO mail.acc.umu.se"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752522Ab0IUKmf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Sep 2010 06:42:35 -0400
-In-Reply-To: <E1OxgCu-0000XW-29@tytso-glaptop>
+	id S1755761Ab0IUNjb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Sep 2010 09:39:31 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by amavisd-new (Postfix) with ESMTP id A183930E
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Sep 2010 15:28:52 +0200 (MEST)
+Received: from stalin.acc.umu.se (stalin.acc.umu.se [130.239.18.135])
+	by mail.acc.umu.se (Postfix) with ESMTP id 823B730D
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Sep 2010 15:28:51 +0200 (MEST)
+Received: from localhost (localhost [127.0.0.1])
+	by stalin.acc.umu.se (Postfix) with ESMTP id 5175C2C
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Sep 2010 15:28:51 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 20 Sep 2010, Theodore Ts'o wrote:
 
-> Hi there,
-> 
-> I was just testing discard support in mke2fs, and I was surprised that
-> although the dm layer appears to pass discard requests through to the
-> underlying block device driver when submitted through the bio layer
-> (i.e., from kernel file systems), apparently the discard ioctls (i.e.,
-> BLKDISCARD, BLKDISCARDSEC, BLKDISCARDZEROES) are not currently wired up
-> in the dm layer.
-> 
-> Is this deliberate, or an oversight?
-> 
-> Thanks, regards,
+Hello,
 
-Hi Ted,
-
-I have tested this with 2.6.35 and it really did not work for me as
-well, but with 2.6.36-rc5 (latests kernel) it works just fine. Though,
-not sure when it was added. But according to the log it seems it was
-merged in with 8357422d4bf33bc2c35884d4016c3fc9efbbc1d2.
-
--Lukas
-
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+when writing new files to an ext4 file system using the Windows driver 
+fsck will later complain "Group descriptor nn checksum is invalid" and I 
+think that is because it used an yet unused block group without knowing 
+that they can be marked as uninitialized. So I thought a simple patch 
+would be to mount the file system read-only if that feature is in use 
+untill the driver is updated with full write support but I can't find the 
+flag to use, there is no EXT4_FEATURE_RO_COMPAT_UNINIT_BG so I thought I 
+ask here if anyone could clear this out.
