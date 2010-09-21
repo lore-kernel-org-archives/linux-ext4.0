@@ -1,43 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 17361] Watchdog detected hard LOCKUP in
- jbd2_journal_get_write_access
-Date: Tue, 21 Sep 2010 17:19:33 GMT
-Message-ID: <201009211719.o8LHJXnA022969@demeter2.kernel.org>
-References: <bug-17361-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: uninit_bg compatibility?
+Date: Tue, 21 Sep 2010 13:59:12 -0400
+Message-ID: <20100921175912.GA9597@thunk.org>
+References: <Pine.A41.4.64.1009211500110.1245260@stalin.acc.umu.se>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Bo =?iso-8859-1?Q?Brant=E9n?= <bosse@acc.umu.se>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [140.211.167.42] ([140.211.167.42]:41707 "EHLO
-	demeter2.kernel.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1753565Ab0IURTe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Sep 2010 13:19:34 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id o8LHJXOX022971
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Sep 2010 17:19:33 GMT
-In-Reply-To: <bug-17361-13602@https.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:55970 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754278Ab0IUR7P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Sep 2010 13:59:15 -0400
+Content-Disposition: inline
+In-Reply-To: <Pine.A41.4.64.1009211500110.1245260@stalin.acc.umu.se>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=17361
+On Tue, Sep 21, 2010 at 03:28:51PM +0200, Bo Brant=E9n wrote:
+>=20
+> when writing new files to an ext4 file system using the Windows
+> driver fsck will later complain "Group descriptor nn checksum is
+> invalid" and I think that is because it used an yet unused block
+> group without knowing that they can be marked as uninitialized. So I
+> thought a simple patch would be to mount the file system read-only
+> if that feature is in use untill the driver is updated with full
+> write support but I can't find the flag to use, there is no
+> EXT4_FEATURE_RO_COMPAT_UNINIT_BG so I thought I ask here if anyone
+> could clear this out.
 
+Yeah, this is one where we decided to change the feature to uninit_bg
+(since that describes the net benefit to the end-user), but we never
+ended up changing the name of the flag in the source code.  The
+feature flag in question is:
 
+#define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
 
+I'll note that the Windows driver must not be checking the feature
+flags, since the whole point of RO_COMPAT flags is that if a file
+system implementation (such as the Windows drivers) sees an RO_COMPAT
+flag it doesn't understand, it's supposed to treat the file system as
+read-only.
 
-
---- Comment #4 from Christian Casteyde <casteyde.christian@free.fr>  2010-09-21 17:19:32 ---
-Update : Still present in 2.6.36-rc5
-With the same log as shown in comment #2
-Some more info are given after that ("recursive fault fixed, but rebbot is
-necessary").
-If I wait a little more, I get another pile of messages.
-
-More precisely, the problem occurs indeed after dhcp gets an IP address, and
-before (or when) sshd is started. Between the two, I guess iptables rules are
-defined in my network scripts.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
