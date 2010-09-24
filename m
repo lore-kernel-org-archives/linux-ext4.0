@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V4 11/11] vfs: Add permission flags for setting file attributes
-Date: Fri, 24 Sep 2010 18:18:14 +0530
-Message-ID: <1285332494-12756-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V4 05/11] vfs: Add IS_RICHACL() test for richacl support
+Date: Fri, 24 Sep 2010 18:18:08 +0530
+Message-ID: <1285332494-12756-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
@@ -9,125 +9,52 @@ Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
 	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
 	bfields@citi.umich.edu, jlayton@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([122.248.162.6]:42585 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932170Ab0IXMtK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2010 08:49:10 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruen@suse.de>
 
-Some permission models can allow processes to take ownership of a file,
-change the file permissions, and set the file timestamps.  Introduce new
-permission mask flags and check for those permissions in
-inode_change_ok().
+Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
+which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
+or IS_RICHACL() is true.
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/attr.c          |   49 ++++++++++++++++++++++++++++++++++++++-----------
- include/linux/fs.h |    3 +++
- 2 files changed, 41 insertions(+), 11 deletions(-)
+ include/linux/fs.h |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index f081b5a..00f971a 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -13,6 +13,20 @@
- #include <linux/fsnotify.h>
- #include <linux/fcntl.h>
- #include <linux/security.h>
-+#include <linux/richacl.h>
-+
-+static int richacl_change_ok(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+
-+	if (inode->i_op->permission)
-+		return inode->i_op->permission(inode, mask);
-+	else if (inode->i_op->check_acl)
-+		return inode->i_op->check_acl(inode, mask);
-+	else
-+		return -EPERM;
-+}
- 
- /**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-@@ -47,20 +61,29 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 	/* Make sure a caller can chown. */
- 	if ((ia_valid & ATTR_UID) &&
- 	    (current_fsuid() != inode->i_uid ||
--	     attr->ia_uid != inode->i_uid) && !capable(CAP_CHOWN))
--		return -EPERM;
-+	     attr->ia_uid != inode->i_uid) &&
-+	    (current_fsuid() != attr->ia_uid ||
-+	     richacl_change_ok(inode, MAY_TAKE_OWNERSHIP)) &&
-+	    !capable(CAP_CHOWN))
-+		goto error;
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (current_fsuid() != inode->i_uid ||
--	    (!in_group_p(attr->ia_gid) && attr->ia_gid != inode->i_gid)) &&
--	    !capable(CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID) {
-+		int in_group = in_group_p(attr->ia_gid);
-+		if ((current_fsuid() != inode->i_uid ||
-+		     (!in_group && attr->ia_gid != inode->i_gid)) &&
-+		    (!in_group ||
-+		     richacl_change_ok(inode, MAY_TAKE_OWNERSHIP)) &&
-+		    !capable(CAP_CHOWN))
-+			goto error;
-+	}
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!is_owner_or_cap(inode))
--			return -EPERM;
-+		if (current_fsuid() != inode->i_uid &&
-+		    richacl_change_ok(inode, MAY_CHMOD) &&
-+		    !capable(CAP_FOWNER))
-+			goto error;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
- 				inode->i_gid) && !capable(CAP_FSETID))
-@@ -69,11 +92,15 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!is_owner_or_cap(inode))
--			return -EPERM;
-+		if (current_fsuid() != inode->i_uid &&
-+		    richacl_change_ok(inode, MAY_SET_TIMES) &&
-+		    !capable(CAP_FOWNER))
-+			goto error;
- 	}
- 
- 	return 0;
-+error:
-+	return -EPERM;
- }
- EXPORT_SYMBOL(inode_change_ok);
- 
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2616d34..f08e82f 100644
+index 485c697..d86e77c 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -59,6 +59,9 @@ struct inodes_stat_t {
- #define MAY_CREATE_DIR 256
- #define MAY_DELETE_CHILD 512
- #define MAY_DELETE_SELF 1024
-+#define MAY_TAKE_OWNERSHIP 2048
-+#define MAY_CHMOD 4096
-+#define MAY_SET_TIMES 8192
+@@ -208,6 +208,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_RICHACL	(1<<25) /* Supports richacls */
+ #define MS_BORN		(1<<29)
+ #define MS_ACTIVE	(1<<30)
+ #define MS_NOUSER	(1<<31)
+@@ -264,6 +265,7 @@ struct inodes_stat_t {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
  
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+@@ -274,7 +276,7 @@ struct inodes_stat_t {
+  * IS_ACL() tells the VFS to not apply the umask
+  * and use iop->check_acl for acl permission checks when defined.
+  */
+-#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
+ 
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
 -- 
 1.7.0.4
 
