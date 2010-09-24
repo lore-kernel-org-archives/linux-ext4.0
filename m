@@ -1,76 +1,70 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V4 00/11]  New ACL format for better NFSv4 acl interoperability
-Date: Fri, 24 Sep 2010 18:18:03 +0530
-Message-ID: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V4 02/11] vfs: Pass all mask flags down to iop->check_acl
+Date: Fri, 24 Sep 2010 18:18:05 +0530
+Message-ID: <1285332494-12756-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
 To: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
 	adilger@sun.com, sandeen@redhat.com, tytso@mit.edu,
 	bfields@citi.umich.edu, jlayton@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([122.248.162.7]:42516 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897Ab0IXMsd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2010 08:48:33 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+From: Andreas Gruenbacher <agruen@suse.de>
 
-Hi,
+Some file permission models differentiate between writing to a file
+(MAY_WRITE) and appending to it (MAY_WRITE | MAY_APPEND).  Pass all the
+mask flags down to iop->check_acl so that filesystems can distinguish
+between writing and appending.
 
-The following set of patches implements VFS changes needed to implement
-a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-extended by file masks to fit into the standard POSIX file permission model.
-They are designed to work seamlessly locally as well as across the NFSv4 and
-CIFS/SMB2 network file system protocols.
+All users of iop->check_acl pass the mask value back into
+posix_acl_permission(); strip off the additional mask flags there.
 
-The patch set consists of four parts:
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c     |    4 +---
+ fs/posix_acl.c |    2 ++
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-The first set of patches, posted as a follow up, contains VFS changes needed
-to implement the Rich ACL model. The second set [1] contains the Rich ACL model
-and Ext4 implementation. The third set [2] contains mapping of Rich ACL to
-NFSv4 ACL (how to apply file mask to access mask) and implementation of
-Richacl ACL for NFS server and client. The fourth set [3] contains POSIX ACL
-to Rich ACL mapping and its ext4 usage.
-
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-minimal
-[2] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-upstream
-[3] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git richacl-fullset
-
-A user-space utility for displaying and changing richacls is available at [4]
-(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-
-[4] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/richacl.git master
-
-To test richacl on ext4 use -o richacl mount option. This mount option may later be
-dropped in favour of a feature flag.
-
-More details regarding richacl can be found at 
-http://acl.bestbits.at/richacl/
-
-Changes from V3:
-a) Droped may_delete and may_create inode operations callback and reworked
-   the patch series to use additional check flags. 
-b) Rebased to the latest kernel
-c) The patch series now contain only the minimal VFS changes.
-
-Changes from V2:
-1) Git repo include check-acl branch that drop newly added inode_operations
-   callback in favour for additional access check flags (MAY_CREATE_FILE,
-   MAY_CREATE_DIR, MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_TAKE_OWNERSHIP,
-   MAY_CHMOD, and MAY_SET_TIMES)
-2) richacl is now cached in the vfs inode instead of file system inode.
-   (currently kept as a separate patch. We may want to fold that later)
-3) Added a new acl flag ACL4_MASKED. richacl_apply_masks() can skip transforming acls
-   without this flag, which speeds things up and avoids modifying those acls unnecessarily.
-4) Owner always allowed permissions are now explicitly included when synthesizing an acl
-   from file mode.
-
-Changes from V1:
-1) Split the patches into smaller patches
-2) Added extensive documentation to the patches.
-
--aneesh
-
-
+diff --git a/fs/namei.c b/fs/namei.c
+index c5920b5..7cadd07 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -174,8 +174,6 @@ static int acl_permission_check(struct inode *inode, int mask,
+ {
+ 	umode_t			mode = inode->i_mode;
+ 
+-	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
+-
+ 	if (current_fsuid() == inode->i_uid)
+ 		mode >>= 6;
+ 	else {
+@@ -192,7 +190,7 @@ static int acl_permission_check(struct inode *inode, int mask,
+ 	/*
+ 	 * If the DACs are ok we don't need any capability check.
+ 	 */
+-	if ((mask & ~mode) == 0)
++	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC) & ~mode) == 0)
+ 		return 0;
+ 	return -EACCES;
+ }
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 39df95a..c60bddf 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -213,6 +213,8 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
+ 	const struct posix_acl_entry *pa, *pe, *mask_obj;
+ 	int found = 0;
+ 
++	want &= MAY_READ | MAY_WRITE | MAY_EXEC;
++
+ 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+                 switch(pa->e_tag) {
+                         case ACL_USER_OBJ:
+-- 
+1.7.0.4
