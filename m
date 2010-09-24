@@ -1,8 +1,8 @@
 From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V4 07/11] vfs: Make acl_permission_check() work for richacls
-Date: Sat, 25 Sep 2010 00:25:51 +0530
-Message-ID: <m3y6ar9djc.fsf@linux.vnet.ibm.com>
-References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1285332494-12756-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20100924115049.47b1217b@tlielax.poochiereds.net>
+Subject: Re: [PATCH -V4 08/11] vfs: Add new file and directory create permission flags
+Date: Sat, 25 Sep 2010 00:46:03 +0530
+Message-ID: <m3vd5v9clo.fsf@linux.vnet.ibm.com>
+References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1285332494-12756-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20100924115423.530813c3@tlielax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
@@ -12,65 +12,119 @@ Cc: sfrench@us.ibm.com, ffilz@us.ibm.com, agruen@suse.de,
 	linux-kernel@vger.kernel.org
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:55969 "EHLO
-	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757471Ab0IXS4F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2010 14:56:05 -0400
-In-Reply-To: <20100924115049.47b1217b@tlielax.poochiereds.net>
+Received: from e23smtp01.au.ibm.com ([202.81.31.143]:34442 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756226Ab0IXTQO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2010 15:16:14 -0400
+In-Reply-To: <20100924115423.530813c3@tlielax.poochiereds.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 24 Sep 2010 11:50:49 -0400, Jeff Layton <jlayton@redhat.com> wrote:
-> On Fri, 24 Sep 2010 18:18:10 +0530
+On Fri, 24 Sep 2010 11:54:23 -0400, Jeff Layton <jlayton@redhat.com> wrote:
+> On Fri, 24 Sep 2010 18:18:11 +0530
 > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
 > 
 > > From: Andreas Gruenbacher <agruen@suse.de>
 > > 
+> > Some permission models distinguish between the permission to create a
+> > non-directory and a directory.  Pass this information down to
+> > inode_permission() as mask flags
+> > 
 > > Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 > > ---
-> >  fs/namei.c |    6 ++++++
-> >  1 files changed, 6 insertions(+), 0 deletions(-)
+> >  fs/namei.c         |   21 ++++++++++++---------
+> >  include/linux/fs.h |    2 ++
+> >  2 files changed, 14 insertions(+), 9 deletions(-)
 > > 
 > > diff --git a/fs/namei.c b/fs/namei.c
-> > index 855b360..b0b8a71 100644
+> > index b0b8a71..ed786b2 100644
 > > --- a/fs/namei.c
 > > +++ b/fs/namei.c
-> > @@ -174,6 +174,12 @@ static int acl_permission_check(struct inode *inode, int mask,
+> > @@ -253,7 +253,8 @@ int generic_permission(struct inode *inode, int mask,
+> >   * for filesystem access without changing the "normal" uids which
+> >   * are used for other things.
+> >   *
+> > - * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
+> > + * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+> > + * MAY_WRITE must also be set in @mask.
+> >   */
+> >  int inode_permission(struct inode *inode, int mask)
 > >  {
-> >  	umode_t			mode = inode->i_mode;
-> >  
-> > +	if (IS_RICHACL(inode)) {
-> > +		int error = check_acl(inode, mask);
-> > +		if (error != -EAGAIN)
-> > +			return error;
-> > +	}
+> > @@ -1337,13 +1338,15 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+> >   *  3. We should have write and exec permissions on dir
+> >   *  4. We can't do it if dir is immutable (done in permission())
+> >   */
+> > -static inline int may_create(struct inode *dir, struct dentry *child)
+> > +static inline int may_create(struct inode *dir, struct dentry *child, int isdir)
+> 									^^^^^
+> 								nit: maybe saner as a bool?
+> >  {
+> > +	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
 > > +
-> >  	if (current_fsuid() == inode->i_uid)
-> >  		mode >>= 6;
-> >  	else {
+> >  	if (child->d_inode)
+> >  		return -EEXIST;
+> >  	if (IS_DEADDIR(dir))
+> >  		return -ENOENT;
+> > -	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> > +	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
+> >  }
+> >  
+> >  /*
+> > @@ -1391,7 +1394,7 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
+> >  int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
+> >  		struct nameidata *nd)
+> >  {
+> > -	int error = may_create(dir, dentry);
+> > +	int error = may_create(dir, dentry, 0);
+> >  
+> >  	if (error)
+> >  		return error;
+> > @@ -1953,7 +1956,7 @@ EXPORT_SYMBOL_GPL(lookup_create);
+> >  
+> >  int vfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
+> >  {
+> > -	int error = may_create(dir, dentry);
+> > +	int error = may_create(dir, dentry, 0);
+> >  
+> >  	if (error)
+> >  		return error;
+> > @@ -2057,7 +2060,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, int, mode, unsigned, dev)
+> >  
+> >  int vfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
+> >  {
+> > -	int error = may_create(dir, dentry);
+> > +	int error = may_create(dir, dentry, 1);
+> >  
+> >  	if (error)
+> >  		return error;
+> > @@ -2342,7 +2345,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
+> >  
+> >  int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
+> >  {
+> > -	int error = may_create(dir, dentry);
+> > +	int error = may_create(dir, dentry, 0);
+> >  
+> >  	if (error)
+> >  		return error;
+> > @@ -2415,7 +2418,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+> >  	if (!inode)
+> >  		return -ENOENT;
+> >  
+> > -	error = may_create(dir, new_dentry);
+> > +	error = may_create(dir, new_dentry, S_ISDIR(inode->i_mode));
 > 
-> This may just be my own ignorance of ACL semantics and unfamiliarity
-> with the ACL code in general. It seems a bit unusual though...
-> 
-> Just to be clear...this patch implies that with richacls you can deny
-> or grant access to the owner of the file even if the mode bits say
-> otherwise. With POSIX acls, this seems to be the other way around.
-> 
-> Hmm....guess I should read the spec...
-> 
+> 						^^^^ this is a little
+> 						scary, but even if it's
+> 						a directory, it'll get
+> 						kicked out in a later
+> 						check. Would it be
+> 						clearer to move up the
+> 						S_ISDIR() check in this
+> 						function and then pass
+> 						this in as false?
 
-To be POSIX compatible we need to ensure that additional file access
-control mechanisms may only further restrict the access permissions defined
-by the file permission bits. So with rich acl, similar to POSIX ACL,
-we use file mask as an upper bound of the acess permission
-allowed. Unlike POSIX ACL where the 'owner' and 'other' ACL entry access
-mask is kept in sync with mode bits, rich acl include a file mask even
-for 'owner' and 'everyone' entries. 
-
-The patch that gives more details about the permission check algo can be
-found at 
-
-http://git.kernel.org/?p=linux/kernel/git/agruen/linux-2.6-richacl.git;a=commitdiff;h=442c675aeac85cfc893a2ec600f7fb3da3951177;hp=02456437cf280838a50ef00d7b4df2e7179fe6b2
+Can you elaborate on this ? 
 
 -aneesh
+
