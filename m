@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V4 02/11] vfs: Pass all mask flags down to iop->check_acl
-Date: Fri, 24 Sep 2010 18:18:05 +0530
-Message-ID: <1285332494-12756-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V4 04/11] vfs: Add generic IS_ACL() test for acl support
+Date: Fri, 24 Sep 2010 18:18:07 +0530
+Message-ID: <1285332494-12756-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
 	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
@@ -16,55 +16,91 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruen@suse.de>
 
-Some file permission models differentiate between writing to a file
-(MAY_WRITE) and appending to it (MAY_WRITE | MAY_APPEND).  Pass all the
-mask flags down to iop->check_acl so that filesystems can distinguish
-between writing and appending.
+When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
+models will need the same exception, so introduce a separate IS_ACL()
+test.
 
-All users of iop->check_acl pass the mask value back into
-posix_acl_permission(); strip off the additional mask flags there.
+The IS_POSIX_ACL() test is still needed so that nfsd can determine when
+the underlying file system supports POSIX ACLs (as opposed to some other
+kind).
 
 Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/namei.c     |    4 +---
- fs/posix_acl.c |    2 ++
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ fs/namei.c         |    6 +++---
+ fs/nfs/nfs4proc.c  |    2 +-
+ include/linux/fs.h |    8 +++++++-
+ 3 files changed, 11 insertions(+), 5 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index c5920b5..7cadd07 100644
+index bf822b8..855b360 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -174,8 +174,6 @@ static int acl_permission_check(struct inode *inode, int mask,
- {
- 	umode_t			mode = inode->i_mode;
+@@ -1486,7 +1486,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
+ 	int error;
+ 	struct dentry *dir = nd->path.dentry;
  
--	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
--
- 	if (current_fsuid() == inode->i_uid)
- 		mode >>= 6;
- 	else {
-@@ -192,7 +190,7 @@ static int acl_permission_check(struct inode *inode, int mask,
- 	/*
- 	 * If the DACs are ok we don't need any capability check.
- 	 */
--	if ((mask & ~mode) == 0)
-+	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC) & ~mode) == 0)
- 		return 0;
- 	return -EACCES;
- }
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 39df95a..c60bddf 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -213,6 +213,8 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
- 	const struct posix_acl_entry *pa, *pe, *mask_obj;
- 	int found = 0;
+-	if (!IS_POSIXACL(dir->d_inode))
++	if (!IS_ACL(dir->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
+ 	if (error)
+@@ -2009,7 +2009,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
+ 		error = PTR_ERR(dentry);
+ 		goto out_unlock;
+ 	}
+-	if (!IS_POSIXACL(nd.path.dentry->d_inode))
++	if (!IS_ACL(nd.path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = may_mknod(mode);
+ 	if (error)
+@@ -2086,7 +2086,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
+ 	if (IS_ERR(dentry))
+ 		goto out_unlock;
  
-+	want &= MAY_READ | MAY_WRITE | MAY_EXEC;
+-	if (!IS_POSIXACL(nd.path.dentry->d_inode))
++	if (!IS_ACL(nd.path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = mnt_want_write(nd.path.mnt);
+ 	if (error)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 089da5b..c77dbbf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2042,7 +2042,7 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ 	if (nd->flags & LOOKUP_CREATE) {
+ 		attr.ia_mode = nd->intent.open.create_mode;
+ 		attr.ia_valid = ATTR_MODE;
+-		if (!IS_POSIXACL(dir))
++		if (!IS_ACL(dir))
+ 			attr.ia_mode &= ~current_umask();
+ 	} else {
+ 		open_flags &= ~O_EXCL;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 63d069b..485c697 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -199,7 +199,7 @@ struct inodes_stat_t {
+ #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+ 				   MS_VERBOSE is deprecated. */
+ #define MS_SILENT	32768
+-#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
++#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
+ #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+ #define MS_PRIVATE	(1<<18)	/* change to private */
+ #define MS_SLAVE	(1<<19)	/* change to slave */
+@@ -270,6 +270,12 @@ struct inodes_stat_t {
+ #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
+ #define IS_PRIVATE(inode)	((inode)->i_flags & S_PRIVATE)
+ 
++/*
++ * IS_ACL() tells the VFS to not apply the umask
++ * and use iop->check_acl for acl permission checks when defined.
++ */
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
 +
- 	FOREACH_ACL_ENTRY(pa, acl, pe) {
-                 switch(pa->e_tag) {
-                         case ACL_USER_OBJ:
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
+ 
 -- 
 1.7.0.4
