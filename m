@@ -1,127 +1,70 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/3] Add ioctl FITRIM.
-Date: Fri, 24 Sep 2010 17:35:57 +0200
-Message-ID: <1285342559-16424-2-git-send-email-lczerner@redhat.com>
-References: <1285342559-16424-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 0/3 v. 8] Ext3/Ext4 Batched discard support
+Date: Fri, 24 Sep 2010 17:35:56 +0200
+Message-ID: <1285342559-16424-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, rwheeler@redhat.com, sandeen@redhat.com,
 	adilger@dilger.ca, lczerner@redhat.com, snitzer@gmail.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15352 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3893 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753373Ab0IXPge (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Sep 2010 11:36:34 -0400
-In-Reply-To: <1285342559-16424-1-git-send-email-lczerner@redhat.com>
+	id S1753373Ab0IXPgc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Sep 2010 11:36:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Adds an filesystem independent ioctl to allow implementation of file
-system batched discard support. It takes an array of three uint64_t
-as an argument, the meaning of each item is as follows:
+Hi,
 
-array[0] - (start) first Byte to trim
-array[1] - (len) number of Bytes to trim from start
-array[2] - (minlen) minimum extent length to trim, free extents shorter
-than this number of Bytes will be ignored. This number will be rounded
-up to the block size.
+since it has been a while from my last post, I have rebased patches to
+cleanly apply to the newest kernel. Also there have been some changes
+regarding blkdev_issue_discard() and its helpers, I have changed patches
+to use the new helper (ext4_issue_discard() for ext4) and new format of
+sb_issue_discard() (in ext3).
 
-It is also possible to specify NULL as an argument. In this case the
-arguments will set itself as follows:
+Also in order to give the user better control over the discard I have
+changed FITRIM ioctl to return the exact amount of discarded Bytes, so
+the user will know how much space has been reclaimed to wear-leveling.
 
-args[0] = 0;
-args[1] = ULLONG_MAX;
-args[2] = 0;
+SHORT DESCRIPTION:
+==================
 
-So it will trim the whole file system at one run.
+Batched discard adds ability to discard free space on mounded filesystem,
+in order to avoid using current discard implementation which discards
+recently freed blocks. This approach may on some devices (it depends on
+how efficient is the device wear-leveling algorithm) result in huge
+performance loss.
 
-After the FITRIM is done, the number of actually discarded Bytes is stored
-in args[1] (len) to give the user better insight on how much storage
-space was really released for wear-leveling.
+Batched discard can be invoked from user-space through FITRIM ioctl on
+the whole, or just a part, of file system. With this approach we are
+searching for continuous free blocks bigger than defined through ioctl
+to discard them. So, since we are searching for big continuous extents
+it is much more efficient than current approach and it gives user fine
+grained control over how much disk space will be reclaimed for
+wear-leveling and what impact will it have on performance.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org>
+
+I have attached source code for example application which uses FITRIM
+to discard just a part or whole filesystem. Since FITRIM is filesystem
+independent ioctl it can be used by any filesystem which supports it.
+
+Usage: fstrim [-s start] [-l length] [-m minimum-extent] [-v] directory
+        -s Starting Byte to discard from
+        -l Number of Bytes to discard from the start
+        -m Minimum extent length to discard
+        -v Verbose - prints out number of really discarded Bytes
+
 ---
- fs/ioctl.c         |   39 +++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |    2 ++
- 2 files changed, 41 insertions(+), 0 deletions(-)
+a1edaf3 ext3: Add batched discard support
+4ed7168 ext4: Add batched discard support
+88f8c20 Add ioctl FITRIM.
 
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index f855ea4..3dd96b6 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -530,6 +530,41 @@ static int ioctl_fsthaw(struct file *filp)
- 	return thaw_super(sb);
- }
- 
-+static int ioctl_fstrim(struct file *filp, void __user *argp)
-+{
-+	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
-+	uint64_t args[3];
-+	int ret = 0;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	/* If filesystem doesn't support trim feature, return. */
-+	if (sb->s_op->trim_fs == NULL)
-+		return -EOPNOTSUPP;
-+
-+	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
-+	if (sb->s_bdev == NULL)
-+		return -EINVAL;
-+
-+	if (argp == NULL) {
-+		args[0] = 0;
-+		args[1] = ULLONG_MAX;
-+		args[2] = 0;
-+	} else if (copy_from_user(args, argp, sizeof(args)))
-+		return -EFAULT;
-+
-+	ret = sb->s_op->trim_fs(sb, args);
-+	if (ret < 0)
-+		return ret;
-+
-+	if ((argp != NULL) &&
-+	    (copy_to_user(argp, args, sizeof(args))))
-+		return -EFAULT;
-+
-+	return 0;
-+}
-+
- /*
-  * When you add any new common ioctls to the switches above and below
-  * please update compat_sys_ioctl() too.
-@@ -580,6 +615,10 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 		error = ioctl_fsthaw(filp);
- 		break;
- 
-+	case FITRIM:
-+		error = ioctl_fstrim(filp, argp);
-+		break;
-+
- 	case FS_IOC_FIEMAP:
- 		return ioctl_fiemap(filp, arg);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 76041b6..e1b8a4a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -316,6 +316,7 @@ struct inodes_stat_t {
- #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
- #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
- #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
-+#define FITRIM		_IOWR('X', 121, uint64_t)	/* Trim */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-@@ -1577,6 +1578,7 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- #endif
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-+	int (*trim_fs) (struct super_block *, uint64_t *);
- };
- 
- /*
--- 
-1.7.2.3
+ fs/ext3/balloc.c        |  251 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext3/super.c         |    1 +
+ fs/ext4/ext4.h          |    2 +
+ fs/ext4/mballoc.c       |  191 +++++++++++++++++++++++++++++++++++
+ fs/ext4/super.c         |    1 +
+ fs/ioctl.c              |   39 +++++++
+ include/linux/ext3_fs.h |    1 +
+ include/linux/fs.h      |    2 +
+ 8 files changed, 488 insertions(+), 0 deletions(-)
 
