@@ -1,85 +1,38 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 blocksize peculiarities
-Date: Fri, 24 Sep 2010 23:57:53 -0500
-Message-ID: <4C9D8151.7090800@redhat.com>
-References: <4C9D640E.5020609@sm-wg.net>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Broken e2fsck i_blocks repair
+Date: Sat, 25 Sep 2010 08:24:03 -0400
+Message-ID: <20100925122403.GE9597@thunk.org>
+References: <AANLkTinT3O20u-iE4Mu2ikSPa4bdhVsM+a82p6Hoeu8K@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Bernhard Rohrer <graylion@sm-wg.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Justin Maggard <jmaggard10@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31976 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:33314 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751910Ab0IYE6f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 25 Sep 2010 00:58:35 -0400
-In-Reply-To: <4C9D640E.5020609@sm-wg.net>
+	id S1753395Ab0IYMYH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 25 Sep 2010 08:24:07 -0400
+Content-Disposition: inline
+In-Reply-To: <AANLkTinT3O20u-iE4Mu2ikSPa4bdhVsM+a82p6Hoeu8K@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bernhard Rohrer wrote:
-> Hi all
-> 
-> I have a 3.3 TB partition (yes really) that is formatted with ext4 and 4
-> kiB blocks. What little data I have on that appears to use up an
-> extraordinary amount of space, so I had a closer look.
-> 
-> root@newcollab:/home/adminlion# df -h
-> Filesystem            Size  Used Avail Use% Mounted on
-> /dev/mapper/primary_vg-primary_var
->                       3.5T   43G  3.3T   2% /var
-> 
-> we see that 43 GiB appear to be taking up something that gets rounded to
-> 200 GiB
+On Wed, Sep 01, 2010 at 04:01:22PM -0700, Justin Maggard wrote:
+> I've mentioned this before on here, but I never verified whether or
+> not it was actually broken.  I have done so today.  I manually
+> modified the block count of a 3TB file using debugfs, then ran e2fsck
+> on it.  e2fsck claimed to repair it, but would throw an error on every
+> subsequent e2fsck run for the same issue.  The reason is
+> inode->osd2.linux2.l_i_blocks_hi is always set to 0 if e2fsck is told
+> to fix it.  This is an issue in both stable 1.41.12, and in master.
+> This patch fixes it for me, but is there anything else that needs to
+> get checked here?
 
-by default 5% is reserved for the super-user, 5% of 3.3T is 168G,
-168G + 43G is roughly 200G
+Sorry for the delay; September has been rather busy for me.  This fix
+has been checked in and pushed out to the e2fsprogs git repository.
+I've taken a look and there doesn't seem to be any other places where
+this mistake could have happened.
 
--Eric
- 
-> if we look at:
-> 
-> root@newcollab:/home/adminlion# df
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> /dev/mapper/primary_vg-primary_var
->           3696706360  44362800 3464561624   2% /var
-> 
-> now 44362800 4k blocks are 169.23 GiB, 
+Thanks for pointing it out!
 
-those are 1k blocks :)
-
-Anyway, what you are seeing is the 5% reserved space, which does
-not show up in "Used" but is reflected in "Avail"
-
-It is confusing and you're not the first one to get tripped up :)
-
--Eric
-
-> which does indeed round to 200
-> GiB. similar usage also gets reported when I get the properties of the
-> share via cifs.
-> 
-> debugfs shows:
-> 
-> Block count:              937689088
-> Reserved block count:      46884454
-> Free blocks:              912175341
-> 
-> so while df shows 4 times as many available 1k blocks as debugfs, which
-> after all shows the actual number of 4k blocks, both are more or less in
-> agreement as to the space used. This leads me to believe that somehow
-> only 1k of every 4k block gets used. Now i could of course reformat to
-> 1k blocks, but I'd prefer to avoid that.
-> 
-> OS is Lucid64 and the volume is a LVM volume.
-> 
-> Has anybody seen this before? Uncle Google was rather mum on the subject.
-> 
-> cheers
-> 
-> Bernhard
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+						- Ted
