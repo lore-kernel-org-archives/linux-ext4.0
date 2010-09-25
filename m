@@ -1,38 +1,54 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Broken e2fsck i_blocks repair
-Date: Sat, 25 Sep 2010 08:24:03 -0400
-Message-ID: <20100925122403.GE9597@thunk.org>
-References: <AANLkTinT3O20u-iE4Mu2ikSPa4bdhVsM+a82p6Hoeu8K@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Minimizing fragmentation in ext4, fallocate not enough?
+Date: Sat, 25 Sep 2010 12:26:15 -0500
+Message-ID: <4C9E30B7.1050607@redhat.com>
+References: <4C9D3CD6.9080000@mozilla.com> <7A56949B-99B6-439F-A015-1C0398A8B525@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Justin Maggard <jmaggard10@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Taras Glek <tglek@mozilla.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33314 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:10303 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753395Ab0IYMYH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 25 Sep 2010 08:24:07 -0400
-Content-Disposition: inline
-In-Reply-To: <AANLkTinT3O20u-iE4Mu2ikSPa4bdhVsM+a82p6Hoeu8K@mail.gmail.com>
+	id S1751700Ab0IYR0W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 25 Sep 2010 13:26:22 -0400
+In-Reply-To: <7A56949B-99B6-439F-A015-1C0398A8B525@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 01, 2010 at 04:01:22PM -0700, Justin Maggard wrote:
-> I've mentioned this before on here, but I never verified whether or
-> not it was actually broken.  I have done so today.  I manually
-> modified the block count of a 3TB file using debugfs, then ran e2fsck
-> on it.  e2fsck claimed to repair it, but would throw an error on every
-> subsequent e2fsck run for the same issue.  The reason is
-> inode->osd2.linux2.l_i_blocks_hi is always set to 0 if e2fsck is told
-> to fix it.  This is an issue in both stable 1.41.12, and in master.
-> This patch fixes it for me, but is there anything else that needs to
-> get checked here?
+Andreas Dilger wrote:
+> On 2010-09-24, at 18:05, Taras Glek wrote:
+>> I noticed that several random IO-heavy Firefox files got fragmented
+>> easily. Our cache suffers most. The cache works by creating a flat
+>> file and storing fixed-size entries in it. I though if I
+>> fallocate() the file first, then all of the writes within the
+>> allocated area would not cause additional fragmentation.
+>> 
+>> This doesn't seem to completely cure fragmentation with ext4 in
+>> 2.6.33. If I allocate a 4mb file, it gets more and more fragmented
+>> over time. fallocate() does reduce fragmentation, but not as much
+>> as I expected.
+> 
+> Have you checked filefrag immediately after fallocating the file?  Is
+> it OK?
+> 
+> It may be that the issue is that an fallocate()'d file is using
+> "unwritten extents" and converting these extents to "normal" extents
+> may cause apparent fragmentation.  However, depending on which
+> version of e2fsprogs/filefrag you are using, it may well be that
+> these extents only appear to be fragmented due to the different
+> extent types.
 
-Sorry for the delay; September has been rather busy for me.  This fix
-has been checked in and pushed out to the e2fsprogs git repository.
-I've taken a look and there doesn't seem to be any other places where
-this mistake could have happened.
+Agreed, please include filefrag (-v) output right after it's fallocated,
+and also when you see this fragmentation, and then we'll have a better idea
+about what you're seeing.  And, the newer the filefrag the better.  :)
 
-Thanks for pointing it out!
+-Eric
 
-						- Ted
+>> ps2. Does running filefrag on a directory mean anything in ext4?
+> 
+> With newer e2fsprogs using FIEMAP and kernels it should be possible
+> to get useful filefrag data from a directory.  Older
+> kernels/e2fsprogs using FIBMAP will just fail outright. 
+
