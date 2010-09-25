@@ -1,32 +1,63 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: Minimizing fragmentation in ext4, fallocate not enough?
-Date: Fri, 24 Sep 2010 19:07:03 -0600
-Message-ID: <7A56949B-99B6-439F-A015-1C0398A8B525@dilger.ca>
-References: <4C9D3CD6.9080000@mozilla.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Taras Glek <tglek@mozilla.com>
+From: Bernhard Rohrer <graylion@sm-wg.net>
+Subject: ext4 blocksize peculiarities
+Date: Sat, 25 Sep 2010 03:53:02 +0100
+Message-ID: <4C9D640E.5020609@sm-wg.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:14802 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752993Ab0IYBHN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2010 21:07:13 -0400
-In-Reply-To: <4C9D3CD6.9080000@mozilla.com>
+Received: from collab.sm-wg.net ([86.43.106.231]:45485 "EHLO collab.sm-wg.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753270Ab0IYCxE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Sep 2010 22:53:04 -0400
+Received: from [172.16.2.1] (lionscage.local [172.16.2.1])
+	by collab.sm-wg.net (Postfix) with ESMTPSA id 42FCD180FA5
+	for <linux-ext4@vger.kernel.org>; Sat, 25 Sep 2010 03:49:27 +0100 (IST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-09-24, at 18:05, Taras Glek wrote:
-> I noticed that several random IO-heavy Firefox files got fragmented easily. Our cache suffers most.
-> The cache works by creating a flat file and storing fixed-size entries in it. I though if I fallocate() the file first, then all of the writes within the allocated area would not cause additional fragmentation.
-> 
-> This doesn't seem to completely cure fragmentation with ext4 in 2.6.33. If I allocate a 4mb file, it gets more and more fragmented over time. fallocate() does reduce fragmentation, but not as much as I expected.
+Hi all
 
-Have you checked filefrag immediately after fallocating the file?  Is it OK?
+I have a 3.3 TB partition (yes really) that is formatted with ext4 and 4 
+kiB blocks. What little data I have on that appears to use up an 
+extraordinary amount of space, so I had a closer look.
 
-It may be that the issue is that an fallocate()'d file is using "unwritten extents" and converting these extents to "normal" extents may cause apparent fragmentation.  However, depending on which version of e2fsprogs/filefrag you are using, it may well be that these extents only appear to be fragmented due to the different extent types.
+root@newcollab:/home/adminlion# df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/primary_vg-primary_var
+                       3.5T   43G  3.3T   2% /var
 
-> ps2. Does running filefrag on a directory mean anything in ext4?
+we see that 43 GiB appear to be taking up something that gets rounded to 
+200 GiB
 
-With newer e2fsprogs using FIEMAP and kernels it should be possible to get useful filefrag data from a directory.  Older kernels/e2fsprogs using FIBMAP will just fail outright.
+if we look at:
+
+root@newcollab:/home/adminlion# df
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/mapper/primary_vg-primary_var
+           3696706360  44362800 3464561624   2% /var
+
+now 44362800 4k blocks are 169.23 GiB, which does indeed round to 200 
+GiB. similar usage also gets reported when I get the properties of the 
+share via cifs.
+
+debugfs shows:
+
+Block count:              937689088
+Reserved block count:      46884454
+Free blocks:              912175341
+
+so while df shows 4 times as many available 1k blocks as debugfs, which 
+after all shows the actual number of 4k blocks, both are more or less in 
+agreement as to the space used. This leads me to believe that somehow 
+only 1k of every 4k block gets used. Now i could of course reformat to 
+1k blocks, but I'd prefer to avoid that.
+
+OS is Lucid64 and the volume is a LVM volume.
+
+Has anybody seen this before? Uncle Google was rather mum on the subject.
+
+cheers
+
+Bernhard
