@@ -1,38 +1,31 @@
-From: Krzysztof Halasa <khc@pm.waw.pl>
-Subject: Re: [PATCH 10/10] Fs: ext4: namei: fixed file of checkpatch/pl warnings and errors
-Date: Sun, 26 Sep 2010 08:36:34 +0200
-Message-ID: <m3pqw16mfh.fsf@intrepid.localdomain>
-References: <1285439521-2557-1-git-send-email-tdent48227@gmail.com>
-	<1285439521-2557-10-git-send-email-tdent48227@gmail.com>
+From: Sitsofe Wheeler <sitsofe@yahoo.com>
+Subject: Persistant Ext4 error
+Date: Sun, 26 Sep 2010 13:51:17 +0100
+Message-ID: <20100926125116.GA30683@sucs.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Tracey Dent <tdent48227@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from khc.piap.pl ([195.187.100.11]:37010 "EHLO khc.piap.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751061Ab0IZGgq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 26 Sep 2010 02:36:46 -0400
-In-Reply-To: <1285439521-2557-10-git-send-email-tdent48227@gmail.com> (Tracey
-	Dent's message of "Sat, 25 Sep 2010 14:32:01 -0400")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Tracey Dent <tdent48227@gmail.com> writes:
+Hi,
 
-> +		printk("%s%3u:%03u hash %8x/%8x ", levels ? "":"   ", i, block, hash, range);
-> +		if (!(bh = ext4_bread(NULL,dir, block, 0,&err))) continue;
+I've been seeing regular errors when using Ext4 on an EeePC 900 with a
+recent 2.6.36 kernel since a few weeks ago.
 
-Put a SPACE after the comma. "continue" should usually be on the next
-line. It doesn't make sense to fix the formatting only partially.
+[  304.096022] EXT4-fs (sdb2): error count: 5
+[  304.096034] EXT4-fs (sdb2): initial error at 1284296437: ext4_lookup:1052: inode 141510
+[  304.096042] EXT4-fs (sdb2): last error at 1284300370: htree_dirblock_to_tree:586: inode 129800: block 532439
 
+The error seems to persist no matter how much I fsck the partition
+(e2fsck comes from e2fsprogs 1.41.11-1ubuntu2). The distro I am using is
+Ubuntu 10.04.
 
-BTW I wouldn't trust checkpatch so blindly. Also keep in mind checkpatch
-is only a tool and that maintainers have full authority to ignore the
-problems (or "problems") it spews.
-And I would merge all the changes (which make sense) and send them in
-one patch - that should increase the odds of it actually being applied.
-To be honest, fixing the style isn't an easy job.
+Any ideas on what is causing this and how to fix it?
+
 -- 
-Krzysztof Halasa
+Sitsofe | http://sucs.org/~sits/
