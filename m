@@ -1,47 +1,36 @@
-From: Brad Boyer <flar-POGeQm5F+FGB+jHODAdFcQ@public.gmane.org>
-Subject: Re: [PATCH 2/6] [RFC] Create the .relink file_operation
-Date: Sun, 26 Sep 2010 12:08:37 -0700
-Message-ID: <20100926190837.GA9308@cynthia.pants.nu>
-References: <6987185123220ec2034677299859c5a63eaf2aed.1285278339.git.matthltc@us.ibm.com>
-	<d91e3660266d3a2956c4d1aebc9cb618081b21ef.1285278339.git.matthltc@us.ibm.com>
+From: Krzysztof Halasa <khc@pm.waw.pl>
+Subject: Re: [PATCH 10/10] Fs: ext4: namei: fixed file of checkpatch/pl warnings and errors
+Date: Sun, 26 Sep 2010 21:17:20 +0200
+Message-ID: <m38w2o48n3.fsf@intrepid.localdomain>
+References: <1285439521-2557-1-git-send-email-tdent48227@gmail.com>
+	<1285439521-2557-10-git-send-email-tdent48227@gmail.com>
+	<m3pqw16mfh.fsf@intrepid.localdomain>
+	<20100926182338.GM19690@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org,
-        Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-        Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Matt Helsley <matthltc-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org>
-Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <d91e3660266d3a2956c4d1aebc9cb618081b21ef.1285278339.git.matthltc-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org>
-List-Unsubscribe: <https://lists.linux-foundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.linux-foundation.org/pipermail/containers>
-List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.linux-foundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
-Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Tracey Dent <tdent48227@gmail.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from khc.piap.pl ([195.187.100.11]:34259 "EHLO khc.piap.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757173Ab0IZTRX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 26 Sep 2010 15:17:23 -0400
+In-Reply-To: <20100926182338.GM19690@thunk.org> (Ted Ts'o's message of "Sun,
+	26 Sep 2010 14:23:38 -0400")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 23, 2010 at 02:53:28PM -0700, Matt Helsley wrote:
-> Not all filesystems will necessarily be able to support relinking an
-> orphan inode back into the filesystem. Some offlist feedback suggested
-> that instead of overloading .link that relinking should be a separate
-> file operation for this reason.
-> 
-> Since .relink is a superset of .link make the VFS call .relink where
-> possible and .link otherwise.
-> 
-> The next commit will change ext3/4 to enable this operation.
+Ted Ts'o <tytso@mit.edu> writes:
 
-I may have missed something in one of these patches (patch 1 and any
-original summary if there was one don't appear in my email), but
-what is the point of the new operation? I didn't see any case that
-treats one any different than the other. What is disallowed (and how)
-for a driver which does not implement .relink but has .link?
+> I'm beginning to think we need to have an entry in the kernel newbie's
+> FAQ warning people that the output of various scripts such as
+> checkpatch and get_maintainer are not authoratative, and are
+> hueristics intended to be supplemented by human intelligence.
 
-	Brad Boyer
-	flar-POGeQm5F+FGB+jHODAdFcQ@public.gmane.org
+Definitely.
+
+Current situation creates some false impressions, leaving the newcomers
+confused (at best). Net effect = loss.
+-- 
+Krzysztof Halasa
