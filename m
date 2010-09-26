@@ -1,54 +1,60 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH 01/10] Fs: ext4: acl.c: fixed indent issue
-Date: Sun, 26 Sep 2010 15:17:05 -0700
-Message-ID: <1285539425.1732.38.camel@Joe-Laptop>
-References: <1285439521-2557-1-git-send-email-tdent48227@gmail.com>
-	 <20100925233600.GA2854@lst.de>
-	 <AANLkTimf9Q=jfga=--H0VaZeWnbAVNhCPMn_G81sZ8vh@mail.gmail.com>
-	 <20100925235643.GA3224@lst.de> <1285459579.6115.72.camel@Joe-Laptop>
-	 <20100926200611.GA4375@lst.de>
+From: =?UTF-8?q?Maciej=20=C5=BBenczykowski?= <zenczykowski@gmail.com>
+Subject: [PATCH 1/2] ext3: don't update sb journal_devnum when RO dev
+Date: Sun, 26 Sep 2010 15:38:28 -0700
+Message-ID: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: T Dent <tdent48227@gmail.com>, tytso@mit.edu,
-	adilger.kernel@dilger.ca, jack@suse.cz, dmonakhov@openvz.org,
-	sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20100926200611.GA4375@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?UTF-8?q?Maciej=20=C5=BBenczykowski?= <zenczykowski@gmail.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:61822 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757876Ab0IZWkX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Sep 2010 18:40:23 -0400
+Received: by qwh6 with SMTP id 6so2988275qwh.19
+        for <linux-ext4@vger.kernel.org>; Sun, 26 Sep 2010 15:40:22 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 2010-09-26 at 22:06 +0200, Christoph Hellwig wrote:
-> On Sat, Sep 25, 2010 at 05:06:19PM -0700, Joe Perches wrote:
-> > On Sun, 2010-09-26 at 01:56 +0200, Christoph Hellwig wrote:
-> > > On Sat, Sep 25, 2010 at 07:53:02PM -0400, T Dent wrote:
-> > > > On 9/25/10, Christoph Hellwig <hch@lst.de> wrote:
-> > > > > Please don't Cc me on ext4 patches, thanks.
-> > > > Ok.. i just used the get maintainer script and your name was on it.
-> > > The script is broken but the maintainer refuses to fix it.
-> > That'd be false.
-> > https://patchwork.kernel.org/patch/185352/
-> Thanks for changing your opinion after the last discussion and fixing
-> the worst fallout.  Can you please prod Andrew to sned it on to Linus
-> ASAP?
+An ext3 filesystem on a read-only device, with an external journal
+which is at a different device number then recorded in the superblock
+will fail to honor the read-only setting of the device and trigger
+a superblock update (write).
 
-I didn't change my mind.
+=46or example:
+  - ext3 on a software raid which is in read-only mode
+  - external journal on a read-write device which has changed device nu=
+m
+  - attempt to mount with -o journal_dev=3D<new_number>
+  - hits BUG_ON(mddev->ro =3D 1) in md.c
 
-I've never particularly liked the --git option
-and rarely if ever use it.
+Cc: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Maciej =C5=BBenczykowski <zenczykowski@gmail.com>
+---
+ fs/ext3/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-What I said was I'd wait for a consensus.
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 5dbf4db..19dfbe9 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2299,7 +2299,7 @@ static int ext3_load_journal(struct super_block *=
+sb,
+ 	EXT3_SB(sb)->s_journal =3D journal;
+ 	ext3_clear_journal_err(sb, es);
+=20
+-	if (journal_devnum &&
++	if (!really_read_only && journal_devnum &&
+ 	    journal_devnum !=3D le32_to_cpu(es->s_journal_dev)) {
+ 		es->s_journal_dev =3D cpu_to_le32(journal_devnum);
+=20
+--=20
+1.7.2.3
 
-Andrew generally doesn't like to forward stuff
-to Linus unless it fixes some regression.  I
-don't know if this qualifies.  Andrew?
-
-I'd prefer to change the --rolestats default
-to on as well and force scripts to include
---norolestats --noroles to get bare email
-addresses.
-
-cheers, Joe
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
