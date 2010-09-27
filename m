@@ -1,41 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 01/10] Fs: ext4: acl.c: fixed indent issue
-Date: Mon, 27 Sep 2010 08:52:38 -0500
-Message-ID: <4CA0A1A6.2050707@redhat.com>
-References: <1285439521-2557-1-git-send-email-tdent48227@gmail.com> <20100925235459.GA5299@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Ted Ts'o" <tytso@mit.edu>, Tracey Dent <tdent48227@gmail.com>,
-	adilger.kernel@dilger.ca, jack@suse.cz, dmonakhov@openvz.org,
-	sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	linux-ker
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/4] ext4: Use return value from sb_issue_discard()
+Date: Mon, 27 Sep 2010 16:09:57 +0200
+Message-ID: <1285596600-28358-2-git-send-email-lczerner@redhat.com>
+References: <1285596600-28358-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, rwheeler@redhat.com, sandeen@redhat.com,
+	adilger@dilger.ca, lczerner@redhat.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35075 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49224 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755067Ab0I0Nww (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Sep 2010 09:52:52 -0400
-In-Reply-To: <20100925235459.GA5299@thunk.org>
+	id S1753373Ab0I0OKN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Sep 2010 10:10:13 -0400
+In-Reply-To: <1285596600-28358-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted Ts'o wrote:
-> On Sat, Sep 25, 2010 at 02:31:52PM -0400, Tracey Dent wrote:
->> From: Tracey Dent <Tdent48227@gmail.com>
->>
->> Found and corrected indent issue using checkpatch.pl
->>
->> Signed-off-by: Tracey Dent <tdent48227@gmail.com>
-> 
-> Patches that fix whitespace issues aren't really worthwhile.  They
-> tend to cause extra work for the me as the maintainer, since it means
-> that patches that others send me end up failing due to whitespace
-> issues, which then have to be manually fixed up.
-> 
+Use return value from sb_issue_discard() as return value in
+ext4_issue_discard(). Since sb_issue_discard() may result in more
+serious errors than just -EOPNOTSUPP it is worth to inform user of this
+function about them to handle error cases properly.
 
-I second that sentiment, despite being guilty of similar patches
-to other subsystems in the distant past ;)  I've seen the light.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/mballoc.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-I would prefer that these not get merged.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 66c3535..93eb6c2 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2603,7 +2603,7 @@ int ext4_mb_release(struct super_block *sb)
+ 	return 0;
+ }
+ 
+-static inline void ext4_issue_discard(struct super_block *sb,
++static inline int ext4_issue_discard(struct super_block *sb,
+ 		ext4_group_t block_group, ext4_grpblk_t block, int count)
+ {
+ 	int ret;
+@@ -2617,6 +2617,7 @@ static inline void ext4_issue_discard(struct super_block *sb,
+ 		ext4_warning(sb, "discard not supported, disabling");
+ 		clear_opt(EXT4_SB(sb)->s_mount_opt, DISCARD);
+ 	}
++	return ret;
+ }
+ 
+ /*
+-- 
+1.7.2.3
 
--Eric
