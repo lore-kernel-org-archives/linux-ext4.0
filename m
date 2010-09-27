@@ -1,63 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: remove unused ext4_sb_info members
-Date: Mon, 27 Sep 2010 12:02:52 -0500
-Message-ID: <4CA0CE3C.7050903@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: fix comment on ext2_try_to_allocate()
+Date: Mon, 27 Sep 2010 19:08:30 +0200
+Message-ID: <20100927170830.GD3610@quack.suse.cz>
+References: <1285482660-9937-1-git-send-email-namhyung@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Jiri Kosina <trivial@kernel.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Namhyung Kim <namhyung@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1684 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:36715 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759504Ab0I0RDA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Sep 2010 13:03:00 -0400
-Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8RH2xfo028094
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Sep 2010 13:02:59 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8RH2qZq003887
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Sep 2010 13:02:59 -0400
+	id S1757031Ab0I0RJY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Sep 2010 13:09:24 -0400
+Content-Disposition: inline
+In-Reply-To: <1285482660-9937-1-git-send-email-namhyung@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Not that these take up a lot of room, but the structure is long enough
-as it is, and there's no need to confuse people with these various
-undocumented & unused structure members...
+On Sun 26-09-10 15:31:00, Namhyung Kim wrote:
+> @handle doesn't exist in ext2. Remove it.
+> Also, fit comment header into kernel-doc format.
+> 
+> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+  Thanks. I've merged it in my tree.
 
-Signed-off-by: Eric Sandeen <sandeen@redaht.com>
----
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 889ec9d..39e8513 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1087,7 +1087,6 @@ struct ext4_sb_info {
- 	struct completion s_kobj_unregister;
- 
- 	/* Journaling */
--	struct inode *s_journal_inode;
- 	struct journal_s *s_journal;
- 	struct list_head s_orphan;
- 	struct mutex s_orphan_lock;
-@@ -1120,10 +1119,7 @@ struct ext4_sb_info {
- 	/* for buddy allocator */
- 	struct ext4_group_info ***s_group_info;
- 	struct inode *s_buddy_cache;
--	long s_blocks_reserved;
--	spinlock_t s_reserve_lock;
- 	spinlock_t s_md_lock;
--	tid_t s_last_transaction;
- 	unsigned short *s_mb_offsets;
- 	unsigned int *s_mb_maxs;
- 
-@@ -1141,7 +1137,6 @@ struct ext4_sb_info {
- 	unsigned long s_mb_last_start;
- 
- 	/* stats for buddy allocator */
--	spinlock_t s_mb_pa_lock;
- 	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
- 	atomic_t s_bal_success;	/* we found long enough chunks */
- 	atomic_t s_bal_allocated;	/* in blocks */
-
+							Honza
+> ---
+>  fs/ext2/balloc.c |    3 +--
+>  1 files changed, 1 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index c6c684b..0d06f4e 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -646,10 +646,9 @@ find_next_usable_block(int start, struct buffer_head *bh, int maxblocks)
+>  	return here;
+>  }
+>  
+> -/*
+> +/**
+>   * ext2_try_to_allocate()
+>   * @sb:			superblock
+> - * @handle:		handle to this transaction
+>   * @group:		given allocation block group
+>   * @bitmap_bh:		bufferhead holds the block bitmap
+>   * @grp_goal:		given target block within the group
+> -- 
+> 1.7.2.2
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
