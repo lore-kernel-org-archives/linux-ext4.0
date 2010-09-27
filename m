@@ -1,62 +1,52 @@
-From: =?UTF-8?q?Maciej=20=C5=BBenczykowski?= <zenczykowski@gmail.com>
-Subject: [PATCH 2/2] ext4: don't update sb journal_devnum when RO dev
-Date: Sun, 26 Sep 2010 15:38:29 -0700
-Message-ID: <1285540709-16217-2-git-send-email-zenczykowski@gmail.com>
-References: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/3] Add ioctl FITRIM.
+Date: Mon, 27 Sep 2010 11:20:57 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009271113210.2743@dhcp-lab-213.englab.brq.redhat.com>
+References: <1285342559-16424-1-git-send-email-lczerner@redhat.com> <1285342559-16424-2-git-send-email-lczerner@redhat.com> <F2605A93-6209-4A10-A444-E936FE7B882D@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?UTF-8?q?Maciej=20=C5=BBenczykowski?= <zenczykowski@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, rwheeler@redhat.com, sandeen@redhat.com,
+	snitzer@gmail.com
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:49938 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757876Ab0IZWky (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Sep 2010 18:40:54 -0400
-Received: by qyk36 with SMTP id 36so4178761qyk.19
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Sep 2010 15:40:54 -0700 (PDT)
-In-Reply-To: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:8293 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932298Ab0I0JVE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Sep 2010 05:21:04 -0400
+In-Reply-To: <F2605A93-6209-4A10-A444-E936FE7B882D@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-An ext4 filesystem on a read-only device, with an external journal
-which is at a different device number then recorded in the superblock
-will fail to honor the read-only setting of the device and trigger
-a superblock update (write).
+On Fri, 24 Sep 2010, Andreas Dilger wrote:
 
-=46or example:
-  - ext4 on a software raid which is in read-only mode
-  - external journal on a read-write device which has changed device nu=
-m
-  - attempt to mount with -o journal_dev=3D<new_number>
-  - hits BUG_ON(mddev->ro =3D 1) in md.c
+> On 2010-09-24, at 09:35, Lukas Czerner wrote:
+> > array[0] - (start) first Byte to trim
+> > array[1] - (len) number of Bytes to trim from start
+> > array[2] - (minlen) minimum extent length to trim, free extents shorter
+> > 
+> > than this number of Bytes will be ignored. This number will be rounded
+> > up to the block size.
+> > 
+> > It is also possible to specify NULL as an argument. In this case the
+> > arguments will set itself as follows:
+> > 
+> > args[0] = 0;
+> > args[1] = ULLONG_MAX;
+> > args[2] = 0;
+> 
+> (minor) you use "array[]" in one place and "args[]" in another.
+> 
+> > +#define FITRIM		_IOWR('X', 121, uint64_t)	/* Trim */
+> 
+> This ioctl definition isn't strictly correct.  The "size" parameter is actually uint64_t[3], though I'm not sure whether you need to define a structure in order to specify this.
 
-Cc: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Maciej =C5=BBenczykowski <zenczykowski@gmail.com>
----
- fs/ext4/super.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+You,re probably right. A structure would be better. But for example
+BLKDISCARD takes takes uint64_t[2] and its definition looks like:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2614774..48388c7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3470,7 +3470,7 @@ static int ext4_load_journal(struct super_block *=
-sb,
- 	EXT4_SB(sb)->s_journal =3D journal;
- 	ext4_clear_journal_err(sb, es);
-=20
--	if (journal_devnum &&
-+	if (!really_read_only && journal_devnum &&
- 	    journal_devnum !=3D le32_to_cpu(es->s_journal_dev)) {
- 		es->s_journal_dev =3D cpu_to_le32(journal_devnum);
-=20
---=20
-1.7.2.3
+#define BLKDISCARD _IO(0x12,119)
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+which confuses me a bit.
+
+> 
+> Cheers, Andreas
