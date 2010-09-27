@@ -1,147 +1,270 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/4] Add ioctl FITRIM.
-Date: Mon, 27 Sep 2010 16:09:58 +0200
-Message-ID: <1285596600-28358-3-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 0/4 v. 9] Ext3/Ext4 Batched discard support - fstrim
+Date: Mon, 27 Sep 2010 16:11:56 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1009271610360.2743@dhcp-lab-213.englab.brq.redhat.com>
 References: <1285596600-28358-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, rwheeler@redhat.com, sandeen@redhat.com,
-	adilger@dilger.ca, lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, rwheeler@redhat.com,
+	sandeen@redhat.com, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44688 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37011 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755984Ab0I0OKQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Sep 2010 10:10:16 -0400
+	id S1757903Ab0I0OMC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Sep 2010 10:12:02 -0400
 In-Reply-To: <1285596600-28358-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Adds an filesystem independent ioctl to allow implementation of file
-system batched discard support. I takes fstrim_range structure as an
-argument. fstrim_range is definec in the include/fs.h and its
-definition is as follows.
+/*
+ * fstrim.c -- discard the part (or whole) of mounted filesystem.
+ *
+ * Copyright (C) 2009 Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ *
+ * Usage: fstrim [options] <mount point>
+ */
 
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdarg.h>
+
+#ifdef HAVE_GETOPT_H
+#include <getopt.h>
+#else
+extern char *optarg;
+extern int optind;
+#endif
+
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <linux/fs.h>
+
+#ifndef FITRIM
 struct fstrim_range {
-	start;
-	len;
-	minlen;
+	uint64_t start;
+	uint64_t len;
+	uint64_t minlen;
+};
+#define FITRIM		_IOWR('X', 121, struct fstrim_range)
+#endif
+
+const char *program_name = "fstrim";
+
+struct options {
+	struct fstrim_range *range;
+	char mpoint[PATH_MAX];
+	char verbose;
+};
+
+static void usage(void)
+{
+	fprintf(stderr,
+		"Usage: %s [-s start] [-l length] [-m minimum-extent]"
+		" [-v] {mountpoint}\n\t"
+		"-s Starting Byte to discard from\n\t"
+		"-l Number of Bytes to discard from the start\n\t"
+		"-m Minimum extent length to discard\n\t"
+		"-v Verbose - number of discarded bytes\n",
+		program_name);
 }
 
-start	- first Byte to trim
-len	- number of Bytes to trim from start
-minlen	- minimum extent length to trim, free extents shorter than this
-	  number of Bytes will be ignored. This will be rounded up to fs
-	  block size.
+static void err_exit(const char *fmt, ...)
+{
+	va_list pvar;
+	va_start(pvar, fmt);
+	vfprintf(stderr, fmt, pvar);
+	va_end(pvar);
+	usage();
+	exit(EXIT_FAILURE);
+}
 
-It is also possible to specify NULL as an argument. In this case the
-arguments will set itself as follows:
+static void err_range(const char *optarg)
+{
+	err_exit("%s: %s (%s)\n", program_name, strerror(ERANGE), optarg);
+}
 
-start = 0;
-len = ULLONG_MAX;
-minlen = 0;
+/**
+ * Get the number from argument. It can be number followed by
+ * units: k|K, m|M, g|G, t|T
+ */
+static unsigned long long get_number(char **optarg)
+{
+	char *opt, *end;
+	unsigned long long number, max;
 
-So it will trim the whole file system at one run.
+	/* get the max to avoid overflow */
+	max = ULLONG_MAX / 1024;
+	number = 0;
+	opt = *optarg;
 
-After the FITRIM is done, the number of actually discarded Bytes is stored
-in fstrim_range.len to give the user better insight on how much storage
-space has been really released for wear-leveling.
+	errno = 0;
+	number = strtoul(opt, &end , 0);
+	if (errno)
+		err_exit("%s: %s (%s)\n", program_name,
+			 strerror(errno), *optarg);
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ioctl.c         |   39 +++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |    8 ++++++++
- 2 files changed, 47 insertions(+), 0 deletions(-)
+	/* determine if units are defined */
+	switch (*end) {
+	case 'T': /* terabytes */
+	case 't':
+		if (number > max)
+			err_range(*optarg);
+		number *= 1024;
+	case 'G': /* gigabytes */
+	case 'g':
+		if (number > max)
+			err_range(*optarg);
+		number *= 1024;
+	case 'M': /* megabytes */
+	case 'm':
+		if (number > max)
+			err_range(*optarg);
+		number *= 1024;
+	case 'K': /* kilobytes */
+	case 'k':
+		if (number > max)
+			err_range(*optarg);
+		number *= 1024;
+		end++;
+	case '\0': /* end of the string */
+		break;
+	default:
+		err_exit("%s: %s (%s)\n", program_name,
+			 strerror(EINVAL), *optarg);
+		return 0;
+	}
 
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index f855ea4..e92fdbb 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -530,6 +530,41 @@ static int ioctl_fsthaw(struct file *filp)
- 	return thaw_super(sb);
- }
- 
-+static int ioctl_fstrim(struct file *filp, void __user *argp)
-+{
-+	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
-+	struct fstrim_range range;
-+	int ret = 0;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	/* If filesystem doesn't support trim feature, return. */
-+	if (sb->s_op->trim_fs == NULL)
-+		return -EOPNOTSUPP;
-+
-+	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
-+	if (sb->s_bdev == NULL)
-+		return -EINVAL;
-+
-+	if (argp == NULL) {
-+		range.start = 0;
-+		range.len = ULLONG_MAX;
-+		range.minlen = 0;
-+	} else if (copy_from_user(&range, argp, sizeof(range)))
-+		return -EFAULT;
-+
-+	ret = sb->s_op->trim_fs(sb, &range);
-+	if (ret < 0)
-+		return ret;
-+
-+	if ((argp != NULL) &&
-+	    (copy_to_user(argp, &range, sizeof(range))))
-+		return -EFAULT;
-+
-+	return 0;
-+}
-+
- /*
-  * When you add any new common ioctls to the switches above and below
-  * please update compat_sys_ioctl() too.
-@@ -580,6 +615,10 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 		error = ioctl_fsthaw(filp);
- 		break;
- 
-+	case FITRIM:
-+		error = ioctl_fstrim(filp, argp);
-+		break;
-+
- 	case FS_IOC_FIEMAP:
- 		return ioctl_fiemap(filp, arg);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 0ec4d60e..63a0843 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -32,6 +32,12 @@
- #define SEEK_END	2	/* seek relative to end of file */
- #define SEEK_MAX	SEEK_END
- 
-+struct fstrim_range {
-+	uint64_t start;
-+	uint64_t len;
-+	uint64_t minlen;
-+};
-+
- /* And dynamically-tunable limits and defaults: */
- struct files_stat_struct {
- 	int nr_files;		/* read only */
-@@ -312,6 +318,7 @@ struct inodes_stat_t {
- #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
- #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
- #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
-+#define FITRIM		_IOWR('X', 121, struct fstrim_range)	/* Trim */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-@@ -1573,6 +1580,7 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- #endif
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-+	int (*trim_fs) (struct super_block *, struct fstrim_range *);
- };
- 
- /*
--- 
-1.7.2.3
+	if (*end != '\0') {
+		err_exit("%s: %s (%s)\n", program_name,
+			 strerror(EINVAL), *optarg);
+	}
 
+	return number;
+}
+
+static int parse_opts(int argc, char **argv, struct options *opts)
+{
+	int c;
+
+	while ((c = getopt(argc, argv, "s:l:m:v")) != EOF) {
+		switch (c) {
+		case 's': /* starting point */
+			opts->range->start = get_number(&optarg);
+			break;
+		case 'l': /* length */
+			opts->range->len = get_number(&optarg);
+			break;
+		case 'm': /* minlen */
+			opts->range->minlen = get_number(&optarg);
+			break;
+		case 'v': /* verbose */
+			opts->verbose = 1;
+			break;
+		default:
+			return EXIT_FAILURE;
+		}
+	}
+
+	return 0;
+}
+
+static void free_opts(struct options *opts)
+{
+	if (opts) {
+		if (opts->range)
+			free(opts->range);
+		free(opts);
+	}
+}
+
+static void free_opts_and_exit(struct options *opts)
+{
+	free_opts(opts);
+	exit(EXIT_FAILURE);
+}
+
+static void print_usage_and_exit(struct options *opts)
+{
+	usage();
+	free_opts_and_exit(opts);
+}
+
+int main(int argc, char **argv)
+{
+	struct options *opts;
+	struct stat sb;
+	int fd, ret = 0;
+
+	opts = malloc(sizeof(struct options));
+	if (!opts)
+		err_exit("%s: malloc(): %s\n", program_name, strerror(errno));
+
+	opts->range = NULL;
+	opts->verbose = 0;
+
+	if (argc > 1)
+		strncpy(opts->mpoint, argv[argc - 1], sizeof(opts->mpoint));
+
+	if (argc > 2) {
+		opts->range = calloc(1, sizeof(struct fstrim_range));
+		if (!opts->range) {
+			fprintf(stderr, "%s: calloc(): %s\n", program_name,
+				strerror(errno));
+			free_opts_and_exit(opts);
+		}
+		opts->range->len = ULLONG_MAX;
+		ret = parse_opts(argc, argv, opts);
+	}
+
+	if (ret)
+		print_usage_and_exit(opts);
+
+	if (strnlen(opts->mpoint, 1) < 1) {
+		fprintf(stderr, "%s: You have to specify mount point.\n",
+			program_name);
+		print_usage_and_exit(opts);
+	}
+
+	if (stat(opts->mpoint, &sb) == -1) {
+		fprintf(stderr, "%s: %s: %s\n", program_name,
+			opts->mpoint, strerror(errno));
+		print_usage_and_exit(opts);
+	}
+
+	if (!S_ISDIR(sb.st_mode)) {
+		fprintf(stderr, "%s: %s: (%s)\n", program_name,
+			opts->mpoint, strerror(ENOTDIR));
+		print_usage_and_exit(opts);
+	}
+
+	fd = open(opts->mpoint, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "%s: open(%s): %s\n", program_name,
+			opts->mpoint, strerror(errno));
+		free_opts_and_exit(opts);
+	}
+
+	if (ioctl(fd, FITRIM, opts->range)) {
+		fprintf(stderr, "%s: FSTRIM: %s\n", program_name,
+			strerror(errno));
+		free_opts_and_exit(opts);
+	}
+
+	if ((opts->verbose) && (opts->range))
+		fprintf(stdout, "%lu Bytes was trimmed\n", opts->range->len);
+
+	free_opts(opts);
+	return ret;
+}
