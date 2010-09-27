@@ -1,95 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Minimizing fragmentation in ext4, fallocate not enough?
-Date: Mon, 27 Sep 2010 16:16:28 -0500
-Message-ID: <4CA109AC.60408@redhat.com>
-References: <4C9D3CD6.9080000@mozilla.com> <7A56949B-99B6-439F-A015-1C0398A8B525@dilger.ca> <4C9E30B7.1050607@redhat.com> <4CA1085C.5090206@mozilla.com>
+From: Brad Boyer <flar@allandria.com>
+Subject: Re: [PATCH 2/6] [RFC] Create the .relink file_operation
+Date: Mon, 27 Sep 2010 15:03:46 -0700
+Message-ID: <20100927220346.GA30726@cynthia.pants.nu>
+References: <6987185123220ec2034677299859c5a63eaf2aed.1285278339.git.matthltc@us.ibm.com> <d91e3660266d3a2956c4d1aebc9cb618081b21ef.1285278339.git.matthltc@us.ibm.com> <20100926190837.GA9308@cynthia.pants.nu> <20100927191628.GN23839@count0.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Taras Glek <tglek@mozilla.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24761 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752844Ab0I0VQf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Sep 2010 17:16:35 -0400
-In-Reply-To: <4CA1085C.5090206@mozilla.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: containers@lists.linux-foundation.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+To: Matt Helsley <matthltc@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100927191628.GN23839@count0.beaverton.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Taras Glek wrote:
-> On 09/25/2010 10:26 AM, Eric Sandeen wrote:
->> Andreas Dilger wrote:
->>> On 2010-09-24, at 18:05, Taras Glek wrote:
->>>> I noticed that several random IO-heavy Firefox files got fragmented
->>>> easily. Our cache suffers most. The cache works by creating a flat
->>>> file and storing fixed-size entries in it. I though if I
->>>> fallocate() the file first, then all of the writes within the
->>>> allocated area would not cause additional fragmentation.
->>>>
->>>> This doesn't seem to completely cure fragmentation with ext4 in
->>>> 2.6.33. If I allocate a 4mb file, it gets more and more fragmented
->>>> over time. fallocate() does reduce fragmentation, but not as much
->>>> as I expected.
->>> Have you checked filefrag immediately after fallocating the file?  Is
->>> it OK?
->>>
->>> It may be that the issue is that an fallocate()'d file is using
->>> "unwritten extents" and converting these extents to "normal" extents
->>> may cause apparent fragmentation.  However, depending on which
->>> version of e2fsprogs/filefrag you are using, it may well be that
->>> these extents only appear to be fragmented due to the different
->>> extent types.
->> Agreed, please include filefrag (-v) output right after it's fallocated,
->> and also when you see this fragmentation, and then we'll have a better
->> idea
->> about what you're seeing.  And, the newer the filefrag the better.  :)
-> Thanks for clarification. Turns out ext4 is performing as expected,
-> nevermind my previous message.
+On Mon, Sep 27, 2010 at 12:16:28PM -0700, Matt Helsley wrote:
+> On Sun, Sep 26, 2010 at 12:08:37PM -0700, Brad Boyer wrote:
+> > On Thu, Sep 23, 2010 at 02:53:28PM -0700, Matt Helsley wrote:
+> > > Not all filesystems will necessarily be able to support relinking an
+> > > orphan inode back into the filesystem. Some offlist feedback suggested
+> > > that instead of overloading .link that relinking should be a separate
+> > > file operation for this reason.
+> > > 
+> > > Since .relink is a superset of .link make the VFS call .relink where
+> > > possible and .link otherwise.
+> > > 
+> > > The next commit will change ext3/4 to enable this operation.
+> > 
+> > I may have missed something in one of these patches (patch 1 and any
+> > original summary if there was one don't appear in my email), but
+> > what is the point of the new operation? I didn't see any case that
+> > treats one any different than the other. What is disallowed (and how)
+> > for a driver which does not implement .relink but has .link?
 > 
-> I was confused by discrepancy  in number of extents reported by filefrag
-> 1.41.10 with/without -v flag.
+> Did you get patch 3? It shows how ext3/ext4 add the ability to take an
+> inode that has been unlinked, placed onto the orphan list, and relink it.
 
-:) yeah, that's an odd discrepancy, I guess...
+Yes, I did get patch 3. I think you misunderstood my question. You point
+both .link and .relink to the same function in ext3 and ext4. The common
+code which calls them will call .relink if it is set and .link if it is
+not set. If nothing acts any different based on .relink being NULL or
+not-NULL, and the only implementation isn't any different from .link
+what was the point of introducing a new operation?
 
-I think filefrag needs to decide what it means by "number of extents"
-found, and stick to it.  For ext3 it merges in contiguous metadata,
-for ext4 it doesn't count adjacent extents as separate, etc...
-it does get confusing.
+What I expected to see was that some particular code path would check
+if .relink was NULL and fail in that case. Unless there is a code path
+that will only call .relink and not .link, it seems useless to me.
 
-Anyway, glad that what you're actually seeing on disk is pretty
-much what's expected.  :)  I am a little surprised that we are
-leaving those little interspersed unwritten extents though, bits
-of the code try to extend the conversion to avoid that, I thought.
-
--Eric
-
-> filefrag _CACHE_003_
-> _CACHE_003_: 17 extents found
-> filefrag -v _CACHE_003_
-> Filesystem type is: ef53
-> File size of _CACHE_003_ is 4194304 (1024 blocks, blocksize 4096)
->  ext logical physical expected length flags
->    0       0   232448             128
->    1     128   232576               1 unwritten
->    2     129   232577              95
->    3     224   232672               1 unwritten
->    4     225   232673              31
->    5     256   232704               1 unwritten
->    6     257   232705              63
->    7     320   232768               1 unwritten
->    8     321   232769              95
->    9     416   232864               1 unwritten
->   10     417   232865             255
->   11     672   233120               1 unwritten
->   12     673   233121             191
->   13     864   233312               1 unwritten
->   14     865   233313             127
->   15     992   233440               3
->   16     995   233443              29 unwritten,eof
-> _CACHE_003_: 1 extent found
-> 
-> Thanks,
-> Taras
+	Brad Boyer
+	flar@allandria.com
 
