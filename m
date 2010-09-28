@@ -1,54 +1,55 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/6 v4] Lazy itable initialization for Ext4
-Date: Tue, 28 Sep 2010 11:05:24 -0400
-Message-ID: <20100928150524.GD7865@thunk.org>
-References: <1284641251-24531-1-git-send-email-lczerner@redhat.com>
- <20100928040142.GA7865@thunk.org>
+Subject: Re: I/O topology fixes for big physical block size
+Date: Tue, 28 Sep 2010 16:57:41 -0400
+Message-ID: <20100928205741.GA22257@thunk.org>
+References: <1285605664-27027-1-git-send-email-martin.petersen@oracle.com>
+ <4CA0CC38.5010804@fusionio.com>
+ <yq1pqvzcddq.fsf@sermon.lab.mkp.net>
+ <4CA118FF.1080100@fusionio.com>
+ <yq18w2mddav.fsf@sermon.lab.mkp.net>
+ <20100927231551.GA15653@redhat.com>
+ <4CA16F6A.1090904@fusionio.com>
+ <4CA17B13.7080801@redhat.com>
+ <20100928141545.GA21587@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
-	sandeen@redhat.com, adilger@dilger.ca, snitzer@gmail.com
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	"James.Bottomley@hansenpartnership.com"
+	<James.Bottomley@hansenpartnership.com>,
+	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Mike Snitzer <snitzer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:41092 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:34287 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753891Ab0I1PF1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Sep 2010 11:05:27 -0400
+	id S1752273Ab0I1U5v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Sep 2010 16:57:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20100928040142.GA7865@thunk.org>
+In-Reply-To: <20100928141545.GA21587@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 28, 2010 at 12:01:42AM -0400, Ted Ts'o wrote:
-> Why are they strange?  Because this was running under KVM, and there
-> were no underlying hardware problems in the host OS.
+On Tue, Sep 28, 2010 at 10:15:45AM -0400, Mike Snitzer wrote:
+> Actually, -F allows one to override fs blocksize < physical_block_size.
 > 
-> The other two times I got a hard hang at XFStests 219 and 83, and the
-> system was caught in such a type look that magic-sysrq wasn't working
-> correctly.
+> In this instance we have the following:
+> # cat /sys/block/dm-2/queue/physical_block_size 
+> 1048576
+> # cat /sys/block/dm-2/queue/logical_block_size 
+> 512
+>  
+> > Should we change something?
 > 
-> I've XFStests in this setup before applying these patches, and things
-> worked fine.  I'm currently rolling back the patches and trying
-> another xfstests runs just to make sure the problem wasn't introduced
-> by some patch, but for now, it looks there might be a problem
-> somewhere.  And unfortunately, since it's not happening in a regular
-> location or test, and the system is so badly locked up sysrq doesn't
-> work, finding it may be intersting....
+> Unclear.  I could see maybe automatically capping the fs block size at
+> 4096 if physical_block_size is larger and is a multiple of 4096?
 
-I've just tried bisecting the patches, and tried applying the first
-three (well, two since I combined patches #2 and #3).  Simply enabling
-the init_itables code wasn't enough to trigger the problem.  It looks
-like the problem is in the last three patches (probably in one of the
-patches where we convert ext4 to use sb_issue_zeroout, either the
-extent or the resize code).
+Can we decide soon what the right thing should be?  I'm about to
+release e2fsrogs 1.41.13, and if I should put in some sanity checking
+code so mke2fs does something sane when it sees a 1M physical block
+size, I can do that.
 
-What I'll probably do (unless we find the problem very quickly) is to
-reorder things so that we take the init_itable patch and the sysfs
-feature patch, and put the rest into the unstable portion of the patch
-queue.  That way I can work on the rest of the ext4 patches for the
-merge window, without getting blocked on this patch series.  And if we
-don't manage to figure out what went wrong, while it would be nice to
-simplify the code for 2.6.36, it won't be the end of the world if they
-need to wait until the next cycle.
+Or if the kernel is going to do that, it's fine too....
 
-				- Ted
+      	  	    	     	      	   - Ted
