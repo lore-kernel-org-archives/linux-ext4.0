@@ -1,116 +1,54 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: I/O topology fixes for big physical block size
-Date: Tue, 28 Sep 2010 10:15:45 -0400
-Message-ID: <20100928141545.GA21587@redhat.com>
-References: <1285605664-27027-1-git-send-email-martin.petersen@oracle.com>
- <4CA0CC38.5010804@fusionio.com>
- <yq1pqvzcddq.fsf@sermon.lab.mkp.net>
- <4CA118FF.1080100@fusionio.com>
- <yq18w2mddav.fsf@sermon.lab.mkp.net>
- <20100927231551.GA15653@redhat.com>
- <4CA16F6A.1090904@fusionio.com>
- <4CA17B13.7080801@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/6 v4] Lazy itable initialization for Ext4
+Date: Tue, 28 Sep 2010 11:05:24 -0400
+Message-ID: <20100928150524.GD7865@thunk.org>
+References: <1284641251-24531-1-git-send-email-lczerner@redhat.com>
+ <20100928040142.GA7865@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jaxboe@fusionio.com>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	"James.Bottomley@hansenpartnership.com"
-	<James.Bottomley@hansenpartnership.com>,
-	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-scsi-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
+	sandeen@redhat.com, adilger@dilger.ca, snitzer@gmail.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:41092 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753891Ab0I1PF1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:05:27 -0400
 Content-Disposition: inline
-In-Reply-To: <4CA17B13.7080801@redhat.com>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20100928040142.GA7865@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 28 2010 at  1:20am -0400,
-Eric Sandeen <sandeen@redhat.com> wrote:
-
-> Jens Axboe wrote:
-> > On 2010-09-28 08:15, Mike Snitzer wrote:
-> >> On Mon, Sep 27 2010 at  6:36pm -0400,
-> >> Martin K. Petersen <martin.petersen@oracle.com> wrote:
-> >>
-> >>>>>>>> "Jens" == Jens Axboe <jaxboe@fusionio.com> writes:
-> >>> Jens> Does mkfs do the right thing?
-> >>>
-> >>> Depends on which mkfs it is. Mike has tested things and can chip in
-> >>> here...
-> >> I haven't test all mkfs.* but...
-> >>
-> >> mkfs.xfs just works with 1M physical_block_size.
-> >>
-> >> mkfs.ext4 won't by default but -F "fixes" that:
-> >>
-> >> # mkfs.ext4 -b 4096 -F /dev/mapper/20017380023360006
-> >> mke2fs 1.41.12 (17-May-2010)
-> >> Warning: specified blocksize 4096 is less than device physical sectorsize 1048576, forced to continue
-> > 
-> > OK, so that's not exactly doing the right thing, but at least you can
-> > work around it with a parameter. So I'd say that is good enough.
+On Tue, Sep 28, 2010 at 12:01:42AM -0400, Ted Ts'o wrote:
+> Why are they strange?  Because this was running under KVM, and there
+> were no underlying hardware problems in the host OS.
 > 
-> Which part of it is the wrong thing...?
+> The other two times I got a hard hang at XFStests 219 and 83, and the
+> system was caught in such a type look that magic-sysrq wasn't working
+> correctly.
 > 
-> Today mkfs.ext4 refuses to create an fs blocksize which is smaller than logical
-> or physical by default, because one is suboptimal and the other is impossible.
-> -F (force) can override the suboptimal fs blocksize < logical blocksize case...
+> I've XFStests in this setup before applying these patches, and things
+> worked fine.  I'm currently rolling back the patches and trying
+> another xfstests runs just to make sure the problem wasn't introduced
+> by some patch, but for now, it looks there might be a problem
+> somewhere.  And unfortunately, since it's not happening in a regular
+> location or test, and the system is so badly locked up sysrq doesn't
+> work, finding it may be intersting....
 
-Actually, -F allows one to override fs blocksize < physical_block_size.
+I've just tried bisecting the patches, and tried applying the first
+three (well, two since I combined patches #2 and #3).  Simply enabling
+the init_itables code wasn't enough to trigger the problem.  It looks
+like the problem is in the last three patches (probably in one of the
+patches where we convert ext4 to use sb_issue_zeroout, either the
+extent or the resize code).
 
-In this instance we have the following:
-# cat /sys/block/dm-2/queue/physical_block_size 
-1048576
-# cat /sys/block/dm-2/queue/logical_block_size 
-512
- 
-> Should we change something?
+What I'll probably do (unless we find the problem very quickly) is to
+reorder things so that we take the init_itable patch and the sysfs
+feature patch, and put the rest into the unstable portion of the patch
+queue.  That way I can work on the rest of the ext4 patches for the
+merge window, without getting blocked on this patch series.  And if we
+don't manage to figure out what went wrong, while it would be nice to
+simplify the code for 2.6.36, it won't be the end of the world if they
+need to wait until the next cycle.
 
-Unclear.  I could see maybe automatically capping the fs block size at
-4096 if physical_block_size is larger and is a multiple of 4096?
-
-> >> I'll check fdisk and parted tomorrow (I know lvm2 doesn't look at
-> >> physical_block_size).
-
-Both fdisk and parted look good (partitions are physical_block_size
-aligned, will warn if you attempt to stray from that alignment).  I'll
-spare you detials of the creation steps...
-
-Results of fdisk:
------------------
-
-# fdisk /dev/sdb
-...
-The device presents a logical sector size that is smaller than
-the physical sector size. Aligning to a physical sector (or optimal
-I/O) size boundary is recommended, or performance may be impacted.
-...
-
-# fdisk -l -u /dev/sdb
-
-Disk /dev/sdb: 17.2 GB, 17179869184 bytes
-255 heads, 63 sectors/track, 2088 cylinders, total 33554432 sectors
-Units = sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 1048576 bytes
-I/O size (minimum/optimal): 1048576 bytes / 1048576 bytes
-Disk identifier: 0x0009bf46
-
-   Device Boot      Start         End      Blocks   Id  System
-/dev/sdb1            2048    16775167     8386560   83  Linux
-
-
-Results of parted:
-------------------
-Also looks good, doesn't care about physical_block_size.  Is more
-concerned with {minimum,optimal}_io_size.
-
-(parted) unit MiB
-(parted) p
-Model: XXXXXXXXXXXXX
-Disk /dev/sdb: 16384MiB
-Sector size (logical/physical): 512B/1048576B
-Partition Table: msdos
-
-Number  Start    End      Size     Type     File system  Flags
- 1      1.00MiB  8191MiB  8190MiB  primary
+				- Ted
