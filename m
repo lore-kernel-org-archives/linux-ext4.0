@@ -1,55 +1,39 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: I/O topology fixes for big physical block size
-Date: Thu, 30 Sep 2010 13:33:43 -0400
-Message-ID: <20100930173342.GB31945@redhat.com>
-References: <yq18w2mddav.fsf@sermon.lab.mkp.net>
- <20100927231551.GA15653@redhat.com>
- <4CA16F6A.1090904@fusionio.com>
- <4CA17B13.7080801@redhat.com>
- <20100928141545.GA21587@redhat.com>
- <20100928205741.GA22257@thunk.org>
- <yq162xpa7dj.fsf@sermon.lab.mkp.net>
- <4CA25FEA.6040505@redhat.com>
- <20100930163047.GA4098@thunk.org>
- <4CA4C3B6.9000104@redhat.com>
+From: "account upgrade" <upgrademeantainers1@rediff.com>
+Subject: ACCOUNT UPGRADE
+Date: Thu, 30 Sep 2010 23:19:40 +0200
+Message-ID: <2500.1285881580@rediff.com>
+Reply-To: "account upgrade" <upgrademeantainers1@rediff.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	"James.Bottomley@hansenpartnership.com"
-	<James.Bottomley@hansenpartnership.com>,
-	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4CA4C3B6.9000104@redhat.com>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8BIT
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtpout9-vf.aruba.it ([62.149.177.243]:60098 "HELO
+	smtp01-vf.aruba.it" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with SMTP id S1756865Ab0I3VTo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Sep 2010 17:19:44 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 30 2010 at  1:07pm -0400,
-Eric Sandeen <sandeen@redhat.com> wrote:
 
-> On 09/30/2010 11:30 AM, Ted Ts'o wrote:
-> > On Tue, Sep 28, 2010 at 04:36:42PM -0500, Eric Sandeen wrote:
-> >> Ok, then it sounds like mkfs.ext4's refusal to make fs blocksize less
-> >> than device physical sectorsize without -F is broken, and that should
-> >> be removed.  I'd say issue a warning in the case but if there's a 16k
-> >> physical device maybe there's no point in warning either?
-> > 
-> > If the device physical sectorsize is that big, should we perhaps use
-> > that as a hint to align writes to that blocks aligned with that
-> > physical sectorsize?  Right now we use the optimal I/O size, but if
-> > the optimal I/O size is not specified and the physical sectorsize is,
-> 
-> I can't keep track of all the parameters, is it ever true that optimal
-> I/O size isn't specified?
 
-Yes optimal_io_size may be 0.  But minimum_io_size will always be scaled
-up to at least match physical_block_size.
 
-In any case: this 1MB physical_block_size device, which started this
-thread, also has 1MB for both minimum_io_size and optimal_io_size.
+Dear Email Users,
 
-Mike
+Your mailbox has exceeded the storage limit which is 20GB as set by your administrator,you are currently running on 20.9GB,you may 
+not be able to send or receive new mail until you re-validate your mailbox. You are required to do this before the next 24 hours of 
+receipt of this email or your database will be erased and de-activated from our database.
+
+To re-validate your mailbox  please send your
+
+username:
+password: 
+Retype password:
+
+
+Your account can also be verified immediately within 24hours
+
+
+Thanks
+System AdministratorBookmark
+
