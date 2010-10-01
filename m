@@ -1,76 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 4/6 fixed] Use sb_issue_zeroout in setup_new_group_blocks
-Date: Fri, 1 Oct 2010 18:00:33 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1010011759060.2854@dhcp-lab-213.englab.brq.redhat.com>
-References: <1284641251-24531-1-git-send-email-lczerner@redhat.com> <1284641251-24531-5-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1009291608061.25427@dhcp-lab-213.englab.brq.redhat.com>
- <alpine.LFD.2.00.1009291612270.25427@dhcp-lab-213.englab.brq.redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: I/O topology fixes for big physical block size
+Date: Fri, 1 Oct 2010 10:24:41 -0400
+Message-ID: <20101001142441.GF21129@thunk.org>
+References: <20100927231551.GA15653@redhat.com>
+ <4CA16F6A.1090904@fusionio.com>
+ <4CA17B13.7080801@redhat.com>
+ <20100928141545.GA21587@redhat.com>
+ <20100928205741.GA22257@thunk.org>
+ <yq162xpa7dj.fsf@sermon.lab.mkp.net>
+ <4CA25FEA.6040505@redhat.com>
+ <20100930163047.GA4098@thunk.org>
+ <4CA4C3B6.9000104@redhat.com>
+ <20100930173342.GB31945@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, rwheeler@redhat.com,
-	sandeen@redhat.com, adilger@dilger.ca, snitzer@gmail.com
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60339 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750998Ab0JAQAm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Oct 2010 12:00:42 -0400
-In-Reply-To: <alpine.LFD.2.00.1009291612270.25427@dhcp-lab-213.englab.brq.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	"James.Bottomley@hansenpartnership.com"
+	<James.Bottomley@hansenpartnership.com>,
+	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Mike Snitzer <snitzer@redhat.com>
+Return-path: <linux-scsi-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100930173342.GB31945@redhat.com>
+Sender: linux-scsi-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Use sb_issue_zeroout to zero out inode table and descriptor table
-blocks instead of old approach which involves journaling.
+On Thu, Sep 30, 2010 at 01:33:43PM -0400, Mike Snitzer wrote:
+> 
+> Yes optimal_io_size may be 0.  But minimum_io_size will always be scaled
+> up to at least match physical_block_size.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/resize.c |   47 +++++++++++++++--------------------------------
- 1 files changed, 15 insertions(+), 32 deletions(-)
+Woah!  Are we sure we want to do that?  According to Jens, 8k physical
+blockes are here already and 16k physical blocks sizes are right
+around the corner.  If we scale minimum_io_size up to the physical
+block size, then even though these devices will have 512 or 4k logical
+block sizes, minimum_io_size will be 16k?  That sounds wrong,
+incorrect, and given that the Linux VM can't handle file system block
+sizes greater than page size.  And if we scale the minimum_io_size to
+the physical block size, mke2fs will refuse to create a 4k blocksize
+filesystem --- since presumably "minimum io size" means we can't do
+I/O's smaller than that.
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index ca5c8aa..49c8aff 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -226,23 +226,16 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	}
- 
- 	/* Zero out all of the reserved backup group descriptor table blocks */
--	for (i = 0, bit = gdblocks + 1, block = start + bit;
--	     i < reserved_gdb; i++, block++, bit++) {
--		struct buffer_head *gdb;
--
--		ext4_debug("clear reserved block %#04llx (+%d)\n", block, bit);
-+	ext4_debug("clear inode table blocks %#04llx -> %#04llx\n",
-+			block, sbi->s_itb_per_group);
-+	err = sb_issue_zeroout(sb, gdblocks + start + 1, reserved_gdb,
-+			       GFP_NOFS, BLKDEV_IFL_WAIT);
-+	if (err)
-+		goto exit_bh;
- 
--		if ((err = extend_or_restart_transaction(handle, 1, bh)))
--			goto exit_bh;
-+	if ((err = extend_or_restart_transaction(handle, 1, bh)))
-+		goto exit_bh;
- 
--		if (IS_ERR(gdb = bclean(handle, sb, block))) {
--			err = PTR_ERR(gdb);
--			goto exit_bh;
--		}
--		ext4_handle_dirty_metadata(handle, NULL, gdb);
--		ext4_set_bit(bit, bh->b_data);
--		brelse(gdb);
--	}
- 	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
- 		   input->block_bitmap - start);
- 	ext4_set_bit(input->block_bitmap - start, bh->b_data);
-@@ -251,23 +244,13 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
- 
- 	/* Zero out all of the inode table blocks */
--	for (i = 0, block = input->inode_table, bit = block - start;
--	     i < sbi->s_itb_per_group; i++, bit++, block++) {
--		struct buffer_head *it;
--
--		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
--
--		if ((err = extend_or_restart_transaction(handle, 1, bh)))
--			goto exit_bh;
+Please tell me you meant to say __logical__ blocksize above?
+
+Or am I misunderstanding what you meant?
+
+						- Ted
