@@ -1,51 +1,58 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: I/O topology fixes for big physical block size
-Date: Fri, 1 Oct 2010 10:24:41 -0400
-Message-ID: <20101001142441.GF21129@thunk.org>
-References: <20100927231551.GA15653@redhat.com>
- <4CA16F6A.1090904@fusionio.com>
- <4CA17B13.7080801@redhat.com>
- <20100928141545.GA21587@redhat.com>
- <20100928205741.GA22257@thunk.org>
- <yq162xpa7dj.fsf@sermon.lab.mkp.net>
- <4CA25FEA.6040505@redhat.com>
- <20100930163047.GA4098@thunk.org>
- <4CA4C3B6.9000104@redhat.com>
- <20100930173342.GB31945@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	"James.Bottomley@hansenpartnership.com"
-	<James.Bottomley@hansenpartnership.com>,
-	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Mike Snitzer <snitzer@redhat.com>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100930173342.GB31945@redhat.com>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: 2.6.35-rc6 REGRESSION: Dirtiable inode bdi default != sb bdi ext2/ext3/ext4
+Date: Fri, 01 Oct 2010 17:35:54 -0400
+Message-ID: <E1P1nGk-00023P-3d@tytso-glaptop>
+Cc: linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:38553 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753123Ab0JAVgA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Oct 2010 17:36:00 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 30, 2010 at 01:33:43PM -0400, Mike Snitzer wrote:
-> 
-> Yes optimal_io_size may be 0.  But minimum_io_size will always be scaled
-> up to at least match physical_block_size.
 
-Woah!  Are we sure we want to do that?  According to Jens, 8k physical
-blockes are here already and 16k physical blocks sizes are right
-around the corner.  If we scale minimum_io_size up to the physical
-block size, then even though these devices will have 512 or 4k logical
-block sizes, minimum_io_size will be 16k?  That sounds wrong,
-incorrect, and given that the Linux VM can't handle file system block
-sizes greater than page size.  And if we scale the minimum_io_size to
-the physical block size, mke2fs will refuse to create a 4k blocksize
-filesystem --- since presumably "minimum io size" means we can't do
-I/O's smaller than that.
+I'm not sure this is related to:
 
-Please tell me you meant to say __logical__ blocksize above?
+http://bugzilla.kernel.org/show_bug.cgi?id=19062
 
-Or am I misunderstanding what you meant?
+(2.6.35-rc6 REGRESSION: Dirtiable inode bdi default != sb bdi btrfs)
 
-						- Ted
+or not, but this is a problem that did not exist in 2.6.36-rc3 and
+showed up when I tried going to 2.6.36-rc6.
+
+The symptoms are that if I mount a filesystem, whether it be ext2, ext3,
+or ext4, modify it slightly (say, create a file or a directory), then
+umount the filesystem, and run "e2fsck -f" on that filesystem, I get the
+warning:
+
+[  866.543173] WARNING: at /usr/projects/linux/ext4/fs/fs-writeback.c:87 ino_bdi+0x4e/0x5c()
+[  866.546156] Hardware name: 
+[  866.547415] Dirtiable inode bdi block != sb bdi block
+[  866.556113] Modules linked in:
+[  866.557522] Pid: 1993, comm: e2fsck Tainted: G        W   2.6.36-rc6-0004aa513 #722
+[  866.560365] Call Trace:
+[  866.561475]  [<c015a2e2>] warn_slowpath_common+0x6a/0x7f
+[  866.563312]  [<c020a762>] ? inode_to_bdi+0x4e/0x5c
+[  866.565047]  [<c015a36a>] warn_slowpath_fmt+0x2b/0x2f
+[  866.566852]  [<c020a762>] inode_to_bdi+0x4e/0x5c
+[  866.568457]  [<c020b6c3>] __mark_inode_dirty+0xaf/0x162
+[  866.570242]  [<c0202305>] file_update_time+0xcc/0xe9
+[  866.571924]  [<c01c68dd>] __generic_file_aio_write+0x136/0x28f
+[  866.573770]  [<c02145a4>] blkdev_aio_write+0x33/0x72
+[  866.575480]  [<c01f20da>] do_sync_write+0x8f/0xca
+[  866.577145]  [<c0646db8>] ? mutex_unlock+0xd/0xf
+[  866.578760]  [<c030cc70>] ? security_file_permission+0x27/0x2b
+[  866.583696]  [<c01f227c>] ? rw_verify_area+0x9d/0xc0
+[  866.585906]  [<c01f204b>] ? do_sync_write+0x0/0xca
+[  866.587735]  [<c01f2629>] vfs_write+0x85/0xe3
+[  866.589575]  [<c01f2725>] sys_write+0x40/0x62
+[  866.591435]  [<c064889d>] syscall_call+0x7/0xb
+[  866.593240]  [<c0640000>] ? init_amd+0x158/0x532
+[  866.594129] ---[ end trace 4cd5bce2135538d2 ]---
+
+This is rather blatent and obvious, so I'm wondering how this got
+missed?
+
+							- Ted
