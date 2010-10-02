@@ -1,58 +1,61 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/6 v4] Lazy itable initialization for Ext4
-Date: Sat, 2 Oct 2010 15:55:35 -0400
-Message-ID: <20101002195535.GM21129@thunk.org>
-References: <1284641251-24531-1-git-send-email-lczerner@redhat.com>
- <20100928040142.GA7865@thunk.org>
- <alpine.LFD.2.00.1009291516270.2982@dhcp-lab-213.englab.brq.redhat.com>
- <alpine.LFD.2.00.1010011752280.2854@dhcp-lab-213.englab.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
-	sandeen@redhat.com, adilger@dilger.ca, snitzer@gmail.com
-To: Lukas Czerner <lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] jbd2: Add sanity check for attempts to start handle during umount
+Date: Sat,  2 Oct 2010 16:36:34 -0400
+Message-ID: <1286051794-11592-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33831 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56380 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751442Ab0JBTzm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Oct 2010 15:55:42 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1010011752280.2854@dhcp-lab-213.englab.brq.redhat.com>
+	id S1751598Ab0JBUgi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Oct 2010 16:36:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 01, 2010 at 05:58:52PM +0200, Lukas Czerner wrote:
-> 
-> After extensive xfstest-ing I have not been able to reproduce it.
-> However, after a while hammering it with other stress test (the one
-> I have proposed to test batched discard implementation with) I have
-> got a panic due to not up-to-date buffer_head in submit_bh() :
-> kernel BUG at fs/buffer.c:2910! - I have been able to reproduce it
-> every time (on different BUG_ON sometimes)
+If there is an attempt to modify the file system during the call to
+jbd2_destroy_journal(), it can lead to a system lockup.  So add some
+checking to make it much more obvious when this happens to and to
+determine where the offending code is located.
 
-I found it --- or at least I found one of the problems.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/checkpoint.c  |   10 ++++++++++
+ fs/jbd2/transaction.c |    1 +
+ 2 files changed, 11 insertions(+), 0 deletions(-)
 
-The call to ext4_unregister_li_request(sb) comes *after* the call to
-jbd2_journal_destroy().  If while we are destroying the journal, we
-get unlucky and call ext4_init_inode_table(), then we end up creating
-a handle after the journal thread is shutdown, during the final call
-to jbd2_journal_commit_transaction(), but before
-jbd2_journal_destroy() calls jbd2_log_do_checkpoint(), then we end up
-waiting forever in jbd2_log_wait_commit().
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 5247e7f..524800d 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -299,6 +299,16 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
+ 		transaction->t_chp_stats.cs_forced_to_close++;
+ 		spin_unlock(&journal->j_list_lock);
+ 		jbd_unlock_bh_state(bh);
++		if (unlikely(journal->j_flags & JBD2_UNMOUNT))
++			/*
++			 * The journal thread is dead; so starting and
++			 * waiting for a commit to finish will cause
++			 * us to wait for a _very_ long time.
++			 */
++			printk(KERN_ERR "JBD2: %s: "
++			       "Waiting for Godot: block %llu\n",
++			       journal->j_devname,
++			       (unsigned long long) bh->b_blocknr);
+ 		jbd2_log_start_commit(journal, tid);
+ 		jbd2_log_wait_commit(journal, tid);
+ 		ret = 1;
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index f3479d6..6bf0a24 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -156,6 +156,7 @@ alloc_transaction:
+ 	 */
+ repeat:
+ 	read_lock(&journal->j_state_lock);
++	BUG_ON(journal->j_flags & JBD2_UNMOUNT);
+ 	if (is_journal_aborted(journal) ||
+ 	    (journal->j_errno != 0 && !(journal->j_flags & JBD2_ACK_ERR))) {
+ 		read_unlock(&journal->j_state_lock);
+-- 
+1.7.1
 
-This shouldn't however lock up the system tight enough that it doesn't
-respond to magic sysrq, but I haven't seen that problem since I moved
-from 2.6.36-rc3 to 2.6.36-rc6.  I do see this problem, which is
-definitely a bug.
-
-I am getting a lot of warnings from fs/writeback.c:76 (Dirtiable inode
-bdi block != sb bdi block) which I have been commenting out for now,
-since it seems to be noisy but otherwise relatively harmless.
-
-I also found a bug in ext4_init_inode_table() where you compare 
-(num > EXT4_INODES_PER_GROUP(sb)) in ext4_init_inode_table(), which
-I'm pretty sure should be (num > sbi->s_itb_per_group) instead.
-
-Regards,
-
-							- Ted
