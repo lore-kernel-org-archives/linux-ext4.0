@@ -1,14 +1,14 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: [PATCH] jbd2: Add sanity check for attempts to start handle during umount
-Date: Sat,  2 Oct 2010 16:36:34 -0400
-Message-ID: <1286051794-11592-1-git-send-email-tytso@mit.edu>
+Date: Sat,  2 Oct 2010 16:36:46 -0400
+Message-ID: <1286051806-11641-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56380 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56383 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751598Ab0JBUgi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Oct 2010 16:36:38 -0400
+	id S1751638Ab0JBUgs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Oct 2010 16:36:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
