@@ -1,50 +1,58 @@
-From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH] jbd: Use printk_ratelimit() in journal_alloc_journal_head()
-Date: Mon,  4 Oct 2010 18:17:14 +0900
-Message-ID: <1286183834-10548-1-git-send-email-namhyung@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd: Move debug message into #ifdef area
+Date: Mon, 4 Oct 2010 11:39:48 +0200
+Message-ID: <20101004093948.GB3589@quack.suse.cz>
+References: <1286180813-4653-1-git-send-email-namhyung@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Namhyung Kim <namhyung@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:38756 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752814Ab0JDJRS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Oct 2010 05:17:18 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:50884 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754015Ab0JDJkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Oct 2010 05:40:42 -0400
+Content-Disposition: inline
+In-Reply-To: <1286180813-4653-1-git-send-email-namhyung@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use printk_ratelimit() instead of doing it manually.
+On Mon 04-10-10 17:26:53, Namhyung Kim wrote:
+> Move call to jbd_debug() into #ifdef CONFIG_JBD_DEBUG block because
+> 'dropped' is declared there. The code could be compiled without this
+> change anyway, simply because jbd_debug() expands to nothing if
+> !CONFIG_JBD_DEBUG but IMHO it doesn't look good in general.
+> 
+> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+  Thanks. Merged into my tree.
 
-Signed-off-by: Namhyung Kim <namhyung@gmail.com>
----
- fs/jbd/journal.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
+								Honza
 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 6f20a75..d66dd36 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -1718,7 +1718,6 @@ static void journal_destroy_journal_head_cache(void)
- static struct journal_head *journal_alloc_journal_head(void)
- {
- 	struct journal_head *ret;
--	static unsigned long last_warning;
- 
- #ifdef CONFIG_JBD_DEBUG
- 	atomic_inc(&nr_journal_heads);
-@@ -1726,11 +1725,10 @@ static struct journal_head *journal_alloc_journal_head(void)
- 	ret = kmem_cache_alloc(journal_head_cache, GFP_NOFS);
- 	if (ret == NULL) {
- 		jbd_debug(1, "out of memory for journal_head\n");
--		if (time_after(jiffies, last_warning + 5*HZ)) {
-+		if (printk_ratelimit())
- 			printk(KERN_NOTICE "ENOMEM in %s, retrying.\n",
- 			       __func__);
--			last_warning = jiffies;
--		}
-+
- 		while (ret == NULL) {
- 			yield();
- 			ret = kmem_cache_alloc(journal_head_cache, GFP_NOFS);
+> ---
+>  fs/jbd/recovery.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
+> index 81051da..5b43e96 100644
+> --- a/fs/jbd/recovery.c
+> +++ b/fs/jbd/recovery.c
+> @@ -296,10 +296,10 @@ int journal_skip_recovery(journal_t *journal)
+>  #ifdef CONFIG_JBD_DEBUG
+>  		int dropped = info.end_transaction -
+>  			      be32_to_cpu(journal->j_superblock->s_sequence);
+> -#endif
+>  		jbd_debug(1,
+>  			  "JBD: ignoring %d transaction%s from the journal.\n",
+>  			  dropped, (dropped == 1) ? "" : "s");
+> +#endif
+>  		journal->j_transaction_sequence = ++info.end_transaction;
+>  	}
+>  
+> -- 
+> 1.7.0.4
+> 
+
 -- 
-1.7.0.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
