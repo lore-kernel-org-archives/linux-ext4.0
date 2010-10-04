@@ -1,37 +1,43 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/6 v4] Lazy itable initialization for Ext4
-Date: Mon, 4 Oct 2010 03:31:17 -0400
-Message-ID: <20101004073117.GB2889@thunk.org>
-References: <1284641251-24531-1-git-send-email-lczerner@redhat.com>
- <20100928040142.GA7865@thunk.org>
- <alpine.LFD.2.00.1009291516270.2982@dhcp-lab-213.englab.brq.redhat.com>
- <alpine.LFD.2.00.1010011752280.2854@dhcp-lab-213.englab.brq.redhat.com>
- <20101002195535.GM21129@thunk.org>
- <20101003024329.GO21129@thunk.org>
- <20101004023649.GA2889@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
-	sandeen@redhat.com, adilger@dilger.ca, snitzer@gmail.com
-To: Lukas Czerner <lczerner@redhat.com>
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: [PATCH] jbd: Move debug message into #ifdef area
+Date: Mon,  4 Oct 2010 17:26:53 +0900
+Message-ID: <1286180813-4653-1-git-send-email-namhyung@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:55844 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752570Ab0JDHbV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Oct 2010 03:31:21 -0400
-Content-Disposition: inline
-In-Reply-To: <20101004023649.GA2889@thunk.org>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:58630 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753363Ab0JDI05 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Oct 2010 04:26:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 03, 2010 at 10:36:49PM -0400, Ted Ts'o wrote:
-> +
-> +		if (jiffies >= next_wakeup) {
-> +			cond_resched();
-> +			continue;
-> +		}
+Move call to jbd_debug() into #ifdef CONFIG_JBD_DEBUG block because
+'dropped' is declared there. The code could be compiled without this
+change anyway, simply because jbd_debug() expands to nothing if
+!CONFIG_JBD_DEBUG but IMHO it doesn't look good in general.
 
-This should be a time_after_eq(jiffies, next_wakeup), of course...
+Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+---
+ fs/jbd/recovery.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-					- Ted
+diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
+index 81051da..5b43e96 100644
+--- a/fs/jbd/recovery.c
++++ b/fs/jbd/recovery.c
+@@ -296,10 +296,10 @@ int journal_skip_recovery(journal_t *journal)
+ #ifdef CONFIG_JBD_DEBUG
+ 		int dropped = info.end_transaction -
+ 			      be32_to_cpu(journal->j_superblock->s_sequence);
+-#endif
+ 		jbd_debug(1,
+ 			  "JBD: ignoring %d transaction%s from the journal.\n",
+ 			  dropped, (dropped == 1) ? "" : "s");
++#endif
+ 		journal->j_transaction_sequence = ++info.end_transaction;
+ 	}
+ 
+-- 
+1.7.0.4
 
