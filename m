@@ -1,52 +1,35 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd: Remove unnecessary goto statement
-Date: Mon, 4 Oct 2010 17:57:52 +0200
-Message-ID: <20101004155752.GA11422@quack.suse.cz>
-References: <1286205239-2662-1-git-send-email-namhyung@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Namhyung Kim <namhyung@gmail.com>
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: [PATCH] jbd: Use offset_in_page() instead of manual calculation
+Date: Tue,  5 Oct 2010 01:03:40 +0900
+Message-ID: <1286208220-5151-1-git-send-email-namhyung@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42133 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756552Ab0JDP6q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Oct 2010 11:58:46 -0400
-Content-Disposition: inline
-In-Reply-To: <1286205239-2662-1-git-send-email-namhyung@gmail.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:49420 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754062Ab0JDQDr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Oct 2010 12:03:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 05-10-10 00:13:59, Namhyung Kim wrote:
-> Remove goto statement which jumps to very next line. Also remove
-> target label because it is no longer used anywhere.
-  Thanks. Merged into my tree.
+Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+---
+ fs/jbd/transaction.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-								Honza
-> 
-> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
-> ---
->  fs/jbd/transaction.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-> index 5ae71e7..981449c 100644
-> --- a/fs/jbd/transaction.c
-> +++ b/fs/jbd/transaction.c
-> @@ -293,9 +293,7 @@ handle_t *journal_start(journal_t *journal, int nblocks)
->  		jbd_free_handle(handle);
->  		current->journal_info = NULL;
->  		handle = ERR_PTR(err);
-> -		goto out;
->  	}
-> -out:
->  	return handle;
->  }
->  
-> -- 
-> 1.7.0.4
-> 
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 981449c..c9bb7a7 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -711,7 +711,7 @@ done:
+ 		J_EXPECT_JH(jh, buffer_uptodate(jh2bh(jh)),
+ 			    "Possible IO failure.\n");
+ 		page = jh2bh(jh)->b_page;
+-		offset = ((unsigned long) jh2bh(jh)->b_data) & ~PAGE_MASK;
++		offset = offset_in_page(jh2bh(jh)->b_data);
+ 		source = kmap_atomic(page, KM_USER0);
+ 		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
+ 		kunmap_atomic(source, KM_USER0);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.0.4
+
