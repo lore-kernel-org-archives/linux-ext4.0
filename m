@@ -1,31 +1,51 @@
-From: "Thompson Riders Loan" <thompsonjohn@hickorytech.net>
-Subject: Loan Offer @2%!!
-Date: Mon, 4 Oct 2010 20:33:10 +0100
-Message-ID: <20101004193317.25685.qmail@c-in3ws--03-04.sv2.lotuslive.com>
-Reply-To: <thompsonjohn@yahoo.cn>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: I/O topology fixes for big physical block size
+Date: Mon, 04 Oct 2010 15:49:11 -0400
+Message-ID: <yq1sk0l3fig.fsf@sermon.lab.mkp.net>
+References: <4CA17B13.7080801@redhat.com> <20100928141545.GA21587@redhat.com>
+	<20100928205741.GA22257@thunk.org>
+	<yq162xpa7dj.fsf@sermon.lab.mkp.net> <4CA25FEA.6040505@redhat.com>
+	<20100930163047.GA4098@thunk.org> <4CA4C3B6.9000104@redhat.com>
+	<20100930173342.GB31945@redhat.com> <20101001142441.GF21129@thunk.org>
+	<yq1y6ah4kuu.fsf@sermon.lab.mkp.net>
+	<20101002023113.GJ21129@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
-Cc: recipient list not shown:;
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from outbound3.messaging.lotuslive.com ([8.12.152.111]:52021 "EHLO
-	outbound3.messaging.lotuslive.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932294Ab0JDTiV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Oct 2010 15:38:21 -0400
-Received: from outbound3.messaging.lotuslive.com (c-in3obnd03-01.fen.sv2.lotusliveops.com [10.5.33.49])
-	by c-in3ofal03-01.sv2.lotuslive.com (Postfix) with ESMTP id 97C2DA027BA
-	for <linux-ext4@vger.kernel.org>; Mon,  4 Oct 2010 19:34:30 +0000 (GMT)
-Received: from c-in3ofil03-02.sv2.lotuslive.com (unknown [10.6.33.55])
-	by c-in3obnd03-01.sv2.lotuslive.com (Postfix) with ESMTP id 787FB4A495A
-	for <linux-ext4@vger.kernel.org>; Mon,  4 Oct 2010 19:33:17 +0000 (GMT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	"James.Bottomley\@hansenpartnership.com"
+	<James.Bottomley@hansenpartnership.com>,
+	"linux-scsi\@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-scsi-owner@vger.kernel.org>
+In-Reply-To: <20101002023113.GJ21129@thunk.org> (Ted Ts'o's message of "Fri, 1
+	Oct 2010 22:31:13 -0400")
+Sender: linux-scsi-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Loan Offer @2%!!! You can't get this anywhere if not from us "Thompson
-Riders Loan Company"...contact us now for more info...
-Contact Person: Mr. Thompson John "CEO"
-Email: info@tjohn.tk
-Email:thompson@tjohn.tk
-Tel: +44-7024-092-936
+>>>>> "Ted" == Ted Ts'o <tytso@mit.edu> writes:
+
+Ted,
+
+Ted> OK, but what do we do when we start seeing devices with 8k or 16k
+Ted> physical block sizes?  The VM doesn't deal well with block sizes >
+Ted> page size.
+
+I don't think we're going to see devices reporting logical blocks bigger
+than 4KiB anytime soon.  Too much pain for everybody in the industry
+(most other operating systems can't even deal with 4KiB logical blocks
+yet).  Eventually we will have to do the required page cache surgery to
+support filesystem block sizes bigger than the page size.  But I don't
+think that's something we'll have to deal with in the immediate future.
+
+In the meantime, however, the question is whether there is something we
+can do in the allocators to mitigate effects of devices reporting
+physical blocks bigger than PAGE_CACHE_SIZE.  Obviously this would be in
+the I/O hint/alignment category and not something which would guarantee
+that all writes would be aligned multiples of that physical block size.
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
