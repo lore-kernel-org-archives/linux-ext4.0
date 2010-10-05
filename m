@@ -1,39 +1,48 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16312] WARNING: at fs/fs-writeback.c:1127 __mark_inode_dirty
-Date: Mon, 4 Oct 2010 21:10:11 GMT
-Message-ID: <201010042110.o94LABg0015574@demeter1.kernel.org>
-References: <bug-16312-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd: Use offset_in_page() instead of manual calculation
+Date: Tue, 5 Oct 2010 10:34:06 +0200
+Message-ID: <20101005083406.GB3514@quack.suse.cz>
+References: <1286208220-5151-1-git-send-email-namhyung@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Namhyung Kim <namhyung@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:49587 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932119Ab0JDVKL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Oct 2010 17:10:11 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o94LABGp015575
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Oct 2010 21:10:11 GMT
-In-Reply-To: <bug-16312-13602@https.bugzilla.kernel.org/>
+Received: from cantor.suse.de ([195.135.220.2]:39708 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757380Ab0JEIfB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Oct 2010 04:35:01 -0400
+Content-Disposition: inline
+In-Reply-To: <1286208220-5151-1-git-send-email-namhyung@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16312
+On Tue 05-10-10 01:03:40, Namhyung Kim wrote:
+> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+  Thanks. Merged.
 
-
-
-
-
---- Comment #39 from Bart Van Assche <bart.vanassche@gmail.com>  2010-10-04 21:10:08 ---
-(In reply to comment #37)
-> It should be the one mentioned in comment #33 . 
+								Honza
+> ---
+>  fs/jbd/transaction.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> But we have no confirmation about it yet. Can you test it?
-
-That patch works great on my setup.
-
+> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+> index 981449c..c9bb7a7 100644
+> --- a/fs/jbd/transaction.c
+> +++ b/fs/jbd/transaction.c
+> @@ -711,7 +711,7 @@ done:
+>  		J_EXPECT_JH(jh, buffer_uptodate(jh2bh(jh)),
+>  			    "Possible IO failure.\n");
+>  		page = jh2bh(jh)->b_page;
+> -		offset = ((unsigned long) jh2bh(jh)->b_data) & ~PAGE_MASK;
+> +		offset = offset_in_page(jh2bh(jh)->b_data);
+>  		source = kmap_atomic(page, KM_USER0);
+>  		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
+>  		kunmap_atomic(source, KM_USER0);
+> -- 
+> 1.7.0.4
+> 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
