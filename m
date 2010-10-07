@@ -1,77 +1,63 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Skip "rootfs" entry when checking for ext4 filesystem.
-Date: Thu, 07 Oct 2010 12:04:45 -0500
-Message-ID: <4CADFDAD.3020202@redhat.com>
-References: <4AA682BE.2030200@redhat.com> <4ACE480E.9070508@redhat.com>
+Subject: Re: [PATCH] ext4: queue conversion after adding to inode's completed
+ IO list
+Date: Thu, 07 Oct 2010 12:23:56 -0500
+Message-ID: <4CAE022C.7050504@redhat.com>
+References: <4C5C67FD.5070208@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ravi@p-static.net
+Cc: Jiaying Zhang <jiayingz@google.com>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33370 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43932 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750812Ab0JGREr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Oct 2010 13:04:47 -0400
-In-Reply-To: <4ACE480E.9070508@redhat.com>
+	id S1750962Ab0JGRYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Oct 2010 13:24:01 -0400
+In-Reply-To: <4C5C67FD.5070208@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/08/2009 03:14 PM, Eric Sandeen wrote:
-> Ping on this one?
-
-Ping++
-
--Eric
-
-> Ravi reported a failure w/o it:
+On 08/06/2010 02:52 PM, Eric Sandeen wrote:
+> By queuing the io end on the unwritten workqueue before adding it
+> to our inode's list of completed IOs, I think we run the risk
+> of the work getting completed, and the IO freed, before we try
+> to add it to the inode's i_completed_io_list.
 > 
->> Hi,
->>
->> I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
->> When I try to defragment files on my root filesystem, it refuses to
->> acknowledge that the filesystem is ext4. I believe the problem is that
->> it checks the filesystem type by parsing /etc/mtab, but the root
->> filesystem shows up there like this:
->>
->> rootfs on / type rootfs (rw)
->> /dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
->>
->> so it gets confused by the bogus first entry. It works just fine on
->> other ext4 filesystems I have.
->>
->> (If this is the wrong mailing list, I apologize; I couldn't find one for
->> e2fsprogs, so I thought this was the next best thing.)
->>
->> --Ravi
+> It should be safe to add it to the inode's list of completed
+> IOs, and -then- queue it for completion, I think.
+
+Ping? would be good to fix this race, this has jiaying's ack too.
+
+> Thanks to Dave Chinner for pointing out the race.
 > 
-> Thanks,
-> -Eric
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
 > 
-> Eric Sandeen wrote:
->> Skip "rootfs" entry when checking for ext4 filesystem.
->>
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->> ---
->>
->> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
->> index 82e3868..0d04df9 100644
->> --- a/misc/e4defrag.c
->> +++ b/misc/e4defrag.c
->> @@ -430,6 +430,8 @@ static int is_ext4(const char *file)
->>  	}
->>  
->>  	while ((mnt = getmntent(fp)) != NULL) {
->> +		if (mnt->mnt_fsname[0] != '/')
->> +			continue;
->>  		len = strlen(mnt->mnt_dir);
->>  		ret = memcmp(file_path, mnt->mnt_dir, len);
->>  		if (ret != 0)
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> (At least I think this is right; I haven't actually demonstrated a race...)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 0afc8c1..7f56c48 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3804,14 +3804,14 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+>  	io_end->flag = EXT4_IO_UNWRITTEN;
+>  	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+>  
+> -	/* queue the work to convert unwritten extents to written */
+> -	queue_work(wq, &io_end->work);
+> -
+>  	/* Add the io_end to per-inode completed aio dio list*/
+>  	ei = EXT4_I(io_end->inode);
+>  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+>  	list_add_tail(&io_end->list, &ei->i_completed_io_list);
+>  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +
+> +	/* queue the work to convert unwritten extents to written */
+> +	queue_work(wq, &io_end->work);
+>  	iocb->private = NULL;
+>  out:
+>  	if (is_async)
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
