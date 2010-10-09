@@ -1,67 +1,96 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH RFC 0/3] Block reservation for ext3
-Date: Sat, 9 Oct 2010 14:03:58 -0400
-Message-ID: <20101009180357.GG18454@thunk.org>
-References: <1286583147-14760-1-git-send-email-jack@suse.cz>
+Subject: Re: [RESEND][PATCH] ext4: create own llseek function to handle 2
+ maxbytes
+Date: Sat, 9 Oct 2010 16:38:12 -0400
+Message-ID: <20101009203812.GA5914@thunk.org>
+References: <20100917143225.3e0d856a.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:45085 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44838 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755232Ab0JISED (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Oct 2010 14:04:03 -0400
+	id S1757112Ab0JIUiR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Oct 2010 16:38:17 -0400
 Content-Disposition: inline
-In-Reply-To: <1286583147-14760-1-git-send-email-jack@suse.cz>
+In-Reply-To: <20100917143225.3e0d856a.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 09, 2010 at 02:12:24AM +0200, Jan Kara wrote:
+On Fri, Sep 17, 2010 at 02:32:25PM +0900, Toshiyuki Okajima wrote:
+> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 > 
->   currently, when mmapped write is done to a file backed by ext3, the
-> filesystem does nothing to make sure blocks will be available when we need
-> to write them out.
+> If the file has no "EXT4_EXTENTS_FL" flag, the maximum size which can be 
+> written (write systemcall) is different from the maximum size which can be 
+> sought (lseek systemcall).
 
-Hmm, you've done all of this work already, so this isn't the best time
-to suggest this, but I wonder if we've explored all of the
-alternatives that might allow for a less drastic set of changes to
-ext3, just out of stability's sake.
+Thanks, applied.  My apologies for the delay in getting back to you.
 
-How often do legitimate workloads mmap a sparse file then write into
-it?  As I recall, the original POSIX.1 spec didn't allow mmap beyond
-the end of the file; this I believe was lifted later on (at least I
-don't see it in SUSv3 spec).
+BTW, directories are not allowed to grow beyond 2**32 bytes; it's
+harmless to allow llseek to offsets beyond that, though.  One thing
+I'm not sure about is what happens if we use extents (which allow for
+offsets greater than 2**32) and use a file system with htree's not
+enabled.  I'm not sure we have the correct checks to make sure the
+directory size doesn't grow beyond 2**32 bytes.  This is largely
+theoretical, though, since performance of the system will be quite
+horrible long before we hit that limit, and I think the main problem
+will be with NFSv2.  Still, if someone has time, this might be a good
+thing to sanity check....
 
-If it's not all that common, then other options are:
-
-1) Fail an mmap with EINVAL if there is an attempt to map a file
-region which is either sparse or extends beyond the end of a file.
-This is probably not a great alternative, but it's a possibility.
-
-2) Allocate all of the pages that are not allocated at mmap time.
-Since ext3 doesn't have space for an uninitialized bit, we'd have to
-either (2a) forcing a disk write out for all of the newly initialized
-pages, or (2b) keep track of the allocated disk blocks in memory, but
-don't actually write the block mappings to the indirect blocks until
-the blocks are actually written out.  (This last might be just as
-complex, alas).
-
-3) Keep a global counter of sparse blocks which are mapped at mmap()
-time, and update it as blocks are allocated, or when the region is
-freed at munmap() time.
-
-#3 might be much simpler, at the end of the day.  Note that there are
-some Japanese customers that really freaked with ext4 just because it
-was *different*, and begged a distribution not to ship ext4 because it
-might destablize their customers.  Not that I think we are obliged to
-listen to some of the more extremely conservative customers, but there
-was something nice about telling people (well, if you want something
-which is nice and stable and conservative, you can pick ext3).
-
-Do really have legitimate and common workloads which are allocating
-blocks by writing into an mmapped region?  I wasn't aware of such
-beasts, but maybe they are out there...
+I did rewrite the commit description somewhat.  Attached see my
+rewrite...
 
 					- Ted
+
+ext4: improve llseek error handling for overly large seek offsets
+
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+
+The llseek system call should return EINVAL if passed a seek offset
+which results in a write error.  What this maximum offset should be
+depends on whether or not the huge_file file system feature is set,
+and whether or not the file is extent based or not.
+
+
+If the file has no "EXT4_EXTENTS_FL" flag, the maximum size which can be 
+written (write systemcall) is different from the maximum size which can be 
+sought (lseek systemcall).
+
+For example, the following 2 cases demonstrates the differences
+between the maximum size which can be written, versus the seek offset
+allowed by the llseek system call:
+
+#1: mkfs.ext3 <dev>; mount -t ext4 <dev>
+#2: mkfs.ext3 <dev>; tune2fs -Oextent,huge_file <dev>; mount -t ext4 <dev>
+
+Table. the max file size which we can write or seek
+       at each filesystem feature tuning and file flag setting
++============+===============================+===============================+
+| \ File flag|                               |                               |
+|      \     |     !EXT4_EXTENTS_FL          |        EXT4_EXTETNS_FL        |
+|case       \|                               |                               |
++------------+-------------------------------+-------------------------------+
+| #1         |   write:      2194719883264   | write:       --------------   |
+|            |   seek:       2199023251456   | seek:        --------------   |
++------------+-------------------------------+-------------------------------+
+| #2         |   write:      4402345721856   | write:       17592186044415   |
+|            |   seek:      17592186044415   | seek:        17592186044415   |
++------------+-------------------------------+-------------------------------+
+
+The differences exist because ext4 has 2 maxbytes which are sb->s_maxbytes
+(= extent-mapped maxbytes) and EXT4_SB(sb)->s_bitmap_maxbytes (= block-mapped 
+maxbytes).  Although generic_file_llseek uses only extent-mapped maxbytes.
+(llseek of ext4_file_operations is generic_file_llseek which uses
+sb->s_maxbytes.)
+
+Therefore we create ext4 llseek function which uses 2 maxbytes.
+
+The new own function originates from generic_file_llseek().
+If the file flag, "EXT4_EXTENTS_FL" is not set, the function alters 
+inode->i_sb->s_maxbytes into EXT4_SB(inode->i_sb)->s_bitmap_maxbytes.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+
