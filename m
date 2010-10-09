@@ -1,32 +1,40 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/3] vfs: Implement generic per-cpu counters for delayed
- allocation
-Date: Sat, 9 Oct 2010 03:44:46 -0400
-Message-ID: <20101009074446.GA15551@infradead.org>
-References: <1286583147-14760-1-git-send-email-jack@suse.cz>
- <1286583147-14760-3-git-send-email-jack@suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: ext4: do not get s_umount sem on ext4_quota_off
+Date: Sat, 09 Oct 2010 19:28:39 +0400
+Message-ID: <87k4lro060.fsf@dmon-lap.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:43532 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751588Ab0JIHou (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Oct 2010 03:44:50 -0400
-Content-Disposition: inline
-In-Reply-To: <1286583147-14760-3-git-send-email-jack@suse.cz>
+Received: from mailhub.sw.ru ([195.214.232.25]:13399 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752894Ab0JIP2q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Oct 2010 11:28:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 09, 2010 at 02:12:26AM +0200, Jan Kara wrote:
-> Implement free blocks and reserved blocks counters for delayed allocation.
-> These counters are reliable in the sence that when they return success, the
-> subsequent conversion from reserved to allocated blocks always succeeds (see
-> comments in the code for details). This is useful for ext3 filesystem to
-> implement delayed allocation in particular for allocation in page_mkwrite.
+It must be already acquired by caller. Fix lock_dep complain.
 
-This doesn't really look like generic code that should go into the core
-kernel.  I'd just add it to ext3 directly.
+Signed-off-by: Dmitry Monakhov <dmonakhov@gmail.com>
 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e59eb37..062d1bc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4107,12 +4107,10 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 
+ static int ext4_quota_off(struct super_block *sb, int type)
+ {
+-	/* Force all delayed allocation blocks to be allocated */
+-	if (test_opt(sb, DELALLOC)) {
+-		down_read(&sb->s_umount);
++	/* Force all delayed allocation blocks to be allocated.
++	 * Caller already holds s_umount sem */
++	if (test_opt(sb, DELALLOC))
+ 		sync_filesystem(sb);
+-		up_read(&sb->s_umount);
+-	}
+ 
+ 	return dquot_quota_off(sb, type);
+ }
