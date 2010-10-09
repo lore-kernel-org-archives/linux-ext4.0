@@ -1,43 +1,36 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] don't use ext4_allocation_contexts for tracing
-Date: Sat, 9 Oct 2010 19:04:58 -0400
-Message-ID: <20101009230457.GD11237@thunk.org>
-References: <4C6EDCCF.1000104@redhat.com>
+Subject: Re: [PATCH] ext4: queue conversion after adding to inode's
+ completed IO list
+Date: Sat, 9 Oct 2010 19:14:51 -0400
+Message-ID: <20101009231451.GE11237@thunk.org>
+References: <4CAE022C.7050504@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jiaying Zhang <jiayingz@google.com>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35102 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:53513 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756661Ab0JIXE6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Oct 2010 19:04:58 -0400
+	id S1756661Ab0JIXOx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Oct 2010 19:14:53 -0400
 Content-Disposition: inline
-In-Reply-To: <4C6EDCCF.1000104@redhat.com>
+In-Reply-To: <4CAE022C.7050504@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 20, 2010 at 02:51:43PM -0500, Eric Sandeen wrote:
-> Many tracepoints were populating an ext4_allocation_context
-> to pass in, but this requires a slab allocation even when
-> tracepoints are off.  In fact, 4 of 5 of these allocations
-> were only for tracing.  In addition, we were only using a
-> small fraction of the 144 bytes of this structure for this
-> purpose.
+On Thu, Oct 07, 2010 at 12:23:56PM -0500, Eric Sandeen wrote:
+> On 08/06/2010 02:52 PM, Eric Sandeen wrote:
+> > By queuing the io end on the unwritten workqueue before adding it
+> > to our inode's list of completed IOs, I think we run the risk
+> > of the work getting completed, and the IO freed, before we try
+> > to add it to the inode's i_completed_io_list.
+> > 
+> > It should be safe to add it to the inode's list of completed
+> > IOs, and -then- queue it for completion, I think.
 > 
-> We can do away with all these alloc/frees of the ac and
-> simply pass in the bits we care about, instead.
-> 
-> I tested this by turning on tracing and running through
-> xfstests on x86_64.  I did not actually do anything with
-> the trace output, however.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Ping? would be good to fix this race, this has jiaying's ack too.
 
-Added to the patch tree, thanks!
+Added to the ext4 patch queue, thanks for the ping.
 
-I made a slight change to drop passing in the logical parameter to
-trace_ext4_mballoc_discard() and trace_ext4_mballoc_free(), since
-passing in 0 all the time doesn't really buy us much.  :-)
-
-	     	     	  	  	 - Ted
+      	     	  	       	      	      - Ted
