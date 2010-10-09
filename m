@@ -1,76 +1,98 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: Shorten the backup process?
-Date: Sat, 9 Oct 2010 16:56:08 -0400
-Message-ID: <AANLkTinht4bmenV1+81HLdoSHG7=DrxEhTMU3db3CFaQ@mail.gmail.com>
-References: <4CB0D214.1070301@cybericom.co.uk>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [RESEND][PATCH][BUG] ext4: fix infinite loop at
+ ext4_da_writepages with the terminal extent block of too big file
+Date: Sat, 9 Oct 2010 18:16:23 -0400
+Message-ID: <20101009221623.GA11237@thunk.org>
+References: <20100917143556.bb9c303a.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Chris Lee <cslee-list@cybericom.co.uk>
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:53374 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757112Ab0JIU4a convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Oct 2010 16:56:30 -0400
-Received: by iwn6 with SMTP id 6so1738914iwn.19
-        for <linux-ext4@vger.kernel.org>; Sat, 09 Oct 2010 13:56:30 -0700 (PDT)
-In-Reply-To: <4CB0D214.1070301@cybericom.co.uk>
+Received: from thunk.org ([69.25.196.29]:37986 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751999Ab0JIWQ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Oct 2010 18:16:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20100917143556.bb9c303a.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 9, 2010 at 4:35 PM, Chris Lee <cslee-list@cybericom.co.uk> =
-wrote:
->
-> Hi All,
-> I hope this to bee food for thought as I am not able to code such a t=
-hing nor am I in need of such a thing but it seemed like a good idea wh=
-en it struck me, so;
-> When an filesystem is snap shotted it is a function of the =A0running=
- filesystem to provide the data in that snapshot. (or is that lvms doin=
-g?)
-> Most users who use snapshots for backup are going to mount the snap s=
-hot and then tar it up.
-> Would it be a good idea to provide a virtual file through something l=
-ike the sysfs that is a tar representation of the snapshot so that a ba=
-ckup can just copy the tar file off as needed?
->
-> Thanks for reading,
->
-> Regards,
-> Chris.
+Thanks, applied, with a slightly edited commit description.
 
-That seems like an overly specialized feature for the kernel.
+		      		 	   	  - Ted
 
-And even if it were a good idea conceptually:
+ext4: fix potential infinite loop in ext4_da_writepages()
 
-1) ext4 does not currently offer filesystem snapshot capability.  It
-is handled at a lower level in the block stack.  (ie. either in the
-hardware array or via device mapper).
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-2) Those lower levels simply are aware of blocks / sectors, not files.
- Thus they have no ability to create a "tar" file.
+On linux-2.6.36-rc2, if we execute the following script, we can hang
+the system when the /bin/sync command is executed:
 
-fyi: btrfs is a more integrated filesystem, so it is at least
-technically feasible with it.
+========================================================================
+#!/bin/sh
 
-Greg
+echo -n "HANG UP TEST: "
+/bin/dd if=/dev/zero of=/tmp/img bs=1k count=1 seek=1M 2> /dev/null
+/sbin/mkfs.ext4 -Fq /tmp/img
+/bin/mount -o loop -t ext4 /tmp/img /mnt
+/bin/dd if=/dev/zero of=/mnt/file bs=1 count=1 \
+seek=$((16*1024*1024*1024*1024-4096)) 2> /dev/null
+/bin/sync
+/bin/umount /mnt
+echo "DONE"
+exit 0
+========================================================================
 
+We can see the following backtrace if we get the kdump when this
+hangup occurs:
 
---
-Greg Freemyer
-Head of EDD Tape Extraction and Processing team
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-CNN/TruTV Aired Forensic Imaging Demo -
-=A0=A0 http://insession.blogs.cnn.com/2010/03/23/how-computer-evidence-=
-gets-retrieved/
+======================================================================
+kthread()
+=> bdi_writeback_thread()
+   => wb_do_writeback()
+      => wb_writeback()
+         => writeback_inodes_wb()
+            => writeback_sb_inodes()
+               => writeback_single_inode()
+                  => ext4_da_writepages()  ---+ 
+                                ^ infinite    |
+                                |   loop      |
+                                +-------------+
+======================================================================
 
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The reason why this hangup happens is described as follows:
+1) We write the last extent block of the file whose size is the filesystem 
+   maximum size.
+2) "BH_Delay" flag is set on the buffer_head of its block.
+3) - the member, "m_lblk" of struct mpage_da_data is 4294967295 (UINT_MAX)
+   - the member, "m_len" of struct mpage_da_data is 1
+  mpage_put_bnr_to_bhs() which is called via ext4_da_writepages()
+  cannot clear "BH_Delay" flag of the buffer_head because the type of
+  m_lblk is ext4_lblk_t and then m_lblk + m_len is overflow.
+
+  Therefore an infinite loop occurs because ext4_da_writepages()
+  cannot write the page (which corresponds to the block) since
+  "BH_Delay" flag isn't cleared.
+----------------------------------------------------------------------
+static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd,
+				struct ext4_map_blocks *map)
+{
+...
+	int blocks = map->m_len;
+...
+		do {
+			// cur_logical = 4294967295
+			// map->m_lblk = 4294967295
+			// blocks = 1
+			// *** map->m_lblk + blocks == 0 (OVERFLOW!) ***
+			// (cur_logical >= map->m_lblk + blocks) => true
+			if (cur_logical >= map->m_lblk + blocks)
+				break;
+----------------------------------------------------------------------
+
+NOTE: Mounting with the nodelalloc option will avoid this codepath,
+and thus, avoid this hang
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
