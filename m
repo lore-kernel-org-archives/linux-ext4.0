@@ -1,56 +1,74 @@
 From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH] ext3: Cleanup ext3_setup_super()
-Date: Sun, 10 Oct 2010 21:36:59 +0900
-Message-ID: <1286714219-3183-1-git-send-email-namhyung@gmail.com>
+Subject: [PATCH] ext3: Remove unnecessary casts on bh->b_data
+Date: Mon, 11 Oct 2010 02:10:45 +0900
+Message-ID: <1286730645-4845-1-git-send-email-namhyung@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:56838 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754429Ab0JJMhL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Oct 2010 08:37:11 -0400
+Received: from mail-px0-f174.google.com ([209.85.212.174]:36613 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751793Ab0JJRKz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Oct 2010 13:10:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix mount-count check to emit warning only if s_max_mnt_count
-is greater than 0 according to man tune2fs(8). Also removes
-unnecessary casts.
+bh->b_data is already a pointer to char so casts to 'char *' should
+be meaningless. Remove them.
 
 Signed-off-by: Namhyung Kim <namhyung@gmail.com>
 ---
+ fs/ext3/balloc.c |    4 ++--
+ fs/ext3/super.c  |    6 +++---
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-If this looks fine, I'll send the same patches for ext2 and ext4.
-Thanks.
-
- fs/ext3/super.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 4a32511..a49ce4a 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -792,9 +792,9 @@ find_next_usable_block(ext3_grpblk_t start, struct buffer_head *bh,
+ 	if (here < 0)
+ 		here = 0;
+ 
+-	p = ((char *)bh->b_data) + (here >> 3);
++	p = bh->b_data + (here >> 3);
+ 	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
+-	next = (r - ((char *)bh->b_data)) << 3;
++	next = (r - bh->b_data) << 3;
+ 
+ 	if (next < maxblocks && next >= start && ext3_test_allocatable(next, bh))
+ 		return next;
 diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 5dbf4db..4caeffa 100644
+index 4caeffa..421fad7 100644
 --- a/fs/ext3/super.c
 +++ b/fs/ext3/super.c
-@@ -1306,9 +1306,9 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
- 		ext3_msg(sb, KERN_WARNING,
- 			"warning: mounting fs with errors, "
- 			"running e2fsck is recommended");
--	else if ((__s16) le16_to_cpu(es->s_max_mnt_count) >= 0 &&
-+	else if ((__s16) le16_to_cpu(es->s_max_mnt_count) > 0 &&
- 		 le16_to_cpu(es->s_mnt_count) >=
--		 (unsigned short) (__s16) le16_to_cpu(es->s_max_mnt_count))
-+			le16_to_cpu(es->s_max_mnt_count))
- 		ext3_msg(sb, KERN_WARNING,
- 			"warning: maximal mount count reached, "
- 			"running e2fsck is recommended");
-@@ -1325,7 +1325,7 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
-                    valid forever! :) */
- 	es->s_state &= cpu_to_le16(~EXT3_VALID_FS);
- #endif
--	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
-+	if (!le16_to_cpu(es->s_max_mnt_count))
- 		es->s_max_mnt_count = cpu_to_le16(EXT3_DFL_MAX_MNT_COUNT);
- 	le16_add_cpu(&es->s_mnt_count, 1);
- 	es->s_mtime = cpu_to_le32(get_seconds());
+@@ -1654,7 +1654,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 	 * Note: s_es must be initialized as soon as possible because
+ 	 *       some ext3 macro-instructions depend on its value
+ 	 */
+-	es = (struct ext3_super_block *) (((char *)bh->b_data) + offset);
++	es = (struct ext3_super_block *) (bh->b_data + offset);
+ 	sbi->s_es = es;
+ 	sb->s_magic = le16_to_cpu(es->s_magic);
+ 	if (sb->s_magic != EXT3_SUPER_MAGIC)
+@@ -1765,7 +1765,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 			       "error: can't read superblock on 2nd try");
+ 			goto failed_mount;
+ 		}
+-		es = (struct ext3_super_block *)(((char *)bh->b_data) + offset);
++		es = (struct ext3_super_block *)(bh->b_data + offset);
+ 		sbi->s_es = es;
+ 		if (es->s_magic != cpu_to_le16(EXT3_SUPER_MAGIC)) {
+ 			ext3_msg(sb, KERN_ERR,
+@@ -2168,7 +2168,7 @@ static journal_t *ext3_get_dev_journal(struct super_block *sb,
+ 		goto out_bdev;
+ 	}
+ 
+-	es = (struct ext3_super_block *) (((char *)bh->b_data) + offset);
++	es = (struct ext3_super_block *) (bh->b_data + offset);
+ 	if ((le16_to_cpu(es->s_magic) != EXT3_SUPER_MAGIC) ||
+ 	    !(le32_to_cpu(es->s_feature_incompat) &
+ 	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
 -- 
 1.7.0.4
 
