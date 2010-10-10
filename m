@@ -1,74 +1,41 @@
-From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH] ext3: Remove unnecessary casts on bh->b_data
-Date: Mon, 11 Oct 2010 02:10:45 +0900
-Message-ID: <1286730645-4845-1-git-send-email-namhyung@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 17361] Random kmemcheck errors and kernel freeze on 2.6.36-rc*
+Date: Sun, 10 Oct 2010 19:19:33 GMT
+Message-ID: <201010101919.o9AJJXsC006356@demeter2.kernel.org>
+References: <bug-17361-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:36613 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751793Ab0JJRKz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Oct 2010 13:10:55 -0400
+Received: from [140.211.167.42] ([140.211.167.42]:41062 "EHLO
+	demeter2.kernel.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1751262Ab0JJTTd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Oct 2010 15:19:33 -0400
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id o9AJJXFp006357
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 10 Oct 2010 19:19:33 GMT
+In-Reply-To: <bug-17361-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-bh->b_data is already a pointer to char so casts to 'char *' should
-be meaningless. Remove them.
+https://bugzilla.kernel.org/show_bug.cgi?id=17361
 
-Signed-off-by: Namhyung Kim <namhyung@gmail.com>
----
- fs/ext3/balloc.c |    4 ++--
- fs/ext3/super.c  |    6 +++---
- 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index 4a32511..a49ce4a 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -792,9 +792,9 @@ find_next_usable_block(ext3_grpblk_t start, struct buffer_head *bh,
- 	if (here < 0)
- 		here = 0;
- 
--	p = ((char *)bh->b_data) + (here >> 3);
-+	p = bh->b_data + (here >> 3);
- 	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
--	next = (r - ((char *)bh->b_data)) << 3;
-+	next = (r - bh->b_data) << 3;
- 
- 	if (next < maxblocks && next >= start && ext3_test_allocatable(next, bh))
- 		return next;
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 4caeffa..421fad7 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1654,7 +1654,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	 * Note: s_es must be initialized as soon as possible because
- 	 *       some ext3 macro-instructions depend on its value
- 	 */
--	es = (struct ext3_super_block *) (((char *)bh->b_data) + offset);
-+	es = (struct ext3_super_block *) (bh->b_data + offset);
- 	sbi->s_es = es;
- 	sb->s_magic = le16_to_cpu(es->s_magic);
- 	if (sb->s_magic != EXT3_SUPER_MAGIC)
-@@ -1765,7 +1765,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 			       "error: can't read superblock on 2nd try");
- 			goto failed_mount;
- 		}
--		es = (struct ext3_super_block *)(((char *)bh->b_data) + offset);
-+		es = (struct ext3_super_block *)(bh->b_data + offset);
- 		sbi->s_es = es;
- 		if (es->s_magic != cpu_to_le16(EXT3_SUPER_MAGIC)) {
- 			ext3_msg(sb, KERN_ERR,
-@@ -2168,7 +2168,7 @@ static journal_t *ext3_get_dev_journal(struct super_block *sb,
- 		goto out_bdev;
- 	}
- 
--	es = (struct ext3_super_block *) (((char *)bh->b_data) + offset);
-+	es = (struct ext3_super_block *) (bh->b_data + offset);
- 	if ((le16_to_cpu(es->s_magic) != EXT3_SUPER_MAGIC) ||
- 	    !(le32_to_cpu(es->s_feature_incompat) &
- 	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
+
+
+
+--- Comment #16 from Christian Casteyde <casteyde.christian@free.fr>  2010-10-10 19:19:29 ---
+I also append .config file for my laptop, since it also has the problem as my
+main computer.
+I've tried to git bisect the problem on this laptop:
+
+0f477dd0851bdcee82923da66a7fc4a44cb1bc3d is the first bad commit
+
+However, I don't know if this is the same bug as described here, as I said I
+cannot be sure.
+
 -- 
-1.7.0.4
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
