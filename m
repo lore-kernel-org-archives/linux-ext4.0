@@ -1,100 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH RFC 0/3] Block reservation for ext3
-Date: Mon, 11 Oct 2010 16:28:13 +0200
-Message-ID: <20101011142813.GC3830@quack.suse.cz>
-References: <1286583147-14760-1-git-send-email-jack@suse.cz>
- <20101009180357.GG18454@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Performance testing of various barrier reduction patches [was:
+ Re: [RFC v4] ext4: Coordinate fsync requests]
+Date: Mon, 11 Oct 2010 10:33:17 -0400
+Message-ID: <20101011143317.GA3860@thunk.org>
+References: <20100806070424.GD2109@tux1.beaverton.ibm.com>
+ <20100809195324.GG2109@tux1.beaverton.ibm.com>
+ <4D5AEB7F-32E2-481A-A6C8-7E7E0BD3CE98@dilger.ca>
+ <20100809233805.GH2109@tux1.beaverton.ibm.com>
+ <20100819021441.GM2109@tux1.beaverton.ibm.com>
+ <20100823183119.GA28105@tux1.beaverton.ibm.com>
+ <20100923232527.GB25624@tux1.beaverton.ibm.com>
+ <B0A8EB94-E2F7-4268-AE99-C4A7402E880D@dilger.ca>
+ <20100927230111.GV25555@tux1.beaverton.ibm.com>
+ <20101008212606.GE25624@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Ted Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>, Tejun Heo <tj@kernel.org>,
+	hch@lst.de
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49033 "EHLO mx2.suse.de"
+Received: from thunk.org ([69.25.196.29]:58018 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754713Ab0JKO3M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Oct 2010 10:29:12 -0400
+	id S1754622Ab0JKOdZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Oct 2010 10:33:25 -0400
 Content-Disposition: inline
-In-Reply-To: <20101009180357.GG18454@thunk.org>
+In-Reply-To: <20101008212606.GE25624@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 09-10-10 14:03:58, Ted Ts'o wrote:
-> On Sat, Oct 09, 2010 at 02:12:24AM +0200, Jan Kara wrote:
-> > 
-> >   currently, when mmapped write is done to a file backed by ext3, the
-> > filesystem does nothing to make sure blocks will be available when we need
-> > to write them out.
-> 
-> Hmm, you've done all of this work already, so this isn't the best time
-> to suggest this, but I wonder if we've explored all of the
-> alternatives that might allow for a less drastic set of changes to
-> ext3, just out of stability's sake.
-  Yeah, I understand that and I've been also thinking for some time whether
-I cannot avoid implementing block reservation but I haven't come up with
-anything really acceptable. Moreover, unless we write via mmap to a sparse
-file, the code paths taken are changed only a little (only when and how
-we account for allocated blocks)...
+On Fri, Oct 08, 2010 at 02:26:06PM -0700, Darrick J. Wong wrote:
+> Given the nearness of the merge window, perhaps we ought to discuss
+> this on Monday's ext4 call?  In the meantime I'll clean up the fsync
+> coordination patch so that it doesn't have so many debugging knobs
+> and whistles.
 
-> How often do legitimate workloads mmap a sparse file then write into
-> it?  As I recall, the original POSIX.1 spec didn't allow mmap beyond
-> the end of the file; this I believe was lifted later on (at least I
-> don't see it in SUSv3 spec).
-  Well, mmap beyond EOF is still undefined AFAIK (although Linux
-traditionally supports it) but mmap of sparse files was always supposed
-to work. My favorite user of sparse-file mmap is Berkeley DB, some torrent
-clients do that as well and I believe there are others. So it's not the most
-common thing but it happens often enough.
+Yes, we should definitely talk about this on today's call.
 
-> If it's not all that common, then other options are:
-> 
-> 1) Fail an mmap with EINVAL if there is an attempt to map a file
-> region which is either sparse or extends beyond the end of a file.
-> This is probably not a great alternative, but it's a possibility.
-  This is no-go IMHO. We would surely get lots of users complaining...
+One of the things that concern me is that if I'm reading the
+spreadsheet correctly, there are some colums (for example,
+elm3c44_sas, comparing I3, which is what will be in 2.6.36 --- jan's
+patch, but not yours, and the currently existing behaviour --- with
+I10 which is as I understand it, what you are recommending, I see an
+FFSB regression from 1,916.54 to 1,690.33).  
 
-> 2) Allocate all of the pages that are not allocated at mmap time.
-> Since ext3 doesn't have space for an uninitialized bit, we'd have to
-> either (2a) forcing a disk write out for all of the newly initialized
-> pages, or (2b) keep track of the allocated disk blocks in memory, but
-> don't actually write the block mappings to the indirect blocks until
-> the blocks are actually written out.  (This last might be just as
-> complex, alas).
-  Doing allocation at mmap time does not really work - on each mmap we
-would have to map blocks for the whole file which would make mmap really
-expensive operation. Doing it at page-fault as you suggest in (2a) works
-(that's the second plausible option IMO) but the increased fragmentation
-and thus loss of performance is rather noticeable. I don't have current
-numbers but when I tried that last year Berkeley DB was like two or three
-times slower.
-  In your (2b) suggestion, I don't see how we would avoid leaking allocated
-blocks when we crash before writing allocation to indirect block. Also the
-fragmentation problem which seems to be the main source of performance
-issues would stay the same.
-  
-> 3) Keep a global counter of sparse blocks which are mapped at mmap()
-> time, and update it as blocks are allocated, or when the region is
-> freed at munmap() time.
-  Here again I see the problem that mapping all file blocks at mmap time
-is rather expensive and so does not seem viable to me. Also the
-overestimation of needed blocks could be rather huge.
-  
-> #3 might be much simpler, at the end of the day.  Note that there are
-> some Japanese customers that really freaked with ext4 just because it
-> was *different*, and begged a distribution not to ship ext4 because it
-> might destablize their customers.  Not that I think we are obliged to
-> listen to some of the more extremely conservative customers, but there
-> was something nice about telling people (well, if you want something
-> which is nice and stable and conservative, you can pick ext3).
-  I'm aware of this. Actually, the user observable differences should be
-rather minimal. The only one I'm aware of is that you can get SIGSEGV at
-page fault time because the filesystem runs out of disk space (or out of
-disk quota) which seems better than throwing away the data later. Also I
-don't think anybody serious runs systems close to ENOSPC regularly and if
-that happens accidentally, manual intervention is usually needed anyway...
-  Thanks for your ideas!
+That's something like a 15% regression.  I know that for other
+hardware, there are improvements, but the fact that at least for some
+hardware we're seeing such a big regression makes me worried that
+we're missing something --- or maybe it's just me who is missing
+something about your spreadsheet?
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+						- Ted
