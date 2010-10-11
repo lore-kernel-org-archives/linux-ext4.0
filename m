@@ -1,33 +1,87 @@
 From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [Bug 17361] Watchdog detected hard LOCKUP in jbd2_journal_get_write_access
-Date: Mon, 11 Oct 2010 14:43:58 -0600
-Message-ID: <CBEC43EB-8CCC-40A4-85A7-4F130BAE7670@dilger.ca>
-References: <bug-17361-13602@https.bugzilla.kernel.org/> <201010021642.o92Ggp1A007965@demeter1.kernel.org>
+Subject: Re: [PATCH] Skip "rootfs" entry when checking for ext4 filesystem.
+Date: Mon, 11 Oct 2010 14:59:01 -0600
+Message-ID: <ECFC80F2-077C-426B-A978-3D8765074DAA@dilger.ca>
+References: <4AA682BE.2030200@redhat.com> <4ACE480E.9070508@redhat.com> <4CADFDAD.3020202@redhat.com>
 Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4 development <linux-ext4@vger.kernel.org>
-To: Christian Casteyde <casteyde.christian@free.fr>
+Cc: ext4 development <linux-ext4@vger.kernel.org>, ravi@p-static.net
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:49689 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:62016 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755126Ab0JKUrn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Oct 2010 16:47:43 -0400
-In-Reply-To: <201010021642.o92Ggp1A007965@demeter1.kernel.org>
+	with ESMTP id S1756206Ab0JKU7J convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Oct 2010 16:59:09 -0400
+In-Reply-To: <4CADFDAD.3020202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On 2010-10-07, at 11:04, Eric Sandeen wrote:
 
-On 2010-10-02, at 09:42, Theodore Tso <tytso@mit.edu> wrote:
-> https://bugzilla.kernel.org/show_bug.cgi?id=17361
+> On 10/08/2009 03:14 PM, Eric Sandeen wrote:
+>> Ping on this one?
 > 
-> Except for the initial bug report, none of the other stack traces have anything to do with ext4/jbd2.    And in the initial ext4 trace, we see the complaint that we're calling might_sleep() in ext4_mark_inode_dirty(), in a code path where we are manifestly not taking any spinlocks.    And in fact we don't see any spinlocks being taken at the point where the complaint is mode in ext4_mark_inode_dirty().   Yet preempt_count > 1.
+> Ping++
 
-In my experience, this is typically caused by stack overflow smashing the task struct and randomly setting preempt_count to a non-zero value.
+Looks reasonable.  I thought it would skip the second "/" entry as well, but in fact this is looking at the "dev" field and it is skipping the "rootfs" (as well as other virtual filesystems like procfs and devfs).
 
-Cheers, Andreas
-
-
-
-
+>> Ravi reported a failure w/o it:
+>> 
+>>> Hi,
+>>> 
+>>> I'm playing with e4defrag from e2frprogs git, and I've run into a bug.
+>>> When I try to defragment files on my root filesystem, it refuses to
+>>> acknowledge that the filesystem is ext4. I believe the problem is that
+>>> it checks the filesystem type by parsing /etc/mtab, but the root
+>>> filesystem shows up there like this:
+>>> 
+>>> rootfs on / type rootfs (rw)
+>>> /dev/root on / type ext4 (rw,noatime,barrier=1,data=ordered)
+>>> 
+>>> so it gets confused by the bogus first entry. It works just fine on
+>>> other ext4 filesystems I have.
+>>> 
+>>> (If this is the wrong mailing list, I apologize; I couldn't find one for
+>>> e2fsprogs, so I thought this was the next best thing.)
+>>> 
+>>> --Ravi
+>> 
+>> Thanks,
+>> -Eric
+>> 
+>> Eric Sandeen wrote:
+>>> Skip "rootfs" entry when checking for ext4 filesystem.
+>>> 
+>>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>>> ---
+>>> 
+>>> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+>>> index 82e3868..0d04df9 100644
+>>> --- a/misc/e4defrag.c
+>>> +++ b/misc/e4defrag.c
+>>> @@ -430,6 +430,8 @@ static int is_ext4(const char *file)
+>>> 	}
+>>> 
+>>> 	while ((mnt = getmntent(fp)) != NULL) {
+>>> +		if (mnt->mnt_fsname[0] != '/')
+>>> +			continue;
+>>> 		len = strlen(mnt->mnt_dir);
+>>> 		ret = memcmp(file_path, mnt->mnt_dir, len);
+>>> 		if (ret != 0)
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
