@@ -1,44 +1,106 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: ext3/jbd: Avoid WARN() messages when failing to write the superblock
-Date: Mon, 11 Oct 2010 12:42:29 -0400
-Message-ID: <D3CC5904-2064-4307-8798-B89836D71F4C@mit.edu>
-References: <20101004193505.GC25624@tux1.beaverton.ibm.com> <4CB327BE.8000003@redhat.com> <20101011151748.GI3830@quack.suse.cz>
-Mime-Version: 1.0 (Apple Message framework v1081)
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: Performance testing of various barrier reduction patches [was:
+	Re: [RFC v4] ext4: Coordinate fsync requests]
+Date: Mon, 11 Oct 2010 13:20:20 -0700
+Message-ID: <20101011202020.GF25624@tux1.beaverton.ibm.com>
+References: <20100809195324.GG2109@tux1.beaverton.ibm.com> <4D5AEB7F-32E2-481A-A6C8-7E7E0BD3CE98@dilger.ca> <20100809233805.GH2109@tux1.beaverton.ibm.com> <20100819021441.GM2109@tux1.beaverton.ibm.com> <20100823183119.GA28105@tux1.beaverton.ibm.com> <20100923232527.GB25624@tux1.beaverton.ibm.com> <B0A8EB94-E2F7-4268-AE99-C4A7402E880D@dilger.ca> <20100927230111.GV25555@tux1.beaverton.ibm.com> <20101008212606.GE25624@tux1.beaverton.ibm.com> <4CAF937C.4020500@redhat.com>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Eric Sandeen <sandeen@redhat.com>, djwong@us.ibm.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	"Ted Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <mcao@us.ibm.com>, Tejun Heo <tj@kernel.org>,
+	hch@lst.de, Josef Bacik <josef@redhat.com>,
+	Mike Snitzer <snitzer@redhat.com>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-3.MIT.EDU ([18.9.25.14]:62548 "EHLO
-	dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754888Ab0JKRXR convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Oct 2010 13:23:17 -0400
-In-Reply-To: <20101011151748.GI3830@quack.suse.cz>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:55287 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756139Ab0JKUUW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Oct 2010 16:20:22 -0400
+Content-Disposition: inline
+In-Reply-To: <4CAF937C.4020500@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Oct 08, 2010 at 05:56:12PM -0400, Ric Wheeler wrote:
+>  On 10/08/2010 05:26 PM, Darrick J. Wong wrote:
+>> On Mon, Sep 27, 2010 at 04:01:11PM -0700, Darrick J. Wong wrote:
+>>> Other than those regressions, the jbd2 fsync coordination is about as fast as
+>>> sending the flush directly from ext4.  Unfortunately, where there _are_
+>>> regressions they seem rather large, which makes this approach (as implemented,
+>>> anyway) less attractive.  Perhaps there is a better way to do it?
+>> Hmm, not much chatter for two weeks.  Either I've confused everyone with the
+>> humongous spreadsheet, or ... something?
+>>
+>> I've performed some more extensive performance and safety testing with the
+>> fsync coordination patch.  The results have been merged into the spreadsheet
+>> that I linked to in the last email, though in general the results have not
+>> really changed much at all.
+>>
+>> I see two trends happening here with regards to comparing the use of jbd2 to
+>> coordinate the flushes vs. measuring and coodinating flushes directly in ext4.
+>> The first is that for loads that most benefit from having any kind of fsync
+>> coordination (i.e. storage with slow flushes), the jbd2 approach provides the
+>> same or slightly better performance than the direct approach.  However, for
+>> storage with fast flushes, the jbd2 approach seems to cause major slowdowns
+>> even compared to not changing any code at all.  To me this would suggest that
+>> ext4 needs to coordinate the fsyncs directly, even at a higher code maintenance
+>> cost, because a huge performance regression isn't good.
+>>
+>> Other people in my group have been running their own performance comparisons
+>> between no-coordination, jbd2-coordination, and direct-coordination, and what
+>> I'm hearing is tha the direct-coordination mode is slightly faster than jbd2
+>> coordination, though either are better than no coordination at all.  Happily, I
+>> haven't seen an increase in fsck complaints in my poweroff testing.
+>>
+>> Given the nearness of the merge window, perhaps we ought to discuss this on
+>> Monday's ext4 call?  In the meantime I'll clean up the fsync coordination patch
+>> so that it doesn't have so many debugging knobs and whistles.
+>>
+>> Thanks,
+>>
+>> --D
+>
+> Hi Darrick,
+>
+> We have been busily testing various combinations at Red Hat (we being not 
+> me :)), but here is one test that we used a long time back to validate 
+> the batching impact.
+>
+> You need a slow, poky S-ATA drive - the slower it spins, the better.
+>
+> A single fs_mark run against that drive should drive some modest number 
+> of files/sec with 1 thread:
+>
+>
+> [root@tunkums /]# fs_mark -s 20480 -n 500 -L 5 -d /test/foo
+>
+> On my disk, I see:
+>
+>      5          500        20480         31.8             6213
+>
+> Now run with 4 threads to give the code a chance to coalesce.
+>
+> On my box, I see it jump up:
+>
+>      5         2000        20480        113.0            25092
+>
+> And at 8 threads it jumps again:
+>
+>      5         4000        20480        179.0            49480
+>
+> This work load is very device specific. On a very low latency device 
+> (arrays, high performance SSD), the coalescing "wait" time could be 
+> slower than just dispatching the command. Ext3/4 work done by Josef a few 
+> years back was meant to use high res timers to dynamically adjust that 
+> wait to avoid slowing down.
 
-On Oct 11, 2010, at 11:17 AM, Jan Kara wrote:
-> On Mon 11-10-10 10:05:34, Eric Sandeen wrote:
->> 
->> Probably worth mentioning the ext4 version is:
->> 
->> commit 914258bf2cb22bf4336a1b1d90c551b4b11ca5aa
->> Author: Theodore Ts'o <tytso@mit.edu>
->> Date:   Mon Oct 6 21:35:40 2008 -0400
->> 
->>    ext4/jbd2: Avoid WARN() messages when failing to write to the superblock
->> 
->>    This fixes some very common warnings reported by kerneloops.org
->> 
->>    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->  Yup. Done. Thanks.
+Yeah, elm3c65 and elm3c75 in that spreadsheet are a new pokey SATA disk and a
+really old IDE disk, which ought to represent the low end case.  elm3c44-sas is
+a midrange storage server... which doesn't like the patch so much.
 
-I could have sworn that I had fixed this for both ext3 and ext4.  I guess i didn't track to make sure the ext3 version of the patch made it into mainline.  Thanks, Darrick for fixing this!
-
--- Ted
-
+--D
