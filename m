@@ -1,59 +1,57 @@
-From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH] ext3: Fix debug messages in ext3_group_extend()
-Date: Sun, 17 Oct 2010 01:11:23 +0900
-Message-ID: <1287245483-3557-1-git-send-email-namhyung@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext3: ext4: Using uninitialized value
+Date: Sat, 16 Oct 2010 19:35:13 -0400
+Message-ID: <20101016233513.GA31722@thunk.org>
+References: <4CB5C4D6.3020201@nokia.com>
+ <4CB5DAC3.3040605@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Roman Borisov <ext-roman.borisov@nokia.com>,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Brad Spengler <spender@grsecurity.net>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:38015 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756784Ab0JPXfW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 16 Oct 2010 19:35:22 -0400
+Content-Disposition: inline
+In-Reply-To: <4CB5DAC3.3040605@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a typo, break long lines and use E3FSBLK on ext3_fsblk_t.
+On Wed, Oct 13, 2010 at 11:13:55AM -0500, Eric Sandeen wrote:
+> On 10/13/2010 09:40 AM, Roman Borisov wrote:
+> > Hello,
+> > 
+> > Could you clarify is there a bug in fs/ext4/namei.c,
+> > ext4_dx_find_entry() and fs/ext4/namei.c, ext3_dx_find_entry()?
 
-Signed-off-by: Namhyung Kim <namhyung@gmail.com>
----
- fs/ext3/resize.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
+Let me guess, you compiled the kernel using Clang, right?  I recently
+had a similar discussion with Brad about this issue.
 
-diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
-index 0ccd7b1..e746d30 100644
---- a/fs/ext3/resize.c
-+++ b/fs/ext3/resize.c
-@@ -977,7 +977,8 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
- 	o_blocks_count = le32_to_cpu(es->s_blocks_count);
- 
- 	if (test_opt(sb, DEBUG))
--		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK" uto "E3FSBLK" blocks\n",
-+		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK
-+		       " upto "E3FSBLK" blocks\n",
- 		       o_blocks_count, n_blocks_count);
- 
- 	if (n_blocks_count == 0 || n_blocks_count == o_blocks_count)
-@@ -985,7 +986,7 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
- 
- 	if (n_blocks_count > (sector_t)(~0ULL) >> (sb->s_blocksize_bits - 9)) {
- 		printk(KERN_ERR "EXT3-fs: filesystem on %s:"
--			" too large to resize to %lu blocks safely\n",
-+			" too large to resize to "E3FSBLK" blocks safely\n",
- 			sb->s_id, n_blocks_count);
- 		if (sizeof(sector_t) < 8)
- 			ext3_warning(sb, __func__,
-@@ -1065,11 +1066,11 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
- 	es->s_blocks_count = cpu_to_le32(o_blocks_count + add);
- 	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
- 	mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
--	ext3_debug("freeing blocks %lu through "E3FSBLK"\n", o_blocks_count,
--		   o_blocks_count + add);
-+	ext3_debug("freeing blocks "E3FSBLK" through "E3FSBLK"\n",
-+		   o_blocks_count, o_blocks_count + add);
- 	ext3_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
--	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n", o_blocks_count,
--		   o_blocks_count + add);
-+	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n",
-+		   o_blocks_count, o_blocks_count + add);
- 	if ((err = ext3_journal_stop(handle)))
- 		goto exit_put;
- 	if (test_opt(sb, DEBUG))
--- 
-1.7.0.4
+> here we should find the . or .. (it's always going to be there, right?)
+
+The problem is if '.' or '..' is not present, then when we call
+ext3_htree_next_block(), it's not the fact that hash is uninitialized
+which is the problem.  The bigger problem is that the frame structure
+is not fully initialized; and we could end up dereference a NULL
+pointer (on a 32-bit system) or a pointer filled with stack garbage
+(on a 64-bit system).
+
+Fortunately most of the time we'll never hit this case, since '.'  and
+'..' handling is dealt with in fs/namei.c, and is never passed down to
+the fs-specific layer.  The one exception to this is if the file
+system is being used as an NFS file server, in which case it is
+possible that the fs layer will be asked to look up "..".
+
+So in the case where the directory is corrupted, and the file system
+is being exported via NFS, it's possible that we could get a kernel
+Oops.  Since we're only reading from the garbaged pointer, I'm pretty
+sure this can't be leveraged into a security exposure, but still, it
+would be good to fix this.
+
+I have patches chained to this e-mail that should be applied for
+ext3, and which I've queued for ext4.
+
+						- Ted
