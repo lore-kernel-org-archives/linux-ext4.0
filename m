@@ -1,86 +1,39 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: Use search_dirblock() in ext4_dx_find_entry()
-Date: Sat, 16 Oct 2010 19:37:33 -0400
-Message-ID: <1287272253-2140-2-git-send-email-tytso@mit.edu>
-References: <20101016233513.GA31722@thunk.org>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Brad Spengler <spender@grsecurity.net>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Daniel Taylor" <Daniel.Taylor@wdc.com>
+Subject: ext over RAID-[56]?
+Date: Sat, 16 Oct 2010 17:16:50 -0700
+Message-ID: <25B374CC0D9DFB4698BB331F82CD0CF20D5FE3@wdscexbe08.sc.wdc.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38045 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756799Ab0JPXhf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 16 Oct 2010 19:37:35 -0400
-In-Reply-To: <20101016233513.GA31722@thunk.org>
+Received: from wdscspam2.wdc.com ([129.253.170.131]:23656 "EHLO
+	wdscspam2.wdc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756929Ab0JQA3v convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Oct 2010 20:29:51 -0400
+Content-class: urn:content-classes:message
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use the search_dirblock() in ext4_dx_find_entry().  It makes the code
-easier to read, and it takes advantage of common code.  It also saves
-100 bytes or so of text space.
+One of the program managers here asked me a question that I couldn't answer:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Brad Spengler <spender@grsecurity.net>
----
- fs/ext4/namei.c |   33 ++++++++++++---------------------
- 1 files changed, 12 insertions(+), 21 deletions(-)
+with ext[34] over a RAID-[56] volume, what protection against data
+corruption
+and loss of existing data does the file system provide for the case of an
+incomplete update of the RAID "stripe"?
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index ff89449..eb8b794 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -974,39 +974,30 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
- 	struct super_block * sb = dir->i_sb;
- 	struct dx_hash_info	hinfo;
- 	struct dx_frame frames[2], *frame;
--	struct ext4_dir_entry_2 *de, *top;
- 	struct buffer_head *bh;
- 	ext4_lblk_t block;
- 	int retval;
--	int namelen = d_name->len;
--	const u8 *name = d_name->name;
- 
- 	if (!(frame = dx_probe(d_name, dir, &hinfo, frames, err)))
- 		return NULL;
- 	do {
- 		block = dx_get_block(frame->at);
--		if (!(bh = ext4_bread (NULL,dir, block, 0, err)))
-+		if (!(bh = ext4_bread(NULL, dir, block, 0, err)))
- 			goto errout;
--		de = (struct ext4_dir_entry_2 *) bh->b_data;
--		top = (struct ext4_dir_entry_2 *) ((char *) de + sb->s_blocksize -
--				       EXT4_DIR_REC_LEN(0));
--		for (; de < top; de = ext4_next_entry(de, sb->s_blocksize)) {
--			int off = (block << EXT4_BLOCK_SIZE_BITS(sb))
--				  + ((char *) de - bh->b_data);
--
--			if (!ext4_check_dir_entry(dir, de, bh, off)) {
--				brelse(bh);
--				*err = ERR_BAD_DX_DIR;
--				goto errout;
--			}
- 
--			if (ext4_match(namelen, name, de)) {
--				*res_dir = de;
--				dx_release(frames);
--				return bh;
--			}
-+		retval = search_dirblock(bh, dir, d_name,
-+					 block << EXT4_BLOCK_SIZE_BITS(sb),
-+					 res_dir);
-+		if (retval == 1) { 	/* Success! */
-+			dx_release(frames);
-+			return bh;
- 		}
- 		brelse(bh);
-+		if (retval == -1) {
-+			*err = ERR_BAD_DX_DIR;
-+			goto errout;
-+		}
-+
- 		/* Check to see if we should continue to search */
- 		retval = ext4_htree_next_block(dir, hinfo.hash, frame,
- 					       frames, NULL);
--- 
-1.7.1
+I know that anyone with any usable brain cells has their data server on a
+nice
+UPS, but not all customers are so equipped, and he's concerned about
+corruption
+during a power failure (loss of unwritten data is OK).
 
+I can't see any configuration options that would help but I could easily be
+missing something.  Any ideas?
+
+Thanks,
+
+Dan Taylor
+Sr. Staff Engineer
+WD Branded Products
