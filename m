@@ -1,47 +1,134 @@
 From: Namhyung Kim <namhyung@gmail.com>
-Subject: Re: [PATCH] ext3: Remove misplaced BUFFER_TRACE() in
- ext3_truncate()
-Date: Mon, 18 Oct 2010 23:53:11 +0900
-Message-ID: <1287413591.1689.25.camel@leonhard>
-References: <1287140582-5925-1-git-send-email-namhyung@gmail.com>
-	 <4CBC5825.8050502@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext3: Update kernel-doc comments
+Date: Tue, 19 Oct 2010 00:34:35 +0900
+Message-ID: <1287416075-3783-1-git-send-email-namhyung@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:51083 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753509Ab0JROxW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2010 10:53:22 -0400
-In-Reply-To: <4CBC5825.8050502@redhat.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:47619 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756789Ab0JRPer (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2010 11:34:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010-10-18 (=EC=9B=94), 09:22 -0500, Eric Sandeen:
-> As long as you're doing these cleanups, you may as well eyeball ext4
-> to see whether the same issues exist; in the case above, it does, and=
- the
-> exact same patch (modulo ext3/ext4 changes) applies.
->=20
-> No real point in getting ext3 fixed up and leaving ext4 behind...
->=20
+Update missing/broken argument descriptions and fix formatting.
 
-My plan was sending those patches in a batch after reading ext3 at all.
-But it seems to take some time, so now I think that it'd be better to
-send them in a small series. I'll prepare it for ext4 (and ext2 too if
-you want, Jan) soon. Thanks.
+Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+---
+ fs/ext3/balloc.c |   13 ++++++++-----
+ fs/ext3/inode.c  |   19 ++++++++++++-------
+ 2 files changed, 20 insertions(+), 12 deletions(-)
 
---=20
-Regards,
-Namhyung Kim
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index a49ce4a..b3db226 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -810,8 +810,9 @@ find_next_usable_block(ext3_grpblk_t start, struct buffer_head *bh,
+ 
+ /**
+  * claim_block()
++ * @lock:		the spin lock for this block group
+  * @block:		the free block (group relative) to allocate
+- * @bh:			the bufferhead containts the block group bitmap
++ * @bh:			the buffer_head contains the block group bitmap
+  *
+  * We think we can allocate this block in this bitmap.  Try to set the bit.
+  * If that succeeds then check that nobody has allocated and then freed the
+@@ -956,9 +957,11 @@ fail_access:
+  *		but we will shift to the place where start_block is,
+  *		then start from there, when looking for a reservable space.
+  *
+- *	@size: the target new reservation window size
++ *	@my_rsv: the reservation window
+  *
+- *	@group_first_block: the first block we consider to start
++ *	@sb: the super block
++ *
++ *	@start_block: the first block we consider to start
+  *			the real search from
+  *
+  *	@last_block:
+@@ -1084,7 +1087,7 @@ static int find_next_reservable_window(
+  *
+  *	failed: we failed to find a reservation window in this group
+  *
+- *	@rsv: the reservation
++ *	@my_rsv: the reservation window
+  *
+  *	@grp_goal: The goal (group-relative).  It is where the search for a
+  *		free reservable space should start from.
+@@ -1273,8 +1276,8 @@ static void try_to_extend_reservation(struct ext3_reserve_window_node *my_rsv,
+  * @group:		given allocation block group
+  * @bitmap_bh:		bufferhead holds the block bitmap
+  * @grp_goal:		given target block within the group
+- * @count:		target number of blocks to allocate
+  * @my_rsv:		reservation window
++ * @count:		target number of blocks to allocate
+  * @errp:		pointer to store the error code
+  *
+  * This is the main function used to allocate a new block and its reservation
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 90a9c3d..ef1c23a 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -498,7 +498,7 @@ static ext3_fsblk_t ext3_find_goal(struct inode *inode, long block,
+ }
+ 
+ /**
+- *	ext3_blks_to_allocate: Look up the block map and count the number
++ *	ext3_blks_to_allocate - Look up the block map and count the number
+  *	of direct blocks need to be allocated for the given branch.
+  *
+  *	@branch: chain of indirect blocks
+@@ -536,14 +536,18 @@ static int ext3_blks_to_allocate(Indirect *branch, int k, unsigned long blks,
+ }
+ 
+ /**
+- *	ext3_alloc_blocks: multiple allocate blocks needed for a branch
++ *	ext3_alloc_blocks - multiple allocate blocks needed for a branch
++ *	@handle: handle for this transaction
++ *	@inode: owner
++ *	@goal: preferred place for allocation
+  *	@indirect_blks: the number of blocks need to allocate for indirect
+  *			blocks
+- *
++ *	@blks:	number of blocks need to allocated for direct blocks
+  *	@new_blocks: on return it will store the new block numbers for
+  *	the indirect blocks(if needed) and the first direct block,
+- *	@blks:	on return it will store the total number of allocated
+- *		direct blocks
++ *	@err: here we store the error value
++ *
++ *	return the number of direct blocks allocated
+  */
+ static int ext3_alloc_blocks(handle_t *handle, struct inode *inode,
+ 			ext3_fsblk_t goal, int indirect_blks, int blks,
+@@ -598,9 +602,11 @@ failed_out:
+ 
+ /**
+  *	ext3_alloc_branch - allocate and set up a chain of blocks.
++ *	@handle: handle for this transaction
+  *	@inode: owner
+  *	@indirect_blks: number of allocated indirect blocks
+  *	@blks: number of allocated direct blocks
++ *	@goal: preferred place for allocation
+  *	@offsets: offsets (in the blocks) to store the pointers to next.
+  *	@branch: place to store the chain in.
+  *
+@@ -700,10 +706,9 @@ failed:
+ 
+ /**
+  * ext3_splice_branch - splice the allocated branch onto inode.
++ * @handle: handle for this transaction
+  * @inode: owner
+  * @block: (logical) number of block we are adding
+- * @chain: chain of indirect blocks (with a missing link - see
+- *	ext3_alloc_branch)
+  * @where: location of missing link
+  * @num:   number of indirect blocks we are adding
+  * @blks:  number of direct blocks we are adding
+-- 
+1.7.0.4
 
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
