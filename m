@@ -1,8 +1,8 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: Remove misplaced BUFFER_TRACE() in ext3_truncate()
-Date: Mon, 18 Oct 2010 09:22:29 -0500
-Message-ID: <4CBC5825.8050502@redhat.com>
-References: <1287140582-5925-1-git-send-email-namhyung@gmail.com>
+Subject: Re: [PATCH] ext3: Fix debug messages in ext3_group_extend()
+Date: Mon, 18 Oct 2010 09:23:23 -0500
+Message-ID: <4CBC585B.6010207@redhat.com>
+References: <1287245483-3557-1-git-send-email-namhyung@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -11,38 +11,61 @@ Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Namhyung Kim <namhyung@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27701 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53189 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754967Ab0JROWq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Oct 2010 10:22:46 -0400
-In-Reply-To: <1287140582-5925-1-git-send-email-namhyung@gmail.com>
+	id S1755167Ab0JROXg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Oct 2010 10:23:36 -0400
+In-Reply-To: <1287245483-3557-1-git-send-email-namhyung@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Namhyung Kim wrote:
+> Fix a typo, break long lines and use E3FSBLK on ext3_fsblk_t.
+
+ext4 could use this treatment as well.
+
 > Signed-off-by: Namhyung Kim <namhyung@gmail.com>
 > ---
->  fs/ext3/inode.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
+>  fs/ext3/resize.c |   13 +++++++------
+>  1 files changed, 7 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index 5e0faf4..90a9c3d 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -2530,7 +2530,6 @@ void ext3_truncate(struct inode *inode)
->  			 */
->  		} else {
->  			/* Shared branch grows from an indirect block */
-> -			BUFFER_TRACE(partial->bh, "get_write_access");
->  			ext3_free_branches(handle, inode, partial->bh,
->  					partial->p,
->  					partial->p+1, (chain+n-1) - partial);
+> diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
+> index 0ccd7b1..e746d30 100644
+> --- a/fs/ext3/resize.c
+> +++ b/fs/ext3/resize.c
+> @@ -977,7 +977,8 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+>  	o_blocks_count = le32_to_cpu(es->s_blocks_count);
+>  
+>  	if (test_opt(sb, DEBUG))
+> -		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK" uto "E3FSBLK" blocks\n",
+> +		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK
+> +		       " upto "E3FSBLK" blocks\n",
+>  		       o_blocks_count, n_blocks_count);
+>  
+>  	if (n_blocks_count == 0 || n_blocks_count == o_blocks_count)
+> @@ -985,7 +986,7 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+>  
+>  	if (n_blocks_count > (sector_t)(~0ULL) >> (sb->s_blocksize_bits - 9)) {
+>  		printk(KERN_ERR "EXT3-fs: filesystem on %s:"
+> -			" too large to resize to %lu blocks safely\n",
+> +			" too large to resize to "E3FSBLK" blocks safely\n",
+>  			sb->s_id, n_blocks_count);
+>  		if (sizeof(sector_t) < 8)
+>  			ext3_warning(sb, __func__,
+> @@ -1065,11 +1066,11 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+>  	es->s_blocks_count = cpu_to_le32(o_blocks_count + add);
+>  	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
+>  	mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
+> -	ext3_debug("freeing blocks %lu through "E3FSBLK"\n", o_blocks_count,
+> -		   o_blocks_count + add);
+> +	ext3_debug("freeing blocks "E3FSBLK" through "E3FSBLK"\n",
+> +		   o_blocks_count, o_blocks_count + add);
+>  	ext3_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
+> -	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n", o_blocks_count,
+> -		   o_blocks_count + add);
+> +	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n",
+> +		   o_blocks_count, o_blocks_count + add);
+>  	if ((err = ext3_journal_stop(handle)))
+>  		goto exit_put;
+>  	if (test_opt(sb, DEBUG))
 
-As long as you're doing these cleanups, you may as well eyeball ext4
-to see whether the same issues exist; in the case above, it does, and the
-exact same patch (modulo ext3/ext4 changes) applies.
-
-No real point in getting ext3 fixed up and leaving ext4 behind...
-
-Thanks,
--Eric
