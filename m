@@ -1,79 +1,70 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd: Cleanup __process_buffer()
-Date: Mon, 18 Oct 2010 12:57:07 +0200
-Message-ID: <20101018105707.GJ3826@quack.suse.cz>
-References: <1287217814-5782-1-git-send-email-namhyung@gmail.com>
+Subject: Re: [PATCH] ext3: Fix debug messages in ext3_group_extend()
+Date: Mon, 18 Oct 2010 12:57:28 +0200
+Message-ID: <20101018105728.GK3826@quack.suse.cz>
+References: <1287245483-3557-1-git-send-email-namhyung@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Namhyung Kim <namhyung@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45620 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753675Ab0JRK6G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Oct 2010 06:58:06 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1287217814-5782-1-git-send-email-namhyung@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1287245483-3557-1-git-send-email-namhyung@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat 16-10-10 17:30:14, Namhyung Kim wrote:
-> Change initial value of 'ret' to 1 and set to 0 only if nothing
-> happens actually.
-  The result is 3 removed lines and I find the code readability the same
-before and after the patch. So it's IMHO an unnecessary code churn. So I'm
-sorry but I'm not taking the patch.
+On Sun 17-10-10 01:11:23, Namhyung Kim wrote:
+> Fix a typo, break long lines and use E3FSBLK on ext3_fsblk_t.
+  Thanks. Merged.
 
 								Honza
 > 
 > Signed-off-by: Namhyung Kim <namhyung@gmail.com>
 > ---
->  fs/jbd/checkpoint.c |    9 +++------
->  1 files changed, 3 insertions(+), 6 deletions(-)
+>  fs/ext3/resize.c |   13 +++++++------
+>  1 files changed, 7 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-> index e4b87bc..0a687a6 100644
-> --- a/fs/jbd/checkpoint.c
-> +++ b/fs/jbd/checkpoint.c
-> @@ -280,7 +280,7 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
->  			struct buffer_head **bhs, int *batch_count)
->  {
->  	struct buffer_head *bh = jh2bh(jh);
-> -	int ret = 0;
-> +	int ret = 1;
+> diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
+> index 0ccd7b1..e746d30 100644
+> --- a/fs/ext3/resize.c
+> +++ b/fs/ext3/resize.c
+> @@ -977,7 +977,8 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+>  	o_blocks_count = le32_to_cpu(es->s_blocks_count);
 >  
->  	if (buffer_locked(bh)) {
->  		get_bh(bh);
-> @@ -290,7 +290,6 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
->  		/* the journal_head may have gone by now */
->  		BUFFER_TRACE(bh, "brelse");
->  		__brelse(bh);
-> -		ret = 1;
->  	} else if (jh->b_transaction != NULL) {
->  		transaction_t *t = jh->b_transaction;
->  		tid_t tid = t->t_tid;
-> @@ -299,9 +298,7 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
->  		jbd_unlock_bh_state(bh);
->  		log_start_commit(journal, tid);
->  		log_wait_commit(journal, tid);
-> -		ret = 1;
->  	} else if (!buffer_dirty(bh)) {
-> -		ret = 1;
->  		if (unlikely(buffer_write_io_error(bh)))
->  			ret = -EIO;
->  		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
-> @@ -330,8 +327,8 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
->  		if (*batch_count == NR_BATCH) {
->  			spin_unlock(&journal->j_list_lock);
->  			__flush_batch(journal, bhs, batch_count);
-> -			ret = 1;
-> -		}
-> +		} else
-> +			ret = 0;
->  	}
->  	return ret;
->  }
+>  	if (test_opt(sb, DEBUG))
+> -		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK" uto "E3FSBLK" blocks\n",
+> +		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK
+> +		       " upto "E3FSBLK" blocks\n",
+>  		       o_blocks_count, n_blocks_count);
+>  
+>  	if (n_blocks_count == 0 || n_blocks_count == o_blocks_count)
+> @@ -985,7 +986,7 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+>  
+>  	if (n_blocks_count > (sector_t)(~0ULL) >> (sb->s_blocksize_bits - 9)) {
+>  		printk(KERN_ERR "EXT3-fs: filesystem on %s:"
+> -			" too large to resize to %lu blocks safely\n",
+> +			" too large to resize to "E3FSBLK" blocks safely\n",
+>  			sb->s_id, n_blocks_count);
+>  		if (sizeof(sector_t) < 8)
+>  			ext3_warning(sb, __func__,
+> @@ -1065,11 +1066,11 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
+>  	es->s_blocks_count = cpu_to_le32(o_blocks_count + add);
+>  	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
+>  	mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
+> -	ext3_debug("freeing blocks %lu through "E3FSBLK"\n", o_blocks_count,
+> -		   o_blocks_count + add);
+> +	ext3_debug("freeing blocks "E3FSBLK" through "E3FSBLK"\n",
+> +		   o_blocks_count, o_blocks_count + add);
+>  	ext3_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
+> -	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n", o_blocks_count,
+> -		   o_blocks_count + add);
+> +	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n",
+> +		   o_blocks_count, o_blocks_count + add);
+>  	if ((err = ext3_journal_stop(handle)))
+>  		goto exit_put;
+>  	if (test_opt(sb, DEBUG))
 > -- 
 > 1.7.0.4
 > 
