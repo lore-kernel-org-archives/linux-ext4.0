@@ -1,89 +1,47 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext3: Fix debug messages in ext3_group_extend()
-Date: Mon, 18 Oct 2010 10:50:33 -0400
-Message-ID: <20101018145033.GC4120@thunk.org>
-References: <1287245483-3557-1-git-send-email-namhyung@gmail.com>
- <4CBC585B.6010207@redhat.com>
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: Re: [PATCH] ext3: Remove misplaced BUFFER_TRACE() in
+ ext3_truncate()
+Date: Mon, 18 Oct 2010 23:53:11 +0900
+Message-ID: <1287413591.1689.25.camel@leonhard>
+References: <1287140582-5925-1-git-send-email-namhyung@gmail.com>
+	 <4CBC5825.8050502@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Namhyung Kim <namhyung@gmail.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46133 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755938Ab0JROuX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Oct 2010 10:50:23 -0400
-Content-Disposition: inline
-In-Reply-To: <4CBC585B.6010207@redhat.com>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:51083 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753509Ab0JROxW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2010 10:53:22 -0400
+In-Reply-To: <4CBC5825.8050502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 18, 2010 at 09:23:23AM -0500, Eric Sandeen wrote:
-> Namhyung Kim wrote:
-> > Fix a typo, break long lines and use E3FSBLK on ext3_fsblk_t.
-> 
-> ext4 could use this treatment as well.
+2010-10-18 (=EC=9B=94), 09:22 -0500, Eric Sandeen:
+> As long as you're doing these cleanups, you may as well eyeball ext4
+> to see whether the same issues exist; in the case above, it does, and=
+ the
+> exact same patch (modulo ext3/ext4 changes) applies.
+>=20
+> No real point in getting ext3 fixed up and leaving ext4 behind...
+>=20
 
-There's been over a dozen random tiny cleanup patches to jbd.  I've
-been waiting for them to die down, and for me to have time, and I was
-going to batch them into a single commit (I'm not fond of a whole
-series of random cleanup patches that just fix spelling mistakes and
-other random code churn).  If someone would like to get to that before
-we, it would be much appreciated.
+My plan was sending those patches in a batch after reading ext3 at all.
+But it seems to take some time, so now I think that it'd be better to
+send them in a small series. I'll prepare it for ext4 (and ext2 too if
+you want, Jan) soon. Thanks.
 
-						- Ted
+--=20
+Regards,
+Namhyung Kim
 
 
-> 
-> > Signed-off-by: Namhyung Kim <namhyung@gmail.com>
-> > ---
-> >  fs/ext3/resize.c |   13 +++++++------
-> >  1 files changed, 7 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
-> > index 0ccd7b1..e746d30 100644
-> > --- a/fs/ext3/resize.c
-> > +++ b/fs/ext3/resize.c
-> > @@ -977,7 +977,8 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
-> >  	o_blocks_count = le32_to_cpu(es->s_blocks_count);
-> >  
-> >  	if (test_opt(sb, DEBUG))
-> > -		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK" uto "E3FSBLK" blocks\n",
-> > +		printk(KERN_DEBUG "EXT3-fs: extending last group from "E3FSBLK
-> > +		       " upto "E3FSBLK" blocks\n",
-> >  		       o_blocks_count, n_blocks_count);
-> >  
-> >  	if (n_blocks_count == 0 || n_blocks_count == o_blocks_count)
-> > @@ -985,7 +986,7 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
-> >  
-> >  	if (n_blocks_count > (sector_t)(~0ULL) >> (sb->s_blocksize_bits - 9)) {
-> >  		printk(KERN_ERR "EXT3-fs: filesystem on %s:"
-> > -			" too large to resize to %lu blocks safely\n",
-> > +			" too large to resize to "E3FSBLK" blocks safely\n",
-> >  			sb->s_id, n_blocks_count);
-> >  		if (sizeof(sector_t) < 8)
-> >  			ext3_warning(sb, __func__,
-> > @@ -1065,11 +1066,11 @@ int ext3_group_extend(struct super_block *sb, struct ext3_super_block *es,
-> >  	es->s_blocks_count = cpu_to_le32(o_blocks_count + add);
-> >  	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
-> >  	mutex_unlock(&EXT3_SB(sb)->s_resize_lock);
-> > -	ext3_debug("freeing blocks %lu through "E3FSBLK"\n", o_blocks_count,
-> > -		   o_blocks_count + add);
-> > +	ext3_debug("freeing blocks "E3FSBLK" through "E3FSBLK"\n",
-> > +		   o_blocks_count, o_blocks_count + add);
-> >  	ext3_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
-> > -	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n", o_blocks_count,
-> > -		   o_blocks_count + add);
-> > +	ext3_debug("freed blocks "E3FSBLK" through "E3FSBLK"\n",
-> > +		   o_blocks_count, o_blocks_count + add);
-> >  	if ((err = ext3_journal_stop(handle)))
-> >  		goto exit_put;
-> >  	if (test_opt(sb, DEBUG))
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
