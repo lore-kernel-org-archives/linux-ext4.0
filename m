@@ -1,49 +1,77 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext3: Avoid uninitialized memory references with a
- corrupted htree directory
-Date: Mon, 18 Oct 2010 12:05:15 +0200
-Message-ID: <20101018100515.GB3826@quack.suse.cz>
-References: <20101016233513.GA31722@thunk.org>
- <1287272220-1591-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 11/22] ext3: use little endian bitops
+Date: Mon, 18 Oct 2010 12:31:56 +0200
+Message-ID: <20101018103156.GE3826@quack.suse.cz>
+References: <1287135981-17604-1-git-send-email-akinobu.mita@gmail.com>
+ <1287135981-17604-12-git-send-email-akinobu.mita@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Brad Spengler <spender@grsecurity.net>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+	Arnd Bergmann <arnd@arndb.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Akinobu Mita <akinobu.mita@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:56408 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:57231 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753910Ab0JRKGN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Oct 2010 06:06:13 -0400
+	id S1754540Ab0JRKc6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Oct 2010 06:32:58 -0400
 Content-Disposition: inline
-In-Reply-To: <1287272220-1591-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <1287135981-17604-12-git-send-email-akinobu.mita@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Ted,
-
-  thanks for the patch.
-
-On Sat 16-10-10 19:36:59, Theodore Ts'o wrote:
-> @@ -871,6 +872,16 @@ static struct buffer_head *ext3_find_entry(struct inode *dir,
->  	namelen = entry->len;
->  	if (namelen > EXT3_NAME_LEN)
->  		return NULL;
-> +	if ((namelen < 2) && (name[0] == '.') &&
-> +	    (name[1] == '.' || name[1] == '0')) {
-  This condition looks wrong... I suspect it should rather be:
-  (namelen <= 2) && (name[0] == '.') && (name[1] == '.' || name[1] == 0)
-           ^^^ change here                                  and here ^^^
-> +		/*
-> +		 * "." or ".." will only be in the first block
-> +		 * NFS may look up ".."; "." should be handled by the VFS
-> +		 */
-> +		block = start = 0;
-> +		nblocks = 1;
-> +		goto restart;
-> +	}
+On Fri 15-10-10 18:46:10, Akinobu Mita wrote:
+> As a preparation for removing ext2 non-atomic bit operations from
+> asm/bitops.h. This converts ext2 non-atomic bit operations to
+> little endian bit operations.
+> 
+> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: linux-ext4@vger.kernel.org
+  Acked-by: Jan Kara <jack@suse.cz>
 
 								Honza
+> ---
+>  include/linux/ext3_fs.h |   15 ++++++++++-----
+>  1 files changed, 10 insertions(+), 5 deletions(-)
+> 
+> diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+> index 6ce1bca..34ef455 100644
+> --- a/include/linux/ext3_fs.h
+> +++ b/include/linux/ext3_fs.h
+> @@ -418,13 +418,18 @@ struct ext3_inode {
+>  #define EXT2_MOUNT_DATA_FLAGS		EXT3_MOUNT_DATA_FLAGS
+>  #endif
+>  
+> -#define ext3_set_bit			ext2_set_bit
+> +#define ext3_set_bit(nr, addr)	\
+> +	__test_and_set_le_bit((nr), (unsigned long *)(addr))
+>  #define ext3_set_bit_atomic		ext2_set_bit_atomic
+> -#define ext3_clear_bit			ext2_clear_bit
+> +#define ext3_clear_bit(nr, addr)	\
+> +	__test_and_clear_le_bit((nr), (unsigned long *)(addr))
+>  #define ext3_clear_bit_atomic		ext2_clear_bit_atomic
+> -#define ext3_test_bit			ext2_test_bit
+> -#define ext3_find_first_zero_bit	ext2_find_first_zero_bit
+> -#define ext3_find_next_zero_bit		ext2_find_next_zero_bit
+> +#define ext3_test_bit(nr, addr)	\
+> +	test_le_bit((nr), (unsigned long *)(addr))
+> +#define ext3_find_first_zero_bit(addr, size)	\
+> +	find_first_zero_le_bit((unsigned long *)(addr), (size))
+> +#define ext3_find_next_zero_bit(addr, size, off)	\
+> +	find_next_zero_le_bit((unsigned long *)(addr), (size), (off))
+>  
+>  /*
+>   * Maximal mount counts between two filesystem checks
+> -- 
+> 1.7.1.231.gd0b16
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
