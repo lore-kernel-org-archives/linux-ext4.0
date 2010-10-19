@@ -1,57 +1,45 @@
-From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH] ext2: Check return value of sb_getblk()
-Date: Tue, 19 Oct 2010 22:10:19 +0900
-Message-ID: <1287493819-2592-1-git-send-email-namhyung@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Felipe Franciosi <felipe@paradoxo.org>
+Subject: Committing changes to an ext3_inode structure
+Date: Tue, 19 Oct 2010 16:23:48 +0100
+Message-ID: <CB87EF37-0485-4A48-B401-EA594BE47B29@paradoxo.org>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:53114 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758554Ab0JSNKf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Oct 2010 09:10:35 -0400
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:33144 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753491Ab0JSPYA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Oct 2010 11:24:00 -0400
+Received: by wyb28 with SMTP id 28so2605162wyb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 19 Oct 2010 08:23:58 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-File block allocation if sb_getblk() returns NULL. unlikely() is added
-because it is called in a loop and we've been OK without the check
-until now.
+Dear all,
 
-Signed-off-by: Namhyung Kim <namhyung@gmail.com>
----
- fs/ext2/inode.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+I am experimenting on a 2.6.20.3-ubuntu1 kernel to prototype and  
+evaluate different methods for migrating datablocks for a given inode  
+on the fly.
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 940c961..4acdc17 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -497,6 +497,11 @@ static int ext2_alloc_branch(struct inode *inode,
- 		 * parent to disk.
- 		 */
- 		bh = sb_getblk(inode->i_sb, new_blocks[n-1]);
-+		if (unlikely(!bh)) {
-+			err = -EIO;
-+			goto failed;
-+		}
-+
- 		branch[n].bh = bh;
- 		lock_buffer(bh);
- 		memset(bh->b_data, 0, blocksize);
-@@ -525,6 +530,14 @@ static int ext2_alloc_branch(struct inode *inode,
- 	}
- 	*blks = num;
- 	return err;
-+failed:
-+	/* Allocation failed, free what we already allocated */
-+	for (i = 0; i < indirect_blks; i++)
-+		ext2_free_blocks(inode, new_blocks[i], 1);
-+
-+	ext2_free_blocks(inode, new_blocks[i], num);
-+
-+	return err;
- }
- 
- /**
--- 
-1.7.0.4
+I have created an ioctl call that implements some verifications and  
+invokes a function I wrote in balloc.c for such migration.
 
+Upon receiving a struct inode*, I retrieve the corresponding iloc  
+using the ext3_get_inode_iloc() function and then the struct  
+ext3_inode* using the ext3_raw_inode() on the iloc. I have confirmed  
+the pointer is correct by printing several ext3_inode relevant fields.
+
+After making my modifications to the i_block array, I am finding it  
+impossible to commit these changes to the inode itself.
+
+I have tried different things such as marking the iloc.bh buffer_head  
+as dirty and submitting it for writing, marking the page as dirty,  
+etc, but I think I'm missing something more fundamental. Most of my  
+attempts were planned according to what I've seen inside similar code  
+of buffer_head manipulation.
+
+Can anyone shed some light on what I'm missing?
+
+Regards,
+Felipe
