@@ -1,56 +1,51 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH] block: Make blkdev_issue_discard() interruptible
-Date: Thu, 21 Oct 2010 12:52:22 -0400
-Message-ID: <x49k4lb1oah.fsf@segfault.boston.devel.redhat.com>
-References: <1287671673-11448-1-git-send-email-lczerner@redhat.com>
-	<1287676486-19645-1-git-send-email-lczerner@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: What am I doing wrong?  submit_bio() suddenly stops working...
+Date: Thu, 21 Oct 2010 12:55:25 -0400
+Message-ID: <20101021165525.GB3127@thunk.org>
+References: <E1P8kSE-0001DW-8C@tytso-glaptop>
+ <4CBFE4E2.7050001@kernel.dk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com,
-	adilger@dilger.ca, axboe@kernel.dk, linux-kernel@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1287676486-19645-1-git-send-email-lczerner@redhat.com> (Lukas
-	Czerner's message of "Thu, 21 Oct 2010 17:54:46 +0200")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Jens Axboe <axboe@kernel.dk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:37397 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752932Ab0JUQzg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Oct 2010 12:55:36 -0400
+Content-Disposition: inline
+In-Reply-To: <4CBFE4E2.7050001@kernel.dk>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Lukas Czerner <lczerner@redhat.com> writes:
+On Thu, Oct 21, 2010 at 08:59:46AM +0200, Jens Axboe wrote:
+> 
+> I don't see anything immediately wrong with your approach. I suspect
+> we'll need to see sysrq-t traces of the relevant processes to make a
+> more educated guess!
 
-> Since the discard may take quite long time, especially with really big
-> extents (like the whole device for example), it would be nice to give to
-> users the opportunity to abort it. This is especially useful for mkfs,
-> when user can not know in advance how long it will take.
->
-> In conjunction with mke2fs patch "Inform user about ongoing discard"
-> it gives the user all the comfort of being informed about discard and
-> being able to abort the operation.
+I've uploaded a trace output that includes the sysrq-t trace, but I
+don't think it shows anything interesting.  We're not hanging on any
+kind of loack as near as I can tell.  It looks like
+__generic_make_request() is calling q->make_request_fn(), and this is
+returning without actually doing anything.
 
-For others reviewing, this is against the block tree's for-next branch.
+http://userweb.kernel.org/~tytso/ext4-bio-patches/kvm-console-2
 
-> ---
->  block/blk-lib.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
->
-> diff --git a/block/blk-lib.c b/block/blk-lib.c
-> index 1a320d2..db44671 100644
-> --- a/block/blk-lib.c
-> +++ b/block/blk-lib.c
-> @@ -91,6 +91,9 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
->  		bio_get(bio);
->  		submit_bio(type, bio);
->  
-> +		if (unlikely(fatal_signal_pending(current)))
-> +			ret = -ERESTARTSYS;
-> +
->  		wait_for_completion(&wait);
->  
->  		if (bio_flagged(bio, BIO_EOPNOTSUPP))
+In this trace, I added a patch to prove that __generic_make_request()
+is calling __make_request (I wasn't sure what q->make_request_fn was
+indirecting to, so I added a brute force lookup to make sure I
+understood what was going on), but at one point, it just starts
+queuing the request, and it enters cfq, but the request never gets
+dispatched out.  Maybe this is a failure of the plugging/unplugging
+mechanisms?
 
-Given that you're still doing the wait_for_completion, wouldn't it be
-better to check for a pending signal after that?
+I guess I can start putting in more brute-force printk's inside
+__make_request and inside the cfq scheduler to try to understand what
+is going on, but I'm really guessing at this point.
 
-What testing did you perform?
+If you have any suggestions about more elegant ways of figuring what
+is happening, please do let me know....
 
-Cheers,
-Jeff
+						- Ted
