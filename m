@@ -1,48 +1,63 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] block: Make blkdev_issue_discard() interruptible
-Date: Thu, 21 Oct 2010 16:34:33 +0200
-Message-ID: <1287671673-11448-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, sandeen@redhat.com, adilger@dilger.ca,
-	axboe@kernel.dk, linux-kernel@vger.kernel.org, lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64778 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750712Ab0JUOew (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Oct 2010 10:34:52 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: [PATCH v2 11/22] ext3: use little-endian bitops
+Date: Thu, 21 Oct 2010 23:41:06 +0900
+Message-ID: <1287672077-5797-12-git-send-email-akinobu.mita@gmail.com>
+References: <1287672077-5797-1-git-send-email-akinobu.mita@gmail.com>
+Cc: Akinobu Mita <akinobu.mita@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+	Arnd Bergmann <arnd@arndb.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1287672077-5797-1-git-send-email-akinobu.mita@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Since the discard may take quite long time, especially with really big
-extents (like the whole device for example), it would be nice to give to
-users the opportunity to abort it. This is especially useful for mkfs,
-when user can not know in advance how long it will take.
+As a preparation for removing ext2 non-atomic bit operations from
+asm/bitops.h. This converts ext2 non-atomic bit operations to
+little-endian bit operations.
 
-In conjunction with mke2fs patch "Inform user about ongoing discard"
-it gives the user all the comfort of being informed about discard and
-being able to abort the operation.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
 ---
- block/blk-lib.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+No change from previous submission
 
-diff --git a/block/blk-lib.c b/block/blk-lib.c
-index c392029..204839b 100644
---- a/block/blk-lib.c
-+++ b/block/blk-lib.c
-@@ -101,6 +101,11 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
- 		else if (!bio_flagged(bio, BIO_UPTODATE))
- 			ret = -EIO;
- 		bio_put(bio);
-+
-+		if (fatal_signal_pending(current)) {
-+			ret = -ERESTARTSYS;
-+			break;
-+		}
- 	}
+ include/linux/ext3_fs.h |   15 ++++++++++-----
+ 1 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 6ce1bca..34ef455 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -418,13 +418,18 @@ struct ext3_inode {
+ #define EXT2_MOUNT_DATA_FLAGS		EXT3_MOUNT_DATA_FLAGS
+ #endif
  
- 	return ret;
+-#define ext3_set_bit			ext2_set_bit
++#define ext3_set_bit(nr, addr)	\
++	__test_and_set_le_bit((nr), (unsigned long *)(addr))
+ #define ext3_set_bit_atomic		ext2_set_bit_atomic
+-#define ext3_clear_bit			ext2_clear_bit
++#define ext3_clear_bit(nr, addr)	\
++	__test_and_clear_le_bit((nr), (unsigned long *)(addr))
+ #define ext3_clear_bit_atomic		ext2_clear_bit_atomic
+-#define ext3_test_bit			ext2_test_bit
+-#define ext3_find_first_zero_bit	ext2_find_first_zero_bit
+-#define ext3_find_next_zero_bit		ext2_find_next_zero_bit
++#define ext3_test_bit(nr, addr)	\
++	test_le_bit((nr), (unsigned long *)(addr))
++#define ext3_find_first_zero_bit(addr, size)	\
++	find_first_zero_le_bit((unsigned long *)(addr), (size))
++#define ext3_find_next_zero_bit(addr, size, off)	\
++	find_next_zero_le_bit((unsigned long *)(addr), (size), (off))
+ 
+ /*
+  * Maximal mount counts between two filesystem checks
 -- 
-1.7.2.3
-
+1.7.1.231.gd0b16
