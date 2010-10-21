@@ -1,51 +1,90 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: What am I doing wrong?  submit_bio() suddenly stops working...
-Date: Thu, 21 Oct 2010 12:55:25 -0400
-Message-ID: <20101021165525.GB3127@thunk.org>
-References: <E1P8kSE-0001DW-8C@tytso-glaptop>
- <4CBFE4E2.7050001@kernel.dk>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: Re: fsck get error with the file which is > 2TB in 4k block file system
+Date: Thu, 21 Oct 2010 10:04:43 -0700
+Message-ID: <AANLkTinGXEWX8JWDjgvtHvjgNPeyTTdxEih3thAr+asx@mail.gmail.com>
+References: <AANLkTik6mjHAZG2ePmDyBmb6CRhV8=dD_tTTdhCzykca@mail.gmail.com>
+	<4CC056E4.8000208@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jens Axboe <axboe@kernel.dk>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ck ya <ykwan0201@gmail.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:37397 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752932Ab0JUQzg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Oct 2010 12:55:36 -0400
-Content-Disposition: inline
-In-Reply-To: <4CBFE4E2.7050001@kernel.dk>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:63302 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753364Ab0JUREo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Oct 2010 13:04:44 -0400
+Received: by pwj3 with SMTP id 3so42424pwj.19
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Oct 2010 10:04:44 -0700 (PDT)
+In-Reply-To: <4CC056E4.8000208@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 21, 2010 at 08:59:46AM +0200, Jens Axboe wrote:
-> 
-> I don't see anything immediately wrong with your approach. I suspect
-> we'll need to see sysrq-t traces of the relevant processes to make a
-> more educated guess!
+On Thu, Oct 21, 2010 at 8:06 AM, Eric Sandeen <sandeen@redhat.com> wrot=
+e:
+> ck ya wrote:
+>> I compiled the latest e2fsprogs, and do fsck with -nvf on my ext4 fi=
+le system.
+>> It showed
+>> Inode 18, i_blocks is 17179870744, should be 17179870744. Fix? no
+>> The i_blocks is the same.
+>>
+>> I found ext2fs_inode_i_blocks() has problem. =A0The function check
+>> EXT4_FEATURE_RO_COMPAT_HUGE_FILE with "s_feature_compat". =A0It shou=
+ld
+>> be "s_feature_ro_compat".
+>
+> Seems right to me, if you add [PATCH] to the subject emails like
+> these, and add:
+>
+> Signed-off-by: ck ya <ykwan0201@gmail.com>
+> ---
+>
+> after the patch,
+>
+> it'd be ideal.
+>
+> Thanks,
+> -Eric
+>
+>> Thanks.
+>>
+>> diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+>> index a48b696..d67c6ec 100644
+>> --- a/lib/ext2fs/blknum.c
+>> +++ b/lib/ext2fs/blknum.c
+>> @@ -49,7 +49,7 @@ blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 struct ext2_inode *inode)
+>> =A0{
+>> =A0 =A0 =A0 =A0 return (inode->i_blocks |
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((fs->super->s_feature_incompat &
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((fs->super->s_feature_ro_incompat &
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_FEATURE_RO_COMPAT_HUGE_FILE=
+) ?
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(__u64) inode->osd2.linux2.l_i_bl=
+ocks_hi << 32 : 0)) -
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (inode->i_file_acl ? fs->blocksize >=
+> 9 : 0);
+>> @@ -62,7 +62,7 @@ blk64_t ext2fs_inode_i_blocks(ext2_filsys fs,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 =A0 =A0 struct ext2_inode *inode)
+>> =A0{
+>> =A0 =A0 =A0 =A0 return (inode->i_blocks |
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((fs->super->s_feature_incompat &
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((fs->super->s_feature_ro_incompat &
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_FEATURE_RO_COMPAT_HUGE_FILE=
+) ?
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(__u64)inode->osd2.linux2.l_i_blo=
+cks_hi << 32 : 0));
+>> =A0}
 
-I've uploaded a trace output that includes the sysrq-t trace, but I
-don't think it shows anything interesting.  We're not hanging on any
-kind of loack as near as I can tell.  It looks like
-__generic_make_request() is calling q->make_request_fn(), and this is
-returning without actually doing anything.
+Hmm, looks strikingly similar to what I posted nearly two months ago. :=
+)
 
-http://userweb.kernel.org/~tytso/ext4-bio-patches/kvm-console-2
-
-In this trace, I added a patch to prove that __generic_make_request()
-is calling __make_request (I wasn't sure what q->make_request_fn was
-indirecting to, so I added a brute force lookup to make sure I
-understood what was going on), but at one point, it just starts
-queuing the request, and it enters cfq, but the request never gets
-dispatched out.  Maybe this is a failure of the plugging/unplugging
-mechanisms?
-
-I guess I can start putting in more brute-force printk's inside
-__make_request and inside the cfq scheduler to try to understand what
-is going on, but I'm really guessing at this point.
-
-If you have any suggestions about more elegant ways of figuring what
-is happening, please do let me know....
-
-						- Ted
+-Justin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
