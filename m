@@ -1,71 +1,45 @@
-From: Bernd Schubert <bs_lists@aakef.fastmail.fm>
-Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous mount: IO failure
-Date: Fri, 22 Oct 2010 19:42:49 +0200
-Message-ID: <201010221942.49915.bs_lists@aakef.fastmail.fm>
-References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH] e2fsck: Discard free data and inode blocks.
+Date: Fri, 22 Oct 2010 11:50:40 -0600
+Message-ID: <386E61B0-BF4D-4F96-9541-A614F63DE808@dilger.ca>
+References: <1287670556-23460-1-git-send-email-lczerner@redhat.com> <6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca> <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com> <4CC175E6.5000700@gmail.com> <alpine.LFD.2.00.1010221335080.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC19BC2.9010503@gmail.com> <alpine.LFD.2.00.1010221620490.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC1A3AA.6040004@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, sandeen@redhat.com
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:51051 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755823Ab0JVRmw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Oct 2010 13:42:52 -0400
-In-Reply-To: <20101022172536.GP3127@thunk.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:61404 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757432Ab0JVRun convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Oct 2010 13:50:43 -0400
+In-Reply-To: <4CC1A3AA.6040004@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Friday, October 22, 2010, Ted Ts'o wrote:
-> On Fri, Oct 22, 2010 at 03:33:29PM +0200, Bernd Schubert wrote:
-> > is is really a good idea to allow the filesystem to mount if something
-> > like that comes up? I really would prefer if mount would abort.
-> > 
-> > Oct 22 12:37:36 vm7 kernel: [ 1227.814294] LDISKFS-fs warning (device
-> > sfa0074): ldiskfs_clear_journal_err: Filesystem error recorded from p
-> > revious mount: IO failure
-> > Oct 22 12:37:36 vm7 kernel: [ 1227.814314] LDISKFS-fs warning (device
-> > sfa0074): ldiskfs_clear_journal_err: Marking fs in need of filesystem
-> > 
-> >  check.
-> > 
-> > (please ignore "ldiskfs", it was just renamed to that by Lustre, but is
-> > ext4 based as in RHEL5.5, so 2.6.32-ish).
+On 2010-10-22, at 08:46, Ric Wheeler wrote:
+> On 10/22/2010 10:32 AM, Lukas Czerner wrote:
+>> 
+>> Also there is a big win, when discard
+>> also zeroes data, because in that case we can just skip inode table
+>> initialization (zeroing) without any need of in-kernel lazyinit code
+>> enabled. And we get all this for free. It was introduced with Sandeens
+>> patch:
+>> 
+>> http://marc.info/?l=linux-ext4&m=128234048208327&w=2
+>> 
+>> So, I would rather leave it on by default.
 > 
-> Did you try running e2fsck first?  If it detects the error after
-> running the journal, it will run the file system check right then and
-> there.  If it doesn't, it's a bug.  If you're not running e2fsck
+> You cannot 100% depend on discard zeroing blocks - that is not a universal requirement of devices that support it. Specifically, for ATA devices, I think that there are optional bits that specify how a device will behave when you read from a trimmed region.
 
-I *think* I got those messages at least once although I run e2fsck. But I'm 
-not sure.
+That patch also checks for the zeroing feature.  When this patch was first under discussion, I proposed that we validate that the device is actually zeroed by doing a write a non-zero block to the disk and then calling discard+zero for that region, and reading back the block and verifying it.
 
-> first, and the filesystem had previously detected inconsistencies, the
-> long-standing tradition is to allow that, since root should know what
-> it's doing.
+Eric wasn't convinced that was necessary, maybe you can convince him more...
 
-No, it is far more difficult than that. The devices are managed by pacemaker. 
-Which means: I/O  errors come up -> Lustre complains about that in its proc 
-file. Pacemaker monitoring fails, so pacemaker stops the device and starts it 
-again. If that does not succeed, it tries to start it on fail-over system.
-I also cannot tell pacemaker to not to try to re-start after an error, as that 
-would completely defeat an HA solution.
-
-> 
-> And there are times when you do want to mount a filesystem with known
-> errors; for example, in the case of the root file system, we have
-> always allowed a read-only mount to continue, so that we can run
-> e2fsck without requiring a rescue CD 99% of the time.
-
-Yes, it seems a mount option is missing here. 
+Cheers, Andreas
 
 
-Thanks,
-Bernd
 
 
--- 
-Bernd Schubert
-DataDirect Networks
+
