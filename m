@@ -1,55 +1,41 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsck: Discard free data and inode blocks.
-Date: Fri, 22 Oct 2010 13:29:41 -0500
-Message-ID: <4CC1D815.2000808@redhat.com>
-References: <1287670556-23460-1-git-send-email-lczerner@redhat.com> <6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca> <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com> <4CC175E6.5000700@gmail.com> <alpine.LFD.2.00.1010221335080.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC19BC2.9010503@gmail.com> <alpine.LFD.2.00.1010221620490.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC1A3AA.6040004@gmail.com> <386E61B0-BF4D-4F96-9541-A614F63DE808@dilger.ca>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4_clear_journal_err: Filesystem error recorded from
+ previous mount: IO failure
+Date: Fri, 22 Oct 2010 14:32:19 -0400
+Message-ID: <20101022183219.GQ3127@thunk.org>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm>
+ <20101022172536.GP3127@thunk.org>
+ <201010221942.49915.bs_lists@aakef.fastmail.fm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <ricwheeler@gmail.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>
+To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40386 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:60399 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752743Ab0JVS3r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Oct 2010 14:29:47 -0400
-In-Reply-To: <386E61B0-BF4D-4F96-9541-A614F63DE808@dilger.ca>
+	id S1753792Ab0JVScV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Oct 2010 14:32:21 -0400
+Content-Disposition: inline
+In-Reply-To: <201010221942.49915.bs_lists@aakef.fastmail.fm>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On 2010-10-22, at 08:46, Ric Wheeler wrote:
->> On 10/22/2010 10:32 AM, Lukas Czerner wrote:
->>> Also there is a big win, when discard also zeroes data, because
->>> in that case we can just skip inode table initialization
->>> (zeroing) without any need of in-kernel lazyinit code enabled.
->>> And we get all this for free. It was introduced with Sandeens 
->>> patch:
->>> 
->>> http://marc.info/?l=linux-ext4&m=128234048208327&w=2
->>> 
->>> So, I would rather leave it on by default.
->> You cannot 100% depend on discard zeroing blocks - that is not a
->> universal requirement of devices that support it. Specifically, for
->> ATA devices, I think that there are optional bits that specify how
->> a device will behave when you read from a trimmed region.
-> 
-> That patch also checks for the zeroing feature.  When this patch was
-> first under discussion, I proposed that we validate that the device
-> is actually zeroed by doing a write a non-zero block to the disk and
-> then calling discard+zero for that region, and reading back the block
-> and verifying it.
-> 
-> Eric wasn't convinced that was necessary, maybe you can convince him
-> more...
+On Fri, Oct 22, 2010 at 07:42:49PM +0200, Bernd Schubert wrote:
+> No, it is far more difficult than that. The devices are managed by
+> pacemaker.  Which means: I/O errors come up -> Lustre complains
+> about that in its proc file. Pacemaker monitoring fails, so
+> pacemaker stops the device and starts it again.
 
-*grin* I wouldn't -veto- it, but I think we have to maintain a balance
-between defensive programming and trying to handle every possible piece
-of buggy hardware by doing too many extra gyrations in the code...
+I'm not sure what errors you're referring to, but if the errors are
+related to file system inconsistencies, by definition umounting and
+re-mounting isn't going to fix things, and could result in more
+damage.  For certain errors, you really do need to run e2fsck before
+remounting the device.
 
--Eric
+Can you not change pacemaker to stop the device, run e2fsck, and then
+remount the file system?
 
-> Cheers, Andreas
+It seems like the safer the thing to do.
+
+					- Ted
 
