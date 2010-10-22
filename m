@@ -1,38 +1,55 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 1/6] ext4: call mpage_da_submit_io() from mpage_da_map_blocks()
-Date: Fri, 22 Oct 2010 12:29:12 -0600
-Message-ID: <59D861FB-F630-4F5A-87A3-2E2DFE6FA237@dilger.ca>
-References: <1287761366-20249-1-git-send-email-tytso@mit.edu> <1287761366-20249-2-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsck: Discard free data and inode blocks.
+Date: Fri, 22 Oct 2010 13:29:41 -0500
+Message-ID: <4CC1D815.2000808@redhat.com>
+References: <1287670556-23460-1-git-send-email-lczerner@redhat.com> <6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca> <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com> <4CC175E6.5000700@gmail.com> <alpine.LFD.2.00.1010221335080.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC19BC2.9010503@gmail.com> <alpine.LFD.2.00.1010221620490.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC1A3AA.6040004@gmail.com> <386E61B0-BF4D-4F96-9541-A614F63DE808@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ric Wheeler <ricwheeler@gmail.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:56200 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751738Ab0JVS3N convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Oct 2010 14:29:13 -0400
-In-Reply-To: <1287761366-20249-2-git-send-email-tytso@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:40386 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752743Ab0JVS3r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Oct 2010 14:29:47 -0400
+In-Reply-To: <386E61B0-BF4D-4F96-9541-A614F63DE808@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-10-22, at 09:29, Theodore Ts'o wrote:
-> @@ -2323,10 +2323,13 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
-> 		disksize = i_size_read(mpd->inode);
-> 	if (disksize > EXT4_I(mpd->inode)->i_disksize) {
-> 		ext4_update_i_disksize(mpd->inode, disksize);
-> -		return ext4_mark_inode_dirty(handle, mpd->inode);
-> +		err = ext4_mark_inode_dirty(handle, mpd->inode);
-> +		/* XXX not sure what our error handling straegy is here */
+Andreas Dilger wrote:
+> On 2010-10-22, at 08:46, Ric Wheeler wrote:
+>> On 10/22/2010 10:32 AM, Lukas Czerner wrote:
+>>> Also there is a big win, when discard also zeroes data, because
+>>> in that case we can just skip inode table initialization
+>>> (zeroing) without any need of in-kernel lazyinit code enabled.
+>>> And we get all this for free. It was introduced with Sandeens 
+>>> patch:
+>>> 
+>>> http://marc.info/?l=linux-ext4&m=128234048208327&w=2
+>>> 
+>>> So, I would rather leave it on by default.
+>> You cannot 100% depend on discard zeroing blocks - that is not a
+>> universal requirement of devices that support it. Specifically, for
+>> ATA devices, I think that there are optional bits that specify how
+>> a device will behave when you read from a trimmed region.
+> 
+> That patch also checks for the zeroing feature.  When this patch was
+> first under discussion, I proposed that we validate that the device
+> is actually zeroed by doing a write a non-zero block to the disk and
+> then calling discard+zero for that region, and reading back the block
+> and verifying it.
+> 
+> Eric wasn't convinced that was necessary, maybe you can convince him
+> more...
 
-(typo) s/straegy/strategy/
+*grin* I wouldn't -veto- it, but I think we have to maintain a balance
+between defensive programming and trying to handle every possible piece
+of buggy hardware by doing too many extra gyrations in the code...
 
-I don't think this is necessarily fatal.  It looks like the only time we can fail from ext4_mark_inode_dirty() is cases of IO errors or bad inode numbers and such (which should have been caught already).   At worst, if the blocks are newly mapped (and referenced directly from the inode) then the new blocks would be leaked and the data would be unreachable.  These should already have marked the filesystem in error, so it may be any error here is irrelevant.
+-Eric
 
-Cheers, Andreas
-
-
-
-
+> Cheers, Andreas
 
