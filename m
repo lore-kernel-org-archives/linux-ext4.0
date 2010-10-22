@@ -1,198 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/6] ext4: call mpage_da_submit_io() from mpage_da_map_blocks()
-Date: Fri, 22 Oct 2010 11:29:21 -0400
-Message-ID: <1287761366-20249-2-git-send-email-tytso@mit.edu>
-References: <1287761366-20249-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsck: Discard free data and inode blocks.
+Date: Fri, 22 Oct 2010 10:37:54 -0500
+Message-ID: <4CC1AFD2.2020803@redhat.com>
+References: <1287670556-23460-1-git-send-email-lczerner@redhat.com> <6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca> <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com> <4CC175E6.5000700@gmail.com> <alpine.LFD.2.00.1010221335080.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC19BC2.9010503@gmail.com> <alpine.LFD.2.00.1010221620490.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC1A3AA.6040004@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:33665 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:1028 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757253Ab0JVP3b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Oct 2010 11:29:31 -0400
-In-Reply-To: <1287761366-20249-1-git-send-email-tytso@mit.edu>
+	id S1756632Ab0JVPiB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Oct 2010 11:38:01 -0400
+In-Reply-To: <4CC1A3AA.6040004@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eventually we need to completely reorganize the ext4 writepage
-callpath, but for now, we simplify things a little by calling
-mpage_da_submit_io() from mpage_da_map_blocks(), since all of the
-places where we call mpage_da_map_blocks() it is followed up by a call
-to mpage_da_submit_io().
+Ric Wheeler wrote:
 
-We're also a wee bit better with respect to error handling, but there
-are still a number of issues where it's not clear what the right thing
-is to do with ext4 functions deep in the writeback codepath fails.
+...
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   63 ++++++++++++++++++++++++++----------------------------
- 1 files changed, 30 insertions(+), 33 deletions(-)
+>> Well, so far the only breakages I have seen was with lots of small TRIMs
+>> (or UNMAPs, etc) issued in random pattern, never in case of mkfs which
+>> is quite a opposite - big sequential ranges.
+>>
+>> Hangs should be covered by those two patches:
+>>
+>> http://marc.info/?l=linux-ext4&m=128774558623608&w=2
+>> http://marc.info/?l=linux-ext4&m=128767099123375&w=2
+>>
+>> if, of course, they get upstream. Also there is a big win, when discard
+>> also zeroes data, because in that case we can just skip inode table
+>> initialization (zeroing) without any need of in-kernel lazyinit code
+>> enabled. And we get all this for free. It was introduced with Sandeens
+>> patch:
+>>
+>> http://marc.info/?l=linux-ext4&m=128234048208327&w=2
+>>
+>> So, I would rather leave it on by default.
+>>
+>> -Lukas
+> 
+> You cannot 100% depend on discard zeroing blocks - that is not a
+> universal requirement of devices that support it. Specifically, for ATA
+> devices, I think that there are optional bits that specify how a device
+> will behave when you read from a trimmed region.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 670ab15..c3cc036 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -60,6 +60,7 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
- }
- 
- static void ext4_invalidatepage(struct page *page, unsigned long offset);
-+static int ext4_writepage(struct page *page, struct writeback_control *wbc);
- 
- /*
-  * Test whether an inode is a fast symlink.
-@@ -2033,7 +2034,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
- 			BUG_ON(PageWriteback(page));
- 
- 			pages_skipped = mpd->wbc->pages_skipped;
--			err = mapping->a_ops->writepage(page, mpd->wbc);
-+			err = ext4_writepage(page, mpd->wbc);
- 			if (!err && (pages_skipped == mpd->wbc->pages_skipped))
- 				/*
- 				 * have successfully written the page
-@@ -2189,14 +2190,15 @@ static void ext4_print_free_blocks(struct inode *inode)
- }
- 
- /*
-- * mpage_da_map_blocks - go through given space
-+ * mpage_da_map_and_submit - go through given space, map them
-+ *       if necessary, and then submit them for I/O
-  *
-  * @mpd - bh describing space
-  *
-  * The function skips space we know is already mapped to disk blocks.
-  *
-  */
--static int mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- {
- 	int err, blks, get_blocks_flags;
- 	struct ext4_map_blocks map;
-@@ -2206,18 +2208,14 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	handle_t *handle = NULL;
- 
- 	/*
--	 * We consider only non-mapped and non-allocated blocks
-+	 * If the blocks are mapped already, or we couldn't accumulate
-+	 * any blocks, then proceed immediately to the submission stage.
- 	 */
--	if ((mpd->b_state  & (1 << BH_Mapped)) &&
--		!(mpd->b_state & (1 << BH_Delay)) &&
--		!(mpd->b_state & (1 << BH_Unwritten)))
--		return 0;
--
--	/*
--	 * If we didn't accumulate anything to write simply return
--	 */
--	if (!mpd->b_size)
--		return 0;
-+	if ((mpd->b_size == 0) ||
-+	    ((mpd->b_state  & (1 << BH_Mapped)) &&
-+	     !(mpd->b_state & (1 << BH_Delay)) &&
-+	     !(mpd->b_state & (1 << BH_Unwritten))))
-+		goto submit_io;
- 
- 	handle = ext4_journal_current_handle();
- 	BUG_ON(!handle);
-@@ -2254,17 +2252,18 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 
- 		err = blks;
- 		/*
--		 * If get block returns with error we simply
--		 * return. Later writepage will redirty the page and
--		 * writepages will find the dirty page again
-+		 * If get block returns EAGAIN or ENOSPC and there
-+		 * appears to be free blocks we will call
-+		 * ext4_writepage() for all of the pages which will
-+		 * just redirty the pages.
- 		 */
- 		if (err == -EAGAIN)
--			return 0;
-+			goto submit_io;
- 
- 		if (err == -ENOSPC &&
- 		    ext4_count_free_blocks(sb)) {
- 			mpd->retval = err;
--			return 0;
-+			goto submit_io;
- 		}
- 
- 		/*
-@@ -2289,7 +2288,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		/* invalidate all the pages */
- 		ext4_da_block_invalidatepages(mpd, next,
- 				mpd->b_size >> mpd->inode->i_blkbits);
--		return err;
-+		return;
- 	}
- 	BUG_ON(blks == 0);
- 
-@@ -2312,7 +2311,8 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	if (ext4_should_order_data(mpd->inode)) {
- 		err = ext4_jbd2_file_inode(handle, mpd->inode);
- 		if (err)
--			return err;
-+			/* This only happens if the journal is aborted */
-+			return;
- 	}
- 
- 	/*
-@@ -2323,10 +2323,13 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		disksize = i_size_read(mpd->inode);
- 	if (disksize > EXT4_I(mpd->inode)->i_disksize) {
- 		ext4_update_i_disksize(mpd->inode, disksize);
--		return ext4_mark_inode_dirty(handle, mpd->inode);
-+		err = ext4_mark_inode_dirty(handle, mpd->inode);
-+		/* XXX not sure what our error handling straegy is here */
- 	}
- 
--	return 0;
-+submit_io:
-+	mpage_da_submit_io(mpd);
-+	mpd->io_done = 1;
- }
- 
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
-@@ -2403,9 +2406,7 @@ flush_it:
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	if (mpage_da_map_blocks(mpd) == 0)
--		mpage_da_submit_io(mpd);
--	mpd->io_done = 1;
-+	mpage_da_map_and_submit(mpd);
- 	return;
- }
- 
-@@ -2437,15 +2438,13 @@ static int __mpage_da_writepage(struct page *page,
- 	if (mpd->next_page != page->index) {
- 		/*
- 		 * Nope, we can't. So, we map non-allocated blocks
--		 * and start IO on them using writepage()
-+		 * and start IO on them
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			if (mpage_da_map_blocks(mpd) == 0)
--				mpage_da_submit_io(mpd);
-+			mpage_da_map_and_submit(mpd);
- 			/*
- 			 * skip rest of the page in the page_vec
- 			 */
--			mpd->io_done = 1;
- 			redirty_page_for_writepage(wbc, page);
- 			unlock_page(page);
- 			return MPAGE_DA_EXTENT_TAIL;
-@@ -3071,9 +3070,7 @@ retry:
- 		 * them for I/O.
- 		 */
- 		if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--			if (mpage_da_map_blocks(&mpd) == 0)
--				mpage_da_submit_io(&mpd);
--			mpd.io_done = 1;
-+			mpage_da_map_and_submit(&mpd);
- 			ret = MPAGE_DA_EXTENT_TAIL;
- 		}
- 		trace_ext4_da_write_pages(inode, &mpd);
--- 
-1.7.1
+But don't we have the ability to test whether discard -does- zero blocks,
+as advertised by the device?  And honestly if the device mis-reports, that
+sounds like a device vendor problem to fix.
+
+The proposal wasn't to discard and assume zero, but to check for that
+behavior:
+
+http://kerneltrap.org/mailarchive/linux-ext4/2010/9/21/6885628/thread
+
++		if (!retval && mke2fs_discard_zeroes_data(fs)) {
++			if (verbose)
++				printf(_("Discard succeeded and will return 0s "
++					 " - enabling lazy_itable_init\n"));
++			lazy_itable_init = 1;
++			lazy_itable_zeroed = 1;
++		}
+
+so we're not depending on it zeroing blocks, we're just depending on it
+advertising correctly whether or not it -does- zero.
+
+-Eric
+
+> Ric
+> 
 
