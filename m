@@ -1,20 +1,20 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 20902] High IO wait when writing to ext4
-Date: Fri, 22 Oct 2010 21:52:26 GMT
-Message-ID: <201010222152.o9MLqQao019148@demeter1.kernel.org>
+Date: Fri, 22 Oct 2010 21:54:36 GMT
+Message-ID: <201010222154.o9MLsaTY020190@demeter1.kernel.org>
 References: <bug-20902-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55371 "EHLO
+Received: from demeter.kernel.org ([140.211.167.39]:55592 "EHLO
 	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752169Ab0JVVw2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Oct 2010 17:52:28 -0400
+	with ESMTP id S1752239Ab0JVVyi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Oct 2010 17:54:38 -0400
 Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o9MLqRhb019150
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id o9MLsaOS020191
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Oct 2010 21:52:27 GMT
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Oct 2010 21:54:36 GMT
 In-Reply-To: <bug-20902-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -25,10 +25,10 @@ https://bugzilla.kernel.org/show_bug.cgi?id=20902
 
 
 
---- Comment #5 from Martin Moerch <martinmoerch@gmail.com>  2010-10-22 21:52:20 ---
-Created an attachment (id=34432)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=34432)
-sysrq-w
+--- Comment #6 from Martin Moerch <martinmoerch@gmail.com>  2010-10-22 21:53:35 ---
+Created an attachment (id=34442)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=34442)
+vmstat when problem starts
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
