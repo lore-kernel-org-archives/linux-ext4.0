@@ -1,47 +1,45 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] e2fsck: Discard free data and inode blocks.
-Date: Fri, 22 Oct 2010 14:23:16 -0400
-Message-ID: <4CC1D694.3040006@gmail.com>
-References: <1287670556-23460-1-git-send-email-lczerner@redhat.com> <6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca> <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com> <4CC175E6.5000700@gmail.com> <alpine.LFD.2.00.1010221335080.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC19BC2.9010503@gmail.com> <alpine.LFD.2.00.1010221620490.3390@dhcp-lab-213.englab.brq.redhat.com> <4CC1A3AA.6040004@gmail.com> <386E61B0-BF4D-4F96-9541-A614F63DE808@dilger.ca> <alpine.LFD.2.00.1010221958440.3007@dhcp-lab-213.englab.brq.redhat.com> <6C34898A-508C-4140-A494-B279C04EDD50@dilger.ca>
+Date: Fri, 22 Oct 2010 13:23:36 -0500
+Message-ID: <4CC1D6A8.6080000@redhat.com>
+References: <1287670556-23460-1-git-send-email-lczerner@redhat.com>	<6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca>	<alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com>	<4CC175E6.5000700@gmail.com>	<alpine.LFD.2.00.1010221335080.3390@dhcp-lab-213.englab.brq.redhat.com>	<4CC19BC2.9010503@gmail.com>	<alpine.LFD.2.00.1010221620490.3390@dhcp-lab-213.englab.brq.redhat.com>	<4CC1A3AA.6040004@gmail.com> <4CC1AFD2.2020803@redhat.com>	<4CC1B094.3090403@gmail.com> <yq18w1qp3bl.fsf@sermon.lab.mkp.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, sandeen@redhat.com
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Ric Wheeler <ricwheeler@gmail.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:62901 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755789Ab0JVSXW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Oct 2010 14:23:22 -0400
-Received: by ywk9 with SMTP id 9so946566ywk.19
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Oct 2010 11:23:21 -0700 (PDT)
-In-Reply-To: <6C34898A-508C-4140-A494-B279C04EDD50@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:63730 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758686Ab0JVSXo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Oct 2010 14:23:44 -0400
+In-Reply-To: <yq18w1qp3bl.fsf@sermon.lab.mkp.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  On 10/22/2010 02:17 PM, Andreas Dilger wrote:
-> On 2010-10-22, at 12:01, Lukas Czerner wrote:
->>> That patch also checks for the zeroing feature.  When this patch was first under discussion, I proposed that we validate that the device is actually zeroed by doing a write a non-zero block to the disk and then calling discard+zero for that region, and reading back the block and verifying it.
->>>
->>> Eric wasn't convinced that was necessary, maybe you can convince him more...
->> One of the counter arguments was, that some devices does not preserve
->> this behavior through power cycles. I think Ted was the one talking
->> about that.
-> Sure, I don't think we can handle every pathology, but doing a write/discard/read of a few blocks (when it has the potential to avoid many GB of writes for zeroing) is surely easy and worthwhile?
->
-> In any case, I thought that discussion was about a device that didn't report BLKDISCARDSZEROES=1, but only that a normal DISCARD would read back zero until the next restart?  That prevents optimizations like "read until we see non-zero data, then start writing zeroes", which would still be faster for many RAID devices (or older kernels that don't have DISCARD/ZERO support at all).
->
-> Cheers, Andreas
+Martin K. Petersen wrote:
+>>>>>> "Ric" == Ric Wheeler <ricwheeler@gmail.com> writes:
+> 
+>>> so we're not depending on it zeroing blocks, we're just depending on
+>>> it advertising correctly whether or not it -does- zero.
+> 
+> If the relevant bits are set (ATA: DRAT and RZAT, SCSI: TPRZ) we'll set
+> the bdev's discard_zeroes_data flag.
+> 
+> [root@test ~]# lsscsi | grep SSD | awk '{ print $7 }'
+> /dev/sde
+> [root@test ~]# grep . /sys/block/sde/queue/discard_zeroes_data 
+> 1
+> 
+> The relevant ioctl is BLKDISCARDZEROES.
 
-Just to further confuse things, if we just want to zero a device, there is the 
-(relatively old) WRITE_SAME command that arrays use. Note that it is quite a bit 
-faster than doing this from the server since you only transfer over one block of 
-data and the disk firmware does the rest - no data transfer for each block once 
-you start.
+which is what that patch I pointed to uses, BTW...
 
-It can certainly take a long, long time, but would be faster than zeroing a 
-drive with write() system calls :)
+I really think it's on firm footing here, we're not assuming
+discard == zeroed data, we are checking whether the drive
+reports exactly that behavior ...
 
-ric
-
+-Eric
