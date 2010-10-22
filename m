@@ -1,54 +1,55 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] block: Make blkdev_issue_discard() interruptible
-Date: Fri, 22 Oct 2010 13:06:09 +0200
-Message-ID: <1287745569-11705-1-git-send-email-lczerner@redhat.com>
-References: <x49k4lb1oah.fsf@segfault.boston.devel.redhat.com>
-Cc: jmoyer@redhat.com, tytso@mit.edu, sandeen@redhat.com,
-	adilger@dilger.ca, axboe@kernel.dk, linux-kernel@vger.kernel.org,
-	lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: [PATCH] e2fsck: Discard free data and inode blocks.
+Date: Fri, 22 Oct 2010 07:30:46 -0400
+Message-ID: <4CC175E6.5000700@gmail.com>
+References: <1287670556-23460-1-git-send-email-lczerner@redhat.com> <6388FD2D-50A8-42B9-A955-3824451ACBF4@dilger.ca> <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40128 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751179Ab0JVLGW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Oct 2010 07:06:22 -0400
-In-Reply-To: <x49k4lb1oah.fsf@segfault.boston.devel.redhat.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:38467 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751080Ab0JVL3d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Oct 2010 07:29:33 -0400
+Received: by gxk23 with SMTP id 23so297375gxk.19
+        for <linux-ext4@vger.kernel.org>; Fri, 22 Oct 2010 04:29:32 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1010221059490.3007@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since the discard may take quite long time, especially with really big
-extents (like the whole device for example), it would be nice to give to
-users the opportunity to abort it. This is especially useful for mkfs,
-when user can not know in advance how long it will take.
+  On 10/22/2010 05:12 AM, Lukas Czerner wrote:
+> On Thu, 21 Oct 2010, Andreas Dilger wrote:
+>
+>> On 2010-10-21, at 08:15, Lukas Czerner wrote:
+>>> In Pass 5 when we are checking block and inode bitmaps we have great
+>>> opportunity to discard free space and unused inodes on the device,
+>>> because bitmaps has just been verified as valid. This commit takes
+>>> advantage of this opportunity and discards both, all free space and
+>>> unused inodes.
+>>>
+>>> I have added new option '-K' which when set, disables discard. Also when
+>>> the underlying device does not support discard, or BLKDISCARD ioctl
+>>> returns any kind of error, or when some errors occurred in bitmaps, the
+>>> discard is disabled.
+>> I'm always a bit nervous with patches like this, that will prevent data recovery after an e2fsck run (which seems like the opposite of what we want from e2fsck).
+>>
+>> Two suggestions:
+>> - it probably makes sense to disable this by default, and allow it to be
+>>    specified on the command-line and e2fsck.conf
+>> - should we really have a short option, or a "-E discard" and "-E nodiscard"
+>>    options, which allow us to change the default easily at some later time
+>>    (which we can't do with a single -K flag)
+> Right, I agree it would be probably better to disable this by default.
+>
+>
 
-In conjunction with mke2fs patch "Inform user about ongoing discard"
-it gives the user all the comfort of being informed about discard and
-being able to abort the operation.
+If we do disable it by default, I think that we might also want to be consistent 
+and disable the discard support in mkfs by default as well?
 
-It has been tested on SSD device where mkfs.ext4 without -K takes rally
-long due to discarding whole device. With this patch I am able to
-successfully terminate that with ctrl+c. Aside that discard functionality
-remains unchanged.
+thanks!
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- block/blk-lib.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/block/blk-lib.c b/block/blk-lib.c
-index c392029..54994e7 100644
---- a/block/blk-lib.c
-+++ b/block/blk-lib.c
-@@ -101,6 +101,9 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
- 		else if (!bio_flagged(bio, BIO_UPTODATE))
- 			ret = -EIO;
- 		bio_put(bio);
-+
-+		if (unlikely(fatal_signal_pending(current)))
-+			ret = -ERESTARTSYS;
- 	}
- 
- 	return ret;
--- 
-1.7.2.3
+Ric
 
