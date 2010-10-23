@@ -1,201 +1,77 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2 1/6] ext4: call mpage_da_submit_io() from mpage_da_map_blocks()
-Date: Sat, 23 Oct 2010 16:40:15 -0400
-Message-ID: <1287866420-23762-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH -v2 4/6] ext4: inline walk_page_buffers() into mpage_da_submit_io
+Date: Sat, 23 Oct 2010 16:40:18 -0400
+Message-ID: <1287866420-23762-5-git-send-email-tytso@mit.edu>
 References: <1287866420-23762-1-git-send-email-tytso@mit.edu>
 Cc: akpm@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47005 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:46999 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756378Ab0JWUk3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756658Ab0JWUk3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 23 Oct 2010 16:40:29 -0400
 In-Reply-To: <1287866420-23762-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eventually we need to completely reorganize the ext4 writepage
-callpath, but for now, we simplify things a little by calling
-mpage_da_submit_io() from mpage_da_map_blocks(), since all of the
-places where we call mpage_da_map_blocks() it is followed up by a call
-to mpage_da_submit_io().
+Expand the call:
 
-We're also a wee bit better with respect to error handling, but there
-are still a number of issues where it's not clear what the right thing
-is to do with ext4 functions deep in the writeback codepath fails.
+  if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+                        ext4_bh_delay_or_unwritten))
+	goto redirty_page
+
+into mpage_da_submit_io().
+
+This will allow us to merge in mpage_put_bnr_to_bhs() in the next
+patch.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   66 +++++++++++++++++++++++++++---------------------------
- 1 files changed, 33 insertions(+), 33 deletions(-)
+ fs/ext4/inode.c |   24 +++++++++++++-----------
+ 1 files changed, 13 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 670ab15..55961ff 100644
+index 97a0c35..5da6cfc 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -60,6 +60,7 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
- }
+@@ -2011,8 +2011,8 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+ 	struct inode *inode = mpd->inode;
+ 	struct address_space *mapping = inode->i_mapping;
+ 	loff_t size = i_size_read(inode);
+-	unsigned int len;
+-	struct buffer_head *page_bufs = NULL;
++	unsigned int len, block_start;
++	struct buffer_head *bh, *page_bufs = NULL;
+ 	int journal_data = ext4_should_journal_data(inode);
  
- static void ext4_invalidatepage(struct page *page, unsigned long offset);
-+static int ext4_writepage(struct page *page, struct writeback_control *wbc);
+ 	BUG_ON(mpd->next_page <= mpd->first_page);
+@@ -2064,15 +2064,17 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+ 				}
+ 				commit_write = 1;
+ 			}
+-			page_bufs = page_buffers(page);
+-			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+-					      ext4_bh_delay_or_unwritten)) {
+-				/*
+-				 * We couldn't do block allocation for
+-				 * some reason.
+-				 */
+-				goto redirty_page;
+-			}
++
++			bh = page_bufs = page_buffers(page);
++			block_start = 0;
++			do {
++				/* redirty page if block allocation undone */
++				if (!bh || buffer_delay(bh) ||
++				    buffer_unwritten(bh))
++					goto redirty_page;
++				bh = bh->b_this_page;
++				block_start += bh->b_size;
++			} while ((bh != page_bufs) && (block_start < len));
  
- /*
-  * Test whether an inode is a fast symlink.
-@@ -2033,7 +2034,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
- 			BUG_ON(PageWriteback(page));
- 
- 			pages_skipped = mpd->wbc->pages_skipped;
--			err = mapping->a_ops->writepage(page, mpd->wbc);
-+			err = ext4_writepage(page, mpd->wbc);
- 			if (!err && (pages_skipped == mpd->wbc->pages_skipped))
- 				/*
- 				 * have successfully written the page
-@@ -2189,14 +2190,15 @@ static void ext4_print_free_blocks(struct inode *inode)
- }
- 
- /*
-- * mpage_da_map_blocks - go through given space
-+ * mpage_da_map_and_submit - go through given space, map them
-+ *       if necessary, and then submit them for I/O
-  *
-  * @mpd - bh describing space
-  *
-  * The function skips space we know is already mapped to disk blocks.
-  *
-  */
--static int mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- {
- 	int err, blks, get_blocks_flags;
- 	struct ext4_map_blocks map;
-@@ -2206,18 +2208,14 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	handle_t *handle = NULL;
- 
- 	/*
--	 * We consider only non-mapped and non-allocated blocks
-+	 * If the blocks are mapped already, or we couldn't accumulate
-+	 * any blocks, then proceed immediately to the submission stage.
- 	 */
--	if ((mpd->b_state  & (1 << BH_Mapped)) &&
--		!(mpd->b_state & (1 << BH_Delay)) &&
--		!(mpd->b_state & (1 << BH_Unwritten)))
--		return 0;
--
--	/*
--	 * If we didn't accumulate anything to write simply return
--	 */
--	if (!mpd->b_size)
--		return 0;
-+	if ((mpd->b_size == 0) ||
-+	    ((mpd->b_state  & (1 << BH_Mapped)) &&
-+	     !(mpd->b_state & (1 << BH_Delay)) &&
-+	     !(mpd->b_state & (1 << BH_Unwritten))))
-+		goto submit_io;
- 
- 	handle = ext4_journal_current_handle();
- 	BUG_ON(!handle);
-@@ -2254,17 +2252,18 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 
- 		err = blks;
- 		/*
--		 * If get block returns with error we simply
--		 * return. Later writepage will redirty the page and
--		 * writepages will find the dirty page again
-+		 * If get block returns EAGAIN or ENOSPC and there
-+		 * appears to be free blocks we will call
-+		 * ext4_writepage() for all of the pages which will
-+		 * just redirty the pages.
- 		 */
- 		if (err == -EAGAIN)
--			return 0;
-+			goto submit_io;
- 
- 		if (err == -ENOSPC &&
- 		    ext4_count_free_blocks(sb)) {
- 			mpd->retval = err;
--			return 0;
-+			goto submit_io;
- 		}
- 
- 		/*
-@@ -2289,7 +2288,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		/* invalidate all the pages */
- 		ext4_da_block_invalidatepages(mpd, next,
- 				mpd->b_size >> mpd->inode->i_blkbits);
--		return err;
-+		return;
- 	}
- 	BUG_ON(blks == 0);
- 
-@@ -2312,7 +2311,8 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	if (ext4_should_order_data(mpd->inode)) {
- 		err = ext4_jbd2_file_inode(handle, mpd->inode);
- 		if (err)
--			return err;
-+			/* This only happens if the journal is aborted */
-+			return;
- 	}
- 
- 	/*
-@@ -2323,10 +2323,16 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		disksize = i_size_read(mpd->inode);
- 	if (disksize > EXT4_I(mpd->inode)->i_disksize) {
- 		ext4_update_i_disksize(mpd->inode, disksize);
--		return ext4_mark_inode_dirty(handle, mpd->inode);
-+		err = ext4_mark_inode_dirty(handle, mpd->inode);
-+		if (err)
-+			ext4_error(mpd->inode->i_sb,
-+				   "Failed to mark inode %lu dirty",
-+				   mpd->inode->i_ino);
- 	}
- 
--	return 0;
-+submit_io:
-+	mpage_da_submit_io(mpd);
-+	mpd->io_done = 1;
- }
- 
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | \
-@@ -2403,9 +2409,7 @@ flush_it:
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	if (mpage_da_map_blocks(mpd) == 0)
--		mpage_da_submit_io(mpd);
--	mpd->io_done = 1;
-+	mpage_da_map_and_submit(mpd);
- 	return;
- }
- 
-@@ -2437,15 +2441,13 @@ static int __mpage_da_writepage(struct page *page,
- 	if (mpd->next_page != page->index) {
- 		/*
- 		 * Nope, we can't. So, we map non-allocated blocks
--		 * and start IO on them using writepage()
-+		 * and start IO on them
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			if (mpage_da_map_blocks(mpd) == 0)
--				mpage_da_submit_io(mpd);
-+			mpage_da_map_and_submit(mpd);
- 			/*
- 			 * skip rest of the page in the page_vec
- 			 */
--			mpd->io_done = 1;
- 			redirty_page_for_writepage(wbc, page);
- 			unlock_page(page);
- 			return MPAGE_DA_EXTENT_TAIL;
-@@ -3071,9 +3073,7 @@ retry:
- 		 * them for I/O.
- 		 */
- 		if (!mpd.io_done && mpd.next_page != mpd.first_page) {
--			if (mpage_da_map_blocks(&mpd) == 0)
--				mpage_da_submit_io(&mpd);
--			mpd.io_done = 1;
-+			mpage_da_map_and_submit(&mpd);
- 			ret = MPAGE_DA_EXTENT_TAIL;
- 		}
- 		trace_ext4_da_write_pages(inode, &mpd);
+ 			if (commit_write)
+ 				/* mark the buffer_heads as dirty & uptodate */
 -- 
 1.7.1
 
