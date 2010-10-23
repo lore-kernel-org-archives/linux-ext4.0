@@ -1,60 +1,93 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: Committing changes to an ext3_inode structure
-Date: Sat, 23 Oct 2010 18:48:29 +0200
-Message-ID: <AANLkTinV0G_Bf4xc4F6XXivpjXJjkTAOgQ8rHsNts0FH@mail.gmail.com>
-References: <CB87EF37-0485-4A48-B401-EA594BE47B29@paradoxo.org>
+From: Bernd Schubert <bs_lists@aakef.fastmail.fm>
+Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous mount: IO failure
+Date: Sat, 23 Oct 2010 19:46:56 +0200
+Message-ID: <201010231946.56794.bs_lists@aakef.fastmail.fm>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: Felipe Franciosi <felipe@paradoxo.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Bernd Schubert <bschubert@ddn.com>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:58401 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751139Ab0JWQsb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Oct 2010 12:48:31 -0400
-Received: by qwk3 with SMTP id 3so451985qwk.19
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Oct 2010 09:48:30 -0700 (PDT)
-In-Reply-To: <CB87EF37-0485-4A48-B401-EA594BE47B29@paradoxo.org>
+Received: from out1.smtp.messagingengine.com ([66.111.4.25]:57462 "EHLO
+	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755902Ab0JWRq7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Oct 2010 13:46:59 -0400
+In-Reply-To: <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 19, 2010 at 5:23 PM, Felipe Franciosi <felipe@paradoxo.org> wrote:
-> Dear all,
->
-> I am experimenting on a 2.6.20.3-ubuntu1 kernel to prototype and evaluate
-> different methods for migrating datablocks for a given inode on the fly.
->
-> I have created an ioctl call that implements some verifications and invokes
-> a function I wrote in balloc.c for such migration.
->
-> Upon receiving a struct inode*, I retrieve the corresponding iloc using the
-> ext3_get_inode_iloc() function and then the struct ext3_inode* using the
-> ext3_raw_inode() on the iloc. I have confirmed the pointer is correct by
-> printing several ext3_inode relevant fields.
->
+On Saturday, October 23, 2010, Amir Goldstein wrote:
+> On Fri, Oct 22, 2010 at 7:25 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> > On Fri, Oct 22, 2010 at 03:33:29PM +0200, Bernd Schubert wrote:
+> >> is is really a good idea to allow the filesystem to mount if something
+> >> like that comes up? I really would prefer if mount would abort.
+> >> 
+> >> Oct 22 12:37:36 vm7 kernel: [ 1227.814294] LDISKFS-fs warning (device
+> >> sfa0074): ldiskfs_clear_journal_err: Filesystem error recorded from p
+> >> revious mount: IO failure
+> >> Oct 22 12:37:36 vm7 kernel: [ 1227.814314] LDISKFS-fs warning (device
+> >> sfa0074): ldiskfs_clear_journal_err: Marking fs in need of filesystem
+> >> check.
+> >> 
+> >> (please ignore "ldiskfs", it was just renamed to that by Lustre, but is
+> >> ext4 based as in RHEL5.5, so 2.6.32-ish).
+> > 
+> > Did you try running e2fsck first?  If it detects the error after
+> > running the journal, it will run the file system check right then and
+> > there.  If it doesn't, it's a bug.  If you're not running e2fsck
+> > first, and the filesystem had previously detected inconsistencies, the
+> > long-standing tradition is to allow that, since root should know what
+> > it's doing.
+> > 
+> > And there are times when you do want to mount a filesystem with known
+> > errors; for example, in the case of the root file system, we have
+> > always allowed a read-only mount to continue, so that we can run
+> > e2fsck without requiring a rescue CD 99% of the time.
+> 
+> Ted,
+> 
+> IMHO, and I've said it before, the mount flag which Bernd requests
+> already exists, namely 'errors=',
+> both as mount option and as persistent default, but it is not enforced
+> correctly on mount time.
+> If an administrator decides that the correct behavior when error is
+> detected is abort or remount-ro,
+> what's the sense it letting the filesystem mount read-write without
+> fixing the problem?
+> I realize that the umount/mount may have fixed things by "unrolling"
+> the last transaction,
+> but still, the state of ERROR_FS with read-write mount, seems to be
+> inconsistent the the defined errors behavior.
+> root can always use errors=continue mount to override this restriction.
 
-you've complicated things too much.
-all you have to do is modify EXT3_I(inode)->i_data and then call
-ext3_mark_inode_dirty().
-the rest of the iloc and raw inode stuff is taken care of by ext3_put_inode().
+Hmm, yes and no, while mounting it read-only eventually will be later on 
+detected by Lustre, that would cause a fencing/stonith of the hole node. 
 
-> After making my modifications to the i_block array, I am finding it
-> impossible to commit these changes to the inode itself.
->
+I'm really looking for something to abort the mount if an error comes up. 
+However, I just have an idea to do that without an additional mount flag:
 
-that is because your changes are being overriden by the unmodified ei->i_data.
+Let e2fsck play back the journal only. That way e2fsck could set the error 
+flag, if it detects a problem in the journal and our pacemaker script would 
+refuse to mount. That option also would be quite useful for our other scripts, 
+as we usually first run a read-only fsck, check the log files (presently by 
+size, as e2fsck always returns an error code even for journal recoveries...) 
+and only if we don't see serious corruption we run e2fsck. Otherwise we 
+sometimes create device or e2image backups.
+Would a patch introducing "-J recover journal only" accepted?
 
-> I have tried different things such as marking the iloc.bh buffer_head as
-> dirty and submitting it for writing, marking the page as dirty, etc, but I
-> think I'm missing something more fundamental. Most of my attempts were
-> planned according to what I've seen inside similar code of buffer_head
-> manipulation.
->
+Another option is to add a proc or sysfs file stating the health of the 
+filesystem.
 
-maybe you should have looked at code that modifies inodes instead...
+Thanks,
+Bernd
 
-> Can anyone shed some light on what I'm missing?
->
 
-hope this helps,
-Amir.
+
+
+-- 
+Bernd Schubert
+DataDirect Networks
