@@ -1,93 +1,134 @@
-From: Bernd Schubert <bs_lists@aakef.fastmail.fm>
-Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous mount: IO failure
-Date: Sat, 23 Oct 2010 19:46:56 +0200
-Message-ID: <201010231946.56794.bs_lists@aakef.fastmail.fm>
-References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Bernd Schubert <bschubert@ddn.com>
-To: Amir Goldstein <amir73il@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2 2/6] ext4: simplify ext4_writepage()
+Date: Sat, 23 Oct 2010 16:40:16 -0400
+Message-ID: <1287866420-23762-3-git-send-email-tytso@mit.edu>
+References: <1287866420-23762-1-git-send-email-tytso@mit.edu>
+Cc: akpm@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:57462 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755902Ab0JWRq7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Oct 2010 13:46:59 -0400
-In-Reply-To: <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com>
+Received: from thunk.org ([69.25.196.29]:47000 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753451Ab0JWUk3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Oct 2010 16:40:29 -0400
+In-Reply-To: <1287866420-23762-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Saturday, October 23, 2010, Amir Goldstein wrote:
-> On Fri, Oct 22, 2010 at 7:25 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> > On Fri, Oct 22, 2010 at 03:33:29PM +0200, Bernd Schubert wrote:
-> >> is is really a good idea to allow the filesystem to mount if something
-> >> like that comes up? I really would prefer if mount would abort.
-> >> 
-> >> Oct 22 12:37:36 vm7 kernel: [ 1227.814294] LDISKFS-fs warning (device
-> >> sfa0074): ldiskfs_clear_journal_err: Filesystem error recorded from p
-> >> revious mount: IO failure
-> >> Oct 22 12:37:36 vm7 kernel: [ 1227.814314] LDISKFS-fs warning (device
-> >> sfa0074): ldiskfs_clear_journal_err: Marking fs in need of filesystem
-> >> check.
-> >> 
-> >> (please ignore "ldiskfs", it was just renamed to that by Lustre, but is
-> >> ext4 based as in RHEL5.5, so 2.6.32-ish).
-> > 
-> > Did you try running e2fsck first?  If it detects the error after
-> > running the journal, it will run the file system check right then and
-> > there.  If it doesn't, it's a bug.  If you're not running e2fsck
-> > first, and the filesystem had previously detected inconsistencies, the
-> > long-standing tradition is to allow that, since root should know what
-> > it's doing.
-> > 
-> > And there are times when you do want to mount a filesystem with known
-> > errors; for example, in the case of the root file system, we have
-> > always allowed a read-only mount to continue, so that we can run
-> > e2fsck without requiring a rescue CD 99% of the time.
-> 
-> Ted,
-> 
-> IMHO, and I've said it before, the mount flag which Bernd requests
-> already exists, namely 'errors=',
-> both as mount option and as persistent default, but it is not enforced
-> correctly on mount time.
-> If an administrator decides that the correct behavior when error is
-> detected is abort or remount-ro,
-> what's the sense it letting the filesystem mount read-write without
-> fixing the problem?
-> I realize that the umount/mount may have fixed things by "unrolling"
-> the last transaction,
-> but still, the state of ERROR_FS with read-write mount, seems to be
-> inconsistent the the defined errors behavior.
-> root can always use errors=continue mount to override this restriction.
+The actual code in ext4_writepage() is unnecessarily convoluted.
+Simplify it so it is easier to understand, but otherwise logically
+equivalent.
 
-Hmm, yes and no, while mounting it read-only eventually will be later on 
-detected by Lustre, that would cause a fencing/stonith of the hole node. 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |   73 +++++++++++++++++++------------------------------------
+ 1 files changed, 25 insertions(+), 48 deletions(-)
 
-I'm really looking for something to abort the mount if an error comes up. 
-However, I just have an idea to do that without an additional mount flag:
-
-Let e2fsck play back the journal only. That way e2fsck could set the error 
-flag, if it detects a problem in the journal and our pacemaker script would 
-refuse to mount. That option also would be quite useful for our other scripts, 
-as we usually first run a read-only fsck, check the log files (presently by 
-size, as e2fsck always returns an error code even for journal recoveries...) 
-and only if we don't see serious corruption we run e2fsck. Otherwise we 
-sometimes create device or e2image backups.
-Would a patch introducing "-J recover journal only" accepted?
-
-Another option is to add a proc or sysfs file stating the health of the 
-filesystem.
-
-Thanks,
-Bernd
-
-
-
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 55961ff..a08ec79 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2704,7 +2704,7 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate);
+ static int ext4_writepage(struct page *page,
+ 			  struct writeback_control *wbc)
+ {
+-	int ret = 0;
++	int ret = 0, commit_write = 0;
+ 	loff_t size;
+ 	unsigned int len;
+ 	struct buffer_head *page_bufs = NULL;
+@@ -2717,60 +2717,37 @@ static int ext4_writepage(struct page *page,
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+ 
+-	if (page_has_buffers(page)) {
+-		page_bufs = page_buffers(page);
+-		if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+-					ext4_bh_delay_or_unwritten)) {
+-			/*
+-			 * We don't want to do  block allocation
+-			 * So redirty the page and return
+-			 * We may reach here when we do a journal commit
+-			 * via journal_submit_inode_data_buffers.
+-			 * If we don't have mapping block we just ignore
+-			 * them. We can also reach here via shrink_page_list
+-			 */
++	/*
++	 * If the page does not have buffers (for whatever reason),
++	 * try to create them using block_prepare_write.  If this
++	 * fails, redirty the page and move on.
++	 */
++	if (!page_buffers(page)) {
++		if (block_prepare_write(page, 0, len,
++					noalloc_get_block_write)) {
++		redirty_page:
+ 			redirty_page_for_writepage(wbc, page);
+ 			unlock_page(page);
+ 			return 0;
+ 		}
+-	} else {
++		commit_write = 1;
++	}
++	page_bufs = page_buffers(page);
++	if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
++			      ext4_bh_delay_or_unwritten)) {
+ 		/*
+-		 * The test for page_has_buffers() is subtle:
+-		 * We know the page is dirty but it lost buffers. That means
+-		 * that at some moment in time after write_begin()/write_end()
+-		 * has been called all buffers have been clean and thus they
+-		 * must have been written at least once. So they are all
+-		 * mapped and we can happily proceed with mapping them
+-		 * and writing the page.
+-		 *
+-		 * Try to initialize the buffer_heads and check whether
+-		 * all are mapped and non delay. We don't want to
+-		 * do block allocation here.
++		 * We don't want to do block allocation So redirty the
++		 * page and return We may reach here when we do a
++		 * journal commit via
++		 * journal_submit_inode_data_buffers.  If we don't
++		 * have mapping block we just ignore them. We can also
++		 * reach here via shrink_page_list
+ 		 */
+-		ret = block_prepare_write(page, 0, len,
+-					  noalloc_get_block_write);
+-		if (!ret) {
+-			page_bufs = page_buffers(page);
+-			/* check whether all are mapped and non delay */
+-			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+-						ext4_bh_delay_or_unwritten)) {
+-				redirty_page_for_writepage(wbc, page);
+-				unlock_page(page);
+-				return 0;
+-			}
+-		} else {
+-			/*
+-			 * We can't do block allocation here
+-			 * so just redity the page and unlock
+-			 * and return
+-			 */
+-			redirty_page_for_writepage(wbc, page);
+-			unlock_page(page);
+-			return 0;
+-		}
++		goto redirty_page;
++	}
++	if (commit_write)
+ 		/* now mark the buffer_heads as dirty and uptodate */
+ 		block_commit_write(page, 0, len);
+-	}
+ 
+ 	if (PageChecked(page) && ext4_should_journal_data(inode)) {
+ 		/*
+@@ -2781,7 +2758,7 @@ static int ext4_writepage(struct page *page,
+ 		return __ext4_journalled_writepage(page, len);
+ 	}
+ 
+-	if (page_bufs && buffer_uninit(page_bufs)) {
++	if (buffer_uninit(page_bufs)) {
+ 		ext4_set_bh_endio(page_bufs, inode);
+ 		ret = block_write_full_page_endio(page, noalloc_get_block_write,
+ 					    wbc, ext4_end_io_buffer_write);
 -- 
-Bernd Schubert
-DataDirect Networks
+1.7.1
+
