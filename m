@@ -1,57 +1,120 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 18302] [BUG] bad performance and system stalls when using
- dm-crypt
-Date: Sun, 24 Oct 2010 15:48:57 GMT
-Message-ID: <201010241548.o9OFmvRC005541@demeter2.kernel.org>
-References: <bug-18302-13602@https.bugzilla.kernel.org/>
+From: Bernd Schubert <bschubert@ddn.com>
+Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous
+ mount: IO failure
+Date: Sun, 24 Oct 2010 18:16:59 +0200
+Message-ID: <4CC45BFB.4010403@ddn.com>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com> <20101023221714.GB24650@thunk.org> <4CC43AC9.8000409@redhat.com> <4CC44304.1050409@ddn.com> <4CC44EAF.3090507@redhat.com> <4CC45318.3080002@ddn.com> <4CC45590.80608@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="------------enig5D49BCC5FC93AF31898FD5DC"
+Cc: Ted Ts'o <tytso@mit.edu>, Amir Goldstein <amir73il@gmail.com>,
+	Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@sun.com>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [140.211.167.42] ([140.211.167.42]:52259 "EHLO
-	demeter2.kernel.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S932885Ab0JXPs6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Oct 2010 11:48:58 -0400
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id o9OFmwKO005542
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 24 Oct 2010 15:48:58 GMT
-In-Reply-To: <bug-18302-13602@https.bugzilla.kernel.org/>
+Received: from mail.datadirectnet.com ([74.62.46.229]:6494 "EHLO
+	mail.datadirectnet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754834Ab0JXQRF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Oct 2010 12:17:05 -0400
+In-Reply-To: <4CC45590.80608@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=18302
+--------------enig5D49BCC5FC93AF31898FD5DC
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+On 10/24/2010 05:49 PM, Ric Wheeler wrote:
+>   On 10/24/2010 11:39 AM, Bernd Schubert wrote:
+>> On 10/24/2010 05:20 PM, Ric Wheeler wrote:
+>>> This still sounds more like a Lustre issue than an ext4 one, Andreas =
+can fill in
+>>> the technical details.
+>> The underlying device handling is unrelated to Lustre. In that sense i=
+t
+>> is just a local filesystem.
+>>
+>>> What ever shared storage sits under ext4 is irrelevant to the fail ov=
+er case.
+>>>
+>>> Unless Lustre does other magic, they still need to obey the basic clu=
+ster rules
+>>> - one mount per cluster.
+>> Yes, one mount per cluster.
+>>
+>>> If Lustre is doing the same trick you would do with active/passive fa=
+ilure over
+>>> clusters that export ext4 via NFS, you would still need to clean up t=
+he file
+>>> system before being able to re-export it from a fail over node.
+>> What exactly is your question here? We use pacemaker/stonith to do the=
+
+>> fencing job.
+>> What exactly do you want to clean up? The device is recovered by
+>> journals, Lustre goes into recovery mode, clients reconnect, locks are=
+
+>> updated and incomplete transactions resend.
+>>
+>>
+>> Cheers,
+>> Bernd
+>>
+>=20
+> What I don't get (certainly might just be me) is why this is a unique i=
+ssue when=20
+> used by lustre. Normally, any similar type of fail over will clean up t=
+he local=20
+> file system normally before trying to re-export from the second node.
+
+Of course that is not a Lustre specific issue, which is why I also did
+not open a Lustre bugzilla, but opened the thread here.
+
+>=20
+> Why exactly can't you use the same type of recovery here? Is it the fen=
+cing=20
+> agent killing nodes on detection of the file system errors?
+
+But I'm using the same type of recovery! I just rewrote pacemakers
+default "Filesystem" agent to a lustre_server agent, to include more
+Lustre specific checks. When I then added last week a check for the
+dumpe2fs "Filesystem state", I noticed, that sometimes the error state
+is only set *after* mounting the filesystem, so difficult to script it.
+And as I also wrote, running e2fsck from that script and to do a
+complete fs check is not appropriate, as that might simply time out.
+Again not Lustre specific. So after some discussion, the proposed
+solution is to add a "journal recovery only" option to e2fsck and to do
+that before the mount. I will add that to the 'lustre_server' agent
+(which is part of Lustre now), but leave it to someone else to that for
+the 'Filesystem' agent script (I'm not using that script myself and IMHO
+it is already too complex, as it tries to support all filesystems -
+shell code is ideal anymore then).
+
+Really, only Lustre specific here is the feature to have a proc file to
+see if filesystem errors came up on a node. That is a missing feature in
+extX and all other linux filesystems I have worked with. And Lustre
+server nodes just means the usage of dozens to hundreds of
+ext3/ext4/ldiskfs devices, so bugs are more likely exposed by that high
+number.
 
 
+Cheers,
+Bernd
 
 
+--------------enig5D49BCC5FC93AF31898FD5DC
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
---- Comment #1 from david b <db.pub.mail@gmail.com>  2010-10-24 15:48:56 ---
-...
-For example:
-doing something stupid like this 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-dd if=/dev/zero of=TEMP count=15553600 &
-dd if=/dev/zero of=TEMP2 count=15553600 &
-ls -lahR / &
-will --> end up with the following output :/
+iEYEARECAAYFAkzEW/sACgkQqh74FqyuOzQjpwCgtHzBtOnRBAZF7KZVEzIFuSEO
+as4An0qLsbnzg1IS3XAW+aRf9kz5DkNj
+=gQ9Z
+-----END PGP SIGNATURE-----
 
-fsync time: 25.8393
-pread time: 0.0010
-fsync time: 20.6251
-pread time: 0.0007
-fsync time: 31.0960
-pread time: 5.3767
-fsync time: 28.0393
-pread time: 16.1137
-fsync time: 19.2237
-pread time: 12.9312
-fsync time: 25.0550
-pread time: 6.7220
-fsync time: 9.8830
-pread time: 0.0009
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--------------enig5D49BCC5FC93AF31898FD5DC--
