@@ -1,114 +1,83 @@
 From: Bernd Schubert <bschubert@ddn.com>
 Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous
  mount: IO failure
-Date: Sun, 24 Oct 2010 16:30:28 +0200
-Message-ID: <4CC44304.1050409@ddn.com>
-References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com> <20101023221714.GB24650@thunk.org> <4CC43AC9.8000409@redhat.com>
+Date: Sun, 24 Oct 2010 16:42:25 +0200
+Message-ID: <4CC445D1.10908@ddn.com>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101023222605.GC24650@thunk.org> <201010240156.02655.bs_lists@aakef.fastmail.fm> <201010240220.46113.bs_lists@aakef.fastmail.fm> <20101024010859.GE24650@thunk.org>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
 	protocol="application/pgp-signature";
-	boundary="------------enigAB93E56816610BDEC7301637"
-Cc: Ted Ts'o <tytso@mit.edu>, Amir Goldstein <amir73il@gmail.com>,
-	Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	boundary="------------enig1D9F9B1960DBE95EC905428F"
+Cc: Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	Amir Goldstein <amir73il@gmail.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Ric Wheeler <rwheeler@redhat.com>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.datadirectnet.com ([74.62.46.229]:4678 "EHLO
+Received: from mail.datadirectnet.com ([74.62.46.229]:4854 "EHLO
 	mail.datadirectnet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932085Ab0JXOf7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Oct 2010 10:35:59 -0400
-In-Reply-To: <4CC43AC9.8000409@redhat.com>
+	with ESMTP id S1752321Ab0JXOma (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Oct 2010 10:42:30 -0400
+In-Reply-To: <20101024010859.GE24650@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---------------enigAB93E56816610BDEC7301637
+--------------enig1D9F9B1960DBE95EC905428F
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: quoted-printable
 
-On 10/24/2010 03:55 PM, Ric Wheeler wrote:
->   On 10/23/2010 06:17 PM, Ted Ts'o wrote:
->> On Sat, Oct 23, 2010 at 06:00:05PM +0200, Amir Goldstein wrote:
->>> IMHO, and I've said it before, the mount flag which Bernd requests
->>> already exists, namely 'errors=3D', both as mount option and as
->>> persistent default, but it is not enforced correctly on mount time.
->>> If an administrator decides that the correct behavior when error is
->>> detected is abort or remount-ro, what's the sense it letting the
->>> filesystem mount read-write without fixing the problem?
->> Again, consider the case of the root filesystem containing an error.
->> When the error is first discovered during the source of the system's
->> operation, and it's set to errors=3Dpanic, you want to immediately
->> reboot the system.  But then, when root file system is mounted, it
->> would be bad to have the system immediately panic again.  Instead,
->> what you want to have happen is to allow e2fsck to run, correct the
->> file system errors, and then system can go back to normal operation.
->>
->> So the current behavior was deliberately designed to be the way that
->> it is, and the difference is between "what do you do when you come
->> across a file system error", which is what the errors=3D mount option =
-is
->> all about, and "this file system has some kind of error associated
->> with it".  Just because it has an error associated with it does not
->> mean that immediately rebooting is the right thing to do, even if the
->> file system is set to "errors=3Dpanic".  In fact, in the case of a roo=
-t
->> file system, it is manifestly the wrong thing to do.  If we did what
->> you suggested, then the system would be trapped in a reboot loop
->> forever.
->>
->> 							- Ted
+On 10/24/2010 03:08 AM, Ted Ts'o wrote:
+> On Sun, Oct 24, 2010 at 02:20:45AM +0200, Bernd Schubert wrote:
+>> Hmm, maybe we have a mis-understanding here. If we could make e2fsck
+>> to *only* recovery the journal, that would be perfect. Kernel and
+>> e2fsck journal recovery should take approximately the same time. But
+>> that option does not exist yet (well, a half baken patch is on my
+>> disk now). If e2fsck then would detect as the kernel:
+>> "clear_journal_err: Filesystem error recorded from previous mount"
+>> and mark the filesystem with an error, that would be all we need to
+>> then abort the mount in the pacemaker script and allow us to run a
+>> real e2fsck outside of pacemaker.
 >=20
-> I am still fuzzy on the use case here.
->=20
-> In any shared ext* file system (pacemaker or other), you have some basi=
-c rules:
->=20
-> * you cannot have the file system mounted on more than one node
-> * failover must fence out any other nodes before starting recovery
-> * failover (once the node is assured that it is uniquely mounting the f=
-ile=20
-> system) must do any recovery required to clean up the state
->=20
-> Using ext* (or xfs) in an active/passive cluster with fail over rules t=
-hat=20
-> follow the above is really common today.
->=20
-> I don't see what the use case here is - are we trying to pretend that p=
-acemaker=20
-> + ext* allows us to have a single, shared file system in a cluster moun=
-ted on=20
-> multiple nodes?
+> What probably makes sense is to have an extended option which causes
+> e2fsck to just run the journal and then exit.  Part of running the
+> journal should be setting the EXT4_ERROR_FS bit in s_mount_state and
+> then clearning the journal.  That seems to be missing entirely from
+> e2fsck, which is a bug that we should fix regardless.
 
-The use case here is Lustre. I think ClusterFS and then later the  Sun
-Lustre group (Andreas Dilger, Alex Zhurlaev/Tomas, Girish Shilamkar)
-contributed lots of ext3 and ext4 code, as  Lustres underlying disk
-format ldiskfs is based on ext3/ext4 (remaining patches, such as MMP are
-supposed to be added to ext4 and others such as open-by-inode are
-supposed to be given up, ones the vfs supports open-by-filehandle (or so)=
-).
-
-So Lustre mounts a device to a directory (but hides the content to user
-space) and then makes the objects in filesystem available globally to
-many clients. On first simple glance that is similar to NFS, but Lustre
-combines the objects of many ldiskfs filesystems into a single global
-filesystem. In order to provide to high-availability, you need to use
-any kind of shared storage device. Internal raid1 is planned, but still
-not available, so far only raid0 (striping) is supported.
+Adding the journal option is simple, I will provide a patch by Wednesday
+or Thursday. Will also check if it sets EXT2_ERROR_FS and if not, will
+try to find some time to add that.
 
 >=20
-> Why not use ocfs2 or gfs2 for that?
+> As far as detecting whether or not the file system has known errors,
+> you can do that by using dumpe2fs -h and grepping for "Filesystem
+> state".  That can have the values "clean" or "with errors".  (For ext2
+> file systems, or ext4 file systems without a journal, you can also
+> have the state "not clean" and "not clean with errors", but if you
+> have a journal the latter two states shouldn't ever come up.)
 
-You are welcome to write a Lustre plugin for that :) Although, extending
-btrfs and use that might be the better choice. Lustre is already going
-to supprt ZFS and will make use of ZFS checksums also for its network
-checksums, as far as I know. The same should be feasible with btrfs
-checksums.
+I added exactly that to our lustre_server pacemaker agent last week :)
+And when I noticed it still mounts filesystems with errors, I started
+this thread here.
 
 
-Cheers,
+>=20
+> That way the logic that you want is something you can build into your
+> script, and we don't need to embed application specific logic into
+> e2fsprogs.  The ability to just run the journal without doing any
+> further checking seems like a reasonable thing to add to e2fsck ---
+> and by using dumpe2fs -h you'll be able to detect all possible file
+> system errors (not just the ones which are reported via the journal
+> error system).
+>=20
+> Does that sound reasonable to you?
+
+Yes, we perfectly agree on each other now :)
+
+Thanks,
 Bernd
 
 
---------------enigAB93E56816610BDEC7301637
+--------------enig1D9F9B1960DBE95EC905428F
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: OpenPGP digital signature
 Content-Disposition: attachment; filename="signature.asc"
@@ -117,9 +86,9 @@ Content-Disposition: attachment; filename="signature.asc"
 Version: GnuPG v1.4.10 (GNU/Linux)
 Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-iEYEARECAAYFAkzEQwsACgkQqh74FqyuOzSEBQCgtnESOWF6InMCLU3aCr1HE1bW
-4ggAnjne07WBn9FwnywQx4PptRRu1btk
-=NIxr
+iEYEARECAAYFAkzERdEACgkQqh74FqyuOzRdOACgmeI4x5ppkBubGKmE8j3C6FFK
+ssUAoIycdnj3+kxDioREUZXWH21cX/zN
+=Dk6O
 -----END PGP SIGNATURE-----
 
---------------enigAB93E56816610BDEC7301637--
+--------------enig1D9F9B1960DBE95EC905428F--
