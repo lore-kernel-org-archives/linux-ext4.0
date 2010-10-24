@@ -1,60 +1,83 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4_clear_journal_err: Filesystem error recorded from
- previous mount: IO failure
-Date: Sat, 23 Oct 2010 21:08:59 -0400
-Message-ID: <20101024010859.GE24650@thunk.org>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous
+ mount: IO failure
+Date: Sun, 24 Oct 2010 10:50:13 +0200
+Message-ID: <AANLkTim94HAvxTgvhdhmJ6oPR0YpaPT97TEXq8ZCfTPU@mail.gmail.com>
 References: <201010221533.29194.bs_lists@aakef.fastmail.fm>
- <20101023222605.GC24650@thunk.org>
- <201010240156.02655.bs_lists@aakef.fastmail.fm>
- <201010240220.46113.bs_lists@aakef.fastmail.fm>
+	<20101022172536.GP3127@thunk.org>
+	<AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com>
+	<20101023221714.GB24650@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Amir Goldstein <amir73il@gmail.com>, linux-ext4@vger.kernel.org,
-	Bernd Schubert <bschubert@ddn.com>
-To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42273 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751346Ab0JXBJF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Oct 2010 21:09:05 -0400
-Content-Disposition: inline
-In-Reply-To: <201010240220.46113.bs_lists@aakef.fastmail.fm>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:35119 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932207Ab0JXIuO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Oct 2010 04:50:14 -0400
+Received: by qwk3 with SMTP id 3so688521qwk.19
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Oct 2010 01:50:14 -0700 (PDT)
+In-Reply-To: <20101023221714.GB24650@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 24, 2010 at 02:20:45AM +0200, Bernd Schubert wrote:
-> Hmm, maybe we have a mis-understanding here. If we could make e2fsck
-> to *only* recovery the journal, that would be perfect. Kernel and
-> e2fsck journal recovery should take approximately the same time. But
-> that option does not exist yet (well, a half baken patch is on my
-> disk now). If e2fsck then would detect as the kernel:
-> "clear_journal_err: Filesystem error recorded from previous mount"
-> and mark the filesystem with an error, that would be all we need to
-> then abort the mount in the pacemaker script and allow us to run a
-> real e2fsck outside of pacemaker.
+On Sun, Oct 24, 2010 at 12:17 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Sat, Oct 23, 2010 at 06:00:05PM +0200, Amir Goldstein wrote:
+>>
+>> IMHO, and I've said it before, the mount flag which Bernd requests
+>> already exists, namely 'errors=3D', both as mount option and as
+>> persistent default, but it is not enforced correctly on mount time.
+>> If an administrator decides that the correct behavior when error is
+>> detected is abort or remount-ro, what's the sense it letting the
+>> filesystem mount read-write without fixing the problem?
+>
+> Again, consider the case of the root filesystem containing an error.
+> When the error is first discovered during the source of the system's
+> operation, and it's set to errors=3Dpanic, you want to immediately
+> reboot the system. =A0But then, when root file system is mounted, it
+> would be bad to have the system immediately panic again. =A0Instead,
+> what you want to have happen is to allow e2fsck to run, correct the
+> file system errors, and then system can go back to normal operation.
+>
+> So the current behavior was deliberately designed to be the way that
+> it is, and the difference is between "what do you do when you come
+> across a file system error", which is what the errors=3D mount option=
+ is
+> all about, and "this file system has some kind of error associated
+> with it". =A0Just because it has an error associated with it does not
+> mean that immediately rebooting is the right thing to do, even if the
+> file system is set to "errors=3Dpanic". =A0In fact, in the case of a =
+root
+> file system, it is manifestly the wrong thing to do. =A0If we did wha=
+t
+> you suggested, then the system would be trapped in a reboot loop
+> forever.
+>
 
-What probably makes sense is to have an extended option which causes
-e2fsck to just run the journal and then exit.  Part of running the
-journal should be setting the EXT4_ERROR_FS bit in s_mount_state and
-then clearning the journal.  That seems to be missing entirely from
-e2fsck, which is a bug that we should fix regardless.
+Yes, I do realize that to panic on mount would be stupid :-)
+this is why I wrote that there is no sense in mounting the file system
+read-write.
+let me rephrase the 3 error behaviors as the designer (you?) intended:
+errors=3Dcontinue - "always stay out of my way and let me corrupt my
+file system as much as I want".
+errors=3Dread-only - "never let me corrupt my file system more than it
+already is".
+errors=3Dpanic - "never let me corrupt my file system ... and never let
+me view files which may not be there after I reboot".
 
-As far as detecting whether or not the file system has known errors,
-you can do that by using dumpe2fs -h and grepping for "Filesystem
-state".  That can have the values "clean" or "with errors".  (For ext2
-file systems, or ext4 file systems without a journal, you can also
-have the state "not clean" and "not clean with errors", but if you
-have a journal the latter two states shouldn't ever come up.)
+If you agree with my interpretations to the errors behavior codes,
+than you should agree to enforcing on mount time:
+errors=3Dcontinue - if ERROR_FS, go a head and corrupt your file system
+errors=3Dread-only - if ERROR_FS, allow only read-only mount
+errors=3Dpanic - if ERROR_FS, allow only read-only mount (files you see
+now are safely stored on disk)
 
-That way the logic that you want is something you can build into your
-script, and we don't need to embed application specific logic into
-e2fsprogs.  The ability to just run the journal without doing any
-further checking seems like a reasonable thing to add to e2fsck ---
-and by using dumpe2fs -h you'll be able to detect all possible file
-system errors (not just the ones which are reported via the journal
-error system).
-
-Does that sound reasonable to you?
-
-					- Ted
-
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
