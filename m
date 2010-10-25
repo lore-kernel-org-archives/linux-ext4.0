@@ -1,83 +1,54 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: optimize orphan_list handling for ext4_setattr
-Date: Mon, 25 Oct 2010 11:06:42 +0400
-Message-ID: <87r5fevji5.fsf@dmon-lap.sw.ru>
-Mime-Version: 1.0
+From: Andreas Dilger <andreas.dilger@oracle.com>
+Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous mount: IO failure
+Date: Mon, 25 Oct 2010 18:14:03 +0800
+Message-ID: <2D4557FB-DE12-43C3-A277-EE4DD82F0BFF@oracle.com>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com> <20101023221714.GB24650@thunk.org> <4CC43AC9.8000409@redhat.com> <4CC44304.1050409@ddn.com> <4CC44EAF.3090507@redhat.com> <4CC45318.3080002@ddn.com> <4CC45590.80608@redhat.com> <4CC45BFB.4010403@ddn.com> <4CC46241.8070107@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>
+Content-Transfer-Encoding: 8BIT
+Cc: Bernd Schubert <bschubert@ddn.com>, "Ted Ts'o" <tytso@mit.edu>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:59454 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751804Ab0JYHGw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2010 03:06:52 -0400
-Received: by eye27 with SMTP id 27so3861648eye.19
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Oct 2010 00:06:51 -0700 (PDT)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:37987 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753807Ab0JYKOx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2010 06:14:53 -0400
+In-Reply-To: <4CC46241.8070107@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Surprisingly chown() on ext4 is not SMP scalable operation. 
-Due to unconditional orphan_del(NULL, inode) in ext4_setattr()
-result in significant performance overhead because of global orphan
-mutex, especially in no-journal mode (where orphan_add() is noop).
-It is possible to skip explicit orphan_del if possible.
-Results of fchown() micro-benchmark in no-journal mode
-while (1) {
-   iteration++;
-   fchown(fd, uid, gid);
-   fchown(fd, uid + 1, gid + 1)
-}
-measured: iterations per millisecond
-| nr_tasks | w/o patch | with patch |
-|        1 |       142 |        185 |
-|        4 |       109 |        642 |
+On 2010-10-25, at 00:43, Ric Wheeler wrote:
+> On 10/24/2010 12:16 PM, Bernd Schubert wrote:
+>> 
+>> ... sometimes the error state is only set *after* mounting the filesystem,
+>> so difficult to script it.  And as I also wrote, running e2fsck from that
+>> script and to do a complete fs check is not appropriate, as that might
+>> simply time out.  Again not Lustre specific. So after some discussion,
+>> the proposed solution is to add a "journal recovery only" option to e2fsck
+>> and to do that before the mount. I will add that to the 'lustre_server'
+>> agent (which is part of Lustre now), but leave it to someone else to that
+>> for the 'Filesystem' agent script (I'm not using that script myself and
+>> IMHO it is already too complex, as it tries to support all filesystems -
+>>  shell code is ideal anymore then).
+> 
+> Why not simply have your script attempt to mount the file system? If it succeeds, it will replay the journal. If it fails, you will need to fall back to the long fsck which is unavoidable.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/inode.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
+I don't really agree with this.  The whole reason for having the error flag in the superblock and ALWAYS running e2fsck at mount time to replay the journal is that e2fsck should be done before mounting the filesystem.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 18eed80..a16097b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5540,6 +5540,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error, rc = 0;
-+	int orphan = 0;
- 	const unsigned int ia_valid = attr->ia_valid;
- 
- 	error = inode_change_ok(inode, attr);
-@@ -5595,8 +5596,10 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 			error = PTR_ERR(handle);
- 			goto err_out;
- 		}
--
--		error = ext4_orphan_add(handle, inode);
-+		if (ext4_handle_valid(handle)) {
-+			error = ext4_orphan_add(handle, inode);
-+			orphan = 1;
-+		}
- 		EXT4_I(inode)->i_disksize = attr->ia_size;
- 		rc = ext4_mark_inode_dirty(handle, inode);
- 		if (!error)
-@@ -5608,6 +5611,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 							    attr->ia_size);
- 			if (error) {
- 				/* Do as much error cleanup as possible */
-+				orphan = 0;
- 				handle = ext4_journal_start(inode, 3);
- 				if (IS_ERR(handle)) {
- 					ext4_orphan_del(NULL, inode);
-@@ -5636,7 +5640,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	 * If the call to ext4_truncate failed to get a transaction handle at
- 	 * all, we need to clean up the in-core orphan list manually.
- 	 */
--	if (inode->i_nlink)
-+	if (orphan && inode->i_nlink)
- 		ext4_orphan_del(NULL, inode);
- 
- 	if (!rc && (ia_valid & ATTR_MODE))
--- 
-1.6.6.1
+I really dislike the reiserfs/XFS model where a filesystem is mounted and fsck is not run in advance, and then if there is a serious error in the filesystem this needs to be detected by the kernel, the filesystem unmounted, e2fsck started, and the filesystem remounted...  That's just backward.
+
+> We spend a lot of time and testing to make sure that ext* can be shot at any point and come back after a storage outage and still mount.
+
+Sure, it can still mount, but the only thing it might be able to do is detect the error and remount the filesystem read-only or panic...  That's why e2fsck should ALWAYS be run BEFORE the filesystem is mounted.
+
+Bernd's issue (the part that I agree with) is that the error may only be recorded in the journal, not in the ext3 superblock, and there is no easy way to detect this from userspace.  Allowing e2fsck to only replay the journal is useful this problem.  Another similar issue is that if tune2fs is run on an unmounted filesystem that hasn't had a journal replay, then it may modify the superblock, but journal replay will clobber this.  There are other similar issues.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Lustre Technical Lead
+Oracle Corporation Canada Inc.
 
