@@ -1,160 +1,104 @@
-From: "Amir G." <amir73il@users.sourceforge.net>
-Subject: [RFC] Ext4 snapshots design challenges
-Date: Mon, 25 Oct 2010 14:34:53 +0200
-Message-ID: <AANLkTim=4-uyczhhLOA79gsj7oHh=7O8f7ZiLMj3q3sB@mail.gmail.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous
+ mount: IO failure
+Date: Mon, 25 Oct 2010 08:54:34 -0400
+Message-ID: <4CC57E0A.9070502@redhat.com>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com> <20101023221714.GB24650@thunk.org> <4CC43AC9.8000409@redhat.com> <4CC44304.1050409@ddn.com> <4CC44EAF.3090507@redhat.com> <4CC45318.3080002@ddn.com> <4CC45590.80608@redhat.com> <4CC45BFB.4010403@ddn.com> <4CC46241.8070107@redhat.com> <2D4557FB-DE12-43C3-A277-EE4DD82F0BFF@oracle.com> <4CC56DEE.8020306@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: next3-devel@lists.sourceforge.net, Theodore Tso <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <andreas.dilger@oracle.com>,
+	Bernd Schubert <bschubert@ddn.com>, "Ted Ts'o" <tytso@mit.edu>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Bernd Schubert <bs_lists@aakef.fastmail.fm>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:57005 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751385Ab0JYMex (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2010 08:34:53 -0400
-Received: by qyk12 with SMTP id 12so1460481qyk.19
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Oct 2010 05:34:53 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:33595 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752723Ab0JYMyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Oct 2010 08:54:49 -0400
+In-Reply-To: <4CC56DEE.8020306@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+  On 10/25/2010 07:45 AM, Ric Wheeler wrote:
+>  On 10/25/2010 06:14 AM, Andreas Dilger wrote:
+>> On 2010-10-25, at 00:43, Ric Wheeler wrote:
+>>> On 10/24/2010 12:16 PM, Bernd Schubert wrote:
+>>>> ... sometimes the error state is only set *after* mounting the filesystem,
+>>>> so difficult to script it.  And as I also wrote, running e2fsck from that
+>>>> script and to do a complete fs check is not appropriate, as that might
+>>>> simply time out.  Again not Lustre specific. So after some discussion,
+>>>> the proposed solution is to add a "journal recovery only" option to e2fsck
+>>>> and to do that before the mount. I will add that to the 'lustre_server'
+>>>> agent (which is part of Lustre now), but leave it to someone else to that
+>>>> for the 'Filesystem' agent script (I'm not using that script myself and
+>>>> IMHO it is already too complex, as it tries to support all filesystems -
+>>>>   shell code is ideal anymore then).
+>>> Why not simply have your script attempt to mount the file system? If it 
+>>> succeeds, it will replay the journal. If it fails, you will need to fall 
+>>> back to the long fsck which is unavoidable.
+>> I don't really agree with this.  The whole reason for having the error flag 
+>> in the superblock and ALWAYS running e2fsck at mount time to replay the 
+>> journal is that e2fsck should be done before mounting the filesystem.
+>>
+>> I really dislike the reiserfs/XFS model where a filesystem is mounted and 
+>> fsck is not run in advance, and then if there is a serious error in the 
+>> filesystem this needs to be detected by the kernel, the filesystem unmounted, 
+>> e2fsck started, and the filesystem remounted...  That's just backward.
+>>
+>
+> Even if you disagree with the model, that would seem to solve the issue for 
+> Bernd without having to make a change in the utilities.
+>
+> Thanks!
+>
+> Ric
+>
+>>> We spend a lot of time and testing to make sure that ext* can be shot at any 
+>>> point and come back after a storage outage and still mount.
+>> Sure, it can still mount, but the only thing it might be able to do is detect 
+>> the error and remount the filesystem read-only or panic...  That's why e2fsck 
+>> should ALWAYS be run BEFORE the filesystem is mounted.
+>>
+>> Bernd's issue (the part that I agree with) is that the error may only be 
+>> recorded in the journal, not in the ext3 superblock, and there is no easy way 
+>> to detect this from userspace.  Allowing e2fsck to only replay the journal is 
+>> useful this problem.  Another similar issue is that if tune2fs is run on an 
+>> unmounted filesystem that hasn't had a journal replay, then it may modify the 
+>> superblock, but journal replay will clobber this.  There are other similar 
+>> issues.
+>>
+>> Cheers, Andreas
+>> -- 
+>> Andreas Dilger
+>> Lustre Technical Lead
+>> Oracle Corporation Canada Inc.
+>>
+>
 
-In April this year , I introduces the Next3 snapshots feature on this list:
-http://lwn.net/Articles/383934/
+One more thought here is that effectively the xfs model of mount before fsck is 
+basically just doing the journal replay - if you need to repair the file system, 
+it will fail to mount. If not, you are done.
 
-The main criticism I got was concerning the choice of forking from Ext3,
-rather than developing for Ext4. To those critics I replied, that the Ext4
-merge is on the roadmap, but it may take a while before we get there.
+For HA fail over, what Bernd is proposing is effectively equivalent:
 
-In the mean while, Ted has been very supportive and has already merged
-the (minor) on-disk changes of the snapshot feature to mainline and libext2.
+(1) Replay the journal without doing a full fsck which is the same as the mount 
+for XFS
 
-In these days, a group of 4 students is preparing to start the porting of
-the Next3 snapshots feature to Ext4, with my assistance and following
-some guide lines that were drawn by Ted.
+(2) See if the journal replay failed (i.e., set the error flag) which is the 
+same as seeing if the mount succeeded
 
-I will be attending the Linux Plumbers Conference and will try to initiate a
-discussion around some design issues regarding Ext4 snapshots:
-http://www.linuxplumbersconf.org/2010/ocw/proposals/1191
+(3) If error, you need to do a full, time consuming fsck for either
 
-If you are attending LPC, you are most welcome to join the discussion
-(We, Nov 3, 17:30) and contribute to Ext4 snapshots design.
+(4) If no error in (2), you need to mount the file system for ext4 (xfs is 
+already done at this stage)
 
-For those of you who didn't get the chance to catch up with Next3 snapshots
-design, I have prepared this 'quick' overview:
-http://sf.net/apps/mediawiki/next3/index.php?title=Technical_overview
+Aside from putting the journal replay into a magic fsck flag, I really do not 
+see that you are saving any complexity.  In fact, for this case, you add step (4).
 
-A draft of design challenges and proposed solutions can be found here:
-http://sf.net/apps/mediawiki/next3/index.php?title=Ext4_snapshots_TODO
+Regards,
 
-Here inlined, for your convenience, is the first and biggest challenge of
-the merge - the implementation of extent mapped file data block re-write.
+Ric
 
-Your comments will be appreciated,
-Amir.
-
-
-https://sourceforge.net/apps/mediawiki/next3/index.php?
-title=Ext4_snapshots_TODO#Ext4_snapshots_design_challenges:
-
-=                     Ext4 snapshots design challenges                     =
-
-The following issues require special attention when merging the snapshots
-feature to ext4.
-
-Ext4 developers are encouraged to comment on these issues and suggest
-solutions other than the ones proposed here.
-
-== Extent mapped file data block re-write ==
-
-The term re-write refers to a non first write to a file's data block.
-The first write allocates a new block for that file and requires no special
-snapshot block operations. If a snapshot was taken after a block was
-allocated, that block is protected by the snapshot's COW bitmap. Any attempt
-to re-write that block should result in a snapshot block operation, which
-either copies the original data to the snapshot file or moves the original
-block to the snapshot file and allocates a new block for the new data.
-
-Current implementation moves data blocks of indirect mapped files to
-snapshot on re-write. The move-on-write method is more efficient than the
-copy-on-write method, but it may cause a file to get fragmented in a use
-case of re-writes to many random locations.
-
-For extent mapped files re-write, there are 2 possible solutions.
-Ted T'so has wrote about this choice:
-
-''Technically speaking, it's possible to do it both ways, yes?''
-''I'm not sure why you consider this such an important design decision.''
-''We can even play games where for some files we might do copy-on-write,''
-''and for some files, we do move-on-write. It's always possible to check''
-''the COW bitmaps to decide what had happened.''
-
-=== Move-on-write ===
-
-Besides the mentioned file fragmentation problem, every move-on-write
-operation may need to split up a data extent into 2 extents of existing
-blocks and a third extent for blocks allocated for the new data.
-The metadata overhead of such a split operation is more significant than
-that of an indirect mapped file move-on-write operation and these extra
-metadata updates will have to be accounted for in advance when starting a
-block re-write transaction. Extent spliting may also degrade re-write
-performance to extent mapped files.
-
-In general, delayed allocation, or delayed move-on-write for our purpose,
-should be used to avoid extent splitting as much as possible.
-
-Perhaps the file fragmentation problem can be solved by online
-de-fragmentation. After all, the original file's blocks are kept safely
-inside the snapshot file, so a background task can simply copy the snapshot
-moved blocks to new locations and then copy the file's new data into its
-original blocks and map them back into the file.
-
-=== Copy-on-write ===
-
-Copying the re-written block to snapshot may seem like the "easy way out"
-of the file fragmentation problem, but the problems it causes in return
-are not to be disregarded.
-
-The first and obvious problem is write performance, because every data
-block re-write involves reading the content of the existing block from
-storage, before proceeding with the re-write. This read I/O can be avoided
-when using the move-on-write method. Though the write performance seems
-like a big limitation, it can be tagged as a trade-off between random write
-performance and sequential read performance and the choice can be left at
-the hands of the user.
-
-The second issue with data blocks copy-on-write is the snapshot reserved
-blocks count. On snapshot take, the file system reserves a certain amount of
-blocks for snapshot use. The reservation is calculated from the estimated
-count of metadata blocks that may need to be copied to snapshot at some
-point in the future. Move-on-write uses much less snapshot reserved blocks
-than copy-on-write, so the data blocks count doesn't need to be accounted
-for. When choosing to do copy-on-write on data blocks re-write, the re-write
-operation should first verify that there is enough disk space for allocating
-the snapshot copied data blocks without using snapshot reserved blocks.
-If there is not enough disk space, the operation should return ENOSPC.
-
-The last and most challenging issue has to do with I/O ordering within a
-single snapshot COW operation. The rule is very simple:
-To keep the snapshot data safe, the snapshot copy has to secured in storage
-before the new data is allowed to be written to storage.
-
-With metadata copy-on-write, this ordering is provided as a by product from
-the journaling sub-system. All snapshot COW'ed blocks are marked as ordered
-data, which is always written to storage before transaction commit starts
-and metadata blocks are always written to storage during transaction commit.
-
-When COW'ing a data block, which may be "ordered" or "writeback", there is
-no mechanism in place to help order the async writes of the snapshot COW'ed
-blocks before the async writes of the re-written data blocks. Even worse,
-when COW'ing an "ordered" data block, the journal will force it to storage
-before transaction commit starts and the snapshot COW'ed block mapping into
-the snapshot file will only be written during transaction commit.
-
-One possible solution is to implement a "holdback" list of blocks that
-should not be written before the current transaction commits. Naturally, a
-block must not be on both the "ordered" and "holdback" lists, but when
-re-writing an allocated data block, there is no sense in making this block
-"ordered", because this kind of data modification is directly related to any
-metadata modification (except change of inode's mtime, but who cares).
-
-....
