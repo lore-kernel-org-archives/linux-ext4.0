@@ -1,117 +1,78 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Ric Wheeler <rwheeler@redhat.com>
 Subject: Re: ext4_clear_journal_err: Filesystem error recorded from previous
  mount: IO failure
-Date: Mon, 25 Oct 2010 14:43:01 -0500
-Message-ID: <4CC5DDC5.7080003@redhat.com>
-References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com> <20101023221714.GB24650@thunk.org> <4CC43AC9.8000409@redhat.com> <4CC44304.1050409@ddn.com> <4CC44EAF.3090507@redhat.com> <4CC45318.3080002@ddn.com> <4CC45590.80608@redhat.com> <4CC45BFB.4010403@ddn.com> <4CC46241.8070107@redhat.com> <2D4557FB-DE12-43C3-A277-EE4DD82F0BFF@oracle.com>
+Date: Mon, 25 Oct 2010 15:49:21 -0400
+Message-ID: <4CC5DF41.1080402@redhat.com>
+References: <201010221533.29194.bs_lists@aakef.fastmail.fm> <20101022172536.GP3127@thunk.org> <AANLkTi=jYWSKwz1=pHQyaVq22bjgO-EF5xC53x9mGdvN@mail.gmail.com> <20101023221714.GB24650@thunk.org> <4CC43AC9.8000409@redhat.com> <4CC44304.1050409@ddn.com> <4CC44EAF.3090507@redhat.com> <4CC45318.3080002@ddn.com> <4CC45590.80608@redhat.com> <4CC45BFB.4010403@ddn.com> <4CC46241.8070107@redhat.com> <2D4557FB-DE12-43C3-A277-EE4DD82F0BFF@oracle.com> <4CC56DEE.8020306@redhat.com> <4CC57E0A.9070502@redhat.com> <5ED9AA37-357B-49E9-95E1-3E5A42B6245E@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Bernd Schubert <bschubert@ddn.com>, "Ted Ts'o" <tytso@mit.edu>,
+Cc: Bernd Schubert <bschubert@ddn.com>, "Ted Ts'o" <tytso@mit.edu>,
 	Amir Goldstein <amir73il@gmail.com>,
 	Bernd Schubert <bs_lists@aakef.fastmail.fm>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Andreas Dilger <andreas.dilger@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42391 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48130 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756246Ab0JYTnV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Oct 2010 15:43:21 -0400
-In-Reply-To: <2D4557FB-DE12-43C3-A277-EE4DD82F0BFF@oracle.com>
+	id S1757590Ab0JYTta (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Oct 2010 15:49:30 -0400
+In-Reply-To: <5ED9AA37-357B-49E9-95E1-3E5A42B6245E@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On 2010-10-25, at 00:43, Ric Wheeler wrote:
->> On 10/24/2010 12:16 PM, Bernd Schubert wrote:
->>> ... sometimes the error state is only set *after* mounting the
->>> filesystem, so difficult to script it.  And as I also wrote,
->>> running e2fsck from that script and to do a complete fs check is
->>> not appropriate, as that might simply time out.  Again not Lustre
->>> specific. So after some discussion, the proposed solution is to
->>> add a "journal recovery only" option to e2fsck and to do that
->>> before the mount. I will add that to the 'lustre_server' agent
->>> (which is part of Lustre now), but leave it to someone else to
->>> that for the 'Filesystem' agent script (I'm not using that script
->>> myself and IMHO it is already too complex, as it tries to support
->>> all filesystems - shell code is ideal anymore then).
->> Why not simply have your script attempt to mount the file system?
->> If it succeeds, it will replay the journal. If it fails, you will
->> need to fall back to the long fsck which is unavoidable.
-> 
-> I don't really agree with this.  The whole reason for having the
-> error flag in the superblock and ALWAYS running e2fsck at mount time
-> to replay the journal is that e2fsck should be done before mounting
-> the filesystem.
+  On 10/25/2010 10:57 AM, Andreas Dilger wrote:
+> On 2010-10-25, at 20:54, Ric Wheeler wrote:
+>> On 10/25/2010 07:45 AM, Ric Wheeler wrote:
+>>> On 10/25/2010 06:14 AM, Andreas Dilger wrote:
+>>>> I don't really agree with this.  The whole reason for having the error flag in the superblock and ALWAYS running e2fsck at mount time to replay the journal is that e2fsck should be done before mounting the filesystem.
+>>>>
+>>>> I really dislike the reiserfs/XFS model where a filesystem is mounted and fsck is not run in advance, and then if there is a serious error in the filesystem this needs to be detected by the kernel, the filesystem unmounted, e2fsck started, and the filesystem remounted...  That's just backward.
+>>>>
+>>>> Bernd's issue (the part that I agree with) is that the error may only be recorded in the journal, not in the ext3 superblock, and there is no easy way to detect this from userspace.  Allowing e2fsck to only replay the journal is useful this problem.  Another similar issue is that if tune2fs is run on an unmounted filesystem that hasn't had a journal replay, then it may modify the superblock, but journal replay will clobber this.  There are other similar issues.
+>> One more thought here is that effectively the xfs model of mount before fsck is basically just doing the journal replay - if you need to repair the file system, it will fail to mount. If not, you are done.
+> This won't happen with ext3 today - if you mount the filesystem, it will succeed regardless of whether the filesystem is in error.  I did like Bernd's suggestion that the "errors=" mount option should be used to detect if a filesystem with errors tries to mount in a read-write state, but I think that is only a safety measure.
+>
+>> For HA fail over, what Bernd is proposing is effectively equivalent:
+>>
+>> (1) Replay the journal without doing a full fsck which is the same as the mount for XFS
+> Does XFS fail the mount if there was an error from a previous mount on it?
+>
 
-Wait, why?  Why did we run with a journal if an IO error causes us
-to require a fack prior to next mount?
+It does not have an "in error" state bit, but does have sanity checks at mount time.
+>> (2) See if the journal replay failed (i.e., set the error flag) which is the same as seeing if the mount succeeded
+> I assume you mean for XFS here, since ext3/4 will happily mount the filesystem today without returning an error.
+>
 
-> I really dislike the reiserfs/XFS model where a filesystem is mounted
-> and fsck is not run in advance, and then if there is a serious error
-> in the filesystem this needs to be detected by the kernel, the
-> filesystem unmounted, e2fsck started, and the filesystem remounted...
-> That's just backward.
+On IRC with Eric, xfs will also mount happily after many types of errors.
 
-I must be missing something.  We run with a proper, carefully designed
-journal on properly configured storage so that the journal + filesystem
-is always consistent.
 
-fsck is needed when that carefully configured storage munges something
-on disk, or when there's a bug in the code that corrupted the filesystem,
-but certainly not just because you happened to unmount a while back and
-now wish to remount...
+>> (3) If error, you need to do a full, time consuming fsck for either
+>>
+>> (4) If no error in (2), you need to mount the file system for ext4 (xfs is already done at this stage)
+>>
+>> Aside from putting the journal replay into a magic fsck flag, I really do not see that you are saving any complexity.  In fact, for this case, you add step (4).
+> In comparison, the normal ext2/3/4 model is:
+>
+> 1) Run e2fsck against the filesystem before accessing it (without the -f flag that forces a full check).  e2fsck will replay the journal, and if there is no error recorded it will only check the superblock validity before exiting.  If there is an error, it will run a full e2fsck.
 
-Now, extN has this feature of recording fs errors in the superblock,
-but I'm not sure we distinguish between "errors which require a fsck"
-and others?
+One thing that prevents this from being useful in a cluster fail-over context is 
+that it is really hard to script responses for the full fsck for ext*.  Feeding 
+it a "-y" should work, but it is still a bit scary in practice.
 
-Anyway your characterization of xfs is wrong, IMHO, it's:
+> 2) mount the filesystem
+>
+> This is the simplest model, and IMHO the most correct one.  Using "mount" as a proxy for "is my filesystem broken" seems unusual to me, and unsafe for most filesystems.
+>
+> For Bernd, I guess he needs split step #1 into:
+>
+> 1a) replay the journal so the superblock is up-to-date
+> 1b) check if the filesystem has an error and report it to the HA agent, so that it doesn't have a fit because the mount is taking so long
+> 1c) run the actual e2fsck (which may take a few hours on a 16TB filesystem)
+>
 
-Mount (possibly replaying the journal) because all should be well,
-we have faith in our hardware and our software.
-If during runtime the fs encounters a severe metadata error, it will
-shut down, and this is your cue to unmount and run xfs_repair, then
-remount.  Doesn't seem backwards to me.  ;)  Requiring that fsck
-prior to the first mount makes no sense for a journaling fs.
+I suppose that makes some sense, but it would seem that you could do (1a) and 
+(1b) today with the mount & unmount (and then check for file system errors)?
 
-However, Bernd's issue is probably an issue in general with XFS
-as well (which doesn't record error state on-disk) - how to quickly
-know whether the filesystem you're about to mount in a cluster has
-a -known- integrity issue from a previous mount and really does
-require a fsck.
-
-For XFS, you have to have monitored the previous mount, I guess,
-and watched for any errors the kernel threw when it encountered them.
-
-For extN we record it in the SB, but that record may only be
-in the as-yet-unplayed journal, where the tools can't see it until
-it's replayed by a mount or by a full fsck.
-
--Eric
-
->> We spend a lot of time and testing to make sure that ext* can be
->> shot at any point and come back after a storage outage and still
->> mount.
-> 
-> Sure, it can still mount, but the only thing it might be able to do
-> is detect the error and remount the filesystem read-only or panic...
-> That's why e2fsck should ALWAYS be run BEFORE the filesystem is
-> mounted.
-> 
-> Bernd's issue (the part that I agree with) is that the error may only
-> be recorded in the journal, not in the ext3 superblock, and there is
-> no easy way to detect this from userspace.  Allowing e2fsck to only
-> replay the journal is useful this problem.  Another similar issue is
-> that if tune2fs is run on an unmounted filesystem that hasn't had a
-> journal replay, then it may modify the superblock, but journal replay
-> will clobber this.  There are other similar issues.
-> 
-> Cheers, Andreas -- Andreas Dilger Lustre Technical Lead Oracle
-> Corporation Canada Inc.
-> 
-> -- To unsubscribe from this list: send the line "unsubscribe
-> linux-ext4" in the body of a message to majordomo@vger.kernel.org 
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Ric
 
