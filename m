@@ -1,54 +1,89 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 3/3] ext4: update writeback_index based on last page scanned
-Date: Mon, 25 Oct 2010 16:39:10 -0500
-Message-ID: <4CC5F8FE.6000100@redhat.com>
-References: <4CC2023A.7060607@redhat.com> <4CC205ED.4090007@redhat.com> <20101025213550.GK16981@thunk.org>
+From: Filipe David Manana <fdmanana@apache.org>
+Subject: Re: question about fsync
+Date: Mon, 25 Oct 2010 23:10:15 +0100
+Message-ID: <AANLkTinTBz6ne37Y=xDeXnQQM39Mk5NYHHfEkHBd-_wP@mail.gmail.com>
+References: <AANLkTinFkS1Uf+GJT+SE43KpqoUWyJERBFTzxKyLgX+u@mail.gmail.com>
+	<5CFF01DA-8C9E-496D-A2F1-D968CFB842EF@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2931 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755409Ab0JYVjV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Oct 2010 17:39:21 -0400
-In-Reply-To: <20101025213550.GK16981@thunk.org>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:44803 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751890Ab0JYWKS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2010 18:10:18 -0400
+Received: by fxm16 with SMTP id 16so3424855fxm.19
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Oct 2010 15:10:17 -0700 (PDT)
+In-Reply-To: <5CFF01DA-8C9E-496D-A2F1-D968CFB842EF@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted Ts'o wrote:
-> On Fri, Oct 22, 2010 at 04:45:17PM -0500, Eric Sandeen wrote:
->> As pointed out in a prior patch, updating the mapping's
->> writeback_index based on pages written isn't quite right;
->> what the writeback index is really supposed to reflect is
->> the next page which should be scanned for writeback during
->> periodic flush.
->>
->> As in write_cache_pages(), write_cache_pages_da() does
->> this scanning for us as we assemble the mpd for later
->> writeout.  If we keep track of the next page after the
->> current scan, we can easily update writeback_index without
->> worrying about pages written vs. pages skipped, etc.
->>
->> Without this, an fsync will reset writeback_index to
->> 0 (its starting index) + however many pages it wrote, which
->> can mess up the progress of periodic flush.
->>
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> Have you done any benchmarks with and without this patch series?
-> 
-> Say, compilebench on a used and mildly fragmented file system?
-> 
->      		       	    	       - Ted
+Theodore, thanks for your answer.
 
-Not compilebench specifically, but I did do some benchmarking
-with out of cache buffered IO; to be honest I didn't see
-striking performance differences, but I did see the writeback
-behave better in terms of not wandering all over, even if it
-might recover well.
+A similar question:
 
-I can try compilebench; do you have specific concerns?
+I have 2 threads. Both open the same file, but each using its own
+(different) file descriptor.
 
--Eric
+If one thread writes data past the eof (appends data), will the other
+one be able to read it with pread call (an offset past the eof it
+found when it opened the file)?
+
+I  would just like to know if it's something safe to do on Linux and
+all Posix compliant platforms (and eventually Windows). (I tested this
+with non C code and it worked)
+
+best regards,
+
+
+On Mon, Oct 25, 2010 at 1:54 PM, Theodore Tso <tytso@mit.edu> wrote:
+>
+> On Oct 25, 2010, at 7:49 AM, Filipe David Manana wrote:
+>
+>> - opens a file (write append mode) and writes data to it
+>> - opens a 2nd file descriptor for that same file (write append mode =
+as
+>> well) and does an fsync call on this 2nd file descriptor
+>> - closes the 2nd file descriptor
+>> - continues writing to the 1st file descriptor
+>> - etc
+>>
+>> Is there a risk that some of the data might not get fsynced to disk?=
+ I
+>> mean, is it possible that the 2nd file descriptor doesn't have all t=
+he
+>> same metadata as the first one?
+>
+> What do you mean by "risk?" =C2=A0For most Linux file systems, includ=
+ing ext2, ext3, and ext4, all of the data will be sync'ed out to disk. =
+=C2=A0 However, this is not guaranteed by POSIX or the Single Unix Spec=
+ification. =C2=A0 So in theory, there might exist some POSIX/SUS compli=
+ant implementation that would not sync out the data. =C2=A0I think most=
+ Unix or Linux-compatible systems are such that you could count on this=
+, but it's not a portable thing that you can count upon. =C2=A0 I have =
+no idea what the Windows POSIX layer would do in this situation, for ex=
+ample, or the Eunice Emulation layer for VMS. =C2=A0(Back in the Perl 3=
+ days, Larry Wall's configure script would test for Eunice, and if not =
+found, print the message, "Congratulations. =C2=A0You're not running Eu=
+nice." =C2=A0:-)
+>
+> -- Ted
+>
+>
+
+
+
+--=20
+=46ilipe David Manana,
+fdmanana@gmail.com, fdmanana@apache.org
+
+"Reasonable men adapt themselves to the world.
+=C2=A0Unreasonable men adapt the world to themselves.
+=C2=A0That's why all progress depends on unreasonable men."
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
