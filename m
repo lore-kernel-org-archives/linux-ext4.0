@@ -1,38 +1,63 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: question about fsync
-Date: Mon, 25 Oct 2010 08:54:14 -0400
-Message-ID: <5CFF01DA-8C9E-496D-A2F1-D968CFB842EF@mit.edu>
-References: <AANLkTinFkS1Uf+GJT+SE43KpqoUWyJERBFTzxKyLgX+u@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
+From: Dmitry <dmonakhov@openvz.org>
+Subject: Re: [PATCH -v2 6/6] ext4: use bio layer instead of buffer layer in mpage_da_submit_io
+Date: Mon, 25 Oct 2010 17:05:59 +0400
+Message-ID: <87k4l6pglk.fsf@dmon-lap.sw.ru>
+References: <1287866420-23762-1-git-send-email-tytso@mit.edu> <1287866420-23762-7-git-send-email-tytso@mit.edu> <87tykavom7.fsf@dmon-lap.sw.ru> <20101025123353.GA16981@thunk.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Filipe David Manana <fdmanana@apache.org>
+Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
+	axboe@kernel.dk
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-7.MIT.EDU ([18.7.68.36]:56507 "EHLO
-	dmz-mailsec-scanner-7.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755469Ab0JYM7R convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Oct 2010 08:59:17 -0400
-In-Reply-To: <AANLkTinFkS1Uf+GJT+SE43KpqoUWyJERBFTzxKyLgX+u@mail.gmail.com>
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:56616 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750837Ab0JYNGF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2010 09:06:05 -0400
+Received: by ewy7 with SMTP id 7so4163057ewy.19
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Oct 2010 06:06:04 -0700 (PDT)
+In-Reply-To: <20101025123353.GA16981@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-On Oct 25, 2010, at 7:49 AM, Filipe David Manana wrote:
-
-> - opens a file (write append mode) and writes data to it
-> - opens a 2nd file descriptor for that same file (write append mode as
-> well) and does an fsync call on this 2nd file descriptor
-> - closes the 2nd file descriptor
-> - continues writing to the 1st file descriptor
-> - etc
+On Mon, 25 Oct 2010 08:33:53 -0400, Ted Ts'o <tytso@mit.edu> wrote:
+> On Mon, Oct 25, 2010 at 09:16:16AM +0400, Dmitry wrote:
+> > > +	if (bio) {
+> > > +		bio_get(io->io_bio);
+> > > +		submit_bio(io->io_op, io->io_bio);
+> > > +		BUG_ON(bio_flagged(io->io_bio, BIO_EOPNOTSUPP));
+> > Definitly this BUG_ON should be converted to ext4_error or something
+> > similar, otherwhise writeback attempt to removed usb-stick will be fatal
+> > for a whole system. IMHO it is reasonable to skip this check at all,
+> > because all work will be done in ext4_end_bio() anyway.
+> > > +		bio_put(io->io_bio);
 > 
-> Is there a risk that some of the data might not get fsynced to disk? I
-> mean, is it possible that the 2nd file descriptor doesn't have all the
-> same metadata as the first one?
-
-What do you mean by "risk?"  For most Linux file systems, including ext2, ext3, and ext4, all of the data will be sync'ed out to disk.   However, this is not guaranteed by POSIX or the Single Unix Specification.   So in theory, there might exist some POSIX/SUS compliant implementation that would not sync out the data.  I think most Unix or Linux-compatible systems are such that you could count on this, but it's not a portable thing that you can count upon.   I have no idea what the Windows POSIX layer would do in this situation, for example, or the Eunice Emulation layer for VMS.  (Back in the Perl 3 days, Larry Wall's configure script would test for Eunice, and if not found, print the message, "Congratulations.  You're not running Eunice."  :-)
-
--- Ted
-
+> Cut and pasted from XFS.  From what I could tell from the block I/O
+> layer, the only time the buffer I/O layer should return BIO_EOPNOTSUPP
+> is if we pass it a discard or barrier request, and we're doing neither
+> here.  So I don't think it should trigger on a removed usb-stick.
+> 
+> At the same time, it's not clear what good the BUG_ON() is doing here,
+> either.  So perhaps we could could drop the BUG_ON, at which point we
+> could drop the bio_get() and bio_put() calls, too.  To be honest I'm
+> not entirely sure why the XFS code does this.
+There are number of reasons why this can happen, for example
+submit_bio()
+  ->__generic_make_request()
+      ->bio_check_eod() /* In case of virtual, device size may become
+                            zero, after some error */
+or if device may has fancy ->make_request_fn() callback.
+Off course this is very unlikely(but i saw this couple of times)
+and bio->bi_end_io() will be called in any case, so we can  drop that
+extra safety logic, because sane bi_end_io(-EIO) implementation must
+result in journal_abort. The only difference is the number of bio-s
+we can issue before journal_abort was triggered.
+So there is no an ambiguity there, you can just drop that extra check.
+> 
+> Jens?  Any reason why I shouldn't just remove the bio_get(), the
+> BUG_ON()check, and bio_put() calls?
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
