@@ -1,30 +1,28 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Check return value of sb_getblk() and friends
-Date: Mon, 25 Oct 2010 10:51:02 -0400
-Message-ID: <20101025145102.GE16981@thunk.org>
-References: <1287476529-5314-1-git-send-email-namhyung@gmail.com>
+Subject: Re: [PATCH 0/4 v. 9] Ext3/Ext4 Batched discard support
+Date: Mon, 25 Oct 2010 10:57:56 -0400
+Message-ID: <20101025145756.GF16981@thunk.org>
+References: <1285596600-28358-1-git-send-email-lczerner@redhat.com>
+ <alpine.LFD.2.00.1010111858330.2954@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Namhyung Kim <namhyung@gmail.com>
+Cc: linux-ext4@vger.kernel.org, rwheeler@redhat.com,
+	sandeen@redhat.com, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46709 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:47838 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753311Ab0JYOvG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Oct 2010 10:51:06 -0400
+	id S1751267Ab0JYO57 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Oct 2010 10:57:59 -0400
 Content-Disposition: inline
-In-Reply-To: <1287476529-5314-1-git-send-email-namhyung@gmail.com>
+In-Reply-To: <alpine.LFD.2.00.1010111858330.2954@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 19, 2010 at 05:22:09PM +0900, Namhyung Kim wrote:
-> Fail block allocation if sb_getblk() returns NULL. In that case,
-> sb_find_get_block() also likely to fail so that it should skip
-> calling ext4_forget().
-> 
-> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+I've added the first three patches (all but the ext3 patch) to the
+ext4 patch series.  I've desk checked the code; but do you have a
+handy-dandy userspace program written to trigger the ioctl?  If so,
+could you send it to me so I can do some live fire testing?  Many
+thanks!!
 
-Thanks, I've added this patch to the ext4 patch queue.
-
-       	    	       	     	    - Ted
+						- Ted
