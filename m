@@ -1,189 +1,31 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/7] e2fsck: Keep track of problems during the check
-Date: Tue, 26 Oct 2010 19:54:14 +0200
-Message-ID: <1288115658-7004-4-git-send-email-lczerner@redhat.com>
-References: <1288115658-7004-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, sandeen@redhat.com, adilger@dilger.ca,
-	lczerner@redhat.com
+From: wayne cripps <wbc@cs.dartmouth.edu>
+Subject: bsd groups
+Date: Tue, 26 Oct 2010 14:05:00 -0400
+Message-ID: <B289F406-D03C-499D-9F3B-EAF5B6E5DEF2@cs.dartmouth.edu>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8512 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752045Ab0JZRyg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Oct 2010 13:54:36 -0400
-In-Reply-To: <1288115658-7004-1-git-send-email-lczerner@redhat.com>
+Received: from mail.cs.dartmouth.edu ([129.170.212.100]:33804 "EHLO
+	mail.cs.dartmouth.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933308Ab0JZSKJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Oct 2010 14:10:09 -0400
+Received: from waynes-annie.cs.dartmouth.edu (waynes-annie.cs.dartmouth.edu [129.170.213.72])
+	(authenticated bits=0)
+	by mail.cs.dartmouth.edu (8.14.4/8.14.4) with ESMTP id o9QI51xo000457
+	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Oct 2010 14:05:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It might be useful to know whether or not there has been any problem
-during the check. This commit add new variable problem_history into
-e2fsck_struct in order to store error codes.
 
-When problem occur and fix_problem() is invoked, problem code is stored
-into problem_history. Note that only real problem are stored, hence
-problems with PR_NO_PROBLEM are ignored. This commit also adds
-PR_NO_PROBLEM flag into problem for informative purposes only.
+Hi -
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- e2fsck/e2fsck.h   |    1 +
- e2fsck/problem.c  |   31 +++++++++++++++++++++----------
- e2fsck/problem.h  |    3 +++
- e2fsck/problemP.h |    1 +
- 4 files changed, 26 insertions(+), 10 deletions(-)
+  Our department - Computer Science, at Dartmouth College, depends on bsd groups for our
+projects.  Having bsd groups means one less thing for the undergrads and their TAs to
+have to keep track of.  Since we have used them forever, people are used to that
+behavior as default.
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index d4df5f3..a6563cc 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -216,6 +216,7 @@ struct e2fsck_struct {
- 	blk64_t	num_blocks;	/* Total number of blocks */
- 	int	mount_flags;
- 	blkid_cache blkid;	/* blkid cache */
-+	__u32 problem_history;	/* store previous problem codes */
- 
- #ifdef HAVE_SETJMP_H
- 	jmp_buf	abort_loc;
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 8032fda..9b987b0 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -407,7 +407,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 1: Checking inodes, blocks, and sizes */
- 	{ PR_1_PASS_HEADER,
- 	  N_("Pass 1: Checking @is, @bs, and sizes\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Root directory is not an inode */
- 	{ PR_1_ROOT_NO_DIR, N_("@r is not a @d.  "),
-@@ -896,7 +896,7 @@ static struct e2fsck_problem problem_table[] = {
- 	{ PR_1B_PASS_HEADER,
- 	  N_("\nRunning additional passes to resolve @bs claimed by more than one @i...\n"
- 	  "Pass 1B: Rescanning for @m @bs\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Duplicate/bad block(s) header */
- 	{ PR_1B_DUP_BLOCK_HEADER,
-@@ -937,13 +937,13 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 1C: Scan directories for inodes with multiply-claimed blocks. */
- 	{ PR_1C_PASS_HEADER,
- 	  N_("Pass 1C: Scanning directories for @is with @m @bs\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 
- 	/* Pass 1D: Reconciling multiply-claimed blocks */
- 	{ PR_1D_PASS_HEADER,
- 	  N_("Pass 1D: Reconciling @m @bs\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* File has duplicate blocks */
- 	{ PR_1D_DUP_FILE,
-@@ -988,7 +988,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 2: Checking directory structure */
- 	{ PR_2_PASS_HEADER,
- 	  N_("Pass 2: Checking @d structure\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Bad inode number for '.' */
- 	{ PR_2_BAD_INODE_DOT,
-@@ -1318,7 +1318,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 3: Checking directory connectivity */
- 	{ PR_3_PASS_HEADER,
- 	  N_("Pass 3: Checking @d connectivity\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Root inode not allocated */
- 	{ PR_3_NO_ROOT_INODE,
-@@ -1440,7 +1440,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 3A: Optimizing directories */
- 	{ PR_3A_PASS_HEADER,
- 	  N_("Pass 3A: Optimizing directories\n"),
--	  PROMPT_NONE, PR_PREEN_NOMSG },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Error iterating over directories */
- 	{ PR_3A_OPTIMIZE_ITER,
-@@ -1455,7 +1455,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Rehashing dir header */
- 	{ PR_3A_OPTIMIZE_DIR_HEADER,
- 	  N_("Optimizing directories: "),
--	  PROMPT_NONE, PR_MSG_ONLY },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Rehashing directory %d */
- 	{ PR_3A_OPTIMIZE_DIR,
-@@ -1472,7 +1472,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 4: Checking reference counts */
- 	{ PR_4_PASS_HEADER,
- 	  N_("Pass 4: Checking reference counts\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Unattached zero-length inode */
- 	{ PR_4_ZERO_LEN_INODE,
-@@ -1501,7 +1501,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Pass 5: Checking group summary information */
- 	{ PR_5_PASS_HEADER,
- 	  N_("Pass 5: Checking @g summary information\n"),
--	  PROMPT_NONE, 0 },
-+	  PROMPT_NONE, PR_NO_PROBLEM },
- 
- 	/* Padding at end of inode bitmap is not set. */
- 	{ PR_5_INODE_BMAP_PADDING,
-@@ -1629,6 +1629,13 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@g %g @i(s) in use but @g is marked INODE_UNINIT\n"),
- 	  PROMPT_FIX, PR_PREEN_OK },
- 
-+	{ PR_5_DONT_DISCARD,
-+	  N_("There has been some errors during the check. I will not "
-+	     "attempt to discard free data and inode blocks for safety "
-+	     "reasons. If you wish to discard free data and inode blocks, "
-+	     "run e2fsck once again.\n"),
-+	  PROMPT_NONE, PR_NO_PROBLEM },
-+
- 	/* Post-Pass 5 errors */
- 
- 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
-@@ -1755,6 +1762,10 @@ int fix_problem(e2fsck_t ctx, problem_t code, struct problem_context *pctx)
- 		printf(_("Unhandled error code (0x%x)!\n"), code);
- 		return 0;
- 	}
-+	/* Keep track of real problems only */
-+	if (!(ptr->flags & PR_NO_PROBLEM)) {
-+		ctx->problem_history |= code;
-+	}
- 	if (!(ptr->flags & PR_CONFIG)) {
- 		char	key[9], *new_desc;
- 
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 7c4c156..c3431ac 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -983,6 +983,9 @@ struct problem_context {
- /* Inode in use but group is marked INODE_UNINIT */
- #define PR_5_INODE_UNINIT		0x050019
- 
-+/* Do not attempt to discard */
-+#define PR_5_DONT_DISCARD		0x05001A
-+
- /*
-  * Post-Pass 5 errors
-  */
-diff --git a/e2fsck/problemP.h b/e2fsck/problemP.h
-index 6161189..ee6c1a3 100644
---- a/e2fsck/problemP.h
-+++ b/e2fsck/problemP.h
-@@ -41,3 +41,4 @@ struct latch_descr {
- #define PR_PREEN_NOHDR	0x040000 /* Don't print the preen header */
- #define PR_CONFIG	0x080000 /* This problem has been customized
- 				    from the config file */
-+#define PR_NO_PROBLEM	0x100000 /* Use No as an answer if preening */
--- 
-1.7.2.3
+ Wayne
 
