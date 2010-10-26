@@ -1,80 +1,80 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 3/3] ext4: update writeback_index based on last page scanned
-Date: Tue, 26 Oct 2010 09:57:14 -0500
-Message-ID: <4CC6EC4A.9070702@redhat.com>
-References: <4CC2023A.7060607@redhat.com> <4CC205ED.4090007@redhat.com> <20101025213550.GK16981@thunk.org> <4CC5F8FE.6000100@redhat.com> <20101026141454.GL16981@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 0/7] e2fsprogs: Using discard in e2fsprogs tools
+Date: Tue, 26 Oct 2010 19:54:11 +0200
+Message-ID: <1288115658-7004-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, sandeen@redhat.com, adilger@dilger.ca,
+	lczerner@redhat.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57836 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3245 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759687Ab0JZO5U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Oct 2010 10:57:20 -0400
-In-Reply-To: <20101026141454.GL16981@thunk.org>
+	id S1752045Ab0JZRyb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Oct 2010 13:54:31 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted Ts'o wrote:
-> On Mon, Oct 25, 2010 at 04:39:10PM -0500, Eric Sandeen wrote:
->> Not compilebench specifically, but I did do some benchmarking
->> with out of cache buffered IO; to be honest I didn't see
->> striking performance differences, but I did see the writeback
->> behave better in terms of not wandering all over, even if it
->> might recover well.
->>
->> I can try compilebench; do you have specific concerns?
-> 
-> My specific concern is that what happens if __mpage_da_writepage()
-> accumulates 200 pages, but then we were only able to accumulate 50
-> pages, and we only write 50 pages.
+Hi all,
 
-Be patient with me, but how do we accumulate 200 pages but then only
-accumulate 50 pages?
+We have came to consensus about using discard in e2fsprogs tools. These
+patches generalize use of discard in e2fsprogs tools introduce changes
+in mke2fs and e2fsck.
 
-> In the long run what I really want to do is to not call
-> clear_page_dirty_for_io() in the renamed write_cache_pages_da(), but
-> rather be as greedy as possible about finding dirty/delayed allocate
-> pages, and then try to allocate pages for all of them.
-> 
-> We would then scan the pages for PAGECACHE_TAG_TOWRITE in
-> mpage_submit_data_io(), and then write out whatever number of pages we
-> need.  At that point we will be a good citizen and writing back what
-> the writeback system asks of us --- but we'll be allocating as much
-> pages as possible so that the block allocations are sane.  (At that
-> point we may find out that the core writeback is screwing us because
-> it's not asking us to write back enough; note that XFS decides on its
-> own how many pages to writeback in the first call to xfs_writepage(),
-> and even if writeback is silly enough to think that XFS should write
-> 4MB, then switch to another inode, write 4MB, then write to another
-> inode, etc., XFS ignores what writeback asks of it.  But we'll cross
-> that road when we get to it....)
+Short summary
+-------------
 
-Since it works for xfs, we should probably try that direction, but my
-early feeble attempts got bogged down in a lot of tangled code.
+ [PATCH 1/7] e2fsprogs: Add discard function into struct_io_manager
+   * generalize use of discard in e2fsprogs and let any tool in e2fsprogs
+     take advantage of it withou need to write its own BLKDISCARD wrappers.
 
-> So the bottom line is that I believe that what we were doing before is
-> wrong; and what we're doing is still wrong, even after your patches.
-> I just want to make sure that our performance doesn't go crashing
-> through the floor in order to avoid the livelock problem.  (Which I
-> agree is a real problem, but we've lived it for quite a while, and I
-> haven't seen any evidence of it showing up in production.)
+ [PATCH 2/7] e2fsprogs: Add discard_zeroes_data into struct_io_manager
+   * Give the opportunity for any io_manager to check if device discard
+     support zeroes data and save the results into io_manager itself for
+     use in any e2fsprofs tool.
 
-Well, I have a partner-filed bug for that one so I'm motivated ;)
+ [PATCH 3/7] e2fsck: Keep track of problems during the check
 
-Why would fsync writing only TOWRITE tagged pages cause performance
-to crash through the floor?
+ [PATCH 4/7] e2fsck: Discard free data and inode blocks.
+   * In pass 5 after the group descriptors has been changed discard free
+     data and inode blocks. The consensus was that it should be OFF by
+     default, so it is.
+   * Introduce new paid of extended options discard/nodiscard.
 
-Note patch 3 doesn't really require patch 2 or vice versa, they
-are addressing 2 pretty orthogonal things.
+ [PATCH 5/7] mke2fs: Change -K option to discard/nodiscard
+   * To the same of consistency and to gain ability to easily default it
+     the new pair of extended options has been added.
+   * The consensus was that it should stay ON by default, so it is.
 
--Eric
+ [PATCH 6/7] mke2fs: Use unix_discard() for discards
 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ [PATCH 7/7] mke2fs: Use io_manager discard_zeroes_data property
+
+
+Any comments appreciated!
+
+Thanks!
+
+-Lukas
+
+---
+[PATCH 1/7] e2fsprogs: Add discard function into struct_io_manager
+[PATCH 2/7] e2fsprogs: Add discard_zeroes_data into struct_io_manager
+[PATCH 3/7] e2fsck: Keep track of problems during the check
+[PATCH 4/7] e2fsck: Discard free data and inode blocks.
+[PATCH 5/7] mke2fs: Change -K option to discard/nodiscard
+[PATCH 6/7] mke2fs: Use unix_discard() for discards
+[PATCH 7/7] mke2fs: Use io_manager discard_zeroes_data property
+
+ e2fsck/e2fsck.8.in   |   14 ++++++++
+ e2fsck/e2fsck.h      |    2 +
+ e2fsck/pass5.c       |   81 +++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/problem.c     |   31 ++++++++++++-----
+ e2fsck/problem.h     |    3 ++
+ e2fsck/problemP.h    |    1 +
+ e2fsck/unix.c        |   10 +++++-
+ lib/ext2fs/ext2_io.h |    3 ++
+ lib/ext2fs/test_io.c |    1 +
+ lib/ext2fs/unix_io.c |   53 +++++++++++++++++++++++++++++
+ misc/mke2fs.8.in     |   18 ++++++----
+ misc/mke2fs.c        |   90 +++++++++++--------------------------------------
+ 12 files changed, 219 insertions(+), 88 deletions(-)
 
