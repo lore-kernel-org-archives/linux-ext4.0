@@ -1,123 +1,46 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 5/7] mke2fs: Deprecate -K option, introduce discard/nodiscard
-Date: Tue, 26 Oct 2010 21:24:14 +0200
-Message-ID: <1288121054-11380-1-git-send-email-lczerner@redhat.com>
-References: <1288115658-7004-6-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, sandeen@redhat.com, adilger@dilger.ca,
-	lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: question about fsync
+Date: Tue, 26 Oct 2010 18:26:12 -0400
+Message-ID: <20101026222612.GB3194@thunk.org>
+References: <AANLkTinFkS1Uf+GJT+SE43KpqoUWyJERBFTzxKyLgX+u@mail.gmail.com>
+ <5CFF01DA-8C9E-496D-A2F1-D968CFB842EF@mit.edu>
+ <AANLkTinTBz6ne37Y=xDeXnQQM39Mk5NYHHfEkHBd-_wP@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Filipe David Manana <fdmanana@apache.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54974 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:43292 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752843Ab0JZTYU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Oct 2010 15:24:20 -0400
-In-Reply-To: <1288115658-7004-6-git-send-email-lczerner@redhat.com>
+	id S1752527Ab0JZW0R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Oct 2010 18:26:17 -0400
+Content-Disposition: inline
+In-Reply-To: <AANLkTinTBz6ne37Y=xDeXnQQM39Mk5NYHHfEkHBd-_wP@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It would be nice to have consistent "discard" options in every system
-tool (mount, fsck, mkfs) taking advantage of discards. Also "discard"
-and "nodiscard" is more descriptive instead of just "-K" and can be
-easily defaulted and it is something we can not do with "-K".
+On Mon, Oct 25, 2010 at 11:10:15PM +0100, Filipe David Manana wrote:
+> Theodore, thanks for your answer.
+> 
+> A similar question:
+> 
+> I have 2 threads. Both open the same file, but each using its own
+> (different) file descriptor.
+> 
+> If one thread writes data past the eof (appends data), will the other
+> one be able to read it with pread call (an offset past the eof it
+> found when it opened the file)?
+> 
+> I  would just like to know if it's something safe to do on Linux and
+> all Posix compliant platforms (and eventually Windows). (I tested this
+> with non C code and it worked)
 
-With this commit you need to specify extended option like this:
+Race conditions aside, yes.
 
-./mke2fs -T <fstype> -E nodiscard <device>
+However, note that large writes are not necessarily guaranteed to be
+atomic.  Yes, the other thread will be able to read it with a pread
+call, but if there is a race between the write() and pread(), it's
+possible that pread will only read part of what has been written so
+far by the write system call.
 
-in order make a filesystem without discarding the device first. And
-
-./mke2fs -T <fstype> -E discard <device>
-
-respectively.
-
--K option is with this commit deprecated and should not be used anymore.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- misc/mke2fs.8.in |   18 +++++++++++-------
- misc/mke2fs.c    |   12 +++++++++++-
- 2 files changed, 22 insertions(+), 8 deletions(-)
-
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index b46e7e2..6b437bc 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -45,9 +45,6 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
- .I journal-options
- ]
- [
--.B \-K
--]
--[
- .B \-N
- .I number-of-inodes
- ]
-@@ -240,6 +237,17 @@ enable lazy inode table initialization.
- .B test_fs
- Set a flag in the filesystem superblock indicating that it may be
- mounted using experimental kernel code, such as the ext4dev filesystem.
-+.TP
-+.BI discard
-+Attempt to discard blocks at mkfs time (discarding blocks initially is useful
-+on solid state devices and sparse / thin-provisioned storage). When the device
-+advertise that discard also zeroes data (any subsequent read after the discard
-+and before write returns zero), then mark all not-yet-zeroed inode table as
-+zeroed. This significantly speeds up filesystem initialization. This is set
-+as default.
-+.TP
-+.BI nodiscard
-+Do not attempt to discard blocks at mkfs time.
- .RE
- .TP
- .BI \-f " fragment-size"
-@@ -369,10 +377,6 @@ and may be no more than 102,400 filesystem blocks.
- @JDEV@.BR size " or " device
- @JDEV@options can be given for a filesystem.
- .TP
--.BI \-K
--Keep, do not attempt to discard blocks at mkfs time (discarding blocks initially
--is useful on solid state devices and sparse / thin-provisioned storage).
--.TP
- .BI \-l " filename"
- Read the bad blocks list from
- .IR filename .
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 0980045..5423a52 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -753,6 +753,10 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 				lazy_itable_init = strtoul(arg, &p, 0);
- 			else
- 				lazy_itable_init = 1;
-+		} else if (!strcmp(token, "discard")) {
-+			discard = 1;
-+		} else if (!strcmp(token, "nodiscard")) {
-+			discard = 0;
- 		} else {
- 			r_usage++;
- 			badopt = token;
-@@ -768,7 +772,9 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 			"\tstripe-width=<RAID stride * data disks in blocks>\n"
- 			"\tresize=<resize maximum size in blocks>\n"
- 			"\tlazy_itable_init=<0 to disable, 1 to enable>\n"
--			"\ttest_fs\n\n"),
-+			"\ttest_fs\n"
-+			"\tdiscard\n"
-+			"\tnodiscard\n\n"),
- 			badopt ? badopt : "");
- 		free(buf);
- 		exit(1);
-@@ -1248,6 +1254,10 @@ static void PRS(int argc, char *argv[])
- 			parse_journal_opts(optarg);
- 			break;
- 		case 'K':
-+			fprintf(stderr, _("Warning: -K option is deprecated and "
-+					  "should not be used anymore. Use "
-+					  "\'-E nodiscard\' extended option "
-+					  "instead!\n"));
- 			discard = 0;
- 			break;
- 		case 'j':
--- 
-1.7.2.3
-
+						- Ted
