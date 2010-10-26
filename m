@@ -1,101 +1,104 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/7] e2fsprogs: Add discard_zeroes_data into struct_io_manager
-Date: Tue, 26 Oct 2010 19:54:13 +0200
-Message-ID: <1288115658-7004-3-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 6/7] mke2fs: Use unix_discard() for discards
+Date: Tue, 26 Oct 2010 19:54:17 +0200
+Message-ID: <1288115658-7004-7-git-send-email-lczerner@redhat.com>
 References: <1288115658-7004-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, sandeen@redhat.com, adilger@dilger.ca,
 	lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12479 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35391 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752045Ab0JZRyd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Oct 2010 13:54:33 -0400
+	id S1752045Ab0JZRyk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Oct 2010 13:54:40 -0400
 In-Reply-To: <1288115658-7004-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When the device have discard support and simultaneously discard zeroes
-data (and it is properly advertised), then we can take advantage of such
-behavior in several e2fsprogs tools.
+There is generic discard function in struct_io_manager, or in
+unix_io_manager to be specific. So use this instead of
+mke2fs_discard_blocks().
 
-Add new variable discard_zeroes_data into struct_io_manager structure so
-each io_manager can take advantage of this. Set it to 0 by default in
-unix_io_manager and test_io_manager and fill it with BLKDISCARDZEROES
-ioctl in unix_open.
-
-Every other io_manager which would like to take advantage of this should
-set the default to 0 in its io_manager definition and then check and set
-the value preferably in *_open() function.
+Since mke2fs_discard_blocks() is not used anymore (and should not be)
+remove it.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- lib/ext2fs/ext2_io.h |    1 +
- lib/ext2fs/test_io.c |    1 +
- lib/ext2fs/unix_io.c |   12 ++++++++++++
- 3 files changed, 14 insertions(+), 0 deletions(-)
+ misc/mke2fs.c |   50 +++++++++++---------------------------------------
+ 1 files changed, 11 insertions(+), 39 deletions(-)
 
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index d202007..cc79fda 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -85,6 +85,7 @@ struct struct_io_manager {
- 					int count, const void *data);
- 	errcode_t (*discard)(io_channel channel, unsigned long long block,
- 			     unsigned long long count, const void *data);
-+	int	discard_zeroes_data;
- 	long	reserved[16];
- };
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 32e3a2b..09ce711 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1902,48 +1902,10 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
  
-diff --git a/lib/ext2fs/test_io.c b/lib/ext2fs/test_io.c
-index 8d887a8..2fac849 100644
---- a/lib/ext2fs/test_io.c
-+++ b/lib/ext2fs/test_io.c
-@@ -89,6 +89,7 @@ static struct struct_io_manager struct_test_manager = {
- 	test_get_stats,
- 	test_read_blk64,
- 	test_write_blk64,
-+	0,				/* discard zeroes data */
- };
+ #ifdef __linux__
  
- io_manager test_io_manager = &struct_test_manager;
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index 5b6cdec..b3908dc 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -133,6 +133,7 @@ static struct struct_io_manager struct_unix_manager = {
- 	unix_read_blk64,
- 	unix_write_blk64,
- 	unix_discard,
-+	0,				/* discard zeroes data */
- };
- 
- io_manager unix_io_manager = &struct_unix_manager;
-@@ -425,6 +426,12 @@ static errcode_t flush_cached_blocks(io_channel channel,
- }
- #endif /* NO_IO_CACHE */
- 
-+#ifdef __linux__
-+#ifndef BLKDISCARDZEROES
-+#define BLKDISCARDZEROES _IO(0x12,124)
-+#endif
-+#endif
-+
- static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- {
- 	io_channel	io = NULL;
-@@ -487,6 +494,11 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- 	}
+-#ifndef BLKDISCARD
+-#define BLKDISCARD	_IO(0x12,119)
+-#endif
+-
+ #ifndef BLKDISCARDZEROES
+ #define BLKDISCARDZEROES _IO(0x12,124)
  #endif
  
-+#ifdef BLKDISCARDZEROES
-+	ioctl(data->dev, BLKDISCARDZEROES,
-+		&unix_io_manager->discard_zeroes_data);
-+#endif
+-/*
+- * Return zero if the discard succeeds, and -1 if the discard fails.
+- */
+-static int mke2fs_discard_blocks(ext2_filsys fs)
+-{
+-	int fd;
+-	int ret;
+-	int blocksize;
+-	__u64 blocks;
+-	__uint64_t range[2];
+-
+-	blocks = ext2fs_blocks_count(fs->super);
+-	blocksize = EXT2_BLOCK_SIZE(fs->super);
+-	range[0] = 0;
+-	range[1] = blocks * blocksize;
+-
+-	fd = open64(fs->device_name, O_RDWR);
+-
+-	if (fd > 0) {
+-		ret = ioctl(fd, BLKDISCARD, &range);
+-		if (verbose) {
+-			printf(_("Calling BLKDISCARD from %llu to %llu "),
+-			       (unsigned long long) range[0],
+-			       (unsigned long long) range[1]);
+-			if (ret)
+-				printf(_("failed.\n"));
+-			else
+-				printf(_("succeeded.\n"));
+-		}
+-		close(fd);
+-	}
+-	return ret;
+-}
+-
+ static int mke2fs_discard_zeroes_data(ext2_filsys fs)
+ {
+ 	int fd;
+@@ -2023,7 +1985,17 @@ int main (int argc, char *argv[])
+ 
+ 	/* Can't undo discard ... */
+ 	if (discard && (io_ptr != undo_io_manager)) {
+-		retval = mke2fs_discard_blocks(fs);
++		blk64_t blocks = ext2fs_blocks_count(fs->super);
++		retval = io_ptr->discard(fs->io, 0, blocks, fs);
 +
- #if defined(__CYGWIN__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
- 	/*
- 	 * Some operating systems require that the buffers be aligned,
++		if (verbose) {
++			printf(_("Calling BLKDISCARD from 0 to %llu "),
++			       (unsigned long long) blocks);
++			if (retval)
++				printf(_("failed.\n"));
++			else
++				printf(_("succeeded.\n"));
++		}
+ 
+ 		if (!retval && mke2fs_discard_zeroes_data(fs)) {
+ 			if (verbose)
 -- 
 1.7.2.3
 
