@@ -1,214 +1,273 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 6/6] ext4: Move ext4_mb_{get,put}_buddy_cache_lock and make them static
-Date: Wed, 27 Oct 2010 16:29:51 -0400
-Message-ID: <1288211391-22331-6-git-send-email-tytso@mit.edu>
-References: <1288211391-22331-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/6] ext4: rename {exit,init}_ext4_*() to ext4_{exit,init}_*()
+Date: Wed, 27 Oct 2010 16:29:46 -0400
+Message-ID: <1288211391-22331-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33073 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33063 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756777Ab0J0U3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Oct 2010 16:29:55 -0400
-In-Reply-To: <1288211391-22331-1-git-send-email-tytso@mit.edu>
+	id S1752331Ab0J0U3x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Oct 2010 16:29:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-These functions are only used within fs/ext4/mballoc.c, so move them
-so they are used after they are defined, and then make them be static.
-
-(Eric Sandeen submitted a similar patch but I wanted to keep commits
-that move codes around as separate so they can be more easily
-audited.)
+This is a cleanup to avoid namespace leaks out of fs/ext4
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    3 -
- fs/ext4/mballoc.c |  157 +++++++++++++++++++++++++++--------------------------
- 2 files changed, 79 insertions(+), 81 deletions(-)
+ fs/ext4/block_validity.c |    4 ++--
+ fs/ext4/ext4.h           |   12 ++++++------
+ fs/ext4/mballoc.c        |    4 ++--
+ fs/ext4/page-io.c        |    4 ++--
+ fs/ext4/super.c          |   32 ++++++++++++++++----------------
+ fs/ext4/xattr.c          |    4 ++--
+ fs/ext4/xattr.h          |    8 ++++----
+ 7 files changed, 34 insertions(+), 34 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3deb980..2e4d302 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1686,9 +1686,6 @@ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			     unsigned long count, int flags);
- extern int ext4_mb_add_groupinfo(struct super_block *sb,
- 		ext4_group_t i, struct ext4_group_desc *desc);
--extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
--extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
--						ext4_group_t, int);
- extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 68bab70..fac90f3 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -29,7 +29,7 @@ struct ext4_system_zone {
  
- /* inode.c */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 381ac56..328ea9c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -947,6 +947,85 @@ out:
- }
+ static struct kmem_cache *ext4_system_zone_cachep;
  
- /*
-+ * lock the group_info alloc_sem of all the groups
-+ * belonging to the same buddy cache page. This
-+ * make sure other parallel operation on the buddy
-+ * cache doesn't happen  whild holding the buddy cache
-+ * lock
-+ */
-+static int ext4_mb_get_buddy_cache_lock(struct super_block *sb,
-+					ext4_group_t group)
-+{
-+	int i;
-+	int block, pnum;
-+	int blocks_per_page;
-+	int groups_per_page;
-+	ext4_group_t ngroups = ext4_get_groups_count(sb);
-+	ext4_group_t first_group;
-+	struct ext4_group_info *grp;
-+
-+	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	/*
-+	 * the buddy cache inode stores the block bitmap
-+	 * and buddy information in consecutive blocks.
-+	 * So for each group we need two blocks.
-+	 */
-+	block = group * 2;
-+	pnum = block / blocks_per_page;
-+	first_group = pnum * blocks_per_page / 2;
-+
-+	groups_per_page = blocks_per_page >> 1;
-+	if (groups_per_page == 0)
-+		groups_per_page = 1;
-+	/* read all groups the page covers into the cache */
-+	for (i = 0; i < groups_per_page; i++) {
-+
-+		if ((first_group + i) >= ngroups)
-+			break;
-+		grp = ext4_get_group_info(sb, first_group + i);
-+		/* take all groups write allocation
-+		 * semaphore. This make sure there is
-+		 * no block allocation going on in any
-+		 * of that groups
-+		 */
-+		down_write_nested(&grp->alloc_sem, i);
-+	}
-+	return i;
-+}
-+
-+static void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
-+					 ext4_group_t group, int locked_group)
-+{
-+	int i;
-+	int block, pnum;
-+	int blocks_per_page;
-+	ext4_group_t first_group;
-+	struct ext4_group_info *grp;
-+
-+	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	/*
-+	 * the buddy cache inode stores the block bitmap
-+	 * and buddy information in consecutive blocks.
-+	 * So for each group we need two blocks.
-+	 */
-+	block = group * 2;
-+	pnum = block / blocks_per_page;
-+	first_group = pnum * blocks_per_page / 2;
-+	/* release locks on all the groups */
-+	for (i = 0; i < locked_group; i++) {
-+
-+		grp = ext4_get_group_info(sb, first_group + i);
-+		/* take all groups write allocation
-+		 * semaphore. This make sure there is
-+		 * no block allocation going on in any
-+		 * of that groups
-+		 */
-+		up_write(&grp->alloc_sem);
-+	}
-+
-+}
-+
-+/*
-  * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
-  * block group lock of all groups for this page; do not hold the BG lock when
-  * calling this routine!
-@@ -1923,84 +2002,6 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+-int __init init_ext4_system_zone(void)
++int __init ext4_init_system_zone(void)
+ {
+ 	ext4_system_zone_cachep = KMEM_CACHE(ext4_system_zone, 0);
+ 	if (ext4_system_zone_cachep == NULL)
+@@ -37,7 +37,7 @@ int __init init_ext4_system_zone(void)
  	return 0;
  }
  
--/*
-- * lock the group_info alloc_sem of all the groups
-- * belonging to the same buddy cache page. This
-- * make sure other parallel operation on the buddy
-- * cache doesn't happen  whild holding the buddy cache
-- * lock
-- */
--int ext4_mb_get_buddy_cache_lock(struct super_block *sb, ext4_group_t group)
--{
--	int i;
--	int block, pnum;
--	int blocks_per_page;
--	int groups_per_page;
--	ext4_group_t ngroups = ext4_get_groups_count(sb);
--	ext4_group_t first_group;
--	struct ext4_group_info *grp;
--
--	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--	/*
--	 * the buddy cache inode stores the block bitmap
--	 * and buddy information in consecutive blocks.
--	 * So for each group we need two blocks.
--	 */
--	block = group * 2;
--	pnum = block / blocks_per_page;
--	first_group = pnum * blocks_per_page / 2;
--
--	groups_per_page = blocks_per_page >> 1;
--	if (groups_per_page == 0)
--		groups_per_page = 1;
--	/* read all groups the page covers into the cache */
--	for (i = 0; i < groups_per_page; i++) {
--
--		if ((first_group + i) >= ngroups)
--			break;
--		grp = ext4_get_group_info(sb, first_group + i);
--		/* take all groups write allocation
--		 * semaphore. This make sure there is
--		 * no block allocation going on in any
--		 * of that groups
--		 */
--		down_write_nested(&grp->alloc_sem, i);
--	}
--	return i;
--}
--
--void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
--					ext4_group_t group, int locked_group)
--{
--	int i;
--	int block, pnum;
--	int blocks_per_page;
--	ext4_group_t first_group;
--	struct ext4_group_info *grp;
--
--	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--	/*
--	 * the buddy cache inode stores the block bitmap
--	 * and buddy information in consecutive blocks.
--	 * So for each group we need two blocks.
--	 */
--	block = group * 2;
--	pnum = block / blocks_per_page;
--	first_group = pnum * blocks_per_page / 2;
--	/* release locks on all the groups */
--	for (i = 0; i < locked_group; i++) {
--
--		grp = ext4_get_group_info(sb, first_group + i);
--		/* take all groups write allocation
--		 * semaphore. This make sure there is
--		 * no block allocation going on in any
--		 * of that groups
--		 */
--		up_write(&grp->alloc_sem);
--	}
--
--}
+-void exit_ext4_system_zone(void)
++void ext4_exit_system_zone(void)
+ {
+ 	kmem_cache_destroy(ext4_system_zone_cachep);
+ }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 98dde2b..5d72c26 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1684,8 +1684,8 @@ extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
+ 				struct ext4_allocation_request *, int *);
+ extern int ext4_mb_reserve_blocks(struct super_block *, int);
+ extern void ext4_discard_preallocations(struct inode *);
+-extern int __init init_ext4_mballoc(void);
+-extern void exit_ext4_mballoc(void);
++extern int __init ext4_init_mballoc(void);
++extern void ext4_exit_mballoc(void);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     struct buffer_head *bh, ext4_fsblk_t block,
+ 			     unsigned long count, int flags);
+@@ -2040,8 +2040,8 @@ extern const struct inode_operations ext4_fast_symlink_inode_operations;
+ /* block_validity */
+ extern void ext4_release_system_zone(struct super_block *sb);
+ extern int ext4_setup_system_zone(struct super_block *sb);
+-extern int __init init_ext4_system_zone(void);
+-extern void exit_ext4_system_zone(void);
++extern int __init ext4_init_system_zone(void);
++extern void ext4_exit_system_zone(void);
+ extern int ext4_data_block_valid(struct ext4_sb_info *sbi,
+ 				 ext4_fsblk_t start_blk,
+ 				 unsigned int count);
+@@ -2070,8 +2070,8 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 len, __u64 *moved_len);
+ 
+ /* page-io.c */
+-extern int __init init_ext4_pageio(void);
+-extern void exit_ext4_pageio(void);
++extern int __init ext4_init_pageio(void);
++extern void ext4_exit_pageio(void);
+ extern void ext4_free_io_end(ext4_io_end_t *io);
+ extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
+ extern int ext4_end_io_nolock(ext4_io_end_t *io);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e3bcc06..381ac56 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2705,7 +2705,7 @@ static void ext4_remove_debugfs_entry(void)
+ 
+ #endif
+ 
+-int __init init_ext4_mballoc(void)
++int __init ext4_init_mballoc(void)
+ {
+ 	ext4_pspace_cachep = KMEM_CACHE(ext4_prealloc_space,
+ 					SLAB_RECLAIM_ACCOUNT);
+@@ -2730,7 +2730,7 @@ int __init init_ext4_mballoc(void)
+ 	return 0;
+ }
+ 
+-void exit_ext4_mballoc(void)
++void ext4_exit_mballoc(void)
+ {
+ 	int i;
+ 	/*
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index b972ca5..46a7d6a 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -32,7 +32,7 @@
+ 
+ static struct kmem_cache *io_page_cachep, *io_end_cachep;
+ 
+-int __init init_ext4_pageio(void)
++int __init ext4_init_pageio(void)
+ {
+ 	io_page_cachep = KMEM_CACHE(ext4_io_page, SLAB_RECLAIM_ACCOUNT);
+ 	if (io_page_cachep == NULL)
+@@ -46,7 +46,7 @@ int __init init_ext4_pageio(void)
+ 	return 0;
+ }
+ 
+-void exit_ext4_pageio(void)
++void ext4_exit_pageio(void)
+ {
+ 	kmem_cache_destroy(io_end_cachep);
+ 	kmem_cache_destroy(io_page_cachep);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6b3feef..413c932 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4768,15 +4768,15 @@ out:
+ 	return ret;
+ }
+ 
+-static int __init init_ext4_fs(void)
++static int __init ext4_init_fs(void)
+ {
+ 	int err;
+ 
+ 	ext4_check_flag_values();
+-	err = init_ext4_pageio();
++	err = ext4_init_pageio();
+ 	if (err)
+ 		return err;
+-	err = init_ext4_system_zone();
++	err = ext4_init_system_zone();
+ 	if (err)
+ 		goto out5;
+ 	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
+@@ -4786,11 +4786,11 @@ static int __init init_ext4_fs(void)
+ 
+ 	err = ext4_init_feat_adverts();
+ 
+-	err = init_ext4_mballoc();
++	err = ext4_init_mballoc();
+ 	if (err)
+ 		goto out3;
+ 
+-	err = init_ext4_xattr();
++	err = ext4_init_xattr();
+ 	if (err)
+ 		goto out2;
+ 	err = init_inodecache();
+@@ -4810,37 +4810,37 @@ out:
+ 	unregister_as_ext3();
+ 	destroy_inodecache();
+ out1:
+-	exit_ext4_xattr();
++	ext4_exit_xattr();
+ out2:
+-	exit_ext4_mballoc();
++	ext4_exit_mballoc();
+ out3:
+ 	kfree(ext4_feat);
+ 	remove_proc_entry("fs/ext4", NULL);
+ 	kset_unregister(ext4_kset);
+ out4:
+-	exit_ext4_system_zone();
++	ext4_exit_system_zone();
+ out5:
+-	exit_ext4_pageio();
++	ext4_exit_pageio();
+ 	return err;
+ }
+ 
+-static void __exit exit_ext4_fs(void)
++static void __exit ext4_exit_fs(void)
+ {
+ 	ext4_destroy_lazyinit_thread();
+ 	unregister_as_ext2();
+ 	unregister_as_ext3();
+ 	unregister_filesystem(&ext4_fs_type);
+ 	destroy_inodecache();
+-	exit_ext4_xattr();
+-	exit_ext4_mballoc();
++	ext4_exit_xattr();
++	ext4_exit_mballoc();
+ 	remove_proc_entry("fs/ext4", NULL);
+ 	kset_unregister(ext4_kset);
+-	exit_ext4_system_zone();
+-	exit_ext4_pageio();
++	ext4_exit_system_zone();
++	ext4_exit_pageio();
+ }
+ 
+ MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
+ MODULE_DESCRIPTION("Fourth Extended Filesystem");
+ MODULE_LICENSE("GPL");
+-module_init(init_ext4_fs)
+-module_exit(exit_ext4_fs)
++module_init(ext4_init_fs)
++module_exit(ext4_exit_fs)
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 3a8cd8d..fa4b899 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1588,7 +1588,7 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *header,
+ #undef BLOCK_HASH_SHIFT
+ 
+ int __init
+-init_ext4_xattr(void)
++ext4_init_xattr(void)
+ {
+ 	ext4_xattr_cache = mb_cache_create("ext4_xattr", 6);
+ 	if (!ext4_xattr_cache)
+@@ -1597,7 +1597,7 @@ init_ext4_xattr(void)
+ }
+ 
+ void
+-exit_ext4_xattr(void)
++ext4_exit_xattr(void)
+ {
+ 	if (ext4_xattr_cache)
+ 		mb_cache_destroy(ext4_xattr_cache);
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 518e96e..281dd83 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -83,8 +83,8 @@ extern void ext4_xattr_put_super(struct super_block *);
+ extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 			    struct ext4_inode *raw_inode, handle_t *handle);
+ 
+-extern int init_ext4_xattr(void);
+-extern void exit_ext4_xattr(void);
++extern int __init ext4_init_xattr(void);
++extern void ext4_exit_xattr(void);
+ 
+ extern const struct xattr_handler *ext4_xattr_handlers[];
+ 
+@@ -121,14 +121,14 @@ ext4_xattr_put_super(struct super_block *sb)
+ {
+ }
+ 
+-static inline int
++static __init inline int
+ init_ext4_xattr(void)
+ {
+ 	return 0;
+ }
+ 
+ static inline void
+-exit_ext4_xattr(void)
++ext4_exit_xattr(void)
+ {
+ }
+ 
+-- 
+1.7.1
+
