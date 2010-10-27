@@ -1,90 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix kernel oops if the journal superblock has a non-zero j_errno
-Date: Wed, 27 Oct 2010 11:48:15 -0400
-Message-ID: <1288194495-16851-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4 patches for 2.6.37-rc1?
+Date: Wed, 27 Oct 2010 16:29:34 -0400
+Message-ID: <20101027202933.GD3194@thunk.org>
+References: <AANLkTikXgtFRSZRCjT9skEgsUzTqbuuhO2Cmv4RTrOTM@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: sedat.dilek@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43425 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33055 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752025Ab0J0PsU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Oct 2010 11:48:20 -0400
+	id S1752331Ab0J0U3p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Oct 2010 16:29:45 -0400
+Content-Disposition: inline
+In-Reply-To: <AANLkTikXgtFRSZRCjT9skEgsUzTqbuuhO2Cmv4RTrOTM@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 84061e0 fixed an accounting bug only to introduce the
-possibility of a kernel OOPS if the journal has a non-zero j_errno
-field indicating that the file system had detected a fs inconsistency.
-After the journal replay, if the journal superblock indicates that the
-file system has an error, this indication is transfered to the file
-system and then ext4_commit_super() is called to write this to the
-disk.
+On Wed, Oct 27, 2010 at 12:36:46PM +0200, Sedat Dilek wrote:
+> 
+> I was wondering if Ted will send ext4 patches within the open
+> merge-window for 2.6.37-rc1.
 
-But since the percpu counters are now initialized after the journal
-replay, the call to ext4_commit_super() will cause a kernel oops since
-it needs to use the percpu counters the ext4 superblock structure.
+Yes, I am planning on sending patches to Linus.
 
-The fix is to skip setting the ext4 free block and free inode fields
-if the percpu counter has not been set.
+It's a bit late because I've been crazy busy this past few weeks.
 
-Thanks to Ken Sumrall for reporting and analyzing the root causes of
-this bug.
+> If you plan to send to Linus, can you give a short overview what
+> endusers will expect?
 
-Addresses-Google-Bug: #3054080
+lazy inode table init, improved scalability for buffered writeback (3x
+throughput improvement when writing large files in parallel on 48 and
+192 threads on a 48-core machine), and a bunch of cleanups and bug
+fixes.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c                |    7 +++++--
- include/linux/percpu_counter.h |   10 ++++++++++
- 2 files changed, 15 insertions(+), 2 deletions(-)
+> BTW, in which of the GIT trees ([1], [2]) is the ext4 development
+> actually happening?
+> 
+> [1] http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=summary
+> [2] http://repo.or.cz/w/ext4-patch-queue.git
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 01e60aa..c92750b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3962,9 +3962,12 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 	else
- 		es->s_kbytes_written =
- 			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written);
--	ext4_free_blocks_count_set(es, percpu_counter_sum_positive(
-+	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeblocks_counter))
-+		ext4_free_blocks_count_set(es, percpu_counter_sum_positive(
- 					&EXT4_SB(sb)->s_freeblocks_counter));
--	es->s_free_inodes_count = cpu_to_le32(percpu_counter_sum_positive(
-+	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeinodes_counter))
-+		es->s_free_inodes_count = 
-+			cpu_to_le32(percpu_counter_sum_positive(
- 					&EXT4_SB(sb)->s_freeinodes_counter));
- 	sb->s_dirt = 0;
- 	BUFFER_TRACE(sbh, "marking dirty");
-diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
-index 8a7d510..46f6ba5 100644
---- a/include/linux/percpu_counter.h
-+++ b/include/linux/percpu_counter.h
-@@ -78,6 +78,11 @@ static inline s64 percpu_counter_read_positive(struct percpu_counter *fbc)
- 	return 1;
- }
- 
-+static inline int percpu_counter_initialized(struct percpu_counter *fbc)
-+{
-+	return (fbc->counters != NULL);
-+}
-+
- #else
- 
- struct percpu_counter {
-@@ -143,6 +148,11 @@ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- 	return percpu_counter_read(fbc);
- }
- 
-+static inline int percpu_counter_initialized(struct percpu_counter *fbc)
-+{
-+	return 1;
-+}
-+
- #endif	/* CONFIG_SMP */
- 
- static inline void percpu_counter_inc(struct percpu_counter *fbc)
--- 
-1.7.1
+Primary development happens in [2], and then it gets mirrored to [1]
+periodically.
 
+						- Ted
