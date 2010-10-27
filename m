@@ -1,103 +1,222 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/6] ext4: rename mark_bitmap_end() to ext4_mark_bitmap_end()
-Date: Wed, 27 Oct 2010 16:29:50 -0400
-Message-ID: <1288211391-22331-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/6] ext4: move flush_completed_IO to fs/ext4/fsync.c and make it static
+Date: Wed, 27 Oct 2010 16:29:49 -0400
+Message-ID: <1288211391-22331-4-git-send-email-tytso@mit.edu>
 References: <1288211391-22331-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33068 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33070 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752331Ab0J0U3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752904Ab0J0U3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 27 Oct 2010 16:29:55 -0400
 In-Reply-To: <1288211391-22331-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a namespace leak from fs/ext4
+Fix a namepsace leak by moving the function to the file where it is
+used.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |    3 ++-
- fs/ext4/ext4.h   |    2 +-
- fs/ext4/ialloc.c |    4 ++--
- fs/ext4/resize.c |    7 ++++---
- 4 files changed, 9 insertions(+), 7 deletions(-)
+ fs/ext4/ext4.h  |    1 -
+ fs/ext4/fsync.c |   83 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c |   83 -------------------------------------------------------
+ 3 files changed, 83 insertions(+), 84 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index a12cefc..14c3af2 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -171,7 +171,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 * less than the blocksize * 8 ( which is the size
- 		 * of bitmap ), set rest of the block bitmap to 1
- 		 */
--		mark_bitmap_end(group_blocks, sb->s_blocksize * 8, bh->b_data);
-+		ext4_mark_bitmap_end(group_blocks, sb->s_blocksize * 8,
-+				     bh->b_data);
- 	}
- 	return free_blocks - ext4_group_used_meta_blocks(sb, block_group, gdp);
- }
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 08b5df4..3deb980 100644
+index ae1678e..08b5df4 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1666,7 +1666,7 @@ extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
- extern unsigned long ext4_count_free_inodes(struct super_block *);
- extern unsigned long ext4_count_dirs(struct super_block *);
- extern void ext4_check_inodes_bitmap(struct super_block *);
--extern void mark_bitmap_end(int start_bit, int end_bit, char *bitmap);
-+extern void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap);
- extern int ext4_init_inode_table(struct super_block *sb,
- 				 ext4_group_t group, int barrier);
+@@ -1723,7 +1723,6 @@ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+-extern int flush_completed_IO(struct inode *inode);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+ 					int used, int quota_claim);
+ /* ioctl.c */
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 592adf2..1c701f6 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -34,6 +34,89 @@
  
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9666e4c..509f429 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -50,7 +50,7 @@
-  * need to use it within a single byte (to ensure we get endianness right).
-  * We can use memset for the rest of the bitmap as there are no other users.
-  */
--void mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
-+void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
- {
- 	int i;
+ #include <trace/events/ext4.h>
  
-@@ -86,7 +86,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
- 	}
++static void dump_completed_IO(struct inode * inode)
++{
++#ifdef	EXT4_DEBUG
++	struct list_head *cur, *before, *after;
++	ext4_io_end_t *io, *io0, *io1;
++	unsigned long flags;
++
++	if (list_empty(&EXT4_I(inode)->i_completed_io_list)){
++		ext4_debug("inode %lu completed_io list is empty\n", inode->i_ino);
++		return;
++	}
++
++	ext4_debug("Dump inode %lu completed_io list \n", inode->i_ino);
++	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
++	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list){
++		cur = &io->list;
++		before = cur->prev;
++		io0 = container_of(before, ext4_io_end_t, list);
++		after = cur->next;
++		io1 = container_of(after, ext4_io_end_t, list);
++
++		ext4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
++			    io, inode->i_ino, io0, io1);
++	}
++	spin_unlock_irqrestore(&EXT4_I(inode)->i_completed_io_lock, flags);
++#endif
++}
++
++/*
++ * This function is called from ext4_sync_file().
++ *
++ * When IO is completed, the work to convert unwritten extents to
++ * written is queued on workqueue but may not get immediately
++ * scheduled. When fsync is called, we need to ensure the
++ * conversion is complete before fsync returns.
++ * The inode keeps track of a list of pending/completed IO that
++ * might needs to do the conversion. This function walks through
++ * the list and convert the related unwritten extents for completed IO
++ * to written.
++ * The function return the number of pending IOs on success.
++ */
++static int flush_completed_IO(struct inode *inode)
++{
++	ext4_io_end_t *io;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	unsigned long flags;
++	int ret = 0;
++	int ret2 = 0;
++
++	if (list_empty(&ei->i_completed_io_list))
++		return ret;
++
++	dump_completed_IO(inode);
++	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++	while (!list_empty(&ei->i_completed_io_list)){
++		io = list_entry(ei->i_completed_io_list.next,
++				ext4_io_end_t, list);
++		/*
++		 * Calling ext4_end_io_nolock() to convert completed
++		 * IO to written.
++		 *
++		 * When ext4_sync_file() is called, run_queue() may already
++		 * about to flush the work corresponding to this io structure.
++		 * It will be upset if it founds the io structure related
++		 * to the work-to-be schedule is freed.
++		 *
++		 * Thus we need to keep the io structure still valid here after
++		 * convertion finished. The io structure has a flag to
++		 * avoid double converting from both fsync and background work
++		 * queue work.
++		 */
++		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++		ret = ext4_end_io_nolock(io);
++		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++		if (ret < 0)
++			ret2 = ret;
++		else
++			list_del_init(&io->list);
++	}
++	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++	return (ret2 < 0) ? ret2 : 0;
++}
++
+ /*
+  * If we're not journaling and this is a just-created file, we have to
+  * sync our parent directory (if it was freshly created) since
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7a83c27..9e60d0b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3626,89 +3626,6 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
+ }
  
- 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
--	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
-+	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
- 			bh->b_data);
- 
- 	return EXT4_INODES_PER_GROUP(sb);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 2f5e347..f398474 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -252,7 +252,8 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
- 		goto exit_bh;
- 
--	mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8, bh->b_data);
-+	ext4_mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8,
-+			     bh->b_data);
- 	ext4_handle_dirty_metadata(handle, NULL, bh);
- 	brelse(bh);
- 	/* Mark unused entries in inode bitmap used */
-@@ -263,8 +264,8 @@ static int setup_new_group_blocks(struct super_block *sb,
- 		goto exit_journal;
- 	}
- 
--	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
--			bh->b_data);
-+	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
-+			     bh->b_data);
- 	ext4_handle_dirty_metadata(handle, NULL, bh);
- exit_bh:
- 	brelse(bh);
--- 
-1.7.1
-
+-static void dump_completed_IO(struct inode * inode)
+-{
+-#ifdef	EXT4_DEBUG
+-	struct list_head *cur, *before, *after;
+-	ext4_io_end_t *io, *io0, *io1;
+-	unsigned long flags;
+-
+-	if (list_empty(&EXT4_I(inode)->i_completed_io_list)){
+-		ext4_debug("inode %lu completed_io list is empty\n", inode->i_ino);
+-		return;
+-	}
+-
+-	ext4_debug("Dump inode %lu completed_io list \n", inode->i_ino);
+-	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+-	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list){
+-		cur = &io->list;
+-		before = cur->prev;
+-		io0 = container_of(before, ext4_io_end_t, list);
+-		after = cur->next;
+-		io1 = container_of(after, ext4_io_end_t, list);
+-
+-		ext4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
+-			    io, inode->i_ino, io0, io1);
+-	}
+-	spin_unlock_irqrestore(&EXT4_I(inode)->i_completed_io_lock, flags);
+-#endif
+-}
+-
+-/*
+- * This function is called from ext4_sync_file().
+- *
+- * When IO is completed, the work to convert unwritten extents to
+- * written is queued on workqueue but may not get immediately
+- * scheduled. When fsync is called, we need to ensure the
+- * conversion is complete before fsync returns.
+- * The inode keeps track of a list of pending/completed IO that
+- * might needs to do the conversion. This function walks through
+- * the list and convert the related unwritten extents for completed IO
+- * to written.
+- * The function return the number of pending IOs on success.
+- */
+-int flush_completed_IO(struct inode *inode)
+-{
+-	ext4_io_end_t *io;
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+-	unsigned long flags;
+-	int ret = 0;
+-	int ret2 = 0;
+-
+-	if (list_empty(&ei->i_completed_io_list))
+-		return ret;
+-
+-	dump_completed_IO(inode);
+-	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+-	while (!list_empty(&ei->i_completed_io_list)){
+-		io = list_entry(ei->i_completed_io_list.next,
+-				ext4_io_end_t, list);
+-		/*
+-		 * Calling ext4_end_io_nolock() to convert completed
+-		 * IO to written.
+-		 *
+-		 * When ext4_sync_file() is called, run_queue() may already
+-		 * about to flush the work corresponding to this io structure.
+-		 * It will be upset if it founds the io structure related
+-		 * to the work-to-be schedule is freed.
+-		 *
+-		 * Thus we need to keep the io structure still valid here after
+-		 * convertion finished. The io structure has a flag to
+-		 * avoid double converting from both fsync and background work
+-		 * queue work.
+-		 */
+-		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+-		ret = ext4_end_io_nolock(io);
+-		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+-		if (ret < 0)
+-			ret2 = ret;
+-		else
+-			list_del_init(&io->list);
+-	}
+-	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+-	return (ret2 < 0) ? ret2 : 0;
+-}
