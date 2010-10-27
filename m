@@ -1,222 +1,28 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/6] ext4: move flush_completed_IO to fs/ext4/fsync.c and make it static
-Date: Wed, 27 Oct 2010 16:29:49 -0400
-Message-ID: <1288211391-22331-4-git-send-email-tytso@mit.edu>
-References: <1288211391-22331-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] Fix compile error in ext4_fallocate()
+Date: Wed, 27 Oct 2010 16:33:15 -0400
+Message-ID: <20101027203315.GE3194@thunk.org>
+References: <4C872506.6040505@sx.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33070 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:50732 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752904Ab0J0U3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Oct 2010 16:29:55 -0400
-In-Reply-To: <1288211391-22331-1-git-send-email-tytso@mit.edu>
+	id S1752904Ab0J0UdR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Oct 2010 16:33:17 -0400
+Content-Disposition: inline
+In-Reply-To: <4C872506.6040505@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a namepsace leak by moving the function to the file where it is
-used.
+On Wed, Sep 08, 2010 at 02:54:14PM +0900, Kazuya Mio wrote:
+> Hi,
+> 
+> When I compiled 2.6.36-rc3 kernel with EXT4FS_DEBUG definition, I got the
+> following compile error.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h  |    1 -
- fs/ext4/fsync.c |   83 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/inode.c |   83 -------------------------------------------------------
- 3 files changed, 83 insertions(+), 84 deletions(-)
+I've applied this fix to the ext4 patch queue.  Many thanks for the patch!!
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ae1678e..08b5df4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1723,7 +1723,6 @@ extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
--extern int flush_completed_IO(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
- /* ioctl.c */
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 592adf2..1c701f6 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -34,6 +34,89 @@
- 
- #include <trace/events/ext4.h>
- 
-+static void dump_completed_IO(struct inode * inode)
-+{
-+#ifdef	EXT4_DEBUG
-+	struct list_head *cur, *before, *after;
-+	ext4_io_end_t *io, *io0, *io1;
-+	unsigned long flags;
-+
-+	if (list_empty(&EXT4_I(inode)->i_completed_io_list)){
-+		ext4_debug("inode %lu completed_io list is empty\n", inode->i_ino);
-+		return;
-+	}
-+
-+	ext4_debug("Dump inode %lu completed_io list \n", inode->i_ino);
-+	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
-+	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list){
-+		cur = &io->list;
-+		before = cur->prev;
-+		io0 = container_of(before, ext4_io_end_t, list);
-+		after = cur->next;
-+		io1 = container_of(after, ext4_io_end_t, list);
-+
-+		ext4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
-+			    io, inode->i_ino, io0, io1);
-+	}
-+	spin_unlock_irqrestore(&EXT4_I(inode)->i_completed_io_lock, flags);
-+#endif
-+}
-+
-+/*
-+ * This function is called from ext4_sync_file().
-+ *
-+ * When IO is completed, the work to convert unwritten extents to
-+ * written is queued on workqueue but may not get immediately
-+ * scheduled. When fsync is called, we need to ensure the
-+ * conversion is complete before fsync returns.
-+ * The inode keeps track of a list of pending/completed IO that
-+ * might needs to do the conversion. This function walks through
-+ * the list and convert the related unwritten extents for completed IO
-+ * to written.
-+ * The function return the number of pending IOs on success.
-+ */
-+static int flush_completed_IO(struct inode *inode)
-+{
-+	ext4_io_end_t *io;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	unsigned long flags;
-+	int ret = 0;
-+	int ret2 = 0;
-+
-+	if (list_empty(&ei->i_completed_io_list))
-+		return ret;
-+
-+	dump_completed_IO(inode);
-+	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-+	while (!list_empty(&ei->i_completed_io_list)){
-+		io = list_entry(ei->i_completed_io_list.next,
-+				ext4_io_end_t, list);
-+		/*
-+		 * Calling ext4_end_io_nolock() to convert completed
-+		 * IO to written.
-+		 *
-+		 * When ext4_sync_file() is called, run_queue() may already
-+		 * about to flush the work corresponding to this io structure.
-+		 * It will be upset if it founds the io structure related
-+		 * to the work-to-be schedule is freed.
-+		 *
-+		 * Thus we need to keep the io structure still valid here after
-+		 * convertion finished. The io structure has a flag to
-+		 * avoid double converting from both fsync and background work
-+		 * queue work.
-+		 */
-+		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-+		ret = ext4_end_io_nolock(io);
-+		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-+		if (ret < 0)
-+			ret2 = ret;
-+		else
-+			list_del_init(&io->list);
-+	}
-+	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-+	return (ret2 < 0) ? ret2 : 0;
-+}
-+
- /*
-  * If we're not journaling and this is a just-created file, we have to
-  * sync our parent directory (if it was freshly created) since
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7a83c27..9e60d0b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3626,89 +3626,6 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
- }
- 
--static void dump_completed_IO(struct inode * inode)
--{
--#ifdef	EXT4_DEBUG
--	struct list_head *cur, *before, *after;
--	ext4_io_end_t *io, *io0, *io1;
--	unsigned long flags;
--
--	if (list_empty(&EXT4_I(inode)->i_completed_io_list)){
--		ext4_debug("inode %lu completed_io list is empty\n", inode->i_ino);
--		return;
--	}
--
--	ext4_debug("Dump inode %lu completed_io list \n", inode->i_ino);
--	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
--	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list){
--		cur = &io->list;
--		before = cur->prev;
--		io0 = container_of(before, ext4_io_end_t, list);
--		after = cur->next;
--		io1 = container_of(after, ext4_io_end_t, list);
--
--		ext4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
--			    io, inode->i_ino, io0, io1);
--	}
--	spin_unlock_irqrestore(&EXT4_I(inode)->i_completed_io_lock, flags);
--#endif
--}
--
--/*
-- * This function is called from ext4_sync_file().
-- *
-- * When IO is completed, the work to convert unwritten extents to
-- * written is queued on workqueue but may not get immediately
-- * scheduled. When fsync is called, we need to ensure the
-- * conversion is complete before fsync returns.
-- * The inode keeps track of a list of pending/completed IO that
-- * might needs to do the conversion. This function walks through
-- * the list and convert the related unwritten extents for completed IO
-- * to written.
-- * The function return the number of pending IOs on success.
-- */
--int flush_completed_IO(struct inode *inode)
--{
--	ext4_io_end_t *io;
--	struct ext4_inode_info *ei = EXT4_I(inode);
--	unsigned long flags;
--	int ret = 0;
--	int ret2 = 0;
--
--	if (list_empty(&ei->i_completed_io_list))
--		return ret;
--
--	dump_completed_IO(inode);
--	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
--	while (!list_empty(&ei->i_completed_io_list)){
--		io = list_entry(ei->i_completed_io_list.next,
--				ext4_io_end_t, list);
--		/*
--		 * Calling ext4_end_io_nolock() to convert completed
--		 * IO to written.
--		 *
--		 * When ext4_sync_file() is called, run_queue() may already
--		 * about to flush the work corresponding to this io structure.
--		 * It will be upset if it founds the io structure related
--		 * to the work-to-be schedule is freed.
--		 *
--		 * Thus we need to keep the io structure still valid here after
--		 * convertion finished. The io structure has a flag to
--		 * avoid double converting from both fsync and background work
--		 * queue work.
--		 */
--		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
--		ret = ext4_end_io_nolock(io);
--		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
--		if (ret < 0)
--			ret2 = ret;
--		else
--			list_del_init(&io->list);
--	}
--	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
--	return (ret2 < 0) ? ret2 : 0;
--}
+     	     	      	     	  	- Ted
