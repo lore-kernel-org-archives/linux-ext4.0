@@ -1,46 +1,214 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4 patches for 2.6.37-rc1?
-Date: Wed, 27 Oct 2010 16:29:34 -0400
-Message-ID: <20101027202933.GD3194@thunk.org>
-References: <AANLkTikXgtFRSZRCjT9skEgsUzTqbuuhO2Cmv4RTrOTM@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: sedat.dilek@gmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 6/6] ext4: Move ext4_mb_{get,put}_buddy_cache_lock and make them static
+Date: Wed, 27 Oct 2010 16:29:51 -0400
+Message-ID: <1288211391-22331-6-git-send-email-tytso@mit.edu>
+References: <1288211391-22331-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33055 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33073 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752331Ab0J0U3p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Oct 2010 16:29:45 -0400
-Content-Disposition: inline
-In-Reply-To: <AANLkTikXgtFRSZRCjT9skEgsUzTqbuuhO2Cmv4RTrOTM@mail.gmail.com>
+	id S1756777Ab0J0U3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Oct 2010 16:29:55 -0400
+In-Reply-To: <1288211391-22331-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 27, 2010 at 12:36:46PM +0200, Sedat Dilek wrote:
-> 
-> I was wondering if Ted will send ext4 patches within the open
-> merge-window for 2.6.37-rc1.
+These functions are only used within fs/ext4/mballoc.c, so move them
+so they are used after they are defined, and then make them be static.
 
-Yes, I am planning on sending patches to Linus.
+(Eric Sandeen submitted a similar patch but I wanted to keep commits
+that move codes around as separate so they can be more easily
+audited.)
 
-It's a bit late because I've been crazy busy this past few weeks.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |    3 -
+ fs/ext4/mballoc.c |  157 +++++++++++++++++++++++++++--------------------------
+ 2 files changed, 79 insertions(+), 81 deletions(-)
 
-> If you plan to send to Linus, can you give a short overview what
-> endusers will expect?
-
-lazy inode table init, improved scalability for buffered writeback (3x
-throughput improvement when writing large files in parallel on 48 and
-192 threads on a 48-core machine), and a bunch of cleanups and bug
-fixes.
-
-> BTW, in which of the GIT trees ([1], [2]) is the ext4 development
-> actually happening?
-> 
-> [1] http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=summary
-> [2] http://repo.or.cz/w/ext4-patch-queue.git
-
-Primary development happens in [2], and then it gets mirrored to [1]
-periodically.
-
-						- Ted
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3deb980..2e4d302 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1686,9 +1686,6 @@ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     unsigned long count, int flags);
+ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+-extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
+-extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
+-						ext4_group_t, int);
+ extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
+ 
+ /* inode.c */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 381ac56..328ea9c 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -947,6 +947,85 @@ out:
+ }
+ 
+ /*
++ * lock the group_info alloc_sem of all the groups
++ * belonging to the same buddy cache page. This
++ * make sure other parallel operation on the buddy
++ * cache doesn't happen  whild holding the buddy cache
++ * lock
++ */
++static int ext4_mb_get_buddy_cache_lock(struct super_block *sb,
++					ext4_group_t group)
++{
++	int i;
++	int block, pnum;
++	int blocks_per_page;
++	int groups_per_page;
++	ext4_group_t ngroups = ext4_get_groups_count(sb);
++	ext4_group_t first_group;
++	struct ext4_group_info *grp;
++
++	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
++	/*
++	 * the buddy cache inode stores the block bitmap
++	 * and buddy information in consecutive blocks.
++	 * So for each group we need two blocks.
++	 */
++	block = group * 2;
++	pnum = block / blocks_per_page;
++	first_group = pnum * blocks_per_page / 2;
++
++	groups_per_page = blocks_per_page >> 1;
++	if (groups_per_page == 0)
++		groups_per_page = 1;
++	/* read all groups the page covers into the cache */
++	for (i = 0; i < groups_per_page; i++) {
++
++		if ((first_group + i) >= ngroups)
++			break;
++		grp = ext4_get_group_info(sb, first_group + i);
++		/* take all groups write allocation
++		 * semaphore. This make sure there is
++		 * no block allocation going on in any
++		 * of that groups
++		 */
++		down_write_nested(&grp->alloc_sem, i);
++	}
++	return i;
++}
++
++static void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
++					 ext4_group_t group, int locked_group)
++{
++	int i;
++	int block, pnum;
++	int blocks_per_page;
++	ext4_group_t first_group;
++	struct ext4_group_info *grp;
++
++	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
++	/*
++	 * the buddy cache inode stores the block bitmap
++	 * and buddy information in consecutive blocks.
++	 * So for each group we need two blocks.
++	 */
++	block = group * 2;
++	pnum = block / blocks_per_page;
++	first_group = pnum * blocks_per_page / 2;
++	/* release locks on all the groups */
++	for (i = 0; i < locked_group; i++) {
++
++		grp = ext4_get_group_info(sb, first_group + i);
++		/* take all groups write allocation
++		 * semaphore. This make sure there is
++		 * no block allocation going on in any
++		 * of that groups
++		 */
++		up_write(&grp->alloc_sem);
++	}
++
++}
++
++/*
+  * Locking note:  This routine calls ext4_mb_init_cache(), which takes the
+  * block group lock of all groups for this page; do not hold the BG lock when
+  * calling this routine!
+@@ -1923,84 +2002,6 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 	return 0;
+ }
+ 
+-/*
+- * lock the group_info alloc_sem of all the groups
+- * belonging to the same buddy cache page. This
+- * make sure other parallel operation on the buddy
+- * cache doesn't happen  whild holding the buddy cache
+- * lock
+- */
+-int ext4_mb_get_buddy_cache_lock(struct super_block *sb, ext4_group_t group)
+-{
+-	int i;
+-	int block, pnum;
+-	int blocks_per_page;
+-	int groups_per_page;
+-	ext4_group_t ngroups = ext4_get_groups_count(sb);
+-	ext4_group_t first_group;
+-	struct ext4_group_info *grp;
+-
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-	/*
+-	 * the buddy cache inode stores the block bitmap
+-	 * and buddy information in consecutive blocks.
+-	 * So for each group we need two blocks.
+-	 */
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	first_group = pnum * blocks_per_page / 2;
+-
+-	groups_per_page = blocks_per_page >> 1;
+-	if (groups_per_page == 0)
+-		groups_per_page = 1;
+-	/* read all groups the page covers into the cache */
+-	for (i = 0; i < groups_per_page; i++) {
+-
+-		if ((first_group + i) >= ngroups)
+-			break;
+-		grp = ext4_get_group_info(sb, first_group + i);
+-		/* take all groups write allocation
+-		 * semaphore. This make sure there is
+-		 * no block allocation going on in any
+-		 * of that groups
+-		 */
+-		down_write_nested(&grp->alloc_sem, i);
+-	}
+-	return i;
+-}
+-
+-void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
+-					ext4_group_t group, int locked_group)
+-{
+-	int i;
+-	int block, pnum;
+-	int blocks_per_page;
+-	ext4_group_t first_group;
+-	struct ext4_group_info *grp;
+-
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-	/*
+-	 * the buddy cache inode stores the block bitmap
+-	 * and buddy information in consecutive blocks.
+-	 * So for each group we need two blocks.
+-	 */
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	first_group = pnum * blocks_per_page / 2;
+-	/* release locks on all the groups */
+-	for (i = 0; i < locked_group; i++) {
+-
+-		grp = ext4_get_group_info(sb, first_group + i);
+-		/* take all groups write allocation
+-		 * semaphore. This make sure there is
+-		 * no block allocation going on in any
+-		 * of that groups
+-		 */
+-		up_write(&grp->alloc_sem);
+-	}
+-
+-}
