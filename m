@@ -1,28 +1,28 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Fix compile error in ext4_fallocate()
-Date: Wed, 27 Oct 2010 16:33:15 -0400
-Message-ID: <20101027203315.GE3194@thunk.org>
-References: <4C872506.6040505@sx.jp.nec.com>
+Subject: Re: [PATCH] ext4: Add batched_discard into ext4 feature list
+Date: Wed, 27 Oct 2010 16:37:21 -0400
+Message-ID: <20101027203721.GF3194@thunk.org>
+References: <alpine.LFD.2.00.1010251809490.604@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:50732 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:43579 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752904Ab0J0UdR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Oct 2010 16:33:17 -0400
+	id S1752904Ab0J0UhX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Oct 2010 16:37:23 -0400
 Content-Disposition: inline
-In-Reply-To: <4C872506.6040505@sx.jp.nec.com>
+In-Reply-To: <alpine.LFD.2.00.1010251809490.604@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 08, 2010 at 02:54:14PM +0900, Kazuya Mio wrote:
-> Hi,
+On Mon, Oct 25, 2010 at 06:14:07PM +0200, Lukas Czerner wrote:
+> Should be applied on the top of "lazy inode table initialization"
+> and "batched discard support" patch-sets.
 > 
-> When I compiled 2.6.36-rc3 kernel with EXT4FS_DEBUG definition, I got the
-> following compile error.
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-I've applied this fix to the ext4 patch queue.  Many thanks for the patch!!
+I've added this to the ext4 patch queue, thanks!!
 
-     	     	      	     	  	- Ted
+						- Ted
