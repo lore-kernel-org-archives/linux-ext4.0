@@ -1,263 +1,123 @@
-From: Sedat Dilek <sedat.dilek@googlemail.com>
-Subject: Re: [next-20101038] Call trace in ext4
-Date: Thu, 28 Oct 2010 23:17:18 +0200
-Message-ID: <AANLkTi=nkWm2ToXySsRLy1b7m9vz08+sBU3WJ92Nqsj1@mail.gmail.com>
-References: <AANLkTi=E_uMj_ndGU86DCjX4aDwjHqg3dkwxjQRSJtq6@mail.gmail.com>
-	<20101028175221.GA1578@arch.trippelsdorf.de>
-	<20101028180118.GC6814@thunk.org>
-	<20101028193211.GA28126@thunk.org>
-	<AANLkTimHJe9bA-X+JWkspgjb4AZkkgbEFWQiwzO-gx-h@mail.gmail.com>
-	<20101028200548.GC28126@thunk.org>
-	<AANLkTimw9Vwzy4MXO1t7TnJfwTwYtWcfj0D=Zx8O72cY@mail.gmail.com>
-	<20101028203706.GD28126@thunk.org>
-	<AANLkTimFgcCVgBrW_oLzn0tUdGwJKfkhDJMf=EVHZ4Vf@mail.gmail.com>
-	<20101028210644.GF28126@thunk.org>
-Reply-To: sedat.dilek@gmail.com
+From: Junio C Hamano <gitster@pobox.com>
+Subject: Re: -tip: origin tree build failure
+Date: Thu, 28 Oct 2010 14:39:13 -0700
+Message-ID: <7veiba9ev2.fsf@alter.siamese.dyndns.org>
+References: <E1PBKT9-0004Uk-Sm@tytso-glaptop> <20101028075631.GA7690@elte.hu>
+ <AANLkTi=8SbOZizWpxLg=Bgp7atdgr8MsR6tnRDYr1+eW@mail.gmail.com>
+ <20101028163854.GA15450@elte.hu>
+ <AANLkTin62vAwJxcsrFk6Yn7Q6tzr-D=EmKKwPazuAJ11@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=20cf300fb3d5ec09280493b3ddc3
-To: "Ted Ts'o" <tytso@mit.edu>, sedat.dilek@gmail.com,
-	Markus Trippelsdorf <markus@trippelsdorf.de>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	sfr@canb.auug.org.au,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ingo Molnar <mingo@elte.hu>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:60990 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757047Ab0J1VRT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Oct 2010 17:17:19 -0400
-In-Reply-To: <20101028210644.GF28126@thunk.org>
+Received: from a-pb-sasl-quonix.pobox.com ([208.72.237.25]:52184 "EHLO
+	sasl.smtp.pobox.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933157Ab0J1Vj3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Oct 2010 17:39:29 -0400
+In-Reply-To: <AANLkTin62vAwJxcsrFk6Yn7Q6tzr-D=EmKKwPazuAJ11@mail.gmail.com>
+ (Linus Torvalds's message of "Thu\, 28 Oct 2010 10\:00\:26 -0700")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---20cf300fb3d5ec09280493b3ddc3
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Linus Torvalds <torvalds@linux-foundation.org> writes:
 
-On Thu, Oct 28, 2010 at 11:06 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Thu, Oct 28, 2010 at 11:02:14PM +0200, Sedat Dilek wrote:
->>
->> I could copy a complete linux-2.6 GIT tree within my $HOME/src, looks go=
-od.
+> Yes. Except for the kernel the default git commit abbreviation is
+> borderline too short. Seven hex-chars can easily alias with a few more
+> pulls from me: git will not give aliases at the time it gives a
+> shorthand, but a month or two later the abbreviated commit may no
+> longer be unique.
 >
-> Excellent; and attempts to do this before resulted on the BUG_ON
-> tripping? =C2=A0If so, that's certainly a good sign!
->
->>
->> Any other test-case you can suggest to be sure things work as expected, =
-now?
->
-> Well, given that I haven't been able to replicate myself, no, not
-> really.
->
-> I am curious about your setup. =C2=A0How much memory do you have on your
-> system, and how much free memory did you have before running the copy?
-> (i.e, what does the "free" command display)?
->
+> So I suggest using --abbrev=12 or similar.
 
-This is an IBM T40p with Pentium-M (Banias) 1.7GHz and 1GByte RAM, 60GByte =
-HDD.
+Would a new configuration to specify how many more letters to ensure the
+uniqueness at the time of generation make sense?
 
-Before I run the copy command, I have open 2 KDE konsoles, 1x Quassel
-IRC-client, 1x Firefox with 5 open tabs.
+By the way, I noticed that you started sending patches as attachments
+lately.  What made you change your mind?
 
-# free
-             total       used       free     shared    buffers     cached
-Mem:       1033796    1005812      27984          0      61400     617252
--/+ buffers/cache:     327160     706636
-Swap:      1052244          0    1052244
+ Documentation/config.txt |    9 +++++++++
+ cache.h                  |    1 +
+ config.c                 |    7 +++++++
+ environment.c            |    1 +
+ sha1_name.c              |    4 +++-
+ 5 files changed, 21 insertions(+), 1 deletions(-)
 
-While copying (a list with invoking x-timesl free command is attached)...
-
-# free
-             total       used       free     shared    buffers     cached
-Mem:       1033796    1017332      16464          0      66144     630488
--/+ buffers/cache:     320700     713096
-Swap:      1052244          0    1052244
-
-
->> BTW, feel free to add:
->>
->> =C2=A0 =C2=A0 =C2=A0 Reported-andtested-by: Sedat Dilek <sedat.dilek@gma=
-il.com>
->
-> I'll certainly give you credit (as well as to the other people who
-> reported the problem).
->
-
-Of course, Linus wrote in one 2.6.36-rcX announce that maintainers
-forgot about that.
-But I saw people on LKML adding a "Feel free to add...", so I follow
-the etiquette.
-
-> Thanks again!!
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0- Ted
->
-
-I have to thank for the fast replies and patch.
-
-- Sedat -
-
---20cf300fb3d5ec09280493b3ddc3
-Content-Type: text/plain; charset=US-ASCII; name="free.txt"
-Content-Disposition: attachment; filename="free.txt"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gfu4rp6y0
-
-cm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRvdGFsICAgICAgIHVzZWQgICAgICAgZnJl
-ZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hlZApNZW06ICAgICAgIDEwMzM3OTYgICAg
-MTAwNTgxMiAgICAgIDI3OTg0ICAgICAgICAgIDAgICAgICA2MTQwMCAgICAgNjE3MjUyCi0vKyBi
-dWZmZXJzL2NhY2hlOiAgICAgMzI3MTYwICAgICA3MDY2MzYKU3dhcDogICAgICAxMDUyMjQ0ICAg
-ICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMgCnJvb3RAdGJveDp+IyAKcm9vdEB0Ym94
-On4jIApyb290QHRib3g6fiMgCnJvb3RAdGJveDp+IyAKcm9vdEB0Ym94On4jIApyb290QHRib3g6
-fiMgCnJvb3RAdGJveDp+IyAKcm9vdEB0Ym94On4jIApyb290QHRib3g6fiMgCnJvb3RAdGJveDp+
-IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAgIGZyZWUgICAgIHNoYXJl
-ZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMzNzk2ICAgICA5OTA3NjQgICAg
-ICA0MzAzMiAgICAgICAgICAwICAgICAgNTkyOTIgICAgIDYwODI0OAotLysgYnVmZmVycy9jYWNo
-ZTogICAgIDMyMzIyNCAgICAgNzEwNTcyClN3YXA6ICAgICAgMTA1MjI0NCAgICAgICAgICAwICAg
-IDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRvdGFsICAgICAgIHVzZWQg
-ICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hlZApNZW06ICAgICAgIDEw
-MzM3OTYgICAgIDk4MTEzNiAgICAgIDUyNjYwICAgICAgICAgIDAgICAgICA1ODI0NCAgICAgNjA2
-MzA4Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzE2NTg0ICAgICA3MTcyMTIKU3dhcDogICAgICAx
-MDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMgZnJlZQogICAgICAgICAg
-ICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFyZWQgICAgYnVmZmVycyAgICAg
-Y2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDE0MDk2ICAgICAgMTk3MDAgICAgICAgICAg
-MCAgICAgIDU4NTgwICAgICA2Mzk2MjgKLS8rIGJ1ZmZlcnMvY2FjaGU6ICAgICAzMTU4ODggICAg
-IDcxNzkwOApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAgICAxMDUyMjQ0CnJvb3RAdGJv
-eDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAgIGZyZWUgICAgIHNo
-YXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMzNzk2ICAgIDEwMDc4NzYg
-ICAgICAyNTkyMCAgICAgICAgICAwICAgICAgNTkxNDggICAgIDYzMjcwMAotLysgYnVmZmVycy9j
-YWNoZTogICAgIDMxNjAyOCAgICAgNzE3NzY4ClN3YXA6ICAgICAgMTA1MjI0NCAgICAgICAgICAw
-ICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRvdGFsICAgICAgIHVz
-ZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hlZApNZW06ICAgICAg
-IDEwMzM3OTYgICAgMTAwNTU4NCAgICAgIDI4MjEyICAgICAgICAgIDAgICAgICA1OTU4OCAgICAg
-NjMzMzQ4Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzEyNjQ4ICAgICA3MjExNDgKU3dhcDogICAg
-ICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMgZnJlZQogICAgICAg
-ICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFyZWQgICAgYnVmZmVycyAg
-ICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDA2MzA4ICAgICAgMjc0ODggICAgICAg
-ICAgMCAgICAgIDU5OTA0ICAgICA2MzQ1MzYKLS8rIGJ1ZmZlcnMvY2FjaGU6ICAgICAzMTE4Njgg
-ICAgIDcyMTkyOApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAgICAxMDUyMjQ0CnJvb3RA
-dGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAgIGZyZWUgICAg
-IHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMzNzk2ICAgIDEwMjAx
-NDAgICAgICAxMzY1NiAgICAgICAgICAwICAgICAgNjAwODQgICAgIDY0ODMyOAotLysgYnVmZmVy
-cy9jYWNoZTogICAgIDMxMTcyOCAgICAgNzIyMDY4ClN3YXA6ICAgICAgMTA1MjI0NCAgICAgICAg
-ICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRvdGFsICAgICAg
-IHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hlZApNZW06ICAg
-ICAgIDEwMzM3OTYgICAgIDk5NTUxMiAgICAgIDM4Mjg0ICAgICAgICAgIDAgICAgICA2MDIzNiAg
-ICAgNjI0NTUyCi0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzEwNzI0ICAgICA3MjMwNzIKU3dhcDog
-ICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMgZnJlZQogICAg
-ICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFyZWQgICAgYnVmZmVy
-cyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAgOTk5MzY4ICAgICAgMzQ0MjggICAg
-ICAgICAgMCAgICAgIDYwMzI4ICAgICA2MjgzOTIKLS8rIGJ1ZmZlcnMvY2FjaGU6ICAgICAzMTA2
-NDggICAgIDcyMzE0OApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAgICAxMDUyMjQ0CnJv
-b3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAgIGZyZWUg
-ICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMzNzk2ICAgIDEw
-MTM5MDQgICAgICAxOTg5MiAgICAgICAgICAwICAgICAgNjA1MzYgICAgIDY0MjQ3MgotLysgYnVm
-ZmVycy9jYWNoZTogICAgIDMxMDg5NiAgICAgNzIyOTAwClN3YXA6ICAgICAgMTA1MjI0NCAgICAg
-ICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRvdGFsICAg
-ICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hlZApNZW06
-ICAgICAgIDEwMzM3OTYgICAgMTAxNjg2MCAgICAgIDE2OTM2ICAgICAgICAgIDAgICAgICA2MDY2
-NCAgICAgNjQ0MTA4Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzEyMDg4ICAgICA3MjE3MDgKU3dh
-cDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMgZnJlZQog
-ICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFyZWQgICAgYnVm
-ZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDE4MDQ0ICAgICAgMTU3NTIg
-ICAgICAgICAgMCAgICAgIDYwNjg4ICAgICA2NDU1NDAKLS8rIGJ1ZmZlcnMvY2FjaGU6ICAgICAz
-MTE4MTYgICAgIDcyMTk4MApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAgICAxMDUyMjQ0
-CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAgIGZy
-ZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMzNzk2ICAg
-IDEwMDkyNjAgICAgICAyNDUzNiAgICAgICAgICAwICAgICAgNjA3MDggICAgIDYzNjQ2MAotLysg
-YnVmZmVycy9jYWNoZTogICAgIDMxMjA5MiAgICAgNzIxNzA0ClN3YXA6ICAgICAgMTA1MjI0NCAg
-ICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRvdGFs
-ICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hlZApN
-ZW06ICAgICAgIDEwMzM3OTYgICAgMTAwODI2NCAgICAgIDI1NTMyICAgICAgICAgIDAgICAgICA2
-MDcyOCAgICAgNjM1MzQ0Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzEyMTkyICAgICA3MjE2MDQK
-U3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMgZnJl
-ZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFyZWQgICAg
-YnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDEwNjU2ICAgICAgMjMx
-NDAgICAgICAgICAgMCAgICAgIDYwNzY4ICAgICA2Mzg3NjQKLS8rIGJ1ZmZlcnMvY2FjaGU6ICAg
-ICAzMTExMjQgICAgIDcyMjY3MgpTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAgICAxMDUy
-MjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAg
-IGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMzNzk2
-ICAgIDEwMjAwODAgICAgICAxMzcxNiAgICAgICAgICAwICAgICAgNjEwODggICAgIDY0NzU1Mgot
-LysgYnVmZmVycy9jYWNoZTogICAgIDMxMTQ0MCAgICAgNzIyMzU2ClN3YXA6ICAgICAgMTA1MjI0
-NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAgIHRv
-dGFsICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNhY2hl
-ZApNZW06ICAgICAgIDEwMzM3OTYgICAgMTAwNzE2NCAgICAgIDI2NjMyICAgICAgICAgIDAgICAg
-ICA2MDM4OCAgICAgNjM1MTM2Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzExNjQwICAgICA3MjIx
-NTYKU3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6fiMg
-ZnJlZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFyZWQg
-ICAgYnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDA3NDEyICAgICAg
-MjYzODQgICAgICAgICAgMCAgICAgIDYwODg0ICAgICA2MzUyMTYKLS8rIGJ1ZmZlcnMvY2FjaGU6
-ICAgICAzMTEzMTIgICAgIDcyMjQ4NApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAgICAx
-MDUyMjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAg
-ICAgIGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAxMDMz
-Nzk2ICAgIDEwMDI3MDAgICAgICAzMTA5NiAgICAgICAgICAwICAgICAgNjE2NjggICAgIDYyODg3
-MgotLysgYnVmZmVycy9jYWNoZTogICAgIDMxMjE2MCAgICAgNzIxNjM2ClN3YXA6ICAgICAgMTA1
-MjI0NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAgICAg
-IHRvdGFsICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAgIGNh
-Y2hlZApNZW06ICAgICAgIDEwMzM3OTYgICAgIDk5NzQ5MiAgICAgIDM2MzA0ICAgICAgICAgIDAg
-ICAgICA2MjE0NCAgICAgNjIzMzQ4Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzEyMDAwICAgICA3
-MjE3OTYKU3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRib3g6
-fiMgZnJlZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBzaGFy
-ZWQgICAgYnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAgOTk4MDUyICAg
-ICAgMzU3NDQgICAgICAgICAgMCAgICAgIDYyOTg0ICAgICA2MjI1NjAKLS8rIGJ1ZmZlcnMvY2Fj
-aGU6ICAgICAzMTI1MDggICAgIDcyMTI4OApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAgMCAg
-ICAxMDUyMjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2Vk
-ICAgICAgIGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAgICAx
-MDMzNzk2ICAgICA5OTQyMzIgICAgICAzOTU2NCAgICAgICAgICAwICAgICAgNjM0ODQgICAgIDYx
-NzUyOAotLysgYnVmZmVycy9jYWNoZTogICAgIDMxMzIyMCAgICAgNzIwNTc2ClN3YXA6ICAgICAg
-MTA1MjI0NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAgICAg
-ICAgIHRvdGFsICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMgICAg
-IGNhY2hlZApNZW06ICAgICAgIDEwMzM3OTYgICAgIDk5ODg2MCAgICAgIDM0OTM2ICAgICAgICAg
-IDAgICAgICA2Mzk4MCAgICAgNjIxMDc2Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzEzODA0ICAg
-ICA3MTk5OTIKU3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290QHRi
-b3g6fiMgZnJlZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAgICBz
-aGFyZWQgICAgYnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDE3MTU2
-ICAgICAgMTY2NDAgICAgICAgICAgMCAgICAgIDY0NDAwICAgICA2MzcxMzYKLS8rIGJ1ZmZlcnMv
-Y2FjaGU6ICAgICAzMTU2MjAgICAgIDcxODE3NgpTd2FwOiAgICAgIDEwNTIyNDQgICAgICAgICAg
-MCAgICAxMDUyMjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1
-c2VkICAgICAgIGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAgICAg
-ICAxMDMzNzk2ICAgIDEwMTIxNjAgICAgICAyMTYzNiAgICAgICAgICAwICAgICAgNjQ3MjQgICAg
-IDYzMTUzMgotLysgYnVmZmVycy9jYWNoZTogICAgIDMxNTkwNCAgICAgNzE3ODkyClN3YXA6ICAg
-ICAgMTA1MjI0NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAgICAg
-ICAgICAgIHRvdGFsICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZlcnMg
-ICAgIGNhY2hlZApNZW06ICAgICAgIDEwMzM3OTYgICAgMTAxNDA5MiAgICAgIDE5NzA0ICAgICAg
-ICAgIDAgICAgICA2NTM5NiAgICAgNjMxNDQ4Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzE3MjQ4
-ICAgICA3MTY1NDgKU3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApyb290
-QHRib3g6fiMgZnJlZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVlICAg
-ICBzaGFyZWQgICAgYnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAxMDA2
-MjI0ICAgICAgMjc1NzIgICAgICAgICAgMCAgICAgIDY1NTI0ICAgICA2MjMxNTIKLS8rIGJ1ZmZl
-cnMvY2FjaGU6ICAgICAzMTc1NDggICAgIDcxNjI0OApTd2FwOiAgICAgIDEwNTIyNDQgICAgICAg
-ICAgMCAgICAxMDUyMjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAgICAg
-ICB1c2VkICAgICAgIGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVtOiAg
-ICAgICAxMDMzNzk2ICAgIDEwMDk5MzIgICAgICAyMzg2NCAgICAgICAgICAwICAgICAgNjU3MDgg
-ICAgIDYyNjI0NAotLysgYnVmZmVycy9jYWNoZTogICAgIDMxNzk4MCAgICAgNzE1ODE2ClN3YXA6
-ICAgICAgMTA1MjI0NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUKICAg
-ICAgICAgICAgIHRvdGFsICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1ZmZl
-cnMgICAgIGNhY2hlZApNZW06ICAgICAgIDEwMzM3OTYgICAgMTAwOTY5MiAgICAgIDI0MTA0ICAg
-ICAgICAgIDAgICAgICA2NTcxNiAgICAgNjI2MjI0Ci0vKyBidWZmZXJzL2NhY2hlOiAgICAgMzE3
-NzUyICAgICA3MTYwNDQKU3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0NApy
-b290QHRib3g6fiMgZnJlZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBmcmVl
-ICAgICBzaGFyZWQgICAgYnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAgICAx
-MDExOTQwICAgICAgMjE4NTYgICAgICAgICAgMCAgICAgIDY1ODEyICAgICA2Mjc1ODgKLS8rIGJ1
-ZmZlcnMvY2FjaGU6ICAgICAzMTg1NDAgICAgIDcxNTI1NgpTd2FwOiAgICAgIDEwNTIyNDQgICAg
-ICAgICAgMCAgICAxMDUyMjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3RhbCAg
-ICAgICB1c2VkICAgICAgIGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQKTWVt
-OiAgICAgICAxMDMzNzk2ICAgIDEwMTQxNjAgICAgICAxOTYzNiAgICAgICAgICAwICAgICAgNjU4
-NjAgICAgIDYyOTE4MAotLysgYnVmZmVycy9jYWNoZTogICAgIDMxOTEyMCAgICAgNzE0Njc2ClN3
-YXA6ICAgICAgMTA1MjI0NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jIGZyZWUK
-ICAgICAgICAgICAgIHRvdGFsICAgICAgIHVzZWQgICAgICAgZnJlZSAgICAgc2hhcmVkICAgIGJ1
-ZmZlcnMgICAgIGNhY2hlZApNZW06ICAgICAgIDEwMzM3OTYgICAgMTAxODY0MCAgICAgIDE1MTU2
-ICAgICAgICAgIDAgICAgICA2NTkxNiAgICAgNjMyNDIwCi0vKyBidWZmZXJzL2NhY2hlOiAgICAg
-MzIwMzA0ICAgICA3MTM0OTIKU3dhcDogICAgICAxMDUyMjQ0ICAgICAgICAgIDAgICAgMTA1MjI0
-NApyb290QHRib3g6fiMgZnJlZQogICAgICAgICAgICAgdG90YWwgICAgICAgdXNlZCAgICAgICBm
-cmVlICAgICBzaGFyZWQgICAgYnVmZmVycyAgICAgY2FjaGVkCk1lbTogICAgICAgMTAzMzc5NiAg
-ICAxMDIwNDk2ICAgICAgMTMzMDAgICAgICAgICAgMCAgICAgIDY2MDAwICAgICA2MzM3NjAKLS8r
-IGJ1ZmZlcnMvY2FjaGU6ICAgICAzMjA3MzYgICAgIDcxMzA2MApTd2FwOiAgICAgIDEwNTIyNDQg
-ICAgICAgICAgMCAgICAxMDUyMjQ0CnJvb3RAdGJveDp+IyBmcmVlCiAgICAgICAgICAgICB0b3Rh
-bCAgICAgICB1c2VkICAgICAgIGZyZWUgICAgIHNoYXJlZCAgICBidWZmZXJzICAgICBjYWNoZWQK
-TWVtOiAgICAgICAxMDMzNzk2ICAgIDEwMTczMzIgICAgICAxNjQ2NCAgICAgICAgICAwICAgICAg
-NjYxNDQgICAgIDYzMDQ4OAotLysgYnVmZmVycy9jYWNoZTogICAgIDMyMDcwMCAgICAgNzEzMDk2
-ClN3YXA6ICAgICAgMTA1MjI0NCAgICAgICAgICAwICAgIDEwNTIyNDQKcm9vdEB0Ym94On4jCgo=
---20cf300fb3d5ec09280493b3ddc3--
+diff --git a/Documentation/config.txt b/Documentation/config.txt
+index 538ebb5..6994338 100644
+--- a/Documentation/config.txt
++++ b/Documentation/config.txt
+@@ -374,6 +374,15 @@ core.warnAmbiguousRefs::
+ 	If true, git will warn you if the ref name you passed it is ambiguous
+ 	and might match multiple refs in the .git/refs/ tree. True by default.
+ 
++core.abbrevguard::
++	Even though git makes sure that it uses enough hexdigits to show
++	an abbreviated object name unambiguously, as more objects are
++	added to the repository over time, a short name that used to be
++	unique will stop being unique.  Git uses this many extra hexdigits
++	that are more than necessary to make the object name currently
++	unique, in the hope that its output will stay unique a bit longer.
++	Defaults to 0.
++
+ core.compression::
+ 	An integer -1..9, indicating a default compression level.
+ 	-1 is the zlib default. 0 means no compression,
+diff --git a/cache.h b/cache.h
+index 33decd9..931fb59 100644
+--- a/cache.h
++++ b/cache.h
+@@ -545,6 +545,7 @@ extern int assume_unchanged;
+ extern int prefer_symlink_refs;
+ extern int log_all_ref_updates;
+ extern int warn_ambiguous_refs;
++extern int unique_abbrev_extra_length;
+ extern int shared_repository;
+ extern const char *apply_default_whitespace;
+ extern const char *apply_default_ignorewhitespace;
+diff --git a/config.c b/config.c
+index 4b0a820..1aa72c2 100644
+--- a/config.c
++++ b/config.c
+@@ -489,6 +489,13 @@ static int git_default_core_config(const char *var, const char *value)
+ 		return 0;
+ 	}
+ 
++	if (!strcmp(var, "core.abbrevguard")) {
++		unique_abbrev_extra_length = git_config_int(var, value);
++		if (unique_abbrev_extra_length < 0)
++			unique_abbrev_extra_length = 0;
++		return 0;
++	}
++
+ 	if (!strcmp(var, "core.bare")) {
+ 		is_bare_repository_cfg = git_config_bool(var, value);
+ 		return 0;
+diff --git a/environment.c b/environment.c
+index de5581f..92e16b1 100644
+--- a/environment.c
++++ b/environment.c
+@@ -21,6 +21,7 @@ int prefer_symlink_refs;
+ int is_bare_repository_cfg = -1; /* unspecified */
+ int log_all_ref_updates = -1; /* unspecified */
+ int warn_ambiguous_refs = 1;
++int unique_abbrev_extra_length;
+ int repository_format_version;
+ const char *git_commit_encoding;
+ const char *git_log_output_encoding;
+diff --git a/sha1_name.c b/sha1_name.c
+index 484081d..4a226ad 100644
+--- a/sha1_name.c
++++ b/sha1_name.c
+@@ -206,7 +206,9 @@ const char *find_unique_abbrev(const unsigned char *sha1, int len)
+ 		if (exists
+ 		    ? !status
+ 		    : status == SHORT_NAME_NOT_FOUND) {
+-			hex[len] = 0;
++			int cut_at = len + unique_abbrev_extra_length;
++			cut_at = (cut_at < 40) ? cut_at : 40;
++			hex[cut_at] = 0;
+ 			return hex;
+ 		}
+ 		len++;
