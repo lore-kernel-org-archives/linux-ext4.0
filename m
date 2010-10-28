@@ -1,52 +1,70 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: -tip: origin tree build failure (was: [GIT PULL] ext4 update for 2.6.37)
-Date: Thu, 28 Oct 2010 08:12:50 -0400
-Message-ID: <698D7018-682F-4D8A-A3A6-079514669D9F@mit.edu>
-References: <E1PBKT9-0004Uk-Sm@tytso-glaptop> <20101028075631.GA7690@elte.hu>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=windows-1252
+From: Ingo Molnar <mingo@elte.hu>
+Subject: -tip: origin tree build failure (was: [GIT PULL] ext4 update for
+ 2.6.37)
+Date: Thu, 28 Oct 2010 16:39:24 +0200
+Message-ID: <20101028143924.GA6985@elte.hu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ingo Molnar <mingo@elte.hu>
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-8.MIT.EDU ([18.7.68.37]:42493 "EHLO
-	dmz-mailsec-scanner-8.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757177Ab0J1MM5 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Oct 2010 08:12:57 -0400
-In-Reply-To: <20101028075631.GA7690@elte.hu>
+Received: from mx2.mail.elte.hu ([157.181.151.9]:32941 "EHLO mx2.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758835Ab0J1Oje (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Oct 2010 10:39:34 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Today's -tip fails to build on !CONFIG_BLOCK, due to upstream commit 36=
+7a51a ("fs:=20
+Add FITRIM ioctl"):
 
-On Oct 28, 2010, at 3:56 AM, Ingo Molnar wrote:
+ include/linux/fs.h:36: error: expected specifier-qualifier-list before=
+ =E2=80=98uint64_t=E2=80=99
+ include/linux/fs.h:36: error: expected specifier-qualifier-list before=
+ =E2=80=98uint64_t=E2=80=99
+ include/linux/fs.h:36: error: expected specifier-qualifier-list before=
+ =E2=80=98uint64_t=E2=80=99
 
->=20
-> hi Ted,
->=20
->> Theodore Ts'o (18):
->>      ext4: rename {exit,init}_ext4_*() to ext4_{exit,init}_*()
->=20
-> Today's -tip fails to build due to upstream commit 5dabfc7 ("ext4: re=
-name=20
-> {exit,init}_ext4_*() to ext4_{exit,init}_*()"), on all[yes/mod]config=
- with=20
-> CONFIG_EXT4_FS_XATTR disabled:
->=20
->  fs/ext4/super.c:4776: error: implicit declaration of function =91ext=
-4_init_xattr=92
->=20
-> Commit 5dabfc7 renamed init_ext4_xattr to ext4_init_xattr but forgot =
-to update the=20
-> definition in fs/ext4/xattr.h. The patch below fixes it.
+The commit adds uint64_t type usage to fs.h, but linux/types.h is not i=
+ncluded=20
+explicitly - it's only included implicitly via linux/blk_types.h, and t=
+here only if=20
+CONFIG_BLOCK is enabled.
 
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Add the explicit #include to fix this.
 
-Thanks for catching this, my bad.
+Ob'grumpy'tester: this commit has a commit date of yesterday, that equa=
+ls author=20
+date while author !=3D committer - how is that possible? Also, the comm=
+it was merged=20
+upstream a few hours after that.
 
--- Ted
+Thanks,
 
+	Ingo
+
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
+---
+ include/linux/fs.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6ed7ace..1c73b50 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -9,6 +9,7 @@
+ #include <linux/limits.h>
+ #include <linux/ioctl.h>
+ #include <linux/blk_types.h>
++#include <linux/types.h>
+=20
+ /*
+  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
