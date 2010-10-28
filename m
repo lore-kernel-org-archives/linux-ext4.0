@@ -1,64 +1,43 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: -tip: origin tree build failure (was: [GIT PULL] ext4 update for
- 2.6.37)
-Date: Thu, 28 Oct 2010 09:56:31 +0200
-Message-ID: <20101028075631.GA7690@elte.hu>
-References: <E1PBKT9-0004Uk-Sm@tytso-glaptop>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: do not get s_umount sem on ext4_quota_off
+Date: Thu, 28 Oct 2010 12:47:19 +0400
+Message-ID: <87tyk6ln54.fsf@dmon-lap.sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:37938 "EHLO mx3.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932144Ab0J1H4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Oct 2010 03:56:40 -0400
-Content-Disposition: inline
-In-Reply-To: <E1PBKT9-0004Uk-Sm@tytso-glaptop>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:40175 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751033Ab0J1Ir3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Oct 2010 04:47:29 -0400
+Received: by eye27 with SMTP id 27so1330439eye.19
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Oct 2010 01:47:27 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-hi Ted,
+It must be already acquired by caller. Fix lock_dep complain.
 
-> Theodore Ts'o (18):
->       ext4: rename {exit,init}_ext4_*() to ext4_{exit,init}_*()
+Signed-off-by: Dmitry Monakhov <dmonakhov@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Today's -tip fails to build due to upstream commit 5dabfc7 ("ext4: rena=
-me=20
-{exit,init}_ext4_*() to ext4_{exit,init}_*()"), on all[yes/mod]config w=
-ith=20
-CONFIG_EXT4_FS_XATTR disabled:
-
-  fs/ext4/super.c:4776: error: implicit declaration of function =E2=80=98=
-ext4_init_xattr=E2=80=99
-
-Commit 5dabfc7 renamed init_ext4_xattr to ext4_init_xattr but forgot to=
- update the=20
-definition in fs/ext4/xattr.h. The patch below fixes it.
-
-Thanks,
-
-	Ingo
-
-Signed-off-by: Ingo Molnar <mingo@elte.hu>
-
---- linux.orig/fs/ext4/xattr.h
-+++ linux/fs/ext4/xattr.h
-@@ -122,7 +122,7 @@ ext4_xattr_put_super(struct super_block=20
- }
-=20
- static __init inline int
--init_ext4_xattr(void)
-+ext4_init_xattr(void)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e59eb37..062d1bc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4107,12 +4107,10 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 
+ static int ext4_quota_off(struct super_block *sb, int type)
  {
- 	return 0;
+-	/* Force all delayed allocation blocks to be allocated */
+-	if (test_opt(sb, DELALLOC)) {
+-		down_read(&sb->s_umount);
++	/* Force all delayed allocation blocks to be allocated.
++	 * Caller already holds s_umount sem */
++	if (test_opt(sb, DELALLOC))
+ 		sync_filesystem(sb);
+-		up_read(&sb->s_umount);
+-	}
+ 
+ 	return dquot_quota_off(sb, type);
  }
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
