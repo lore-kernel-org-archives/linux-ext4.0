@@ -1,55 +1,78 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: -tip: origin tree build failure
-Date: Thu, 28 Oct 2010 14:50:47 -0700
-Message-ID: <AANLkTi=OoVpO-d-oT9o8g4V75uYZ=RBCmQ_Y9kGDwPnN@mail.gmail.com>
-References: <E1PBKT9-0004Uk-Sm@tytso-glaptop> <20101028075631.GA7690@elte.hu>
- <AANLkTi=8SbOZizWpxLg=Bgp7atdgr8MsR6tnRDYr1+eW@mail.gmail.com>
- <20101028163854.GA15450@elte.hu> <AANLkTin62vAwJxcsrFk6Yn7Q6tzr-D=EmKKwPazuAJ11@mail.gmail.com>
- <7veiba9ev2.fsf@alter.siamese.dyndns.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ingo Molnar <mingo@elte.hu>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Junio C Hamano <gitster@pobox.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bugfix update
+Date: Thu, 28 Oct 2010 18:41:23 -0400
+Message-ID: <E1PBb9v-0005RM-E0@tytso-glaptop>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57359 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759953Ab0J1VzE convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Oct 2010 17:55:04 -0400
-In-Reply-To: <7veiba9ev2.fsf@alter.siamese.dyndns.org>
+Received: from thunk.org ([69.25.196.29]:60265 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753333Ab0J1Wl2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Oct 2010 18:41:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 28, 2010 at 2:39 PM, Junio C Hamano <gitster@pobox.com> wro=
-te:
->
-> By the way, I noticed that you started sending patches as attachments
-> lately. =A0What made you change your mind?
+Hi Linus,
 
-Nothing. I still hate them. But the tools I use (web interface to
-gmail) are broken in this respect. There's no way to include a file,
-or specify that an attachement should be inlined. And don't tell me
-about IMAP - if I wanted to use IMAP, I'd be living in a padded cell.
+Please pull from:
 
-I have a deep love/hate relationship with gmail. Many things make it
-wonderful, and I'm not regretting the switch (which was initially just
-a trial while traveling).
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-But it has two issues that I absolutely detest:
- (a) the idiotic inability to inline attachements and
- (b) the android gmail app is a total piece of shit and cannot even do
-simple text messages. Crazy.
-(there are other small annoyances, but they are smallish in comparison
-to the above big honking bugs)
+to pick up the following fix.
 
-Does anybody know anybody who works on the google mail clients and
-could raise these as bugs inside google?
+Many thanks!!
 
-                             Linus
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
+
+>From b1142e8fec6a594723e5054055a7b53379b90490 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Thu, 28 Oct 2010 17:33:57 -0400
+Subject: [PATCH] ext4: BUG_ON fix: check if page has buffers before calling page_buffers()
+
+We need to make check if a page does not have buffes by checking
+page_has_buffers(page) before calling page_buffers(page) in
+ext4_writepage().  Otherwise page_buffers() could throw a BUG_ON.
+
+Thanks also to Markus Trippelsdorf and Avinash Kurup who also reported
+the problem.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: Sedat Dilek <sedat.dilek@googlemail.com>
+Tested-by: Sedat Dilek <sedat.dilek@googlemail.com>
+---
+ fs/ext4/inode.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2d6c6c8..1916164 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2718,7 +2718,7 @@ static int ext4_writepage(struct page *page,
+ 	 * try to create them using __block_write_begin.  If this
+ 	 * fails, redirty the page and move on.
+ 	 */
+-	if (!page_buffers(page)) {
++	if (!page_has_buffers(page)) {
+ 		if (__block_write_begin(page, 0, len,
+ 					noalloc_get_block_write)) {
+ 		redirty_page:
+@@ -2732,12 +2732,10 @@ static int ext4_writepage(struct page *page,
+ 	if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+ 			      ext4_bh_delay_or_unwritten)) {
+ 		/*
+-		 * We don't want to do block allocation So redirty the
+-		 * page and return We may reach here when we do a
+-		 * journal commit via
+-		 * journal_submit_inode_data_buffers.  If we don't
+-		 * have mapping block we just ignore them. We can also
+-		 * reach here via shrink_page_list
++		 * We don't want to do block allocation, so redirty
++		 * the page and return.  We may reach here when we do
++		 * a journal commit via journal_submit_inode_data_buffers.
++		 * We can also reach here via shrink_page_list
+ 		 */
+ 		goto redirty_page;
+ 	}
+-- 
+1.7.3.1
+
