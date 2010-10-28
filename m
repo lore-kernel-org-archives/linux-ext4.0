@@ -1,33 +1,32 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: kernel BUG at fs/ext4/inode.c:2721!
-Date: Thu, 28 Oct 2010 11:30:04 -0400
-Message-ID: <20101028153004.GB16666@thunk.org>
-References: <AANLkTim=QbAX9JvpaSuJ8-EEK3O0YLyetkemtjWxY=x7@mail.gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: -tip: origin tree build failure (was: [GIT PULL] ext4 update for 2.6.37)
+Date: Thu, 28 Oct 2010 09:30:51 -0700
+Message-ID: <AANLkTi=8SbOZizWpxLg=Bgp7atdgr8MsR6tnRDYr1+eW@mail.gmail.com>
+References: <E1PBKT9-0004Uk-Sm@tytso-glaptop> <20101028075631.GA7690@elte.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Avinash Kurup <kurup.avinash@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Ingo Molnar <mingo@elte.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47321 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752525Ab0J1PaG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Oct 2010 11:30:06 -0400
-Content-Disposition: inline
-In-Reply-To: <AANLkTim=QbAX9JvpaSuJ8-EEK3O0YLyetkemtjWxY=x7@mail.gmail.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:53700 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751951Ab0J1Qbh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Oct 2010 12:31:37 -0400
+In-Reply-To: <20101028075631.GA7690@elte.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 28, 2010 at 08:35:00PM +0530, Avinash Kurup wrote:
-> Hi,
->       I have been getting BUG_ON errors since todays update from linus'
-> tree, I could not recreate the error as it seems to be random in nature.
-> Files created after the BUG_ON message do not get saved to the sda10
-> partition. I also have problems rebooting and shutting down the system
-> once the BUG_ON occurs.
+On Thu, Oct 28, 2010 at 12:56 AM, Ingo Molnar <mingo@elte.hu> wrote:
+>
+> Today's -tip fails to build due to upstream commit 5dabfc7 ("ext4: rename
+> {exit,init}_ext4_*() to ext4_{exit,init}_*()"), on all[yes/mod]config with
+> CONFIG_EXT4_FS_XATTR disabled:
 
-Which tree are you using precisely?  Is this the linux-next tree, or
-Linus's tree?  The line number looks like you might be using
-linux-next?  Can you give me the git commit-id you are using?
+Btw, could you try to write these things so that the changelog doesn't
+have to be totally rewritten? Now I always end up having to move
+things around and edit them to be useful from a long-term perspective,
+which is kind of silly.
 
-						- Ted
+                              Linus
