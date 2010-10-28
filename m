@@ -1,55 +1,64 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: Re: [GIT PULL] ext4 update for 2.6.37
-Date: Thu, 28 Oct 2010 09:50:39 +0200
-Message-ID: <20101028075038.GC1580@arch.trippelsdorf.de>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: -tip: origin tree build failure (was: [GIT PULL] ext4 update for
+ 2.6.37)
+Date: Thu, 28 Oct 2010 09:56:31 +0200
+Message-ID: <20101028075631.GA7690@elte.hu>
 References: <E1PBKT9-0004Uk-Sm@tytso-glaptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx3.mail.elte.hu ([157.181.1.138]:37938 "EHLO mx3.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932144Ab0J1H4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Oct 2010 03:56:40 -0400
 Content-Disposition: inline
 In-Reply-To: <E1PBKT9-0004Uk-Sm@tytso-glaptop>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 28, 2010 at 12:52:07AM -0400, Theodore Ts'o wrote:
-> Hi Linus,
-> 
-> Please pull from:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-> or
->   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git upstream-merge
-> 
-> the merge is somewhat complex, since there's been a lot of work going on
-> in parallel with discard and zeroout changes, as well as the change
-> block_prepare_write/__block_write_begin.  The changes pass the xfstests
-> regression test suite, using both 1k and 4k block sizes --- both before
-> the upstream merge (the for_linus branch) and after doing a trial merge
-> with the head of your tree as of Wednesday evening (the upstream-merge
-> branch).
 
-This misses a trivial ifdef wrapper in fs/ext4/super.c for
-!CONFIG_EXT4_FS_XATTR configurations. Something like this:
+hi Ted,
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0348ce0..5f82585 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4773,9 +4773,12 @@ static int __init ext4_init_fs(void)
- 	if (err)
- 		goto out3;
- 
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	err = ext4_init_xattr();
-+#endif
- 	if (err)
- 		goto out2;
-+
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
--- 
-Markus
+> Theodore Ts'o (18):
+>       ext4: rename {exit,init}_ext4_*() to ext4_{exit,init}_*()
+
+Today's -tip fails to build due to upstream commit 5dabfc7 ("ext4: rena=
+me=20
+{exit,init}_ext4_*() to ext4_{exit,init}_*()"), on all[yes/mod]config w=
+ith=20
+CONFIG_EXT4_FS_XATTR disabled:
+
+  fs/ext4/super.c:4776: error: implicit declaration of function =E2=80=98=
+ext4_init_xattr=E2=80=99
+
+Commit 5dabfc7 renamed init_ext4_xattr to ext4_init_xattr but forgot to=
+ update the=20
+definition in fs/ext4/xattr.h. The patch below fixes it.
+
+Thanks,
+
+	Ingo
+
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
+
+--- linux.orig/fs/ext4/xattr.h
++++ linux/fs/ext4/xattr.h
+@@ -122,7 +122,7 @@ ext4_xattr_put_super(struct super_block=20
+ }
+=20
+ static __init inline int
+-init_ext4_xattr(void)
++ext4_init_xattr(void)
+ {
+ 	return 0;
+ }
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
