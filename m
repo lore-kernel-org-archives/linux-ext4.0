@@ -1,78 +1,55 @@
-From: Sedat Dilek <sedat.dilek@googlemail.com>
-Subject: Re: ext4 patches for 2.6.37-rc1?
-Date: Thu, 28 Oct 2010 08:41:56 +0200
-Message-ID: <AANLkTinEbCycO+RB82_aB9t6AakDT08AcTYSrzFQJS6g@mail.gmail.com>
-References: <AANLkTikXgtFRSZRCjT9skEgsUzTqbuuhO2Cmv4RTrOTM@mail.gmail.com>
-	<20101027202933.GD3194@thunk.org>
-Reply-To: sedat.dilek@gmail.com
+From: Markus Trippelsdorf <markus@trippelsdorf.de>
+Subject: Re: [GIT PULL] ext4 update for 2.6.37
+Date: Thu, 28 Oct 2010 09:50:39 +0200
+Message-ID: <20101028075038.GC1580@arch.trippelsdorf.de>
+References: <E1PBKT9-0004Uk-Sm@tytso-glaptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:53726 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753972Ab0J1Gl6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Oct 2010 02:41:58 -0400
-Received: by qwf7 with SMTP id 7so839679qwf.19
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Oct 2010 23:41:58 -0700 (PDT)
-In-Reply-To: <20101027202933.GD3194@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <E1PBKT9-0004Uk-Sm@tytso-glaptop>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+On Thu, Oct 28, 2010 at 12:52:07AM -0400, Theodore Ts'o wrote:
+> Hi Linus,
+> 
+> Please pull from:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+> or
+>   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git upstream-merge
+> 
+> the merge is somewhat complex, since there's been a lot of work going on
+> in parallel with discard and zeroout changes, as well as the change
+> block_prepare_write/__block_write_begin.  The changes pass the xfstests
+> regression test suite, using both 1k and 4k block sizes --- both before
+> the upstream merge (the for_linus branch) and after doing a trial merge
+> with the head of your tree as of Wednesday evening (the upstream-merge
+> branch).
 
-thanks for your explanations.
+This misses a trivial ifdef wrapper in fs/ext4/super.c for
+!CONFIG_EXT4_FS_XATTR configurations. Something like this:
 
-Just saw your GIT-pull request on LKML [1] and compiling now
-linux-next (next-20101028) [2] which includes ext4.
-Linus pulled to upstream, so 2.6.36-git11 will have the ext4-patches :-=
-).
-
-Thanks all for their work on ext4!
-
-Kind Regards,
-- Sedat -
-
-[1] http://lkml.org/lkml/2010/10/28/12
-[2] http://lkml.org/lkml/2010/10/27/509
-
-On Wed, Oct 27, 2010 at 10:29 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Wed, Oct 27, 2010 at 12:36:46PM +0200, Sedat Dilek wrote:
->>
->> I was wondering if Ted will send ext4 patches within the open
->> merge-window for 2.6.37-rc1.
->
-> Yes, I am planning on sending patches to Linus.
->
-> It's a bit late because I've been crazy busy this past few weeks.
->
->> If you plan to send to Linus, can you give a short overview what
->> endusers will expect?
->
-> lazy inode table init, improved scalability for buffered writeback (3=
-x
-> throughput improvement when writing large files in parallel on 48 and
-> 192 threads on a 48-core machine), and a bunch of cleanups and bug
-> fixes.
->
->> BTW, in which of the GIT trees ([1], [2]) is the ext4 development
->> actually happening?
->>
->> [1] http://git.kernel.org/?p=3Dlinux/kernel/git/tytso/ext4.git;a=3Ds=
-ummary
->> [2] http://repo.or.cz/w/ext4-patch-queue.git
->
-> Primary development happens in [2], and then it gets mirrored to [1]
-> periodically.
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0348ce0..5f82585 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4773,9 +4773,12 @@ static int __init ext4_init_fs(void)
+ 	if (err)
+ 		goto out3;
+ 
++#ifdef CONFIG_EXT4_FS_XATTR
+ 	err = ext4_init_xattr();
++#endif
+ 	if (err)
+ 		goto out2;
++
+ 	err = init_inodecache();
+ 	if (err)
+ 		goto out1;
+-- 
+Markus
