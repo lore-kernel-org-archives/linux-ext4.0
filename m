@@ -1,78 +1,59 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bugfix update
-Date: Thu, 28 Oct 2010 18:41:23 -0400
-Message-ID: <E1PBb9v-0005RM-E0@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/4] RFC: introduce extended inode owner identifier v7
+Date: Fri, 29 Oct 2010 17:03:36 +0400
+Message-ID: <1288357420-7178-1-git-send-email-dmonakhov@openvz.org>
+Cc: viro@ZenIV.linux.org.uk, jack@suse.cz, linux-ext4@vger.kernel.org,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60265 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753333Ab0J1Wl2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Oct 2010 18:41:28 -0400
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:61064 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755652Ab0J2NDx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Oct 2010 09:03:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+*Feature description*
+1) Inode may has a project identifier which has same meaning as uid/gid.
+2) Id is stored in inode's xattr named "system.project_id"
+3) Id is inherent from parent inode on creation.
+4) This id is cached in memory fs_inode structure and may be accessible
+   via s_op->get_prjid(). This field it restricted by CONFIG_PROJECT_ID.
+   So no wasting of memory happens.
 
-Please pull from:
+5) Since id is cached in memory it may be used for different purposes
+   such as:
+5A) Implement additional quota id space orthogonal to uid/gid. This is
+    useful in managing quota for some filesystem hierarchy(chroot or
+    container over bindmount)
+5B) Export dedicated fs hierarchy (only inode which has some project_id
+    will be accessible)
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+*User interface *
+Project id is managed via generic xattr interface "system.project_id"
+This good because
+ 1) We may use already existing interface.
+ 2) xattr already supported by generic utilities tar/rsync and etc
 
-to pick up the following fix.
+PATCH SET TOC:
+1) generic projectid support
+2) generic project quota support
+3) ext4 project support implementation
+ 3A) ext4: generic project support
+ 3B) ext4: project quota support
 
-Many thanks!!
+Patch against -next-20101028.
+Actually vfs part is really small, and most changes happen in ext4-tree
 
-					- Ted
-
->From b1142e8fec6a594723e5054055a7b53379b90490 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Thu, 28 Oct 2010 17:33:57 -0400
-Subject: [PATCH] ext4: BUG_ON fix: check if page has buffers before calling page_buffers()
-
-We need to make check if a page does not have buffes by checking
-page_has_buffers(page) before calling page_buffers(page) in
-ext4_writepage().  Otherwise page_buffers() could throw a BUG_ON.
-
-Thanks also to Markus Trippelsdorf and Avinash Kurup who also reported
-the problem.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reported-by: Sedat Dilek <sedat.dilek@googlemail.com>
-Tested-by: Sedat Dilek <sedat.dilek@googlemail.com>
----
- fs/ext4/inode.c |   12 +++++-------
- 1 files changed, 5 insertions(+), 7 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2d6c6c8..1916164 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2718,7 +2718,7 @@ static int ext4_writepage(struct page *page,
- 	 * try to create them using __block_write_begin.  If this
- 	 * fails, redirty the page and move on.
- 	 */
--	if (!page_buffers(page)) {
-+	if (!page_has_buffers(page)) {
- 		if (__block_write_begin(page, 0, len,
- 					noalloc_get_block_write)) {
- 		redirty_page:
-@@ -2732,12 +2732,10 @@ static int ext4_writepage(struct page *page,
- 	if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
- 			      ext4_bh_delay_or_unwritten)) {
- 		/*
--		 * We don't want to do block allocation So redirty the
--		 * page and return We may reach here when we do a
--		 * journal commit via
--		 * journal_submit_inode_data_buffers.  If we don't
--		 * have mapping block we just ignore them. We can also
--		 * reach here via shrink_page_list
-+		 * We don't want to do block allocation, so redirty
-+		 * the page and return.  We may reach here when we do
-+		 * a journal commit via journal_submit_inode_data_buffers.
-+		 * We can also reach here via shrink_page_list
- 		 */
- 		goto redirty_page;
- 	}
--- 
-1.7.3.1
+Changes against v6
+ - get rid of iattr stuff, current __dquot_transfer() provides sane interface
+   for quota manipulation. i_prjid can must be changed only by fs-speciffic
+   methods so only get() method is really necessery.
+ - remove #ifdef tricks from generic code.
+ - move i_prjid from vfs_inode to fs_inode, to prevent inode bloating.
+ - get rid of isolation logic, because this feature confuse most users.
+Changes against v5
+ - convert dquota_transfer to struct iattr interface. Not it is possible
+   to change i_prjid via notify_changes()
+ - some bugfixes.
 
