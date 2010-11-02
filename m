@@ -1,43 +1,30 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: EXT4-fs (dm-0): unsupported inode size: 0
-Date: Tue, 2 Nov 2010 10:31:43 -0400
-Message-ID: <20101102143143.GB25614@thunk.org>
-References: <201011021429.06471.ext4@fuckaround.org>
+Subject: Re: [PATCH] ext4: Fix lazyinit hang after removing request
+Date: Tue, 2 Nov 2010 14:20:23 -0400
+Message-ID: <20101102182023.GD25614@thunk.org>
+References: <1288358420-11643-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Pol Hallen <ext4@fuckaround.org>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41943 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40952 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751713Ab0KBObq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Nov 2010 10:31:46 -0400
+	id S1751522Ab0KBSU2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Nov 2010 14:20:28 -0400
 Content-Disposition: inline
-In-Reply-To: <201011021429.06471.ext4@fuckaround.org>
+In-Reply-To: <1288358420-11643-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 02, 2010 at 02:29:06PM +0100, Pol Hallen wrote:
-> Hi folks :-)
+On Fri, Oct 29, 2010 at 03:20:20PM +0200, Lukas Czerner wrote:
+> When the request has been removed from the list and no other request
+> has been issued, we will end up with next wakeup scheduled to
+> MAX_JIFFY_OFFSET which is bad. So check for that.
 > 
-> on a backup usb disk I've formatted ext4 (debian stable, kernel (2.6.32 
-> vanilla).
-> 
-> Later sometimes when i try to mount this disk in syslog I see:
-> 
-> EXT4-fs (dm-0): unsupported inode size: 0
-> 
-> the health how disk is good..
-> 
-> tune2fs -l /dev/disk is:
-> 
-> tune2fs 1.41.12 (17-May-2010)
-> tune2fs: Filesystem revision too high while trying to open /dev/mapper/pp
-> Couldn't find valid filesystem superblock.
-> 
-> what is the problem? Is an ext4 problem?
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Sounds like your superblock got corrupted in an interesting way.  Try
-"e2fsck -b 32768 /dev/disk".
+Queued for pushing to Linus for 2.6.27-rc2, thanks.
 
-					- Ted
+							- Ted
