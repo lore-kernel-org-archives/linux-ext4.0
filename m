@@ -1,73 +1,76 @@
-From: Brian Gitonga Marete <marete@toshnix.com>
-Subject: Re: ext4_lazyinit_thread: 'ret' may be used uninitialized in this function
-Date: Tue, 2 Nov 2010 23:08:40 +0300
-Message-ID: <AANLkTikyzuPQB_b5rE732ntcK6F24ZbBR7K0t7R7Urvb@mail.gmail.com>
-References: <tkrat.ba371a0ea018042b@s5r6.in-berlin.de>
-	<alpine.LFD.2.00.1011011551001.2876@dhcp-lab-213.englab.brq.redhat.com>
-	<20101102182911.GE25614@thunk.org>
-	<AANLkTim9JbCk29oPjrYMSfhtHL4tL4uHtDq_xZoe7tzg@mail.gmail.com>
-	<alpine.LFD.2.00.1011021516470.16869@dhcp-lab-213.englab.brq.redhat.com>
-	<4CD06B45.2070704@s5r6.in-berlin.de>
+From: Nick Bowler <nbowler@elliptictech.com>
+Subject: BUG in ext4 with 2.6.37-rc1
+Date: Tue, 2 Nov 2010 16:20:13 -0400
+Message-ID: <20101102202013.GA3861@elliptictech.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	kevin granade <kevin.granade@gmail.com>,
-	"Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Stefan Richter <stefanr@s5r6.in-berlin.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4CD06B45.2070704@s5r6.in-berlin.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:44306 "EHLO
+	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751758Ab0KBUUO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Nov 2010 16:20:14 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Indeed. In clause 4 of Section 6.5.13 of C99, short circuit evaluation
-is guaranteed in addition to left to right evaluation.
+The following BUG occurred today while compiling gcc, with 2.6.37-rc1+.
+More precisely, commit 7fe19da4ca38 ("preempt: fix kernel build with
+!CONFIG_BKL") with http://permalink.gmane.org/gmane.linux.nfs/36521
+applied on top.  It basically took out the whole system.
 
-On 11/2/10, Stefan Richter <stefanr@s5r6.in-berlin.de> wrote:
-> Lukas Czerner wrote:
->> On Tue, 2 Nov 2010, kevin granade wrote:
->>> +                       if (time_after_eq(jiffies, elr->lr_next_sched) &&
->>> +                           ext4_run_li_request(elr) != 0) {
->>> +                               /* error, remove the lazy_init job */
->>> +                               ext4_remove_li_request(elr);
->>> +                               continue;
->>>                        }
->>>
->>>                        if (time_before(elr->lr_next_sched, next_wakeup))
->>> --
->>>
->>> Though obviously it's a pretty subjective style issue.
->>> Kevin Granade
->>
->> Hmm this relies on the fact that if the first part of the condition
->> would not be true, the second part (after and) would never be invoked,
->> however I am not really sure that we can rely on that on every
->> architecture, or can we ?
->
-> It is not about architecture but a C language feature.  It is relied upon
-> everywhere in the kernel.  For example,
->
-> 	if (p != NULL && p->m == something) {
-> 		...
->
-> is very common.  The || operator has the same property:  Evaluation stops as
-> soon as the end result is known.  I do not know since when this minimum
-> evaluation feature is guaranteed in the language, but it has to be ages now.
->
-> (This is not an endorsement of one or the other coding of the patch. :-)
-> --
-> Stefan Richter
-> -=====-==-=- =-== ---=-
-> http://arcgraph.de/sr/
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
-
+  ------------[ cut here ]------------
+  kernel BUG at /scratch_space/linux-2.6/fs/ext4/page-io.c:146!
+  invalid opcode: 0000 [#1] PREEMPT SMP 
+  last sysfs file: /sys/devices/pci0000:00/0000:00:1d.7/usb8/8-3/8-3:1.0/uevent
+  CPU 0 
+  Modules linked in: nls_iso8859_1 nls_cp437 vfat fat nfs nfs_acl bridge stp llc autofs4 nfsd lockd sunrpc exportfs ipv6 iptable_filter iptable_nat nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 ip_tables x_tables snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_hda_codec_hdmi snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_timer snd soundcore snd_page_alloc sg evdev usb_storage ext2 ehci_hcd sr_mod cdrom loop tun acpi_cpufreq mperf arc4 ecb crypto_blkcipher cryptomgr aead crypto_algapi rt2800pci rt2800lib crc_ccitt rt2x00pci rt2x00lib mac80211 cfg80211 eeprom_93cx6 e1000e
+  
+  Pid: 30058, comm: ranlib Not tainted 2.6.37-rc1-00004-g1c7d46a #60 WG43M/Aspire X3810
+  RIP: 0010:[<ffffffff81107409>]  [<ffffffff81107409>] ext4_init_io_end+0x3c/0x72
+  RSP: 0018:ffff880016a4b788  EFLAGS: 00010246
+  RAX: 0000000000000000 RBX: ffff880062e2abe0 RCX: 0000000000000000
+  RDX: ffffea0002398c88 RSI: ffff8800018c3948 RDI: ffff880016a4a000
+  RBP: ffff880016a4b798 R08: 0000000000000023 R09: 0000000000008000
+  R10: ffff88013beaace0 R11: ffff88013beaace0 R12: ffff8800018c3948
+  R13: ffff880016a4b918 R14: ffff880100cd5f30 R15: ffffea0002398c88
+  FS:  00002abaac327b20(0000) GS:ffff8800b7a00000(0000) knlGS:0000000000000000
+  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+  CR2: 00007f573b7a8000 CR3: 000000008d3ed000 CR4: 00000000000406f0
+  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+  Process ranlib (pid: 30058, threadinfo ffff880016a4a000, task ffff880016b59640)
+  Stack:
+   ffff8800a59999c0 ffffea0002398c88 ffff880016a4b818 ffffffff811075b1
+   ffff88013e028000 ffff880016a4bc68 0000100016b59640 ffffea0002398c88
+   ffff8800a59999c0 ffff880062e2abe0 0000100000008000 0000000000000080
+  Call Trace:
+   [<ffffffff811075b1>] ext4_bio_write_page+0x172/0x307
+   [<ffffffff811033a7>] mpage_da_submit_io+0x2f9/0x37b
+   [<ffffffff811068d7>] mpage_da_map_and_submit+0x2cc/0x2e2
+   [<ffffffff811069b3>] mpage_add_bh_to_extent+0xc6/0xd5
+   [<ffffffff81106c66>] write_cache_pages_da+0x2a4/0x3ac
+   [<ffffffff81107044>] ext4_da_writepages+0x2d6/0x44d
+   [<ffffffff81087910>] do_writepages+0x1c/0x25
+   [<ffffffff810810a4>] __filemap_fdatawrite_range+0x4b/0x4d
+   [<ffffffff810815f5>] filemap_fdatawrite_range+0xe/0x10
+   [<ffffffff81122a2e>] jbd2_journal_begin_ordered_truncate+0x7b/0xa2
+   [<ffffffff8110615d>] ext4_evict_inode+0x57/0x24c
+   [<ffffffff810c14a3>] evict+0x22/0x92
+   [<ffffffff810c1a3d>] iput+0x212/0x249
+   [<ffffffff810bdf16>] dentry_iput+0xa1/0xb9
+   [<ffffffff810bdf6b>] d_kill+0x3d/0x5d
+   [<ffffffff810be613>] dput+0x13a/0x147
+   [<ffffffff810b990d>] sys_renameat+0x1b5/0x258
+   [<ffffffff81145f71>] ? _atomic_dec_and_lock+0x2d/0x4c
+   [<ffffffff810b2950>] ? cp_new_stat+0xde/0xea
+   [<ffffffff810b29c1>] ? sys_newlstat+0x2d/0x38
+   [<ffffffff810b99c6>] sys_rename+0x16/0x18
+   [<ffffffff81002a2b>] system_call_fastpath+0x16/0x1b
+  Code: e8 97 4c fa ff 49 89 c4 48 85 c0 74 4c 31 c0 b9 1a 01 00 00 4c 89 e7 f3 ab 48 89 df e8 1f 95 fb ff 49 89 44 24 10 48 85 c0 75 04 <0f> 0b eb fe 49 8d 44 24 40 49 c7 44 24 38 00 05 00 00 49 89 44 
+  RIP  [<ffffffff81107409>] ext4_init_io_end+0x3c/0x72
+   RSP <ffff880016a4b788>
+  ---[ end trace ddc79adad95a6879 ]---
 
 -- 
-Brian Gitonga Marete
-Toshnix Systems
-Tel: +254722151590
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
