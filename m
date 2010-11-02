@@ -1,44 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Remove useless spinlock in ext4_getattr()
-Date: Tue,  2 Nov 2010 09:34:50 -0400
-Message-ID: <1288704890-1858-1-git-send-email-tytso@mit.edu>
-Cc: torvalds@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: EXT4-fs (dm-0): unsupported inode size: 0
+Date: Tue, 02 Nov 2010 09:22:19 -0500
+Message-ID: <4CD01E9B.9060702@redhat.com>
+References: <201011021429.06471.ext4@fuckaround.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Pol Hallen <ext4@fuckaround.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:36820 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752559Ab0KBNez (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Nov 2010 09:34:55 -0400
+	id S1753176Ab0KBOWX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Nov 2010 10:22:23 -0400
+In-Reply-To: <201011021429.06471.ext4@fuckaround.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Linus noted, and complained to me, that doing while lots of "git
-diff"'s of kernel sources, these spinlocks were responsible for 27% of
-the CPU on his two-processor system as reported by perf.
+On 11/2/10 8:29 AM, Pol Hallen wrote:
+> Hi folks :-)
+> 
+> on a backup usb disk I've formatted ext4 (debian stable, kernel (2.6.32 
+> vanilla).
+> 
+> Later sometimes when i try to mount this disk in syslog I see:
+> 
+> EXT4-fs (dm-0): unsupported inode size: 0
+> 
+> the health how disk is good..
+> 
+> tune2fs -l /dev/disk is:
+> 
+> tune2fs 1.41.12 (17-May-2010)
+> tune2fs: Filesystem revision too high while trying to open /dev/mapper/pp
+> Couldn't find valid filesystem superblock.
+> 
+> what is the problem? Is an ext4 problem?
 
-Git was doing lots of parallel stats, and this was putting a lot of
-pressure on ext4_getattr().  A spinlock to protect a single
-memory-to-memory copy is pointless, so remove it.
+Seems the disk is badly corrupted.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+What does blkid /dev/mapper/pp say?  Maybe it's got something besides
+ext4 on it now.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1916164..4d78342 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5410,9 +5410,7 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
- 	 * will return the blocks that include the delayed allocation
- 	 * blocks for this file.
- 	 */
--	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 
- 	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
- 	return 0;
--- 
-1.7.3.1
+-Eric
+
+> what can I do to fix the problem?
+> thanks :-)
+> 
+> Pol
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
