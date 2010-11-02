@@ -1,45 +1,44 @@
-From: Pol Hallen <ext4@fuckaround.org>
-Subject: EXT4-fs (dm-0): unsupported inode size: 0
-Date: Tue, 2 Nov 2010 14:29:06 +0100
-Message-ID: <201011021429.06471.ext4@fuckaround.org>
-Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Remove useless spinlock in ext4_getattr()
+Date: Tue,  2 Nov 2010 09:34:50 -0400
+Message-ID: <1288704890-1858-1-git-send-email-tytso@mit.edu>
+Cc: torvalds@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vsmtp1.tin.it ([212.216.176.141]:48558 "EHLO vsmtp1.tin.it"
+Received: from THUNK.ORG ([69.25.196.29]:36820 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752559Ab0KBNex (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Nov 2010 09:34:53 -0400
-Received: from lorna.homeunix.org (87.15.143.204) by vsmtp1.tin.it (8.0.022)
-        id 4B9917F0147CF5A3 for linux-ext4@vger.kernel.org; Tue, 2 Nov 2010 14:29:07 +0100
-Received: from pollon.localnet (pollon [192.168.1.3])
-	by lorna.homeunix.org (Postfix) with ESMTP id 277BD64C02A
-	for <linux-ext4@vger.kernel.org>; Tue,  2 Nov 2010 14:28:29 +0100 (CET)
+	id S1752559Ab0KBNez (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Nov 2010 09:34:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi folks :-)
+Linus noted, and complained to me, that doing while lots of "git
+diff"'s of kernel sources, these spinlocks were responsible for 27% of
+the CPU on his two-processor system as reported by perf.
 
-on a backup usb disk I've formatted ext4 (debian stable, kernel (2.6.32 
-vanilla).
+Git was doing lots of parallel stats, and this was putting a lot of
+pressure on ext4_getattr().  A spinlock to protect a single
+memory-to-memory copy is pointless, so remove it.
 
-Later sometimes when i try to mount this disk in syslog I see:
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-EXT4-fs (dm-0): unsupported inode size: 0
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1916164..4d78342 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5410,9 +5410,7 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	 * will return the blocks that include the delayed allocation
+ 	 * blocks for this file.
+ 	 */
+-	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
+-	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 
+ 	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
+ 	return 0;
+-- 
+1.7.3.1
 
-the health how disk is good..
-
-tune2fs -l /dev/disk is:
-
-tune2fs 1.41.12 (17-May-2010)
-tune2fs: Filesystem revision too high while trying to open /dev/mapper/pp
-Couldn't find valid filesystem superblock.
-
-what is the problem? Is an ext4 problem?
-
-what can I do to fix the problem?
-thanks :-)
-
-Pol
