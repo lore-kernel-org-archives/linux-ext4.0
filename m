@@ -1,53 +1,31 @@
-From: "MICROSOFT EMAIL PROMOTION" <information@microsoft.com>
-Subject: Congratulations - Promo Winner
-Date: Tue, 2 Nov 2010 04:38:28 -0200 (FNT)
-Message-ID: <57916.220.101.190.178.1288679908.squirrel@220.101.190.178>
-Reply-To: mrglenn_bradley@yahoo.com.hk
+From: Roman Borisov <ext-roman.borisov@nokia.com>
+Subject: ext3 patches related to uninitialized memory references
+Date: Tue, 02 Nov 2010 14:55:19 +0300
+Message-ID: <4CCFFC27.3010703@nokia.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: ext Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.avellaneda-ba.gov.ar ([200.71.230.2]:39689 "EHLO
-	ns2.avellaneda-ba.gov.ar" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750715Ab0KBIGl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Nov 2010 04:06:41 -0400
+Received: from mx04.teleca.com ([212.92.145.6]:45392 "EHLO mx04.teleca.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751004Ab0KBLwL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Nov 2010 07:52:11 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Congratulations - Promo Winner
+Hello,
 
-The MICROSOFT EMAIL PROMO TEAM is glad to announce that
-after a successful completion of the PROMO DRAWS held on the
-1st November 2010, your e-mail address,attached to winning
-numbers:(11) (80) (12)(96) (09) (43) won in the Tenth
-lottery category.
+Do you have a plans for next patches commitment?
 
-You have therefore been approved to claim a total sum of
-=A3450,000,00 Pounds Sterling in cash credited to REF NO:MICRO-L/2009-E=
-ND10.
+[PATCH 1/2] ext3: Avoid uninitialized memory references with a corrupted 
+htree directory
+http://www.spinics.net/lists/linux-ext4/msg21215.html
 
-All participants were selected through our Microsoft computer
-ballot system drawn from 167,000 Names,as part of our
-International  "E-MAIL" Promotion Program for our prominent
-MS-WORD users all over the world and for the continuous use
-of the internet. You are advised to contact the claims
-processor with the details below via his e-mail address :
+[PATCH 2/2] ext3: Use search_dirblock() in ext3_dx_find_entry()
+http://www.spinics.net/lists/linux-ext4/msg21216.html
 
-NAME:  Glenn Bradley
-EMAIL: mrglenn_bradley01@yahoo.com.hk
+I've found only the same patches for ext4 but not for ext3.
 
-PLEASE NOTE YOU ARE TO SEND THE FOLLOWING INFORMATION TO CLAIM YOUR PRI=
-ZE:
-1.Full Name:... 2.Address:... 3.Phone:... 4.Country:... 5.Sex/Gender:..=
-=2E
-
-
-YOURS SINCERELY,
-RACHEL STEWART.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Roman
