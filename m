@@ -1,41 +1,53 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH]: icount: Replace the icount list by a two-level tree
-Date: Mon, 1 Nov 2010 17:23:48 -0600
-Message-ID: <1C6D23BA-35F5-409F-A011-227E51075EB1@dilger.ca>
-References: <20100818140422.GL27457@skl-net.de> <EDA85D20-C083-41FE-B561-8014C496C4CB@dilger.ca> <20100819130123.GU16603@skl-net.de> <ABE19F5B-74C8-47E9-B359-D3FB2C137087@dilger.ca> <20100820143943.GZ16603@skl-net.de> <20100823155259.GD16603@skl-net.de> <loom.20101101T234449-996@post.gmane.org>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Mala Iyer <malaiyer@gmail.com>
+From: "MICROSOFT EMAIL PROMOTION" <information@microsoft.com>
+Subject: Congratulations - Promo Winner
+Date: Tue, 2 Nov 2010 04:38:28 -0200 (FNT)
+Message-ID: <57916.220.101.190.178.1288679908.squirrel@220.101.190.178>
+Reply-To: mrglenn_bradley@yahoo.com.hk
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:17648 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751069Ab0KAXXt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Nov 2010 19:23:49 -0400
-In-Reply-To: <loom.20101101T234449-996@post.gmane.org>
+Received: from mail.avellaneda-ba.gov.ar ([200.71.230.2]:39689 "EHLO
+	ns2.avellaneda-ba.gov.ar" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750715Ab0KBIGl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Nov 2010 04:06:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-11-01, at 16:49, Mala Iyer wrote:
-> We are trying to use e2fsck on a embedded system with almost 3GB of swap and
-> 200MB of physical memory. e2fsck on a 16TB ext3 filesystem always appears to
-> fail with the following error
-> 
-> Pass 1D: Reconciling multiply-claimed blocks
-> e2fsck: Memory allocation failed while retrying to read bitmaps for /dev/sda1
+Congratulations - Promo Winner
 
-As a general rule of thumb, expect to use 1 byte of RAM for every block in the filesystem.  For a 16TB filesystem (2^32 blocks) I would expect to need about 4GB of RAM, from past experience.
+The MICROSOFT EMAIL PROMO TEAM is glad to announce that
+after a successful completion of the PROMO DRAWS held on the
+1st November 2010, your e-mail address,attached to winning
+numbers:(11) (80) (12)(96) (09) (43) won in the Tenth
+lottery category.
 
-There is a considerable amount of RAM savings that could be had by implementing more efficient sparse bitmap support internal to libext2fs.  The code is structured and ready to do this, but nobody has had a real need to do it before now.
+You have therefore been approved to claim a total sum of
+=A3450,000,00 Pounds Sterling in cash credited to REF NO:MICRO-L/2009-E=
+ND10.
 
-Some proposals were discussed in the past (see for example the brief description in https://bugzilla.lustre.org/show_bug.cgi?id=12202, and you can Google for the referenced thread in the archives) to use run-length-encoding of sparse bitmaps, or possibly rb-tree structures.  In most cases, the bitmaps will have long runs of either all-ones or all-zeroes, so I expect even simple RLE encoding could help significantly.  Since this is an internal implementation detail, the code can be changed in future releases without impacting interoperability.
+All participants were selected through our Microsoft computer
+ballot system drawn from 167,000 Names,as part of our
+International  "E-MAIL" Promotion Program for our prominent
+MS-WORD users all over the world and for the continuous use
+of the internet. You are advised to contact the claims
+processor with the details below via his e-mail address :
 
-Also, https://bugzilla.lustre.org/attachment.cgi?id=10088 has an out-of-date patch (see the "ebitmap.c" file) that you might consider using for reference, but I also believe the APIs in libext2fs have changed significantly, as has the desired implementation, so I doubt the patch is useful for anything except finding out which code to start changing.
+NAME:  Glenn Bradley
+EMAIL: mrglenn_bradley01@yahoo.com.hk
 
-Cheers, Andreas
+PLEASE NOTE YOU ARE TO SEND THE FOLLOWING INFORMATION TO CLAIM YOUR PRI=
+ZE:
+1.Full Name:... 2.Address:... 3.Phone:... 4.Country:... 5.Sex/Gender:..=
+=2E
 
 
+YOURS SINCERELY,
+RACHEL STEWART.
 
-
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
