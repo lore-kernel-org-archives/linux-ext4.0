@@ -1,53 +1,164 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH] ext4: optimize orphan_list handling for ext4_setattr
-Date: Wed, 3 Nov 2010 11:35:41 -0600
-Message-ID: <99285FCF-3BAD-4B13-9AC1-ABB3504DC82A@dilger.ca>
-References: <87r5fevji5.fsf@dmon-lap.sw.ru> <93E1B72A-9C36-4CBA-AABD-DC0032331921@dilger.ca> <87sjzibvna.fsf@dmon-lap.sw.ru>
-Mime-Version: 1.0 (Apple Message framework v1081)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: [PATCH -BUGFIX] Re: BUG in ext4 with 2.6.37-rc1
+Date: Wed, 3 Nov 2010 14:14:12 -0400
+Message-ID: <20101103181412.GH25614@thunk.org>
+References: <20101102202013.GA3861@elliptictech.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>
-To: Dmitry <dmonakhov@openvz.org>
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:14584 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752903Ab0KCRfm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Nov 2010 13:35:42 -0400
-In-Reply-To: <87sjzibvna.fsf@dmon-lap.sw.ru>
+Received: from THUNK.ORG ([69.25.196.29]:50256 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756243Ab0KCSOP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Nov 2010 14:14:15 -0400
+Content-Disposition: inline
+In-Reply-To: <20101102202013.GA3861@elliptictech.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-11-03, at 03:31, Dmitry wrote:
-> On Wed, 3 Nov 2010 03:06:41 -0600, Andreas Dilger <adilger@dilger.ca> wrote:
->> 
->> Basically, the first hunk is moving the ext4_handle_valid() into the caller, and the second is avoiding a call to ext4_orphan_del->ext4_handle_valid(), which would likely be an unmeasurable performance difference.  No locks are taken (or avoided) before ext4_handle_valid() is checked.
-> 
-> But in case of nojournal mode it will be called with noop result.
-> but orphan_del(NULL, inode) will result in useless locking. 
+On Tue, Nov 02, 2010 at 04:20:13PM -0400, Nick Bowler wrote:
+> The following BUG occurred today while compiling gcc, with 2.6.37-rc1+.
+> More precisely, commit 7fe19da4ca38 ("preempt: fix kernel build with
+> !CONFIG_BKL") with http://permalink.gmane.org/gmane.linux.nfs/36521
+> applied on top.  It basically took out the whole system.
 
-Looking at ext4_orphan_del(), I'm not sure why it checks:
+Hi Nick,
 
-        /* ext4_handle_valid() assumes a valid handle_t pointer */
-        if (handle && !ext4_handle_valid(handle))
-                return 0;
+How easily can you reproduce this bug?  I'm pretty sure I know what
+caused it, but it's always good to get confirmation that a patch
+addresses the reported bug.  If it happens to you fairly often, can
+you try out this patch and let me know whether it fixes the bug for
+you?
 
-when in ext4_orphan_add() it is only checks:
+Many thanks for reporting the bug,
 
-        if (!ext4_handle_valid(handle))
-                return 0;
+						- Ted
 
-I think the extra check for "handle" in ext4_orphan_del() is not needed, despite the comment there, because none of the other callsites for ext4_handle_valid() do this extra check.
+commit 684e31c9cd47fee65413d5ef620013d03921abb9
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Wed Nov 3 14:12:22 2010 -0400
 
->> Even better would be a no-lock check of list_empty(&ei->i_orphan()) before getting s_orphan_lock, since it shouldn't be possible to have two threads adding/removing the same inode to the orphan list (otherwise the inode may not be on the orphan list at all since add/del is not refcounted).  The only reason for s_orphan_lock is to prevent corruption of the global list.
-> 
-> Yes, this is the best solution. Actually i've thought about that, but
-> end up with more obvious fix for nojournal mode.
-> With that we can avoid 1 of 3 locks on truncate in journal mode.
-> I'll test that solution.
+    ext4: handle writeback of inodes which are being freed
+    
+    The following BUG can occur when an inode which is getting freed when
+    it still has dirty pages outstanding, and it gets deleted (in this
+    because it was the target of a rename).  In ordered mode, we need to
+    make sure the data pages are written just in case we crash before the
+    rename (or unlink) is committed.  If the inode is being freed then
+    when we try to igrab the inode, we end up tripping the BUG_ON at
+    fs/ext4/page-io.c:146.
+    
+    In this case, don't need to do any of the endio handling, so we can
+    drop the BUG_ON and then arrange to make ext4_bio_end() handle this
+    case appropriately by releasing the pages and ending the writeback on
+    those pages, and then returning early without queueing the io_end
+    structure on the workqueue.
+    
+      kernel BUG at /scratch_space/linux-2.6/fs/ext4/page-io.c:146!
+      Call Trace:
+       [<ffffffff811075b1>] ext4_bio_write_page+0x172/0x307
+       [<ffffffff811033a7>] mpage_da_submit_io+0x2f9/0x37b
+       [<ffffffff811068d7>] mpage_da_map_and_submit+0x2cc/0x2e2
+       [<ffffffff811069b3>] mpage_add_bh_to_extent+0xc6/0xd5
+       [<ffffffff81106c66>] write_cache_pages_da+0x2a4/0x3ac
+       [<ffffffff81107044>] ext4_da_writepages+0x2d6/0x44d
+       [<ffffffff81087910>] do_writepages+0x1c/0x25
+       [<ffffffff810810a4>] __filemap_fdatawrite_range+0x4b/0x4d
+       [<ffffffff810815f5>] filemap_fdatawrite_range+0xe/0x10
+       [<ffffffff81122a2e>] jbd2_journal_begin_ordered_truncate+0x7b/0xa2
+       [<ffffffff8110615d>] ext4_evict_inode+0x57/0x24c
+       [<ffffffff810c14a3>] evict+0x22/0x92
+       [<ffffffff810c1a3d>] iput+0x212/0x249
+       [<ffffffff810bdf16>] dentry_iput+0xa1/0xb9
+       [<ffffffff810bdf6b>] d_kill+0x3d/0x5d
+       [<ffffffff810be613>] dput+0x13a/0x147
+       [<ffffffff810b990d>] sys_renameat+0x1b5/0x258
+       [<ffffffff81145f71>] ? _atomic_dec_and_lock+0x2d/0x4c
+       [<ffffffff810b2950>] ? cp_new_stat+0xde/0xea
+       [<ffffffff810b29c1>] ? sys_newlstat+0x2d/0x38
+       [<ffffffff810b99c6>] sys_rename+0x16/0x18
+       [<ffffffff81002a2b>] system_call_fastpath+0x16/0x1b
+    
+    Reported-by: Nick Bowler <nbowler@elliptictech.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Cheers, Andreas
-
-
-
-
-
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 46a7d6a..4f1b8cd 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -143,7 +143,6 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+ 	if (io) {
+ 		memset(io, 0, sizeof(*io));
+ 		io->inode = igrab(inode);
+-		BUG_ON(!io->inode);
+ 		INIT_WORK(&io->work, ext4_end_io_work);
+ 		INIT_LIST_HEAD(&io->list);
+ 	}
+@@ -171,35 +170,15 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 	struct workqueue_struct *wq;
+ 	struct inode *inode;
+ 	unsigned long flags;
+-	ext4_fsblk_t err_block;
+ 	int i;
+ 
+ 	BUG_ON(!io_end);
+-	inode = io_end->inode;
+ 	bio->bi_private = NULL;
+ 	bio->bi_end_io = NULL;
+ 	if (test_bit(BIO_UPTODATE, &bio->bi_flags))
+ 		error = 0;
+-	err_block = bio->bi_sector >> (inode->i_blkbits - 9);
+ 	bio_put(bio);
+ 
+-	if (!(inode->i_sb->s_flags & MS_ACTIVE)) {
+-		pr_err("sb umounted, discard end_io request for inode %lu\n",
+-			io_end->inode->i_ino);
+-		ext4_free_io_end(io_end);
+-		return;
+-	}
+-
+-	if (error) {
+-		io_end->flag |= EXT4_IO_END_ERROR;
+-		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
+-			     "(offset %llu size %ld starting block %llu)",
+-			     inode->i_ino,
+-			     (unsigned long long) io_end->offset,
+-			     (long) io_end->size,
+-			     (unsigned long long) err_block);
+-	}
+-
+ 	for (i = 0; i < io_end->num_io_pages; i++) {
+ 		struct page *page = io_end->pages[i]->p_page;
+ 		struct buffer_head *bh, *head;
+@@ -254,9 +233,30 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 		if (!partial_write)
+ 			SetPageUptodate(page);
+ 	}
+-
+ 	io_end->num_io_pages = 0;
+ 
++	if ((inode = io_end->inode) == NULL)
++		goto no_work;
++
++	if (!(inode->i_sb->s_flags & MS_ACTIVE)) {
++		pr_err("sb umounted, discard end_io request for inode %lu\n",
++			io_end->inode->i_ino);
++	no_work:
++		ext4_free_io_end(io_end);
++		return;
++	}
++
++	if (error) {
++		io_end->flag |= EXT4_IO_END_ERROR;
++		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
++			     "(offset %llu size %ld starting block %llu)",
++			     inode->i_ino,
++			     (unsigned long long) io_end->offset,
++			     (long) io_end->size,
++			     (unsigned long long)
++			     bio->bi_sector >> (inode->i_blkbits - 9));
++	}
++
+ 	/* Add the io_end to per-inode completed io list*/
+ 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+ 	list_add_tail(&io_end->list, &EXT4_I(inode)->i_completed_io_list);
