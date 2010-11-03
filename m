@@ -1,76 +1,71 @@
-From: Nick Bowler <nbowler@elliptictech.com>
-Subject: BUG in ext4 with 2.6.37-rc1
-Date: Tue, 2 Nov 2010 16:20:13 -0400
-Message-ID: <20101102202013.GA3861@elliptictech.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: optimize orphan_list handling for ext4_setattr
+Date: Wed, 3 Nov 2010 03:06:41 -0600
+Message-ID: <93E1B72A-9C36-4CBA-AABD-DC0032331921@dilger.ca>
+References: <87r5fevji5.fsf@dmon-lap.sw.ru>
+Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:44306 "EHLO
-	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751758Ab0KBUUO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Nov 2010 16:20:14 -0400
-Content-Disposition: inline
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:53892 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753685Ab0KCJGn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Nov 2010 05:06:43 -0400
+In-Reply-To: <87r5fevji5.fsf@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following BUG occurred today while compiling gcc, with 2.6.37-rc1+.
-More precisely, commit 7fe19da4ca38 ("preempt: fix kernel build with
-!CONFIG_BKL") with http://permalink.gmane.org/gmane.linux.nfs/36521
-applied on top.  It basically took out the whole system.
+On 2010-10-25, at 01:06, Dmitry Monakhov wrote:
+> Surprisingly chown() on ext4 is not SMP scalable operation. 
+> Due to unconditional orphan_del(NULL, inode) in ext4_setattr()
+> result in significant performance overhead because of global orphan
+> mutex, especially in no-journal mode (where orphan_add() is noop).
+> It is possible to skip explicit orphan_del if possible.
+> 
+> Results of fchown() micro-benchmark in no-journal mode
+> while (1) {
+>   iteration++;
+>   fchown(fd, uid, gid);
+>   fchown(fd, uid + 1, gid + 1)
+> }
+> measured: iterations per millisecond
+> | nr_tasks | w/o patch | with patch |
+> |        1 |       142 |        185 |
+> |        4 |       109 |        642 |
 
-  ------------[ cut here ]------------
-  kernel BUG at /scratch_space/linux-2.6/fs/ext4/page-io.c:146!
-  invalid opcode: 0000 [#1] PREEMPT SMP 
-  last sysfs file: /sys/devices/pci0000:00/0000:00:1d.7/usb8/8-3/8-3:1.0/uevent
-  CPU 0 
-  Modules linked in: nls_iso8859_1 nls_cp437 vfat fat nfs nfs_acl bridge stp llc autofs4 nfsd lockd sunrpc exportfs ipv6 iptable_filter iptable_nat nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 ip_tables x_tables snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_hda_codec_hdmi snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_timer snd soundcore snd_page_alloc sg evdev usb_storage ext2 ehci_hcd sr_mod cdrom loop tun acpi_cpufreq mperf arc4 ecb crypto_blkcipher cryptomgr aead crypto_algapi rt2800pci rt2800lib crc_ccitt rt2x00pci rt2x00lib mac80211 cfg80211 eeprom_93cx6 e1000e
-  
-  Pid: 30058, comm: ranlib Not tainted 2.6.37-rc1-00004-g1c7d46a #60 WG43M/Aspire X3810
-  RIP: 0010:[<ffffffff81107409>]  [<ffffffff81107409>] ext4_init_io_end+0x3c/0x72
-  RSP: 0018:ffff880016a4b788  EFLAGS: 00010246
-  RAX: 0000000000000000 RBX: ffff880062e2abe0 RCX: 0000000000000000
-  RDX: ffffea0002398c88 RSI: ffff8800018c3948 RDI: ffff880016a4a000
-  RBP: ffff880016a4b798 R08: 0000000000000023 R09: 0000000000008000
-  R10: ffff88013beaace0 R11: ffff88013beaace0 R12: ffff8800018c3948
-  R13: ffff880016a4b918 R14: ffff880100cd5f30 R15: ffffea0002398c88
-  FS:  00002abaac327b20(0000) GS:ffff8800b7a00000(0000) knlGS:0000000000000000
-  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-  CR2: 00007f573b7a8000 CR3: 000000008d3ed000 CR4: 00000000000406f0
-  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-  Process ranlib (pid: 30058, threadinfo ffff880016a4a000, task ffff880016b59640)
-  Stack:
-   ffff8800a59999c0 ffffea0002398c88 ffff880016a4b818 ffffffff811075b1
-   ffff88013e028000 ffff880016a4bc68 0000100016b59640 ffffea0002398c88
-   ffff8800a59999c0 ffff880062e2abe0 0000100000008000 0000000000000080
-  Call Trace:
-   [<ffffffff811075b1>] ext4_bio_write_page+0x172/0x307
-   [<ffffffff811033a7>] mpage_da_submit_io+0x2f9/0x37b
-   [<ffffffff811068d7>] mpage_da_map_and_submit+0x2cc/0x2e2
-   [<ffffffff811069b3>] mpage_add_bh_to_extent+0xc6/0xd5
-   [<ffffffff81106c66>] write_cache_pages_da+0x2a4/0x3ac
-   [<ffffffff81107044>] ext4_da_writepages+0x2d6/0x44d
-   [<ffffffff81087910>] do_writepages+0x1c/0x25
-   [<ffffffff810810a4>] __filemap_fdatawrite_range+0x4b/0x4d
-   [<ffffffff810815f5>] filemap_fdatawrite_range+0xe/0x10
-   [<ffffffff81122a2e>] jbd2_journal_begin_ordered_truncate+0x7b/0xa2
-   [<ffffffff8110615d>] ext4_evict_inode+0x57/0x24c
-   [<ffffffff810c14a3>] evict+0x22/0x92
-   [<ffffffff810c1a3d>] iput+0x212/0x249
-   [<ffffffff810bdf16>] dentry_iput+0xa1/0xb9
-   [<ffffffff810bdf6b>] d_kill+0x3d/0x5d
-   [<ffffffff810be613>] dput+0x13a/0x147
-   [<ffffffff810b990d>] sys_renameat+0x1b5/0x258
-   [<ffffffff81145f71>] ? _atomic_dec_and_lock+0x2d/0x4c
-   [<ffffffff810b2950>] ? cp_new_stat+0xde/0xea
-   [<ffffffff810b29c1>] ? sys_newlstat+0x2d/0x38
-   [<ffffffff810b99c6>] sys_rename+0x16/0x18
-   [<ffffffff81002a2b>] system_call_fastpath+0x16/0x1b
-  Code: e8 97 4c fa ff 49 89 c4 48 85 c0 74 4c 31 c0 b9 1a 01 00 00 4c 89 e7 f3 ab 48 89 df e8 1f 95 fb ff 49 89 44 24 10 48 85 c0 75 04 <0f> 0b eb fe 49 8d 44 24 40 49 c7 44 24 38 00 05 00 00 49 89 44 
-  RIP  [<ffffffff81107409>] ext4_init_io_end+0x3c/0x72
-   RSP <ffff880016a4b788>
-  ---[ end trace ddc79adad95a6879 ]---
+AFAICS, both ext4_orphan_add() and ext4_orphan_del() already check right at the top of the function whether the handle is valid, so I can't really understand how this patch would make any difference for no-journal mode.
 
--- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+> @@ -5636,7 +5640,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr 
+
+> +		if (ext4_handle_valid(handle)) {
+> +			error = ext4_orphan_add(handle, inode);
+> +			orphan = 1;
+> +		}
+> 		EXT4_I(inode)->i_disksize = attr->ia_size;
+> 		rc = ext4_mark_inode_dirty(handle, inode);
+> 		if (!error)
+
+> @@ -5636,7 +5640,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr
+> 	 * If the call to ext4_truncate failed to get a transaction handle at
+> 	 * all, we need to clean up the in-core orphan list manually.
+> 	 */
+> -	if (inode->i_nlink)
+> +	if (orphan && inode->i_nlink)
+> 		ext4_orphan_del(NULL, inode);
+> 
+> 	if (!rc && (ia_valid & ATTR_MODE))
+
+Basically, the first hunk is moving the ext4_handle_valid() into the caller, and the second is avoiding a call to ext4_orphan_del->ext4_handle_valid(), which would likely be an unmeasurable performance difference.  No locks are taken (or avoided) before ext4_handle_valid() is checked.
+
+I think the actual fix would be to always set "orphan = 1" after ext4_orphan_add() is called, and only call ext4_orphan_del() in that case.  This is essentially what your patch does for with-journal mode, and the non-journal mode is a red-herring due to the early exit from ext4_orphan_del().
+
+Even better would be a no-lock check of list_empty(&ei->i_orphan()) before getting s_orphan_lock, since it shouldn't be possible to have two threads adding/removing the same inode to the orphan list (otherwise the inode may not be on the orphan list at all since add/del is not refcounted).  The only reason for s_orphan_lock is to prevent corruption of the global list.
+
+Cheers, Andreas
+
+
+
+
+
