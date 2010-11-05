@@ -1,114 +1,204 @@
-From: =?utf-8?B?QW5kcsOpIEx1aXMgUGVyZWlyYSBkb3MgU2FudG9zIC0gQlNSU29mdA==?=
-	<andre@bsrsoft.com.br>
-Subject: Re: [PATCH 1/1] fs: Small refactoring of the code in ext4 2.6.37-rc1
-Date: Thu, 4 Nov 2010 16:34:26 -0700 (PDT)
-Message-ID: <756314.4122.qm@web110514.mail.gq1.yahoo.com>
-Reply-To: andre@bsrsoft.com.br
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm23.bullet.mail.ne1.yahoo.com ([98.138.90.86]:20968 "HELO
-	nm23.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750779Ab0KDXe2 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Nov 2010 19:34:28 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH 00/49] Use vzalloc not vmalloc/kmemset
+Date: Thu,  4 Nov 2010 20:07:24 -0700
+Message-ID: <cover.1288925424.git.joe@perches.com>
+References: <alpine.DEB.2.00.1011031108260.11625@router.home>
+Cc: linux-ia64@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mips@linux-mips.org,
+	kvm@vger.kernel.org,
+	kvm-ppc@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	cbe-oss-dev@lists.ozlabs.org,
+	linux-s390@vger.kernel.org,
+	amd64-microcode@amd64.org,
+	linux-crypto@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	netdev@vger.kernel.org,
+	drbd-user@lists.linbit.com,
+	dri-devel@lists.freedesktop.org,
+	linux-input@vger.kernel.org,
+	linux-rdma@vger.kernel.org,
+	dm-devel@redhat.com,
+	linux-raid@vger.kernel.org,
+	linux-media@vger.kernel.org,
+	linux-mtd@lists.infradead.org,
+	e1000-devel@lists.sourceforge.net,
+	linux-scsi@vger.kernel.org,
+	osst-users@lists.sourceforge.net,
+	devel@driverdev.osuosl.org,
+	xen-devel@lists.xen.org,
+	virtualization@lists.osdl.org,
+	linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com,
+	codalist@coda.cs.cmu.edu,
+	linux-mm@kvac
+To: Jiri Kosina <trivial@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <alpine.DEB.2.00.1011031108260.11625@router.home>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello.
+Converted vmalloc/memset and vmalloc_node/memset to
+vzalloc or vzalloc_node using a cocci script and some editing
 
-This is true.
-Despite having gone through all compilation and I have not noticed appa=
-rent problems, my mistake is evident in this case.
+Reduces text a little bit.
 
-I had not realized that the side effect would really be changing variab=
-les incremented and decremented.
+Compiled x86 only.
 
-Thank you.
+There are still vmalloc_32 with memset calls still around.
 
-I'll think more about this type of side effect. :)
+Broken out to multiple patches to cc appropriate maintainers.
 
+Joe Perches (49):
+  arch/ia64: Use vzalloc
+  arch/mips: Use vzalloc
+  arch/powerpc: Use vzalloc
+  arch/s390: Use vzalloc
+  arch/x86: Use vzalloc
+  crypto: Use vzalloc
+  drivers/atm: Use vzalloc
+  drivers/block: Use vzalloc
+  drivers/char: Use vzalloc
+  drivers/gpu: Use vzalloc
+  drivers/hid: Use vzalloc
+  drivers/infiniband: Use vzalloc
+  drivers/isdn: Use vzalloc
+  drivers/md: Use vzalloc
+  drivers/media: Use vzalloc
+  drivers/mtd: Use vzalloc
+  drivers/net/cxgb3: Use vzalloc
+  drivers/net/cxgb4: Use vzalloc
+  drivers/net/e1000: Use vzalloc
+  drivers/net/e1000e: Use vzalloc
+  drivers/net/ehea: Use vzalloc
+  drivers/net/igb: Use vzalloc
+  drivers/net/igbvf: Use vzalloc
+  drivers/net/ixgb: Use vzalloc
+  drivers/net/ixgbe: Use vzalloc
+  drivers/net/ixgbevf: Use vzalloc
+  drivers/net/netxen: Use vzalloc
+  drivers/net/pch_gbe: Use vzalloc
+  drivers/net/qlcnic: Use vzalloc
+  drivers/net/sfc: Use vzalloc
+  drivers/net/vxge: Use vzalloc
+  drivers/net/bnx2.c: Use vzalloc
+  drivers/s390: Use vzalloc
+  drivers/scsi: Use vzalloc
+  drivers/staging: Use vzalloc
+  drivers/video: Use vzalloc
+  fs/ext4: Use vzalloc
+  fs/jffs2: Use vzalloc
+  fs/reiserfs: Use vzalloc
+  fs/udf: Use vzalloc
+  fs/xfs: Use vzalloc
+  include/linux/coda_linux.h: Use vzalloc
+  kernel: Use vzalloc
+  mm: Use vzalloc
+  net/core/pktgen.c: Use vzalloc
+  net/netfilter: Use vzalloc
+  net/rds: Use vzalloc
+  sound/oss/dev_table.c: Use vzalloc
+  virt/kvm/kvm_main.c: Use vzalloc
 
-On Thu, 4 Nov 2010, Andr=C3=A9 Luis Pereira dos Santos - BSRSoft wrote:
+ arch/ia64/kernel/perfmon.c                      |    3 +-
+ arch/mips/sibyte/common/sb_tbprof.c             |    3 +-
+ arch/powerpc/kvm/book3s.c                       |    6 +--
+ arch/powerpc/platforms/cell/spufs/lscsa_alloc.c |    3 +-
+ arch/s390/hypfs/hypfs_diag.c                    |    3 +-
+ arch/x86/kernel/microcode_amd.c                 |    3 +-
+ arch/x86/kvm/x86.c                              |    3 +-
+ arch/x86/mm/pageattr-test.c                     |    3 +-
+ crypto/deflate.c                                |    3 +-
+ crypto/zlib.c                                   |    3 +-
+ drivers/atm/idt77252.c                          |   11 ++++---
+ drivers/atm/lanai.c                             |    3 +-
+ drivers/block/drbd/drbd_bitmap.c                |    5 +--
+ drivers/char/agp/backend.c                      |    3 +-
+ drivers/char/mspec.c                            |    5 +--
+ drivers/gpu/drm/via/via_dmablit.c               |    4 +-
+ drivers/hid/hid-core.c                          |    3 +-
+ drivers/infiniband/hw/amso1100/c2_rnic.c        |    5 +--
+ drivers/infiniband/hw/ehca/ipz_pt_fn.c          |    5 +--
+ drivers/infiniband/hw/ipath/ipath_driver.c      |    3 +-
+ drivers/infiniband/hw/ipath/ipath_file_ops.c    |   11 ++-----
+ drivers/infiniband/hw/ipath/ipath_init_chip.c   |    5 +--
+ drivers/infiniband/hw/qib/qib_init.c            |    7 +---
+ drivers/infiniband/ulp/ipoib/ipoib_cm.c         |   10 ++----
+ drivers/infiniband/ulp/ipoib/ipoib_main.c       |    3 +-
+ drivers/isdn/i4l/isdn_common.c                  |    4 +-
+ drivers/isdn/mISDN/dsp_core.c                   |    3 +-
+ drivers/isdn/mISDN/l1oip_codec.c                |    6 +--
+ drivers/md/dm-log.c                             |    3 +-
+ drivers/md/dm-snap-persistent.c                 |    3 +-
+ drivers/md/dm-table.c                           |    4 +--
+ drivers/media/dvb/ngene/ngene-core.c            |    3 +-
+ drivers/media/video/mx3_camera.c                |    3 +-
+ drivers/media/video/pwc/pwc-if.c                |    3 +-
+ drivers/media/video/videobuf-dma-sg.c           |    3 +-
+ drivers/mtd/nand/nandsim.c                      |    3 +-
+ drivers/mtd/ubi/vtbl.c                          |    6 +--
+ drivers/net/bnx2.c                              |   10 +-----
+ drivers/net/cxgb3/cxgb3_offload.c               |    7 ++--
+ drivers/net/cxgb4/cxgb4_main.c                  |    7 ++--
+ drivers/net/e1000/e1000_main.c                  |    6 +--
+ drivers/net/e1000e/netdev.c                     |    6 +--
+ drivers/net/ehea/ehea_main.c                    |    4 +--
+ drivers/net/igb/igb_main.c                      |    6 +--
+ drivers/net/igbvf/netdev.c                      |    6 +--
+ drivers/net/ixgb/ixgb_main.c                    |    6 +--
+ drivers/net/ixgbe/ixgbe_main.c                  |   10 ++----
+ drivers/net/ixgbevf/ixgbevf_main.c              |    6 +--
+ drivers/net/netxen/netxen_nic_init.c            |    7 +---
+ drivers/net/pch_gbe/pch_gbe_main.c              |    6 +--
+ drivers/net/qlcnic/qlcnic_init.c                |    7 +---
+ drivers/net/sfc/filter.c                        |    3 +-
+ drivers/net/vxge/vxge-config.c                  |   37 +++++-----------------
+ drivers/s390/cio/blacklist.c                    |    3 +-
+ drivers/scsi/bfa/bfad.c                         |    3 +-
+ drivers/scsi/bfa/bfad_debugfs.c                 |    8 +----
+ drivers/scsi/cxgbi/libcxgbi.h                   |    9 ++----
+ drivers/scsi/osst.c                             |    3 +-
+ drivers/scsi/qla2xxx/qla_attr.c                 |    3 +-
+ drivers/scsi/qla2xxx/qla_bsg.c                  |    3 +-
+ drivers/scsi/scsi_debug.c                       |    7 +---
+ drivers/staging/comedi/drivers.c                |    4 +--
+ drivers/staging/rtl8192e/r8192E_core.c          |    4 +--
+ drivers/staging/udlfb/udlfb.c                   |    5 +--
+ drivers/staging/xgifb/XGI_main_26.c             |    3 +-
+ drivers/staging/zram/zram_drv.c                 |    3 +-
+ drivers/video/arcfb.c                           |    5 +--
+ drivers/video/broadsheetfb.c                    |    4 +--
+ drivers/video/hecubafb.c                        |    5 +--
+ drivers/video/metronomefb.c                     |    4 +--
+ drivers/video/xen-fbfront.c                     |    3 +-
+ fs/ext4/super.c                                 |    4 +--
+ fs/jffs2/build.c                                |    5 +--
+ fs/reiserfs/journal.c                           |    9 ++----
+ fs/reiserfs/resize.c                            |    4 +--
+ fs/udf/super.c                                  |    5 +--
+ fs/xfs/linux-2.6/kmem.h                         |    7 +----
+ include/linux/coda_linux.h                      |   26 ++++++++++------
+ kernel/profile.c                                |    6 +--
+ kernel/relay.c                                  |    4 +--
+ mm/memcontrol.c                                 |    5 +--
+ mm/page_cgroup.c                                |    3 +-
+ mm/percpu.c                                     |    8 +----
+ mm/swapfile.c                                   |    3 +-
+ net/core/pktgen.c                               |    3 +-
+ net/netfilter/x_tables.c                        |    5 +--
+ net/rds/ib_cm.c                                 |    6 +--
+ sound/oss/dev_table.c                           |    6 +--
+ virt/kvm/kvm_main.c                             |   13 ++------
+ 89 files changed, 167 insertions(+), 328 deletions(-)
 
-> From: Andre Luis Pereira dos Santos <andre@bsrsoft.com.br>
->
-> Hi.
-> Small refactoring of the code in order to make minor enhancements to =
-critical areas.
-> The notation x + 1 has been replaced by more efficient notation x + +=
-=2E
->
-> Signed-off-by: Andre Luis Pereira dos Santos <andre@bsrsoft.com.br>
-> ---
-> Signed-off-by: Andre Luis Pereira dos Santos <andre@bsrsoft.com.br>
-> --- linux-2.6.37-rc1/fs/ext4/extents.c        2010-11-01 09:54:12.000=
-000000 -0200
-> +++ linux-2.6.37-rc1-patched/fs/ext4/extents.c        2010-11-04 19:5=
-4:26.000000000 -0200
-> @@ -555,9 +555,9 @@ ext4_ext_binsearch(struct inode *inode,
->       while (l <=3D r) {
->               m =3D l + (r - l) / 2;
->               if (block < le32_to_cpu(m->ee_block))
-> -                     r =3D m - 1;
-> +                     r =3D m--;
->               else
-> -                     l =3D m + 1;
-> +                     l =3D m++;
+-- 
+1.7.3.1.g432b3.dirty
 
-These do not give identical results.
-
-foo =3D bar + 1;  assigns (bar + 1) to foo.
-foo =3D bar--;  assigns bar to foo then decrements bar.
-foo =3D --bar;  decrements bar then assigns bar to foo.
-
-So your change both change the value that will be assigned to 'r' and '=
-l'
-and also modify 'm' which was not previously modified.
-
-
->               ext_debug("%p(%u):%p(%u):%p(%u) ", l, le32_to_cpu(l->ee=
-_block),
->                               m, le32_to_cpu(m->ee_block),
->                               r, le32_to_cpu(r->ee_block));
-> @@ -1557,7 +1557,7 @@ static int ext4_ext_try_to_merge(struct
->               if (ext4_ext_is_uninitialized(ex))
->                       uninitialized =3D 1;
->               ex->ee_len =3D cpu_to_le16(ext4_ext_get_actual_len(ex)
-> -                             + ext4_ext_get_actual_len(ex + 1));
-> +                             + ext4_ext_get_actual_len(ex++));
-
-After your change gcc complains:
-
- fs/ext4/extents.c:1559:16: warning: operation on =E2=80=98ex=E2=80=99 =
-may be undefined
- fs/ext4/extents.c:1559:16: warning: operation on =E2=80=98ex=E2=80=99 =
-may be undefined
-
-which it is correct in doing since you are now modifying the value of t=
-he
-pointer which is dereferenced in the assignment. Previously the value o=
-f
-(ex+1) was simply passed to ext4_ext_get_actual_len(), but now you are
-passing the value of (ex) to ext4_ext_get_actual_len() and then
-subsequently incrementing 'ex' itself.
-
-
->               if (uninitialized)
->                       ext4_ext_mark_uninitialized(ex);
->
->
-
-
-Was this patch even compile tested?
-
-
-     =20
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom policy in Canada: sign http://dissolvethecrtc.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
