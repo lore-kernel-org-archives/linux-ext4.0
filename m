@@ -1,38 +1,17 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 22302] 2.6.36 BUG: scheduling while atomic:
- rc.sysinit/1376/0x00000002
-Date: Sun, 7 Nov 2010 08:19:12 GMT
-Message-ID: <201011070819.oA78JCWC017283@demeter2.kernel.org>
-References: <bug-22302-13602@https.bugzilla.kernel.org/>
+From: NGO REGISTRATION <fieldofficer@tudor.org>
+Subject: Registration of NGO for a Grant,contact me for more details.
+Date: Sun, 07 Nov 2010 19:53:24 +0200
+Message-ID: <0LBJ00KXN0F9LGD0__18894.8626084768$1289157993$gmane$org@mmp2.hacettepe.edu.tr>
+Reply-To: wfieldofficer@aol.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=_iso-2022-jp$ESC
+Content-Transfer-Encoding: 7BIT
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [140.211.167.42] ([140.211.167.42]:58218 "EHLO
-	demeter2.kernel.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1752891Ab0KGITN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 03:19:13 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id oA78JCI4017284
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 7 Nov 2010 08:19:12 GMT
-In-Reply-To: <bug-22302-13602@https.bugzilla.kernel.org/>
+Received: from mmp2.hacettepe.edu.tr ([193.140.216.158]:36264 "EHLO
+	mmp2.hacettepe.edu.tr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751609Ab0KGT0K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 14:26:10 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=22302
-
-
-Maciej Rutecki <maciej.rutecki@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Blocks|                            |16444
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
