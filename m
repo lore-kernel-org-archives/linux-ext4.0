@@ -1,40 +1,75 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 22212] Crash in ext4_init_io_end
-Date: Sat, 6 Nov 2010 22:54:24 GMT
-Message-ID: <201011062254.oA6MsONK023156@demeter1.kernel.org>
-References: <bug-22212-13602@https.bugzilla.kernel.org/>
+From: "NOKIA MOBILE XMAS-PROMO" <03130152@unmsm.edu.pe>
+Subject: (unknown)
+Date: Sat, 6 Nov 2010 22:00:11 -0500 (PET)
+Message-ID: <36102.200.62.146.200.1289098811.squirrel__13219.382640864$1289099031$gmane$org@webmail.unmsm.edu.pe>
+Reply-To: garrym_2010@yahoo.co.jp
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:60843 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753173Ab0KFWyZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Nov 2010 18:54:25 -0400
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oA6MsOaS023157
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sat, 6 Nov 2010 22:54:25 GMT
-In-Reply-To: <bug-22212-13602@https.bugzilla.kernel.org/>
+Received: from abancay.unmsm.edu.pe ([200.62.146.201]:31565 "EHLO
+	abancay.unmsm.edu.pe" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752724Ab0KGDDk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Nov 2010 23:03:40 -0400
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D22212
 
 
 
+Congratulation: Dear Winner,
 
+You have been awarded =A3600.000.00 GBP.
+ in the NOKIA MOBILE-LOTTO Satellite
+Software email lottery in which e-mail addresses are picked randomly by
+Software powered by the internet through the worldwide website.
 
---- Comment #2 from S=C3=B8ren Holm <sgh@sgh.dk>  2010-11-06 22:54:22 -=
+Your email address, attached to Ref Number:5, 7, 14, 17, 18, 43 with
+Serial Number:1979-12 Verification Number:CY-085-333-0, and consequentl=
+y
+won the lottery in the "A" Category. You have therefore been approved f=
+or
+a lump sum pay out of =A3600.000.00 GBP.
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D
+Contact: Mr.GARRY MOOR.
+E-mail: garrym_2010@yahoo.co.jp
+
+Please Indicate Your Means Of Delivery:
+
+1: by courier Service
+
+2: bank to bank wire transfer
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+
+Provide him with the informations as stated below:
+1. Name________________
+2. Address:______________
+3. Marital Status:__________
+4. Age:__________________
+5. Sex:__________________
+6. Nationality:____________
+7. Country of Residence:____
+8. Occupation:____________
+9. Telephone Number& Fax Number____
+10.Draw Number above:___________
+
+These details facilitate the due process and the release of winnings to
+avoid unnecessary delays and complications in the processing of your
+winnings.
+
+Sincerely,
+Mr. GARRY MOOR
+Online Games Director
+NOKIA MOBILE XMAS-PROMO.
+NOKIA CONNECTING PEOPLE.
+
 --
-Seems like it.
-
---=20
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
-l
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
