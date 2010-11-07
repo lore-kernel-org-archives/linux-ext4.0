@@ -1,54 +1,66 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 22302] 2.6.36 BUG: scheduling while atomic:
- rc.sysinit/1376/0x00000002
-Date: Sun, 7 Nov 2010 22:25:03 GMT
-Message-ID: <201011072225.oA7MP38n001526@demeter1.kernel.org>
-References: <bug-22302-13602@https.bugzilla.kernel.org/>
+From: Tony Vroon <tony@linx.net>
+Subject: Re: [PATCH -BUGFIX] Re: BUG in ext4 with 2.6.37-rc1
+Date: Sun, 07 Nov 2010 22:53:35 +0000
+Message-ID: <1289170415.2853.3.camel@localhost>
+References: <20101102202013.GA3861@elliptictech.com>
+	 <20101103181412.GH25614@thunk.org> <20101103182229.GA8766@elliptictech.com>
+	 <20101103205306.GA3627@elliptictech.com> <20101107212143.GA28396@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-KzD+RMcyujP4saWCmT7d"
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:39480 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751146Ab0KGWZE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 17:25:04 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oA7MP30m001527
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 7 Nov 2010 22:25:03 GMT
-In-Reply-To: <bug-22302-13602@https.bugzilla.kernel.org/>
+Received: from gold.linx.net ([195.66.232.40]:58128 "EHLO gold.linx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751439Ab0KGWxX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Nov 2010 17:53:23 -0500
+In-Reply-To: <20101107212143.GA28396@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=22302
 
+--=-KzD+RMcyujP4saWCmT7d
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Theodore Tso <tytso@mit.edu> changed:
+On Sun, 2010-11-07 at 16:21 -0500, Ted Ts'o wrote:
+> OK, I think I have a new version of the patch that should fix both the
+> original and the second BUG_ON which you reported.
+> Subject: [PATCH -v2] ext4: handle writeback of inodes which are being fre=
+ed
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Tested-By: Tony Vroon <tony@linx.net>
 
+This survived a 'cvs up' in /cvs/gentoo-x86 with only the CVS directory
+in place; a workload that died at roughly 90% before. I did my best to
+recreate the heavy I/O conditions that existed when it died there
+before, with Evolution being opened just as cvs starts the first writes.
+I opened Transmission-gtk with a few LiveDVD ISOs just for good measure.
+The system was loaded enough for "su -" to stall for 20 seconds at some
+points but ext4 survived now.
 
+I do believe you have found the culprit, many thanks :)
 
+Regards,
+--=20
+Tony Vroon
+UNIX systems administrator
+London Internet Exchange Ltd, Trinity Court, Trinity Street,
+Peterborough, PE1 1DA
+Registered in England number 3137929
+E-Mail: tony@linx.net
 
---- Comment #1 from Theodore Tso <tytso@mit.edu>  2010-11-07 22:25:01 ---
-This is caused by an interaction in two changes that happened in parallel in
-2.6.36: commit id's dd3932eddf4 (block: remove BLKDEV_IFL_WAIT) and 
-commit 5c521830cf3 (ext4: Support discard requests when running in no-journal
-mode).
+--=-KzD+RMcyujP4saWCmT7d
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
 
-The problem is that ext4_free_blocks() can be called by functions which are
-holding spinlocks, so it can't sleep --- and sb_issue_discard() now always
-waits for the discard to be completed.  It doesn't support an asynchronous mode
-at all.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.16 (GNU/Linux)
 
-The fix for the short-term is to remove the call to ext4_issue_discard() in
-ext4_free_blocks().  This effectively removes the functionality of commit 
-5c521830cf3.  The long-term fix would be to implement a version of
-sb_issue_discard() which supports asynchronous mode, with an optional callback.
+iEYEABECAAYFAkzXLe8ACgkQp5vW4rUFj5rg5QCfbPZRL9u/k92Ury0JkB4I447s
+yOoAnRA4DJz7HbjHHmznckbmu1rkSSTS
+=SR2l
+-----END PGP SIGNATURE-----
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--=-KzD+RMcyujP4saWCmT7d--
+
