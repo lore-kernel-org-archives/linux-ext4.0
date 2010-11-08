@@ -1,78 +1,202 @@
-From: =?UTF-8?Q?Maciej_=C5=BBenczykowski?= <zenczykowski@gmail.com>
-Subject: Re: [PATCH 1/2] ext3: don't update sb journal_devnum when RO dev
-Date: Sun, 7 Nov 2010 17:09:24 -0800
-Message-ID: <AANLkTi=eyT7qzUCDubVKiiWwaAG7008vw=vJ7YnwbR1=@mail.gmail.com>
-References: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH -BUGFIX] Re: BUG in ext4 with 2.6.37-rc1
+Date: Mon, 8 Nov 2010 12:19:19 +1100
+Message-ID: <20101108011919.GN13830@dastard>
+References: <20101102202013.GA3861@elliptictech.com>
+ <20101103181412.GH25614@thunk.org>
+ <20101103182229.GA8766@elliptictech.com>
+ <20101103205306.GA3627@elliptictech.com>
+ <20101107212143.GA28396@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?UTF-8?Q?Maciej_=C5=BBenczykowski?= <zenczykowski@gmail.com>
-To: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger@sun.com>, Jan Kara <jack@suse.cz>,
-	Christoph Hellwig <hch@lst.de>,
-	Eric Sandeen <sandee
+Content-Type: text/plain; charset=us-ascii
+To: Ted Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:45977 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752714Ab0KHBJZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 20:09:25 -0500
-Received: by wwb39 with SMTP id 39so3299551wwb.1
-        for <linux-ext4@vger.kernel.org>; Sun, 07 Nov 2010 17:09:24 -0800 (PST)
-In-Reply-To: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
+Received: from bld-mail15.adl6.internode.on.net ([150.101.137.100]:33525 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752368Ab0KHBT0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 20:19:26 -0500
+Content-Disposition: inline
+In-Reply-To: <20101107212143.GA28396@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/9/26 Maciej =C5=BBenczykowski <zenczykowski@gmail.com>:
-> An ext3 filesystem on a read-only device, with an external journal
-> which is at a different device number then recorded in the superblock
-> will fail to honor the read-only setting of the device and trigger
-> a superblock update (write).
->
-> For example:
-> =C2=A0- ext3 on a software raid which is in read-only mode
-> =C2=A0- external journal on a read-write device which has changed dev=
-ice num
-> =C2=A0- attempt to mount with -o journal_dev=3D<new_number>
-> =C2=A0- hits BUG_ON(mddev->ro =3D 1) in md.c
->
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Maciej =C5=BBenczykowski <zenczykowski@gmail.com>
+On Sun, Nov 07, 2010 at 04:21:43PM -0500, Ted Ts'o wrote:
+> On Wed, Nov 03, 2010 at 04:53:06PM -0400, Nick Bowler wrote:
+> > 
+> > OK, it's 100% reproducible: the kernel BUGs, without fail, every time I
+> > do 'make install' in the gcc build tree.  After applying the patch, it
+> > seems that the original BUG is gone, but now there's a new one:
+> 
+> OK, I think I have a new version of the patch that should fix both the
+> original and the second BUG_ON which you reported.  Unfortunately,
+> I've not been able to reproduce the BUG_ON, even by downloading gcc
+> 4.5.1, configuring to build just gcc, and then doing a "make install".
+> I'm not sure what languages you had enabled, or how much memory you
+> have on your machine, etc., all of which might have made it harder for
+> me to repro the bug.  Still, I think I now understand what's causing
+> it.
+> 
+> Can you give this a try and let me know if this fixes things for you?
+> 
+>     	     	    	    	   	   - Ted
+> 
+> From 94acf883b316f50b38018f710341a943cdd38d0d Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Sun, 7 Nov 2010 16:11:42 -0500
+> Subject: [PATCH -v2] ext4: handle writeback of inodes which are being freed
+> 
+> The following BUG can occur when an inode which is getting freed when
+> it still has dirty pages outstanding, and it gets deleted (in this
+> because it was the target of a rename).  In ordered mode, we need to
+> make sure the data pages are written just in case we crash before the
+> rename (or unlink) is committed.  If the inode is being freed then
+> when we try to igrab the inode, we end up tripping the BUG_ON at
+> fs/ext4/page-io.c:146.
+> 
+> In this case, don't need to do any of the endio handling, so we can
+> drop the BUG_ON and then arrange to make ext4_bio_end() handle this
+> case appropriately by releasing the pages and ending the writeback on
+> those pages, and then returning early without queueing the io_end
+> structure on the workqueue.
+> 
+>   kernel BUG at /scratch_space/linux-2.6/fs/ext4/page-io.c:146!
+>   Call Trace:
+>    [<ffffffff811075b1>] ext4_bio_write_page+0x172/0x307
+>    [<ffffffff811033a7>] mpage_da_submit_io+0x2f9/0x37b
+>    [<ffffffff811068d7>] mpage_da_map_and_submit+0x2cc/0x2e2
+>    [<ffffffff811069b3>] mpage_add_bh_to_extent+0xc6/0xd5
+>    [<ffffffff81106c66>] write_cache_pages_da+0x2a4/0x3ac
+>    [<ffffffff81107044>] ext4_da_writepages+0x2d6/0x44d
+>    [<ffffffff81087910>] do_writepages+0x1c/0x25
+>    [<ffffffff810810a4>] __filemap_fdatawrite_range+0x4b/0x4d
+>    [<ffffffff810815f5>] filemap_fdatawrite_range+0xe/0x10
+>    [<ffffffff81122a2e>] jbd2_journal_begin_ordered_truncate+0x7b/0xa2
+>    [<ffffffff8110615d>] ext4_evict_inode+0x57/0x24c
+>    [<ffffffff810c14a3>] evict+0x22/0x92
+>    [<ffffffff810c1a3d>] iput+0x212/0x249
+>    [<ffffffff810bdf16>] dentry_iput+0xa1/0xb9
+>    [<ffffffff810bdf6b>] d_kill+0x3d/0x5d
+>    [<ffffffff810be613>] dput+0x13a/0x147
+>    [<ffffffff810b990d>] sys_renameat+0x1b5/0x258
+>    [<ffffffff81145f71>] ? _atomic_dec_and_lock+0x2d/0x4c
+>    [<ffffffff810b2950>] ? cp_new_stat+0xde/0xea
+>    [<ffffffff810b29c1>] ? sys_newlstat+0x2d/0x38
+>    [<ffffffff810b99c6>] sys_rename+0x16/0x18
+>    [<ffffffff81002a2b>] system_call_fastpath+0x16/0x1b
+> 
+> Reported-by: Nick Bowler <nbowler@elliptictech.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
-> =C2=A0fs/ext3/super.c | =C2=A0 =C2=A02 +-
-> =C2=A01 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 5dbf4db..19dfbe9 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -2299,7 +2299,7 @@ static int ext3_load_journal(struct super_block=
- *sb,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0EXT3_SB(sb)->s_journal =3D journal;
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0ext3_clear_journal_err(sb, es);
->
-> - =C2=A0 =C2=A0 =C2=A0 if (journal_devnum &&
-> + =C2=A0 =C2=A0 =C2=A0 if (!really_read_only && journal_devnum &&
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0journal_devnum !=3D le32_to_=
-cpu(es->s_journal_dev)) {
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0es->s_journal_=
-dev =3D cpu_to_le32(journal_devnum);
->
+>  fs/ext4/page-io.c |   45 ++++++++++++++++++++++-----------------------
+>  1 files changed, 22 insertions(+), 23 deletions(-)
+> 
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 46a7d6a..94bbdb4 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -143,7 +143,6 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+>  	if (io) {
+>  		memset(io, 0, sizeof(*io));
+>  		io->inode = igrab(inode);
+> -		BUG_ON(!io->inode);
+>  		INIT_WORK(&io->work, ext4_end_io_work);
+>  		INIT_LIST_HEAD(&io->list);
+>  	}
+> @@ -171,35 +170,15 @@ static void ext4_end_bio(struct bio *bio, int error)
+>  	struct workqueue_struct *wq;
+>  	struct inode *inode;
+>  	unsigned long flags;
+> -	ext4_fsblk_t err_block;
+>  	int i;
+>  
+>  	BUG_ON(!io_end);
+> -	inode = io_end->inode;
+>  	bio->bi_private = NULL;
+>  	bio->bi_end_io = NULL;
+>  	if (test_bit(BIO_UPTODATE, &bio->bi_flags))
+>  		error = 0;
+> -	err_block = bio->bi_sector >> (inode->i_blkbits - 9);
+>  	bio_put(bio);
+>  
+> -	if (!(inode->i_sb->s_flags & MS_ACTIVE)) {
+> -		pr_err("sb umounted, discard end_io request for inode %lu\n",
+> -			io_end->inode->i_ino);
+> -		ext4_free_io_end(io_end);
+> -		return;
+> -	}
+> -
+> -	if (error) {
+> -		io_end->flag |= EXT4_IO_END_ERROR;
+> -		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
+> -			     "(offset %llu size %ld starting block %llu)",
+> -			     inode->i_ino,
+> -			     (unsigned long long) io_end->offset,
+> -			     (long) io_end->size,
+> -			     (unsigned long long) err_block);
+> -	}
+> -
+>  	for (i = 0; i < io_end->num_io_pages; i++) {
+>  		struct page *page = io_end->pages[i]->p_page;
+>  		struct buffer_head *bh, *head;
+> @@ -254,9 +233,30 @@ static void ext4_end_bio(struct bio *bio, int error)
+>  		if (!partial_write)
+>  			SetPageUptodate(page);
+>  	}
+> -
+>  	io_end->num_io_pages = 0;
+>  
+> +	if ((inode = io_end->inode) == NULL)
+> +		goto no_work;
+> +
+> +	if (!(inode->i_sb->s_flags & MS_ACTIVE)) {
+> +		pr_err("sb umounted, discard end_io request for inode %lu\n",
+> +			io_end->inode->i_ino);
+> +	no_work:
+> +		ext4_free_io_end(io_end);
+> +		return;
+> +	}
+
+Doesn't this mean you are tossing away unwritten extent conversion
+processing when IO is issued on any inode in the I_WILL_FREE/I_FREEING
+state, or completing IO after the unmount is in progress?
+
+Cheers,
+
+Dave.
+> +
+> +	if (error) {
+> +		io_end->flag |= EXT4_IO_END_ERROR;
+> +		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
+> +			     "(offset %llu size %ld starting block %llu)",
+> +			     inode->i_ino,
+> +			     (unsigned long long) io_end->offset,
+> +			     (long) io_end->size,
+> +			     (unsigned long long)
+> +			     bio->bi_sector >> (inode->i_blkbits - 9));
+> +	}
+> +
+>  	/* Add the io_end to per-inode completed io list*/
+>  	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+>  	list_add_tail(&io_end->list, &EXT4_I(inode)->i_completed_io_list);
+> @@ -305,7 +305,6 @@ static int io_submit_init(struct ext4_io_submit *io,
+>  	bio->bi_private = io->io_end = io_end;
+>  	bio->bi_end_io = ext4_end_bio;
+>  
+> -	io_end->inode = inode;
+>  	io_end->offset = (page->index << PAGE_CACHE_SHIFT) + bh_offset(bh);
+>  
+>  	io->io_bio = bio;
+> -- 
+> 1.7.3.1
+> 
 > --
-> 1.7.2.3
->
->
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+> 
 
-While I can see the ext4 patch at:
-
- http://git.kernel.org/?p=3Dlinux/kernel/git/tytso/ext4.git;a=3Dshortlo=
-g
-
-I can't find the ext3 patch.  Did it get missed?
-
-Maciej
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Dave Chinner
+david@fromorbit.com
