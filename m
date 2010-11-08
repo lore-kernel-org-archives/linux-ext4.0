@@ -1,45 +1,37 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: [PATCH -v3] ext4: handle writeback of inodes which are being freed
-Date: Mon, 8 Nov 2010 00:00:52 -0500
-Message-ID: <20101108050052.GA3099@thunk.org>
+Subject: [PATCH -v4] ext4: handle writeback of inodes which are being freed
+Date: Mon, 8 Nov 2010 01:05:35 -0500
+Message-ID: <20101108060535.GB3099@thunk.org>
 References: <20101102202013.GA3861@elliptictech.com>
  <20101103181412.GH25614@thunk.org>
  <20101103182229.GA8766@elliptictech.com>
  <20101103205306.GA3627@elliptictech.com>
  <20101107212143.GA28396@thunk.org>
  <20101108011919.GN13830@dastard>
+ <20101108050052.GA3099@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+To: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:41885 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:46372 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750712Ab0KHFBA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Nov 2010 00:01:00 -0500
+	id S1750931Ab0KHGFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Nov 2010 01:05:40 -0500
 Content-Disposition: inline
-In-Reply-To: <20101108011919.GN13830@dastard>
+In-Reply-To: <20101108050052.GA3099@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 08, 2010 at 12:19:19PM +1100, Dave Chinner wrote:
-> 
-> Doesn't this mean you are tossing away unwritten extent conversion
-> processing when IO is issued on any inode in the I_WILL_FREE/I_FREEING
-> state, or completing IO after the unmount is in progress?
+Sigh... and an extra bogus line slipped through.  This one passes
+fsstress on both 1k and 4k block sizes.
 
-Yeah, thanks for pointing that out.  Clearly I must have been
-sleep-deprived, since I had managed to convince myself we'd only end
-up in this situation when the inode had been deleted (as opposed to
-the situation where there's so much memory pressure that we're pushing
-out an inode that still has writebacks pending).
+					- Ted
 
-Let's try for patch #3:
-
->From 862ded6f705884fe08ebad63580aec240635d91d Mon Sep 17 00:00:00 2001
+>From 7e619bed3311b843238c03aa5090a576e02f097b Mon Sep 17 00:00:00 2001
 From: Theodore Ts'o <tytso@mit.edu>
-Date: Sun, 7 Nov 2010 23:44:52 -0500
-Subject: [PATCH -v3] ext4: handle writeback of inodes which are being freed
+Date: Mon, 8 Nov 2010 00:36:53 -0500
+Subject: [PATCH -v4] ext4: handle writeback of inodes which are being freed
 
 The following BUG can occur when an inode which is getting freed when
 it still has dirty pages outstanding, and it gets deleted (in this
@@ -90,9 +82,9 @@ Reported-by: Nick Bowler <nbowler@elliptictech.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
  fs/ext4/ext4.h    |    2 +
- fs/ext4/page-io.c |   70 ++++++++++++++++++++++++++++++++++-------------------
+ fs/ext4/page-io.c |   69 +++++++++++++++++++++++++++++++++-------------------
  fs/ext4/super.c   |    2 +
- 3 files changed, 49 insertions(+), 25 deletions(-)
+ 3 files changed, 48 insertions(+), 25 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
 index 8b5dd63..670d134 100644
@@ -115,7 +107,7 @@ index 8b5dd63..670d134 100644
  extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
  extern int ext4_end_io_nolock(ext4_io_end_t *io);
 diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 46a7d6a..432a233 100644
+index 46a7d6a..3e25a88 100644
 --- a/fs/ext4/page-io.c
 +++ b/fs/ext4/page-io.c
 @@ -32,8 +32,14 @@
@@ -251,16 +243,14 @@ index 46a7d6a..432a233 100644
  	/* Add the io_end to per-inode completed io list*/
  	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
  	list_add_tail(&io_end->list, &EXT4_I(inode)->i_completed_io_list);
-@@ -305,8 +325,8 @@ static int io_submit_init(struct ext4_io_submit *io,
+@@ -305,7 +325,6 @@ static int io_submit_init(struct ext4_io_submit *io,
  	bio->bi_private = io->io_end = io_end;
  	bio->bi_end_io = ext4_end_bio;
  
 -	io_end->inode = inode;
  	io_end->offset = (page->index << PAGE_CACHE_SHIFT) + bh_offset(bh);
-+	io_end->flag = EXT4_IO_END_UNWRITTEN;
  
  	io->io_bio = bio;
- 	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
 index 04352e9..45653af 100644
 --- a/fs/ext4/super.c
