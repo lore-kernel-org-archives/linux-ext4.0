@@ -1,43 +1,285 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: Re: [PATCH] ext4:memset is needless in ext4_ext_remove_space()
-Date: Mon, 8 Nov 2010 06:37:52 +0200
-Message-ID: <20101108043752.GB5563@bicker>
-References: <4CD75033.7080902@redflag-linux.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: [PATCH -v3] ext4: handle writeback of inodes which are being freed
+Date: Mon, 8 Nov 2010 00:00:52 -0500
+Message-ID: <20101108050052.GA3099@thunk.org>
+References: <20101102202013.GA3861@elliptictech.com>
+ <20101103181412.GH25614@thunk.org>
+ <20101103182229.GA8766@elliptictech.com>
+ <20101103205306.GA3627@elliptictech.com>
+ <20101107212143.GA28396@thunk.org>
+ <20101108011919.GN13830@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: =?utf-8?B?5r2Y5Y2r5bmzKFBldGVyIFBhbik=?= <wppan@redflag-linux.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:41548 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752259Ab0KHEiH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 23:38:07 -0500
+Received: from THUNK.ORG ([69.25.196.29]:41885 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750712Ab0KHFBA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Nov 2010 00:01:00 -0500
 Content-Disposition: inline
-In-Reply-To: <4CD75033.7080902@redflag-linux.com>
+In-Reply-To: <20101108011919.GN13830@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 08, 2010 at 09:19:47AM +0800, "=E6=BD=98=E5=8D=AB=E5=B9=B3(=
-Peter Pan)" wrote:
->
-> memset is needless because path is allocated by kzalloc.
->
+On Mon, Nov 08, 2010 at 12:19:19PM +1100, Dave Chinner wrote:
+> 
+> Doesn't this mean you are tossing away unwritten extent conversion
+> processing when IO is issued on any inode in the I_WILL_FREE/I_FREEING
+> state, or completing IO after the unmount is in progress?
 
-This is inside a loop and sometimes we do i++ and sometimes i--.  Are
-you absolutely positive that path + i isn't initialized?
+Yeah, thanks for pointing that out.  Clearly I must have been
+sleep-deprived, since I had managed to convince myself we'd only end
+up in this situation when the inode had been deleted (as opposed to
+the situation where there's so much memory pressure that we're pushing
+out an inode that still has writebacks pending).
 
-I haven't followed this code through all the way but my instinct is
-that the memset is there for a reason.
+Let's try for patch #3:
 
-regards,
-dan carpenter
+>From 862ded6f705884fe08ebad63580aec240635d91d Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Sun, 7 Nov 2010 23:44:52 -0500
+Subject: [PATCH -v3] ext4: handle writeback of inodes which are being freed
 
+The following BUG can occur when an inode which is getting freed when
+it still has dirty pages outstanding, and it gets deleted (in this
+because it was the target of a rename).  In ordered mode, we need to
+make sure the data pages are written just in case we crash before the
+rename (or unlink) is committed.  If the inode is being freed then
+when we try to igrab the inode, we end up tripping the BUG_ON at
+fs/ext4/page-io.c:146.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To solve this problem, we need to keep track of the number of io
+callbacks which are pending, and avoid destroying the inode until they
+have all been completed.  That way we don't have to bump the inode
+count to keep the inode from being destroyed; an approach which
+doesn't work because the count could have already been dropped down to
+zero before the inode writeback has started (at which point we're not
+allowed to bump the count back up to 1, since it's already started
+getting freed).
+
+Thanks to Dave Chinner for suggesting this approach, which is also
+used by XFS.
+
+  kernel BUG at /scratch_space/linux-2.6/fs/ext4/page-io.c:146!
+  Call Trace:
+   [<ffffffff811075b1>] ext4_bio_write_page+0x172/0x307
+   [<ffffffff811033a7>] mpage_da_submit_io+0x2f9/0x37b
+   [<ffffffff811068d7>] mpage_da_map_and_submit+0x2cc/0x2e2
+   [<ffffffff811069b3>] mpage_add_bh_to_extent+0xc6/0xd5
+   [<ffffffff81106c66>] write_cache_pages_da+0x2a4/0x3ac
+   [<ffffffff81107044>] ext4_da_writepages+0x2d6/0x44d
+   [<ffffffff81087910>] do_writepages+0x1c/0x25
+   [<ffffffff810810a4>] __filemap_fdatawrite_range+0x4b/0x4d
+   [<ffffffff810815f5>] filemap_fdatawrite_range+0xe/0x10
+   [<ffffffff81122a2e>] jbd2_journal_begin_ordered_truncate+0x7b/0xa2
+   [<ffffffff8110615d>] ext4_evict_inode+0x57/0x24c
+   [<ffffffff810c14a3>] evict+0x22/0x92
+   [<ffffffff810c1a3d>] iput+0x212/0x249
+   [<ffffffff810bdf16>] dentry_iput+0xa1/0xb9
+   [<ffffffff810bdf6b>] d_kill+0x3d/0x5d
+   [<ffffffff810be613>] dput+0x13a/0x147
+   [<ffffffff810b990d>] sys_renameat+0x1b5/0x258
+   [<ffffffff81145f71>] ? _atomic_dec_and_lock+0x2d/0x4c
+   [<ffffffff810b2950>] ? cp_new_stat+0xde/0xea
+   [<ffffffff810b29c1>] ? sys_newlstat+0x2d/0x38
+   [<ffffffff810b99c6>] sys_rename+0x16/0x18
+   [<ffffffff81002a2b>] system_call_fastpath+0x16/0x1b
+
+Reported-by: Nick Bowler <nbowler@elliptictech.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |    2 +
+ fs/ext4/page-io.c |   70 ++++++++++++++++++++++++++++++++++-------------------
+ fs/ext4/super.c   |    2 +
+ 3 files changed, 49 insertions(+), 25 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8b5dd63..670d134 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -858,6 +858,7 @@ struct ext4_inode_info {
+ 	spinlock_t i_completed_io_lock;
+ 	/* current io_end structure for async DIO write*/
+ 	ext4_io_end_t *cur_aio_dio;
++	atomic_t i_ioend_count;	/* Number of outstanding io_end structs */
+ 
+ 	/*
+ 	 * Transactions that contain inode's metadata needed to complete
+@@ -2060,6 +2061,7 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ /* page-io.c */
+ extern int __init ext4_init_pageio(void);
+ extern void ext4_exit_pageio(void);
++extern void ext4_ioend_wait(struct inode *);
+ extern void ext4_free_io_end(ext4_io_end_t *io);
+ extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
+ extern int ext4_end_io_nolock(ext4_io_end_t *io);
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 46a7d6a..432a233 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -32,8 +32,14 @@
+ 
+ static struct kmem_cache *io_page_cachep, *io_end_cachep;
+ 
++#define WQ_HASH_SZ		37
++#define to_ioend_wq(v)	(&ioend_wq[((unsigned long)v) % WQ_HASH_SZ])
++static wait_queue_head_t ioend_wq[WQ_HASH_SZ];
++
+ int __init ext4_init_pageio(void)
+ {
++	int i;
++
+ 	io_page_cachep = KMEM_CACHE(ext4_io_page, SLAB_RECLAIM_ACCOUNT);
+ 	if (io_page_cachep == NULL)
+ 		return -ENOMEM;
+@@ -42,6 +48,8 @@ int __init ext4_init_pageio(void)
+ 		kmem_cache_destroy(io_page_cachep);
+ 		return -ENOMEM;
+ 	}
++	for (i = 0; i < WQ_HASH_SZ; i++)
++		init_waitqueue_head(&ioend_wq[i]);
+ 
+ 	return 0;
+ }
+@@ -52,9 +60,17 @@ void ext4_exit_pageio(void)
+ 	kmem_cache_destroy(io_page_cachep);
+ }
+ 
++void ext4_ioend_wait(struct inode *inode)
++{
++	wait_queue_head_t *wq = to_ioend_wq(inode);
++
++	wait_event(*wq, (atomic_read(&EXT4_I(inode)->i_ioend_count) == 0));
++}
++
+ void ext4_free_io_end(ext4_io_end_t *io)
+ {
+ 	int i;
++	wait_queue_head_t *wq;
+ 
+ 	BUG_ON(!io);
+ 	if (io->page)
+@@ -69,7 +85,10 @@ void ext4_free_io_end(ext4_io_end_t *io)
+ 		}
+ 	}
+ 	io->num_io_pages = 0;
+-	iput(io->inode);
++	wq = to_ioend_wq(io->inode);
++	if (atomic_dec_and_test(&EXT4_I(io->inode)->i_ioend_count) &&
++	    waitqueue_active(wq))
++		wake_up_all(wq);
+ 	kmem_cache_free(io_end_cachep, io);
+ }
+ 
+@@ -142,8 +161,8 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+ 	io = kmem_cache_alloc(io_end_cachep, flags);
+ 	if (io) {
+ 		memset(io, 0, sizeof(*io));
+-		io->inode = igrab(inode);
+-		BUG_ON(!io->inode);
++		atomic_inc(&EXT4_I(inode)->i_ioend_count);
++		io->inode = inode;
+ 		INIT_WORK(&io->work, ext4_end_io_work);
+ 		INIT_LIST_HEAD(&io->list);
+ 	}
+@@ -171,35 +190,15 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 	struct workqueue_struct *wq;
+ 	struct inode *inode;
+ 	unsigned long flags;
+-	ext4_fsblk_t err_block;
+ 	int i;
+ 
+ 	BUG_ON(!io_end);
+-	inode = io_end->inode;
+ 	bio->bi_private = NULL;
+ 	bio->bi_end_io = NULL;
+ 	if (test_bit(BIO_UPTODATE, &bio->bi_flags))
+ 		error = 0;
+-	err_block = bio->bi_sector >> (inode->i_blkbits - 9);
+ 	bio_put(bio);
+ 
+-	if (!(inode->i_sb->s_flags & MS_ACTIVE)) {
+-		pr_err("sb umounted, discard end_io request for inode %lu\n",
+-			io_end->inode->i_ino);
+-		ext4_free_io_end(io_end);
+-		return;
+-	}
+-
+-	if (error) {
+-		io_end->flag |= EXT4_IO_END_ERROR;
+-		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
+-			     "(offset %llu size %ld starting block %llu)",
+-			     inode->i_ino,
+-			     (unsigned long long) io_end->offset,
+-			     (long) io_end->size,
+-			     (unsigned long long) err_block);
+-	}
+-
+ 	for (i = 0; i < io_end->num_io_pages; i++) {
+ 		struct page *page = io_end->pages[i]->p_page;
+ 		struct buffer_head *bh, *head;
+@@ -254,9 +253,30 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 		if (!partial_write)
+ 			SetPageUptodate(page);
+ 	}
+-
+ 	io_end->num_io_pages = 0;
+ 
++	if ((inode = io_end->inode) == NULL)
++		goto no_work;
++
++	if (!(inode->i_sb->s_flags & MS_ACTIVE)) {
++		pr_err("sb umounted, discard end_io request for inode %lu\n",
++			io_end->inode->i_ino);
++	no_work:
++		ext4_free_io_end(io_end);
++		return;
++	}
++
++	if (error) {
++		io_end->flag |= EXT4_IO_END_ERROR;
++		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
++			     "(offset %llu size %ld starting block %llu)",
++			     inode->i_ino,
++			     (unsigned long long) io_end->offset,
++			     (long) io_end->size,
++			     (unsigned long long)
++			     bio->bi_sector >> (inode->i_blkbits - 9));
++	}
++
+ 	/* Add the io_end to per-inode completed io list*/
+ 	spin_lock_irqsave(&EXT4_I(inode)->i_completed_io_lock, flags);
+ 	list_add_tail(&io_end->list, &EXT4_I(inode)->i_completed_io_list);
+@@ -305,8 +325,8 @@ static int io_submit_init(struct ext4_io_submit *io,
+ 	bio->bi_private = io->io_end = io_end;
+ 	bio->bi_end_io = ext4_end_bio;
+ 
+-	io_end->inode = inode;
+ 	io_end->offset = (page->index << PAGE_CACHE_SHIFT) + bh_offset(bh);
++	io_end->flag = EXT4_IO_END_UNWRITTEN;
+ 
+ 	io->io_bio = bio;
+ 	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 04352e9..45653af 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -828,12 +828,14 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->cur_aio_dio = NULL;
+ 	ei->i_sync_tid = 0;
+ 	ei->i_datasync_tid = 0;
++	atomic_set(&ei->i_ioend_count, 0);
+ 
+ 	return &ei->vfs_inode;
+ }
+ 
+ static void ext4_destroy_inode(struct inode *inode)
+ {
++	ext4_ioend_wait(inode);
+ 	if (!list_empty(&(EXT4_I(inode)->i_orphan))) {
+ 		ext4_msg(inode->i_sb, KERN_ERR,
+ 			 "Inode %lu (%p): orphan list check failed!",
+-- 
+1.7.3.1
+
