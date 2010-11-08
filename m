@@ -1,55 +1,65 @@
 From: Josef Bacik <josef@redhat.com>
-Subject: [PATCH 3/6] Ocfs2: handle hole punching via fallocate properly
-Date: Mon,  8 Nov 2010 15:32:04 -0500
-Message-ID: <1289248327-16308-3-git-send-email-josef@redhat.com>
+Subject: [PATCH 2/6] XFS: handle hole punching via fallocate properly
+Date: Mon,  8 Nov 2010 15:32:03 -0500
+Message-ID: <1289248327-16308-2-git-send-email-josef@redhat.com>
 References: <1289248327-16308-1-git-send-email-josef@redhat.com>
 To: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	xfs@oss.sgi.com, joel.becker@oracle.com, cmm@us.ibm.com,
 	cluster-
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1289248327-16308-1-git-send-email-josef@redhat.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch just makes ocfs2 use its UNRESERVP ioctl when we get the hole punch
-flag in fallocate.  I didn't test it, but it seems simple enough.  Thanks,
+This patch simply allows XFS to handle the hole punching flag in fallocate
+properly.  I've tested this with a little program that does a bunch of random
+hole punching with FL_KEEP_SIZE and without it to make sure it does the right
+thing.  Thanks,
 
 Signed-off-by: Josef Bacik <josef@redhat.com>
 ---
- fs/ocfs2/file.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+ fs/xfs/linux-2.6/xfs_iops.c |   12 +++++++++---
+ 1 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index 77b4c04..ad23a18 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -1992,6 +1992,7 @@ static long ocfs2_fallocate(struct inode *inode, int mode, loff_t offset,
- 	struct ocfs2_super *osb = OCFS2_SB(inode->i_sb);
- 	struct ocfs2_space_resv sr;
- 	int change_size = 1;
-+	int cmd = OCFS2_IOC_RESVSP64;
+diff --git a/fs/xfs/linux-2.6/xfs_iops.c b/fs/xfs/linux-2.6/xfs_iops.c
+index 96107ef..99df347 100644
+--- a/fs/xfs/linux-2.6/xfs_iops.c
++++ b/fs/xfs/linux-2.6/xfs_iops.c
+@@ -516,6 +516,7 @@ xfs_vn_fallocate(
+ 	loff_t		new_size = 0;
+ 	xfs_flock64_t	bf;
+ 	xfs_inode_t	*ip = XFS_I(inode);
++	int		cmd = XFS_IOC_RESVSP;
  
- 	if (!ocfs2_writes_unwritten_extents(osb))
- 		return -EOPNOTSUPP;
-@@ -2002,12 +2003,15 @@ static long ocfs2_fallocate(struct inode *inode, int mode, loff_t offset,
- 	if (mode & FALLOC_FL_KEEP_SIZE)
- 		change_size = 0;
+ 	/* preallocation on directories not yet supported */
+ 	error = -ENODEV;
+@@ -528,17 +529,22 @@ xfs_vn_fallocate(
+ 
+ 	xfs_ilock(ip, XFS_IOLOCK_EXCL);
  
 +	if (mode & FALLOC_FL_PUNCH_HOLE)
-+		cmd = OCFS2_IOC_UNRESVSP64;
++		cmd = XFS_IOC_UNRESVSP;
 +
- 	sr.l_whence = 0;
- 	sr.l_start = (s64)offset;
- 	sr.l_len = (s64)len;
+ 	/* check the new inode size is valid before allocating */
+ 	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+ 	    offset + len > i_size_read(inode)) {
+-		new_size = offset + len;
++		if (cmd == XFS_IOC_UNRESVSP)
++			new_size = offset;
++		else
++			new_size = offset + len;
+ 		error = inode_newsize_ok(inode, new_size);
+ 		if (error)
+ 			goto out_unlock;
+ 	}
  
--	return __ocfs2_change_file_space(NULL, inode, offset,
--					 OCFS2_IOC_RESVSP64, &sr, change_size);
-+	return __ocfs2_change_file_space(NULL, inode, offset, cmd, &sr,
-+					 change_size);
- }
+-	error = -xfs_change_file_space(ip, XFS_IOC_RESVSP, &bf,
+-				       0, XFS_ATTR_NOLOCK);
++	error = -xfs_change_file_space(ip, cmd, &bf, 0, XFS_ATTR_NOLOCK);
+ 	if (error)
+ 		goto out_unlock;
  
- int ocfs2_check_range_for_refcount(struct inode *inode, loff_t pos,
 -- 
 1.6.6.1
 
