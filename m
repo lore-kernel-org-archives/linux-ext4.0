@@ -1,66 +1,78 @@
-From: Tony Vroon <tony@linx.net>
-Subject: Re: [PATCH -BUGFIX] Re: BUG in ext4 with 2.6.37-rc1
-Date: Sun, 07 Nov 2010 22:53:35 +0000
-Message-ID: <1289170415.2853.3.camel@localhost>
-References: <20101102202013.GA3861@elliptictech.com>
-	 <20101103181412.GH25614@thunk.org> <20101103182229.GA8766@elliptictech.com>
-	 <20101103205306.GA3627@elliptictech.com> <20101107212143.GA28396@thunk.org>
+From: =?UTF-8?Q?Maciej_=C5=BBenczykowski?= <zenczykowski@gmail.com>
+Subject: Re: [PATCH 1/2] ext3: don't update sb journal_devnum when RO dev
+Date: Sun, 7 Nov 2010 17:09:24 -0800
+Message-ID: <AANLkTi=eyT7qzUCDubVKiiWwaAG7008vw=vJ7YnwbR1=@mail.gmail.com>
+References: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-KzD+RMcyujP4saWCmT7d"
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?UTF-8?Q?Maciej_=C5=BBenczykowski?= <zenczykowski@gmail.com>
+To: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>, Jan Kara <jack@suse.cz>,
+	Christoph Hellwig <hch@lst.de>,
+	Eric Sandeen <sandee
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gold.linx.net ([195.66.232.40]:58128 "EHLO gold.linx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751439Ab0KGWxX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Nov 2010 17:53:23 -0500
-In-Reply-To: <20101107212143.GA28396@thunk.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:45977 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752714Ab0KHBJZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 20:09:25 -0500
+Received: by wwb39 with SMTP id 39so3299551wwb.1
+        for <linux-ext4@vger.kernel.org>; Sun, 07 Nov 2010 17:09:24 -0800 (PST)
+In-Reply-To: <1285540709-16217-1-git-send-email-zenczykowski@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+2010/9/26 Maciej =C5=BBenczykowski <zenczykowski@gmail.com>:
+> An ext3 filesystem on a read-only device, with an external journal
+> which is at a different device number then recorded in the superblock
+> will fail to honor the read-only setting of the device and trigger
+> a superblock update (write).
+>
+> For example:
+> =C2=A0- ext3 on a software raid which is in read-only mode
+> =C2=A0- external journal on a read-write device which has changed dev=
+ice num
+> =C2=A0- attempt to mount with -o journal_dev=3D<new_number>
+> =C2=A0- hits BUG_ON(mddev->ro =3D 1) in md.c
+>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Maciej =C5=BBenczykowski <zenczykowski@gmail.com>
+> ---
+> =C2=A0fs/ext3/super.c | =C2=A0 =C2=A02 +-
+> =C2=A01 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 5dbf4db..19dfbe9 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2299,7 +2299,7 @@ static int ext3_load_journal(struct super_block=
+ *sb,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0EXT3_SB(sb)->s_journal =3D journal;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0ext3_clear_journal_err(sb, es);
+>
+> - =C2=A0 =C2=A0 =C2=A0 if (journal_devnum &&
+> + =C2=A0 =C2=A0 =C2=A0 if (!really_read_only && journal_devnum &&
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0journal_devnum !=3D le32_to_=
+cpu(es->s_journal_dev)) {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0es->s_journal_=
+dev =3D cpu_to_le32(journal_devnum);
+>
+> --
+> 1.7.2.3
+>
+>
 
---=-KzD+RMcyujP4saWCmT7d
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+While I can see the ext4 patch at:
 
-On Sun, 2010-11-07 at 16:21 -0500, Ted Ts'o wrote:
-> OK, I think I have a new version of the patch that should fix both the
-> original and the second BUG_ON which you reported.
-> Subject: [PATCH -v2] ext4: handle writeback of inodes which are being fre=
-ed
+ http://git.kernel.org/?p=3Dlinux/kernel/git/tytso/ext4.git;a=3Dshortlo=
+g
 
-Tested-By: Tony Vroon <tony@linx.net>
+I can't find the ext3 patch.  Did it get missed?
 
-This survived a 'cvs up' in /cvs/gentoo-x86 with only the CVS directory
-in place; a workload that died at roughly 90% before. I did my best to
-recreate the heavy I/O conditions that existed when it died there
-before, with Evolution being opened just as cvs starts the first writes.
-I opened Transmission-gtk with a few LiveDVD ISOs just for good measure.
-The system was loaded enough for "su -" to stall for 20 seconds at some
-points but ext4 survived now.
-
-I do believe you have found the culprit, many thanks :)
-
-Regards,
---=20
-Tony Vroon
-UNIX systems administrator
-London Internet Exchange Ltd, Trinity Court, Trinity Street,
-Peterborough, PE1 1DA
-Registered in England number 3137929
-E-Mail: tony@linx.net
-
---=-KzD+RMcyujP4saWCmT7d
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.16 (GNU/Linux)
-
-iEYEABECAAYFAkzXLe8ACgkQp5vW4rUFj5rg5QCfbPZRL9u/k92Ury0JkB4I447s
-yOoAnRA4DJz7HbjHHmznckbmu1rkSSTS
-=SR2l
------END PGP SIGNATURE-----
-
---=-KzD+RMcyujP4saWCmT7d--
-
+Maciej
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
