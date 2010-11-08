@@ -1,46 +1,39 @@
-From: =?UTF-8?B?Iua9mOWNq+W5syhQZXRlciBQYW4pIg==?=
-	<wppan@redflag-linux.com>
-Subject: [PATCH] ext4:memset is needless in ext4_ext_remove_space()
-Date: Mon, 08 Nov 2010 09:19:47 +0800
-Message-ID: <4CD75033.7080902@redflag-linux.com>
+From: Dan Carpenter <error27@gmail.com>
+Subject: Re: [PATCH] ext4:memset is needless in ext4_ext_remove_space()
+Date: Mon, 8 Nov 2010 06:37:52 +0200
+Message-ID: <20101108043752.GB5563@bicker>
+References: <4CD75033.7080902@redflag-linux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
+To: =?utf-8?B?5r2Y5Y2r5bmzKFBldGVyIFBhbik=?= <wppan@redflag-linux.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.redflag-linux.com ([219.237.229.196]:43780 "EHLO
-	mail.redflag-linux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752621Ab0KHBVm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 20:21:42 -0500
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:41548 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752259Ab0KHEiH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Nov 2010 23:38:07 -0500
+Content-Disposition: inline
+In-Reply-To: <4CD75033.7080902@redflag-linux.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Nov 08, 2010 at 09:19:47AM +0800, "=E6=BD=98=E5=8D=AB=E5=B9=B3(=
+Peter Pan)" wrote:
+>
+> memset is needless because path is allocated by kzalloc.
+>
 
-memset is needless because path is allocated by kzalloc.
+This is inside a loop and sometimes we do i++ and sometimes i--.  Are
+you absolutely positive that path + i isn't initialized?
 
-Signed-off-by: Peter Pan(=E6=BD=98=E5=8D=AB=E5=B9=B3) <wppan@redflag-li=
-nux.com>
----
-  fs/ext4/extents.c |    1 -
-  1 files changed, 0 insertions(+), 1 deletions(-)
+I haven't followed this code through all the way but my instinct is
+that the memset is there for a reason.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0554c48..37cdb6e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2375,7 +2375,6 @@ again:
-  			/* go to the next level */
-  			ext_debug("move to level %d (block %llu)\n",
-  				  i + 1, ext4_idx_pblock(path[i].p_idx));
--			memset(path + i + 1, 0, sizeof(*path));
-  			bh =3D sb_bread(sb, ext4_idx_pblock(path[i].p_idx));
-  			if (!bh) {
-  				/* should we reset i_size? */
---=20
-1.6.6
+regards,
+dan carpenter
 
 
 --
