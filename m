@@ -1,70 +1,44 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
-Date: Tue, 9 Nov 2010 15:42:42 +1100
-Message-ID: <20101109044242.GH2715@dastard>
-References: <1289248327-16308-1-git-send-email-josef@redhat.com>
- <20101109011222.GD2715@dastard>
- <20101109033038.GF3099@thunk.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [RFC] Self healing extent map OR opportunistic de-fragmentation
+Date: Tue, 9 Nov 2010 01:58:21 -0700
+Message-ID: <25081AB5-124D-4E29-AB89-94A05F0106D1@dilger.ca>
+References: <AANLkTinsZRSU46J0JXm2A=u=d-JpQfdYnk0oHf3NC9O_@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-To: Ted Ts'o <tytso@mit.edu>, Josef Bacik <josef@redhat.com>,
-	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bld-mail14.adl6.internode.on.net ([150.101.137.99]:49692 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752484Ab0KIEnT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Nov 2010 23:43:19 -0500
-Content-Disposition: inline
-In-Reply-To: <20101109033038.GF3099@thunk.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:5330 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751002Ab0KII6X convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2010 03:58:23 -0500
+In-Reply-To: <AANLkTinsZRSU46J0JXm2A=u=d-JpQfdYnk0oHf3NC9O_@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 08, 2010 at 10:30:38PM -0500, Ted Ts'o wrote:
-> On Tue, Nov 09, 2010 at 12:12:22PM +1100, Dave Chinner wrote:
-> > Hole punching was not included originally in fallocate() for a
-> > variety of reasons. IIRC, they were along the lines of:
-> > 
-> > 	1 de-allocating of blocks in an allocation syscall is wrong.
-> > 	  People wanted a new syscall for this functionality.
-....
-> > I guess that leaves #1 to be debated;
-> > I don't think there is any problem with doing what you propose.
-> 
-> I don't have a problem either.
-> 
-> As a completely separate proposal, what do people think about an
-> FALLOCATE_FL_ZEROIZE after which time the blocks are allocated, but
-> reading from them returns zero.
+On 2010-11-08, at 21:14, Amir Goldstein wrote:
+> I would like to propose a simple idea how to automatically de-fragment a file.
 
-That's exactly the new XFS_IOC_ZERO_RANGE ioctl in 2.6.36 does
-(commit 447223520520b17d3b6d0631aa4838fbaf8eddb4 "xfs: Introduce
-XFS_IOC_ZERO_RANGE") The git commit I pointed to in the last email
-is the rudimentary fallocate() interface support I have for that
-code which goes along with an xfs_io patch I have. Given that there
-seems to be interest for this operation, I'll flesh it out into a
-proper patch....
+[snip]
 
-> This could be done either by (a)
-> sending a discard in the case of devices where discard_zeros_data is
-> true and discard_granularty is less than the fs block size, or (b) by
-> setting the uninitialized flag in the extent tree.
+> The use case for this, besides healing fragmentation caused by
+> snapshots move-on-rewrite, is an highly fragmented ext2/3 fs, which was mounted as ext4.  ext2/3 old files are slowly being deleted while new (still fragmented) extent mapped files are being created.
+> This viscous cycle cannot end before there is enough contiguous free
+> space for writing new files, which may never happen.
 
-Implementation is up to the filesystem. However, XFS does (b)
-because:
+This will only happen in case the free space is _very_ low.  Normally, in a situation like this, mballoc will allocate the largest contiguous chunks of free space, reducing the fragmentation as new files are written, and allocations to highly-fragmented block groups will be avoided until the chunks in those groups have grown larger.
 
-	1) it was extremely simple to implement (one of the
-	   advantages of having an exceedingly complex allocation
-	   interface to begin with :P)
-	2) conversion is atomic, fast and reliable
-	3) it is independent of the underlying storage; and
-	4) reads of unwritten extents operate at memory speed,
-	   not disk speed.
+> Online de-fragmentation will not help in this case either.
+> With opportunistic de-fragmentation, if the extent mapped files are
+> being re-written, the health of the file system will constantly improve over time.  BTW, Is this use case relevant for upgraded google chunk servers?
 
-Cheers,
+While this is true in theory, the problem is that in most cases files are not overwritten in place.  Commonly, when files are "rewritten" they are truncated and new blocks allocated, or a new file is written and renamed in place of the old file.  Only in rare cases, like databases, are files rewritten in-place.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Cheers, Andreas
+
+
+
+
+
