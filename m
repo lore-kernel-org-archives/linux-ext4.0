@@ -1,47 +1,143 @@
-From: Justin Maggard <jmaggard10@gmail.com>
-Subject: Re: How can I do online resize from 14TB to 30TB?
-Date: Tue, 9 Nov 2010 14:12:00 -0800
-Message-ID: <AANLkTik7KFn1eU2o5sRm3CM1jmoWszKGzDXMpUyjQec6@mail.gmail.com>
-References: <855286.34705.qm@web74212.mail.tp2.yahoo.com>
-	<A09A0FD5-97DA-494A-B248-CFBC1AF7DBE4@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fs/ext3/super.c: Use printf extension %pV
+Date: Tue, 9 Nov 2010 23:46:58 +0100
+Message-ID: <20101109224658.GA11214@quack.suse.cz>
+References: <1289326685.1823.87.camel@Joe-Laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:42904 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751202Ab0KIWMD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2010 17:12:03 -0500
-Received: by ywc21 with SMTP id 21so4757689ywc.19
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Nov 2010 14:12:01 -0800 (PST)
-In-Reply-To: <A09A0FD5-97DA-494A-B248-CFBC1AF7DBE4@dilger.ca>
+Received: from cantor.suse.de ([195.135.220.2]:54780 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751607Ab0KIWrA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Nov 2010 17:47:00 -0500
+Content-Disposition: inline
+In-Reply-To: <1289326685.1823.87.camel@Joe-Laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2010/11/9 Andreas Dilger <adilger.kernel@dilger.ca>:
-> On 2010-11-09, at 03:06, =E5=AF=AC wrote:
->> I saw the mail "E2fsprogs master branch now has all 64-bit patch app=
-lied" written by Ted. =C2=A0Ext4 with 64bit couldn't do online resize w=
-hich is larger than 16TB, because "meta_bg" in kernel is not ready.
->>
->> However, it really took lots of time to do off-line resizing. =C2=A0=
-Could I do online resize without meta_bg? =C2=A0Or what can I do for e2=
-fsprogs to support online resize for larger than 16TB?
->
-> For the current time there will be no support for resizing a filesyst=
-em formatted < 16TB to one > 16TB.
->
+On Tue 09-11-10 10:18:05, Joe Perches wrote:
+> Using %pV reduces the number of printk calls and
+> eliminates any possible message interleaving from
+> other printk calls.
+  Thanks. Merged.
 
-On a related topic, currently 4KB-block ext4 filesystems with the
-64bit flag set apparently can only expand online by a max increase of
-8TB (16TB without 64bit), even if you specify a larger value with -E
-resize=3DXXX.  Are there any plans to improve this?
+						Honza
 
-Thanks,
--Justin
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> Signed-off-by: Joe Perches <joe@perches.com>
+> ---
+>  fs/ext3/super.c |   56 ++++++++++++++++++++++++++++++++++++------------------
+>  1 files changed, 37 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 2fedaf8..adfbe0d 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -144,12 +144,16 @@ void ext3_journal_abort_handle(const char *caller, const char *err_fn,
+>  void ext3_msg(struct super_block *sb, const char *prefix,
+>  		const char *fmt, ...)
+>  {
+> +	struct va_format vaf;
+>  	va_list args;
+>  
+>  	va_start(args, fmt);
+> -	printk("%sEXT3-fs (%s): ", prefix, sb->s_id);
+> -	vprintk(fmt, args);
+> -	printk("\n");
+> +
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+> +
+> +	printk("%sEXT3-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
+> +
+>  	va_end(args);
+>  }
+>  
+> @@ -196,15 +200,20 @@ static void ext3_handle_error(struct super_block *sb)
+>  			sb->s_id);
+>  }
+>  
+> -void ext3_error (struct super_block * sb, const char * function,
+> -		 const char * fmt, ...)
+> +void ext3_error(struct super_block *sb, const char *function,
+> +		const char *fmt, ...)
+>  {
+> +	struct va_format vaf;
+>  	va_list args;
+>  
+>  	va_start(args, fmt);
+> -	printk(KERN_CRIT "EXT3-fs error (device %s): %s: ",sb->s_id, function);
+> -	vprintk(fmt, args);
+> -	printk("\n");
+> +
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+> +
+> +	printk(KERN_CRIT "EXT3-fs error (device %s): %s: %pV\n",
+> +	       sb->s_id, function, &vaf);
+> +
+>  	va_end(args);
+>  
+>  	ext3_handle_error(sb);
+> @@ -275,15 +284,20 @@ void __ext3_std_error (struct super_block * sb, const char * function,
+>   * case we take the easy way out and panic immediately.
+>   */
+>  
+> -void ext3_abort (struct super_block * sb, const char * function,
+> -		 const char * fmt, ...)
+> +void ext3_abort(struct super_block *sb, const char *function,
+> +		 const char *fmt, ...)
+>  {
+> +	struct va_format vaf;
+>  	va_list args;
+>  
+>  	va_start(args, fmt);
+> -	printk(KERN_CRIT "EXT3-fs (%s): error: %s: ", sb->s_id, function);
+> -	vprintk(fmt, args);
+> -	printk("\n");
+> +
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+> +
+> +	printk(KERN_CRIT "EXT3-fs (%s): error: %s: %pV\n",
+> +	       sb->s_id, function, &vaf);
+> +
+>  	va_end(args);
+>  
+>  	if (test_opt(sb, ERRORS_PANIC))
+> @@ -301,16 +315,20 @@ void ext3_abort (struct super_block * sb, const char * function,
+>  		journal_abort(EXT3_SB(sb)->s_journal, -EIO);
+>  }
+>  
+> -void ext3_warning (struct super_block * sb, const char * function,
+> -		   const char * fmt, ...)
+> +void ext3_warning(struct super_block *sb, const char *function,
+> +		  const char *fmt, ...)
+>  {
+> +	struct va_format vaf;
+>  	va_list args;
+>  
+>  	va_start(args, fmt);
+> -	printk(KERN_WARNING "EXT3-fs (%s): warning: %s: ",
+> -	       sb->s_id, function);
+> -	vprintk(fmt, args);
+> -	printk("\n");
+> +
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+> +
+> +	printk(KERN_WARNING "EXT3-fs (%s): warning: %s: %pV\n",
+> +	       sb->s_id, function, &vaf);
+> +
+>  	va_end(args);
+>  }
+>  
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
