@@ -1,59 +1,47 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
-Date: Tue, 9 Nov 2010 22:53:57 +0100
-Message-ID: <20101109215357.GI4936@quack.suse.cz>
-References: <1289248327-16308-1-git-send-email-josef@redhat.com>
- <20101109011222.GD2715@dastard>
- <20101109033038.GF3099@thunk.org>
- <20101109044242.GH2715@dastard>
- <20101109214147.GK3099@thunk.org>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: Re: How can I do online resize from 14TB to 30TB?
+Date: Tue, 9 Nov 2010 14:12:00 -0800
+Message-ID: <AANLkTik7KFn1eU2o5sRm3CM1jmoWszKGzDXMpUyjQec6@mail.gmail.com>
+References: <855286.34705.qm@web74212.mail.tp2.yahoo.com>
+	<A09A0FD5-97DA-494A-B248-CFBC1AF7DBE4@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, Josef Bacik <josef@redhat.com>,
-	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, joel.becker@oracle.com, cmm@us.ibm.com,
-	cluster-devel@redhat.com
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20101109214147.GK3099@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:42904 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751202Ab0KIWMD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2010 17:12:03 -0500
+Received: by ywc21 with SMTP id 21so4757689ywc.19
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Nov 2010 14:12:01 -0800 (PST)
+In-Reply-To: <A09A0FD5-97DA-494A-B248-CFBC1AF7DBE4@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 09-11-10 16:41:47, Ted Ts'o wrote:
-> On Tue, Nov 09, 2010 at 03:42:42PM +1100, Dave Chinner wrote:
-> > Implementation is up to the filesystem. However, XFS does (b)
-> > because:
-> > 
-> > 	1) it was extremely simple to implement (one of the
-> > 	   advantages of having an exceedingly complex allocation
-> > 	   interface to begin with :P)
-> > 	2) conversion is atomic, fast and reliable
-> > 	3) it is independent of the underlying storage; and
-> > 	4) reads of unwritten extents operate at memory speed,
-> > 	   not disk speed.
-> 
-> Yeah, I was thinking that using a device-style TRIM might be better
-> since future attempts to write to it won't require a separate seek to
-> modify the extent tree.  But yeah, there are a bunch of advantages of
-> simply mutating the extent tree.
-> 
-> While we're on the subject of changes to fallocate, what do people
-> think of FALLOC_FL_EXPOSE_OLD_DATA, which requires either root
-> privileges or (if capabilities are in use) CAP_DAC_OVERRIDE &&
-> CAP_MAC_OVERRIDE && CAP_SYS_ADMIN.  This would allow a trusted process
-> to fallocate blocks with the extent already marked initialized.  I've
-> had two requests for such functionality for ext4 already.  
-> 
-> (Take for example a trusted cluster filesystem backend that checks the
-> object checksum before returning any data to the user; and if the
-> check fails the cluster file system will try to use some other replica
-> stored on some other server.)
-  Hum, could you elaborate a bit? I fail to see how above fallocate() flag
-could be used to help solving this problem... Just curious...
+2010/11/9 Andreas Dilger <adilger.kernel@dilger.ca>:
+> On 2010-11-09, at 03:06, =E5=AF=AC wrote:
+>> I saw the mail "E2fsprogs master branch now has all 64-bit patch app=
+lied" written by Ted. =C2=A0Ext4 with 64bit couldn't do online resize w=
+hich is larger than 16TB, because "meta_bg" in kernel is not ready.
+>>
+>> However, it really took lots of time to do off-line resizing. =C2=A0=
+Could I do online resize without meta_bg? =C2=A0Or what can I do for e2=
+fsprogs to support online resize for larger than 16TB?
+>
+> For the current time there will be no support for resizing a filesyst=
+em formatted < 16TB to one > 16TB.
+>
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On a related topic, currently 4KB-block ext4 filesystems with the
+64bit flag set apparently can only expand online by a max increase of
+8TB (16TB without 64bit), even if you specify a larger value with -E
+resize=3DXXX.  Are there any plans to improve this?
+
+Thanks,
+-Justin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
