@@ -1,132 +1,44 @@
-From: Joe Perches <joe@perches.com>
-Subject: [PATCH] fs/ext3/super.c: Use printf extension %pV
-Date: Tue, 09 Nov 2010 10:18:05 -0800
-Message-ID: <1289326685.1823.87.camel@Joe-Laptop>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Don't call sb_issue_discard() in
+ ext4_free_blocks()
+Date: Tue, 9 Nov 2010 15:03:18 -0500
+Message-ID: <20101109200318.GG3099@thunk.org>
+References: <1289196382-31239-1-git-send-email-tytso@mit.edu>
+ <4CD97875.6050703@redhat.com>
+ <AANLkTikmExLtH0-LKEvH=WoL=o550EJQuO33dRsoFNWB@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jiaying Zhang <jiayingz@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:4757 "EHLO mail.perches.com"
+Received: from thunk.org ([69.25.196.29]:38564 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753078Ab0KISSH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Nov 2010 13:18:07 -0500
+	id S1752437Ab0KIUDZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Nov 2010 15:03:25 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTikmExLtH0-LKEvH=WoL=o550EJQuO33dRsoFNWB@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Using %pV reduces the number of printk calls and
-eliminates any possible message interleaving from
-other printk calls.
+On Tue, Nov 09, 2010 at 10:00:37AM -0800, Jiaying Zhang wrote:
+> I would like to spend some time to see whether we can add
+> sb_issue_discard() somewhere else for non-journaled mode.
+> It is a useful feature to be included for both modes.
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/ext3/super.c |   56 ++++++++++++++++++++++++++++++++++++------------------
- 1 files changed, 37 insertions(+), 19 deletions(-)
+It certainly can be done, but we'll have to do the trim from a kernel
+thread or workqueue context.  (Of course, we need to make sure that
+the blocks don't get reused until the trim happens --- or, if we want
+to use those blocks, that we take them off the to-be-trimmed list
+before we reuse them.)
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 2fedaf8..adfbe0d 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -144,12 +144,16 @@ void ext3_journal_abort_handle(const char *caller, const char *err_fn,
- void ext3_msg(struct super_block *sb, const char *prefix,
- 		const char *fmt, ...)
- {
-+	struct va_format vaf;
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk("%sEXT3-fs (%s): ", prefix, sb->s_id);
--	vprintk(fmt, args);
--	printk("\n");
-+
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+
-+	printk("%sEXT3-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
-+
- 	va_end(args);
- }
- 
-@@ -196,15 +200,20 @@ static void ext3_handle_error(struct super_block *sb)
- 			sb->s_id);
- }
- 
--void ext3_error (struct super_block * sb, const char * function,
--		 const char * fmt, ...)
-+void ext3_error(struct super_block *sb, const char *function,
-+		const char *fmt, ...)
- {
-+	struct va_format vaf;
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT3-fs error (device %s): %s: ",sb->s_id, function);
--	vprintk(fmt, args);
--	printk("\n");
-+
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+
-+	printk(KERN_CRIT "EXT3-fs error (device %s): %s: %pV\n",
-+	       sb->s_id, function, &vaf);
-+
- 	va_end(args);
- 
- 	ext3_handle_error(sb);
-@@ -275,15 +284,20 @@ void __ext3_std_error (struct super_block * sb, const char * function,
-  * case we take the easy way out and panic immediately.
-  */
- 
--void ext3_abort (struct super_block * sb, const char * function,
--		 const char * fmt, ...)
-+void ext3_abort(struct super_block *sb, const char *function,
-+		 const char *fmt, ...)
- {
-+	struct va_format vaf;
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT3-fs (%s): error: %s: ", sb->s_id, function);
--	vprintk(fmt, args);
--	printk("\n");
-+
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+
-+	printk(KERN_CRIT "EXT3-fs (%s): error: %s: %pV\n",
-+	       sb->s_id, function, &vaf);
-+
- 	va_end(args);
- 
- 	if (test_opt(sb, ERRORS_PANIC))
-@@ -301,16 +315,20 @@ void ext3_abort (struct super_block * sb, const char * function,
- 		journal_abort(EXT3_SB(sb)->s_journal, -EIO);
- }
- 
--void ext3_warning (struct super_block * sb, const char * function,
--		   const char * fmt, ...)
-+void ext3_warning(struct super_block *sb, const char *function,
-+		  const char *fmt, ...)
- {
-+	struct va_format vaf;
- 	va_list args;
- 
- 	va_start(args, fmt);
--	printk(KERN_WARNING "EXT3-fs (%s): warning: %s: ",
--	       sb->s_id, function);
--	vprintk(fmt, args);
--	printk("\n");
-+
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+
-+	printk(KERN_WARNING "EXT3-fs (%s): warning: %s: %pV\n",
-+	       sb->s_id, function, &vaf);
-+
- 	va_end(args);
- }
- 
+I am a bit concerned about just adding a new thread, though.
+Especially if it's per filesystem, since on a system with a very high
+spindle/ext4 file system count, this could get a bit crazy.  It's a
+bit better in 2.6.36 now that with concurrency managed workqueues,
+there's only one workqueue thread per file system, instead of one
+workqueue thread per file system per core (so on a system with 50
+spindles and 32 cores, there would be 1600 workqueue threads!).
 
+						- Ted
 
