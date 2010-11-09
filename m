@@ -1,8 +1,9 @@
-From: Josef Bacik <josef@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
-Date: Mon, 8 Nov 2010 21:10:03 -0500
-Message-ID: <20101109021002.GC27816@dhcp231-156.rdu.redhat.com>
-References: <1289248327-16308-1-git-send-email-josef@redhat.com> <20101109011222.GD2715@dastard>
+Date: Mon, 8 Nov 2010 22:30:38 -0500
+Message-ID: <20101109033038.GF3099@thunk.org>
+References: <1289248327-16308-1-git-send-email-josef@redhat.com>
+ <20101109011222.GD2715@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Josef Bacik <josef@redhat.com>, linux-kernel@vger.kernel.org,
@@ -11,53 +12,16 @@ Cc: Josef Bacik <josef@redhat.com>, linux-kernel@vger.kernel.org,
 	joel.becker@oracle.com, cmm@us.ibm.com, cluster-devel@redhat.com
 To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45876 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:35768 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754387Ab0KICK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Nov 2010 21:10:27 -0500
+	id S1751287Ab0KIDat (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Nov 2010 22:30:49 -0500
 Content-Disposition: inline
 In-Reply-To: <20101109011222.GD2715@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Tue, Nov 09, 2010 at 12:12:22PM +1100, Dave Chinner wrote:
-> On Mon, Nov 08, 2010 at 03:32:02PM -0500, Josef Bacik wrote:
-> > Hole punching has already been implemented by XFS and OCFS2, and has the
-> > potential to be implemented on both BTRFS and EXT4 so we need a generic way to
-> > get to this feature.  The simplest way in my mind is to add FALLOC_FL_PUNCH_HOLE
-> > to fallocate() since it already looks like the normal fallocate() operation.
-> > I've tested this patch with XFS and BTRFS to make sure XFS did what it's
-> > supposed to do and that BTRFS failed like it was supposed to.  Thank you,
-> > 
-> > Signed-off-by: Josef Bacik <josef@redhat.com>
-> > ---
-> >  fs/open.c              |    2 +-
-> >  include/linux/falloc.h |    1 +
-> >  2 files changed, 2 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/open.c b/fs/open.c
-> > index 4197b9e..ab8dedf 100644
-> > --- a/fs/open.c
-> > +++ b/fs/open.c
-> > @@ -223,7 +223,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-> >  		return -EINVAL;
-> >  
-> >  	/* Return error if mode is not supported */
-> > -	if (mode && !(mode & FALLOC_FL_KEEP_SIZE))
-> > +	if (mode && (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE)))
-> >  		return -EOPNOTSUPP;
-> >  
-> >  	if (!(file->f_mode & FMODE_WRITE))
-> > diff --git a/include/linux/falloc.h b/include/linux/falloc.h
-> > index 3c15510..851cba2 100644
-> > --- a/include/linux/falloc.h
-> > +++ b/include/linux/falloc.h
-> > @@ -2,6 +2,7 @@
-> >  #define _FALLOC_H_
-> >  
-> >  #define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
-> > +#define FALLOC_FL_PUNCH_HOLE	0X02 /* de-allocates range */
-> 
 > Hole punching was not included originally in fallocate() for a
 > variety of reasons. IIRC, they were along the lines of:
 > 
@@ -76,16 +40,26 @@ On Tue, Nov 09, 2010 at 12:12:22PM +1100, Dave Chinner wrote:
 > Anyway, #3 isn't the case any more, #4 was just an excuse not to
 > support anything ext4 couldn't do and lots of apps are calling
 > fallocate directly (because glibc can't use FALLOC_FL_KEEP_SIZE) so
-> #2 isn't an issue, either. I guess that leaves #1 to be debated;
+> #2 isn't an issue, either.
+
+I don't recall anyone arguing #4 because of ext4, but I get very tired
+of the linux-fsdevel bike-shed painting parties, so I often will
+concede whatever is necessary just to get the !@#! interface in,
+assuming we could add more flags later....
+
+glibc does support fallocate(), BTW; it's just posix_fallocate() that
+doesn't use FALLOC_FL_KEEP_SIZE.
+
+> I guess that leaves #1 to be debated;
 > I don't think there is any problem with doing what you propose.
->
-> What I will suggest is that this requires a generic xfstest to be
-> written and support added to xfs_io to enable that test (and others)
-> to issue hole punches. Something along the lines of test 242 which I
-> wrote for testing all the edge case of XFS_IOC_ZERO_RANGE (*) would be
-> good.
 
-Sounds good.  Do you want me to build my PUNCH_HOLE patch ontop of your
-ZERO_RANGE patch?  Thanks,
+I don't have a problem either.
 
-Josef
+As a completely separate proposal, what do people think about an
+FALLOCATE_FL_ZEROIZE after which time the blocks are allocated, but
+reading from them returns zero.  This could be done either by (a)
+sending a discard in the case of devices where discard_zeros_data is
+true and discard_granularty is less than the fs block size, or (b) by
+setting the uninitialized flag in the extent tree.
+
+						- Ted
