@@ -1,89 +1,97 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext2/super.c: Use printf extension %pV
-Date: Tue, 9 Nov 2010 23:47:10 +0100
-Message-ID: <20101109224710.GB11214@quack.suse.cz>
-References: <1289326563.1823.85.camel@Joe-Laptop>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
+Date: Wed, 10 Nov 2010 10:40:49 +1100
+Message-ID: <20101109234049.GQ2715@dastard>
+References: <1289248327-16308-1-git-send-email-josef@redhat.com>
+ <20101109011222.GD2715@dastard>
+ <20101109033038.GF3099@thunk.org>
+ <20101109044242.GH2715@dastard>
+ <20101109214147.GK3099@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Joe Perches <joe@perches.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Ted Ts'o <tytso@mit.edu>, Josef Bacik <josef@redhat.com>,
+	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bld-mail18.adl2.internode.on.net ([150.101.137.103]:50091 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752166Ab0KIXlk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2010 18:41:40 -0500
 Content-Disposition: inline
-In-Reply-To: <1289326563.1823.85.camel@Joe-Laptop>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20101109214147.GK3099@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 09-11-10 10:16:03, Joe Perches wrote:
-> Using %pV reduces the number of printk calls and
-> eliminates any possible message interleaving from
-> other printk calls.
-  Thanks. Merged.
+On Tue, Nov 09, 2010 at 04:41:47PM -0500, Ted Ts'o wrote:
+> On Tue, Nov 09, 2010 at 03:42:42PM +1100, Dave Chinner wrote:
+> > Implementation is up to the filesystem. However, XFS does (b)
+> > because:
+> >=20
+> > 	1) it was extremely simple to implement (one of the
+> > 	   advantages of having an exceedingly complex allocation
+> > 	   interface to begin with :P)
+> > 	2) conversion is atomic, fast and reliable
+> > 	3) it is independent of the underlying storage; and
+> > 	4) reads of unwritten extents operate at memory speed,
+> > 	   not disk speed.
+>=20
+> Yeah, I was thinking that using a device-style TRIM might be better
+> since future attempts to write to it won't require a separate seek to
+> modify the extent tree.  But yeah, there are a bunch of advantages of
+> simply mutating the extent tree.
+>=20
+> While we're on the subject of changes to fallocate, what do people
+> think of FALLOC_FL_EXPOSE_OLD_DATA, which requires either root
+> privileges or (if capabilities are in use) CAP_DAC_OVERRIDE &&
+> CAP_MAC_OVERRIDE && CAP_SYS_ADMIN.  This would allow a trusted proces=
+s
+> to fallocate blocks with the extent already marked initialized.  I've
+> had two requests for such functionality for ext4 already. =20
 
-							Honza
+We removed that ability from XFS about three years ago because it's
+a massive security hole. e.g. what happens if the file is world
+readable, even though the process that called
+=46ALLOC_FL_EXPOSE_OLD_DATA was privileged and was allowed to expose
+such data? Or the file is chmod 777 after being exposed?
 
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
-> ---
->  fs/ext2/super.c |   25 +++++++++++++++++--------
->  1 files changed, 17 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index d89e0b6..27822b9 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -43,9 +43,10 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data);
->  static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf);
->  static int ext2_sync_fs(struct super_block *sb, int wait);
->  
-> -void ext2_error (struct super_block * sb, const char * function,
-> -		 const char * fmt, ...)
-> +void ext2_error(struct super_block *sb, const char *function,
-> +		const char *fmt, ...)
->  {
-> +	struct va_format vaf;
->  	va_list args;
->  	struct ext2_sb_info *sbi = EXT2_SB(sb);
->  	struct ext2_super_block *es = sbi->s_es;
-> @@ -59,9 +60,13 @@ void ext2_error (struct super_block * sb, const char * function,
->  	}
->  
->  	va_start(args, fmt);
-> -	printk(KERN_CRIT "EXT2-fs (%s): error: %s: ", sb->s_id, function);
-> -	vprintk(fmt, args);
-> -	printk("\n");
-> +
-> +	vaf.fmt = fmt;
-> +	vaf.va = &args;
-> +
-> +	printk(KERN_CRIT "EXT2-fs (%s): error: %s: %pV\n",
-> +	       sb->s_id, function, &vaf);
-> +
->  	va_end(args);
->  
->  	if (test_opt(sb, ERRORS_PANIC))
-> @@ -76,12 +81,16 @@ void ext2_error (struct super_block * sb, const char * function,
->  void ext2_msg(struct super_block *sb, const char *prefix,
->  		const char *fmt, ...)
->  {
-> +	struct va_format vaf;
->  	va_list args;
->  
->  	va_start(args, fmt);
-> -	printk("%sEXT2-fs (%s): ", prefix, sb->s_id);
-> -	vprintk(fmt, args);
-> -	printk("\n");
-> +
-> +	vaf.fmt = fmt;
-> +	vaf.va = &args;
-> +
-> +	printk("%sEXT2-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
-> +
->  	va_end(args);
->  }
->  
-> 
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The historical reason for such behaviour existing in XFS was that in
+1997 the CPU and IO latency cost of unwritten extent conversion was
+significant, so users with real physical security (i.e. marines with
+guns) were able to make use of fast preallocation with no conversion
+overhead without caring about the security implications. These days,
+the performance overhead of unwritten extent conversion is minimal -
+I generally can't measure a difference in IO performance as a result
+of it - so there is simply no good rea=D1=95on for leaving such a gapin=
+g
+security hole in the system.
+
+If anyone wants to read the underlying data, then use fiemap to map
+the physical blocks and read it directly from the block device. That
+requires root privileges but does not open any new stale data
+exposure problems....
+
+> (Take for example a trusted cluster filesystem backend that checks th=
+e
+> object checksum before returning any data to the user; and if the
+> check fails the cluster file system will try to use some other replic=
+a
+> stored on some other server.)
+
+IOWs, all they want to do is avoid the unwritten extent conversion
+overhead. Time has shown that a bad security/performance tradeoff
+decision was made 13 years ago in XFS, so I see little reason to
+repeat it for ext4 today....
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
