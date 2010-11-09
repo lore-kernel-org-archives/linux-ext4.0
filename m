@@ -1,79 +1,58 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [RFC] Self healing extent map OR opportunistic de-fragmentation
-Date: Tue, 9 Nov 2010 11:35:07 +0200
-Message-ID: <AANLkTi=n5HtRQY2VR9Kz7tyZQ7=PW77Ar8gj40F1aXB_@mail.gmail.com>
-References: <AANLkTinsZRSU46J0JXm2A=u=d-JpQfdYnk0oHf3NC9O_@mail.gmail.com>
-	<25081AB5-124D-4E29-AB89-94A05F0106D1@dilger.ca>
+From: Will Newton <will.newton@gmail.com>
+Subject: Re: [PATCH 5/6] Btrfs: fail if we try to use hole punch
+Date: Tue, 9 Nov 2010 10:05:34 +0000
+Message-ID: <AANLkTiksTsZqo1yUNVEJSiwE-7ccyWDv+wLvTZaoZOJ0@mail.gmail.com>
+References: <1289248327-16308-1-git-send-email-josef@redhat.com>
+	<1289248327-16308-5-git-send-email-josef@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, joel.becker@oracle.com, cmm@us.ibm.com,
+	cluster-devel@redhat.com
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:51145 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753071Ab0KIJfI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2010 04:35:08 -0500
-Received: by gwj21 with SMTP id 21so4068932gwj.19
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Nov 2010 01:35:08 -0800 (PST)
-In-Reply-To: <25081AB5-124D-4E29-AB89-94A05F0106D1@dilger.ca>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:42341 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753684Ab0KIKFh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2010 05:05:37 -0500
+In-Reply-To: <1289248327-16308-5-git-send-email-josef@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 9, 2010 at 10:58 AM, Andreas Dilger
-<adilger.kernel@dilger.ca> wrote:
-> On 2010-11-08, at 21:14, Amir Goldstein wrote:
->> I would like to propose a simple idea how to automatically de-fragme=
-nt a file.
->
-> [snip]
->
->> The use case for this, besides healing fragmentation caused by
->> snapshots move-on-rewrite, is an highly fragmented ext2/3 fs, which =
-was mounted as ext4.
->> ext2/3 old files are slowly being deleted while new (still fragmente=
-d) extent mapped files are being created.
->> This viscous cycle cannot end before there is enough contiguous free
->> space for writing new files, which may never happen.
->
-> This will only happen in case the free space is _very_ low. =A0Normal=
-ly, in a situation like this, mballoc will allocate the
-> largest contiguous chunks of free space, reducing the fragmentation a=
-s new files are written, and allocations to
-> highly-fragmented block groups will be avoided until the chunks in th=
-ose groups have grown larger.
->
->> Online de-fragmentation will not help in this case either.
->> With opportunistic de-fragmentation, if the extent mapped files are
->> being re-written, the health of the file system will constantly impr=
-ove over time.
->> BTW, Is this use case relevant for upgraded google chunk servers?
->
-> While this is true in theory, the problem is that in most cases files=
- are not overwritten in place.
-> Commonly, when files are "rewritten" they are truncated and new block=
-s allocated, or a new file is written and renamed in place of the old f=
-ile.
-> Only in rare cases, like databases, are files rewritten in-place.
->
+On Mon, Nov 8, 2010 at 8:32 PM, Josef Bacik <josef@redhat.com> wrote:
 
-Oh, I know that. Which is why it is a bit annoying to invest a lot of
-effort to solve the fragmentation caused by snapshot move-on-rewrite.
-In those rare use cases, the file may end up like a swiss cheese after
-a while. However, I realized that the access pattern of those
-applications
-in not all that random. A rewrite to offset X has a high likelihood to
-repeat more than once (update to DB record or write of metadata block
-in virtual disk).
-I figured I could use the opportunity of the subsequent rewrites to
-restore the file blocks to their original location, without paying a
-performance trade-off.
+Hi Josef,
 
-The question is, are there other use cases out there that can benefit
-from opportunistic de-fragmentation?
+> Btrfs doesn't have the ability to punch holes yet, so make sure we re=
+turn
+> EOPNOTSUPP if we try to use hole punching through fallocate. =A0This =
+support can
+> be added later. =A0Thanks,
+>
+> Signed-off-by: Josef Bacik <josef@redhat.com>
+> ---
+> =A0fs/btrfs/inode.c | =A0 =A04 ++++
+> =A01 files changed, 4 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+> index 78877d7..c590add 100644
+> --- a/fs/btrfs/inode.c
+> +++ b/fs/btrfs/inode.c
+> @@ -6936,6 +6936,10 @@ static long btrfs_fallocate(struct inode *inod=
+e, int mode,
+> =A0 =A0 =A0 =A0alloc_start =3D offset & ~mask;
+> =A0 =A0 =A0 =A0alloc_end =3D =A0(offset + len + mask) & ~mask;
+>
+> + =A0 =A0 =A0 /* We only support the FALLOC_FL_KEEP_SIZE mode */
+> + =A0 =A0 =A0 if (mode && (mode & FALLOC_FL_KEEP_SIZE))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EOPNOTSUPP;
+> +
 
-Amir.
+This test looks rather odd. Why do we need to test that mode is
+non-zero AND that mode has a specific bit set? Is there a missing !
+here?
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
