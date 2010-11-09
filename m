@@ -1,66 +1,101 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH 5/6] Btrfs: fail if we try to use hole punch
-Date: Tue, 9 Nov 2010 07:53:50 -0500
-Message-ID: <20101109125350.GE27816@dhcp231-156.rdu.redhat.com>
-References: <1289248327-16308-1-git-send-email-josef@redhat.com> <1289248327-16308-5-git-send-email-josef@redhat.com> <AANLkTiksTsZqo1yUNVEJSiwE-7ccyWDv+wLvTZaoZOJ0@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Don't call sb_issue_discard() in ext4_free_blocks()
+Date: Tue, 09 Nov 2010 10:36:05 -0600
+Message-ID: <4CD97875.6050703@redhat.com>
+References: <1289196382-31239-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Josef Bacik <josef@redhat.com>, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	joel.becker@oracle.com, cmm@us.ibm.com, cluster-devel@redhat.com
-To: Will Newton <will.newton@gmail.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	jiayingz@google.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12108 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24412 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751165Ab0KIMy3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Nov 2010 07:54:29 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTiksTsZqo1yUNVEJSiwE-7ccyWDv+wLvTZaoZOJ0@mail.gmail.com>
+	id S1751222Ab0KIQgK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Nov 2010 11:36:10 -0500
+In-Reply-To: <1289196382-31239-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 09, 2010 at 10:05:34AM +0000, Will Newton wrote:
-> On Mon, Nov 8, 2010 at 8:32 PM, Josef Bacik <josef@redhat.com> wrote:
+On 11/8/10 12:06 AM, Theodore Ts'o wrote:
+> Commit 5c521830cf (ext4: Support discard requests when running in
+> no-journal mode) attempts to add sb_issue_discard() for data blocks
+> (in data=3Dwriteback mode) and in no-journal mode.  Unfortunately, th=
+is
+> no longer works, because in commit dd3932eddf (block: remove
+> BLKDEV_IFL_WAIT), sb_issue_discard() only presents a synchronous
+> interface, and there are times when we call ext4_free_blocks() when w=
+e
+> are are holding a spinlock, or are otherwise in an atomic context.
 >=20
-> Hi Josef,
->=20
-> > Btrfs doesn't have the ability to punch holes yet, so make sure we =
-return
-> > EOPNOTSUPP if we try to use hole punching through fallocate. =A0Thi=
-s support can
-> > be added later. =A0Thanks,
-> >
-> > Signed-off-by: Josef Bacik <josef@redhat.com>
-> > ---
-> > =A0fs/btrfs/inode.c | =A0 =A04 ++++
-> > =A01 files changed, 4 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-> > index 78877d7..c590add 100644
-> > --- a/fs/btrfs/inode.c
-> > +++ b/fs/btrfs/inode.c
-> > @@ -6936,6 +6936,10 @@ static long btrfs_fallocate(struct inode *in=
-ode, int mode,
-> > =A0 =A0 =A0 =A0alloc_start =3D offset & ~mask;
-> > =A0 =A0 =A0 =A0alloc_end =3D =A0(offset + len + mask) & ~mask;
-> >
-> > + =A0 =A0 =A0 /* We only support the FALLOC_FL_KEEP_SIZE mode */
-> > + =A0 =A0 =A0 if (mode && (mode & FALLOC_FL_KEEP_SIZE))
-> > + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return -EOPNOTSUPP;
-> > +
->=20
-> This test looks rather odd. Why do we need to test that mode is
-> non-zero AND that mode has a specific bit set? Is there a missing !
-> here?
+> For now, I've removed the call to sb_issue_discard() to prevent a
+> deadlock or (if spinlock debugging is enabled) failures like this:
 
-Yeah I'm missing a !, I copy and pasted the wrong bit when I went aroun=
-d adding
-this check to everybody, I'll be fixing it up for the next go around.  =
-Thanks,
+perhaps mount should fail with the combination of -o discard and no
+journal present?
 
-Josef
+-Eric
+
+> BUG: scheduling while atomic: rc.sysinit/1376/0x00000002
+> Pid: 1376, comm: rc.sysinit Not tainted 2.6.36-ARCH #1
+> Call Trace:
+> [<ffffffff810397ce>] __schedule_bug+0x5e/0x70
+> [<ffffffff81403110>] schedule+0x950/0xa70
+> [<ffffffff81060bad>] ? insert_work+0x7d/0x90
+> [<ffffffff81060fbd>] ? queue_work_on+0x1d/0x30
+> [<ffffffff81061127>] ? queue_work+0x37/0x60
+> [<ffffffff8140377d>] schedule_timeout+0x21d/0x360
+> [<ffffffff812031c3>] ? generic_make_request+0x2c3/0x540
+> [<ffffffff81402680>] wait_for_common+0xc0/0x150
+> [<ffffffff81041490>] ? default_wake_function+0x0/0x10
+> [<ffffffff812034bc>] ? submit_bio+0x7c/0x100
+> [<ffffffff810680a0>] ? wake_bit_function+0x0/0x40
+> [<ffffffff814027b8>] wait_for_completion+0x18/0x20
+> [<ffffffff8120a969>] blkdev_issue_discard+0x1b9/0x210
+> [<ffffffff811ba03e>] ext4_free_blocks+0x68e/0xb60
+> [<ffffffff811b1650>] ? __ext4_handle_dirty_metadata+0x110/0x120
+> [<ffffffff811b098c>] ext4_ext_truncate+0x8cc/0xa70
+> [<ffffffff810d713e>] ? pagevec_lookup+0x1e/0x30
+> [<ffffffff81191618>] ext4_truncate+0x178/0x5d0
+> [<ffffffff810eacbb>] ? unmap_mapping_range+0xab/0x280
+> [<ffffffff810d8976>] vmtruncate+0x56/0x70
+> [<ffffffff811925cb>] ext4_setattr+0x14b/0x460
+> [<ffffffff811319e4>] notify_change+0x194/0x380
+> [<ffffffff81117f80>] do_truncate+0x60/0x90
+> [<ffffffff811e08fa>] ? security_inode_permission+0x1a/0x20
+> [<ffffffff811eaec1>] ? tomoyo_path_truncate+0x11/0x20
+> [<ffffffff81127539>] do_last+0x5d9/0x770
+> [<ffffffff811278bd>] do_filp_open+0x1ed/0x680
+> [<ffffffff8140644f>] ? page_fault+0x1f/0x30
+> [<ffffffff81132bfc>] ? alloc_fd+0xec/0x140
+> [<ffffffff81118db1>] do_sys_open+0x61/0x120
+> [<ffffffff81118e8b>] sys_open+0x1b/0x20
+> [<ffffffff81002e6b>] system_call_fastpath+0x16/0x1b
+>=20
+> https://bugzilla.kernel.org/show_bug.cgi?id=3D22302
+>=20
+> Reported-by: Mathias Bur=C3=A9n <mathias.buren@gmail.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: jiayingz@google.com
+> ---
+>  fs/ext4/mballoc.c |    2 --
+>  1 files changed, 0 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index c58eba3..5b4d4e3 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4640,8 +4640,6 @@ do_more:
+>  		 * with group lock held. generate_buddy look at
+>  		 * them with group lock_held
+>  		 */
+> -		if (test_opt(sb, DISCARD))
+> -			ext4_issue_discard(sb, block_group, bit, count);
+>  		ext4_lock_group(sb, block_group);
+>  		mb_clear_bits(bitmap_bh->b_data, bit, count);
+>  		mb_free_blocks(inode, &e4b, bit, count);
+
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
