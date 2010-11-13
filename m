@@ -1,38 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 22922] 2.6.36: kernel panic in cascade (Fatal exception in
- interrupt)
-Date: Sun, 14 Nov 2010 20:13:57 GMT
-Message-ID: <201011142013.oAEKDvsE018366@demeter2.kernel.org>
-References: <bug-22922-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: 2.6.36: kernel panic in cascade (Fatal exception in interrupt)
+Date: Sat, 13 Nov 2010 18:33:53 -0500
+Message-ID: <20101113233353.GB18658@thunk.org>
+References: <201011032334.30662.thomas@m3y3r.de>
+ <201011080014.33354.thomas@m3y3r.de>
+ <alpine.LFD.2.00.1011081047500.2900@localhost6.localdomain6>
+ <1289242528.11571.8.camel@localhost.localdomain>
+ <alpine.LFD.2.00.1011082039360.2900@localhost6.localdomain6>
+ <1289418184.6530.6.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:32797 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750969Ab0KNUN6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Nov 2010 15:13:58 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id oAEKDvvN018367
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Sun, 14 Nov 2010 20:13:57 GMT
-In-Reply-To: <bug-22922-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Thomas Meyer <thomas@m3y3r.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1289418184.6530.6.camel@localhost.localdomain>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=22922
+On Wed, Nov 10, 2010 at 08:43:04PM +0100, Thomas Meyer wrote:
+> > 
+> > I leave it to the ext4 experts to solve it for real :)
+> > 
+> 
+> I just booted into 2.6.37-rc1-00166-g814ce25 and I don't see above bug
+> in this kernel. So it seems as this bug got fixed in between 2.6.36 and
+> 2.6.37-rc1+
 
+Yes, this was fixed in 2.6.37-rc1 in commit: a1c6c5698d53 (ext4: fix
+NULL pointer dereference in print_daily_error_info()).  I'll put it on
+my list of things to be backported to 2.6.36.
 
-Maciej Rutecki <maciej.rutecki@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Blocks|16055                       |16444
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
