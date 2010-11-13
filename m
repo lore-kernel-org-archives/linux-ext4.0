@@ -1,94 +1,122 @@
 From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH] make ext4_valid_block_bitmap() more verbose
-Date: Fri, 12 Nov 2010 16:56:04 -0700
-Message-ID: <E2A9104D-764C-42AD-B479-51333960AF19@dilger.ca>
-References: <201011130026.51268.bs_lists@aakef.fastmail.fm>
+Subject: Re: [PATCH] e2fsck: journal-replay-only
+Date: Fri, 12 Nov 2010 17:11:13 -0700
+Message-ID: <5EBEF687-AA92-475D-9B5A-E4BAAD34C927@dilger.ca>
+References: <201011130009.08641.bs_lists@aakef.fastmail.fm>
 Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>
+Cc: linux-ext4@vger.kernel.org
 To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:14344 "EHLO
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:7579 "EHLO
 	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933008Ab0KLX4G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Nov 2010 18:56:06 -0500
-In-Reply-To: <201011130026.51268.bs_lists@aakef.fastmail.fm>
+	with ESMTP id S1751313Ab0KMALO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Nov 2010 19:11:14 -0500
+In-Reply-To: <201011130009.08641.bs_lists@aakef.fastmail.fm>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-11-12, at 16:26, Bernd Schubert wrote:
-> The real issue we want to debug with the patch below actually came up while 
-> stress testing Lustre using the RHEL5.5 kernel (so 2.6.32'ish ext4), but a 
-> more verbose error function should not hurt for vanilla ext4 either.
+On 2010-11-12, at 16:09, Bernd Schubert wrote:
+> e2fsck: journal-replay-only
 > 
-> make ext4_valid_block_bitmap() more verbose
+> As recently discussed on linux-ext4@vger.kernel.org add an option to e2fsck
+> to allow to replay the journal only. That will allow scripts, such as 
+> pacemakers 'Filesystem' RA to first replay the journal and if that sets
+> an error state from the journal replay, further check for that error 
+> (dumpe2fh -h | grep "Filesystem state:") and if that shows and error
+> to refuse to mount. It also allows automatic e2fsck scripts to first
+> replay the journal and on a second run after the real pass1 to passX checks
+> to test for the return code.
 > 
-> While running our stress test suite, ext4_valid_block_bitmap() 
-> frequently complains about an invalid block bitmap.
-> However, e2fsck does not find anything. So in oder to be able
-> to better debug this issue, make the function more verbose and 
-> let it complain about the two possible invalid bitmaps.
+> Signed-off-by: Bernd Schubert <bschubert@ddn.com>
 
-Bernd,
-thanks for sending this in.  I like the idea of making these messages more verbose, since they should rarely be hit and when they are it would be good to know why these checks failed.
+I'm definitely in favour of this patch.  We've needed something similar as well.
 
-> +/**
-> + * ext4_get_group_desc() -- load group descriptor from disk
-> + * @sb:			super block
-> + * @ext4_group_desc:	blocks group descriptor
-> + * @block_group		block group to check
-> + * @bh:			pointer to the buffer head to store the block
-> + *			group descriptor
-> + *
-> + * return 0 on error or 1 if valid
-> + */
-> static int ext4_valid_block_bitmap(struct super_block *sb,
-> 					struct ext4_group_desc *desc,
-> 					unsigned int block_group,
+It wouldn't be a terrible idea if tune2fs also would replay the journal on an unmounted filesystem before changing the superblock, if needed, otherwise any changes made to the superblock will be lost (unlike when they are made to the mounted filesystem).  That is for a separate patch, however...
 
-The function name in the comment block does not actually match the function...
-
-> @@ -254,16 +265,20 @@ static int ext4_valid_block_bitmap(struc
-> +	if (!ext4_test_bit(offset, bh->b_data)) {
-> +		ext4_warning(sb, "bad block bitmap block = %llu, offset = %d",
-> +			     bitmap_blk, (int) offset);
-> +		valid = 0;
+> diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
+> index 3fb15e6..d948f4c 100644
+> --- a/e2fsck/e2fsck.8.in
+> +++ b/e2fsck/e2fsck.8.in
+> @@ -186,6 +186,9 @@ Set the version of the extended attribute blocks which
+> will require while checking the filesystem.  The version number may 
+> be 1 or 2.  The default extended attribute version format is 2.
+> .TP
+> +.BI journal_only
+> +Only replay the journal if required, but do not run any further repair action.
+> +.TP
+> .BI fragcheck
+> During pass 1, print a detailed report of any discontiguous blocks for
+> files in the filesystem.
+> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+> index d4df5f3..d8038a5 100644
+> --- a/e2fsck/e2fsck.h
+> +++ b/e2fsck/e2fsck.h
+> @@ -155,6 +155,7 @@ struct resource_track {
+> #define E2F_OPT_WRITECHECK	0x0200
+> #define E2F_OPT_COMPRESS_DIRS	0x0400
+> #define E2F_OPT_FRAGCHECK	0x0800
+> +#define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
+> 
+> /*
+>  * E2fsck flags
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index 7eb269c..e3fee9a 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -308,6 +308,10 @@ static void check_if_skip(e2fsck_t ctx)
+> 	if ((ctx->options & E2F_OPT_FORCE) || bad_blocks_file || cflag)
+> 		return;
+> 
+> +	if (ctx->options & E2F_OPT_JOURNAL_ONLY) {
+> +		goto skip;
 > +	}
+> +
+> 	lastcheck = fs->super->s_lastcheck;
+> 	if (lastcheck > ctx->now)
+> 		lastcheck -= ctx->time_fudge;
+> @@ -372,6 +376,7 @@ static void check_if_skip(e2fsck_t ctx)
+> 			printf(_(" (check in %ld mounts)"), next_check);
+> 	}
+> 	fputc('\n', stdout);
+> +skip:
+> 	ext2fs_close(fs);
+> 	ctx->fs = NULL;
+> 	e2fsck_free_context(ctx);
+> @@ -594,6 +599,13 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+> 		} else if (strcmp(token, "fragcheck") == 0) {
+> 			ctx->options |= E2F_OPT_FRAGCHECK;
+> 			continue;
+> +
+> +		} else if (strcmp(token, "journal_only") == 0) {
+> +			if (arg) {
+> +				extended_usage++;
+> +				continue;
+> +			}
+> +			ctx->options |= E2F_OPT_JOURNAL_ONLY;
+> 		} else {
+> 			fprintf(stderr, _("Unknown extended option: %s\n"),
+> 				token);
+> @@ -609,6 +621,7 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+> 		       "Valid extended options are:\n"), stderr);
+> 		fputs(("\tea_ver=<ea_version (1 or 2)>\n"), stderr);
+> 		fputs(("\tfragcheck\n"), stderr);
+> +		fputs(("\tjournal_only\n"), stderr);
+> 		fputc('\n', stderr);
+> 		exit(1);
+> 	}
 > 
-> 	/* check whether the inode bitmap block number is set */
-> 	bitmap_blk = ext4_inode_bitmap(sb, desc);
-> 	offset = bitmap_blk - group_first_block;
-> +	if (!ext4_test_bit(offset, bh->b_data)) {
-> +		ext4_warning(sb, "bad inode bitmap block = %llu, offset = %d",
-> +			     bitmap_blk, (int) offset);
-> +		valid = 0;
+> 
+> 
+> -- 
+> Bernd Schubert
+> DataDirect Networks
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-This message (while correct) is a bit confusing, since it implies there is something wrong with the inode bitmap block itself, rather than the the bit in the block bitmap.  I think it would be clearer to rewrite this as follows:
-
-        "unset bit for inode bitmap: block %llu, bit %u"
-
-for consistency we should then change the block bitmap error to match.
-
-While we are changing this code, all of the ext4_test_bit() checks should be wrapped in unlikely(), since we should very rarely be seeing these errors.
-
-> @@ -271,14 +286,17 @@ static int ext4_valid_block_bitmap(struc
-> +	if (next_zero_bit < offset + EXT4_SB(sb)->s_itb_per_group) {
-> +		ext4_warning(sb, "bad inode table block = %llu, offset = %d",
-> +			     bitmap_blk, (int) offset);
-> +		valid = 0;
-
-Similarly, this implies that there is a bad inode table block, so I prefer:
-
-        "unset bit for inode table block %u: block %llu, bit %u"
-
-where the "inode table block" value is, I think, (next_zero_bit - offset)
-
-> +	if (!valid)
-> +		ext4_error(sb, "Invalid block bitmap - block_group = %d",
-> +			   block_group);
-
-It would probably be worthwhile to also print the block number of the bitmap itself.
 
 Cheers, Andreas
 
