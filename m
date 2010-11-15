@@ -1,35 +1,82 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: 2.6.36: kernel panic in cascade (Fatal exception in interrupt)
-Date: Sat, 13 Nov 2010 18:33:53 -0500
-Message-ID: <20101113233353.GB18658@thunk.org>
-References: <201011032334.30662.thomas@m3y3r.de>
- <201011080014.33354.thomas@m3y3r.de>
- <alpine.LFD.2.00.1011081047500.2900@localhost6.localdomain6>
- <1289242528.11571.8.camel@localhost.localdomain>
- <alpine.LFD.2.00.1011082039360.2900@localhost6.localdomain6>
- <1289418184.6530.6.camel@localhost.localdomain>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: [PATCH] jbd2: avoid the concurrent data writeback
+Date: Mon, 15 Nov 2010 13:54:20 +0800
+Message-ID: <20101115055420.GA21785@localhost>
+References: <1289827533-2576-1-git-send-email-feng.tang@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Thomas Meyer <thomas@m3y3r.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: "Tang, Feng" <feng.tang@intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga09.intel.com ([134.134.136.24]:9848 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752669Ab0KOFyW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Nov 2010 00:54:22 -0500
 Content-Disposition: inline
-In-Reply-To: <1289418184.6530.6.camel@localhost.localdomain>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1289827533-2576-1-git-send-email-feng.tang@intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 10, 2010 at 08:43:04PM +0100, Thomas Meyer wrote:
-> > 
-> > I leave it to the ext4 experts to solve it for real :)
-> > 
+[add CC to mailing lists]
+
+Tang,
+
+Good catch!
+
+On Mon, Nov 15, 2010 at 09:25:33PM +0800, Tang, Feng wrote:
+> When dd a big file to an ext4 partition, it is very likely to happen
+> that both the background flush thread and kjounald try to do data
+> writeback for it, and ext4_witepage may be called 100, 000 times by
+> journal_submit_inode_data_buffers() without really writing one page
+> back (skipped), as those pages haven't had disk blocks allocated yet.
+
+The above changelog could show a bit more details (to help me
+understand it :).
+
+Does it happen frequently and hence has measurable overheads?
+
+Is it safe to skip the inode? Another alternative is to wait for it:
+with inode_wait_for_writeback(inode).
+
+> This could be find by a simple test case with ftrace:
+> $ sync;
+> $ echo 40960 > buffer_size_kb;echo 1 > events/writeback/enable;echo 1 > events/jbd2/enable;echo 1 > events/ext4/enable;
+> $ dd if=/dev/zero of=/home/test/1g.bin bs=1M count=1024;sync;
+> $ cat trace > /home/test/jbd2_ext4_1g_dd.log
 > 
-> I just booted into 2.6.37-rc1-00166-g814ce25 and I don't see above bug
-> in this kernel. So it seems as this bug got fixed in between 2.6.36 and
-> 2.6.37-rc1+
+> This patch will check if the inode is under data syncing, if yes then
+> don't start the writeback from kjournald
+> 
+> Signed-off-by: Feng Tang <feng.tang@intel.com>
+> ---
+>  fs/jbd2/commit.c |    8 ++++++++
+>  1 files changed, 8 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index f3ad159..8a1978d 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -181,6 +181,14 @@ static int journal_submit_inode_data_buffers(struct address_space *mapping)
+>  		.range_end = i_size_read(mapping->host),
+>  	};
+>  
+> +	spin_lock(&inode_lock);
+> +	/* If this inode is under data syncing, then just quit */
 
-Yes, this was fixed in 2.6.37-rc1 in commit: a1c6c5698d53 (ext4: fix
-NULL pointer dereference in print_daily_error_info()).  I'll put it on
-my list of things to be backported to 2.6.36.
+Comments should go above the whole code block. And the above comment
+does not really say anything. Say something *why* code like this
+rather than *what* the code is doing. 
 
-					- Ted
+> +	if (mapping->host->i_state & I_SYNC) {
+> +		spin_unlock(&inode_lock);
+> +		return 0;
+> +	}
+> +	spin_unlock(&inode_lock);
+> +
+>  	ret = generic_writepages(mapping, &wbc);
+>  	return ret;
+>  }
+
+Thanks,
+Fengguang
