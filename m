@@ -1,41 +1,40 @@
 From: Josef Bacik <josef@redhat.com>
-Subject: [PATCH 6/6] Gfs2: fail if we try to use hole punch
-Date: Mon, 15 Nov 2010 12:05:23 -0500
-Message-ID: <1289840723-3056-7-git-send-email-josef@redhat.com>
+Subject: [PATCH 4/6] Ext4: fail if we try to use hole punch
+Date: Mon, 15 Nov 2010 12:05:21 -0500
+Message-ID: <1289840723-3056-5-git-send-email-josef@redhat.com>
 References: <1289840723-3056-1-git-send-email-josef@redhat.com>
 To: david@fromorbit.com, linux-kernel@vger.kernel.org,
 	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
 	cluster-dev
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1289840723-3056-1-git-send-email-josef@redhat.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Gfs2 doesn't have the ability to punch holes yet, so make sure we return
+Ext4 doesn't have the ability to punch holes yet, so make sure we return
 EOPNOTSUPP if we try to use hole punching through fallocate.  This support can
 be added later.  Thanks,
 
 Signed-off-by: Josef Bacik <josef@redhat.com>
 ---
- fs/gfs2/ops_inode.c |    4 ++++
+ fs/ext4/extents.c |    4 ++++
  1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/fs/gfs2/ops_inode.c b/fs/gfs2/ops_inode.c
-index 12cbea7..65cb5f6 100644
---- a/fs/gfs2/ops_inode.c
-+++ b/fs/gfs2/ops_inode.c
-@@ -1439,6 +1439,10 @@ static long gfs2_fallocate(struct inode *inode, int mode, loff_t offset,
- 	loff_t next = (offset + len - 1) >> sdp->sd_sb.sb_bsize_shift;
- 	next = (next + 1) << sdp->sd_sb.sb_bsize_shift;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0554c48..35bca73 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3622,6 +3622,10 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ 	struct ext4_map_blocks map;
+ 	unsigned int credits, blkbits = inode->i_blkbits;
  
 +	/* We only support the FALLOC_FL_KEEP_SIZE mode */
 +	if (mode && (mode != FALLOC_FL_KEEP_SIZE))
 +		return -EOPNOTSUPP;
 +
- 	offset = (offset >> sdp->sd_sb.sb_bsize_shift) <<
- 		 sdp->sd_sb.sb_bsize_shift;
- 
+ 	/*
+ 	 * currently supporting (pre)allocate mode for extent-based
+ 	 * files _only_
 -- 
 1.6.6.1
-
