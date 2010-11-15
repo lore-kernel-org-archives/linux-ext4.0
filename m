@@ -1,44 +1,40 @@
-From: Jiri Kosina <jkosina@suse.cz>
-Subject: Re: [PATCH] ext4: fix redirty_page_for_writepage() typo in comment
-Date: Mon, 15 Nov 2010 14:15:12 +0100 (CET)
-Message-ID: <alpine.LNX.2.00.1011151414580.7420@pobox.suse.cz>
-References: <20101111112329.GA6923@localhost>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] make ext4_valid_block_bitmap() more verbose
+Date: Mon, 15 Nov 2010 10:21:12 -0600
+Message-ID: <4CE15DF8.4030600@redhat.com>
+References: <201011130026.51268.bs_lists@aakef.fastmail.fm>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>,
+	Andreas Dilger <andreas.dilger@oracle.com>
+To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34496 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:11169 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753946Ab0KONPO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Nov 2010 08:15:14 -0500
-In-Reply-To: <20101111112329.GA6923@localhost>
+	id S1757684Ab0KOQVT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Nov 2010 11:21:19 -0500
+In-Reply-To: <201011130026.51268.bs_lists@aakef.fastmail.fm>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 11 Nov 2010, Wu Fengguang wrote:
-
-> Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
-> ---
+On 11/12/10 5:26 PM, Bernd Schubert wrote:
+> The real issue we want to debug with the patch below actually came up while 
+> stress testing Lustre using the RHEL5.5 kernel (so 2.6.32'ish ext4), but a 
+> more verbose error function should not hurt for vanilla ext4 either.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 1916164..b82fbd9 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3357,7 +3357,7 @@ int ext4_alloc_da_blocks(struct inode *inode)
->  	 * doing I/O at all.
->  	 *
->  	 * We could call write_cache_pages(), and then redirty all of
-> -	 * the pages by calling redirty_page_for_writeback() but that
-> +	 * the pages by calling redirty_page_for_writepage() but that
->  	 * would be ugly in the extreme.  So instead we would need to
->  	 * replicate parts of the code in the above functions,
->  	 * simplifying them becuase we wouldn't actually intend to
+> make ext4_valid_block_bitmap() more verbose
+> 
+> While running our stress test suite, ext4_valid_block_bitmap() 
+> frequently complains about an invalid block bitmap.
+> However, e2fsck does not find anything. So in oder to be able
+> to better debug this issue, make the function more verbose and 
+> let it complain about the two possible invalid bitmaps.
 
-This fix doesn't seem to be present in linux-next as of today, so I have 
-picked it up. Thanks,
+Making a raw e2image of the problematic filesystem would let us take a
+look at why e2fsck isn't finding problems; unless you plan to fix that
+yourself as well, which is just fine of course.  :)
 
--- 
-Jiri Kosina
-SUSE Labs, Novell Inc.
+-Eric
+ 
+> Signed-off-by: Bernd Schubert <bschubert@ddn.com>
