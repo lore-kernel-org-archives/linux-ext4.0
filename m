@@ -1,70 +1,66 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH]  V2 jbd2_stats_proc_init wrong place.
-Date: Mon, 15 Nov 2010 10:59:01 -0600
-Message-ID: <4CE166D5.60308@sandeen.net>
-References: <1289510598-15315-1-git-send-email-sheng.yang@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: yangsheng <sheng.yang@oracle.com>
+From: Josef Bacik <josef@redhat.com>
+Subject: [PATCH 2/6] XFS: handle hole punching via fallocate properly
+Date: Mon, 15 Nov 2010 12:05:19 -0500
+Message-ID: <1289840723-3056-3-git-send-email-josef@redhat.com>
+References: <1289840723-3056-1-git-send-email-josef@redhat.com>
+To: david@fromorbit.com, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
+	cluster-dev
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 64-131-28-21.usfamily.net ([64.131.28.21]:37684 "EHLO
-	mail.sandeen.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932682Ab0KOQ7D (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Nov 2010 11:59:03 -0500
-In-Reply-To: <1289510598-15315-1-git-send-email-sheng.yang@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28946 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757971Ab0KOROw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Nov 2010 12:14:52 -0500
+In-Reply-To: <1289840723-3056-1-git-send-email-josef@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/11/10 3:23 PM, yangsheng wrote:
->  The jbd2_stats_proc_init() was placed on wrong location in
->  jbd2_journal_init_dev().  This may cause /proc/fs/jdb2/<dev>/*
->  cannot be created when using external journal device.
-> ---
->  fs/jbd2/journal.c |   19 ++++++++++---------
->  1 files changed, 10 insertions(+), 9 deletions(-)
+This patch simply allows XFS to handle the hole punching flag in fallocate
+properly.  I've tested this with a little program that does a bunch of random
+hole punching with FL_KEEP_SIZE and without it to make sure it does the right
+thing.  Thanks,
 
-adding linux-ext4 to cc:
+Signed-off-by: Josef Bacik <josef@redhat.com>
+---
+ fs/xfs/linux-2.6/xfs_iops.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 13b0a92..a435710 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -897,9 +897,18 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->  	if (!journal)
->  		return NULL;
->  
-> +	journal->j_dev = bdev;
-> +	journal->j_fs_dev = fs_dev;
-> +	journal->j_blk_offset = start;
-> +	journal->j_maxlen = len;
-> +	bdevname(journal->j_dev, journal->j_devname);
-> +	p = journal->j_devname;
-> +	while ((p = strchr(p, '/')))
-> +		*p = '!';
-> +	jbd2_stats_proc_init(journal);
-> +
->  	/* journal descriptor can store up to n blocks -bzzz */
->  	journal->j_blocksize = blocksize;
-> -	jbd2_stats_proc_init(journal);
->  	n = journal->j_blocksize / sizeof(journal_block_tag_t);
->  	journal->j_wbufsize = n;
->  	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
-> @@ -908,14 +917,6 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->  			__func__);
->  		goto out_err;
->  	}
-> -	journal->j_dev = bdev;
-> -	journal->j_fs_dev = fs_dev;
-> -	journal->j_blk_offset = start;
-> -	journal->j_maxlen = len;
-> -	bdevname(journal->j_dev, journal->j_devname);
-> -	p = journal->j_devname;
-> -	while ((p = strchr(p, '/')))
-> -		*p = '!';
->  
->  	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
->  	if (!bh) {
+diff --git a/fs/xfs/linux-2.6/xfs_iops.c b/fs/xfs/linux-2.6/xfs_iops.c
+index 96107ef..63cc929 100644
+--- a/fs/xfs/linux-2.6/xfs_iops.c
++++ b/fs/xfs/linux-2.6/xfs_iops.c
+@@ -516,6 +516,7 @@ xfs_vn_fallocate(
+ 	loff_t		new_size = 0;
+ 	xfs_flock64_t	bf;
+ 	xfs_inode_t	*ip = XFS_I(inode);
++	int		cmd = XFS_IOC_RESVSP;
+ 
+ 	/* preallocation on directories not yet supported */
+ 	error = -ENODEV;
+@@ -528,8 +529,11 @@ xfs_vn_fallocate(
+ 
+ 	xfs_ilock(ip, XFS_IOLOCK_EXCL);
+ 
++	if (mode & FALLOC_FL_PUNCH_HOLE)
++		cmd = XFS_IOC_UNRESVSP;
++
+ 	/* check the new inode size is valid before allocating */
+-	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
++	if (!(mode & (FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE)) &&
+ 	    offset + len > i_size_read(inode)) {
+ 		new_size = offset + len;
+ 		error = inode_newsize_ok(inode, new_size);
+@@ -537,8 +541,7 @@ xfs_vn_fallocate(
+ 			goto out_unlock;
+ 	}
+ 
+-	error = -xfs_change_file_space(ip, XFS_IOC_RESVSP, &bf,
+-				       0, XFS_ATTR_NOLOCK);
++	error = -xfs_change_file_space(ip, cmd, &bf, 0, XFS_ATTR_NOLOCK);
+ 	if (error)
+ 		goto out_unlock;
+ 
+-- 
+1.6.6.1
 
