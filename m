@@ -1,40 +1,70 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] make ext4_valid_block_bitmap() more verbose
-Date: Mon, 15 Nov 2010 10:21:12 -0600
-Message-ID: <4CE15DF8.4030600@redhat.com>
-References: <201011130026.51268.bs_lists@aakef.fastmail.fm>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH]  V2 jbd2_stats_proc_init wrong place.
+Date: Mon, 15 Nov 2010 10:59:01 -0600
+Message-ID: <4CE166D5.60308@sandeen.net>
+References: <1289510598-15315-1-git-send-email-sheng.yang@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Bernd Schubert <bschubert@ddn.com>,
-	Andreas Dilger <andreas.dilger@oracle.com>
-To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
+Cc: linux-fsdevel@vger.kernel.org,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: yangsheng <sheng.yang@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11169 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757684Ab0KOQVT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Nov 2010 11:21:19 -0500
-In-Reply-To: <201011130026.51268.bs_lists@aakef.fastmail.fm>
+Received: from 64-131-28-21.usfamily.net ([64.131.28.21]:37684 "EHLO
+	mail.sandeen.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932682Ab0KOQ7D (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Nov 2010 11:59:03 -0500
+In-Reply-To: <1289510598-15315-1-git-send-email-sheng.yang@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/12/10 5:26 PM, Bernd Schubert wrote:
-> The real issue we want to debug with the patch below actually came up while 
-> stress testing Lustre using the RHEL5.5 kernel (so 2.6.32'ish ext4), but a 
-> more verbose error function should not hurt for vanilla ext4 either.
-> 
-> make ext4_valid_block_bitmap() more verbose
-> 
-> While running our stress test suite, ext4_valid_block_bitmap() 
-> frequently complains about an invalid block bitmap.
-> However, e2fsck does not find anything. So in oder to be able
-> to better debug this issue, make the function more verbose and 
-> let it complain about the two possible invalid bitmaps.
+On 11/11/10 3:23 PM, yangsheng wrote:
+>  The jbd2_stats_proc_init() was placed on wrong location in
+>  jbd2_journal_init_dev().  This may cause /proc/fs/jdb2/<dev>/*
+>  cannot be created when using external journal device.
+> ---
+>  fs/jbd2/journal.c |   19 ++++++++++---------
+>  1 files changed, 10 insertions(+), 9 deletions(-)
 
-Making a raw e2image of the problematic filesystem would let us take a
-look at why e2fsck isn't finding problems; unless you plan to fix that
-yourself as well, which is just fine of course.  :)
+adding linux-ext4 to cc:
 
--Eric
- 
-> Signed-off-by: Bernd Schubert <bschubert@ddn.com>
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 13b0a92..a435710 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -897,9 +897,18 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>  	if (!journal)
+>  		return NULL;
+>  
+> +	journal->j_dev = bdev;
+> +	journal->j_fs_dev = fs_dev;
+> +	journal->j_blk_offset = start;
+> +	journal->j_maxlen = len;
+> +	bdevname(journal->j_dev, journal->j_devname);
+> +	p = journal->j_devname;
+> +	while ((p = strchr(p, '/')))
+> +		*p = '!';
+> +	jbd2_stats_proc_init(journal);
+> +
+>  	/* journal descriptor can store up to n blocks -bzzz */
+>  	journal->j_blocksize = blocksize;
+> -	jbd2_stats_proc_init(journal);
+>  	n = journal->j_blocksize / sizeof(journal_block_tag_t);
+>  	journal->j_wbufsize = n;
+>  	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+> @@ -908,14 +917,6 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>  			__func__);
+>  		goto out_err;
+>  	}
+> -	journal->j_dev = bdev;
+> -	journal->j_fs_dev = fs_dev;
+> -	journal->j_blk_offset = start;
+> -	journal->j_maxlen = len;
+> -	bdevname(journal->j_dev, journal->j_devname);
+> -	p = journal->j_devname;
+> -	while ((p = strchr(p, '/')))
+> -		*p = '!';
+>  
+>  	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
+>  	if (!bh) {
+
