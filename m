@@ -1,56 +1,102 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
-Date: Tue, 16 Nov 2010 07:53:46 -0500
-Message-ID: <20101116125345.GC31957@dhcp231-156.rdu.redhat.com>
-References: <1289840723-3056-1-git-send-email-josef@redhat.com> <1289840723-3056-2-git-send-email-josef@redhat.com> <20101116111611.GA4757@quack.suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: ext4_fill_super shouldn't return 0 on
+ corruption
+Date: Tue, 16 Nov 2010 13:56:31 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
+References: <20101115214831.GA18195@tux1.beaverton.ibm.com> <4CE1AC38.9040201@redhat.com> <20101115230346.GB18195@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <josef@redhat.com>, david@fromorbit.com,
-	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, cmm@us.ibm.com, cluster-devel@redhat.com,
-	ocfs2-devel@oss.oracle.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	"Patrick J. LoPresti" <lopresti@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Mingming Cao <mcao@us.ibm.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22112 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64576 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756334Ab0KPMyc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 07:54:32 -0500
-Content-Disposition: inline
-In-Reply-To: <20101116111611.GA4757@quack.suse.cz>
+	id S1756285Ab0KPM4t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 07:56:49 -0500
+In-Reply-To: <20101115230346.GB18195@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 16, 2010 at 12:16:11PM +0100, Jan Kara wrote:
-> On Mon 15-11-10 12:05:18, Josef Bacik wrote:
-> > diff --git a/fs/open.c b/fs/open.c
-> > index 4197b9e..ab8dedf 100644
-> > --- a/fs/open.c
-> > +++ b/fs/open.c
-> > @@ -223,7 +223,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-> >  		return -EINVAL;
-> >  
-> >  	/* Return error if mode is not supported */
-> > -	if (mode && !(mode & FALLOC_FL_KEEP_SIZE))
-> > +	if (mode && (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE)))
->   Why not just:
-> if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE)) ?
->
+On Mon, 15 Nov 2010, Darrick J. Wong wrote:
 
-Good point, thank you.
+> At the start of ext4_fill_super, ret is set to -EINVAL, and any failure path
+> out of that function returns ret.  However, the generic_check_addressable
+> clause sets ret = 0 (if it passes), which means that a subsequent failure (e.g.
+> a group checksum error) returns 0 even though the mount should fail.  This
+> causes vfs_kern_mount in turn to think that the mount succeeded, leading to an
+> oops.
+> 
+> A simple fix is to avoid using ret for the generic_check_addressable check,
+> which was last changed in commit 30ca22c70e3ef0a96ff84de69cd7e8561b416cb2.
+> 
+> v2: Return -EFBIG in the error case, per Eric Sandeen's suggestion.
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> ---
+> 
+>  fs/ext4/super.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 40131b7..120c034 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3257,13 +3257,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	 * Test whether we have more sectors than will fit in sector_t,
+>  	 * and whether the max offset is addressable by the page cache.
+>  	 */
+> -	ret = generic_check_addressable(sb->s_blocksize_bits,
+> -					ext4_blocks_count(es));
+> -	if (ret) {
+> +	if (generic_check_addressable(sb->s_blocksize_bits,
+> +				      ext4_blocks_count(es))) {
+>  		ext4_msg(sb, KERN_ERR, "filesystem"
+>  			 " too large to mount safely on this system");
+>  		if (sizeof(sector_t) < 8)
+>  			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
+> +		ret = -EFBIG;
+>  		goto failed_mount;
+>  	}
+>  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+Hi,
+
+the untested diff below seems like a more general solution to me,
+since it allows to return the actual error from
+generic_check_addressable().
+
+Thanks.
+
+-Lukas
+
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 61182fe..3d89b72 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3268,13 +3268,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 * Test whether we have more sectors than will fit in sector_t,
+ 	 * and whether the max offset is addressable by the page cache.
+ 	 */
+-	ret = generic_check_addressable(sb->s_blocksize_bits,
++	err = generic_check_addressable(sb->s_blocksize_bits,
+ 					ext4_blocks_count(es));
+-	if (ret) {
++	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "filesystem"
+ 			 " too large to mount safely on this system");
+ 		if (sizeof(sector_t) < 8)
+ 			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
++		ret = err;
+ 		goto failed_mount;
+ 	}
  
-> > diff --git a/include/linux/falloc.h b/include/linux/falloc.h
-> > index 3c15510..851cba2 100644
-> > --- a/include/linux/falloc.h
-> > +++ b/include/linux/falloc.h
-> > @@ -2,6 +2,7 @@
-> >  #define _FALLOC_H_
-> >  
-> >  #define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
-> > +#define FALLOC_FL_PUNCH_HOLE	0X02 /* de-allocates range */
->                                  ^ use lowercase 'x' please...
->
-
-Argh bitten by caps-lock again.  Thanks I'll fix this up,
-
-Josef 
