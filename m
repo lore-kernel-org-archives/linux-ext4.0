@@ -1,148 +1,108 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 5/7] mke2fs: Change -K option to discard/nodiscard
-Date: Tue, 16 Nov 2010 15:14:54 -0600
-Message-ID: <4CE2F44E.1040807@redhat.com>
-References: <1288115658-7004-1-git-send-email-lczerner@redhat.com> <1288115658-7004-6-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 6/7] mke2fs: Use unix_discard() for discards
+Date: Tue, 16 Nov 2010 15:17:10 -0600
+Message-ID: <4CE2F4D6.1010502@redhat.com>
+References: <1288115658-7004-1-git-send-email-lczerner@redhat.com> <1288115658-7004-7-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8491 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14612 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932466Ab0KPVO7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 16:14:59 -0500
-In-Reply-To: <1288115658-7004-6-git-send-email-lczerner@redhat.com>
+	id S1757501Ab0KPVRQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 16:17:16 -0500
+In-Reply-To: <1288115658-7004-7-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 10/26/10 12:54 PM, Lukas Czerner wrote:
-> It would be nice to have consistent "discard" options in every system
-> tool (mount, fsck, mkfs) taking advantage of discards. Also "discard"
-> and "nodiscard" is more descriptive instead of just "-K" and can be
-> easily defaulted and it is something we can not do with "-K".
+> There is generic discard function in struct_io_manager, or in
+> unix_io_manager to be specific. So use this instead of
+> mke2fs_discard_blocks().
 > 
-> With this commit you need to specify extended option like this:
-> 
-> ./mke2fs -T <fstype> -E nodiscard <device>
-> 
-> in order make a filesystem without discarding the device first. And
-> 
-> ./mke2fs -T <fstype> -E discard <device>
-> 
-> respectively.
-> 
+> Since mke2fs_discard_blocks() is not used anymore (and should not be)
+> remove it.
+
+looks fine to me, though needs fixup for the ->discard args
+if that changes.
+
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 > ---
->  misc/mke2fs.8.in |   18 +++++++++++-------
->  misc/mke2fs.c    |   13 ++++++++-----
->  2 files changed, 19 insertions(+), 12 deletions(-)
+>  misc/mke2fs.c |   50 +++++++++++---------------------------------------
+>  1 files changed, 11 insertions(+), 39 deletions(-)
 > 
-> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> index b46e7e2..6b437bc 100644
-> --- a/misc/mke2fs.8.in
-> +++ b/misc/mke2fs.8.in
-> @@ -45,9 +45,6 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
->  .I journal-options
->  ]
->  [
-> -.B \-K
-> -]
-> -[
->  .B \-N
->  .I number-of-inodes
->  ]
-> @@ -240,6 +237,17 @@ enable lazy inode table initialization.
->  .B test_fs
->  Set a flag in the filesystem superblock indicating that it may be
->  mounted using experimental kernel code, such as the ext4dev filesystem.
-> +.TP
-> +.BI discard
-> +Attempt to discard blocks at mkfs time (discarding blocks initially is useful
-> +on solid state devices and sparse / thin-provisioned storage). When the device
-> +advertise that discard also zeroes data (any subsequent read after the discard
-
-advertises
-
-> +and before write returns zero), then mark all not-yet-zeroed inode table as
-
-inode tables
-
-> +zeroed. This significantly speeds up filesystem initialization. This is set
-> +as default.
-> +.TP
-> +.BI nodiscard
-> +Do not attempt to discard blocks at mkfs time.
-
-"this is the default" perhaps.  (I'm not sure any other -E option has
-"no"-variants, so I'm not sure this is really needed, esp. for the
-default)
-
->  .RE
->  .TP
->  .BI \-f " fragment-size"
-> @@ -369,10 +377,6 @@ and may be no more than 102,400 filesystem blocks.
->  @JDEV@.BR size " or " device
->  @JDEV@options can be given for a filesystem.
->  .TP
-> -.BI \-K
-> -Keep, do not attempt to discard blocks at mkfs time (discarding blocks initially
-> -is useful on solid state devices and sparse / thin-provisioned storage).
-> -.TP
-
-maybe keep this and mark as deprecated?  Not sure how Ted handles deprecated
-options.  This one didn't live long ;)
-
->  .BI \-l " filename"
->  Read the bad blocks list from
->  .IR filename .
 > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 0980045..32e3a2b 100644
+> index 32e3a2b..09ce711 100644
 > --- a/misc/mke2fs.c
 > +++ b/misc/mke2fs.c
-> @@ -753,6 +753,10 @@ static void parse_extended_opts(struct ext2_super_block *param,
->  				lazy_itable_init = strtoul(arg, &p, 0);
->  			else
->  				lazy_itable_init = 1;
-> +		} else if (!strcmp(token, "discard")) {
-> +			discard = 1;
-> +		} else if (!strcmp(token, "nodiscard")) {
-> +			discard = 0;
->  		} else {
->  			r_usage++;
->  			badopt = token;
-> @@ -768,7 +772,9 @@ static void parse_extended_opts(struct ext2_super_block *param,
->  			"\tstripe-width=<RAID stride * data disks in blocks>\n"
->  			"\tresize=<resize maximum size in blocks>\n"
->  			"\tlazy_itable_init=<0 to disable, 1 to enable>\n"
-> -			"\ttest_fs\n\n"),
-> +			"\ttest_fs\n"
-> +			"\tdiscard\n"
-> +			"\tnodiscard\n\n"),
->  			badopt ? badopt : "");
->  		free(buf);
->  		exit(1);
-> @@ -1168,7 +1174,7 @@ static void PRS(int argc, char *argv[])
->  	}
+> @@ -1902,48 +1902,10 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
 >  
->  	while ((c = getopt (argc, argv,
-> -		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:V")) != EOF) {
-> +		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:L:M:N:O:R:ST:U:V")) != EOF) {
-
-again, up to Ted whether we can drop an option like this.
-
->  		switch (c) {
->  		case 'b':
->  			blocksize = strtol(optarg, &tmp, 0);
-> @@ -1247,9 +1253,6 @@ static void PRS(int argc, char *argv[])
->  		case 'J':
->  			parse_journal_opts(optarg);
->  			break;
-> -		case 'K':
-> -			discard = 0;
-> -			break;
->  		case 'j':
->  			if (!journal_size)
->  				journal_size = -1;
+>  #ifdef __linux__
+>  
+> -#ifndef BLKDISCARD
+> -#define BLKDISCARD	_IO(0x12,119)
+> -#endif
+> -
+>  #ifndef BLKDISCARDZEROES
+>  #define BLKDISCARDZEROES _IO(0x12,124)
+>  #endif
+>  
+> -/*
+> - * Return zero if the discard succeeds, and -1 if the discard fails.
+> - */
+> -static int mke2fs_discard_blocks(ext2_filsys fs)
+> -{
+> -	int fd;
+> -	int ret;
+> -	int blocksize;
+> -	__u64 blocks;
+> -	__uint64_t range[2];
+> -
+> -	blocks = ext2fs_blocks_count(fs->super);
+> -	blocksize = EXT2_BLOCK_SIZE(fs->super);
+> -	range[0] = 0;
+> -	range[1] = blocks * blocksize;
+> -
+> -	fd = open64(fs->device_name, O_RDWR);
+> -
+> -	if (fd > 0) {
+> -		ret = ioctl(fd, BLKDISCARD, &range);
+> -		if (verbose) {
+> -			printf(_("Calling BLKDISCARD from %llu to %llu "),
+> -			       (unsigned long long) range[0],
+> -			       (unsigned long long) range[1]);
+> -			if (ret)
+> -				printf(_("failed.\n"));
+> -			else
+> -				printf(_("succeeded.\n"));
+> -		}
+> -		close(fd);
+> -	}
+> -	return ret;
+> -}
+> -
+>  static int mke2fs_discard_zeroes_data(ext2_filsys fs)
+>  {
+>  	int fd;
+> @@ -2023,7 +1985,17 @@ int main (int argc, char *argv[])
+>  
+>  	/* Can't undo discard ... */
+>  	if (discard && (io_ptr != undo_io_manager)) {
+> -		retval = mke2fs_discard_blocks(fs);
+> +		blk64_t blocks = ext2fs_blocks_count(fs->super);
+> +		retval = io_ptr->discard(fs->io, 0, blocks, fs);
+> +
+> +		if (verbose) {
+> +			printf(_("Calling BLKDISCARD from 0 to %llu "),
+> +			       (unsigned long long) blocks);
+> +			if (retval)
+> +				printf(_("failed.\n"));
+> +			else
+> +				printf(_("succeeded.\n"));
+> +		}
+>  
+>  		if (!retval && mke2fs_discard_zeroes_data(fs)) {
+>  			if (verbose)
 
