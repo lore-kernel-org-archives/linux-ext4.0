@@ -1,63 +1,65 @@
-From: yangsheng <sheng.yang@oracle.com>
-Subject: [PATCH resend]  jbd2_stats_proc_init wrong place.
-Date: Tue, 16 Nov 2010 15:31:44 +0800
-Message-ID: <1289892704-27147-1-git-send-email-sheng.yang@oracle.com>
-Cc: andreas.dilger@oracle.com, linux-fsdevel@vger.kernel.org,
-	yangsheng <sheng.yang@oracle.com>
-To: linux-ext4@vger.kernel.org
+From: Feng Tang <feng.tang@intel.com>
+Subject: Re: [PATCH] jbd2: avoid the concurrent data writeback
+Date: Tue, 16 Nov 2010 16:13:37 +0800
+Message-ID: <20101116161337.10733417@feng-i7>
+References: <1289827533-2576-1-git-send-email-feng.tang@intel.com>
+	<20101115055420.GA21785@localhost>
+	<20101115175943.490d3469@feng-i7>
+	<20101115112732.GA15953@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: "Wu, Fengguang" <fengguang.wu@intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:36649 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753406Ab0KPHc0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Nov 2010 02:32:26 -0500
+Received: from mga09.intel.com ([134.134.136.24]:2075 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752999Ab0KPHlJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 02:41:09 -0500
+In-Reply-To: <20101115112732.GA15953@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
- The jbd2_stats_proc_init() was placed on wrong location in
- jbd2_journal_init_dev().  This may cause /proc/fs/jdb2/<dev>/*
- cannot be created when using external journal device.
+Hi Hellwig,
 
- Reviewed-by: Andreas Dilger <andreas.dilger@oracle.com>
+On Mon, 15 Nov 2010 19:27:32 +0800
+Christoph Hellwig <hch@infradead.org> wrote:
 
----
----
- fs/jbd2/journal.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+> On Mon, Nov 15, 2010 at 05:59:43PM +0800, Feng Tang wrote:
+> > + *
+> > + * Sometimes when this get called, the host inode may be under data
+> > + * syncing initiated by flush thread(especially for a large file),
+> > and 
+> > + * in such situation, we should skip this path of writeback
+> >   */
+> >  static int journal_submit_inode_data_buffers(struct address_space
+> > *mapping) {
+> > @@ -181,6 +185,13 @@ static int
+> > journal_submit_inode_data_buffers(struct address_space
+> > *mapping) .range_end = i_size_read(mapping->host), };
+> >  
+> > +	spin_lock(&inode_lock);
+> > +	if (mapping->host->i_state & I_SYNC) {
+> > +		spin_unlock(&inode_lock);
+> > +		return 0;
+> > +	}
+> > +	spin_unlock(&inode_lock);
+> > +
+> 
+> inode_lock is not exported to modules, and that's for a pretty good
+> reason.  I think you want to change this code at a higher level to not
+> compete with the flusher threads at all.
+> 
+Good point. The alternative I can think of is to use writeback_in_progress(),
+thus the check will be changed to:
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index c590d15..f837ba9 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -899,6 +899,14 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
- 
- 	/* journal descriptor can store up to n blocks -bzzz */
- 	journal->j_blocksize = blocksize;
-+	journal->j_dev = bdev;
-+	journal->j_fs_dev = fs_dev;
-+	journal->j_blk_offset = start;
-+	journal->j_maxlen = len;
-+	bdevname(journal->j_dev, journal->j_devname);
-+	p = journal->j_devname;
-+	while ((p = strchr(p, '/')))
-+		*p = '!';
- 	jbd2_stats_proc_init(journal);
- 	n = journal->j_blocksize / sizeof(journal_block_tag_t);
- 	journal->j_wbufsize = n;
-@@ -908,14 +916,6 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
- 			__func__);
- 		goto out_err;
- 	}
--	journal->j_dev = bdev;
--	journal->j_fs_dev = fs_dev;
--	journal->j_blk_offset = start;
--	journal->j_maxlen = len;
--	bdevname(journal->j_dev, journal->j_devname);
--	p = journal->j_devname;
--	while ((p = strchr(p, '/')))
--		*p = '!';
- 
- 	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
- 	if (!bh) {
--- 
-1.7.2.3
+	if (writeback_in_progress(mapping->backing_dev_info))
+		return 0;
+This have the same effect as the original patch.
 
+
+Thanks,
+Feng
