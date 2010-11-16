@@ -1,65 +1,62 @@
-From: Feng Tang <feng.tang@intel.com>
-Subject: Re: [PATCH] jbd2: avoid the concurrent data writeback
-Date: Tue, 16 Nov 2010 16:13:37 +0800
-Message-ID: <20101116161337.10733417@feng-i7>
-References: <1289827533-2576-1-git-send-email-feng.tang@intel.com>
-	<20101115055420.GA21785@localhost>
-	<20101115175943.490d3469@feng-i7>
-	<20101115112732.GA15953@infradead.org>
+From: "Alexander V. Lukyanov" <lav@netis.ru>
+Subject: PATCH: allow inode_readahead_blks=0
+Date: Tue, 16 Nov 2010 11:05:47 +0300
+Message-ID: <20101116080546.GA7949@proxy>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Content-Transfer-Encoding: 7bit
-Cc: "Wu, Fengguang" <fengguang.wu@intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: multipart/mixed; boundary="cWoXeonUoKmBZSoM"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:2075 "EHLO mga09.intel.com"
+Received: from fire-ce0.netis.ru ([193.233.48.99]:46084 "EHLO fire.netis.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752999Ab0KPHlJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 02:41:09 -0500
-In-Reply-To: <20101115112732.GA15953@infradead.org>
+	id S1757230Ab0KPITS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 03:19:18 -0500
+Received: from proxy.yar.ru (proxy.yar.ru [193.233.48.78])
+	by fire.netis.ru (8.14.3/8.14.2) with ESMTP id oAG85lt1001000
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Nov 2010 11:05:49 +0300 (MSK)
+Received: (from root@localhost)
+	by proxy.yar.ru (8.14.4/8.14.2/Submit) id oAG85l45017070
+	for linux-ext4@vger.kernel.org; Tue, 16 Nov 2010 11:05:47 +0300
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Hellwig,
 
-On Mon, 15 Nov 2010 19:27:32 +0800
-Christoph Hellwig <hch@infradead.org> wrote:
+--cWoXeonUoKmBZSoM
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> On Mon, Nov 15, 2010 at 05:59:43PM +0800, Feng Tang wrote:
-> > + *
-> > + * Sometimes when this get called, the host inode may be under data
-> > + * syncing initiated by flush thread(especially for a large file),
-> > and 
-> > + * in such situation, we should skip this path of writeback
-> >   */
-> >  static int journal_submit_inode_data_buffers(struct address_space
-> > *mapping) {
-> > @@ -181,6 +185,13 @@ static int
-> > journal_submit_inode_data_buffers(struct address_space
-> > *mapping) .range_end = i_size_read(mapping->host), };
-> >  
-> > +	spin_lock(&inode_lock);
-> > +	if (mapping->host->i_state & I_SYNC) {
-> > +		spin_unlock(&inode_lock);
-> > +		return 0;
-> > +	}
-> > +	spin_unlock(&inode_lock);
-> > +
-> 
-> inode_lock is not exported to modules, and that's for a pretty good
-> reason.  I think you want to change this code at a higher level to not
-> compete with the flusher threads at all.
-> 
-Good point. The alternative I can think of is to use writeback_in_progress(),
-thus the check will be changed to:
+Hello!
 
-	if (writeback_in_progress(mapping->backing_dev_info))
-		return 0;
-This have the same effect as the original patch.
+Currently the value 0 is disallowed, as it is not a power of 2.
 
+This obvious patch fixes the problem.
 
-Thanks,
-Feng
+-- 
+   Alexander.
+
+--cWoXeonUoKmBZSoM
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=diff
+
+--- linux-2.6.35/fs/ext4/super.c.0	2010-11-16 10:48:33.418629215 +0300
++++ linux-2.6.35/fs/ext4/super.c	2010-11-16 10:46:07.739753246 +0300
+@@ -1657,7 +1657,7 @@
+ 				return 0;
+ 			if (option < 0 || option > (1 << 30))
+ 				return 0;
+-			if (!is_power_of_2(option)) {
++			if (option && !is_power_of_2(option)) {
+ 				ext4_msg(sb, KERN_ERR,
+ 					 "EXT4-fs: inode_readahead_blks"
+ 					 " must be a power of 2");
+@@ -2274,7 +2274,7 @@
+ 	if (parse_strtoul(buf, 0x40000000, &t))
+ 		return -EINVAL;
+ 
+-	if (!is_power_of_2(t))
++	if (t && !is_power_of_2(t))
+ 		return -EINVAL;
+ 
+ 	sbi->s_inode_readahead_blks = t;
+
+--cWoXeonUoKmBZSoM--
