@@ -1,179 +1,148 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/7] e2fsprogs: Add discard function into struct_io_manager
-Date: Tue, 16 Nov 2010 15:09:22 -0600
-Message-ID: <4CE2F302.3050904@redhat.com>
-References: <1288115658-7004-1-git-send-email-lczerner@redhat.com> <1288115658-7004-2-git-send-email-lczerner@redhat.com> <4CE2CD55.9070207@redhat.com> <alpine.LFD.2.00.1011162044060.2896@dhcp-lab-213.englab.brq.redhat.com>
+Subject: Re: [PATCH 5/7] mke2fs: Change -K option to discard/nodiscard
+Date: Tue, 16 Nov 2010 15:14:54 -0600
+Message-ID: <4CE2F44E.1040807@redhat.com>
+References: <1288115658-7004-1-git-send-email-lczerner@redhat.com> <1288115658-7004-6-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45012 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8491 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757312Ab0KPVJ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 16:09:27 -0500
-In-Reply-To: <alpine.LFD.2.00.1011162044060.2896@dhcp-lab-213.englab.brq.redhat.com>
+	id S932466Ab0KPVO7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 16:14:59 -0500
+In-Reply-To: <1288115658-7004-6-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/16/10 2:16 PM, Lukas Czerner wrote:
-> On Tue, 16 Nov 2010, Eric Sandeen wrote:
+On 10/26/10 12:54 PM, Lukas Czerner wrote:
+> It would be nice to have consistent "discard" options in every system
+> tool (mount, fsck, mkfs) taking advantage of discards. Also "discard"
+> and "nodiscard" is more descriptive instead of just "-K" and can be
+> easily defaulted and it is something we can not do with "-K".
 > 
->> On 10/26/10 12:54 PM, Lukas Czerner wrote:
->>> In order to provide generic "discard" function for all e2fsprogs tools
->>> add a discard function prototype into struct_io_manager. Specific
->>> function for specific io managers can be crated that way.
->>>
->>> This commit also creates unix_discard function which uses BLKDISCARD
->>> ioctl to discard data blocks on the block device and bind it into
->>> unit_io_manager structure to be available for all e2fsprogs tools.
->>> Note that BLKDISCARD is still Linux specific ioctl, however other
->>> unix systems may provide similar functionality. So far the
->>> unix_discard() remains linux specific hence is embedded in #ifdef
->>> __linux__ macro.
->>>
->>> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
->>> ---
->>>  lib/ext2fs/ext2_io.h |    2 ++
->>>  lib/ext2fs/unix_io.c |   41 +++++++++++++++++++++++++++++++++++++++++
->>>  2 files changed, 43 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
->>> index ccc9c8b..d202007 100644
->>> --- a/lib/ext2fs/ext2_io.h
->>> +++ b/lib/ext2fs/ext2_io.h
->>> @@ -83,6 +83,8 @@ struct struct_io_manager {
->>>  					int count, void *data);
->>>  	errcode_t (*write_blk64)(io_channel channel, unsigned long long block,
->>>  					int count, const void *data);
->>> +	errcode_t (*discard)(io_channel channel, unsigned long long block,
->>> +			     unsigned long long count, const void *data);
->>>  	long	reserved[16];
->>>  };
->>>  
->>> diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
->>> index 1df1fdd..5b6cdec 100644
->>> --- a/lib/ext2fs/unix_io.c
->>> +++ b/lib/ext2fs/unix_io.c
->>> @@ -115,6 +115,8 @@ static errcode_t unix_read_blk64(io_channel channel, unsigned long long block,
->>>  			       int count, void *data);
->>>  static errcode_t unix_write_blk64(io_channel channel, unsigned long long block,
->>>  				int count, const void *data);
->>> +static errcode_t unix_discard(io_channel channel, unsigned long long block,
->>> +			      unsigned long long count, const void *data);
->>>  
->>>  static struct struct_io_manager struct_unix_manager = {
->>>  	EXT2_ET_MAGIC_IO_MANAGER,
->>> @@ -130,6 +132,7 @@ static struct struct_io_manager struct_unix_manager = {
->>>  	unix_get_stats,
->>>  	unix_read_blk64,
->>>  	unix_write_blk64,
->>> +	unix_discard,
->>>  };
->>>  
->>>  io_manager unix_io_manager = &struct_unix_manager;
->>> @@ -834,3 +837,41 @@ static errcode_t unix_set_option(io_channel channel, const char *option,
->>>  	}
->>>  	return EXT2_ET_INVALID_ARGUMENT;
->>>  }
->>> +
->>> +#ifdef __linux__
->>> +
->>> +#ifndef BLKDISCARD
->>> +#define BLKDISCARD	_IO(0x12,119)
->>> +#endif
->>> +
->>> +static errcode_t unix_discard(io_channel channel, unsigned long long block,
->>> +			     unsigned long long count, const void *data)
->>> +{
->>> +
->>> +	struct struct_ext2_filsys *fs;
->>> +	struct unix_private_data *u_priv;
->>> +	errcode_t	retval = 0;
->>> +	__uint64_t	range[2];
->>> +	int		blocksize;
->>> +
->>> +	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
->>> +	u_priv = (struct unix_private_data *) channel->private_data;
->>> +	EXT2_CHECK_MAGIC(u_priv, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
->>> +
->>> +	fs = (struct struct_ext2_filsys *) data;
->>> +	if (!fs)
->>> +		return EXT2_ET_INVALID_ARGUMENT;
->>> +
->>> +	blocksize = EXT2_BLOCK_SIZE(fs->super);
->>
->> This seems a little convoluted; you pass in *data, which gets you the fs,
->> from which you get the super, from which you get the blocksize,
->> which is all that you ever actually use here:
->>
->>> +	range[0] = (__uint64_t)(block);
->>> +	range[1] = (__uint64_t)(count);
->>> +	range[0] *= (__uint64_t)(blocksize);
->>> +	range[1] *= (__uint64_t)(blocksize);
->>
->> any reason to not just pass in the blocksize?
->>
->> Maybe this is for flexibility for not-linux, but I guess we don't know what
->> they need anyway...?
->>
->> And if you do that you can change "u_priv" to "data" just to match the
->> other handlers, perhaps.
+> With this commit you need to specify extended option like this:
 > 
-> You're right, I was so closely following the example that I forget that
-> it can be done more simply. Does this looks good to you ?
+> ./mke2fs -T <fstype> -E nodiscard <device>
 > 
-> static errcode_t unix_discard(io_channel channel, unsigned long long block,
-> 			     unsigned long long count, const void *blocksize)
-> {
-> 	unsigned int    *bsize = (unsigned int *) blocksize;
+> in order make a filesystem without discarding the device first. And
+> 
+> ./mke2fs -T <fstype> -E discard <device>
+> 
+> respectively.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  misc/mke2fs.8.in |   18 +++++++++++-------
+>  misc/mke2fs.c    |   13 ++++++++-----
+>  2 files changed, 19 insertions(+), 12 deletions(-)
+> 
+> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+> index b46e7e2..6b437bc 100644
+> --- a/misc/mke2fs.8.in
+> +++ b/misc/mke2fs.8.in
+> @@ -45,9 +45,6 @@ mke2fs \- create an ext2/ext3/ext4 filesystem
+>  .I journal-options
+>  ]
+>  [
+> -.B \-K
+> -]
+> -[
+>  .B \-N
+>  .I number-of-inodes
+>  ]
+> @@ -240,6 +237,17 @@ enable lazy inode table initialization.
+>  .B test_fs
+>  Set a flag in the filesystem superblock indicating that it may be
+>  mounted using experimental kernel code, such as the ext4dev filesystem.
+> +.TP
+> +.BI discard
+> +Attempt to discard blocks at mkfs time (discarding blocks initially is useful
+> +on solid state devices and sparse / thin-provisioned storage). When the device
+> +advertise that discard also zeroes data (any subsequent read after the discard
 
-I think you can just pass in "int blocksize" right?
+advertises
 
-and 
+> +and before write returns zero), then mark all not-yet-zeroed inode table as
 
-ret = manager->discard(fs->io, start, count, fs->blocksize);
+inode tables
 
--Eric
+> +zeroed. This significantly speeds up filesystem initialization. This is set
+> +as default.
+> +.TP
+> +.BI nodiscard
+> +Do not attempt to discard blocks at mkfs time.
 
-> 	struct unix_private_data *data;
-> 	errcode_t	retval = 0;
-> 	__uint64_t	range[2];
-> 
-> 	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-> 	data = (struct unix_private_data *) channel->private_data;
-> 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-> 
-> 	if (!blocksize)
-> 		return EXT2_ET_INVALID_ARGUMENT;
-> 
-> 	range[0] = (__uint64_t)(block);
-> 	range[1] = (__uint64_t)(count);
-> 	range[0] *= (__uint64_t)(*bsize);
-> 	range[1] *= (__uint64_t)(*bsize);
-> 
-> 	return ioctl(data->dev, BLKDISCARD, &range);
-> }
-> 
-> then we can call it like this:
-> 
-> ret = manager->discard(fs->io, start, count, &fs->blocksize);
-> 
-> Thanks a lot for reviewing this!
-> 
-> -Lukas
-> 
->>
->> -Eric
->>
->>> +	return ioctl(u_priv->dev, BLKDISCARD, &range);
->>> +}
->>> +
->>> +#else
->>> +#define unix_discard(channel, block, count)	EXT2_ET_UNIMPLEMENTED
->>> +#endif
->>
->>
-> 
+"this is the default" perhaps.  (I'm not sure any other -E option has
+"no"-variants, so I'm not sure this is really needed, esp. for the
+default)
+
+>  .RE
+>  .TP
+>  .BI \-f " fragment-size"
+> @@ -369,10 +377,6 @@ and may be no more than 102,400 filesystem blocks.
+>  @JDEV@.BR size " or " device
+>  @JDEV@options can be given for a filesystem.
+>  .TP
+> -.BI \-K
+> -Keep, do not attempt to discard blocks at mkfs time (discarding blocks initially
+> -is useful on solid state devices and sparse / thin-provisioned storage).
+> -.TP
+
+maybe keep this and mark as deprecated?  Not sure how Ted handles deprecated
+options.  This one didn't live long ;)
+
+>  .BI \-l " filename"
+>  Read the bad blocks list from
+>  .IR filename .
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 0980045..32e3a2b 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -753,6 +753,10 @@ static void parse_extended_opts(struct ext2_super_block *param,
+>  				lazy_itable_init = strtoul(arg, &p, 0);
+>  			else
+>  				lazy_itable_init = 1;
+> +		} else if (!strcmp(token, "discard")) {
+> +			discard = 1;
+> +		} else if (!strcmp(token, "nodiscard")) {
+> +			discard = 0;
+>  		} else {
+>  			r_usage++;
+>  			badopt = token;
+> @@ -768,7 +772,9 @@ static void parse_extended_opts(struct ext2_super_block *param,
+>  			"\tstripe-width=<RAID stride * data disks in blocks>\n"
+>  			"\tresize=<resize maximum size in blocks>\n"
+>  			"\tlazy_itable_init=<0 to disable, 1 to enable>\n"
+> -			"\ttest_fs\n\n"),
+> +			"\ttest_fs\n"
+> +			"\tdiscard\n"
+> +			"\tnodiscard\n\n"),
+>  			badopt ? badopt : "");
+>  		free(buf);
+>  		exit(1);
+> @@ -1168,7 +1174,7 @@ static void PRS(int argc, char *argv[])
+>  	}
+>  
+>  	while ((c = getopt (argc, argv,
+> -		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:KL:M:N:O:R:ST:U:V")) != EOF) {
+> +		    "b:cf:g:G:i:jl:m:no:qr:s:t:vE:FI:J:L:M:N:O:R:ST:U:V")) != EOF) {
+
+again, up to Ted whether we can drop an option like this.
+
+>  		switch (c) {
+>  		case 'b':
+>  			blocksize = strtol(optarg, &tmp, 0);
+> @@ -1247,9 +1253,6 @@ static void PRS(int argc, char *argv[])
+>  		case 'J':
+>  			parse_journal_opts(optarg);
+>  			break;
+> -		case 'K':
+> -			discard = 0;
+> -			break;
+>  		case 'j':
+>  			if (!journal_size)
+>  				journal_size = -1;
 
