@@ -1,102 +1,105 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH v2] ext4: ext4_fill_super shouldn't return 0 on
- corruption
-Date: Tue, 16 Nov 2010 13:56:31 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
-References: <20101115214831.GA18195@tux1.beaverton.ibm.com> <4CE1AC38.9040201@redhat.com> <20101115230346.GB18195@tux1.beaverton.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [patch] fix up lock order reversal in writeback
+Date: Tue, 16 Nov 2010 14:01:46 +0100
+Message-ID: <20101116130146.GG4757@quack.suse.cz>
+References: <20101116110058.GA4298@amd>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	"Patrick J. LoPresti" <lopresti@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Mingming Cao <mcao@us.ibm.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64576 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756285Ab0KPM4t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 07:56:49 -0500
-In-Reply-To: <20101115230346.GB18195@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org
+To: Nick Piggin <npiggin@kernel.dk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20101116110058.GA4298@amd>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 15 Nov 2010, Darrick J. Wong wrote:
+On Tue 16-11-10 22:00:58, Nick Piggin wrote:
+> I saw a lock order warning on ext4 trigger. This should solve it.
+> Raciness shouldn't matter much, because writeback can stop just
+> after we make the test and return anyway (so the API is racy anyway).
+  Hmm, for now the fix is OK. Ultimately, we probably want to call
+writeback_inodes_sb() directly from all the callers. They all just want to
+reduce uncertainty of delayed allocation reservations by writing delayed
+data and actually wait for some of the writeback to happen before they
+retry again the allocation.
 
-> At the start of ext4_fill_super, ret is set to -EINVAL, and any failure path
-> out of that function returns ret.  However, the generic_check_addressable
-> clause sets ret = 0 (if it passes), which means that a subsequent failure (e.g.
-> a group checksum error) returns 0 even though the mount should fail.  This
-> causes vfs_kern_mount in turn to think that the mount succeeded, leading to an
-> oops.
+Although the callers generally cannot get umount_sem because they hold
+other locks, they have the superblock well pinned so grabbing umount_sem
+makes sense mostly to make assertions happy. But as I'm thinking about it,
+trylock *is* maybe the right answer to this anyway...
+
+So
+Acked-by: Jan Kara <jack@suse.cz>
+
+								Honza
 > 
-> A simple fix is to avoid using ret for the generic_check_addressable check,
-> which was last changed in commit 30ca22c70e3ef0a96ff84de69cd7e8561b416cb2.
+> Signed-off-by: Nick Piggin <npiggin@kernel.dk>
 > 
-> v2: Return -EFBIG in the error case, per Eric Sandeen's suggestion.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> ---
-> 
->  fs/ext4/super.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 40131b7..120c034 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3257,13 +3257,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	 * Test whether we have more sectors than will fit in sector_t,
->  	 * and whether the max offset is addressable by the page cache.
->  	 */
-> -	ret = generic_check_addressable(sb->s_blocksize_bits,
-> -					ext4_blocks_count(es));
-> -	if (ret) {
-> +	if (generic_check_addressable(sb->s_blocksize_bits,
-> +				      ext4_blocks_count(es))) {
->  		ext4_msg(sb, KERN_ERR, "filesystem"
->  			 " too large to mount safely on this system");
->  		if (sizeof(sector_t) < 8)
->  			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
-> +		ret = -EFBIG;
->  		goto failed_mount;
->  	}
+> Index: linux-2.6/fs/fs-writeback.c
+> ===================================================================
+> --- linux-2.6.orig/fs/fs-writeback.c	2010-11-16 21:44:32.000000000 +1100
+> +++ linux-2.6/fs/fs-writeback.c	2010-11-16 21:49:37.000000000 +1100
+> @@ -1125,16 +1125,20 @@ EXPORT_SYMBOL(writeback_inodes_sb);
+>   *
+>   * Invoke writeback_inodes_sb if no writeback is currently underway.
+>   * Returns 1 if writeback was started, 0 if not.
+> + *
+> + * May be called inside i_lock. May not start writeback if locks cannot
+> + * be acquired.
+>   */
+>  int writeback_inodes_sb_if_idle(struct super_block *sb)
+>  {
+>  	if (!writeback_in_progress(sb->s_bdi)) {
+> -		down_read(&sb->s_umount);
+> -		writeback_inodes_sb(sb);
+> -		up_read(&sb->s_umount);
+> -		return 1;
+> -	} else
+> -		return 0;
+> +		if (down_read_trylock(&sb->s_umount)) {
+> +			writeback_inodes_sb(sb);
+> +			up_read(&sb->s_umount);
+> +			return 1;
+> +		}
+> +	}
+> +	return 0;
+>  }
+>  EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+>  
+> @@ -1145,17 +1149,21 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idl
+>   *
+>   * Invoke writeback_inodes_sb if no writeback is currently underway.
+>   * Returns 1 if writeback was started, 0 if not.
+> + *
+> + * May be called inside i_lock. May not start writeback if locks cannot
+> + * be acquired.
+>   */
+>  int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
+>  				   unsigned long nr)
+>  {
+>  	if (!writeback_in_progress(sb->s_bdi)) {
+> -		down_read(&sb->s_umount);
+> -		writeback_inodes_sb_nr(sb, nr);
+> -		up_read(&sb->s_umount);
+> -		return 1;
+> -	} else
+> -		return 0;
+> +		if (down_read_trylock(&sb->s_umount)) {
+> +			writeback_inodes_sb_nr(sb, nr);
+> +			up_read(&sb->s_umount);
+> +			return 1;
+> +		}
+> +	}
+> +	return 0;
+>  }
+>  EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
 >  
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-Hi,
-
-the untested diff below seems like a more general solution to me,
-since it allows to return the actual error from
-generic_check_addressable().
-
-Thanks.
-
--Lukas
-
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 61182fe..3d89b72 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3268,13 +3268,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	 * Test whether we have more sectors than will fit in sector_t,
- 	 * and whether the max offset is addressable by the page cache.
- 	 */
--	ret = generic_check_addressable(sb->s_blocksize_bits,
-+	err = generic_check_addressable(sb->s_blocksize_bits,
- 					ext4_blocks_count(es));
--	if (ret) {
-+	if (err) {
- 		ext4_msg(sb, KERN_ERR, "filesystem"
- 			 " too large to mount safely on this system");
- 		if (sizeof(sector_t) < 8)
- 			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
-+		ret = err;
- 		goto failed_mount;
- 	}
- 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
