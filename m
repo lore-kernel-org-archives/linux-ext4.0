@@ -1,117 +1,58 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH v2] ext4: ext4_fill_super shouldn't return 0 on
-	corruption
-Date: Tue, 16 Nov 2010 14:55:38 -0800
-Message-ID: <20101116225538.GC18195@tux1.beaverton.ibm.com>
+Subject: [PATCH] ext3: Return error code from generic_check_addressable
+Date: Tue, 16 Nov 2010 14:57:44 -0800
+Message-ID: <20101116225744.GD18195@tux1.beaverton.ibm.com>
 References: <20101115214831.GA18195@tux1.beaverton.ibm.com> <4CE1AC38.9040201@redhat.com> <20101115230346.GB18195@tux1.beaverton.ibm.com> <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	"Patrick J. LoPresti" <lopresti@gmail.com>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	Mingming Cao <mcao@us.ibm.com>
-To: Lukas Czerner <lczerner@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:55417 "EHLO e9.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:49243 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755444Ab0KPWzk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 17:55:40 -0500
+	id S1754840Ab0KPW5q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 17:57:46 -0500
 Content-Disposition: inline
 In-Reply-To: <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 16, 2010 at 01:56:31PM +0100, Lukas Czerner wrote:
-> On Mon, 15 Nov 2010, Darrick J. Wong wrote:
-> 
-> > At the start of ext4_fill_super, ret is set to -EINVAL, and any failure path
-> > out of that function returns ret.  However, the generic_check_addressable
-> > clause sets ret = 0 (if it passes), which means that a subsequent failure (e.g.
-> > a group checksum error) returns 0 even though the mount should fail.  This
-> > causes vfs_kern_mount in turn to think that the mount succeeded, leading to an
-> > oops.
-> > 
-> > A simple fix is to avoid using ret for the generic_check_addressable check,
-> > which was last changed in commit 30ca22c70e3ef0a96ff84de69cd7e8561b416cb2.
-> > 
-> > v2: Return -EFBIG in the error case, per Eric Sandeen's suggestion.
-> > 
-> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> > ---
-> > 
-> >  fs/ext4/super.c |    6 +++---
-> >  1 files changed, 3 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 40131b7..120c034 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -3257,13 +3257,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-> >  	 * Test whether we have more sectors than will fit in sector_t,
-> >  	 * and whether the max offset is addressable by the page cache.
-> >  	 */
-> > -	ret = generic_check_addressable(sb->s_blocksize_bits,
-> > -					ext4_blocks_count(es));
-> > -	if (ret) {
-> > +	if (generic_check_addressable(sb->s_blocksize_bits,
-> > +				      ext4_blocks_count(es))) {
-> >  		ext4_msg(sb, KERN_ERR, "filesystem"
-> >  			 " too large to mount safely on this system");
-> >  		if (sizeof(sector_t) < 8)
-> >  			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
-> > +		ret = -EFBIG;
-> >  		goto failed_mount;
-> >  	}
-> >  
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
-> Hi,
-> 
-> the untested diff below seems like a more general solution to me,
-> since it allows to return the actual error from
-> generic_check_addressable().
+ext3: Return error code from generic_check_accessible
 
-It seems to work ok for me, so:
+ext3_fill_super should return the error code that generic_check_accessible
+returns when an error condition occurs.
 
-Acked-by: Darrick J. Wong <djwong@us.ibm.com>
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
 
-I will make the same change to ext3.
+ fs/ext3/super.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
---D
-> 
-> Thanks.
-> 
-> -Lukas
-> 
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 61182fe..3d89b72 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3268,13 +3268,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	 * Test whether we have more sectors than will fit in sector_t,
->  	 * and whether the max offset is addressable by the page cache.
->  	 */
-> -	ret = generic_check_addressable(sb->s_blocksize_bits,
-> +	err = generic_check_addressable(sb->s_blocksize_bits,
->  					ext4_blocks_count(es));
-> -	if (ret) {
-> +	if (err) {
->  		ext4_msg(sb, KERN_ERR, "filesystem"
->  			 " too large to mount safely on this system");
->  		if (sizeof(sector_t) < 8)
->  			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
-> +		ret = err;
->  		goto failed_mount;
->  	}
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 2fedaf8..960629b 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -1842,13 +1842,15 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 
+-	if (generic_check_addressable(sb->s_blocksize_bits,
+-				      le32_to_cpu(es->s_blocks_count))) {
++	err = generic_check_addressable(sb->s_blocksize_bits,
++					le32_to_cpu(es->s_blocks_count));
++	if (err) {
+ 		ext3_msg(sb, KERN_ERR,
+ 			"error: filesystem is too large to mount safely");
+ 		if (sizeof(sector_t) < 8)
+ 			ext3_msg(sb, KERN_ERR,
+ 				"error: CONFIG_LBDAF not enabled");
++		ret = err;
+ 		goto failed_mount;
+ 	}
+ 
