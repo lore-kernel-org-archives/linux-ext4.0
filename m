@@ -1,80 +1,75 @@
-From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH 2/2] ext4: Add error check in ext4_mkdir()
-Date: Tue, 16 Nov 2010 20:19:52 +0900
-Message-ID: <1289906392-8964-1-git-send-email-namhyung@gmail.com>
-References: <1289906292-8906-1-git-send-email-namhyung@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1289906292-8906-1-git-send-email-namhyung@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH resend]  jbd2_stats_proc_init wrong place.
+Date: Tue, 16 Nov 2010 12:40:43 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1011161239340.2916@dhcp-lab-213.englab.brq.redhat.com>
+References: <1289892704-27147-1-git-send-email-sheng.yang@oracle.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, andreas.dilger@oracle.com,
+	linux-fsdevel@vger.kernel.org
+To: yangsheng <sheng.yang@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:14606 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933105Ab0KPLkt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 06:40:49 -0500
+In-Reply-To: <1289892704-27147-1-git-send-email-sheng.yang@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Check return value of ext4_journal_get_write_access, ext4_journal_dirty_metadata
-and ext4_mark_inode_dirty. Move brelse() under 'out_stop' to release bh properly
-in case of journal error.
+On Tue, 16 Nov 2010, yangsheng wrote:
 
-Signed-off-by: Namhyung Kim <namhyung@gmail.com>
----
- fs/ext4/namei.c |   21 ++++++++++++++-------
- 1 files changed, 14 insertions(+), 7 deletions(-)
+>  The jbd2_stats_proc_init() was placed on wrong location in
+>  jbd2_journal_init_dev().  This may cause /proc/fs/jdb2/<dev>/*
+>  cannot be created when using external journal device.
+> 
+>  Reviewed-by: Andreas Dilger <andreas.dilger@oracle.com>
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 92203b8..a09fbbd 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1789,7 +1789,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- {
- 	handle_t *handle;
- 	struct inode *inode;
--	struct buffer_head *dir_block;
-+	struct buffer_head *dir_block = NULL;
- 	struct ext4_dir_entry_2 *de;
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
- 	int err, retries = 0;
-@@ -1822,7 +1822,9 @@ retry:
- 	if (!dir_block)
- 		goto out_clear_inode;
- 	BUFFER_TRACE(dir_block, "get_write_access");
--	ext4_journal_get_write_access(handle, dir_block);
-+	err = ext4_journal_get_write_access(handle, dir_block);
-+	if (err)
-+		goto out_clear_inode;
- 	de = (struct ext4_dir_entry_2 *) dir_block->b_data;
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	de->name_len = 1;
-@@ -1839,10 +1841,12 @@ retry:
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	inode->i_nlink = 2;
- 	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
--	ext4_handle_dirty_metadata(handle, dir, dir_block);
--	brelse(dir_block);
--	ext4_mark_inode_dirty(handle, inode);
--	err = ext4_add_entry(handle, dentry, inode);
-+	err = ext4_handle_dirty_metadata(handle, dir, dir_block);
-+	if (err)
-+		goto out_clear_inode;
-+	err = ext4_mark_inode_dirty(handle, inode);
-+	if (!err)
-+		err = ext4_add_entry(handle, dentry, inode);
- 	if (err) {
- out_clear_inode:
- 		clear_nlink(inode);
-@@ -1853,10 +1857,13 @@ out_clear_inode:
- 	}
- 	ext4_inc_count(handle, dir);
- 	ext4_update_dx_flag(dir);
--	ext4_mark_inode_dirty(handle, dir);
-+	err = ext4_mark_inode_dirty(handle, dir);
-+	if (err)
-+		goto out_clear_inode;
- 	d_instantiate(dentry, inode);
- 	unlock_new_inode(inode);
- out_stop:
-+	brelse(dir_block);
- 	ext4_journal_stop(handle);
- 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
+Code looks good to me and after a quick testing it seems to be working
+properly.
+
+-Lukas
+
+> 
+> ---
+> ---
+>  fs/jbd2/journal.c |   16 ++++++++--------
+>  1 files changed, 8 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index c590d15..f837ba9 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -899,6 +899,14 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>  
+>  	/* journal descriptor can store up to n blocks -bzzz */
+>  	journal->j_blocksize = blocksize;
+> +	journal->j_dev = bdev;
+> +	journal->j_fs_dev = fs_dev;
+> +	journal->j_blk_offset = start;
+> +	journal->j_maxlen = len;
+> +	bdevname(journal->j_dev, journal->j_devname);
+> +	p = journal->j_devname;
+> +	while ((p = strchr(p, '/')))
+> +		*p = '!';
+>  	jbd2_stats_proc_init(journal);
+>  	n = journal->j_blocksize / sizeof(journal_block_tag_t);
+>  	journal->j_wbufsize = n;
+> @@ -908,14 +916,6 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>  			__func__);
+>  		goto out_err;
+>  	}
+> -	journal->j_dev = bdev;
+> -	journal->j_fs_dev = fs_dev;
+> -	journal->j_blk_offset = start;
+> -	journal->j_maxlen = len;
+> -	bdevname(journal->j_dev, journal->j_devname);
+> -	p = journal->j_devname;
+> -	while ((p = strchr(p, '/')))
+> -		*p = '!';
+>  
+>  	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
+>  	if (!bh) {
+> 
+
 -- 
-1.7.0.4
