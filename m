@@ -1,75 +1,47 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH resend]  jbd2_stats_proc_init wrong place.
-Date: Tue, 16 Nov 2010 12:40:43 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011161239340.2916@dhcp-lab-213.englab.brq.redhat.com>
-References: <1289892704-27147-1-git-send-email-sheng.yang@oracle.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
+Date: Tue, 16 Nov 2010 12:43:46 +0100
+Message-ID: <20101116114346.GB4757@quack.suse.cz>
+References: <1289840723-3056-1-git-send-email-josef@redhat.com>
+ <1289840723-3056-2-git-send-email-josef@redhat.com>
+ <20101116111611.GA4757@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, andreas.dilger@oracle.com,
-	linux-fsdevel@vger.kernel.org
-To: yangsheng <sheng.yang@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: david@fromorbit.com, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
+	cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14606 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:49204 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933105Ab0KPLkt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 06:40:49 -0500
-In-Reply-To: <1289892704-27147-1-git-send-email-sheng.yang@oracle.com>
+	id S933630Ab0KPLns (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Nov 2010 06:43:48 -0500
+Content-Disposition: inline
+In-Reply-To: <20101116111611.GA4757@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 16 Nov 2010, yangsheng wrote:
+On Tue 16-11-10 12:16:11, Jan Kara wrote:
+> On Mon 15-11-10 12:05:18, Josef Bacik wrote:
+> > diff --git a/fs/open.c b/fs/open.c
+> > index 4197b9e..ab8dedf 100644
+> > --- a/fs/open.c
+> > +++ b/fs/open.c
+> > @@ -223,7 +223,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+> >  		return -EINVAL;
+> >  
+> >  	/* Return error if mode is not supported */
+> > -	if (mode && !(mode & FALLOC_FL_KEEP_SIZE))
+> > +	if (mode && (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE)))
+>   Why not just:
+> if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE)) ?
+  And BTW, since FALLOC_FL_PUNCH_HOLE does not change the file size, should
+not we enforce that FALLOC_FL_KEEP_SIZE is / is not set? I don't mind too
+much which way but keeping it ambiguous (ignored) in the interface usually
+proves as a bad idea in future when we want to further extend the interface...
 
->  The jbd2_stats_proc_init() was placed on wrong location in
->  jbd2_journal_init_dev().  This may cause /proc/fs/jdb2/<dev>/*
->  cannot be created when using external journal device.
-> 
->  Reviewed-by: Andreas Dilger <andreas.dilger@oracle.com>
-
-Code looks good to me and after a quick testing it seems to be working
-properly.
-
--Lukas
-
-> 
-> ---
-> ---
->  fs/jbd2/journal.c |   16 ++++++++--------
->  1 files changed, 8 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index c590d15..f837ba9 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -899,6 +899,14 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->  
->  	/* journal descriptor can store up to n blocks -bzzz */
->  	journal->j_blocksize = blocksize;
-> +	journal->j_dev = bdev;
-> +	journal->j_fs_dev = fs_dev;
-> +	journal->j_blk_offset = start;
-> +	journal->j_maxlen = len;
-> +	bdevname(journal->j_dev, journal->j_devname);
-> +	p = journal->j_devname;
-> +	while ((p = strchr(p, '/')))
-> +		*p = '!';
->  	jbd2_stats_proc_init(journal);
->  	n = journal->j_blocksize / sizeof(journal_block_tag_t);
->  	journal->j_wbufsize = n;
-> @@ -908,14 +916,6 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->  			__func__);
->  		goto out_err;
->  	}
-> -	journal->j_dev = bdev;
-> -	journal->j_fs_dev = fs_dev;
-> -	journal->j_blk_offset = start;
-> -	journal->j_maxlen = len;
-> -	bdevname(journal->j_dev, journal->j_devname);
-> -	p = journal->j_devname;
-> -	while ((p = strchr(p, '/')))
-> -		*p = '!';
->  
->  	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
->  	if (!bh) {
-> 
-
+								Honza
 -- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
