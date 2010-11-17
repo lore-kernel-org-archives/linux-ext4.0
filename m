@@ -1,115 +1,71 @@
-From: Feng Tang <feng.tang@intel.com>
-Subject: Re: [PATCH] jbd2: avoid the concurrent data writeback
-Date: Wed, 17 Nov 2010 09:36:21 +0800
-Message-ID: <20101117093621.29fed027@feng-i7>
-References: <1289827533-2576-1-git-send-email-feng.tang@intel.com>
-	<20101115055420.GA21785@localhost>
-	<20101115175943.490d3469@feng-i7>
-	<20101116121323.GE4757@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
+Date: Wed, 17 Nov 2010 13:11:50 +1100
+Message-ID: <20101117021150.GL22876@dastard>
+References: <1289840723-3056-1-git-send-email-josef@redhat.com>
+ <1289840723-3056-2-git-send-email-josef@redhat.com>
+ <20101116111611.GA4757@quack.suse.cz>
+ <20101116114346.GB4757@quack.suse.cz>
+ <20101116125249.GB31957@dhcp231-156.rdu.redhat.com>
+ <20101116131451.GH4757@quack.suse.cz>
+ <18ACAA85-8847-4B12-9839-F99FB6C7B3E4@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Content-Transfer-Encoding: 7bit
-Cc: no To-header on input <""@suse.de>,
-	"Wu, Fengguang" <fengguang.wu@intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20101116121323.GE4757@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Josef Bacik <josef@redhat.com>,
+	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, cmm@us.ibm.com, cluster-devel@redhat.com,
+	ocfs2-devel@oss.oracle.com
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <18ACAA85-8847-4B12-9839-F99FB6C7B3E4@dilger.ca>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Jan,
-
-On Tue, 16 Nov 2010 20:13:23 +0800
-Jan Kara <jack@suse.cz> wrote:
-
->   Hi,
+On Tue, Nov 16, 2010 at 06:22:47PM -0600, Andreas Dilger wrote:
+> On 2010-11-16, at 07:14, Jan Kara wrote:
+> >> Yeah I went back and forth on this.  KEEP_SIZE won't change the
+> >> behavior of PUNCH_HOLE since PUNCH_HOLE implicitly means keep
+> >> the size.  I figured since its "mode" and not "flags" it would
+> >> be ok to make either way accepted, but if you prefer PUNCH_HOLE
+> >> means you have to have KEEP_SIZE set then I'm cool with that,
+> >> just let me know one way or the other.
+> > 
+> > So we call it "mode" but speak about "flags"? Seems a bit
+> > inconsistent.  I'd maybe lean a bit at the "flags" side and just
+> > make sure that only one of FALLOC_FL_KEEP_SIZE,
+> > FALLOC_FL_PUNCH_HOLE is set (interpreting FALLOC_FL_KEEP_SIZE as
+> > allocate blocks beyond i_size). But I'm not sure what others
+> > think.
 > 
->   sorry for chiming in a bit late...
-> On Mon 15-11-10 17:59:43, Feng Tang wrote:
-> > From b16cfc5a560f2549ac69dbb235a550500ea1719f Mon Sep 17 00:00:00
-> > 2001 From: Feng Tang <feng.tang@intel.com>
-> > Date: Mon, 15 Nov 2010 21:06:44 +0800
-> > Subject: [PATCH] jbd2: avoid the concurrent data writeback
-> > 
-> > When dd a big file to an ext4 partition, it is very likely to happen
-> > that both the background flush thread and kjounald try to do data
-> > writeback for it, that the flush thread is doing the writeback for
-> > this file and jbd2 thread are also waken up to commit the
-> > transaction. Because kjounald only calls the generic_writepages()
-> > whose path doesn't really allocate disk blocks, the ext4_witepage()
-> > may be called lots of times (100000+ for a 1g file dd) without
-> > really writing one page back (skipped), which will consume lots of
-> > unnecessary CPU time
-> > 
-> > This could be found by a simple test case with ftrace:
-> > $ sync;
-> > $ echo 40960 > buffer_size_kb;echo 1 > events/writeback/enable;echo
-> > 1 > events/jbd2/enable;echo 1 > events/ext4/enable; $ dd
-> > if=/dev/zero of=/home/test/1g.bin bs=1M count=1024;sync; $ cat
-> > trace > /home/test/jbd2_ext4_1g_dd.log $ grep -c
-> > wcb_writepage /home/test/jbd2_ext4_1g_dd.log
-> > 
-> > This patch will check if the inode is under data syncing, if yes
-> > then don't start the writeback from kjournald
-> > 
-> > The Perf statics (On my Core Duo 2 + 4G RAM + SATA disk + Ext4 in
-> > all default modes): before the patch >  112191
-> > writeback:wbc_writepage  #      0.005 M/sec after the patch  >  54
-> > writeback:wbc_writepage  #      0.000 M/sec
-> > 
-> > Signed-off-by: Feng Tang <feng.tang@intel.com>
-> > ---
-> >  fs/jbd2/commit.c |   11 +++++++++++
-> >  1 files changed, 11 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> > index f3ad159..0f3e356 100644
-> > --- a/fs/jbd2/commit.c
-> > +++ b/fs/jbd2/commit.c
-> > @@ -170,6 +170,10 @@ static int
-> > journal_wait_on_commit_record(journal_t *journal,
-> >   * We don't do block allocation here even for delalloc. We don't
-> >   * use writepages() because with dealyed allocation we may be doing
-> >   * block allocation in writepages().
-> > + *
-> > + * Sometimes when this get called, the host inode may be under data
-> > + * syncing initiated by flush thread(especially for a large file),
-> > and 
-> > + * in such situation, we should skip this path of writeback
-> >   */
-> >  static int journal_submit_inode_data_buffers(struct address_space
-> > *mapping) {
-> > @@ -181,6 +185,13 @@ static int
-> > journal_submit_inode_data_buffers(struct address_space
-> > *mapping) .range_end = i_size_read(mapping->host), };
-> >  
-> > +	spin_lock(&inode_lock);
-> > +	if (mapping->host->i_state & I_SYNC) {
-> > +		spin_unlock(&inode_lock);
-> > +		return 0;
-> > +	}
-> > +	spin_unlock(&inode_lock);
-> > +
->   Sorry, but this is just wrong. Not only because of inode_lock as
-> Christoph pointed out but mainly principially. ext4 and ocfs2 in
-> data=ordered mode rely on data pages (with underlying blocks already
-> allocated) being written out before transaction commit proceeds for
-> data integrity. So you cannot just go and remove the writeback saying
-> it improves performance.
-> 
-> I'm not saying that ext4 handling of ordered mode does not need a
-> revision (we actually talked with Ted about it at Kernel Summit). But
-> the solution for it is to use IO completion callback to do extent
-> tree manipulations and stop using JBD2 for data syncing. We already
-> do that for direct IO and conversion of preallocated space so doing
-> it in all cases should be reasonably easy. Until that happens, you
-> can run ext4 in data=writeback mode which will also stop JBD2 from
-> doing the writeback (and effectively is rather similar to your patch).
+> IMHO, it makes more sense for consistency and "get what users
+> expect" that these be treated as flags.  Some users will want
+> KEEP_SIZE, but in other cases it may make sense that a hole punch
+> at the end of a file should shrink the file (i.e. the opposite of
+> an append).
 
-Glad to know that the revision is on the way, and thanks for the 
-detailed clarification.
+What's wrong with ftruncate() for this?
 
-- Feng 
+There's plenty of open questions about the interface if we allow
+hole punching to change the file size. e.g. where do we set the EOF
+(offset or offset+len)?  What do we do with the rest of the blocks
+that are now beyond EOF?  We weren't asked to punch them out, so do
+we leave them behind? What if we are leaving written blocks beyond
+EOF - does any filesystem other than XFS support that (i.e. are we
+introducing different behaviour on different filesystems)?  And what
+happens if the offset is beyond EOF? Do we extend the file, and if
+so why wouldn't you just use ftruncate() instead?
+
+IMO, allowing hole punching to change the file size makes it much
+more complicated and hence less likely to simply do what the user
+expects. It also is harder to implement and testing becomes much
+more intricate. From that perspective, it does not seem desirable to
+me...
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
