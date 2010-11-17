@@ -1,37 +1,41 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: [patch] ext4: missing unlock in ext4_clear_request_list()
-Date: Wed, 17 Nov 2010 08:07:32 +0300
-Message-ID: <20101117050732.GB31724@bicker>
+From: Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [patch] fix up lock order reversal in writeback
+Date: Wed, 17 Nov 2010 17:10:57 +1100
+Message-ID: <20101117061057.GA3989@amd>
+References: <20101116110058.GA4298@amd>
+ <20101116130146.GG4757@quack.suse.cz>
+ <4CE35A6D.2040906@redhat.com>
+ <20101117043845.GA3586@amd>
+ <4CE362B0.6040607@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>
+Cc: Nick Piggin <npiggin@kernel.dk>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:49369 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751621Ab0KQFIf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Nov 2010 00:08:35 -0500
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:5990 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933117Ab0KQGLC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Nov 2010 01:11:02 -0500
 Content-Disposition: inline
+In-Reply-To: <4CE362B0.6040607@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the the li_request_list was empty then it returned with the lock
-held.  Instead of adding a "goto unlock" I just removed that special
-case and let it go past the empty list_for_each_safe().
+On Tue, Nov 16, 2010 at 11:05:52PM -0600, Eric Sandeen wrote:
+> On 11/16/10 10:38 PM, Nick Piggin wrote:
+> >> as for the locking problems ... sorry about that!
+> > 
+> > That's no problem. So is that an ack? :)
+> > 
+> 
+> I'd like to test it with the original case it was supposed to solve; will
+> do that tomorrow.
 
-Signed-off-by: Dan Carpenter <error27@gmail.com>
----
-This is a static checker patch.
+OK, but it shouldn't make much difference, unless there is a lot of
+strange activity happening on the sb (like mount / umount / remount /
+freeze / etc).
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 61182fe..ef09d14 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2799,9 +2799,6 @@ static void ext4_clear_request_list(void)
- 	struct ext4_li_request *elr;
- 
- 	mutex_lock(&ext4_li_info->li_list_mtx);
--	if (list_empty(&ext4_li_info->li_request_list))
--		return;
