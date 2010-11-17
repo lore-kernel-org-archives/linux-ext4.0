@@ -1,58 +1,33 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH] ext3: Return error code from generic_check_addressable
-Date: Tue, 16 Nov 2010 14:57:44 -0800
-Message-ID: <20101116225744.GD18195@tux1.beaverton.ibm.com>
-References: <20101115214831.GA18195@tux1.beaverton.ibm.com> <4CE1AC38.9040201@redhat.com> <20101115230346.GB18195@tux1.beaverton.ibm.com> <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
-Reply-To: djwong@us.ibm.com
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
+Date: Tue, 16 Nov 2010 18:22:47 -0600
+Message-ID: <18ACAA85-8847-4B12-9839-F99FB6C7B3E4@dilger.ca>
+References: <1289840723-3056-1-git-send-email-josef@redhat.com> <1289840723-3056-2-git-send-email-josef@redhat.com> <20101116111611.GA4757@quack.suse.cz> <20101116114346.GB4757@quack.suse.cz> <20101116125249.GB31957@dhcp231-156.rdu.redhat.com> <20101116131451.GH4757@quack.suse.cz>
+Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"Patrick J. LoPresti" <lopresti@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Mingming Cao <mcao@us.ibm.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:49243 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754840Ab0KPW5q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Nov 2010 17:57:46 -0500
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 8BIT
+Cc: Josef Bacik <josef@redhat.com>, david@fromorbit.com,
+	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, cmm@us.ibm.com, cluster-devel@redhat.com,
+	ocfs2-devel@oss.oracle.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20101116131451.GH4757@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext3: Return error code from generic_check_accessible
+On 2010-11-16, at 07:14, Jan Kara wrote:
+>> Yeah I went back and forth on this.  KEEP_SIZE won't change the behavior of PUNCH_HOLE since PUNCH_HOLE implicitly means keep the size.  I figured since its "mode" and not "flags" it would be ok to make either way accepted, but if you prefer PUNCH_HOLE means you have to have KEEP_SIZE set then I'm cool with that, just let me know one way or the other.
+> 
+> So we call it "mode" but speak about "flags"? Seems a bit inconsistent.  
+> I'd maybe lean a bit at the "flags" side and just make sure that only one of FALLOC_FL_KEEP_SIZE, FALLOC_FL_PUNCH_HOLE is set (interpreting FALLOC_FL_KEEP_SIZE as allocate blocks beyond i_size). But I'm not sure what others think.
 
-ext3_fill_super should return the error code that generic_check_accessible
-returns when an error condition occurs.
+IMHO, it makes more sense for consistency and "get what users expect" that these be treated as flags.  Some users will want KEEP_SIZE, but in other cases it may make sense that a hole punch at the end of a file should shrink the file (i.e. the opposite of an append).
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
+Cheers, Andreas
 
- fs/ext3/super.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 2fedaf8..960629b 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1842,13 +1842,15 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
--	if (generic_check_addressable(sb->s_blocksize_bits,
--				      le32_to_cpu(es->s_blocks_count))) {
-+	err = generic_check_addressable(sb->s_blocksize_bits,
-+					le32_to_cpu(es->s_blocks_count));
-+	if (err) {
- 		ext3_msg(sb, KERN_ERR,
- 			"error: filesystem is too large to mount safely");
- 		if (sizeof(sector_t) < 8)
- 			ext3_msg(sb, KERN_ERR,
- 				"error: CONFIG_LBDAF not enabled");
-+		ret = err;
- 		goto failed_mount;
- 	}
- 
+
+
+
