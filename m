@@ -1,33 +1,55 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
-Date: Tue, 16 Nov 2010 18:22:47 -0600
-Message-ID: <18ACAA85-8847-4B12-9839-F99FB6C7B3E4@dilger.ca>
-References: <1289840723-3056-1-git-send-email-josef@redhat.com> <1289840723-3056-2-git-send-email-josef@redhat.com> <20101116111611.GA4757@quack.suse.cz> <20101116114346.GB4757@quack.suse.cz> <20101116125249.GB31957@dhcp231-156.rdu.redhat.com> <20101116131451.GH4757@quack.suse.cz>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Josef Bacik <josef@redhat.com>, david@fromorbit.com,
-	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, cmm@us.ibm.com, cluster-devel@redhat.com,
-	ocfs2-devel@oss.oracle.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20101116131451.GH4757@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Vamsi Krishna B <vamsikrishna.brahmajosyula@gmail.com>
+Subject: [PATCH] fs : ext4 : super.c 	fixed coding style violations fs/ext4/super.c:41: WARNING: Use #include <linux/uaccess.h> instead of <asm/uaccess.h> fs/ext4/super.c:546: ERROR: "foo * bar" should be "foo *bar" fs/ext4/super.c:546: WARNING: space prohibited between function name and open parenthesis '(' fs/ext4/super.c:1141: ERROR: spaces required around that '?' (ctx:VxV) fs/ext4/super.c:1141: ERROR: spaces required around that ':' (ctx:VxV)
+Date: Wed, 17 Nov 2010 06:11:26 +0530
+Message-ID: <1289954486-13580-1-git-send-email-vamsikrishna.brahmajosyula@gmail.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Vamsi Krishna B <vamsikrishna.brahmajosyula@gmail.com>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iw0-f194.google.com ([209.85.214.194]:39934 "EHLO
+	mail-iw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759259Ab0KQAfK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Nov 2010 19:35:10 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-11-16, at 07:14, Jan Kara wrote:
->> Yeah I went back and forth on this.  KEEP_SIZE won't change the behavior of PUNCH_HOLE since PUNCH_HOLE implicitly means keep the size.  I figured since its "mode" and not "flags" it would be ok to make either way accepted, but if you prefer PUNCH_HOLE means you have to have KEEP_SIZE set then I'm cool with that, just let me know one way or the other.
-> 
-> So we call it "mode" but speak about "flags"? Seems a bit inconsistent.  
-> I'd maybe lean a bit at the "flags" side and just make sure that only one of FALLOC_FL_KEEP_SIZE, FALLOC_FL_PUNCH_HOLE is set (interpreting FALLOC_FL_KEEP_SIZE as allocate blocks beyond i_size). But I'm not sure what others think.
+Signed-off-by: Vamsi Krishna B <vamsikrishna.brahmajosyula@gmail.com>
+---
+ fs/ext4/super.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-IMHO, it makes more sense for consistency and "get what users expect" that these be treated as flags.  Some users will want KEEP_SIZE, but in other cases it may make sense that a hole punch at the end of a file should shrink the file (i.e. the opposite of an append).
-
-Cheers, Andreas
-
-
-
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 61182fe..11a46dc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -38,7 +38,7 @@
+ #include <linux/ctype.h>
+ #include <linux/log2.h>
+ #include <linux/crc16.h>
+-#include <asm/uaccess.h>
++#include <linux/uaccess.h>
+ 
+ #include <linux/kthread.h>
+ #include <linux/freezer.h>
+@@ -543,7 +543,7 @@ void __ext4_abort(struct super_block *sb, const char *function,
+ 		panic("EXT4-fs panic from previous error\n");
+ }
+ 
+-void ext4_msg (struct super_block * sb, const char *prefix,
++void ext4_msg(struct super_block *sb, const char *prefix,
+ 		   const char *fmt, ...)
+ {
+ 	va_list args;
+@@ -1138,7 +1138,7 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
+ 
+ #ifdef CONFIG_QUOTA
+ #define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
+-#define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
++#define QTYPE2MOPT(on, t) ((t) == USRQUOTA ? ((on)##USRJQUOTA) : ((on)##GRPJQUOTA))
+ 
+ static int ext4_write_dquot(struct dquot *dquot);
+ static int ext4_acquire_dquot(struct dquot *dquot);
+-- 
+1.7.3.2
 
