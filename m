@@ -1,111 +1,147 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Thu, 18 Nov 2010 08:36:48 +0100
-Message-ID: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, hch@infradead.org,
-	sandeen@redhat.com, lczerner@redhat.com
-To: tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [patch] fix up lock order reversal in writeback
+Date: Thu, 18 Nov 2010 19:18:22 +1100
+Message-ID: <20101118081822.GA9186@amd>
+References: <20101116110058.GA4298@amd>
+ <20101116130146.GG4757@quack.suse.cz>
+ <4CE35A6D.2040906@redhat.com>
+ <20101117043845.GA3586@amd>
+ <4CE362B0.6040607@redhat.com>
+ <20101117061057.GA3989@amd>
+ <20101118030613.GQ3290@thunk.org>
+ <20101117192900.da859ac7.akpm@linux-foundation.org>
+ <20101118060000.GA3509@amd>
+ <20101117222834.2bb36ee1.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Nick Piggin <npiggin@kernel.dk>, Ted Ts'o <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:8067 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750813Ab0KRISs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 03:18:48 -0500
+Content-Disposition: inline
+In-Reply-To: <20101117222834.2bb36ee1.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-There was concern that FITRIM ioctl is not common enough to be included
-in core vfs ioctl, as Christoph Hellwig pointed out there's no real point
-in dispatching this out to a separate vector instead of just through
-->ioctl.
+On Wed, Nov 17, 2010 at 10:28:34PM -0800, Andrew Morton wrote:
+> On Thu, 18 Nov 2010 17:00:00 +1100 Nick Piggin <npiggin@kernel.dk> wrote:
+> 
+> > On Wed, Nov 17, 2010 at 07:29:00PM -0800, Andrew Morton wrote:
+> > > On Wed, 17 Nov 2010 22:06:13 -0500 "Ted Ts'o" <tytso@mit.edu> wrote:
+> > > 
+> > > > On Wed, Nov 17, 2010 at 05:10:57PM +1100, Nick Piggin wrote:
+> > > > > On Tue, Nov 16, 2010 at 11:05:52PM -0600, Eric Sandeen wrote:
+> > > > > > On 11/16/10 10:38 PM, Nick Piggin wrote:
+> > > > > > >> as for the locking problems ... sorry about that!
+> > > > > > > 
+> > > > > > > That's no problem. So is that an ack? :)
+> > > > > > > 
+> > > > > > 
+> > > > > > I'd like to test it with the original case it was supposed to solve; will
+> > > > > > do that tomorrow.
+> > > > > 
+> > > > > OK, but it shouldn't make much difference, unless there is a lot of
+> > > > > strange activity happening on the sb (like mount / umount / remount /
+> > > > > freeze / etc).
+> > > > 
+> > > > This makes sense to me as well.
+> > > > 
+> > > > Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+> > > > 
+> > > > So how do we want to send this patch to Linus?  It's a writeback
+> > > > change, so through some mm tree?
+> > > 
+> > > It's in my todo pile.  Even though the patch sucks, but not as much as
+> > > its changelog does.  Am not particularly happy merging an alleged
+> > > bugfix where the bug is, and I quote, "I saw a lock order warning on
+> > > ext4 trigger".  I mean, wtf?  How is anyone supposed to review the code
+> > > based on that??  Or to understand it a year from now?
+> > 
+> > Sorry bout the confusion, it was supposed to be "i_mutex", and then it
+> > would have been a bit more obvious.
+> > 
+> > 
+> > > When I get to it I'll troll this email thread and might be able to
+> > > kludge together a description which might be able to fool people into
+> > > thinking it makes sense.
+> > 
+> > "Lock order reversal between s_umount and i_mutex".
+> > 
+> > i_mutex nests inside s_umount in some writeback paths (it was the end
+> > io handler to convert unwritten extents IIRC). But hmm, wouldn't that
+> > be a bug? We aren't allowed to take i_mutex inside writeback, are we?
+> 
+> I'm not sure that s_umount versus i_mutex has come up before.
 
-So this commit removes ioctl_fstrim() from vfs ioctl and trim_fs
-from super_operation structure.
+Well, we appear to have i_mutex inside s_umount in ext4 as well, from
+unwritten extent conversion in writeback completion (that's where the
+lock order was recorded in my trace, I'll try to get another one).
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/super.c    |    1 -
- fs/ioctl.c         |   39 ---------------------------------------
- include/linux/fs.h |    1 -
- 3 files changed, 0 insertions(+), 41 deletions(-)
+I don't know if that's a good idea. Definitely we can't take i_mutex
+inside writeback if it can be triggered recursively from something
+like memory allocation in buffered write path.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 61182fe..1d3c2aa 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1197,7 +1197,6 @@ static const struct super_operations ext4_sops = {
- 	.quota_write	= ext4_quota_write,
- #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
--	.trim_fs	= ext4_trim_fs
- };
+So long as it is asynchronous, on the completion path, it is probably
+OK.
+
  
- static const struct super_operations ext4_nojournal_sops = {
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index e92fdbb..f855ea4 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -530,41 +530,6 @@ static int ioctl_fsthaw(struct file *filp)
- 	return thaw_super(sb);
- }
+> Logically I'd expect i_mutex to nest inside s_umount.  Because s_umount
+> is a per-superblock thing, and i_mutex is a per-file thing, and files
+> live under superblocks.  Nesting s_umount outside i_mutex creates
+> complex deadlock graphs between the various i_mutexes, I think.
+
+You mean i_mutex outside s_umount?
+
  
--static int ioctl_fstrim(struct file *filp, void __user *argp)
--{
--	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
--	struct fstrim_range range;
--	int ret = 0;
--
--	if (!capable(CAP_SYS_ADMIN))
--		return -EPERM;
--
--	/* If filesystem doesn't support trim feature, return. */
--	if (sb->s_op->trim_fs == NULL)
--		return -EOPNOTSUPP;
--
--	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
--	if (sb->s_bdev == NULL)
--		return -EINVAL;
--
--	if (argp == NULL) {
--		range.start = 0;
--		range.len = ULLONG_MAX;
--		range.minlen = 0;
--	} else if (copy_from_user(&range, argp, sizeof(range)))
--		return -EFAULT;
--
--	ret = sb->s_op->trim_fs(sb, &range);
--	if (ret < 0)
--		return ret;
--
--	if ((argp != NULL) &&
--	    (copy_to_user(argp, &range, sizeof(range))))
--		return -EFAULT;
--
--	return 0;
--}
--
- /*
-  * When you add any new common ioctls to the switches above and below
-  * please update compat_sys_ioctl() too.
-@@ -615,10 +580,6 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 		error = ioctl_fsthaw(filp);
- 		break;
+> Someone tell me if btrfs has the same bug, via its call to
+> writeback_inodes_sb_nr_if_idle()?
+> 
+> I don't see why these functions need s_umount at all, if they're called
+> from within ->write_begin against an inode on that superblock.  If the
+> superblock can get itself disappeared while we're running ->write_begin
+> on it, we have problems, no?
+> 
+> In which case I'd suggest just removing the down_read(s_umount) and
+> specifying that the caller must pin the superblock via some means.
+> 
+> Only we can't do that because we need to hold s_umount until the
+> bdi_queue_work() worker has done its work.
+> 
+> The fact that a call to ->write_begin can randomly return with s_umount
+> held, to be randomly released at some random time in the future is a
+> bit ugly, isn't it?  write_begin is a pretty low-level, per-inode
+> thing.
+
+Yeah that whole writeback_inodes_if_idle is nasty
+
  
--	case FITRIM:
--		error = ioctl_fstrim(filp, argp);
--		break;
--
- 	case FS_IOC_FIEMAP:
- 		return ioctl_fiemap(filp, arg);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 334d68a..eedc00b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1612,7 +1612,6 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- #endif
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
--	int (*trim_fs) (struct super_block *, struct fstrim_range *);
- };
- 
- /*
--- 
-1.7.2.3
+> It'd be better if we pinned these superblocks via refcounting, not via
+> holding s_umount but even then, having ->write_begin randomly bump sb
+> refcounts for random periods of time is still pretty ugly.
+> 
+> What a pickle.
+> 
+> Can we just delete writeback_inodes_sb_nr_if_idle() and
+> writeback_inodes_sb_if_idle()?  The changelog for 17bd55d037a02 is
+> pretty handwavy - do we know that deleting these things would make a
+> jot of difference?
+> 
+> And why _do_ we need to hold s_umount during the bdi_queue_work()
+> handover?  Would simply bumping s_count suffice?
+
+s_count just prevents it from going away, but s_umount is still needed
+to keep umount, remount,ro, freezing etc activity away. I don't think
+there is an easy way to do it.
+
+Perhaps filesystem should have access to the dirty throttling path, kick
+writeback or delayed allocation etc as needed, and throttle against
+outstanding work that needs to be done, going through the normal
+writeback paths?
 
