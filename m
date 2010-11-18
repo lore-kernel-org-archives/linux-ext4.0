@@ -1,72 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
-Date: Fri, 19 Nov 2010 00:43:31 +0100
-Message-ID: <20101118234331.GD5004@quack.suse.cz>
-References: <1290044780-2902-1-git-send-email-josef@redhat.com>
- <1290044780-2902-2-git-send-email-josef@redhat.com>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Thu, 18 Nov 2010 18:52:19 -0500
+Message-ID: <yq1r5eiw5os.fsf@sermon.lab.mkp.net>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+	<20101118130630.GJ6178@parisc-linux.org>
+	<20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+	<20101118141957.GK6178@parisc-linux.org>
+	<20101118142918.GA18510@infradead.org>
+	<1290100750.3041.72.camel@mulgrave.site>
+	<x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
+	<1290102098.3041.77.camel@mulgrave.site>
+	<AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
+	<4CE59E57.2090009@teksavvy.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: david@fromorbit.com, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
-	cluster-devel@redhat.com, joel.becker@oracle.com, jack@suse.cz
-To: Josef Bacik <josef@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1290044780-2902-2-git-send-email-josef@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: Greg Freemyer <greg.freemyer@gmail.com>,
+	James Bottomley <James.Bottomley@suse.de>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
+To: Mark Lord <kernel@teksavvy.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4CE59E57.2090009@teksavvy.com> (Mark Lord's message of "Thu, 18
+	Nov 2010 16:44:55 -0500")
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 17-11-10 20:46:15, Josef Bacik wrote:
-> Hole punching has already been implemented by XFS and OCFS2, and has the
-> potential to be implemented on both BTRFS and EXT4 so we need a generic way to
-> get to this feature.  The simplest way in my mind is to add FALLOC_FL_PUNCH_HOLE
-> to fallocate() since it already looks like the normal fallocate() operation.
-> I've tested this patch with XFS and BTRFS to make sure XFS did what it's
-> supposed to do and that BTRFS failed like it was supposed to.  Thank you,
-  Looks nice now. Acked-by: Jan Kara <jack@suse.cz>
+>>>>> "Mark" == Mark Lord <kernel@teksavvy.com> writes:
 
-									Honza
-> 
-> Signed-off-by: Josef Bacik <josef@redhat.com>
-> ---
->  fs/open.c              |    7 ++++++-
->  include/linux/falloc.h |    1 +
->  2 files changed, 7 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/open.c b/fs/open.c
-> index 4197b9e..5b6ef7e 100644
-> --- a/fs/open.c
-> +++ b/fs/open.c
-> @@ -223,7 +223,12 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->  		return -EINVAL;
->  
->  	/* Return error if mode is not supported */
-> -	if (mode && !(mode & FALLOC_FL_KEEP_SIZE))
-> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> +		return -EOPNOTSUPP;
-> +
-> +	/* Punch hole must have keep size set */
-> +	if ((mode & FALLOC_FL_PUNCH_HOLE) &&
-> +	    !(mode & FALLOC_FL_KEEP_SIZE))
->  		return -EOPNOTSUPP;
->  
->  	if (!(file->f_mode & FMODE_WRITE))
-> diff --git a/include/linux/falloc.h b/include/linux/falloc.h
-> index 3c15510..73e0b62 100644
-> --- a/include/linux/falloc.h
-> +++ b/include/linux/falloc.h
-> @@ -2,6 +2,7 @@
->  #define _FALLOC_H_
->  
->  #define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
-> +#define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
->  
->  #ifdef __KERNEL__
->  
-> -- 
-> 1.6.6.1
-> 
+>> 2) FITRIM doesn't leverage the fact the a TRIM command can handle
+>> multiple ranges per TRIM command payload.  I haven't seen any FITRIM
+>> vs. wiper.sh benchmarks, so I don't know what impact that has in
+>> practice.  Mark Lord thought that this lacking feature would cause
+>> FITRIM to take minutes or hours with some hardware.  Especially early
+>> generation SSDs.
+
+Mark> If FITRIM is still issuing single-range-at-a-time TRIMs, then I'd
+Mark> call that a BUG that needs fixing.  Doing TRIM like that causes
+Mark> tons of unnecessary ERASE cycles, shortening the SSD lifetime.  It
+Mark> really needs to batch them into groups of (up to) 64 ranges at a
+Mark> time (64 ranges fits into a single 512-byte parameter block).
+
+We don't support coalescing discontiguous requests into one command. But
+we will issue contiguous TRIM requests as big as the payload can
+handle. That's just short of two gigs per command given a 512-byte
+block.
+
+I spent quite a bit of time trying to make coalescing work in the
+spring. It got very big and unwieldy. When we discussed it at the
+filesystem summit the consensus was that it was too intrusive to the I/O
+stack, elevators, etc.
+
+I have previously posted a list of reasons why it is hard to support
+given how our I/O stack works. I can dig them out if there's interest.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Martin K. Petersen	Oracle Linux Engineering
