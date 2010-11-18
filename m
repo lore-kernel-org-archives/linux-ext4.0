@@ -1,30 +1,51 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH resend]  jbd2_stats_proc_init wrong place.
-Date: Wed, 17 Nov 2010 21:52:20 -0500
-Message-ID: <20101118025220.GP3290@thunk.org>
-References: <1289892704-27147-1-git-send-email-sheng.yang@oracle.com>
- <20101116210107.GB1568@thunk.org>
- <4CE38FA6.2020907@oracle.com>
+Subject: Re: [patch] fix up lock order reversal in writeback
+Date: Wed, 17 Nov 2010 22:06:13 -0500
+Message-ID: <20101118030613.GQ3290@thunk.org>
+References: <20101116110058.GA4298@amd>
+ <20101116130146.GG4757@quack.suse.cz>
+ <4CE35A6D.2040906@redhat.com>
+ <20101117043845.GA3586@amd>
+ <4CE362B0.6040607@redhat.com>
+ <20101117061057.GA3989@amd>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, andreas.dilger@oracle.com,
-	linux-fsdevel@vger.kernel.org
-To: yangsheng <sheng.yang@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:35000 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752676Ab0KRCwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Nov 2010 21:52:22 -0500
+Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org
+To: Nick Piggin <npiggin@kernel.dk>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4CE38FA6.2020907@oracle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20101117061057.GA3989@amd>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 17, 2010 at 04:17:42PM +0800, yangsheng wrote:
-> Sure, you are right. I am forgot to add this line. Could you
-> please add it directly or i resent with this line? TIA.
+On Wed, Nov 17, 2010 at 05:10:57PM +1100, Nick Piggin wrote:
+> On Tue, Nov 16, 2010 at 11:05:52PM -0600, Eric Sandeen wrote:
+> > On 11/16/10 10:38 PM, Nick Piggin wrote:
+> > >> as for the locking problems ... sorry about that!
+> > > 
+> > > That's no problem. So is that an ack? :)
+> > > 
+> > 
+> > I'd like to test it with the original case it was supposed to solve; will
+> > do that tomorrow.
+> 
+> OK, but it shouldn't make much difference, unless there is a lot of
+> strange activity happening on the sb (like mount / umount / remount /
+> freeze / etc).
 
-No, that's fine.  Thanks, I've added your patch to the ext4 patch
-queue.
+This makes sense to me as well.
 
-					- Ted
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+
+So how do we want to send this patch to Linus?  It's a writeback
+change, so through some mm tree?  Or it lives in fs/fs-writeback.c
+(which I always thought was weird; why is it not in mm/?), so maybe
+through the VFS tree, even though I don't think Al would really care
+about this patch.
+
+Or I can push it to Linus through the ext4 tree....
+
+     	      	    	  	      	   - Ted
