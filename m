@@ -1,147 +1,92 @@
-From: Nick Piggin <npiggin@kernel.dk>
-Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Thu, 18 Nov 2010 19:18:22 +1100
-Message-ID: <20101118081822.GA9186@amd>
-References: <20101116110058.GA4298@amd>
- <20101116130146.GG4757@quack.suse.cz>
- <4CE35A6D.2040906@redhat.com>
- <20101117043845.GA3586@amd>
- <4CE362B0.6040607@redhat.com>
- <20101117061057.GA3989@amd>
- <20101118030613.GQ3290@thunk.org>
- <20101117192900.da859ac7.akpm@linux-foundation.org>
- <20101118060000.GA3509@amd>
- <20101117222834.2bb36ee1.akpm@linux-foundation.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: ext4_fill_super shouldn't return 0 on
+ corruption
+Date: Thu, 18 Nov 2010 09:42:57 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1011180939330.3125@dhcp-lab-213.englab.brq.redhat.com>
+References: <20101115214831.GA18195@tux1.beaverton.ibm.com> <4CE1AC38.9040201@redhat.com> <20101115230346.GB18195@tux1.beaverton.ibm.com> <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
+ <20101116225538.GC18195@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nick Piggin <npiggin@kernel.dk>, Ted Ts'o <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:8067 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750813Ab0KRISs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Nov 2010 03:18:48 -0500
-Content-Disposition: inline
-In-Reply-To: <20101117222834.2bb36ee1.akpm@linux-foundation.org>
+Received: from mx1.redhat.com ([209.132.183.28]:27078 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754694Ab0KRInC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 03:43:02 -0500
+In-Reply-To: <20101116225538.GC18195@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 17, 2010 at 10:28:34PM -0800, Andrew Morton wrote:
-> On Thu, 18 Nov 2010 17:00:00 +1100 Nick Piggin <npiggin@kernel.dk> wrote:
-> 
-> > On Wed, Nov 17, 2010 at 07:29:00PM -0800, Andrew Morton wrote:
-> > > On Wed, 17 Nov 2010 22:06:13 -0500 "Ted Ts'o" <tytso@mit.edu> wrote:
+On Tue, 16 Nov 2010, Darrick J. Wong wrote:
+
+> On Tue, Nov 16, 2010 at 01:56:31PM +0100, Lukas Czerner wrote:
+> > On Mon, 15 Nov 2010, Darrick J. Wong wrote:
+> > 
+> > > At the start of ext4_fill_super, ret is set to -EINVAL, and any failure path
+> > > out of that function returns ret.  However, the generic_check_addressable
+> > > clause sets ret = 0 (if it passes), which means that a subsequent failure (e.g.
+> > > a group checksum error) returns 0 even though the mount should fail.  This
+> > > causes vfs_kern_mount in turn to think that the mount succeeded, leading to an
+> > > oops.
 > > > 
-> > > > On Wed, Nov 17, 2010 at 05:10:57PM +1100, Nick Piggin wrote:
-> > > > > On Tue, Nov 16, 2010 at 11:05:52PM -0600, Eric Sandeen wrote:
-> > > > > > On 11/16/10 10:38 PM, Nick Piggin wrote:
-> > > > > > >> as for the locking problems ... sorry about that!
-> > > > > > > 
-> > > > > > > That's no problem. So is that an ack? :)
-> > > > > > > 
-> > > > > > 
-> > > > > > I'd like to test it with the original case it was supposed to solve; will
-> > > > > > do that tomorrow.
-> > > > > 
-> > > > > OK, but it shouldn't make much difference, unless there is a lot of
-> > > > > strange activity happening on the sb (like mount / umount / remount /
-> > > > > freeze / etc).
-> > > > 
-> > > > This makes sense to me as well.
-> > > > 
-> > > > Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-> > > > 
-> > > > So how do we want to send this patch to Linus?  It's a writeback
-> > > > change, so through some mm tree?
+> > > A simple fix is to avoid using ret for the generic_check_addressable check,
+> > > which was last changed in commit 30ca22c70e3ef0a96ff84de69cd7e8561b416cb2.
 > > > 
-> > > It's in my todo pile.  Even though the patch sucks, but not as much as
-> > > its changelog does.  Am not particularly happy merging an alleged
-> > > bugfix where the bug is, and I quote, "I saw a lock order warning on
-> > > ext4 trigger".  I mean, wtf?  How is anyone supposed to review the code
-> > > based on that??  Or to understand it a year from now?
+> > > v2: Return -EFBIG in the error case, per Eric Sandeen's suggestion.
+> > > 
+> > > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> > > ---
+> > > 
+> > >  fs/ext4/super.c |    6 +++---
+> > >  1 files changed, 3 insertions(+), 3 deletions(-)
+> > > 
+> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > > index 40131b7..120c034 100644
+> > > --- a/fs/ext4/super.c
+> > > +++ b/fs/ext4/super.c
+> > > @@ -3257,13 +3257,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+> > >  	 * Test whether we have more sectors than will fit in sector_t,
+> > >  	 * and whether the max offset is addressable by the page cache.
+> > >  	 */
+> > > -	ret = generic_check_addressable(sb->s_blocksize_bits,
+> > > -					ext4_blocks_count(es));
+> > > -	if (ret) {
+> > > +	if (generic_check_addressable(sb->s_blocksize_bits,
+> > > +				      ext4_blocks_count(es))) {
+> > >  		ext4_msg(sb, KERN_ERR, "filesystem"
+> > >  			 " too large to mount safely on this system");
+> > >  		if (sizeof(sector_t) < 8)
+> > >  			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
+> > > +		ret = -EFBIG;
+> > >  		goto failed_mount;
+> > >  	}
+> > >  
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
 > > 
-> > Sorry bout the confusion, it was supposed to be "i_mutex", and then it
-> > would have been a bit more obvious.
+> > Hi,
 > > 
-> > 
-> > > When I get to it I'll troll this email thread and might be able to
-> > > kludge together a description which might be able to fool people into
-> > > thinking it makes sense.
-> > 
-> > "Lock order reversal between s_umount and i_mutex".
-> > 
-> > i_mutex nests inside s_umount in some writeback paths (it was the end
-> > io handler to convert unwritten extents IIRC). But hmm, wouldn't that
-> > be a bug? We aren't allowed to take i_mutex inside writeback, are we?
+> > the untested diff below seems like a more general solution to me,
+> > since it allows to return the actual error from
+> > generic_check_addressable().
 > 
-> I'm not sure that s_umount versus i_mutex has come up before.
-
-Well, we appear to have i_mutex inside s_umount in ext4 as well, from
-unwritten extent conversion in writeback completion (that's where the
-lock order was recorded in my trace, I'll try to get another one).
-
-I don't know if that's a good idea. Definitely we can't take i_mutex
-inside writeback if it can be triggered recursively from something
-like memory allocation in buffered write path.
-
-So long as it is asynchronous, on the completion path, it is probably
-OK.
-
- 
-> Logically I'd expect i_mutex to nest inside s_umount.  Because s_umount
-> is a per-superblock thing, and i_mutex is a per-file thing, and files
-> live under superblocks.  Nesting s_umount outside i_mutex creates
-> complex deadlock graphs between the various i_mutexes, I think.
-
-You mean i_mutex outside s_umount?
-
- 
-> Someone tell me if btrfs has the same bug, via its call to
-> writeback_inodes_sb_nr_if_idle()?
+> It seems to work ok for me, so:
 > 
-> I don't see why these functions need s_umount at all, if they're called
-> from within ->write_begin against an inode on that superblock.  If the
-> superblock can get itself disappeared while we're running ->write_begin
-> on it, we have problems, no?
+> Acked-by: Darrick J. Wong <djwong@us.ibm.com>
 > 
-> In which case I'd suggest just removing the down_read(s_umount) and
-> specifying that the caller must pin the superblock via some means.
+> I will make the same change to ext3.
 > 
-> Only we can't do that because we need to hold s_umount until the
-> bdi_queue_work() worker has done its work.
-> 
-> The fact that a call to ->write_begin can randomly return with s_umount
-> held, to be randomly released at some random time in the future is a
-> bit ugly, isn't it?  write_begin is a pretty low-level, per-inode
-> thing.
+> --D
 
-Yeah that whole writeback_inodes_if_idle is nasty
+Oh, so you want me to post it as a patch ? Ok, then I'll use the same
+comment (hope it is ok).
 
- 
-> It'd be better if we pinned these superblocks via refcounting, not via
-> holding s_umount but even then, having ->write_begin randomly bump sb
-> refcounts for random periods of time is still pretty ugly.
-> 
-> What a pickle.
-> 
-> Can we just delete writeback_inodes_sb_nr_if_idle() and
-> writeback_inodes_sb_if_idle()?  The changelog for 17bd55d037a02 is
-> pretty handwavy - do we know that deleting these things would make a
-> jot of difference?
-> 
-> And why _do_ we need to hold s_umount during the bdi_queue_work()
-> handover?  Would simply bumping s_count suffice?
+Thanks!
 
-s_count just prevents it from going away, but s_umount is still needed
-to keep umount, remount,ro, freezing etc activity away. I don't think
-there is an easy way to do it.
-
-Perhaps filesystem should have access to the dirty throttling path, kick
-writeback or delayed allocation etc as needed, and throttle against
-outstanding work that needs to be done, going through the normal
-writeback paths?
+-Lukas
 
