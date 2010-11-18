@@ -1,114 +1,94 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Thu, 18 Nov 2010 12:04:31 -0800
-Message-ID: <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
- <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
- <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org>
- <1290100750.3041.72.camel@mulgrave.site> <x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
- <1290102098.3041.77.camel@mulgrave.site>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [patch] fix up lock order reversal in writeback
+Date: Thu, 18 Nov 2010 12:17:56 -0800
+Message-ID: <20101118121756.ddeed28f.akpm@linux-foundation.org>
+References: <20101116110058.GA4298@amd>
+	<20101116130146.GG4757@quack.suse.cz>
+	<4CE35A6D.2040906@redhat.com>
+	<20101117043845.GA3586@amd>
+	<4CE362B0.6040607@redhat.com>
+	<20101117061057.GA3989@amd>
+	<20101118030613.GQ3290@thunk.org>
+	<20101117192900.da859ac7.akpm@linux-foundation.org>
+	<20101118060000.GA3509@amd>
+	<20101117222834.2bb36ee1.akpm@linux-foundation.org>
+	<4CE53E56.4090501@redhat.com>
+	<20101118091053.c275e1f2.akpm@linux-foundation.org>
+	<4CE56AA5.4030705@redhat.com>
+	<20101118103638.99c1e8bc.akpm@linux-foundation.org>
+	<4CE57853.5010903@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
-To: James Bottomley <James.Bottomley@suse.de>,
-	Mark Lord <kernel@teksavvy.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Nick Piggin <npiggin@kernel.dk>, "Ted Ts'o" <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:41733 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755568Ab0KRULX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 15:11:23 -0500
-In-Reply-To: <1290102098.3041.77.camel@mulgrave.site>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46642 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756702Ab0KRUST (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 15:18:19 -0500
+In-Reply-To: <4CE57853.5010903@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Adding Mark Lord in CC:
+On Thu, 18 Nov 2010 13:02:43 -0600
+Eric Sandeen <sandeen@redhat.com> wrote:
 
-On Thu, Nov 18, 2010 at 9:41 AM, James Bottomley
-<James.Bottomley@suse.de> wrote:
-> On Thu, 2010-11-18 at 12:22 -0500, Jeff Moyer wrote:
->> James Bottomley <James.Bottomley@suse.de> writes:
->>
->> > Not stepping into the debate: I'm happy to see punch go to the map=
-ping
->> > data and FITRIM pick it up later.
->> >
->> > However, I think it's time to question whether we actually still w=
-ant to
->> > allow online discard at all. =A0Most of the benchmarks show it to =
-be a net
->>
->> Define online discard, please.
->
-> Trims emitted inline at the FS operates (mount option -o discard)
->
->> > lose to almost everything (either SSD or Thinly Provisioned arrays=
-), so
->> > it's become an "enable this to degrade performance" option with no
->> > upside.
->>
->> Some SSDs very much require TRIMming to perform well as they age. =A0=
-If
->> you're suggesting that we move from doing discards in journal commit=
-s to
->> a batched discard, like the one Lukas implemented, then I think that=
-'s
->> fine. =A0If we need to reintroduce the finer-grained discards due to=
- some
->> hardware changes in the future, we can always do that.
->
-> Right, I'm suggesting we just rely on offline methods. =A0Regardless =
-of
-> what happens to FITRIM, we have wiper.sh now (although it does requir=
-e
-> unmounted use for most of the less than modern fs).
->
-> James
+> On 11/18/10 12:36 PM, Andrew Morton wrote:
+> > On Thu, 18 Nov 2010 12:04:21 -0600 Eric Sandeen <sandeen@redhat.com> wrote:
+> > 
+> >> On 11/18/10 11:10 AM, Andrew Morton wrote:
+> >>> On Thu, 18 Nov 2010 08:55:18 -0600 Eric Sandeen <sandeen@redhat.com> wrote:
+> >>>
+> >>>>> Can we just delete writeback_inodes_sb_nr_if_idle() and
+> >>>>> writeback_inodes_sb_if_idle()?  The changelog for 17bd55d037a02 is
+> >>>>> pretty handwavy - do we know that deleting these things would make a
+> >>>>> jot of difference?
+> >>>>
+> >>>> Really?  I thought it was pretty decent ;)
+> >>>>
+> >>>> Anyway, xfstests 204, "Test out ENOSPC flushing on small filesystems."
+> >>>> shows the problem clearly, IIRC.  I should have included that in the
+> >>>> changelog, I suppose, sorry.
+> >>>
+> >>> Your email didn't really impart any information :(
+> >>>
+> >>> I suppose I could accidentally delete those nasty little functions in a
+> >>> drivers/parport patch then wait and see if anyone notices.
+> >>>
+> >>
+> >> Um, ok, then, to answer the question directly :
+> >>
+> >> No, please don't delete those functions, it will break ENOSPC handling
+> >> in ext4 as shown by xfstests regression test #204 ...
+> >>
+> > 
+> > If those functions "fix" a testcase then it was by sheer luck, and the
+> > fs's ENOSPC handling is still busted.
+> > 
+> > For a start writeback_inodes_sb_if_idle() is a no-op if the device
+> > isn't idle!  
+> 
+> so writeback is already in progress and it's already doing what we need,
+> right?  Space is being freed up as we speak in that case.
 
-I'm a fan of wiper.sh, but afaik it still cannot address a
-multi-spindle LVM setup, Nor a MDraid setup.  etc.
+With no guarantee that it's being freed at a sufficient rate.
 
-That's because it bypasses the block stack and talks directly to the
-devices.  Thus it doesn't get the benefit of all the logical to
-physical sector remapping handled via the block stack.
+> > Secondly, if the device _was_ idle,
+> > writeback_inodes_sb_if_idle() uses a work handoff to another thread,
+> > which means that the work might not get executed for another six weeks.
+> 
+> We start it quite early, before things are critical.
+> 
+> Yeah, it's not bulletproof but it is tons better.
 
-Mark, please correct me if I'm wrong.
+Translation: "it papers over a bug".
 
-The LVM and MDraid setup are important to support, and only "mount -o
-discard" and Lucas's FITRIM support them.
+Look, if this was a little best-effort poke-writeback-now performance
+tweak then fine.  But as an attempt to prevent a synchronous and bogus
+ENOSPC error it's just hopeless.
 
-So afaik we have 3 options, each with an opportunity for improvement:
-
-1) mount -o discard - needs kernel tuning / new hardware to be a
-performance win.
-
-2) FITRIM doesn't leverage the fact the a TRIM command can handle
-multiple ranges per TRIM command payload.  I haven't seen any FITRIM
-vs. wiper.sh benchmarks, so I don't know what impact that has in
-practice.  Mark Lord thought that this lacking feature would cause
-=46ITRIM to take minutes or hours with some hardware.  Especially early
-generation SSDs.
-
-3) wiper.sh does leverage the multiple ranges per TRIM command, but it
-really needs a new block layer interface that would allow it to push
-discard commands into the kernel via the block layer, not just down at
-the physical drive layer.  The interface should accept multiple ranges
-per invocation and trigger TRIM commands to the SSD that have have a
-multi-range discard payload.
-
-So it seems that for now keeping all 3 is best.  My personal hope is
-that the block layer grows the ability to accept multirange discard
-requests and  FITRIM is updated to leverage it.
-
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Guys, fix the thing for real, and take that hack out.
