@@ -1,43 +1,44 @@
 From: Mark Lord <kernel@teksavvy.com>
 Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Thu, 18 Nov 2010 16:37:34 -0500
-Message-ID: <4CE59C9E.6050902@teksavvy.com>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>	 <20101118130630.GJ6178@parisc-linux.org>	 <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>	 <20101118141957.GK6178@parisc-linux.org>	 <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site>
+Date: Thu, 18 Nov 2010 16:42:14 -0500
+Message-ID: <4CE59DB6.9090304@teksavvy.com>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <x494obe4kd5.fsf@segfault.boston.devel.redhat.com> <1290102098.3041.77.camel@mulgrave.site> <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
+Cc: James Bottomley <James.Bottomley@suse.de>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
 	Matthew Wilcox <matthew@wil.cx>,
 	Josef Bacik <josef@redhat.com>,
 	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
-To: James Bottomley <James.Bottomley@suse.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1290100750.3041.72.camel@mulgrave.site>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Greg Freemyer <greg.freemyer@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 10-11-18 12:19 PM, James Bottomley wrote:
+On 10-11-18 03:04 PM, Greg Freemyer wrote:
 >
-> Not stepping into the debate: I'm happy to see punch go to the mapping
-> data and FITRIM pick it up later.
+> I'm a fan of wiper.sh, but afaik it still cannot address a
+> multi-spindle LVM setup, Nor a MDraid setup.  etc.
 >
-> However, I think it's time to question whether we actually still want to
-> allow online discard at all.  Most of the benchmarks show it to be a net
-> lose to almost everything (either SSD or Thinly Provisioned arrays), so
-> it's become an "enable this to degrade performance" option with no
-> upside.
+> That's because it bypasses the block stack and talks directly to the
+> devices.  Thus it doesn't get the benefit of all the logical to
+> physical sector remapping handled via the block stack.
+>
+> Mark, please correct me if I'm wrong.
 
-I also suspect that online TRIM exerts significant premature wear on the SSDs.
-TRIM operations most likely trigger immediate copy/erase operations internal
-to most SSDs, often regardless of the amount of data being trimmed.
+I'm a big fan of FITRIM, especially as it should work on MD devices
+as well, which are problematic for wiper.sh today.   I originally proposed
+FITRIM (without the name, though) back when first implementing wiper.sh,
+and I really believe we should extend FITRIM to btrfs and xfs.
 
-Performing a 256KB erase because of a 1024-byte TRIM, over and over, is going
-to harm the expected lifetime of an SSD.  Sure, some SSDs may do things differently
-internally, but I don't see it working that way in much of the current crop of SSDs.
+hdparm is picking up support for FITRIM in the next release,
+and wiper.sh will use it when it can in place of raw TRIMs.
 
-Currently, I patch my kernels to remove the automatic online TRIMs.
-Is there a knob somewhere for this in the later kernels?
+This remains my own preferred method for TRIM:  offline, that is.  :)
 
 Cheers
