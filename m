@@ -1,114 +1,52 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Thu, 18 Nov 2010 08:55:18 -0600
-Message-ID: <4CE53E56.4090501@redhat.com>
-References: <20101116110058.GA4298@amd>	<20101116130146.GG4757@quack.suse.cz>	<4CE35A6D.2040906@redhat.com>	<20101117043845.GA3586@amd>	<4CE362B0.6040607@redhat.com>	<20101117061057.GA3989@amd>	<20101118030613.GQ3290@thunk.org>	<20101117192900.da859ac7.akpm@linux-foundation.org>	<20101118060000.GA3509@amd> <20101117222834.2bb36ee1.akpm@linux-foundation.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 23232] New: kernel hang on insert ext4 usb key
+Date: Thu, 18 Nov 2010 16:45:42 GMT
+Message-ID: <bug-23232-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <npiggin@kernel.dk>, "Ted Ts'o" <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20101117222834.2bb36ee1.akpm@linux-foundation.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter2.kernel.org ([140.211.167.42]:54711 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754912Ab0KRQpm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 11:45:42 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id oAIGjg9r001553
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Nov 2010 16:45:42 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/18/10 12:28 AM, Andrew Morton wrote:
-> On Thu, 18 Nov 2010 17:00:00 +1100 Nick Piggin <npiggin@kernel.dk> wrote:
-> 
->> On Wed, Nov 17, 2010 at 07:29:00PM -0800, Andrew Morton wrote:
->>> On Wed, 17 Nov 2010 22:06:13 -0500 "Ted Ts'o" <tytso@mit.edu> wrote:
->>>
->>>> On Wed, Nov 17, 2010 at 05:10:57PM +1100, Nick Piggin wrote:
->>>>> On Tue, Nov 16, 2010 at 11:05:52PM -0600, Eric Sandeen wrote:
->>>>>> On 11/16/10 10:38 PM, Nick Piggin wrote:
->>>>>>>> as for the locking problems ... sorry about that!
->>>>>>>
->>>>>>> That's no problem. So is that an ack? :)
->>>>>>>
->>>>>>
->>>>>> I'd like to test it with the original case it was supposed to solve; will
->>>>>> do that tomorrow.
->>>>>
->>>>> OK, but it shouldn't make much difference, unless there is a lot of
->>>>> strange activity happening on the sb (like mount / umount / remount /
->>>>> freeze / etc).
->>>>
->>>> This makes sense to me as well.
->>>>
->>>> Acked-by: "Theodore Ts'o" <tytso@mit.edu>
->>>>
->>>> So how do we want to send this patch to Linus?  It's a writeback
->>>> change, so through some mm tree?
->>>
->>> It's in my todo pile.  Even though the patch sucks, but not as much as
->>> its changelog does.  Am not particularly happy merging an alleged
->>> bugfix where the bug is, and I quote, "I saw a lock order warning on
->>> ext4 trigger".  I mean, wtf?  How is anyone supposed to review the code
->>> based on that??  Or to understand it a year from now?
->>
->> Sorry bout the confusion, it was supposed to be "i_mutex", and then it
->> would have been a bit more obvious.
->>
->>
->>> When I get to it I'll troll this email thread and might be able to
->>> kludge together a description which might be able to fool people into
->>> thinking it makes sense.
->>
->> "Lock order reversal between s_umount and i_mutex".
->>
->> i_mutex nests inside s_umount in some writeback paths (it was the end
->> io handler to convert unwritten extents IIRC). But hmm, wouldn't that
->> be a bug? We aren't allowed to take i_mutex inside writeback, are we?
-> 
-> I'm not sure that s_umount versus i_mutex has come up before.
-> 
-> Logically I'd expect i_mutex to nest inside s_umount.  Because s_umount
-> is a per-superblock thing, and i_mutex is a per-file thing, and files
-> live under superblocks.  Nesting s_umount outside i_mutex creates
-> complex deadlock graphs between the various i_mutexes, I think.
-> 
-> Someone tell me if btrfs has the same bug, via its call to
-> writeback_inodes_sb_nr_if_idle()?
-> 
-> I don't see why these functions need s_umount at all, if they're called
-> from within ->write_begin against an inode on that superblock.  If the
-> superblock can get itself disappeared while we're running ->write_begin
-> on it, we have problems, no?
-> 
-> In which case I'd suggest just removing the down_read(s_umount) and
-> specifying that the caller must pin the superblock via some means.
-> 
-> Only we can't do that because we need to hold s_umount until the
-> bdi_queue_work() worker has done its work.
-> 
-> The fact that a call to ->write_begin can randomly return with s_umount
-> held, to be randomly released at some random time in the future is a
-> bit ugly, isn't it?  write_begin is a pretty low-level, per-inode
-> thing.
-> 
-> It'd be better if we pinned these superblocks via refcounting, not via
-> holding s_umount but even then, having ->write_begin randomly bump sb
-> refcounts for random periods of time is still pretty ugly.
-> 
-> What a pickle.
-> 
-> Can we just delete writeback_inodes_sb_nr_if_idle() and
-> writeback_inodes_sb_if_idle()?  The changelog for 17bd55d037a02 is
-> pretty handwavy - do we know that deleting these things would make a
-> jot of difference?
+https://bugzilla.kernel.org/show_bug.cgi?id=23232
 
-Really?  I thought it was pretty decent ;)
+           Summary: kernel hang on insert ext4 usb key
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.37-rc2-git3
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: shal@free.fr
+        Regression: No
 
-Anyway, xfstests 204, "Test out ENOSPC flushing on small filesystems."
-shows the problem clearly, IIRC.  I should have included that in the
-changelog, I suppose, sorry.
 
--Eric
- 
-> And why _do_ we need to hold s_umount during the bdi_queue_work()
-> handover?  Would simply bumping s_count suffice?
-> 
+Created an attachment (id=37592)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=37592)
+error messages of the kernel
 
+Hello,
+
+On my 2.6.37-rc2-git3 (with sched_autogroup patch), my computer crash when I
+insert an USB key formated in ext4. No problem if the  usb key is in vfat.
+
+When the bug occured, I can used magic sys key but the sync works.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
