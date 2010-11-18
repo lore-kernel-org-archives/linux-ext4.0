@@ -1,394 +1,112 @@
-From: =?ISO-8859-2?Q?Ond=F8ej_Kunc?= <ondra@czol.eu>
-Subject: Re: [uml-devel] Ext4 in user mode linux hang
-Date: Thu, 18 Nov 2010 20:58:52 +0100
-Message-ID: <4CE5857C.7030200@czol.eu>
-References: <4CE565D1.602@czol.eu>	<alpine.LFD.2.00.1011181852270.15886@dhcp-lab-213.englab.brq.redhat.com>	<AANLkTin==wLEtuw8Kb-i48X06PeEJpewCXPORbM1xA1G@mail.gmail.com>	<4CE57F35.60505@czol.eu> <AANLkTi=nKeWcyxZ_mwgO4pQsa=og0TztmdsQ0vyTvvDO@mail.gmail.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Thu, 18 Nov 2010 12:04:31 -0800
+Message-ID: <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+ <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site> <x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
+ <1290102098.3041.77.camel@mulgrave.site>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2;
-	format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org,
-	user-mode-linux-devel@lists.sourceforge.net
-To: richard -rw- weinberger <richard.weinberger@gmail.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
+To: James Bottomley <James.Bottomley@suse.de>,
+	Mark Lord <kernel@teksavvy.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.cz-hosting.com ([95.168.206.20]:58594 "EHLO
-	mail.cz-hosting.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757698Ab0KRT66 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 14:58:58 -0500
-In-Reply-To: <AANLkTi=nKeWcyxZ_mwgO4pQsa=og0TztmdsQ0vyTvvDO@mail.gmail.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:41733 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755568Ab0KRULX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 15:11:23 -0500
+In-Reply-To: <1290102098.3041.77.camel@mulgrave.site>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Adding Mark Lord in CC:
 
-the same test with ext3 runs without problem about a hour, with ext4 it=
-=20
-hangs quickly ... latest hang from all tests was when it filled the=20
-partition (2GB) with data.
-
-Dne 18.11.2010 20:55, richard -rw- weinberger napsal(a):
-> 2010/11/18 Ond=F8ej Kunc<ondra@czol.eu>:
->   =20
->> Hi,
+On Thu, Nov 18, 2010 at 9:41 AM, James Bottomley
+<James.Bottomley@suse.de> wrote:
+> On Thu, 2010-11-18 at 12:22 -0500, Jeff Moyer wrote:
+>> James Bottomley <James.Bottomley@suse.de> writes:
 >>
->> on vanilla kernel (2.6.36 from kernel.org) ... it fails too(so it is=
- not
->> debian specific), traces from sysrq t (via uml_mconsole)
->>     =20
-> Does it only happen with ext4?
+>> > Not stepping into the debate: I'm happy to see punch go to the map=
+ping
+>> > data and FITRIM pick it up later.
+>> >
+>> > However, I think it's time to question whether we actually still w=
+ant to
+>> > allow online discard at all. =A0Most of the benchmarks show it to =
+be a net
+>>
+>> Define online discard, please.
 >
->   =20
->> (only processess in D state):
->>
->> jbd2/ubdb-8   D 00000000405068b3     0   580      2 0x00000000
->> 66aea608 660214c8 66021038 60284440 66041cb0 60013597 66aea140 66040=
-000
->>        66040000 66aea140 66041d10 601d3381 679ac2d0 66bcb8a8 66041d1=
-0
->> 66040000
->>        00000000 66bcb800 67453a80 1000014a0 66040000 67453b18 66041e=
-50
->> 60122f6f
->> Call Trace:
->> 66041c88:  [<60013597>] _switch_to+0x5e/0xae
->> 66041cb8:  [<601d3381>] schedule+0x274/0x2ae
->> 66041d18:  [<60122f6f>] jbd2_journal_commit_transaction+0x16c/0xe59
->> 66041d98:  [<600245e3>] switch_threads+0x2d/0x3d
->> 66041de0:  [<60042f46>] autoremove_wake_function+0x0/0x34
->> 66041e58:  [<6012635c>] kjournald2+0xb8/0x1bb
->> 66041e90:  [<60042f46>] autoremove_wake_function+0x0/0x34
->> 66041eb0:  [<601262a4>] kjournald2+0x0/0x1bb
->> 66041ed0:  [<601262a4>] kjournald2+0x0/0x1bb
->> 66041ee8:  [<60042c9d>] kthread+0x91/0x99
->> 66041f48:  [<60021329>] run_kernel_thread+0x41/0x4a
->> 66041f58:  [<60042c0c>] kthread+0x0/0x99
->> 66041f98:  [<60021310>] run_kernel_thread+0x28/0x4a
->> 66041fc8:  [<6001350f>] new_thread_handler+0x71/0x9b
->>
->> flush-98:16   D 00000000405068b3     0   609      2 0x00000000
->> 660214c8 608dec08 608de778 60284440 6613b9d0 60013597 66021000 6613a=
-000
->>        6613a000 66021000 6613ba30 601d3381 6613b9f0 6002a34f 6613ba3=
-0
->> 6613a000
->>        76800000767 66021000 63474428 00000002 0000ffff 63474440 6613=
-ba90
->> 601d45a2
->> Call Trace:
->> 6613b9a8:  [<60013597>] _switch_to+0x5e/0xae
->> 6613b9d8:  [<601d3381>] schedule+0x274/0x2ae
->> 6613b9e8:  [<6002a34f>] wake_up_process+0x10/0x12
->> 6613ba38:  [<601d45a2>] rwsem_down_failed_common+0xb8/0xd8
->> 6613ba98:  [<601d45d5>] rwsem_down_write_failed+0x13/0x15
->> 6613baa8:  [<60027bbb>] call_rwsem_down_write_failed+0x13/0x20
->> 6613bae8:  [<601d3db5>] down_write+0x1c/0x1e
->> 6613baf8:  [<6010053a>] mpage_da_map_blocks+0x308/0x359
->> 6613bb68:  [<60100ce7>] ext4_da_writepages+0x2f7/0x479
->> 6613bc58:  [<6005b236>] do_writepages+0x1c/0x25
->> 6613bc68:  [<60090ab0>] writeback_single_inode+0x93/0x1d4
->> 6613bc98:  [<60090e42>] writeback_sb_inodes+0xa1/0xfe
->> 6613bcf8:  [<60091558>] writeback_inodes_wb+0xc5/0xe4
->> 6613bd00:  [<60042f7a>] wake_bit_function+0x0/0x2e
->> 6613bd48:  [<600916e6>] wb_writeback+0x16f/0x1de
->> 6613bda8:  [<601d3389>] schedule+0x27c/0x2ae
->> 6613bdf8:  [<60091868>] wb_do_writeback+0x113/0x130
->> 6613be08:  [<601d3600>] schedule_timeout+0x13e/0x15c
->> 6613be78:  [<6009190e>] bdi_writeback_thread+0x89/0x13f
->> 6613beb0:  [<60091885>] bdi_writeback_thread+0x0/0x13f
->> 6613bed0:  [<60091885>] bdi_writeback_thread+0x0/0x13f
->> 6613bee8:  [<60042c9d>] kthread+0x91/0x99
->> 6613bf48:  [<60021329>] run_kernel_thread+0x41/0x4a
->> 6613bf58:  [<60042c0c>] kthread+0x0/0x99
->> 6613bf98:  [<60021310>] run_kernel_thread+0x28/0x4a
->> 6613bfc8:  [<6001350f>] new_thread_handler+0x71/0x9b
->>
->> dd            D 00000000405068b3     0 18357    922 0x00000000
->> 608dec08 60276e98 6087b8c0 6002a1ed 6087b8d0 60013597 608de740 6087a=
-000
->>        6087a000 608de740 6087b930 601d3381 6087b930 601d7480 6087b93=
-0
->> 6087a000
->>        816087b920 66bcb800 00000000 67453a80 6087a000 6087b998 6087b=
-9e0
->> 60122942
->> Call Trace:
->> 6087b898:  [<6002a1ed>] dequeue_task+0x39/0x48
->> 6087b8a8:  [<60013597>] _switch_to+0x5e/0xae
->> 6087b8d8:  [<601d3381>] schedule+0x274/0x2ae
->> 6087b938:  [<60122942>] start_this_handle+0x2f4/0x395
->> 6087b990:  [<60042f46>] autoremove_wake_function+0x0/0x34
->> 6087b9e8:  [<60122b70>] jbd2__journal_start+0xb9/0xf7
->> 6087ba38:  [<60122bbc>] jbd2_journal_start+0xe/0x10
->> 6087ba48:  [<6010add9>] ext4_journal_start_sb+0xe0/0x125
->> 6087ba78:  [<60015daf>] buffer_op+0xab/0xc7
->> 6087baa8:  [<600ffbf6>] ext4_da_write_begin+0xc1/0x1b4
->> 6087bb28:  [<60054e94>] generic_file_buffered_write+0x124/0x27e
->> 6087bbc8:  [<60088a92>] file_update_time+0x3b/0xfe
->> 6087bc18:  [<60056828>] __generic_file_aio_write+0x380/0x3bf
->> 6087bcd8:  [<600568bf>] generic_file_aio_write+0x58/0xa2
->> 6087bd18:  [<600f80fb>] ext4_file_write+0x92/0xa3
->> 6087bd48:  [<60077c1b>] do_sync_write+0xd1/0x10e
->> 6087bdb8:  [<60015daf>] buffer_op+0xab/0xc7
->> 6087be68:  [<600785ef>] vfs_write+0xb5/0x169
->> 6087bea8:  [<6007875c>] sys_write+0x45/0x6c
->> 6087bee8:  [<60015ab8>] handle_syscall+0x58/0x70
->> 6087bf08:  [<60024ecb>] userspace+0x2dd/0x38a
->> 6087bfc8:  [<60013497>] fork_handler+0x62/0x69
->>
->> Dne 18.11.2010 19:35, richard -rw- weinberger napsal(a):
->>     =20
->>> 2010/11/18 Lukas Czerner<lczerner@redhat.com>:
->>>
->>>       =20
->>>> On Thu, 18 Nov 2010, Ond=F8ej Kunc wrote:
->>>>
->>>>
->>>>         =20
->>>>> Hi,
->>>>>
->>>>> I've recently tested ext4 in user mode linux VM. I compiled linux
->>>>> 2.6.36(from
->>>>> debian source package). I configured kernel this way ... only dis=
-abled
->>>>> modules
->>>>> (to work with default debootstraped debian). Then I created this =
-script:
->>>>>
->>>>>           =20
->>> Can you reproduce this on a vanilla kernel?
->>>
->>>
->>>       =20
->>>>> #!/bin/bash
->>>>> DD=3D"dd if=3D/dev/zero bs=3D1k"
->>>>> for i in `seq 1 1000`; do
->>>>>          A=3D$(($RANDOM%50000))
->>>>>          $DD count=3D$A of=3Dfrag_$A
->>>>>          for i in `seq 1 100`; do
->>>>>                  A=3D$(($RANDOM%50000))
->>>>>                  rm -f frag_$A
->>>>>          done
->>>>> done
->>>>>
->>>>>
->>>>> This script I'had run on mounted ext4 partition (/dev/ubda ->
->>>>>   /mnt/test). It's
->>>>> purpose is creating fragmented filesystem to test e4defrag. But a=
-fter
->>>>> some
->>>>> time it hungs the whole virtual system. All processes which want =
-to
->>>>> write to
->>>>> /mnt/test are still in D state. I issued sysrq t via uml_mconsole=
- and in
->>>>> that
->>>>> output I found traces below.
->>>>>
->>>>> Ondra
->>>>>
->>>>>           =20
->>>> I did not look at the traces closely, but did you tried another
->>>> filesystem ? My experience with UML is that it is always broken so=
- the
->>>> problem might as well be somewhere else.
->>>>
->>>> -Lukas
->>>>
->>>>
->>>>         =20
->>>>>
->>>>> flush-98:16   D 0000000041a0d8b3     0   811      2 0x00000000
->>>>> 67c57d80 60276e90 69857980 6002a1ed 69857990 60013597 67c578c0 69=
-856000
->>>>>         69856000 67c578c0 698579f0 601d3181 69857a10 601d74a0 698=
-579f0
->>>>> 69856000
->>>>>         ffffffff00000a57 62e09800 00000000 69ab1480 69856000 6985=
-7a58
->>>>> 69857aa0
->>>>> 6012274e
->>>>> Call Trace:
->>>>> 69857958:  [<6002a1ed>] dequeue_task+0x39/0x48
->>>>> 69857968:  [<60013597>] _switch_to+0x5e/0xae
->>>>> 69857998:  [<601d3181>] schedule+0x274/0x2ae
->>>>> 698579f8:  [<6012274e>] start_this_handle+0x2f4/0x395
->>>>> 69857a50:  [<60042f42>] autoremove_wake_function+0x0/0x34
->>>>> 69857aa8:  [<6012297c>] jbd2__journal_start+0xb9/0xf7
->>>>> 69857af8:  [<601229c8>] jbd2_journal_start+0xe/0x10
->>>>> 69857b08:  [<6010abe5>] ext4_journal_start_sb+0xe0/0x125
->>>>> 69857b28:  [<600fa802>] ext4_meta_trans_blocks+0x5b/0xaf
->>>>> 69857b68:  [<60100a43>] ext4_da_writepages+0x249/0x479
->>>>> 69857c58:  [<6005b042>] do_writepages+0x1c/0x25
->>>>> 69857c68:  [<600908bc>] writeback_single_inode+0x93/0x1d4
->>>>> 69857c98:  [<60090c4e>] writeback_sb_inodes+0xa1/0xfe
->>>>> 69857cf8:  [<60091364>] writeback_inodes_wb+0xc5/0xe4
->>>>> 69857d00:  [<60042f76>] wake_bit_function+0x0/0x2e
->>>>> 69857d48:  [<600914f2>] wb_writeback+0x16f/0x1de
->>>>> 69857da8:  [<601d3189>] schedule+0x27c/0x2ae
->>>>> 69857df8:  [<60091674>] wb_do_writeback+0x113/0x130
->>>>> 69857e08:  [<601d3400>] schedule_timeout+0x13e/0x15c
->>>>> 69857e78:  [<6009171a>] bdi_writeback_thread+0x89/0x13f
->>>>> 69857eb0:  [<60091691>] bdi_writeback_thread+0x0/0x13f
->>>>> 69857ed0:  [<60091691>] bdi_writeback_thread+0x0/0x13f
->>>>> 69857ee8:  [<60042c99>] kthread+0x91/0x99
->>>>> 69857f48:  [<60021329>] run_kernel_thread+0x41/0x4a
->>>>> 69857f58:  [<60042c08>] kthread+0x0/0x99
->>>>> 69857f98:  [<60021310>] run_kernel_thread+0x28/0x4a
->>>>> 69857fc8:  [<6001350f>] new_thread_handler+0x71/0x9b
->>>>>
->>>>> jbd2/ubdb-8   D 0000000041a0d8b3     0  4542      2 0x00000000
->>>>> 6838d640 60276e90 68275ca0 6002a1ed 68275cb0 60013597 6838d180 68=
-274000
->>>>>         68274000 6838d180 68275d10 601d3181 68fd7470 601d74a0 682=
-75d10
->>>>> 68274000
->>>>>         00000000 62e09800 69ab1480 1000077f1 68274000 69ab1518 68=
-275e50
->>>>> 60122d7b
->>>>> Call Trace:
->>>>> 68275c78:  [<6002a1ed>] dequeue_task+0x39/0x48
->>>>> 68275c88:  [<60013597>] _switch_to+0x5e/0xae
->>>>> 68275cb8:  [<601d3181>] schedule+0x274/0x2ae
->>>>> 68275d18:  [<60122d7b>] jbd2_journal_commit_transaction+0x16c/0xe=
-59
->>>>> 68275d98:  [<600245e3>] switch_threads+0x2d/0x3d
->>>>> 68275de0:  [<60042f42>] autoremove_wake_function+0x0/0x34
->>>>> 68275df8:  [<600222bb>] set_signals+0x1c/0x2e
->>>>> 68275e18:  [<60043094>] finish_wait+0x64/0x6f
->>>>> 68275e58:  [<60126168>] kjournald2+0xb8/0x1bb
->>>>> 68275e90:  [<60042f42>] autoremove_wake_function+0x0/0x34
->>>>> 68275eb0:  [<601260b0>] kjournald2+0x0/0x1bb
->>>>> 68275ed0:  [<601260b0>] kjournald2+0x0/0x1bb
->>>>> 68275ee8:  [<60042c99>] kthread+0x91/0x99
->>>>> 68275f48:  [<60021329>] run_kernel_thread+0x41/0x4a
->>>>> 68275f58:  [<60042c08>] kthread+0x0/0x99
->>>>> 68275f98:  [<60021310>] run_kernel_thread+0x28/0x4a
->>>>> 68275fc8:  [<6001350f>] new_thread_handler+0x71/0x9b
->>>>>
->>>>> dd            D 0000000041a0d8b3     0  4952   4593 0x00000000
->>>>> 6838c8c0 67c57d80 67c578f8 60284440 69b6d7a8 60013597 6838c400 69=
-b6c000
->>>>>         69b6c000 6838c400 69b6d808 601d3181 69b6d7c8 6002a34f 69b=
-6d808
->>>>> 69b6c000
->>>>>         00001000 6838c400 696c0838 00000001 ffffffffffffffff 0000=
-0000
->>>>> 69b6d868
->>>>> 601d43a2
->>>>> Call Trace:
->>>>> 69b6d780:  [<60013597>] _switch_to+0x5e/0xae
->>>>> 69b6d7b0:  [<601d3181>] schedule+0x274/0x2ae
->>>>> 69b6d7c0:  [<6002a34f>] wake_up_process+0x10/0x12
->>>>> 69b6d810:  [<601d43a2>] rwsem_down_failed_common+0xb8/0xd8
->>>>> 69b6d838:  [<600222bb>] set_signals+0x1c/0x2e
->>>>> 69b6d870:  [<601d43e9>] rwsem_down_read_failed+0x12/0x14
->>>>> 69b6d880:  [<60027b98>] call_rwsem_down_read_failed+0x14/0x24
->>>>> 69b6d8c8:  [<601d3b97>] down_read+0x11/0x13
->>>>> 69b6d8d8:  [<600fe1cc>] ext4_map_blocks+0x3e/0x18e
->>>>> 69b6d938:  [<600ffe02>] ext4_da_get_block_prep+0x83/0x2bd
->>>>> 69b6d958:  [<60095705>] alloc_buffer_head+0x18/0x6c
->>>>> 69b6d968:  [<60095d31>] alloc_page_buffers+0x75/0xd1
->>>>> 69b6d9d8:  [<60097105>] block_prepare_write+0x177/0x380
->>>>> 69b6d9e8:  [<6005588b>] add_to_page_cache_locked+0xbf/0xe7
->>>>> 69b6da00:  [<600ffd7f>] ext4_da_get_block_prep+0x0/0x2bd
->>>>> 69b6da98:  [<600973f3>] __block_write_begin+0x12/0x14
->>>>> 69b6daa8:  [<600ffa62>] ext4_da_write_begin+0x123/0x1b4
->>>>> 69b6db28:  [<60054ca0>] generic_file_buffered_write+0x124/0x27e
->>>>> 69b6dbc8:  [<6008889e>] file_update_time+0x3b/0xfe
->>>>> 69b6dc18:  [<60056634>] __generic_file_aio_write+0x380/0x3bf
->>>>> 69b6dcd8:  [<600566cb>] generic_file_aio_write+0x58/0xa2
->>>>> 69b6dd18:  [<600f7f07>] ext4_file_write+0x92/0xa3
->>>>> 69b6dd48:  [<60077a27>] do_sync_write+0xd1/0x10e
->>>>> 69b6ddb8:  [<60015daf>] buffer_op+0xab/0xc7
->>>>> 69b6de68:  [<600783fb>] vfs_write+0xb5/0x169
->>>>> 69b6dea8:  [<60078568>] sys_write+0x45/0x6c
->>>>> 69b6dee8:  [<60015ab8>] handle_syscall+0x58/0x70
->>>>> 69b6df08:  [<60024ecb>] userspace+0x2dd/0x38a
->>>>> 69b6dfc8:  [<60013497>] fork_handler+0x62/0x69
->>>>>
->>>>> bash          D 0000000041a0d8b3     0  5324   5271 0x00000002
->>>>> 67e2c540 60276e90 67dcfbd0 6002a1ed 67dcfbe0 60013597 67e2c080 67=
-dce000
->>>>>         67dce000 67e2c080 67dcfc40 601d3181 62a31000 601d74a0 67d=
-cfc40
->>>>> 67dce000
->>>>>         67dcfc10 62e09800 00000000 69ab1480 67dce000 67dcfca8 67d=
-cfcf0
->>>>> 6012274e
->>>>> Call Trace:
->>>>> 67dcfba8:  [<6002a1ed>] dequeue_task+0x39/0x48
->>>>> 67dcfbb8:  [<60013597>] _switch_to+0x5e/0xae
->>>>> 67dcfbe8:  [<601d3181>] schedule+0x274/0x2ae
->>>>> 67dcfc48:  [<6012274e>] start_this_handle+0x2f4/0x395
->>>>> 67dcfca0:  [<60042f42>] autoremove_wake_function+0x0/0x34
->>>>> 67dcfcf8:  [<6012297c>] jbd2__journal_start+0xb9/0xf7
->>>>> 67dcfd48:  [<601229c8>] jbd2_journal_start+0xe/0x10
->>>>> 67dcfd58:  [<6010abe5>] ext4_journal_start_sb+0xe0/0x125
->>>>> 67dcfd60:  [<6008424f>] filldir+0x0/0x11a
->>>>> 67dcfdb8:  [<600fb08a>] ext4_dirty_inode+0x1b/0x48
->>>>> 67dcfdd8:  [<60091027>] __mark_inode_dirty+0x29/0x199
->>>>> 67dcfdf8:  [<60088a63>] touch_atime+0x102/0x125
->>>>> 67dcfe38:  [<6008424f>] filldir+0x0/0x11a
->>>>> 67dcfe48:  [<600844fd>] vfs_readdir+0x7a/0xa1
->>>>> 67dcfe98:  [<6008469d>] sys_getdents+0x90/0x124
->>>>> 67dcfee8:  [<60015ab8>] handle_syscall+0x58/0x70
->>>>> 67dcff08:  [<60024ecb>] userspace+0x2dd/0x38a
->>>>> 67dcffc8:  [<60013497>] fork_handler+0x62/0x69
->>>>>
->>>>>
->>>>>
->>>>>           =20
->>>>
->>>> ------------------------------------------------------------------=
-------------
->>>> Beautiful is writing same markup. Internet Explorer 9 supports
->>>> standards for HTML5, CSS3, SVG 1.1,  ECMAScript5, and DOM L2&    L=
-3.
->>>> Spend less time writing and  rewriting code and more time creating=
- great
->>>> experiences on the web. Be a part of the beta today
->>>> http://p.sf.net/sfu/msIE9-sfdev2dev
->>>> _______________________________________________
->>>> User-mode-linux-devel mailing list
->>>> User-mode-linux-devel@lists.sourceforge.net
->>>> https://lists.sourceforge.net/lists/listinfo/user-mode-linux-devel
->>>>
->>>>
->>>>
->>>>         =20
->>>
->>>
->>>       =20
->>
->> --
->> Ond=F8ej Kunc
->>
->> spr=E1vce serverov=E9 farmy
->> CZOL media interactive s.r.o.
->> S=EDdlo: Moul=EDkova 2238/1, Praha 5, 15000
->> Kancel=E1=F8e: Na Mor=E1ni 5357, Chomutov, 43001
->> Telefon: +420 723 137 981
->> E-mail: ondra@czol.eu
->> URL: www.czol.eu, www.cz-hosting.com
->>
->>
->>     =20
+> Trims emitted inline at the FS operates (mount option -o discard)
 >
+>> > lose to almost everything (either SSD or Thinly Provisioned arrays=
+), so
+>> > it's become an "enable this to degrade performance" option with no
+>> > upside.
+>>
+>> Some SSDs very much require TRIMming to perform well as they age. =A0=
+If
+>> you're suggesting that we move from doing discards in journal commit=
+s to
+>> a batched discard, like the one Lukas implemented, then I think that=
+'s
+>> fine. =A0If we need to reintroduce the finer-grained discards due to=
+ some
+>> hardware changes in the future, we can always do that.
 >
->   =20
+> Right, I'm suggesting we just rely on offline methods. =A0Regardless =
+of
+> what happens to FITRIM, we have wiper.sh now (although it does requir=
+e
+> unmounted use for most of the less than modern fs).
+>
+> James
 
+I'm a fan of wiper.sh, but afaik it still cannot address a
+multi-spindle LVM setup, Nor a MDraid setup.  etc.
 
---=20
-Ond=F8ej Kunc
+That's because it bypasses the block stack and talks directly to the
+devices.  Thus it doesn't get the benefit of all the logical to
+physical sector remapping handled via the block stack.
 
-spr=E1vce serverov=E9 farmy
-CZOL media interactive s.r.o.
-S=EDdlo: Moul=EDkova 2238/1, Praha 5, 15000
-Kancel=E1=F8e: Na Mor=E1ni 5357, Chomutov, 43001
-Telefon: +420 723 137 981
-E-mail: ondra@czol.eu
-URL: www.czol.eu, www.cz-hosting.com
+Mark, please correct me if I'm wrong.
 
+The LVM and MDraid setup are important to support, and only "mount -o
+discard" and Lucas's FITRIM support them.
+
+So afaik we have 3 options, each with an opportunity for improvement:
+
+1) mount -o discard - needs kernel tuning / new hardware to be a
+performance win.
+
+2) FITRIM doesn't leverage the fact the a TRIM command can handle
+multiple ranges per TRIM command payload.  I haven't seen any FITRIM
+vs. wiper.sh benchmarks, so I don't know what impact that has in
+practice.  Mark Lord thought that this lacking feature would cause
+=46ITRIM to take minutes or hours with some hardware.  Especially early
+generation SSDs.
+
+3) wiper.sh does leverage the multiple ranges per TRIM command, but it
+really needs a new block layer interface that would allow it to push
+discard commands into the kernel via the block layer, not just down at
+the physical drive layer.  The interface should accept multiple ranges
+per invocation and trigger TRIM commands to the SSD that have have a
+multi-range discard payload.
+
+So it seems that for now keeping all 3 is best.  My personal hope is
+that the block layer grows the ability to accept multirange discard
+requests and  FITRIM is updated to leverage it.
+
+Greg
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
