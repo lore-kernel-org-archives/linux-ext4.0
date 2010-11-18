@@ -1,66 +1,82 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext3: Return error code from generic_check_addressable
-Date: Thu, 18 Nov 2010 09:52:51 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011180946020.3125@dhcp-lab-213.englab.brq.redhat.com>
-References: <20101115214831.GA18195@tux1.beaverton.ibm.com> <4CE1AC38.9040201@redhat.com> <20101115230346.GB18195@tux1.beaverton.ibm.com> <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
- <20101116225744.GD18195@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH 1/7] e2fsprogs: Add discard function into
+ struct_io_manager
+Date: Thu, 18 Nov 2010 10:52:23 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1011181042450.15886@dhcp-lab-213.englab.brq.redhat.com>
+References: <1288115658-7004-1-git-send-email-lczerner@redhat.com> <1288115658-7004-2-git-send-email-lczerner@redhat.com> <4CE2CD55.9070207@redhat.com> <alpine.LFD.2.00.1011162044060.2896@dhcp-lab-213.englab.brq.redhat.com> <4CE2F302.3050904@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"Patrick J. LoPresti" <lopresti@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Mingming Cao <mcao@us.ibm.com>, Jan Kara <jack@suse.cz>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, adilger@dilger.ca
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39427 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44420 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750975Ab0KRIxC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Nov 2010 03:53:02 -0500
-In-Reply-To: <20101116225744.GD18195@tux1.beaverton.ibm.com>
+	id S1756206Ab0KRJwa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 04:52:30 -0500
+In-Reply-To: <4CE2F302.3050904@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 16 Nov 2010, Darrick J. Wong wrote:
+On Tue, 16 Nov 2010, Eric Sandeen wrote:
 
-> ext3: Return error code from generic_check_accessible
+-snip-
+
+> >>> +
+> >>> +	struct struct_ext2_filsys *fs;
+> >>> +	struct unix_private_data *u_priv;
+> >>> +	errcode_t	retval = 0;
+> >>> +	__uint64_t	range[2];
+> >>> +	int		blocksize;
+> >>> +
+> >>> +	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+> >>> +	u_priv = (struct unix_private_data *) channel->private_data;
+> >>> +	EXT2_CHECK_MAGIC(u_priv, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
+> >>> +
+> >>> +	fs = (struct struct_ext2_filsys *) data;
+> >>> +	if (!fs)
+> >>> +		return EXT2_ET_INVALID_ARGUMENT;
+> >>> +
+> >>> +	blocksize = EXT2_BLOCK_SIZE(fs->super);
+> >>
+> >> This seems a little convoluted; you pass in *data, which gets you the fs,
+> >> from which you get the super, from which you get the blocksize,
+> >> which is all that you ever actually use here:
+> >>
+> >>> +	range[0] = (__uint64_t)(block);
+> >>> +	range[1] = (__uint64_t)(count);
+> >>> +	range[0] *= (__uint64_t)(blocksize);
+> >>> +	range[1] *= (__uint64_t)(blocksize);
+> >>
+> >> any reason to not just pass in the blocksize?
+> >>
+> >> Maybe this is for flexibility for not-linux, but I guess we don't know what
+> >> they need anyway...?
+> >>
+> >> And if you do that you can change "u_priv" to "data" just to match the
+> >> other handlers, perhaps.
+> > 
+> > You're right, I was so closely following the example that I forget that
+> > it can be done more simply. Does this looks good to you ?
+> > 
+> > static errcode_t unix_discard(io_channel channel, unsigned long long block,
+> > 			     unsigned long long count, const void *blocksize)
+> > {
+> > 	unsigned int    *bsize = (unsigned int *) blocksize;
 > 
-> ext3_fill_super should return the error code that generic_check_accessible
-> returns when an error condition occurs.
+> I think you can just pass in "int blocksize" right?
 > 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-> ---
+> and 
 > 
->  fs/ext3/super.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
+> ret = manager->discard(fs->io, start, count, fs->blocksize);
 > 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 2fedaf8..960629b 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -1842,13 +1842,15 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
->  		goto failed_mount;
->  	}
->  
-> -	if (generic_check_addressable(sb->s_blocksize_bits,
-> -				      le32_to_cpu(es->s_blocks_count))) {
-> +	err = generic_check_addressable(sb->s_blocksize_bits,
-> +					le32_to_cpu(es->s_blocks_count));
-> +	if (err) {
->  		ext3_msg(sb, KERN_ERR,
->  			"error: filesystem is too large to mount safely");
->  		if (sizeof(sector_t) < 8)
->  			ext3_msg(sb, KERN_ERR,
->  				"error: CONFIG_LBDAF not enabled");
-> +		ret = err;
->  		goto failed_mount;
->  	}
->  
+> -Eric
 > 
 
-Add Jan Kara to cc list.
+You are probably right, there is no need for io_manager to pass other
+information than just block, count and blocksize, so I'll change discard
+definition for that.
+
+Thanks!
 
 -Lukas
-
