@@ -1,70 +1,55 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Thu, 18 Nov 2010 10:36:38 -0800
-Message-ID: <20101118103638.99c1e8bc.akpm@linux-foundation.org>
-References: <20101116110058.GA4298@amd>
-	<20101116130146.GG4757@quack.suse.cz>
-	<4CE35A6D.2040906@redhat.com>
-	<20101117043845.GA3586@amd>
-	<4CE362B0.6040607@redhat.com>
-	<20101117061057.GA3989@amd>
-	<20101118030613.GQ3290@thunk.org>
-	<20101117192900.da859ac7.akpm@linux-foundation.org>
-	<20101118060000.GA3509@amd>
-	<20101117222834.2bb36ee1.akpm@linux-foundation.org>
-	<4CE53E56.4090501@redhat.com>
-	<20101118091053.c275e1f2.akpm@linux-foundation.org>
-	<4CE56AA5.4030705@redhat.com>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Thu, 18 Nov 2010 18:05:57 +0000
+Message-ID: <20101118180557.GU22787@shareable.org>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <npiggin@kernel.dk>, "Ted Ts'o" <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4CE56AA5.4030705@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: James Bottomley <James.Bottomley@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail2.shareable.org ([80.68.89.115]:59508 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750917Ab0KRSua (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 13:50:30 -0500
+Content-Disposition: inline
+In-Reply-To: <x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 18 Nov 2010 12:04:21 -0600 Eric Sandeen <sandeen@redhat.com> wrote:
-
-> On 11/18/10 11:10 AM, Andrew Morton wrote:
-> > On Thu, 18 Nov 2010 08:55:18 -0600 Eric Sandeen <sandeen@redhat.com> wrote:
-> > 
-> >>> Can we just delete writeback_inodes_sb_nr_if_idle() and
-> >>> writeback_inodes_sb_if_idle()?  The changelog for 17bd55d037a02 is
-> >>> pretty handwavy - do we know that deleting these things would make a
-> >>> jot of difference?
-> >>
-> >> Really?  I thought it was pretty decent ;)
-> >>
-> >> Anyway, xfstests 204, "Test out ENOSPC flushing on small filesystems."
-> >> shows the problem clearly, IIRC.  I should have included that in the
-> >> changelog, I suppose, sorry.
-> > 
-> > Your email didn't really impart any information :(
-> > 
-> > I suppose I could accidentally delete those nasty little functions in a
-> > drivers/parport patch then wait and see if anyone notices.
-> > 
+Jeff Moyer wrote:
+> James Bottomley <James.Bottomley@suse.de> writes:
 > 
-> Um, ok, then, to answer the question directly :
+> > Not stepping into the debate: I'm happy to see punch go to the mapping
+> > data and FITRIM pick it up later.
+> >
+> > However, I think it's time to question whether we actually still want to
+> > allow online discard at all.  Most of the benchmarks show it to be a net
 > 
-> No, please don't delete those functions, it will break ENOSPC handling
-> in ext4 as shown by xfstests regression test #204 ...
+> Define online discard, please.
 > 
+> > lose to almost everything (either SSD or Thinly Provisioned arrays), so
+> > it's become an "enable this to degrade performance" option with no
+> > upside.
+> 
+> Some SSDs very much require TRIMming to perform well as they age.  If
+> you're suggesting that we move from doing discards in journal commits to
+> a batched discard, like the one Lukas implemented, then I think that's
+> fine.  If we need to reintroduce the finer-grained discards due to some
+> hardware changes in the future, we can always do that.
 
-If those functions "fix" a testcase then it was by sheer luck, and the
-fs's ENOSPC handling is still busted.
+"Growable" virtual disks benefit from it too, if it frees up a lot of space.
 
-For a start writeback_inodes_sb_if_idle() is a no-op if the device
-isn't idle!  Secondly, if the device _was_ idle,
-writeback_inodes_sb_if_idle() uses a work handoff to another thread,
-which means that the work might not get executed for another six weeks.
+Windows has some ability to trim unused space in NTFS on virtual disks
+for this reason; I'm not sure if it's an online or offline procedure.
 
-So no, your ENOSPC handling is still busted and I'll be doing you a
-favour when I send that parport patch.
+Online trim may be slow, but offline would be awfully inconvenient
+when an fs is big and needed for a live system, or when it's your root fs.
 
-No?
-
+-- Jamie
