@@ -1,50 +1,57 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Thu, 18 Nov 2010 09:10:53 -0800
-Message-ID: <20101118091053.c275e1f2.akpm@linux-foundation.org>
-References: <20101116110058.GA4298@amd>
-	<20101116130146.GG4757@quack.suse.cz>
-	<4CE35A6D.2040906@redhat.com>
-	<20101117043845.GA3586@amd>
-	<4CE362B0.6040607@redhat.com>
-	<20101117061057.GA3989@amd>
-	<20101118030613.GQ3290@thunk.org>
-	<20101117192900.da859ac7.akpm@linux-foundation.org>
-	<20101118060000.GA3509@amd>
-	<20101117222834.2bb36ee1.akpm@linux-foundation.org>
-	<4CE53E56.4090501@redhat.com>
+From: James Bottomley <James.Bottomley@suse.de>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Thu, 18 Nov 2010 11:19:10 -0600
+Message-ID: <1290100750.3041.72.camel@mulgrave.site>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+	 <20101118130630.GJ6178@parisc-linux.org>
+	 <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+	 <20101118141957.GK6178@parisc-linux.org>
+	 <20101118142918.GA18510@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <npiggin@kernel.dk>, "Ted Ts'o" <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Matthew Wilcox <matthew@wil.cx>, Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:32792 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932120Ab0KRRPR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Nov 2010 12:15:17 -0500
-In-Reply-To: <4CE53E56.4090501@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:52571 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756877Ab0KRRTQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 12:19:16 -0500
+In-Reply-To: <20101118142918.GA18510@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 18 Nov 2010 08:55:18 -0600 Eric Sandeen <sandeen@redhat.com> wrote:
-
-> > Can we just delete writeback_inodes_sb_nr_if_idle() and
-> > writeback_inodes_sb_if_idle()?  The changelog for 17bd55d037a02 is
-> > pretty handwavy - do we know that deleting these things would make a
-> > jot of difference?
+On Thu, 2010-11-18 at 09:29 -0500, Christoph Hellwig wrote:
+> On Thu, Nov 18, 2010 at 07:19:58AM -0700, Matthew Wilcox wrote:
+> > I guess I was assuming that, on receiving a FALLOC_FL_PUNCH_HOLE, a
+> > filesystem that was TRIM-aware would pass that information down to the
+> > block device that it's mounted on.  I strongly feel that we shouldn't
+> > have two interfaces to do essentially the same thing.
+> > 
+> > I guess I'm saying that you're going to have to learn about TRIM :-)
 > 
-> Really?  I thought it was pretty decent ;)
+> Did you actually look Lukas FITRIM code (not the slight reordering here,
+> but the original one).  It's the ext4 version of the batched discard
+> model, that is a userspace ioctl to discard free space in the
+> filesystem.
 > 
-> Anyway, xfstests 204, "Test out ENOSPC flushing on small filesystems."
-> shows the problem clearly, IIRC.  I should have included that in the
-> changelog, I suppose, sorry.
+> hole punching will free the blocks into the free space pool.  If you do
+> online discard it will also get discarded, but a filesystem that has
+> online discard enabled doesn't need FITRIM.
 
-Your email didn't really impart any information :(
+Not stepping into the debate: I'm happy to see punch go to the mapping
+data and FITRIM pick it up later.
 
-I suppose I could accidentally delete those nasty little functions in a
-drivers/parport patch then wait and see if anyone notices.
+However, I think it's time to question whether we actually still want to
+allow online discard at all.  Most of the benchmarks show it to be a net
+lose to almost everything (either SSD or Thinly Provisioned arrays), so
+it's become an "enable this to degrade performance" option with no
+upside.
+
+James
+
 
