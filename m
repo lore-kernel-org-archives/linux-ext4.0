@@ -1,57 +1,53 @@
-From: HATZFELD =?utf-8?b?aMOpbMOobmU=?=
-	<helene.hatzfeld@culture.gouv.fr>
-Subject: (unknown)
-Date: Thu, 18 Nov 2010 00:56:14 +0100
-Message-ID: <20101118005614.uusp4sbzco8w8ksc__1255.04013053632$1290041471$gmane$org@messagerie.int.culture.fr>
-Reply-To: moneygramservices02@pkuit.com
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: removal of grpid option from ext4
+Date: Wed, 17 Nov 2010 20:20:52 -0500
+Message-ID: <20101118012052.GM3290@thunk.org>
+References: <4CE45B0A.3010401@cs.washington.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=UTF-8;
-	DelSp="Yes";
-	format="flowed"
-Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: John Petersen <jrp@cs.washington.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lares.culture.fr ([143.126.211.20]:40209 "EHLO lares.culture.fr"
+Received: from THUNK.ORG ([69.25.196.29]:53170 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752114Ab0KRAvD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Nov 2010 19:51:03 -0500
-Subject: 
+	id S1750770Ab0KRBUy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Nov 2010 20:20:54 -0500
 Content-Disposition: inline
+In-Reply-To: <4CE45B0A.3010401@cs.washington.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Nov 17, 2010 at 02:45:30PM -0800, John Petersen wrote:
+> The removal of this option puzzles me.  It's extremely useful in an
+> academic environment like ours, where different groups of
+> researchers work in shared project spaces.  I'd like to migrate our
+> data partitions to ext4.  If this option is going to disappear, I
+> will have to seriously consider keeping current and new project
+> spaces as ext3.
 
-The Central Bank of Nigeria, (CBN), working in relationship with
-HSBC London has concluded that our working
-partner has helped us to send you first payment of US$7,500 to you as
-instructed by Mr. David Cameron and will
-keep sending you $5000 twice a week until
-the payment of (US$820,000) is completed
-within six months and here is the information
+So if people really insist on using it, then we'll keep it.
 
-MONEY TRANSFER REFRENCE:2116-3297
+But one thing which I don't understand; why can't you just set the
+setgid bit on the shared spaces?  This causes newly created files to
+have the same group id as the directory, and newly created
+subdirectories to have the set gid bit.  Set the group id at the top
+directory of the project's directory hierarchy, and set the setgid
+bit, and all newly created files will inherit the group id of the
+directory --- and all newly created subdirectory will inherit the
+group id as well as the setgid bit.
 
+This is the System V scheme, which is much more flexible than the BSD
+scheme, since you can set control whether you have the BSD behaviour
+or the original System V unix behaviour, which is to always use the
+primary group ID of the creator.
 
-SENDER'S NAME: Mike Marx
-AMOUNT: US$5000
+If you set the setgid bit on all directories (chmod -R g+s /mnt), then
+you'll effectively have the same behavior as the grpid mount option.
 
-To track your funds forward money gram
-Transfer agent your Full Names and
-Mobile Number via Email to:
+What we may do is add a pointer to a web page with this explanation so
+that people can understand there is a better alternative.  Does this
+work for you?
 
-Mr Allen Davis
-E-mail:moneygramservices@pkuit.com
-D/L: Tel:+44 702 407 3631
-          +234-816-311-8957
+Best regards,
 
-Please direct all enquiring to:
-moneygramservices02@pkuit.com
-
-Best Regards,
-Mr Allen Davis
-
-
-
-
-
+						- Ted
