@@ -1,78 +1,104 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 6/6] mke2fs: Add discard option into mke2fs.conf
-Date: Thu, 18 Nov 2010 14:38:41 +0100
-Message-ID: <1290087521-9123-7-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 5/6] mke2fs: Use unix_discard() for discards
+Date: Thu, 18 Nov 2010 14:38:40 +0100
+Message-ID: <1290087521-9123-6-git-send-email-lczerner@redhat.com>
 References: <1290087521-9123-1-git-send-email-lczerner@redhat.com>
 Cc: sandeen@redhat.com, adilger@dilger.ca, lczerner@redhat.com,
 	linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45807 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44217 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757766Ab0KRNi7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Nov 2010 08:38:59 -0500
+	id S1757636Ab0KRNi6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 08:38:58 -0500
 In-Reply-To: <1290087521-9123-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow to specify discard in mke2fs.conf. Also change the way how to
-specify default value for lazy_itable_init. It is better to have all
-this defaulting done in the same place so do it in definition (as we do
-with discard).
+There is generic discard function in struct_io_manager, or in
+unix_io_manager to be specific. So use this instead of
+mke2fs_discard_blocks().
+
+Since mke2fs_discard_blocks() is not used anymore (and should not be)
+remove it.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- misc/mke2fs.c         |    9 +++++----
- misc/mke2fs.conf.5.in |    5 +++++
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ misc/mke2fs.c |   54 +++++++++++-------------------------------------------
+ 1 files changed, 11 insertions(+), 43 deletions(-)
 
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index e000058..2b423d7 100644
+index d63c27f..e000058 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
-@@ -83,12 +83,12 @@ int	cflag;
- int	verbose;
- int	quiet;
- int	super_only;
--int	discard = 1;
-+int	discard = 1;	/* attempt  to discard device before fs creation */
- int	force;
- int	noaction;
- int	journal_size;
- int	journal_flags;
--int	lazy_itable_init;	/* use lazy inode table init */
-+int	lazy_itable_init = 0;	/* do not use lazy inode table init */
- char	*bad_blocks_filename;
- __u32	fs_stride;
+@@ -1907,48 +1907,6 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
+ 	return retval;
+ }
  
-@@ -1686,8 +1686,9 @@ static void PRS(int argc, char *argv[])
+-#ifdef __linux__
+-
+-#ifndef BLKDISCARD
+-#define BLKDISCARD	_IO(0x12,119)
+-#endif
+-
+-/*
+- * Return zero if the discard succeeds, and -1 if the discard fails.
+- */
+-static int mke2fs_discard_blocks(ext2_filsys fs)
+-{
+-	int fd;
+-	int ret;
+-	int blocksize;
+-	__u64 blocks;
+-	__uint64_t range[2];
+-
+-	blocks = ext2fs_blocks_count(fs->super);
+-	blocksize = EXT2_BLOCK_SIZE(fs->super);
+-	range[0] = 0;
+-	range[1] = blocks * blocksize;
+-
+-	fd = open64(fs->device_name, O_RDWR);
+-
+-	if (fd > 0) {
+-		ret = ioctl(fd, BLKDISCARD, &range);
+-		if (verbose) {
+-			printf(_("Calling BLKDISCARD from %llu to %llu "),
+-			       (unsigned long long) range[0],
+-			       (unsigned long long) range[1]);
+-			if (ret)
+-				printf(_("failed.\n"));
+-			else
+-				printf(_("succeeded.\n"));
+-		}
+-		close(fd);
+-	}
+-	return ret;
+-}
+-
+-#endif
+-
+ int main (int argc, char *argv[])
+ {
+ 	errcode_t	retval = 0;
+@@ -2009,7 +1967,17 @@ int main (int argc, char *argv[])
  
- 	blocksize = EXT2_BLOCK_SIZE(&fs_param);
+ 	/* Can't undo discard ... */
+ 	if (discard && (io_ptr != undo_io_manager)) {
+-		retval = mke2fs_discard_blocks(fs);
++		blk64_t blocks = ext2fs_blocks_count(fs->super);
++		retval = io_ptr->discard(fs->io, 0, blocks, fs->blocksize);
++
++		if (verbose) {
++			printf(_("Calling BLKDISCARD from 0 to %llu "),
++			       (unsigned long long) blocks);
++			if (retval)
++				printf(_("failed.\n"));
++			else
++				printf(_("succeeded.\n"));
++		}
  
--	lazy_itable_init = get_bool_from_profile(fs_types,
--						 "lazy_itable_init", 0);
-+	lazy_itable_init = get_bool_from_profile(fs_types, "lazy_itable_init",
-+						 lazy_itable_init);
-+	discard = get_bool_from_profile(fs_types, "discard" , discard);
- 
- 	/* Get options from profile */
- 	for (cpp = fs_types; *cpp; cpp++) {
-diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
-index d212947..e9913cb 100644
---- a/misc/mke2fs.conf.5.in
-+++ b/misc/mke2fs.conf.5.in
-@@ -360,6 +360,11 @@ option.  This can be used to configure the default extended options used
- by
- .BR mke2fs (8)
- on a per-filesystem type basis.
-+.TP
-+.I discard
-+This relation is a boolean which specifies whether the
-+.BR mke2fs (8)
-+should attempt to discard device prior to filesystem creation.
- .SH FILES
- .TP
- .I /etc/mke2fs.conf
+ 		if (!retval && ext2fs_discard_zeroes_data(fs->io)) {
+ 			if (verbose)
 -- 
 1.7.2.3
 
