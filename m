@@ -1,98 +1,111 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2] ext4: Add EXT4_IOC_TRIM ioctl to handle batched discard
-Date: Thu, 18 Nov 2010 08:36:49 +0100
-Message-ID: <1290065809-3976-2-git-send-email-lczerner@redhat.com>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Thu, 18 Nov 2010 08:36:48 +0100
+Message-ID: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, hch@infradead.org,
 	sandeen@redhat.com, lczerner@redhat.com
 To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38489 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752100Ab0KRHhE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Nov 2010 02:37:04 -0500
-In-Reply-To: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Filesystem independent ioctl was rejected as not common enough to be in
-core vfs ioctl. Since we still need to access to this functionality this
-commit adds ext4 specific ioctl EXT4_IOC_TRIM to dispatch
-ext4_trim_fs().
+There was concern that FITRIM ioctl is not common enough to be included
+in core vfs ioctl, as Christoph Hellwig pointed out there's no real point
+in dispatching this out to a separate vector instead of just through
+->ioctl.
 
-It takes fstrim_range structure as an argument. fstrim_range is definec in
-the include/linux/fs.h and its definition is as follows.
-
-struct fstrim_range {
-	__u64 start;
-	__u64 len;
-	__u64 minlen;
-}
-
-start	- first Byte to trim
-len	- number of Bytes to trim from start
-minlen	- minimum extent length to trim, free extents shorter than this
-  number of Bytes will be ignored. This will be rounded up to fs
-  block size.
-
-After the FITRIM is done, the number of actually discarded Bytes is stored
-in fstrim_range.len to give the user better insight on how much storage
-space has been really released for wear-leveling.
+So this commit removes ioctl_fstrim() from vfs ioctl and trim_fs
+from super_operation structure.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/ioctl.c |   24 ++++++++++++++++++++++++
- 2 files changed, 25 insertions(+), 0 deletions(-)
+ fs/ext4/super.c    |    1 -
+ fs/ioctl.c         |   39 ---------------------------------------
+ include/linux/fs.h |    1 -
+ 3 files changed, 0 insertions(+), 41 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6a5edea..2af5042 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -541,6 +541,7 @@ struct ext4_new_group_data {
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
-+#define EXT4_IOC_TRIM			FITRIM
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 61182fe..1d3c2aa 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1197,7 +1197,6 @@ static const struct super_operations ext4_sops = {
+ 	.quota_write	= ext4_quota_write,
+ #endif
+ 	.bdev_try_to_free_page = bdev_try_to_free_page,
+-	.trim_fs	= ext4_trim_fs
+ };
  
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ static const struct super_operations ext4_nojournal_sops = {
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index e92fdbb..f855ea4 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -530,41 +530,6 @@ static int ioctl_fsthaw(struct file *filp)
+ 	return thaw_super(sb);
+ }
+ 
+-static int ioctl_fstrim(struct file *filp, void __user *argp)
+-{
+-	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
+-	struct fstrim_range range;
+-	int ret = 0;
+-
+-	if (!capable(CAP_SYS_ADMIN))
+-		return -EPERM;
+-
+-	/* If filesystem doesn't support trim feature, return. */
+-	if (sb->s_op->trim_fs == NULL)
+-		return -EOPNOTSUPP;
+-
+-	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
+-	if (sb->s_bdev == NULL)
+-		return -EINVAL;
+-
+-	if (argp == NULL) {
+-		range.start = 0;
+-		range.len = ULLONG_MAX;
+-		range.minlen = 0;
+-	} else if (copy_from_user(&range, argp, sizeof(range)))
+-		return -EFAULT;
+-
+-	ret = sb->s_op->trim_fs(sb, &range);
+-	if (ret < 0)
+-		return ret;
+-
+-	if ((argp != NULL) &&
+-	    (copy_to_user(argp, &range, sizeof(range))))
+-		return -EFAULT;
+-
+-	return 0;
+-}
+-
  /*
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index bf5ae88..e07944a 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -331,6 +331,30 @@ mext_out:
- 		return err;
- 	}
+  * When you add any new common ioctls to the switches above and below
+  * please update compat_sys_ioctl() too.
+@@ -615,10 +580,6 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 		error = ioctl_fsthaw(filp);
+ 		break;
  
-+	case EXT4_IOC_TRIM:
-+	{
-+		struct super_block *sb = inode->i_sb;
-+		struct fstrim_range range;
-+		int ret = 0;
-+
-+		if (!capable(CAP_SYS_ADMIN))
-+			return -EPERM;
-+
-+		if (copy_from_user(&range, (struct fstrim_range *)arg,
-+		    sizeof(range)))
-+			return -EFAULT;
-+
-+		ret = ext4_trim_fs(sb, &range);
-+		if (ret < 0)
-+			return ret;
-+
-+		if (copy_to_user((struct fstrim_range *)arg, &range,
-+		    sizeof(range)))
-+			return -EFAULT;
-+
-+		return 0;
-+	}
-+
- 	default:
- 		return -ENOTTY;
- 	}
+-	case FITRIM:
+-		error = ioctl_fstrim(filp, argp);
+-		break;
+-
+ 	case FS_IOC_FIEMAP:
+ 		return ioctl_fiemap(filp, arg);
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 334d68a..eedc00b 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1612,7 +1612,6 @@ struct super_operations {
+ 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
+ #endif
+ 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
+-	int (*trim_fs) (struct super_block *, struct fstrim_range *);
+ };
+ 
+ /*
 -- 
 1.7.2.3
 
