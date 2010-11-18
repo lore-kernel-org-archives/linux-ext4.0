@@ -1,38 +1,33 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 22922] 2.6.36: kernel panic in cascade (Fatal exception in
- interrupt)
-Date: Thu, 18 Nov 2010 23:40:49 GMT
-Message-ID: <201011182340.oAINenbt003679@demeter2.kernel.org>
-References: <bug-22922-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Batched discard for ext3
+Date: Fri, 19 Nov 2010 00:41:01 +0100
+Message-ID: <20101118234101.GC5004@quack.suse.cz>
+References: <alpine.LFD.2.00.1011181512530.15886@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4 <linux-ext4@vger.kernel.org>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:48336 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755887Ab0KRXku (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 18:40:50 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id oAINeoJX003713
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Nov 2010 23:40:50 GMT
-In-Reply-To: <bug-22922-13602@https.bugzilla.kernel.org/>
+Received: from cantor2.suse.de ([195.135.220.15]:34272 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755887Ab0KRXlC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Nov 2010 18:41:02 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1011181512530.15886@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=22922
+  Hi!
 
+On Thu 18-11-10 15:16:06, Lukas Czerner wrote:
+> now, when batched discard is in ext4, do you plan to include it into
+> ext3 as well ? If yes, I would need to revisit my previous ext3 patches
+> since it was a long time from my previous post. Please let me know.
+  Ah, I forgot. Thanks for reminder. Please just send me the latest version
+and I'll merge patches in the next merge window.
 
-Rafael J. Wysocki <rjw@sisk.pl> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-
-
-
+								Honza
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
