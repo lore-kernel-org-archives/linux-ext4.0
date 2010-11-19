@@ -1,82 +1,45 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Thu, 18 Nov 2010 20:49:04 -0500
-Message-ID: <yq1eiaiw0a7.fsf@sermon.lab.mkp.net>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
-	<20101118130630.GJ6178@parisc-linux.org>
-	<20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
-	<20101118141957.GK6178@parisc-linux.org>
-	<20101118142918.GA18510@infradead.org>
-	<1290100750.3041.72.camel@mulgrave.site>
-	<x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
-	<1290102098.3041.77.camel@mulgrave.site>
-	<AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
-	<4CE59E57.2090009@teksavvy.com> <yq1r5eiw5os.fsf@sermon.lab.mkp.net>
-	<4CE5C616.7070706@teksavvy.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 23232] kernel hang on insert ext4 usb key
+Date: Fri, 19 Nov 2010 03:01:10 GMT
+Message-ID: <201011190301.oAJ31AC1031668@demeter1.kernel.org>
+References: <bug-23232-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	James Bottomley <James.Bottomley@suse.de>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
-To: Mark Lord <kernel@teksavvy.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:31301 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755774Ab0KSBth (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 20:49:37 -0500
-In-Reply-To: <4CE5C616.7070706@teksavvy.com> (Mark Lord's message of "Thu, 18
-	Nov 2010 19:34:30 -0500")
+Received: from demeter1.kernel.org ([140.211.167.39]:47881 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752337Ab0KSDBL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 22:01:11 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAJ31AF4031669
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Nov 2010 03:01:10 GMT
+In-Reply-To: <bug-23232-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Mark" == Mark Lord <kernel@teksavvy.com> writes:
+https://bugzilla.kernel.org/show_bug.cgi?id=23232
 
-Mark> Surely if a userspace tool and shell-script can accomplish this,
-Mark> totally lacking real filesystem knowledge, then we should be able
-Mark> to approximate it in kernel space?
 
-It's the splitting and merging on stacked devices that's the hard
-part. Something wiper.sh does not have to deal with. And thanks to
-differences in the protocols the SCSI-ATA translation isn't a perfect
-fit.
+Theodore Tso <tytso@mit.edu> changed:
 
-Every time TRIM comes up the discussion turns into how much we suck at
-it because we don't support coalescing of discontiguous ranges.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-However, we *do* support discarding contiguous ranges of up to about 2GB
-per command on ATA. It's not like we're issuing a TRIM command for every
-sector.
 
-For offline/weekly reclaim/FITRIM we have the full picture when the
-discard is issued. And thus we have the luxury of being able to send out
-relatively big contiguous discards unless the filesystem is insanely
-fragmented.
 
-For runtime discard usage we'll inevitably be issuing lots of itty-bitty
-512 or 4KB single-command discards. That's going to suck for performance
-on your average ATA SSD. Doctor, it hurts when I do this...
 
-So assuming we walk the filesystem to reclaim space on ATA SSDs on a
-weekly basis (since that's the only sane approach): 
+--- Comment #1 from Theodore Tso <tytso@mit.edu>  2010-11-19 03:00:59 ---
+Does it crash if you boot some earlier version of the kernel?
 
-       What is the performance impact of not coalescing discontiguous
-       block ranges when cron scrubs your /home at 4am Sunday morning?
+Can you send an image of the USB key?
 
-That, to me, is the important question. That obviously depends on the
-SSD, filesystem, fragmentation and so on. Is the win really big enough
-to justify a bunch of highly intrusive changes to our I/O stack?
-
-Thanks to PCIe SSDs and other upcoming I/O technologies we're working
-hard to bring request latency down by simplifying things. Adding
-complexity seems like a bad idea at this time. And that was the
-rationale behind the consensus at the filesystem workshop.
+It looks like it's dieing very early the VFS layer, in vfs_kern_mount.  It's
+not clear it's called into ext4 code at all when it gives the oops message.
 
 -- 
-Martin K. Petersen	Oracle Linux Engineering
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
