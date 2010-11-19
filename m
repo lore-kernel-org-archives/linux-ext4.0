@@ -1,63 +1,83 @@
-From: Dmitry <dmonakhov@openvz.org>
-Subject: Ping [PATCH 0/4] RFC: introduce extended inode owner identifier v7
-Date: Fri, 19 Nov 2010 08:51:36 +0300
-Message-ID: <87tyjdsvx3.fsf@dmon-lap.sw.ru>
-References: <1288357420-7178-1-git-send-email-dmonakhov@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@ZenIV.linux.org.uk, jack@suse.cz, linux-ext4@vger.kernel.org,
-	Ted Ts'o <tytso@mit.edu>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1288357420-7178-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: [PATCH 2/2] ext3: Add journal error check into ext3_rename()
+Date: Fri, 19 Nov 2010 16:28:36 +0900
+Message-ID: <1290151716-4041-2-git-send-email-namhyung@gmail.com>
+References: <1290151716-4041-1-git-send-email-namhyung@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:50442 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751198Ab0KSH2q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 02:28:46 -0500
+In-Reply-To: <1290151716-4041-1-git-send-email-namhyung@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 29 Oct 2010 17:03:36 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-Ping. Please take a look at the series, it has passed through some
-evolution since previous version, now it is changes mostly in ext4
-without annoying ifdefs in core code. 
-> *Feature description*
-> 1) Inode may has a project identifier which has same meaning as uid/gid.
-> 2) Id is stored in inode's xattr named "system.project_id"
-> 3) Id is inherent from parent inode on creation.
-> 4) This id is cached in memory fs_inode structure and may be accessible
->    via s_op->get_prjid(). This field it restricted by CONFIG_PROJECT_ID.
->    So no wasting of memory happens.
-> 
-> 5) Since id is cached in memory it may be used for different purposes
->    such as:
-> 5A) Implement additional quota id space orthogonal to uid/gid. This is
->     useful in managing quota for some filesystem hierarchy(chroot or
->     container over bindmount)
-> 5B) Export dedicated fs hierarchy (only inode which has some project_id
->     will be accessible)
-> 
-> *User interface *
-> Project id is managed via generic xattr interface "system.project_id"
-> This good because
->  1) We may use already existing interface.
->  2) xattr already supported by generic utilities tar/rsync and etc
-> 
-> PATCH SET TOC:
-> 1) generic projectid support
-> 2) generic project quota support
-> 3) ext4 project support implementation
->  3A) ext4: generic project support
->  3B) ext4: project quota support
-> 
-> Patch against -next-20101028.
-> Actually vfs part is really small, and most changes happen in ext4-tree
-> 
-> Changes against v6
->  - get rid of iattr stuff, current __dquot_transfer() provides sane interface
->    for quota manipulation. i_prjid can must be changed only by fs-speciffic
->    methods so only get() method is really necessery.
->  - remove #ifdef tricks from generic code.
->  - move i_prjid from vfs_inode to fs_inode, to prevent inode bloating.
->  - get rid of isolation logic, because this feature confuse most users.
-> Changes against v5
->  - convert dquota_transfer to struct iattr interface. Not it is possible
->    to change i_prjid via notify_changes()
->  - some bugfixes.
-> 
+Check return value of ext3_journal_get_write_access() and
+ext3_journal_dirty_metadata(). 'new_bh' should be kept in
+order to get revoked in case of journal error in dir_bh.
+
+Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+---
+ fs/ext3/namei.c |   27 +++++++++++++++++++++------
+ 1 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 672cea1..8061281 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -2371,7 +2371,9 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
+ 			goto end_rename;
+ 	} else {
+ 		BUFFER_TRACE(new_bh, "get write access");
+-		ext3_journal_get_write_access(handle, new_bh);
++		retval = ext3_journal_get_write_access(handle, new_bh);
++		if (retval)
++			goto journal_error1;
+ 		new_de->inode = cpu_to_le32(old_inode->i_ino);
+ 		if (EXT3_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
+ 					      EXT3_FEATURE_INCOMPAT_FILETYPE))
+@@ -2380,9 +2382,12 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
+ 		new_dir->i_ctime = new_dir->i_mtime = CURRENT_TIME_SEC;
+ 		ext3_mark_inode_dirty(handle, new_dir);
+ 		BUFFER_TRACE(new_bh, "call ext3_journal_dirty_metadata");
+-		ext3_journal_dirty_metadata(handle, new_bh);
+-		brelse(new_bh);
+-		new_bh = NULL;
++		retval = ext3_journal_dirty_metadata(handle, new_bh);
++		if (retval) {
++journal_error1:
++			ext3_std_error(new_dir->i_sb, retval);
++			goto end_rename;
++		}
+ 	}
+ 
+ 	/*
+@@ -2429,10 +2434,20 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
+ 	ext3_update_dx_flag(old_dir);
+ 	if (dir_bh) {
+ 		BUFFER_TRACE(dir_bh, "get_write_access");
+-		ext3_journal_get_write_access(handle, dir_bh);
++		retval = ext3_journal_get_write_access(handle, dir_bh);
++		if (retval)
++			goto journal_error2;
+ 		PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext3_journal_dirty_metadata");
+-		ext3_journal_dirty_metadata(handle, dir_bh);
++		retval = ext3_journal_dirty_metadata(handle, dir_bh);
++		if (retval) {
++journal_error2:
++			if (new_bh)
++				ext3_journal_revoke(handle, new_bh->b_blocknr,
++						    new_bh);
++			ext3_std_error(new_dir->i_sb, retval);
++			goto end_rename;
++		}
+ 		drop_nlink(old_dir);
+ 		if (new_inode) {
+ 			drop_nlink(new_inode);
+-- 
+1.7.0.4
+
