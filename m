@@ -1,51 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 23232] kernel hang on insert ext4 usb key
-Date: Fri, 19 Nov 2010 16:02:56 GMT
-Message-ID: <201011191602.oAJG2ucH029949@demeter1.kernel.org>
-References: <bug-23232-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Fri, 19 Nov 2010 11:16:00 -0500
+Message-ID: <20101119161600.GH10039@thunk.org>
+References: <20101118141957.GK6178@parisc-linux.org>
+ <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site>
+ <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+ <1290168976.2570.45.camel@dolmen>
+ <4CE68155.50705@teksavvy.com>
+ <20101119140203.GC10039@thunk.org>
+ <20101119141007.GB25488@infradead.org>
+ <20101119153748.GE10039@thunk.org>
+ <20101119155003.GA7145@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Mark Lord <kernel@teksavvy.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	James Bottomley <James.Bottomley@suse.de>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:46469 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752531Ab0KSQC5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 11:02:57 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAJG2uTY029950
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Nov 2010 16:02:56 GMT
-In-Reply-To: <bug-23232-13602@https.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:48713 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753925Ab0KSQQH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Nov 2010 11:16:07 -0500
+Content-Disposition: inline
+In-Reply-To: <20101119155003.GA7145@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=23232
+On Fri, Nov 19, 2010 at 10:50:03AM -0500, Christoph Hellwig wrote:
+> 
+> It's a huge issue for virtualization, where naive TRIM implementations
+> can expose data deleted in one VM to others.  It's also a huge issues
+> for RAIDs as mentioned by you.
 
+Fair enough, I'll buy that.  If you are sharing an SSD using
+virtualization across two VM's with different trust bounaries,
+non-deterministic TRIM could very well be an issue, depending on how
+it the "non-deterministic" bit was implemented.
 
+(I can think of one PCIe-attached flash implementation I know of where
+the trim is simply not persistent across a power failure, such that if
+Alice trims a block, it will return 0, but if no one rewrites the
+block before a power failure, then reading that some block will return
+Alice's original data, and not data belonging to Bob.  This would be
+an example of a non-deterministic TRIM that would be problematic for
+RAID, but not from a security perspective.  OTOH, the trim command is
+blazingly fast on this implementation, since there is absolutely no
+flash write or erase operation associated with the TRIM, and so mount
+-o discard makes a lot of sense for this particular storage device.)
 
-
-
---- Comment #9 from Theodore Tso <tytso@mit.edu>  2010-11-19 16:02:53 ---
-I'm not convinced we even got into the ext4_fill_super(); if we did there
-should have been at least some ext4 printk's.   The OOPS is in
-vfs_kern_mount().
-
-I've looked through ext4_fill_super(), and if vfs_kern_mount() had gotten as
-far as calling into ext4_fill_super(), I can't find any code path other than
-failing the first two memory allocations that wouldn't have resulted in some
-kind of kernel printk --- which wasn't in the oops display.
-
-So I strongly suspect the failure was before vfs_kern_mount() calling
-ext4_mount(), or in mount_bdev() --- since all ext4_mount() does is call
-mount_bdev() passing in ext4_fill_super as a callback function.
-
-Can the oops be replicated at this point?   If so, we can try instrumenting the
-kernel, but this strongly smells like a hardware problem and a failure in the
-generic code before we drop into the ext4 mount code in ext4_fill_super().
-
--- Ted
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
