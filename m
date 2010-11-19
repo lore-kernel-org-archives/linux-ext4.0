@@ -1,53 +1,38 @@
 From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
  super_operation
-Date: Fri, 19 Nov 2010 09:06:39 -0500
-Message-ID: <20101119140639.GA25488@infradead.org>
-References: <1290100750.3041.72.camel@mulgrave.site>
- <x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
- <1290102098.3041.77.camel@mulgrave.site>
- <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
- <4CE59E57.2090009@teksavvy.com>
- <yq1r5eiw5os.fsf@sermon.lab.mkp.net>
- <4CE5C616.7070706@teksavvy.com>
- <AANLkTikgEeUL2NVLLdoT3RX0r=v0Pzfp9-==F39DVRgN@mail.gmail.com>
- <20101119115516.GA1152@infradead.org>
- <4CE6831E.4020606@teksavvy.com>
+Date: Fri, 19 Nov 2010 09:10:07 -0500
+Message-ID: <20101119141007.GB25488__7679.3089313016$1290175852$gmane$org@infradead.org>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+ <20101118130630.GJ6178@parisc-linux.org>
+ <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org>
+ <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site>
+ <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+ <1290168976.2570.45.camel@dolmen>
+ <4CE68155.50705@teksavvy.com>
+ <20101119140203.GC10039@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
+To: Ted Ts'o <tytso@mit.edu>, Mark Lord <kernel@teksavvy.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
 	James Bottomley <James.Bottomley@suse.de>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
-To: Mark Lord <kernel@teksavvy.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	Ch
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:54774 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754554Ab0KSOKL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 09:10:11 -0500
 Content-Disposition: inline
-In-Reply-To: <4CE6831E.4020606@teksavvy.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20101119140203.GC10039@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 19, 2010 at 09:01:02AM -0500, Mark Lord wrote:
-> That is my intent already, thanks.  Just needs time, perhaps this winter.
+On Fri, Nov 19, 2010 at 09:02:03AM -0500, Ted Ts'o wrote:
+> Deterministic TRIM is an option.  It doesn't have to be implemented.
 
-This wasn't addressed at you, but a snide remark at Greg, who is just
-contantly bickering without actually beeing any help.
-
-> I think a reasonable approach would be to modify the existing interfaces
-> so that the LLD can report a "max discard ranges per command" back up
-> the stack.
-> 
-> This way, libata could report a max of say, 64 ranges per "discard" (trim),
-> and DM/RAID could simply (for now) report a max of one range per discard.
-
-That's certainly the easy way out.  You'll need a good way to actually
-transport the ranges as we can't simply sote them in bi_sector/bi_size
-and adapt the whole block layer to deal with the two types of different
-discards.  Not saying it's impossible, but when I tried it before it
-wasn't pretty.
+For reasonable use it has to.  That rationale for it is pretty clearly
+outline in ftp://ftp.t10.org/t10/document.08/08-347r1.pdf.
 
