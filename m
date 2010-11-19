@@ -1,75 +1,82 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
- super_operation
-Date: Thu, 18 Nov 2010 20:33:01 -0500
-Message-ID: <20101119013301.GU3290@thunk.org>
-References: <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
- <20101118141957.GK6178@parisc-linux.org>
- <20101118142918.GA18510@infradead.org>
- <1290100750.3041.72.camel@mulgrave.site>
- <x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
- <1290102098.3041.77.camel@mulgrave.site>
- <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
- <4CE59E57.2090009@teksavvy.com>
- <1290117009.11007.42.camel@mulgrave.site>
- <4CE5A386.7000105@teksavvy.com>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Thu, 18 Nov 2010 20:49:04 -0500
+Message-ID: <yq1eiaiw0a7.fsf@sermon.lab.mkp.net>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+	<20101118130630.GJ6178@parisc-linux.org>
+	<20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+	<20101118141957.GK6178@parisc-linux.org>
+	<20101118142918.GA18510@infradead.org>
+	<1290100750.3041.72.camel@mulgrave.site>
+	<x494obe4kd5.fsf@segfault.boston.devel.redhat.com>
+	<1290102098.3041.77.camel@mulgrave.site>
+	<AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com>
+	<4CE59E57.2090009@teksavvy.com> <yq1r5eiw5os.fsf@sermon.lab.mkp.net>
+	<4CE5C616.7070706@teksavvy.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: James Bottomley <James.Bottomley@suse.de>,
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
 	Greg Freemyer <greg.freemyer@gmail.com>,
+	James Bottomley <James.Bottomley@suse.de>,
 	Jeff Moyer <jmoyer@redhat.com>,
 	Christoph Hellwig <hch@infradead.org>,
 	Matthew Wilcox <matthew@wil.cx>,
 	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
 To: Mark Lord <kernel@teksavvy.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4CE5A386.7000105@teksavvy.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:31301 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755774Ab0KSBth (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2010 20:49:37 -0500
+In-Reply-To: <4CE5C616.7070706@teksavvy.com> (Mark Lord's message of "Thu, 18
+	Nov 2010 19:34:30 -0500")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> >
-> >Before we go gung ho on this, there's no evidence that N discontiguous
-> >ranges in one command are any better than the ranges sent N times ...
-> >the same amount of erase overhead gets sent on SSDs.
-> 
-> No, we do have evidence:  execution time of the TRIM commands on the SSD.
-> 
-> The one-range-at-a-time is incredibly slow compared to multiple
-> ranges at a time.  That slowness comes from somewhere, with about
-> 99.9% certainty that it is due to the drive performing slow flash
-> erase cycles.
+>>>>> "Mark" == Mark Lord <kernel@teksavvy.com> writes:
 
-Mark, I think you are over-generalizing here.  You have observed with
-some number of flash drives --- maybe only one, but I don't know that
-for sure --- that TRIM is slow.  Even if we grant that you are correct
-in your conclusion that it is because the drive is doing slow flash
-erase cycles (and I don't completely accept that; I haven't seen your
-your measurements since we know that any kind of command that requires
-a queue drain/flush before it can execute is going to be slow, and I
-don't know what kind of _slow_ you are observing).
+Mark> Surely if a userspace tool and shell-script can accomplish this,
+Mark> totally lacking real filesystem knowledge, then we should be able
+Mark> to approximate it in kernel space?
 
-But even if we *do* grant that you've seen one disk, or even a lot of
-disks which is doing something stupid, that just means that their
-manufacturer has some idiotic engineers.  It does not follow that all
-SSD's, or thin-provisioned drives, or other devices implementing the
-the ATA TRIM command, will do so in an incompetent way.
+It's the splitting and merging on stacked devices that's the hard
+part. Something wiper.sh does not have to deal with. And thanks to
+differences in the protocols the SCSI-ATA translation isn't a perfect
+fit.
 
-If you look a the the T13 definition of TRIM, it is just a hint that
-the contents of the block range do not _have_ to be preserved.  It
-does not say that they *must* be erased.  This is not a security erase
-command.  In fact, it is perfectly reasonable for the TRIM command to
-store state in volatile storage, and the information of which blocks
-have been TRIM gets discarded on a power failure.
+Every time TRIM comes up the discussion turns into how much we suck at
+it because we don't support coalescing of discontiguous ranges.
 
-So if SSD's are doing a full flash erase cycle for each TRIM, that may
-not necessarily be a good idea.  I accept that there may be some
-incompetent implementations out there.  But I don't think this means
-we should assume that _all_ implementations are incompetent.  It does
-mean, though, that we can't turn any of these features on by default.
-But that's something we know already.
+However, we *do* support discarding contiguous ranges of up to about 2GB
+per command on ATA. It's not like we're issuing a TRIM command for every
+sector.
 
-					- Ted
+For offline/weekly reclaim/FITRIM we have the full picture when the
+discard is issued. And thus we have the luxury of being able to send out
+relatively big contiguous discards unless the filesystem is insanely
+fragmented.
+
+For runtime discard usage we'll inevitably be issuing lots of itty-bitty
+512 or 4KB single-command discards. That's going to suck for performance
+on your average ATA SSD. Doctor, it hurts when I do this...
+
+So assuming we walk the filesystem to reclaim space on ATA SSDs on a
+weekly basis (since that's the only sane approach): 
+
+       What is the performance impact of not coalescing discontiguous
+       block ranges when cron scrubs your /home at 4am Sunday morning?
+
+That, to me, is the important question. That obviously depends on the
+SSD, filesystem, fragmentation and so on. Is the win really big enough
+to justify a bunch of highly intrusive changes to our I/O stack?
+
+Thanks to PCIe SSDs and other upcoming I/O technologies we're working
+hard to bring request latency down by simplifying things. Adding
+complexity seems like a bad idea at this time. And that was the
+rationale behind the consensus at the filesystem workshop.
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
