@@ -1,62 +1,54 @@
-From: Mark Lord <kernel@teksavvy.com>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Fri, 19 Nov 2010 09:01:02 -0500
-Message-ID: <4CE6831E.4020606@teksavvy.com>
-References: <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <x494obe4kd5.fsf@segfault.boston.devel.redhat.com> <1290102098.3041.77.camel@mulgrave.site> <AANLkTim=SkqBehcCvEME7YVHk3S0dLdmBS8ooRF+-BuW@mail.gmail.com> <4CE59E57.2090009@teksavvy.com> <yq1r5eiw5os.fsf@sermon.lab.mkp.net> <4CE5C616.7070706@teksavvy.com> <AANLkTikgEeUL2NVLLdoT3RX0r=v0Pzfp9-==F39DVRgN@mail.gmail.com> <20101119115516.GA1152@infradead.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Fri, 19 Nov 2010 09:02:03 -0500
+Message-ID: <20101119140203.GC10039@thunk.org>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+ <20101118130630.GJ6178@parisc-linux.org>
+ <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org>
+ <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site>
+ <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+ <1290168976.2570.45.camel@dolmen>
+ <4CE68155.50705@teksavvy.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Steven Whitehouse <swhiteho@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
 	James Bottomley <James.Bottomley@suse.de>,
-	Jeff Moyer <jmoyer@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
 	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ironport2-out.teksavvy.com ([206.248.154.181]:28003 "EHLO
-	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752915Ab0KSOBF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 09:01:05 -0500
-In-Reply-To: <20101119115516.GA1152@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Mark Lord <kernel@teksavvy.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4CE68155.50705@teksavvy.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 10-11-19 06:55 AM, Christoph Hellwig wrote:
-> On Thu, Nov 18, 2010 at 05:16:36PM -0800, Greg Freemyer wrote:
->> I agree with Mark.  When you say "make coalescing work" it sounds like
->> major overkill.
->>
->> FITRIM should be able to lock a group of non-contiguous free ranges,
->> send them down to the block layer as a single pre-coalesced set, and
->> the block layer just needs to pass it on in a synchronous way.  Then
->> when that group of ranges is discarded, FITRIM releases the locks.
->
-> Given that you know the Linux I/O stack and hardware so well may I
-> volunteer you to implement it?
+On Fri, Nov 19, 2010 at 08:53:25AM -0500, Mark Lord wrote:
+> There is a very good reason why faster implementations may be *difficult*
+> (if not impossible) in many cases:  DETERMINISTIC trim.  This requires
+> that the drive guarantee the block ranges will return a constant known
+> value after TRIM.  Which means they MUST write to flash during the trim.
+> And any WRITE to flash means a potential ERASE operation may be needed.
 
-That is my intent already, thanks.  Just needs time, perhaps this winter.
+Deterministic TRIM is an option.  It doesn't have to be implemented.
+And as you even pointed out, there are ways of doing this
+intelligently.  Whether "intelligently" and "drive firmware authors"
+are two phrases that should be used in the same sentence is a concern
+that I will grant, but that's why mount -o discard is not the default.
 
-I think a reasonable approach would be to modify the existing interfaces
-so that the LLD can report a "max discard ranges per command" back up
-the stack.
+> Non-deterministic TRIM should also try to ensure that the original data
+> is no longer there (for security reasons), so it may have the same issues.
 
-This way, libata could report a max of say, 64 ranges per "discard" (trim),
-and DM/RAID could simply (for now) report a max of one range per discard.
+Says who?  We've deleted files on hard drives for a long time without
+scrubbing data blocks.  Why should a non-deterministic trim be any
+different.  If the goal is a better performing SSD, and not security,
+then non-deterministic trim should definitely _not_ ensure that the
+original data is no longer accessible.
 
-Way up at the FITRIM level, code could interrogate the "discard" limit
-for the device holding the fs, and construct the discard commands such that
-they respect that limit.  For a filesystem on DM/RAID, we would (for now)
-end up with single-range discards, no change from the present.
-
-For the much more common case of end-user SATA SSDs, though, we would
-suddenly get multi-range trims working with probably very little effort.
-
-That's the plan.  Feel free to beat me to it -- you've been working on
-the I/O stack nearly as long as I have (since 1992), and I expect you
-know it far better by now, too!  ;)
-
-Cheers
+						- Ted
