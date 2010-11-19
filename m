@@ -1,42 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 23232] kernel hang on insert ext4 usb key
-Date: Fri, 19 Nov 2010 15:30:30 GMT
-Message-ID: <201011191530.oAJFUUkL010090@demeter1.kernel.org>
-References: <bug-23232-13602@https.bugzilla.kernel.org/>
+From: Mark Lord <kernel@teksavvy.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Fri, 19 Nov 2010 10:30:38 -0500
+Message-ID: <4CE6981E.30703@teksavvy.com>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <4CE59C9E.6050902@teksavvy.com> <1290177488-sup-6540@think> <4CE68F80.7000607@teksavvy.com> <20101119145748.GB27919@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Chris Mason <chris.mason@oracle.com>,
+	James Bottomley <james.bottomley@suse.de>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	sandeen <sandeen@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:41601 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754946Ab0KSPab (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 10:30:31 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAJFUUg3010092
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Nov 2010 15:30:30 GMT
-In-Reply-To: <bug-23232-13602@https.bugzilla.kernel.org/>
+Received: from ironport2-out.teksavvy.com ([206.248.154.181]:1028 "EHLO
+	ironport2-out.pppoe.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754929Ab0KSPaj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 10:30:39 -0500
+In-Reply-To: <20101119145748.GB27919@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=23232
+On 10-11-19 09:57 AM, Christoph Hellwig wrote:
+> On Fri, Nov 19, 2010 at 09:53:52AM -0500, Mark Lord wrote:
+>> On 10-11-19 09:40 AM, Chris Mason wrote:
+>>>
+>>> We've been told that online and constant trimming is the default in
+>>> windows7.   The ssds are most likely to just start ignoring the trims
+>>> they can't service efficiently.
+>>
+>> Win7 collects multiple TRIM ranges over time and batches them as single TRIMs
+>> (as reported to me by an SSD vendor who traced it with a SATA analyzer,
+>>   and who also apparently has "inside info").
+>
+> I really hate to rely on this third party hearsay (from all sides), and
+> have implement TRIM support in qemu now.  I'll soon install win7 and
+> will check out the TRIM patters myself.
 
+Here is some of the heresay about Win7:
 
+   TRIM commands are sent when:
+      -- About 2/3 of partition is filled up, when file is (really) deleted,
+           not when merely sending file to trash bin.
+      -- In the above case, when trash bin gets emptied.
+      -- In the above case, when partition is deleted.
 
+So the behaviour may vary, depending upon how full the filesystem is
+at any point in time.
 
-
---- Comment #5 from shal@free.fr  2010-11-19 15:30:27 ---
-Thanks,
-
-This seems to correct the kernel crash problem.
-
-But during my test of insertion/removal the usb key , I have to performed
-several time "fsck.ext4 -y"  without thousand of error corrected...
-with this kind of error:
-EXT4-fs (sdf1): ext4_check_descriptors: Checksum for group 0 failed (12243!=0)
-EXT4-fs (sdf1): group descriptors corrupted!
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Cheers
