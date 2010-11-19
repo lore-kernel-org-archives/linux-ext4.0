@@ -1,50 +1,66 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: Add EXT4_IOC_TRIM ioctl to handle batched
- discard
-Date: Fri, 19 Nov 2010 17:26:51 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011191725400.3238@dhcp-lab-213.englab.brq.redhat.com>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <1290065809-3976-2-git-send-email-lczerner@redhat.com> <20101119161929.GI10039@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Fri, 19 Nov 2010 11:30:13 -0500
+Message-ID: <20101119163013.GJ10039@thunk.org>
+References: <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org>
+ <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site>
+ <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+ <1290168976.2570.45.camel@dolmen>
+ <4CE68155.50705@teksavvy.com>
+ <20101119140203.GC10039@thunk.org>
+ <4CE69940.6040908@teksavvy.com>
+ <alpine.LFD.2.00.1011191640320.3238@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Mark Lord <kernel@teksavvy.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	James Bottomley <James.Bottomley@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	hch@infradead.org, sandeen@redhat.com
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36865 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753144Ab0KSQ1D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Nov 2010 11:27:03 -0500
-In-Reply-To: <20101119161929.GI10039@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1011191640320.3238@dhcp-lab-213.englab.brq.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 19 Nov 2010, Ted Ts'o wrote:
+On Fri, Nov 19, 2010 at 04:44:33PM +0100, Lukas Czerner wrote:
+> > 
+> > But, oddly, it _is_ the default for mke2fs -t ext4,
+> > which really threw me for a loop recently.
+> > 
+> > I though my system had locked up when suddenly everything
+> > went dead for a very long time (many minutes) while installing a 
+> > new system.
 
-> On Thu, Nov 18, 2010 at 08:36:49AM +0100, Lukas Czerner wrote:
-> > @@ -541,6 +541,7 @@ struct ext4_new_group_data {
-> >   /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
-> >  #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
-> >  #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
-> > +#define EXT4_IOC_TRIM			FITRIM
-> 
-> If we're going to keep FITRIM defined in include/fs.h, then we should
-> just dispatch off of FITRIM below, and not define EXT4_IOC_TRIM.
-> 
-> > +	case EXT4_IOC_TRIM:
-> > +	{
-> 
-> Agreed?
+Yeah, the assumption was doing a single big discard (which is all
+mke2fs is doing) should be fast.  At least on sanely implemented SSD's
+(i.e., like the Intel X25-M) it should be, since all that should
+require is a flash write to the global mapping table, declaring all of
+the blocks as free.
 
-I am ok either way, I was just following example of EXT4_IOC_GETFLAGS -> 
-FS_IOC_GETFLAGS etc..
+If there are some incompetently implemented SSD's out there which do a
+flash erase of the entire SSD upon receiving a TRIM command (new
+flash!  Part of the whole *point* of a TRIM was to increase write
+endurance by eliminating the need to copy blocks that really weren't
+in use any more by the OS when the SSD is doing a GC copy/compaction
+of a partially written flash sector), all I can do is do a sigh, and
+wish that T13 had defined a "comptently implemented SSD bit" --- not
+that Indilinix would admit if it they were incompetent.  :-/
 
--Lukas
+> That is exactly a reason why I posted a patch for
+> "Make blkdev_issue_discard() interruptible", but nobody seems to care. As
+> an addition I have patched mke2fs to inform user about ongoing discard,
+> also with not much attention (Ted?).
 
-> 
-> There's no point making this look like an EXT4-specific interface; if
-> other file systems want to implement FITRIM as an ioctl, they are free
-> to do so.
-> 
-> 						- Ted
-> 
+Yeah, sorry.  I'm still recovering from the kernel summit and
+plumber's.  I've got to get the critical bugfix patches out to Linus
+before -rc3, and then I will try to get back to e2fsprogs.
+
+       	      	       				- Ted
