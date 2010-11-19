@@ -1,33 +1,100 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Fri, 19 Nov 2010 07:07:38 -0500
-Message-ID: <FDB6A6D0-A671-48B1-BA96-4917BE8A3390@mit.edu>
-References: <4CE35A6D.2040906@redhat.com> <20101117043845.GA3586@amd> <4CE362B0.6040607@redhat.com> <20101117061057.GA3989@amd> <20101118030613.GQ3290@thunk.org> <20101117192900.da859ac7.akpm@linux-foundation.org> <20101118060000.GA3509@amd> <20101117222834.2bb36ee1.akpm@linux-foundation.org> <20101118081822.GA9186@amd> <20101118095831.b9331e93.akpm@linux-foundation.org> <20101119051004.GD3284@amd>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Fri, 19 Nov 2010 12:16:16 +0000
+Message-ID: <1290168976.2570.45.camel@dolmen>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com>
+	 <20101118130630.GJ6178@parisc-linux.org>
+	 <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+	 <20101118141957.GK6178@parisc-linux.org>
+	 <20101118142918.GA18510@infradead.org>
+	 <1290100750.3041.72.camel@mulgrave.site>
+	 <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org
-To: Nick Piggin <npiggin@kernel.dk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-2.MIT.EDU ([18.9.25.13]:54643 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751096Ab0KSMHt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Nov 2010 07:07:49 -0500
-In-Reply-To: <20101119051004.GD3284@amd>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: James Bottomley <James.Bottomley@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Hi,
 
-On Nov 19, 2010, at 12:10 AM, Nick Piggin wrote:
+On Thu, 2010-11-18 at 18:35 +0100, Lukas Czerner wrote:
+> On Thu, 18 Nov 2010, James Bottomley wrote:
+> 
+> > On Thu, 2010-11-18 at 09:29 -0500, Christoph Hellwig wrote:
+> > > On Thu, Nov 18, 2010 at 07:19:58AM -0700, Matthew Wilcox wrote:
+> > > > I guess I was assuming that, on receiving a FALLOC_FL_PUNCH_HOLE, a
+> > > > filesystem that was TRIM-aware would pass that information down to the
+> > > > block device that it's mounted on.  I strongly feel that we shouldn't
+> > > > have two interfaces to do essentially the same thing.
+> > > > 
+> > > > I guess I'm saying that you're going to have to learn about TRIM :-)
+> > > 
+> > > Did you actually look Lukas FITRIM code (not the slight reordering here,
+> > > but the original one).  It's the ext4 version of the batched discard
+> > > model, that is a userspace ioctl to discard free space in the
+> > > filesystem.
+> > > 
+> > > hole punching will free the blocks into the free space pool.  If you do
+> > > online discard it will also get discarded, but a filesystem that has
+> > > online discard enabled doesn't need FITRIM.
+> > 
+> > Not stepping into the debate: I'm happy to see punch go to the mapping
+> > data and FITRIM pick it up later.
+> > 
+> > However, I think it's time to question whether we actually still want to
+> > allow online discard at all.  Most of the benchmarks show it to be a net
+> > lose to almost everything (either SSD or Thinly Provisioned arrays), so
+> > it's become an "enable this to degrade performance" option with no
+> > upside.
+> > 
+> > James
+> > 
+> 
+> This time began a long time ago :) that is why am I originally created
+> batched discard for ext4 (ext3) accessible through FITRIM ioctl. Ext4
+> performance with -o discard mount option goes down on the most of the
+> SSD's and every Thinly-provisioned storage I have a chance to benchmark.
+> 
+> But, for example SSD's are getting better and as time goes by we might
+> see devices that does not suffer terrible performance loss with discard
+> enabled (discard on unlink in ext4 etc...), so this "online" discard
+> probably still does make sense.
+> 
+> -Lukas
 
-> But asynch writeout needs a mutex rather than refcount so the umount
-> has something to block against and not just fail.
+I agree that it is early days for trim/discard hardware implementations.
+I hope that if it can be shown that it is useful (and if the hardware
+vendors are following this thread!) then maybe it will spur them on to
+providing faster implementations in the future. There doesn't seem to be
+any technical reason why faster implementations are not possible.
 
-Or we use a completion handler instead of a mutex for umount?
+Equally, FITRIM is useful since the overhead can be reduced to certain
+points in time when a system is less busy. With GFS2 (this may well also
+apply to OCFS2) doing a userspace trim is not very easy since there is
+no simple way to access the locking for the fs from userspace, so it
+would imply that an admin unmounted the filesystem on all nodes and then
+runs a utility on just one node. Using FITRIM though, it would be
+possible to perform the trim during normal fs operation (initiating
+FITRIM from multiple nodes at once would also work correctly, even if it
+is not desirable from a performance point of view)
 
-- Ted
+GFS2 already has code for online discard, and the changes required to
+support FITRIM are relatively small. Both online discard and FITRIM
+simply require iterating through the resource group bitmaps and
+generating discard requests depending on the bitmap states encountered.
+I'm intending to put a patch together fairly shortly to implement FITRIM
+for GFS2.
 
+So I think there is a place for both approaches,
+
+Steve.
