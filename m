@@ -1,82 +1,80 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: ext4_fill_super shouldn't return 0 on
- corruption
-Date: Fri, 19 Nov 2010 09:59:37 -0500
-Message-ID: <20101119145936.GD10039@thunk.org>
-References: <20101115214831.GA18195@tux1.beaverton.ibm.com>
- <4CE1AC38.9040201@redhat.com>
- <20101115230346.GB18195@tux1.beaverton.ibm.com>
- <alpine.LFD.2.00.1011161351230.5515@dhcp-lab-213.englab.brq.redhat.com>
- <20101116225538.GC18195@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Fri, 19 Nov 2010 10:37:48 -0500
+Message-ID: <20101119153748.GE10039@thunk.org>
+References: <20101118130630.GJ6178@parisc-linux.org>
+ <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org>
+ <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site>
+ <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+ <1290168976.2570.45.camel@dolmen>
+ <4CE68155.50705@teksavvy.com>
+ <20101119140203.GC10039@thunk.org>
+ <20101119141007.GB25488@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"Patrick J. LoPresti" <lopresti@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Mingming Cao <mcao@us.ibm.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56228 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755198Ab0KSPlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Nov 2010 10:41:23 -0500
+Cc: Mark Lord <kernel@teksavvy.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	James Bottomley <James.Bottomley@suse.de>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20101116225538.GC18195@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20101119141007.GB25488@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 16, 2010 at 02:55:38PM -0800, Darrick J. Wong wrote:
-> > the untested diff below seems like a more general solution to me,
-> > since it allows to return the actual error from
-> > generic_check_addressable().
+On Fri, Nov 19, 2010 at 09:10:07AM -0500, Christoph Hellwig wrote:
+> On Fri, Nov 19, 2010 at 09:02:03AM -0500, Ted Ts'o wrote:
+> > Deterministic TRIM is an option.  It doesn't have to be implemented.
 > 
-> It seems to work ok for me, so:
+> For reasonable use it has to.  That rationale for it is pretty clearly
+> outline in ftp://ftp.t10.org/t10/document.08/08-347r1.pdf.
 > 
-> Acked-by: Darrick J. Wong <djwong@us.ibm.com>
-> 
-> I will make the same change to ext3.
 
-OK, this is what I've added to the ext4 patch queue
+I think the author of that slide deck was being a little hysterical.
+In nearly all of these cases, if the file system is comptently
+implemented (i.e., you don't do a trim on anything but a deleted file
+block, and _only_ when you know the deleted is committed, and only the
+filesystem --- not non-privileged users --- are allowed to use the
+TRIM command), there's no issue.
 
----
-ext4: ext4_fill_super shouldn't return 0 on corruption
+One case where I'll admit he may have a point is where you are using
+software RAID, where if the TRIM is not determinstic, the only thing
+which is safe to do is a TRIM of an entire RAID stripe.  If the file
+system doesn't know about the RAID geometry, then yes, in that case
+determinstic TRIM is better --- although even then, it implies that
+you have to rebuild the raid strip after you do a TRIM, which a
+RAID-oblivious file system wouldn't do, and so you would still be
+toast.
 
-From: "Darrick J. Wong" <djwong@us.ibm.com>
+In the case of incompetently implemented, or buggy file systems, I'll
+agree that non-determinstic trim offers a bunch of pitfalls --- but so
+does deterministic trim in many of these cases.  For example, one of
+their disaster scenarios was where you do a trim on an allocated
+block, and then proceed to read from that allocated block.  That could
+only happen if the trim happened but the delete didn't commit.  But in
+that case, the fact that data blocks would disappear for a non-deleted
+file is also a disaster, and means the file system wasn't implemented
+correctly.
 
-At the start of ext4_fill_super, ret is set to -EINVAL, and any
-failure path out of that function returns ret.  However, the
-generic_check_addressable clause sets ret = 0 (if it passes), which
-means that a subsequent failure (e.g.  a group checksum error) returns
-0 even though the mount should fail.  This causes vfs_kern_mount in
-turn to think that the mount succeeded, leading to an oops.
+The other case where non-determinstic trim could get you in trouble is
+if (a) you give a user direct read access to a partition of the disk,
+without any file system as an intermediary, and (b) you allow that
+non-privileged user to issue TRIM commands to that partition.  In that
+case, it's possible that non-deterministic trim might allow you access
+to non-deleted blocks in other partitions.  But this goes back to my
+observation that you're totally safe so long as TRIM is a privileged
+operation and/or only allowed to be executed by the file system.
 
-A simple fix is to avoid using ret for the generic_check_addressable
-check, which was last changed in commit 30ca22c70e3.
+So yeah, deterministic trim is tricker, and you have to be more
+careful, especially if you're using RAID, but it's not inherently a
+disaster...
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 61182fe..3d89b72 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3268,13 +3268,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	 * Test whether we have more sectors than will fit in sector_t,
- 	 * and whether the max offset is addressable by the page cache.
- 	 */
--	ret = generic_check_addressable(sb->s_blocksize_bits,
-+	err = generic_check_addressable(sb->s_blocksize_bits,
- 					ext4_blocks_count(es));
--	if (ret) {
-+	if (err) {
- 		ext4_msg(sb, KERN_ERR, "filesystem"
- 			 " too large to mount safely on this system");
- 		if (sizeof(sector_t) < 8)
- 			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
-+		ret = err;
- 		goto failed_mount;
- 	}
- 
-
+						- Ted
