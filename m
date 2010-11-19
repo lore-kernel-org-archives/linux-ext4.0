@@ -1,54 +1,93 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Fri, 19 Nov 2010 09:40:44 -0500
-Message-ID: <1290177488-sup-6540@think>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <4CE59C9E.6050902@teksavvy.com>
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: Re: [PATCH] ext3: Coding style fix in namei.c
+Date: Fri, 19 Nov 2010 23:45:28 +0900
+Message-ID: <1290177928.1678.51.camel@leonhard>
+References: <1290161589-5370-1-git-send-email-namhyung@gmail.com>
+	 <60024FF1-3903-49AD-9A68-B04C6D678A8E@mit.edu>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: James Bottomley <james.bottomley@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	sandeen <sandeen@redhat.com>
-To: Mark Lord <kernel@teksavvy.com>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59839 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751856Ab0KSOmK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 09:42:10 -0500
-In-reply-to: <4CE59C9E.6050902@teksavvy.com>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:64809 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754157Ab0KSOpw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Nov 2010 09:45:52 -0500
+In-Reply-To: <60024FF1-3903-49AD-9A68-B04C6D678A8E@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Excerpts from Mark Lord's message of 2010-11-18 16:37:34 -0500:
-> On 10-11-18 12:19 PM, James Bottomley wrote:
-> >
-> > Not stepping into the debate: I'm happy to see punch go to the mapping
-> > data and FITRIM pick it up later.
-> >
-> > However, I think it's time to question whether we actually still want to
-> > allow online discard at all.  Most of the benchmarks show it to be a net
-> > lose to almost everything (either SSD or Thinly Provisioned arrays), so
-> > it's become an "enable this to degrade performance" option with no
-> > upside.
-> 
-> I also suspect that online TRIM exerts significant premature wear on the SSDs.
-> TRIM operations most likely trigger immediate copy/erase operations internal
-> to most SSDs, often regardless of the amount of data being trimmed.
-> 
-> Performing a 256KB erase because of a 1024-byte TRIM, over and over, is going
-> to harm the expected lifetime of an SSD.  Sure, some SSDs may do things differently
-> internally, but I don't see it working that way in much of the current crop of SSDs.
-> 
-> Currently, I patch my kernels to remove the automatic online TRIMs.
-> Is there a knob somewhere for this in the later kernels?
 
-We've been told that online and constant trimming is the default in
-windows7.   The ssds are most likely to just start ignoring the trims
-they can't service efficiently.
+2010-11-19 (=EA=B8=88), 07:57 -0500, Theodore Tso:
+> On Nov 19, 2010, at 5:13 AM, Namhyung Kim wrote:
+>=20
+> > * break long lines (using temp variables if needed)
+> > * merge short lines
+> > * put open brace on the same line
+> > * use C89-style comments
+> > * remove a space between function name and parenthesis
+> > * remove a space between '*' and pointer name
+> > * add a space after ','
+> > * other random whitespace fixes
+> >=20
+> > Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+>=20
+> What's the benefit of such massive cleanup patches, really?   Does it
+>  really enhance readability _that_ much?
+>=20
+> I believe in cleaning up code as I make substantive, useful change, b=
+ut
+>  code churn for code churn's sake has a number of downsides:
+>=20
+> *) It breaks other people's patches that might be pending (probably n=
+ot
+>  as much of an issue for ext3)
+> *) It makes it really easy to introduce
+>  security holes in code (although it looks like --- I haven't checked
+>  to make sure --- this shouldn't change the compiled code any so we c=
+an
+>  at least audit this by applying the patch, and then checking to make
+>  sure the .o hasn't changed.   What really makes my skin crawl is a
+>  massive change like that which doesn't have zero impact on the
+>  compiled object code.  If I get a patch like that, I reject it out o=
+f
+>  hand for ext4.)
+>=20
+> Bottom line is I really don't think cleanup code helps a lot.  It
+>  wastes your time --- why not find some way of improving the kernel
+>  that has more impact --- and it wastes the time of the responsible
+>  maintainer (who has to go through the code with a fined-toothed comb
+>  to make sure there's nothing bad hidden in a massive patch like this=
+).
+>=20
+> Best regards,
+>=20
+> -- Ted
+>=20
 
--chris
+Hi Ted,
+
+I wrote this patch because checkpatch complains about the code when I
+tried to write another. Since I saw many codes in namei.c doesn't
+conform the kernel coding style so I decided to write this coding style
+patch first and others on top of it. But if you think it is totally
+useless, I'm fine with dropping it.
+
+BTW, I just checked that compiled code itself has no change on x86_64,
+but there was a change in .rodata section.
+
+Thanks.
+
+--=20
+Regards,
+Namhyung Kim
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
