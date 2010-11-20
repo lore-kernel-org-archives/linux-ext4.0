@@ -1,46 +1,67 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 update for 2.6.37-rc3
-Date: Fri, 19 Nov 2010 22:34:57 -0500
-Message-ID: <E1PJeE5-0000CB-Vs@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jordan Russell <jr-list-2010@quo.to>
+Subject: Garbage returned in nanosecond component of timestamps
+Date: Sat, 20 Nov 2010 00:22:48 -0600
+Message-ID: <4CE76938.8050304@quo.to>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dizzy.i200.net ([74.86.142.210]:57063 "EHLO dizzy.i200.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751004Ab0KTGdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Nov 2010 01:33:07 -0500
+Received: from webby.quo.to (cpe-76-183-73-96.tx.res.rr.com [76.183.73.96])
+	by dizzy.i200.net (Postfix) with ESMTP id 9B1A3530070
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Nov 2010 00:22:49 -0600 (CST)
+Received: from fishy.local (fishy.local [10.70.77.9])
+	by webby.quo.to (Postfix) with ESMTP id 38E5568390
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Nov 2010 00:22:49 -0600 (CST)
+Received: from [10.70.77.15] (unknown [10.70.77.15])
+	by fishy.local (Postfix) with ESMTP id 1E058AE436
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Nov 2010 00:22:49 -0600 (CST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+[Fedora 14 with vendor kernel 2.6.35.6-48.fc14.i686.PAE]
 
-Please pull from:
+When nanosecond timestamp resolution isn't supported on an ext4
+partition (inode size = 128), stat() appears to be returning
+uninitialized garbage in the nanosecond component of timestamps.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+See the following tests.
+Expected: All timestamps should end with '.0000000000'.
+Actual: '.0026721629' popping up on a different file each time.
 
-Mustly bug fixes, but also we undo a change we made to the core VFS
-during -rc1 to keep things simpler.  (Basically, we vector the FITRIM
-ioctl through ioctl interface instead of through a new super_operations
-vector.)
+> # tune2fs -l /dev/md0 | fgrep 'Inode size'
+> Inode size:               128
+> # echo 3 >/proc/sys/vm/drop_caches
+> # find / -xdev -type f -printf '%t - %p\n' | fgrep -v '.0000000000'
+> Wed Nov  4 16:53:20.0026721629 2009 - /boot/oldconfigs/config-2.6.27.38-170.2.113.fc10.i686.PAE
+> # echo 3 >/proc/sys/vm/drop_caches
+> # find / -xdev -type f -printf '%t - %p\n' | fgrep -v '.0000000000'
+> Thu Nov  8 20:38:30.0026721629 2007 - /boot/oldconfigs/config-2.6.23.1-49.fc8PAE
+> # echo 3 >/proc/sys/vm/drop_caches
+> # find / -xdev -type f -printf '%t - %p\n' | fgrep -v '.0000000000'
+> Thu Aug 12 17:44:51.0026721629 2010 - /lib/firmware/emi26/bitstream.fw
+> # echo 3 >/proc/sys/vm/drop_caches
+> # find / -xdev -type f -printf '%t - %p\n' | fgrep -v '.0000000000'
+> Thu Aug 12 17:44:51.0026721629 2010 - /lib/firmware/slicoss/gbdownload.sys
+> # echo 3 >/proc/sys/vm/drop_caches
+> # find / -xdev -type f -printf '%t - %p\n' | fgrep -v '.0000000000'
+> Fri Nov  5 01:16:32.0026721629 2010 - /boot/grub/e2fs_stage1_5
 
-                                        - Ted
 
-Dan Carpenter (1):
-      ext4: missing unlock in ext4_clear_request_list()
+Shouldn't EXT4_INODE_GET_XTIME zero out tv_nsec when EXT4_FITS_IN_INODE
+evaluates to false...?
 
-Darrick J. Wong (1):
-      ext4: ext4_fill_super shouldn't return 0 on corruption
+> #define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)                          \
+> do {                                                                           \
+>         (inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+>         if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+>                 ext4_decode_extra_time(&(inode)->xtime,                        \
+>                                        raw_inode->xtime ## _extra);            \
+> } while (0)
 
-Lukas Czerner (2):
-      fs: Do not dispatch FITRIM through separate super_operation
-      ext4: Add EXT4_IOC_TRIM ioctl to handle batched discard
-
-Markus Trippelsdorf (1):
-      ext4: fix setting random pages PageUptodate
-
-yangsheng (1):
-      jbd2: fix /proc/fs/jbd2/<dev> when using an external journal
-
- fs/ext4/ioctl.c    |   24 ++++++++++++++++++++++++
- fs/ext4/page-io.c  |    4 ++--
- fs/ext4/super.c    |    9 +++------
- fs/ioctl.c         |   39 ---------------------------------------
- fs/jbd2/journal.c  |   16 ++++++++--------
- include/linux/fs.h |    1 -
- 6 files changed, 37 insertions(+), 56 deletions(-)
+-- 
+Jordan Russell
