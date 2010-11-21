@@ -1,42 +1,60 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [BUG?] [Ext4] INFO: suspicious rcu_dereference_check() usage
-Date: Sun, 21 Nov 2010 12:37:26 -0500
-Message-ID: <20101121173726.GG23423@thunk.org>
-References: <20101121112611.GB4267@deepthought.bhanu.net>
- <20101121133024.GF23423@thunk.org>
- <20101121153949.GD20947@barrios-desktop>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Sun, 21 Nov 2010 14:07:04 -0500
+Message-ID: <36056.1290366424@localhost>
+References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <4CE59C9E.6050902@teksavvy.com> <1290177488-sup-6540@think>
+            <4CE68F80.7000607@teksavvy.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Paul McKenney <paulmck@linux.vnet.ibm.com>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Minchan Kim <minchan.kim@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20101121153949.GD20947@barrios-desktop>
-Sender: owner-linux-mm@kvack.org
+Content-Type: multipart/signed; boundary="==_Exmh_1290366424_7222P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 7bit
+Cc: Chris Mason <chris.mason@oracle.com>,
+	James Bottomley <james.bottomley@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	sandeen <sandeen@redhat.com>
+To: Mark Lord <kernel@teksavvy.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: Your message of "Fri, 19 Nov 2010 09:53:52 EST."
+             <4CE68F80.7000607@teksavvy.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 22, 2010 at 12:39:49AM +0900, Minchan Kim wrote:
+--==_Exmh_1290366424_7222P
+Content-Type: text/plain; charset=us-ascii
+
+On Fri, 19 Nov 2010 09:53:52 EST, Mark Lord said:
+> On 10-11-19 09:40 AM, Chris Mason wrote:
+> >
+> > We've been told that online and constant trimming is the default in
+> > windows7.   The ssds are most likely to just start ignoring the trims
+> > they can't service efficiently.
 > 
-> I think it's no problem. 
-> 
-> That's because migration always holds lock_page on the file page.
-> So the page couldn't remove from radix. 
+> Win7 collects multiple TRIM ranges over time and batches them as single TRIMs
+> (as reported to me by an SSD vendor who traced it with a SATA analyzer,
+>   and who also apparently has "inside info").
 
-It may be "ok" in that it won't cause a race, but it still leaves an
-unsightly warning if LOCKDEP is enabled, and LOCKDEP warnings will
-cause /proc_lock_stat to be disabled.  So I think it still needs to be
-fixed by adding rcu_read_lock()/rcu_read_unlock() to
-migrate_page_move_mapping().
+What should happen if we have (for instance) a "collect 64 trims at a time" policy,
+and the system crashes at trim number 47? (Probably not an issue if you're
+doing non-deterministic trim, but is an exposure if you're relying on deterministic
+trim for security reasons)
 
-      	 					     - Ted
+--==_Exmh_1290366424_7222P
+Content-Type: application/pgp-signature
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom policy in Canada: sign http://dissolvethecrtc.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
+
+iD8DBQFM6W3YcC3lWbTT17ARAp32AKCjjlYzzTYXtVHem/U0SuuG3N7NZwCgxkFo
+9gYTPHfjAXC4eXLbjpea09Y=
+=FpSi
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1290366424_7222P--
+
