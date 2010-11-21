@@ -1,60 +1,41 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Sun, 21 Nov 2010 14:07:04 -0500
-Message-ID: <36056.1290366424@localhost>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <4CE59C9E.6050902@teksavvy.com> <1290177488-sup-6540@think>
-            <4CE68F80.7000607@teksavvy.com>
+From: Tomasz Chmielewski <mangoo@wpkg.org>
+Subject: ext4 online defrag status?
+Date: Sun, 21 Nov 2010 20:33:59 +0100
+Message-ID: <4CE97427.1090700@wpkg.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1290366424_7222P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>,
-	James Bottomley <james.bottomley@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	sandeen <sandeen@redhat.com>
-To: Mark Lord <kernel@teksavvy.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: Your message of "Fri, 19 Nov 2010 09:53:52 EST."
-             <4CE68F80.7000607@teksavvy.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.virtall.com ([178.63.195.102]:47966 "EHLO mail.virtall.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753290Ab0KUTeV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Nov 2010 14:34:21 -0500
+Received: from mail.virtall.com (localhost [127.0.0.1])
+	by mail.virtall.com (Postfix) with ESMTP id 17960359D94
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Nov 2010 20:34:18 +0100 (CET)
+Received: from [192.168.10.145] (e183095092.adsl.alicedsl.de [85.183.95.92])
+	by mail.virtall.com (Postfix) with ESMTPSA id 50A07359D59
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Nov 2010 20:34:10 +0100 (CET)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---==_Exmh_1290366424_7222P
-Content-Type: text/plain; charset=us-ascii
+I was wondering what is the status of online defragment for ext4?
 
-On Fri, 19 Nov 2010 09:53:52 EST, Mark Lord said:
-> On 10-11-19 09:40 AM, Chris Mason wrote:
-> >
-> > We've been told that online and constant trimming is the default in
-> > windows7.   The ssds are most likely to just start ignoring the trims
-> > they can't service efficiently.
-> 
-> Win7 collects multiple TRIM ranges over time and batches them as single TRIMs
-> (as reported to me by an SSD vendor who traced it with a SATA analyzer,
->   and who also apparently has "inside info").
 
-What should happen if we have (for instance) a "collect 64 trims at a time" policy,
-and the system crashes at trim number 47? (Probably not an issue if you're
-doing non-deterministic trim, but is an exposure if you're relying on deterministic
-trim for security reasons)
+Generally, fragmentation isn't a big problem with every day usage, but 
+can bite when virtual machine (i.e. KVM) disk images are files.
 
---==_Exmh_1290366424_7222P
-Content-Type: application/pgp-signature
+For example:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
+vm-111-disk-1.raw: 28054 extents found, perfection would be 138 extents
 
-iD8DBQFM6W3YcC3lWbTT17ARAp32AKCjjlYzzTYXtVHem/U0SuuG3N7NZwCgxkFo
-9gYTPHfjAXC4eXLbjpea09Y=
-=FpSi
------END PGP SIGNATURE-----
 
---==_Exmh_1290366424_7222P--
+There have been some ext4 defrag patches posted in 2008 and 2009 - what 
+is the state of this now in late 2010?
 
+
+
+-- 
+Tomasz Chmielewski
+http://wpkg.org
