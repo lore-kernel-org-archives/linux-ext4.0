@@ -1,8 +1,7 @@
 From: <zeng.zhaoming@freescale.com>
 Subject: [PATCH] ext4: Fix memory leak in groupinfo cache name
-Date: Mon, 22 Nov 2010 06:02:11 +0800
-Message-ID: <1290376931-2129-2-git-send-email-zeng.zhaoming@freescale.com>
-References: <1290376931-2129-1-git-send-email-zeng.zhaoming@freescale.com>
+Date: Mon, 22 Nov 2010 06:02:10 +0800
+Message-ID: <1290376931-2129-1-git-send-email-zeng.zhaoming@freescale.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <mpm@selenic.com>,
@@ -10,12 +9,10 @@ Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <mpm@selenic.com>,
 	Zeng Zhaoming <zengzm.kernel@gmail.com>
 To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from va3ehsobe006.messaging.microsoft.com ([216.32.180.16]:9490 "EHLO
-	VA3EHSOBE009.bigfish.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750967Ab0KVGBU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Nov 2010 01:01:20 -0500
-In-Reply-To: <1290376931-2129-1-git-send-email-zeng.zhaoming@freescale.com>
+Received: from tx2ehsobe002.messaging.microsoft.com ([65.55.88.12]:23388 "EHLO
+	TX2EHSOBE004.bigfish.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750967Ab0KVGB1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2010 01:01:27 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
