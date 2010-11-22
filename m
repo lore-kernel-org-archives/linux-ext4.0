@@ -1,132 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [bug] ext4 bug
-Date: Tue, 23 Nov 2010 09:00:37 -0600
-Message-ID: <4CEBD715.3070405@redhat.com>
-References: <20101123093201.GA4131@amd>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: Inform user about ongoing discard
+Date: Mon, 22 Nov 2010 15:20:02 -0500
+Message-ID: <20101122202002.GA2767@thunk.org>
+References: <1287670982-32348-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, zeng.zhaoming@freescale.com
-To: Nick Piggin <npiggin@kernel.dk>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29102 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:52318 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753381Ab0KWPAy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Nov 2010 10:00:54 -0500
-In-Reply-To: <20101123093201.GA4131@amd>
+	id S1753516Ab0KWPSr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Nov 2010 10:18:47 -0500
+Content-Disposition: inline
+In-Reply-To: <1287670982-32348-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/23/10 3:32 AM, Nick Piggin wrote:
-> Hi,
+On Thu, Oct 21, 2010 at 04:23:02PM +0200, Lukas Czerner wrote:
+> Since there are some slow SSD's out there and big thinly provisioned
+> storages on which it takes quite long to issue discard through whole
+> device, it would be nice to provide user the information about what is
+> going on and how long it will take (approximately).
 > 
-> Got a couple of ext4 bugs. modprobe ext4 ; # use it ; rmmod ext4 ;
-> modprobe ext4 reproduced it twice.
-> 
-> Seems to not deallocate the kobject stuff properly, and then probably
-> something in an error path is doing a double free and corrupting stuff.
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-have a look at
-http://www.spinics.net/lists/linux-ext4/msg21890.html
+Hi Lukas,
 
-> ext4 allocate memory for cache name by:
->     namep = kstrdup(name, GFP_KERNEL);
-> and reclaim it by:
->     name = kmem_cache_name(cache);
->     kfree(name)
-> 
-> This is ok if allocator only reference to the cache name memory, and return
-> the name memory pass to kmem_cache_create() by kmem_cache_name();
-> But not true in slub, when using slub, memory leak and double free error appears.
+I've looked at this patch, and one thing that disturbs me about it ---
+you are discarding the first percentage of the disk five percent times
+for no good reason just to get the timing, before then executing the
+discard for the entire disk.   There are a couple of problems with this:
 
--Eric
+*) For smart/competently implemented SSD's, discarding the same part
+of the disk five times might lead to a misleading timing --- the smart
+device could easily determine that the first 1% is already not in use
+after the first discard, and the subsequent 4 discards could be
+discard as no-ops.
 
-> 
-> [ 1234.475241]
-> =============================================================================
-> [ 1234.475503] BUG kmalloc-32: Object already free
-> [ 1234.475665]
-> -----------------------------------------------------------------------------
-> [ 1234.475668] 
-> [ 1234.476076] INFO: Allocated in kmem_cache_create+0x65/0x2d0
-> age=1104271 cpu=0 pid=1492
-> [ 1234.476332] INFO: Freed in kmem_cache_release+0x16/0x30 age=1 cpu=13
-> pid=27603
-> [ 1234.476584] INFO: Slab 0xffffea0003cf5cd8 objects=39 used=9
-> fp=0xffff880116acd750 flags=0x40000000000000c1
-> [ 1234.476842] INFO: Object 0xffff880116acd6e8 @offset=1768
-> fp=0xffff880116acd478
-> [ 1234.476845] 
-> [ 1234.477244] Bytes b4 0xffff880116acd6d8:  00 00 00 00 00 00 00 00 5a
-> 5a 5a 5a 5a 5a 5a 5a ........ZZZZZZZZ
-> [ 1234.478696]   Object 0xffff880116acd6e8:  6b 6b 6b 6b 6b 6b 6b 6b 6b
-> 6b 6b 6b 6b 6b 6b 6b kkkkkkkkkkkkkkkk
-> [ 1234.480152]   Object 0xffff880116acd6f8:  6b 6b 6b 6b 6b 6b 6b 6b 6b
-> 6b 6b 6b 6b 6b 6b a5 kkkkkkkkkkkkkkk?
-> [ 1234.481604]  Redzone 0xffff880116acd708:  bb bb bb bb bb bb bb bb
-> ????????        
-> [ 1234.483059]  Padding 0xffff880116acd748:  5a 5a 5a 5a 5a 5a 5a 5a
-> ZZZZZZZZ        
-> [ 1234.484512] Pid: 27603, comm: rmmod Not tainted 2.6.37-rc3+ #27
-> [ 1234.484679] Call Trace:
-> [ 1234.484837]  [<ffffffff8110bb1e>] print_trailer+0xfe/0x160
-> [ 1234.485025]  [<ffffffffa00626a7>] ? ext4_exit_mballoc+0x67/0x80
-> [ext4]
-> [ 1234.485196]  [<ffffffff8110bbbc>] object_err+0x3c/0x50
-> [ 1234.485362]  [<ffffffff8110e015>] free_debug_processing+0x1f5/0x250
-> [ 1234.485546]  [<ffffffffa00626a7>] ? ext4_exit_mballoc+0x67/0x80
-> [ext4]
-> [ 1234.485719]  [<ffffffff8110e5d4>] __slab_free+0x1b4/0x1e0
-> [ 1234.485891]  [<ffffffff8110e71c>] kfree+0x11c/0x1c0
-> [ 1234.486071]  [<ffffffffa00626a7>] ? ext4_exit_mballoc+0x67/0x80
-> [ext4]
-> [ 1234.486258]  [<ffffffffa00626a7>] ext4_exit_mballoc+0x67/0x80 [ext4]
-> [ 1234.486444]  [<ffffffffa0070e23>] ext4_exit_fs+0xfb/0x12e [ext4]
-> [ 1234.486619]  [<ffffffff81083b4d>] ? trace_hardirqs_on+0xd/0x10
-> [ 1234.486791]  [<ffffffff810904ea>] sys_delete_module+0x17a/0x270
-> [ 1234.486964]  [<ffffffff816036ad>] ? retint_swapgs+0xe/0x13
-> [ 1234.487133]  [<ffffffff81083afd>] ?
-> trace_hardirqs_on_caller+0x13d/0x180
-> [ 1234.487306]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
-> [ 1234.487477] FIX kmalloc-32: Object at 0xffff880116acd6e8 not freed
-> [ 1243.592427] ------------[ cut here ]------------
-> [ 1243.592595] WARNING: at fs/sysfs/dir.c:451 sysfs_add_one+0xce/0x200()
-> [ 1243.592757] Hardware name: S5520UR
-> [ 1243.592921] sysfs: cannot create duplicate filename '/fs/ext4'
-> [ 1243.593081] Modules linked in: ext4(+) jbd2 crc16 brd [last unloaded:
-> ext4]
-> [ 1243.593642] Pid: 27865, comm: modprobe Not tainted 2.6.37-rc3+ #27
-> [ 1243.593800] Call Trace:
-> [ 1243.593964]  [<ffffffff810497ea>] warn_slowpath_common+0x7a/0xb0
-> [ 1243.594129]  [<ffffffff810498c1>] warn_slowpath_fmt+0x41/0x50
-> [ 1243.594289]  [<ffffffff8118c35e>] sysfs_add_one+0xce/0x200
-> [ 1243.594447]  [<ffffffff8118c50c>] create_dir+0x7c/0xd0
-> [ 1243.594607]  [<ffffffff8118c5dc>] sysfs_create_dir+0x7c/0xd0
-> [ 1243.594771]  [<ffffffff8127949b>] kobject_add_internal+0xab/0x1f0
-> [ 1243.594954]  [<ffffffff8127960f>] kset_register+0x2f/0x60
-> [ 1243.595118]  [<ffffffff81279c9f>] kset_create_and_add+0x8f/0x1c0
-> [ 1243.595287]  [<ffffffffa00ff11e>] ? ext4_init_fs+0x0/0x139 [ext4]
-> [ 1243.595454]  [<ffffffffa00ff15a>] ext4_init_fs+0x3c/0x139 [ext4]
-> [ 1243.595617]  [<ffffffff810001de>] do_one_initcall+0x3e/0x180
-> [ 1243.595780]  [<ffffffff81093ba2>] sys_init_module+0xb2/0x200
-> [ 1243.595949]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
-> [ 1243.596113] ---[ end trace 8766368be9c85c43 ]---
-> [ 1243.596279] kobject_add_internal failed for ext4 with -EEXIST, don't
-> try to register things with the same name in the same directory.
-> [ 1243.596538] Pid: 27865, comm: modprobe Tainted: G        W
-> 2.6.37-rc3+ #27
-> [ 1243.596711] Call Trace:
-> [ 1243.596865]  [<ffffffff8127953c>] kobject_add_internal+0x14c/0x1f0
-> [ 1243.597043]  [<ffffffff8127960f>] kset_register+0x2f/0x60
-> [ 1243.597208]  [<ffffffff81279c9f>] kset_create_and_add+0x8f/0x1c0
-> [ 1243.597377]  [<ffffffffa00ff11e>] ? ext4_init_fs+0x0/0x139 [ext4]
-> [ 1243.597545]  [<ffffffffa00ff15a>] ext4_init_fs+0x3c/0x139 [ext4]
-> [ 1243.597710]  [<ffffffff810001de>] do_one_initcall+0x3e/0x180
-> [ 1243.597872]  [<ffffffff81093ba2>] sys_init_module+0xb2/0x200
-> [ 1243.598085]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+*) Mark Lord has claimed that there exists a large number of
+incomptently implemented SSD's out there, that may actually be
+executing a flash erase of the discarded region.  If true, executing
+an extra flash erase on 1% of the disk for no good reason five times
+might not be the best thing to do for the longetivity of the device.
 
+I was tempted to fix this up myself, but since I'm trying to get
+better at delegating work to others, may I suggest the following
+changes?
+
+1)  Implement block device ioctl's for the kernel that export the
+discard_granularity, discard_alignment, and max_discard_sectors.  
+
+2) Change mke2fs so that the discard is done in a separate function.
+Said function should attempt to fetch the discard_granularity,
+discard_alignment, and max_discard_sectors.
+
+3) This new function in mke2fs should start by discarding
+approximately 1% of device at a time, respecting discard_granularity
+and discard_alignment.  If the time to discard 1% of the device is
+less than a second, then it should double the amount that it discards
+at a time.  If the time to discard takes longer than 4 seconds, it
+should reduce the amount that it discards by half (again, always
+respecting discard_granularity and discard_alignment).  The function
+can display the amount of time elapsed and the estimated amount of
+time remaining after each chunk of the device that it discards,
+assuming it can use ^M to redraw the progress report (which of course
+should be suppressed if the -q option is specified on the command
+line).
+
+
+This design doesn't "waste" any discards, which is both faster and
+reduces wear on badly designed SSD's.  It also continuously updates
+the user with the amount of time it takes to complete the discard
+process.  It also will respect the discard_granularity and
+discard_alignment restrictions; and of course, it allows the user to
+interrupt the discard, without needing a special kernel patch.
+
+Does this make sense to you?
+
+						- Ted
