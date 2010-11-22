@@ -1,329 +1,147 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] ext3: Add batched discard support for ext3
-Date: Mon, 22 Nov 2010 12:29:17 +0100
-Message-ID: <1290425358-16253-1-git-send-email-lczerner@redhat.com>
-Cc: lczerner@redhat.com, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: jack@suse.cz
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Christoph Bartoschek <bartoschek@or.uni-bonn.de>
+Subject: ext4_alloc_context occupies 150 GiB of memory and makes the system unusable
+Date: Mon, 22 Nov 2010 13:23:25 +0100
+Message-ID: <201011221323.25342.bartoschek@or.uni-bonn.de>
+Mime-Version: 1.0
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from brical.or.uni-bonn.de ([131.220.141.99]:44937 "EHLO
+	brical.or.uni-bonn.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755471Ab0KVMr5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2010 07:47:57 -0500
+Received: from wse04.or.uni-bonn.de (bg-1.or.uni-bonn.de [131.220.141.100])
+	by brical.or.uni-bonn.de (Postfix) with ESMTP id 042E63B6D6
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Nov 2010 13:23:26 +0100 (CET)
+Received: from imap.or.uni-bonn.de (mailserver.or.uni-bonn.de [131.220.143.135])
+	by wse04.or.uni-bonn.de (Postfix) with ESMTP id 86AFF4E11
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Nov 2010 13:23:26 +0100 (CET)
+Received: from burns.bruehl.pontohonk.de (wse00.or.uni-bonn.de [131.220.143.130])
+	by imap.or.uni-bonn.de (Postfix) with ESMTPS id 636D21FE9E
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Nov 2010 13:23:26 +0100 (CET)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Walk through allocation groups and trim all free extents. It can be
-invoked through FITRIM ioctl on the file system. The main idea is to
-provide a way to trim the whole file system if needed, since some SSD's
-may suffer from performance loss after the whole device was filled (it
-does not mean that fs is full!).
+Hi,
 
-It search for free extents in allocation groups specified by Byte range
-start -> start+len. When the free extent is within this range, blocks are
-marked as used and then trimmed. Afterwards these blocks are marked as
-free in per-group bitmap.
+I have the problem that on one machine lots of memory is allocated for 
+ext4_alloc_context.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext3/balloc.c        |  262 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/ext3_fs.h |    1 +
- 2 files changed, 263 insertions(+), 0 deletions(-)
+I would like to know for what purpose the memory is allocated and why it is 
+not given to processes that need memory.
 
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index b3db226..8393abf 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -20,6 +20,7 @@
- #include <linux/ext3_jbd.h>
- #include <linux/quotaops.h>
- #include <linux/buffer_head.h>
-+#include <linux/blkdev.h>
- 
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-@@ -39,6 +40,23 @@
- 
- #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
- 
-+/*
-+ * Calculate the block group number and offset, given a block number
-+ */
-+void ext3_get_group_no_and_offset(struct super_block *sb, ext3_fsblk_t blocknr,
-+		unsigned long *blockgrpp, ext3_grpblk_t *offsetp)
-+{
-+	struct ext3_super_block *es = EXT3_SB(sb)->s_es;
-+	ext3_grpblk_t offset;
-+
-+	blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
-+	offset = do_div(blocknr, EXT3_BLOCKS_PER_GROUP(sb));
-+	if (offsetp)
-+		*offsetp = offset;
-+	if (blockgrpp)
-+		*blockgrpp = blocknr;
-+}
-+
- /**
-  * ext3_get_group_desc() -- load group descriptor from disk
-  * @sb:			super block
-@@ -1885,3 +1903,247 @@ unsigned long ext3_bg_num_gdb(struct super_block *sb, int group)
- 	return ext3_bg_num_gdb_meta(sb,group);
- 
- }
-+
-+/**
-+ * ext3_trim_all_free -- function to trim all free space in alloc. group
-+ * @sb:			super block for file system
-+ * @group:		allocation group to trim
-+ * @start:		first group block to examine
-+ * @max:		last group block to examine
-+ * @gdp:		allocation group description structure
-+ * @minblocks:		minimum extent block count
-+ *
-+ * ext3_trim_all_free walks through group's block bitmap searching for free
-+ * blocks. When the free block is found, it tries to allocate this block and
-+ * consequent free block to get the biggest free extent possible, until it
-+ * reaches any used block. Then issue a TRIM command on this extent and free
-+ * the extent in the block bitmap. This is done until whole group is scanned.
-+ */
-+ext3_grpblk_t ext3_trim_all_free(struct super_block *sb, unsigned int group,
-+				ext3_grpblk_t start, ext3_grpblk_t max,
-+				ext3_grpblk_t minblocks)
-+{
-+	handle_t *handle;
-+	ext3_grpblk_t next, free_blocks, bit, freed, count = 0;
-+	ext3_fsblk_t discard_block;
-+	struct ext3_sb_info *sbi;
-+	struct buffer_head *gdp_bh, *bitmap_bh = NULL;
-+	struct ext3_group_desc *gdp;
-+	int err = 0, ret = 0;
-+
-+	/*
-+	 * We will update one block bitmap, and one group descriptor
-+	 */
-+	handle = ext3_journal_start_sb(sb, 2);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		return err;
-+	}
-+
-+	bitmap_bh = read_block_bitmap(sb, group);
-+	if (!bitmap_bh)
-+		goto err_out;
-+
-+	BUFFER_TRACE(bitmap_bh, "getting undo access");
-+	err = ext3_journal_get_undo_access(handle, bitmap_bh);
-+	if (err)
-+		goto err_out;
-+
-+	gdp = ext3_get_group_desc(sb, group, &gdp_bh);
-+	if (!gdp)
-+		goto err_out;
-+
-+	BUFFER_TRACE(gdp_bh, "get_write_access");
-+	err = ext3_journal_get_write_access(handle, gdp_bh);
-+	if (err)
-+		goto err_out;
-+
-+	free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
-+	sbi = EXT3_SB(sb);
-+
-+	 /* Walk through the whole group */
-+	while (start < max) {
-+
-+		start = bitmap_search_next_usable_block(start, bitmap_bh, max);
-+		if (start < 0)
-+			break;
-+		next = start;
-+
-+		/*
-+		 * Allocate contiguous free extents by setting bits in the
-+		 * block bitmap
-+		 */
-+		while (next < max
-+			&& claim_block(sb_bgl_lock(sbi, group),
-+					next, bitmap_bh)) {
-+			next++;
-+		}
-+
-+		 /* We did not claim any blocks */
-+		if (next == start)
-+			continue;
-+
-+		discard_block = (ext3_fsblk_t)start +
-+				ext3_group_first_block_no(sb, group);
-+
-+		/* Update counters */
-+		spin_lock(sb_bgl_lock(sbi, group));
-+		le16_add_cpu(&gdp->bg_free_blocks_count, start - next);
-+		spin_unlock(sb_bgl_lock(sbi, group));
-+		percpu_counter_sub(&sbi->s_freeblocks_counter, next - start);
-+
-+		/* Do not issue a TRIM on extents smaller than minblocks */
-+		if ((next - start) < minblocks)
-+			goto free_extent;
-+
-+		 /* Send the TRIM command down to the device */
-+		ret = sb_issue_discard(sb, discard_block, next - start,
-+				       GFP_NOFS, 0);
-+		count += (next - start);
-+free_extent:
-+		freed = 0;
-+
-+		/*
-+		 * Clear bits in the bitmap
-+		 */
-+		for (bit = start; bit < next; bit++) {
-+			BUFFER_TRACE(bitmap_bh, "clear bit");
-+			if (!ext3_clear_bit_atomic(sb_bgl_lock(sbi, group),
-+						bit, bitmap_bh->b_data)) {
-+				ext3_error(sb, __func__,
-+					"bit already cleared for block "E3FSBLK,
-+					 (unsigned long)bit);
-+				BUFFER_TRACE(bitmap_bh, "bit already cleared");
-+			} else {
-+				freed++;
-+			}
-+		}
-+
-+		/* Update couters */
-+		spin_lock(sb_bgl_lock(sbi, group));
-+		le16_add_cpu(&gdp->bg_free_blocks_count, freed);
-+		spin_unlock(sb_bgl_lock(sbi, group));
-+		percpu_counter_add(&sbi->s_freeblocks_counter, next - start);
-+
-+		start = next;
-+		if (ret < 0) {
-+			if (ret == -EOPNOTSUPP) {
-+				ext3_warning(sb, __func__,
-+					"discard not supported!");
-+				count = ret;
-+				break;
-+			}
-+			err = ret;
-+			break;
-+		}
-+
-+		if (fatal_signal_pending(current)) {
-+			count = -ERESTARTSYS;
-+			break;
-+		}
-+
-+		cond_resched();
-+
-+		/* No more suitable extents */
-+		if ((free_blocks - count) < minblocks)
-+			break;
-+	}
-+
-+	/* We dirtied the bitmap block */
-+	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
-+	err = ext3_journal_dirty_metadata(handle, bitmap_bh);
-+
-+	/* And the group descriptor block */
-+	BUFFER_TRACE(gdp_bh, "dirtied group descriptor block");
-+	ret = ext3_journal_dirty_metadata(handle, gdp_bh);
-+	if (!err)
-+		err = ret;
-+
-+	ext3_debug("trimmed %d blocks in the group %d\n",
-+		count, group);
-+
-+err_out:
-+	if (err) {
-+		ext3_std_error(sb, err);
-+		count = err;
-+	}
-+	ext3_journal_stop(handle);
-+	brelse(bitmap_bh);
-+
-+	return count;
-+}
-+
-+/**
-+ * ext3_trim_fs() -- trim ioctl handle function
-+ * @sb:			superblock for filesystem
-+ * @start:		First Byte to trim
-+ * @len:		number of Bytes to trim from start
-+ * @minlen:		minimum extent length in Bytes
-+ *
-+ * ext3_trim_fs goes through all allocation groups containing Bytes from
-+ * start to start+len. For each such a group ext3_trim_all_free function
-+ * is invoked to trim all free space.
-+ */
-+int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
-+{
-+	ext3_grpblk_t last_block, first_block, free_blocks;
-+	unsigned long first_group, last_group;
-+	unsigned long group, ngroups;
-+	struct ext3_group_desc *gdp;
-+	struct ext3_super_block *es;
-+	uint64_t start, len, minlen, trimmed;
-+	int ret = 0;
-+
-+	start = range->start >> sb->s_blocksize_bits;
-+	len = range->len >> sb->s_blocksize_bits;
-+	minlen = range->minlen >> sb->s_blocksize_bits;
-+	trimmed = 0;
-+
-+	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)))
-+		return -EINVAL;
-+
-+	es = EXT3_SB(sb)->s_es;
-+	ngroups = EXT3_SB(sb)->s_groups_count;
-+	smp_rmb();
-+
-+	/* Determine first and last group to examine based on start and len */
-+	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) start,
-+				     &first_group, &first_block);
-+	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) (start + len),
-+				     &last_group, &last_block);
-+	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
-+	last_block = EXT3_BLOCKS_PER_GROUP(sb);
-+
-+	if (first_group > last_group)
-+		return -EINVAL;
-+
-+	for (group = first_group; group <= last_group; group++) {
-+		gdp = ext3_get_group_desc(sb, group, NULL);
-+		if (!gdp)
-+			break;
-+
-+		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
-+		if (free_blocks < minlen)
-+			continue;
-+
-+		if (len >= EXT3_BLOCKS_PER_GROUP(sb))
-+			len -= (EXT3_BLOCKS_PER_GROUP(sb) - first_block);
-+		else
-+			last_block = len;
-+
-+		ret = ext3_trim_all_free(sb, group, first_block,
-+					last_block, minlen);
-+		if (ret < 0)
-+			break;
-+
-+		trimmed += ret;
-+		first_block = 0;
-+	}
-+
-+	if (ret >= 0)
-+		ret = 0;
-+
-+	range->len = trimmed * sb->s_blocksize;
-+
-+	return ret;
-+}
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 6ce1bca..a443965 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -856,6 +856,7 @@ extern struct ext3_group_desc * ext3_get_group_desc(struct super_block * sb,
- extern int ext3_should_retry_alloc(struct super_block *sb, int *retries);
- extern void ext3_init_block_alloc_info(struct inode *);
- extern void ext3_rsv_window_add(struct super_block *sb, struct ext3_reserve_window_node *rsv);
-+extern int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range);
- 
- /* dir.c */
- extern int ext3_check_dir_entry(const char *, struct inode *,
--- 
-1.7.2.3
+The machine normally only uses a local ext4 for booting. The data it is 
+working on comes from NFS.
 
+Now there are several normally CPU-bound jobs running but they only get 1-2% 
+of cputime because they are constantly swapping. They are swapping because of 
+the 192 GiB the machine has 150 GiB are allocated for ext4_alloc_context.  
+Here is the output of /dev/meminfo:
+
+MemTotal:        198493288 kB
+MemFree:            853372 kB
+Buffers:               824 kB
+Cached:              26108 kB
+SwapCached:        6369336 kB
+Active:           37073576 kB
+Inactive:          1104932 kB
+Active(anon):     37059712 kB
+Inactive(anon):    1090980 kB
+Active(file):        13864 kB
+Inactive(file):      13952 kB
+Unevictable:             0 kB
+Mlocked:                 0 kB
+SwapTotal:       209713148 kB
+SwapFree:        149362056 kB
+Dirty:                  16 kB
+Writeback:               0 kB
+AnonPages:        37642012 kB
+Mapped:              13312 kB
+Shmem:                   0 kB
+Slab:            158765316 kB
+SReclaimable:    158732380 kB
+SUnreclaim:          32936 kB
+KernelStack:          2968 kB
+PageTables:         202500 kB
+NFS_Unstable:            4 kB
+Bounce:                  0 kB
+WritebackTmp:            0 kB
+CommitLimit:     308959792 kB
+Committed_AS:     64376360 kB
+VmallocTotal:  34359738367 kB
+VmallocUsed:        736572 kB
+VmallocChunk:  34358994676 kB
+
+
+
+We see that Slab uses most of the memory. And within slab nearly everything is 
+used for ext4_alloc_context. There is the output of slabtop:
+
+ Active / Total Objects (% used)    : 364597 / 1070670469 (0.0%)
+ Active / Total Slabs (% used)      : 52397 / 39688960 (0.1%)
+ Active / Total Caches (% used)     : 107 / 193 (55.4%)
+ Active / Total Size (% used)       : 159579.25K / 150697605.41K (0.1%)
+ Minimum / Average / Maximum Object : 0.02K / 0.14K / 4096.00K
+
+  OBJS     ACTIVE  USE OBJ SIZE    SLABS OBJ/SLAB CACHE SIZE NAME                   
+1070187012      0   0%    0.14K 39636556       27 158546224K 
+ext4_alloc_context
+
+
+
+I see no reason why ext4 should use so much memory. What is it used for? And 
+how can I release it to get it used for my processes. The overall system is 
+very sluggish now. Here is top info for some computing jobs:
+
+top - 13:06:06 up 10 days, 22:04,  5 users,  load average: 9.65, 9.74, 9.80
+Tasks: 272 total,   1 running, 271 sleeping,   0 stopped,   0 zombie
+Cpu(s):  0.4%us,  0.3%sy,  0.0%ni, 46.5%id, 52.8%wa,  0.0%hi,  0.0%si,  0.0%st
+Mem:    193841M total,   192945M used,      895M free,        0M buffers
+Swap:   204797M total,    61718M used,   143079M free,   163113M cached
+
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND                                                                                                                                                                                                                                                                                                                        
+19459 joachimi  20   0 23.6g  11g 4000 D    0  6.1 417:07.29 bonnRoute                                                                                                                                                                                                                                                                                                                      
+ 9329 bartosch  20   0 11.7g   9g 3436 D    0  5.3  38:55.70 chipbench                                                                                                                                                                                                                                                                                                                      
+28845 bartosch  20   0 10.9g 5.0g 1028 D    0  2.6  28:27.45 chipbench                                                                                                                                                                                                                                                                                                                      
+ 6505 bartosch  20   0 10.7g 2.8g  976 D    0  1.5 289:24.73 chipbench                                                                                                                                                                                                                                                                                                                      
+11061 bartosch  20   0  9.8g 1.5g  900 D    1  0.8 146:07.40 chipbench                                                                                                                                                                                                                                                                                                                      
+11010 bartosch  20   0 5638m 1.5g 2800 D    0  0.8  82:48.69 chipbench                                                                                                                                                                                                                                                                                                                      
+10946 bartosch  20   0 5952m 1.3g  936 D    0  0.7  80:57.63 chipbench                                                                                                                                                                                                                                                                                                                      
+10976 bartosch  20   0 5563m 1.3g  936 D    1  0.7  77:53.40 chipbench                                                                                                                                                                                                                                                                                                                      
+11030 bartosch  20   0 9807m 1.2g 4272 D    0  0.6 149:40.97 chipbench                                                                                                                                                                                                                                                                                                                      
+ 9330 bartosch  20   0 69572 7160  376 S    0  0.0   0:33.06 chipbench                                                                                                                                                                                                                                                                                                                      
+10914 bartosch  20   0 81888 4668  480 S    0  0.0   0:48.84 chipbench                                                                                                                                                                                                                                                                                                                      
+17065 bartosch  20   0 99.0m 3408  488 S    0  0.0   0:41.91 chipbench                                                                                                                                                                                                                                                                                                                      
+11031 bartosch  20   0 75724 2988  496 S    0  0.0   0:53.41 chipbench
+
+
+iotop shows that the jobs while not creating any normal I/O create lots of 
+disk reads and spents nearly 100% for swapping:
+
+Total DISK READ: 4.91 M/s | Total DISK WRITE: 0 B/s
+  PID USER      DISK READ  DISK WRITE   SWAPIN    IO>    COMMAND                                                                                                                                                                                                                                                                                                                            
+   79 root           0 B/s       0 B/s  0.00 % 94.34 % [kswapd0]
+10946 bartosch    3.14 M/s       0 B/s 65.42 %  1.54 % chipbench
+28845 bartosch  334.16 K/s       0 B/s 99.99 %  0.00 % chipbench
+ 6505 bartosch  194.28 K/s       0 B/s 99.99 %  0.00 % chipbench
+10976 bartosch  147.65 K/s       0 B/s 99.99 %  0.00 % chipbench
+11010 bartosch  170.97 K/s       0 B/s 95.03 %  0.00 % chipbench
+11030 bartosch   85.48 K/s       0 B/s 77.11 %  0.00 % chipbench
+11061 bartosch  174.85 K/s       0 B/s 99.00 %  0.00 % chipbench
+19459 joachimi  155.42 K/s       0 B/s 83.84 %  0.00 % bonnRoute
+ 9329 bartosch  551.75 K/s       0 B/s 99.99 %  0.00 % chipbench
+
+
+The problem appeared about after a week of uptime. The system is opensuse 
+11.3:
+
+Linux euler 2.6.34.7-0.5-desktop #1 SMP PREEMPT 2010-10-25 08:40:12 +0200 
+x86_64 x86_64 x86_64 GNU/Linux
+
+
+I would like to prevent a reboot. 
+
+Thanks
+Christoph
