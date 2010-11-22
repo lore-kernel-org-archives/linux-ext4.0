@@ -1,97 +1,70 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [BUG?] [Ext4] INFO: suspicious rcu_dereference_check() usage
-Date: Sun, 21 Nov 2010 22:16:19 -0800
-Message-ID: <20101122061619.GA2764@linux.vnet.ibm.com>
-References: <20101121112611.GB4267@deepthought.bhanu.net>
- <20101121133024.GF23423@thunk.org>
- <20101121133024.GF23423@thunk.org>
- <20101121153949.GD20947@barrios-desktop>
- <20101121173726.GG23423@thunk.org>
- <AANLkTimeSWWo-TAJPPH81OO_h1zFzWAT1Gg=XSLyFftH@mail.gmail.com>
- <rcu-radix-tree@mdm.bga.com>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: Pekka Enberg <penberg@cs.helsinki.fi>
+Subject: Re: [PATCH] ext4: Fix memory leak in groupinfo cache name
+Date: Mon, 22 Nov 2010 08:47:36 +0200
+Message-ID: <4CEA1208.4060005@cs.helsinki.fi>
+References: <1290376931-2129-1-git-send-email-zeng.zhaoming@freescale.com> <1290376931-2129-2-git-send-email-zeng.zhaoming@freescale.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Minchan Kim <minchan.kim@gmail.com>, linux-kernel@vger.kernel.org,
-	linux-mm@vger.kernel.org, linux-ext4@vger.kernel.org,
-	"Ted Ts'o" <tytso@mit.edu>, Arun Bhanu <ab@arunbhanu.com>
-To: Milton Miller <miltonm@bga.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	adilger.kernel@dilger.ca, mpm@selenic.com, rientjes@google.com,
+	Zeng Zhaoming <zengzm.kernel@gmail.com>,
+	Christoph Lameter <cl@linux-foundation.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: zeng.zhaoming@freescale.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:51157 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750792Ab0KVGQX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Nov 2010 01:16:23 -0500
-Content-Disposition: inline
-In-Reply-To: <rcu-radix-tree@mdm.bga.com>
+Received: from courier.cs.helsinki.fi ([128.214.9.1]:36161 "EHLO
+	mail.cs.helsinki.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751282Ab0KVGrh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2010 01:47:37 -0500
+In-Reply-To: <1290376931-2129-2-git-send-email-zeng.zhaoming@freescale.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 21, 2010 at 09:31:14PM -0600, Milton Miller wrote:
-> On 2010-11-22 at around 0:38:49, Minchan Kim wrote:
-> > On Mon, Nov 22, 2010 at 2:37 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> > > On Mon, Nov 22, 2010 at 12:39:49AM +0900, Minchan Kim wrote:
-> > > >
-> > > > I think it's no problem.
-> > > >
-> > > > That's because migration always holds lock_page on the file page.
-> > > > So the page couldn't remove from radix.
-> > >
-> > > It may be "ok" in that it won't cause a race, but it still leaves an
-> > > unsightly warning if LOCKDEP is enabled, and LOCKDEP warnings will
-> > > cause /proc_lock_stat to be disabled.  So I think it still needs to be
-> > > fixed by adding rcu_read_lock()/rcu_read_unlock() to
-> > > migrate_page_move_mapping().
-> > >
-> > >                                                     - Ted
-> > >
-> > 
-> > Yes. if it is really "ok" about race, we will add rcu_read_lock with
-> > below comment to prevent false positive.
-> > "suppress RCU lockdep false positives".
-> > But I am not sure it's good although rcu_read_lock is little cost.
-> > Whenever we find false positive, should we add rcu_read_lock to
-> > suppress although it's no problem in real product?
-> > Couldn't we provide following function? (or we might have already it
-> > but I missed it. )
-> > 
-> > /*
-> >  * Suppress RCU lockdep false positive.
-> >  */
-> > #ifdef CONFIG_PROVE_RCU
-> > #define rcu_read_lock_suppress rcu_read_lock
-> > #else
-> > #define rcu_read_lock_suppress
-> > #endif
-> 
-> No, you don't need anything like this, as rcu_dereference_check already
-> takes a test for alternate locking.
-> 
-> However, looking more closely at the code, it appears this is the
-> "the tree is write locked" case as described in radix-tree.h
-> 
-> Looking at rcupdate.h, perhaps we need a version of radix_tree_deref_slot
-> that uses rcu_dereference_protected?
-> 
-> Copying Paul McKenney for rcu ...
+On 11/22/10 12:02 AM, zeng.zhaoming@freescale.com wrote:
+> From: Zeng Zhaoming<zengzm.kernel@gmail.com>
+>
+> please check the discuss with allocator guys.
+> http://marc.info/?l=linux-kernel&m=129004890020256&w=2
+>
+> Get a memory leak about ext4:
+>    comm "mount", pid 1159, jiffies 4294904647 (age 6077.804s)
+>    hex dump (first 32 bytes):
+>      65 78 74 34 5f 67 72 6f 75 70 69 6e 66 6f 5f 31  ext4_groupinfo_1
+>      30 00 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b a5  0.kkkkkkkkkkkkk.
+>    backtrace:
+>      [<c068ade3>] kmemleak_alloc+0x93/0xd0
+>      [<c024e54c>] __kmalloc_track_caller+0x30c/0x380
+>      [<c02269d3>] kstrdup+0x33/0x60
+>      [<c0318a70>] ext4_mb_init+0x4e0/0x550
+>      [<c0304e0e>] ext4_fill_super+0x1e6e/0x2f60
+>      [<c0261140>] mount_bdev+0x1c0/0x1f0
+>      [<c02fc00f>] ext4_mount+0x1f/0x30
+>      [<c02603d8>] vfs_kern_mount+0x78/0x250
+>      [<c026060e>] do_kern_mount+0x3e/0x100
+>      [<c027b4c2>] do_mount+0x2e2/0x780
+>      [<c027ba04>] sys_mount+0xa4/0xd0
+>      [<c010429f>] sysenter_do_call+0x12/0x38
+>      [<ffffffff>] 0xffffffff
+>
+> ext4 allocate memory for cache name by:
+>      namep = kstrdup(name, GFP_KERNEL);
+> and reclaim it by:
+>      name = kmem_cache_name(cache);
+>      kfree(name)
+>
+> This is ok if allocator only reference to the cache name memory, and return
+> the name memory pass to kmem_cache_create() by kmem_cache_name();
+> But not true in slub, when using slub, memory leak and double free error appears.
+>
+> In this patch, we track the cache name memory in ext4, rather than allocator.
+>
+> Signed-off-by: Zeng Zhaoming<zengzm.kernel@gmail.com>
+> ---
 
-This approach could work.  One way of doing it would be to add a second
-argument:
+Hmm. Maybe it's better to change SLAB and SLOB to do kstrdup() 
+internally so we can drop it from ext4 code. Matt, are you OK with that?
 
-static inline void *radix_tree_deref_slot_check(void **pslot, int ldc)
-{
-	void *ret = rcu_dereference_check(*pslot, ldc);
-	if (unlikely(radix_tree_is_indirect_ptr(ret)))
-		ret = RADIX_TREE_RETRY;
-	return ret;
-}
-
-static inline void *radix_tree_deref_slot(void **pslot)
-{
-	return radix_tree_deref_slot_check(pslot, rcu_read_lock_held());
-}
-
-Another alternative would have radix_tree_deref_slot() pass "1" into
-the "ldc" argument, which reduces splats but at the expense of failing
-to detect problems.  ;-)
-
-							Thanx, Paul
+			Pekka
