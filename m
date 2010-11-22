@@ -1,55 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: zero out nanosecond timestamps for small inodes
-Date: Mon, 22 Nov 2010 11:45:48 -0600
-Message-ID: <4CEAAC4C.3070406@redhat.com>
-References: <4CE76938.8050304@quo.to>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext3: Add journal error check into
+ ext3_delete_entry()
+Date: Mon, 22 Nov 2010 18:55:41 +0100
+Message-ID: <20101122175541.GD5012@quack.suse.cz>
+References: <1290151716-4041-1-git-send-email-namhyung@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jordan Russell <jr-list-2010@quo.to>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Namhyung Kim <namhyung@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61121 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47305 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753372Ab0KVRpw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Nov 2010 12:45:52 -0500
-In-Reply-To: <4CE76938.8050304@quo.to>
+	id S1752176Ab0KVRzm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Nov 2010 12:55:42 -0500
+Content-Disposition: inline
+In-Reply-To: <1290151716-4041-1-git-send-email-namhyung@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As reported by Jordan Russell:
+On Fri 19-11-10 16:28:35, Namhyung Kim wrote:
+> Check return value of ext3_journal_get_write_access() and
+> ext3_journal_dirty_metadata().
+  Thanks, merged.
 
-When nanosecond timestamp resolution isn't supported on an ext4
-partition (inode size = 128), stat() appears to be returning
-uninitialized garbage in the nanosecond component of timestamps.
+								Honza
 
-EXT4_INODE_GET_XTIME should zero out tv_nsec when EXT4_FITS_IN_INODE
-evaluates to false.
-
-Reported-by: Jordan Russell <jr-list-2010@quo.to>
-Signed-of-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6a5edea..1541e3e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -709,6 +709,8 @@ do {									       \
- 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
- 		ext4_decode_extra_time(&(inode)->xtime,			       \
- 				       raw_inode->xtime ## _extra);	       \
-+	else								       \
-+		(inode)->xtime.tv_nsec = 0;				       \
- } while (0)
- 
- #define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
-@@ -719,6 +721,8 @@ do {									       \
- 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
- 		ext4_decode_extra_time(&(einode)->xtime,		       \
- 				       raw_inode->xtime ## _extra);	       \
-+	else								       \
-+		(einode)->xtime.tv_nsec = 0;				       \
- } while (0)
- 
- #define i_disk_version osd1.linux1.l_i_version
-
+> 
+> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+> ---
+>  fs/ext3/namei.c |   14 ++++++++++++--
+>  1 files changed, 12 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> index 03fccc5..672cea1 100644
+> --- a/fs/ext3/namei.c
+> +++ b/fs/ext3/namei.c
+> @@ -1644,8 +1644,13 @@ static int ext3_delete_entry (handle_t *handle,
+>  		if (!ext3_check_dir_entry("ext3_delete_entry", dir, de, bh, i))
+>  			return -EIO;
+>  		if (de == de_del)  {
+> +			int err;
+> +
+>  			BUFFER_TRACE(bh, "get_write_access");
+> -			ext3_journal_get_write_access(handle, bh);
+> +			err = ext3_journal_get_write_access(handle, bh);
+> +			if (err)
+> +				goto journal_error;
+> +
+>  			if (pde)
+>  				pde->rec_len = ext3_rec_len_to_disk(
+>  					ext3_rec_len_from_disk(pde->rec_len) +
+> @@ -1654,7 +1659,12 @@ static int ext3_delete_entry (handle_t *handle,
+>  				de->inode = 0;
+>  			dir->i_version++;
+>  			BUFFER_TRACE(bh, "call ext3_journal_dirty_metadata");
+> -			ext3_journal_dirty_metadata(handle, bh);
+> +			err = ext3_journal_dirty_metadata(handle, bh);
+> +			if (err) {
+> +journal_error:
+> +				ext3_std_error(dir->i_sb, err);
+> +				return err;
+> +			}
+>  			return 0;
+>  		}
+>  		i += ext3_rec_len_from_disk(de->rec_len);
+> -- 
+> 1.7.0.4
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
