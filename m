@@ -1,33 +1,74 @@
-From: Harvey Harrison <harvey.harrison@gmail.com>
-Subject: Re: [PATCH] ext3: Coding style fix in namei.c
-Date: Mon, 22 Nov 2010 09:34:40 -0800
-Message-ID: <AANLkTimDZ26GPdTQaqF98=67qhOpRLuy+8Wpt=eXcV82@mail.gmail.com>
-References: <1290161589-5370-1-git-send-email-namhyung@gmail.com>
-	<60024FF1-3903-49AD-9A68-B04C6D678A8E@mit.edu>
-	<093B58FD-0DA7-4E94-A70E-C926EC6D02F6@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext3: Add FITRIM handle for ext3
+Date: Mon, 22 Nov 2010 18:42:20 +0100
+Message-ID: <20101122174220.GC5012@quack.suse.cz>
+References: <1290425358-16253-1-git-send-email-lczerner@redhat.com>
+ <1290425358-16253-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Namhyung Kim <namhyung@gmail.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:59336 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751402Ab0KVRel (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2010 12:34:41 -0500
-In-Reply-To: <093B58FD-0DA7-4E94-A70E-C926EC6D02F6@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1290425358-16253-2-git-send-email-lczerner@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 19, 2010 at 5:05 AM, Theodore Tso <tytso@mit.edu> wrote:
-> Oooh, I forgot another downside which just came to mind:
->
-> * Call of this code churn to fix whitespace all for the sake of keep some damned checkpatch.pl script happy also breaks "git blame" reports.
->
-> -- Ted
+On Mon 22-11-10 12:29:18, Lukas Czerner wrote:
+> It takes fstrim_range structure as an argument. fstrim_range is definec in
+> the include/linux/fs.h.
+> 
+> After the FITRIM is done, the number of actually discarded Bytes is stored
+> in fstrim_range.len to give the user better insight on how much storage
+> space has been really released for wear-leveling.
+  Umm, why do we have to do this when FITRIM is already handled in
+fs/ioctl.c? I'd expect us to just provide .trim_fs ioctl, no?
 
-Isn't that what git blame -w  (ignore whitespace) is for?
-
-Harvey
+									Honza
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext3/ioctl.c |   22 ++++++++++++++++++++++
+>  1 files changed, 22 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
+> index 8897481..fc080dd 100644
+> --- a/fs/ext3/ioctl.c
+> +++ b/fs/ext3/ioctl.c
+> @@ -276,7 +276,29 @@ group_add_out:
+>  		mnt_drop_write(filp->f_path.mnt);
+>  		return err;
+>  	}
+> +	case FITRIM: {
+>  
+> +		struct super_block *sb = inode->i_sb;
+> +		struct fstrim_range range;
+> +		int ret = 0;
+> +
+> +		if (!capable(CAP_SYS_ADMIN))
+> +			return -EPERM;
+> +
+> +		if (copy_from_user(&range, (struct fstrim_range *)arg,
+> +				   sizeof(range)))
+> +			return -EFAULT;
+> +
+> +		ret = ext3_trim_fs(sb, &range);
+> +		if (ret < 0)
+> +			return ret;
+> +
+> +		if (copy_to_user((struct fstrim_range *)arg, &range,
+> +				 sizeof(range)))
+> +			return -EFAULT;
+> +
+> +		return 0;
+> +	}
+>  
+>  	default:
+>  		return -ENOTTY;
+> -- 
+> 1.7.2.3
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
