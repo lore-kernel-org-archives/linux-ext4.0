@@ -1,45 +1,62 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: ext4 online defrag status?
-Date: Mon, 22 Nov 2010 17:04:59 +0900
-Message-ID: <4CEA242B.30908@sx.jp.nec.com>
-References: <4CE97427.1090700@wpkg.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Tomasz Chmielewski <mangoo@wpkg.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:36975 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752062Ab0KVIG5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2010 03:06:57 -0500
-In-Reply-To: <4CE97427.1090700@wpkg.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2] ext3: Add FITRIM handle for ext3
+Date: Mon, 22 Nov 2010 12:29:18 +0100
+Message-ID: <1290425358-16253-2-git-send-email-lczerner@redhat.com>
+References: <1290425358-16253-1-git-send-email-lczerner@redhat.com>
+Cc: lczerner@redhat.com, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: jack@suse.cz
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1290425358-16253-1-git-send-email-lczerner@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Tomasz,
+It takes fstrim_range structure as an argument. fstrim_range is definec in
+the include/linux/fs.h.
 
-2010/11/22 4:33, Tomasz Chmielewski wrote:
-> There have been some ext4 defrag patches posted in 2008 and 2009 - what is the state of this now in late 2010?
+After the FITRIM is done, the number of actually discarded Bytes is stored
+in fstrim_range.len to give the user better insight on how much storage
+space has been really released for wear-leveling.
 
-Ext4 online defragment has been already merged into the kernel space.
-However, e4defrag command has been stopped updating since August 2009,
-although some bugfix patches were posted.
-I don't know why not e4defrag command is updated, but Ted, the e2fsprogs
-maintainer, previously said that e4defrag needs acid test.
-https://bugs.launchpad.net/ubuntu/+bug/321528
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext3/ioctl.c |   22 ++++++++++++++++++++++
+ 1 files changed, 22 insertions(+), 0 deletions(-)
 
-I have been continuing to evaluate e4defrag command. If someone would help,
-please test the newest e4defrag by the following steps:
+diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
+index 8897481..fc080dd 100644
+--- a/fs/ext3/ioctl.c
++++ b/fs/ext3/ioctl.c
+@@ -276,7 +276,29 @@ group_add_out:
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+ 	}
++	case FITRIM: {
+ 
++		struct super_block *sb = inode->i_sb;
++		struct fstrim_range range;
++		int ret = 0;
++
++		if (!capable(CAP_SYS_ADMIN))
++			return -EPERM;
++
++		if (copy_from_user(&range, (struct fstrim_range *)arg,
++				   sizeof(range)))
++			return -EFAULT;
++
++		ret = ext3_trim_fs(sb, &range);
++		if (ret < 0)
++			return ret;
++
++		if (copy_to_user((struct fstrim_range *)arg, &range,
++				 sizeof(range)))
++			return -EFAULT;
++
++		return 0;
++	}
+ 
+ 	default:
+ 		return -ENOTTY;
+-- 
+1.7.2.3
 
-1. Download e2fsprogs git tree
-    # git pull http://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-
-2. Apply the patch I sent a while ago
-    http://marc.info/?l=linux-ext4&m=128272690010784&w=4
-
-3. Apply the latest bugfix patch
-    http://marc.info/?l=linux-ext4&m=129015317309425&w=4
-
-Regards,
-Kazuya Mio
