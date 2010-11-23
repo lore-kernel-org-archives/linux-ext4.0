@@ -1,37 +1,96 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Fix EXT4_FEATURE_RO_COMPAT_HUGE_FILE check
-Date: Mon, 22 Nov 2010 17:34:45 -0500
-Message-ID: <20101122223445.GB2767@thunk.org>
-References: <4c7325f6.02558f0a.5a24.ffffc694@mx.google.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] mke2fs: Inform user about ongoing discard
+Date: Tue, 23 Nov 2010 18:48:13 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1011231839320.12354@dhcp-lab-213.englab.brq.redhat.com>
+References: <1287670982-32348-1-git-send-email-lczerner@redhat.com> <20101122202002.GA2767@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Justin Maggard <jmaggard10@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com, adilger@dilger.ca
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52361 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:30662 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754946Ab0KWPS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Nov 2010 10:18:58 -0500
-Content-Disposition: inline
-In-Reply-To: <4c7325f6.02558f0a.5a24.ffffc694@mx.google.com>
+	id S1755218Ab0KWRsS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Nov 2010 12:48:18 -0500
+In-Reply-To: <20101122202002.GA2767@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 24, 2010 at 01:34:16AM +0000, Justin Maggard wrote:
-> Creating a 4TB file on a filesystem with the 64bit flag set results
-> in e2fsck consistently complaining about i_blocks being wrong, with
-> confusing messages like this:
-> 
-> Inode 29818882, i_blocks is 8388608816, should be 8388608816.  Fix? no
-> 
-> That appears to be caused by ext2fs_inode_i_blocks() checking for
-> the EXT4_FEATURE_RO_COMPAT_HUGE_FILE in the wrong place.  Fix it.
-> 
-> Signed-off-by: Justin Maggard <jmaggard10@gmail.com>
+On Mon, 22 Nov 2010, Ted Ts'o wrote:
 
-Applied to the e2fsprogs master branch.  Sorry for the delay in
-attending to this patch.  This Fall has been incredibly busy for me;
-now that I have the maint branch tidied up for the 1.41.12 release,
-I'm not catching up with the backlog on the master branch.
+> On Thu, Oct 21, 2010 at 04:23:02PM +0200, Lukas Czerner wrote:
+> > Since there are some slow SSD's out there and big thinly provisioned
+> > storages on which it takes quite long to issue discard through whole
+> > device, it would be nice to provide user the information about what is
+> > going on and how long it will take (approximately).
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> Hi Lukas,
+> 
+> I've looked at this patch, and one thing that disturbs me about it ---
+> you are discarding the first percentage of the disk five percent times
+> for no good reason just to get the timing, before then executing the
+> discard for the entire disk.   There are a couple of problems with this:
+> 
+> *) For smart/competently implemented SSD's, discarding the same part
+> of the disk five times might lead to a misleading timing --- the smart
+> device could easily determine that the first 1% is already not in use
+> after the first discard, and the subsequent 4 discards could be
+> discard as no-ops.
+> 
+> *) Mark Lord has claimed that there exists a large number of
+> incomptently implemented SSD's out there, that may actually be
+> executing a flash erase of the discarded region.  If true, executing
+> an extra flash erase on 1% of the disk for no good reason five times
+> might not be the best thing to do for the longetivity of the device.
+> 
+> I was tempted to fix this up myself, but since I'm trying to get
+> better at delegating work to others, may I suggest the following
+> changes?
+> 
+> 1)  Implement block device ioctl's for the kernel that export the
+> discard_granularity, discard_alignment, and max_discard_sectors.  
+> 
+> 2) Change mke2fs so that the discard is done in a separate function.
+> Said function should attempt to fetch the discard_granularity,
+> discard_alignment, and max_discard_sectors.
+> 
+> 3) This new function in mke2fs should start by discarding
+> approximately 1% of device at a time, respecting discard_granularity
+> and discard_alignment.  If the time to discard 1% of the device is
+> less than a second, then it should double the amount that it discards
+> at a time.  If the time to discard takes longer than 4 seconds, it
+> should reduce the amount that it discards by half (again, always
+> respecting discard_granularity and discard_alignment).  The function
+> can display the amount of time elapsed and the estimated amount of
+> time remaining after each chunk of the device that it discards,
+> assuming it can use ^M to redraw the progress report (which of course
+> should be suppressed if the -q option is specified on the command
+> line).
+> 
+> 
+> This design doesn't "waste" any discards, which is both faster and
+> reduces wear on badly designed SSD's.  It also continuously updates
+> the user with the amount of time it takes to complete the discard
+> process.  It also will respect the discard_granularity and
+> discard_alignment restrictions; and of course, it allows the user to
+> interrupt the discard, without needing a special kernel patch.
+> 
+> Does this make sense to you?
+> 
+> 						- Ted
+> 
 
-    		    	     	     	- Ted
+Hi Ted,
+
+this absolutely make sense to me. I like the idea way better than what I
+had done in my patch (actually I was probably lazy to do it right in the
+first place:)). So, I'll add this into my todo list and hopefully find
+some time to deal with it ASAP.
+
+Thanks for suggestions!
+
+-Lukas
+
