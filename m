@@ -1,7 +1,7 @@
 From: Nick Piggin <npiggin@kernel.dk>
 Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Tue, 23 Nov 2010 19:07:58 +1100
-Message-ID: <20101123080758.GA3364@amd>
+Date: Tue, 23 Nov 2010 19:15:05 +1100
+Message-ID: <20101123081505.GB3364@amd>
 References: <20101117043845.GA3586@amd>
  <4CE362B0.6040607@redhat.com>
  <20101117061057.GA3989@amd>
@@ -26,109 +26,112 @@ In-Reply-To: <20101122181655.GF5012@quack.suse.cz>
 Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 22, 2010 at 07:16:55PM +0100, Jan Kara wrote:
-> On Fri 19-11-10 16:16:19, Nick Piggin wrote:
-> > On Fri, Nov 19, 2010 at 01:45:52AM +0100, Jan Kara wrote:
-> > > On Wed 17-11-10 22:28:34, Andrew Morton wrote:
-> > > > The fact that a call to ->write_begin can randomly return with s_umount
-> > > > held, to be randomly released at some random time in the future is a
-> > > > bit ugly, isn't it?  write_begin is a pretty low-level, per-inode
-> > > > thing.
-> > >   I guess you missed that writeback_inodes_sb_nr() (called from _if_idle
-> > > variants) does:
-> > >         bdi_queue_work(sb->s_bdi, &work);
-> > >         wait_for_completion(&done);
-> > >   So we return only after all the IO has been submitted and unlock s_umount
-> > > in writeback_inodes_sb_if_idle(). And we cannot really submit the IO ourselves
-> > > because we are holding i_mutex and we need to get and put references
-> > > to other inodes while doing writeback (those would be really horrible lock
-> > > dependencies - writeback thread can put the last reference to an unlinked
-> > > inode...).
-> > 
-> > But if we're waiting for it, with the lock held, then surely it can
-> > deadlock just the same as if we submit it ourself?
->   Yes, that's what I realized as well and what needs fixing. It was an
-> unintentional consequence of locking changes Christoph did to the writeback
-> code to fix other races.
-> 
-> > BTW. are you taking i_mutex inside writeback? I mutex can be held
-> > while entering page reclaim, and thus writepage... so it could be a
-> > bug too.
->   No, writeback does not need i_mutex.
+Here is another one. Both i_mutex in writeback and s_umount in write(2)
+underneath i_mutex seem like an interesting idea. The former you can
+probably get away with (provided you solve the previous AA deadlock),
+but the latter seems too problematic. I think my trylock patch solves
+it.
 
-I did in fact see i_mutex from writeback, which is how the lock order
-reversal was noticed in the first place. I haven't had much luck in
-reproducing it yet. It did come from end_io_work, I believe.
-
-There is another deadlock in here, by the looks (although this is not
-the one which triggers lockdep -- the workqueue coupling means it
-defeats lockdep detection).
-
-Buffered write holds i_lock, and waits for inode writeback submission,
-but the work queue seems to be blocked on i_mutex (ext4_end_io_work),
-and so it deadlocks.
-
-Note that this is an AA deadlock, different from ABBA one relating to
-s_umount lock (but very similar call chains IIRC).
-
-
-[  748.406457] SysRq : Show Blocked State
-[  748.406685]   task                        PC stack   pid father
-[  748.406868] kworker/9:1   D 0000000000000000  6296   118      2
-0x00000000
-[  748.407173]  ffff88012acb3c90 0000000000000046 0000000000000000
-ffff88012b1cec80
-[  748.407686]  0000000000000002 ffff88012acb2000 ffff88012acb2000
-000000000000d6c8
-[  748.408200]  ffff88012acb2010 ffff88012acb3fd8 ffff880129c7dd00
-ffff88012b1cec80
-[  748.408711] Call Trace:
-[  748.408866]  [<ffffffff81039431>] ? get_parent_ip+0x11/0x50
-[  748.409033]  [<ffffffff8160145c>] __mutex_lock_common+0x18c/0x480
-[  748.409205]  [<ffffffffa0042147>] ? ext4_end_io_work+0x37/0xb0 [ext4]
-[  748.409379]  [<ffffffffa0042147>] ? ext4_end_io_work+0x37/0xb0 [ext4]
-[  748.409546]  [<ffffffff8160182e>] mutex_lock_nested+0x3e/0x50
-[  748.409717]  [<ffffffffa0042147>] ext4_end_io_work+0x37/0xb0 [ext4]
-[  748.409883]  [<ffffffff81068378>] process_one_work+0x1b8/0x5a0
-[  748.410046]  [<ffffffff8106830e>] ? process_one_work+0x14e/0x5a0
-[  748.410219]  [<ffffffffa0042110>] ? ext4_end_io_work+0x0/0xb0 [ext4]
-[  748.410386]  [<ffffffff81069675>] worker_thread+0x175/0x3a0
-[  748.410549]  [<ffffffff81069500>] ? worker_thread+0x0/0x3a0
-[  748.410712]  [<ffffffff8106e246>] kthread+0x96/0xa0
-[  748.410874]  [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
-[  748.411038]  [<ffffffff81039878>] ? finish_task_switch+0x78/0x110
-[  748.411202]  [<ffffffff816036c0>] ? restore_args+0x0/0x30
-[  748.411364]  [<ffffffff8106e1b0>] ? kthread+0x0/0xa0
-[  748.411524]  [<ffffffff81003ed0>] ? kernel_thread_helper+0x0/0x10
-[  748.606853] dbench        D 0000000000000000  2872  2916      1
-0x00000004
-[  748.607154]  ffff880129ec58b8 0000000000000046 ffff880129ec5838
-ffffffff810806fd
-[  748.607665]  ffff880129ec5898 ffff880129ec4000 ffff880129ec4000
-000000000000d6c8
-[  748.608176]  ffff880129ec4010 ffff880129ec5fd8 ffff88010a2d0000
-ffff88011ff69f00
-[  748.608686] Call Trace:
-[  748.608837]  [<ffffffff810806fd>] ? trace_hardirqs_off+0xd/0x10
-[  748.609001]  [<ffffffff81600bb5>] schedule_timeout+0x1f5/0x350
-[  748.609164]  [<ffffffff8108380b>] ? mark_held_locks+0x6b/0xa0
-[  748.609328]  [<ffffffff8160314b>] ? _raw_spin_unlock_irq+0x2b/0x60
-[  748.609493]  [<ffffffff81039431>] ? get_parent_ip+0x11/0x50
-[  748.609656]  [<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
-[  748.609820]  [<ffffffff815ffacd>] wait_for_common+0x10d/0x190
-[  748.609984]  [<ffffffff810426e0>] ? default_wake_function+0x0/0x10
-[  748.610149]  [<ffffffff81602ec9>] ? _raw_spin_unlock_bh+0x39/0x40
-[  748.610314]  [<ffffffff815ffbf8>] wait_for_completion+0x18/0x20
-[  748.610479]  [<ffffffff8113d1e7>] writeback_inodes_sb_nr+0xf7/0x120
-[  748.610646]  [<ffffffff8113d68d>] writeback_inodes_sb+0x4d/0x60
-[  748.610811]  [<ffffffff8113d6d2>] ?
+[  409.479214] =======================================================
+[  409.479527] [ INFO: possible circular locking dependency detected ]
+[  409.479689] 2.6.37-rc3+ #26[  409.479837]
+-------------------------------------------------------
+[  409.479998] umount/4020 is trying to acquire lock:[  409.480155]
+(ext4-dio-unwritten){+.+...}, at: [<ffffffff81067a80>]
+flush_workqueue+0x0/0x540
+[  409.480178] [  409.480178] but task is already holding lock:
+[  409.480178]  (&type->s_umount_key#23){++++..}, at:
+[<ffffffff8111b40d>] deactivate_super+0x3d
+/0x60
+[  409.480178] [  409.480178] which lock already depends on the new
+lock.
+[  409.480178] 
+[  409.480178] 
+[  409.480178] the existing dependency chain (in reverse order) is:
+[  409.480178] 
+[  409.480178] -> #3 (&type->s_umount_key#23){++++..}:
+[  409.480178]        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+[  409.480178]        [<ffffffff81601ba2>] down_read+0x42/0x60
+[  409.480178]        [<ffffffff8113d6d2>]
 writeback_inodes_sb_if_idle+0x32/0x60
-[  748.610978]  [<ffffffff8113d6da>]
-writeback_inodes_sb_if_idle+0x3a/0x60
-[  748.611153]  [<ffffffffa003fefd>] ext4_da_write_begin+0x20d/0x310
-[ext4]
-[  748.611321]  [<ffffffff810cbbf4>]
+[  409.480178]        [<ffffffffa003fef8>]
+ext4_da_write_begin+0x208/0x2d0 [ext4]
+[  409.480178]        [<ffffffff810cbbf4>]
 generic_file_buffered_write+0x114/0x2a0
-
-
+[  409.480178]        [<ffffffff810cc5e0>]
+__generic_file_aio_write+0x240/0x470
+[  409.480178]        [<ffffffff810cc876>]
+generic_file_aio_write+0x66/0xd0
+[  409.480178]        [<ffffffffa0034fad>] ext4_file_write+0x3d/0xd0
+[ext4]
+[  409.480178]        [<ffffffff81117702>] do_sync_write+0xd2/0x110
+[  409.480178]        [<ffffffff811179c8>] vfs_write+0xc8/0x190
+[  409.480178]        [<ffffffff8111851a>] sys_pwrite64+0x7a/0x90
+[  409.480178]        [<ffffffff8100312b>]
+system_call_fastpath+0x16/0x1b
+[  409.480178] 
+[  409.480178] -> #2 (&sb->s_type->i_mutex_key#13){+.+.+.}:
+[  409.480178]        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+[  409.480178]        [<ffffffff81601329>]
+__mutex_lock_common+0x59/0x480
+[  409.480178]        [<ffffffff8160182e>] mutex_lock_nested+0x3e/0x50
+[  409.480178]        [<ffffffffa0042107>] ext4_end_io_work+0x37/0xb0
+[ext4]
+[  409.480178]        [<ffffffff81068378>] process_one_work+0x1b8/0x5a0
+[  409.480178]        [<ffffffff81069675>] worker_thread+0x175/0x3a0
+[  409.480178]        [<ffffffff8106e246>] kthread+0x96/0xa0
+[  409.480178]        [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
+[  409.480178] 
+[  409.480178] -> #1 ((&io->work)){+.+...}:
+[  409.480178]        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+[  409.480178]        [<ffffffff81068364>] process_one_work+0x1a4/0x5a0
+[  409.480178]        [<ffffffff81069675>] worker_thread+0x175/0x3a0
+[  409.480178]        [<ffffffff8106e246>] kthread+0x96/0xa0
+[  409.480178]        [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
+[  409.480178] 
+[  409.480178] -> #0 (ext4-dio-unwritten){+.+...}:
+[  409.480178]        [<ffffffff81085122>] __lock_acquire+0x1382/0x1490
+[  409.480178]        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+[  409.480178]        [<ffffffff81067bc8>] flush_workqueue+0x148/0x540
+[  409.480178]        [<ffffffffa004f5db>] ext4_sync_fs+0x3b/0x100
+[ext4]
+[  409.480178]        [<ffffffff8114304e>] __sync_filesystem+0x5e/0x90
+[  409.480178]        [<ffffffff81143132>] sync_filesystem+0x32/0x60
+[  409.480178]        [<ffffffff8111a97f>]
+generic_shutdown_super+0x2f/0x100
+[  409.480178]        [<ffffffff8111aa7c>] kill_block_super+0x2c/0x50
+[  409.480178]        [<ffffffff8111b1e5>]
+deactivate_locked_super+0x45/0x60
+[  409.480178]        [<ffffffff8111b415>] deactivate_super+0x45/0x60
+[  409.480178]        [<ffffffff81136430>] mntput_no_expire+0xf0/0x190
+[  409.480178]        [<ffffffff811376a9>] sys_umount+0x79/0x3a0
+[  409.480178]        [<ffffffff8100312b>]
+system_call_fastpath+0x16/0x1b
+[  409.480178] [  409.480178] other info that might help us debug this:
+[  409.480178] 
+[  409.480178] 1 lock held by umount/4020:
+[  409.480178]  #0:  (&type->s_umount_key#23){++++..}, at:
+[<ffffffff8111b40d>] deactivate_super
++0x3d/0x60
+[  409.480178] 
+[  409.480178] stack backtrace:
+[  409.480178] Pid: 4020, comm: umount Not tainted 2.6.37-rc3+ #26
+[  409.480178] Call Trace:
+[  409.480178]  [<ffffffff81082c39>] print_circular_bug+0xe9/0xf0
+[  409.480178]  [<ffffffff81085122>] __lock_acquire+0x1382/0x1490
+[  409.480178]  [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+[  409.480178]  [<ffffffff81067a80>] ? flush_workqueue+0x0/0x540
+[  409.480178]  [<ffffffff81067bc8>] flush_workqueue+0x148/0x540
+[  409.480178]  [<ffffffff81067a80>] ? flush_workqueue+0x0/0x540
+[  409.480178]  [<ffffffffa004f5db>] ext4_sync_fs+0x3b/0x100 [ext4]
+[  409.480178]  [<ffffffff8113d68d>] ? writeback_inodes_sb+0x4d/0x60
+[  409.480178]  [<ffffffff8114304e>] __sync_filesystem+0x5e/0x90
+[  409.480178]  [<ffffffff81143132>] sync_filesystem+0x32/0x60
+[  409.480178]  [<ffffffff8111a97f>] generic_shutdown_super+0x2f/0x100
+[  409.480178]  [<ffffffff8111aa7c>] kill_block_super+0x2c/0x50
+[  409.480178]  [<ffffffff8111b1e5>] deactivate_locked_super+0x45/0x60
+[  409.480178]  [<ffffffff8111b415>] deactivate_super+0x45/0x60
+[  409.480178]  [<ffffffff81136430>] mntput_no_expire+0xf0/0x190
+[  409.480178]  [<ffffffff811376a9>] sys_umount+0x79/0x3a0
+[  409.480178]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
 
