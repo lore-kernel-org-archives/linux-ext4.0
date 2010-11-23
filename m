@@ -1,237 +1,164 @@
-From: Dmitry <dmonakhov@openvz.org>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Tue, 23 Nov 2010 15:54:13 +0300
-Message-ID: <8762vo9p56.fsf@dmon-lap.sw.ru>
-References: <20101123100239.GA4232@amd>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] ext3: Add journal error check into ext3_rename()
+Date: Tue, 23 Nov 2010 13:57:16 +0100
+Message-ID: <20101123125716.GE6113@quack.suse.cz>
+References: <1290486633-4534-1-git-send-email-namhyung@gmail.com>
+ <AANLkTi=Ve03g026yb_x1VMDcuq4nrppuRcovPvDwHEc8@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Nick Piggin <npiggin@kernel.dk>, linux-fsdevel@vger.kernel.org,
+Cc: Namhyung Kim <namhyung@gmail.com>, Jan Kara <jack@suse.cz>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
-	linux-btrfs@v
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:47027 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751079Ab0KWMy2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Nov 2010 07:54:28 -0500
-In-Reply-To: <20101123100239.GA4232@amd>
+Received: from cantor2.suse.de ([195.135.220.15]:46111 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754006Ab0KWM5V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Nov 2010 07:57:21 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTi=Ve03g026yb_x1VMDcuq4nrppuRcovPvDwHEc8@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 23 Nov 2010 21:02:39 +1100, Nick Piggin <npiggin@kernel.dk> wrote:
+  Hello Amir,
+
+On Tue 23-11-10 09:58:58, Amir Goldstein wrote:
+> A better way to handle this situation is to get_write_access much sooner,
+> when things can still be rolled back properly.
+> Please find below a patch I am using in next3 to fix some un-handled
+> journal errors
+> and see if you can/want to use any of it as reference for your patches.
+  While generally it is certainly desirable to detect errors early and bail
+out without doing harm, in this particular case I don't see a big point
+in complicating the code since the only realistic failure case is that the
+journal is aborted, we have to run fsck anyway, and we are not causing any
+unfixable damage... So I'll take the patch as is.
+
+									Honza
+
+> Some places in Ext3 original code don't check for return value of
+> JBD functions.  Check for snapshot/journal errors in those places.
 > 
-> Taking s_umount lock inside i_mutex can result in an ABBA deadlock:
+> Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
 > 
->  =======================================================
->  [ INFO: possible circular locking dependency detected ]
->  2.6.37-rc3+ #26
->  -------------------------------------------------------
->  append_writer/12828 is trying to acquire lock:
->   (&type->s_umount_key#24){+++++.}, at:
-> 	[<ffffffff8113d6d2>] writeback_inodes_sb_if_idle+0x32/0x60
->  
->  but task is already holding lock:
->   (&sb->s_type->i_mutex_key#14){+.+.+.}, at:
-> 	[<ffffffff810cc863>] generic_file_aio_write+0x53/0xd0
->  
->  which lock already depends on the new lock.
->  
->  
->  the existing dependency chain (in reverse order) is:
->  
->  -> #3 (&sb->s_type->i_mutex_key#14){+.+.+.}:
->         [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
->         [<ffffffff81601329>] __mutex_lock_common+0x59/0x480
->         [<ffffffff8160182e>] mutex_lock_nested+0x3e/0x50
->         [<ffffffffa003a147>] ext4_end_io_work+0x37/0xb0 [ext4]
->         [<ffffffff81068378>] process_one_work+0x1b8/0x5a0
->         [<ffffffff81069675>] worker_thread+0x175/0x3a0
->         [<ffffffff8106e246>] kthread+0x96/0xa0
->         [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
->  
->  -> #2 ((&io->work)){+.+...}:
->         [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
->         [<ffffffff81068364>] process_one_work+0x1a4/0x5a0
->         [<ffffffff81069675>] worker_thread+0x175/0x3a0
->         [<ffffffff8106e246>] kthread+0x96/0xa0
->         [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
->  
->  -> #1 (ext4-dio-unwritten){+.+...}:
->         [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
->         [<ffffffff81067bc8>] flush_workqueue+0x148/0x540
->         [<ffffffffa004761b>] ext4_sync_fs+0x3b/0x100 [ext4]
->         [<ffffffff8114304e>] __sync_filesystem+0x5e/0x90
->         [<ffffffff81143132>] sync_filesystem+0x32/0x60
->         [<ffffffff8111a97f>] generic_shutdown_super+0x2f/0x100
->         [<ffffffff8111aa7c>] kill_block_super+0x2c/0x50
->         [<ffffffff8111b1e5>] deactivate_locked_super+0x45/0x60
->         [<ffffffff8111b415>] deactivate_super+0x45/0x60
->         [<ffffffff81136430>] mntput_no_expire+0xf0/0x190
->         [<ffffffff811376a9>] sys_umount+0x79/0x3a0
->         [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
->  
->  -> #0 (&type->s_umount_key#24){+++++.}:
->         [<ffffffff81085122>] __lock_acquire+0x1382/0x1490
->         [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
->         [<ffffffff81601ba2>] down_read+0x42/0x60
->         [<ffffffff8113d6d2>] writeback_inodes_sb_if_idle+0x32/0x60
->         [<ffffffffa0037efd>] ext4_da_write_begin+0x20d/0x310 [ext4]
->         [<ffffffff810cbbf4>] generic_file_buffered_write+0x114/0x2a0
->         [<ffffffff810cc5e0>] __generic_file_aio_write+0x240/0x470
->         [<ffffffff810cc876>] generic_file_aio_write+0x66/0xd0
->         [<ffffffffa002cfad>] ext4_file_write+0x3d/0xd0 [ext4]
->         [<ffffffff81117702>] do_sync_write+0xd2/0x110
->         [<ffffffff811179c8>] vfs_write+0xc8/0x190
->         [<ffffffff811183ec>] sys_write+0x4c/0x80
->         [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
->  
->  other info that might help us debug this:
->  
->  1 lock held by append_writer/12828:
->   #0:  (&sb->s_type->i_mutex_key#14){+.+.+.}, at:
-> 	[<ffffffff810cc863>] generic_file_aio_write+0x53/0xd0
->  
->  stack backtrace:
->  Pid: 12828, comm: append_writer Not tainted 2.6.37-rc3+ #26
->  Call Trace:
->   [<ffffffff81082c39>] print_circular_bug+0xe9/0xf0
->   [<ffffffff81085122>] __lock_acquire+0x1382/0x1490
->   [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
->   [<ffffffff8113d6d2>] ? writeback_inodes_sb_if_idle+0x32/0x60
->   [<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
->   [<ffffffff81601ba2>] down_read+0x42/0x60
->   [<ffffffff8113d6d2>] ? writeback_inodes_sb_if_idle+0x32/0x60
->   [<ffffffff8113d6d2>] writeback_inodes_sb_if_idle+0x32/0x60
->   [<ffffffffa0037efd>] ext4_da_write_begin+0x20d/0x310 [ext4]
->   [<ffffffff81073dde>] ? up_read+0x1e/0x40
->   [<ffffffff810cbbf4>] generic_file_buffered_write+0x114/0x2a0
->   [<ffffffff8104fa22>] ? current_fs_time+0x22/0x30
->   [<ffffffff810cc5e0>] __generic_file_aio_write+0x240/0x470
->   [<ffffffff810cc863>] ? generic_file_aio_write+0x53/0xd0
->   [<ffffffff810cc876>] generic_file_aio_write+0x66/0xd0
->   [<ffffffffa002cfad>] ext4_file_write+0x3d/0xd0 [ext4]
->   [<ffffffff81150db8>] ? fsnotify+0x88/0x5e0
->   [<ffffffff81117702>] do_sync_write+0xd2/0x110
->   [<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
->   [<ffffffff816027b9>] ? trace_hardirqs_on_thunk+0x3a/0x3f
->   [<ffffffff81022e9a>] ? smp_apic_timer_interrupt+0x6a/0xa0
->   [<ffffffff811179c8>] vfs_write+0xc8/0x190
->   [<ffffffff811183ec>] sys_write+0x4c/0x80
->   [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
+> --------------------------------------------------------------------------------
+> diff -Nuarp a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> --- a/fs/ext3/balloc.c  2010-11-23 09:38:13.395922811 +0200
+> +++ b/fs/ext3/balloc.c  2010-11-23 09:38:13.185923236 +0200
+> @@ -674,7 +674,9 @@ do_more:
 > 
-> Also, there can be an AA deadlock if the filesystem takes i_mutex in a
-> workqueue, if it also waits for work completion while holding i_mutex.
+>     /* We dirtied the bitmap block */
+>     BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+> -   err = ext3_journal_dirty_metadata(handle, bitmap_bh);
+> +   ret = ext3_journal_dirty_metadata(handle, bitmap_bh);
+> +   if (!err)
+> +       err = ret;
 > 
-> SysRq : Show Blocked State
-> task                        PC stack   pid father
-> kworker/9:1   D 0000000000000000  6296   118      2
-> Call Trace:
-> [<ffffffff81039431>] ? get_parent_ip+0x11/0x50
-> [<ffffffff8160145c>] __mutex_lock_common+0x18c/0x480
-> [<ffffffffa0042147>] ? ext4_end_io_work+0x37/0xb0 [ext4]
-> [<ffffffffa0042147>] ? ext4_end_io_work+0x37/0xb0 [ext4]
-> [<ffffffff8160182e>] mutex_lock_nested+0x3e/0x50
-> [<ffffffffa0042147>] ext4_end_io_work+0x37/0xb0 [ext4]
-> [<ffffffff81068378>] process_one_work+0x1b8/0x5a0
-> [<ffffffff8106830e>] ? process_one_work+0x14e/0x5a0
-> [<ffffffffa0042110>] ? ext4_end_io_work+0x0/0xb0 [ext4]
-> [<ffffffff81069675>] worker_thread+0x175/0x3a0
-> [<ffffffff81069500>] ? worker_thread+0x0/0x3a0
-> [<ffffffff8106e246>] kthread+0x96/0xa0
-> [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
-> [<ffffffff81039878>] ? finish_task_switch+0x78/0x110
-> [<ffffffff816036c0>] ? restore_args+0x0/0x30
-> [<ffffffff8106e1b0>] ? kthread+0x0/0xa0
-> [<ffffffff81003ed0>] ? kernel_thread_helper+0x0/0x10
+>     /* And the group descriptor block */
+>     BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
 > 
-> dbench        D 0000000000000000  2872  2916      1
-> Call Trace:
-> [<ffffffff810806fd>] ? trace_hardirqs_off+0xd/0x10
-> [<ffffffff81600bb5>] schedule_timeout+0x1f5/0x350
-> [<ffffffff8108380b>] ? mark_held_locks+0x6b/0xa0
-> [<ffffffff8160314b>] ? _raw_spin_unlock_irq+0x2b/0x60
-> [<ffffffff81039431>] ? get_parent_ip+0x11/0x50
-> [<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
-> [<ffffffff815ffacd>] wait_for_common+0x10d/0x190
-> [<ffffffff810426e0>] ? default_wake_function+0x0/0x10
-> [<ffffffff81602ec9>] ? _raw_spin_unlock_bh+0x39/0x40
-> [<ffffffff815ffbf8>] wait_for_completion+0x18/0x20
-> [<ffffffff8113d1e7>] writeback_inodes_sb_nr+0xf7/0x120
-> [<ffffffff8113d68d>] writeback_inodes_sb+0x4d/0x60
-> [<ffffffff8113d6d2>] ?  writeback_inodes_sb_if_idle+0x32/0x60
-> [<ffffffff8113d6da>] writeback_inodes_sb_if_idle+0x3a/0x60
-> [<ffffffffa003fefd>] ext4_da_write_begin+0x20d/0x310
-> [<ffffffff810cbbf4>] generic_file_buffered_write+0x114/0x2a0
+> diff -Nuarp a/fs/ext3/inode.c b/fs/ext3/inode.c
+> --- a/fs/ext3/inode.c   2010-11-23 09:38:13.405923214 +0200
+> +++ b/fs/ext3/inode.c   2010-11-23 09:38:13.195922747 +0200
+> @@ -2362,6 +2362,9 @@ static void ext3_clear_blocks(handle_t
+>         if (bh) {
+>             BUFFER_TRACE(bh, "retaking write access");
+>             ext3_journal_get_write_access_inode(handle, inode, bh);
+> +           /* we may have lost write_access on bh */
+> +           if (is_handle_aborted(handle))
+> +               return;
+>         }
+>     }
 > 
-> Avoid both these issues by issuing completely asynchronous writeback request in
-> writeback_inodes_sb_if_idle. Don't let that fool you into thinking these
-> functions don't suck any more.
+> @@ -2444,6 +2447,9 @@ static void ext3_free_data(handle_t *ha
+>                 ext3_clear_blocks(handle, inode, this_bh,
+>                           block_to_free,
+>                           count, block_to_free_p, p);
+> +               /* we may have lost write_access on this_bh */
+> +               if (is_handle_aborted(handle))
+> +                   return;
+>                 block_to_free = nr;
+>                 block_to_free_p = p;
+>                 count = 1;
+> @@ -2454,6 +2460,9 @@ static void ext3_free_data(handle_t *ha
+>     if (count > 0)
+>         ext3_clear_blocks(handle, inode, this_bh, block_to_free,
+>                   count, block_to_free_p, p);
+> +   /* we may have lost write_access on this_bh */
+> +   if (is_handle_aborted(handle))
+> +       return;
 > 
-> ext4 now passes extensive stress testing with xfstests, fs_mark, dbench,
-> with a writeback_inodes_if_idle call added directly into ext4_da_write_begin
-> to trigger the path frequently. Previously it would spew lockdep stuff and
-> hang in a number of ways very quickly.
-I'm still able to trigger strange lockups on fsstress, but in other
-place. System hangs so quickly so i'm not succeed in grabbing logs yet.
+>     if (this_bh) {
+>         BUFFER_TRACE(this_bh, "call ext3_journal_dirty_metadata");
 > 
-> Signed-off-by: Nick Piggin <npiggin@kernel.dk>
+> diff -Nuarp a/fs/ext3/namei.c b/fs/ext3/namei.c
+> --- a/fs/ext3/namei.c   2010-11-23 09:38:13.415922664 +0200
+> +++ b/fs/ext3/namei.c   2010-11-23 09:38:13.205923227 +0200
+> @@ -1649,8 +1649,12 @@ static int ext3_delete_entry (handle_t
+>         if (!ext3_check_dir_entry("ext3_delete_entry", dir, de, bh, i))
+>             return -EIO;
+>         if (de == de_del)  {
+> +           int err;
+> +
+>             BUFFER_TRACE(bh, "get_write_access");
+> -           ext3_journal_get_write_access(handle, bh);
+> +           err = ext3_journal_get_write_access(handle, bh);
+> +           if (err)
+> +               return err;
+>             if (pde)
+>                 pde->rec_len = ext3_rec_len_to_disk(
+>                     ext3_rec_len_from_disk(pde->rec_len) +
+> @@ -1797,7 +1801,16 @@ retry:
+>         goto out_stop;
+>     }
+>     BUFFER_TRACE(dir_block, "get_write_access");
+> -   ext3_journal_get_write_access(handle, dir_block);
+> +   err = ext3_journal_get_write_access(handle, dir_block);
+> +   if (err) {
+> +       drop_nlink(inode); /* is this nlink == 0? */
+> +       unlock_new_inode(inode);
+> +       /* no need to check for errors - we failed anyway */
+> +       (void) ext3_mark_inode_dirty(handle, inode);
+> +       iput(inode);
+> +       brelse(dir_block);
+> +       goto out_stop;
+> +   }
+>     de = (struct ext3_dir_entry_2 *) dir_block->b_data;
+>     de->inode = cpu_to_le32(inode->i_ino);
+>     de->name_len = 1;
 > 
-> ---
->  fs/fs-writeback.c |   32 ++++++++++++++++++++------------
->  1 file changed, 20 insertions(+), 12 deletions(-)
-> 
-> Index: linux-2.6/fs/fs-writeback.c
-> ===================================================================
-> --- linux-2.6.orig/fs/fs-writeback.c	2010-11-23 20:57:23.000000000 +1100
-> +++ linux-2.6/fs/fs-writeback.c	2010-11-23 20:59:10.000000000 +1100
-> @@ -1152,16 +1152,17 @@ EXPORT_SYMBOL(writeback_inodes_sb);
->   *
->   * Invoke writeback_inodes_sb if no writeback is currently underway.
->   * Returns 1 if writeback was started, 0 if not.
-> + *
-> + * Even if 1 is returned, writeback may not be started if memory allocation
-> + * fails. This function makes no guarantees about anything.
->   */
->  int writeback_inodes_sb_if_idle(struct super_block *sb)
->  {
->  	if (!writeback_in_progress(sb->s_bdi)) {
-> -		down_read(&sb->s_umount);
-> -		writeback_inodes_sb(sb);
-> -		up_read(&sb->s_umount);
-> +		bdi_start_writeback(sb->s_bdi, get_nr_dirty_pages());
->  		return 1;
-> -	} else
-> -		return 0;
-> +	}
-> +	return 0;
->  }
->  EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
->  
-> @@ -1172,17 +1173,18 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idl
->   *
->   * Invoke writeback_inodes_sb if no writeback is currently underway.
->   * Returns 1 if writeback was started, 0 if not.
-> + *
-> + * Even if 1 is returned, writeback may not be started if memory allocation
-> + * fails. This function makes no guarantees about anything.
->   */
->  int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
->  				   unsigned long nr)
->  {
->  	if (!writeback_in_progress(sb->s_bdi)) {
-> -		down_read(&sb->s_umount);
-> -		writeback_inodes_sb_nr(sb, nr);
-> -		up_read(&sb->s_umount);
-> +		bdi_start_writeback(sb->s_bdi, nr);
->  		return 1;
-> -	} else
-> -		return 0;
-> +	}
-> +	return 0;
->  }
->  EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
->  
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> @@ -2337,6 +2350,10 @@ static int ext3_rename (struct inode *
+>         if (!new_inode && new_dir!=old_dir &&
+>                 new_dir->i_nlink >= EXT3_LINK_MAX)
+>             goto end_rename;
+> +       BUFFER_TRACE(dir_bh, "get_write_access");
+> +       retval = ext3_journal_get_write_access(handle, dir_bh);
+> +       if (retval)
+> +           goto end_rename;
+>     }
+>     if (!new_bh) {
+>         retval = ext3_add_entry (handle, new_dentry, old_inode);
+> @@ -2344,7 +2361,9 @@ static int ext3_rename (struct inode *
+>             goto end_rename;
+>     } else {
+>         BUFFER_TRACE(new_bh, "get write access");
+> -       ext3_journal_get_write_access(handle, new_bh);
+> +       retval = ext3_journal_get_write_access(handle, new_bh);
+> +       if (retval)
+> +           goto end_rename;
+>         new_de->inode = cpu_to_le32(old_inode->i_ino);
+>         if (EXT3_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
+>                           EXT3_FEATURE_INCOMPAT_FILETYPE))
+> @@ -2401,8 +2420,6 @@ static int ext3_rename (struct inode *
+>     old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME_SEC;
+>     ext3_update_dx_flag(old_dir);
+>     if (dir_bh) {
+> -       BUFFER_TRACE(dir_bh, "get_write_access");
+> -       ext3_journal_get_write_access(handle, dir_bh);
+>         PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
+>         BUFFER_TRACE(dir_bh, "call ext3_journal_dirty_metadata");
+>         ext3_journal_dirty_metadata(handle, dir_bh);
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
