@@ -1,96 +1,94 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] mke2fs: Inform user about ongoing discard
-Date: Tue, 23 Nov 2010 18:48:13 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011231839320.12354@dhcp-lab-213.englab.brq.redhat.com>
-References: <1287670982-32348-1-git-send-email-lczerner@redhat.com> <20101122202002.GA2767@thunk.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com, adilger@dilger.ca
-To: "Ted Ts'o" <tytso@mit.edu>
+Subject: [PATCH] ext4: Remove warning message from ext4_issue_discard helper
+Date: Tue, 23 Nov 2010 19:42:03 +0100
+Message-ID: <1290537723-18558-1-git-send-email-lczerner@redhat.com>
+Cc: sandeen@redhat.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, lczerner@redhat.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30662 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45069 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755218Ab0KWRsS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Nov 2010 12:48:18 -0500
-In-Reply-To: <20101122202002.GA2767@thunk.org>
+	id S1756222Ab0KWSmL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Nov 2010 13:42:11 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 22 Nov 2010, Ted Ts'o wrote:
+ext4_issue_discard is supposed to be helper for calling discard, however
+in case that underlying device does not support discard it prints out
+the warning message and clears the DISCARD t_mount_opt flag. Since it
+can be (and is) used by others, it should not do anything and let the
+caller to handle the error case.
 
-> On Thu, Oct 21, 2010 at 04:23:02PM +0200, Lukas Czerner wrote:
-> > Since there are some slow SSD's out there and big thinly provisioned
-> > storages on which it takes quite long to issue discard through whole
-> > device, it would be nice to provide user the information about what is
-> > going on and how long it will take (approximately).
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> 
-> Hi Lukas,
-> 
-> I've looked at this patch, and one thing that disturbs me about it ---
-> you are discarding the first percentage of the disk five percent times
-> for no good reason just to get the timing, before then executing the
-> discard for the entire disk.   There are a couple of problems with this:
-> 
-> *) For smart/competently implemented SSD's, discarding the same part
-> of the disk five times might lead to a misleading timing --- the smart
-> device could easily determine that the first 1% is already not in use
-> after the first discard, and the subsequent 4 discards could be
-> discard as no-ops.
-> 
-> *) Mark Lord has claimed that there exists a large number of
-> incomptently implemented SSD's out there, that may actually be
-> executing a flash erase of the discarded region.  If true, executing
-> an extra flash erase on 1% of the disk for no good reason five times
-> might not be the best thing to do for the longetivity of the device.
-> 
-> I was tempted to fix this up myself, but since I'm trying to get
-> better at delegating work to others, may I suggest the following
-> changes?
-> 
-> 1)  Implement block device ioctl's for the kernel that export the
-> discard_granularity, discard_alignment, and max_discard_sectors.  
-> 
-> 2) Change mke2fs so that the discard is done in a separate function.
-> Said function should attempt to fetch the discard_granularity,
-> discard_alignment, and max_discard_sectors.
-> 
-> 3) This new function in mke2fs should start by discarding
-> approximately 1% of device at a time, respecting discard_granularity
-> and discard_alignment.  If the time to discard 1% of the device is
-> less than a second, then it should double the amount that it discards
-> at a time.  If the time to discard takes longer than 4 seconds, it
-> should reduce the amount that it discards by half (again, always
-> respecting discard_granularity and discard_alignment).  The function
-> can display the amount of time elapsed and the estimated amount of
-> time remaining after each chunk of the device that it discards,
-> assuming it can use ^M to redraw the progress report (which of course
-> should be suppressed if the -q option is specified on the command
-> line).
-> 
-> 
-> This design doesn't "waste" any discards, which is both faster and
-> reduces wear on badly designed SSD's.  It also continuously updates
-> the user with the amount of time it takes to complete the discard
-> process.  It also will respect the discard_granularity and
-> discard_alignment restrictions; and of course, it allows the user to
-> interrupt the discard, without needing a special kernel patch.
-> 
-> Does this make sense to you?
-> 
-> 						- Ted
-> 
+This commit removes warning message and flag setting from
+ext4_issue_discard and use it just in place where it is really needed
+(release_blocks_on_commit). FITRIM ioctl should not set any flags nor it
+should print out warning messages, so get rid of the warning as well.
 
-Hi Ted,
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/mballoc.c |   22 ++++++++++------------
+ 1 files changed, 10 insertions(+), 12 deletions(-)
 
-this absolutely make sense to me. I like the idea way better than what I
-had done in my patch (actually I was probably lazy to do it right in the
-first place:)). So, I'll add this into my todo list and hopefully find
-some time to deal with it ASAP.
-
-Thanks for suggestions!
-
--Lukas
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5b4d4e3..e479319 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2608,18 +2608,12 @@ int ext4_mb_release(struct super_block *sb)
+ static inline int ext4_issue_discard(struct super_block *sb,
+ 		ext4_group_t block_group, ext4_grpblk_t block, int count)
+ {
+-	int ret;
+ 	ext4_fsblk_t discard_block;
+ 
+ 	discard_block = block + ext4_group_first_block_no(sb, block_group);
+ 	trace_ext4_discard_blocks(sb,
+ 			(unsigned long long) discard_block, count);
+-	ret = sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
+-	if (ret == -EOPNOTSUPP) {
+-		ext4_warning(sb, "discard not supported, disabling");
+-		clear_opt(EXT4_SB(sb)->s_mount_opt, DISCARD);
+-	}
+-	return ret;
++	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
+ }
+ 
+ /*
+@@ -2631,7 +2625,7 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 	struct super_block *sb = journal->j_private;
+ 	struct ext4_buddy e4b;
+ 	struct ext4_group_info *db;
+-	int err, count = 0, count2 = 0;
++	int err, ret, count = 0, count2 = 0;
+ 	struct ext4_free_data *entry;
+ 	struct list_head *l, *ltmp;
+ 
+@@ -2641,9 +2635,15 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 		mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
+ 			 entry->count, entry->group, entry);
+ 
+-		if (test_opt(sb, DISCARD))
+-			ext4_issue_discard(sb, entry->group,
++		if (test_opt(sb, DISCARD)) {
++			ret = ext4_issue_discard(sb, entry->group,
+ 					entry->start_blk, entry->count);
++			if (unlikely(ret == -EOPNOTSUPP)) {
++				ext4_warning(sb, "discard not supported, "
++						 "disabling");
++				clear_opt(EXT4_SB(sb)->s_mount_opt, DISCARD);
++			}
++		}
+ 
+ 		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
+ 		/* we expect to find existing buddy because it's pinned */
+@@ -4718,8 +4718,6 @@ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+ 	ext4_unlock_group(sb, group);
+ 
+ 	ret = ext4_issue_discard(sb, group, start, count);
+-	if (ret)
+-		ext4_std_error(sb, ret);
+ 
+ 	ext4_lock_group(sb, group);
+ 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
+-- 
+1.7.2.3
 
