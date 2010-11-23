@@ -1,57 +1,55 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [patch] fix up lock order reversal in writeback
-Date: Mon, 22 Nov 2010 15:43:04 -0800
-Message-ID: <20101122154304.5f78f907.akpm@linux-foundation.org>
-References: <20101116110058.GA4298@amd>
-	<20101116130146.GG4757@quack.suse.cz>
-	<4CE35A6D.2040906@redhat.com>
-	<20101117043845.GA3586@amd>
-	<4CE362B0.6040607@redhat.com>
-	<20101117061057.GA3989@amd>
-	<4CE49AF5.1080104@redhat.com>
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: Re: [PATCH 2/2] ext3: Add journal error check into ext3_rename()
+Date: Tue, 23 Nov 2010 12:37:10 +0900
+Message-ID: <1290483430.1857.43.camel@leonhard>
+References: <1290151716-4041-1-git-send-email-namhyung@gmail.com>
+	 <1290151716-4041-2-git-send-email-namhyung@gmail.com>
+	 <20101122180501.GE5012@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <npiggin@kernel.dk>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:45248 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757791Ab0KVXn0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Nov 2010 18:43:26 -0500
-In-Reply-To: <4CE49AF5.1080104@redhat.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:40780 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750858Ab0KWDhQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2010 22:37:16 -0500
+In-Reply-To: <20101122180501.GE5012@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 17 Nov 2010 21:18:13 -0600
-Eric Sandeen <sandeen@redhat.com> wrote:
+2010-11-22 (=EC=9B=94), 19:05 +0100, Jan Kara:
+>   Uhuh, why ext3_journal_revoke()? I expect you want to cancel the ch=
+anges
+> you possibly did to new_bh. ext3_journal_forget() is for that but eve=
+n that
+> doesn't necessarily do what you want because it could cancel also cha=
+nges
+> some unrelated operation did to the buffer. So the only way to really=
+ undo
+> the change is to set new_de->inode and new_de->file_type to original
+> values. Also since we already unlinked the inode from the old directo=
+ry,
+> I'm not sure it's even beneficial to undo linking it to the new one. =
+So I'd
+> just bail out as fast as we can and leave on fsck to handle the mess.=
+=2E.
+>=20
+> 								Honza
 
-> On 11/17/10 12:10 AM, Nick Piggin wrote:
-> > On Tue, Nov 16, 2010 at 11:05:52PM -0600, Eric Sandeen wrote:
-> >> On 11/16/10 10:38 PM, Nick Piggin wrote:
-> >>>> as for the locking problems ... sorry about that!
-> >>>
-> >>> That's no problem. So is that an ack? :)
-> >>>
-> >>
-> >> I'd like to test it with the original case it was supposed to solve; will
-> >> do that tomorrow.
-> > 
-> > OK, but it shouldn't make much difference, unless there is a lot of
-> > strange activity happening on the sb (like mount / umount / remount /
-> > freeze / etc).
-> > 
-> 
-> Ok, good point.  And since I failed in my promise anyway, I won't
-> hold you up;
-> 
-> Acked-by: Eric Sandeen <sandeen@redhat.com>
+Right. I wanted cancel the changes but I wasn't sure what I did. Thanks
+for the explanation. I'll send v2 soon.
 
-That patch still sucks!
+--=20
+Regards,
+Namhyung Kim
 
-We all breathlessly await v2, which will have a complete changelog and
-approximately correct comments.
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
