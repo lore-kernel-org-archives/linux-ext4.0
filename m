@@ -1,81 +1,106 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/2] ext3: Add FITRIM handle for ext3
-Date: Tue, 23 Nov 2010 12:06:45 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011231153380.3139@dhcp-lab-213.englab.brq.redhat.com>
-References: <1290425358-16253-1-git-send-email-lczerner@redhat.com> <1290425358-16253-2-git-send-email-lczerner@redhat.com> <AANLkTi=Jc1gW1=dLuOzyh4LYGzQ2Dom75bj4vpUY27ts@mail.gmail.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
+Date: Tue, 23 Nov 2010 14:00:56 +0200
+Message-ID: <4CEBACF8.6070206@panasas.com>
+References: <20101123100239.GA4232@amd> <4CEB96D7.80105@panasas.com> <20101123105432.GA4483@amd>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, jack@suse.cz, tytso@mit.edu,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Mike Snitzer <msnitzer@redhat.com>
-To: Greg Freemyer <greg.freemyer@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTi=Jc1gW1=dLuOzyh4LYGzQ2Dom75bj4vpUY27ts@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Nick Piggin <npiggin@kernel.dk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from daytona.panasas.com ([67.152.220.89]:54477 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750793Ab0KWMBD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Nov 2010 07:01:03 -0500
+In-Reply-To: <20101123105432.GA4483@amd>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 22 Nov 2010, Greg Freemyer wrote:
-
-> On Mon, Nov 22, 2010 at 6:29 AM, Lukas Czerner <lczerner@redhat.com> wrote:
-> > It takes fstrim_range structure as an argument. fstrim_range is definec in
-> > the include/linux/fs.h.
-> >
-> > After the FITRIM is done, the number of actually discarded Bytes is stored
-> > in fstrim_range.len to give the user better insight on how much storage
-> > space has been really released for wear-leveling.
-> >
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+On 11/23/2010 12:54 PM, Nick Piggin wrote:
+> On Tue, Nov 23, 2010 at 12:26:31PM +0200, Boaz Harrosh wrote:
+>>>   *
+>>>   * Invoke writeback_inodes_sb if no writeback is currently underway.
+>>>   * Returns 1 if writeback was started, 0 if not.
+>>> + *
+>>> + * Even if 1 is returned, writeback may not be started if memory allocation
+>>> + * fails. This function makes no guarantees about anything.
+>>>   */
+>>>  int writeback_inodes_sb_if_idle(struct super_block *sb)
+>>>  {
+>>>  	if (!writeback_in_progress(sb->s_bdi)) {
+>>> -		down_read(&sb->s_umount);
+>>> -		writeback_inodes_sb(sb);
+>>> -		up_read(&sb->s_umount);
+>>> +		bdi_start_writeback(sb->s_bdi, get_nr_dirty_pages());
+>>>  		return 1;
+>>> -	} else
+>>> -		return 0;
+>>> +	}
+>>> +	return 0;
+>>>  }
+>>>  EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+>>>  
+>>> @@ -1172,17 +1173,18 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idl
+>>>   *
+>>>   * Invoke writeback_inodes_sb if no writeback is currently underway.
+>>>   * Returns 1 if writeback was started, 0 if not.
+>>> + *
+>>> + * Even if 1 is returned, writeback may not be started if memory allocation
+>>> + * fails. This function makes no guarantees about anything.
+>>>   */
+>>>  int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
+>>>  				   unsigned long nr)
+>>>  {
+>>>  	if (!writeback_in_progress(sb->s_bdi)) {
+>>> -		down_read(&sb->s_umount);
+>>> -		writeback_inodes_sb_nr(sb, nr);
+>>> -		up_read(&sb->s_umount);
+>>> +		bdi_start_writeback(sb->s_bdi, nr);
+>>>  		return 1;
+>>> -	} else
+>>> -		return 0;
+>>> +	}
+>>> +	return 0;
+>>>  }
+>>>  EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
+>>>  
+>>
+>> static inline int writeback_inodes_sb_if_idle(struct super_block *sb)
+>> {
+>> 	return writeback_inodes_sb_nr_if_idle(sb, get_nr_dirty_pages());
+>> }
+>>
+>> In writeback.h, No?
 > 
-> That's a misleading description in my opinion, from my understanding
-> this is more accurate:
-> 
-> ===
-> After the FITRIM is done, the number of bytes passed from the
-> filesystem down the block stack to the device for potential discard is
-> stored in fstrim_range.len.  This number is a maximum discard amount
-> from the storage device's perspective, because FITRIM called repeated
-> will keep sending the same sectors for discard repeatedly.
-> fstrim_range.len will report the same potential discard bytes each
-> time, but only sectors which had been written to between the discards
-> would actually be discarded by the storage device.  Further, the
-> kernel block layer reserves the right to adjust the discard ranges to
-> fit raid stripe geometry, non-trim capable devices in a LVM setup,
-> etc.  These reductions would not be reflected in fstrim_range.len.
-> 
-> As 2.6.37, the kernel block layer does not fully support discard and
-> as such will simply ignore all discard requests sent to volumes
-> created by device mapper or mdraid.  This is done in a silent way, so
-> these failures to discard are also not reflected in fstrim_range.len.
-
-I think this is not entirely true, because we have discard support for
-dm linear and stripe:
-
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=5ae89a8720c28caf35c4e53711d77df2856c404e
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=7b76ec11fec40203836b488496d2df082d5b2022
-
-(Adding Mike Snitzer into cc)
-
-> 
-> Thus fstrim_range.len can give the user better insight on how much
-> storage space has potentially been released for wear-leveling, but it
-> needs to be one of only one criteria the userspace tools take into
-> account when trying to optimize calls to FITRIM.
-> ===
-> 
-> Obviously, I'd like to also see that also in API documentation for
-> FITRIM.  (And correct me if I'm wrong about device mapper / mdraid.
-> I'd love to be wrong about that statement..)
-> 
-> Greg
+> I didn't care enough to move it :P I don't know if it matters.
 > 
 
-Greg, thank you for this, aside the dm thing, this is definitely a lot
-better explanation and it would be nice to include this into commit
-message (it is too late for ext4:).
+Than please just open code it in ext4 and completely remove it.
+One stupid function is enough don't you think?
 
-Jan, do you want me to repost this with new commit message or you can
-add it yourself ?
+> 
+>> But it has a single user so please just kill it.
+>>
+>> Also writeback_inodes_sb_nr_if_idle() has a single user. Combined with above,
+>> two users. Why not open code it in the two sites. It should be much
+>> clearer to understand what the magic is all about?
+> 
+> The filesystem shouldn't be aware of the details (the "magic") of how to
+> kick writeback, so I think the abstraction is right as is.
+> 
 
-Thanks!
+bdi_start_writeback() looks like a very clear abstraction to me but
+if you have plans for it than sure, I'm convinced.
 
--Lukas
+> Thanks,
+> Nick
+> 
+
+Thanks
+Boaz
