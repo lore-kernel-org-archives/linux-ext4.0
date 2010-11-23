@@ -1,32 +1,77 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 12/22] ext4: use little-endian bitops
-Date: Tue, 23 Nov 2010 14:29:06 -0500
-Message-ID: <20101123192906.GD2767@thunk.org>
-References: <1290519504-3958-1-git-send-email-akinobu.mita@gmail.com>
- <1290519504-3958-13-git-send-email-akinobu.mita@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] filefrag: count optimize non-verbose mode; count 0 extents
+ properly when verbose
+Date: Tue, 23 Nov 2010 17:21:42 -0600
+Message-ID: <4CEC4C86.1030806@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Akinobu Mita <akinobu.mita@gmail.com>
-Return-path: <linux-arch-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1290519504-3958-13-git-send-email-akinobu.mita@gmail.com>
-Sender: linux-arch-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:36106 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753316Ab0KWXVp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Nov 2010 18:21:45 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oANNLiVp013414
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Nov 2010 18:21:44 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id oANNLgcC020059
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Nov 2010 18:21:44 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 23, 2010 at 10:38:14PM +0900, Akinobu Mita wrote:
-> As a preparation for removing ext2 non-atomic bit operations from
-> asm/bitops.h. This converts ext2 non-atomic bit operations to
-> little-endian bit operations.
-> 
-> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
+# rm -f a; touch a; filefrag -v a
 
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+yields 1 extent when it should be 0.  Without -v, 0 is returned.
 
-						- Ted
+Fix this up by special-casing no extents returned in verbose
+mode; skip printing the header for the columns too, since there
+are no columns to print.
+
+Also, in nonverbose mode we can set fm_extent_count to 0
+so that FIEMAP will just query the extent count without gathering
+details; as it is today I think a non-verbose query may under-report
+the extent count once "count" extents have been filled in.
+
+Addresses-redhat-bugzilla: 653234
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index bd4486d..a48b9b0 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -194,7 +194,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+ 	do {
+ 		fiemap->fm_length = ~0ULL;
+ 		fiemap->fm_flags = flags;
+-		fiemap->fm_extent_count = count;
++		/*
++		 * If fm_extent_count == 0, FIEMAP returns count of
++		 * extents found without filling in details.
++		 */
++		if (!verbose)
++			fiemap->fm_extent_count = 0;
++		else
++			fiemap->fm_extent_count = count;
+ 		rc = ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap);
+ 		if (rc < 0) {
+ 			if (errno == EBADR && fiemap_incompat_printed == 0) {
+@@ -206,6 +213,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+ 		}
+ 
+ 		if (verbose && !fiemap_header_printed) {
++			/*
++			 * No extents on first call?
++			 * Skip header and show 0 extents.
++			 */
++			if (fiemap->fm_mapped_extents == 0) {
++				*num_extents = 0;
++				goto out;
++			}
+ 			printf(" ext %*s %*s %*s length flags\n", logical_width,
+ 			       "logical", physical_width, "physical",
+ 			       physical_width, "expected");
