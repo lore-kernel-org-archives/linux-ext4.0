@@ -1,109 +1,230 @@
 From: Nick Piggin <npiggin@kernel.dk>
-Subject: [bug] ext4 bug
-Date: Tue, 23 Nov 2010 20:32:01 +1100
-Message-ID: <20101123093201.GA4131@amd>
+Subject: [patch] fs: fix deadlocks in writeback_if_idle
+Date: Tue, 23 Nov 2010 21:02:39 +1100
+Message-ID: <20101123100239.GA4232@amd>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, Jan Kara <jack@su
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:26713 "EHLO
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:53794 "EHLO
 	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752535Ab0KWJcI (ORCPT
+	by vger.kernel.org with ESMTP id S1751024Ab0KWKCu (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Nov 2010 04:32:08 -0500
+	Tue, 23 Nov 2010 05:02:50 -0500
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
 
-Got a couple of ext4 bugs. modprobe ext4 ; # use it ; rmmod ext4 ;
-modprobe ext4 reproduced it twice.
+Taking s_umount lock inside i_mutex can result in an ABBA deadlock:
 
-Seems to not deallocate the kobject stuff properly, and then probably
-something in an error path is doing a double free and corrupting stuff.
+ =======================================================
+ [ INFO: possible circular locking dependency detected ]
+ 2.6.37-rc3+ #26
+ -------------------------------------------------------
+ append_writer/12828 is trying to acquire lock:
+  (&type->s_umount_key#24){+++++.}, at:
+	[<ffffffff8113d6d2>] writeback_inodes_sb_if_idle+0x32/0x60
+ 
+ but task is already holding lock:
+  (&sb->s_type->i_mutex_key#14){+.+.+.}, at:
+	[<ffffffff810cc863>] generic_file_aio_write+0x53/0xd0
+ 
+ which lock already depends on the new lock.
+ 
+ 
+ the existing dependency chain (in reverse order) is:
+ 
+ -> #3 (&sb->s_type->i_mutex_key#14){+.+.+.}:
+        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+        [<ffffffff81601329>] __mutex_lock_common+0x59/0x480
+        [<ffffffff8160182e>] mutex_lock_nested+0x3e/0x50
+        [<ffffffffa003a147>] ext4_end_io_work+0x37/0xb0 [ext4]
+        [<ffffffff81068378>] process_one_work+0x1b8/0x5a0
+        [<ffffffff81069675>] worker_thread+0x175/0x3a0
+        [<ffffffff8106e246>] kthread+0x96/0xa0
+        [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
+ 
+ -> #2 ((&io->work)){+.+...}:
+        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+        [<ffffffff81068364>] process_one_work+0x1a4/0x5a0
+        [<ffffffff81069675>] worker_thread+0x175/0x3a0
+        [<ffffffff8106e246>] kthread+0x96/0xa0
+        [<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
+ 
+ -> #1 (ext4-dio-unwritten){+.+...}:
+        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+        [<ffffffff81067bc8>] flush_workqueue+0x148/0x540
+        [<ffffffffa004761b>] ext4_sync_fs+0x3b/0x100 [ext4]
+        [<ffffffff8114304e>] __sync_filesystem+0x5e/0x90
+        [<ffffffff81143132>] sync_filesystem+0x32/0x60
+        [<ffffffff8111a97f>] generic_shutdown_super+0x2f/0x100
+        [<ffffffff8111aa7c>] kill_block_super+0x2c/0x50
+        [<ffffffff8111b1e5>] deactivate_locked_super+0x45/0x60
+        [<ffffffff8111b415>] deactivate_super+0x45/0x60
+        [<ffffffff81136430>] mntput_no_expire+0xf0/0x190
+        [<ffffffff811376a9>] sys_umount+0x79/0x3a0
+        [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
+ 
+ -> #0 (&type->s_umount_key#24){+++++.}:
+        [<ffffffff81085122>] __lock_acquire+0x1382/0x1490
+        [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+        [<ffffffff81601ba2>] down_read+0x42/0x60
+        [<ffffffff8113d6d2>] writeback_inodes_sb_if_idle+0x32/0x60
+        [<ffffffffa0037efd>] ext4_da_write_begin+0x20d/0x310 [ext4]
+        [<ffffffff810cbbf4>] generic_file_buffered_write+0x114/0x2a0
+        [<ffffffff810cc5e0>] __generic_file_aio_write+0x240/0x470
+        [<ffffffff810cc876>] generic_file_aio_write+0x66/0xd0
+        [<ffffffffa002cfad>] ext4_file_write+0x3d/0xd0 [ext4]
+        [<ffffffff81117702>] do_sync_write+0xd2/0x110
+        [<ffffffff811179c8>] vfs_write+0xc8/0x190
+        [<ffffffff811183ec>] sys_write+0x4c/0x80
+        [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
+ 
+ other info that might help us debug this:
+ 
+ 1 lock held by append_writer/12828:
+  #0:  (&sb->s_type->i_mutex_key#14){+.+.+.}, at:
+	[<ffffffff810cc863>] generic_file_aio_write+0x53/0xd0
+ 
+ stack backtrace:
+ Pid: 12828, comm: append_writer Not tainted 2.6.37-rc3+ #26
+ Call Trace:
+  [<ffffffff81082c39>] print_circular_bug+0xe9/0xf0
+  [<ffffffff81085122>] __lock_acquire+0x1382/0x1490
+  [<ffffffff810852c5>] lock_acquire+0x95/0x1b0
+  [<ffffffff8113d6d2>] ? writeback_inodes_sb_if_idle+0x32/0x60
+  [<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
+  [<ffffffff81601ba2>] down_read+0x42/0x60
+  [<ffffffff8113d6d2>] ? writeback_inodes_sb_if_idle+0x32/0x60
+  [<ffffffff8113d6d2>] writeback_inodes_sb_if_idle+0x32/0x60
+  [<ffffffffa0037efd>] ext4_da_write_begin+0x20d/0x310 [ext4]
+  [<ffffffff81073dde>] ? up_read+0x1e/0x40
+  [<ffffffff810cbbf4>] generic_file_buffered_write+0x114/0x2a0
+  [<ffffffff8104fa22>] ? current_fs_time+0x22/0x30
+  [<ffffffff810cc5e0>] __generic_file_aio_write+0x240/0x470
+  [<ffffffff810cc863>] ? generic_file_aio_write+0x53/0xd0
+  [<ffffffff810cc876>] generic_file_aio_write+0x66/0xd0
+  [<ffffffffa002cfad>] ext4_file_write+0x3d/0xd0 [ext4]
+  [<ffffffff81150db8>] ? fsnotify+0x88/0x5e0
+  [<ffffffff81117702>] do_sync_write+0xd2/0x110
+  [<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
+  [<ffffffff816027b9>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+  [<ffffffff81022e9a>] ? smp_apic_timer_interrupt+0x6a/0xa0
+  [<ffffffff811179c8>] vfs_write+0xc8/0x190
+  [<ffffffff811183ec>] sys_write+0x4c/0x80
+  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
 
+Also, there can be an AA deadlock if the filesystem takes i_mutex in a
+workqueue, if it also waits for work completion while holding i_mutex.
 
-[ 1234.475241]
-=============================================================================
-[ 1234.475503] BUG kmalloc-32: Object already free
-[ 1234.475665]
------------------------------------------------------------------------------
-[ 1234.475668] 
-[ 1234.476076] INFO: Allocated in kmem_cache_create+0x65/0x2d0
-age=1104271 cpu=0 pid=1492
-[ 1234.476332] INFO: Freed in kmem_cache_release+0x16/0x30 age=1 cpu=13
-pid=27603
-[ 1234.476584] INFO: Slab 0xffffea0003cf5cd8 objects=39 used=9
-fp=0xffff880116acd750 flags=0x40000000000000c1
-[ 1234.476842] INFO: Object 0xffff880116acd6e8 @offset=1768
-fp=0xffff880116acd478
-[ 1234.476845] 
-[ 1234.477244] Bytes b4 0xffff880116acd6d8:  00 00 00 00 00 00 00 00 5a
-5a 5a 5a 5a 5a 5a 5a ........ZZZZZZZZ
-[ 1234.478696]   Object 0xffff880116acd6e8:  6b 6b 6b 6b 6b 6b 6b 6b 6b
-6b 6b 6b 6b 6b 6b 6b kkkkkkkkkkkkkkkk
-[ 1234.480152]   Object 0xffff880116acd6f8:  6b 6b 6b 6b 6b 6b 6b 6b 6b
-6b 6b 6b 6b 6b 6b a5 kkkkkkkkkkkkkkk?
-[ 1234.481604]  Redzone 0xffff880116acd708:  bb bb bb bb bb bb bb bb
-????????        
-[ 1234.483059]  Padding 0xffff880116acd748:  5a 5a 5a 5a 5a 5a 5a 5a
-ZZZZZZZZ        
-[ 1234.484512] Pid: 27603, comm: rmmod Not tainted 2.6.37-rc3+ #27
-[ 1234.484679] Call Trace:
-[ 1234.484837]  [<ffffffff8110bb1e>] print_trailer+0xfe/0x160
-[ 1234.485025]  [<ffffffffa00626a7>] ? ext4_exit_mballoc+0x67/0x80
-[ext4]
-[ 1234.485196]  [<ffffffff8110bbbc>] object_err+0x3c/0x50
-[ 1234.485362]  [<ffffffff8110e015>] free_debug_processing+0x1f5/0x250
-[ 1234.485546]  [<ffffffffa00626a7>] ? ext4_exit_mballoc+0x67/0x80
-[ext4]
-[ 1234.485719]  [<ffffffff8110e5d4>] __slab_free+0x1b4/0x1e0
-[ 1234.485891]  [<ffffffff8110e71c>] kfree+0x11c/0x1c0
-[ 1234.486071]  [<ffffffffa00626a7>] ? ext4_exit_mballoc+0x67/0x80
-[ext4]
-[ 1234.486258]  [<ffffffffa00626a7>] ext4_exit_mballoc+0x67/0x80 [ext4]
-[ 1234.486444]  [<ffffffffa0070e23>] ext4_exit_fs+0xfb/0x12e [ext4]
-[ 1234.486619]  [<ffffffff81083b4d>] ? trace_hardirqs_on+0xd/0x10
-[ 1234.486791]  [<ffffffff810904ea>] sys_delete_module+0x17a/0x270
-[ 1234.486964]  [<ffffffff816036ad>] ? retint_swapgs+0xe/0x13
-[ 1234.487133]  [<ffffffff81083afd>] ?
-trace_hardirqs_on_caller+0x13d/0x180
-[ 1234.487306]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
-[ 1234.487477] FIX kmalloc-32: Object at 0xffff880116acd6e8 not freed
-[ 1243.592427] ------------[ cut here ]------------
-[ 1243.592595] WARNING: at fs/sysfs/dir.c:451 sysfs_add_one+0xce/0x200()
-[ 1243.592757] Hardware name: S5520UR
-[ 1243.592921] sysfs: cannot create duplicate filename '/fs/ext4'
-[ 1243.593081] Modules linked in: ext4(+) jbd2 crc16 brd [last unloaded:
-ext4]
-[ 1243.593642] Pid: 27865, comm: modprobe Not tainted 2.6.37-rc3+ #27
-[ 1243.593800] Call Trace:
-[ 1243.593964]  [<ffffffff810497ea>] warn_slowpath_common+0x7a/0xb0
-[ 1243.594129]  [<ffffffff810498c1>] warn_slowpath_fmt+0x41/0x50
-[ 1243.594289]  [<ffffffff8118c35e>] sysfs_add_one+0xce/0x200
-[ 1243.594447]  [<ffffffff8118c50c>] create_dir+0x7c/0xd0
-[ 1243.594607]  [<ffffffff8118c5dc>] sysfs_create_dir+0x7c/0xd0
-[ 1243.594771]  [<ffffffff8127949b>] kobject_add_internal+0xab/0x1f0
-[ 1243.594954]  [<ffffffff8127960f>] kset_register+0x2f/0x60
-[ 1243.595118]  [<ffffffff81279c9f>] kset_create_and_add+0x8f/0x1c0
-[ 1243.595287]  [<ffffffffa00ff11e>] ? ext4_init_fs+0x0/0x139 [ext4]
-[ 1243.595454]  [<ffffffffa00ff15a>] ext4_init_fs+0x3c/0x139 [ext4]
-[ 1243.595617]  [<ffffffff810001de>] do_one_initcall+0x3e/0x180
-[ 1243.595780]  [<ffffffff81093ba2>] sys_init_module+0xb2/0x200
-[ 1243.595949]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
-[ 1243.596113] ---[ end trace 8766368be9c85c43 ]---
-[ 1243.596279] kobject_add_internal failed for ext4 with -EEXIST, don't
-try to register things with the same name in the same directory.
-[ 1243.596538] Pid: 27865, comm: modprobe Tainted: G        W
-2.6.37-rc3+ #27
-[ 1243.596711] Call Trace:
-[ 1243.596865]  [<ffffffff8127953c>] kobject_add_internal+0x14c/0x1f0
-[ 1243.597043]  [<ffffffff8127960f>] kset_register+0x2f/0x60
-[ 1243.597208]  [<ffffffff81279c9f>] kset_create_and_add+0x8f/0x1c0
-[ 1243.597377]  [<ffffffffa00ff11e>] ? ext4_init_fs+0x0/0x139 [ext4]
-[ 1243.597545]  [<ffffffffa00ff15a>] ext4_init_fs+0x3c/0x139 [ext4]
-[ 1243.597710]  [<ffffffff810001de>] do_one_initcall+0x3e/0x180
-[ 1243.597872]  [<ffffffff81093ba2>] sys_init_module+0xb2/0x200
-[ 1243.598085]  [<ffffffff8100312b>] system_call_fastpath+0x16/0x1b
+SysRq : Show Blocked State
+task                        PC stack   pid father
+kworker/9:1   D 0000000000000000  6296   118      2
+Call Trace:
+[<ffffffff81039431>] ? get_parent_ip+0x11/0x50
+[<ffffffff8160145c>] __mutex_lock_common+0x18c/0x480
+[<ffffffffa0042147>] ? ext4_end_io_work+0x37/0xb0 [ext4]
+[<ffffffffa0042147>] ? ext4_end_io_work+0x37/0xb0 [ext4]
+[<ffffffff8160182e>] mutex_lock_nested+0x3e/0x50
+[<ffffffffa0042147>] ext4_end_io_work+0x37/0xb0 [ext4]
+[<ffffffff81068378>] process_one_work+0x1b8/0x5a0
+[<ffffffff8106830e>] ? process_one_work+0x14e/0x5a0
+[<ffffffffa0042110>] ? ext4_end_io_work+0x0/0xb0 [ext4]
+[<ffffffff81069675>] worker_thread+0x175/0x3a0
+[<ffffffff81069500>] ? worker_thread+0x0/0x3a0
+[<ffffffff8106e246>] kthread+0x96/0xa0
+[<ffffffff81003ed4>] kernel_thread_helper+0x4/0x10
+[<ffffffff81039878>] ? finish_task_switch+0x78/0x110
+[<ffffffff816036c0>] ? restore_args+0x0/0x30
+[<ffffffff8106e1b0>] ? kthread+0x0/0xa0
+[<ffffffff81003ed0>] ? kernel_thread_helper+0x0/0x10
 
+dbench        D 0000000000000000  2872  2916      1
+Call Trace:
+[<ffffffff810806fd>] ? trace_hardirqs_off+0xd/0x10
+[<ffffffff81600bb5>] schedule_timeout+0x1f5/0x350
+[<ffffffff8108380b>] ? mark_held_locks+0x6b/0xa0
+[<ffffffff8160314b>] ? _raw_spin_unlock_irq+0x2b/0x60
+[<ffffffff81039431>] ? get_parent_ip+0x11/0x50
+[<ffffffff81606c3d>] ? sub_preempt_count+0x9d/0xd0
+[<ffffffff815ffacd>] wait_for_common+0x10d/0x190
+[<ffffffff810426e0>] ? default_wake_function+0x0/0x10
+[<ffffffff81602ec9>] ? _raw_spin_unlock_bh+0x39/0x40
+[<ffffffff815ffbf8>] wait_for_completion+0x18/0x20
+[<ffffffff8113d1e7>] writeback_inodes_sb_nr+0xf7/0x120
+[<ffffffff8113d68d>] writeback_inodes_sb+0x4d/0x60
+[<ffffffff8113d6d2>] ?  writeback_inodes_sb_if_idle+0x32/0x60
+[<ffffffff8113d6da>] writeback_inodes_sb_if_idle+0x3a/0x60
+[<ffffffffa003fefd>] ext4_da_write_begin+0x20d/0x310
+[<ffffffff810cbbf4>] generic_file_buffered_write+0x114/0x2a0
+
+Avoid both these issues by issuing completely asynchronous writeback request in
+writeback_inodes_sb_if_idle. Don't let that fool you into thinking these
+functions don't suck any more.
+
+ext4 now passes extensive stress testing with xfstests, fs_mark, dbench,
+with a writeback_inodes_if_idle call added directly into ext4_da_write_begin
+to trigger the path frequently. Previously it would spew lockdep stuff and
+hang in a number of ways very quickly.
+
+Signed-off-by: Nick Piggin <npiggin@kernel.dk>
+
+---
+ fs/fs-writeback.c |   32 ++++++++++++++++++++------------
+ 1 file changed, 20 insertions(+), 12 deletions(-)
+
+Index: linux-2.6/fs/fs-writeback.c
+===================================================================
+--- linux-2.6.orig/fs/fs-writeback.c	2010-11-23 20:57:23.000000000 +1100
++++ linux-2.6/fs/fs-writeback.c	2010-11-23 20:59:10.000000000 +1100
+@@ -1152,16 +1152,17 @@ EXPORT_SYMBOL(writeback_inodes_sb);
+  *
+  * Invoke writeback_inodes_sb if no writeback is currently underway.
+  * Returns 1 if writeback was started, 0 if not.
++ *
++ * Even if 1 is returned, writeback may not be started if memory allocation
++ * fails. This function makes no guarantees about anything.
+  */
+ int writeback_inodes_sb_if_idle(struct super_block *sb)
+ {
+ 	if (!writeback_in_progress(sb->s_bdi)) {
+-		down_read(&sb->s_umount);
+-		writeback_inodes_sb(sb);
+-		up_read(&sb->s_umount);
++		bdi_start_writeback(sb->s_bdi, get_nr_dirty_pages());
+ 		return 1;
+-	} else
+-		return 0;
++	}
++	return 0;
+ }
+ EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
+ 
+@@ -1172,17 +1173,18 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idl
+  *
+  * Invoke writeback_inodes_sb if no writeback is currently underway.
+  * Returns 1 if writeback was started, 0 if not.
++ *
++ * Even if 1 is returned, writeback may not be started if memory allocation
++ * fails. This function makes no guarantees about anything.
+  */
+ int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
+ 				   unsigned long nr)
+ {
+ 	if (!writeback_in_progress(sb->s_bdi)) {
+-		down_read(&sb->s_umount);
+-		writeback_inodes_sb_nr(sb, nr);
+-		up_read(&sb->s_umount);
++		bdi_start_writeback(sb->s_bdi, nr);
+ 		return 1;
+-	} else
+-		return 0;
++	}
++	return 0;
+ }
+ EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
+ 
