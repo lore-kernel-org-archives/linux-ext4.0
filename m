@@ -1,10 +1,10 @@
 From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH v3 12/22] ext4: use little-endian bitops
-Date: Tue, 23 Nov 2010 22:38:14 +0900
-Message-ID: <1290519504-3958-13-git-send-email-akinobu.mita@gmail.com>
+Subject: [PATCH v3 11/22] ext3: use little-endian bitops
+Date: Tue, 23 Nov 2010 22:38:13 +0900
+Message-ID: <1290519504-3958-12-git-send-email-akinobu.mita@gmail.com>
 References: <1290519504-3958-1-git-send-email-akinobu.mita@gmail.com>
 Cc: Akinobu Mita <akinobu.mita@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
@@ -19,42 +19,40 @@ asm/bitops.h. This converts ext2 non-atomic bit operations to
 little-endian bit operations.
 
 Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>
 Cc: linux-ext4@vger.kernel.org
 ---
 No change from previous submission
- fs/ext4/ext4.h |   18 ++++++++++++------
- 1 files changed, 12 insertions(+), 6 deletions(-)
+ include/linux/ext3_fs.h |   15 ++++++++++-----
+ 1 files changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6a5edea..070dbcb 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -921,14 +921,20 @@ struct ext4_inode_info {
- #define test_opt(sb, opt)		(EXT4_SB(sb)->s_mount_opt & \
- 					 EXT4_MOUNT_##opt)
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 6ce1bca..34ef455 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -418,13 +418,18 @@ struct ext3_inode {
+ #define EXT2_MOUNT_DATA_FLAGS		EXT3_MOUNT_DATA_FLAGS
+ #endif
  
--#define ext4_set_bit			ext2_set_bit
-+#define ext4_set_bit(nr, addr)	\
+-#define ext3_set_bit			ext2_set_bit
++#define ext3_set_bit(nr, addr)	\
 +	__test_and_set_le_bit((nr), (unsigned long *)(addr))
- #define ext4_set_bit_atomic		ext2_set_bit_atomic
--#define ext4_clear_bit			ext2_clear_bit
-+#define ext4_clear_bit(nr, addr)	\
+ #define ext3_set_bit_atomic		ext2_set_bit_atomic
+-#define ext3_clear_bit			ext2_clear_bit
++#define ext3_clear_bit(nr, addr)	\
 +	__test_and_clear_le_bit((nr), (unsigned long *)(addr))
- #define ext4_clear_bit_atomic		ext2_clear_bit_atomic
--#define ext4_test_bit			ext2_test_bit
--#define ext4_find_first_zero_bit	ext2_find_first_zero_bit
--#define ext4_find_next_zero_bit		ext2_find_next_zero_bit
--#define ext4_find_next_bit		ext2_find_next_bit
-+#define ext4_test_bit(nr, addr)	\
+ #define ext3_clear_bit_atomic		ext2_clear_bit_atomic
+-#define ext3_test_bit			ext2_test_bit
+-#define ext3_find_first_zero_bit	ext2_find_first_zero_bit
+-#define ext3_find_next_zero_bit		ext2_find_next_zero_bit
++#define ext3_test_bit(nr, addr)	\
 +	test_le_bit((nr), (unsigned long *)(addr))
-+#define ext4_find_first_zero_bit(addr, size)	\
++#define ext3_find_first_zero_bit(addr, size)	\
 +	find_first_zero_le_bit((unsigned long *)(addr), (size))
-+#define ext4_find_next_zero_bit(addr, size, off)	\
++#define ext3_find_next_zero_bit(addr, size, off)	\
 +	find_next_zero_le_bit((unsigned long *)(addr), (size), (off))
-+#define ext4_find_next_bit(addr, size, off)	\
-+	find_next_le_bit((unsigned long *)(addr), (size), (off))
  
  /*
   * Maximal mount counts between two filesystem checks
