@@ -1,106 +1,75 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Chris Mason <chris.mason@oracle.com>
 Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Tue, 23 Nov 2010 14:00:56 +0200
-Message-ID: <4CEBACF8.6070206@panasas.com>
-References: <20101123100239.GA4232@amd> <4CEB96D7.80105@panasas.com> <20101123105432.GA4483@amd>
-Mime-Version: 1.0
+Date: Tue, 23 Nov 2010 07:34:07 -0500
+Message-ID: <1290515274-sup-3895@think>
+References: <20101123100239.GA4232@amd>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org,
+Content-Transfer-Encoding: 8bit
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Nick Piggin <npiggin@kernel.dk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:54477 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750793Ab0KWMBD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Nov 2010 07:01:03 -0500
-In-Reply-To: <20101123105432.GA4483@amd>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20101123100239.GA4232@amd>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 11/23/2010 12:54 PM, Nick Piggin wrote:
-> On Tue, Nov 23, 2010 at 12:26:31PM +0200, Boaz Harrosh wrote:
->>>   *
->>>   * Invoke writeback_inodes_sb if no writeback is currently underway.
->>>   * Returns 1 if writeback was started, 0 if not.
->>> + *
->>> + * Even if 1 is returned, writeback may not be started if memory allocation
->>> + * fails. This function makes no guarantees about anything.
->>>   */
->>>  int writeback_inodes_sb_if_idle(struct super_block *sb)
->>>  {
->>>  	if (!writeback_in_progress(sb->s_bdi)) {
->>> -		down_read(&sb->s_umount);
->>> -		writeback_inodes_sb(sb);
->>> -		up_read(&sb->s_umount);
->>> +		bdi_start_writeback(sb->s_bdi, get_nr_dirty_pages());
->>>  		return 1;
->>> -	} else
->>> -		return 0;
->>> +	}
->>> +	return 0;
->>>  }
->>>  EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
->>>  
->>> @@ -1172,17 +1173,18 @@ EXPORT_SYMBOL(writeback_inodes_sb_if_idl
->>>   *
->>>   * Invoke writeback_inodes_sb if no writeback is currently underway.
->>>   * Returns 1 if writeback was started, 0 if not.
->>> + *
->>> + * Even if 1 is returned, writeback may not be started if memory allocation
->>> + * fails. This function makes no guarantees about anything.
->>>   */
->>>  int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
->>>  				   unsigned long nr)
->>>  {
->>>  	if (!writeback_in_progress(sb->s_bdi)) {
->>> -		down_read(&sb->s_umount);
->>> -		writeback_inodes_sb_nr(sb, nr);
->>> -		up_read(&sb->s_umount);
->>> +		bdi_start_writeback(sb->s_bdi, nr);
->>>  		return 1;
->>> -	} else
->>> -		return 0;
->>> +	}
->>> +	return 0;
->>>  }
->>>  EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
->>>  
->>
->> static inline int writeback_inodes_sb_if_idle(struct super_block *sb)
->> {
->> 	return writeback_inodes_sb_nr_if_idle(sb, get_nr_dirty_pages());
->> }
->>
->> In writeback.h, No?
-> 
-> I didn't care enough to move it :P I don't know if it matters.
-> 
+Excerpts from Nick Piggin's message of 2010-11-23 05:02:39 -0500:
 
-Than please just open code it in ext4 and completely remove it.
-One stupid function is enough don't you think?
+[ ... ]
 
 > 
->> But it has a single user so please just kill it.
->>
->> Also writeback_inodes_sb_nr_if_idle() has a single user. Combined with above,
->> two users. Why not open code it in the two sites. It should be much
->> clearer to understand what the magic is all about?
+> Avoid both these issues by issuing completely asynchronous writeback request in
+> writeback_inodes_sb_if_idle. Don't let that fool you into thinking these
+> functions don't suck any more.
 > 
-> The filesystem shouldn't be aware of the details (the "magic") of how to
-> kick writeback, so I think the abstraction is right as is.
+> ext4 now passes extensive stress testing with xfstests, fs_mark, dbench,
+> with a writeback_inodes_if_idle call added directly into ext4_da_write_begin
+> to trigger the path frequently. Previously it would spew lockdep stuff and
+> hang in a number of ways very quickly.
 > 
-
-bdi_start_writeback() looks like a very clear abstraction to me but
-if you have plans for it than sure, I'm convinced.
-
-> Thanks,
-> Nick
+> Signed-off-by: Nick Piggin <npiggin@kernel.dk>
 > 
+> ---
+>  fs/fs-writeback.c |   32 ++++++++++++++++++++------------
+>  1 file changed, 20 insertions(+), 12 deletions(-)
+> 
+> Index: linux-2.6/fs/fs-writeback.c
+> ===================================================================
+> --- linux-2.6.orig/fs/fs-writeback.c    2010-11-23 20:57:23.000000000 +1100
+> +++ linux-2.6/fs/fs-writeback.c    2010-11-23 20:59:10.000000000 +1100
+> @@ -1152,16 +1152,17 @@ EXPORT_SYMBOL(writeback_inodes_sb);
+>   *
+>   * Invoke writeback_inodes_sb if no writeback is currently underway.
+>   * Returns 1 if writeback was started, 0 if not.
+> + *
+> + * Even if 1 is returned, writeback may not be started if memory allocation
+> + * fails. This function makes no guarantees about anything.
+>   */
+>  int writeback_inodes_sb_if_idle(struct super_block *sb)
+>  {
+>      if (!writeback_in_progress(sb->s_bdi)) {
+> -        down_read(&sb->s_umount);
+> -        writeback_inodes_sb(sb);
+> -        up_read(&sb->s_umount);
+> +        bdi_start_writeback(sb->s_bdi, get_nr_dirty_pages());
 
-Thanks
-Boaz
+I'll put on my skis and channel Christoph for a minute.  This isn't
+quite the same as the original.  writeback_inodes_sb() writes inodes on a
+specific super block, while bdi_start_writeback() writes them for any SB
+on that bdi.
+
+For btrfs there's only one bdi per SB, but for most everyone else a disk
+with a bunch of partitions is going to have multiple filesystems on the
+same bdi.
+
+My original btrfs patch just exported the bdi_ funcs so that btrfs could
+do the above internally.  But Christoph objected, and I think he's
+right.  We should either give everyone a bdi or make sure the writeback
+func kicks only one filesystem.
+
+-chris
