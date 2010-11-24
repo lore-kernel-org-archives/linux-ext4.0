@@ -1,65 +1,74 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Wed, 24 Nov 2010 14:10:28 +0100
-Message-ID: <20101124131028.GQ6113@quack.suse.cz>
-References: <20101123100239.GA4232@amd>
- <1290515274-sup-3895@think>
- <20101123125223.GA4946@amd>
- <1290538347-sup-7669@think>
- <20101124010343.GD3168@amd>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/2] ext3: Add FITRIM handle for ext3
+Date: Wed, 24 Nov 2010 15:32:59 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1011241522530.3293@dhcp-lab-213.englab.brq.redhat.com>
+References: <1290425358-16253-1-git-send-email-lczerner@redhat.com> <1290425358-16253-2-git-send-email-lczerner@redhat.com> <20101122174220.GC5012@quack.suse.cz> <alpine.LFD.2.00.1011231126380.3139@dhcp-lab-213.englab.brq.redhat.com>
+ <20101124130147.GP6113@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Nick Piggin <npiggin@kernel.dk>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, tytso@mit.edu,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20101124010343.GD3168@amd>
+In-Reply-To: <20101124130147.GP6113@quack.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 24-11-10 12:03:43, Nick Piggin wrote:
-> > For the _nr variant that btrfs uses, it's worse for the filesystems
-> > that don't have a 1:1 bdi<->sb mapping.  It might not actually write any
-> > of the pages from the SB that is out of space.
-> 
-> That's true, but it might not write anything anyway (and after we
-> check whether writeout is in progress, the writeout thread could go
-> to sleep and not do anything anyway).
-> 
-> So it's a pretty hacky interface anyway. If you want to do anything
-> deterministic, you obviously need real coupling between producer and
-> consumer. This should only be a performance tweak (or a workaround
-> hack in worst case).
-  Yes, the current interface is a band aid for the problem and better
-interface is welcome. But it's not trivial to do better...
+On Wed, 24 Nov 2010, Jan Kara wrote:
 
-> > > It makes no further guarantees, and anyway
-> > > the sb has to compete for normal writeback within this bdi.
+> On Tue 23-11-10 11:32:46, Lukas Czerner wrote:
+> > On Mon, 22 Nov 2010, Jan Kara wrote:
 > > 
-> > > 
-> > > I think Christoph is right because filesystems should not really
-> > > know about how bdi writeback queueing works. But I don't know if it's
-> > > worth doing anything more complex for this functionality?
+> > > On Mon 22-11-10 12:29:18, Lukas Czerner wrote:
+> > > > It takes fstrim_range structure as an argument. fstrim_range is definec in
+> > > > the include/linux/fs.h.
+> > > > 
+> > > > After the FITRIM is done, the number of actually discarded Bytes is stored
+> > > > in fstrim_range.len to give the user better insight on how much storage
+> > > > space has been really released for wear-leveling.
+> > >   Umm, why do we have to do this when FITRIM is already handled in
+> > > fs/ioctl.c? I'd expect us to just provide .trim_fs ioctl, no?
 > > 
-> > I think we should make a writeback_inodes_sb_unlocked() that doesn't
-> > warn when the semaphore isn't held.  That should be enough given where
-> > btrfs and ext4 are calling it from.
-> 
-> It doesn't solve the bugs -- calling and waiting for writeback is
-> still broken because completion requires i_mutex and it is called
-> from under i_mutex.
-  Well, as I wrote in my previous email, only ext4 has the problem with
-i_mutex and I personally view it as a bug. But ultimately it's Ted's call
-to decide.
+> > Hi,
+> > 
+> > see upstream commits:
+> > 93bb41f4f8b89ac8b4d0a734bc59634cb0a29a89
+> > e681c047e47c0abe67bf95857f23814372793cb0
+> > 
+> > unfortunately people was not happy with generic ioctl interface for that
+> > purpose, there were concerned that it is no common enough to be included
+> > in core vfs and there is no need for new super operation since each
+> > filesystem can easily setup its own ioctl handling.
+> > 
+> > When I say people I need to clarify that it was mainly Christoph Hellwig
+> > who had objections against the former implementation and I must say that
+> > he had a point.
+> OK, I see. I had a fresh look at the patches and I've found a few
+> suboptimal things which I've fixed. Most notably I don't think we have to
+> issue a warning when underlying device does not support FITRIM. Returning
+> EOPNOTSUPP should be enough. And I also think that remounting the
+> filesystem read-only or even panicking (the result of calling
+> ext3_std_error()) is necessary when sb_issue_discard() fails for whatever
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Did you meant "is NOT necessary" ? Just for clarification.
+
+> reason. Sure it is suspicious but we can cope just fine with that. BTW, I
+> think ext4 might want this as well. Finally, we were missing to set the
+> error in a few cases (e.g. when bitmap could not be loaded).
+> 
+> Attached is a diff with what I did and I'll repost what I currently have in
+> my tree.
+> 
+> 									Honza
+> 
+
+Hi,
+
+thanks a lot for your review and fixes. I already posted the patch for
+ext4 (remove warning etc.) yesterday. So maybe we should get rid of the
+warning message completely (ext3_warning) and just let userspace handle
+the error and print out warning ? Otherwise diff looks good.
+
+Thanks!
+
+-Lukas
