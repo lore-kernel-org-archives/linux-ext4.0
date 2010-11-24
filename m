@@ -1,40 +1,55 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] e2fsprogs: fix possible mem-leak in ext2fs_free_generic_bmap()
-Date: Wed, 24 Nov 2010 12:46:38 +0100
-Message-ID: <1290599198-5280-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
-To: tytso@mit.edu
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 23682] New: kernel BUG at fs/jbd/commit.c:770!
+Date: Wed, 24 Nov 2010 12:52:19 GMT
+Message-ID: <bug-23682-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22173 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753945Ab0KXLqq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Nov 2010 06:46:46 -0500
+Received: from demeter1.kernel.org ([140.211.167.39]:47981 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753839Ab0KXMwU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Nov 2010 07:52:20 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAOCqJSu023255
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Nov 2010 12:52:20 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2fs_free_generic_bmap is supposed to free the ext2fs_generic_bitmap
-structure, however it frees just the memory allocated to the members of
-the structure but not the memory allocated for the structure itself.
-This commit fixes it with simple oneliner by adding free() at the end of
-the ext2fs_free_generic_bmap().
+https://bugzilla.kernel.org/show_bug.cgi?id=23682
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- lib/ext2fs/gen_bitmap64.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+           Summary: kernel BUG at fs/jbd/commit.c:770!
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.26-2-686
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: blocking
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: alvaro.uria@opendeusto.es
+        Regression: No
 
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index 9f23b92..f46f048 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -158,6 +158,7 @@ void ext2fs_free_generic_bmap(ext2fs_generic_bitmap bmap)
- 		bmap->description = 0;
- 	}
- 	bmap->magic = 0;
-+	free(bmap);
- }
- 
- errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap src,
+
+Created an attachment (id=38032)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=38032)
+uname -a and kernel log trace
+
+System is Debian GNU/Linux "stable", used for Desktop purposes (browser and
+email client). Without doing any particular task, and a few seconds after the
+kernel error, Linux system got frozen.
+
+"uname -a" output and kernel trace is being attached.
+
+Please, ask me for more information if needed.
+
+Thanks in advance.
+
 -- 
-1.7.2.3
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
