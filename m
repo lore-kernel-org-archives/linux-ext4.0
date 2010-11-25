@@ -1,52 +1,47 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 20902] High IO wait when writing to ext4
-Date: Thu, 25 Nov 2010 15:30:46 GMT
-Message-ID: <201011251530.oAPFUkxi019525@demeter1.kernel.org>
-References: <bug-20902-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: Re: Query regarding ext4 filesystem
+Date: Thu, 25 Nov 2010 10:37:53 -0500
+Message-ID: <1805.1290699473@gamaville.dokosmarshall.org>
+References: <4CEE0225.6010205@tataelxsi.co.in>
+Reply-To: nicholas.dokos@hp.com
+Cc: linux-ext4@vger.kernel.org, nicholas.dokos@hp.com
+To: Nivedita J N <niveditajn@tataelxsi.co.in>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:36810 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752187Ab0KYPar (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 10:30:47 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAPFUkDN019526
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Nov 2010 15:30:46 GMT
-In-Reply-To: <bug-20902-13602@https.bugzilla.kernel.org/>
+Received: from vms173007pub.verizon.net ([206.46.173.7]:60992 "EHLO
+	vms173007pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752856Ab0KYPh4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 10:37:56 -0500
+Received: from gamaville.dokosmarshall.org ([unknown] [173.76.32.106])
+ by vms173007.mailsrvcs.net
+ (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
+ with ESMTPA id <0LCG00BXQ634OQ50@vms173007.mailsrvcs.net> for
+ linux-ext4@vger.kernel.org; Thu, 25 Nov 2010 09:37:53 -0600 (CST)
+In-reply-to: Message from Nivedita J N <niveditajn@tataelxsi.co.in> of
+ "Thu, 25 Nov 2010 11:58:53 +0530." <4CEE0225.6010205@tataelxsi.co.in>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=20902
+>    I'm planning to use ext4 filesystem in my ubuntu machine.I am doing
+> a detailed search on the filesystem.I would like to know where the
+> journal is stored in ext4 file system? Is it visible?
+> 
 
+You can use debugfs for this - do ``man 8 debugfs'' for more info. The
+journal is generally inode 8 (you can do
 
+    dumpe2fs -h /dev/FOO | grep "Journal inode:"
 
+to make sure), so in debugfs you can do
 
+    stat <8>
+    ex <8>
 
---- Comment #20 from Theodore Tso <tytso@mit.edu>  2010-11-25 15:30:45 ---
-Curtw's patch (at commit id: 8a57d9d61) also fixes the problem in the steady
-state, once all of the block bitmap's statistics are loaded into memory.   So
-one thing we could do is to simply force the block bitmap scan at mount time. 
-It doesn't so much solve the problem as it moves it to a time when it might be
-less objectionable.  For 8TB file systems if it really does take 10 minutes
-then we would have to mitigate this by (a) having mke2fs use a larger flex_bg
-size automatically, and/or (b) loading up the block bitmap statistics in
-parallel (which will help on RAID systems, but not when we have 8TB on a single
-spindle; given that 3 and 4 TB disks are within the horizon in the next couple
-of years, 8TB/spindle aren't that far out of reach).
+to get metadata (size, perms, etc.) and extent information and
 
-Storing the largest contiguous free extent in a block group in the block group
-might be another way of solving this problem.  The reason why I don't like this
-approach, though, is that it forces the implementation details of the buddy
-bitmap implementation into the file system format.  It's possible that we might
-have N blocks free, where N might be say (for the sake of argument) 256 blocks.
- But if those N blocks aren't aligned on a buddy bitmap allocation boundary,
-mballoc won't find that free extent.  It might see it as a free regions that
-are 31 blocks, 32 blocks, 128 blocks, 64 blocks, and 1 block free.
+    logdump <OPTIONS>
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+to examine the contents of the journal - see the debugfs man page
+for <OPTIONS> info.
+
+HTH,
+Nick
