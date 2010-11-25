@@ -1,56 +1,78 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
-Date: Thu, 25 Nov 2010 16:53:45 +0100
-Message-ID: <1290700425-4094-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Thu, 25 Nov 2010 11:24:22 -0500
+Message-ID: <AANLkTi=J_J68+758XOCYp=+YXaU1+yJjRrvBsAeB5eUi@mail.gmail.com>
+References: <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site> <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+ <1290168976.2570.45.camel@dolmen> <4CE68155.50705@teksavvy.com>
+ <20101119140203.GC10039@thunk.org> <4CE69940.6040908@teksavvy.com>
+ <alpine.LFD.2.00.1011191640320.3238@dhcp-lab-213.englab.brq.redhat.com>
+ <20101119163013.GJ10039@thunk.org> <4CEDCE60.9050109@teksavvy.com>
+ <AANLkTimkGr=mpf6xbjvSFc9hZtf6f+UQ2F-N9aZxBsgb@mail.gmail.com> <4CEE7884.5010007@teksavvy.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Ted Ts'o" <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	James Bottomley <James.Bottomley@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Mark Lord <kernel@teksavvy.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28769 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753289Ab0KYPxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Nov 2010 10:53:52 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oAPFrqtB003821
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Nov 2010 10:53:52 -0500
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:51861 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752546Ab0KYQYn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 11:24:43 -0500
+In-Reply-To: <4CEE7884.5010007@teksavvy.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When determining last group through ext4_get_group_no_and_offset() the
-result may be wrong in cases when range->start and range-len are too
-big, because it may overflow when summing up those two numbers.
+On Thu, Nov 25, 2010 at 9:53 AM, Mark Lord <kernel@teksavvy.com> wrote:
+> On 10-11-24 11:41 PM, Greg Freemyer wrote:
+>>
+>> If you see a significant speed difference between mke2fs and running
+>> wiper.sh on that same filesystem immediately after formatting, then
+>> their is likely a bug worth chasing.
+>
+>
+> You're right. =A0They're both equally slow on a blank Sandforce drive=
+,
+> taking about 83-90 seconds to TRIM 100GB.
+>
+> The difference being that mke2fs just sits there with zero indication
+> or information as to what the huge delay is.
+>
+> It's a pity the TRIM commands are so sluggish on the Sandforce.
+> It's a generation newer than the original Vertex, and TRIM is way fas=
+ter
+> on the older Vertex. =A0Not that either of them do it quickly enough =
+that
+> I'd ever want the kernel doing it automatically "on my behalf".
+>
+> The strange thing, is that when we TRIM the entire raw device,
+> using ATA SECURITY ERASE, it takes less than 2 seconds.
+>
+> Cheers
 
-Fix that by checking range->len and limit its value to
-ext4_blocks_count(). This commit was tested by myself with expected
-result.
+Mark,
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/mballoc.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+I'm away from my systems today, but is there an easy way to tweak
+wiper.sh or hdparm to cause only a single range per trim command.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5b4d4e3..7b05d92 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4819,6 +4819,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
- 	ext4_grpblk_t cnt = 0, first_block, last_block;
- 	uint64_t start, len, minlen, trimmed;
-+	ext4_fsblk_t blocks_count = ext4_blocks_count(EXT4_SB(sb)->s_es);
- 	int ret = 0;
- 
- 	start = range->start >> sb->s_blocksize_bits;
-@@ -4826,6 +4827,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	minlen = range->minlen >> sb->s_blocksize_bits;
- 	trimmed = 0;
- 
-+	if (len > blocks_count)
-+		len = blocks_count - start;
-+
- 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
- 		return -EINVAL;
- 
--- 
-1.7.2.3
+I'm curious if for the Sandforce that would still be in the 90 second
+range, or closer to 64x that.
 
+Or if there is a readily available userspace tool to invoke FITRIM and
+you have a 2.6.37-rc? kernel, you could just time that on a newly
+formatted drive.
+
+Greg
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
