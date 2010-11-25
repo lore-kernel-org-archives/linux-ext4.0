@@ -1,78 +1,39 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Thu, 25 Nov 2010 11:24:22 -0500
-Message-ID: <AANLkTi=J_J68+758XOCYp=+YXaU1+yJjRrvBsAeB5eUi@mail.gmail.com>
-References: <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
- <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org>
- <1290100750.3041.72.camel@mulgrave.site> <alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
- <1290168976.2570.45.camel@dolmen> <4CE68155.50705@teksavvy.com>
- <20101119140203.GC10039@thunk.org> <4CE69940.6040908@teksavvy.com>
- <alpine.LFD.2.00.1011191640320.3238@dhcp-lab-213.englab.brq.redhat.com>
- <20101119163013.GJ10039@thunk.org> <4CEDCE60.9050109@teksavvy.com>
- <AANLkTimkGr=mpf6xbjvSFc9hZtf6f+UQ2F-N9aZxBsgb@mail.gmail.com> <4CEE7884.5010007@teksavvy.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	James Bottomley <James.Bottomley@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	sandeen@redhat.com
-To: Mark Lord <kernel@teksavvy.com>
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH 1/2] ext3: Add batched discard support for ext3
+Date: Thu, 25 Nov 2010 11:29:30 -0700
+Message-ID: <AEFF42B2-01B0-4100-BB39-19D0C0EF99A2@dilger.ca>
+References: <1290603991-6151-1-git-send-email-jack@suse.cz> <1290603991-6151-2-git-send-email-jack@suse.cz> <alpine.LFD.2.00.1011251512020.2871@dhcp-lab-213.englab.brq.redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:51861 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752546Ab0KYQYn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 11:24:43 -0500
-In-Reply-To: <4CEE7884.5010007@teksavvy.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:53398 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751780Ab0KYS3b convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 13:29:31 -0500
+In-Reply-To: <alpine.LFD.2.00.1011251512020.2871@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 25, 2010 at 9:53 AM, Mark Lord <kernel@teksavvy.com> wrote:
-> On 10-11-24 11:41 PM, Greg Freemyer wrote:
->>
->> If you see a significant speed difference between mke2fs and running
->> wiper.sh on that same filesystem immediately after formatting, then
->> their is likely a bug worth chasing.
->
->
-> You're right. =A0They're both equally slow on a blank Sandforce drive=
-,
-> taking about 83-90 seconds to TRIM 100GB.
->
-> The difference being that mke2fs just sits there with zero indication
-> or information as to what the huge delay is.
->
-> It's a pity the TRIM commands are so sluggish on the Sandforce.
-> It's a generation newer than the original Vertex, and TRIM is way fas=
-ter
-> on the older Vertex. =A0Not that either of them do it quickly enough =
-that
-> I'd ever want the kernel doing it automatically "on my behalf".
->
-> The strange thing, is that when we TRIM the entire raw device,
-> using ATA SECURITY ERASE, it takes less than 2 seconds.
->
-> Cheers
+On 2010-11-25, at 07:27, Lukas Czerner wrote:
+>> Walk through allocation groups and trim all free extents. It can be
+>> invoked through FITRIM ioctl on the file system. The main idea is to
+>> provide a way to trim the whole file system if needed, since some SSD's
+>> may suffer from performance loss after the whole device was filled (it
+>> does not mean that fs is full!).
 
-Mark,
+One question I have is why a major change like this is being done in ext3 instead of only in ext4?  There are a lot of ext4 features that _could_ be included in ext3 (basically all of them), but the request from the rest of the kernel developers was to leave ext3 with minimal changes (for continued stability), and put all of the major changes into ext4.
 
-I'm away from my systems today, but is there an easy way to tweak
-wiper.sh or hdparm to cause only a single range per trim command.
+With the current ext4 code's performance and feature advantages, and widespread use in newer distros, I don't think there is a good reason to make major modifications to ext3.  It should remain as the stable legacy filesystem for some number of releases, and then possibly we should just remove one or both of ext2 and ext3 and use the ext4 code for both.
 
-I'm curious if for the Sandforce that would still be in the 90 second
-range, or closer to 64x that.
+Given that Google is running ext4 in no-journal mode (i.e. ext2-like) on many thousands of machines, and getting _much_ better performance than the old ext2 code, it doesn't make sense to continue investing so much maintenance effort into ext2 and ext3.
 
-Or if there is a readily available userspace tool to invoke FITRIM and
-you have a 2.6.37-rc? kernel, you could just time that on a newly
-formatted drive.
+Cheers, Andreas
 
-Greg
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+
