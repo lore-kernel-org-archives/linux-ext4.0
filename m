@@ -1,47 +1,38 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Thu, 25 Nov 2010 11:41:50 +0200
-Message-ID: <4CEE2F5E.4070608@panasas.com>
-References: <20101123100239.GA4232@amd>	<1290515274-sup-3895@think> <20101124144740.bffb2716.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Nick Piggin <npiggin@kernel.dk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Andrew Morton <akpm@linux-foundation.org>
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: [PATCH] fix debugfs output for flex_bg bitmap offsets
+Date: Thu, 25 Nov 2010 02:57:34 -0700
+Message-ID: <BFE21949-F817-40EF-8A9C-8B30E0530D4A@dilger.ca>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:17612 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752208Ab0KYJly (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 04:41:54 -0500
-In-Reply-To: <20101124144740.bffb2716.akpm@linux-foundation.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:55228 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751645Ab0KYJ5f convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 04:57:35 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/25/2010 12:47 AM, Andrew Morton wrote:
-> On Tue, 23 Nov 2010 07:34:07 -0500
-> Chris Mason <chris.mason@oracle.com> wrote:
-> 
->> For btrfs there's only one bdi per SB, but for most everyone else a disk
->> with a bunch of partitions is going to have multiple filesystems on the
->> same bdi.
-> 
-> um, please explain why that wasn't idiotic?  The BDI is a
-> representation of a backing device and it's *supposed* to provide
-> visibility into what's happening against other partitions on the same
-> device.  Creating a BDI per SB (it didn't even occur to me to think
-> that a filesystem was even able to do this) breaks that.
-> 
+When running debugfs on a filesystem formatted with flex_bg, it prints out the relative offsets for the bitmaps and inode table badly on 64-bit systems, because the offset is computed as a large positive number instead of being a negative numer (which will not be printed at all):
 
-In btrfs an SB my span multiple partitions. How else can it be solved?
+Group 1: (Blocks 0x8000-0xffff) [INODE_UNINIT, ITABLE_ZEROED]
+ Block bitmap at 0x0102 (+4294934786), Inode bitmap at 0x0202 (+4294935042)
+ Inode table at 0x037e-0x03fa (+4294935422)
 
-(I know... You didn't like that from the begging ;-))
+The attached patch prints out the relative offsets for flex_bg groups as the offset within the reported group.  This makes it more clear where the metadata is located, rather than simply printing some large negative number.
 
-Boaz
-> 
+Group 1: (Blocks 0x8000-0xffff) [INODE_UNINIT, ITABLE_ZEROED]
+ Block bitmap at 0x0102 (group 0 +258), Inode bitmap at 0x0202 (group 0 +514)
+ Inode table at 0x037e-0x03fa (group 0 +894)
+
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+--
+
+
+Cheers, Andreas
+
+
+
+
