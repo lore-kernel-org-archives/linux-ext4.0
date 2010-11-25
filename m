@@ -1,93 +1,106 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 23732] New: ext4 timestamp range contains 68-year gaps
-Date: Thu, 25 Nov 2010 11:28:48 GMT
-Message-ID: <bug-23732-13602@https.bugzilla.kernel.org/>
+From: Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [RFC][PATCH] Possible data integrity problems in lots of
+ filesystems?
+Date: Thu, 25 Nov 2010 22:47:11 +1100
+Message-ID: <20101125114711.GA3622@amd>
+References: <20101125074909.GA4160@amd>
+ <4CEE2C2E.4010003@panasas.com>
+ <20101125100603.GA3164@amd>
+ <4CEE3F9F.9070108@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Nick Piggin <npiggin@kernel.dk>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Roman Zippel <zippel@linux-m68k.org>,
+	"Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Bob Copeland <me@bobcopeland.com>,
+	reiserfs-devel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>,
+	Evgeniy Dushistov <dushistov@mail.ru>, Jan Kara <jack@suse.cz>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:38514 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752427Ab0KYL2t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 06:28:49 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAPBSmbE009092
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Nov 2010 11:28:48 GMT
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:62928 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752866Ab0KYLrT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Nov 2010 06:47:19 -0500
+Content-Disposition: inline
+In-Reply-To: <4CEE3F9F.9070108@panasas.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=23732
+On Thu, Nov 25, 2010 at 12:51:11PM +0200, Boaz Harrosh wrote:
+> On 11/25/2010 12:06 PM, Nick Piggin wrote:
+> > On Thu, Nov 25, 2010 at 11:28:14AM +0200, Boaz Harrosh wrote:
+> 
+> >>> Index: linux-2.6/fs/exofs/file.c
+> >>> ===================================================================
+> >>> --- linux-2.6.orig/fs/exofs/file.c	2010-11-19 16:50:00.000000000 +1100
+> >>> +++ linux-2.6/fs/exofs/file.c	2010-11-19 16:50:07.000000000 +1100
+> >>> @@ -48,11 +48,6 @@ static int exofs_file_fsync(struct file
+> >>>  	struct inode *inode = filp->f_mapping->host;
+> >>>  	struct super_block *sb;
+> >>>  
+> >>> -	if (!(inode->i_state & I_DIRTY))
+> >>> -		return 0;
+> >>> -	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> >>> -		return 0;
+> >>> -
+> >>>  	ret = sync_inode_metadata(inode, 1);
+> >>>  
+> >>>  	/* This is a good place to write the sb */
+> >>>
+> >>
+> >> Is that a good enough fix for the issue in your opinion?
+> >> Or is there more involved?
+> > 
+> > For the inode dirty bit race problem, yes it should fix it.
+> > sync_inode_metadata basically makes the same checks without
+> > races (in a subsequent patch I re-introduced the datasync
+> > optimisation).
+> > 
+> >  
+> 
+> > 
+> > Well in your fsync, you need to wait for inode writeback
+> > that might have been started by an asynchronous write_inode.
+> > 
+> 
+> All I'm calling is sync_inode_metadata(,1) which calls sync_inode()
+> which calls writeback_single_inode(sync_mode == WB_SYNC_ALL). It gets
+> a little complicated but from the looks of it, even though the
+> call to .write_inode() is not under any lock the state machine there
+> will do inode_wait_for_writeback() if there was one in motion
+> all ready. ?
+> 
+> And it looks like writeback_single_inode() does all the proper
+> checks in the correct order for these flags above.
+> 
+> So current code in exofs_file_fsync() looks scary to me. I would
+> like to push your above patch for this Kernel. (I'll repost it)
 
-           Summary: ext4 timestamp range contains 68-year gaps
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.35
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: mh8928@yahoo.com
-        Regression: No
+It does not get it right, because of the situation I described
+above. Background writeout can come in first, and clear the inode
+dirty bits, and call your ->write_inode for async writeout.
+
+That means you skip doing the exofs_put_io_state(), and (I presume)
+this means you aren't waiting for write completion there.
+
+What then happens is that sync_inode_metadata() from your fsync
+does not call ->write_inode because the inode dirty bits are clear.
+It's basically a noop. So you need to either make your .write_inode
+always synchronous, or wait for it in your .fsync and .sync_fs.
 
 
-When 256-byte inodes are used, ext4 attempts to extend the tv_sec
-portion of file timestamps from 32 to 34 bits on 64-bit systems,
-presumably to defer the Y2038 problem.  However the code to do
-this still fails in 2038.  Nevertheless, some timestamps beyond
-the year 2038 work correctly.
+> > Also, with your sync_inode_metadata call, you shouldn't need the
+> > sync_inode call by the looks.
+> >  
+> 
+> What? I missed you. You mean I don't need to sync_inode_metadata(,wait==1),
+> or what did you mean?
 
-Using 2.6.35/x86_64 on ext4 with 256-byte inodes:
+Sorry, I was looking at the wrong code, ignore that.
 
-markh@zacc:~$ touch -d 2038-01-31 /test/2038
-markh@zacc:~$ touch -d 2106-02-22 /test/2106
-markh@zacc:~$ ls -l /test/2038 /test/2106
--rw-r--r-- 1 markh markh 0 2038-01-31 00:00 /test/2038
--rw-r--r-- 1 markh markh 0 2106-02-22 00:00 /test/2106
-markh@zacc:~$ sudo umount /test
-markh@zacc:~$ sudo mount /dev/sda2 /test
-markh@zacc:~$ ls -l /test/2038 /test/2106
--rw-r--r-- 1 markh markh 0 1901-12-25 17:31 /test/2038
--rw-r--r-- 1 markh markh 0 2106-02-22 00:00 /test/2106
-markh@zacc:~$ 
-
-The problem is in fs/ext4/ext.h.  The macros EXT4_INODE_GET_XTIME
-and EXT4_EINODE_GET_XTIME sign-extend the low 32 bits of tv_sec,
-and then ext4_decode_extra_time uses "|=" to tack on the 2
-additional bits.  However if bit 31 is 1, bits 32..63 will always
-be 1 due to the sign extension regardless of the 2 extra bits:
-
-static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-{
-       if (sizeof(time->tv_sec) > 4)
-           time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
-                   << 32;
-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >>
-EXT4_EPOCH_BITS;
-}
-
-...
-
-#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)                   \
-do {                                           \
-    (inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
-    if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-        ext4_decode_extra_time(&(inode)->xtime,                   \
-                       raw_inode->xtime ## _extra);           \
-} while (0)
-
-
-It is not clear what time range was intended to be handled,
-but the range should be continuous.  Preferably it would be the
-range -0x80000000 (1901-12-13) to 0x37fffffff (2446-05-10),
-in order to handle all legacy 32-bit timestamps and as many
-consecutive future dates as possible.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Nick
