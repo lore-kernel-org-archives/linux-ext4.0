@@ -1,69 +1,64 @@
 From: Nick Piggin <npiggin@kernel.dk>
 Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Thu, 25 Nov 2010 14:53:56 +1100
-Message-ID: <20101125035356.GC3359@amd>
+Date: Thu, 25 Nov 2010 15:07:12 +1100
+Message-ID: <20101125040712.GD3359@amd>
 References: <20101123100239.GA4232@amd>
  <1290515274-sup-3895@think>
  <20101123125223.GA4946@amd>
  <1290538347-sup-7669@think>
  <20101124010343.GD3168@amd>
- <20101124131028.GQ6113@quack.suse.cz>
+ <20101124145157.c999b1e8.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Nick Piggin <npiggin@kernel.dk>,
 	Chris Mason <chris.mason@oracle.com>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
 	Al Viro <viro@zeniv.linux.org.uk>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
+	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
 	Theodore Ts'o <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20101124131028.GQ6113@quack.suse.cz>
+In-Reply-To: <20101124145157.c999b1e8.akpm@linux-foundation.org>
 Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 24, 2010 at 02:10:28PM +0100, Jan Kara wrote:
-> On Wed 24-11-10 12:03:43, Nick Piggin wrote:
-> > > For the _nr variant that btrfs uses, it's worse for the filesystems
-> > > that don't have a 1:1 bdi<->sb mapping.  It might not actually write any
-> > > of the pages from the SB that is out of space.
-> > 
-> > That's true, but it might not write anything anyway (and after we
-> > check whether writeout is in progress, the writeout thread could go
-> > to sleep and not do anything anyway).
-> > 
-> > So it's a pretty hacky interface anyway. If you want to do anything
-> > deterministic, you obviously need real coupling between producer and
-> > consumer. This should only be a performance tweak (or a workaround
-> > hack in worst case).
->   Yes, the current interface is a band aid for the problem and better
-> interface is welcome. But it's not trivial to do better...
+On Wed, Nov 24, 2010 at 02:51:57PM -0800, Andrew Morton wrote:
+> On Wed, 24 Nov 2010 12:03:43 +1100
+> Nick Piggin <npiggin@kernel.dk> wrote:
 > 
-> > > > It makes no further guarantees, and anyway
-> > > > the sb has to compete for normal writeback within this bdi.
-> > > 
+> > On Tue, Nov 23, 2010 at 01:58:24PM -0500, Chris Mason wrote:
+> > > > > My original btrfs patch just exported the bdi_ funcs so that btrfs could
+> > > > > do the above internally.  But Christoph objected, and I think he's
+> > > > > right.  We should either give everyone a bdi or make sure the writeback
+> > > > > func kicks only one filesystem.
 > > > > 
-> > > > I think Christoph is right because filesystems should not really
-> > > > know about how bdi writeback queueing works. But I don't know if it's
-> > > > worth doing anything more complex for this functionality?
+> > > > Well it's just kicking the writeback thread, and it will writeback
+> > > > from that particular sb.
 > > > 
-> > > I think we should make a writeback_inodes_sb_unlocked() that doesn't
-> > > warn when the semaphore isn't held.  That should be enough given where
-> > > btrfs and ext4 are calling it from.
+> > > Hmmm?  It will writeback for all the SBs on that bdi.  In the current
+> > > form that ext4 uses, that gets pretty expensive if you have a bunch of
+> > > large partitions and you're only running out of space on one of them.
 > > 
-> > It doesn't solve the bugs -- calling and waiting for writeback is
-> > still broken because completion requires i_mutex and it is called
-> > from under i_mutex.
->   Well, as I wrote in my previous email, only ext4 has the problem with
-> i_mutex and I personally view it as a bug. But ultimately it's Ted's call
-> to decide.
+> > Right. But if the bdi has writeback in progress (which would be most
+> > of the time, on a busy filesystem), writeback_if_idle doesn't do
+> > anything, and it is happy just for the background writeback to
+> > eventually get around to writing out for us.
+> 
+> That doesn't work if you're running btfs (apparently short for
+> "busticated filesystem") because the bdi-per-sb thing carefully hid the
+> information which you're looking for.
+> 
+> 
+> We still don't have a fix for this bug yet, it appears, btw.
 
-Well, for now, the easiest and simplest fix is my patch, I think. The
-objection is that we may not write out anything for the specified sb,
-but the current implementation provides no such guarantees at all
-anyway, so I don't think it's a big issue.
+My last patch is a fix. It makes the writeback slightly less directed at
+the sb (but there were no guarantees of that anyway). But this could be
+improved with subsequent patches. We actually don't need to refcount the
+sb in the work item submission, so long as we only compare sb pointers
+and DTRT in the writeback thread if they match. So it can easily be
+fixed, but for now both users (ext4 and btrfs) won't care about that
+detail.
 
