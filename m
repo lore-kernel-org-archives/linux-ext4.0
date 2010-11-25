@@ -1,64 +1,63 @@
-From: Nick Piggin <npiggin@kernel.dk>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Thu, 25 Nov 2010 15:07:12 +1100
-Message-ID: <20101125040712.GD3359@amd>
-References: <20101123100239.GA4232@amd>
- <1290515274-sup-3895@think>
- <20101123125223.GA4946@amd>
- <1290538347-sup-7669@think>
- <20101124010343.GD3168@amd>
- <20101124145157.c999b1e8.akpm@linux-foundation.org>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
+Date: Wed, 24 Nov 2010 23:23:34 -0500
+Message-ID: <yq18w0ini9l.fsf@sermon.lab.mkp.net>
+References: <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+	<20101118141957.GK6178@parisc-linux.org>
+	<20101118142918.GA18510@infradead.org>
+	<1290100750.3041.72.camel@mulgrave.site>
+	<alpine.LFD.2.00.1011181826550.15886@dhcp-lab-213.englab.brq.redhat.com>
+	<1290168976.2570.45.camel@dolmen> <4CE68155.50705@teksavvy.com>
+	<20101119140203.GC10039@thunk.org> <4CE69940.6040908@teksavvy.com>
+	<alpine.LFD.2.00.1011191640320.3238@dhcp-lab-213.englab.brq.redhat.com>
+	<20101119163013.GJ10039@thunk.org> <4CEDCE60.9050109@teksavvy.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Nick Piggin <npiggin@kernel.dk>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20101124145157.c999b1e8.akpm@linux-foundation.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+Cc: "Ted Ts'o" <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	James Bottomley <James.Bottomley@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	sandeen@redhat.com
+To: Mark Lord <kernel@teksavvy.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4CEDCE60.9050109@teksavvy.com> (Mark Lord's message of "Wed, 24
+	Nov 2010 21:48:00 -0500")
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 24, 2010 at 02:51:57PM -0800, Andrew Morton wrote:
-> On Wed, 24 Nov 2010 12:03:43 +1100
-> Nick Piggin <npiggin@kernel.dk> wrote:
-> 
-> > On Tue, Nov 23, 2010 at 01:58:24PM -0500, Chris Mason wrote:
-> > > > > My original btrfs patch just exported the bdi_ funcs so that btrfs could
-> > > > > do the above internally.  But Christoph objected, and I think he's
-> > > > > right.  We should either give everyone a bdi or make sure the writeback
-> > > > > func kicks only one filesystem.
-> > > > 
-> > > > Well it's just kicking the writeback thread, and it will writeback
-> > > > from that particular sb.
-> > > 
-> > > Hmmm?  It will writeback for all the SBs on that bdi.  In the current
-> > > form that ext4 uses, that gets pretty expensive if you have a bunch of
-> > > large partitions and you're only running out of space on one of them.
-> > 
-> > Right. But if the bdi has writeback in progress (which would be most
-> > of the time, on a busy filesystem), writeback_if_idle doesn't do
-> > anything, and it is happy just for the background writeback to
-> > eventually get around to writing out for us.
-> 
-> That doesn't work if you're running btfs (apparently short for
-> "busticated filesystem") because the bdi-per-sb thing carefully hid the
-> information which you're looking for.
-> 
-> 
-> We still don't have a fix for this bug yet, it appears, btw.
+>>>>> "Mark" == Mark Lord <kernel@teksavvy.com> writes:
 
-My last patch is a fix. It makes the writeback slightly less directed at
-the sb (but there were no guarantees of that anyway). But this could be
-improved with subsequent patches. We actually don't need to refcount the
-sb in the work item submission, so long as we only compare sb pointers
-and DTRT in the writeback thread if they match. So it can easily be
-fixed, but for now both users (ext4 and btrfs) won't care about that
-detail.
+Mark> But mke2fs probably is NOT doing a "single big discard", because
+Mark> for SATA the TRIM command is limited to 64K sectors per
+Mark> range.. and the in-kernel TRIM code only ever does single ranges..
 
+How many times must I reiterate that this is not true?
+
+Due to various limitations in the way the block layer works we can not
+clear LBA 10 to 20 and LBA 40 to 50 in one command. We don't have an
+infrastructure in place that allows us to operate on several discrete
+areas in one request.
+
+But for contiguous areas we will cram as many ranges entries in as we
+can fit in the TRIM payload. This means we'll issue one TRIM command for
+every 2 GiB minus change (65535*64*512 / 1048576 = 2047 MiB).
+
+In your example above blkdev_issue_discard() will loop over the 100 GiB
+range requested by the caller (filesystem or BLKDISCARD ioctl) and issue
+about fifty TRIM commands to the drive.
+
+Large discards are a best-case scenario (short of SECURE ERASE). So if
+your drive takes forever to perform this operation then all bets are
+off in the TRIM department.
+
+
+Mark> So doing a discard over an entire drive-encompassing partition,
+Mark> say.. 100GB, will require 3000+ individual TRIM commands. 
+
+No.
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
