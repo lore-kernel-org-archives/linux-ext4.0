@@ -1,71 +1,147 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 20902] High IO wait when writing to ext4
-Date: Thu, 25 Nov 2010 09:17:28 GMT
-Message-ID: <201011250917.oAP9HSwJ020719@demeter1.kernel.org>
-References: <bug-20902-13602@https.bugzilla.kernel.org/>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [RFC][PATCH] Possible data integrity problems in lots of filesystems?
+Date: Thu, 25 Nov 2010 11:28:14 +0200
+Message-ID: <4CEE2C2E.4010003@panasas.com>
+References: <20101125074909.GA4160@amd>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Roman Zippel <zippel@linux-m68k.org>,
+	"Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Bob Copeland <me@bobcopeland.com>,
+	reiserfs-devel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>,
+	Evgeniy Dushistov <dushistov@mail.ru>, Jan Kara <jack@suse.cz>
+To: Nick Piggin <npiggin@kernel.dk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:33896 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751550Ab0KYJR2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 04:17:28 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAP9HSnU020720
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Nov 2010 09:17:28 GMT
-In-Reply-To: <bug-20902-13602@https.bugzilla.kernel.org/>
+Received: from daytona.panasas.com ([67.152.220.89]:17342 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146Ab0KYJ2U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 04:28:20 -0500
+In-Reply-To: <20101125074909.GA4160@amd>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=20902
+On 11/25/2010 09:49 AM, Nick Piggin wrote:
+> This is a call for review and comments from all filesystem developers.
+> Not just those cced, but everyone who maintains a filesystem[*], because
+> I wasn't able to put in a lot of time to understand the more complex
+> filesystems.
+> 
+> [*] You all read linux-fsdevel anyway, right? If not, please do, it's
+> pretty low volume and high s/n.
+> 
+> So there seem to be several problems with inode data and metadata
+> synchronization. Some of it is bugs in core code, but also a couple
+> of oft repeated bugs in filesystems.
+> 
+> http://marc.info/?l=linux-fsdevel&m=129052164315259&w=2
+> 
+> Basically 2 patterns of problem.
+> 
+> First is checking inode dirty bits
+> (I_DIRTY/I_DIRTY_SYNC/I_DIRTY_DATASYNC) without locking. What happens is
+> that other paths (async writeout or even a concurrent sync or fsync) can
+> clear these bits with the data not being on platter.
+> 
+> * solution: must wait on I_SYNC before testing these things. See my
+>   patch in above linked series. I think I covered everyone here, but
+>   please double check.
+> 
+> * There is opportunity in some filesystems for clearing inode dirty bits
+>   in fsync, and for checking and avoiding fsync work if dirty bits are
+>   not sure.
+> 
+> Second is confusing sync and async inode metadata writeout
+> Core code clears I_DIRTY_SYNC and I_DIRTY_DATASYNC before calling
+> ->write_inode *regardless* of whether it is a for-integrity call or
+> not. This means background writeback can clear it, and subsequent
+> sync_inode_metadata or sync(2) call will skip the next ->write_inode
+> completely.
+> 
+> * solution: for fsync, you must ensure that everything that a
+>   synchronous ->write_inode call does is also done by an
+>   asynchronous ->write_inode call *plus* a subsequent fsync.
+> 
+>   So if a synchronous ->write_inode syncs a bh, but an async one
+>   just marks it dirty, your .fsync would have to sync the bh.
+> 
+> * solution: for sync(2), you must ensure that everything that a
+>   synchronous ->write_inode call does is also done by an
+>   asynchronous ->write_inode call plus a subsequent ->sync_fs
+>   call, plus __sync_blockdev call on the buffer mapping.
+> 
+>   Many simple filesystems just go via buffer mapping, and
+>   ->write_inode simply dirties the inode's bh. These guys are
+>   fine here (although most are broken wrt fsync).
+> 
+> If you need any more state bits in your inode to work out what is going
+> on, Christoph's recent hfsplus fsync optimisation patches has a good
+> example of how it can be done.
+> 
+> The ext2 fix below is an example of how we can do this nicely, the
+> rest of the filesystems I note when it looks like they went wrong, and
+> band aid fixed it.
+> 
+> Index: linux-2.6/fs/exofs/inode.c
+> ===================================================================
+> --- linux-2.6.orig/fs/exofs/inode.c	2010-11-25 17:25:54.000000000 +1100
+> +++ linux-2.6/fs/exofs/inode.c	2010-11-25 17:36:32.000000000 +1100
+> @@ -1273,7 +1273,7 @@ static int exofs_update_inode(struct ino
+>  
+>  int exofs_write_inode(struct inode *inode, struct writeback_control *wbc)
+>  {
+> -	return exofs_update_inode(inode, wbc->sync_mode == WB_SYNC_ALL);
+> +	return exofs_update_inode(inode, 1 /* XXX: fix fsync and use wbc->sync_mode == WB_SYNC_ALL */ );
+>  }
+>  
+>  /*
 
+Hi Nick.
+Thanks for digging into this issue, I bet it's causing pain. Which
+I totally missed in my tests. I wish I had a better xsync+reboot
+tests for all this.
 
-Andreas Dilger <adilger.kernelbugzilla@dilger.ca> changed:
+So in that previous patch you had:
+> Index: linux-2.6/fs/exofs/file.c
+> ===================================================================
+> --- linux-2.6.orig/fs/exofs/file.c	2010-11-19 16:50:00.000000000 +1100
+> +++ linux-2.6/fs/exofs/file.c	2010-11-19 16:50:07.000000000 +1100
+> @@ -48,11 +48,6 @@ static int exofs_file_fsync(struct file
+>  	struct inode *inode = filp->f_mapping->host;
+>  	struct super_block *sb;
+>  
+> -	if (!(inode->i_state & I_DIRTY))
+> -		return 0;
+> -	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> -		return 0;
+> -
+>  	ret = sync_inode_metadata(inode, 1);
+>  
+>  	/* This is a good place to write the sb */
+> 
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |adilger.kernelbugzilla@dilg
-                   |                            |er.ca
+Is that a good enough fix for the issue in your opinion?
+Or is there more involved?
 
+In exofs there is nothing special to do other than VFS
+managment and the final call, by vfs, to .write_inode.
 
+I wish we had a simple_file_fsync() from VFS that does
+what the VFS expects us to do. So when code evolves it
+does not need to change all FSs. This is the third time
+I'm fixing this code trying to second guess the VFS.
 
+Actually the only other thing I need to do in file_fsync
+today is sb_sync. But this is a stupidity (and a bug) that
+I'm fixing soon. So that theoretical simple_file_fsync()
+would be all I need.
 
---- Comment #19 from Andreas Dilger <adilger.kernelbugzilla@dilger.ca>  2010-11-25 09:17:26 ---
-(In reply to comment #16)
-> Here's mine.  My test case is mount, sleep 5, then do 10 x 128MB writes using
-> dd to the just-mounted filesystem.  The first 128MB write took over 20 seconds.
->  Unfortunately I don't have access any more to the box where it took 150
-> seconds.
+Please advise?
+BTW: Do you want that I take the changes through my tree?
 
-We've seen this problem with Lustre as well.  The root of the problem is that
-the initial write to a filesystem that is fairly full causes mballoc to scan
-all of the block groups looking for groups with enough space for preallocation
-of an 8MB chunk.  On an 8TB filesystem with 64k groups @ 100 seeks/second this
-could take up to 10 minutes to complete.
-
-The patch from Curt committed in 8a57d9d61a6e361c7bb159dda797672c1df1a691 fixed
-this for small writes at mount time, but does not help for large writes.
-
-We are starting to look at other solutions to this problem in our bugzilla:
-https://bugzilla.lustre.org/show_bug.cgi?id=24183
-
-with a patch (currently untested) in:
-https://bugzilla.lustre.org/attachment.cgi?id=32320&action=edit
-
-
-Increasing the flex_bg size is likely going to reduce the severity of this
-problem, by reducing the number of seeks needed to load the block bitmaps
-proportional to the flex_bg factor (32 by default today).  That would change
-the 8TB bitmap scan time from 10 minutes to about 20s.
-
-Other possibilities include starting the bitmap scan at some random group
-instead of always starting at group 0, storing some free extent information for
-each group in the group descriptor table, or storing some information in the
-superblock about which group to start allocations at.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks for taking care of this
+Boaz
