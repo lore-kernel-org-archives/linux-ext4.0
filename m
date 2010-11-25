@@ -1,47 +1,56 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: Query regarding ext4 filesystem
-Date: Thu, 25 Nov 2010 10:37:53 -0500
-Message-ID: <1805.1290699473@gamaville.dokosmarshall.org>
-References: <4CEE0225.6010205@tataelxsi.co.in>
-Reply-To: nicholas.dokos@hp.com
-Cc: linux-ext4@vger.kernel.org, nicholas.dokos@hp.com
-To: Nivedita J N <niveditajn@tataelxsi.co.in>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
+Date: Thu, 25 Nov 2010 16:53:45 +0100
+Message-ID: <1290700425-4094-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vms173007pub.verizon.net ([206.46.173.7]:60992 "EHLO
-	vms173007pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752856Ab0KYPh4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2010 10:37:56 -0500
-Received: from gamaville.dokosmarshall.org ([unknown] [173.76.32.106])
- by vms173007.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
- with ESMTPA id <0LCG00BXQ634OQ50@vms173007.mailsrvcs.net> for
- linux-ext4@vger.kernel.org; Thu, 25 Nov 2010 09:37:53 -0600 (CST)
-In-reply-to: Message from Nivedita J N <niveditajn@tataelxsi.co.in> of
- "Thu, 25 Nov 2010 11:58:53 +0530." <4CEE0225.6010205@tataelxsi.co.in>
+Received: from mx1.redhat.com ([209.132.183.28]:28769 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753289Ab0KYPxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Nov 2010 10:53:52 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oAPFrqtB003821
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Nov 2010 10:53:52 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->    I'm planning to use ext4 filesystem in my ubuntu machine.I am doing
-> a detailed search on the filesystem.I would like to know where the
-> journal is stored in ext4 file system? Is it visible?
-> 
+When determining last group through ext4_get_group_no_and_offset() the
+result may be wrong in cases when range->start and range-len are too
+big, because it may overflow when summing up those two numbers.
 
-You can use debugfs for this - do ``man 8 debugfs'' for more info. The
-journal is generally inode 8 (you can do
+Fix that by checking range->len and limit its value to
+ext4_blocks_count(). This commit was tested by myself with expected
+result.
 
-    dumpe2fs -h /dev/FOO | grep "Journal inode:"
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/mballoc.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-to make sure), so in debugfs you can do
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5b4d4e3..7b05d92 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4819,6 +4819,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+ 	ext4_grpblk_t cnt = 0, first_block, last_block;
+ 	uint64_t start, len, minlen, trimmed;
++	ext4_fsblk_t blocks_count = ext4_blocks_count(EXT4_SB(sb)->s_es);
+ 	int ret = 0;
+ 
+ 	start = range->start >> sb->s_blocksize_bits;
+@@ -4826,6 +4827,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	minlen = range->minlen >> sb->s_blocksize_bits;
+ 	trimmed = 0;
+ 
++	if (len > blocks_count)
++		len = blocks_count - start;
++
+ 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+ 		return -EINVAL;
+ 
+-- 
+1.7.2.3
 
-    stat <8>
-    ex <8>
-
-to get metadata (size, perms, etc.) and extent information and
-
-    logdump <OPTIONS>
-
-to examine the contents of the journal - see the debugfs man page
-for <OPTIONS> info.
-
-HTH,
-Nick
