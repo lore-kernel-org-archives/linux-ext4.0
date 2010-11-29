@@ -1,46 +1,47 @@
 From: Namhyung Kim <namhyung@gmail.com>
-Subject: [PATCH 11/15] mke2fs: fix determination of size_type
-Date: Mon, 29 Nov 2010 17:55:13 +0900
-Message-ID: <1291020917-8671-12-git-send-email-namhyung@gmail.com>
+Subject: [PATCH 08/15] libext2fs: fix memory leak on error path
+Date: Mon, 29 Nov 2010 17:55:10 +0900
+Message-ID: <1291020917-8671-9-git-send-email-namhyung@gmail.com>
 References: <1291020917-8671-1-git-send-email-namhyung@gmail.com>
 Cc: linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:43225 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751826Ab0K2Izt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 03:55:49 -0500
-Received: by mail-gx0-f174.google.com with SMTP id 22so1868483gxk.19
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 00:55:48 -0800 (PST)
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:51817 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751905Ab0K2Izl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 03:55:41 -0500
+Received: by mail-gw0-f46.google.com with SMTP id 20so1866691gwj.19
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 00:55:41 -0800 (PST)
 In-Reply-To: <1291020917-8671-1-git-send-email-namhyung@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In original code, 'huge' type could not be selected because it
-always be caught for 'big' type. Change the ordering.
+io->name should be freed if ext2fs_file_open2() fails.
 
 Signed-off-by: Namhyung Kim <namhyung@gmail.com>
 ---
- misc/mke2fs.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ lib/ext2fs/inode_io.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 90cc206..b88decf 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -947,10 +947,10 @@ static char **parse_fs_type(const char *fs_type,
- 		size_type = "floppy";
- 	else if (fs_blocks_count < 512 * meg)
- 		size_type = "small";
--	else if (fs_blocks_count >= 4 * 1024 * 1024 * meg)
--		size_type = "big";
- 	else if (fs_blocks_count >= 16 * 1024 * 1024 * meg)
- 		size_type = "huge";
-+	else if (fs_blocks_count >= 4 * 1024 * 1024 * meg)
-+		size_type = "big";
- 	else
- 		size_type = "default";
+diff --git a/lib/ext2fs/inode_io.c b/lib/ext2fs/inode_io.c
+index 4faaa48..bc934d3 100644
+--- a/lib/ext2fs/inode_io.c
++++ b/lib/ext2fs/inode_io.c
+@@ -157,11 +157,13 @@ static errcode_t inode_open(const char *name, int flags, io_channel *channel)
+ 				   &data->inode : 0, open_flags,
+ 				   &data->file);
+ 	if (retval)
+-		goto cleanup;
++		goto cleanup_name;
  
+ 	*channel = io;
+ 	return 0;
+ 
++cleanup_name:
++	ext2fs_free_mem(&io->name);
+ cleanup:
+ 	if (data) {
+ 		ext2fs_free_mem(&data);
 -- 
 1.7.0.4
 
