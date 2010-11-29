@@ -1,50 +1,56 @@
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
+From: Florian Weimer <fweimer@bfk.de>
 Subject: Re: Bug#605009: serious performance regression with ext4
-Date: Mon, 29 Nov 2010 17:20:25 +0100
-Message-ID: <201011291720.26440.bernd.schubert@fastmail.fm>
-References: <20101126093257.23480.86900.reportbug@pluto.milchstrasse.xx> <201011291618.25084.bernd.schubert@fastmail.fm> <4CF3CCD3.8040608@redhat.com>
+Date: Mon, 29 Nov 2010 16:27:12 +0000
+Message-ID: <82oc98f63j.fsf@mid.bfk.de>
+References: <20101126093257.23480.86900.reportbug@pluto.milchstrasse.xx>
+	<20101129072930.GA7213@burratino> <20101129144436.GT2767@thunk.org>
+	<201011291618.25084.bernd.schubert@fastmail.fm>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: "Ted Ts'o" <tytso@mit.edu>, Jonathan Nieder <jrnieder@gmail.com>,
 	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:38829 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751013Ab0K2QU2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Nov 2010 11:20:28 -0500
-In-Reply-To: <4CF3CCD3.8040608@redhat.com>
+Received: from mx01.bfk.de ([193.227.124.2]:35852 "EHLO mx01.bfk.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755072Ab0K2QeU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 11:34:20 -0500
+In-Reply-To: <201011291618.25084.bernd.schubert@fastmail.fm> (Bernd Schubert's message of "Mon\, 29 Nov 2010 16\:18\:24 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday, November 29, 2010, Eric Sandeen wrote:
-> On 11/29/10 9:18 AM, Bernd Schubert wrote:
-> > On Monday, November 29, 2010, Ted Ts'o wrote:
-> >> By using sync_file_range() first, for all files, this forces the
-> >> delayed allocation to be resolved, so all of the block bitmaps, inode
-> >> data structures, etc., are updated.  Then on the first fdatasync(),
-> >> the resulting journal commit updates all of the block bitmaps and all
-> >> of the inode table blocks(), and we're done.  The subsequent
-> >> fdatasync() calls become no-ops --- which the ftrace shell script will
-> >> show.
-> > 
-> > Wouldn't it make sense to modify ext4 or even the vfs to do that on
-> > close() itself? Most applications expect the file to be on disk after a
-> > close anyway
-> 
-> but those applications would be wrong.
+* Bernd Schubert:
 
-Of course they are, I don't deny that. But denying the most applications 
-expect the file to be on disk after a close() also denies reality, in my 
-experience.
-And IMHO, such temporary files as pointed out by Ted either should go to tmpfs 
-or should be specially flagged as something like O_TMP. Unfortunately, that 
-changes symantics and so indeed the only way left is to do it the other way 
-around as Ted suggested.
+> Wouldn't it make sense to modify ext4 or even the vfs to do that on c=
+lose()=20
+> itself? Most applications expect the file to be on disk after a close=
+ anyway=20
+> and I also don't see a good reason why one should delay a disk write-=
+back=20
+> after close any longer (well, there are exeption if the application i=
+s broken,=20
+> for example such as ha-logd used by pacemaker, which did for each lin=
+e of logs=20
+> an open, seek, write, flush, close sequence..., but at least we have =
+fixed=20
+> that in -hg now).
 
+If you use Oracle Berkeley DB in a process-based fashion, it is
+crucial for decent performance that the memory-mapped file containing
+the cache is not flushed to disk when the database environment is
+closed prior to process termination.  Perhaps flushing could be
+delayed until the last open file handle is gone.  In any case, it's a
+pretty drastic change, which should probably be tunable with a
+(generic) mount option.
 
-Cheers,
-Bernd
+--=20
+=46lorian Weimer                <fweimer@bfk.de>
+BFK edv-consulting GmbH       http://www.bfk.de/
+Kriegsstra=DFe 100              tel: +49-721-96201-1
+D-76133 Karlsruhe             fax: +49-721-96201-99
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
