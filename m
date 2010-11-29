@@ -1,56 +1,37 @@
-From: Florian Weimer <fweimer@bfk.de>
-Subject: Re: Bug#605009: serious performance regression with ext4
-Date: Mon, 29 Nov 2010 16:27:12 +0000
-Message-ID: <82oc98f63j.fsf@mid.bfk.de>
-References: <20101126093257.23480.86900.reportbug@pluto.milchstrasse.xx>
-	<20101129072930.GA7213@burratino> <20101129144436.GT2767@thunk.org>
-	<201011291618.25084.bernd.schubert@fastmail.fm>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: convert from ext3 versus fresh format
+Date: Mon, 29 Nov 2010 12:29:58 -0500
+Message-ID: <AANLkTi=mHZf=pofsOFsP9Y6dnvS+vHy_9De=1fz7uCiA@mail.gmail.com>
+References: <1290978963.16103.1407558601@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>, Jonathan Nieder <jrnieder@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: linux_ext4@proinbox.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx01.bfk.de ([193.227.124.2]:35852 "EHLO mx01.bfk.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755072Ab0K2QeU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 11:34:20 -0500
-In-Reply-To: <201011291618.25084.bernd.schubert@fastmail.fm> (Bernd Schubert's message of "Mon\, 29 Nov 2010 16\:18\:24 +0100")
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:50278 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752926Ab0K2RaT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 12:30:19 -0500
+Received: by iwn5 with SMTP id 5so386538iwn.19
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 09:30:18 -0800 (PST)
+In-Reply-To: <1290978963.16103.1407558601@webmail.messagingengine.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Bernd Schubert:
+On Sun, Nov 28, 2010 at 4:16 PM,  <linux_ext4@proinbox.com> wrote:
+> Hi list,
+>
+> I have a production system installed on an SSD, whose installer formats
+> the target drive as ext3 automatically. I've since learned that ext4 is
+> more suited for use on SSDs and am considering an upgrade to ext4.
 
-> Wouldn't it make sense to modify ext4 or even the vfs to do that on c=
-lose()=20
-> itself? Most applications expect the file to be on disk after a close=
- anyway=20
-> and I also don't see a good reason why one should delay a disk write-=
-back=20
-> after close any longer (well, there are exeption if the application i=
-s broken,=20
-> for example such as ha-logd used by pacemaker, which did for each lin=
-e of logs=20
-> an open, seek, write, flush, close sequence..., but at least we have =
-fixed=20
-> that in -hg now).
+If your only driver is SSD discard capability, then use the ext4
+driver to work with your ext3 partition.  (It's backward compatible.)
 
-If you use Oracle Berkeley DB in a process-based fashion, it is
-crucial for decent performance that the memory-mapped file containing
-the cache is not flushed to disk when the database environment is
-closed prior to process termination.  Perhaps flushing could be
-delayed until the last open file handle is gone.  In any case, it's a
-pretty drastic change, which should probably be tunable with a
-(generic) mount option.
+Then I would recommend you use the userspace tool wiper.sh / hdparm to
+do a once a week or so discard of freespace.
 
---=20
-=46lorian Weimer                <fweimer@bfk.de>
-BFK edv-consulting GmbH       http://www.bfk.de/
-Kriegsstra=DFe 100              tel: +49-721-96201-1
-D-76133 Karlsruhe             fax: +49-721-96201-99
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I maintain a page about discard for opensuse that you might find worth reading:
+http://en.opensuse.org/SDB:SSD_discard_%28trim%29_support
+
+Greg
