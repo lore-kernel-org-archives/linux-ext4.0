@@ -1,34 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Userspace tool to invoke FITRIM?
-Date: Mon, 29 Nov 2010 12:21:00 -0600
-Message-ID: <4CF3EF0C.30700@redhat.com>
-References: <AANLkTi=SQ-keJgV2-ZuuARxKRr+8YpPBrop_+n4NXKr0@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 23772] oops after mounting ext4 fs in 2.6.36.1 (failed to parse
+ options in superblock)
+Date: Mon, 29 Nov 2010 19:34:32 GMT
+Message-ID: <201011291934.oATJYWMA030129@demeter1.kernel.org>
+References: <bug-23772-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58790 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755675Ab0K2SVD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Nov 2010 13:21:03 -0500
-In-Reply-To: <AANLkTi=SQ-keJgV2-ZuuARxKRr+8YpPBrop_+n4NXKr0@mail.gmail.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:39650 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751971Ab0K2Ted (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 14:34:33 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oATJYWjo030130
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 19:34:32 GMT
+In-Reply-To: <bug-23772-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/29/10 12:10 PM, Greg Freemyer wrote:
-> All,
-> 
-> Is there a userspace tool to invoke FITRIM for ext4 yet?
-> 
-> Is it incorporated into the normal userspace ext2/ext3/ext4 collection?
-> 
-> Thanks
-> Greg
+https://bugzilla.kernel.org/show_bug.cgi?id=23772
 
-It has been submitted/merged to util-linux-ng, as it is not an ext4-specific tool.
 
-http://www.spinics.net/lists/util-linux-ng/msg03646.html
 
--Eric
+
+
+--- Comment #12 from Fryderyk Dziarmagowski <fdziarmagowski@gmail.com>  2010-11-29 19:34:30 ---
+I there is a way to fix it on the user space side?
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
