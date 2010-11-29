@@ -1,25 +1,34 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Userspace tool to invoke FITRIM?
-Date: Mon, 29 Nov 2010 13:10:46 -0500
-Message-ID: <AANLkTi=SQ-keJgV2-ZuuARxKRr+8YpPBrop_+n4NXKr0@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Userspace tool to invoke FITRIM?
+Date: Mon, 29 Nov 2010 12:21:00 -0600
+Message-ID: <4CF3EF0C.30700@redhat.com>
+References: <AANLkTi=SQ-keJgV2-ZuuARxKRr+8YpPBrop_+n4NXKr0@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: ext4 <linux-ext4@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:42583 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751049Ab0K2SLI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 13:11:08 -0500
-Received: by iwn5 with SMTP id 5so423096iwn.19
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 10:11:07 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:58790 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755675Ab0K2SVD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Nov 2010 13:21:03 -0500
+In-Reply-To: <AANLkTi=SQ-keJgV2-ZuuARxKRr+8YpPBrop_+n4NXKr0@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-All,
+On 11/29/10 12:10 PM, Greg Freemyer wrote:
+> All,
+> 
+> Is there a userspace tool to invoke FITRIM for ext4 yet?
+> 
+> Is it incorporated into the normal userspace ext2/ext3/ext4 collection?
+> 
+> Thanks
+> Greg
 
-Is there a userspace tool to invoke FITRIM for ext4 yet?
+It has been submitted/merged to util-linux-ng, as it is not an ext4-specific tool.
 
-Is it incorporated into the normal userspace ext2/ext3/ext4 collection?
+http://www.spinics.net/lists/util-linux-ng/msg03646.html
 
-Thanks
-Greg
+-Eric
