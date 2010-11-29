@@ -1,41 +1,65 @@
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
-Subject: Re: Bug#605009: serious performance regression with ext4
-Date: Mon, 29 Nov 2010 16:18:24 +0100
-Message-ID: <201011291618.25084.bernd.schubert@fastmail.fm>
-References: <20101126093257.23480.86900.reportbug@pluto.milchstrasse.xx> <20101129072930.GA7213@burratino> <20101129144436.GT2767@thunk.org>
+From: WEBMASTER@LIVE.CO.UK
+Subject: Ensure Your Account
+Date: Mon, 29 Nov 2010 09:45:36 -0300
+Message-ID: <20101129094536.17253a1qhtkdf4ao__20679.1200595491$1291044004$gmane$org@mail.usm.cl>
+Reply-To: web_master_service@LIVE.CO.UK
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Jonathan Nieder <jrnieder@gmail.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1;
+	DelSp=Yes	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:36262 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752261Ab0K2PS1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Nov 2010 10:18:27 -0500
-In-Reply-To: <20101129144436.GT2767@thunk.org>
+Received: from pascua.dcsc.utfsm.cl ([200.1.30.102]:61643 "EHLO
+	pascua.dcsc.utfsm.cl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754230Ab0K2PTn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 10:19:43 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday, November 29, 2010, Ted Ts'o wrote:
-> By using sync_file_range() first, for all files, this forces the
-> delayed allocation to be resolved, so all of the block bitmaps, inode
-> data structures, etc., are updated.  Then on the first fdatasync(),
-> the resulting journal commit updates all of the block bitmaps and all
-> of the inode table blocks(), and we're done.  The subsequent
-> fdatasync() calls become no-ops --- which the ftrace shell script will
-> show.
 
-Wouldn't it make sense to modify ext4 or even the vfs to do that on close() 
-itself? Most applications expect the file to be on disk after a close anyway 
-and I also don't see a good reason why one should delay a disk write-back 
-after close any longer (well, there are exeption if the application is broken, 
-for example such as ha-logd used by pacemaker, which did for each line of logs 
-an open, seek, write, flush, close sequence..., but at least we have fixed 
-that in -hg now).
+Ensure Your Account
 
 
-Cheers,
-Bernd
+  We are currently upgrading our data base and e-mail home center is =20
+managed. Enter your email to delete accounts that are not actively =20
+users.we parents to create more space for new accounts have also =20
+studied the system security audit to improve and enhance our current =20
+security situation.
+
+Continue to use our services are needed to update and
+re-comfirmed your requested information via e-mail below.
+
+To complete the new account confirmation, reply to this email =20
+immediately and enter the account number below to
+
+Username: ................
+User E-mail ..............
+Password: ..................
+Password: ............
+Date of Birth: .................
+
+
+Otherwise, your account will be disabled immediately to the database =20
+and information service is not interrupted and important messages can =20
+be lost in the reduction of the new coordinates comfirmed to us.
+
+We apologize for any inconvenience this causes this season but is =20
+confident that we are here to serve you better and
+providing more technology which revolves around email and internet.
+
+It is also essential to understand that the most important =20
+epr=E9occupation our customers and the security of their files and data=
+=2E
+
+
+
+
+
+----------------------------------------------------------------
+This message was sent using IMP, the Internet Messaging Program.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
