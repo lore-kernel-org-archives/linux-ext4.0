@@ -1,59 +1,60 @@
-From: Nick Piggin <npiggin@kernel.dk>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Tue, 30 Nov 2010 11:01:18 +1100
-Message-ID: <20101130000118.GA3255@amd>
-References: <20101123100239.GA4232@amd>
- <1290515274-sup-3895@think>
- <20101123125223.GA4946@amd>
- <1290538347-sup-7669@think>
- <20101124010343.GD3168@amd>
- <20101124131028.GQ6113@quack.suse.cz>
- <20101125035356.GC3359@amd>
- <20101129142603.ebbcbc7e.akpm@linux-foundation.org>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent
+	by fsync
+Date: Mon, 29 Nov 2010 16:19:42 -0800
+Message-ID: <20101130001942.GF18195@tux1.beaverton.ibm.com>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <4CF43BC9.8040603@redhat.com>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Nick Piggin <npiggin@kernel.dk>, Jan Kara <jack@suse.cz>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
+	Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
+	Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
+	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
+	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
+To: Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20101129142603.ebbcbc7e.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <4CF43BC9.8040603@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 29, 2010 at 02:26:03PM -0800, Andrew Morton wrote:
-> 	On Thu, 25 Nov 2010 14:53:56 +1100
-> Nick Piggin <npiggin@kernel.dk> wrote:
-> > On Wed, Nov 24, 2010 at 02:10:28PM +0100, Jan Kara wrote:
-> > Well, for now, the easiest and simplest fix is my patch, I think. The
-> > objection is that we may not write out anything for the specified sb,
-> > but the current implementation provides no such guarantees at all
-> > anyway, so I don't think it's a big issue.
-> 
-> Well yes.  We take something which will fail occasionally and with your
-> patch replace it with something which will fail a bit more often.  Why
-> don't we go all the way and do something which will fail *even more
-> often*.  Namely, just delete the damn function in the hope that the
-> resulting failures will provoke the ext4 crew into doing something sane
-> this time?
+On Mon, Nov 29, 2010 at 06:48:25PM -0500, Ric Wheeler wrote:
+> On 11/29/2010 05:05 PM, Darrick J. Wong wrote:
+>> On certain types of hardware, issuing a write cache flush takes a considerable
+>> amount of time.  Typically, these are simple storage systems with write cache
+<snip>
+>> lowered performance considerably, especially in the case where directio was in
+>> use.  Therefore, this patch adds the coordination code directly to ext4.
+>
+> Hi Darrick,
+>
+> Just curious why we would need to have batching in both places? Doesn't 
+> your patch set make the jbd2 transaction batching redundant?
 
-I just need it fixed because the deadlocks are constantly hanging my
-tests and/or switching off lockdep.
+The code path that I'm changing is only executed when ext4_sync_file determines
+that the flush can't go through the journal, i.e. whenever the previous
+sequence of data writes hasn't resulted in any metadata updates, or if the
+transaction that went with the previous writes has already been committed.
 
- 
-> Guys, this delalloc thing *sucks*.  And here we are just sticking new
-> bandaids on top of the old bandaids.  And the btrfs approach isn't
-> exactly a thing of glory, either.
-> 
-> So...  nope.  I won't be applying Nick's patch.  Please fix this thing
-> properly - you have a whole month!
+> I noticed that the patches have a default delay and a mount option to 
+> override that default. The jbd2 code today tries to measure the average 
+> time needed in a transaction and automatically tune itself. Can't we do 
+> something similar with your patch set? (I hate to see yet another mount 
+> option added!)
 
-Testers have less. It would be better to fix it now and rip it out at
-the start of the next merge window if you're that way inclined :)
+The mount option is no longer the delay time, as it was in previous patches.
+In the (unreleased) v5 patch, the code automatically tuned the delay based on
+the average flush time.  However, we then observed very low flush times (< 2ms)
+and about a 6% regression on our arrays with battery-backed write cache, so the
+auto-tune code was then adapted in v6 to skip the coordination if the average
+flush time falls below that threshold, as it does on our arrays.
 
+Therefore, the new mount option exists to override the default threshold.
+
+--D
