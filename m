@@ -1,14 +1,13 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent
-	by fsync
-Date: Mon, 29 Nov 2010 16:19:42 -0800
-Message-ID: <20101130001942.GF18195@tux1.beaverton.ibm.com>
-References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <4CF43BC9.8040603@redhat.com>
-Reply-To: djwong@us.ibm.com
+ by fsync
+Date: Tue, 30 Nov 2010 11:39:06 +1100
+Message-ID: <20101130113906.176ffcad@notabene.brown>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
-	Neil Brown <neilb@suse.de>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
 	Mike Snitzer <snitzer@redhat.com>,
@@ -16,45 +15,52 @@ Cc: Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
 	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
 	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
+	Ric Wheeler <rwheeler@redhat.com>,
 	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
-To: Ric Wheeler <rwheeler@redhat.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4CF43BC9.8040603@redhat.com>
+In-Reply-To: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 29, 2010 at 06:48:25PM -0500, Ric Wheeler wrote:
-> On 11/29/2010 05:05 PM, Darrick J. Wong wrote:
->> On certain types of hardware, issuing a write cache flush takes a considerable
->> amount of time.  Typically, these are simple storage systems with write cache
-<snip>
->> lowered performance considerably, especially in the case where directio was in
->> use.  Therefore, this patch adds the coordination code directly to ext4.
->
-> Hi Darrick,
->
-> Just curious why we would need to have batching in both places? Doesn't 
-> your patch set make the jbd2 transaction batching redundant?
+On Mon, 29 Nov 2010 14:05:36 -0800 "Darrick J. Wong" <djwong@us.ibm.com>
+wrote:
 
-The code path that I'm changing is only executed when ext4_sync_file determines
-that the flush can't go through the journal, i.e. whenever the previous
-sequence of data writes hasn't resulted in any metadata updates, or if the
-transaction that went with the previous writes has already been committed.
+> On certain types of hardware, issuing a write cache flush takes a considerable
+> amount of time.  Typically, these are simple storage systems with write cache
+> enabled and no battery to save that cache after a power failure.  When we
+> encounter a system with many I/O threads that write data and then call fsync
+> after more transactions accumulate, ext4_sync_file performs a data-only flush,
+> the performance of which is suboptimal because each of those threads issues its
+> own flush command to the drive instead of trying to coordinate the flush,
+> thereby wasting execution time.
+> 
+> Instead of each fsync call initiating its own flush, there's now a flag to
+> indicate if (0) no flushes are ongoing, (1) we're delaying a short time to
+> collect other fsync threads, or (2) we're actually in-progress on a flush.
+> 
+> So, if someone calls ext4_sync_file and no flushes are in progress, the flag
+> shifts from 0->1 and the thread delays for a short time to see if there are any
+> other threads that are close behind in ext4_sync_file.  After that wait, the
+> state transitions to 2 and the flush is issued.  Once that's done, the state
+> goes back to 0 and a completion is signalled.
 
-> I noticed that the patches have a default delay and a mount option to 
-> override that default. The jbd2 code today tries to measure the average 
-> time needed in a transaction and automatically tune itself. Can't we do 
-> something similar with your patch set? (I hate to see yet another mount 
-> option added!)
+I haven't seen any of the preceding discussion do I might be missing
+something important, but this seems needlessly complex and intrusive.
+In particular, I don't like adding code to md to propagate these timings up
+to the fs, and I don't the arbitrary '2ms' number.
 
-The mount option is no longer the delay time, as it was in previous patches.
-In the (unreleased) v5 patch, the code automatically tuned the delay based on
-the average flush time.  However, we then observed very low flush times (< 2ms)
-and about a 6% regression on our arrays with battery-backed write cache, so the
-auto-tune code was then adapted in v6 to skip the coordination if the average
-flush time falls below that threshold, as it does on our arrays.
+Would it not be sufficient to simply gather flushes while a flush is pending.
+i.e
+  - if no flush is pending, set the 'flush pending' flag, submit a flush,
+    then clear the flag.
+  - if a flush is pending, then wait for it to complete, and then submit a
+    single flush on behalf of all pending flushes.
 
-Therefore, the new mount option exists to override the default threshold.
+That way when flush is fast, you do a flush every time, and when it is slow
+you gather multiple flushes together.
+I think it would issues a few more flushes than your scheme, but it would be
+a much neater solution.  Have you tried that and found it to be insufficient?
 
---D
+Thanks,
+NeilBrown
