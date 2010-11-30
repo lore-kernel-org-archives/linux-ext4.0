@@ -1,78 +1,48 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent
- by fsync
-Date: Mon, 29 Nov 2010 19:48:52 -0500
-Message-ID: <4CF449F4.3010303@redhat.com>
-References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <20101130113906.176ffcad@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
-	Mike Snitzer <snitzer@redhat.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
-	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
-	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49158 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755904Ab0K3ArP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Nov 2010 19:47:15 -0500
-In-Reply-To: <20101130113906.176ffcad@notabene.brown>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
+Date: Mon, 29 Nov 2010 19:50:46 -0500
+Message-ID: <1291075500-sup-6320@think>
+References: <20101123100239.GA4232@amd> <1290515274-sup-3895@think> <20101124144740.bffb2716.akpm@linux-foundation.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: Nick Piggin <npiggin@kernel.dk>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20101124144740.bffb2716.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 11/29/2010 07:39 PM, Neil Brown wrote:
-> On Mon, 29 Nov 2010 14:05:36 -0800 "Darrick J. Wong"<djwong@us.ibm.com>
-> wrote:
->
->> On certain types of hardware, issuing a write cache flush takes a considerable
->> amount of time.  Typically, these are simple storage systems with write cache
->> enabled and no battery to save that cache after a power failure.  When we
->> encounter a system with many I/O threads that write data and then call fsync
->> after more transactions accumulate, ext4_sync_file performs a data-only flush,
->> the performance of which is suboptimal because each of those threads issues its
->> own flush command to the drive instead of trying to coordinate the flush,
->> thereby wasting execution time.
->>
->> Instead of each fsync call initiating its own flush, there's now a flag to
->> indicate if (0) no flushes are ongoing, (1) we're delaying a short time to
->> collect other fsync threads, or (2) we're actually in-progress on a flush.
->>
->> So, if someone calls ext4_sync_file and no flushes are in progress, the flag
->> shifts from 0->1 and the thread delays for a short time to see if there are any
->> other threads that are close behind in ext4_sync_file.  After that wait, the
->> state transitions to 2 and the flush is issued.  Once that's done, the state
->> goes back to 0 and a completion is signalled.
-> I haven't seen any of the preceding discussion do I might be missing
-> something important, but this seems needlessly complex and intrusive.
-> In particular, I don't like adding code to md to propagate these timings up
-> to the fs, and I don't the arbitrary '2ms' number.
->
-> Would it not be sufficient to simply gather flushes while a flush is pending.
-> i.e
->    - if no flush is pending, set the 'flush pending' flag, submit a flush,
->      then clear the flag.
->    - if a flush is pending, then wait for it to complete, and then submit a
->      single flush on behalf of all pending flushes.
->
-> That way when flush is fast, you do a flush every time, and when it is slow
-> you gather multiple flushes together.
-> I think it would issues a few more flushes than your scheme, but it would be
-> a much neater solution.  Have you tried that and found it to be insufficient?
->
-> Thanks,
-> NeilBrown
->
+Excerpts from Andrew Morton's message of 2010-11-24 17:47:40 -0500:
+> On Tue, 23 Nov 2010 07:34:07 -0500
+> Chris Mason <chris.mason@oracle.com> wrote:
+> 
+> > For btrfs there's only one bdi per SB, but for most everyone else a disk
+> > with a bunch of partitions is going to have multiple filesystems on the
+> > same bdi.
+> 
+> um, please explain why that wasn't idiotic?  The BDI is a
+> representation of a backing device and it's *supposed* to provide
+> visibility into what's happening against other partitions on the same
+> device.  Creating a BDI per SB (it didn't even occur to me to think
+> that a filesystem was even able to do this) breaks that.
+> 
 
-The problem with that is that you can introduce a wait for the next flush longer 
-than it would take to complete the flush. Having the wait adjust itself 
-according to the speed of the device is much better I think....
+We don't really have visibility into the other partitions, we all just
+pretend they aren't there (this patch being the most recent example).
+Yes, it does help prevent N flushers seeking around on the drive but it
+does cause problems too.
 
-Ric
+How is the btrfs one-bdi-per-super different from device mapper's one
+bdi per logical volume?  We're all idiots together I suppose.
 
+As for having multiple bdis per FS, that was always a long term goal of
+mine when Jens was setting up the new flushers.  I didn't want to
+confuse the initial implementation with it though.
+
+-chris
