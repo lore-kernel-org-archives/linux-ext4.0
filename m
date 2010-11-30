@@ -1,48 +1,85 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Mon, 29 Nov 2010 19:50:46 -0500
-Message-ID: <1291075500-sup-6320@think>
-References: <20101123100239.GA4232@amd> <1290515274-sup-3895@think> <20101124144740.bffb2716.akpm@linux-foundation.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: Nick Piggin <npiggin@kernel.dk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <20101124144740.bffb2716.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: jiayingz@google.com (Jiaying Zhang)
+Subject: [PATCH, RFC] Flush the i_completed_io_list during ext4_truncate
+Date: Mon, 29 Nov 2010 17:22:28 -0800 (PST)
+Message-ID: <20101130012228.2144B42716@ruihe.smo.corp.google.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([216.239.44.51]:7031 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756067Ab0K3BWa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Nov 2010 20:22:30 -0500
+Received: from wpaz13.hot.corp.google.com (wpaz13.hot.corp.google.com [172.24.198.77])
+	by smtp-out.google.com with ESMTP id oAU1MTTl026244
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 17:22:29 -0800
+Received: from ruihe.smo.corp.google.com (ruihe.smo.corp.google.com [172.29.60.109])
+	by wpaz13.hot.corp.google.com with ESMTP id oAU1MSF4012748
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Nov 2010 17:22:28 -0800
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Excerpts from Andrew Morton's message of 2010-11-24 17:47:40 -0500:
-> On Tue, 23 Nov 2010 07:34:07 -0500
-> Chris Mason <chris.mason@oracle.com> wrote:
-> 
-> > For btrfs there's only one bdi per SB, but for most everyone else a disk
-> > with a bunch of partitions is going to have multiple filesystems on the
-> > same bdi.
-> 
-> um, please explain why that wasn't idiotic?  The BDI is a
-> representation of a backing device and it's *supposed* to provide
-> visibility into what's happening against other partitions on the same
-> device.  Creating a BDI per SB (it didn't even occur to me to think
-> that a filesystem was even able to do this) breaks that.
-> 
+Ted first found the bug when running 2.6.36 kernel with dioread_nolock
+mount option that xfstests #13 complained about wrong file size during fsck.
+However, the bug exists in the older kernels as well although it is
+somehow harder to trigger.
 
-We don't really have visibility into the other partitions, we all just
-pretend they aren't there (this patch being the most recent example).
-Yes, it does help prevent N flushers seeking around on the drive but it
-does cause problems too.
+The problem is that ext4_end_io_work() can happen after we have truncated an
+inode to a smaller size. Then when ext4_end_io_work() calls 
+ext4_convert_unwritten_extents(), we may reallocate some blocks that have 
+been truncated, so the inode size becomes inconsistent with the allocated
+blocks. 
 
-How is the btrfs one-bdi-per-super different from device mapper's one
-bdi per logical volume?  We're all idiots together I suppose.
+The following patch flushes the i_completed_io_list during truncate to reduce 
+the risk that some pending end_io requests are executed later and convert 
+already truncated blocks to initialized. 
 
-As for having multiple bdis per FS, that was always a long term goal of
-mine when Jens was setting up the new flushers.  I didn't want to
-confuse the initial implementation with it though.
+Note that although the fix helps reduce the problem a lot there may still 
+be a race window between vmtruncate() and ext4_end_io_work(). The fundamental
+problem is that if vmtruncate() is called without either i_mutex or i_alloc_sem
+held, it can race with an ongoing write request so that the io_end request is
+processed later when the corresponding blocks have been truncated.
 
--chris
+Ted and I have discussed the problem offline and we saw a few ways to fix
+the race completely:
+
+a) We guarantee that i_mutex lock and i_alloc_sem write lock are both hold 
+whenever vmtruncate() is called. The i_mutex lock prevents any new write
+requests from entering writeback and the i_alloc_sem prevents the race
+from ext4_page_mkwrite(). Currently we hold both locks if vmtruncate()
+is called from do_truncate(), which is probably the most common case.
+However, there are places where we may call vmtruncate() without holding
+either i_mutex or i_alloc_sem. I would like to ask for other people's
+opinions on what locks are expected to be held before calling vmtruncate().
+There seems a disagreement among the callers of that function.
+
+b) We change the ext4 write path so that we change the extent tree to contain 
+the newly allocated blocks and update i_size both at the same time --- when 
+the write of the data blocks is completed.
+
+c) We add some additional locking to synchronize vmtruncate() and 
+ext4_end_io_work(). This approach may have performance implications so we
+need to be careful.
+
+All of the above proposals may require more substantial changes, so
+we may consider to take the following patch as a bandaid.
+
+ext4: Flush the i_completed_io_list during truncate to reduce the risk
+that some pending end_io requests are executed later and convert already
+truncated blocks to initialized.
+    
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0554c48..5c50896 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3519,6 +3519,12 @@ void ext4_ext_truncate(struct inode *inode)
+ 	int err = 0;
+ 
+ 	/*
++	 * finish any pending end_io work so we won't run the risk of
++	 * converting any truncated blocks to initialized later
++	 */
++	flush_completed_IO(inode);
++
++	/*
+ 	 * probably first extent we're gonna free will be last in block
+ 	 */
+ 	err = ext4_writepage_trans_blocks(inode);
