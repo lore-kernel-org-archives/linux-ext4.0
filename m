@@ -1,81 +1,88 @@
-From: jiayingz@google.com (Jiaying Zhang)
-Subject: [PATCH] discard an inode's preallocated blocks after failed allocation
-Date: Tue, 30 Nov 2010 15:22:38 -0800 (PST)
-Message-ID: <20101130232238.4F5A74274C@ruihe.smo.corp.google.com>
-Cc: linux-ext4@vger.kernel.org
-To: adilger.kernel@dilger.ca, tytso@mit.ed
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent
+	by fsync
+Date: Tue, 30 Nov 2010 15:31:30 -0800
+Message-ID: <20101130233130.GG18195@tux1.beaverton.ibm.com>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <20101130113906.176ffcad@notabene.brown>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
+	Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
+	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
+	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:25801 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750948Ab0K3XWn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Nov 2010 18:22:43 -0500
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:56600 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751686Ab0K3Xbb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Nov 2010 18:31:31 -0500
+Content-Disposition: inline
+In-Reply-To: <20101130113906.176ffcad@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We have seen kernel crashes caused by the BUG_ON in 
-ext4_mb_return_to_preallocation() that checks whether the inode's
-i_prealloc_list is empty. As I understand, the assumption is that
-when ext4_mb_return_to_preallocation() is called from ext4_free_blocks(),
-the inode's preallocation list should have been already discarded.
-However, although we call ext4_discard_preallocations() during ext4
-truncate, we don't always call that function in various failure
-cases before calling ext4_free_blocks(). So it is likely to hit this
-BUG_ON with disk errors or corrupted fs etc.
+On Tue, Nov 30, 2010 at 11:39:06AM +1100, Neil Brown wrote:
+> On Mon, 29 Nov 2010 14:05:36 -0800 "Darrick J. Wong" <djwong@us.ibm.com>
+> wrote:
+> 
+> > On certain types of hardware, issuing a write cache flush takes a considerable
+> > amount of time.  Typically, these are simple storage systems with write cache
+> > enabled and no battery to save that cache after a power failure.  When we
+> > encounter a system with many I/O threads that write data and then call fsync
+> > after more transactions accumulate, ext4_sync_file performs a data-only flush,
+> > the performance of which is suboptimal because each of those threads issues its
+> > own flush command to the drive instead of trying to coordinate the flush,
+> > thereby wasting execution time.
+> > 
+> > Instead of each fsync call initiating its own flush, there's now a flag to
+> > indicate if (0) no flushes are ongoing, (1) we're delaying a short time to
+> > collect other fsync threads, or (2) we're actually in-progress on a flush.
+> > 
+> > So, if someone calls ext4_sync_file and no flushes are in progress, the flag
+> > shifts from 0->1 and the thread delays for a short time to see if there are any
+> > other threads that are close behind in ext4_sync_file.  After that wait, the
+> > state transitions to 2 and the flush is issued.  Once that's done, the state
+> > goes back to 0 and a completion is signalled.
+> 
+> I haven't seen any of the preceding discussion do I might be missing
+> something important, but this seems needlessly complex and intrusive.
+> In particular, I don't like adding code to md to propagate these timings up
+> to the fs, and I don't the arbitrary '2ms' number.
+> 
+> Would it not be sufficient to simply gather flushes while a flush is pending.
+> i.e
+>   - if no flush is pending, set the 'flush pending' flag, submit a flush,
+>     then clear the flag.
+>   - if a flush is pending, then wait for it to complete, and then submit a
+>     single flush on behalf of all pending flushes.
+> 
+> That way when flush is fast, you do a flush every time, and when it is slow
+> you gather multiple flushes together.
+> I think it would issues a few more flushes than your scheme, but it would be
+> a much neater solution.  Have you tried that and found it to be insufficient?
 
-To fix the problem, the following patch adds ext4_discard_preallocation()
-before ext4_free_blocks() in failed allocation cases. This will discard
-any preallocated block extent attached to the inode, but I think it is 
-probably what we should be doing with failed allocation.
+Some time ago I actually did test the patchset with the schedule_hrtimeout
+removed, which I think is fairly close to what you've suggested.  As I recall,
+it did help a bit, though not as much as also instituting the wait to limit the
+% of disk execution time spent on flushes.  That said, I think you might be
+right about the completion races, so I'll try to code up your suggestion to
+see what happens with a newer kernel.
 
-I am also curious whether we can drop the ext4_mb_return_to_preallocation()
-call from ext4_free_blocks(). From the comments above that function, it
-seems to intent to discard the specified blocks only but all it is currently
-doing is the BUG_ON check on whether the inode's preallocation list is empty.
-Is there any plan to extend this function later?
-
-
-ext4: discard an inode's preallocated blocks after failed allocation so that
-we won't hit on the BUG_ON check in ext4_mb_return_to_preallocation() later.
-
-Signed-off-by: Jiaying Zhang <jiayingz@google.com>
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 29a4adf..2164df6 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1056,6 +1056,7 @@ cleanup:
- 	}
- 
- 	if (err) {
-+		ext4_discard_preallocations(inode);
- 		/* free all allocated blocks in error case */
- 		for (i = 0; i < depth; i++) {
- 			if (!ablocks[i])
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4f4362c..456cb4a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -690,6 +690,7 @@ allocated:
- 	*err = 0;
- 	return ret;
- failed_out:
-+	ext4_discard_preallocations(inode);
- 	for (i = 0; i < index; i++)
- 		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
- 	return ret;
-@@ -787,6 +788,7 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
- 	return err;
- failed:
- 	/* Allocation failed, free what we already allocated */
-+	ext4_discard_preallocations(inode);
- 	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, 0);
- 	for (i = 1; i <= n ; i++) {
- 		/*
-@@ -878,6 +880,7 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
- 	return err;
- 
- err_out:
-+	ext4_discard_preallocations(inode);
- 	for (i = 1; i <= num; i++) {
- 		/*
- 		 * branch[i].bh is newly allocated, so there is no
+--D
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
