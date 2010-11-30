@@ -1,44 +1,44 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent by fsync
-Date: Tue, 30 Nov 2010 17:43:01 +0100
-Message-ID: <20101130164301.GB30858@lst.de>
-References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <20101130113906.176ffcad@notabene.brown>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 23772] oops after mounting ext4 fs in 2.6.36.1 (failed to parse
+ options in superblock)
+Date: Tue, 30 Nov 2010 16:51:01 GMT
+Message-ID: <201011301651.oAUGp15m027000@demeter1.kernel.org>
+References: <bug-23772-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
-	Mike Snitzer <snitzer@redhat.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
-	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
-	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.210]:46034 "EHLO verein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751164Ab0K3Qnf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Nov 2010 11:43:35 -0500
-Content-Disposition: inline
-In-Reply-To: <20101130113906.176ffcad@notabene.brown>
+Received: from demeter1.kernel.org ([140.211.167.39]:39889 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751525Ab0K3QvD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Nov 2010 11:51:03 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAUGp24n027001
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Nov 2010 16:51:02 GMT
+In-Reply-To: <bug-23772-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 30, 2010 at 11:39:06AM +1100, Neil Brown wrote:
-> Would it not be sufficient to simply gather flushes while a flush is pending.
-> i.e
->   - if no flush is pending, set the 'flush pending' flag, submit a flush,
->     then clear the flag.
->   - if a flush is pending, then wait for it to complete, and then submit a
->     single flush on behalf of all pending flushes.
->
-> That way when flush is fast, you do a flush every time, and when it is slow
-> you gather multiple flushes together.
+https://bugzilla.kernel.org/show_bug.cgi?id=23772
 
-We can even optimize the second flush away if no other I/O has
-completed since the first flush has started.  That will always be the
-case for SATA devices as the cache flush command is not queued.
 
+
+
+
+--- Comment #15 from Fryderyk Dziarmagowski <fdziarmagowski@gmail.com>  2010-11-30 16:50:59 ---
+(In reply to comment #14)
+> (In reply to comment #12)
+> > I there is a way to fix it on the user space side?
+> 
+> Fairly simple, for this specific case.  It should overwrite the 512-byte area
+> beyond the superblock with zeroes:
+> 
+> dd if=/dev/zero of=/dev/dsk/by-label/MyBook bs=512 count=1 seek=3 skip=3
+
+that did the trick! Many thanks Andreas!
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
