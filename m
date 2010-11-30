@@ -1,56 +1,81 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 23772] oops after mounting ext4 fs in 2.6.36.1 (failed to parse
- options in superblock)
-Date: Tue, 30 Nov 2010 21:16:36 GMT
-Message-ID: <201011302116.oAULGaip017279@demeter1.kernel.org>
-References: <bug-23772-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: jiayingz@google.com (Jiaying Zhang)
+Subject: [PATCH] discard an inode's preallocated blocks after failed allocation
+Date: Tue, 30 Nov 2010 15:22:38 -0800 (PST)
+Message-ID: <20101130232238.4F5A74274C@ruihe.smo.corp.google.com>
+Cc: linux-ext4@vger.kernel.org
+To: adilger.kernel@dilger.ca, tytso@mit.ed
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:46453 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751475Ab0K3VQh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Nov 2010 16:16:37 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oAULGafO017280
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Nov 2010 21:16:36 GMT
-In-Reply-To: <bug-23772-13602@https.bugzilla.kernel.org/>
+Received: from smtp-out.google.com ([216.239.44.51]:25801 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750948Ab0K3XWn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Nov 2010 18:22:43 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=23772
+We have seen kernel crashes caused by the BUG_ON in 
+ext4_mb_return_to_preallocation() that checks whether the inode's
+i_prealloc_list is empty. As I understand, the assumption is that
+when ext4_mb_return_to_preallocation() is called from ext4_free_blocks(),
+the inode's preallocation list should have been already discarded.
+However, although we call ext4_discard_preallocations() during ext4
+truncate, we don't always call that function in various failure
+cases before calling ext4_free_blocks(). So it is likely to hit this
+BUG_ON with disk errors or corrupted fs etc.
+
+To fix the problem, the following patch adds ext4_discard_preallocation()
+before ext4_free_blocks() in failed allocation cases. This will discard
+any preallocated block extent attached to the inode, but I think it is 
+probably what we should be doing with failed allocation.
+
+I am also curious whether we can drop the ext4_mb_return_to_preallocation()
+call from ext4_free_blocks(). From the comments above that function, it
+seems to intent to discard the specified blocks only but all it is currently
+doing is the BUG_ON check on whether the inode's preallocation list is empty.
+Is there any plan to extend this function later?
 
 
+ext4: discard an inode's preallocated blocks after failed allocation so that
+we won't hit on the BUG_ON check in ext4_mb_return_to_preallocation() later.
 
+Signed-off-by: Jiaying Zhang <jiayingz@google.com>
 
-
---- Comment #19 from Fryderyk Dziarmagowski <fdziarmagowski@gmail.com>  2010-11-30 21:16:34 ---
-(In reply to comment #17)
-> Something is scribbling on / has scribbled on the front of your filesystem, it
-> seems.
-
-"is scribbling" is the right one. After doing a dd once more, just after error
-msg, the file system was altered (compared visually in text editor). 
-
-> What kind of storage is this?
-
-external usb disk by western digital:
-# skdump /dev/disk/by-label/MyBook
-Device: sat12:/dev/disk/by-label/MyBook
-Type: 12 Byte SCSI ATA SAT Passthru
-Size: 305242 MiB
-Model: [WDC WD3200AAKS-00SBA0]
-Serial: [WD-WCAPZ2842083]
-Firmware: [12.01B01]
-SMART Available: yes
-
-Unfortunately, the oops is back. Tried to run fsck -f on the unlucky partition
-causes a hard lockup (only reset helps). For this time, it was something with
-ext4_msg, I will do a screenshot tomorrow.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 29a4adf..2164df6 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1056,6 +1056,7 @@ cleanup:
+ 	}
+ 
+ 	if (err) {
++		ext4_discard_preallocations(inode);
+ 		/* free all allocated blocks in error case */
+ 		for (i = 0; i < depth; i++) {
+ 			if (!ablocks[i])
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4f4362c..456cb4a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -690,6 +690,7 @@ allocated:
+ 	*err = 0;
+ 	return ret;
+ failed_out:
++	ext4_discard_preallocations(inode);
+ 	for (i = 0; i < index; i++)
+ 		ext4_free_blocks(handle, inode, 0, new_blocks[i], 1, 0);
+ 	return ret;
+@@ -787,6 +788,7 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 	return err;
+ failed:
+ 	/* Allocation failed, free what we already allocated */
++	ext4_discard_preallocations(inode);
+ 	ext4_free_blocks(handle, inode, 0, new_blocks[0], 1, 0);
+ 	for (i = 1; i <= n ; i++) {
+ 		/*
+@@ -878,6 +880,7 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 	return err;
+ 
+ err_out:
++	ext4_discard_preallocations(inode);
+ 	for (i = 1; i <= num; i++) {
+ 		/*
+ 		 * branch[i].bh is newly allocated, so there is no
