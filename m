@@ -1,92 +1,61 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 13/15] mke2fs: fix potential memory leak in
- mke2fs_setup_tdb()
-Date: Tue, 30 Nov 2010 14:02:32 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1011301350290.3004@dhcp-lab-213.englab.brq.redhat.com>
-References: <1291020917-8671-1-git-send-email-namhyung@gmail.com> <1291020917-8671-14-git-send-email-namhyung@gmail.com>
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent
+ by fsync
+Date: Tue, 30 Nov 2010 14:45:05 +0100
+Message-ID: <4CF4FFE1.9060507@kernel.org>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <20101130113906.176ffcad@notabene.brown>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Namhyung Kim <namhyung@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
+	Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
+	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org, Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28015 "EHLO mx1.redhat.com"
+Received: from hera.kernel.org ([140.211.167.34]:58765 "EHLO hera.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751059Ab0K3NCi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Nov 2010 08:02:38 -0500
-In-Reply-To: <1291020917-8671-14-git-send-email-namhyung@gmail.com>
+	id S1750909Ab0K3Npq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Nov 2010 08:45:46 -0500
+In-Reply-To: <20101130113906.176ffcad@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 29 Nov 2010, Namhyung Kim wrote:
+Hello,
 
-> 'tmp_name' allocated by strdup() should also be freed if error.
-> Also check return value of set_undo_io_backup_file() for possible
-> memory failure. A whitespace fix is added too.
+On 11/30/2010 01:39 AM, Neil Brown wrote:
+> I haven't seen any of the preceding discussion do I might be missing
+> something important, but this seems needlessly complex and intrusive.
+> In particular, I don't like adding code to md to propagate these timings up
+> to the fs, and I don't the arbitrary '2ms' number.
 > 
-> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
-> ---
->  misc/mke2fs.c |   11 +++++++----
->  1 files changed, 7 insertions(+), 4 deletions(-)
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 6e2092d..644b287 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1882,15 +1882,17 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
->  
->  	tmp_name = strdup(name);
->  	if (!tmp_name) {
-> -	alloc_fn_fail:
-> -		com_err(program_name, ENOMEM, 
-> +alloc_fn_fail:
-> +		com_err(program_name, ENOMEM,
->  			_("Couldn't allocate memory for tdb filename\n"));
->  		return ENOMEM;
->  	}
+> Would it not be sufficient to simply gather flushes while a flush is pending.
+> i.e
+>   - if no flush is pending, set the 'flush pending' flag, submit a flush,
+>     then clear the flag.
+>   - if a flush is pending, then wait for it to complete, and then submit a
+>     single flush on behalf of all pending flushes.
 
-What about putting the alloc_fn_fail at the end of the function ? after return
-retval?
+Heh, I was about to suggest exactly the same thing.  Unless the delay
+is gonna be multiple times longer than avg flush time, I don't think
+the difference between the above scheme and the one w/ preemptive
+delay would be anything significant especially now that the cost of
+flush is much lower.  Also, as Neil pointed out in another message,
+the above scheme will result in lower latency for flushes issued while
+no flush is in progress.
 
->  	device_name = basename(tmp_name);
->  	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(device_name) + 7 + 1);
-> -	if (!tdb_file)
-> +	if (!tdb_file) {
-> +		free(tmp_name);
+IMO, this kind of optimization is gonna make noticeable difference
+only when there are a lot of simulatenous fsyncs, in which case the
+above would behave in mostly identical way with the more elaborate
+timer based one anyway.
 
-What about adding
+Thanks.
 
-if (tmp_name)
-	free(tmp_name);
-
-in alloc_fs_fail context ?
-
->  		goto alloc_fn_fail;
-> +	}
->  	sprintf(tdb_file, "%s/mke2fs-%s.e2undo", tdb_dir, device_name);
->  
->  	if (!access(tdb_file, F_OK)) {
-> @@ -1899,6 +1901,7 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
->  			com_err(program_name, retval,
->  				_("while trying to delete %s"),
->  				tdb_file);
-> +			free(tmp_name);
->  			free(tdb_file);
->  			return retval;
->  		}
-> @@ -1906,7 +1909,7 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
->  
->  	set_undo_io_backing_manager(*io_ptr);
->  	*io_ptr = undo_io_manager;
-> -	set_undo_io_backup_file(tdb_file);
-> +	retval = set_undo_io_backup_file(tdb_file);
-
-You should probably return ENOMEM when this fails, moreover when
-set_undo_io_backup() you'll try to free not allocated space.
-
->  	printf(_("Overwriting existing filesystem; this can be undone "
->  		 "using the command:\n"
->  		 "    e2undo %s %s\n\n"), tdb_file, name);
-> 
-
-Thanks
--Lukas
+-- 
+tejun
