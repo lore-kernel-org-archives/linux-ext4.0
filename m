@@ -1,64 +1,59 @@
-From: "WEBMASTER SERVICE" <info@webmaster.org>
-Subject: Ensure Your Account
-Date: Mon, 29 Nov 2010 22:45:15 +0100
-Message-ID: <20101129224515.625567wsz7oixyi3@webmail.rrzn.uni-hannover.de>
-Reply-To: web_master_service@live.co.uk
+From: Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
+Date: Tue, 30 Nov 2010 11:01:18 +1100
+Message-ID: <20101130000118.GA3255@amd>
+References: <20101123100239.GA4232@amd>
+ <1290515274-sup-3895@think>
+ <20101123125223.GA4946@amd>
+ <1290538347-sup-7669@think>
+ <20101124010343.GD3168@amd>
+ <20101124131028.GQ6113@quack.suse.cz>
+ <20101125035356.GC3359@amd>
+ <20101129142603.ebbcbc7e.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	DelSp=Yes	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from authsmtp.rrzn.uni-hannover.de ([130.75.2.107]:60484 "EHLO
-	authsmtp.rrzn.uni-hannover.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755810Ab0K2Xrd convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Nov 2010 18:47:33 -0500
+Content-Type: text/plain; charset=us-ascii
+Cc: Nick Piggin <npiggin@kernel.dk>, Jan Kara <jack@suse.cz>,
+	Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20101129142603.ebbcbc7e.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Mon, Nov 29, 2010 at 02:26:03PM -0800, Andrew Morton wrote:
+> 	On Thu, 25 Nov 2010 14:53:56 +1100
+> Nick Piggin <npiggin@kernel.dk> wrote:
+> > On Wed, Nov 24, 2010 at 02:10:28PM +0100, Jan Kara wrote:
+> > Well, for now, the easiest and simplest fix is my patch, I think. The
+> > objection is that we may not write out anything for the specified sb,
+> > but the current implementation provides no such guarantees at all
+> > anyway, so I don't think it's a big issue.
+> 
+> Well yes.  We take something which will fail occasionally and with your
+> patch replace it with something which will fail a bit more often.  Why
+> don't we go all the way and do something which will fail *even more
+> often*.  Namely, just delete the damn function in the hope that the
+> resulting failures will provoke the ext4 crew into doing something sane
+> this time?
 
-Ensure Your Account
+I just need it fixed because the deadlocks are constantly hanging my
+tests and/or switching off lockdep.
 
+ 
+> Guys, this delalloc thing *sucks*.  And here we are just sticking new
+> bandaids on top of the old bandaids.  And the btrfs approach isn't
+> exactly a thing of glory, either.
+> 
+> So...  nope.  I won't be applying Nick's patch.  Please fix this thing
+> properly - you have a whole month!
 
+Testers have less. It would be better to fix it now and rip it out at
+the start of the next merge window if you're that way inclined :)
 
-  We are currently upgrading our data base and e-mail home center is =20
-managed. Enter your email to delete accounts that are not actively =20
-users.we parents to create more space for new accounts have also =20
-studied the system security audit to improve and enhance our current =20
-security situation.
-
-Continue to use our services are needed to update and
-re-comfirmed your requested information via e-mail below.
-
-To complete the new account confirmation, reply to this email =20
-immediately and enter the account number below to
-
-Username: ................
-User E-mail ..............
-Password: ..................
-Password: ............
-Date of Birth: .................
-
-
-Otherwise, your account will be disabled immediately to the database =20
-and information service is not interrupted and important messages can =20
-be lost in the reduction of the new coordinates comfirmed to us.
-
-We apologize for any inconvenience this causes this season but is =20
-confident that we are here to serve you better and
-providing more technology which revolves around email and internet.
-
-It is also essential to understand that the most important =20
-epr=E9occupation our customers and the security of their files and =20
-data....
-
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
