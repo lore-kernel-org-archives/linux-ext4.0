@@ -1,98 +1,66 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent
- by fsync
-Date: Tue, 30 Nov 2010 16:14:39 -0800
-Message-ID: <1291162479.2419.179.camel@mingming-laptop>
-References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com>
-	 <4CF43BC9.8040603@redhat.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: [RFC][PATCH V3 0/4] ext4: inode preferred block allocation
+Date: Wed, 01 Dec 2010 15:06:37 +0900
+Message-ID: <4CF5E5ED.40605@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
-	Neil Brown <neilb@suse.de>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
-	Mike Snitzer <snitzer@redhat.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
-	dm-devel@redhat.com, Tejun Heo <tj@kernel.org>,
-	linux-ext4@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-	Josef Bacik <josef@redhat.com>
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <4CF43BC9.8040603@redhat.com>
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org
+To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:65041 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751087Ab0LAGM2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Dec 2010 01:12:28 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2010-11-29 at 18:48 -0500, Ric Wheeler wrote:
-> On 11/29/2010 05:05 PM, Darrick J. Wong wrote:
-> > On certain types of hardware, issuing a write cache flush takes a considerable
-> > amount of time.  Typically, these are simple storage systems with write cache
-> > enabled and no battery to save that cache after a power failure.  When we
-> > encounter a system with many I/O threads that write data and then call fsync
-> > after more transactions accumulate, ext4_sync_file performs a data-only flush,
-> > the performance of which is suboptimal because each of those threads issues its
-> > own flush command to the drive instead of trying to coordinate the flush,
-> > thereby wasting execution time.
-> >
-> > Instead of each fsync call initiating its own flush, there's now a flag to
-> > indicate if (0) no flushes are ongoing, (1) we're delaying a short time to
-> > collect other fsync threads, or (2) we're actually in-progress on a flush.
-> >
-> > So, if someone calls ext4_sync_file and no flushes are in progress, the flag
-> > shifts from 0->1 and the thread delays for a short time to see if there are any
-> > other threads that are close behind in ext4_sync_file.  After that wait, the
-> > state transitions to 2 and the flush is issued.  Once that's done, the state
-> > goes back to 0 and a completion is signalled.
-> >
-> > Those close-behind threads see the flag is already 1, and go to sleep until the
-> > completion is signalled.  Instead of issuing a flush themselves, they simply
-> > wait for that first thread to do it for them.  If they see that the flag is 2,
-> > they wait for the current flush to finish, and start over.
-> >
-> > However, there are a couple of exceptions to this rule.  First, there exist
-> > high-end storage arrays with battery-backed write caches for which flush
-> > commands take very little time (<  2ms); on these systems, performing the
-> > coordination actually lowers performance.  Given the earlier patch to the block
-> > layer to report low-level device flush times, we can detect this situation and
-> > have all threads issue flushes without coordinating, as we did before.  The
-> > second case is when there's a single thread issuing flushes, in which case it
-> > can skip the coordination.
-> >
-> > This author of this patch is aware that jbd2 has a similar flush coordination
-> > scheme for journal commits.  An earlier version of this patch simply created a
-> > new empty journal transaction and committed it, but that approach was shown to
-> > increase the amount of write traffic heading towards the disk, which in turn
-> > lowered performance considerably, especially in the case where directio was in
-> > use.  Therefore, this patch adds the coordination code directly to ext4.
-> 
-> Hi Darrick,
-> 
-> Just curious why we would need to have batching in both places? Doesn't your 
-> patch set make the jbd2 transaction batching redundant?
-> 
+Hi,
 
-We hoped JBD2 could take care of the batching too. But ftrace shows
-there are a fair amount of barriers (440 barriers/second, if I remember
-right) sending from ext4_sync_file(), but not coming from jbd2 side. :(
+This version changes the interface of e4defrag -r option to reallocate files
+near the regular files. It is useful to coordinate boot related files.
 
-> I noticed that the patches have a default delay and a mount option to override 
-> that default. The jbd2 code today tries to measure the average time needed in a 
-> transaction and automatically tune itself. Can't we do something similar with 
-> your patch set? (I hate to see yet another mount option added!)
-> 
+For adding new feature to e4defrag, we implemented new two ioctls to allocate
+preferred blocks by using inode preallocation (called inode PA). One is
+EXT4_IOC_CONTROL_PA to create or discard inode PA, and the other is
+EXT4_IOC_GET_PA to get inode PA information.
 
-I don't like a new mount option too. Darrick's new mount option is for
-the threshold to turn on/off batching. Probably could make it a tunables
-instead of a mount option.
+By using these ioctls, e4defrag can solve relevant file fragmentation. This
+improves read performance in case of reading a lot of files that is in the
+same directory. The result of the simple test suite with the following command
+line shows 35% performance improvement.
+# time find <kernel source directory> -type -f -exec cat {} >/dev/null \;
+
+FS Use percentage  before defrag   after defrag
+               7%          56.5s          34.7s
+              57%          59.4s          36.7s
+              96%          62.6s          39.9s
+
+Here is v3 patch series with the following changes:
+- Rebase 2.6.37-rc2 (kernel)
+- Don't check the physical block number of inode PA in advisory mode (kernel)
+- Don't merge inode PA if either physical block or file offset of PA is
+  bigger than another PA's one (kernel)
+- Relevant file defragmentation supports a regular file (command)
+- Fix arithmetic error when general user executes e4defrag -r (command)
+
+My previous post is here:
+http://marc.info/?l=linux-ext4&m=128272678710600&w=4
+
+This patch series consists of the following three kernel patches and
+two e2fsprogs patch. They can be applied to the following trees.
+
+ext4 patch queue:
+commit: c4ae4a1752d3aa63cdb0531b03e604a9b273860f
+e2fsprogs:
+commit: b70506bffba208daa2dc176be9370bc198ecd221
+
+[RFC][PATCH V3 1/4] ext4: add EXT4_IOC_CONTROL_PA to create/discard inode PA
+[RFC][PATCH V3 2/4] ext4: sort and merge inode PA
+[RFC][PATCH V3 3/4] ext4: add EXT4_IOC_GET_PA to get inode PA information
+[RFC][PATCH V3 4/4] e4defrag: add solving relevant file fragmentation mode
+
+All suggestions and comments are welcome.
 
 Regards,
-Mingming
-> Regards,
-> 
-> Ric
-> 
-> 
-
-
+Kazuya Mio
