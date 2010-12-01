@@ -1,76 +1,55 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 11/15] mke2fs: fix determination of size_type
-Date: Wed, 1 Dec 2010 16:46:20 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1012011645450.3071@dhcp-lab-213.englab.brq.redhat.com>
-References: <1291020917-8671-1-git-send-email-namhyung@gmail.com>  <1291020917-8671-12-git-send-email-namhyung@gmail.com>  <alpine.LFD.2.00.1011301328040.3004@dhcp-lab-213.englab.brq.redhat.com> <1291207057.1684.30.camel@leonhard>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571108635-418234644-1291218383=:3071"
-Cc: Lukas Czerner <lczerner@redhat.com>, Theodore Tso <tytso@mit.edu>,
+Subject: [PARCH 0/1 RFC] e2image: Add support for QCOW2 image format
+Date: Wed,  1 Dec 2010 18:41:48 +0100
+Message-ID: <1291225309-10750-1-git-send-email-lczerner@redhat.com>
+Cc: adilger@dilger.ca, sandeen@redhat.com, lczerner@redhat.com,
 	linux-ext4@vger.kernel.org
-To: Namhyung Kim <namhyung@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37868 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18484 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752147Ab0LAPq0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Dec 2010 10:46:26 -0500
-In-Reply-To: <1291207057.1684.30.camel@leonhard>
+	id S1755515Ab0LAS2z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Dec 2010 13:28:55 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Hi, all
 
---571108635-418234644-1291218383=:3071
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+As Ted suggested on LPC I started to play with e2image to add support for
+exporting images in QCOW2 format (http://en.wikipedia.org/wiki/Qcow2). The
+advantage of this format is mainly that the resulting image is quite small
+(because we write only the metadata blocks) and it is not sparse unlike
+"sparse" image format.
 
-On Wed, 1 Dec 2010, Namhyung Kim wrote:
+I am presenting you an initial parch, which works for me quite nicely, however
+so far it did received just limited testing. Nevertheless you can try it simply
+by invoking e2image with '-q' parameter like this:
 
-> 2010-11-30 (화), 13:33 +0100, Lukas Czerner:
-> > On Mon, 29 Nov 2010, Namhyung Kim wrote:
-> > 
-> > > In original code, 'huge' type could not be selected because it
-> > > always be caught for 'big' type. Change the ordering.
-> > > 
-> > > Signed-off-by: Namhyung Kim <namhyung@gmail.com>
-> > > ---
-> > >  misc/mke2fs.c |    4 ++--
-> > >  1 files changed, 2 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> > > index 90cc206..b88decf 100644
-> > > --- a/misc/mke2fs.c
-> > > +++ b/misc/mke2fs.c
-> > > @@ -947,10 +947,10 @@ static char **parse_fs_type(const char *fs_type,
-> > >  		size_type = "floppy";
-> > >  	else if (fs_blocks_count < 512 * meg)
-> > >  		size_type = "small";
-> > > -	else if (fs_blocks_count >= 4 * 1024 * 1024 * meg)
-> > > -		size_type = "big";
-> > >  	else if (fs_blocks_count >= 16 * 1024 * 1024 * meg)
-> > >  		size_type = "huge";
-> > > +	else if (fs_blocks_count >= 4 * 1024 * 1024 * meg)
-> > > +		size_type = "big";
-> > >  	else
-> > >  		size_type = "default";
-> > >  
-> > > 
-> > 
-> > Personally, I do not like it very much. Either sort this in ascending order
-> > and use "<" or sort it in descending order and use ">=". But since it
-> > was originally sorted in ascending order I would do that this way.
-> > 
-> > -Lukas
-> 
-> No problem. You mean "floppy, small, default, big and huge", right? I'll
-> resend v2 if you prefer that, Ted.
-> 
-> Thanks.
-> 
+	e2image -q /dev/sda1 myimage
 
-Right.
+or you can add '-s' option so the file names are scrambled. To mount that qcow2
+image I usually use 'qemu-nbd':
+
+	modprobe nbd max_part=8
+	qemu-nbd --connect=/dev/nbd0 myimage
+	mount -o ro /dev/nbd0 /mnt/test/
+
+However I have experienced some problems with qemu-nbd from time to time. Also
+for some reason, when you mount the image read-write, you'll destroy it. So far
+I was not able to figure out why (I did not tried at all to be honest), it may
+be problem in my image format or even in qemu itself, so if you have any idea,
+please let me know.
+
+QCOW2 format supports other neat features like compression, encryption and
+snapshots. None of those feature are supported in this patch and the question
+is, do we need it ? I can imagine for example snapshots to be useful for
+roll-back changes made by e2fsck, but this is hardly problem of e2image itself.
+
+So, please look at the patch, try it and let me know what else you thing is
+useful to implement, or what would you like to change.
+
+Anny comments appreciated.
 
 Thanks!
 
 -Lukas
---571108635-418234644-1291218383=:3071--
