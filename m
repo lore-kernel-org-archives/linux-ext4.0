@@ -1,175 +1,190 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [RFC][PATCH V3 2/4] ext4: sort and merge inode PA
-Date: Wed, 01 Dec 2010 15:06:46 +0900
-Message-ID: <4CF5E5F6.1040001@sx.jp.nec.com>
+Subject: [RFC][PATCH V3 3/4] ext4: add EXT4_IOC_GET_PA to get inode PA information
+Date: Wed, 01 Dec 2010 15:06:50 +0900
+Message-ID: <4CF5E5FA.70602@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org
 To: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:65268 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751694Ab0LAGNH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Dec 2010 01:13:07 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-New inode PA is only added to i_prealloc_list in struct ext4_inode_info.
-By implementation of EXT4_IOC_CONTROL_PA, we can create new inode PA freely.
-So, the contiguous inode PA (both physical block and file offset are
-bigger/smaller than the other inode PA's one) will be created more frequently.
-Thus, ext4_mb_new_inode_pa() sorts and merges inode PA to get rid of
-the contiguous one. This change will lead to saving memory usage, and
-to improve the operation for i_prealloc_list.
+This ioctl gets the information of all inode PAs in the target inode.
+The interface of this ioctl is like FS_IOC_FIEMAP. If we call this ioctl, we
+get the array of struct ext4_prealloc_info that stores the information of inode
+PA.
 
-The ffsb result on 20G SATA is as follows:
+ INTERFACE
+-----------
 
-sequential (Transaction/sec)
-                       read    write   create  append  delete
-2.6.37-rc2+patch queue 2810.8  2727.9  2742.4  2752.4  10.8
-apply this patch       2924.0  2800.0  2876.5  2889.4  11.3
+#define EXT4_IOC_GET_PA		_IOWR('f', 17, struct ext4_prealloc_list)
 
-There is some improvement, but I think it's the margin of error. So this patch
-has an insignificant impact on the read/write performance.
+struct ext4_prealloc_list {
+	__u32 pl_count;		/* size of pl_space array (in) */
+	__u32 pl_mapped;	/* number of PAs that were mapped (out) */
+	__u32 pl_entries;	/* number of PAs the inode has (out) */
+	struct ext4_prealloc_info pl_space[0];	/* array of mapped PAs (out) */
+};
+
+pl_count specifies the number of elements in the pl_space[] array that can be
+used to return inode PAs. If pl_count is zero, no inode PAs will be returned.
+Moreover, if pl_count is set the value that is better than the number of
+elements in the pl_space array, this ioctl returns EFAULT.
+
+pl_mapped shows the number of getting inode PAs, and pl_entries shows the
+number of inode PAs in the target inode. You can confirm that we could get all
+inode PAs in the target inode by comparison with pl_mapped and pl_entries.
 
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 ---
- fs/ext4/mballoc.c |  110 ++++++++++++++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 103 insertions(+), 7 deletions(-)
+ fs/ext4/ext4.h    |   11 +++++++++++
+ fs/ext4/ioctl.c   |   33 +++++++++++++++++++++++++++++++++
+ fs/ext4/mballoc.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 88 insertions(+)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 4094ae7..67901a5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -147,6 +147,14 @@ struct ext4_prealloc_info {
+ 	__u16 pi_flags;		/* flags for the inode PA setting ioctl (in) */
+ };
+ 
++/* inode PA list */
++struct ext4_prealloc_list {
++	__u32 pl_count;		/* size of pl_space array (in) */
++	__u32 pl_mapped;	/* number of PAs that were mapped (out) */
++	__u32 pl_entries;	/* number of PAs the inode has (out) */
++	struct ext4_prealloc_info pl_space[0];	/* array of mapped PAs (out) */
++};
++
+ /*
+  * Logical to physical block mapping, used by ext4_map_blocks()
+  *
+@@ -558,6 +566,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
+ #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
+ #define EXT4_IOC_CONTROL_PA		_IOWR('f', 16, struct ext4_prealloc_info)
++#define EXT4_IOC_GET_PA			_IOWR('f', 17, struct ext4_prealloc_list)
+ 
+ #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ /*
+@@ -1710,6 +1719,8 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
+ extern int ext4_mb_control_pa(struct inode *inode,
+ 				struct ext4_prealloc_info *pi);
++extern int ext4_mb_get_pa(struct inode *inode, struct ext4_prealloc_list *pl,
++				struct ext4_prealloc_info *dest);
+ 
+ /* inode.c */
+ struct buffer_head *ext4_getblk(handle_t *, struct inode *,
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a207691..79daf56 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -448,6 +448,38 @@ mext_out:
+ 		return err;
+ 	}
+ 
++	case EXT4_IOC_GET_PA:
++	{
++		struct ext4_prealloc_list pl;
++		struct ext4_prealloc_info *dest;
++		int err;
++
++		if (!S_ISREG(inode->i_mode))
++			return -EINVAL;
++		if (!(filp->f_mode & FMODE_READ))
++			return -EBADF;
++
++		if (copy_from_user(&pl,
++			(struct ext4_prealloc_list __user *)arg, sizeof(pl)))
++			return -EFAULT;
++
++		dest = (struct ext4_prealloc_info *)(arg + sizeof(pl));
++		if (!access_ok(VERIFY_WRITE,
++			      (struct ext4_prealloc_info __force __user *)dest,
++			      pl.pl_count * sizeof(struct ext4_prealloc_info)))
++			return -EFAULT;
++
++		err = ext4_mb_get_pa(inode, &pl, dest);
++
++		if (err)
++			return err;
++
++		if (copy_to_user((struct ext4_prealloc_list __user *)arg,
++					&pl, sizeof(pl)))
++			return -EFAULT;
++		return err;
++	}
++
+ 	default:
+ 		return -ENOTTY;
+ 	}
+@@ -516,6 +548,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case EXT4_IOC_MOVE_EXT:
+ 	case EXT4_IOC_DEBUG_DELALLOC:
+ 	case EXT4_IOC_CONTROL_PA:
++	case EXT4_IOC_GET_PA:
+ 		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e8effb6..cf501b3 100644
+index cf501b3..0d727e8 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -3416,6 +3416,49 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
- 	call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
+@@ -5277,3 +5277,47 @@ out:
+ 	return err1;
  }
  
 +/**
-+ * ext4_mb_merge_preallocations - Merge two preallocations
++ * ext4_mb_get_pa - Pass inode PA information to user space
 + *
-+ * @pa1:	a preallocation
-+ * @pa2:	a preallocation that is absorbed by @pa1
++ * @inode:	target inode
++ * @pl:		information of the inode PA list (in/out)
++ * @dest:	user space address where PAs' information is written to
 + *
-+ * Merge PAs into @pa1 if possible.
-+ * If success to merge, return 1. Otherwise return 0.
++ * Return 0 if success or error code on failure.
 + */
-+static noinline_for_stack int
-+ext4_mb_merge_preallocations(struct ext4_prealloc_space *pa1,
-+				struct ext4_prealloc_space *pa2)
++int ext4_mb_get_pa(struct inode *inode, struct ext4_prealloc_list *pl,
++		   struct ext4_prealloc_info *dest)
 +{
-+	struct super_block *sb = pa1->pa_inode->i_sb;
-+	ext4_group_t pa1_grp, pa2_grp;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_prealloc_space *pa;
++	struct ext4_prealloc_info pi;
 +
-+	ext4_get_group_no_and_offset(sb, pa1->pa_pstart, &pa1_grp, NULL);
-+	ext4_get_group_no_and_offset(sb, pa2->pa_pstart, &pa2_grp, NULL);
++	pl->pl_entries = 0;
++	pl->pl_mapped = 0;
 +
-+	if (pa1_grp != pa2_grp)
-+		return 0;
-+	/* TODO: eliminate this restriction by moving all extents in @pa1 */
-+	if ((pa1->pa_pstart > pa2->pa_pstart &&
-+				pa1->pa_lstart < pa2->pa_lstart) ||
-+			(pa1->pa_pstart < pa2->pa_pstart &&
-+				pa1->pa_lstart > pa2->pa_lstart))
-+		return 0;
-+	if (pa1->pa_lstart + pa1->pa_len != pa2->pa_lstart &&
-+	    pa2->pa_lstart + pa2->pa_len != pa1->pa_lstart)
-+		return 0;
-+	if (pa1->pa_pstart + pa1->pa_len != pa2->pa_pstart &&
-+	    pa2->pa_pstart + pa2->pa_len != pa1->pa_pstart)
-+		return 0;
-+
-+	pa1->pa_pstart = min(pa1->pa_pstart, pa2->pa_pstart);
-+	pa1->pa_lstart = min(pa1->pa_lstart, pa2->pa_lstart);
-+
-+	pa1->pa_len += pa2->pa_len;
-+	pa1->pa_free += pa2->pa_free;
-+
-+	return 1;
-+}
-+
- /*
-  * creates new preallocated space for given inode
-  */
-@@ -3423,9 +3466,10 @@ static noinline_for_stack int
- ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- {
- 	struct super_block *sb = ac->ac_sb;
--	struct ext4_prealloc_space *pa;
-+	struct ext4_prealloc_space *pa, *tmp_pa, *prev = NULL, *next = NULL;
- 	struct ext4_group_info *grp;
- 	struct ext4_inode_info *ei;
-+	int merged = 0;
- 
- 	if (ac->ac_flags & EXT4_MB_HINT_PA_ONLY) {
- 		/* EXT4_MB_HINT_PA_ONLY makes all found space preallocated */
-@@ -3508,13 +3552,65 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 	pa->pa_obj_lock = &ei->i_prealloc_lock;
- 	pa->pa_inode = ac->ac_inode;
- 
--	ext4_lock_group(sb, ac->ac_b_ex.fe_group);
--	list_add(&pa->pa_group_list, &grp->bb_prealloc_list);
--	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
-+	spin_lock(&ei->i_prealloc_lock);
 +	rcu_read_lock();
-+	list_for_each_entry_rcu(tmp_pa, &ei->i_prealloc_list, pa_inode_list) {
-+		if (tmp_pa->pa_deleted)
-+			continue;
-+		if (tmp_pa->pa_lstart > pa->pa_lstart) {
-+			next = tmp_pa;
-+			break;
++	list_for_each_entry_rcu(pa, &ei->i_prealloc_list, pa_inode_list) {
++		pl->pl_entries++;
++		if (pl->pl_mapped < pl->pl_count) {
++			memset(&pi, 0, sizeof(pi));
++			pi.pi_pstart = pa->pa_pstart;
++			pi.pi_lstart = pa->pa_lstart;
++			pi.pi_len = pa->pa_len;
++			pi.pi_free = pa->pa_free;
++
++			rcu_read_unlock();
++			if (copy_to_user(
++			       (struct ext4_prealloc_info __force __user *)dest,
++							&pi, sizeof(pi))) {
++				return -EFAULT;
++			}
++			dest++;
++			pl->pl_mapped++;
++			rcu_read_lock();
 +		}
-+		prev = tmp_pa;
 +	}
 +	rcu_read_unlock();
- 
--	spin_lock(pa->pa_obj_lock);
--	list_add_rcu(&pa->pa_inode_list, &ei->i_prealloc_list);
--	spin_unlock(pa->pa_obj_lock);
-+	if (next) {
-+		BUG_ON(pa->pa_lstart + pa->pa_len > next->pa_lstart);
-+		spin_lock(&next->pa_lock);
-+		merged += ext4_mb_merge_preallocations(next, pa);
-+	}
 +
-+	if (prev) {
-+		BUG_ON(prev->pa_lstart + prev->pa_len > pa->pa_lstart);
-+		spin_lock_nested(&prev->pa_lock, SINGLE_DEPTH_NESTING);
-+
-+		if (merged) {
-+			merged += ext4_mb_merge_preallocations(prev, next);
-+
-+			if (merged == 2) {
-+				/* Prepare to discard next */
-+				atomic_inc(&next->pa_count);
-+				next->pa_free = 0;
-+			}
-+		} else {
-+			merged += ext4_mb_merge_preallocations(prev, pa);
-+		}
-+		spin_unlock(&prev->pa_lock);
-+	}
-+
-+	if (next)
-+		spin_unlock(&next->pa_lock);
-+
-+	if (!merged) {
-+		if (prev)
-+			list_add_rcu(&pa->pa_inode_list, &prev->pa_inode_list);
-+		else
-+			list_add_rcu(&pa->pa_inode_list, &ei->i_prealloc_list);
-+
-+		spin_unlock(&ei->i_prealloc_lock);
-+		ext4_lock_group(sb, ac->ac_b_ex.fe_group);
-+		list_add(&pa->pa_group_list, &grp->bb_prealloc_list);
-+		ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
-+	} else {
-+		spin_unlock(&ei->i_prealloc_lock);
-+		ac->ac_pa = NULL;
-+		kmem_cache_free(ext4_pspace_cachep, pa);
-+
-+		/* If prev and next are merged, discard next */
-+		if (merged == 2)
-+			ext4_mb_put_pa(NULL, sb, next);
-+	}
- 
- 	return 0;
- }
++	return 0;
++}
