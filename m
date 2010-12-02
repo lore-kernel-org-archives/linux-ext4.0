@@ -1,33 +1,30 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PARCH 0/1 RFC] e2image: Add support for QCOW2 image format
-Date: Wed, 1 Dec 2010 15:52:53 -0700
-Message-ID: <3D193EF5-5995-4674-881B-DF74B855CE32@dilger.ca>
-References: <1291225309-10750-1-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:18425 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757058Ab0LAWwz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Dec 2010 17:52:55 -0500
-In-Reply-To: <1291225309-10750-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [RFC][PATCH V3 1/4] ext4: add EXT4_IOC_CONTROL_PA to create/discard
+ inode PA
+Date: Thu, 02 Dec 2010 15:07:27 +0900
+Message-ID: <4CF7379F.7030402@sx.jp.nec.com>
+References: <4CF5E5F2.9080007@sx.jp.nec.com> <62E660B4-8AF6-4B94-B3C0-1557ACA136DB@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>,
+	linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <62E660B4-8AF6-4B94-B3C0-1557ACA136DB@dilger.ca>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2010-12-01, at 10:41, Lukas Czerner wrote:
-> I am presenting you an initial parch, which works for me quite nicely, however so far it did received just limited testing. Nevertheless you
-> can try it simply by invoking e2image with '-q' parameter like this:
-> 
-> 	e2image -q /dev/sda1 myimage
+2010/12/01 19:14, Andreas Dilger wrote:
+> Is the comment here wrong, or do I misunderstand that there is a 64-bit offset for the file, and only a 32-bit offset for the disk?  It doesn't make sense to create a new API that only has a 32-bit offset for the disk, since ext4 is nearly supporting 64-bit filesystem blocks.
 
-Probably "-q" isn't the best name, since that normally means "quiet".  Maybe "-Q"?
+Oops! Thank you for letting me know. I will fix the comments as follows:
 
-Cheers, Andreas
+struct ext4_prealloc_info {
+	__u64 pi_pstart;	/* physical offset for the start of the PA from
+				 * the beginning of the disk (in/out) */
+	__u32 pi_lstart;	/* logical offset for the start of the PA from
+				 * the beginning of the file (in/out) */
 
-
-
-
-
+Regards,
+Kazuya Mio
