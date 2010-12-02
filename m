@@ -1,290 +1,98 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PARCH 0/1 RFC] e2image: Add support for QCOW2 image format
-Date: Thu, 2 Dec 2010 14:23:25 +0200
-Message-ID: <AANLkTin4_fOg4OQVHDv=MN3zLn6c36Pvb7KB07DgPp+J@mail.gmail.com>
-References: <1291225309-10750-1-git-send-email-lczerner@redhat.com>
-	<AANLkTinkZeBPxazH3MxKcXhxQ+7P00dfus-1WrAR12bG@mail.gmail.com>
-	<alpine.LFD.2.00.1012020916490.2874@dhcp-lab-213.englab.brq.redhat.com>
-	<AANLkTinf9Ww8hA+i2pxJLwx-zzPdvN-t=UWrEe3CogAm@mail.gmail.com>
-	<alpine.LFD.2.00.1012021108500.2874@dhcp-lab-213.englab.brq.redhat.com>
-	<AANLkTim+7exa1D2dsP=r4Lc0JS6MxudSRNcqmHSTcLTC@mail.gmail.com>
-	<alpine.LFD.2.00.1012021203270.2874@dhcp-lab-213.englab.brq.redhat.com>
+From: Matt <jackdachef@gmail.com>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Thu, 2 Dec 2010 22:30:16 +0100
+Message-ID: <AANLkTi=mi53SLEGisC5BXbJO0-BXWG_THjH84uum2Com@mail.gmail.com>
+References: <20101114205925.GA20451@redhat.com>
+	<AANLkTi=rVyozmvqCJD1kGqnV3uEn-0ak6B12-O_9XOKJ@mail.gmail.com>
+	<4CE05A9E.9090204@redhat.com>
+	<AANLkTimT0t3xqgKdAn7MBPD7ED-9uPS+WJE0z+K8tciu@mail.gmail.com>
+	<AANLkTik_p0yxQBQ3ehHWYPLfiqxGbSNUT5XUk9dC5-x6@mail.gmail.com>
+	<20101201165229.GC13415@redhat.com>
+	<AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com>
+	<4CF692D1.1010906@redhat.com>
+	<AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com>
+	<4CF6B3E8.2000406@redhat.com>
+	<20101201212310.GA15648@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, adilger@dilger.ca, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:36036 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753358Ab0LBMX0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Dec 2010 07:23:26 -0500
-Received: by vws16 with SMTP id 16so892659vws.19
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Dec 2010 04:23:25 -0800 (PST)
-In-Reply-To: <alpine.LFD.2.00.1012021203270.2874@dhcp-lab-213.englab.brq.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Milan Broz <mbroz@redhat.com>, Andi Kleen <andi@firstfloor.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	dm-devel <dm-devel@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	htd <htd@fancy-poultry.org>,
+	Chris Mason <chris.mason@oracle.com>, htejun@gmail.com,
+	linux-ext4@vger.kernel.org, Jon Nelson <jnelson@jamponi.net>
+To: Mike Snitzer <snitzer@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20101201212310.GA15648@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 2, 2010 at 1:11 PM, Lukas Czerner <lczerner@redhat.com> wro=
-te:
-> On Thu, 2 Dec 2010, Amir Goldstein wrote:
+On Wed, Dec 1, 2010 at 10:23 PM, Mike Snitzer <snitzer@redhat.com> wrot=
+e:
+> On Wed, Dec 01 2010 at =A03:45pm -0500,
+> Milan Broz <mbroz@redhat.com> wrote:
 >
->> On Thu, Dec 2, 2010 at 12:23 PM, Lukas Czerner <lczerner@redhat.com>=
- wrote:
->> > On Thu, 2 Dec 2010, Amir Goldstein wrote:
->> >
->> >> On Thu, Dec 2, 2010 at 10:23 AM, Lukas Czerner <lczerner@redhat.c=
-om> wrote:
->> >> > On Wed, 1 Dec 2010, Amir Goldstein wrote:
->> >> >
->> >> >> On Wed, Dec 1, 2010 at 7:41 PM, Lukas Czerner <lczerner@redhat=
-=2Ecom> wrote:
->> >> >> >
->> >> >> > QCOW2 format supports other neat features like compression, =
-encryption and
->> >> >> > snapshots. None of those feature are supported in this patch=
- and the question
->> >> >> > is, do we need it ? I can imagine for example snapshots to b=
-e useful for
->> >> >> > roll-back changes made by e2fsck, but this is hardly problem=
- of e2image itself.
->> >> >> >
->> >> >> > So, please look at the patch, try it and let me know what el=
-se you thing is
->> >> >> > useful to implement, or what would you like to change.
->> >> >> >
->> >> >>
->> >> >> Hi Lukas,
->> >> >>
->> >> >> This is very cool :-)
->> >> >> My wish is to export next3/ext4 snapshots as qcow2 snapshots.
->> >> >> I actually thought of implementing e2image -x <snapid> as a wa=
-y to
->> >> >> export a snapshot image,
->> >> >> but using qcow2, file system can be exported with all of it's =
-snapshots.
->> >> >> It should be quite trivial since next3 snapshots contain a map=
- of changed blocks
->> >> >> and I suppose qcow2 snapshots should be the same.
->> >> >> Now I only need to find the time to do it...
->> >> >>
->> >> >> Amir.
->> >> >
->> >> > Hi Amir,
->> >> >
->> >> > I seems like a cool feature, so when QCOW2 infrastructure is in=
- place
->> >> > adding snapshots to it should not be a big deal (not that QCOW2
->> >> > infrastructure is :)), however I was wondering are you planning=
- to
->> >> > export only metadata, or even data itself ?
->> >> >
->> >>
->> >> There are 2 applications I can think of for exporting snapshots.
->> >> One needs only the metadata and the other requires the data as we=
-ll.
->> >>
->> >> 1. Rollback to snapshot (metadata only)
->> >> ----------------------------------------------------------
->> >> Unlike ZFS/Btrfs, there is no inherent way to "rollback to snapsh=
-ot"
->> >> with Ext4 snapshots.
->> >> Instead, all changed metadata needs to be copied over from snapsh=
-ot.
->> >> The only plausible way to do this is to un-mount the file system =
-(or
->> >> re-mount read-only),
->> >
->> > So, you're saying that it would not be possible to implement in-ke=
-rnel
->> > snapshot roll-back for ext4 with snapshots ? I find this hard to
->> > believe, because we can always freeze the filesystem a do whatever=
- we
->> > want to do, or am I missing something ? If it would be possible th=
-is
->> > would be much better solution then exporting and restoring it from
->> > QCOW2 image.
->> >
 >>
->> The key problem is how to do this rollback in an atomic manner.
->
-> As I said, we can freeze the filesystem.
-
-Theoretically, yes, it is possible, but very very fragile, not a qualit=
-y you
-would want when you are trying to recover your filesystem.
-
-Let me explain with a simple example of rolling back to latest snapshot=
+>> On 12/01/2010 08:34 PM, Jon Nelson wrote:
+>> > Perhaps this is useful: for myself, I found that when I started us=
+ing
+>> > 2.6.37rc3 that postgresql starting having a *lot* of problems with
+>> > corruption. Specifically, I noted zeroed pages, corruption in head=
+ers,
+>> > all sorts of stuff on /newly created/ tables, especially during in=
+dex
+>> > creation. I had a fairly high hit rate of failure. I backed off to
+>> > 2.6.34.7 and have *zero* problems (in fact, prior to 2.6.37rc3, I =
+had
+>> > never had a corruption issue with postgresql). I ran on 2.6.36 for=
+ a
+>> > few weeks as well, without issue.
+>> >
+>> > I am using kcrypt with lvm on top of that, and ext4 on top of that=
 =2E
-
-On mount with option 'rollback', after snapshots load (and before
-orphan cleanup),
-start rollback to latest snapshot:
-1. store backup copy of latest snapshot inode in super block
-2. set ROLLBACK_FS flag in super block
-3. start copying blocks from snapshot inode to filesystem (skip super b=
-lock)
-4. copy super block from snapshot inode to filesystem and update
-relevant fields from cache.
-
-On mount, if ROLLBACK_FS flag is set:
-6. load latest snapshot inode from backup copy
-goto step 3.
-
-Now if at any point in this process there is a problem, it will leave
-the filesystem nowhere near a consistent state.
-=46or example, a corrupted snapshot file may result in copying blocks
-over the snapshot inode indirect blocks, sending the entire rollback op=
-eration
-down the drain and your filesystem with it.
-This is why I think it would be wiser to have a full rollback patch put=
- aside,
-which can be used to replay or rewind the rollback operation.
-
+>>
+>> With unpatched dmcrypt (IOW with Linus' git)? Then it must be ext4 o=
+r
+>> dm-core problem because there were no patches for dm-crypt...
 >
->> And it would be hard to achieve reliable results without using an ex=
-ternal
->> storage space to hold the "rollback patch".
->> While Btrfs can hold 2 perfects trees on disk and switch the root in=
- an atomic
->> operations, Ext4 needs to copy over a large number of fixed position=
-ed metadata
->> block, which makes the rollback feature "non-trivial".
->>
->> >> use e2image to export a metadata image of a snapshot to a differe=
-nt
->> >> location and then
->> >> overwrite the filesystem with snapshot metadata (data blocks are
->> >> already in-place).
->> >>
->> >> This method can be applied today, even without qcow2 support, but=
- with
->> >> qcow2 snapshots,
->> >> you can generate a single e2image, which can be used to rollback =
-to
->> >> any snapshot and to
->> >> restore the original filesystem (as long as the rolled back versi=
-on
->> >> wasn't modifed).
->> >>
->> >> 2. Filesystem replication (data + metadata)
->> >> --------------------------------------------------------------
->> >> This application is inspired by ZFS replication:
->> >> http://wikitech-static.wikimedia.org/articles/z/f/s/Zfs_replicati=
-on.html
->> >> The idea is to start with a remote replica by transferring a full=
- copy
->> >> of snapshot N1
->> >> and then push incremental differences N1..N2 to roll the replica =
-to snapshot N2.
->> >> So if e2image has the ability to export a full snapshot image (in=
-cluding data)
->> >> and the capability to export incremental qcow2 snapshots, those c=
-ould
->> >> be transferred
->> >> to the remote location and be used to create and update the repli=
-cated
->> >> filesystem.
->> >
->> > I am sorry but I do not really get it, can't you just export
->> > filesystem data + metadata into qcow2 image without any qcow2 snap=
-shot
->> > functionality and then recreate the whole filesystem from this ima=
-ge ?
->> > It seems to me that you do not need qcow2 snapshot functionality t=
-o do
->> > this, however I might be missing something.
->>
->> you are missing the cost of transferring a full image over a slow ne=
-twork link.
->> snapshots can provide the minimal set of blocks, which needs to be t=
-ransferred.
->>
->> So e2image -x 1..3 will not generate a full image, but only the chan=
-ged metadata
->> blocks between snapshot 1..3 and the data blocks allocated (or delet=
-ed and
->> re-allocated) between snapshots 1..3. It should really also include
->> the information
->> about deleted blocks between 1..3 (to issue discard on target), but =
-I
+> Matt and Jon,
 >
-> Ok, but you do not need qcow2 snapshot support for it, at all. qcow2
-> format does not need to know about the snapshots, because you
-> know what the data in the qcow images means and what to do with them.
+> If you'd be up to it: could you try testing your dm-crypt+ext4
+> corruption reproducers against the following two 2.6.37-rc commits:
 >
-> You can export just the diff between some snapshots as you mentioned =
-and
-> then, when installing it on another filesystem the utility doing the =
-job
-> (e2image probably) would know what to do even without qcow2 snapshots=
-,
-> since all the data needed are in the image anyway, qcow2 snapshot is =
-just
-> useless abstraction we do not need in this case.
-
-I agree. I was forcing my problem over this solution, trying to squeeze=
- every
-last drop of coolness from qcow2 snapshots. it doesn't fit in here.
-
-Still for the first problem (rollback) I think that qcow2 snapshots can=
- be a
-perfect and simple solution.
-
-e2image starts with exporting filesystem to full qcow2 image, then take=
-s
-a qcow2 snapshot and proceeds writing blocks modified by latest snapsho=
-t
-and so forth until the oldest snapshot.
-
-The resulting qcow2 snapshot list is an inversion of the Ext4 snapshots=
- list
-and it gives you both the ability to rollback to any older snapshot and=
- to
-undo all rollbacks by restoring the base image.
-
+> 1) 1de3e3df917459422cb2aecac440febc8879d410
+> then
+> 2) bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc
 >
->> wouldn't know
->> how to utilize a qcow2 incremental snapshot to describe that.
->>
->> Perhaps the use of qcow2 format for this application is not the
->> perfect choice after all.
->>
->> >
->> >>
->> >> So to answer your original question ("what else you thing is usef=
-ul to
->> >> implement"),
->> >> e2image -d would be nice (export data blocks).
->> >
->> > This is really easy thing to do, so I can do this :).
->> >
->>
->> Cool :-)
->>
->> > Thanks!
->> >
->> > -Lukas
->> >
->> >>
->> >> Amir.
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe linux-e=
-xt4" in
->> >> the body of a message to majordomo@vger.kernel.org
->> >> More majordomo info at =A0http://vger.kernel.org/majordomo-info.h=
-tml
->> >>
->> >
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Then, depending on results of no corruption for those commits, bonus
+> points for testing the same commits but with Andi and Milan's latest
+> dm-crypt cpu scalability patch applied too:
+> https://patchwork.kernel.org/patch/365542/
+>
+> Thanks!
+> Mike
+>
+
+Yeah sure,
+
+I'll have to set up another testing system (on a separate partition /
+volume group) for its own so that will take some time,
+first tests will be run probably in the weekend,
+
+thanks for those pointers !
+
+I took a look at git-web - you think
+5a87b7a5da250c9be6d757758425dfeaf8ed3179 might be relevant, too ?
+
+the others seem rather minor compared to those you posted
+
+Afaik last time I run vanilla 2.6.37-rc* (which was probably around
+rc1) I saw no corruption at all but I'll give it a test-run without
+the dm-crypt patch anyway
+
+Thanks & Regards
+
+Matt
