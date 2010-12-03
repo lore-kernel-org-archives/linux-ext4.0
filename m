@@ -1,69 +1,35 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate super_operation
-Date: Fri, 03 Dec 2010 13:24:59 -0500
-Message-ID: <4CF935FB.5010903@gmail.com>
-References: <1290065809-3976-1-git-send-email-lczerner@redhat.com> <20101118130630.GJ6178@parisc-linux.org> <20101118134804.GN5618@dhcp231-156.rdu.redhat.com> <20101118141957.GK6178@parisc-linux.org> <20101118142918.GA18510@infradead.org> <1290100750.3041.72.camel@mulgrave.site> <1290102616-sup-7212@think>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: Add discard option into mke2fs.conf
+Date: Fri, 3 Dec 2010 17:29:02 -0500
+Message-ID: <20101203222902.GC26906@thunk.org>
+References: <1288636444-11068-1-git-send-email-lczerner@redhat.com>
+ <alpine.LFD.2.00.1012020943150.2874@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: James Bottomley <james.bottomley@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	sandeen <sandeen@redhat.com>
-To: Chris Mason <chris.mason@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com, adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:35247 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752747Ab0LCSZH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Dec 2010 13:25:07 -0500
-In-Reply-To: <1290102616-sup-7212@think>
+Received: from thunk.org ([69.25.196.29]:40030 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752362Ab0LCW3I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Dec 2010 17:29:08 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1012020943150.2874@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/18/2010 12:55 PM, Chris Mason wrote:
-> Excerpts from James Bottomley's message of 2010-11-18 12:19:10 -0500:
->> On Thu, 2010-11-18 at 09:29 -0500, Christoph Hellwig wrote:
->>> On Thu, Nov 18, 2010 at 07:19:58AM -0700, Matthew Wilcox wrote:
->>>> I guess I was assuming that, on receiving a FALLOC_FL_PUNCH_HOLE, a
->>>> filesystem that was TRIM-aware would pass that information down to the
->>>> block device that it's mounted on.  I strongly feel that we shouldn't
->>>> have two interfaces to do essentially the same thing.
->>>>
->>>> I guess I'm saying that you're going to have to learn about TRIM :-)
->>> Did you actually look Lukas FITRIM code (not the slight reordering here,
->>> but the original one).  It's the ext4 version of the batched discard
->>> model, that is a userspace ioctl to discard free space in the
->>> filesystem.
->>>
->>> hole punching will free the blocks into the free space pool.  If you do
->>> online discard it will also get discarded, but a filesystem that has
->>> online discard enabled doesn't need FITRIM.
->> Not stepping into the debate: I'm happy to see punch go to the mapping
->> data and FITRIM pick it up later.
->>
->> However, I think it's time to question whether we actually still want to
->> allow online discard at all.  Most of the benchmarks show it to be a net
->> lose to almost everything (either SSD or Thinly Provisioned arrays), so
->> it's become an "enable this to degrade performance" option with no
->> upside.
-> I think we want to keep it.  In general we've (except for hch) spent
-> almost zero time actually tuning online discard, and the benchmarking
-> needs to be redone with the shiny new barrier code.
->
-> -chris
->
+On Thu, Dec 02, 2010 at 09:44:22AM +0100, Lukas Czerner wrote:
+> On Mon, 1 Nov 2010, Lukas Czerner wrote:
+> 
+> > Allow to specify discard in mke2fs.conf. Also change the way how to
+> > specify default value for lazy_itable_init. It is better to have all
+> > this defaulting done in the same place so do it in definition (as we do
+> > with discard).
+> > 
+> 
+> what is the status of this patch ?
 
-Very belated response - I agree that we should keep the online discard support 
-in (but off by default).
+Already integrated into the maint branch; sorry, forgot to send out an
+ack for this patch.
 
-Some of the devices we have tested perform well with it and I expect that 
-hardware vendors will get better now that we have the support for them to test with.
-
-Ric
-
-
+					- Ted
