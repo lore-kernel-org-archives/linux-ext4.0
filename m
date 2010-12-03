@@ -1,49 +1,44 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH] ext4: Set barrier=0 when block device does not
-	advertise flush support
-Date: Fri, 3 Dec 2010 01:14:45 -0800
-Message-ID: <20101203091445.GK18195@tux1.beaverton.ibm.com>
-References: <20101203001659.GI18195@tux1.beaverton.ibm.com> <20101203070950.GA19071@infradead.org>
-Reply-To: djwong@us.ibm.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 24282] New: linux/ext2_fs.h uses defines from linux/fs.h
+Date: Fri, 3 Dec 2010 12:55:37 GMT
+Message-ID: <bug-24282-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:59863 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755676Ab0LCJOp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Dec 2010 04:14:45 -0500
-Content-Disposition: inline
-In-Reply-To: <20101203070950.GA19071@infradead.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:33578 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750884Ab0LCMzi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Dec 2010 07:55:38 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oB3Ctbfe001671
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Dec 2010 12:55:37 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 03, 2010 at 02:09:50AM -0500, Christoph Hellwig wrote:
-> On Thu, Dec 02, 2010 at 04:16:59PM -0800, Darrick J. Wong wrote:
-> > If the user tries to enable write flushes with "barrier=1" and the underlying
-> > block device does not support flushes, print a message and set barrier=0.
-> 
-> That doesn't make any sense at all with the ne wFLUSH+FUA code, which is
-> designed to make the cache flushing entirely transparanent.  Basically
-> with the new code the barrier option should become a no-op and always
-> enabled.
+https://bugzilla.kernel.org/show_bug.cgi?id=24282
 
-Are we ready to remove the barrier= mount option at this point?  How many users
-exist who use barrier=0 to speed up write performance when they're willing to
-take on the added safety risk?
+           Summary: linux/ext2_fs.h uses defines from linux/fs.h
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.33.4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext2
+        AssignedTo: fs_ext2@kernel-bugs.osdl.org
+        ReportedBy: sliwa@blue.cft.edu.pl
+        Regression: No
 
-I've noticed that provisioning goes faster if one mounts the filesystem with
-barrier=0; so long as the control software turns barriers on after the deploy
-finishes and always restarts the deploy after a failure, a power failure on the
-client system won't cause problems.  Unfortunately, there doesn't seem to be
-any other way to communicate that relaxation to the code.
 
-Personally I'd rather the knob remain in ext4 on the grounds that I know my
-workloads and can judge the appropriate level of risk, especially since ext4
-picks the safe option by default.  However, I'd prefer /proc/mounts not
-misrepresent the status of flush support, to the best of ext4's knowledge.
+An inline function from linux/ext2_fs.h does not compile without including
+linux/fs.h.
 
---D
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
