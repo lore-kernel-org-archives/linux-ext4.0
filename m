@@ -1,19 +1,44 @@
-From: Amber Juliana <amber.j.yahoo.com.hk@[109.238.6.16]>
-Subject: RE
-Date: Sat, 04 Dec 2010 17:31:52 -0800
-Message-ID: <0LCX00MF5MF9N820@a-mtaout22.012.net.il>
-Reply-To: fedex001@gala.net
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4_alloc_context occupies 150 GiB of memory and makes the
+ system unusable
+Date: Sat, 4 Dec 2010 22:11:30 -0500
+Message-ID: <20101205031130.GA4273@thunk.org>
+References: <201011221323.25342.bartoschek@or.uni-bonn.de>
+ <4CEA8B4A.3030608@redhat.com>
+ <201011221637.58275.bartoschek@or.uni-bonn.de>
+ <4CEA902F.9040706@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Windows-1250
-Content-Transfer-Encoding: 7bit
-To: Undisclosed recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Bartoschek <bartoschek@or.uni-bonn.de>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mtaout22.012.net.il ([80.179.55.172]:62514 "EHLO
-	mtaout22.012.net.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755908Ab0LEBut (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Dec 2010 20:50:49 -0500
-Received: from conversion-daemon.a-mtaout22.012.net.il by a-mtaout22.012.net.il (HyperSendmail v2007.08) id <0LCX00M00MB8QC00@a-mtaout22.012.net.il> for linux-ext4@vger.kernel.org; Sun, 05 Dec 2010 03:50:21 +0200 (IST)
+Received: from thunk.org ([69.25.196.29]:36797 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751221Ab0LEDLg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 Dec 2010 22:11:36 -0500
+Content-Disposition: inline
+In-Reply-To: <4CEA902F.9040706@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-contact fedex Confirmable Bank-draft of $750.000.00
+Christoph,
+
+Have you been able to replicate this problem since rebooting your
+machine.  I've never seen anything quite like your report before.
+
+If you do, a couple of questions.  Which slab allocator are you using?
+Are you using SLAB or SLUB?  (grep for CONFIG_SLAB or CONFIG_SLUB in
+your .config file).
+
+If you are using SLUB, it would be useful to compile slubinfo.c (found
+in /usr/src/linux/Documentation/vm/slabinfo.c) and send us the output
+"slabinfo -a ext4_allocation_context" and "slabinfo -r
+ext4_allocation_context".   
+
+Also, you might try "slabinfo -s" and see if that shrinks the slabs
+for you.  If this works, why it wasn't doing this automatically is
+beyond me.
+
+					- Ted
+
