@@ -1,8 +1,8 @@
 From: Matt <jackdachef@gmail.com>
 Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
  barrier support is effective)
-Date: Sun, 5 Dec 2010 00:52:36 +0100
-Message-ID: <AANLkTinX_av7A-xT6hD-Df=tHxOOWhi7QkVezAUO3pW5@mail.gmail.com>
+Date: Sun, 5 Dec 2010 01:57:09 +0100
+Message-ID: <AANLkTimaRsW-+8828V1csF9ie4eVG-EyOBauEXeDfFY3@mail.gmail.com>
 References: <4CE05A9E.9090204@redhat.com>
 	<AANLkTimT0t3xqgKdAn7MBPD7ED-9uPS+WJE0z+K8tciu@mail.gmail.com>
 	<AANLkTik_p0yxQBQ3ehHWYPLfiqxGbSNUT5XUk9dC5-x6@mail.gmail.com>
@@ -126,7 +126,41 @@ he
 > Mike
 >
 
-I should have made it clear that the results I get are observed when
-using the kernels/checkouts *with* the dm-crypt multi-cpu patch,
-without the patch I didn't see that kind of problems (hardlocks, files
-missing, etc.)
+OK, before bed time I found some kind of corruption:
+
+running kernel is from commit: bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc
+
+the messages might be overseen - so they're difficult to notice:
+
+steps:
+1) bootup
+2) (might need to re-install graphics driver due to driver switch, in
+this case magic properties [or what's its name] didn't change so the
+kernel module still worked)
+3) firing up 2 xterms, xload, xclock, gksu -> terminal -> firefox,
+nautilus --no-desktop, gnome-mplayer (playing mp3)
+4) emerge -1 sys-devel/gcc (from one of the xterms)
+
+after emerge -1 sys-devel/gcc
+finished it displayed:
+
+>>> Auto-cleaning packages...
+portage: COUNTER for sys-devel/patch-2.6.1 was corrupted; resetting to
+value of 0
+portage: COUNTER for sys-devel/patch-2.6.1 was corrupted; resetting to
+value of 0
+
+(the COUNTER file normally should have a value, e.g.:
+cat /var/db/pkg/sys-devel/gcc-4.5.1-r1/COUNTER
+20560)
+
+in this case it's empty:
+cat /var/db/pkg/sys-devel/patch-2.6.1/COUNTER
+
+(shows nothing)
+
+reference thread: http://forums.gentoo.org/viewtopic-t-836605-start-0.h=
+tml
+
+it's solvable by re-install but in case of not-recoverable files (e.g.
+personal files) it would be critical
