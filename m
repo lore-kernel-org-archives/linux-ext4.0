@@ -1,57 +1,79 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: Re: [dm-devel] hunt for 2.6.37 dm-crypt+ext4 corruption?
-Date: Sun, 05 Dec 2010 21:37:25 -0500
-Message-ID: <206035.1291603045@localhost>
-References: <AANLkTik_p0yxQBQ3ehHWYPLfiqxGbSNUT5XUk9dC5-x6@mail.gmail.com> <20101201165229.GC13415@redhat.com> <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com> <4CF692D1.1010906@redhat.com> <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com> <4CF6B3E8.2000406@redhat.com> <20101201212310.GA15648@redhat.com> <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com> <20101204193828.GB13871@redhat.com> <AANLkTinX_av7A-xT6hD-Df=tHxOOWhi7QkVezAUO3pW5@mail.gmail.com> <20101205100954.GA6564@fritha.org> <4CFB679D.5030900@redhat.com>
-            <1B43E57B-8DA5-4B34-A8D4-18A710CC8BA7@mit.edu>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/13] writeback: IO-less balance_dirty_pages()
+Date: Sun, 5 Dec 2010 21:42:31 -0500
+Message-ID: <20101206024231.GG4273@thunk.org>
+References: <20101117042720.033773013@intel.com>
+ <20101117042849.410279291@intel.com>
+ <1290085474.2109.1480.camel@laptop>
+ <20101129151719.GA30590@localhost>
+ <1291064013.32004.393.camel@laptop>
+ <20101130043735.GA22947@localhost>
+ <1291156522.32004.1359.camel@laptop>
+ <1291156765.32004.1365.camel@laptop>
+ <20101201133818.GA13377@localhost>
+ <20101205161435.GA1421@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1291603044_67929P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
-Content-Transfer-Encoding: 7bit
-Cc: device-mapper development <dm-devel@redhat.com>,
-	Heinz Diehl <htd@fritha.org>, Jon Nelson <jnelson@jamponi.net>,
-	htejun@gmail.com, Matt <jackdachef@gmail.com>,
-	Mike Snitzer <snitzer@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Peter Zijlstra <peterz@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Chris Mason <chris.mason@oracle.com>,
-	htd <htd@fancy-poultry.org>, linux-ext4@vger.kernel.org,
-	linux-btrfs <linux-btrfs@vger.kernel.org>
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: Your message of "Sun, 05 Dec 2010 08:24:32 EST."
-             <1B43E57B-8DA5-4B34-A8D4-18A710CC8BA7@mit.edu>
-Sender: linux-kernel-owner@vger.kernel.org
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@kernel.dk>, Mel Gorman <mel@csn.ul.ie>,
+	Rik van Riel <riel@redhat.com>,
+	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	Christoph Hellwig <hch@lst.de>, linux-mm <linux-mm@kvack.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"Tang, Feng" <feng.tang@intel.com>, linux-ext4@vger.kernel.org
+To: Wu Fengguang <fengguang.wu@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20101205161435.GA1421@localhost>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
---==_Exmh_1291603044_67929P
-Content-Type: text/plain; charset=us-ascii
+On Mon, Dec 06, 2010 at 12:14:35AM +0800, Wu Fengguang wrote:
+> 
+> Ah I seem to find the root cause. See the attached graphs. Ext4 should
+> be calling redirty_page_for_writepage() to redirty ~300MB pages on
+> every ~10s. The redirties happen in big bursts, so not surprisingly
+> the dd task's dirty weight will suddenly drop to 0.
+> 
+> It should be the same ext4 issue discussed here:
+> 
+>         http://www.spinics.net/lists/linux-fsdevel/msg39555.html
 
-On Sun, 05 Dec 2010 08:24:32 EST, Theodore Tso said:
+Yeah, unfortunately the fix suggested isn't the right one.
 
-> I've been using a kernel which is between 2.6.37-rc2 and -rc3 with a LUKS /
-> dm-crypt / LVM / ext4 setup for my primary file systems, and I haven't observed
-> any corruption for the last two weeks or so.
+The right fix is going to involve making much more radical changes to
+the ext4 write submission path, which is on my todo queue.  For now,
+if people don't like these nasty writeback dynamics, my suggestion for
+now is to mount the filesystem data=writeback.
 
-Pretty much exactly the same setup here (LUKS/dm-crypt/LVM/ext4), pretty
-consistently running most-recent mmotm kernel, which tends to be somewhat ahead
-of linux-next, and I haven't seen anything either. (I admit I haven't tried
--rc4-mmotm1202 yet).
+This is basically the clean equivalent of the patch suggested by Feng
+Tang in his e-mail referenced above.  Given that ext4 uses delayed
+allocation, most of the time unwritten blocks are not allocated, and
+so stale data isn't exposed.
 
-> As another thought, what version of GCC 
+The case which you're seeing here is where both the jbd2 data=order
+forced writeback is colliding with the writeback thread, and
+unfortunately, the forced writeback in the jbd2 layer is done in an
+extremely inefficient manner.  So data=writeback is the workaround,
+and unlike ext3, it's not a serious security leak.  It is possible for
+some stale data to get exposed if you get unlucky when you crash,
+though, so there is a potential for some security exposure.
 
-rpm -q says 'gcc-4.5.1-5.fc15.x86_64'.  
+The long-term solution to this problem is to rework the ext4 writeback
+path so that we write the data blocks when they are newly allocated,
+and then only update fs metadata once they are written.  As I said,
+it's on my queue.  Until then, the only suggestion I can give folks is
+data=writeback.
 
---==_Exmh_1291603044_67929P
-Content-Type: application/pgp-signature
+						- Ted
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFM/ExkcC3lWbTT17ARAqOlAJ0Z49Sd/WnIe419LFzFShCJb+zIjQCg2Dmy
-Ot+wazgEszexzIvWmrvcvR4=
-=1D7I
------END PGP SIGNATURE-----
-
---==_Exmh_1291603044_67929P--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom policy in Canada: sign http://dissolvethecrtc.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
