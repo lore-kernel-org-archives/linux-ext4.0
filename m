@@ -1,79 +1,51 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/13] writeback: IO-less balance_dirty_pages()
-Date: Sun, 5 Dec 2010 21:42:31 -0500
-Message-ID: <20101206024231.GG4273@thunk.org>
-References: <20101117042720.033773013@intel.com>
- <20101117042849.410279291@intel.com>
- <1290085474.2109.1480.camel@laptop>
- <20101129151719.GA30590@localhost>
- <1291064013.32004.393.camel@laptop>
- <20101130043735.GA22947@localhost>
- <1291156522.32004.1359.camel@laptop>
- <1291156765.32004.1365.camel@laptop>
- <20101201133818.GA13377@localhost>
- <20101205161435.GA1421@localhost>
+Subject: Re: [PATCH] fix debugfs output for flex_bg bitmap offsets
+Date: Sun, 5 Dec 2010 22:16:58 -0500
+Message-ID: <20101206031658.GH4273@thunk.org>
+References: <BFE21949-F817-40EF-8A9C-8B30E0530D4A@dilger.ca>
+ <A5A44A8A-41F5-4A2A-9289-CEA37F7ABC8B@dilger.ca>
+ <B5F6E86E-D94A-4ECC-9B55-FCE9E219DFF1@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Chris Mason <chris.mason@oracle.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-	Jens Axboe <axboe@kernel.dk>, Mel Gorman <mel@csn.ul.ie>,
-	Rik van Riel <riel@redhat.com>,
-	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	Christoph Hellwig <hch@lst.de>, linux-mm <linux-mm@kvack.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	"Tang, Feng" <feng.tang@intel.com>, linux-ext4@vger.kernel.org
-To: Wu Fengguang <fengguang.wu@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <andreas.dilger@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:60877 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751732Ab0LFDRC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Dec 2010 22:17:02 -0500
 Content-Disposition: inline
-In-Reply-To: <20101205161435.GA1421@localhost>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <B5F6E86E-D94A-4ECC-9B55-FCE9E219DFF1@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 06, 2010 at 12:14:35AM +0800, Wu Fengguang wrote:
+On Fri, Nov 26, 2010 at 05:33:27PM -0700, Andreas Dilger wrote:
+> On 2010-11-25, at 12:09, Andreas Dilger wrote:
+> > ...with patch this time...
 > 
-> Ah I seem to find the root cause. See the attached graphs. Ext4 should
-> be calling redirty_page_for_writepage() to redirty ~300MB pages on
-> every ~10s. The redirties happen in big bursts, so not surprisingly
-> the dd task's dirty weight will suddenly drop to 0.
-> 
-> It should be the same ext4 issue discussed here:
-> 
->         http://www.spinics.net/lists/linux-fsdevel/msg39555.html
+> Attached is an updated patch that makes the output a bit more
+> verbose (to avoid line wraps) and doesn't fail the m_raid_opts test
+> (which complains when "(+0)" is printed for each inode table).
 
-Yeah, unfortunately the fix suggested isn't the right one.
+Every time you write code of the form:
 
-The right fix is going to involve making much more radical changes to
-the ext4 write submission path, which is on my todo queue.  For now,
-if people don't like these nasty writeback dynamics, my suggestion for
-now is to mount the filesystem data=writeback.
+      if (block >= first_block + !!itable && ...)
 
-This is basically the clean equivalent of the patch suggested by Feng
-Tang in his e-mail referenced above.  Given that ext4 uses delayed
-allocation, most of the time unwritten blocks are not allocated, and
-so stale data isn't exposed.
+Gcc kills a kitten.  Please, think of the kittens....
 
-The case which you're seeing here is where both the jbd2 data=order
-forced writeback is colliding with the writeback thread, and
-unfortunately, the forced writeback in the jbd2 layer is done in an
-extremely inefficient manner.  So data=writeback is the workaround,
-and unlike ext3, it's not a serious security leak.  It is possible for
-some stale data to get exposed if you get unlucky when you crash,
-though, so there is a potential for some security exposure.
+I rewrote that code as follows:  
 
-The long-term solution to this problem is to rework the ext4 writeback
-path so that we write the data blocks when they are newly allocated,
-and then only update fs metadata once they are written.  As I said,
-it's on my queue.  Until then, the only suggestion I can give folks is
-data=writeback.
+	if ((block >= first_block) && (block <= last_block)) {
+		if (itable && block == first_block)
+			return;
+		printf(" (+%u)", (unsigned)(block - first_block));
+	} else if ...
 
-						- Ted
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom policy in Canada: sign http://dissolvethecrtc.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I also changed the output to use "(bg #16 + 4)" since I think it's a
+bit easier to understand than "(grp 16+4)".
+
+Otherwise, I've added it to the e2fsprogs maint branch, thanks.
+
+	   	      	    		  - Ted
