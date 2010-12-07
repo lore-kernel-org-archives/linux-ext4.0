@@ -1,42 +1,57 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: journal-replay-only
-Date: Mon, 6 Dec 2010 17:27:14 -0500
-Message-ID: <20101206222714.GB24607@thunk.org>
-References: <201011130009.08641.bs_lists@aakef.fastmail.fm>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
+ super_operation
+Date: Tue, 7 Dec 2010 04:27:49 -0500
+Message-ID: <20101207092749.GA26100@infradead.org>
+References: <20101118130630.GJ6178@parisc-linux.org>
+ <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
+ <20101118141957.GK6178@parisc-linux.org>
+ <20101118142918.GA18510@infradead.org>
+ <1290100750.3041.72.camel@mulgrave.site>
+ <4CE59C9E.6050902@teksavvy.com>
+ <1290177488-sup-6540@think>
+ <4CE68F80.7000607@teksavvy.com>
+ <20101119145748.GB27919@infradead.org>
+ <4CE695FF.20601@teksavvy.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Bernd Schubert <bs_lists@aakef.fastmail.fm>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Chris Mason <chris.mason@oracle.com>,
+	James Bottomley <james.bottomley@suse.de>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Josef Bacik <josef@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	sandeen <sandeen@redhat.com>
+To: Mark Lord <kernel@teksavvy.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47119 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753138Ab0LFW1Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Dec 2010 17:27:16 -0500
+Received: from bombadil.infradead.org ([18.85.46.34]:35939 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751823Ab0LGJ16 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Dec 2010 04:27:58 -0500
 Content-Disposition: inline
-In-Reply-To: <201011130009.08641.bs_lists@aakef.fastmail.fm>
+In-Reply-To: <4CE695FF.20601@teksavvy.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 13, 2010 at 12:09:07AM +0100, Bernd Schubert wrote:
-> e2fsck: journal-replay-only
+On Fri, Nov 19, 2010 at 10:21:35AM -0500, Mark Lord wrote:
+> >I really hate to rely on this third party hearsay (from all sides), and
+> >have implement TRIM support in qemu now.  I'll soon install win7 and
+> >will check out the TRIM patters myself.
 > 
-> As recently discussed on linux-ext4@vger.kernel.org add an option to e2fsck
-> to allow to replay the journal only. That will allow scripts, such as 
-> pacemakers 'Filesystem' RA to first replay the journal and if that sets
-> an error state from the journal replay, further check for that error 
-> (dumpe2fh -h | grep "Filesystem state:") and if that shows and error
-> to refuse to mount. It also allows automatic e2fsck scripts to first
-> replay the journal and on a second run after the real pass1 to passX checks
-> to test for the return code.
-> 
-> Signed-off-by: Bernd Schubert <bschubert@ddn.com>
+> Excellent!
 
-Hi Bernd,
+I did a Windows 7 installation under qemu today, and the result is:
 
-My apologies for the delay.  I've made some slight cleanups to your
-patch, and committed it to the maint branch.  It will be in e2fsprogs
-1.41.13.
-
-Thanks!!
-
-						- Ted
+ - it TRIMs the whole device early during the installation
+ - after that I see a constant stream of small trims during the
+   installation.  It's using lots of non-contiguous ranges in a single
+   TRIM command, with sizes down to 8 sectors (4k) for a single range.
+ - after installation there's is some background-trimming going on
+   even when doing no user interaction with the VM at all.
+ - removing files leads to an instant stream of TRIMs, again vectored
+   and of all sizes down to 4k.  Note that the TRIMs are a lot more
+   instant than even with btrfs and -o discard, which delays most
+   TRIMs until doing a sync.
