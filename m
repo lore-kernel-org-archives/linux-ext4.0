@@ -1,33 +1,44 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: journal-replay-only
-Date: Tue, 7 Dec 2010 10:59:39 -0500
-Message-ID: <20101207155939.GE24607@thunk.org>
-References: <201011130009.08641.bs_lists@aakef.fastmail.fm>
- <20101206222714.GB24607@thunk.org>
- <4CFE54FF.8000600@fastmail.fm>
+Subject: Re: ext4 memory leak?
+Date: Tue, 7 Dec 2010 11:38:20 -0500
+Message-ID: <20101207163820.GF24607@thunk.org>
+References: <20101205064430.GA15027@localhost>
+ <4CFB9BE1.3030902@redhat.com>
+ <20101207131136.GA20366@localhost>
+ <20101207143351.GA23377@localhost>
+ <20101207152120.GA28220@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:45637 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753848Ab0LGP7l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Dec 2010 10:59:41 -0500
+Cc: Rik van Riel <riel@redhat.com>,
+	Peter Zijlstra <peterz@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Chris Mason <chris.mason@oracle.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@kernel.dk>, Mel Gorman <mel@csn.ul.ie>,
+	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	Christoph Hellwig <hch@lst.de>, linux-mm <linux-mm@kvack.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4CFE54FF.8000600@fastmail.fm>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20101207152120.GA28220@localhost>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 07, 2010 at 04:38:39PM +0100, Bernd Schubert wrote:
-> 
-> thanks! And don't worry please, I'm rather busy either.
-> 
-> It is probably my very limited git knowledge, but I don't any recent
-> updated in e2fsprogs-git?
+On Tue, Dec 07, 2010 at 11:21:20PM +0800, Wu Fengguang wrote:
+> On Tue, Dec 07, 2010 at 10:33:51PM +0800, Wu Fengguang wrote:
+> > > In a simple dd test on a 8p system with "mem=256M", I find the light
+> > 
+> > When increasing to 10 concurrent dd tasks, I managed to crash ext4..
+> > (2 concurrent dd's are OK, with very good write performance.)
 
-No, I just hadn't pushed it out yet, my bad.  Try again in about 10-15
-minutes.  (Which is the replication delay between master.kernel.org and
-git.kernel.org).
+What was the dd command line?  Specifically, how big were the file
+writes?  I haven't been able to replicate a leak.  I'll try on a small
+system seeing if I can replicate an OOM kill, but I'm not seeing a
+leak.  (i.e., after the dd if=/dev/zero of=/test/$i" jobs) are
+finished, the memory utilization looks normal and I don't see any
+obvious slab leaks.
 
-      	   	  	    	- Ted
+       	      	       		    	- Ted
