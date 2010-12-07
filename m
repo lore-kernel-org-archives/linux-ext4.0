@@ -1,57 +1,105 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/2] fs: Do not dispatch FITRIM through separate
- super_operation
-Date: Tue, 7 Dec 2010 04:27:49 -0500
-Message-ID: <20101207092749.GA26100@infradead.org>
-References: <20101118130630.GJ6178@parisc-linux.org>
- <20101118134804.GN5618@dhcp231-156.rdu.redhat.com>
- <20101118141957.GK6178@parisc-linux.org>
- <20101118142918.GA18510@infradead.org>
- <1290100750.3041.72.camel@mulgrave.site>
- <4CE59C9E.6050902@teksavvy.com>
- <1290177488-sup-6540@think>
- <4CE68F80.7000607@teksavvy.com>
- <20101119145748.GB27919@infradead.org>
- <4CE695FF.20601@teksavvy.com>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Tue, 7 Dec 2010 09:21:45 -0500
+Message-ID: <20101207142145.GA27861@think>
+References: <AANLkTik_p0yxQBQ3ehHWYPLfiqxGbSNUT5XUk9dC5-x6@mail.gmail.com>
+ <20101201165229.GC13415@redhat.com>
+ <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com>
+ <4CF692D1.1010906@redhat.com>
+ <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com>
+ <4CF6B3E8.2000406@redhat.com>
+ <20101201212310.GA15648@redhat.com>
+ <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
+ <20101204193828.GB13871@redhat.com>
+ <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Chris Mason <chris.mason@oracle.com>,
-	James Bottomley <james.bottomley@suse.de>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Josef Bacik <josef@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	sandeen <sandeen@redhat.com>
-To: Mark Lord <kernel@teksavvy.com>
+Cc: Mike Snitzer <snitzer@redhat.com>, Milan Broz <mbroz@redhat.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	dm-devel <dm-devel@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	htd <htd@fancy-poultry.org>, htejun@gmail.com,
+	linux-ext4@vger.kernel.org, Jon Nelson <jnelson@jamponi.net>
+To: Matt <jackdachef@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:35939 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751823Ab0LGJ16 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Dec 2010 04:27:58 -0500
+Received: from rcsinet10.oracle.com ([148.87.113.121]:26230 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752676Ab0LGOWO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Dec 2010 09:22:14 -0500
 Content-Disposition: inline
-In-Reply-To: <4CE695FF.20601@teksavvy.com>
+In-Reply-To: <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 19, 2010 at 10:21:35AM -0500, Mark Lord wrote:
-> >I really hate to rely on this third party hearsay (from all sides), and
-> >have implement TRIM support in qemu now.  I'll soon install win7 and
-> >will check out the TRIM patters myself.
+On Sun, Dec 05, 2010 at 12:47:11AM +0100, Matt wrote:
+> > OK.
 > 
-> Excellent!
+> meanwhile I think I got some interesting news:
+> 
+> after some time of running (around 1 to 1.5 hours) I noticed the
+> following BUG with ext4:
+> 
+> [ 4421.503477] ------------[ cut here ]------------
+> [ 4421.503482] kernel BUG at fs/ext4/inode.c:2714!
+>
+> kernel compiled was from sources checked out at
+> 1de3e3df917459422cb2aecac440febc8879d410
 
-I did a Windows 7 installation under qemu today, and the result is:
+Looking at 1de3e3df917459422cb2aecac440febc8879d410:
 
- - it TRIMs the whole device early during the installation
- - after that I see a constant stream of small trims during the
-   installation.  It's using lots of non-contiguous ranges in a single
-   TRIM command, with sizes down to 8 sectors (4k) for a single range.
- - after installation there's is some background-trimming going on
-   even when doing no user interaction with the VM at all.
- - removing files leads to an instant stream of TRIMs, again vectored
-   and of all sizes down to 4k.  Note that the TRIMs are a lot more
-   instant than even with btrfs and -o discard, which delays most
-   TRIMs until doing a sync.
+Line 2714 in fs/ext4/inode.c is this:
+
+       /*
+         * If the page does not have buffers (for whatever reason),
+         * try to create them using block_prepare_write.  If this
+         * fails, redirty the page and move on.
+         */
+        if (!page_buffers(page)) {
+	^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                if (block_prepare_write(page, 0, len,
+                                        noalloc_get_block_write)) {
+                redirty_page:
+                        redirty_page_for_writepage(wbc, page);
+                        unlock_page(page);
+                        return 0;
+                }
+                commit_write = 1;
+        }
+
+Which means we're really hitting this:
+
+/* If we *know* page->private refers to buffer_heads */
+#define page_buffers(page)                                      \
+        ({                                                      \
+                BUG_ON(!PagePrivate(page));                     \
+		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                ((struct buffer_head *)page_private(page));     \
+        })
+#define page_has_buffers(page)  PagePrivate(page)
+
+Looks like Ted fixed it here:
+
+commit b1142e8fec6a594723e5054055a7b53379b90490
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Oct 28 17:33:57 2010 -0400
+
+    ext4: BUG_ON fix: check if page has buffers before calling page_buffers()
+
+
+Basically, once you hit this oops, ext4 is done.  No files you created
+after the oops will be there when you reboot, and the rest of your
+lockups etc are because the jbd process had some locks held when it
+crashed.
+
+Was there also a report of corruption w/dm-crypt and XFS?
+
+Last night I ran dm-crypt + the cpu scalability patch + ext4 +
+2.6.37-rc3 in a long stress, and it passed without any problems.  If
+dm-crypt were not doing the IO properly, this test probably would have
+found it (+/- strange block sizes, races with O_DIRECT and other exotic
+fun).
+
+-chris
+
