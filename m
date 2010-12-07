@@ -1,90 +1,66 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
- barrier support is effective)
-Date: Tue, 7 Dec 2010 14:35:14 -0500
-Message-ID: <20101207193514.GA2921@thunk.org>
-References: <4CF692D1.1010906@redhat.com>
- <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com>
- <4CF6B3E8.2000406@redhat.com>
- <20101201212310.GA15648@redhat.com>
- <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
- <20101204193828.GB13871@redhat.com>
- <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
- <20101207142145.GA27861@think>
- <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com>
- <20101207182243.GB21112@redhat.com>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt barrier support is effective)
+Date: Tue, 07 Dec 2010 15:02:01 -0500
+Message-ID: <1291751698-sup-9297@think>
+References: <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com> <4CF692D1.1010906@redhat.com> <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com> <4CF6B3E8.2000406@redhat.com> <20101201212310.GA15648@redhat.com> <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com> <20101204193828.GB13871@redhat.com> <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com> <20101207142145.GA27861@think> <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com> <20101207182243.GB21112@redhat.com> <AANLkTikOXjh+D25=7Mzwn7bFN+a9xQSimPHs22q4o2TK@mail.gmail.com> <1291747731-sup-3099@think> <AANLkTin-Bvq9bNgarZGZhbK_2EONdu8x-qaLCLFcc1F_@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jon Nelson <jnelson@jamponi.net>,
-	Chris Mason <chris.mason@oracle.com>,
-	Matt <jackdachef@gmail.com>, Milan Broz <mbroz@redhat.com>,
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Mike Snitzer <snitzer@redhat.com>, Matt <jackdachef@gmail.com>,
+	Milan Broz <mbroz@redhat.com>,
 	Andi Kleen <andi@firstfloor.org>,
 	linux-btrfs <linux-btrfs@vger.kernel.org>,
 	dm-devel <dm-devel@redhat.com>,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
-	htd <htd@fancy-poultry.org>, htejun@gmail.com,
-	linux-ext4@vger.kernel.org
-To: Mike Snitzer <snitzer@redhat.com>
+	htd <htd@fancy-poultry.org>, htejun <htejun@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jon Nelson <jnelson@jamponi.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52781 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754485Ab0LGTf1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Dec 2010 14:35:27 -0500
-Content-Disposition: inline
-In-Reply-To: <20101207182243.GB21112@redhat.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:22252 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753200Ab0LGUCl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Dec 2010 15:02:41 -0500
+In-reply-to: <AANLkTin-Bvq9bNgarZGZhbK_2EONdu8x-qaLCLFcc1F_@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 07, 2010 at 01:22:43PM -0500, Mike Snitzer wrote:
-> > 1. create a database (from bash):
-> > 
-> > createdb test
-> > 
-> > 2. place the following contents in a file (I used 't.sql'):
-> > 
-> > begin;
-> > create temporary table foo as select x as a, ARRAY[x] as b FROM
-> > generate_series(1, 10000000 ) AS x;
-> > create index foo_a_idx on foo (a);
-> > create index foo_b_idx on foo USING GIN (b);
-> > rollback;
-> > 
-> > 3. execute that sql:
-> > 
-> > psql -f t.sql --echo-all test
-> > 
-> > With 2.6.34.7 I can re-run [3] all day long, as many times as I want,
-> > without issue.
-> > 
-> > With 2.6.37-rc4-13 (the currently-installed KOTD kernel) if tails
-> > pretty frequently.
+Excerpts from Jon Nelson's message of 2010-12-07 14:34:40 -0500:
+> On Tue, Dec 7, 2010 at 12:52 PM, Chris Mason <chris.mason@oracle.com>=
+ wrote:
+> >> postgresql errors. Typically, header corruption but from the limit=
+ed
+> >> visibility I've had into this via strace, what I see is zeroed pag=
+es
+> >> where there shouldn't be.
+> >
+> > This sounds a lot like a bug higher up than dm-crypt. =C2=A0Zeros t=
+end to
+> > come from some piece of code explicitly filling a page with zeros, =
+and
+> > that often happens in the corner cases for O_DIRECT and a few other
+> > places in the filesystem.
+> >
+> > Have you tried triggering this with a regular block device?
+>=20
+> I just tried the whole set of tests, but with /dev/sdb directly (as
+> ext4) without any crypt-y bits.
+> It takes more iterations but out of 6 tests I had one failure: same
+> type of thing, 'invalid page header in block ....'.
+>=20
+> I can't guarantee that it is a full-page of zeroes, just what I saw
+> from the (limited) stracing I did.
 
-So I just tried to reproduce this on an Ubuntu 10.04 system running
-2.6.37-rc5 (completely stock except for a few apparmor patches that I
-needed to keep the apparmor userspace from complaining).  I'm using
-Postgres 8.4.5-0ubuntu10.04.
+=46antastic. Now for our usual suspects:
 
-Using the above procedure, I wasn't able to reproduce.  Then I
-realized this might have been because I was using an SSD root file
-system (which is secured using LUKS/dm-crypt, with LVM on top of
-dm-crypt).  So I mounted a file system on a 5400 rpm SSD disk, which
-is also protected using LUKS/dm-crypt with LVM on top.  I then
-executed the PostgresQL commands:
+1) Is postgres using O_DIRECT?  If yes, please turn it off
+2) Is postgres allocating sparse files?  If yes, please have it fully
+allocate the file instead.
+3) Is postgres using preallocation (fallocate)?  If yes, please have it
+fully allocate the file instead
 
-CREATE TABLESPACE test LOCATION '/kbuild/postgres';
-SET default_tablespace = test;
-COMMIT
-\quit
-
-I then re-ran the above proceduing, and verified that all of the I/O
-was going to the 5400rpm laptop disk.
-
-I then ran the above procedure a half-dozen times, and I still haven't
-been able to reproduce any Postgresql errors or kernel errors.
-
-Jon, can you help me identify what might be different with your run
-and mine?  What version of Postgres are you using?
-
-Thanks,
-
-						- Ted
+-chris
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
