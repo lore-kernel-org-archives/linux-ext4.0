@@ -1,110 +1,78 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 2/2] ext3: speed up file creates by optimizing rec_len functions
-Date: Tue, 07 Dec 2010 11:55:27 -0600
-Message-ID: <4CFE750F.1080706@redhat.com>
-References: <4CFE7347.8030807@redhat.com>
+From: Jon Nelson <jnelson@jamponi.net>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Tue, 7 Dec 2010 12:10:49 -0600
+Message-ID: <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com>
+References: <AANLkTik_p0yxQBQ3ehHWYPLfiqxGbSNUT5XUk9dC5-x6@mail.gmail.com>
+ <20101201165229.GC13415@redhat.com> <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com>
+ <4CF692D1.1010906@redhat.com> <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com>
+ <4CF6B3E8.2000406@redhat.com> <20101201212310.GA15648@redhat.com>
+ <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
+ <20101204193828.GB13871@redhat.com> <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
+ <20101207142145.GA27861@think>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+To: Chris Mason <chris.mason@oracle.com>, Matt <jackdachef@gmail.com>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Milan Broz <mbroz@redhat.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	linux-btrfs <li
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17114 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752489Ab0LGR4D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Dec 2010 12:56:03 -0500
-In-Reply-To: <4CFE7347.8030807@redhat.com>
+Received: from mail-bw0-f45.google.com ([209.85.214.45]:40264 "EHLO
+	mail-bw0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751090Ab0LGSLL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Dec 2010 13:11:11 -0500
+In-Reply-To: <20101207142145.GA27861@think>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The addition of 64k block capability in the rec_len_from_disk
-and rec_len_to_disk functions added a bit of math overhead which
-slows down file create workloads needlessly when the architecture
-cannot even support 64k blocks, thanks to page size limits.
+I finally found some time to test this out. With 2.6.37-rc4 (openSUSE
+KOTD kernel) I easily encounter the issue.
 
-Similar changes already exist in the ext4 codebase.
+Using a virtual machine, I created a stock, minimal openSUSE 11.3 x86_64
+install, installed all updates, installed postgresql and the 'KOTD'
+(Kernel of the Day)
+kernel, and ran the following tests (as postgres user because I'm
+lazy).
 
-The directory entry checking can also be optimized a bit
-by sprinkling in some unlikely() conditions to move the
-error handling out of line.
+1. create a database (from bash):
 
-bonnie++ sequential file creates on a 512MB ramdisk speeds up
-from about 77,000/s to about 82,000/s, about a 6% improvement.
+createdb test
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+2. place the following contents in a file (I used 't.sql'):
 
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index e2e72c3..34f0a07 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -69,25 +69,26 @@ int ext3_check_dir_entry (const char * function, struct inode * dir,
- 	const char * error_msg = NULL;
- 	const int rlen = ext3_rec_len_from_disk(de->rec_len);
- 
--	if (rlen < EXT3_DIR_REC_LEN(1))
-+	if (unlikely(rlen < EXT3_DIR_REC_LEN(1)))
- 		error_msg = "rec_len is smaller than minimal";
--	else if (rlen % 4 != 0)
-+	else if (unlikely(rlen % 4 != 0))
- 		error_msg = "rec_len % 4 != 0";
--	else if (rlen < EXT3_DIR_REC_LEN(de->name_len))
-+	else if (unlikely(rlen < EXT3_DIR_REC_LEN(de->name_len)))
- 		error_msg = "rec_len is too small for name_len";
--	else if (((char *) de - bh->b_data) + rlen > dir->i_sb->s_blocksize)
-+	else if (unlikely((((char *) de - bh->b_data) + rlen > dir->i_sb->s_blocksize)))
- 		error_msg = "directory entry across blocks";
--	else if (le32_to_cpu(de->inode) >
--			le32_to_cpu(EXT3_SB(dir->i_sb)->s_es->s_inodes_count))
-+	else if (unlikely(le32_to_cpu(de->inode) >
-+			le32_to_cpu(EXT3_SB(dir->i_sb)->s_es->s_inodes_count)))
- 		error_msg = "inode out of bounds";
- 
--	if (error_msg != NULL)
-+	if (unlikely(error_msg != NULL))
- 		ext3_error (dir->i_sb, function,
- 			"bad entry in directory #%lu: %s - "
- 			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
- 			dir->i_ino, error_msg, offset,
- 			(unsigned long) le32_to_cpu(de->inode),
- 			rlen, de->name_len);
-+
- 	return error_msg == NULL ? 1 : 0;
- }
- 
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 6ce1bca..e5ad445 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -724,21 +724,30 @@ struct ext3_dir_entry_2 {
- 					 ~EXT3_DIR_ROUND)
- #define EXT3_MAX_REC_LEN		((1<<16)-1)
- 
-+/*
-+ * Tests against MAX_REC_LEN etc were put in place for 64k block
-+ * sizes; if that is not possible on this arch, we can skip
-+ * those tests and speed things up.
-+ */
- static inline unsigned ext3_rec_len_from_disk(__le16 dlen)
- {
- 	unsigned len = le16_to_cpu(dlen);
- 
-+#if (PAGE_CACHE_SIZE >= 65536)
- 	if (len == EXT3_MAX_REC_LEN)
- 		return 1 << 16;
-+#endif
- 	return len;
- }
- 
- static inline __le16 ext3_rec_len_to_disk(unsigned len)
- {
-+#if (PAGE_CACHE_SIZE >= 65536)
- 	if (len == (1 << 16))
- 		return cpu_to_le16(EXT3_MAX_REC_LEN);
- 	else if (len > (1 << 16))
- 		BUG();
-+#endif
- 	return cpu_to_le16(len);
- }
- 
+begin;
+create temporary table foo as select x as a, ARRAY[x] as b FROM
+generate_series(1, 10000000 ) AS x;
+create index foo_a_idx on foo (a);
+create index foo_b_idx on foo USING GIN (b);
+rollback;
 
+3. execute that sql:
+
+psql -f t.sql --echo-all test
+
+
+With 2.6.34.7 I can re-run [3] all day long, as many times as I want,
+without issue.
+
+With 2.6.37-rc4-13 (the currently-installed KOTD kernel) if tails
+pretty frequently.
+
+Then I tested with the 'vanilla' kernel available here:
+
+http://download.opensuse.org/repositories/Kernel:/vanilla/standard/
+
+The 'vanilla' kernel exhibited the same problems.
+The version I tested:  2.6.37-rc4-219-g771f8bc-vanilla.
+
+Incidentally, quick tests of jfs, xfs, and ext3 do _not_ show the same
+problems, although I will note that I usually saw failure at least 1
+in 3, but sometimes had to re-run the sql test 4 or 5 times before I
+saw failure.
+
+I will continue to do some testing, but I will hold off on testing the
+commits above until I receive further testing suggestions.
+
+-- 
+Jon
