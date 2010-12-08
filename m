@@ -1,46 +1,38 @@
-From: Milan Broz <mbroz@redhat.com>
-Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption?
-Date: Wed, 08 Dec 2010 09:03:51 +0100
-Message-ID: <4CFF3BE7.40007@redhat.com>
-References: <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com> <4CF692D1.1010906@redhat.com> <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com> <4CF6B3E8.2000406@redhat.com> <20101201212310.GA15648@redhat.com> <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com> <20101204193828.GB13871@redhat.com> <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com> <20101207142145.GA27861@think> <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com> <20101207182243.GB21112@redhat.com> <AANLkTikOXjh+D25=7Mzwn7bFN+a9xQSimPHs22q4o2TK@mail.gmail.com> <1291747731-sup-3099@think> <AANLkTin-Bvq9bNgarZGZhbK_2EONdu8x-qaLCLFcc1F_@mail.gmail.com> <1291751698-sup-9297@think> <AANLkTin79GzUbfuZNKyTtqcyoUSO9AJimO77_ZOvqggH@mail.gmail.com> <1291754340-sup-1631@think> <
- AANLkTim8uCmFK=LjkMmq_1O0KE3AiN_7g41AO0woxMv7@mail.gmail.com> <1291755258-sup-8760@think> <AANLkTi=OC9Z68U-j8s6vfU-_-6tkg5W7aUz9HEupidX9@mail.gmail.com>
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: [PATCH] e2fsck: journal-replay-only
+Date: Wed, 08 Dec 2010 10:23:40 +0100
+Message-ID: <4CFF4E9C.701@fastmail.fm>
+References: <201011130009.08641.bs_lists@aakef.fastmail.fm> <20101206222714.GB24607@thunk.org> <4CFE54FF.8000600@fastmail.fm> <20101207155939.GE24607@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Mike Snitzer <snitzer@redhat.com>, Matt <jackdachef@gmail.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	dm-devel <dm-devel@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	htd <htd@fancy-poultry.org>, htejun <htejun@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jon Nelson <jnelson@jamponi.net>
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25085 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752538Ab0LHIEf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Dec 2010 03:04:35 -0500
-In-Reply-To: <AANLkTi=OC9Z68U-j8s6vfU-_-6tkg5W7aUz9HEupidX9@mail.gmail.com>
+Received: from out3.smtp.messagingengine.com ([66.111.4.27]:59819 "EHLO
+	out3.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752959Ab0LHJXm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Dec 2010 04:23:42 -0500
+In-Reply-To: <20101207155939.GE24607@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On 12/07/2010 04:59 PM, Ted Ts'o wrote:
+> On Tue, Dec 07, 2010 at 04:38:39PM +0100, Bernd Schubert wrote:
+>>
+>> thanks! And don't worry please, I'm rather busy either.
+>>
+>> It is probably my very limited git knowledge, but I don't any recent
+>> updated in e2fsprogs-git?
+> 
+> No, I just hadn't pushed it out yet, my bad.  Try again in about 10-15
+> minutes.  (Which is the replication delay between master.kernel.org and
+> git.kernel.org).
 
-On 12/08/2010 04:29 AM, Jon Nelson wrote:
-> Maybe not so fantastic. I kept testing and had no more failures. At
-> all. After 40+ iterations I gave up.
-> I went back to trying ext4 on a LUKS volume. The 'hit' ratio went to
-> something like 1 in 3, or better.
+Hmm, still nothing. I poked a bit around in
+http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git/ and also don't see
+any recently updated files there.
 
-Encryption usually propagates bit corruption (not sure if it is
-in this case). But in principle if there is one bit corrupted,
-after decryption the whole sector is corrupted.
-(That's why bit media errors have usually more serious impact
-with FDE.)
 
-Isn't there random noise instead of zeroes when reading
-sparse files?
-We should probably write some test focusing on sparse files
-handling here...
-
-Milan
+Thanks,
+Bernd
