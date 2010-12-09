@@ -1,46 +1,50 @@
-From: Jesper Juhl <jj@chaosbits.net>
-Subject: [PATCH] ext4: Take advantage of kmem_cache_zalloc() in
- ext4_init_io_end()
-Date: Thu, 9 Dec 2010 23:17:34 +0100 (CET)
-Message-ID: <alpine.LNX.2.00.1012092257290.25880@swampdragon.chaosbits.net>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Fri, 10 Dec 2010 00:16:16 +0100
+Message-ID: <20101209231616.GA12515@basil.fritz.box>
+References: <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
+ <20101207142145.GA27861@think>
+ <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com>
+ <20101207182243.GB21112@redhat.com>
+ <20101207193514.GA2921@thunk.org>
+ <AANLkTim8UTkfxXV0AkEfjNq3tcmnrXdh6BQ1ibY5iYPy@mail.gmail.com>
+ <20101209180111.GF2921@thunk.org>
+ <AANLkTimAUB5L5Ptm4Fv=sQUmL9_P5azPRCKQnmU89xs8@mail.gmail.com>
+ <20101209201359.GG2921@thunk.org>
+ <AANLkTik=ivDrBEzg1wQAp5AFzNtRRq1=NpvnowggU=_0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Mike Snitzer <snitzer@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Matt <jackdachef@gmail.com>, Milan Broz <mbroz@redhat.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	dm-devel <dm-devel@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	htd <htd@fancy-poultry.org>, htejun@gmail.com,
+	linux-ext4@vger.kernel.org
+To: Jon Nelson <jnelson@jamponi.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:13883 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757246Ab0LIWYN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Dec 2010 17:24:13 -0500
+Received: from one.firstfloor.org ([213.235.205.2]:44085 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752413Ab0LIXQV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Dec 2010 18:16:21 -0500
+Content-Disposition: inline
+In-Reply-To: <AANLkTik=ivDrBEzg1wQAp5AFzNtRRq1=NpvnowggU=_0@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+> 512MB.
+> 
+> 'free' reports 75MB, 419MB free.
+> 
+> I originally noticed the problem on really real hardware (thinkpad
+> T61p), however.
 
-Take advantage of kmem_cache_zalloc(). Save a memset() call in 
-ext4_init_io_end() and save a few bytes.
+If you can easily reproduce it could you try a git bisect?
 
-Before:
- [jj@dragon linux-2.6]$ size fs/ext4/page-io.o
-    text    data     bss     dec     hex filename
-    3016       0     624    3640     e38 fs/ext4/page-io.o
-After:
- [jj@dragon linux-2.6]$ size fs/ext4/page-io.o
-    text    data     bss     dec     hex filename
-    3000       0     624    3624     e28 fs/ext4/page-io.o
+-Andi
 
-
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
----
- page-io.c |    5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
-
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index beacce1..0f5dfe0 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -158,11 +158,8 @@ static void ext4_end_io_work(struct work_struct *work)
- 
- ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
- {
--	ext4_io_end_t *io = NULL;
+-- 
+ak@linux.intel.com -- Speaking for myself only.
