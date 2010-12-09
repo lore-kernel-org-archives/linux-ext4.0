@@ -1,63 +1,63 @@
-From: Eric Paris <eparis@redhat.com>
-Subject: Re: [PATCH] fs/vfs/security: pass last path component to LSM on
- inode creation
-Date: Thu, 09 Dec 2010 13:05:21 -0500
-Message-ID: <1291917921.12683.4.camel@localhost.localdomain>
-References: <20101208194527.13537.77202.stgit@paris.rdu.redhat.com>
-	 <19712.61515.201226.938553@quad.stoffel.home>
-	 <1291909941.3072.70.camel@localhost.localdomain>
-	 <19713.5738.653711.301814@quad.stoffel.home>
+From: Jon Nelson <jnelson@jamponi.net>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Thu, 9 Dec 2010 12:10:58 -0600
+Message-ID: <AANLkTimAUB5L5Ptm4Fv=sQUmL9_P5azPRCKQnmU89xs8@mail.gmail.com>
+References: <4CF6B3E8.2000406@redhat.com> <20101201212310.GA15648@redhat.com>
+ <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
+ <20101204193828.GB13871@redhat.com> <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
+ <20101207142145.GA27861@think> <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com>
+ <20101207182243.GB21112@redhat.com> <20101207193514.GA2921@thunk.org>
+ <AANLkTim8UTkfxXV0AkEfjNq3tcmnrXdh6BQ1ibY5iYPy@mail.gmail.com> <20101209180111.GF2921@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: xfs-masters@oss.sgi.com, linux-btrfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        cluster-devel@redhat.com, linux-mtd@lists.infradead.org,
-        jfs-discussion@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com, linux-mm@kvack.org,
-        linux-security-module@vger.kernel.org, chris.mason@oracle.com,
-        jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-        tytso@mit.edu, swhiteho@redhat.com, dwmw2@infradead.org,
-        shaggy@linux.vnet.ibm.com, mfasheh@suse.com, joel.becker@oracle.com,
-        aelder@sgi.com, hughd@google.com, jmorris@namei.org, sds@tycho.nsa.gov,
-        eparis@parisplace.org, hch@lst.de, dchinner@redhat.com,
-        viro@zeniv.linux.org.uk, shemminger@vyatta.com, jeffm@suse.com,
-        paul.moore@hp.com, penguin-kernel@I-love.SAKURA.
-To: John Stoffel <john@stoffel.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <19713.5738.653711.301814@quad.stoffel.home>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "Ted Ts'o" <tytso@mit.edu>, Jon Nelson <jnelson@jamponi.net>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Matt <jackdachef@gmail.com>, Milan Broz <mbroz@r
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bw0-f45.google.com ([209.85.214.45]:37075 "EHLO
+	mail-bw0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756283Ab0LISLU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Dec 2010 13:11:20 -0500
+In-Reply-To: <20101209180111.GF2921@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2010-12-09 at 12:48 -0500, John Stoffel wrote:
-> >>>>> "Eric" == Eric Paris <eparis@redhat.com> writes:
-> 
-> Eric> On Thu, 2010-12-09 at 10:05 -0500, John Stoffel wrote:
-> >> >>>>> "Eric" == Eric Paris <eparis@redhat.com> writes:
-> 
-> Eric> This patch adds a 4th piece of information, the name of the
-> Eric> object being created.  An obvious situation where this will be
-> Eric> useful is devtmpfs (although you'll find other examples in the
-> Eric> above thread).  devtmpfs when it creates char/block devices is
-> Eric> unable to distinguish between kmem and console and so they are
-> Eric> created with a generic label.  hotplug/udev is then called which
-> Eric> does some pathname like matching and relabels them to something
-> Eric> more specific.  We've found that many people are able to race
-> Eric> against this particular updating and get spurious denials in
-> Eric> /dev.  With this patch devtmpfs will be able to get the labels
-> Eric> correct to begin with.
-> 
-> So your Label based access controls are *also* based on pathnames?
-> Right?
+On Thu, Dec 9, 2010 at 12:01 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Tue, Dec 07, 2010 at 09:37:20PM -0600, Jon Nelson wrote:
+>> One difference is the location of the transaction logs (pg_xlog). In
+>> my case, /var/lib/pgsql/data *is* mountpoint for the test volume
+>> (actually, it's a symlink to the mount point). In your case, that is
+>> not so. Perhaps that makes a difference? =C2=A0pgsql_tmp might also =
+be on
+>> two different volumes in your case (I can't be sure).
+>
+> I just tried tried to run t.sql five times with /var/lib/postgres as =
+a
+> mountpoint for a 5400 rpm disk, and I still haven't been able to
+> replicate it.
 
-Access decisions are still based solely on the label.  This patch can
-influence how new objects get their label, which makes the access
-decisions indirectly path based.  You'll find a reasonable summary and
-commentary on lwn in this weeks security section.
+You should be OK, there. Are you using encryption or no?
+I had difficulty replicating the issue without encryption.
 
+> If you can point out how to query pgsql_tmp (I'm using a completely
+> default postgres install), that would be helpful, but I don't think i=
+t
+> would be going anywhere else.
+
+Normally it's /var/lib/pgsql/data/pgsql_tmp (or
+/var/lib/postgres/data/pgsql_tmp in your case). By placing
+/var/lib/{postgresql,pgsql}/data on the LUKS + ext4 volume, on both
+openSUSE 11.3 and Kubuntu, I was able to replicate the problem easily,
+in VirtualBox. I can give qemu a try. In both cases I was using a
+2.6.37x kernel.
+
+--=20
+Jon
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom policy in Canada: sign http://dissolvethecrtc.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
