@@ -1,74 +1,93 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15875] Add an option to disable file/directory access controls
- for USB stick-type storage devices
-Date: Thu, 9 Dec 2010 16:50:58 GMT
-Message-ID: <201012091650.oB9GovFA023147@demeter1.kernel.org>
-References: <bug-15875-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] filefrag: count optimize non-verbose mode; count 0 extents
+ properly when verbose
+Date: Thu, 09 Dec 2010 11:19:04 -0600
+Message-ID: <4D010F88.9030707@redhat.com>
+References: <4CEC4C86.1030806@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:47271 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752917Ab0LIQvA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Dec 2010 11:51:00 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oB9Gow02023148
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 9 Dec 2010 16:50:58 GMT
-In-Reply-To: <bug-15875-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:16939 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754762Ab0LIRTG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Dec 2010 12:19:06 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oB9HJ676014734
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 9 Dec 2010 12:19:06 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id oB9HJ5QE000381
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 9 Dec 2010 12:19:06 -0500
+In-Reply-To: <4CEC4C86.1030806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15875
+On 11/23/10 5:21 PM, Eric Sandeen wrote:
+> # rm -f a; touch a; filefrag -v a
+> 
+> yields 1 extent when it should be 0.  Without -v, 0 is returned.
+> 
+> Fix this up by special-casing no extents returned in verbose
+> mode; skip printing the header for the columns too, since there
+> are no columns to print.
+> 
+> Also, in nonverbose mode we can set fm_extent_count to 0
+> so that FIEMAP will just query the extent count without gathering
+> details; as it is today I think a non-verbose query may under-report
+> the extent count once "count" extents have been filled in.
+> 
+> Addresses-redhat-bugzilla: 653234
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
+Ted, wondering if you can push this one in as well, if it looks ok;
+I'd like to get it upstream before adding it to our package for the
+above bug.
 
-sergey <sergey-feo@yandex.ru> changed:
+Thanks,
+-Eric
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sergey-feo@yandex.ru
+> ---
+> 
+> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> index bd4486d..a48b9b0 100644
+> --- a/misc/filefrag.c
+> +++ b/misc/filefrag.c
+> @@ -194,7 +194,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  	do {
+>  		fiemap->fm_length = ~0ULL;
+>  		fiemap->fm_flags = flags;
+> -		fiemap->fm_extent_count = count;
+> +		/*
+> +		 * If fm_extent_count == 0, FIEMAP returns count of
+> +		 * extents found without filling in details.
+> +		 */
+> +		if (!verbose)
+> +			fiemap->fm_extent_count = 0;
+> +		else
+> +			fiemap->fm_extent_count = count;
+>  		rc = ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap);
+>  		if (rc < 0) {
+>  			if (errno == EBADR && fiemap_incompat_printed == 0) {
+> @@ -206,6 +213,14 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  		}
+>  
+>  		if (verbose && !fiemap_header_printed) {
+> +			/*
+> +			 * No extents on first call?
+> +			 * Skip header and show 0 extents.
+> +			 */
+> +			if (fiemap->fm_mapped_extents == 0) {
+> +				*num_extents = 0;
+> +				goto out;
+> +			}
+>  			printf(" ext %*s %*s %*s length flags\n", logical_width,
+>  			       "logical", physical_width, "physical",
+>  			       physical_width, "expected");
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-
-
-
---- Comment #13 from sergey <sergey-feo@yandex.ru>  2010-12-09 16:50:51 ---
-Excuse me for my bad English :-)
-
-Now we have many variants that can be implemented.
-
-1. Disable rights control at VFS level or at formatting time. 
-a) at VFS level only (FS-independent)
-b) at formatting time only (FS-dependent)
-c) both at VFS level and at formatting time (FS level). Default option is
-"rights on". It can be overwritted at FS level during formatting and then it
-can be overwritted at VFS level during mounting.
-
-My vote is 1c.
-
-2. In case of VFS-level option - what UID, GID and mode will be set for created
-files and directories?
-a) as always. Independ of option "Disable rights control".
-b) user root, group root, rwxrwxrwx.
-c) something like umask option will be implemented.
-
-In other words, we mount FS with disabling rights. Then we write something on
-it. Then we remount FS with enabling rights. What permissions will we see?
-
-My vote is 2a.
-
-3. Lets imagine that we have ext3 filesistem mounted with "Disable right
-control" option enabled. We run ls -l - what permissions will it show?
-a) rwxrwxrwx
-b) rwArwArwA, where A = true when at least one of "executable" bits on disk is
-set to "true".
-
-In other words, will our new option affect all rights or only read-write but
-not exec?   
-
-My vote is 3a (simple solution).
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
