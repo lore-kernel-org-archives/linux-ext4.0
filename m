@@ -1,39 +1,66 @@
-From: Tobias Klauser <tklauser@distanz.ch>
-Subject: [PATCH] ext4: Remove redundant unlikely()
-Date: Thu,  9 Dec 2010 15:40:38 +0100
-Message-ID: <1291905638-32410-1-git-send-email-tklauser@distanz.ch>
-Cc: kernel-janitors@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.zhaw.ch ([160.85.104.50]:62602 "EHLO mx1.zhaw.ch"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755188Ab0LIOsV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Dec 2010 09:48:21 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "John Stoffel" <john@stoffel.org>
+Subject: Re: [PATCH] fs/vfs/security: pass last path component to LSM on inode
+ creation
+Date: Thu, 9 Dec 2010 10:05:47 -0500
+Message-ID: <19712.61515.201226.938553@quad.stoffel.home>
+References: <20101208194527.13537.77202.stgit@paris.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: xfs-masters@oss.sgi.com, linux-btrfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	cluster-devel@redhat.com, linux-mtd@lists.infradead.org,
+	jfs-discussion@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-mm@kvack.org, linux-security-module@vger.kernel.org,
+	chris.mason@oracle.com, jack@suse.cz, akpm@linux-foundation.org,
+	adilger.kernel@dilger.ca, tytso@mit.edu, swhiteho@redhat.com,
+	dwmw2@infradead.org, shaggy@linux.vnet.ibm.com, mfasheh@suse.com,
+	joel.becker@oracle.com, aelder@sgi.com, hughd@google.com,
+	jmorris@namei.org, sds@tycho.nsa.gov, eparis@parisplace.org,
+	hch@lst.de, dchinner@redhat.com, viro@zeniv.linux.org.uk,
+	tao.ma@oracle.com, shemminger@vyatta.com, jeffm@suse.com,
+	serue@us.ibm.com, paul.moore@hp.com,
+	penguin-kernel@I-love.SAKURA.ne.jp, casey@schaufler-ca.com,
+	kees.cook@can
+To: Eric Paris <eparis@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20101208194527.13537.77202.stgit@paris.rdu.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-IS_ERR() already implies unlikely(), so it can be omitted here.
+>>>>> "Eric" == Eric Paris <eparis@redhat.com> writes:
 
-Signed-off-by: Tobias Klauser <tklauser@distanz.ch>
----
- fs/ext4/namei.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Eric> SELinux would like to implement a new labeling behavior of newly
+Eric> created inodes.  We currently label new inodes based on the
+Eric> parent and the creating process.  This new behavior would also
+Eric> take into account the name of the new object when deciding the
+Eric> new label.  This is not the (supposed) full path, just the last
+Eric> component of the path.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 92203b8..cec88ce 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1036,7 +1036,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext4_iget(dir->i_sb, ino);
--		if (unlikely(IS_ERR(inode))) {
-+		if (IS_ERR(inode)) {
- 			if (PTR_ERR(inode) == -ESTALE) {
- 				EXT4_ERROR_INODE(dir,
- 						 "deleted inode referenced: %u",
--- 
-1.7.0.4
+Eric> This is very useful because creating /etc/shadow is different
+Eric> than creating /etc/passwd but the kernel hooks are unable to
+Eric> differentiate these operations.  We currently require that
+Eric> userspace realize it is doing some difficult operation like that
+Eric> and than userspace jumps through SELinux hoops to get things set
+Eric> up correctly.  This patch does not implement new behavior, that
+Eric> is obviously contained in a seperate SELinux patch, but it does
+Eric> pass the needed name down to the correct LSM hook.  If no such
+Eric> name exists it is fine to pass NULL.
 
+I've looked this patch over, and maybe I'm missing something, but how
+does knowing the name of the file really tell you anything, esp when
+you only get the filename, not the path?  What threat are you
+addressing with this change?  
+
+So what happens when I create a file /home/john/shadow, does selinux
+(or LSM in general) then run extra checks because the filename is
+'shadow' in your model?  
+
+I *think* the overhead shouldn't be there if SELINUX is disabled, but
+have you confirmed this?  How you run performance tests before/after
+this change when doing lots of creations of inodes to see what sort of
+performance changes might be there?
+
+Thanks,
+John
