@@ -1,63 +1,38 @@
-From: Jon Nelson <jnelson@jamponi.net>
-Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
- barrier support is effective)
-Date: Thu, 9 Dec 2010 12:10:58 -0600
-Message-ID: <AANLkTimAUB5L5Ptm4Fv=sQUmL9_P5azPRCKQnmU89xs8@mail.gmail.com>
-References: <4CF6B3E8.2000406@redhat.com> <20101201212310.GA15648@redhat.com>
- <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
- <20101204193828.GB13871@redhat.com> <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
- <20101207142145.GA27861@think> <AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com>
- <20101207182243.GB21112@redhat.com> <20101207193514.GA2921@thunk.org>
- <AANLkTim8UTkfxXV0AkEfjNq3tcmnrXdh6BQ1ibY5iYPy@mail.gmail.com> <20101209180111.GF2921@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "Ted Ts'o" <tytso@mit.edu>, Jon Nelson <jnelson@jamponi.net>,
-	Mike Snitzer <snitzer@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Matt <jackdachef@gmail.com>, Milan Broz <mbroz@r
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f45.google.com ([209.85.214.45]:37075 "EHLO
-	mail-bw0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756283Ab0LISLU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Dec 2010 13:11:20 -0500
-In-Reply-To: <20101209180111.GF2921@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH 11/15] ext3: Remove duplicate unlikely from IS_ERR
+Date: Thu,  9 Dec 2010 12:04:04 -0800
+Message-ID: <62905e31f7483c8681286b90b121f0044163baed.1291923889.git.joe@perches.com>
+References: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
+Cc: Jiri Kosina <trivial@kernel.org>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
+In-Reply-To: <cover.1291923888.git.joe@perches.com>
+References: <cover.1291923888.git.joe@perches.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 9, 2010 at 12:01 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Tue, Dec 07, 2010 at 09:37:20PM -0600, Jon Nelson wrote:
->> One difference is the location of the transaction logs (pg_xlog). In
->> my case, /var/lib/pgsql/data *is* mountpoint for the test volume
->> (actually, it's a symlink to the mount point). In your case, that is
->> not so. Perhaps that makes a difference? =C2=A0pgsql_tmp might also =
-be on
->> two different volumes in your case (I can't be sure).
->
-> I just tried tried to run t.sql five times with /var/lib/postgres as =
-a
-> mountpoint for a 5400 rpm disk, and I still haven't been able to
-> replicate it.
+IS_ERR already uses unlikely, remove unlikely from the call sites.
 
-You should be OK, there. Are you using encryption or no?
-I had difficulty replicating the issue without encryption.
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/ext3/namei.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-> If you can point out how to query pgsql_tmp (I'm using a completely
-> default postgres install), that would be helpful, but I don't think i=
-t
-> would be going anywhere else.
-
-Normally it's /var/lib/pgsql/data/pgsql_tmp (or
-/var/lib/postgres/data/pgsql_tmp in your case). By placing
-/var/lib/{postgresql,pgsql}/data on the LUKS + ext4 volume, on both
-openSUSE 11.3 and Kubuntu, I was able to replicate the problem easily,
-in VirtualBox. I can give qemu a try. In both cases I was using a
-2.6.37x kernel.
-
---=20
-Jon
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index bce9dce..268f776 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -1047,7 +1047,7 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext3_iget(dir->i_sb, ino);
+-		if (unlikely(IS_ERR(inode))) {
++		if (IS_ERR(inode)) {
+ 			if (PTR_ERR(inode) == -ESTALE) {
+ 				ext3_error(dir->i_sb, __func__,
+ 						"deleted inode referenced: %lu",
+-- 
+1.7.3.3.464.gf80b6
