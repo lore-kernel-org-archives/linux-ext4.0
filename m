@@ -1,38 +1,81 @@
 From: Joe Perches <joe@perches.com>
-Subject: [PATCH 11/15] ext3: Remove duplicate unlikely from IS_ERR
-Date: Thu,  9 Dec 2010 12:04:04 -0800
-Message-ID: <62905e31f7483c8681286b90b121f0044163baed.1291923889.git.joe@perches.com>
+Subject: [trivial PATCH 00/15] remove duplicate unlikely from IS_ERR
+Date: Thu,  9 Dec 2010 12:03:53 -0800
+Message-ID: <cover.1291923888.git.joe__29317.203598521$1291925225$gmane$org@perches.com>
 References: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
-Cc: Jiri Kosina <trivial@kernel.org>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jiri Kosina <trivial@kernel.org>, dri-devel@lists.freedesktop.org,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	linux-wireless@vger.kernel.org, devel@driverdev.osuosl.org
+To: netdev@vger.kernel.org, uclinux-dist-devel@blackfin.uclinux.org,
+	rtc-linux@googlegroups.com, linux-s390@vger.kernel.org,
+	osd-dev@open-osd.org, linux-arm-msm@vger.kernel.org,
+	linux-usb
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.perches.com ([173.55.12.10]:2387 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756981Ab0LIUEL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Dec 2010 15:04:11 -0500
 In-Reply-To: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
-In-Reply-To: <cover.1291923888.git.joe@perches.com>
-References: <cover.1291923888.git.joe@perches.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-IS_ERR already uses unlikely, remove unlikely from the call sites.
+Tobias Klauser <tklauser@distanz.ch> sent a patch to remove
+an unnecessary unlikely from drivers/misc/c2port/core.c,
+https://lkml.org/lkml/2010/12/9/199
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/ext3/namei.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Here are the other instances treewide.
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index bce9dce..268f776 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -1047,7 +1047,7 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext3_iget(dir->i_sb, ino);
--		if (unlikely(IS_ERR(inode))) {
-+		if (IS_ERR(inode)) {
- 			if (PTR_ERR(inode) == -ESTALE) {
- 				ext3_error(dir->i_sb, __func__,
- 						"deleted inode referenced: %lu",
+I think it'd be good if people would, when noticing defects in a
+specific subsystem, look for and correct the same defect treewide.
+
+IS_ERR already has an unlikely test so remove unnecessary
+unlikelys from the call sites.
+
+from: include/linux/err.h
+#define IS_ERR_VALUE(x) unlikely((x) >= (unsigned long)-MAX_ERRNO)
+[...]
+static inline long __must_check IS_ERR(const void *ptr)
+{
+	return IS_ERR_VALUE((unsigned long)ptr);
+}
+
+Sending directly to maintainers for now, will resend in a month
+or so only to trivial if not picked up.
+ 
+Joe Perches (15):
+  drm: Remove duplicate unlikely from IS_ERR
+  stmmac: Remove duplicate unlikely from IS_ERR
+  rtc: Remove duplicate unlikely from IS_ERR
+  s390: Remove duplicate unlikely from IS_ERR
+  osd: Remove duplicate unlikely from IS_ERR
+  serial: Remove duplicate unlikely from IS_ERR
+  brcm80211: Remove duplicate unlikely from IS_ERR
+  gadget: Remove duplicate unlikely from IS_ERR
+  exofs: Remove duplicate unlikely from IS_ERR
+  ext2: Remove duplicate unlikely from IS_ERR
+  ext3: Remove duplicate unlikely from IS_ERR
+  ext4: Remove duplicate unlikely from IS_ERR
+  nfs: Remove duplicate unlikely from IS_ERR
+  mm: Remove duplicate unlikely from IS_ERR
+  ipv6: Remove duplicate unlikely from IS_ERR
+
+ drivers/gpu/drm/ttm/ttm_tt.c                     |    4 ++--
+ drivers/net/stmmac/stmmac_main.c                 |    2 +-
+ drivers/rtc/rtc-bfin.c                           |    2 +-
+ drivers/s390/scsi/zfcp_fsf.c                     |    4 ++--
+ drivers/scsi/osd/osd_initiator.c                 |    2 +-
+ drivers/serial/msm_serial.c                      |    2 +-
+ drivers/staging/brcm80211/brcmfmac/wl_cfg80211.c |    2 +-
+ drivers/usb/gadget/f_fs.c                        |    4 ++--
+ fs/exofs/super.c                                 |    2 +-
+ fs/ext2/namei.c                                  |    2 +-
+ fs/ext3/namei.c                                  |    2 +-
+ fs/ext4/namei.c                                  |    2 +-
+ fs/nfs/mount_clnt.c                              |    2 +-
+ mm/vmalloc.c                                     |    2 +-
+ net/ipv6/af_inet6.c                              |    2 +-
+ 15 files changed, 18 insertions(+), 18 deletions(-)
+
 -- 
 1.7.3.3.464.gf80b6
+
