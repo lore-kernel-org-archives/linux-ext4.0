@@ -1,8 +1,8 @@
-From: Matt <jackdachef@gmail.com>
+From: Mike Fedyk <mfedyk@mikefedyk.com>
 Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
  barrier support is effective)
-Date: Fri, 10 Dec 2010 02:53:30 +0100
-Message-ID: <AANLkTi=SgzVcOwqJfAHBe5U+1CuhPnm0eKet4hRM2JKz@mail.gmail.com>
+Date: Thu, 9 Dec 2010 17:58:40 -0800
+Message-ID: <AANLkTimXznTKJAk7NAQPJC1op8iozsRCT5CHYm72hkkq@mail.gmail.com>
 References: <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
 	<20101207142145.GA27861@think>
 	<AANLkTikJt-ZOmzj68Jw92rjGHzu0EP-uCVD+eNSO=vGd@mail.gmail.com>
@@ -16,28 +16,24 @@ References: <AANLkTin3A_ySn_sZQPqZMn-NORnteQZwTVVSiW_=r3sO@mail.gmail.com>
 	<20101209231616.GA12515@basil.fritz.box>
 	<1291945065-sup-1838@think>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Andi Kleen <andi@firstfloor.org>, Jon Nelson <jnelson@jamponi.net>,
 	"Ted Ts'o" <tytso@mit.edu>, Mike Snitzer <snitzer@redhat.com>,
-	Milan Broz <mbroz@redhat.com>,
+	Matt <jackdachef@gmail.com>, Milan Broz <mbroz@redhat.com>,
 	linux-btrfs <linux-btrfs@vger.kernel.org>,
 	dm-devel <dm-devel@redhat.com>,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	htd <htd@fancy-poultry.org>, htejun <htejun@gmail.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
 To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f66.google.com ([209.85.161.66]:39337 "EHLO
-	mail-fx0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757433Ab0LJBxd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Dec 2010 20:53:33 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1291945065-sup-1838@think>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 10, 2010 at 2:38 AM, Chris Mason <chris.mason@oracle.com> w=
-rote:
+On Thu, Dec 9, 2010 at 5:38 PM, Chris Mason <chris.mason@oracle.com> wr=
+ote:
 > Excerpts from Andi Kleen's message of 2010-12-09 18:16:16 -0500:
 >> > 512MB.
 >> >
@@ -48,35 +44,11 @@ rote:
 >>
 >> If you can easily reproduce it could you try a git bisect?
 >
-> Do we have a known good kernel? =A0I looked back through the thread a=
-nd
+> Do we have a known good kernel? =C2=A0I looked back through the threa=
+d and
 > didn't see any reports where the postgres test on ext4 passed in this
 > config.
 >
-> -chris
->
 
-Try a kernel before 5a87b7a5da250c9be6d757758425dfeaf8ed3179
-
-from the tests I've done that one showed the least or no corruption if
-you count the empty /etc/env.d/03opengl as an artefact
-
-(I tested 3 commits in total)
-
-
-1) 5a87b7a5da250c9be6d757758425dfeaf8ed3179
-
-2) 1de3e3df917459422cb2aecac440febc8879d410
-
-3) bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc
-
-1 -> 3 (earlier -> later)
-
-Regards
-
-Matt
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+2.6.34.something.  -- Any chance a newer kernel can be tested to be fou=
+nd good?
