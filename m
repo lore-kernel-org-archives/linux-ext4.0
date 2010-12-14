@@ -1,87 +1,113 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: fix type-punning warnings
-Date: Tue, 14 Dec 2010 13:00:01 -0600
-Message-ID: <4D07BEB1.8030406@redhat.com>
+From: Stephan Boettcher <boettcher@physik.uni-kiel.de>
+Subject: Re: 20TB ext4
+Date: Tue, 14 Dec 2010 21:51:35 +0100
+Message-ID: <s6noc8oxelk.fsf@blaulicht.switch.brux>
+References: <s6nzks9y74l.fsf@falbala.ieap.uni-kiel.de>
+	<D46B0853-722D-4337-9561-42CECF7DAF47@dilger.ca>
+	<s6nr5dkviez.fsf@falbala.ieap.uni-kiel.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34173 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757120Ab0LNTAE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Dec 2010 14:00:04 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oBEJ03L1030205
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Dec 2010 14:00:04 -0500
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id oBEJ02CR022164
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Dec 2010 14:00:03 -0500
+Received: from l5ms.rz.uni-kiel.de ([134.245.11.213]:59896 "EHLO
+	l5ms.rz.uni-kiel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758360Ab0LNUvj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Dec 2010 15:51:39 -0500
+Received: from localhost ([127.0.0.1])
+	by l5ms.rz.uni-kiel.de with esmtp (Exim 4.72)
+	(envelope-from <boettcher@physik.uni-kiel.de>)
+	id 1PSbqU-0001Dd-0z
+	for linux-ext4@vger.kernel.org; Tue, 14 Dec 2010 21:51:38 +0100
+In-Reply-To: <s6nr5dkviez.fsf@falbala.ieap.uni-kiel.de> (Stephan Boettcher's
+	message of "Tue, 14 Dec 2010 09:59:48 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Flags used during RHEL/Fedora builds lead to a couple type-punning
-warnings:
+Stephan Boettcher <boettcher@physik.uni-kiel.de> writes:
 
-  recovery.c: In function 'do_one_pass':
-  recovery.c:539: warning: dereferencing type-punned pointer will break strict-aliasing rules
-  ./csum.c: In function 'print_csum':
-  ./csum.c:170: warning: dereferencing type-punned pointer will break strict-aliasing rules
+> Andreas Dilger <adilger@dilger.ca> writes:
+>
+>> On 2010-12-13, at 09:23, Stephan Boettcher wrote:
+>>> A raid1 (/dev/md1) over three 20GB partitions is the root filesyste=
+m,
+>>> three 20GB partitions for swap, and a RAID5 (/dev/md0) from the six=
+ big
+>>> partitions.
+>>>=20
+>>> The 10TB /dev/md0 is exported via nbd.  I had to patch nbd-client t=
+o
+>>> import this on a 32-bit machine, so that part works.
+>>>=20
+>>> The intention was to export two (later three) via nbd to one of the
+>>> servers, which combines them to a RAID5=C2=B2 with net capacity 20T=
+B.  With
+>>> e2fsprogs master branch I could make a filesystem, but dumpe2fs and
+>>> fsck failed.  Mounting the filesystem said: EFBIG.
 
-The two changes below fix this up.
+>> If you have dedicated server nodes, and you want to be able to use
+>> these 20TB from multiple clients, you might consider using Lustre,
+>> which uses ext4 as the back-end storage, and can scale to many PB
+>> filesystems (largest known filesystem is 20PB, from 1344 * 8TB
+>> separate ext4 filesystems).
+>
+> I like thinks to be as simple and transparent as possible :-) The pla=
+n
+> is to export the fs via NFS.  I will hit the 16 TB limit again, will =
+I?
+> I did not test that part yet.  The NFS clients will then probably be
+> required to run 64-bit kernels as well.
 
-Note that the csum test binary output changes slightly, but this does
-not break any tests.
+Excuse me for not knowing all that much about how linux filesystems
+work. I was surprised that I could export the 20TB filesystem via NFS
+and mount it on a 32-bit (2.6.31) system.  Do I need to expect failures
+when I try to actually use it that way, or does the nfs filesystem not
+use the page cache or something, so that the 16TB limit does not apply?
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Thanks, Stephan
 
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 8e40575..cac9294 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -536,8 +536,10 @@ static int do_one_pass(journal_t *journal,
- 					memcpy(nbh->b_data, obh->b_data,
- 							journal->j_blocksize);
- 					if (flags & JFS_FLAG_ESCAPE) {
--						*((__be32 *)nbh->b_data) =
--						cpu_to_be32(JFS_MAGIC_NUMBER);
-+						journal_header_t *header;
-+
-+						header = (journal_header_t *) &nbh->b_data[0];
-+						header->h_magic = cpu_to_be32(JFS_MAGIC_NUMBER);
- 					}
- 
- 					BUFFER_TRACE(nbh, "marking dirty");
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index a71d12c..1024c10 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -317,7 +317,7 @@ tst_extents: $(srcdir)/extent.c extent_dbg.c $(DEBUG_OBJS) $(DEPLIBSS) \
- tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_csum $(srcdir)/csum.c -DDEBUG \
--		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-+		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR) $(LIBE2P)
- 
- mkjournal: mkjournal.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
- 	$(E) "	LD $@"
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 58ebd23..2b6b364 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -166,9 +166,9 @@ void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
- 	crc2 = ext2fs_crc16(crc1, &swabgroup, sizeof(swabgroup));
- 	crc3 = ext2fs_crc16(crc2, desc,
- 			    offsetof(struct ext2_group_desc, bg_checksum));
--	printf("%s: UUID %016Lx%016Lx(%04x), grp %u(%04x): %04x=%04x\n",
--	       msg, *(long long *)&sb->s_uuid, *(long long *)&sb->s_uuid[8],
--	       crc1, group, crc2, crc3, ext2fs_group_desc_csum(fs, group));
-+	printf("%s: UUID %s(%04x), grp %u(%04x): %04x=%04x\n",
-+	       msg, e2p_uuid2str(sb->s_uuid), crc1, group, crc2,crc3,
-+	       ext2fs_group_desc_csum(fs, group));
- }
- 
- unsigned char sb_uuid[16] = { 0x4f, 0x25, 0xe8, 0xcf, 0xe7, 0x97, 0x48, 0x23,
+
+I guess I should upgrade that kernel ...
+
+(root)informatix:/data/hinkelstein# cat /proc/cpuinfo=20
+processor       : 0
+vendor_id       : GenuineIntel
+cpu family      : 15
+model           : 2
+model name      : Intel(R) Pentium(R) 4 CPU 2.00GHz
+stepping        : 4
+cpu MHz         : 2020.126
+cache size      : 512 KB
+fdiv_bug        : no
+hlt_bug         : no
+f00f_bug        : no
+coma_bug        : no
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 2
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge =
+mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pebs bts
+bogomips        : 4040.25
+clflush size    : 64
+power management:
+
+(root)informatix:/data/hinkelstein# cat /proc/version=20
+Linux version 2.6.31 (stephan@informatix) (gcc version 4.3.3 (Debian 4.=
+3.3-8) ) #2 Fri Oct 2 08:25:51 CEST 2009
+
+(root)informatix:/data/hinkelstein# df .
+=46ilesystem           1K-blocks      Used Available Use% Mounted on
+falbala:/data/hinkelstein/
+                     19021934592 651503616 17404166144   4% /data/hinke=
+lstein
+
+
+--=20
+Stephan
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
