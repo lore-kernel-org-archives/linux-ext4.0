@@ -1,69 +1,39 @@
-From: Matt <jackdachef@gmail.com>
-Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
- barrier support is effective)
-Date: Wed, 15 Dec 2010 20:28:03 +0100
-Message-ID: <AANLkTimjnfAQv5J5LRsgtKBb5Ho=M2ZJ=qvDHnkpBwN4@mail.gmail.com>
-References: <AANLkTinMt6saGeeX3MbwAzZ-+f6AL5BegeFqyPgGwiDo@mail.gmail.com>
-	<AANLkTi=cn04WZGMnVX6ie5PSM+9v0tJSSg0kD8_W5N11@mail.gmail.com>
-	<20101212023415.GG3059@thunk.org>
-	<AANLkTim=i8wDnML+K4uGK_neNDCiWxtKGDx01O+3joaE@mail.gmail.com>
-	<AANLkTinhHTqqpP=pQ8Foyc9xeaZi65GHGHGY51OyZtvF@mail.gmail.com>
-	<20101212124354.GA4513@thunk.org>
-	<AANLkTikZkCs7Wee2=uhe3bw96Pggcv0jsCkZ+nkWEQ+=@mail.gmail.com>
-	<20101213020657.GB4513@thunk.org>
-	<AANLkTinMWS-yyzWJ3oBo_KS9jXt4p4pveo+SPTLiWnCt@mail.gmail.com>
-	<AANLkTimjM_HptLaCSuQivxruWpoc7todyMe0wnszrSYU@mail.gmail.com>
-	<20101215191655.GA6163@basil.fritz.box>
-	<AANLkTi=9fbou9YF2bXzrWbBM37F4_Xyi-KgWquq0PrBL@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: fix type-punning warnings
+Date: Wed, 15 Dec 2010 18:09:26 -0500
+Message-ID: <20101215230926.GC4455@thunk.org>
+References: <4D07BEB1.8030406@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jon Nelson <jnelson@jamponi.net>,
-	Chris Mason <chris.mason@oracle.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mike Snitzer <snitzer@redhat.com>,
-	Milan Broz <mbroz@redhat.com>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	dm-devel <dm-devel@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	htd <htd@fancy-poultry.org>, htejun <htejun@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTi=9fbou9YF2bXzrWbBM37F4_Xyi-KgWquq0PrBL@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:33516 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755557Ab0LOXJ3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Dec 2010 18:09:29 -0500
+Content-Disposition: inline
+In-Reply-To: <4D07BEB1.8030406@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 15, 2010 at 8:25 PM, Matt <jackdachef@gmail.com> wrote:
-> On Wed, Dec 15, 2010 at 8:16 PM, Andi Kleen <andi@firstfloor.org> wrote:
->>> I have a question though: the deactivation of multiple page-io
->>> submission support most likely only would affect bigger systems or
->>> also desktop systems (like mine) ?
->>
->> I think this is not a final fix, just a workaround.
->> The problem with the other path still really needs to be tracked down.
->>
->> -Andi
->>
->> --
->> ak@linux.intel.com -- Speaking for myself only.
->>
->
-> ok,
->
-> thanks for the clarification
->
-> Regards
->
-> Matt
->
+On Tue, Dec 14, 2010 at 01:00:01PM -0600, Eric Sandeen wrote:
+> Flags used during RHEL/Fedora builds lead to a couple type-punning
+> warnings:
+> 
+>   recovery.c: In function 'do_one_pass':
+>   recovery.c:539: warning: dereferencing type-punned pointer will break strict-aliasing rules
+>   ./csum.c: In function 'print_csum':
+>   ./csum.c:170: warning: dereferencing type-punned pointer will break strict-aliasing rules
+> 
+> The two changes below fix this up.
+> 
+> Note that the csum test binary output changes slightly, but this does
+> not break any tests.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Sorry to spam the mailing lists again
+Thanks, applied.  There's also a bone-headed big-endian compile bug
+which means I'll be doing an e2fsprogs 1.41.14 shortly.
 
-make that a
-Reported-and-Tested-by: Matthias Bayer <jackdachef@gmail.com>
-
-(hope that's the correct way to write it)
-
-Regards
-
-Matt
+      	    	    	     	       - Ted
