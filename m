@@ -1,97 +1,85 @@
-From: Edward Shishkin <edward@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: fix type-punning warnings
-Date: Wed, 15 Dec 2010 19:53:33 +0100
-Message-ID: <4D090EAD.5000203@redhat.com>
-References: <4D07BEB1.8030406@redhat.com>
+From: Matt <jackdachef@gmail.com>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Wed, 15 Dec 2010 20:15:18 +0100
+Message-ID: <AANLkTimjM_HptLaCSuQivxruWpoc7todyMe0wnszrSYU@mail.gmail.com>
+References: <20101210023852.GB3059@thunk.org>
+	<AANLkTikJ1Q=L15wcMLn=U8-Qx9PbppY-AX=LpmjDkk2V@mail.gmail.com>
+	<AANLkTikeiv2jQM5hhghs1Zd2d=5CbRLKMgYvqHqpm76m@mail.gmail.com>
+	<AANLkTinMt6saGeeX3MbwAzZ-+f6AL5BegeFqyPgGwiDo@mail.gmail.com>
+	<AANLkTi=cn04WZGMnVX6ie5PSM+9v0tJSSg0kD8_W5N11@mail.gmail.com>
+	<20101212023415.GG3059@thunk.org>
+	<AANLkTim=i8wDnML+K4uGK_neNDCiWxtKGDx01O+3joaE@mail.gmail.com>
+	<AANLkTinhHTqqpP=pQ8Foyc9xeaZi65GHGHGY51OyZtvF@mail.gmail.com>
+	<20101212124354.GA4513@thunk.org>
+	<AANLkTikZkCs7Wee2=uhe3bw96Pggcv0jsCkZ+nkWEQ+=@mail.gmail.com>
+	<20101213020657.GB4513@thunk.org>
+	<AANLkTinMWS-yyzWJ3oBo_KS9jXt4p4pveo+SPTLiWnCt@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19025 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751459Ab0LOSyb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Dec 2010 13:54:31 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oBFIsVA7025925
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 15 Dec 2010 13:54:31 -0500
-In-Reply-To: <4D07BEB1.8030406@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jon Nelson <jnelson@jamponi.net>,
+	Chris Mason <chris.mason@oracle.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Milan Broz <mbroz@redhat.com>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	dm-devel <dm-devel@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	htd <htd@fancy-poultry.org>, htejun <htejun@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTinMWS-yyzWJ3oBo_KS9jXt4p4pveo+SPTLiWnCt@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> Flags used during RHEL/Fedora builds lead to a couple type-punning
-> warnings:
+On Mon, Dec 13, 2010 at 7:56 PM, Jon Nelson <jnelson@jamponi.net> wrote=
+:
+> On Sun, Dec 12, 2010 at 8:06 PM, Ted Ts'o <tytso@mit.edu> wrote:
+>> On Sun, Dec 12, 2010 at 07:11:28AM -0600, Jon Nelson wrote:
+>>> I'm glad you've been able to reproduce the problem! If you should n=
+eed
+>>> any further assistance, please do not hesitate to ask.
+>>
+>> This patch seems to fix the problem for me. =A0(Unless the partition=
+ is
+>> mounted with mblk_io_submit.)
+>>
+>> Could you confirm that it fixes it for you as well?
 >
->   recovery.c: In function 'do_one_pass':
->   recovery.c:539: warning: dereferencing type-punned pointer will break strict-aliasing rules
->   ./csum.c: In function 'print_csum':
->   ./csum.c:170: warning: dereferencing type-punned pointer will break strict-aliasing rules
+> I believe I have applied the (relevant) inode.c changes to
+> bd2d0210cf22f2bd0cef72eb97cf94fc7d31d8cc, rebuilt and begun testing.
+> Now at 28 passes without error, I think I can say that the patch
+> appears to resolve the issue.
 >
-> The two changes below fix this up.
->
-> Note that the csum test binary output changes slightly, but this does
-> not break any tests.
->
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->   
-
-Acked-by: Edward Shishkin <edward@redhat.com>
-
-
-> ---
->
-> diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-> index 8e40575..cac9294 100644
-> --- a/e2fsck/recovery.c
-> +++ b/e2fsck/recovery.c
-> @@ -536,8 +536,10 @@ static int do_one_pass(journal_t *journal,
->  					memcpy(nbh->b_data, obh->b_data,
->  							journal->j_blocksize);
->  					if (flags & JFS_FLAG_ESCAPE) {
-> -						*((__be32 *)nbh->b_data) =
-> -						cpu_to_be32(JFS_MAGIC_NUMBER);
-> +						journal_header_t *header;
-> +
-> +						header = (journal_header_t *) &nbh->b_data[0];
-> +						header->h_magic = cpu_to_be32(JFS_MAGIC_NUMBER);
->  					}
->  
->  					BUFFER_TRACE(nbh, "marking dirty");
-> diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-> index a71d12c..1024c10 100644
-> --- a/lib/ext2fs/Makefile.in
-> +++ b/lib/ext2fs/Makefile.in
-> @@ -317,7 +317,7 @@ tst_extents: $(srcdir)/extent.c extent_dbg.c $(DEBUG_OBJS) $(DEPLIBSS) \
->  tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
->  	$(E) "	LD $@"
->  	$(Q) $(CC) -o tst_csum $(srcdir)/csum.c -DDEBUG \
-> -		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-> +		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR) $(LIBE2P)
->  
->  mkjournal: mkjournal.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
->  	$(E) "	LD $@"
-> diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-> index 58ebd23..2b6b364 100644
-> --- a/lib/ext2fs/csum.c
-> +++ b/lib/ext2fs/csum.c
-> @@ -166,9 +166,9 @@ void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
->  	crc2 = ext2fs_crc16(crc1, &swabgroup, sizeof(swabgroup));
->  	crc3 = ext2fs_crc16(crc2, desc,
->  			    offsetof(struct ext2_group_desc, bg_checksum));
-> -	printf("%s: UUID %016Lx%016Lx(%04x), grp %u(%04x): %04x=%04x\n",
-> -	       msg, *(long long *)&sb->s_uuid, *(long long *)&sb->s_uuid[8],
-> -	       crc1, group, crc2, crc3, ext2fs_group_desc_csum(fs, group));
-> +	printf("%s: UUID %s(%04x), grp %u(%04x): %04x=%04x\n",
-> +	       msg, e2p_uuid2str(sb->s_uuid), crc1, group, crc2,crc3,
-> +	       ext2fs_group_desc_csum(fs, group));
->  }
->  
->  unsigned char sb_uuid[16] = { 0x4f, 0x25, 0xe8, 0xcf, 0xe7, 0x97, 0x48, 0x23,
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+> Jon
+>
+
+Confirmed !
+
+I'm running my box for 5+ hours right now with your patch applied in
+addition to Andi's/Milan's patch
+(http://www.kernel.org/pub/linux/kernel/people/agk/patches/2.6/editing/=
+dm-crypt-scale-to-multiple-CPUs.patch)
+, Ted, and can't see any indications of corruptions so far (while
+doing an emerge -e system) and doing everyday stuff.
+My /home partition (with ext4) is also still intact [which of course
+has a backup] so it seems to fix it for me, too
+
+so the corruption I was seeing was similar in a way to that of Jon
+
+You can add a
+Tested-by: Matthias Bayer <jackdachef@gmail.com>
+
+Thanks a lot to everyone for your support ! :)
+
+
+I have a question though: the deactivation of multiple page-io
+submission support most likely only would affect bigger systems or
+also desktop systems (like mine) ?
+
+Regards
+
+Matt
