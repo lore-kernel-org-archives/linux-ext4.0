@@ -1,35 +1,55 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 update for 2.6.37-rc6
-Date: Wed, 15 Dec 2010 11:32:42 -0500
-Message-ID: <E1PSuHS-00071A-1U@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: MONEY GRAM TRANSFER <cintia.marques@ufjf.edu.br>
+Subject: REFRENCE:2116-3297
+Date: Wed, 15 Dec 2010 12:50:50 -0200
+Message-ID: <33ace61ae1afc006ef385f6d105fb3cb@localhost>
+Reply-To: moneygram.services26@yahoo.com.hk
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from andromeda.cpd.ufjf.br ([200.131.19.67]:44963 "EHLO
+	andromeda.cpd.ufjf.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752992Ab0LORrx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Dec 2010 12:47:53 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by andromeda.cpd.ufjf.br (Postfix) with ESMTP id A12C6814A3C
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Dec 2010 15:36:45 -0200 (BRST)
+Received: from andromeda.cpd.ufjf.br ([127.0.0.1])
+	by localhost (andromeda.cpd.ufjf.br [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id W9ZDNps2E+Dv for <linux-ext4@vger.kernel.org>;
+	Wed, 15 Dec 2010 15:36:45 -0200 (BRST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
 
-Please pull from:
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+-- 
+My working partner in relationship with
+HSBC London has concluded that our working 
+partner has helped us to send you first 
+payment of five thousand dollars to you as
+instructed by Mr. David Cameron and will
+keep sending you five thousan dollars twice a week until
+the payment of (Eight hundred and twenty thousand dollars) is completed
+within six months and here is the information
 
-To get some regression fixes for ext4.  They're both hard to hit, and
-unfortunately I'm going to have to back out the multi-page submission
-feature for 2.6.37 (disabled by default; can be re-enable with a mount
-option) until I can figure what's going on with an edge case which Jon
-Nelson reported.
+MONEY TRANSFER REFRENCE:2116-3297
 
-						- Ted
+SENDER'S NAME: Mike Marx
+AMOUNT:Five thousand dollars
 
-Aaro Koskinen (1):
-      ext4: fix typo which broke '..' detection in ext4_find_entry()
+To track your funds forward money gram
+Transfer agent your Full Names and
+Mobile Number via Email to:
 
-Theodore Ts'o (1):
-      ext4: Turn off multiple page-io submission by default
+Allen Davis
+E-mail:moneygram.services26@yahoo.com.hk 
 
- fs/ext4/ext4.h  |    1 +
- fs/ext4/inode.c |    5 ++++-
- fs/ext4/namei.c |    2 +-
- fs/ext4/super.c |   14 ++++++++++++--
- 4 files changed, 18 insertions(+), 4 deletions(-)
+D/L: Tel:+44 702 407 3631
+
+Please direct all enquiring to:
+moneygram.services26@yahoo.com.hk 
+
+Best Regards,
+Mr Allen Davis
