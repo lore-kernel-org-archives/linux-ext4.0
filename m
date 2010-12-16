@@ -1,38 +1,64 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: Two small patches for e2fsprogs
-Date: Wed, 15 Dec 2010 19:38:49 -0700
-Message-ID: <EA8203CC-E465-4FFA-A9FC-72F14FA56FD2@dilger.ca>
-References: <4D094E93.3060108@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
+Date: Thu, 16 Dec 2010 14:12:29 +1100
+Message-ID: <20101216031229.GE3537@amd>
+References: <20101123100239.GA4232@amd>
+ <1290515274-sup-3895@think>
+ <20101123125223.GA4946@amd>
+ <1290538347-sup-7669@think>
+ <20101124010343.GD3168@amd>
+ <20101124131028.GQ6113@quack.suse.cz>
+ <20101125035356.GC3359@amd>
+ <20101129142603.ebbcbc7e.akpm@linux-foundation.org>
+ <20101130000118.GA3255@amd>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Sunil Mushran <sunil.mushran@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:20592 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754974Ab0LPCiw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Dec 2010 21:38:52 -0500
-In-Reply-To: <4D094E93.3060108@oracle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Nick Piggin <npiggin@kernel.dk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20101130000118.GA3255@amd>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2010-12-15, at 16:26, Sunil Mushran wrote:
-> Please could you consider adding these two small patches to e2fsprogs.
-> I had emailed them earlier linux-ext4 but got no response.
+On Tue, Nov 30, 2010 at 11:01:18AM +1100, Nick Piggin wrote:
+> On Mon, Nov 29, 2010 at 02:26:03PM -0800, Andrew Morton wrote:
+> > 	On Thu, 25 Nov 2010 14:53:56 +1100
+> > Nick Piggin <npiggin@kernel.dk> wrote:
+> > > On Wed, Nov 24, 2010 at 02:10:28PM +0100, Jan Kara wrote:
+> > > Well, for now, the easiest and simplest fix is my patch, I think. The
+> > > objection is that we may not write out anything for the specified sb,
+> > > but the current implementation provides no such guarantees at all
+> > > anyway, so I don't think it's a big issue.
+> > 
+> > Well yes.  We take something which will fail occasionally and with your
+> > patch replace it with something which will fail a bit more often.  Why
+> > don't we go all the way and do something which will fail *even more
+> > often*.  Namely, just delete the damn function in the hope that the
+> > resulting failures will provoke the ext4 crew into doing something sane
+> > this time?
 > 
-> http://oss.oracle.com/pipermail/ocfs2-tools-devel/2010-January/002604.html
-> http://oss.oracle.com/pipermail/ocfs2-tools-devel/2010-January/002603.html
+> I just need it fixed because the deadlocks are constantly hanging my
+> tests and/or switching off lockdep.
 > 
-> If you want, I could email them in patch form again.
+>  
+> > Guys, this delalloc thing *sucks*.  And here we are just sticking new
+> > bandaids on top of the old bandaids.  And the btrfs approach isn't
+> > exactly a thing of glory, either.
+> > 
+> > So...  nope.  I won't be applying Nick's patch.  Please fix this thing
+> > properly - you have a whole month!
+> 
+> Testers have less. It would be better to fix it now and rip it out at
+> the start of the next merge window if you're that way inclined :)
 
-I have no concerns about the FIEMAP changes here (no conflicts, etc).
-
-
-Cheers, Andreas
-
-
-
-
+Is this going to be fixed in time, or shall we merge my patch for
+2.6.37?
 
