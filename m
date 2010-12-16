@@ -1,104 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] resize2fs: handle exactly-16T filesystems in resize2fs
-Date: Thu, 16 Dec 2010 08:57:09 -0600
-Message-ID: <4D0A28C5.6090706@redhat.com>
-References: <4D09978E.5050302@redhat.com> <alpine.LFD.2.00.1012160957320.2781@dhcp-lab-213.englab.brq.redhat.com>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: Atomic non-durable file write API
+Date: Thu, 16 Dec 2010 15:11:36 -0500
+Message-ID: <4D0A7278.3080506@gmail.com>
+References: <AANLkTing7+SK+pavFehR4AGDbRRfFwvvzNxgWQ3zRp+O@mail.gmail.com>	<AANLkTimZtza_t8s1uOrE3BFfb-8FELjW95nrQz3RULWd@mail.gmail.com> <AANLkTikhDgJNny74nyBugg9cUmxC9j8Eo8YY4Fr3fm=5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Olaf van der Spek <olafvdspek@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40650 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756267Ab0LPO5M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Dec 2010 09:57:12 -0500
-In-Reply-To: <alpine.LFD.2.00.1012160957320.2781@dhcp-lab-213.englab.brq.redhat.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:41509 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751819Ab0LPULk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Dec 2010 15:11:40 -0500
+In-Reply-To: <AANLkTikhDgJNny74nyBugg9cUmxC9j8Eo8YY4Fr3fm=5@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/16/10 3:00 AM, Lukas Czerner wrote:
-> On Wed, 15 Dec 2010, Eric Sandeen wrote:
-> 
->> Before we go whole-hog on 64-bit e2fsprogs, I wonder if this
->> is worth considering as a last-minute addition to the 1.41
->> stream.  Currently, mke2fs will shave a block off an exactly-16T
->> device to fit*, but resize2fs does not do the same, leading
->> to some asymmetry.  This patch fixes that up, and allows 16T
->> devices to be handled more gracefully in offline resize.
->> (in fact resize2fs will not even open a 16T device, today).
+On 12/16/2010 07:22 AM, Olaf van der Spek wrote:
+> On Thu, Dec 9, 2010 at 1:03 PM, Olaf van der Spek<olafvdspek@gmail.com>  wrote:
+>> Hi,
 >>
->> *commit 37d17a65ecb4615546b417038190a41bafca7c51
+>> Since the introduction of ext4, some apps/users have had issues with
+>> file corruption after a system crash. It's not a bug in the FS AFAIK
+>> and it's not exclusive to ext4.
+>> Writing a temp file, fsync, rename is often proposed. However, the
+>> durable aspect of fsync isn't always required and this way has other
+>> issues.
+>> What is the recommended way for atomic non-durable (complete) file writes?
 >>
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> Hi Eric,
-> 
-> which version of e2fsprogs are you referring to ? When I look at master
-> branch I can see than those changes are already in there. Except the check
-> if the new size is too large. Am I missing something ?
+>> I'm also wondering why FSs commit after open/truncate but before
+>> write/close. AFAIK this isn't necessary and thus suboptimal.
+> Somebody?
+>
+> Olaf
 
-Hm I may have gotten lost in branches.  I was looking at 1.41.12...
-I didn't think 64-bit work had been merged there yet.
-I'm not sure what ted is basing 1.41.XX off of...
+Getting an atomic IO from user space down to storage is not really trivial.
 
--Eric
+What I think you would have to do is:
 
-> -Lukas
-> 
->> ---
->>
->> Index: e2fsprogs-1.41.12/resize/main.c
->> ===================================================================
->> --- e2fsprogs-1.41.12.orig/resize/main.c
->> +++ e2fsprogs-1.41.12/resize/main.c
->> @@ -159,7 +159,7 @@ int main (int argc, char ** argv)
->>  	int		print_min_size = 0;
->>  	int		fd, ret;
->>  	blk_t		new_size = 0;
->> -	blk_t		max_size = 0;
->> +	blk64_t		max_size = 0;
->>  	blk_t		min_size = 0;
->>  	io_manager	io_ptr;
->>  	char		*new_size_str = 0;
->> @@ -375,7 +375,7 @@ int main (int argc, char ** argv)
->>  	 * defaults and for making sure the new filesystem doesn't
->>  	 * exceed the partition size.
->>  	 */
->> -	retval = ext2fs_get_device_size(device_name, fs->blocksize,
->> +	retval = ext2fs_get_device_size2(device_name, fs->blocksize,
->>  					&max_size);
->>  	if (retval) {
->>  		com_err(program_name, retval,
->> @@ -393,6 +393,14 @@ int main (int argc, char ** argv)
->>  			exit(1);
->>  		}
->>  	} else {
->> +		/* Take down devices exactly 16T to 2^32-1 blocks */
->> +		if (max_size == (1ULL << 32))
->> +			max_size--;
->> +		else if (max_size > (1ULL << 32)) {
->> +			com_err(program_name, 0, _("New size too large to be "
->> +				"expressed in 32 bits\n"));
->> +			exit(1);
->> +		}
->>  		new_size = max_size;
->>  		/* Round down to an even multiple of a pagesize */
->>  		if (sys_page_size > fs->blocksize)
->> @@ -432,7 +441,7 @@ int main (int argc, char ** argv)
->>  	}
->>  	if (!force && (new_size > max_size)) {
->>  		fprintf(stderr, _("The containing partition (or device)"
->> -			" is only %u (%dk) blocks.\nYou requested a new size"
->> +			" is only %llu (%dk) blocks.\nYou requested a new size"
->>  			" of %u blocks.\n\n"), max_size,
->>  			fs->blocksize / 1024, new_size);
->>  		exit(1);
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
+(1) understand the alignment and minimum IO size of your target storage device 
+which you can get from /sys/block (or libblkid)
+
+(2) pre-allocate the file so that you do not need to update meta-data for your write
+
+(3) use O_DIRECT write calls that are minimum IO sized requests
+
+Note that there are still things that could break your atomic write - failures 
+in the storage device firmware, fragmentation in another layer (breaking up an 
+atomic write into transport sized chunks, etc).
+
+In practice, most applications that need to do atomic transactions use logging 
+(and fsync()) calls I suspect....
+
+Was this the kind of answer that you were looking for?
+
+Ric
 
