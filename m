@@ -1,96 +1,76 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] resize2fs: handle exactly-16T filesystems in resize2fs
-Date: Thu, 16 Dec 2010 10:00:26 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1012160957320.2781@dhcp-lab-213.englab.brq.redhat.com>
-References: <4D09978E.5050302@redhat.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: Namhyung Kim <namhyung@gmail.com>
+Subject: [PATCH v2 12/15] mke2fs: add some error checks into PRS()
+Date: Thu, 16 Dec 2010 18:40:40 +0900
+Message-ID: <1292492440-6778-1-git-send-email-namhyung@gmail.com>
+References: <1291205003.1684.12.camel@leonhard>
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18265 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751265Ab0LPJAb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Dec 2010 04:00:31 -0500
-In-Reply-To: <4D09978E.5050302@redhat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:45030 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752136Ab0LPJlH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Dec 2010 04:41:07 -0500
+Received: by iyi12 with SMTP id 12so1422809iyi.19
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Dec 2010 01:41:06 -0800 (PST)
+In-Reply-To: <1291205003.1684.12.camel@leonhard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 15 Dec 2010, Eric Sandeen wrote:
+Check return value of some functions and exit if unhandled error occurred.
 
-> Before we go whole-hog on 64-bit e2fsprogs, I wonder if this
-> is worth considering as a last-minute addition to the 1.41
-> stream.  Currently, mke2fs will shave a block off an exactly-16T
-> device to fit*, but resize2fs does not do the same, leading
-> to some asymmetry.  This patch fixes that up, and allows 16T
-> devices to be handled more gracefully in offline resize.
-> (in fact resize2fs will not even open a 16T device, today).
-> 
-> *commit 37d17a65ecb4615546b417038190a41bafca7c51
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+---
+ misc/mke2fs.c |   26 ++++++++++++++++++++++----
+ 1 files changed, 22 insertions(+), 4 deletions(-)
 
-Hi Eric,
-
-which version of e2fsprogs are you referring to ? When I look at master
-branch I can see than those changes are already in there. Except the check
-if the new size is too large. Am I missing something ?
-
--Lukas
-
-> ---
-> 
-> Index: e2fsprogs-1.41.12/resize/main.c
-> ===================================================================
-> --- e2fsprogs-1.41.12.orig/resize/main.c
-> +++ e2fsprogs-1.41.12/resize/main.c
-> @@ -159,7 +159,7 @@ int main (int argc, char ** argv)
->  	int		print_min_size = 0;
->  	int		fd, ret;
->  	blk_t		new_size = 0;
-> -	blk_t		max_size = 0;
-> +	blk64_t		max_size = 0;
->  	blk_t		min_size = 0;
->  	io_manager	io_ptr;
->  	char		*new_size_str = 0;
-> @@ -375,7 +375,7 @@ int main (int argc, char ** argv)
->  	 * defaults and for making sure the new filesystem doesn't
->  	 * exceed the partition size.
->  	 */
-> -	retval = ext2fs_get_device_size(device_name, fs->blocksize,
-> +	retval = ext2fs_get_device_size2(device_name, fs->blocksize,
->  					&max_size);
->  	if (retval) {
->  		com_err(program_name, retval,
-> @@ -393,6 +393,14 @@ int main (int argc, char ** argv)
->  			exit(1);
->  		}
->  	} else {
-> +		/* Take down devices exactly 16T to 2^32-1 blocks */
-> +		if (max_size == (1ULL << 32))
-> +			max_size--;
-> +		else if (max_size > (1ULL << 32)) {
-> +			com_err(program_name, 0, _("New size too large to be "
-> +				"expressed in 32 bits\n"));
-> +			exit(1);
-> +		}
->  		new_size = max_size;
->  		/* Round down to an even multiple of a pagesize */
->  		if (sys_page_size > fs->blocksize)
-> @@ -432,7 +441,7 @@ int main (int argc, char ** argv)
->  	}
->  	if (!force && (new_size > max_size)) {
->  		fprintf(stderr, _("The containing partition (or device)"
-> -			" is only %u (%dk) blocks.\nYou requested a new size"
-> +			" is only %llu (%dk) blocks.\nYou requested a new size"
->  			" of %u blocks.\n\n"), max_size,
->  			fs->blocksize / 1024, new_size);
->  		exit(1);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index b88decfc2f27..6e2092dc051e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1108,6 +1108,10 @@ static void PRS(int argc, char *argv[])
+ 	if (oldpath)
+ 		pathlen += strlen(oldpath);
+ 	newpath = malloc(pathlen);
++	if (!newpath) {
++		fprintf(stderr, _("Couldn't allocate memory for new PATH.\n"));
++		exit(1);
++	}
+ 	strcpy(newpath, PATH_SET);
+ 
+ 	/* Update our PATH to include /sbin  */
+@@ -1138,14 +1142,28 @@ static void PRS(int argc, char *argv[])
+ 	profile_set_syntax_err_cb(syntax_err_report);
+ 	retval = profile_init(config_fn, &profile);
+ 	if (retval == ENOENT) {
+-		profile_init(default_files, &profile);
+-		profile_set_default(profile, mke2fs_default_profile);
++		retval = profile_init(default_files, &profile);
++		if (retval)
++			goto profile_error;
++		retval = profile_set_default(profile, mke2fs_default_profile);
++		if (retval)
++			goto profile_error;
++	} else if (retval) {
++profile_error:
++		fprintf(stderr, _("Couldn't init profile successfully"
++				  " (error: %ld).\n"), retval);
++		exit(1);
+ 	}
+ 
+ 	setbuf(stdout, NULL);
+ 	setbuf(stderr, NULL);
+-	add_error_table(&et_ext2_error_table);
+-	add_error_table(&et_prof_error_table);
++	retval = add_error_table(&et_ext2_error_table);
++	if (!retval)
++		retval = add_error_table(&et_prof_error_table);
++	if (retval) {
++		fprintf(stderr, _("Unable to add error information.\n"));
++		exit(1);
++	}
+ 	memset(&fs_param, 0, sizeof(struct ext2_super_block));
+ 	fs_param.s_rev_level = 1;  /* Create revision 1 filesystems now */
+ 
 -- 
+1.7.3.3.400.g93cef
+
