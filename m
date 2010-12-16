@@ -1,64 +1,129 @@
-From: Nick Piggin <npiggin@kernel.dk>
-Subject: Re: [patch] fs: fix deadlocks in writeback_if_idle
-Date: Thu, 16 Dec 2010 14:12:29 +1100
-Message-ID: <20101216031229.GE3537@amd>
-References: <20101123100239.GA4232@amd>
- <1290515274-sup-3895@think>
- <20101123125223.GA4946@amd>
- <1290538347-sup-7669@think>
- <20101124010343.GD3168@amd>
- <20101124131028.GQ6113@quack.suse.cz>
- <20101125035356.GC3359@amd>
- <20101129142603.ebbcbc7e.akpm@linux-foundation.org>
- <20101130000118.GA3255@amd>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption? (was: Re: dm-crypt
+ barrier support is effective)
+Date: Thu, 16 Dec 2010 14:37:18 +1100
+Message-ID: <20101216033718.GM9925@dastard>
+References: <AANLkTikOXjh+D25=7Mzwn7bFN+a9xQSimPHs22q4o2TK@mail.gmail.com>
+ <1291747731-sup-3099@think>
+ <AANLkTin-Bvq9bNgarZGZhbK_2EONdu8x-qaLCLFcc1F_@mail.gmail.com>
+ <1291751698-sup-9297@think>
+ <AANLkTin79GzUbfuZNKyTtqcyoUSO9AJimO77_ZOvqggH@mail.gmail.com>
+ <1291754340-sup-1631@think>
+ <AANLkTim8uCmFK=LjkMmq_1O0KE3AiN_7g41AO0woxMv7@mail.gmail.com>
+ <1291755258-sup-8760@think>
+ <AANLkTi=OC9Z68U-j8s6vfU-_-6tkg5W7aUz9HEupidX9@mail.gmail.com>
+ <1291810586-sup-8211@think>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jon Nelson <jnelson@jamponi.net>,
+	Mike Snitzer <snitzer@redhat.com>, Matt <jackdachef@gmail.com>,
+	Milan Broz <mbroz@redhat.com>,
+	Andi Kleen <andi@firstfloor.org>,
 	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Nick Piggin <npiggin@kernel.dk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	dm-devel <dm-devel@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	htd <htd@fancy-poultry.org>, htejun <htejun@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Chris Mason <chris.mason@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bld-mail17.adl2.internode.on.net ([150.101.137.102]:43847 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751401Ab0LPDhg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Dec 2010 22:37:36 -0500
 Content-Disposition: inline
-In-Reply-To: <20101130000118.GA3255@amd>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1291810586-sup-8211@think>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 30, 2010 at 11:01:18AM +1100, Nick Piggin wrote:
-> On Mon, Nov 29, 2010 at 02:26:03PM -0800, Andrew Morton wrote:
-> > 	On Thu, 25 Nov 2010 14:53:56 +1100
-> > Nick Piggin <npiggin@kernel.dk> wrote:
-> > > On Wed, Nov 24, 2010 at 02:10:28PM +0100, Jan Kara wrote:
-> > > Well, for now, the easiest and simplest fix is my patch, I think. The
-> > > objection is that we may not write out anything for the specified sb,
-> > > but the current implementation provides no such guarantees at all
-> > > anyway, so I don't think it's a big issue.
-> > 
-> > Well yes.  We take something which will fail occasionally and with your
-> > patch replace it with something which will fail a bit more often.  Why
-> > don't we go all the way and do something which will fail *even more
-> > often*.  Namely, just delete the damn function in the hope that the
-> > resulting failures will provoke the ext4 crew into doing something sane
-> > this time?
-> 
-> I just need it fixed because the deadlocks are constantly hanging my
-> tests and/or switching off lockdep.
-> 
->  
-> > Guys, this delalloc thing *sucks*.  And here we are just sticking new
-> > bandaids on top of the old bandaids.  And the btrfs approach isn't
-> > exactly a thing of glory, either.
-> > 
-> > So...  nope.  I won't be applying Nick's patch.  Please fix this thing
-> > properly - you have a whole month!
-> 
-> Testers have less. It would be better to fix it now and rip it out at
-> the start of the next merge window if you're that way inclined :)
+On Wed, Dec 08, 2010 at 07:20:24AM -0500, Chris Mason wrote:
+> Excerpts from Jon Nelson's message of 2010-12-07 22:29:26 -0500:
+> > On Tue, Dec 7, 2010 at 3:02 PM, Chris Mason <chris.mason@oracle.com=
+> wrote:
+> > > Excerpts from Jon Nelson's message of 2010-12-07 15:48:58 -0500:
+> > >> On Tue, Dec 7, 2010 at 2:41 PM, Chris Mason <chris.mason@oracle.=
+com> wrote:
+> > >> > Excerpts from Jon Nelson's message of 2010-12-07 15:25:47 -050=
+0:
+> > >> >> On Tue, Dec 7, 2010 at 2:02 PM, Chris Mason <chris.mason@orac=
+le.com> wrote:
+> > >> >> > Excerpts from Jon Nelson's message of 2010-12-07 14:34:40 -=
+0500:
+> > >> >> >> On Tue, Dec 7, 2010 at 12:52 PM, Chris Mason <chris.mason@=
+oracle.com> wrote:
+> > >> >> >> >> postgresql errors. Typically, header corruption but fro=
+m the limited
+> > >> >> >> >> visibility I've had into this via strace, what I see is=
+ zeroed pages
+> > >> >> >> >> where there shouldn't be.
+> > >> >> >> >
+> > >> >> >> > This sounds a lot like a bug higher up than dm-crypt. =A0=
+Zeros tend to
+> > >> >> >> > come from some piece of code explicitly filling a page w=
+ith zeros, and
+> > >> >> >> > that often happens in the corner cases for O_DIRECT and =
+a few other
+> > >> >> >> > places in the filesystem.
+> > >> >> >> >
+> > >> >> >> > Have you tried triggering this with a regular block devi=
+ce?
+> > >> >> >>
+> > >> >> >> I just tried the whole set of tests, but with /dev/sdb dir=
+ectly (as
+> > >> >> >> ext4) without any crypt-y bits.
+> > >> >> >> It takes more iterations but out of 6 tests I had one fail=
+ure: same
+> > >> >> >> type of thing, 'invalid page header in block ....'.
+> > >> >> >>
+> > >> >> >> I can't guarantee that it is a full-page of zeroes, just w=
+hat I saw
+> > >> >> >> from the (limited) stracing I did.
+> > >> >> >
+> > >> >> > Fantastic. Now for our usual suspects:
+> >=20
+> > Maybe not so fantastic. I kept testing and had no more failures. At
+> > all. After 40+ iterations I gave up.
+> > I went back to trying ext4 on a LUKS volume. The 'hit' ratio went t=
+o
+> > something like 1 in 3, or better.
+> >=20
+> > I will continue to do testing with and without LUKS. I did /not/
+> > reboot between tests, but I do start with a fresh postgres database=
+=2E
+> >=20
+>=20
+> Once we trigger once without dm-crypt, dm-crypt is off the hook.  Jus=
+t
+> to verify, when you say without luks, you mean without any crypto bit=
+s
+> in use at all on the filesystems postgres uses?
+>=20
+> Usually the trick to reproducing filesystem corruptions is adding mem=
+ory
+> pressure.  The corruption is probably a bad interaction between reads
+> and writes, and we need to make sure the reads actually happen.
+>=20
+> http://oss.oracle.com/~mason/pin_ram.c
+>=20
+> gcc -Wall -o pin_ram pin_ram.c
+>=20
+> pin_ram -m 80%-of-your-ram-in-mb
 
-Is this going to be fixed in time, or shall we merge my patch for
-2.6.37?
+Implemented in xfstests about 10 years ago:
 
+http://git.kernel.org/?p=3Dfs/xfs/xfstests-dev.git;a=3Dblob;f=3Dsrc/use=
+mem.c;h=3Db8794a6b209cebf8dbf312a8ef131e2e54b18d29;hb=3DHEAD
+
+:P
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
