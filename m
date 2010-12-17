@@ -1,8 +1,8 @@
 From: Minchan Kim <minchan.kim@gmail.com>
 Subject: Re: [BUG?] memory hotplug: include/linux/radix-tree.h:145 invoked
  rcu_dereference_check() without protection!
-Date: Sat, 18 Dec 2010 00:08:27 +0900
-Message-ID: <20101217150827.GA1609@barrios-desktop>
+Date: Sat, 18 Dec 2010 00:13:54 +0900
+Message-ID: <20101217151354.GB1609@barrios-desktop>
 References: <20101121153949.GD20947@barrios-desktop>
  <20101121173726.GG23423@thunk.org>
  <AANLkTimeSWWo-TAJPPH81OO_h1zFzWAT1Gg=XSLyFftH@mail.gmail.com>
@@ -12,27 +12,31 @@ References: <20101121153949.GD20947@barrios-desktop>
  <20101208101947.b0646226.kamezawa.hiroyu@jp.fujitsu.com>
  <1292507421.4885.19.camel@thinkpad>
  <AANLkTinfTCpdKo-A8gF+xbss24PNQXvQV6Odh51mXxiH@mail.gmail.com>
- <20101217054722.GG2253@linux.vnet.ibm.com>
+ <20101217083912.GM13914@csn.ul.ie>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: gerald.schaefer@de.ibm.com,
 	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
-	Milton Miller <miltonm@bga.com>, linux-kernel@vger.kernel.org,
-	linux-mm@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Ted Ts'o <tytso@mit.edu>, Arun Bhanu <ab@arunbhanu.com>,
-	Mel Gorman <mel@csn.ul.ie>,
+	paulmck@linux.vnet.ibm.com, Milton Miller <miltonm@bga.com>,
+	linux-kernel@vger.kernel.org, linux-mm@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>,
+	Arun Bhanu <ab@arunbhanu.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Heiko Carstens <heiko.carstens@de.ibm.com>,
 	Martin Schwidefsky <schwidefsky@de.ibm.com>
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: Mel Gorman <mel@csn.ul.ie>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f52.google.com ([209.85.210.52]:41161 "EHLO
+	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753923Ab0LQPOJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Dec 2010 10:14:09 -0500
 Content-Disposition: inline
-In-Reply-To: <20101217054722.GG2253@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20101217083912.GM13914@csn.ul.ie>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 16, 2010 at 09:47:22PM -0800, Paul E. McKenney wrote:
+On Fri, Dec 17, 2010 at 08:39:12AM +0000, Mel Gorman wrote:
 > On Fri, Dec 17, 2010 at 09:04:13AM +0900, Minchan Kim wrote:
 > > On Thu, Dec 16, 2010 at 10:50 PM, Gerald Schaefer
 > > <gerald.schaefer@de.ibm.com> wrote:
@@ -165,6 +169,18 @@ ust be complete */
 > > Maybe Paul have better idea.
 > > (It's apparently be word-wrapped.)
 > >=20
+>=20
+> heh, I wrote a patch almost identical to this and ran it overnight fo=
+r testing
+> (test was a memory consumer running while a parallel process grew and=
+ shrunk
+> the hugepage pool). It passes but that is hardly a surprise. We diffe=
+red
+
+Good.=20
+
+> slightly in a number of respects though.
+>=20
 > > diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.=
 h
 > > index ab2baa5..135af1e 100644
@@ -190,51 +206,129 @@ ointer flag
 > > +static inline void *radix_tree_deref_slot_nocheck(void **pslot)
 > > +{
 > > +       return rcu_dereference_protected(*pslot, 1);
+> > +}
 >=20
-> I suggest replacing the "1" with lockdep expressions for the locks
-> that you say might be held:
+> For this, I had
+>=20
+> diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
+> index ab2baa5..252d21c 100644
+> --- a/include/linux/radix-tree.h
+> +++ b/include/linux/radix-tree.h
+> @@ -146,6 +146,25 @@ static inline void *radix_tree_deref_slot(void *=
+*pslot)
+>  }
+> =20
+>  /**
+> + * radix_tree_deref_slot_protected	- dereference a slot without RCU =
+lock but with tree lock held
+> + * @pslot:	pointer to slot, returned by radix_tree_lookup_slot
+> + * Returns:	item that was stored in that slot with any direct pointe=
+r flag
+> + *		removed.
+> + *
+> + * For use with radix_tree_lookup_slot().  Caller must hold tree rea=
+d
+> + * locked across slot lookup and dereference. Not required if write =
+lock is
+> + * held (ie. items cannot be concurrently inserted).
+> + *
+> + * radix_tree_deref_retry must be used to confirm validity of the po=
+inter if
+> + * only the read lock is held.
+> + */
+> +static inline void *radix_tree_deref_slot_protected(void **pslot,
+> +							spinlock_t *treelock)
+> +{
+> +	return rcu_dereference_protected(*pslot, lockdep_is_held(treelock))=
+;
+> +}
+> +
+> +/**
+>   * radix_tree_deref_retry	- check radix_tree_deref_slot
+>   * @arg:	pointer returned by radix_tree_deref_slot
+>   * Returns:	0 if retry is not required, otherwise retry is required
+>=20
+> In the documentation, I noted that the check might be without RCU but=
+ with
+> the knowledge that it's protected by the tree lock. I'm not a RCU exp=
+ert
+> but this is only safe when you know there isn't a parallel updater an=
+d the
+> treelock should be preventing that, right?
 
-It's not hard.
+I think so.
 
 >=20
-> 	return rcu_dereference_check(*pslot,
-> 				     lockdep_is_held(&mapping->tree_lock));
+> Even so, other users of rcu_dereference_protected() check a lock cond=
+ition
+> which I used tree lock for. I intended to read through the rest of
+> documentation properly this morning to determine if this was indeed t=
+he
+> right approach.
+>=20
+> I used the name _protected instead of _nocheck because the dereferenc=
+e
+> is still protected (by the tree lock) just not by RCU. Again, have to
+> check the documentation to ensure this is correct.
 
-rcu_dereference_check still pass rcu_read_lock_held check we don't want=
-=2E
-I think rcu_dereference_protected is proper.
-
-Why I don't add lockdep expressions is radix_tree_deref_slot is general=
- API.
-It might be used anywhere where it doesn't related to mapping->tree_loc=
-k.
-If we add argument 'mapping', it has a very strong dependency with addr=
-ess_space.
-so I decided making the function general and then caller must use it ve=
-ry carefully.
-But I am not strong in this point.
+I agree _proected naming is good.
 
 >=20
-> This assumes that when you said "and" you meant both lock_page() and
-> mapping->tree_lock.  Also you need to pass in the mapping, which
-> should not be a problem given likely inlining.
+> > +/**
+> >   * radix_tree_deref_retry      - check radix_tree_deref_slot
+> >   * @arg:       pointer returned by radix_tree_deref_slot
+> >   * Returns:    0 if retry is not required, otherwise retry is requ=
+ired
+> > diff --git a/mm/migrate.c b/mm/migrate.c
+> > index 2eb2243..5be2841 100644
+> > --- a/mm/migrate.c
+> > +++ b/mm/migrate.c
+> > @@ -244,7 +244,8 @@ static int migrate_page_move_mapping(struct
+> > address_space *mappin
+> >=20
+> >         expected_count =3D 2 + page_has_private(page);
+> >         if (page_count(page) !=3D expected_count ||
+> > -                       (struct page *)radix_tree_deref_slot(pslot)=
+ !=3D page) {
+> > +                       (struct page *)radix_tree_deref_slot_nochec=
+k(pslot)
+> > +                               !=3D page) {
+> >                 spin_unlock_irq(&mapping->tree_lock);
+> >                 return -EAGAIN;
+> >         }
 >=20
-> If you meant that either mapping->tree_lock or page_lock() might be
-> held, I suppose that the page_lock() state could be passed in, but
-> perhaps better to take a general lockdep expression.
->=20
-> So, either or both?  ;-)
->=20
-> 						Thanx, Paul
+> We only differed here by my passing in the &mapping->tree_lock
 
-I think either is okay. That's because remove_from_page_cache/__remove_=
-from_page_cache
-needs both locks so we can't prevent update if we get a either lock.
-In code context, I think mapping->tree_lock is more readable since it i=
-s used near by.
+I will add the comment in your formal patch.
 
-Thanks for the comment, Paul.
+>=20
+>=20
+>=20
+> > @@ -316,7 +317,8 @@ int migrate_huge_page_move_mapping(struct
+> > address_space *mapping,
+> >=20
+> >         expected_count =3D 2 + page_has_private(page);
+> >         if (page_count(page) !=3D expected_count ||
+> > -           (struct page *)radix_tree_deref_slot(pslot) !=3D page) =
+{
+> > +           (struct page *)radix_tree_deref_slot_nocheck(pslot)
+> > +                               !=3D page) {
+> >                 spin_unlock_irq(&mapping->tree_lock);
+> >                 return -EAGAIN;
+> >         }
+>=20
+> --=20
+> Mel Gorman
+> Part-time Phd Student                          Linux Technology Cente=
+r
+> University of Limerick                         IBM Dublin Software La=
+b
 
 --=20
 Kind regards,
 Minchan Kim
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
