@@ -1,100 +1,45 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [BUG?] memory hotplug: include/linux/radix-tree.h:145 invoked
- rcu_dereference_check() without protection!
-Date: Fri, 17 Dec 2010 06:59:01 +0100
-Message-ID: <1292565541.2655.28.camel@edumazet-laptop>
-References: <20101121133024.GF23423@thunk.org>
-	 <20101121153949.GD20947@barrios-desktop> <20101121173726.GG23423@thunk.org>
-	 <AANLkTimeSWWo-TAJPPH81OO_h1zFzWAT1Gg=XSLyFftH@mail.gmail.com>
-	 <rcu-radix-tree@mdm.bga.com> <20101122061619.GA2764@linux.vnet.ibm.com>
-	 <1291748509.19276.62.camel@thinkpad>
-	 <20101208101947.b0646226.kamezawa.hiroyu@jp.fujitsu.com>
-	 <1292507421.4885.19.camel@thinkpad>
-	 <AANLkTinfTCpdKo-A8gF+xbss24PNQXvQV6Odh51mXxiH@mail.gmail.com>
-	 <20101217054722.GG2253@linux.vnet.ibm.com>
+From: Stephan Boettcher <boettcher@physik.uni-kiel.de>
+Subject: Re: [PATCH] resize2fs: handle exactly-16T filesystems in resize2fs
+Date: Fri, 17 Dec 2010 09:06:21 +0100
+Message-ID: <s6nei9gygaq.fsf@falbala.ieap.uni-kiel.de>
+References: <4D09978E.5050302@redhat.com>
+	<alpine.LFD.2.00.1012160957320.2781@dhcp-lab-213.englab.brq.redhat.com>
+	<20101217001557.GE4455@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Minchan Kim <minchan.kim@gmail.com>, gerald.schaefer@de.ibm.com,
-	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
-	Milton Miller <miltonm@bga.com>, linux-kernel@vger.kernel.org,
-	linux-mm@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Ted Ts'o <tytso@mit.edu>, Arun Bhanu <ab@arunbhanu.com>,
-	Mel Gorman <mel@csn.ul.ie>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Heiko Carstens <heiko.carstens@de.ibm.com>,
-	Martin Schwidefsky <schwidefsky@de.ibm.com>
-To: paulmck@linux.vnet.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:39160 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750779Ab0LQF7I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Dec 2010 00:59:08 -0500
-In-Reply-To: <20101217054722.GG2253@linux.vnet.ibm.com>
+Received: from l3ms.rz.uni-kiel.de ([134.245.11.96]:35746 "EHLO
+	l3ms.rz.uni-kiel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751193Ab0LQIGZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Dec 2010 03:06:25 -0500
+Received: from localhost ([127.0.0.1])
+	by l3ms.rz.uni-kiel.de with esmtp (Exim 4.72)
+	(envelope-from <boettcher@physik.uni-kiel.de>)
+	id 1PTVKc-0005K9-JD
+	for linux-ext4@vger.kernel.org; Fri, 17 Dec 2010 09:06:26 +0100
+In-Reply-To: <20101217001557.GE4455@thunk.org> (Ted Ts'o's message of "Thu, 16
+	Dec 2010 19:15:57 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Le jeudi 16 d=C3=A9cembre 2010 =C3=A0 21:47 -0800, Paul E. McKenney a =C3=
-=A9crit :
-> On Fri, Dec 17, 2010 at 09:04:13AM +0900, Minchan Kim wrote:
-> > How about this?
-> > Maybe Paul have better idea.
-> > (It's apparently be word-wrapped.)
-> >=20
-> > diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.=
-h
-> > index ab2baa5..135af1e 100644
-> > --- a/include/linux/radix-tree.h
-> > +++ b/include/linux/radix-tree.h
-> > @@ -146,6 +146,20 @@ static inline void *radix_tree_deref_slot(void=
- **pslot)
-> >  }
-> >=20
-> >  /**
-> > + * radix_tree_deref_slot_nocheck       - dereference a slot withou=
-t RCU check
-> > + * @pslot:     pointer to slot, returned by radix_tree_lookup_slot
-> > + * Returns:    item that was stored in that slot with any direct p=
-ointer flag
-> > + *             removed.
-> > + *
-> > + * This functions works like radix_tree_deref_slot except it doesn=
-'t check
-> > + * RCU rule. Normally this funcion is used with update-side lock.
-> > + * You should use this function very carefully.
-> > + */
-> > +static inline void *radix_tree_deref_slot_nocheck(void **pslot)
-> > +{
-> > +       return rcu_dereference_protected(*pslot, 1);
->=20
-> I suggest replacing the "1" with lockdep expressions for the locks
-> that you say might be held:
->=20
-> 	return rcu_dereference_check(*pslot,
-> 				     lockdep_is_held(&mapping->tree_lock));
->=20
+"Ted Ts'o" <tytso@mit.edu> writes:
 
-Yes, but point was also to use rcu_dereference_protected() here, not
-rcu_dereference_check().
+> The 1.42 version is on the main "master" and "next" branch, where
+> "next" is where I'll check in things initially, and then "master"
+> catches up with "next".  I took this from git, with the basic idea
+> being that if there are people who are testing next, and people who
+> are using the "master", hopefully problems get noticed and fixed
+> before people are using "master" grab a commit.  To be honest there
+> probably aren't enough people tracking next and master for this to
+> make a huge amount of difference, but I'm following this scheme
+> anyway.
 
+So, I am doing the right thing, when I use the master branch for my 20TB
+filesystem? Or shall I try next, at least until I decide to actually use
+the filesystem for something real?
 
+-- 
+Stephan
 
-> This assumes that when you said "and" you meant both lock_page() and
-> mapping->tree_lock.  Also you need to pass in the mapping, which
-> should not be a problem given likely inlining.
->=20
-> If you meant that either mapping->tree_lock or page_lock() might be
-> held, I suppose that the page_lock() state could be passed in, but
-> perhaps better to take a general lockdep expression.
->=20
-> So, either or both?  ;-)
->=20
-
-Thanks
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
