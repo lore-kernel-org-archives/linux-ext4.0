@@ -1,40 +1,35 @@
 From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] resize2fs: handle exactly-16T filesystems in resize2fs
-Date: Thu, 16 Dec 2010 19:15:57 -0500
-Message-ID: <20101217001557.GE4455@thunk.org>
+Date: Thu, 16 Dec 2010 19:18:02 -0500
+Message-ID: <20101217001802.GF4455@thunk.org>
 References: <4D09978E.5050302@redhat.com>
- <alpine.LFD.2.00.1012160957320.2781@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:53412 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:34082 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753858Ab0LQAP7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Dec 2010 19:15:59 -0500
+	id S1752234Ab0LQASD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Dec 2010 19:18:03 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1012160957320.2781@dhcp-lab-213.englab.brq.redhat.com>
+In-Reply-To: <4D09978E.5050302@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 16, 2010 at 10:00:26AM +0100, Lukas Czerner wrote:
+On Wed, Dec 15, 2010 at 10:37:34PM -0600, Eric Sandeen wrote:
+> Before we go whole-hog on 64-bit e2fsprogs, I wonder if this
+> is worth considering as a last-minute addition to the 1.41
+> stream.  Currently, mke2fs will shave a block off an exactly-16T
+> device to fit*, but resize2fs does not do the same, leading
+> to some asymmetry.  This patch fixes that up, and allows 16T
+> devices to be handled more gracefully in offline resize.
+> (in fact resize2fs will not even open a 16T device, today).
 > 
-> which version of e2fsprogs are you referring to ? When I look at master
-> branch I can see than those changes are already in there. Except the check
-> if the new size is too large. Am I missing something ?
+> *commit 37d17a65ecb4615546b417038190a41bafca7c51
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-The 1.41.x series is on the "maint" branch.
+Thanks, added to the maint branch.
 
-The 1.42 version is on the main "master" and "next" branch, where
-"next" is where I'll check in things initially, and then "master"
-catches up with "next".  I took this from git, with the basic idea
-being that if there are people who are testing next, and people who
-are using the "master", hopefully problems get noticed and fixed
-before people are using "master" grab a commit.  To be honest there
-probably aren't enough people tracking next and master for this to
-make a huge amount of difference, but I'm following this scheme
-anyway.
-
-					- Ted
+						- Ted
