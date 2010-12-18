@@ -1,59 +1,97 @@
-From: Mike Swanson <mikeonthecomputer@gmail.com>
-Subject: Accidental mkfs.ext4 on wrong volume already formatted with ext4...
-Date: Sat, 18 Dec 2010 02:12:54 -0800
-Message-ID: <AANLkTi=a_CXxERvKVVVcvn4kCSa+NoEzuVN9Qxb25mXg@mail.gmail.com>
+From: Calvin Walton <calvin.walton@gmail.com>
+Subject: Re: Atomic non-durable file write API
+Date: Sat, 18 Dec 2010 17:15:43 -0500
+Message-ID: <1292710543.17128.14.camel@nayuki>
+References: <AANLkTing7+SK+pavFehR4AGDbRRfFwvvzNxgWQ3zRp+O@mail.gmail.com>
+	 <AANLkTimZtza_t8s1uOrE3BFfb-8FELjW95nrQz3RULWd@mail.gmail.com>
+	 <AANLkTikhDgJNny74nyBugg9cUmxC9j8Eo8YY4Fr3fm=5@mail.gmail.com>
+	 <4D0A7278.3080506@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Olaf van der Spek <olafvdspek@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:50961 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753514Ab0LRKMz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Dec 2010 05:12:55 -0500
-Received: by wyb28 with SMTP id 28so1453595wyb.19
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Dec 2010 02:12:54 -0800 (PST)
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:45679 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752416Ab0LRWPr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Dec 2010 17:15:47 -0500
+In-Reply-To: <4D0A7278.3080506@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hey,
+On Thu, 2010-12-16 at 15:11 -0500, Ric Wheeler wrote:
+> On 12/16/2010 07:22 AM, Olaf van der Spek wrote:
+> > On Thu, Dec 9, 2010 at 1:03 PM, Olaf van der Spek<olafvdspek@gmail.=
+com>  wrote:
+> >> Hi,
+> >>
+> >> Since the introduction of ext4, some apps/users have had issues wi=
+th
+> >> file corruption after a system crash. It's not a bug in the FS AFA=
+IK
+> >> and it's not exclusive to ext4.
+> >> Writing a temp file, fsync, rename is often proposed. However, the
+> >> durable aspect of fsync isn't always required and this way has oth=
+er
+> >> issues.
+> >> What is the recommended way for atomic non-durable (complete) file=
+ writes?
+> >>
+> >> I'm also wondering why FSs commit after open/truncate but before
+> >> write/close. AFAIK this isn't necessary and thus suboptimal.
+> > Somebody?
+> >
+> > Olaf
+>=20
+> Getting an atomic IO from user space down to storage is not really tr=
+ivial.
+>=20
+> What I think you would have to do is:
+>=20
+> (1) understand the alignment and minimum IO size of your target stora=
+ge device=20
+> which you can get from /sys/block (or libblkid)
 
-In some stupid late night adventures, I accidentally ran mke2fs on my
-normal /home volume (1.3TB, about 600GB used....) rather than a new
-volume I had intended... I quickly realized my mistake and did ^C
-though I'm not sure what my options are now for possible recovery....
+Hmm. I=E2=80=99m doing a little interpretation of what Olaf said here; =
+but I
+think you may have misunderstood the question?
 
-# mkfs.ext4 /dev/freedom/home
-mke2fs 1.41.12 (17-May-2010)
-Filesystem label=
-OS type: Linux
-Block size=4096 (log=2)
-Fragment size=4096 (log=2)
-Stride=0 blocks, Stripe width=0 blocks
-85196800 inodes, 340787200 blocks
-17039360 blocks (5.00%) reserved for the super user
-First data block=0
-Maximum filesystem blocks=0
-10400 block groups
-32768 blocks per group, 32768 fragments per group
-8192 inodes per group
-Superblock backups stored on blocks:
-	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
-	4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
-	102400000, 214990848
+He doesn=E2=80=99t care about whether or not the file is securely writt=
+en to
+disk (durable); however he doesn=E2=80=99t want to see any partially wr=
+itten
+files. In other words, something like
 
-Writing inode tables: ^C 41/10400
-#
+     1. Write to temp file
+     2. Rename temp file over original file
 
-"dumpe2fs -o superblock=20480000" seems to give the old superblock
-metadata still... filesystem create time, last write, etc, though
-running e2fsck results in this:
-# e2fsck -n -b 20480000 /dev/freedom/home
-e2fsck 1.41.12 (17-May-2010)
-Superblock has an invalid journal (inode 8).
-Clear? no
+Where the rename is only committed to disk once the entire contents of
+the file have been written securely =E2=80=93 whenever that may eventua=
+lly
+happen.
 
-e2fsck: Illegal inode number while checking ext3 journal for /dev/freedom/home
+He doesn=E2=80=99t want to synchronously wait for the file to be writte=
+n,
+because the new data isn=E2=80=99t particularly important. The only imp=
+ortant
+thing is that the file either contains the old or new data after a
+filesystem crash; not incomplete data. So, it=E2=80=99s more of an orde=
+ring
+problem, I think? (Analogous to putting some sort of barrier between th=
+e
+file write/close and the file rename to maintain ordering.)
 
+Hopefully I=E2=80=99ve interpreted the original question correctly, bec=
+ause this
+is something I would find interesting as well.
 
-I'm in a panic and I don't know what to do.. if anyone can help
-recover data from this accident it would be much appreciated
+--=20
+Calvin Walton <calvin.walton@gmail.com>
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
