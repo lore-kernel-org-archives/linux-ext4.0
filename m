@@ -1,71 +1,64 @@
-From: Olaf van der Spek <olafvdspek@gmail.com>
-Subject: Re: Atomic non-durable file write API
-Date: Sun, 19 Dec 2010 17:39:01 +0100
-Message-ID: <AANLkTimbkstru_nUxnd7R8Zg=ioB3skTntedq_dLxpZm@mail.gmail.com>
-References: <AANLkTing7+SK+pavFehR4AGDbRRfFwvvzNxgWQ3zRp+O@mail.gmail.com>
-	<AANLkTimZtza_t8s1uOrE3BFfb-8FELjW95nrQz3RULWd@mail.gmail.com>
-	<AANLkTikhDgJNny74nyBugg9cUmxC9j8Eo8YY4Fr3fm=5@mail.gmail.com>
-	<4D0A7278.3080506@gmail.com>
-	<1292710543.17128.14.camel@nayuki>
+From: Sandon Van Ness <sandon@van-ness.com>
+Subject: Re: Is EXT4 the right FS for > 16TB?
+Date: Sun, 19 Dec 2010 08:35:01 -0800
+Message-ID: <4D0E3435.30104@van-ness.com>
+References: <alpine.DEB.2.00.1012190649060.5393@p34.internal.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ric Wheeler <ricwheeler@gmail.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Calvin Walton <calvin.walton@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f43.google.com ([209.85.161.43]:61385 "EHLO
-	mail-fx0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756863Ab0LSQjD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Dec 2010 11:39:03 -0500
-In-Reply-To: <1292710543.17128.14.camel@nayuki>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Alan Piszcz <ap@solarrain.com>
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <alpine.DEB.2.00.1012190649060.5393@p34.internal.lan>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Dec 18, 2010 at 11:15 PM, Calvin Walton <calvin.walton@gmail.co=
-m> wrote:
-> Hmm. I=E2=80=99m doing a little interpretation of what Olaf said here=
-; but I
-> think you may have misunderstood the question?
+Was it me (houkouonchi) on hard forum? I asked if > 16 TiB support was
+considered stable on here a while back:
+
+Is >16TB support considered stable?
+
+This was 6 months ago so maybe things have changed. The thread:
+
+http://kerneltrap.org/mailarchive/linux-ext4/2010/5/28/6884603/thread
+
+Luckily JFS fixed there userland utilities bug of not being able to
+handle > 32TiB very shortly after this and I ended up going that route
+and I have yet to have any data loss or problems on my JFS volume:
+
+root@dekabutsu: 08:32 AM :~# df -H /data
+Filesystem             Size   Used  Avail Use% Mounted on
+/dev/sdd1               36T    22T    15T  61% /data
+root@dekabutsu: 08:32 AM :~#      
+
+At work with our hundreds/thousands of servers we will likely be going
+ext4 as we wont be using it on >16 TiB. I think its a huge improvement
+over ext3 but for my use JFS ended up being a better fit. I
+refuse/refused to go XFS.
+
+On 12/19/2010 03:52 AM, Justin Piszcz wrote:
+> Hi,
 >
-> He doesn=E2=80=99t care about whether or not the file is securely wri=
-tten to
-> disk (durable); however he doesn=E2=80=99t want to see any partially =
-written
-> files. In other words, something like
+> I've read a lot of posts regarding people who setup RAID volumes of
+> and up to around 16TB and EXT4 is typically used.
 >
-> =C2=A0 =C2=A0 1. Write to temp file
-> =C2=A0 =C2=A0 2. Rename temp file over original file
-
-Meta data, including file owner, should be preserved.
-Ideally, no temp files should be visible either.
-
-> Where the rename is only committed to disk once the entire contents o=
-f
-> the file have been written securely =E2=80=93 whenever that may event=
-ually
-> happen.
+> However, in various forums, people still ask what is the correct
+> filesystem for > 16TB?  I did read one post somewhere that stated the
+> ext4 developers did not recommend using ext4 for very large volumes,
+> is this still true?
 >
-> He doesn=E2=80=99t want to synchronously wait for the file to be writ=
-ten,
-> because the new data isn=E2=80=99t particularly important. The only i=
-mportant
-> thing is that the file either contains the old or new data after a
-> filesystem crash; not incomplete data. So, it=E2=80=99s more of an or=
-dering
-> problem, I think? (Analogous to putting some sort of barrier between =
-the
-> file write/close and the file rename to maintain ordering.)
+> I am looking at creating a 43TB volume possibly in the near future and
+> I have used XFS in the past, which works well and would probably not
+> have any problem with it; however, I have bitten quite a number of
+> times by XFS bugs in the past several years, so I was curious, how
+> does EXT4 perform on larger volumes, e.g., 20TB?
 >
-> Hopefully I=E2=80=99ve interpreted the original question correctly, b=
-ecause this
-> is something I would find interesting as well.
-
-Yes, you did.
-
-Olaf
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Are there any caveats / problems?
+>
+> Justin.
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
