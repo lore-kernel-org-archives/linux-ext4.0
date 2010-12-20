@@ -1,50 +1,64 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH]: icount: Replace the icount list by a two-level tree
-Date: Mon, 20 Dec 2010 12:46:09 -0700
-Message-ID: <3718B2E6-3AB9-4E47-A37D-00D0302A73D7@dilger.ca>
-References: <029B6C3A-FB77-4C56-84B3-49DDB81220B0@tudelft.nl>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>
-To: Christian Doerr <c.doerr@tudelft.nl>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25352] New: resizing ext4 will corrupt filesystem
+Date: Mon, 20 Dec 2010 20:56:46 GMT
+Message-ID: <bug-25352-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:40246 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932999Ab0LTTqM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Dec 2010 14:46:12 -0500
-In-Reply-To: <029B6C3A-FB77-4C56-84B3-49DDB81220B0@tudelft.nl>
+Received: from demeter2.kernel.org ([140.211.167.42]:55547 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933048Ab0LTU4r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Dec 2010 15:56:47 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id oBKKuk2V014793
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Dec 2010 20:56:46 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-12-20, at 11:30, Christian Doerr wrote:
-> I am writing you with a follow-up question to your response in this thread (http://comments.gmane.org/gmane.comp.file-systems.ext4/21646), where you're given a general rule of thumb on the memory usage of e2fsck.
-> 
-> My problem is similar to the one posted there (my thread is http://serverfault.com/questions/201554/e2fsck-aborts-memory-allocation-failed), except that I am checking a broken 9TB partition with now 12 GB of RAM (+ swap space, upgraded from 4GB) which still doesn't seem enough.
-> 
-> In regard to the bugzilla patch you're referring to, would you consider it possible to build an old set of libraries that would compile against this patch? If so, do you have any intuition when the libraries might have changed? After one month of debugging, I am ready to try anything...
+https://bugzilla.kernel.org/show_bug.cgi?id=25352
+
+           Summary: resizing ext4 will corrupt filesystem
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.37-rc6
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: kees@outflux.net
+        Regression: Yes
 
 
-Have you actually tested the patch that was posted in that thread?
-<http://article.gmane.org/gmane.comp.file-systems.ext4/20731/
+Using resize2fs on an ext4 will result in a corrupted filesystem. This is a
+regression (obviously).
 
-This addresses one aspect of the memory utilization problem, where libext2fs was trying to make a single allocation that was larger than 1/2 of RAM to handle hard-linked files, and preventing it from using the swap.  With the patch, the allocations are smaller, and can be swapped out individually instead of simply failing the allocation outright.
+I would expect "fsck" to be clean on a recently resized filesystem, but it is
+not:
 
-If this patch resolves your problem, we should look into getting this patch included in the upstream e2fsprogs.  Ted is going to be making a new release this week, so you may still have some time to get it included.
+Pass 5: Checking group summary information
+Block bitmap differences:  +(2621440--2621951) +(2654210--2655360)
++(2686976--2687487) +(2719744--2720255) +(2752512--2753023) +(2785280--2785791)
++(2818048--2818559) +(2850816--2851327) +(2883584--2884095) +(2916352--2916863)
++(2949120--2949631) +(2981888--2982399) +(3014656--3015167) +(3047424--3047935)
++(3080192--3080703) +(3112960--3113471) +(3145728--3146239) +(3178496--3179007)
++(3211264--3211775) +(3244032--3244543) +(3276800--3277311) +(3309568--3310079)
++(3342336--3342847) +(3375104--3375615) +(3407872--3408383) +(3440640--3441151)
++(3473408--3473919) +(3506176--3506687) +(3538944--3539455) +(3571712--3572223)
++(3604480--3604991) +(3637248--3637759) +(3670016--3670527) +(3702784--3703295)
++(3735552--3736063) +(3768320--3768831) +(3801088--3801599) +(3833856--3834367)
++(3866624--3867135) +(3899392--3899903)
 
+etc
 
-Looking at the error message you provided "Error while storing directory block information" (PR_1_ADD_DBLOCK), it looks like this is the result of an allocation failure in the function ext2fs_add_dir_block() function, which is a similar problem to the icount one fixed above, but in a different part of the code.  ext2fs_add_dir_block() is also trying to do a single large allocation to handle all of the directories in the filesystem, but is failing to be able to reallocate the array.
+Reproducer script attached...
 
-It looks like the ext2fs_dblist_*() functions would also allow changing the internal list implementation into a 2-level tree as was done for the icount structures, to avoid such large memory allocations.  It appears that the dblist is generated as an unsorted list initially (unlike icount), and is then later sorted with qsort().  If this was changed to a 2-level tree the qsort() would be done within individual leaf blocks, and then a merge sort would be needed to combine the blocks afterward.  I don't think it makes sense to create this initially as a sorted tree, because several different sort functions are used within e2fsck on this list.  This is unfortunately not work that I am able to do right now, but anyone with some C programming skills could tackle.
-
-
-Also, Lukas Czerner has been working on an "rbtree" patch for the bitmap memory reduction.  While the bitmap memory allocation may not be the problem being seen here, reducing the memory used by the various bitmaps would certainly make more memory available for other parts of e2fsck.  Note, however, that Lukas' code is currently in the early stages of development, so I would only suggest to run them in read-only mode (-n) until he is further along with development/testing.
-
-
-Cheers, Andreas
-
-
-
-
-
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
