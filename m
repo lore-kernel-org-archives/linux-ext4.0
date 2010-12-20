@@ -1,38 +1,35 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4: Take advantage of kmem_cache_zalloc() in
- ext4_init_io_end()
-Date: Sun, 19 Dec 2010 21:44:55 -0500
-Message-ID: <20101220024455.GB24990@thunk.org>
-References: <alpine.LNX.2.00.1012092257290.25880@swampdragon.chaosbits.net>
+Subject: Re: [PATCH] ext4: zero out nanosecond timestamps for small inodes
+Date: Sun, 19 Dec 2010 22:11:30 -0500
+Message-ID: <20101220031130.GE23626@thunk.org>
+References: <4CE76938.8050304@quo.to>
+ <4CEAAC4C.3070406@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: Jesper Juhl <jj@chaosbits.net>
+Cc: Jordan Russell <jr-list-2010@quo.to>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47090 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:53921 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751576Ab0LTCo7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 19 Dec 2010 21:44:59 -0500
+	id S1752374Ab0LTDLg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Dec 2010 22:11:36 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.LNX.2.00.1012092257290.25880@swampdragon.chaosbits.net>
+In-Reply-To: <4CEAAC4C.3070406@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 09, 2010 at 12:17:34PM -0000, Jesper Juhl wrote:
-> Take advantage of kmem_cache_zalloc(). Save a memset() call in 
-> ext4_init_io_end() and save a few bytes.
+On Mon, Nov 22, 2010 at 11:45:48AM -0600, Eric Sandeen wrote:
+> As reported by Jordan Russell:
 > 
-> Before:
->  [jj@dragon linux-2.6]$ size fs/ext4/page-io.o
->     text    data     bss     dec     hex filename
->     3016       0     624    3640     e38 fs/ext4/page-io.o
-> After:
->  [jj@dragon linux-2.6]$ size fs/ext4/page-io.o
->     text    data     bss     dec     hex filename
->     3000       0     624    3624     e28 fs/ext4/page-io.o
+> When nanosecond timestamp resolution isn't supported on an ext4
+> partition (inode size = 128), stat() appears to be returning
+> uninitialized garbage in the nanosecond component of timestamps.
 > 
-> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+> EXT4_INODE_GET_XTIME should zero out tv_nsec when EXT4_FITS_IN_INODE
+> evaluates to false.
+> 
+> Reported-by: Jordan Russell <jr-list-2010@quo.to>
+> Signed-of-by: Eric Sandeen <sandeen@redhat.com>
 
 Thanks, added to the ext4 patch queue.
 
