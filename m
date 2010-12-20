@@ -1,56 +1,176 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 07/15] libext2fs: fix error path in
- ext2fs_update_bb_inode()
-Date: Mon, 20 Dec 2010 11:01:16 -0500
-Message-ID: <20101220160116.GN23626@thunk.org>
-References: <1291020917-8671-1-git-send-email-namhyung@gmail.com>
- <1291020917-8671-8-git-send-email-namhyung@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: optimize ext4_check_dir_entry() with unlikely()
+ annotations
+Date: Mon, 20 Dec 2010 10:34:48 -0600
+Message-ID: <4D0F85A8.8060409@redhat.com>
+References: <1292815000-25500-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Namhyung Kim <namhyung@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:35728 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:60413 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932472Ab0LTQBS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Dec 2010 11:01:18 -0500
-Content-Disposition: inline
-In-Reply-To: <1291020917-8671-8-git-send-email-namhyung@gmail.com>
+	id S932512Ab0LTQev (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Dec 2010 11:34:51 -0500
+In-Reply-To: <1292815000-25500-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 29, 2010 at 05:55:09PM +0900, Namhyung Kim wrote:
-> If ext2fs_get_mem() on rec.block_buf fails we should not call
-> ext2fs_free_mem() on it.
+On 12/19/10 9:16 PM, Theodore Ts'o wrote:
+> This function gets called a lot for large directories, and the answer
+> is almost always "no, no, there's no problem".  This means using
+> unlikely() is a good thing.
+
+testing bonnie++ file creates on a ramdisk should give a good idea
+of how much or if this helps...
+
+-Eric
+
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/dir.c   |   42 ++++++++++++++++++++++++------------------
+>  fs/ext4/ext4.h  |    3 ++-
+>  fs/ext4/namei.c |   14 +++++++-------
+>  3 files changed, 33 insertions(+), 26 deletions(-)
 > 
-> Signed-off-by: Namhyung Kim <namhyung@gmail.com>
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index ece76fb..bd5d74d 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -60,7 +60,11 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
+>  	return (ext4_filetype_table[filetype]);
+>  }
+>  
+> -
+> +/*
+> + * Return 0 if the directory entry is OK, and 1 if there is a problem
+> + *
+> + * Note: this is the opposite of what ext2 and ext3 historically returned...
+> + */
+>  int __ext4_check_dir_entry(const char *function, unsigned int line,
+>  			   struct inode *dir,
+>  			   struct ext4_dir_entry_2 *de,
+> @@ -71,26 +75,28 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
+>  	const int rlen = ext4_rec_len_from_disk(de->rec_len,
+>  						dir->i_sb->s_blocksize);
+>  
+> -	if (rlen < EXT4_DIR_REC_LEN(1))
+> +	if (unlikely(rlen < EXT4_DIR_REC_LEN(1)))
+>  		error_msg = "rec_len is smaller than minimal";
+> -	else if (rlen % 4 != 0)
+> +	else if (unlikely(rlen % 4 != 0))
+>  		error_msg = "rec_len % 4 != 0";
+> -	else if (rlen < EXT4_DIR_REC_LEN(de->name_len))
+> +	else if (unlikely(rlen < EXT4_DIR_REC_LEN(de->name_len)))
+>  		error_msg = "rec_len is too small for name_len";
+> -	else if (((char *) de - bh->b_data) + rlen > dir->i_sb->s_blocksize)
+> +	else if (unlikely(((char *) de - bh->b_data) + rlen >
+> +			  dir->i_sb->s_blocksize))
+>  		error_msg = "directory entry across blocks";
+> -	else if (le32_to_cpu(de->inode) >
+> -			le32_to_cpu(EXT4_SB(dir->i_sb)->s_es->s_inodes_count))
+> +	else if (unlikely(le32_to_cpu(de->inode) >
+> +			le32_to_cpu(EXT4_SB(dir->i_sb)->s_es->s_inodes_count)))
+>  		error_msg = "inode out of bounds";
+> +	else
+> +		return 0;
+>  
+> -	if (error_msg != NULL)
+> -		ext4_error_inode(dir, function, line, bh->b_blocknr,
+> -			"bad entry in directory: %s - "
+> -			"offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
+> -			error_msg, (unsigned) (offset%bh->b_size), offset,
+> -			le32_to_cpu(de->inode),
+> -			rlen, de->name_len);
+> -	return error_msg == NULL ? 1 : 0;
+> +	ext4_error_inode(dir, function, line, bh->b_blocknr,
+> +			 "bad entry in directory: %s - "
+> +			 "offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
+> +			 error_msg, (unsigned) (offset%bh->b_size), offset,
+> +			 le32_to_cpu(de->inode),
+> +			 rlen, de->name_len);
+> +	return 1;
+>  }
+>  
+>  static int ext4_readdir(struct file *filp,
+> @@ -194,8 +200,8 @@ revalidate:
+>  		while (!error && filp->f_pos < inode->i_size
+>  		       && offset < sb->s_blocksize) {
+>  			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
+> -			if (!ext4_check_dir_entry(inode, de,
+> -						  bh, offset)) {
+> +			if (ext4_check_dir_entry(inode, de,
+> +						 bh, offset)) {
+>  				/*
+>  				 * On error, skip the f_pos to the next block
+>  				 */
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 17baecb..49f1cea 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1639,7 +1639,8 @@ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+>  				  struct ext4_dir_entry_2 *,
+>  				  struct buffer_head *, unsigned int);
+>  #define ext4_check_dir_entry(dir, de, bh, offset) \
+> -	__ext4_check_dir_entry(__func__, __LINE__, (dir), (de), (bh), (offset))
+> +	unlikely(__ext4_check_dir_entry(__func__, __LINE__, (dir), (de), \
+> +					(bh), (offset)))
+>  extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+>  				    __u32 minor_hash,
+>  				    struct ext4_dir_entry_2 *dirent);
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 2030864..e275464 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -581,9 +581,9 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+>  					   dir->i_sb->s_blocksize -
+>  					   EXT4_DIR_REC_LEN(0));
+>  	for (; de < top; de = ext4_next_entry(de, dir->i_sb->s_blocksize)) {
+> -		if (!ext4_check_dir_entry(dir, de, bh,
+> -					(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
+> -						+((char *)de - bh->b_data))) {
+> +		if (ext4_check_dir_entry(dir, de, bh,
+> +				(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
+> +					 + ((char *)de - bh->b_data))) {
+>  			/* On error, skip the f_pos to the next block. */
+>  			dir_file->f_pos = (dir_file->f_pos |
+>  					(dir->i_sb->s_blocksize - 1)) + 1;
+> @@ -820,7 +820,7 @@ static inline int search_dirblock(struct buffer_head *bh,
+>  		if ((char *) de + namelen <= dlimit &&
+>  		    ext4_match (namelen, name, de)) {
+>  			/* found a match - just to be sure, do a full check */
+> -			if (!ext4_check_dir_entry(dir, de, bh, offset))
+> +			if (ext4_check_dir_entry(dir, de, bh, offset))
+>  				return -1;
+>  			*res_dir = de;
+>  			return 1;
+> @@ -1269,7 +1269,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+>  		de = (struct ext4_dir_entry_2 *)bh->b_data;
+>  		top = bh->b_data + blocksize - reclen;
+>  		while ((char *) de <= top) {
+> -			if (!ext4_check_dir_entry(dir, de, bh, offset))
+> +			if (ext4_check_dir_entry(dir, de, bh, offset))
+>  				return -EIO;
+>  			if (ext4_match(namelen, name, de))
+>  				return -EEXIST;
+> @@ -1636,7 +1636,7 @@ static int ext4_delete_entry(handle_t *handle,
+>  	pde = NULL;
+>  	de = (struct ext4_dir_entry_2 *) bh->b_data;
+>  	while (i < bh->b_size) {
+> -		if (!ext4_check_dir_entry(dir, de, bh, i))
+> +		if (ext4_check_dir_entry(dir, de, bh, i))
+>  			return -EIO;
+>  		if (de == de_del)  {
+>  			BUFFER_TRACE(bh, "get_write_access");
+> @@ -1919,7 +1919,7 @@ static int empty_dir(struct inode *inode)
+>  			}
+>  			de = (struct ext4_dir_entry_2 *) bh->b_data;
+>  		}
+> -		if (!ext4_check_dir_entry(inode, de, bh, offset)) {
+> +		if (ext4_check_dir_entry(inode, de, bh, offset)) {
+>  			de = (struct ext4_dir_entry_2 *)(bh->b_data +
+>  							 sb->s_blocksize);
+>  			offset = (offset | (sb->s_blocksize - 1)) + 1;
 
-Thanks for pointing this out.  I fixed this in a slightly simpler way.
-
-       	   	    	       	       	    - Ted
-
-commit 2150278fa25f3fe8b8f29835ccd3079b608bb825
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Dec 20 10:57:29 2010 -0500
-
-    libext2fs: fix potential free() of garbage in ext2fs_update_bb_inode()
-    
-    There was a potential of freeing an uninitialized pointer in
-    rec.block_buf, which was pointed out by Namhyung Kim <namhyung@gmail.com>
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/lib/ext2fs/bb_inode.c b/lib/ext2fs/bb_inode.c
-index 0b79b16..0b6c3dd 100644
---- a/lib/ext2fs/bb_inode.c
-+++ b/lib/ext2fs/bb_inode.c
-@@ -65,8 +65,7 @@ errcode_t ext2fs_update_bb_inode(ext2_filsys fs, ext2_badblocks_list bb_list)
- 	if (!fs->block_map)
- 		return EXT2_ET_NO_BLOCK_BITMAP;
- 
--	rec.bad_block_count = 0;
--	rec.ind_blocks_size = rec.ind_blocks_ptr = 0;
-+	memset(&rec, 0, sizeof(rec));
- 	rec.max_ind_blocks = 10;
- 	retval = ext2fs_get_array(rec.max_ind_blocks, sizeof(blk_t),
- 				&rec.ind_blocks);
