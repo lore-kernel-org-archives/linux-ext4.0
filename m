@@ -1,48 +1,43 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [Bug 25352] New: resizing ext4 will corrupt filesystem
-Date: Tue, 21 Dec 2010 13:28:34 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1012211327180.6010@dhcp-lab-213.englab.brq.redhat.com>
-References: <20101221033209.GA6924@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25352] resizing ext4 will corrupt filesystem
+Date: Tue, 21 Dec 2010 12:31:35 GMT
+Message-ID: <201012211231.oBLCVZlw000460@demeter1.kernel.org>
+References: <bug-25352-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54297 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750987Ab0LUM3C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Dec 2010 07:29:02 -0500
-In-Reply-To: <20101221033209.GA6924@thunk.org>
+Received: from demeter1.kernel.org ([140.211.167.39]:59679 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750776Ab0LUMbg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Dec 2010 07:31:36 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oBLCVavI000461
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Dec 2010 12:31:36 GMT
+In-Reply-To: <bug-25352-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 20 Dec 2010, Ted Ts'o wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=25352
 
-> On Mon, Dec 20, 2010 at 08:56:46PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
-> > 
-> > Using resize2fs on an ext4 will result in a corrupted filesystem. This is a
-> > regression (obviously).
-> 
-> Yes, this is a regression new to 2.6.37-rc1, which was introduced by
-> commit a31437b85: ext4: use sb_issue_zeroout in setup_new_group_blocks.
-> 
-> When we replaced the loop zero'ing the inode table blocks with
-> sb_issue_zeroout, we accidentally also removed this little tidbit:
-> 
-> -               ext4_set_bit(bit, bh->b_data);
-> 
-> ... which was responsible for setting the block allocation bitmap to
-> reserve the block descriptor blocks and inode table blocks.  Oops...
-> 
-> I believe this patch should fix things.
-> 
-> 						- Ted
-> 
-> 
-> 
 
+Lukas Czerner <lczerner@redhat.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |lczerner@redhat.com
+
+
+
+
+--- Comment #5 from Lukas Czerner <lczerner@redhat.com>  2010-12-21 12:31:33 ---
 Oops indeed. Ted, thanks for the patch, it seems to fix the problem
 completely.
 
 -Lukas
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
