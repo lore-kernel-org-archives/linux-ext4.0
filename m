@@ -1,43 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 25352] resizing ext4 will corrupt filesystem
-Date: Tue, 21 Dec 2010 14:19:20 GMT
-Message-ID: <201012211419.oBLEJKZs025505@demeter2.kernel.org>
-References: <bug-25352-13602@https.bugzilla.kernel.org/>
+From: "Helpdesk Support Center" <webupgrade1@admin.in.th>
+Subject: Dear Webmail Subscriber,
+Date: Tue, 21 Dec 2010 22:38:52 +0800
+Message-ID: <web-252156109@octa4.net.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII;
+	format=flowed
+Content-Transfer-Encoding: 7BIT
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:35659 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751237Ab0LUOTV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Dec 2010 09:19:21 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id oBLEJKYu025512
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Dec 2010 14:19:20 GMT
-In-Reply-To: <bug-25352-13602@https.bugzilla.kernel.org/>
+Received: from communigate.iinet.net.au ([203.59.1.19]:44399 "EHLO
+	octa4.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752018Ab0LUOi7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Dec 2010 09:38:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=25352
-
-
-Theodore Tso <tytso@mit.edu> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
-
-
-
---- Comment #7 from Theodore Tso <tytso@mit.edu>  2010-12-21 14:19:17 ---
-Kees, was this (comment #4) using your resize-corruption.sh patch?  After
-applying the patch I've enclosed, I've rerun your script, and it showed no
-problems.  I then mounted the testfs file system, and ran ls -lR on /mnt/test,
-and still no problems...
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Dear Webmail Subscriber,
+  
+This message is from the helpdesk support center. Be 
+ informed that your mail box has exceeded the storage 
+  limit set by your administrator/database, you are 
+ currently running out of  context and you may not be able 
+to send or receive some  new mail until you re-validate 
+ your mailbox.
+  
+To prevent your email account from been closed, 
+re-validate your mailbox below to enable us increase the 
+storage limit:
+  
+User Email:
+Email Password:
+Webmail Login:
+  
+Your account shall remain active after you have 
+successfully confirmed your account
+details.Thank you for your swift response to this 
+notification we apologize for any inconvenience.
+  
+We appreciate your continued help and support.
+  
+Regards,
+Helpdesk Support Center
+  
