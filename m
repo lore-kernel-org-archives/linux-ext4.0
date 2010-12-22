@@ -1,86 +1,50 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: Questions concerning ext2 filesystem:  ext2_statfs
-Date: Wed, 22 Dec 2010 10:01:07 -0700
-Message-ID: <F6FD8E03-CEEF-4551-8164-C03492D25275@dilger.ca>
-References: <FPEIIEKCABPOOBGGCOCHIEBLDHAA.bjoern.slotkowski@imc-berlin.de>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: do not clear resize inode for 0 resvd blocks
+Date: Wed, 22 Dec 2010 13:55:01 -0500
+Message-ID: <20101222185501.GA30115@thunk.org>
+References: <4D111CD5.2040800@redhat.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Bjoern Slotkowski <bjoern.slotkowski@imc-berlin.de>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:54947 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753256Ab0LVRBL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Dec 2010 12:01:11 -0500
-In-Reply-To: <FPEIIEKCABPOOBGGCOCHIEBLDHAA.bjoern.slotkowski@imc-berlin.de>
+Received: from thunk.org ([69.25.196.29]:49296 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751570Ab0LVSzE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Dec 2010 13:55:04 -0500
+Content-Disposition: inline
+In-Reply-To: <4D111CD5.2040800@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2010-12-22, at 05:14, Bjoern Slotkowski wrote:
-> When looking for free blocks and inodes in function ext2_statfs the
-> overhead, free inodes and free blocks are newly calculated by iterating
-> through all inodes and blocks and look if they are free or not.
+On Tue, Dec 21, 2010 at 03:32:05PM -0600, Eric Sandeen wrote:
+> I ran into odd behavior where mkfs.ext4 of a 16T filesystem would
+> create a resize inode with 0 reserved blocks, and mark the resize_inode
+> feature.
 > 
-> On the other hand free inodes and free blocks are held in the
-> structure-members s_freeinode_count and s_free_block_count of the
-> superblock info.
+> A subsequent slight downward resize of the filesystem would remove
+> the resize inode, making any further offline resizing impossible.
 > 
+> This is especially odd in light of the fact that a large downward
+> resize (say, to 8T) will actually add blocks to the resize inode -
+> so a small resize removes it, a large resize expands it ...
 > 
-> Now my questions:
+> commit 8ade268cf2fde8629b51bfd1c044a83db88234cd had added this:
 > 
-> Why is the overhead calculated ?
-> Isn't it is constant since filling the superblock ?
-> Wy are free blocks and free inodes are calculated every time,
-> when they are held in s_freeinode_count and s_free_block_count ?
-
-They are not calculated every time ext2_statfs() is called.  This
-overhead is only calculated if sbi->s_blocks_last does not match
-the total number of blocks the last time the function was called.
-
-Normally this means the overhead is computed once when the filesystem
-is first mounted, and never computed again unless the filesystem is
-resized online.
-
-> Isn't it is possible to use these variables directly ?
-
-No, because the overhead is unrelated to the "free" blocks count,
-but rather the difference between the "free" and "avail" blocks.
-
-> The background for these questions is as it always is:
-> We have a problem using 320 GB harddrives instead of 80 GB harddrives
-> with ext2.
+>   If the filesystem is grown to the point where the resize_inode is no
+>   longer needed, clean it up properly so e2fsck doesn't have to.
 > 
-> Before writing to the harddrive our software looks for enough space
-> to make sure the data can be stored safely.
-> This leads to heavy performance problems when using larger disks.
-
-What version of the kernel are you using?
-
-> We can reduce the check for enough space to every 10th or 100th write
-> operation, but at some point our software has to check and this may
-> lead to a loss of data because the system is busy calculating the free
-> inodes and blocks.
-
-Isn't that really the filesystem's job, and not the job of your software?
-The job of the software is to write until ENOSPC is returned by the
-filesystem.  There is no need to call statfs() at all before a write.
-
-> Our solution will be to create a patch using the structure members
-> s_freeinode_count, s_free_block_count
-> and create a new member s_overhead_count and use them directly.
-> s_overhead_count is calculated once when filling the superblock.
+> but, it seems e2fsck does not care about this situation, either.
 > 
-> Is this a good solution or are there circumstances which can lead to a
-> misbehavior ?
+> So, simply leave the resize_inode intact in this case, and everything
+> seems to be happy.
+> 
+> Note, this is for the 1.41.xx branch.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Please see any newer kernel release.  There is no scanning done anymore.
-I see commit 2235219b7721b8e74de6841e79240936561a2b63 in 2007 implemented
-this, which is included in vanilla 2.6.23.
+Thanks, applied.
 
-Cheers, Andreas
-
-
-
+						- Ted
 
 
