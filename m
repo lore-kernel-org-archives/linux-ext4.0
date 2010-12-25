@@ -1,80 +1,145 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: confused by delayed allocation and ordered journal
-Date: Sat, 25 Dec 2010 18:43:27 +0200
-Message-ID: <AANLkTikRNrnrzam6DugT-uyfBeNZqJD1yr6nMzYLciZx@mail.gmail.com>
-References: <AANLkTi=2S3JsAOP290_1ASMNGKMFZK+Srt4v5Qs474dB@mail.gmail.com>
-	<20101225143916.GD2595@thunk.org>
+From: Nick Piggin <npiggin@gmail.com>
+Subject: Re: Atomic non-durable file write API
+Date: Sun, 26 Dec 2010 04:25:28 +1100
+Message-ID: <AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
+References: <1292710543.17128.14.camel@nayuki>
+	<AANLkTimbkstru_nUxnd7R8Zg=ioB3skTntedq_dLxpZm@mail.gmail.com>
+	<AANLkTi=BW85d6VpGAt0KaGES+4dRQmsvRyFamE=ChEXE@mail.gmail.com>
+	<20101224085126.2a7ff187@notabene.brown>
+	<20101223222206.GD12763@thunk.org>
+	<4D13E98D.8070105@ontolinux.com>
+	<20101224004825.GF12763@thunk.org>
+	<4D13F09D.4010703@ontolinux.com>
+	<20101224095105.GG12763@thunk.org>
+	<AANLkTimPZ_Hq2Ye4mc60WKTWZNU4Zz3yZaPzfARYa6jh@mail.gmail.com>
+	<20101225031529.GA2595@thunk.org>
+	<AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>
+	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>
+	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:43330 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751438Ab0LYQn2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Dec 2010 11:43:28 -0500
-Received: by qyj19 with SMTP id 19so9306526qyj.19
-        for <linux-ext4@vger.kernel.org>; Sat, 25 Dec 2010 08:43:28 -0800 (PST)
-In-Reply-To: <20101225143916.GD2595@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Olaf van der Spek <olafvdspek@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Dec 25, 2010 at 4:39 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> On Sat, Dec 25, 2010 at 09:15:28PM +0800, Yongqiang Yang wrote:
+On Sun, Dec 26, 2010 at 2:24 AM, Olaf van der Spek <olafvdspek@gmail.com> wrote:
+> On Sat, Dec 25, 2010 at 12:33 PM, Nick Piggin <npiggin@gmail.com> wrote:
+>>> It's not just about dpkg, I'm still very interested in answers to my
+>>> original questions.
 >>
->> I found that if a block'allocation is delayed, and is not allocated
->> when journal flushes it, then journal just redirties it and return i=
-n
->> journal_submit_data_buffers.
+>> Arbitrary atomic but non-durable file write operation?
+>
+> No, not arbitrary writes. It's about complete file writes.
+
+You still haven't defined exactly what you want.
+
+
+> Also, don't forget my question about how to preserve meta-data
+> including file owner.
+>
+>> That's significantly
+>> different to how any part of the pagecache or filesystem or syscall API
+>> is set up. Writes are not atomic, and syncs are only for durability (not
+>> atomicity), atomicity is typically built on top of these durable points.
 >>
->> If I understand right, how to guarantee that the journal mode is ord=
-ered?
+>> That is quite fundamental functionality and suits simple
+>> implementations of filesystems and writeback caches.
+>>
+>> If you start building complex atomicity semantics, then you get APIs
 >
-> The primary goal of ordered mode is to make sure that stale data is
-> not exposed after a crash. =A0To the extent that delayed allocation a=
-lso
-> achieves this goal, it's fine. =A0The fact that ext3 forced data bloc=
-ks
-> out as part of its jbd commit function was always an implementation
-> detail.
+> Atomic semantics are not (that) complex.
 
-Hi Ted,
-
-=46YI, Yongqiang is researching move-on-write of extent mapped files
-data and opportunistic de-fragmentation on rewrite
-and this is the context of his question.
-
-As I mentioned to you on Plumbers the ordering requirements for move-on=
--write
-are a bit stronger than "not exposing un-initialized data".
-In the process of move-on-write, the extent must always map written dat=
-a blocks
-and traditional 'ordered' mode can be used to guaranty that.
-
-Yongqiang,
-
-I believe in the case of delalloc move-on-rewrite, on write_begin(),
-you only need to reserve blocks (in-memory)
-and on writepages(), you do the actual move-on-write, modifying the
-extent from one valid data blocks range to another.
+That is something to be argued over patches. What is not in question
+is that an atomic API is more complex than none :)
 
 
+>> which can't be supported by all filesystems, Linux specific, adds
+>> complexity from the API through to the pagecache and to the
+>> filesystems, and is Linux specific.
 >
-> In the long run we'll be getting rid of ordered mode even more so, by
-> writing the data block first, and only then updating the file system
-> metadata. =A0At that point there will be no ordered flushing at all, =
-and
-> in fact ordered mode will go away as a journal mode supported by ext4=
-=2E
+>> Compare that to using cross platform, mature and well tested sqlite
+>> or bdb, how much reason do we have for implementing such APIs?
 >
+> Like I said before, it's not about DB-like functionality but about
+> complete file writes/updates. For example, I've got a file in an
+> editor and I want to save it.
 
-And that can simplify move-on-write implementation as well.
-But until that happens, snapshots will require 'ordered' mode.
+I don't understand your example, because in that case you surely
+want durability.
 
-Amir.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+>> It's not that it isn't possible, it's that there is no way we're adding
+>> such a thing unless it really helps and is going to be widely used.
+>>
+>> What exact use case do you have in mind, and what exact API
+>> semantics do you want, anyway?
+>
+> Let me copy the original post:
+> Writing a temp file, fsync, rename is often proposed. However, the
+> durable aspect of fsync isn't always required
+
+So you want a way to atomically replace the contents of a file with
+new contents, in a way which completes asynchronously and lazily,
+and your new contents will eventually just appear sometime after
+they are guaranteed to be on disk?
+
+You would need to create an unlinked inode with dirty data, and then
+have callbacks from pagecache writeback checking when the inode
+is cleaned, and then call appropriate filesystem routines to sync and
+issue barriers etc, and rename the old name to the new inode.
+
+You will also need to have a chain of inodes representing ordering of
+the updates so the renames can be performed in the right order. And
+add some hooks to solve the metadata issue.
+
+Then what happens when you fsync the original file? What if the
+original file is renamed or unlinked? How do you sync the outstanding
+queue of updates?
+
+Once you solve all those problems, then people will ask you to now
+solve them for multiple files at once because they also have some
+great use-case that is surely nothing like databases.
+
+Please tell us what for. If you have immediate need to replace the
+name, then you need the durability of fsync. If you don't have
+immediate need, then you can use another name, surely (until it
+comes time you want to switch names, at that point you want
+durability so you fsync then rename).
+
+
+> and this way has other
+> issues, like losing file meta-data.
+
+Yes that's true, if you're not owner you may not be able to recreate
+most of it. Did you need to?
+
+
+> What is the recommended way for atomic non-durable (complete) file writes?
+
+There really isn't one. Like I said, there is not much atomicity
+semantics in the API, which works really well because it is simple
+to implement and to use (although apparently still far too complex
+for some programmers to get right).
+
+If we start adding atomicity beyond fundamental requirement of
+namespace operations, then where does it end? Why would it make
+sense to add atomicity for writes to one file, but not writes to 2 files?
+What if you require atomic multiple modifications to directory
+structure as well as file updates? And why only writes? What about
+atomic reads of several things? What isolation level should all of that
+have, and how to solve deadlocks?
+
+
+> I'm also wondering why FSs commit after open/truncate but before
+> write/close. AFAIK this isn't necessary and thus suboptimal.
+
+I don't know, can you expand on this? What fses are you talking
+about, and what behaviour.
+
+Thanks,
+Nick
