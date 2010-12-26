@@ -1,7 +1,7 @@
-From: Neil Brown <neilb@suse.de>
+From: Amir Goldstein <amir73il@gmail.com>
 Subject: Re: Atomic non-durable file write API
-Date: Sun, 26 Dec 2010 08:40:07 +1100
-Message-ID: <20101226084007.7939aabc@notabene.brown>
+Date: Sun, 26 Dec 2010 11:59:43 +0200
+Message-ID: <AANLkTi=OqXqa+76H2f8oygm1Y6iZUY+NZ=K3Sp_x=AfH@mail.gmail.com>
 References: <AANLkTing7+SK+pavFehR4AGDbRRfFwvvzNxgWQ3zRp+O@mail.gmail.com>
 	<AANLkTimZtza_t8s1uOrE3BFfb-8FELjW95nrQz3RULWd@mail.gmail.com>
 	<AANLkTikhDgJNny74nyBugg9cUmxC9j8Eo8YY4Fr3fm=5@mail.gmail.com>
@@ -9,111 +9,67 @@ References: <AANLkTing7+SK+pavFehR4AGDbRRfFwvvzNxgWQ3zRp+O@mail.gmail.com>
 	<1292710543.17128.14.camel@nayuki>
 	<AANLkTimbkstru_nUxnd7R8Zg=ioB3skTntedq_dLxpZm@mail.gmail.com>
 	<AANLkTi=BW85d6VpGAt0KaGES+4dRQmsvRyFamE=ChEXE@mail.gmail.com>
-	<20101224085126.2a7ff187@notabene.brown>
-	<AANLkTikHzECjyNNJC=-0x+-WgNrY=-PjzJnVt=G2NHX_@mail.gmail.com>
+	<20101223224309.GH18264@dastard>
+	<20101223224740.GE12763@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: Dave Chinner <david@fromorbit.com>, "Ted Ts'o" <tytso@mit.edu>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 To: Olaf van der Spek <olafvdspek@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTikHzECjyNNJC=-0x+-WgNrY=-PjzJnVt=G2NHX_@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:58747 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751729Ab0LZJ7o convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Dec 2010 04:59:44 -0500
+In-Reply-To: <20101223224740.GE12763@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 24 Dec 2010 12:17:46 +0100 Olaf van der Spek <olafvdspek@gmail.=
-com>
-wrote:
+On Fri, Dec 24, 2010 at 12:47 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Fri, Dec 24, 2010 at 09:43:09AM +1100, Dave Chinner wrote:
+>>
+>> So you are looking for something like:
+>>
+>> http://developer.apple.com/library/mac/#DOCUMENTATION/Darwin/Referen=
+ce/ManPages/man2/exchangedata.2.html
+>>
+>
+> It doesn't look like the man page for exchangedata() states what
+> happens if the system crashes. =A0It says "atomic" the same way the
+> rename() system call says it is "atomic".... i.e., from the
+> perspective of processes running on the system see either the
+> pre-exchange or post-exchange state.
+>
 
-> On Thu, Dec 23, 2010 at 10:51 PM, Neil Brown <neilb@suse.de> wrote:
-> > You are asking for something that doesn't exist, which is why no-on=
-e can tell
-> > you want the answer is.
->=20
-> It seems like a very common and basic operation. If it doesn't exist
-> IMO it should be created.
->=20
-> > The only mechanism for synchronising different filesystem operation=
-s is
-> > fsync. =A0You should use that.
-> >
-> > If it is too slow, use data journalling, and place your journal on =
-a
-> > small low-latency device (NVRAM??)
->=20
-> This isn't about some DB-like app, it's about normal file writes, lik=
-e
-> archive extractions, compiling, editors, etc.
->=20
+Since we already have EXT4_IOC_MOVE_EXT ioctl, it might as well be
+used for the purpose of 'safe save'
+in the same manner that exachangedata() works.
 
-Yes, it might be nice to have a very low cost way to make those safer a=
-gainst
-corruption during a crash.
-It would have to be *very* low cost as in most cases the cost of cleani=
-ng up
-after the crash instead (e.g. 'make clean') is quite low.  But people d=
-o
-sometime edit /etc/init.d files with an ordinary editor and it would be
-rather embarrassing if a crash just at the wrong time left some critica=
-l file
-incomplete, and maybe it would be easier to teach editors to fsync befo=
-re
-rename for files in /etc .....
+Whether or not the new data is durable is entirely up to the
+programmer to decide.
+Perhaps all that is missing is an fdatawait(fd) API or fdatawait_async(=
+fd) API,
+which should be very simple to implement (right?).
 
-So what would this mechanism really look like?  I think the proposal is=
- to
-delay committing the rename until the writeout of the file is complete,
-without accelerating the writeout.
-That would probably require delaying all updates to the directory until=
- the
-writeout was complete, as trying to reason about which changes were dep=
-endent
-and which were independent is unlikely to be easy.
+So an editor that doesn't want to be too pushy, will just save a temp f=
+ile,
+wait for it to sync on the system's free time and then swap the data wi=
+th
+the original file in an atomic manner, which preserves metadata.
 
-So as soon as you rename a file, you create a dependency between the fi=
-le and
-the directory such that no update for the directory may be written whil=
-e any
-page in the file is dirty.  Conversely, any fsync of the directory woul=
-d
-fsync the file as well.
+If the system takes too long to sync, the editor can always issue
+fdatasync(fd) when it is tired of waiting.
 
-Any write to the file should probably break the dependency as you can n=
-o
-longer be sure what exactly the rename was supposed to protect.
+Will that make you happy, Olaf?
+If you are not happy from the new copy not being available to all
+system users until
+fdatasync is done, then we will call it "atomic, isolated non-durable
+file write API", OK?
 
-I suspect that much of the infrastructure for this could be implemented=
- in
-the VFS/VM.  Certainly the dependency linkage between inodes, created o=
-n
-rename, destroyed on write or fsync or when writeout on the inode compl=
-etes,
-and the fsync dependency could be common code.  Preventing writeout of
-directories with dependent files would need some fs interaction. You co=
-uld
-probably prototype in ext2 quite easily to do some testing and collecti=
-on
-some numbers on overhead.
-
-I think this would be an interesting project for someone to do and I wo=
-uld be
-happy to review any patches.  Whether it ever got further than an inter=
-esting
-project would depend very much on how intrusive it was to other filesys=
-tems,
-how much over head it caused, and what actual benefits resulted.
-If anyone wanted to pursue this idea, they would certainly need to addr=
-ess
-each of those in their final proposal.
-
-I think there could be room for improved transactional semantics in Lin=
-ux
-filesystems.  This might be what they should look like ... don't know y=
-et.
-
-NeilBrown
+Amir.
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
