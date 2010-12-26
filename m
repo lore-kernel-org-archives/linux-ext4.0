@@ -1,7 +1,7 @@
 From: Olaf van der Spek <olafvdspek@gmail.com>
 Subject: Re: Atomic non-durable file write API
-Date: Sun, 26 Dec 2010 19:26:23 +0100
-Message-ID: <AANLkTimsTF7dvf6yMpkZjJG0HE=cZ0czLyc-Pjjuo_r=@mail.gmail.com>
+Date: Sun, 26 Dec 2010 19:51:23 +0100
+Message-ID: <AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
 References: <1292710543.17128.14.camel@nayuki>
 	<AANLkTimbkstru_nUxnd7R8Zg=ioB3skTntedq_dLxpZm@mail.gmail.com>
 	<AANLkTi=BW85d6VpGAt0KaGES+4dRQmsvRyFamE=ChEXE@mail.gmail.com>
@@ -18,58 +18,113 @@ References: <1292710543.17128.14.camel@nayuki>
 	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
 	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
 	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
-	<4D17656B.7010603@panasas.com>
-	<AANLkTinaAtrCYfusv59T3FE5A45A77R8oTMPpJUJs03p@mail.gmail.com>
-	<4D176CF6.7010208@panasas.com>
+	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: Nick Piggin <npiggin@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
+Cc: "Ted Ts'o" <tytso@mit.edu>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+To: Nick Piggin <npiggin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:63661 "EHLO
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:32965 "EHLO
 	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752393Ab0LZS0Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Dec 2010 13:26:25 -0500
-In-Reply-To: <4D176CF6.7010208@panasas.com>
+	with ESMTP id S1752331Ab0LZSvZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Dec 2010 13:51:25 -0500
+In-Reply-To: <AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Dec 26, 2010 at 5:27 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> Are you proposing to turn every single file into a symlink?
+On Sun, Dec 26, 2010 at 5:43 PM, Nick Piggin <npiggin@gmail.com> wrote:
+>> Do you not understand what is meant by a complete file write?
 >
-> Sure, a symlink and a "versioned" file for every object. Something similar
-> to the silly rename of nfs.
+> It is not a rigourous definition. What I understand it to mean may be
+> different than what you understand it to mean. Particularly when you
+> consider what the actual API should look like and interact with the rest
+> of the apis.
+
+f = open(..., O_ATOMIC, O_CREAT, O_TRUNC);
+write(...); // 0+ times
+abort/rollback(...); // optional
+close(f);
+
+> OK, so please show how it helps.
 >
-> Even if you have 1000 files that need the same atomicity treatment
-> that's not that bad. You should be able to devise a namespace policy
-> that makes all this nit and tidy.
+> If it is a multi-file/dir archive, then you could equally well come back in
+> an inconsistent state after crashing with some files extracted and
+> some not, without atomic-write-multiple-files-and-directories API.
 
-Nearly all files on the system need the atomicity treatment.
+True, but at least each file will be valid by itself. So no broken
+executables, images or scripts.
+Transactions involving multiple files are outside the scope of this discussion.
 
->> How would that solve the meta-data issue?
+>> Almost. Visibility to other process should be normal (I don't know the
+>> exact rules), but commit to disk may be deferred.
+>
+> That's pretty important detail. What is "normal"? Will a process
+> see old or new data from the atomic write before atomic write has
+> committed to disk?
+
+New data. Isn't that the current rule?
+
+> Is the atomic write guaranteed to take an atomic snapshot of file
+> and only specified updates?
+>
+> What happens to subsequent atomic and non atomic writes to the
+> file?
+
+It's about an atomic replace of the entire file data. So it's not like
+expecting a single write to be atomic.
+
+>>> Once you solve all those problems, then people will ask you to now
+>>> solve them for multiple files at once because they also have some
+>>> great use-case that is surely nothing like databases.
 >>
+>> I don't want to play the what if game.
 >
-> That's what I asked. Do you want to preserve the original's file
-> metat-data, or the meta-data of the owner of the new content?
-> In the first case you'll need a metat-data copy like tar is
-> using.
+> You must if you want to design a sane API.
 
-The original meta-data, of course. Including file owner. AFAIK not
-doable without root access.
+Providing transaction semantics for multiple files is a far broader
+proposal and not necessary for implement this proposal.
 
->> Olaf
+>> Temp file, rename has issues with losing meta-data.
 >
-> The point is to fsync/fdatasync on a background thread and continue
-> from there where the application is free to go on to the next step.
+> How about solving that easier issue?
 
-Not if it's the last thing a process does and another processes is
-waiting on it.
+That would be nice, but it's not the only issue.
+I'm not sure, but Ted appears to be saying temp file + rename (but no
+fsync) isn't guaranteed to work either.
+There's also the issue of not having permission to create the temp
+file, having to ensure the temp file is on the same volume (so the
+rename can work).
 
-> As if you had a notification when the commit was done (in the background).
-> So you make it an async pipeline model. The version-naming schem is so the
-> pipeline can get arbitrary big.
+>> It's simple to implement but it's not simple to use right.
 >
-> Boaz
+> You do not have the ability to have arbitrary atomic transactions to the
+> filesystem. If you show a problem of a half completed write after crash,
+> then I can show you a problem of any half completed multi-syscall
+> operation after crash.
+
+It's not about arbitrary transactions.
+
+> The simple thing is to properly clean up such things after a crash, and
+> just use an atomic commit somewhere to say whether the file operations
+> that just completed are now in a durable state. Either that or use an
+> existing code that does it right.
+
+That's not simple if you're talking about arbitrary processes and files.
+It's not even that simple if you're talking about DBs. They do
+implement it, but obviously that's not usable for arbitrary files.
+
+>>> If we start adding atomicity beyond fundamental requirement of
+>> The zero size issues of ext4 (before some patch). Presumably because
+>> some apps do open, truncate, write, close on a file. I'm wondering why
+>> an FS commits between truncate and write.
 >
+> I'm still not clear what you mean. Filesystem state may get updated
+> between any 2 syscalls because the kernel has no oracle or infinite
+> storage.
+
+It just seems quite suboptimal. There's no need for infinite storage
+(or an oracle) to avoid this.
+
+Olaf
