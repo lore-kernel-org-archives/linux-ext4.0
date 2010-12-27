@@ -1,53 +1,47 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
-Subject: Re: question about file space preallocation with fallocate
-Date: Mon, 27 Dec 2010 11:11:14 -0800
-Message-ID: <4D18E4D2.2040504@oracle.com>
-References: <AANLkTinRcYrMrOUYqqCM3Lkpnhinm4NXqzDg1p2p0+68@mail.gmail.com>	<4D18CA33.6050800@oracle.com> <AANLkTinEnRaOEqZM9inVyVYW=hh68BC05f6d4Z6Cp7JF@mail.gmail.com>
+From: Christian Stroetmann <stroetmann@ontolinux.com>
+Subject: Re: Atomic non-durable file write API
+Date: Mon, 27 Dec 2010 20:30:20 +0100
+Message-ID: <4D18E94C.3080908@ontolinux.com>
+References: <20101224095105.GG12763@thunk.org>	<AANLkTimPZ_Hq2Ye4mc60WKTWZNU4Zz3yZaPzfARYa6jh@mail.gmail.com>	<20101225031529.GA2595@thunk.org>	<AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>	<20101226221016.GF2595@thunk.org>	<AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>	<4D18B106.4010308@ontolinux.com> <AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Filipe David Manana <fdmanana@apache.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:22371 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753714Ab0L0TLw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Dec 2010 14:11:52 -0500
-In-Reply-To: <AANLkTinEnRaOEqZM9inVyVYW=hh68BC05f6d4Z6Cp7JF@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>,
+	Nick Piggin <npiggin@gmail.com>
+To: Olaf van der Spek <olafvdspek@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 12/27/2010 09:57 AM, Filipe David Manana wrote:
-> On Mon, Dec 27, 2010 at 5:17 PM, Sunil Mushran<sunil.mushran@oracle.com>  wrote:
->> fallocate() gives users the ability to allocate space instantly. One way
->> to compare would be to time just fallocate() with another program
->> writing zeros for that length.
+On the 27.12.2010 20:07, Olaf van der Spek wrote:
+> On Mon, Dec 27, 2010 at 4:30 PM, Christian Stroetmann
+> <stroetmann@ontolinux.com>  wrote:
+>>> Like I've said dozens of times, this is not about full DB functionality.
+>>> Why do you keep making false analogies?
+>> The analogy is not so wrong. The concepts atomicity and abort/rollback your
+>> are talking about are also concepts of the field of database management
+>> systems (DBMSs). And once you have established the Atomicity, which is the A
+>> of the principle ACID of DBMSs, you have the basis for establishing the
+>> rest, the CID.
 >>
->> But that's not the aim of the syscall. The aim is to allow the fs to
->> allocate
->> the space in as large chunks as possible to allow for better read
->> performance.
->>
->> If you don't do fallocate() and allow writes to allocate in small chunks,
->> as you are doing, the allocations on disks could be interleaved in face of
->> multiple processes doing the same. Fragmented allocations can only hurt
->> read performance.
->>
-> Thanks for the clarification Sunil. But preallocation of blocks
-> shouldn't also improve write operations? Since each write operation
-> will no longer cause the OS/filesystem to allocate blocks for the
-> file, therefore should be faster.
->
-> Also, any particular advice for improving write performance when all
-> the writes are done in append-only fashion?
+>> And you even went further into this DBMS direction by letting down the
+>> requirement of non-durability.
+> Of course the concepts are the same. That doesn't mean the analogy is valid.
 
-Even with meta-data journaling, the allocation overhead is tiny
-compared to the 1G data write overhead.
+Btw.: There is even no analogy: "The concepts are the same".
 
-Considering you are using ext4, you should benefit from delayed
-allocation. But for that you'll need to have enough memory and
-be running a 64-bit kernel. That way you wont be limited by the
-speed of the disk.
+>>> Still waiting on any hint for why that performance loss would happen.
+>> > From my point of view, the loss of performance depends on what is
+>> benchmarked in which way.
+> Maybe, but still no indication of why.
 
-Other option is submitting writes in larger chunks. Say 1MB rather
-than 1KB.
+If you have a solution, then you really should show other persons the 
+working source code.
+For me speaking: I like such technologies and I'm also interested in 
+your attempts.
+
+> Olaf
+
+Christian Stroetmann
