@@ -1,57 +1,52 @@
 From: Olaf van der Spek <olafvdspek@gmail.com>
-Subject: Re: Atomic file data replace API
-Date: Mon, 27 Dec 2010 19:34:01 +0100
-Message-ID: <AANLkTi=iiGXziDgKS0-eOdwz8fNkVLyCH8pUcLUFLTJX@mail.gmail.com>
-References: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
-	<AANLkTikXAFV6SjWT1gdsR9jZkV+zHr-eFZ0NVFrSEQdg@mail.gmail.com>
-	<AANLkTin6U1HRR3R8N9hLzkKbtEcG8RMSxLgtS84ZyCOC@mail.gmail.com>
-	<AANLkTim4JYmP1ECRzHzM90ZWA2NgEt5RSCN9nn0QJDC0@mail.gmail.com>
+Subject: Re: Atomic non-durable file write API
+Date: Mon, 27 Dec 2010 20:07:01 +0100
+Message-ID: <AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
+References: <20101224095105.GG12763@thunk.org>
+	<AANLkTimPZ_Hq2Ye4mc60WKTWZNU4Zz3yZaPzfARYa6jh@mail.gmail.com>
+	<20101225031529.GA2595@thunk.org>
+	<AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>
+	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>
+	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
+	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
+	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
+	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
+	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
+	<20101226221016.GF2595@thunk.org>
+	<AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>
+	<4D18B106.4010308@ontolinux.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:41216 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753797Ab0L0SeC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Dec 2010 13:34:02 -0500
-In-Reply-To: <AANLkTim4JYmP1ECRzHzM90ZWA2NgEt5RSCN9nn0QJDC0@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>,
+	Nick Piggin <npiggin@gmail.com>
+To: Christian Stroetmann <stroetmann@ontolinux.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4D18B106.4010308@ontolinux.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 27, 2010 at 6:20 PM, Amir Goldstein <amir73il@gmail.com> wrote:
->> Don't you agree it's undesirable to lose meta-data?
+On Mon, Dec 27, 2010 at 4:30 PM, Christian Stroetmann
+<stroetmann@ontolinux.com> wrote:
+>> Like I've said dozens of times, this is not about full DB functionality.
+>> Why do you keep making false analogies?
 >
-> Yes I agree. you can have my vote for "it's nice to have this",
-> but the fact that we did without it for so long must mean something...
-
-I'm not sure it means something positive.
-
-> Anyway, you need to convince someone to implement it
-> (unless you do it yourself), some developers to review it
-> and the maintainers to accept it, so unless you come up with 'a real
-> world problem',
-> the busy FS developers will not be bothered to accept 'the fix'.
-> Accepting new API's has a huge price of testing them and maintaining them
-> every release, so don't take the resistance personally.
+> The analogy is not so wrong. The concepts atomicity and abort/rollback your
+> are talking about are also concepts of the field of database management
+> systems (DBMSs). And once you have established the Atomicity, which is the A
+> of the principle ACID of DBMSs, you have the basis for establishing the
+> rest, the CID.
 >
-> Now let's say that you decide to focus on the problem of:
-> 'safe editor save to a file which is not owned by you but writable by you'.
-> You may want to look for a specific editor which has 'safe save' functionality
-> (maybe LibreOffice?) and query the developers if they would like the new feature
-> and if they would support your proposal.
+> And you even went further into this DBMS direction by letting down the
+> requirement of non-durability.
+
+Of course the concepts are the same. That doesn't mean the analogy is valid.
+
+>> Still waiting on any hint for why that performance loss would happen.
 >
-> That is the way kernel development works - and for good reasons.
+> From my point of view, the loss of performance depends on what is
+> benchmarked in which way.
 
-I agree in general you need a good use case. But AFAIK FS devs are
-aware of many apps not doing it the right way. So I expected them to
-have a FAQ entry that shows what this right way is.
-Ted says a huge performance hit is involved, but nobody has been able
-to tell why yet.
-
-There's also the problem of not having permission to create a temp file.
-
-Olaf
+Maybe, but still no indication of why.
 
 Olaf
