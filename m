@@ -1,74 +1,222 @@
-From: Ted Ts'o <tytso@mit.edu>
+From: Nick Piggin <npiggin@gmail.com>
 Subject: Re: Atomic non-durable file write API
-Date: Sun, 26 Dec 2010 21:53:16 -0500
-Message-ID: <20101227025316.GH2595@thunk.org>
-References: <AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>
- <AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
- <AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
- <AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
- <AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
- <AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
- <20101226221016.GF2595@thunk.org>
- <4D17DE0D.2070504@ontolinux.com>
- <20101227010434.GG2595@thunk.org>
- <4D17EC27.4050808@ontolinux.com>
+Date: Mon, 27 Dec 2010 15:12:50 +1100
+Message-ID: <AANLkTi=UGsY_ULZiFG8WHK=n6qKZfTPNq10npkuUjTDP@mail.gmail.com>
+References: <1292710543.17128.14.camel@nayuki>
+	<AANLkTimbkstru_nUxnd7R8Zg=ioB3skTntedq_dLxpZm@mail.gmail.com>
+	<AANLkTi=BW85d6VpGAt0KaGES+4dRQmsvRyFamE=ChEXE@mail.gmail.com>
+	<20101224085126.2a7ff187@notabene.brown>
+	<20101223222206.GD12763@thunk.org>
+	<4D13E98D.8070105@ontolinux.com>
+	<20101224004825.GF12763@thunk.org>
+	<4D13F09D.4010703@ontolinux.com>
+	<20101224095105.GG12763@thunk.org>
+	<AANLkTimPZ_Hq2Ye4mc60WKTWZNU4Zz3yZaPzfARYa6jh@mail.gmail.com>
+	<20101225031529.GA2595@thunk.org>
+	<AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>
+	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>
+	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
+	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
+	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
+	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
+	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Olaf van der Spek <olafvdspek@gmail.com>,
-	Nick Piggin <npiggin@gmail.com>
-To: Christian Stroetmann <stroetmann@ontolinux.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4D17EC27.4050808@ontolinux.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Olaf van der Spek <olafvdspek@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:48822 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752326Ab0L0EMw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Dec 2010 23:12:52 -0500
+In-Reply-To: <AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 27, 2010 at 02:30:15AM +0100, Christian Stroetmann wrote:
-> I'm sorry, because I was really thinking that you do know that R4 is
-> used as the short term for the file system Reiser4.
-> And no,  I'm not fooling, because I don't think that BTRFS is a
-> database. I only said that Oracle took technical parts of Reiser4
-> like a b-tree datastructure and some other parts as a show stopper.
+On Mon, Dec 27, 2010 at 5:51 AM, Olaf van der Spek <olafvdspek@gmail.com> wrote:
+> On Sun, Dec 26, 2010 at 5:43 PM, Nick Piggin <npiggin@gmail.com> wrote:
+>>> Do you not understand what is meant by a complete file write?
+>>
+>> It is not a rigourous definition. What I understand it to mean may be
+>> different than what you understand it to mean. Particularly when you
+>> consider what the actual API should look like and interact with the rest
+>> of the apis.
+>
+> f = open(..., O_ATOMIC, O_CREAT, O_TRUNC);
+> write(...); // 0+ times
+> abort/rollback(...); // optional
+> close(f);
 
-The fact that Reiser4 and BTRFS use a B-tree doesn't mean that they
-have the double intent/rollback logs that a traditional database uses.
-So mentioning them is irrelevant to the argument.
+Sorry, it's still not a rigourous definition, and what you have
+defined indicates it is
+not atomic. You have not done *anything* to specify how the API interacts with
+the rest of the system calls and other calls.
 
-> And if you read above again, then you will see that I already said
-> that Oracle has started once again the promotion of its concept with
-> an FS in a DB in an FS (this thing that you described as a
-> performance disaster even running on a raw block device). Do you
-> claim that Oracle doesn't do this?
+You have a circular definition -- "complete file write means you open the file
+with O_ATOMIC, and O_ATOMIC means you want a complete file write". I'm
+afraid you'll have to put in a bit more effort than that.
 
-I haven't personally seen evidence of Oracle trying to make the claim
-that it's sane to implement a file system, a web server and/or an IMAP
-server using a Oracle DB as a backend since their last attempt at the
-end of the dot COM error was greeted with near-universal ridicule and
-amusement.  
 
-Even if they did are trying to convince people to do this, I'm pretty
-sure the response (and resulting performance) would be the same.  It
-would be like sending an Armored Hummer H1 Hummvee to try to do the
-job of a Audi Convertible.  Sure, the Hummer may be more durable, and
-maybe it can go everywhere an Audi can go --- but it's going to have
-awful gas mileage compared to the convertible.  Can I imagine a
-Hummmer dealership saying, "yes, you should use an H1 for your daily
-15 minute commute from your suburb to the city?"  Sure, but I don't
-think many sane people will believe them.
+>> OK, so please show how it helps.
+>>
+>> If it is a multi-file/dir archive, then you could equally well come back in
+>> an inconsistent state after crashing with some files extracted and
+>> some not, without atomic-write-multiple-files-and-directories API.
+>
+> True, but at least each file will be valid by itself. So no broken
+> executables, images or scripts.
 
-> I'm sorry, but I do believe Oracle, Microsoft and Apple more than you.
+So if a script depends on an executable or an executable depends on a
+data file or library that do not exist, they're effectively broken. So you
+need to be able to clean up properly anyway.
 
-You mean how Microsoft attempted to create a hybrid file system and
-database solution called WinFS, which helped delay MS Vista by seven
-years, and ultimately was abandoned by Microsoft?
 
-And I'm not aware of any attempt by Apple to try to go down this
-insane architectural direction.
+> Transactions involving multiple files are outside the scope of this discussion.
 
-But sure, if you're so smart, maybe you're smarter than me.  Go ahead
-and implement it, and send us the patches.  I'll be happy to look them
-over and benchmark them on common Linux workloads when you're done.
+No they are not, because as I understand you want atomicity of some
+file operations so that partially visible error cases do not have to be dealt
+with by userspace. The problem is exactly the same when dealing with
+multiple files and directories.
 
-							- Ted
+
+>>> Almost. Visibility to other process should be normal (I don't know the
+>>> exact rules), but commit to disk may be deferred.
+>>
+>> That's pretty important detail. What is "normal"? Will a process
+>> see old or new data from the atomic write before atomic write has
+>> committed to disk?
+>
+> New data.
+
+What if the writer subsequently "aborts" or makes more writes to the file?
+
+
+> Isn't that the current rule?
+
+There are no atomic writes, so you can't just say "it's easy, just do writes
+atomically and use 'current' rules for everything else"
+
+
+>> Is the atomic write guaranteed to take an atomic snapshot of file
+>> and only specified updates?
+>>
+>> What happens to subsequent atomic and non atomic writes to the
+>> file?
+>
+> It's about an atomic replace of the entire file data. So it's not like
+> expecting a single write to be atomic.
+
+You didn't answer what happens. It's pretty important, because if those
+writes from other processes join the new data from your atomic write,
+and then you subsequently abort it, what happens? If writes are in progress
+to the file when it is to be atomically written to, does the atomic write
+"transaction" see parts of these writes? What sort of isolation level are
+we talking about here? read uncommitted?
+
+It's pretty important details when you're talking about transactions and
+atomicity, you can't just say it isn't relevant, out of scope, or just use
+"existing" semantics.
+
+
+>>>> Once you solve all those problems, then people will ask you to now
+>>>> solve them for multiple files at once because they also have some
+>>>> great use-case that is surely nothing like databases.
+>>>
+>>> I don't want to play the what if game.
+>>
+>> You must if you want to design a sane API.
+>
+> Providing transaction semantics for multiple files is a far broader
+> proposal and not necessary for implement this proposal.
+
+The question is, if it makes sense to do it for 1, why does it not make sense
+to do it for multiple? If you want to radically change the file
+syscall APIs, you
+need to explore all avenues and come up with something consistent that
+makes sense.
+
+
+>>> Temp file, rename has issues with losing meta-data.
+>>
+>> How about solving that easier issue?
+>
+> That would be nice, but it's not the only issue.
+> I'm not sure, but Ted appears to be saying temp file + rename (but no
+> fsync) isn't guaranteed to work either.
+
+The rename obviously happens only *after* you fsync. Like I said,
+at the point when you actually overwrite the old file with new, you do
+really want durability.
+
+
+> There's also the issue of not having permission to create the temp
+> file, having to ensure the temp file is on the same volume (so the
+> rename can work).
+
+I don't see how those are problems. You can't do an atomic write to
+a file if you don't have permissions to do it, either.
+
+
+>>> It's simple to implement but it's not simple to use right.
+>>
+>> You do not have the ability to have arbitrary atomic transactions to the
+>> filesystem. If you show a problem of a half completed write after crash,
+>> then I can show you a problem of any half completed multi-syscall
+>> operation after crash.
+>
+> It's not about arbitrary transactions.
+
+That is my point. This "atomic write complete file" thing solves about 1% of
+the problem that already has to be solved within the existing posix API
+anyway.
+
+
+>> The simple thing is to properly clean up such things after a crash, and
+>> just use an atomic commit somewhere to say whether the file operations
+>> that just completed are now in a durable state. Either that or use an
+>> existing code that does it right.
+>
+> That's not simple if you're talking about arbitrary processes and files.
+> It's not even that simple if you're talking about DBs. They do
+> implement it, but obviously that's not usable for arbitrary files.
+
+I don't see how you can just handwave that something is simple when
+it suits your argument, and something else is not simple when that suits
+your argument.
+
+It seems pretty simple to me, when you have several ways to perform
+a visible and durable atomic operation (such as a write+fdatasync on
+file data), then you can use that to checkpoint state of your operations
+at any point.
+
+
+>>>> If we start adding atomicity beyond fundamental requirement of
+>>> The zero size issues of ext4 (before some patch). Presumably because
+>>> some apps do open, truncate, write, close on a file. I'm wondering why
+>>> an FS commits between truncate and write.
+>>
+>> I'm still not clear what you mean. Filesystem state may get updated
+>> between any 2 syscalls because the kernel has no oracle or infinite
+>> storage.
+>
+> It just seems quite suboptimal. There's no need for infinite storage
+> (or an oracle) to avoid this.
+
+You do, because you can't guarantee to keep arbitrary amount of  dirty
+data in memory or another location on disk for an indeterminate period
+of time. What if you have a 1GB filesystem, 128MB memory, you open
+an 800MB file on it, and write 800MB of data to that file before closing it?
+
+If you have "atomic write of complete file",  how would you save your
+"abort/rollback" data on arbitrarily large file and for multiple concurrent
+atomic transactions of indeterminate duration? For that matter, how
+would you even handle the above situation which has no concurrency?
+
+Anyway, it seems you'll just keep arguing about this, so I'm with Ted
+now. It's pointless to keep going back and forth. You're certainly
+welcome to post patches (or even prototypes, modifications to user
+programs, numbers, etc.). Some of us are skeptics, but we'd all
+welcome any work that improves the user API so significantly and
+with such simplicity as you think it's possible.
