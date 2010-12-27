@@ -1,47 +1,85 @@
-From: Christian Stroetmann <stroetmann@ontolinux.com>
-Subject: Re: Atomic non-durable file write API
-Date: Mon, 27 Dec 2010 20:30:20 +0100
-Message-ID: <4D18E94C.3080908@ontolinux.com>
-References: <20101224095105.GG12763@thunk.org>	<AANLkTimPZ_Hq2Ye4mc60WKTWZNU4Zz3yZaPzfARYa6jh@mail.gmail.com>	<20101225031529.GA2595@thunk.org>	<AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>	<20101226221016.GF2595@thunk.org>	<AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>	<4D18B106.4010308@ontolinux.com> <AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>,
-	Nick Piggin <npiggin@gmail.com>
-To: Olaf van der Spek <olafvdspek@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Josh Hunt <johunt@akamai.com>
+Subject: [PATCH] Resolve 'dereferencing pointer to incomplete type' when enabling EXT2_XATTR_DEBUG
+Date: Mon, 27 Dec 2010 13:46:38 -0800
+Message-ID: <1293486398-25909-1-git-send-email-johunt@akamai.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from prod-mail-xrelay01.akamai.com ([72.246.2.12]:44159 "EHLO
+	prod-mail-xrelay01.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750846Ab0L0VzD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Dec 2010 16:55:03 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On the 27.12.2010 20:07, Olaf van der Spek wrote:
-> On Mon, Dec 27, 2010 at 4:30 PM, Christian Stroetmann
-> <stroetmann@ontolinux.com>  wrote:
->>> Like I've said dozens of times, this is not about full DB functionality.
->>> Why do you keep making false analogies?
->> The analogy is not so wrong. The concepts atomicity and abort/rollback your
->> are talking about are also concepts of the field of database management
->> systems (DBMSs). And once you have established the Atomicity, which is the A
->> of the principle ACID of DBMSs, you have the basis for establishing the
->> rest, the CID.
->>
->> And you even went further into this DBMS direction by letting down the
->> requirement of non-durability.
-> Of course the concepts are the same. That doesn't mean the analogy is valid.
+When I enable EXT2_XATTR_DEBUG in fs/ext2/xattr.c I get a build error stating
+the following:
 
-Btw.: There is even no analogy: "The concepts are the same".
+  CC      fs/ext2/xattr.o
+fs/ext2/xattr.c: In function 'ext2_xattr_cache_insert':
+fs/ext2/xattr.c:841: error: dereferencing pointer to incomplete type
+fs/ext2/xattr.c:846: error: dereferencing pointer to incomplete type
+make[2]: *** [fs/ext2/xattr.o] Error 1
+make[1]: *** [fs/ext2] Error 2
+make: *** [fs] Error 2
 
->>> Still waiting on any hint for why that performance loss would happen.
->> > From my point of view, the loss of performance depends on what is
->> benchmarked in which way.
-> Maybe, but still no indication of why.
+These lines reference ext2_xattr_cache->c_entry_count which is defined
+in struct mb_cache. struct mb_cache is currently only defined in fs/mbcache.c.
+Moving struct mb_cache definition to include/linux/mbcache.h to resolve the
+issue.
 
-If you have a solution, then you really should show other persons the 
-working source code.
-For me speaking: I like such technologies and I'm also interested in 
-your attempts.
+Signed-off-by: Josh Hunt <johunt@akamai.com>
+---
+ fs/mbcache.c            |   12 ------------
+ include/linux/mbcache.h |   11 +++++++++++
+ 2 files changed, 11 insertions(+), 12 deletions(-)
 
-> Olaf
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index 9344474..a25444a 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -76,18 +76,6 @@ EXPORT_SYMBOL(mb_cache_entry_find_first);
+ EXPORT_SYMBOL(mb_cache_entry_find_next);
+ #endif
+ 
+-struct mb_cache {
+-	struct list_head		c_cache_list;
+-	const char			*c_name;
+-	atomic_t			c_entry_count;
+-	int				c_max_entries;
+-	int				c_bucket_bits;
+-	struct kmem_cache		*c_entry_cache;
+-	struct list_head		*c_block_hash;
+-	struct list_head		*c_index_hash;
+-};
+-
+-
+ /*
+  * Global data: list of all mbcache's, lru list, and a spinlock for
+  * accessing cache data structures on SMP machines. The lru list is
+diff --git a/include/linux/mbcache.h b/include/linux/mbcache.h
+index 54cbbac..5525d37 100644
+--- a/include/linux/mbcache.h
++++ b/include/linux/mbcache.h
+@@ -18,6 +18,17 @@ struct mb_cache_entry {
+ 	} e_index;
+ };
+ 
++struct mb_cache {
++	struct list_head		c_cache_list;
++	const char			*c_name;
++	atomic_t			c_entry_count;
++	int				c_max_entries;
++	int				c_bucket_bits;
++	struct kmem_cache		*c_entry_cache;
++	struct list_head		*c_block_hash;
++	struct list_head		*c_index_hash;
++};
++
+ /* Functions on caches */
+ 
+ struct mb_cache *mb_cache_create(const char *, int);
+-- 
+1.7.0.4
 
-Christian Stroetmann
