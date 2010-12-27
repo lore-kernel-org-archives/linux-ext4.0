@@ -1,60 +1,49 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: Atomic file data replace API
-Date: Mon, 27 Dec 2010 15:20:18 +0200
-Message-ID: <AANLkTikXAFV6SjWT1gdsR9jZkV+zHr-eFZ0NVFrSEQdg@mail.gmail.com>
-References: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
+From: Filipe David Manana <fdmanana@apache.org>
+Subject: question about file space preallocation with fallocate
+Date: Mon, 27 Dec 2010 14:47:50 +0000
+Message-ID: <AANLkTinRcYrMrOUYqqCM3Lkpnhinm4NXqzDg1p2p0+68@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Olaf van der Spek <olafvdspek@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:53069 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753712Ab0L0NUU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Dec 2010 08:20:20 -0500
-In-Reply-To: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:46578 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753772Ab0L0Orx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Dec 2010 09:47:53 -0500
+Received: by fxm20 with SMTP id 20so9150647fxm.19
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Dec 2010 06:47:52 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 27, 2010 at 1:51 PM, Olaf van der Spek <olafvdspek@gmail.com> wrote:
-> Hi,
->
-> Since non-durable appears to be controversial, let's consider the case
-> without that aspect.
->
-> Since the introduction of ext4, some apps/users have had issues with
-> file corruption after a system crash. It's not a bug in the FS AFAIK
-> and it's not exclusive to ext4.
-> Writing a temp file, fsync, rename is often proposed.
-> But how does one preserve meta-data, including file owner?
->
+Hi,
 
-So as I wrote you on the previous thread, in Ext4 you can probably
-accomplish that
-already by using the Ext4 specific EXT4_IOC_EXT_MOVE ioctl, which is
-used by e4defrag
-to atomically switch the fragmented copy of the data with a
-de-fragmented copy of the data.
+I have been playing around with fallocate to preallocate space for a
+file with the mode FALLOC_FL_KEEP_SIZE.
+I'm running with Linux kernel 2.6.35-24 and ext4 as the fs.
 
-It is a more granular version of the exchangedata() BSD API mentioned
-in the previous thread:
-http://www.manpagez.com/man/2/exchangedata/
+I'm allocating 1Gb for a newly created file and then in a loop I write
+1Gb of data into that file in chunks of 1Kb.
+fallocate is returning me 0, therefore it was successful.
+However I don't see any performance gains compared to a version of
+that same code that doesn't call fallocate.
 
-So the atomic update is: write(tempfd); fdatasync(tempfd);
-exchangedata(tempfd, fd)
+The test code which does this is:  http://friendpaste.com/2UR0n2U851u4I=
+XmubeLZh0
 
-If you choose to pursue your campaign for "Atomic file data replace
-API", I recommend that you:
-1. change the slogan to the more catchy "Implementing exchangedata()
-API" (you already have a man page for that)
-2. convince VFS people to support the new generic system call /
-optional FS operation exchangedata()
-3. if you can, post the relevant patches, so people can review and test them
+Am I doing something wrong?
 
-Implementation of exchangedata() operation in Ext4 should be trivial
-using the ext4_move_extents() function
-and I didn't check, but I bet that XFS has that functionality as well.
+best regards,
 
-Good luck,
-Amir.
+--=20
+=46ilipe David Manana,
+fdmanana@gmail.com, fdmanana@apache.org
+
+"Reasonable men adapt themselves to the world.
+=C2=A0Unreasonable men adapt the world to themselves.
+=C2=A0That's why all progress depends on unreasonable men."
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
