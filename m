@@ -1,54 +1,68 @@
 From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: Regular ext4 error warning with HD in USB dock
-Date: Tue, 28 Dec 2010 09:19:17 +0100
-Message-ID: <20101228081917.GA1351@bitwizard.nl>
-References: <201012280953.46149.kernel@kolivas.org> <20101228025343.GD10149@thunk.org>
+Subject: Uneven load on my raid disks.
+Date: Tue, 28 Dec 2010 10:07:49 +0100
+Message-ID: <20101228090749.GB1351@bitwizard.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Ted Ts'o <tytso@mit.edu>, Con Kolivas <kernel@kolivas.org>,
-	linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-usb@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dtp.xs4all.nl ([80.101.171.8]:57111 "HELO abra2.bitwizard.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1752156Ab0L1JHv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Dec 2010 04:07:51 -0500
 Content-Disposition: inline
-In-Reply-To: <20101228025343.GD10149@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 27, 2010 at 09:53:43PM -0500, Ted Ts'o wrote:
-> On Tue, Dec 28, 2010 at 09:53:45AM +1100, Con Kolivas wrote:
-> > [1048401.773270] EXT4-fs (sde8): mounted filesystem with writeback data mode. 
-> > Opts: (null)
-> > [1048702.736011] EXT4-fs (sde8): error count: 3
-> > [1048702.736016] EXT4-fs (sde8): initial error at 1289053677: 
-> > ext4_journal_start_sb:251
-> > [1048702.736018] EXT4-fs (sde8): last error at 1289080948: ext4_put_super:719
-> 
-> That's actually not an error.  It's a report which is generated every
-> 24 hours, indicating that there has been 3 errors since the last time
-> the error count has been cleared, with the first error taking place at
-> Sat Nov 6 10:27:57 2010 (US/Eastern) in the function
-> ext4_journal_start_sb(), at line 251, and the most recent error taking
-> place at Sat Nov 6 18:02:28 2010 (US/Eastern), in the function
-> ext4_put_super() at line 719.  This is a new feature which was added
-> in 2.6.36.
 
-Nice. But the issue you're not mentioning is: What errors could have 
-happened on the 6th of november? Should Con worry about those errors?
+Hi,
 
-OK, the chances are that he has rebooted since november, and that an
-older fsck fixed the errors, but not cleared the "fs errror log". Would
-these errors have triggered a "remount-readonly" if the fs was mounted 
-like that?
+I have a big filesystem (4x2Tb RAID5 = 6Tb.). 
 
-I don't reboot that often: 
+I have a shitload (*) of files on there.  4 days ago, I decided I
+wanted to clean up some disk space, and ordered an rm -rf of some 110
+directories with a subset of that shitload of files. If I do one rm
+-rf, it will do everything linearly: read one directory from one disk,
+read the inodes from another disk, read the required bitmpas from the
+next disk, remove the file. Only the write backs of the just-cleared
+inodes and the writeback of the bitmaps would be exectued in parallel.
 
-obelix:~> uptime
- 09:16:19 up 175 days, 19:04, 19 users,  load average: 110.10, 110.61, 111.22
+So that's why I started the remove of these 110 directories in
+parallel: to keep my 4 disks busy. About 1.5 times the number of disks
+that I have would have been optimal, but I thought I wouldn't incur
+too much of a penalty by starting all of them together. In any case it
+would be done the next morning..... 4 days and counting, almost a Tb
+freed...
 
-(and yes, the load is quite high on that machine. I won't polute this
-thread about that....)
+However, it seems that it is NOT keeping all of my four disks busy: 
+according to iostat my "sdb" disk is executing about 10 times more
+reads than the other drives, and it is therefore the performance
+bottleneck of the whole operation.
+
+This would mean that all of the inodes or all of the bitmaps are on my
+"sdb" disk. This sounds reasonable if I forgot to tell mke2fs that
+this was a raid. I don't think I forgot... How can I check that this
+is the case?
+
+http://www.goplexian.com/2010/09/6-tips-for-improving-hard-drive.html
+
+says: 
+dumpe2fs -h /dev/md0 | grep RAID
+
+should show wether my ext4 partition is on a RAID. Well mine is, but
+doesn't provide any output. Did I forget those raid-options during
+formatting? Can this be tuned after the fact?
+
+dumpe2fs without -h takes a long time. I just stopped all rm processes
+and now only dumpe2fs is running. It seems to be causing about 10times
+more load on sdb than on the other drives. strace shows that it is in
+a loop where it seeks/reads. It is alternating reads of 4k and 280
+bytes.
+
 
 	Roger. 
+
+(*) Guess high, then multiply by ten. 
 
 -- 
 ** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
