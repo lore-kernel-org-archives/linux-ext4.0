@@ -1,35 +1,62 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Atomic non-durable file write API
-Date: Mon, 27 Dec 2010 19:45:50 -0500
-Message-ID: <20101228004550.GB10149@thunk.org>
-References: <20101225031529.GA2595@thunk.org>
- <AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>
- <AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>
- <AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
- <AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
- <AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
- <AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
- <AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
- <AANLkTi=UGsY_ULZiFG8WHK=n6qKZfTPNq10npkuUjTDP@mail.gmail.com>
- <AANLkTinqRwH2LiFA0HoQFyLrVMGWvxXkSBJYMzCc8UoS@mail.gmail.com>
+Subject: Re: Regular ext4 error warning with HD in USB dock
+Date: Mon, 27 Dec 2010 21:53:43 -0500
+Message-ID: <20101228025343.GD10149@thunk.org>
+References: <201012280953.46149.kernel@kolivas.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Nick Piggin <npiggin@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Olaf van der Spek <olafvdspek@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-usb@vger.kernel.org
+To: Con Kolivas <kernel@kolivas.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:39518 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753055Ab0L1CyH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Dec 2010 21:54:07 -0500
 Content-Disposition: inline
-In-Reply-To: <AANLkTinqRwH2LiFA0HoQFyLrVMGWvxXkSBJYMzCc8UoS@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <201012280953.46149.kernel@kolivas.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 27, 2010 at 12:48:12PM +0100, Olaf van der Spek wrote:
+On Tue, Dec 28, 2010 at 09:53:45AM +1100, Con Kolivas wrote:
 > 
-> Let's drop the non-durable aspect and refocus then. I'll create a new thread.
+> Since I moved my internal HD into a USB dock externally and mount the ext4 
+> filesystem on it, I regularly get the following errors after it has been 
+> mounted for a while (see timecode). It doesn't seem to matter which recent 
+> kernel I use. 
 > 
+> [1048401.773270] EXT4-fs (sde8): mounted filesystem with writeback data mode. 
+> Opts: (null)
+> [1048702.736011] EXT4-fs (sde8): error count: 3
+> [1048702.736016] EXT4-fs (sde8): initial error at 1289053677: 
+> ext4_journal_start_sb:251
+> [1048702.736018] EXT4-fs (sde8): last error at 1289080948: ext4_put_super:719
 
-Why don't you send patches?  We can revisit and refocus once you've
-implemented it.
+That's actually not an error.  It's a report which is generated every
+24 hours, indicating that there has been 3 errors since the last time
+the error count has been cleared, with the first error taking place at
+Sat Nov 6 10:27:57 2010 (US/Eastern) in the function
+ext4_journal_start_sb(), at line 251, and the most recent error taking
+place at Sat Nov 6 18:02:28 2010 (US/Eastern), in the function
+ext4_put_super() at line 719.  This is a new feature which was added
+in 2.6.36.
+
+This information (which is stored in the ext4 superblock) gets cleared
+by e2fsck version 1.41.13 or newer (1.41.14 is the most recently
+released version).  If you are using an older version of e2fsck, this
+information won't get cleared, which is not a disaster, although it
+could potentially get annoying.  The solution is to simply to upgrade
+to the newest version of e2fsprogs if you are using the 2.6.36 or
+newer kernel.
+
+The idea behind this feature is to make sure that if there was a file
+system corruption detected, it wouldn't be lost due to log files
+getting overflowed.  It's also helpful when users report problems to
+distribution support lines, since it makes it more likely support
+personnel will be able to determine that there has been some file
+system corrutpion issues, perhaps caused by hardware problems, or some
+other cause, including kernel bugs.
+
+Hope this helps explain what you're seeing!
 
 						- Ted
