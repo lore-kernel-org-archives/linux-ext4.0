@@ -1,7 +1,7 @@
 From: Olaf van der Spek <olafvdspek@gmail.com>
 Subject: Re: Atomic non-durable file write API
-Date: Tue, 28 Dec 2010 23:06:15 +0100
-Message-ID: <AANLkTin361ZYPc7X5++E0DPZ1_Ndt5naprXeGJJJtgqy@mail.gmail.com>
+Date: Tue, 28 Dec 2010 23:10:51 +0100
+Message-ID: <AANLkTikZ5wFf0KHiLFNxUO=0EGTqb5Ce-GDTVnGCCUaD@mail.gmail.com>
 References: <20101224095105.GG12763@thunk.org>
 	<AANLkTimPZ_Hq2Ye4mc60WKTWZNU4Zz3yZaPzfARYa6jh@mail.gmail.com>
 	<20101225031529.GA2595@thunk.org>
@@ -19,38 +19,105 @@ References: <20101224095105.GG12763@thunk.org>
 	<4D18E94C.3080908@ontolinux.com>
 	<AANLkTikW8K4VFLJuYngU64m2vAL1yhA3R=jRt7U6-RRp@mail.gmail.com>
 	<20101229075928.6bdafb08@notabene.brown>
-	<AANLkTimxbjEntSBYxzxnHnOOCUkdNyGWJ40HGG=0d0E5@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Neil Brown <neilb@suse.de>,
-	Christian Stroetmann <stroetmann@ontolinux.com>,
+Cc: Christian Stroetmann <stroetmann@ontolinux.com>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>,
 	Nick Piggin <npiggin@gmail.com>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:47785 "EHLO
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:52795 "EHLO
 	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751532Ab0L1WGQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Dec 2010 17:06:16 -0500
-In-Reply-To: <AANLkTimxbjEntSBYxzxnHnOOCUkdNyGWJ40HGG=0d0E5@mail.gmail.com>
+	with ESMTP id S1751445Ab0L1WKx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Dec 2010 17:10:53 -0500
+In-Reply-To: <20101229075928.6bdafb08@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 28, 2010 at 11:00 PM, Greg Freemyer <greg.freemyer@gmail.co=
-m> wrote:
-> create temp file
-> write out new data
-> delete old file
-> rename temp file to primary name
-> =3D=3D=3D
+On Tue, Dec 28, 2010 at 9:59 PM, Neil Brown <neilb@suse.de> wrote:
+>> Writing code is a lot of work and one should have the design clear
+>> before writing code, IMO.
 >
-> If so there is still a little window of vulnerability where the whole
-> file can be lost. =C2=A0(Or at least only the temp file is present).
+> Yes and no.
+>
+> Having some design is obviously important before starting to code.
+> However it is a common experience that once you start writing code, y=
+ou start
+> to see all the holes in your design - all the corner cases that you d=
+idn't
+> think about. =C2=A0So sometimes writing some proof-of-concept code is=
+ a very
+> valuable step in the design process.
 
-Delete isn't used, rename will overwrite the old file. So it's safe.
-Meta-data is probably lost, file owner is certainly lost.
+Sometimes, yes.
+
+> I think the real disconnect here is that you haven't really establish=
+ed or
+> justified a need.
+
+True, but all those exceptions (IMO) should be (proven to be) no proble=
+m.
+I'd prefer designs that don't have such exceptions. I may not be able
+to think of a concrete problem right now, but that doesn't mean such
+problems don't exist.
+
+I also don't understand why providing this feature is such a
+(performance) problem.
+Surely the people that claim this should be able to explain why.
+
+> You seem to be asking for the ability to atomically change the data i=
+n a file
+> without changing the metadata. =C2=A0I cannot see why you would want =
+this. =C2=A0Maybe
+> you could give an explicit use-case??
+
+Where losing meta-data is bad? That should be obvious.
+Or where losing file owner is bad? Still thinking about that one.
+
+> Another significant issue here is "how much atomicity can we justify"=
+=2E
+> One possibility is for the file system not to provide any atomicity, =
+and so
+> require lots of repair after a crash: =C2=A0fsck for the filesystem, =
+"make clean"
+> for your compile tree, removal of stray temp files etc for other subs=
+ystems.
+>
+> On the other extreme we could allow full transactions encompassing
+> multiple changes to multiple files which a guarantee to be either com=
+mitted
+> completely or not at all after a crash.
+>
+> We gave up on the first extreme about a decade ago when journalling
+> filesystems became available for Linux. =C2=A0There seems to be littl=
+e desire to
+> pay the cost of ever implementing the other extreme in general purpos=
+e
+> filesystems.
+
+Note that I'm not asking for this other extreme.
+
+> So the important question is "Where on that spectrum of options shoul=
+d we be?"
+> The answer has to be based on cost/benefit. =C2=A0The cost of adding =
+journalling
+> was quite high, but the benefit of not having to fsck an enormous fil=
+esystem
+> after a crash is enormous, so it is a cost we have chosen to pay.
+>
+> If you want some extra level of atomicity, you need to demonstrate ei=
+ther a
+> high benefit or a low cost. =C2=A0There seems to be some scepticism a=
+s to whether
+> you can. =C2=A0A convincing use-case might demonstrate the high benef=
+it. =C2=A0Working
+> code might demonstrate low cost. =C2=A0But you really need to provide=
+ at least one
+> (ideally both) or people are unlikely to take you seriously.
+
+I understand.
 
 Olaf
 --
