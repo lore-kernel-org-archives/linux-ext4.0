@@ -1,30 +1,59 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Atomic file data replace API
-Date: Mon, 27 Dec 2010 21:59:37 -0500
-Message-ID: <20101228025937.GE10149@thunk.org>
-References: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: Regular ext4 error warning with HD in USB dock
+Date: Tue, 28 Dec 2010 09:19:17 +0100
+Message-ID: <20101228081917.GA1351@bitwizard.nl>
+References: <201012280953.46149.kernel@kolivas.org> <20101228025343.GD10149@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Olaf van der Spek <olafvdspek@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57269 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753054Ab0L1C7z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Dec 2010 21:59:55 -0500
+To: Ted Ts'o <tytso@mit.edu>, Con Kolivas <kernel@kolivas.org>,
+	linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-usb@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20101228025343.GD10149@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 27, 2010 at 12:51:54PM +0100, Olaf van der Spek wrote:
-> Since the introduction of ext4, some apps/users have had issues with
-> file corruption after a system crash. It's not a bug in the FS AFAIK
-> and it's not exclusive to ext4.
-> Writing a temp file, fsync, rename is often proposed.
-> But how does one preserve meta-data, including file owner?
+On Mon, Dec 27, 2010 at 09:53:43PM -0500, Ted Ts'o wrote:
+> On Tue, Dec 28, 2010 at 09:53:45AM +1100, Con Kolivas wrote:
+> > [1048401.773270] EXT4-fs (sde8): mounted filesystem with writeback data mode. 
+> > Opts: (null)
+> > [1048702.736011] EXT4-fs (sde8): error count: 3
+> > [1048702.736016] EXT4-fs (sde8): initial error at 1289053677: 
+> > ext4_journal_start_sb:251
+> > [1048702.736018] EXT4-fs (sde8): last error at 1289080948: ext4_put_super:719
+> 
+> That's actually not an error.  It's a report which is generated every
+> 24 hours, indicating that there has been 3 errors since the last time
+> the error count has been cleared, with the first error taking place at
+> Sat Nov 6 10:27:57 2010 (US/Eastern) in the function
+> ext4_journal_start_sb(), at line 251, and the most recent error taking
+> place at Sat Nov 6 18:02:28 2010 (US/Eastern), in the function
+> ext4_put_super() at line 719.  This is a new feature which was added
+> in 2.6.36.
 
-What's the use case where preserving file ownership matters?
+Nice. But the issue you're not mentioning is: What errors could have 
+happened on the 6th of november? Should Con worry about those errors?
 
-       	       	    	  	     	  - Ted
+OK, the chances are that he has rebooted since november, and that an
+older fsck fixed the errors, but not cleared the "fs errror log". Would
+these errors have triggered a "remount-readonly" if the fs was mounted 
+like that?
+
+I don't reboot that often: 
+
+obelix:~> uptime
+ 09:16:19 up 175 days, 19:04, 19 users,  load average: 110.10, 110.61, 111.22
+
+(and yes, the load is quite high on that machine. I won't polute this
+thread about that....)
+
+	Roger. 
+
+-- 
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
