@@ -1,50 +1,39 @@
-From: Ted Ts'o <tytso@mit.edu>
+From: blp@cs.stanford.edu (Ben Pfaff)
 Subject: Re: Regular ext4 error warning with HD in USB dock
-Date: Tue, 28 Dec 2010 09:15:16 -0500
-Message-ID: <20101228141516.GH10149@thunk.org>
+Date: Tue, 28 Dec 2010 07:02:06 -0800
+Message-ID: <87wrmu54b5.fsf@benpfaff.org>
 References: <201012280953.46149.kernel@kolivas.org>
- <20101228025343.GD10149@thunk.org>
- <20101228081917.GA1351@bitwizard.nl>
+	<20101228025343.GD10149@thunk.org> <4D19BEF1.9010708@shiftmail.org>
+	<20101228143255.GI10149@thunk.org>
+Reply-To: blp@cs.stanford.edu
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Con Kolivas <kernel@kolivas.org>, linux-kernel@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-usb@vger.kernel.org
-To: Rogier Wolff <R.E.Wolff@bitwizard.nl>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35377 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753242Ab0L1OiM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Dec 2010 09:38:12 -0500
-Content-Disposition: inline
-In-Reply-To: <20101228081917.GA1351@bitwizard.nl>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 28, 2010 at 09:19:17AM +0100, Rogier Wolff wrote:
-> > That's actually not an error.  It's a report which is generated every
-> > 24 hours, indicating that there has been 3 errors since the last time
-> > the error count has been cleared, with the first error taking place at
-> > Sat Nov 6 10:27:57 2010 (US/Eastern) in the function
-> > ext4_journal_start_sb(), at line 251, and the most recent error taking
-> > place at Sat Nov 6 18:02:28 2010 (US/Eastern), in the function
-> > ext4_put_super() at line 719.  This is a new feature which was added
-> > in 2.6.36.
-> 
-> Nice. But the issue you're not mentioning is: What errors could have 
-> happened on the 6th of november? Should Con worry about those errors?
+Ted Ts'o <tytso@mit.edu> writes:
 
-It looks like those errors were probably caused by I/O errors while
-writing to the journal.  Maybe due to a flakey USB connection,
-perhaps?  It would be useful to look at the /var/log/messagfes around
-that date to get a more detailed look.
+> On Tue, Dec 28, 2010 at 11:41:53AM +0100, torn5 wrote:
+>> 
+>> This is going to be a faq...
+>> I suppose the datetime is encoded (what format is that?) in that
+>> long number after "at".
+>
+> Number of seconds since January 1st, 1970 midnight GMT.  (Standard
+> Unix-time format).  It's hard for the kernel to decode it since it
+> doesn't know what time-zone you are in, or what your local legislature
+> has done vis-a-vis arbitrary and cabritious adjustments to the
+> start/stop date of daylight savings time, etc.
+>
+> It's easy enough to decode it using perl:
+>
+>    perl -e '$t = localtime(1289053677); print "$t\n"'
 
-> OK, the chances are that he has rebooted since november, and that an
-> older fsck fixed the errors, but not cleared the "fs errror log". Would
-> these errors have triggered a "remount-readonly" if the fs was mounted 
-> like that?
-
-Yes, errors that get recorded into the superblock are also errors that
-would cause a read-only remount if the file system is set that way.
-
-      	      			       	    - Ted
+The "date" program can decode these values too:
+        date -d @1289053677
+-- 
+Ben Pfaff 
+http://benpfaff.org
