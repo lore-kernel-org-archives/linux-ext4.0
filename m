@@ -1,62 +1,30 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Regular ext4 error warning with HD in USB dock
-Date: Mon, 27 Dec 2010 21:53:43 -0500
-Message-ID: <20101228025343.GD10149@thunk.org>
-References: <201012280953.46149.kernel@kolivas.org>
+Subject: Re: Atomic file data replace API
+Date: Mon, 27 Dec 2010 21:59:37 -0500
+Message-ID: <20101228025937.GE10149@thunk.org>
+References: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-usb@vger.kernel.org
-To: Con Kolivas <kernel@kolivas.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Olaf van der Spek <olafvdspek@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39518 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:57269 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753055Ab0L1CyH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Dec 2010 21:54:07 -0500
+	id S1753054Ab0L1C7z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Dec 2010 21:59:55 -0500
 Content-Disposition: inline
-In-Reply-To: <201012280953.46149.kernel@kolivas.org>
+In-Reply-To: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 28, 2010 at 09:53:45AM +1100, Con Kolivas wrote:
-> 
-> Since I moved my internal HD into a USB dock externally and mount the ext4 
-> filesystem on it, I regularly get the following errors after it has been 
-> mounted for a while (see timecode). It doesn't seem to matter which recent 
-> kernel I use. 
-> 
-> [1048401.773270] EXT4-fs (sde8): mounted filesystem with writeback data mode. 
-> Opts: (null)
-> [1048702.736011] EXT4-fs (sde8): error count: 3
-> [1048702.736016] EXT4-fs (sde8): initial error at 1289053677: 
-> ext4_journal_start_sb:251
-> [1048702.736018] EXT4-fs (sde8): last error at 1289080948: ext4_put_super:719
+On Mon, Dec 27, 2010 at 12:51:54PM +0100, Olaf van der Spek wrote:
+> Since the introduction of ext4, some apps/users have had issues with
+> file corruption after a system crash. It's not a bug in the FS AFAIK
+> and it's not exclusive to ext4.
+> Writing a temp file, fsync, rename is often proposed.
+> But how does one preserve meta-data, including file owner?
 
-That's actually not an error.  It's a report which is generated every
-24 hours, indicating that there has been 3 errors since the last time
-the error count has been cleared, with the first error taking place at
-Sat Nov 6 10:27:57 2010 (US/Eastern) in the function
-ext4_journal_start_sb(), at line 251, and the most recent error taking
-place at Sat Nov 6 18:02:28 2010 (US/Eastern), in the function
-ext4_put_super() at line 719.  This is a new feature which was added
-in 2.6.36.
+What's the use case where preserving file ownership matters?
 
-This information (which is stored in the ext4 superblock) gets cleared
-by e2fsck version 1.41.13 or newer (1.41.14 is the most recently
-released version).  If you are using an older version of e2fsck, this
-information won't get cleared, which is not a disaster, although it
-could potentially get annoying.  The solution is to simply to upgrade
-to the newest version of e2fsprogs if you are using the 2.6.36 or
-newer kernel.
-
-The idea behind this feature is to make sure that if there was a file
-system corruption detected, it wouldn't be lost due to log files
-getting overflowed.  It's also helpful when users report problems to
-distribution support lines, since it makes it more likely support
-personnel will be able to determine that there has been some file
-system corrutpion issues, perhaps caused by hardware problems, or some
-other cause, including kernel bugs.
-
-Hope this helps explain what you're seeing!
-
-						- Ted
+       	       	    	  	     	  - Ted
