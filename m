@@ -1,90 +1,60 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Atomic non-durable file write API
-Date: Wed, 29 Dec 2010 09:35:38 +1100
-Message-ID: <20101229093538.5a082e02@notabene.brown>
-References: <20101224095105.GG12763@thunk.org>
-	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>
-	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>
-	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>
-	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
-	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
-	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
-	<20101226221016.GF2595@thunk.org>
-	<AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>
-	<4D18B106.4010308@ontolinux.com>
-	<AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
-	<4D18E94C.3080908@ontolinux.com>
-	<AANLkTikW8K4VFLJuYngU64m2vAL1yhA3R=jRt7U6-RRp@mail.gmail.com>
-	<20101229075928.6bdafb08@notabene.brown>
-	<AANLkTimxbjEntSBYxzxnHnOOCUkdNyGWJ40HGG=0d0E5@mail.gmail.com>
-	<AANLkTin361ZYPc7X5++E0DPZ1_Ndt5naprXeGJJJtgqy@mail.gmail.com>
-	<AANLkTinJVJM0Gb2osYQeTUetuVTkJYyXfQR0fkmwS_Pg@mail.gmail.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: Atomic file data replace API
+Date: Tue, 28 Dec 2010 17:36:19 -0500
+Message-ID: <4D1A6663.8000307@redhat.com>
+References: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>	<20101228025937.GE10149@thunk.org>	<AANLkTikOxXgeFKtY-1u0NAjH3ofJVxCFK-xAghjk83aR@mail.gmail.com>	<4D1A351B.5080604@redhat.com> <AANLkTimKy7+cYfPKKywS3FvaJMt2OYApYY8dR81uGHTN@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Olaf van der Spek <olafvdspek@gmail.com>,
-	Christian Stroetmann <stroetmann@ontolinux.com>,
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>,
-	Nick Piggin <npiggin@gmail.com>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+	linux-ext4@vger.kernel.org
+To: Olaf van der Spek <olafvdspek@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:59621 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:8613 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751788Ab0L1Wft convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Dec 2010 17:35:49 -0500
-In-Reply-To: <AANLkTinJVJM0Gb2osYQeTUetuVTkJYyXfQR0fkmwS_Pg@mail.gmail.com>
+	id S1751788Ab0L1WgX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Dec 2010 17:36:23 -0500
+In-Reply-To: <AANLkTimKy7+cYfPKKywS3FvaJMt2OYApYY8dR81uGHTN@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 28 Dec 2010 17:15:57 -0500 Greg Freemyer <greg.freemyer@gmail.c=
-om>
-wrote:
+On 12/28/2010 05:25 PM, Olaf van der Spek wrote:
+> On Tue, Dec 28, 2010 at 8:06 PM, Ric Wheeler<rwheeler@redhat.com>  wrote:
+>> I really think that you have missed the point of this list.
+>>
+>> This list is for either developers (those who have downloaded the free code
+>> and work on it) or others who want to move things forward concretely.
+> Maybe.
+>
+>> Perfectly fine to contribute ideas, but if you are not a coder or do not
+>> have the time or inclination to work on things yourself, you have to be
+>> *really* convincing.
+>>
+>> We continually get bombarded with ideas, wish list items, etc so we are not
+>> lacking in work to do.
+> I understand.
+>
+>> If you cannot explain the use case, you will not get any buy in...
+> I assumed that preserving file owner would be a normal feature and
+> would not require additional explanation.
+> One use case would be updating a file in a save way when you have
+> write access to that file but not to anything else.
+>
+> Also, according to Ted, a lot of app devs get saving a file in a safe
+> way wrong. So I'm asking what the recommended way to do it is. Is that
+> strange?
+>
+> Olaf
 
-> On Tue, Dec 28, 2010 at 5:06 PM, Olaf van der Spek <olafvdspek@gmail.=
-com> wrote:
-> > On Tue, Dec 28, 2010 at 11:00 PM, Greg Freemyer <greg.freemyer@gmai=
-l.com> wrote:
-> >> create temp file
-> >> write out new data
-> >> delete old file
-> >> rename temp file to primary name
-> >> =3D=3D=3D
-> >>
-> >> If so there is still a little window of vulnerability where the wh=
-ole
-> >> file can be lost. =A0(Or at least only the temp file is present).
-> >
-> > Delete isn't used, rename will overwrite the old file. So it's safe=
-=2E
-> > Meta-data is probably lost, file owner is certainly lost.
-> >
-> > Olaf
->=20
-> So ACLs are lost?
->=20
-> That seems like a potentially bigger issue than loosing the owner/gro=
-up info.
->=20
-> And I assume if the owner changes, then the new owner has privileges
-> to modify ACLs he didn't have previously.
->=20
-> So if I want to instigate a simple denial of service in a multi-user
-> environment, I edit a few key docs that I have privileges to edit.  B=
-y
-> doing so I take ownership.  As owner I  change the permissions and
-> ACLs so that no one but me can access them.
->=20
-> Seems like a security hole to me.
+I think that various developers have answered this for you several times.
 
-Giving someone you don't trust uncontrolled write access to something y=
-ou
-value has always been a security issue - long before ACLs or editors or
-computers.
+As a suggestion, if you are not a kernel developer, show us specifically a bit 
+of application code that demonstrates something that you want to have work 
+differently.
 
-NeilBrown
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Test it with power failure (buy an external e-sata or USB disk and pull power 
+while running your app).
+
+Ric
+
