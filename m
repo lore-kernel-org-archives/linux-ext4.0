@@ -1,136 +1,88 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Atomic non-durable file write API
-Date: Tue, 28 Dec 2010 18:42:16 -0500
-Message-ID: <20101228234216.GJ10149@thunk.org>
-References: <20101226221016.GF2595@thunk.org>
- <AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>
- <4D18B106.4010308@ontolinux.com>
- <AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
- <4D18E94C.3080908@ontolinux.com>
- <AANLkTikW8K4VFLJuYngU64m2vAL1yhA3R=jRt7U6-RRp@mail.gmail.com>
- <20101229075928.6bdafb08@notabene.brown>
- <AANLkTikZ5wFf0KHiLFNxUO=0EGTqb5Ce-GDTVnGCCUaD@mail.gmail.com>
- <20101229093158.2bfed8ca@notabene.brown>
- <AANLkTinkHQ2tqAzqo77Bg_iyyYWUE72V85rTQqsEH4Nc@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 25792] New: Kernel panic in __mark_inode_dirty (fs-writeback.c:
+ 978)
+Date: Wed, 29 Dec 2010 00:10:27 GMT
+Message-ID: <bug-25792-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Neil Brown <neilb@suse.de>,
-	Christian Stroetmann <stroetmann@ontolinux.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Nick Piggin <npiggin@gmail.com>
-To: Olaf van der Spek <olafvdspek@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58709 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753129Ab0L1Xml (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Dec 2010 18:42:41 -0500
-Content-Disposition: inline
-In-Reply-To: <AANLkTinkHQ2tqAzqo77Bg_iyyYWUE72V85rTQqsEH4Nc@mail.gmail.com>
+Received: from demeter1.kernel.org ([140.211.167.39]:56291 "EHLO
+	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751980Ab0L2AK2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Dec 2010 19:10:28 -0500
+Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id oBT0ARvJ027250
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Dec 2010 00:10:27 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 28, 2010 at 11:54:33PM +0100, Olaf van der Spek wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=25792
 
-> > Very true.  But until such problems are described an understood,
-> > there is not a lot of point trying to implement a
-> > solution.  Premature implementation, like premature optimisation,
-> > is unlikely to be fruitful.  I know this from experience.
->=20
-> The problems seem clear. The implications not yet.
+           Summary: Kernel panic in __mark_inode_dirty (fs-writeback.c:
+                    978)
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.36-rc8
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: karthick.linuxdreamer@gmail.com
+        Regression: No
 
-I don't think there's even agreement that it is a problem.  A problem
-implies a use case where where such a need is critical, and I haven't
-seen it yet.  I'd rather characeterize it as a demand for a "solution"
-for a problem that hasn't been proven to exist yet.
 
-> >> I also don't understand why providing this feature is such a
-> >> (performance) problem.
-> >> Surely the people that claim this should be able to explain why.
-> >
-> > Without a concrete design, it is hard to assess the performance
-> > impact.  I would guess that those who anticipate a significant
-> > performance impact are assuming a more feature-full implementation
-> > than you are, and they are probably doing that because they feel
-> > that you need the extra features to meet the actual needs (and so
-> > suggest those needs a best met by a DBMS rather than a
-> > file-system).  Of course this is just guess work. =A0With concreted
-> > reference points it is hard to be sure.
->=20
-> True, I don't understand why people say it will cause a performance
-> hit but then don't want to tell why.
+Created an attachment (id=41822)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=41822)
+Crash debug logs related to the kernel panic
 
-Because I don't want waste time doing a hypothetical design when (a)
-the specification space hasn't even been fully spec'ed out, and (b) no
-compelling use case has been demonstrated, and (c) no one is paying
-me.
+The panic and all associated crash debug logs are attached along with the dump
+of the inode, superblock structure and the address_space mapping at the time of
+the panic from a crash session on the vmcore.
 
-The last point is a critical one; who's going to do the work?  If you
-are going to do the work, then implement it and send us the patches.
-If you expect a technology expert to do the work, it's dirty pool to
-try force him or her do a design to "prove" that it's not trivial.
+It was first reproduced by my daughter. The trick I am told is to pull the USB
+cable while the daddy is at work :-)
 
-If you're going to pay me $50,000 or $100,000, then it's on the golden
-rule principle (the customer with the gold, makes the rules), and I'll
-happily work on a design even if in my best judgment it's ill-advised,
-and probably will be a waste of money, because, hey, it's the
-customer's money.  But if you're going to ask me to spend my time
-working on something which in my professional opinion is a waste of
-time, and do it pro bono, you must be smoking something really good,
-and probably really illegal.
+Its consistently reproducible when I run our product stack with our
+applications sand-boxed to a USB drive (mount-binded) and pulling the USB drive
+while they are running. The panic is a result of the inodes bdi (backing device
+info) pointer going NULL while the inode state is I_DIRTY. The superblocks bdi
+pointer for the "ext4" superblock type is NULL. The panic in the attachment
+shows that the kernel was trying to resolve a write-protected page fault on a
+mmapped page with the USB as the backing storage. There appears to be a race
+with sd_remove resulting in ext4 superblock bdi being invalidated with a
+parallel write to the mmapped page in the backing store. Wondering how the ext4
+superblocks bdi was invalidated/NULL while the inode's being dirtied.
 
-Here are some of the hints though about trouble spots.
+An effort to reproduce the problem outside our product stack where it is
+consistently reproducible is not successful yet: https://gist.github.com/757928
+Though I did hit UNINTERRUPTIBLE task hang warnings when I run the above
+test-code and remove the USB drive while the writes were being fired from the
+test. 
+Some of the child processes that write to the disk remained in "D" or
+uninterruptible state FOREVER after the USB device was forcefully ejected. 
+They appear to be stuck in ext4 journalled write. The backtrace for all the
+uninterruptible tasks are also part of the crash debug attachment.
 
-1) What happens in disk full cases?  Remember, we can't free the old
-inode until writeback has happened.  And if we haven't allocated space
-yet for the file, and space is needed for the new file, what happens?
-What if some other disk write needs the space?
+I believe this issue isn't fixed in 2.6.36 even though I am running a slightly
+old 2.6.36-rc8 since I don't see any fixes in ext4 or fs-writeback related to
+the above panic.
 
-2) How big are the files that you imagine should be supported with
-such a scheme?  If the file system is 1 GB, and the file is 600MG, and
-you want to replace it with new contents which is 750MB long, what
-happens?  How does the system degrade gracefully in the case of larger
-files?  Does the user get any notification that maybe the magic
-O_PONIES semantics might be changing?
+Since I am always able to reproduce the panic with our product stack standboxed
+to the USB device, I can easily verify the patches related to this issue.
+Regarding the ext4 uninterruptible task lockup/hangs, its easily reproducible
+with the test-code in my github that I had mentioned above:
+https://gist.github.com/757928
 
-3) What if the rename is still pending, but in the mean time, some
-other process modifies the file?  Do those writes also have to be
-atomic vis-a-vis the rename?
+I believe this is a major issue considering the backtrace, crash debug logs and
+the probable race symptoms with sd_remove and ext4 writeback mentioned above.
 
-4) What if the rename is still pending, but in the meantime, some
-other process does another create a new file, and rename over the same
-file name?
-
-etc.
-
-> >> Where losing meta-data is bad? That should be obvious.
->=20
-> In that case meta-data shouldn't be supported in the first place.
-
-Well, hold on a minute.  It depends on what the meta-data means.  If
-the meta-data is supposed to be a secure indication of who created the
-file, or more importantly if quotes are enforced, to whom the disk
-usage quota should be charged, then it might not be allowable to
-"preserve the metadata in some cases".
-
-In general, you can always save the meta data, and restore the meta
-data to the new file --- except when there are security reasons why
-this isn't allowed.  For example, file ownership is special, because
-of (a) setuid bit considerations, and (b) file quota considerations.
-If you don't have those issues, then allowing a non-privileged user to
-use chown() is perfectly acceptable.  But it's because of these issues
-that chown() is special.
-
-And if quota is enabled, replacing a 10MB file with a 6TB file, while
-preserving the same file "owner", and therefore charging the 6TB to
-the old owner, would be a total evasion of the quota system.
-
-In any case, have fun trying to design this system for which you have
-no use cases....
-
-       	       	      	    	      - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
