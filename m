@@ -1,83 +1,108 @@
 From: Christian Stroetmann <stroetmann@ontolinux.com>
-Subject: Re: Atomic non-durable file write API
-Date: Wed, 29 Dec 2010 16:30:51 +0100
-Message-ID: <4D1B542B.9030400@ontolinux.com>
-References: <20101224095105.GG12763@thunk.org>	<AANLkTi=TWjKMfLG0nGGjxvGR87PwNm5NkKYPnsFsLgfZ@mail.gmail.com>	<AANLkTikHMZDyNkaOux5VWUHvC5D1cXHEFKxhvzfVjN+Q@mail.gmail.com>	<AANLkTinjtoF0gOdi6TV+RPjMkeqA8fcrkJBYRBd5WQ==@mail.gmail.com>	<AANLkTi=g4zvxdQdnS7crg015sexk3NSJ3CaODi_c=6Fv@mail.gmail.com>	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>	<20101226221016.GF2595@thunk.org>	<AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>	<4D18B106.4010308@ontolinux.com>	<AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>	<4D18E94C.3080908@ontolinux.com>	<AANLkTikW8K4VFLJuYngU64m2vAL1yhA3R=jRt7U6-RRp@mail.gmail.com>	<20101229075928.6bdafb0
- 8@notabene.brown>	<AANLkTikZ5wFf0KHiLFNxUO=0EGTqb5Ce-GDTVnGCCUaD@mail.gmail.com>	<20101229093158.2bfed8ca@notabene.brown> <AANLkTinkHQ2tqAzqo77Bg_iyyYWUE72V85rTQqsEH4Nc@mail.gmail.com>
+Subject: Re: Atomic file data replace API
+Date: Wed, 29 Dec 2010 16:30:56 +0100
+Message-ID: <4D1B542F.9070506@ontolinux.com>
+References: <AANLkTi=qpQfwZ1vfRjKE063tVvbz0VLmroO_kkvz+N+-@mail.gmail.com>	<20101228025937.GE10149@thunk.org>	<AANLkTikOxXgeFKtY-1u0NAjH3ofJVxCFK-xAghjk83aR@mail.gmail.com>	<4D1A351B.5080604@redhat.com>	<AANLkTimKy7+cYfPKKywS3FvaJMt2OYApYY8dR81uGHTN@mail.gmail.com>	<4D1A6663.8000307@redhat.com>	<AANLkTinu91KkrZHBU4HHkt1TJ6eEt+Zmht=vMiOuHuAf@mail.gmail.com>	<AANLkTik-6cWLKiaho_aBNY_G85nkZaeJPnkj=RmVLgvx@mail.gmail.com> <AANLkTim-LOGxfrGV-S4iKQhzpdqMQ9GyqGWzvkxyx0NA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ted Ts'o <tytso@mit.edu>, Neil Brown <neilb@suse.de>,
-	Nick Piggin <npiggin@gmail.com>
+	Ric Wheeler <rwheeler@redhat.com>,
+	Amir Goldstein <amir73il@gmail.com>
 To: Olaf van der Spek <olafvdspek@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:54039 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751496Ab0L2P35 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Dec 2010 10:29:57 -0500
-In-Reply-To: <AANLkTinkHQ2tqAzqo77Bg_iyyYWUE72V85rTQqsEH4Nc@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <AANLkTim-LOGxfrGV-S4iKQhzpdqMQ9GyqGWzvkxyx0NA@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On the 28.12.2010 23:54, Olaf van der Spek wrote:
-> On Tue, Dec 28, 2010 at 11:31 PM, Neil Brown<neilb@suse.de>  wrote:
->>> True, but all those exceptions (IMO) should be (proven to be) no problem.
->>> I'd prefer designs that don't have such exceptions. I may not be able
->>> to think of a concrete problem right now, but that doesn't mean such
->>> problems don't exist.
->> Very true.  But until such problems are described an understood, there is not
->> a lot of point trying to implement a solution.  Premature implementation,
->> like premature optimisation, is unlikely to be fruitful.  I know this from
->> experience.
-> The problems seem clear. The implications not yet.
+On the 29.12.2010 13:42, Olaf van der Spek wrote:
+> On Wed, Dec 29, 2010 at 10:20 AM, Amir Goldstein<amir73il@gmail.com>  wrote:
+>> On Wed, Dec 29, 2010 at 12:58 AM, Olaf van der Spek
+>> <olafvdspek@gmail.com>  wrote:
+>>> On Tue, Dec 28, 2010 at 11:36 PM, Ric Wheeler<rwheeler@redhat.com>  wrote:
+>>>> I think that various developers have answered this for you several times.
+>>> Not really, unfortunately. Haven't seen a single link to code that
+>>> shows how to do it properly.
+
+No, not this way. You were and still are asked for delivering the code. 
+Don't pervert the threat of the discussion.
+
+>>> Temp file, fsync, rename is often mentioned but that skips the
+>>> preserving meta-data part and this part, which you also skipped:
+>>> One use case would be updating a file in a safe way when you have
+>>> write access to that file but not to anything else.
+>>>
+>> I think it is safe to say that the *only* option you have now is "temp
+>> file, fsync, rename".
+> I'm really looking for a concrete code snippet/function that does this.
+> For example, file permissions should definitely be preserved.
 >
->>> I also don't understand why providing this feature is such a
->>> (performance) problem.
->>> Surely the people that claim this should be able to explain why.
->> Without a concrete design, it is hard to assess the performance impact.  I
->> would guess that those who anticipate a significant performance impact are
->> assuming a more feature-full implementation than you are, and they are
->> probably doing that because they feel that you need the extra features to
->> meet the actual needs (and so suggest those needs a best met by a DBMS rather
->> than a file-system).
->> Of course this is just guess work.  With concreted reference points it is
->> hard to be sure.
-> True, I don't understand why people say it will cause a performance
-> hit but then don't want to tell why.
+>> There is no "generic atomic file data replace API in Linux", though it
+>> is available via
+>> private ioctl for XFS and EXT4.
+>>
+>> You have started a bit of a storm with your previous thread, which
+>> doesn't help you
+>> much in moving forward in the current thread (previous thread is still
+>> more popular).
+>> I suggest that you humbly swallow you need to know WHY is it hard to implement
+>> non-durable atomic API and focus your attention on the very achievable
+>> data replace API.
+>>
+>> IMHO, implementing atomic swap_inodes_data operation shouldn't be difficult
+>> in most file systems (only implementation is simple, but testing and
+>> maintaining
+>> is not to be taken lightly).
+>> Something along the lines of:
+>> 1. aquire inodes write/truncate locks
+>> 2. start transaction
+>> 3. check/update quota limits
+>> 4. swap inodes i_data content
+>> 5. invalidate (or swap?) inodes page caches
+>> 6. mark inodes dirty
+>> 7. end transaction&  release locks
+>>
+>> The real challenge would be to get everyone to agree on a common API
+>> and carve it in stone to the kernel's ABI (is it just swap_inodes_data?
+>> maybe also swap_inode_data_ranges? what about some options?)
+> Swapping data is an improvement but still not ideal. The API is also
+> more complex than O_ATOMIC.
+>
+>> Also, as wacky and (some say) faulty the UNIX permissions models is,
+>> current systems have grown old with it, and even 'improving' the behavior
+>> of some applications, may wake up sleeping monsters, so it will not
+>> be done until enough people have pointed out security or usability
+>> issues, which could not be solved otherwise.
+> Each app makes it's own decision about what API to use. Supporting
+> atomic stuff doesn't change the behaviour of existing apps.
 
-We are talking about atomicity. And it is a simple fact in the field of 
-information processing/informatics/computer science that if someone 
-wants to give/have the guarantee of atomicity, then she/he has to do 
-several additional steps often by using an additional data structure. In 
-the end this all costs more time and/or space than doing it without 
-atomicity. At this point there is no discussion anymore, because this is 
-fully discussed to the maximum in subjects like Efficient Algorithms, 
-Special Problem Fields of Operating System Design and Fundamentals of 
-DBMS Design (eg. AtomicityCID principle).
-And such fundamental points are not (needed to be) discussed here.
+Wrong, we are talking here in the first place about general atomic FS 
+operations. And to guarantee atomicity you have to change general FS 
+functions in such a way that in the end all other applications are 
+affected, or otherwise you have to implement an own (larger part of an) FS.
+At this point there is no discussion anymore without code from you, 
+because this subject is as well discussed to the maximum in information 
+processing/informatics/computer science.
 
-Furthermore, due to the competence it is possible for FS gurus like Ted 
-to estimate that the additional steps have to be done by several 
-functions of an FS, which implies performance loss. And because 
-elementary FS functions are involved the performance loss could be and 
-in the past have been significant, though in nearly all cases I have 
-seen the reason was a very bad implementation. The only exception so far 
-is the Reiser4 FS: All of its file operations are atomic, but still to a 
-little cost of performance in the most cases and the need of a repacker 
-in some few cases which show a significant loss of performance.
+>> In other words, until you find an *application* that wants to allow other
+>> user to modify the content of a file and preserve it's metadata and ownership.
+>> And unless that application cannot find a better way to achieve what it wanted
+>> to do in the first place, or unless that application already has a
+>> large install base
+>> which suffers from *a problem*, you will not have proven *the need*.
+> Maybe I should ask devs of some large apps on their take of this issue.
 
-And the advice to use a well-known DBMS is simply based on the knowledge 
-that it has all the needed functionality already implemented in a highly 
-performant way, and on the knowledge that such a solution is used 
-oftenly for comparable use cases due to the cost vs. benefit ratio.
-To take a look at the Reiser4 FS could also help.
+Nonsense, because they are already using:
+a) the functions available by an FS,
+b) the functions available by a DBMS, or
+c) a propritary special solution based on the available functions of the 
+OS and additional functionality that they develope and maintain themselves
+for their comparable use cases since decades due to the cost vs. benefit 
+ratio.
 
-<snip>
-
+>> Maybe preserving privileged extended attributes is *a need*.
+>> I wouldn't know myself.
 > Olaf
 
-The bar is opened
 Christian Stroetmann
-
