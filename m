@@ -1,37 +1,34 @@
-From: Mike Christie <michaelc@cs.wisc.edu>
-Subject: Re: Ext4 and scsi commands resubmission
-Date: Tue, 28 Dec 2010 22:43:46 -0600
-Message-ID: <4D1ABC82.5050909@cs.wisc.edu>
-References: <4D19BEF6.5010007@shiftmail.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>
-To: torn5 <torn5@shiftmail.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Bug in ext4/btrfs fallocate?
+Date: Tue, 28 Dec 2010 23:46:39 -0700
+Message-ID: <6A86E6B8-E14E-484B-BBF5-F3C580337661@dilger.ca>
+References: <4D1A0B1C.70406@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	tytso@mit.edu, chris.mason@oracle.com
+To: Marco Stornelli <marco.stornelli@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sabe.cs.wisc.edu ([128.105.6.20]:49987 "EHLO sabe.cs.wisc.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751689Ab0L2Enw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Dec 2010 23:43:52 -0500
-In-Reply-To: <4D19BEF6.5010007@shiftmail.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:60252 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750822Ab0L2Gqn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Dec 2010 01:46:43 -0500
+In-Reply-To: <4D1A0B1C.70406@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/28/2010 04:41 AM, torn5 wrote:
-> Hello all,
->
-> in open-iscsi, when network connectivity is lost, scsi commands that
-> were in-flight at the moment of disconnection are failed to the SCSI layer.
-> These get resubmitted up to 5 times by the SCSI layer (or so is written
-> in the open-iscsi docs) and after that they are held in the queue
-> (device "blocked") until the network connection is restored.
->
-> Now the question is: when SCSI resubmits commands to a device, I suppose
-> they go to the end of the queue for the device, and not at the head like
-> they were. Am I right?
+On 2010-12-28, at 09:06, Marco Stornelli wrote:
+> it seems that ext4/btrfs code for fallocate doesn't check for
+> immutable/append inode flag.
 
-The request goes to eh head. scsi layer calls 
-blk_requeue_request->elv_requeue_request-> 
-elv_insert(ELEVATOR_INSERT_REQUEUE) and ELEVATOR_INSERT_REQUEUE's case 
-falls through to the ELEVATOR_INSERT_FRONT case.
+fallocate() probably shouldn't be allowed for immutable files, but it makes a lot of sense to call fallocate() on append-only files to avoid fragmentation, though it should only be called with the KEEP_SIZE flag.
+
+Cheers, Andreas
+
+
+
+
+
