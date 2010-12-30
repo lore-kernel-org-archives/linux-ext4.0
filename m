@@ -1,248 +1,80 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Use ext4_error_file() to print the pathname to the corrupted inode
-Date: Wed, 29 Dec 2010 22:56:52 -0500
-Message-ID: <1293681412-21705-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: Uneven load on my raid disks.
+Date: Thu, 30 Dec 2010 11:32:01 +0100
+Message-ID: <20101230103200.GH2986@bitwizard.nl>
+References: <20101228090749.GB1351@bitwizard.nl> <4D1B646C.8030100@uni-konstanz.de> <20101229221715.GK10149@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Kay Diederichs <kay.diederichs@uni-konstanz.de>,
+	Rogier Wolff <R.E.Wolff@BitWizard.nl>,
+	linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39985 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750967Ab0L3D5A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Dec 2010 22:57:00 -0500
+Received: from dtp.xs4all.nl ([80.101.171.8]:65309 "HELO abra2.bitwizard.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1752664Ab0L3KcD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Dec 2010 05:32:03 -0500
+Content-Disposition: inline
+In-Reply-To: <20101229221715.GK10149@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Where the file pointer is available, use ext4_error_file() instead of
-ext4_error_inode().
+On Wed, Dec 29, 2010 at 05:17:15PM -0500, Ted Ts'o wrote:
+> On Wed, Dec 29, 2010 at 05:40:12PM +0100, Kay Diederichs wrote:
+> > >says: dumpe2fs -h /dev/md0 | grep RAID
+> > 
+> > % tune2fs -l /dev/md0
+> > 
+> > ...
+> > RAID stride:              128
+> > RAID stripe width:        768
+> > ...
+> > 
+> > runs much faster than dumpe2fs.
+> > The command can also adjust the values.
+> 
+> Actually, "tune2fs -l" and "dumpe2fs -h" both run in about the same
+> amount of time.  dumpe2fs without the -h option runs slower than
+> tune2fs -l, true.  But that's because it reads and prints out
+> information regarding the block and inode allocation bitmaps.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/dir.c   |   30 ++++++++++++++++++++----------
- fs/ext4/ext4.h  |   15 ++++++++-------
- fs/ext4/namei.c |   10 +++++-----
- fs/ext4/super.c |   28 ++++++++++++++++------------
- 4 files changed, 49 insertions(+), 34 deletions(-)
+And the annoying thing is that it apparently uses a library function
+that only returns after reading all that data. 
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index bd5d74d..751fb83 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -66,7 +66,7 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
-  * Note: this is the opposite of what ext2 and ext3 historically returned...
-  */
- int __ext4_check_dir_entry(const char *function, unsigned int line,
--			   struct inode *dir,
-+			   struct inode *dir, struct file *filp,
- 			   struct ext4_dir_entry_2 *de,
- 			   struct buffer_head *bh,
- 			   unsigned int offset)
-@@ -90,12 +90,21 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
- 	else
- 		return 0;
- 
--	ext4_error_inode(dir, function, line, bh->b_blocknr,
--			 "bad entry in directory: %s - "
--			 "offset=%u(%u), inode=%u, rec_len=%d, name_len=%d",
--			 error_msg, (unsigned) (offset%bh->b_size), offset,
--			 le32_to_cpu(de->inode),
--			 rlen, de->name_len);
-+	if (filp)
-+		ext4_error_file(filp, function, line, bh->b_blocknr,
-+				"bad entry in directory: %s - offset=%u(%u), "
-+				"inode=%u, rec_len=%d, name_len=%d",
-+				error_msg, (unsigned) (offset%bh->b_size),
-+				offset, le32_to_cpu(de->inode),
-+				rlen, de->name_len);
-+	else
-+		ext4_error_inode(dir, function, line, bh->b_blocknr,
-+				"bad entry in directory: %s - offset=%u(%u), "
-+				"inode=%u, rec_len=%d, name_len=%d",
-+				error_msg, (unsigned) (offset%bh->b_size),
-+				offset, le32_to_cpu(de->inode),
-+				rlen, de->name_len);
-+
- 	return 1;
- }
- 
-@@ -158,8 +167,9 @@ static int ext4_readdir(struct file *filp,
- 		 */
- 		if (!bh) {
- 			if (!dir_has_error) {
--				EXT4_ERROR_INODE(inode, "directory "
--					   "contains a hole at offset %Lu",
-+				EXT4_ERROR_FILE(filp, bh->b_blocknr,
-+						"directory contains a "
-+						"hole at offset %Lu",
- 					   (unsigned long long) filp->f_pos);
- 				dir_has_error = 1;
- 			}
-@@ -200,7 +210,7 @@ revalidate:
- 		while (!error && filp->f_pos < inode->i_size
- 		       && offset < sb->s_blocksize) {
- 			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
--			if (ext4_check_dir_entry(inode, de,
-+			if (ext4_check_dir_entry(inode, filp, de,
- 						 bh, offset)) {
- 				/*
- 				 * On error, skip the f_pos to the next block
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8104ab7..2a73925 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -62,8 +62,8 @@
- #define EXT4_ERROR_INODE_BLOCK(inode, block, fmt, a...)			\
- 	ext4_error_inode((inode), __func__, __LINE__, (block), (fmt), ## a)
- 
--#define EXT4_ERROR_FILE(file, fmt, a...)	\
--	ext4_error_file(__func__, __LINE__, (file), (fmt), ## a)
-+#define EXT4_ERROR_FILE(file, block, fmt, a...)				\
-+	ext4_error_file((file), __func__, __LINE__, (block), (fmt), ## a)
- 
- /* data type for block offset of block group */
- typedef int ext4_grpblk_t;
-@@ -1640,11 +1640,12 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
- 
- /* dir.c */
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
-+				  struct file *,
- 				  struct ext4_dir_entry_2 *,
- 				  struct buffer_head *, unsigned int);
--#define ext4_check_dir_entry(dir, de, bh, offset) \
--	unlikely(__ext4_check_dir_entry(__func__, __LINE__, (dir), (de), \
--					(bh), (offset)))
-+#define ext4_check_dir_entry(dir, filp, de, bh, offset)			\
-+	unlikely(__ext4_check_dir_entry(__func__, __LINE__, (dir), (filp), \
-+					(de), (bh), (offset)))
- extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
-@@ -1751,8 +1752,8 @@ extern void ext4_error_inode(struct inode *, const char *, unsigned int,
- 			     ext4_fsblk_t, const char *, ...)
- 	__attribute__ ((format (printf, 5, 6)));
- extern void ext4_error_file(struct file *, const char *, unsigned int,
--			    const char *, ...)
--	__attribute__ ((format (printf, 4, 5)));
-+			    ext4_fsblk_t, const char *, ...)
-+	__attribute__ ((format (printf, 5, 6)));
- extern void __ext4_std_error(struct super_block *, const char *,
- 			     unsigned int, int);
- extern void __ext4_abort(struct super_block *, const char *, unsigned int,
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index e275464..96a594d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -581,7 +581,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 					   dir->i_sb->s_blocksize -
- 					   EXT4_DIR_REC_LEN(0));
- 	for (; de < top; de = ext4_next_entry(de, dir->i_sb->s_blocksize)) {
--		if (ext4_check_dir_entry(dir, de, bh,
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
- 				(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
- 					 + ((char *)de - bh->b_data))) {
- 			/* On error, skip the f_pos to the next block. */
-@@ -820,7 +820,7 @@ static inline int search_dirblock(struct buffer_head *bh,
- 		if ((char *) de + namelen <= dlimit &&
- 		    ext4_match (namelen, name, de)) {
- 			/* found a match - just to be sure, do a full check */
--			if (ext4_check_dir_entry(dir, de, bh, offset))
-+			if (ext4_check_dir_entry(dir, NULL, de, bh, offset))
- 				return -1;
- 			*res_dir = de;
- 			return 1;
-@@ -1269,7 +1269,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 		de = (struct ext4_dir_entry_2 *)bh->b_data;
- 		top = bh->b_data + blocksize - reclen;
- 		while ((char *) de <= top) {
--			if (ext4_check_dir_entry(dir, de, bh, offset))
-+			if (ext4_check_dir_entry(dir, NULL, de, bh, offset))
- 				return -EIO;
- 			if (ext4_match(namelen, name, de))
- 				return -EEXIST;
-@@ -1636,7 +1636,7 @@ static int ext4_delete_entry(handle_t *handle,
- 	pde = NULL;
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	while (i < bh->b_size) {
--		if (ext4_check_dir_entry(dir, de, bh, i))
-+		if (ext4_check_dir_entry(dir, NULL, de, bh, i))
- 			return -EIO;
- 		if (de == de_del)  {
- 			BUFFER_TRACE(bh, "get_write_access");
-@@ -1919,7 +1919,7 @@ static int empty_dir(struct inode *inode)
- 			}
- 			de = (struct ext4_dir_entry_2 *) bh->b_data;
- 		}
--		if (ext4_check_dir_entry(inode, de, bh, offset)) {
-+		if (ext4_check_dir_entry(inode, NULL, de, bh, offset)) {
- 			de = (struct ext4_dir_entry_2 *)(bh->b_data +
- 							 sb->s_blocksize);
- 			offset = (offset | (sb->s_blocksize - 1)) + 1;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d49e3b1..7728a4c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -406,28 +406,31 @@ void ext4_error_inode(struct inode *inode, const char *function,
- 		      const char *fmt, ...)
- {
- 	va_list args;
-+	struct va_format vaf;
- 	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
- 
- 	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
- 	es->s_last_error_block = cpu_to_le64(block);
- 	save_error_info(inode->i_sb, function, line);
- 	va_start(args, fmt);
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
- 	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: inode #%lu: ",
- 	       inode->i_sb->s_id, function, line, inode->i_ino);
- 	if (block)
--		printk("block %llu: ", block);
--	printk("comm %s: ", current->comm);
--	vprintk(fmt, args);
--	printk("\n");
-+		printk(KERN_CONT "block %llu: ", block);
-+	printk(KERN_CONT "comm %s: %pV\n", current->comm, &vaf);
- 	va_end(args);
- 
- 	ext4_handle_error(inode->i_sb);
- }
- 
- void ext4_error_file(struct file *file, const char *function,
--		     unsigned int line, const char *fmt, ...)
-+		     unsigned int line, ext4_fsblk_t block,
-+		     const char *fmt, ...)
- {
- 	va_list args;
-+	struct va_format vaf;
- 	struct ext4_super_block *es;
- 	struct inode *inode = file->f_dentry->d_inode;
- 	char pathname[80], *path;
-@@ -435,17 +438,18 @@ void ext4_error_file(struct file *file, const char *function,
- 	es = EXT4_SB(inode->i_sb)->s_es;
- 	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
- 	save_error_info(inode->i_sb, function, line);
--	va_start(args, fmt);
- 	path = d_path(&(file->f_path), pathname, sizeof(pathname));
- 	if (IS_ERR(path))
- 		path = "(unknown)";
- 	printk(KERN_CRIT
--	       "EXT4-fs error (device %s): %s:%d: inode #%lu "
--	       "(comm %s path %s): ",
--	       inode->i_sb->s_id, function, line, inode->i_ino,
--	       current->comm, path);
--	vprintk(fmt, args);
--	printk("\n");
-+	       "EXT4-fs error (device %s): %s:%d: inode #%lu: ",
-+	       inode->i_sb->s_id, function, line, inode->i_ino);
-+	if (block)
-+		printk(KERN_CONT "block %llu: ", block);
-+	va_start(args, fmt);
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+	printk(KERN_CONT "comm %s: path %s: %pV\n", current->comm, path, &vaf);
- 	va_end(args);
- 
- 	ext4_handle_error(inode->i_sb);
+So while it could print the superblock info and the first few block
+groups, I'm left waiting.
+
+My remove-of-200-million-files has completed. It took a week. 
+200000000/7/24/3600 = 330.7 .
+
+So it deleted around 330 files per second. With one IO operation per
+delete, the four disks operating at close to 75 IOs per second have
+performed reasonable. And at an average of 1 IO per remove, also
+the filesystem has performed reasonable. It seems I forgot the
+-E stride= option on mkfs. 
+
+The manual of tune2fs hints that this can be tuned after the fact with
+tune2fs. I seriously doubt it. Correct?
+
+TUNE2FS(8)                                                          
+...
+       -E extended-options
+              Set extended options for the filesystem.  Extended  options  are
+              comma separated, and may take an argument using the equals ('=')
+              sign.  The following extended options are supported:
+
+                   stride=stride-size
+...
+                   stripe_width=stripe-width
+
+
+
+	Roger. 
+
 -- 
-1.7.3.1
-
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
