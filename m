@@ -1,71 +1,56 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
-Date: Mon, 3 Jan 2011 12:09:35 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1101031208400.2815@dhcp-lab-213.englab.brq.redhat.com>
-References: <1290700425-4094-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1101031202080.2815@dhcp-lab-213.englab.brq.redhat.com>
+From: YangSheng <sickamd@gmail.com>
+Subject: Re: [PATCH] Update atime from future.
+Date: Mon, 03 Jan 2011 20:54:31 +0800
+Message-ID: <4D21C707.3010505@gmail.com>
+References: <1293631121-12667-1-git-send-email-sickamd@gmail.com> <20110103021708.d5abf7bd.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22308 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753533Ab1ACLJk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jan 2011 06:09:40 -0500
-In-Reply-To: <alpine.LFD.2.00.1101031202080.2815@dhcp-lab-213.englab.brq.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110103021708.d5abf7bd.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 3 Jan 2011, Lukas Czerner wrote:
+On 01/03/2011 06:17 PM, Andrew Morton wrote:
+> On Wed, 29 Dec 2010 21:58:41 +0800 yangsheng<sickamd@gmail.com>  wrote:
+>
+>    
+>> Signed-off-by: sickamd@gmail.com
+>> ---
+>>   fs/inode.c |    8 +++++++-
+>>   1 files changed, 7 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/inode.c b/fs/inode.c
+>> index da85e56..6c8effd 100644
+>> --- a/fs/inode.c
+>> +++ b/fs/inode.c
+>> @@ -1469,7 +1469,13 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
+>>   		return 1;
+>>
+>>   	/*
+>> -	 * Is the previous atime value older than a day? If yes,
+>> +	 * Is the previous atime value in future? If yes,
+>> +	 * update atime:
+>> +	 */
+>> +	if ((long)(now.tv_sec - inode->i_atime.tv_sec)<  0)
+>> +		return 1;
+>> +	/*
+>> +	 * Is the previous atime value old than a day? If yes,
+>>   	 * update atime:
+>>   	 */
+>>   	if ((long)(now.tv_sec - inode->i_atime.tv_sec)>= 24*60*60)
+>>      
+> Why do you believe this change is needed?  Did you observe some problem
+> which it fixes?  If so, please fully describe that problem.
+>    
+If atime has been set to future(maybe cause by some accident system time 
+adjust or wrong set by touch). It cannot be update to reflect fact 
+access time before system time running over one day.
 
-> On Thu, 25 Nov 2010, Lukas Czerner wrote:
-> 
-> > When determining last group through ext4_get_group_no_and_offset() the
-> > result may be wrong in cases when range->start and range-len are too
-> > big, because it may overflow when summing up those two numbers.
-> > 
-> > Fix that by checking range->len and limit its value to
-> > ext4_blocks_count(). This commit was tested by myself with expected
-> > result.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  fs/ext4/mballoc.c |    4 ++++
-> >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > index 5b4d4e3..7b05d92 100644
-> > --- a/fs/ext4/mballoc.c
-> > +++ b/fs/ext4/mballoc.c
-> > @@ -4819,6 +4819,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
-> >  	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
-> >  	ext4_grpblk_t cnt = 0, first_block, last_block;
-> >  	uint64_t start, len, minlen, trimmed;
-> > +	ext4_fsblk_t blocks_count = ext4_blocks_count(EXT4_SB(sb)->s_es);
-> >  	int ret = 0;
-> >  
-> >  	start = range->start >> sb->s_blocksize_bits;
-> > @@ -4826,6 +4827,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
-> >  	minlen = range->minlen >> sb->s_blocksize_bits;
-> >  	trimmed = 0;
-> >  
-> > +	if (len > blocks_count)
-> > +		len = blocks_count - start;
-> > +
-> >  	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
-> >  		return -EINVAL;
-> >  
-> > 
-> 
-> Hi Ted,
-> 
-> what is the status of this one?
-> 
-> Thanks!
-> -Lukas
-> 
+Thanks
 
-Oh, please ignore this, I just found "already applied" message. Sorry
-for the noise.
 
--Lukas
+
