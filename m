@@ -1,77 +1,91 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: question about file space preallocation with fallocate
-Date: Mon, 03 Jan 2011 11:07:01 -0600
-Message-ID: <4D220235.7000709@redhat.com>
-References: <AANLkTinRcYrMrOUYqqCM3Lkpnhinm4NXqzDg1p2p0+68@mail.gmail.com> <4D18CA33.6050800@oracle.com>
+Subject: Re: Uneven load on my raid disks.
+Date: Mon, 03 Jan 2011 11:18:59 -0600
+Message-ID: <4D220503.80706@redhat.com>
+References: <20101228090749.GB1351@bitwizard.nl> <4D1B646C.8030100@uni-konstanz.de> <20101229221715.GK10149@thunk.org> <20101230103200.GH2986@bitwizard.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Filipe David Manana <fdmanana@apache.org>,
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Kay Diederichs <kay.diederichs@uni-konstanz.de>,
 	linux-ext4@vger.kernel.org
-To: Sunil Mushran <sunil.mushran@oracle.com>
+To: Rogier Wolff <R.E.Wolff@BitWizard.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24839 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27923 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751198Ab1ACRHc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jan 2011 12:07:32 -0500
-In-Reply-To: <4D18CA33.6050800@oracle.com>
+	id S1750895Ab1ACRTH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Jan 2011 12:19:07 -0500
+In-Reply-To: <20101230103200.GH2986@bitwizard.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/27/2010 11:17 AM, Sunil Mushran wrote:
-> On 12/27/2010 06:47 AM, Filipe David Manana wrote:
->> Hi,
+On 12/30/2010 04:32 AM, Rogier Wolff wrote:
+> On Wed, Dec 29, 2010 at 05:17:15PM -0500, Ted Ts'o wrote:
+>> On Wed, Dec 29, 2010 at 05:40:12PM +0100, Kay Diederichs wrote:
+>>>> says: dumpe2fs -h /dev/md0 | grep RAID
+>>>
+>>> % tune2fs -l /dev/md0
+>>>
+>>> ...
+>>> RAID stride:              128
+>>> RAID stripe width:        768
+>>> ...
+>>>
+>>> runs much faster than dumpe2fs.
+>>> The command can also adjust the values.
 >>
->> I have been playing around with fallocate to preallocate space for a
->> file with the mode FALLOC_FL_KEEP_SIZE.
->> I'm running with Linux kernel 2.6.35-24 and ext4 as the fs.
->>
->> I'm allocating 1Gb for a newly created file and then in a loop I write
->> 1Gb of data into that file in chunks of 1Kb.
->> fallocate is returning me 0, therefore it was successful.
->> However I don't see any performance gains compared to a version of
->> that same code that doesn't call fallocate.
->>
->> The test code which does this is:  http://friendpaste.com/2UR0n2U851u4IXmubeLZh0
->>
->> Am I doing something wrong?
+>> Actually, "tune2fs -l" and "dumpe2fs -h" both run in about the same
+>> amount of time.  dumpe2fs without the -h option runs slower than
+>> tune2fs -l, true.  But that's because it reads and prints out
+>> information regarding the block and inode allocation bitmaps.
 > 
-> fallocate() gives users the ability to allocate space instantly. One way
-> to compare would be to time just fallocate() with another program
-> writing zeros for that length.
+> And the annoying thing is that it apparently uses a library function
+> that only returns after reading all that data. 
 > 
-> But that's not the aim of the syscall. The aim is to allow the fs to 
-> allocate
-> the space in as large chunks as possible to allow for better read
-> performance.
+> So while it could print the superblock info and the first few block
+> groups, I'm left waiting.
+> 
+> My remove-of-200-million-files has completed. It took a week. 
+> 200000000/7/24/3600 = 330.7 .
+> 
+> So it deleted around 330 files per second. With one IO operation per
+> delete, the four disks operating at close to 75 IOs per second have
+> performed reasonable. And at an average of 1 IO per remove, also
+> the filesystem has performed reasonable. It seems I forgot the
+> -E stride= option on mkfs. 
+> 
+> The manual of tune2fs hints that this can be tuned after the fact with
+> tune2fs. I seriously doubt it. Correct?
+> 
+> TUNE2FS(8)                                                          
+> ...
+>        -E extended-options
+>               Set extended options for the filesystem.  Extended  options  are
+>               comma separated, and may take an argument using the equals ('=')
+>               sign.  The following extended options are supported:
+> 
+>                    stride=stride-size
+> ...
+>                    stripe_width=stripe-width
+> 
 
-Well, all fallocate is really -supposed- to do is guarantee that the
-space will be available for a future write.
+It will change the superblock values, but you're right, it does not
+appear to actually move around any metadata or inode tables.
 
-"After a successful call to posix_fallocate(), subsequent writes to
-bytes in the  specified range are guaranteed not to fail because of lack
-of disk space."
+Interestingly there are some facilities for doing this if the inode
+size gets changed:
 
-A practical side effect is that it is often more contiguous, but that
-is not guaranteed.  It -could- return your allocated space in very
-fragmented extents.
+/*
+ * We need to scan for inode and block bitmaps that may need to be
+ * moved.  This can take place if the filesystem was formatted for
+ * RAID arrays using the mke2fs's extended option "stride".
+ */
+static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
 
-> If you don't do fallocate() and allow writes to allocate in small chunks,
-> as you are doing, the allocations on disks could be interleaved in face of
-> multiple processes doing the same. Fragmented allocations can only hurt
-> read performance.
-
-As you followed up in later emails, the original test case isn't going
-to show much if any difference; a 1G write is so small that it may well
-all turn into a single delalloc write anyway.  Since ext4 maxes out at
-128MB extents that's still several extents to allocate but it's not that
-much overhead.
-
-A more interesting test might be to do random writes into a large
-file, and compare preallocated vs. not-preallocated.  Ext4 leaves
-physical gaps for logical gaps though, so even that may not show a huge
-difference in performance, esp. when you consider that the random writes
-will cause "fragmentation" anyway in terms of written- and
-unwritten-extents which must be converted ...
 
 -Eric
+
+> 
+> 	Roger. 
+> 
+
