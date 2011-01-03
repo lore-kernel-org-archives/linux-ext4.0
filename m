@@ -1,53 +1,63 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [PATCH] Update atime from future.
-Date: Mon, 03 Jan 2011 10:27:48 +0000
-Message-ID: <1294050468.2429.2.camel@dolmen>
-References: <1293631121-12667-1-git-send-email-sickamd@gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
+Date: Mon, 3 Jan 2011 12:02:53 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1101031202080.2815@dhcp-lab-213.englab.brq.redhat.com>
+References: <1290700425-4094-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: yangsheng <sickamd@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1293631121-12667-1-git-send-email-sickamd@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:25099 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751914Ab1ACLC6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Jan 2011 06:02:58 -0500
+In-Reply-To: <1290700425-4094-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Thu, 25 Nov 2010, Lukas Czerner wrote:
 
-On Wed, 2010-12-29 at 21:58 +0800, yangsheng wrote:
-> Signed-off-by: sickamd@gmail.com
-> ---
->  fs/inode.c |    8 +++++++-
->  1 files changed, 7 insertions(+), 1 deletions(-)
+> When determining last group through ext4_get_group_no_and_offset() the
+> result may be wrong in cases when range->start and range-len are too
+> big, because it may overflow when summing up those two numbers.
 > 
-> diff --git a/fs/inode.c b/fs/inode.c
-> index da85e56..6c8effd 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -1469,7 +1469,13 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
->  		return 1;
+> Fix that by checking range->len and limit its value to
+> ext4_blocks_count(). This commit was tested by myself with expected
+> result.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/mballoc.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 5b4d4e3..7b05d92 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4819,6 +4819,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+>  	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+>  	ext4_grpblk_t cnt = 0, first_block, last_block;
+>  	uint64_t start, len, minlen, trimmed;
+> +	ext4_fsblk_t blocks_count = ext4_blocks_count(EXT4_SB(sb)->s_es);
+>  	int ret = 0;
 >  
->  	/*
-> -	 * Is the previous atime value older than a day? If yes,
-> +	 * Is the previous atime value in future? If yes,
-> +	 * update atime:
-> +	 */
-> +	if ((long)(now.tv_sec - inode->i_atime.tv_sec) < 0)
-> +		return 1;
-> +	/*
-> +	 * Is the previous atime value old than a day? If yes,
->  	 * update atime:
->  	 */
->  	if ((long)(now.tv_sec - inode->i_atime.tv_sec) >= 24*60*60)
+>  	start = range->start >> sb->s_blocksize_bits;
+> @@ -4826,6 +4827,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+>  	minlen = range->minlen >> sb->s_blocksize_bits;
+>  	trimmed = 0;
+>  
+> +	if (len > blocks_count)
+> +		len = blocks_count - start;
+> +
+>  	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+>  		return -EINVAL;
+>  
+> 
 
-I don't think this is a good plan for cluster filesystems, since if the
-times on the nodes are not exactly synchronised (we do highly recommend
-people run ntp or similar) then this might lead to excessive atime
-updating. The current behaviour is to ignore atimes which are in the
-future for exactly this reason,
+Hi Ted,
 
-Steve.
+what is the status of this one?
 
-
+Thanks!
+-Lukas
