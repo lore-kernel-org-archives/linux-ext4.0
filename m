@@ -1,87 +1,64 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH -V4 08/11] vfs: Add new file and directory create permission flags
-Date: Sun, 2 Jan 2011 22:59:00 -0700
-Message-ID: <181ED6EE-0B9F-4090-A911-B6053FF28BAC@dilger.ca>
-References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1285332494-12756-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20100924115423.530813c3@tlielax.poochiereds.net> <201009271514.00279.agruen@suse.de> <20110102232101.GB11955@thunk.org> <B0449E28-B18A-4009-B6CA-8AEED22F4CD7@dilger.ca>
-Mime-Version: 1.0 (iPhone Mail 8C148a)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ted Ts'o <tytso@mit.edu>, Andreas Gruenbacher <agruen@suse.de>,
-	Jeff Layton <jlayton@redhat.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"sfrench@us.ibm.com" <sfrench@us.ibm.com>,
-	"ffilz@us.ibm.com" <ffilz@us.ibm.com>,
-	"sandeen@redhat.com" <sandeen@redhat.com>,
-	"bfields@citi.umich.edu" <bfields@citi.umich.edu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"nfsv4@linux-nfs.org" <nfsv4@linux-nfs.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <B0449E28-B18A-4009-B6CA-8AEED22F4CD7@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: ext4: Fix 32bit overflow in ext4_ext_find_goal()
+Date: Mon, 3 Jan 2011 09:02:56 +0200
+Message-ID: <AANLkTinX9ZwGL7tj1VEHGgSm+3Hn8vw0tF0=oUSpXXOA@mail.gmail.com>
+References: <4D05B132.3060402@sx.jp.nec.com>
+	<20110102214031.GA10889@thunk.org>
+	<F02D88CD-7463-4E10-A012-D2CE362D1E88@dilger.ca>
+	<20110103041157.GE11955@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Kazuya Mio <k-mio@sx.jp.nec.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:48697 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751198Ab1ACHC4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jan 2011 02:02:56 -0500
+Received: by qyk12 with SMTP id 12so14735917qyk.19
+        for <linux-ext4@vger.kernel.org>; Sun, 02 Jan 2011 23:02:56 -0800 (PST)
+In-Reply-To: <20110103041157.GE11955@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Never mind, I didn't notice this was only for hard linking directories...
+On Mon, Jan 3, 2011 at 6:11 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Sun, Jan 02, 2011 at 08:35:39PM -0700, Andreas Dilger wrote:
+>> It was written that way because HPC applications writing to a shared
+>> file normally write to an offset of task_num * task_data_size so
+>> they do not overlap, and end up with a dense file. Similarly,
+>> bittorrent and parallel FTP clients will write dense files after
+>> seeking randomly around the file, and database files often end up
+>> dense as well.
+>>
+>> I'd rather fix the relatively few applications that expect
+>> permanently sparse files to use fadvise() to notify the kernel of
+>> this.
+>
+> Agreed, and I'm not sure there are enough applications that expect
+> permanently sparse files that's worth adding a new fadvise(). =A0But =
+if
+> we do add a new fadvise(), the default should clearly be the current
+> behavior.
+>
+> If someone knows of use cases where permanently sparse files are
+> common, please let us know!
+>
 
-Cheers, Andreas
+Well, there's e2image of course, but using the qcow2 format is a better
+solution than fadvise in this case.
 
-On 2011-01-02, at 22:20, Andreas Dilger <adilger@dilger.ca> wrote:
+Also, I believe that if one chooses to use VM with raw image format,
+it is mostly for the purpose or read performance, which implies that
+the image was fallocate'd.
 
-> Actually, I think it is required by POSIX that EXDEV is returned when cross-linking files. For mv calling rename() at least it uses a return EXDEV to copy the file to the target filesystem instead of just giving up and returning an error. It may be other applications like tar have a similar dependency for link(). 
-> 
-> Cheers, Andreas
-> 
-> On 2011-01-02, at 16:21, Ted Ts'o <tytso@mit.edu> wrote:
-> 
->> I was going through some old patches in the ext4 patchwork list, and
->> came across this.  It looks like this patch has never been applied to
->> mainline.  If it's a "clear improvement", any reason not to submit it?
->> 
->> Regards,
->> 
->>                                        - Ted
->> 
->> On Mon, Sep 27, 2010 at 03:14:00PM +0200, Andreas Gruenbacher wrote:
->>> 
->>> Ah, you mean this:
->>> 
->>> --- a/fs/namei.c
->>> +++ b/fs/namei.c
->>> @@ -2450,7 +2450,9 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
->>>   if (!inode)
->>>       return -ENOENT;
->>> 
->>> -    error = may_create(dir, new_dentry, S_ISDIR(inode->i_mode));
->>> +    if (S_ISDIR(inode->i_mode))
->>> +        return -EPERM;
->>> +    error = may_create(dir, new_dentry, 0);
->>>   if (error)
->>>       return error;
->>> 
->>> @@ -2464,8 +2466,6 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
->>>       return -EPERM;
->>>   if (!dir->i_op->link)
->>>       return -EPERM;
->>> -    if (S_ISDIR(inode->i_mode))
->>> -        return -EPERM;
->>> 
->>>   error = security_inode_link(old_dentry, dir, new_dentry);
->>>   if (error)
->>> 
->>> This is a clear improvement; I don't think it matters that user-space will
->>> get -EPERM instead of -EXDEV when trying to hard-link a directory across
->>> devices.
->>> 
->>> Thanks,
->>> Andreas
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Am I wrong about this?
+
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
