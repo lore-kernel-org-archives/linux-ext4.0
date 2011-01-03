@@ -1,21 +1,22 @@
-From: Andrew Morton <akpm@linux-foundation.org>
+From: Steven Whitehouse <swhiteho@redhat.com>
 Subject: Re: [PATCH] Update atime from future.
-Date: Mon, 3 Jan 2011 02:17:08 -0800
-Message-ID: <20110103021708.d5abf7bd.akpm@linux-foundation.org>
+Date: Mon, 03 Jan 2011 10:27:48 +0000
+Message-ID: <1294050468.2429.2.camel@dolmen>
 References: <1293631121-12667-1-git-send-email-sickamd@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 To: yangsheng <sickamd@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1293631121-12667-1-git-send-email-sickamd@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 29 Dec 2010 21:58:41 +0800 yangsheng <sickamd@gmail.com> wrote:
+Hi,
 
+On Wed, 2010-12-29 at 21:58 +0800, yangsheng wrote:
 > Signed-off-by: sickamd@gmail.com
 > ---
 >  fs/inode.c |    8 +++++++-
@@ -41,5 +42,12 @@ On Wed, 29 Dec 2010 21:58:41 +0800 yangsheng <sickamd@gmail.com> wrote:
 >  	 */
 >  	if ((long)(now.tv_sec - inode->i_atime.tv_sec) >= 24*60*60)
 
-Why do you believe this change is needed?  Did you observe some problem
-which it fixes?  If so, please fully describe that problem.
+I don't think this is a good plan for cluster filesystems, since if the
+times on the nodes are not exactly synchronised (we do highly recommend
+people run ntp or similar) then this might lead to excessive atime
+updating. The current behaviour is to ignore atimes which are in the
+future for exactly this reason,
+
+Steve.
+
+
