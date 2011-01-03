@@ -1,47 +1,51 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: Hole Punching V3
-Date: Mon, 3 Jan 2011 16:57:21 -0500
-Message-ID: <20110103215720.GA8392@localhost.localdomain>
-References: <1290044780-2902-1-git-send-email-josef@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: AW: Questions concerning ext2 filesystem:  ext2_statfs
+Date: Mon, 3 Jan 2011 17:24:51 -0500
+Message-ID: <20110103222451.GA2959@thunk.org>
+References: <F6FD8E03-CEEF-4551-8164-C03492D25275@dilger.ca>
+ <FPEIIEKCABPOOBGGCOCHOEMNDHAA.bjoern.slotkowski@imc-berlin.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: david@fromorbit.com, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
-	cluster-devel@redhat.com, joel.becker@oracle.com, jack@suse.cz,
-	akpm@linux-foundation.org, torvalds@linux-foundation.org
-To: Josef Bacik <josef@redhat.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Bjoern Slotkowski <bjoern.slotkowski@imc-berlin.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5530 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:46963 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753993Ab1ACV6P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jan 2011 16:58:15 -0500
+	id S1750695Ab1ACWYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Jan 2011 17:24:54 -0500
 Content-Disposition: inline
-In-Reply-To: <1290044780-2902-1-git-send-email-josef@redhat.com>
+In-Reply-To: <FPEIIEKCABPOOBGGCOCHOEMNDHAA.bjoern.slotkowski@imc-berlin.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 17, 2010 at 08:46:14PM -0500, Josef Bacik wrote:
-> This is version 3 of the hole punching series I've been posting.  Not much has
-> changed, the history is below
+On Mon, Jan 03, 2011 at 02:12:04PM +0100, Bjoern Slotkowski wrote:
 > 
-> V2->V3
-> -FALLOC_FL_PUNCH_HOLE must also have FALLOC_FL_KEEP_SIZE in order to work
-> -formatting fixes
+> But there is still one thing also in the newer kernel:
+> f_bfree and f_ffree are determined by functions "ext2_count_free_blocks" and
+> "ext2_count_free_inodes"
+> which iterate through s_groups_count which needs a lot of time.
 > 
-> V1->V2
-> -Hole punching doesn't change file size
-> -Fixed the mode checks in ext4/btrfs/gfs2 so they do what they are supposed to
+> When I look at ext3/super.c and ext4/super.c the member variables
+> s_freeblocks_counter and s_freeinodes_counter are used directly in functions
+> *_statfs.
 > 
-> I've updated my local copies of the xfsprogs patches I have to test this to use
-> KEEP_SIZE and PUNCH_HOLE together, I'll post them after it looks like these
-> patches are good to go, including the manpage update.  The xfstest I wrote ran
-> fine both on xfs and btrfs (failing on btrfs obviously).  Thanks,
-> 
+> Probably there is potential for an optimization.
 
-I'd like to try and get this into the next merge window, it seems everybody is
-happy with it so far, any other comments?  Provided everybody is ok with it, how
-would you like me to send it to you Linus?  Would you prefer a pull request or
-will you just pull the patches off the mailinglist?  Thanks,
+Perhaps, but note that ext4 is fully backwards compatible with ext2.
+That is, you can mount ext2 file systems using the ext4 file system
+driver.  (You can also mount ext2 file systems using the ext3 file
+system, although you will have to add a journal to the file system
+first.)
 
-Josef
+Ext2 is primarily useful as an working, example file system which
+shows how to interface a file system to Linux.  As such piling in too
+many optimizations isn't necessarily consistent with its current role.
+No one is really actively maintaining ext2, except to update it work
+with the latest kernel interfaces, so it's not clear who would do the
+optimization.
+
+If you want a faster, more efficient file system, there are plenty of
+alternatives, including ext3 and ext4.
+
+						- Ted
