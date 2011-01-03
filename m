@@ -1,131 +1,71 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] mke2fs: Inform user of ongoing discard
-Date: Mon, 3 Jan 2011 12:06:10 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1101031205390.2815@dhcp-lab-213.englab.brq.redhat.com>
-References: <alpine.LFD.2.00.1012131756310.3054@dhcp-lab-213.englab.brq.redhat.com> <1292260100-6145-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix possible overflow in ext4_trim_fs()
+Date: Mon, 3 Jan 2011 12:09:35 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1101031208400.2815@dhcp-lab-213.englab.brq.redhat.com>
+References: <1290700425-4094-1-git-send-email-lczerner@redhat.com> <alpine.LFD.2.00.1101031202080.2815@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, tm@tao.ma
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31937 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22308 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753630Ab1ACLGQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jan 2011 06:06:16 -0500
-In-Reply-To: <1292260100-6145-1-git-send-email-lczerner@redhat.com>
+	id S1753533Ab1ACLJk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Jan 2011 06:09:40 -0500
+In-Reply-To: <alpine.LFD.2.00.1101031202080.2815@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 13 Dec 2010, Lukas Czerner wrote:
+On Mon, 3 Jan 2011, Lukas Czerner wrote:
 
-> For some time now we are doing initial discard of the device prior to
-> filesystem creation. However, there is no feedback for the user and
-> hence on some devices with slow TRIM implementation it may appear that
-> mke2fs is stuck.
+> On Thu, 25 Nov 2010, Lukas Czerner wrote:
 > 
-> This commit introduce new function mke2fs_discard_device(), which is a
-> wrapper for io_channel_discard(). The discard is done per-partes and
-> discard progress is being reported back to the user. The discard step
-> has been set to 2GB size, which works reasonably well on both slow and
-> fast devices.
+> > When determining last group through ext4_get_group_no_and_offset() the
+> > result may be wrong in cases when range->start and range-len are too
+> > big, because it may overflow when summing up those two numbers.
+> > 
+> > Fix that by checking range->len and limit its value to
+> > ext4_blocks_count(). This commit was tested by myself with expected
+> > result.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  fs/ext4/mballoc.c |    4 ++++
+> >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> > index 5b4d4e3..7b05d92 100644
+> > --- a/fs/ext4/mballoc.c
+> > +++ b/fs/ext4/mballoc.c
+> > @@ -4819,6 +4819,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+> >  	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+> >  	ext4_grpblk_t cnt = 0, first_block, last_block;
+> >  	uint64_t start, len, minlen, trimmed;
+> > +	ext4_fsblk_t blocks_count = ext4_blocks_count(EXT4_SB(sb)->s_es);
+> >  	int ret = 0;
+> >  
+> >  	start = range->start >> sb->s_blocksize_bits;
+> > @@ -4826,6 +4827,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+> >  	minlen = range->minlen >> sb->s_blocksize_bits;
+> >  	trimmed = 0;
+> >  
+> > +	if (len > blocks_count)
+> > +		len = blocks_count - start;
+> > +
+> >  	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+> >  		return -EINVAL;
+> >  
+> > 
 > 
-> I gave up on doing fancy things like align discard according to
-> discard_alignment, checking for discard granularity and computing
-> estimate time. First of all, because it would require either new ioctl
-> to retrieve those information or use of libudev library, none of it
-> seems to be worth it. Regarding discard_granularity, I doubt there is
-> any sane device with discard granularity that big it would affect this.
+> Hi Ted,
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  misc/mke2fs.c |   55 ++++++++++++++++++++++++++++++++++++++++++-------------
->  1 files changed, 42 insertions(+), 13 deletions(-)
+> what is the status of this one?
 > 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index bc1211d..75b07bb 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -72,6 +72,9 @@ extern int optind;
->  #define ZAP_BOOTBLOCK
->  #endif
->  
-> +#define DISCARD_STEP_MB		(2048)
-> +#define MB			(1024*1024)
-> +
->  extern int isatty(int);
->  extern FILE *fpopen(const char *cmd, const char *mode);
->  
-> @@ -1922,6 +1925,44 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
->  	return retval;
->  }
->  
-> +static int mke2fs_discard_device(ext2_filsys fs)
-> +{
-> +	struct ext2fs_numeric_progress_struct progress;
-> +	blk64_t blocks = ext2fs_blocks_count(fs->super);
-> +	blk64_t count = DISCARD_STEP_MB;
-> +	blk64_t cur = 0;
-> +	int retval = 0;
-> +
-> +	count *= MB;
-> +	count /= fs->blocksize;
-> +
-> +	ext2fs_numeric_progress_init(fs, &progress,
-> +				     _("Discarding device blocks: "),
-> +				     blocks);
-> +	while (cur < blocks) {
-> +		ext2fs_numeric_progress_update(fs, &progress, cur);
-> +
-> +		if (cur + count > blocks)
-> +			count = blocks - cur;
-> +
-> +		retval = io_channel_discard(fs->io, cur, count, fs->blocksize);
-> +		if (retval)
-> +			break;
-> +		cur += count;
-> +	}
-> +
-> +	if (retval) {
-> +		ext2fs_numeric_progress_close(fs, &progress,
-> +				      _("failed - "));
-> +		if (!quiet)
-> +			printf("%s\n",error_message(retval));
-> +	} else
-> +		ext2fs_numeric_progress_close(fs, &progress,
-> +				      _("done                            \n"));
-> +
-> +	return retval;
-> +}
-> +
->  int main (int argc, char *argv[])
->  {
->  	errcode_t	retval = 0;
-> @@ -1982,19 +2023,7 @@ int main (int argc, char *argv[])
->  
->  	/* Can't undo discard ... */
->  	if (discard && (io_ptr != undo_io_manager)) {
-> -		blk64_t blocks = ext2fs_blocks_count(fs->super);
-> -		if (verbose)
-> -			printf(_("Calling BLKDISCARD from 0 to %llu... "),
-> -			       (unsigned long long) blocks);
-> -		retval = io_channel_discard(fs->io, 0, blocks, fs->blocksize);
-> -		if (verbose) {
-> -			if (retval)
-> -				printf(_("failed (%s)\n"),
-> -				       error_message(retval));
-> -			else
-> -				printf(_("succeeded\n"));
-> -		}
-> -
-> +		retval = mke2fs_discard_device(fs);
->  		if (!retval && io_channel_discard_zeroes_data(fs->io)) {
->  			if (verbose)
->  				printf(_("Discard succeeded and will return 0s "
+> Thanks!
+> -Lukas
 > 
 
-Hi Ted,
+Oh, please ignore this, I just found "already applied" message. Sorry
+for the noise.
 
-what is the status of this patch ?
-
-Thanks!
 -Lukas
