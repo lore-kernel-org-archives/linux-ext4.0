@@ -1,56 +1,31 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: [PATCH 25/32] ext4: convert to alloc_workqueue()
-Date: Mon,  3 Jan 2011 14:49:48 +0100
-Message-ID: <1294062595-30097-26-git-send-email-tj@kernel.org>
-References: <1294062595-30097-1-git-send-email-tj@kernel.org>
-Cc: Tejun Heo <tj@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V4 08/11] vfs: Add new file and directory create permission flags
+Date: Mon, 03 Jan 2011 19:50:57 +0530
+Message-ID: <87hbdqdq5y.fsf@linux.vnet.ibm.com>
+References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1285332494-12756-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20100924115423.530813c3@tlielax.poochiereds.net> <201009271514.00279.agruen@suse.de> <20110102232101.GB11955@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, sfrench@us.ibm.com,
+	ffilz@us.ibm.com, adilger@sun.com, sandeen@redhat.com,
+	bfields@citi.umich.edu, linux-fsdevel@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>, Andreas Gruenbacher <agruen@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:36659 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755103Ab1ACNup (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jan 2011 08:50:45 -0500
-In-Reply-To: <1294062595-30097-1-git-send-email-tj@kernel.org>
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:33696 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755161Ab1ACOVL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jan 2011 09:21:11 -0500
+In-Reply-To: <20110102232101.GB11955@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Convert create_workqueue() to alloc_workqueue().  This is an identity
-conversion.
+On Sun, 2 Jan 2011 18:21:01 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
+> I was going through some old patches in the ext4 patchwork list, and
+> came across this.  It looks like this patch has never been applied to
+> mainline.  If it's a "clear improvement", any reason not to submit it?
 
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
----
-It might be helpful to use higher max concurrency.  I don't think it
-would make a lot of difference tho.  Please feel free to take it into
-the subsystem tree or simply ack - I'll route it through the wq tree.
+The patch is needed only with richacl patches, that add an extra argument to
+may_create.
 
-Thanks.
-
- fs/ext4/super.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index fb15c9c..f682c40 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3495,7 +3495,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	percpu_counter_set(&sbi->s_dirtyblocks_counter, 0);
- 
- no_journal:
--	EXT4_SB(sb)->dio_unwritten_wq = create_workqueue("ext4-dio-unwritten");
-+	/*
-+	 * The maximum number of concurrent works can be high and
-+	 * concurrency isn't really necessary.  Limit it to 1.
-+	 */
-+	EXT4_SB(sb)->dio_unwritten_wq =
-+		alloc_workqueue("ext4-dio-unwritten", WQ_MEM_RECLAIM, 1);
- 	if (!EXT4_SB(sb)->dio_unwritten_wq) {
- 		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
- 		goto failed_mount_wq;
--- 
-1.7.1
-
+-aneesh
