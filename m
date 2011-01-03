@@ -1,65 +1,62 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH -V4 08/11] vfs: Add new file and directory create
- permission flags
-Date: Sun, 2 Jan 2011 18:21:01 -0500
-Message-ID: <20110102232101.GB11955@thunk.org>
-References: <1285332494-12756-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1285332494-12756-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20100924115423.530813c3@tlielax.poochiereds.net>
- <201009271514.00279.agruen@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	sfrench@us.ibm.com, ffilz@us.ibm.com, adilger@sun.com,
-	sandeen@redhat.com, bfields@citi.umich.edu,
-	linux-fsdevel@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andreas Gruenbacher <agruen@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <201009271514.00279.agruen@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: ext4: Fix 32bit overflow in ext4_ext_find_goal()
+Date: Sun, 2 Jan 2011 20:35:39 -0700
+Message-ID: <F02D88CD-7463-4E10-A012-D2CE362D1E88@dilger.ca>
+References: <4D05B132.3060402@sx.jp.nec.com> <20110102214031.GA10889@thunk.org>
+Mime-Version: 1.0 (iPhone Mail 8C148a)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Kazuya Mio <k-mio@sx.jp.nec.com>, ext4 <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:20727 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753554Ab1ACDgM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Jan 2011 22:36:12 -0500
+In-Reply-To: <20110102214031.GA10889@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I was going through some old patches in the ext4 patchwork list, and
-came across this.  It looks like this patch has never been applied to
-mainline.  If it's a "clear improvement", any reason not to submit it?
+It was written that way because HPC applications writing to a shared file normally write to an offset of task_num * task_data_size so they do not overlap, and end up with a dense file. Similarly, bittorrent and parallel FTP clients will write dense files after seeking randomly around the file, and database files often end up dense as well. 
 
-Regards,
+I'd rather fix the relatively few applications that expect permanently sparse files to use fadvise() to notify the kernel of this. 
 
-	      	     	    		      - Ted
+Cheers, Andreas
 
-On Mon, Sep 27, 2010 at 03:14:00PM +0200, Andreas Gruenbacher wrote:
+On 2011-01-02, at 14:40, Ted Ts'o <tytso@mit.edu> wrote:
+
+> On Sun, Dec 12, 2010 at 07:37:54PM -0000, Kazuya Mio wrote:
+>> Hi,
+>> 
+>> ext4_ext_find_goal() returns an ideal physical block number that the block
+>> allocator tries to allocate first. However, if a required file offset is
+>> smaller than the existing extent's one, ext4_ext_find_goal() returns
+>> a wrong block number because it may overflow at
+>> "block - le32_to_cpu(ex->ee_block)". This patch fixes the problem.
 > 
-> Ah, you mean this:
+> Thanks, applied.  One comment which I've added to the code:
 > 
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -2450,7 +2450,9 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
->  	if (!inode)
->  		return -ENOENT;
->  
-> -	error = may_create(dir, new_dentry, S_ISDIR(inode->i_mode));
-> +	if (S_ISDIR(inode->i_mode))
-> +		return -EPERM;
-> +	error = may_create(dir, new_dentry, 0);
->  	if (error)
->  		return error;
->  
-> @@ -2464,8 +2466,6 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
->  		return -EPERM;
->  	if (!dir->i_op->link)
->  		return -EPERM;
-> -	if (S_ISDIR(inode->i_mode))
-> -		return -EPERM;
->  
->  	error = security_inode_link(old_dentry, dir, new_dentry);
->  	if (error)
+> The block placement algorithm in this section of code assumes that we
+> are filling in a file which will eventually be non-sparse --- i.e., in
+> the case of libbfd writing an ELF object sections out-of-order but in
+> a way the eventually results in a contiguous object or executable
+> file, or the old BSD dbm library writing dbm files.  However, this is
+> actually somewhat non-ideal if we are writing a sparse file such as
+> qemu or KVM writing a raw image file, as it will result in the free
+> space getting unnecessarily fragmented.  Maybe we should have some
+> hueristics to determine whether we are in the first or second case?
 > 
-> This is a clear improvement; I don't think it matters that user-space will
-> get -EPERM instead of -EXDEV when trying to hard-link a directory across
-> devices.
+> I don't currently think using raw image files is that common in most
+> virtualization application, but if someone can think of some common
+> use cases where we would care, it might be worth adding either some
+> hueristics to detect this, or perhaps some way that userspace can pass
+> a hint to the file system that what we're doing is writing a raw
+> sparse file.  For now I'm going to consider the first scenario more
+> common than the second....
 > 
-> Thanks,
-> Andreas
+>                        - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
