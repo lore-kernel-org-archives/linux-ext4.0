@@ -1,59 +1,77 @@
-From: YangSheng <sickamd@gmail.com>
-Subject: Re: [PATCH] Update atime from future.
-Date: Tue, 04 Jan 2011 00:44:27 +0800
-Message-ID: <4D21FCEB.80502@gmail.com>
-References: <1293631121-12667-1-git-send-email-sickamd@gmail.com> <1294050468.2429.2.camel@dolmen>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: question about file space preallocation with fallocate
+Date: Mon, 03 Jan 2011 11:07:01 -0600
+Message-ID: <4D220235.7000709@redhat.com>
+References: <AANLkTinRcYrMrOUYqqCM3Lkpnhinm4NXqzDg1p2p0+68@mail.gmail.com> <4D18CA33.6050800@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Steven Whitehouse <swhiteho@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1294050468.2429.2.camel@dolmen>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Filipe David Manana <fdmanana@apache.org>,
+	linux-ext4@vger.kernel.org
+To: Sunil Mushran <sunil.mushran@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:24839 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751198Ab1ACRHc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Jan 2011 12:07:32 -0500
+In-Reply-To: <4D18CA33.6050800@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/03/2011 06:27 PM, Steven Whitehouse wrote:
-> Hi,
->
-> On Wed, 2010-12-29 at 21:58 +0800, yangsheng wrote:
->    
->> Signed-off-by: sickamd@gmail.com
->> ---
->>   fs/inode.c |    8 +++++++-
->>   1 files changed, 7 insertions(+), 1 deletions(-)
+On 12/27/2010 11:17 AM, Sunil Mushran wrote:
+> On 12/27/2010 06:47 AM, Filipe David Manana wrote:
+>> Hi,
 >>
->> diff --git a/fs/inode.c b/fs/inode.c
->> index da85e56..6c8effd 100644
->> --- a/fs/inode.c
->> +++ b/fs/inode.c
->> @@ -1469,7 +1469,13 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
->>   		return 1;
+>> I have been playing around with fallocate to preallocate space for a
+>> file with the mode FALLOC_FL_KEEP_SIZE.
+>> I'm running with Linux kernel 2.6.35-24 and ext4 as the fs.
 >>
->>   	/*
->> -	 * Is the previous atime value older than a day? If yes,
->> +	 * Is the previous atime value in future? If yes,
->> +	 * update atime:
->> +	 */
->> +	if ((long)(now.tv_sec - inode->i_atime.tv_sec)<  0)
->> +		return 1;
->> +	/*
->> +	 * Is the previous atime value old than a day? If yes,
->>   	 * update atime:
->>   	 */
->>   	if ((long)(now.tv_sec - inode->i_atime.tv_sec)>= 24*60*60)
->>      
-> I don't think this is a good plan for cluster filesystems, since if the
-> times on the nodes are not exactly synchronised (we do highly recommend
-> people run ntp or similar) then this might lead to excessive atime
-> updating. The current behaviour is to ignore atimes which are in the
-> future for exactly this reason,
->    
-I agreed in theory.  Anyway, a two-way update may cause shake in some 
-case. Like a cluster environment with time gap between cluster members. 
-But future atime also is a trouble things i think. Of course, I hope a 
-clever patch to fix them all.
+>> I'm allocating 1Gb for a newly created file and then in a loop I write
+>> 1Gb of data into that file in chunks of 1Kb.
+>> fallocate is returning me 0, therefore it was successful.
+>> However I don't see any performance gains compared to a version of
+>> that same code that doesn't call fallocate.
+>>
+>> The test code which does this is:  http://friendpaste.com/2UR0n2U851u4IXmubeLZh0
+>>
+>> Am I doing something wrong?
+> 
+> fallocate() gives users the ability to allocate space instantly. One way
+> to compare would be to time just fallocate() with another program
+> writing zeros for that length.
+> 
+> But that's not the aim of the syscall. The aim is to allow the fs to 
+> allocate
+> the space in as large chunks as possible to allow for better read
+> performance.
 
-Thanks
-yangsheng
+Well, all fallocate is really -supposed- to do is guarantee that the
+space will be available for a future write.
+
+"After a successful call to posix_fallocate(), subsequent writes to
+bytes in the  specified range are guaranteed not to fail because of lack
+of disk space."
+
+A practical side effect is that it is often more contiguous, but that
+is not guaranteed.  It -could- return your allocated space in very
+fragmented extents.
+
+> If you don't do fallocate() and allow writes to allocate in small chunks,
+> as you are doing, the allocations on disks could be interleaved in face of
+> multiple processes doing the same. Fragmented allocations can only hurt
+> read performance.
+
+As you followed up in later emails, the original test case isn't going
+to show much if any difference; a 1G write is so small that it may well
+all turn into a single delalloc write anyway.  Since ext4 maxes out at
+128MB extents that's still several extents to allocate but it's not that
+much overhead.
+
+A more interesting test might be to do random writes into a large
+file, and compare preallocated vs. not-preallocated.  Ext4 leaves
+physical gaps for logical gaps though, so even that may not show a huge
+difference in performance, esp. when you consider that the random writes
+will cause "fragmentation" anyway in terms of written- and
+unwritten-extents which must be converted ...
+
+-Eric
