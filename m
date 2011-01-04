@@ -1,55 +1,37 @@
-From: yangsheng <sickamd@gmail.com>
-Subject: [PATCH] Update atime from future.
-Date: Tue,  4 Jan 2011 17:08:12 +0800
-Message-ID: <1294132092-4423-1-git-send-email-sickamd@gmail.com>
-Cc: adilger@dilger.ca, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, swhiteho@redhat.com,
-	yangsheng <sickamd@gmail.com>
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: [PATCH] Update atime from future.
+Date: Tue, 4 Jan 2011 15:56:56 +0100
+Message-ID: <20110104145656.GM21618@bitwizard.nl>
+References: <1293631121-12667-1-git-send-email-sickamd@gmail.com> <20110103021708.d5abf7bd.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from dtp.xs4all.nl ([80.101.171.8]:19203 "HELO abra2.bitwizard.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1751339Ab1ADO46 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Jan 2011 09:56:58 -0500
+Content-Disposition: inline
+In-Reply-To: <20110103021708.d5abf7bd.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-If atime has been wrong set to future, then it cannot
-be updated back to current time.
 
-Signed-off-by: sickamd@gmail.com
-Reviewed-by: adilger@dilger.ca
----
- fs/inode.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+On Mon, Jan 03, 2011 at 02:17:08AM -0800, Andrew Morton wrote:
+> On Wed, 29 Dec 2010 21:58:41 +0800 yangsheng <sickamd@gmail.com> wrote:
+> > -	 * Is the previous atime value older than a day? If yes,
+> > +	 * Is the previous atime value old than a day? If yes,
 
-diff --git a/fs/inode.c b/fs/inode.c
-index da85e56..d92779f 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1446,6 +1446,8 @@ sector_t bmap(struct inode *inode, sector_t block)
- }
- EXPORT_SYMBOL(bmap);
- 
-+#define RELATIME_MARGIN (24 * 60 * 60)
-+
- /*
-  * With relative atime, only update atime if the previous atime is
-  * earlier than either the ctime or mtime or if at least a day has
-@@ -1469,10 +1471,16 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
- 		return 1;
- 
- 	/*
-+	 * Is the previous atime value in future? If yes,
-+	 * update atime:
-+	 */
-+	if ((long)(now.tv_sec - inode->i_atime.tv_sec) < -RELATIME_MARGIN)
-+		return 1;
-+	/*
- 	 * Is the previous atime value older than a day? If yes,
- 	 * update atime:
- 	 */
--	if ((long)(now.tv_sec - inode->i_atime.tv_sec) >= 24*60*60)
-+	if ((long)(now.tv_sec - inode->i_atime.tv_sec) >= RELATIME_MARGIN)
- 		return 1;
- 	/*
- 	 * Good, we can skip the atime update:
+You introduced a typo. 
+
+	Roger. 
+
 -- 
-1.7.2.3
-
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
