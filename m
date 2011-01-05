@@ -1,61 +1,134 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 0/6] Shrinking the size of ext4_inode_info
-Date: Tue,  4 Jan 2011 20:01:04 -0500
-Message-ID: <1294189270-16733-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/6] ext4: replace i_delalloc_reserved_flag with EXT4_STATE_DELALLOC_RESERVED
+Date: Tue,  4 Jan 2011 20:01:05 -0500
+Message-ID: <1294189270-16733-2-git-send-email-tytso@mit.edu>
+References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56636 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56638 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750933Ab1AEBBO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750976Ab1AEBBO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 4 Jan 2011 20:01:14 -0500
+In-Reply-To: <1294189270-16733-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following set of patches shrink the size of ext4_inode_info, which
-is present in memory for every single ext4 inode in the inode cache.
-For example, on one of my machines I currently have 172261 ext4 inodes
-in my cache, which represents 161 megabytes of memory.  On an x86_64
-machine, these patches allow me to shrink the ext4 in-core inode size
-from 952 bytes to 872 bytes.  This represents a 8.4% decrease.  Using
-the SLUB allocator, this means we can now fit 18 inodes into an order 4
-(16384 bytes) slab, instead of the previous 17 inodes.  This results in
-an effective decrease of 5.6% of memory consumption by the ext4 inode
-cache.
+Remove the short element i_delalloc_reserved_flag from the
+ext4_inode_info structure and replace it a new bit in i_state_flags.
+Since we have an ext4_inode_info for every ext4 inode cached in the
+inode cache, any savings we can produce here is a very good thing from
+a memory utilization perspective.
 
-It would be possible to further slim down the ext4_inode_cache by
-another 100 bytes or so, by breaking the ext4_inode_info into the
-portion of the inode required a file is opened for writing, and
-everything else.  That would be a fairly disruptive change, though, so
-I'll save that for another time.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/balloc.c  |    3 ++-
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/inode.c   |    6 +++---
+ fs/ext4/mballoc.c |    5 +++--
+ fs/ext4/super.c   |    1 -
+ 5 files changed, 9 insertions(+), 8 deletions(-)
 
-						- Ted
-
-Theodore Ts'o (6):
-  ext4: replace i_delalloc_reserved_flag with
-    EXT4_STATE_DELALLOC_RESERVED
-  ext4: Use ext4_lblk_t instead of sector_t for logical blocks
-  ext4: Drop ec_type from the ext4_ext_cache structure
-  ext4: reorder ext4_inode_info structure elements to remove unneeded
-    padding
-  ext4: Drop i_state_flags on architectures with 64-bit longs
-  ext4: Dynamically allocate the jbd2_inode in ext4_inode_info as
-    necessary
-
- fs/ext4/balloc.c       |    3 ++-
- fs/ext4/ext4.h         |   36 +++++++++++++++++++++++-------------
- fs/ext4/ext4_extents.h |    8 ++------
- fs/ext4/ext4_jbd2.h    |    2 +-
- fs/ext4/extents.c      |   39 ++++++++++++++++-----------------------
- fs/ext4/file.c         |   19 +++++++++++++++++++
- fs/ext4/ialloc.c       |    2 +-
- fs/ext4/inode.c        |   29 ++++++++++++++++++-----------
- fs/ext4/mballoc.c      |    5 +++--
- fs/ext4/super.c        |   17 +++++++----------
- fs/jbd2/journal.c      |   20 +++++++++++++-------
- include/linux/jbd2.h   |   20 ++++++++++++++++++--
- 12 files changed, 123 insertions(+), 77 deletions(-)
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 14c3af2..adf96b8 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -592,7 +592,8 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 	 * Account for the allocated meta blocks.  We will never
+ 	 * fail EDQUOT for metdata, but we do account for it.
+ 	 */
+-	if (!(*errp) && EXT4_I(inode)->i_delalloc_reserved_flag) {
++	if (!(*errp) &&
++	    ext4_test_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED)) {
+ 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2a73925..b7ee66f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -828,7 +828,6 @@ struct ext4_inode_info {
+ 	unsigned int i_reserved_data_blocks;
+ 	unsigned int i_reserved_meta_blocks;
+ 	unsigned int i_allocated_meta_blocks;
+-	unsigned short i_delalloc_reserved_flag;
+ 	sector_t i_da_metadata_calc_last_lblock;
+ 	int i_da_metadata_calc_len;
+ 
+@@ -1235,6 +1234,7 @@ enum {
+ 	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+ 	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
+ 	EXT4_STATE_NEWENTRY,		/* File just added to dir */
++	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
+ };
+ 
+ #define EXT4_INODE_BIT_FNS(name, field)					\
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c0fe426..ac08460 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1330,7 +1330,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * avoid double accounting
+ 	 */
+ 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+-		EXT4_I(inode)->i_delalloc_reserved_flag = 1;
++		ext4_set_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+ 	/*
+ 	 * We need to check for EXT4 here because migrate
+ 	 * could have changed the inode type in between
+@@ -1360,7 +1360,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_da_update_reserve_space(inode, retval, 1);
+ 	}
+ 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+-		EXT4_I(inode)->i_delalloc_reserved_flag = 0;
++		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+ 
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+@@ -2249,7 +2249,7 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
+ 	 * affects functions in many different parts of the allocation
+ 	 * call path.  This flag exists primarily because we don't
+ 	 * want to change *many* call functions, so ext4_map_blocks()
+-	 * will set the magic i_delalloc_reserved_flag once the
++	 * will set the EXT4_STATE_DELALLOC_RESERVED flag once the
+ 	 * inode's allocation semaphore is taken.
+ 	 *
+ 	 * If the blocks in questions were delalloc blocks, set
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 1b10681..32d1d40 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4283,7 +4283,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	 * EDQUOT check, as blocks and quotas have been already
+ 	 * reserved when data being copied into pagecache.
+ 	 */
+-	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
++	if (ext4_test_inode_state(ar->inode, EXT4_STATE_DELALLOC_RESERVED))
+ 		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
+ 	else {
+ 		/* Without delayed allocation we need to verify
+@@ -4380,7 +4380,8 @@ out:
+ 	if (inquota && ar->len < inquota)
+ 		dquot_free_block(ar->inode, inquota - ar->len);
+ 	if (!ar->len) {
+-		if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
++		if (!ext4_test_inode_state(ar->inode,
++					   EXT4_STATE_DELALLOC_RESERVED))
+ 			/* release all the reserved blocks if non delalloc */
+ 			percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+ 						reserv_blks);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7728a4c..f5960d6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -828,7 +828,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_reserved_meta_blocks = 0;
+ 	ei->i_allocated_meta_blocks = 0;
+ 	ei->i_da_metadata_calc_len = 0;
+-	ei->i_delalloc_reserved_flag = 0;
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
+ #ifdef CONFIG_QUOTA
+ 	ei->i_reserved_quota = 0;
 -- 
 1.7.3.1
 
