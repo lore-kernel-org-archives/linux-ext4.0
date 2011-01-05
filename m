@@ -1,64 +1,123 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/6] ext4: reorder ext4_inode_info structure elements to remove unneeded padding
-Date: Tue,  4 Jan 2011 20:01:08 -0500
-Message-ID: <1294189270-16733-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/6] ext4: Drop i_state_flags on architectures with 64-bit longs
+Date: Tue,  4 Jan 2011 20:01:09 -0500
+Message-ID: <1294189270-16733-6-git-send-email-tytso@mit.edu>
 References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56643 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56645 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751064Ab1AEBBQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Jan 2011 20:01:16 -0500
+	id S1751238Ab1AEBBR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:01:17 -0500
 In-Reply-To: <1294189270-16733-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-By reordering the elements in the ext4_inode_info structure, we can
-reduce the padding needed on an x86_64 system by 16 bytes.
+We can store the dynamic inode state flags in the high bits of
+EXT4_I(inode)->i_flags, and eliminate i_state_flags.  This saves 8
+bytes from the size of ext4_inode_info structure, which when
+multiplied by the number of the number of in the inode cache, can save
+a lot of memory.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h   |   20 ++++++++++++++------
+ fs/ext4/ialloc.c |    2 +-
+ fs/ext4/inode.c  |    4 ++--
+ 3 files changed, 17 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index de937fc..50e3d24 100644
+index 50e3d24..8a2603d 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -763,10 +763,10 @@ struct ext4_inode_info {
- 	 * near to their parent directory's inode.
+@@ -764,7 +764,9 @@ struct ext4_inode_info {
  	 */
  	ext4_group_t	i_block_group;
-+	ext4_lblk_t	i_dir_start_lookup;
+ 	ext4_lblk_t	i_dir_start_lookup;
++#if (BITS_PER_LONG < 64)
  	unsigned long	i_state_flags;		/* Dynamic state flags */
++#endif
  	unsigned long	i_flags;
  
--	ext4_lblk_t		i_dir_start_lookup;
  #ifdef CONFIG_EXT4_FS_XATTR
- 	/*
- 	 * Extended attributes can be read independently of the main file
-@@ -835,7 +835,6 @@ struct ext4_inode_info {
- 	/* on-disk additional length */
- 	__u16 i_extra_isize;
+@@ -1239,22 +1241,28 @@ enum {
+ 	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
+ };
  
--	spinlock_t i_block_reservation_lock;
- #ifdef CONFIG_QUOTA
- 	/* quota space reservation, managed internally by quota code */
- 	qsize_t i_reserved_quota;
-@@ -844,9 +843,11 @@ struct ext4_inode_info {
- 	/* completed IOs that might need unwritten extents handling */
- 	struct list_head i_completed_io_list;
- 	spinlock_t i_completed_io_lock;
-+	atomic_t i_ioend_count;	/* Number of outstanding io_end structs */
- 	/* current io_end structure for async DIO write*/
- 	ext4_io_end_t *cur_aio_dio;
--	atomic_t i_ioend_count;	/* Number of outstanding io_end structs */
-+
-+	spinlock_t i_block_reservation_lock;
+-#define EXT4_INODE_BIT_FNS(name, field)					\
++#define EXT4_INODE_BIT_FNS(name, field, offset)				\
+ static inline int ext4_test_inode_##name(struct inode *inode, int bit)	\
+ {									\
+-	return test_bit(bit, &EXT4_I(inode)->i_##field);		\
++	return test_bit(bit + (offset), &EXT4_I(inode)->i_##field);	\
+ }									\
+ static inline void ext4_set_inode_##name(struct inode *inode, int bit)	\
+ {									\
+-	set_bit(bit, &EXT4_I(inode)->i_##field);			\
++	set_bit(bit + (offset), &EXT4_I(inode)->i_##field);		\
+ }									\
+ static inline void ext4_clear_inode_##name(struct inode *inode, int bit) \
+ {									\
+-	clear_bit(bit, &EXT4_I(inode)->i_##field);			\
++	clear_bit(bit + (offset), &EXT4_I(inode)->i_##field);		\
+ }
  
- 	/*
- 	 * Transactions that contain inode's metadata needed to complete
+-EXT4_INODE_BIT_FNS(flag, flags)
+-EXT4_INODE_BIT_FNS(state, state_flags)
++EXT4_INODE_BIT_FNS(flag, flags, 0)
++#if (BITS_PER_LONG < 64)
++EXT4_INODE_BIT_FNS(state, state_flags, 0)
++#define EXT4_CLEAR_STATE_FLAGS(ei)	(ei)->i_state_flags = 0
++#else
++EXT4_INODE_BIT_FNS(state, flags, 32)
++#define EXT4_CLEAR_STATE_FLAGS(ei)	(ei)->i_flags = 0
++#endif
+ #else
+ /* Assume that user mode programs are passing in an ext4fs superblock, not
+  * a kernel struct super_block.  This will allow us to call the feature-test
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 1ce240a..67b6779 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1009,6 +1009,7 @@ got:
+ 	 * extent flag on newly created directory and file only if -o extent
+ 	 * mount option is specified
+ 	 */
++	EXT4_CLEAR_STATE_FLAGS(ei);
+ 	ei->i_flags =
+ 		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
+ 	ei->i_file_acl = 0;
+@@ -1027,7 +1028,6 @@ got:
+ 	inode->i_generation = sbi->s_next_generation++;
+ 	spin_unlock(&sbi->s_next_gen_lock);
+ 
+-	ei->i_state_flags = 0;
+ 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
+ 
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3ae8313..2d60028 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4868,7 +4868,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	}
+ 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
+ 
+-	ei->i_state_flags = 0;
++	EXT4_CLEAR_STATE_FLAGS(ei);
+ 	ei->i_dir_start_lookup = 0;
+ 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
+ 	/* We now have enough fields to check if the inode was active or not.
+@@ -5127,7 +5127,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	if (ext4_inode_blocks_set(handle, raw_inode, ei))
+ 		goto out_brelse;
+ 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
+-	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
++	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
+ 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+ 	    cpu_to_le32(EXT4_OS_HURD))
+ 		raw_inode->i_file_acl_high =
 -- 
 1.7.3.1
 
