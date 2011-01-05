@@ -1,218 +1,260 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/6] ext4: Drop ec_type from the ext4_ext_cache structure
-Date: Tue,  4 Jan 2011 20:01:07 -0500
-Message-ID: <1294189270-16733-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 6/6] ext4: Dynamically allocate the jbd2_inode in ext4_inode_info as necessary
+Date: Tue,  4 Jan 2011 20:01:10 -0500
+Message-ID: <1294189270-16733-7-git-send-email-tytso@mit.edu>
 References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56641 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56650 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751146Ab1AEBBP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Jan 2011 20:01:15 -0500
+	id S1751241Ab1AEBBS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:01:18 -0500
 In-Reply-To: <1294189270-16733-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We can encode the ec_type information by using ee_len == 0 to denote
-EXT4_EXT_CACHE_NO, ee_start == 0 to denote EXT4_EXT_CACHE_GAP, and if
-neither is true, then the cache type must be EXT4_EXT_CACHE_EXTENT.
-This allows us to reduce the size of ext4_ext_inode by another 8
-bytes.  (ec_type is 4 bytes, plus another 4 bytes of padding)
+Replace the jbd2_inode structure (which is 48 bytes) with a pointer
+and only allocate the jbd2_inode when it is needed --- that is, when
+the file system has a journal present and the inode has been opened
+for writing.  This allows us to further slim down the ext4_inode_info
+structure.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h         |    3 ++-
- fs/ext4/ext4_extents.h |    6 +-----
- fs/ext4/extents.c      |   37 +++++++++++++++----------------------
- 3 files changed, 18 insertions(+), 28 deletions(-)
+ fs/ext4/ext4.h       |    2 +-
+ fs/ext4/ext4_jbd2.h  |    2 +-
+ fs/ext4/file.c       |   19 +++++++++++++++++++
+ fs/ext4/inode.c      |   15 +++++++++++----
+ fs/ext4/super.c      |   16 +++++++---------
+ fs/jbd2/journal.c    |   20 +++++++++++++-------
+ include/linux/jbd2.h |   20 ++++++++++++++++++--
+ 7 files changed, 70 insertions(+), 24 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 746a598..de937fc 100644
+index 8a2603d..50f35e8 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -738,12 +738,13 @@ do {									       \
+@@ -811,7 +811,7 @@ struct ext4_inode_info {
+ 	 */
+ 	struct rw_semaphore i_data_sem;
+ 	struct inode vfs_inode;
+-	struct jbd2_inode jinode;
++	struct jbd2_inode *jinode;
  
- /*
-  * storage for cached extent
-+ * If ec_len == 0, then the cache is invalid.
-+ * If ec_start == 0, then the cache represents a gap (null mapping)
-  */
- struct ext4_ext_cache {
- 	ext4_fsblk_t	ec_start;
- 	ext4_lblk_t	ec_block;
- 	__u32		ec_len; /* must be 32bit to return holes */
--	__u32		ec_type;
- };
- 
- /*
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index dfdda17..2e29abb 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -119,10 +119,6 @@ struct ext4_ext_path {
-  * structure for external API
-  */
- 
--#define EXT4_EXT_CACHE_NO	0
--#define EXT4_EXT_CACHE_GAP	1
--#define EXT4_EXT_CACHE_EXTENT	2
--
- /*
-  * to be called by ext4_ext_walk_space()
-  * negative retcode - error
-@@ -197,7 +193,7 @@ static inline unsigned short ext_depth(struct inode *inode)
- static inline void
- ext4_ext_invalidate_cache(struct inode *inode)
+ 	struct ext4_ext_cache i_cached_extent;
+ 	/*
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index b0bd792..d8b992e 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -253,7 +253,7 @@ static inline int ext4_journal_force_commit(journal_t *journal)
+ static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
  {
--	EXT4_I(inode)->i_cached_extent.ec_type = EXT4_EXT_CACHE_NO;
-+	EXT4_I(inode)->i_cached_extent.ec_len = 0;
+ 	if (ext4_handle_valid(handle))
+-		return jbd2_journal_file_inode(handle, &EXT4_I(inode)->jinode);
++		return jbd2_journal_file_inode(handle, EXT4_I(inode)->jinode);
+ 	return 0;
  }
  
- static inline void ext4_ext_mark_uninitialized(struct ext4_extent *ext)
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a16fe91..a643b50 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1894,12 +1894,10 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 			cbex.ec_block = start;
- 			cbex.ec_len = end - start;
- 			cbex.ec_start = 0;
--			cbex.ec_type = EXT4_EXT_CACHE_GAP;
- 		} else {
- 			cbex.ec_block = le32_to_cpu(ex->ee_block);
- 			cbex.ec_len = ext4_ext_get_actual_len(ex);
- 			cbex.ec_start = ext4_ext_pblock(ex);
--			cbex.ec_type = EXT4_EXT_CACHE_EXTENT;
- 		}
- 
- 		if (unlikely(cbex.ec_len == 0)) {
-@@ -1939,13 +1937,12 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 
- static void
- ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
--			__u32 len, ext4_fsblk_t start, int type)
-+			__u32 len, ext4_fsblk_t start)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 5a5c55d..45a656f 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -104,6 +104,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
  {
- 	struct ext4_ext_cache *cex;
- 	BUG_ON(len == 0);
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	cex = &EXT4_I(inode)->i_cached_extent;
--	cex->ec_type = type;
- 	cex->ec_block = block;
- 	cex->ec_len = len;
- 	cex->ec_start = start;
-@@ -1998,15 +1995,18 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct vfsmount *mnt = filp->f_path.mnt;
+ 	struct path path;
+ 	char buf[64], *cp;
+@@ -127,6 +128,24 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 			ext4_mark_super_dirty(sb);
+ 		}
  	}
++	/*
++	 * Set up the jbd2_inode if we are opening the inode for
++	 * writing and the journal is present
++	 */
++	if (sbi->s_journal && !ei->jinode && (filp->f_mode & FMODE_WRITE)) {
++		struct jbd2_inode *jinode = jbd2_alloc_inode(GFP_KERNEL);
++
++		spin_lock(&inode->i_lock);
++		if (!ei->jinode) {
++			if (!jinode) {
++				spin_unlock(&inode->i_lock);
++				return -ENOMEM;
++			}
++			ei->jinode = jinode;
++			jbd2_journal_init_jbd_inode(ei->jinode, inode);
++		}
++		spin_unlock(&inode->i_lock);
++	}
+ 	return dquot_file_open(inode, filp);
+ }
  
- 	ext_debug(" -> %u:%lu\n", lblock, len);
--	ext4_ext_put_in_cache(inode, lblock, len, 0, EXT4_EXT_CACHE_GAP);
-+	ext4_ext_put_in_cache(inode, lblock, len, 0);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2d60028..de3f2e3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -55,10 +55,17 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
+ 					      loff_t new_size)
+ {
+ 	trace_ext4_begin_ordered_truncate(inode, new_size);
+-	return jbd2_journal_begin_ordered_truncate(
+-					EXT4_SB(inode->i_sb)->s_journal,
+-					&EXT4_I(inode)->jinode,
+-					new_size);
++	/* 
++	 * If jinode is zero, then we never opened the file for
++	 * writing, so there's no need to call
++	 * jbd2_journal_begin_ordered_truncate() since there's no
++	 * outstanding writes we need to flush.
++	 */
++	if (!EXT4_I(inode)->jinode)
++		return 0;
++	return jbd2_journal_begin_ordered_truncate(EXT4_JOURNAL(inode),
++						   EXT4_I(inode)->jinode,
++						   new_size);
+ }
+ 
+ static void ext4_invalidatepage(struct page *page, unsigned long offset);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f5960d6..7f99ac7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -818,12 +818,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
+ 	INIT_LIST_HEAD(&ei->i_prealloc_list);
+ 	spin_lock_init(&ei->i_prealloc_lock);
+-	/*
+-	 * Note:  We can be called before EXT4_SB(sb)->s_journal is set,
+-	 * therefore it can be null here.  Don't check it, just initialize
+-	 * jinode.
+-	 */
+-	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
+ 	ei->i_reserved_data_blocks = 0;
+ 	ei->i_reserved_meta_blocks = 0;
+ 	ei->i_allocated_meta_blocks = 0;
+@@ -832,6 +826,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ #ifdef CONFIG_QUOTA
+ 	ei->i_reserved_quota = 0;
+ #endif
++	ei->jinode = 0;
+ 	INIT_LIST_HEAD(&ei->i_completed_io_list);
+ 	spin_lock_init(&ei->i_completed_io_lock);
+ 	ei->cur_aio_dio = NULL;
+@@ -900,9 +895,12 @@ void ext4_clear_inode(struct inode *inode)
+ 	end_writeback(inode);
+ 	dquot_drop(inode);
+ 	ext4_discard_preallocations(inode);
+-	if (EXT4_JOURNAL(inode))
+-		jbd2_journal_release_jbd_inode(EXT4_SB(inode->i_sb)->s_journal,
+-				       &EXT4_I(inode)->jinode);
++	if (EXT4_JOURNAL(inode) && EXT4_I(inode)->jinode) {
++		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
++					       EXT4_I(inode)->jinode);
++		jbd2_free_inode(EXT4_I(inode)->jinode);
++		EXT4_I(inode)->jinode = 0;
++	}
+ }
+ 
+ static inline void ext4_show_quota_options(struct seq_file *seq,
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 2447bd8..9e46869 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -94,6 +94,7 @@ EXPORT_SYMBOL(jbd2_journal_file_inode);
+ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+ EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+ EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
++EXPORT_SYMBOL(jbd2_inode_cache);
+ 
+ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
+@@ -2286,17 +2287,19 @@ static void __exit jbd2_remove_jbd_stats_proc_entry(void)
+ 
+ #endif
+ 
+-struct kmem_cache *jbd2_handle_cache;
++struct kmem_cache *jbd2_handle_cache, *jbd2_inode_cache;
+ 
+ static int __init journal_init_handle_cache(void)
+ {
+-	jbd2_handle_cache = kmem_cache_create("jbd2_journal_handle",
+-				sizeof(handle_t),
+-				0,		/* offset */
+-				SLAB_TEMPORARY,	/* flags */
+-				NULL);		/* ctor */
++	jbd2_handle_cache = KMEM_CACHE(jbd2_journal_handle, SLAB_TEMPORARY);
+ 	if (jbd2_handle_cache == NULL) {
+-		printk(KERN_EMERG "JBD: failed to create handle cache\n");
++		printk(KERN_EMERG "JBD2: failed to create handle cache\n");
++		return -ENOMEM;
++	}
++	jbd2_inode_cache = KMEM_CACHE(jbd2_inode, 0);
++	if (jbd2_inode_cache == NULL) {
++		printk(KERN_EMERG "JBD2: failed to create inode cache\n");
++		kmem_cache_destroy(jbd2_handle_cache);
+ 		return -ENOMEM;
+ 	}
+ 	return 0;
+@@ -2306,6 +2309,9 @@ static void jbd2_journal_destroy_handle_cache(void)
+ {
+ 	if (jbd2_handle_cache)
+ 		kmem_cache_destroy(jbd2_handle_cache);
++	if (jbd2_inode_cache)
++		kmem_cache_destroy(jbd2_inode_cache);
++
+ }
+ 
+ /*
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 2ae86aa..27e79c2 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -94,7 +94,7 @@ extern void jbd2_free(void *ptr, size_t size);
+  *
+  * This is an opaque datatype.
+  **/
+-typedef struct handle_s		handle_t;	/* Atomic operation type */
++typedef struct jbd2_journal_handle handle_t;	/* Atomic operation type */
+ 
+ 
+ /**
+@@ -416,7 +416,7 @@ struct jbd2_revoke_table_s;
+  * in so it can be fixed later.
+  */
+ 
+-struct handle_s
++struct jbd2_journal_handle
+ {
+ 	/* Which compound transaction is this update a part of? */
+ 	transaction_t		*h_transaction;
+@@ -1158,6 +1158,22 @@ static inline void jbd2_free_handle(handle_t *handle)
+ 	kmem_cache_free(jbd2_handle_cache, handle);
  }
  
 +/*
-+ * Return 0 if cache is invalid; 1 if the cache is valid
++ * jbd2_inode management (optional, for those file systems that want to use
++ * dynamically allocated jbd2_inode structures)
 + */
- static int
- ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 			struct ext4_extent *ex)
- {
- 	struct ext4_ext_cache *cex;
--	int ret = EXT4_EXT_CACHE_NO;
-+	int ret = 0;
- 
- 	/*
- 	 * We borrow i_block_reservation_lock to protect i_cached_extent
-@@ -2015,11 +2015,9 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 	cex = &EXT4_I(inode)->i_cached_extent;
- 
- 	/* has cache valid data? */
--	if (cex->ec_type == EXT4_EXT_CACHE_NO)
-+	if (cex->ec_len == 0)
- 		goto errout;
- 
--	BUG_ON(cex->ec_type != EXT4_EXT_CACHE_GAP &&
--			cex->ec_type != EXT4_EXT_CACHE_EXTENT);
- 	if (in_range(block, cex->ec_block, cex->ec_len)) {
- 		ex->ee_block = cpu_to_le32(cex->ec_block);
- 		ext4_ext_store_pblock(ex, cex->ec_start);
-@@ -2027,7 +2025,7 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 		ext_debug("%u cached by %u:%u:%llu\n",
- 				block,
- 				cex->ec_block, cex->ec_len, cex->ec_start);
--		ret = cex->ec_type;
-+		ret = 1;
- 	}
- errout:
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-@@ -3298,7 +3296,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	struct ext4_extent_header *eh;
- 	struct ext4_extent newex, *ex;
- 	ext4_fsblk_t newblock;
--	int err = 0, depth, ret, cache_type;
-+	int err = 0, depth, ret;
- 	unsigned int allocated = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
-@@ -3307,9 +3305,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		  map->m_lblk, map->m_len, inode->i_ino);
- 
- 	/* check in cache */
--	cache_type = ext4_ext_in_cache(inode, map->m_lblk, &newex);
--	if (cache_type) {
--		if (cache_type == EXT4_EXT_CACHE_GAP) {
-+	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
-+		if (!newex.ee_start_lo && !newex.ee_start_hi) {
- 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
- 				/*
- 				 * block isn't allocated yet and
-@@ -3318,7 +3315,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 				goto out2;
- 			}
- 			/* we should allocate requested block */
--		} else if (cache_type == EXT4_EXT_CACHE_EXTENT) {
-+		} else {
- 			/* block is already allocated */
- 			newblock = map->m_lblk
- 				   - le32_to_cpu(newex.ee_block)
-@@ -3327,8 +3324,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			allocated = ext4_ext_get_actual_len(&newex) -
- 				(map->m_lblk - le32_to_cpu(newex.ee_block));
- 			goto out;
--		} else {
--			BUG();
- 		}
- 	}
- 
-@@ -3379,8 +3374,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			/* Do not put uninitialized extent in the cache */
- 			if (!ext4_ext_is_uninitialized(ex)) {
- 				ext4_ext_put_in_cache(inode, ee_block,
--							ee_len, ee_start,
--							EXT4_EXT_CACHE_EXTENT);
-+							ee_len, ee_start);
- 				goto out;
- 			}
- 			ret = ext4_ext_handle_uninitialized_extents(handle,
-@@ -3512,8 +3506,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	 * when it is _not_ an uninitialized extent.
- 	 */
- 	if ((flags & EXT4_GET_BLOCKS_UNINIT_EXT) == 0) {
--		ext4_ext_put_in_cache(inode, map->m_lblk, allocated, newblock,
--						EXT4_EXT_CACHE_EXTENT);
-+		ext4_ext_put_in_cache(inode, map->m_lblk, allocated, newblock);
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
- 	} else
- 		ext4_update_inode_fsync_trans(handle, inode, 0);
-@@ -3789,7 +3782,7 @@ static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- 
- 	logical =  (__u64)newex->ec_block << blksize_bits;
- 
--	if (newex->ec_type == EXT4_EXT_CACHE_GAP) {
-+	if (newex->ec_start == 0) {
- 		pgoff_t offset;
- 		struct page *page;
- 		struct buffer_head *bh = NULL;
++extern struct kmem_cache *jbd2_inode_cache;
++
++static inline struct jbd2_inode *jbd2_alloc_inode(gfp_t gfp_flags)
++{
++	return kmem_cache_alloc(jbd2_inode_cache, gfp_flags);
++}
++
++static inline void jbd2_free_inode(struct jbd2_inode *jinode)
++{
++	kmem_cache_free(jbd2_inode_cache, jinode);
++}
++
+ /* Primary revoke support */
+ #define JOURNAL_REVOKE_DEFAULT_HASH 256
+ extern int	   jbd2_journal_init_revoke(journal_t *, int);
 -- 
 1.7.3.1
 
