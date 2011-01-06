@@ -1,44 +1,39 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix trimming of a single group
-Date: Thu,  6 Jan 2011 15:32:58 +0100
-Message-ID: <1294324378-21712-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Lukas Czerner <lczerner@redhat.com>
-To: tytso@mit.edu
+Subject: Re: [PATCH 0/2] ext2, ext3: speed up file create workloads
+Date: Thu, 6 Jan 2011 15:47:35 +0100
+Message-ID: <20110106144735.GJ4641@quack.suse.cz>
+References: <4CFE7347.8030807@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39279 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:43736 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752796Ab1AFOdN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jan 2011 09:33:13 -0500
+	id S1752749Ab1AFOrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Jan 2011 09:47:40 -0500
+Content-Disposition: inline
+In-Reply-To: <4CFE7347.8030807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When ext4_trim_fs() is called to trim a part of a single group, the
-logic will wrongly set last block of the interval to 'len' instead
-of 'first_block + len'. Thus a shorter interval is possibly trimmed.
-Fix it.
+On Tue 07-12-10 11:47:51, Eric Sandeen wrote:
+> The addition of 64k block capability in the rec_len_from_disk
+> and rec_len_to_disk functions added a bit of math overhead which
+> slows down file create workloads needlessly when the architecture
+> cannot even support 64k blocks, thanks to page size limits.
+> 
+> The directory entry checking can also be optimized a bit
+> by sprinkling in some unlikely() conditions to move the
+> error handling out of line.
+> 
+> These 2 patches speed up a bonnie++ file creation workload for
+> me by several percent on ext2 & ext3.
+  Thanks. I've merged both patches into my tree.
 
-CC: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
- I've already implemented this fix for ext3.
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5b4d4e3..4c4766c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4851,7 +4851,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 		if (len >= EXT4_BLOCKS_PER_GROUP(sb))
- 			len -= (EXT4_BLOCKS_PER_GROUP(sb) - first_block);
- 		else
--			last_block = len;
-+			last_block = first_block + len;
- 
- 		if (e4b.bd_info->bb_free >= minlen) {
- 			cnt = ext4_trim_all_free(sb, &e4b, first_block,
+							Honza
 -- 
-1.7.1
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
