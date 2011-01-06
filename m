@@ -1,61 +1,70 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 5/6] ext4: Drop i_state_flags on architectures with 64-bit longs
-Date: Thu, 6 Jan 2011 00:23:53 -0700
-Message-ID: <B0A77358-77C0-41DB-8281-FC7CEA4BC826@dilger.ca>
-References: <1294189270-16733-1-git-send-email-tytso@mit.edu> <1294189270-16733-6-git-send-email-tytso@mit.edu> <5A9C7BCF-AA25-494F-9C64-8A6553B44395@dilger.ca> <20110105202952.GO2959@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: Problems with e4defrag -c
+Date: Thu, 06 Jan 2011 16:24:08 +0900
+Message-ID: <4D256E18.3010708@sx.jp.nec.com>
+References: <E1PWFc1-0002cm-QV@tytso-glaptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:58110 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751526Ab1AFHXz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jan 2011 02:23:55 -0500
-In-Reply-To: <20110105202952.GO2959@thunk.org>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:48302 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753928Ab1AFH1j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jan 2011 02:27:39 -0500
+In-Reply-To: <E1PWFc1-0002cm-QV@tytso-glaptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-01-05, at 13:29, Ted Ts'o wrote:
-> On Wed, Jan 05, 2011 at 11:43:08AM -0700, Andreas Dilger wrote:
->> 
->> It looks like you have compensated for the above by changing the
->> code here, but I think it is risky/confusing if clearing the state
->> flags has a side-effect on 64-bit arches, that doesn't exist on
->> 32-bit arches.  It looks like a bug waiting to happen...
-> 
-> Yeah, I did think of this, but it seemed like extra/needless work that
-> I was trying to optimize away.  It's still not safe to do:
-> 
-> #define EXT4_CLEAR_STATE_FLAGS(ei)      (ei)->i_flags &= 0xffffffffULL;
-> 
-> ... since we're not atomically updating i_flags.
+Hi Ted,
+Thanks for your comments.
 
-This code would only be used on a 64-bit arch, so it should be updating the whole word at once (unlike a 32-bit arch).
+> First of all, explicit comparisons against the current uid is bad.  A
+> non-root user might have read/write access to the raw device where a
+> file sysem is located.  It's bad to encode an assumption one way or
+> another into a userspace program.  Secondly, whenever a userspace progam
+> is explicitly trying to encode permission checking, that's a red flag.
 
-> So if anyone tries using EXT4_CLEAR_STATE_FLAGS() aside from the two
-> allocation contexts, they need to be careful anyway.
-> 
-> I did think about putting the #ifdef BITS_PER_LONG < 64 inline in the
-> code, but that's ugly.  
+I will fix it.
 
-I'm missing the point of that - isn't the EXT4_CLEAR_STATE_FLAGS() macro
-masking already conditional on 64-bit architectures?
+> I'm not sure why checking to see if a file's st_uid matches the
+> current_uid has any validity at all.
 
-The one call in ext4_do_update_inode() that is masking i_flags is redundant,
-since the cpu_to_le32() macro is itself either masking the value before
-swabbing, and/or it is truncated by the assignment to i_flags.
+e4defrag tries to change the location of data blocks, so I assumed that
+non-root users should execute e4defrag only to their file. It would be better
+that users who have read/write permission can e4defrag to the file.
 
-> Maybe the best thing to do is to clearly document this pitfall, and
-> then leave things as-is?   There aren't a lot of great solutions.
+> What really matters are the number of extents which are non-tail
+> extents, and smaller than some threshold (probably around 256 MB for
+> most HDD's), and not forced by skips in the logical block numbering
+> (i.e., caused by a file being sparse).  The basic idea here is to go
+> back to why fragments are bad, which is that they slow down file access.
+> If every few hundred megabytes, you need to seek to another part of the
+> disk, it's really not the end of the world.
 
-It doesn't matter so much to me in the end.  At least documenting this
-anomaly is useful, and I don't think that doing the masking is harmful.
+What does 256MB mean? If "some threshold" means the maximum size of one extent,
+I think the size is 128MB.
 
-Cheers, Andreas
+> There's a more general question which is I'm not sure how much the
+> functionality of e4dfrag -c really belongs in e4defrag.  I'm thinking
+> perhaps that perhaps this functionality should instead go in filefrag,
+> and/or in e2fsck, which can do the job much more efficiently since it by
+> definition has direct access to the file system, so it can scan the
+> inode tables in order.
 
+Currently, e2fsprogs has two commands that report how badly fragmented
+a file might be. So, it is smart for e2fsprogs to drop -c option from e4defrag.
+e4defrag -c shows whether we need to execute e4defrag or not. For this, I think
+we should add "fragmentation score" included in e4defrag -c to the output of
+filefrag.
 
+However, sometimes we want to check the fragmentation not only for a single file
+but also for many files in the same directory. e4defrag -c gets the extent
+information of all files in a directory, and calculates the fragmentation score
+based on this information. But I'm not sure that I should add this feature
+to filefrag by adding new option or some other way.
 
-
+Regards,
+Kazuya Mio
 
