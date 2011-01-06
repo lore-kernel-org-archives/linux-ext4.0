@@ -1,51 +1,90 @@
-From: Heinz Diehl <htd@fancy-poultry.org>
-Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption?
-Date: Thu, 6 Jan 2011 16:56:41 +0100
-Message-ID: <20110106155641.GA12443@fancy-poultry.org>
-References: <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com>
- <4CF692D1.1010906@redhat.com>
- <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com>
- <4CF6B3E8.2000406@redhat.com>
- <20101201212310.GA15648@redhat.com>
- <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
- <20101204193828.GB13871@redhat.com>
- <AANLkTinX_av7A-xT6hD-Df=tHxOOWhi7QkVezAUO3pW5@mail.gmail.com>
- <20101205100954.GA6564@fritha.org>
- <4CFB679D.5030900@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5/6] ext4: Drop i_state_flags on architectures with
+ 64-bit longs
+Date: Thu, 6 Jan 2011 12:55:26 -0500
+Message-ID: <20110106175526.GA2857@thunk.org>
+References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
+ <1294189270-16733-6-git-send-email-tytso@mit.edu>
+ <5A9C7BCF-AA25-494F-9C64-8A6553B44395@dilger.ca>
+ <20110105202952.GO2959@thunk.org>
+ <B0A77358-77C0-41DB-8281-FC7CEA4BC826@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Heinz Diehl <htd@fritha.org>, Matt <jackdachef@gmail.com>,
-	Mike Snitzer <snitzer@redhat.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	dm-devel <dm-devel@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>, htejun@gmail.com,
-	linux-ext4@vger.kernel.org, Jon Nelson <jnelson@jamponi.net>
-To: linux-kernel@vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.8]:54912 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753109Ab1AFP5B (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jan 2011 10:57:01 -0500
+Received: from thunk.org ([69.25.196.29]:39393 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751241Ab1AFRza (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Jan 2011 12:55:30 -0500
 Content-Disposition: inline
-In-Reply-To: <4CFB679D.5030900@redhat.com>
+In-Reply-To: <B0A77358-77C0-41DB-8281-FC7CEA4BC826@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05.12.2010, Milan Broz wrote: 
+On Thu, Jan 06, 2011 at 12:23:53AM -0700, Andreas Dilger wrote:
+> > Yeah, I did think of this, but it seemed like extra/needless work that
+> > I was trying to optimize away.  It's still not safe to do:
+> > 
+> > #define EXT4_CLEAR_STATE_FLAGS(ei)      (ei)->i_flags &= 0xffffffffULL;
+> > 
+> > ... since we're not atomically updating i_flags.
+> 
+> This code would only be used on a 64-bit arch, so it should be
+> updating the whole word at once (unlike a 32-bit arch).
 
-> It still seems to like dmcrypt with its parallel processing is just
-> trigger to another bug in 37-rc.
+Masking off the low 32-bits is a read / mask / write set of operations
+on RISCy architectures.  Even on an Intel architecture, unless you
+specifically use the LOCK prefix on the AND operation, you can still
+risk racing with another CPU while you do the mask operation.  So no,
+it's not atomic.
 
-To come back to this: my 3 systems (XFS filesystem) running the latest 
-dm-crypt-scale-to-multiple-cpus patch from Andi Kleen/Milan Broz have 
-not showed a single problem since 2.6.37-rc6 and above. No corruption any 
-longer, no freezes, nothing. The patch applies cleanly to 2.6.37, too, 
-and runs just fine.
+This is why we did a wholesale replacement of explicit C bit
+operations on ei->i_flags and replaced them with
+ext4_{set/get/clear}_inode_flags.  And why in the jbd/jbd2 layer, we
+take an explicit spinlock before modifying j_flags.  (An obvious thing
+to try doing to reduce spinlock contention on big 48-core machines is
+to replace do a similar replacement in the jbd2 layer; on my todo
+list.)
 
-I blindly guess that my data corruption problem was related to something else in the
-2.6.37-rc series up to -rc4/5.
+> > I did think about putting the #ifdef BITS_PER_LONG < 64 inline in the
+> > code, but that's ugly.  
+> 
+> I'm missing the point of that - isn't the EXT4_CLEAR_STATE_FLAGS() macro
+> masking already conditional on 64-bit architectures?
 
-Since this patch is a significant improvement: any chance that it finally gets 
-merged into mainline/stable?
+Sorry, I must not have been clear.  I was referring to putting in an
+inline #if statement into the C code as being ugly.
 
+> The one call in ext4_do_update_inode() that is masking i_flags is redundant,
+> since the cpu_to_le32() macro is itself either masking the value before
+> swabbing, and/or it is truncated by the assignment to i_flags.
+
+(Actually, I think the C compiler will likely notice that the earlier
+i_flags is redudant, and optimize it out.)
+
+I could have replaced things with this instead:
+
+#if BITS_PER_LONG < 64
+	ei->i_state_flags = 0
+#endif
+
+That's more "correct", but it's ugly.  On the other hand, it does make
+explicit what is going on, instead of hiding it in a header file.
+Whether we think it's better depends on how likely that people will
+get confused in the future.  If we think it's likely this section of
+code will be regularly modified, then we can keep it explicit to
+minimize the chances that a future change in the code will move things
+around and I don't notice when I'm reviewing the patch.
+
+If we think the section of code is less likely to be changed, then
+hiding this detail could make it easier for the casual reader to
+understand the code.
+
+To be honoest, it's a minor point either way.  I don't have strong
+feelings about how this gets done one way or another; I just had to
+pick one, and I went with the latter approach.  I'm certainly willing
+to be pursuaded otherwise that the chances that someone could fall
+into the pitfall would be huge.
+
+						- Ted
