@@ -1,39 +1,95 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/2] ext2, ext3: speed up file create workloads
-Date: Thu, 6 Jan 2011 15:47:35 +0100
-Message-ID: <20110106144735.GJ4641@quack.suse.cz>
-References: <4CFE7347.8030807@redhat.com>
+Subject: Re: [PATCH] Resolve 'dereferencing pointer to incomplete type'
+ when enabling EXT2_XATTR_DEBUG
+Date: Thu, 6 Jan 2011 16:43:17 +0100
+Message-ID: <20110106154317.GL4641@quack.suse.cz>
+References: <1293486398-25909-1-git-send-email-johunt@akamai.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:43736 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752749Ab1AFOrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jan 2011 09:47:40 -0500
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Josh Hunt <johunt@akamai.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4CFE7347.8030807@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1293486398-25909-1-git-send-email-johunt@akamai.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 07-12-10 11:47:51, Eric Sandeen wrote:
-> The addition of 64k block capability in the rec_len_from_disk
-> and rec_len_to_disk functions added a bit of math overhead which
-> slows down file create workloads needlessly when the architecture
-> cannot even support 64k blocks, thanks to page size limits.
+On Mon 27-12-10 13:46:38, Josh Hunt wrote:
+> When I enable EXT2_XATTR_DEBUG in fs/ext2/xattr.c I get a build error stating
+> the following:
 > 
-> The directory entry checking can also be optimized a bit
-> by sprinkling in some unlikely() conditions to move the
-> error handling out of line.
+>   CC      fs/ext2/xattr.o
+> fs/ext2/xattr.c: In function 'ext2_xattr_cache_insert':
+> fs/ext2/xattr.c:841: error: dereferencing pointer to incomplete type
+> fs/ext2/xattr.c:846: error: dereferencing pointer to incomplete type
+> make[2]: *** [fs/ext2/xattr.o] Error 1
+> make[1]: *** [fs/ext2] Error 2
+> make: *** [fs] Error 2
 > 
-> These 2 patches speed up a bonnie++ file creation workload for
-> me by several percent on ext2 & ext3.
-  Thanks. I've merged both patches into my tree.
+> These lines reference ext2_xattr_cache->c_entry_count which is defined
+> in struct mb_cache. struct mb_cache is currently only defined in fs/mbcache.c.
+> Moving struct mb_cache definition to include/linux/mbcache.h to resolve the
+> issue.
+  Thanks. I've applied the patch.
 
-							Honza
+								Honza
+
+> 
+> Signed-off-by: Josh Hunt <johunt@akamai.com>
+> ---
+>  fs/mbcache.c            |   12 ------------
+>  include/linux/mbcache.h |   11 +++++++++++
+>  2 files changed, 11 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/mbcache.c b/fs/mbcache.c
+> index 9344474..a25444a 100644
+> --- a/fs/mbcache.c
+> +++ b/fs/mbcache.c
+> @@ -76,18 +76,6 @@ EXPORT_SYMBOL(mb_cache_entry_find_first);
+>  EXPORT_SYMBOL(mb_cache_entry_find_next);
+>  #endif
+>  
+> -struct mb_cache {
+> -	struct list_head		c_cache_list;
+> -	const char			*c_name;
+> -	atomic_t			c_entry_count;
+> -	int				c_max_entries;
+> -	int				c_bucket_bits;
+> -	struct kmem_cache		*c_entry_cache;
+> -	struct list_head		*c_block_hash;
+> -	struct list_head		*c_index_hash;
+> -};
+> -
+> -
+>  /*
+>   * Global data: list of all mbcache's, lru list, and a spinlock for
+>   * accessing cache data structures on SMP machines. The lru list is
+> diff --git a/include/linux/mbcache.h b/include/linux/mbcache.h
+> index 54cbbac..5525d37 100644
+> --- a/include/linux/mbcache.h
+> +++ b/include/linux/mbcache.h
+> @@ -18,6 +18,17 @@ struct mb_cache_entry {
+>  	} e_index;
+>  };
+>  
+> +struct mb_cache {
+> +	struct list_head		c_cache_list;
+> +	const char			*c_name;
+> +	atomic_t			c_entry_count;
+> +	int				c_max_entries;
+> +	int				c_bucket_bits;
+> +	struct kmem_cache		*c_entry_cache;
+> +	struct list_head		*c_block_hash;
+> +	struct list_head		*c_index_hash;
+> +};
+> +
+>  /* Functions on caches */
+>  
+>  struct mb_cache *mb_cache_create(const char *, int);
+> -- 
+> 1.7.0.4
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
