@@ -1,51 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: Remove redundant unlikely()
-Date: Thu, 6 Jan 2011 16:44:03 +0100
-Message-ID: <20110106154403.GM4641@quack.suse.cz>
-References: <1291905540-32296-1-git-send-email-tklauser@distanz.ch>
+From: Heinz Diehl <htd@fancy-poultry.org>
+Subject: Re: hunt for 2.6.37 dm-crypt+ext4 corruption?
+Date: Thu, 6 Jan 2011 16:56:41 +0100
+Message-ID: <20110106155641.GA12443@fancy-poultry.org>
+References: <AANLkTinG209iRAXgpNC0vNpn1C02wkYmVfveXRBqsKV-@mail.gmail.com>
+ <4CF692D1.1010906@redhat.com>
+ <AANLkTimA2PPXZoOHYgeOEV2ocrojeuBby8MYDYJ1yjx1@mail.gmail.com>
+ <4CF6B3E8.2000406@redhat.com>
+ <20101201212310.GA15648@redhat.com>
+ <AANLkTimQtMvPVafWG_DffF-zXXpz1vBPXdCCwxRnzSGr@mail.gmail.com>
+ <20101204193828.GB13871@redhat.com>
+ <AANLkTinX_av7A-xT6hD-Df=tHxOOWhi7QkVezAUO3pW5@mail.gmail.com>
+ <20101205100954.GA6564@fritha.org>
+ <4CFB679D.5030900@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: Tobias Klauser <tklauser@distanz.ch>
+Cc: Heinz Diehl <htd@fritha.org>, Matt <jackdachef@gmail.com>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	dm-devel <dm-devel@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>, htejun@gmail.com,
+	linux-ext4@vger.kernel.org, Jon Nelson <jnelson@jamponi.net>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41029 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753243Ab1AFPo2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jan 2011 10:44:28 -0500
+Received: from moutng.kundenserver.de ([212.227.17.8]:54912 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753109Ab1AFP5B (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jan 2011 10:57:01 -0500
 Content-Disposition: inline
-In-Reply-To: <1291905540-32296-1-git-send-email-tklauser@distanz.ch>
+In-Reply-To: <4CFB679D.5030900@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 09-12-10 15:39:00, Tobias Klauser wrote:
-> IS_ERR() already implies unlikely(), so it can be omitted here.
-  Thanks. Merged.
+On 05.12.2010, Milan Broz wrote: 
 
-								Honza
+> It still seems to like dmcrypt with its parallel processing is just
+> trigger to another bug in 37-rc.
 
-> 
-> Signed-off-by: Tobias Klauser <tklauser@distanz.ch>
-> ---
->  fs/ext2/namei.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-> index f8aecd2..2e1d834 100644
-> --- a/fs/ext2/namei.c
-> +++ b/fs/ext2/namei.c
-> @@ -67,7 +67,7 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
->  	inode = NULL;
->  	if (ino) {
->  		inode = ext2_iget(dir->i_sb, ino);
-> -		if (unlikely(IS_ERR(inode))) {
-> +		if (IS_ERR(inode)) {
->  			if (PTR_ERR(inode) == -ESTALE) {
->  				ext2_error(dir->i_sb, __func__,
->  						"deleted inode referenced: %lu",
-> -- 
-> 1.7.0.4
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+To come back to this: my 3 systems (XFS filesystem) running the latest 
+dm-crypt-scale-to-multiple-cpus patch from Andi Kleen/Milan Broz have 
+not showed a single problem since 2.6.37-rc6 and above. No corruption any 
+longer, no freezes, nothing. The patch applies cleanly to 2.6.37, too, 
+and runs just fine.
+
+I blindly guess that my data corruption problem was related to something else in the
+2.6.37-rc series up to -rc4/5.
+
+Since this patch is a significant improvement: any chance that it finally gets 
+merged into mainline/stable?
+
