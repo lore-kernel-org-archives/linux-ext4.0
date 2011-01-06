@@ -1,116 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Drop i_state_flags on architectures with 64-bit longs
-Date: Thu,  6 Jan 2011 16:15:45 -0500
-Message-ID: <1294348545-4806-1-git-send-email-tytso@mit.edu>
-References: <20110106175526.GA2857@thunk.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 6/6] ext4: Dynamically allocate the jbd2_inode in
+ ext4_inode_info as necessary
+Date: Thu, 6 Jan 2011 17:14:04 -0500
+Message-ID: <20110106221404.GB2857@thunk.org>
+References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
+ <1294189270-16733-7-git-send-email-tytso@mit.edu>
+ <A562E0CA-9CA6-4654-8FCB-9849F6EB09E7@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52564 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:47449 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751404Ab1AFVPt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jan 2011 16:15:49 -0500
-In-Reply-To: <20110106175526.GA2857@thunk.org>
+	id S1754201Ab1AFWO0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Jan 2011 17:14:26 -0500
+Content-Disposition: inline
+In-Reply-To: <A562E0CA-9CA6-4654-8FCB-9849F6EB09E7@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We can store the dynamic inode state flags in the high bits of
-EXT4_I(inode)->i_flags, and eliminate i_state_flags.  This saves 8
-bytes from the size of ext4_inode_info structure, which when
-multiplied by the number of the number of in the inode cache, can save
-a lot of memory.
+On Wed, Jan 05, 2011 at 12:26:33PM -0700, Andreas Dilger wrote:
+> In fact, the only callsites of this function are protected with:
+> 
+> 	if (ext4_should_order_data(inode))
+> 		ext4_begin_ordered_truncate(inode, size)
+> 
+> which will skip the call to ext4_begin_ordered_truncate() if the
+> filesystem is running in no-journal mode (EXT4_JOURNAL(inode) ==
+> NULL)).  That means the only reason this function could be called
+> with jinode == NULL is due to memory corruption, and it makes sense
+> to replace this with:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h   |   20 ++++++++++++++------
- fs/ext4/ialloc.c |    2 +-
- fs/ext4/inode.c  |    4 ++--
- 3 files changed, 17 insertions(+), 9 deletions(-)
+While it's true all of the callers of this function are protected with
+ext4_should_order_data(), this function can be called by unlink(), and
+if the file hasn't been opened for write, jinode will be NULL.  So
+returning if jinode is NULL is in fact the right thing to do.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 50e3d24..2569c23 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -764,7 +764,9 @@ struct ext4_inode_info {
- 	 */
- 	ext4_group_t	i_block_group;
- 	ext4_lblk_t	i_dir_start_lookup;
-+#if (BITS_PER_LONG < 64)
- 	unsigned long	i_state_flags;		/* Dynamic state flags */
-+#endif
- 	unsigned long	i_flags;
- 
- #ifdef CONFIG_EXT4_FS_XATTR
-@@ -1239,22 +1241,28 @@ enum {
- 	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
- };
- 
--#define EXT4_INODE_BIT_FNS(name, field)					\
-+#define EXT4_INODE_BIT_FNS(name, field, offset)				\
- static inline int ext4_test_inode_##name(struct inode *inode, int bit)	\
- {									\
--	return test_bit(bit, &EXT4_I(inode)->i_##field);		\
-+	return test_bit(bit + (offset), &EXT4_I(inode)->i_##field);	\
- }									\
- static inline void ext4_set_inode_##name(struct inode *inode, int bit)	\
- {									\
--	set_bit(bit, &EXT4_I(inode)->i_##field);			\
-+	set_bit(bit + (offset), &EXT4_I(inode)->i_##field);		\
- }									\
- static inline void ext4_clear_inode_##name(struct inode *inode, int bit) \
- {									\
--	clear_bit(bit, &EXT4_I(inode)->i_##field);			\
-+	clear_bit(bit + (offset), &EXT4_I(inode)->i_##field);		\
- }
- 
--EXT4_INODE_BIT_FNS(flag, flags)
--EXT4_INODE_BIT_FNS(state, state_flags)
-+EXT4_INODE_BIT_FNS(flag, flags, 0)
-+#if (BITS_PER_LONG < 64)
-+EXT4_INODE_BIT_FNS(state, state_flags, 0)
-+#define EXT4_CLEAR_STATE_FLAGS(ei)	(ei)->i_state_flags = 0
-+#else
-+EXT4_INODE_BIT_FNS(state, flags, 32)
-+#define EXT4_CLEAR_STATE_FLAGS(ei)	do { } while (0)
-+#endif
- #else
- /* Assume that user mode programs are passing in an ext4fs superblock, not
-  * a kernel struct super_block.  This will allow us to call the feature-test
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 1ce240a..9b0f230 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1027,7 +1027,7 @@ got:
- 	inode->i_generation = sbi->s_next_generation++;
- 	spin_unlock(&sbi->s_next_gen_lock);
- 
--	ei->i_state_flags = 0;
-+	EXT4_CLEAR_STATE_FLAGS(ei); /* Only relevant on 32-bit archs */
- 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
- 
- 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3ae8313..d34ddc6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4868,7 +4868,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 
--	ei->i_state_flags = 0;
-+	EXT4_CLEAR_STATE_FLAGS(ei);	/* Only relevant on 32-bit archs */
- 	ei->i_dir_start_lookup = 0;
- 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
- 	/* We now have enough fields to check if the inode was active or not.
-@@ -5127,7 +5127,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 	if (ext4_inode_blocks_set(handle, raw_inode, ei))
- 		goto out_brelse;
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
--	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
-+	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
- 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
- 	    cpu_to_le32(EXT4_OS_HURD))
- 		raw_inode->i_file_acl_high =
--- 
-1.7.3.1
-
+	     	       	       	  - Ted
