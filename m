@@ -1,130 +1,84 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: flush the i_completed_io_list during ext4_truncate
-Date: Fri,  7 Jan 2011 18:43:31 -0500
-Message-ID: <1294443811-28382-1-git-send-email-tytso@mit.edu>
-References: <20101130012228.2144B42716@ruihe.smo.corp.google.com>
-Cc: Jiaying Zhang <jiayingz@google.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Patch to issue pure flushes directly (Was: Re: [PATCH v6 0/4]
+ ext4: Coordinate data-only flush requests sent) by fsync
+Date: Fri, 7 Jan 2011 18:54:49 -0500
+Message-ID: <20110107235449.GT21922@thunk.org>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com>
+ <20101130164124.GA30858@lst.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Jens Axboe <axboe@kernel.dk>, Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
+	Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
+	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
+	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Josef Bacik <josef@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41688 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:57852 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751830Ab1AGXnf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Jan 2011 18:43:35 -0500
-In-Reply-To: <20101130012228.2144B42716@ruihe.smo.corp.google.com>
+	id S1751779Ab1AGXzQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Jan 2011 18:55:16 -0500
+Content-Disposition: inline
+In-Reply-To: <20101130164124.GA30858@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: jiayingz@google.com (Jiaying Zhang) <>
+This patch seemed like a good idea to me; I just checked linux-next,
+and looks like nothing like this is planned to be merged.  Just
+thought I would send a prod-o-gram to see what the current thinking
+was around adding something like this.
 
-Ted first found the bug when running 2.6.36 kernel with dioread_nolock
-mount option that xfstests #13 complained about wrong file size during fsck.
-However, the bug exists in the older kernels as well although it is
-somehow harder to trigger.
+Thanks,
 
-The problem is that ext4_end_io_work() can happen after we have truncated an
-inode to a smaller size. Then when ext4_end_io_work() calls
-ext4_convert_unwritten_extents(), we may reallocate some blocks that have
-been truncated, so the inode size becomes inconsistent with the allocated
-blocks.
+						- Ted
 
-The following patch flushes the i_completed_io_list during truncate to reduce
-the risk that some pending end_io requests are executed later and convert
-already truncated blocks to initialized.
 
-Note that although the fix helps reduce the problem a lot there may still
-be a race window between vmtruncate() and ext4_end_io_work(). The fundamental
-problem is that if vmtruncate() is called without either i_mutex or i_alloc_sem
-held, it can race with an ongoing write request so that the io_end request is
-processed later when the corresponding blocks have been truncated.
-
-Ted and I have discussed the problem offline and we saw a few ways to fix
-the race completely:
-
-a) We guarantee that i_mutex lock and i_alloc_sem write lock are both hold
-whenever vmtruncate() is called. The i_mutex lock prevents any new write
-requests from entering writeback and the i_alloc_sem prevents the race
-from ext4_page_mkwrite(). Currently we hold both locks if vmtruncate()
-is called from do_truncate(), which is probably the most common case.
-However, there are places where we may call vmtruncate() without holding
-either i_mutex or i_alloc_sem. I would like to ask for other people's
-opinions on what locks are expected to be held before calling vmtruncate().
-There seems a disagreement among the callers of that function.
-
-b) We change the ext4 write path so that we change the extent tree to contain
-the newly allocated blocks and update i_size both at the same time --- when
-the write of the data blocks is completed.
-
-c) We add some additional locking to synchronize vmtruncate() and
-ext4_end_io_work(). This approach may have performance implications so we
-need to be careful.
-
-All of the above proposals may require more substantial changes, so
-we may consider to take the following patch as a bandaid.
-
-Signed-off-by: Jiaying Zhang <jiayingz@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-
-I had to make some changes to make this patch apply to the latest ext4
-tree, since flush_completed_IO() has been moved to fsync.c.
-
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |    6 ++++++
- fs/ext4/fsync.c   |    4 ++--
- 3 files changed, 9 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 2d20424..4bb3ef7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1663,6 +1663,7 @@ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
- 
- /* fsync.c */
- extern int ext4_sync_file(struct file *, int);
-+extern int ext4_flush_completed_IO(struct inode *);
- 
- /* hash.c */
- extern int ext4fs_dirhash(const char *name, int len, struct
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a643b50..919c13b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3534,6 +3534,12 @@ void ext4_ext_truncate(struct inode *inode)
- 	int err = 0;
- 
- 	/*
-+	 * finish any pending end_io work so we won't run the risk of
-+	 * converting any truncated blocks to initialized later
-+	 */
-+	ext4_flush_completed_IO(inode);
-+
-+	/*
- 	 * probably first extent we're gonna free will be last in block
- 	 */
- 	err = ext4_writepage_trans_blocks(inode);
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index c1a7bc9..7829b28 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -75,7 +75,7 @@ static void dump_completed_IO(struct inode * inode)
-  * to written.
-  * The function return the number of pending IOs on success.
-  */
--static int flush_completed_IO(struct inode *inode)
-+extern int ext4_flush_completed_IO(struct inode *inode)
- {
- 	ext4_io_end_t *io;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-@@ -169,7 +169,7 @@ int ext4_sync_file(struct file *file, int datasync)
- 	if (inode->i_sb->s_flags & MS_RDONLY)
- 		return 0;
- 
--	ret = flush_completed_IO(inode);
-+	ret = ext4_flush_completed_IO(inode);
- 	if (ret < 0)
- 		return ret;
- 
--- 
-1.7.3.1
-
+On Tue, Nov 30, 2010 at 05:41:24PM +0100, Christoph Hellwig wrote:
+> FYI, here's an updated version of my patch to not run pure flushes
+> that also works on SCSI/ATA and not just virtio.  I suspect the patch
+> alone might not be enough, but together with a variant of Neil's
+> suggestion might do the trick, with my patch taking care of the
+> highend-devices and Neil's scheme of taking care of stupid SATA disks.
+> 
+> 
+> Index: linux-2.6/block/blk-flush.c
+> ===================================================================
+> --- linux-2.6.orig/block/blk-flush.c	2010-11-30 17:27:33.108254088 +0100
+> +++ linux-2.6/block/blk-flush.c	2010-11-30 17:27:38.790004333 +0100
+> @@ -143,6 +143,17 @@ struct request *blk_do_flush(struct requ
+>  	unsigned skip = 0;
+>  
+>  	/*
+> +	 * Just issue pure flushes directly.
+> +	 */
+> +	if (!blk_rq_sectors(rq)) {
+> +		if (!do_preflush) {
+> +			__blk_end_request_all(rq, 0);
+> +			return NULL;
+> +		}
+> +		return rq;
+> +	}
+> +
+> +	/*
+>  	 * Special case.  If there's data but flush is not necessary,
+>  	 * the request can be issued directly.
+>  	 *
+> Index: linux-2.6/drivers/scsi/scsi_lib.c
+> ===================================================================
+> --- linux-2.6.orig/drivers/scsi/scsi_lib.c	2010-11-30 17:27:33.120254298 +0100
+> +++ linux-2.6/drivers/scsi/scsi_lib.c	2010-11-30 17:27:38.791003634 +0100
+> @@ -1060,7 +1060,7 @@ int scsi_setup_blk_pc_cmnd(struct scsi_d
+>  	 * that does not transfer data, in which case they may optionally
+>  	 * submit a request without an attached bio.
+>  	 */
+> -	if (req->bio) {
+> +	if (req->bio && !(req->cmd_flags & REQ_FLUSH)) {
+>  		int ret;
+>  
+>  		BUG_ON(!req->nr_phys_segments);
