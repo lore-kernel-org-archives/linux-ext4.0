@@ -1,275 +1,106 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add error checking to calls to ext4_handle_dirty_metadata()
-Date: Fri,  7 Jan 2011 02:32:23 -0500
-Message-ID: <1294385543-22032-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Olaf van der Spek <olafvdspek@gmail.com>
+Subject: Re: Atomic non-durable file write API
+Date: Fri, 7 Jan 2011 15:23:37 +0100
+Message-ID: <AANLkTindRb2v8O3+aR6GkCo=xkT6h5rbHDnkF1L5AdKH@mail.gmail.com>
+References: <20101224095105.GG12763@thunk.org>
+	<AANLkTinHa1wLB6hKi_xwiQNwMb1xZs-pa1sLB=ebtjiX@mail.gmail.com>
+	<AANLkTinXd8Zf=13HSYTxsAUc02jbCgV=17UqXQyFxNUG@mail.gmail.com>
+	<AANLkTi=ihgiJAsJ+hSeRjhcOTUhY5YC-xPDRPT0ws+oB@mail.gmail.com>
+	<20101226221016.GF2595@thunk.org>
+	<AANLkTikS8hJtqxRrc3CqQs591bSkynQT1hg=vR4QBo0J@mail.gmail.com>
+	<4D18B106.4010308@ontolinux.com>
+	<AANLkTimMSxGTEcTbsx8MUYVTLhYRxrdDFQsi6Toer_h9@mail.gmail.com>
+	<4D18E94C.3080908@ontolinux.com>
+	<AANLkTikW8K4VFLJuYngU64m2vAL1yhA3R=jRt7U6-RRp@mail.gmail.com>
+	<20101229075928.6bdafb08@notabene.brown>
+	<AANLkTikZ5wFf0KHiLFNxUO=0EGTqb5Ce-GDTVnGCCUaD@mail.gmail.com>
+	<20101229093158.2bfed8ca@notabene.brown>
+	<AANLkTinkHQ2tqAzqo77Bg_iyyYWUE72V85rTQqsEH4Nc@mail.gmail.com>
+	<4D1B542B.9030400@ontolinux.com>
+	<AANLkTimpsDAUt6KnE=qmcbRLdZdaSaqxvJFh0Ki3iV7B@mail.gmail.com>
+	<4D1B621B.5000804@ontolinux.com>
+	<AANLkTindNuT0EKkMW1e8syPLEr_j3zRFS++otMQp42B9@mail.gmail.com>
+	<20101230115012.07fa8ec8@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Christian Stroetmann <stroetmann@ontolinux.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	"Ted Ts'o" <tytso@mit.edu>, Nick Piggin <npiggin@gmail.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52785 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751808Ab1AGHcb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Jan 2011 02:32:31 -0500
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:58226 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752161Ab1AGOXk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Jan 2011 09:23:40 -0500
+In-Reply-To: <20101230115012.07fa8ec8@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Call ext4_std_error() in various places when we can't bail out
-cleanly, so the file system can be marked as in error.
+On Thu, Dec 30, 2010 at 1:50 AM, Neil Brown <neilb@suse.de> wrote:
+> On Wed, 29 Dec 2010 18:14:04 +0100 Olaf van der Spek <olafvdspek@gmai=
+l.com>
+> wrote:
+>
+>> On Wed, Dec 29, 2010 at 5:30 PM, Christian Stroetmann
+>> <stroetmann@ontolinux.com> wrote:
+>> >> Additional steps compared to what? The temp file, fsync, rename c=
+ase?
+>> >
+>> > read the paragraphs as a whole
+>>
+>> Reading stuff again isn't going to change my question.
+>>
+>
+> OK, the fun I over. =C2=A0I guess it is time to actually answer your =
+question,
+> rather than just teasing you with partial answers and hints about per=
+formance
+> impact ....
+>
+> Your question, as I understand it is:
+>
+> =C2=A0 You see a hypothetical problem for which you cannot see a solu=
+tion in
+> =C2=A0 Linux, but for which you also cannot present a concrete use-ca=
+se where
+> =C2=A0 this problem needs to be addresses.
+> =C2=A0 You want to know what the recommended solution is.
+>
+>
+> =C2=A0 The reality is that the solution was devises and implemented m=
+any years ago
+> =C2=A0 and is deeply embedded in the core design principles of Unix a=
+nd Linux.
+> =C2=A0 The reason that you cannot present a use-case is that there is=
+n't one.
+> =C2=A0 Unix was design so that this hypothetical need will never aris=
+e.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c  |   21 +++++++++++++++---
- fs/ext4/namei.c  |   32 +++++++++++++++++++++++-----
- fs/ext4/resize.c |   60 ++++++++++++++++++++++++++++++++++++++++-------------
- 3 files changed, 88 insertions(+), 25 deletions(-)
+It's so hypothetical that a number of other comments on Ted's blog
+about this ask the same question:
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/#comment-1979
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/#comment-1981
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/#comment-1990
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/#comment-1992
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/#comment-2095
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/#comment-2099
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fb5fe73..c329c29 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4185,6 +4185,7 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- {
- 	__le32 *p;
- 	int	flags = EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_VALIDATED;
-+	int	err;
- 
- 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
- 		flags |= EXT4_FREE_BLOCKS_METADATA;
-@@ -4200,11 +4201,23 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 	if (try_to_extend_transaction(handle, inode)) {
- 		if (bh) {
- 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--			ext4_handle_dirty_metadata(handle, inode, bh);
-+			err = ext4_handle_dirty_metadata(handle, inode, bh);
-+			if (unlikely(err)) {
-+				ext4_std_error(inode->i_sb, err);
-+				return 1;
-+			}
-+		}
-+		err = ext4_mark_inode_dirty(handle, inode);
-+		if (unlikely(err)) {
-+			ext4_std_error(inode->i_sb, err);
-+			return 1;
-+		}
-+		err = ext4_truncate_restart_trans(handle, inode,
-+						  blocks_for_truncate(inode));
-+		if (unlikely(err)) {
-+			ext4_std_error(inode->i_sb, err);
-+			return 1;
- 		}
--		ext4_mark_inode_dirty(handle, inode);
--		ext4_truncate_restart_trans(handle, inode,
--					    blocks_for_truncate(inode));
- 		if (bh) {
- 			BUFFER_TRACE(bh, "retaking write access");
- 			ext4_journal_get_write_access(handle, bh);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6dfc5b9..5485390 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1602,7 +1602,11 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			if (err)
- 				goto journal_error;
- 		}
--		ext4_handle_dirty_metadata(handle, inode, frames[0].bh);
-+		err = ext4_handle_dirty_metadata(handle, inode, frames[0].bh);
-+		if (err) {
-+			ext4_std_error(inode->i_sb, err);
-+			goto cleanup;
-+		}
- 	}
- 	de = do_split(handle, dir, &bh, frame, &hinfo, &err);
- 	if (!de)
-@@ -1630,7 +1634,7 @@ static int ext4_delete_entry(handle_t *handle,
- {
- 	struct ext4_dir_entry_2 *de, *pde;
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
--	int i;
-+	int i, err;
- 
- 	i = 0;
- 	pde = NULL;
-@@ -1640,7 +1644,11 @@ static int ext4_delete_entry(handle_t *handle,
- 			return -EIO;
- 		if (de == de_del)  {
- 			BUFFER_TRACE(bh, "get_write_access");
--			ext4_journal_get_write_access(handle, bh);
-+			err = ext4_journal_get_write_access(handle, bh);
-+			if (unlikely(err)) {
-+				ext4_std_error(dir->i_sb, err);
-+				return err;
-+			}
- 			if (pde)
- 				pde->rec_len = ext4_rec_len_to_disk(
- 					ext4_rec_len_from_disk(pde->rec_len,
-@@ -1652,7 +1660,11 @@ static int ext4_delete_entry(handle_t *handle,
- 				de->inode = 0;
- 			dir->i_version++;
- 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--			ext4_handle_dirty_metadata(handle, dir, bh);
-+			err = ext4_handle_dirty_metadata(handle, dir, bh);
-+			if (unlikely(err)) {
-+				ext4_std_error(dir->i_sb, err);
-+				return err;
-+			}
- 			return 0;
- 		}
- 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
-@@ -2414,7 +2426,11 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 					ext4_current_time(new_dir);
- 		ext4_mark_inode_dirty(handle, new_dir);
- 		BUFFER_TRACE(new_bh, "call ext4_handle_dirty_metadata");
--		ext4_handle_dirty_metadata(handle, new_dir, new_bh);
-+		retval = ext4_handle_dirty_metadata(handle, new_dir, new_bh);
-+		if (unlikely(retval)) {
-+			ext4_std_error(new_dir->i_sb, retval);
-+			goto end_rename;
-+		}
- 		brelse(new_bh);
- 		new_bh = NULL;
- 	}
-@@ -2466,7 +2482,11 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
- 						cpu_to_le32(new_dir->i_ino);
- 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
--		ext4_handle_dirty_metadata(handle, old_dir, dir_bh);
-+		retval = ext4_handle_dirty_metadata(handle, old_dir, dir_bh);
-+		if (retval) {
-+			ext4_std_error(old_dir->i_sb, retval);
-+			goto end_rename;
-+		}
- 		ext4_dec_count(handle, old_dir);
- 		if (new_inode) {
- 			/* checked empty_dir above, can't have another parent,
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index dc96392..e5c9d49 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -220,7 +220,11 @@ static int setup_new_group_blocks(struct super_block *sb,
- 		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, gdb->b_size);
- 		set_buffer_uptodate(gdb);
- 		unlock_buffer(gdb);
--		ext4_handle_dirty_metadata(handle, NULL, gdb);
-+		err = ext4_handle_dirty_metadata(handle, NULL, gdb);
-+		if (unlikely(err)) {
-+			brelse(gdb);
-+			goto exit_bh;
-+		}
- 		ext4_set_bit(bit, bh->b_data);
- 		brelse(gdb);
- 	}
-@@ -253,7 +257,11 @@ static int setup_new_group_blocks(struct super_block *sb,
- 
- 	ext4_mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8,
- 			     bh->b_data);
--	ext4_handle_dirty_metadata(handle, NULL, bh);
-+	err = ext4_handle_dirty_metadata(handle, NULL, bh);
-+	if (unlikely(err)) {
-+		ext4_std_error(sb, err);
-+		goto exit_bh;
-+	}
- 	brelse(bh);
- 	/* Mark unused entries in inode bitmap used */
- 	ext4_debug("clear inode bitmap %#04llx (+%llu)\n",
-@@ -265,7 +273,9 @@ static int setup_new_group_blocks(struct super_block *sb,
- 
- 	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
- 			     bh->b_data);
--	ext4_handle_dirty_metadata(handle, NULL, bh);
-+	err = ext4_handle_dirty_metadata(handle, NULL, bh);
-+	if (unlikely(err))
-+		ext4_std_error(sb, err);
- exit_bh:
- 	brelse(bh);
- 
-@@ -417,17 +427,21 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 		goto exit_dind;
- 	}
- 
--	if ((err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh)))
-+	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
-+	if (unlikely(err))
- 		goto exit_dind;
- 
--	if ((err = ext4_journal_get_write_access(handle, *primary)))
-+	err = ext4_journal_get_write_access(handle, *primary);
-+	if (unlikely(err))
- 		goto exit_sbh;
- 
--	if ((err = ext4_journal_get_write_access(handle, dind)))
--		goto exit_primary;
-+	err = ext4_journal_get_write_access(handle, dind);
-+	if (unlikely(err))
-+		ext4_std_error(sb, err);
- 
- 	/* ext4_reserve_inode_write() gets a reference on the iloc */
--	if ((err = ext4_reserve_inode_write(handle, inode, &iloc)))
-+	err = ext4_reserve_inode_write(handle, inode, &iloc);
-+	if (unlikely(err))
- 		goto exit_dindj;
- 
- 	n_group_desc = kmalloc((gdb_num + 1) * sizeof(struct buffer_head *),
-@@ -449,12 +463,20 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	 * reserved inode, and will become GDT blocks (primary and backup).
- 	 */
- 	data[gdb_num % EXT4_ADDR_PER_BLOCK(sb)] = 0;
--	ext4_handle_dirty_metadata(handle, NULL, dind);
--	brelse(dind);
-+	err = ext4_handle_dirty_metadata(handle, NULL, dind);
-+	if (unlikely(err)) {
-+		ext4_std_error(sb, err);
-+		goto exit_inode;
-+	}
- 	inode->i_blocks -= (gdbackups + 1) * sb->s_blocksize >> 9;
- 	ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	memset((*primary)->b_data, 0, sb->s_blocksize);
--	ext4_handle_dirty_metadata(handle, NULL, *primary);
-+	err = ext4_handle_dirty_metadata(handle, NULL, *primary);
-+	if (unlikely(err)) {
-+		ext4_std_error(sb, err);
-+		goto exit_inode;
-+	}
-+	brelse(dind);
- 
- 	o_group_desc = EXT4_SB(sb)->s_group_desc;
- 	memcpy(n_group_desc, o_group_desc,
-@@ -465,9 +487,11 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	kfree(o_group_desc);
- 
- 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
--	ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
-+	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
-+	if (err)
-+		ext4_std_error(sb, err);
- 
--	return 0;
-+	return err;
- 
- exit_inode:
- 	/* ext4_journal_release_buffer(handle, iloc.bh); */
-@@ -660,7 +684,9 @@ static void update_backups(struct super_block *sb,
- 			memset(bh->b_data + size, 0, rest);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
--		ext4_handle_dirty_metadata(handle, NULL, bh);
-+		err = ext4_handle_dirty_metadata(handle, NULL, bh);
-+		if (unlikely(err))
-+			ext4_std_error(sb, err);
- 		brelse(bh);
- 	}
- 	if ((err2 = ext4_journal_stop(handle)) && !err)
-@@ -878,7 +904,11 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	/* Update the global fs size fields */
- 	sbi->s_groups_count++;
- 
--	ext4_handle_dirty_metadata(handle, NULL, primary);
-+	err = ext4_handle_dirty_metadata(handle, NULL, primary);
-+	if (unlikely(err)) {
-+		ext4_std_error(sb, err);
-+		goto exit_journal;
-+	}
- 
- 	/* Update the reserved block counts only once the new group is
- 	 * active. */
--- 
-1.7.3.1
+And many more.
 
+http://thunk.org/tytso/blog/2009/03/12/delayed-allocation-and-the-zero-=
+length-file-problem/
+
+Olaf
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
