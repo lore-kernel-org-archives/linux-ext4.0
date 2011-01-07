@@ -1,33 +1,31 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: +
- fs-ext4-superc-ext4_register_li_request-fix-use-uninitialised.patch added
- to -mm tree
-Date: Thu, 6 Jan 2011 21:43:00 -0500
-Message-ID: <20110107024300.GC2857@thunk.org>
-References: <201101062331.p06NVAjJ021943@imap1.linux-foundation.org>
+Subject: Re: [PATCH] ext4: Fix trimming of a single group
+Date: Fri, 7 Jan 2011 00:02:15 -0500
+Message-ID: <20110107050215.GD2857@thunk.org>
+References: <1294324378-21712-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
-To: akpm@linux-foundation.org
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44015 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:57389 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751866Ab1AGCnD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jan 2011 21:43:03 -0500
+	id S1751275Ab1AGFCT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Jan 2011 00:02:19 -0500
 Content-Disposition: inline
-In-Reply-To: <201101062331.p06NVAjJ021943@imap1.linux-foundation.org>
+In-Reply-To: <1294324378-21712-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 06, 2011 at 02:57:42PM -0800, akpm@linux-foundation.org wrote:
-> Subject: fs/ext4/super.c:ext4_register_li_request(): fix use-uninitialised
-> From: Andrew Morton <akpm@linux-foundation.org>
+On Thu, Jan 06, 2011 at 03:32:58PM +0100, Jan Kara wrote:
+> When ext4_trim_fs() is called to trim a part of a single group, the
+> logic will wrongly set last block of the interval to 'len' instead
+> of 'first_block + len'. Thus a shorter interval is possibly trimmed.
+> Fix it.
 > 
-> fs/ext4/super.c: In function 'ext4_register_li_request':
-> fs/ext4/super.c:2936: warning: 'ret' may be used uninitialized in this function
-> 
-> It looks buggy to me, too.
+> CC: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, added to the ext4 tree.
 
-					- Ted
+				- Ted
