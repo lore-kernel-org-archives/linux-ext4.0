@@ -1,31 +1,33 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix trimming of a single group
-Date: Fri, 7 Jan 2011 00:02:15 -0500
-Message-ID: <20110107050215.GD2857@thunk.org>
-References: <1294324378-21712-1-git-send-email-jack@suse.cz>
+Subject: Re: Regular ext4 error warning with HD in USB dock
+Date: Fri, 7 Jan 2011 00:26:13 -0500
+Message-ID: <20110107052613.GE2857@thunk.org>
+References: <201012280953.46149.kernel@kolivas.org>
+ <20101228025343.GD10149@thunk.org>
+ <20101228081917.GA1351@bitwizard.nl>
+ <AANLkTim_5Yx1RQFHYbmh40xx7c5sU9XsXZEzegC4G=1x@mail.gmail.com>
+ <4D1F6244.7050203@redhat.com>
+ <AANLkTimAe-p1-ApmnueybQY474J3_G9JL+8WJ2WTn+04@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: Jan Kara <jack@suse.cz>
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Rogier Wolff <R.E.Wolff@bitwizard.nl>,
+	Con Kolivas <kernel@kolivas.org>, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57389 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:55254 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751275Ab1AGFCT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Jan 2011 00:02:19 -0500
+	id S1751517Ab1AGF0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Jan 2011 00:26:20 -0500
 Content-Disposition: inline
-In-Reply-To: <1294324378-21712-1-git-send-email-jack@suse.cz>
+In-Reply-To: <AANLkTimAe-p1-ApmnueybQY474J3_G9JL+8WJ2WTn+04@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 06, 2011 at 03:32:58PM +0100, Jan Kara wrote:
-> When ext4_trim_fs() is called to trim a part of a single group, the
-> logic will wrongly set last block of the interval to 'len' instead
-> of 'first_block + len'. Thus a shorter interval is possibly trimmed.
-> Fix it.
-> 
-> CC: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Am I missing something?  The kernel stores up to 3k worth of data, on
+a 4k block file system.  Whereas e2fsck patch blindly assume 2k worhth
+of data regardless of the block size.  The kernel patch looks ok, but
+the e2fsprogs patch seems badly broken....
 
-Thanks, added to the ext4 tree.
-
-				- Ted
+						- Ted
