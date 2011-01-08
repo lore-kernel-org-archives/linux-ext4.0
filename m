@@ -1,84 +1,93 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Patch to issue pure flushes directly (Was: Re: [PATCH v6 0/4]
- ext4: Coordinate data-only flush requests sent) by fsync
-Date: Fri, 7 Jan 2011 18:54:49 -0500
-Message-ID: <20110107235449.GT21922@thunk.org>
-References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com>
- <20101130164124.GA30858@lst.de>
+From: Jens Kasten <igraltist@rsbac.org>
+Subject: Re: trim support on 2.6.37
+Date: Sat, 08 Jan 2011 02:11:47 +0100
+Message-ID: <1294449107.8289.1.camel@jaschtschik-malo>
+References: <1294440738.15738.12.camel@jaschtschik-pc>
+	 <AANLkTimkf4n8Oyf0c17SCZFbNrpdV9mbcHeTQpkMxbMJ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	Jens Axboe <axboe@kernel.dk>, Neil Brown <neilb@suse.de>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
-	Mike Snitzer <snitzer@redhat.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
-	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
-	Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Josef Bacik <josef@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57852 "EHLO thunker.thunk.org"
+Received: from www.rsbac.org ([81.169.183.215]:47115 "EHLO www.rsbac.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751779Ab1AGXzQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Jan 2011 18:55:16 -0500
-Content-Disposition: inline
-In-Reply-To: <20101130164124.GA30858@lst.de>
+	id S1752029Ab1AHBJu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Jan 2011 20:09:50 -0500
+In-Reply-To: <AANLkTimkf4n8Oyf0c17SCZFbNrpdV9mbcHeTQpkMxbMJ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch seemed like a good idea to me; I just checked linux-next,
-and looks like nothing like this is planned to be merged.  Just
-thought I would send a prod-o-gram to see what the current thinking
-was around adding something like this.
+Am Freitag, den 07.01.2011, 18:29 -0500 schrieb Greg Freemyer:
+> On Fri, Jan 7, 2011 at 5:52 PM, Jens Kasten <igraltist@rsbac.org> wro=
+te:
+> > Hi list,
+> >
+> > It is the first time the i write to this list.
+> > I am not sure if it the right place.
+> >
+> > I use the kernel 2.6.37 with cryptsetup and lvm on a intel ssd.
+> > In the logfile after booting i see this entry:
+> > EXT4-fs (dm-1): re-mounted. Opts: discard,errors=3Dremount-ro
+> > EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: di=
+scard
+> > EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts: di=
+scard
+> > EXT4-fs (dm-2): mounted filesystem with ordered data mode. Opts: di=
+scard
+> > EXT4-fs warning (device dm-1): ext4_issue_discard:2619: discard not
+> > supported, disabling
+> > EXT4-fs warning (device dm-3): ext4_issue_discard:2619: discard not
+> > supported, disabling
+> > EXT4-fs warning (device dm-3): ext4_issue_discard:2619: discard not
+> > supported, disabling
+> > EXT4-fs warning (device dm-3): ext4_issue_discard:2619: discard not
+> > supported, disabling
+> > EXT4-fs (sda1): re-mounted. Opts: discard,commit=3D0
+> > EXT4-fs (dm-3): re-mounted. Opts: discard,commit=3D0
+> > EXT4-fs (dm-2): re-mounted. Opts: discard,commit=3D0
+> >
+> > The mount command shows:
+> > /dev/mapper/System2-root_ssd on / type ext2
+> > (rw,noatime,errors=3Dremount-ro,barrier=3D1,stripe=3D32,data=3Dorde=
+red,discard)
+> > and the corresponding entry from fstab:
+> > UUID=3D"635a1ad9-9ebb-4d1e-b8c3-30e11148bd92"     /                =
+   ext4
+> > noatime,discard,errors=3Dremount-ro               0       1
+> >
+> > My question is now, I don't have trim support now?
+> >
+> > Viele Gr=C3=BCsse
+> > Jens Kasten
+>=20
+> Jens,
+>=20
+> I don't believe DM supports discard / trim passthru.  For
+> clarification, you should ask on the Device Mapper list.
+> <dm-devel@redhat.com>
+>=20
+> Alternatively, you may find that the wiper.sh script packaged with
+> hdparm may work.  wiper.sh bypasses the DM layer and talks directly t=
+o
+> the drives, but it too has limitations.  The wiper.sh script is meant
+> to be called on a routine basis via cron, etc.
+>=20
+> Greg
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Thanks,
+Hi Greg,
 
-						- Ted
+ok i will ask on this list.
 
+Jens
 
-On Tue, Nov 30, 2010 at 05:41:24PM +0100, Christoph Hellwig wrote:
-> FYI, here's an updated version of my patch to not run pure flushes
-> that also works on SCSI/ATA and not just virtio.  I suspect the patch
-> alone might not be enough, but together with a variant of Neil's
-> suggestion might do the trick, with my patch taking care of the
-> highend-devices and Neil's scheme of taking care of stupid SATA disks.
-> 
-> 
-> Index: linux-2.6/block/blk-flush.c
-> ===================================================================
-> --- linux-2.6.orig/block/blk-flush.c	2010-11-30 17:27:33.108254088 +0100
-> +++ linux-2.6/block/blk-flush.c	2010-11-30 17:27:38.790004333 +0100
-> @@ -143,6 +143,17 @@ struct request *blk_do_flush(struct requ
->  	unsigned skip = 0;
->  
->  	/*
-> +	 * Just issue pure flushes directly.
-> +	 */
-> +	if (!blk_rq_sectors(rq)) {
-> +		if (!do_preflush) {
-> +			__blk_end_request_all(rq, 0);
-> +			return NULL;
-> +		}
-> +		return rq;
-> +	}
-> +
-> +	/*
->  	 * Special case.  If there's data but flush is not necessary,
->  	 * the request can be issued directly.
->  	 *
-> Index: linux-2.6/drivers/scsi/scsi_lib.c
-> ===================================================================
-> --- linux-2.6.orig/drivers/scsi/scsi_lib.c	2010-11-30 17:27:33.120254298 +0100
-> +++ linux-2.6/drivers/scsi/scsi_lib.c	2010-11-30 17:27:38.791003634 +0100
-> @@ -1060,7 +1060,7 @@ int scsi_setup_blk_pc_cmnd(struct scsi_d
->  	 * that does not transfer data, in which case they may optionally
->  	 * submit a request without an attached bio.
->  	 */
-> -	if (req->bio) {
-> +	if (req->bio && !(req->cmd_flags & REQ_FLUSH)) {
->  		int ret;
->  
->  		BUG_ON(!req->nr_phys_segments);
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
