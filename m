@@ -1,93 +1,32 @@
-From: Jens Kasten <igraltist@rsbac.org>
-Subject: Re: trim support on 2.6.37
-Date: Sat, 08 Jan 2011 02:11:47 +0100
-Message-ID: <1294449107.8289.1.camel@jaschtschik-malo>
-References: <1294440738.15738.12.camel@jaschtschik-pc>
-	 <AANLkTimkf4n8Oyf0c17SCZFbNrpdV9mbcHeTQpkMxbMJ@mail.gmail.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: Patch to issue pure flushes directly (Was: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent) by fsync
+Date: Sat, 8 Jan 2011 08:45:24 +0100
+Message-ID: <20110108074524.GA13024__15145.2412050732$1294472761$gmane$org@lst.de>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <20101130164124.GA30858@lst.de> <20110107235449.GT21922@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+To: "Ted Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
+	"Darrick J. Wong" <djwong@us.ibm.com>,
+	Jens Axboe <axboe@kernel.dk>, Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.ke
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.rsbac.org ([81.169.183.215]:47115 "EHLO www.rsbac.org"
+Received: from verein.lst.de ([213.95.11.210]:49163 "EHLO verein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752029Ab1AHBJu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Jan 2011 20:09:50 -0500
-In-Reply-To: <AANLkTimkf4n8Oyf0c17SCZFbNrpdV9mbcHeTQpkMxbMJ@mail.gmail.com>
+	id S1750858Ab1AHHpw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Jan 2011 02:45:52 -0500
+Content-Disposition: inline
+In-Reply-To: <20110107235449.GT21922@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Am Freitag, den 07.01.2011, 18:29 -0500 schrieb Greg Freemyer:
-> On Fri, Jan 7, 2011 at 5:52 PM, Jens Kasten <igraltist@rsbac.org> wro=
-te:
-> > Hi list,
-> >
-> > It is the first time the i write to this list.
-> > I am not sure if it the right place.
-> >
-> > I use the kernel 2.6.37 with cryptsetup and lvm on a intel ssd.
-> > In the logfile after booting i see this entry:
-> > EXT4-fs (dm-1): re-mounted. Opts: discard,errors=3Dremount-ro
-> > EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: di=
-scard
-> > EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts: di=
-scard
-> > EXT4-fs (dm-2): mounted filesystem with ordered data mode. Opts: di=
-scard
-> > EXT4-fs warning (device dm-1): ext4_issue_discard:2619: discard not
-> > supported, disabling
-> > EXT4-fs warning (device dm-3): ext4_issue_discard:2619: discard not
-> > supported, disabling
-> > EXT4-fs warning (device dm-3): ext4_issue_discard:2619: discard not
-> > supported, disabling
-> > EXT4-fs warning (device dm-3): ext4_issue_discard:2619: discard not
-> > supported, disabling
-> > EXT4-fs (sda1): re-mounted. Opts: discard,commit=3D0
-> > EXT4-fs (dm-3): re-mounted. Opts: discard,commit=3D0
-> > EXT4-fs (dm-2): re-mounted. Opts: discard,commit=3D0
-> >
-> > The mount command shows:
-> > /dev/mapper/System2-root_ssd on / type ext2
-> > (rw,noatime,errors=3Dremount-ro,barrier=3D1,stripe=3D32,data=3Dorde=
-red,discard)
-> > and the corresponding entry from fstab:
-> > UUID=3D"635a1ad9-9ebb-4d1e-b8c3-30e11148bd92"     /                =
-   ext4
-> > noatime,discard,errors=3Dremount-ro               0       1
-> >
-> > My question is now, I don't have trim support now?
-> >
-> > Viele Gr=C3=BCsse
-> > Jens Kasten
->=20
-> Jens,
->=20
-> I don't believe DM supports discard / trim passthru.  For
-> clarification, you should ask on the Device Mapper list.
-> <dm-devel@redhat.com>
->=20
-> Alternatively, you may find that the wiper.sh script packaged with
-> hdparm may work.  wiper.sh bypasses the DM layer and talks directly t=
-o
-> the drives, but it too has limitations.  The wiper.sh script is meant
-> to be called on a routine basis via cron, etc.
->=20
-> Greg
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Fri, Jan 07, 2011 at 06:54:49PM -0500, Ted Ts'o wrote:
+> This patch seemed like a good idea to me; I just checked linux-next,
+> and looks like nothing like this is planned to be merged.  Just
+> thought I would send a prod-o-gram to see what the current thinking
+> was around adding something like this.
 
-Hi Greg,
+I haven't really gotten any feedback on the patch, so it fell on the
+floor for a while.  I've managed to get some big system resources to
+test the impact of it, and once I've got numbers I'll resend it as
+separate patches for scsi and the block layer.
 
-ok i will ask on this list.
-
-Jens
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
