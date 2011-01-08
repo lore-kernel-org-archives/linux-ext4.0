@@ -1,44 +1,53 @@
-From: "Hello James" <monique97@sbcglobal.net>
-Subject: Re: JB Truck LLC
-Date: Fri, 07 Jan 2011 01:35:30 +0000
-Message-ID: <WINDOWS7PC474e3792b10c4a50b5eed7b0ece858fd@WINDOWS7PC>
-Reply-To: globalfab@representative.com
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: Patch to issue pure flushes directly (Was: Re: [PATCH v6 0/4]
+ ext4: Coordinate data-only flush requests sent) by fsync
+Date: Sat, 8 Jan 2011 09:08:01 -0500
+Message-ID: <20110108140801.GB13269@mtj.dyndns.org>
+References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com>
+ <20101130164124.GA30858@lst.de>
+ <20110107235449.GT21922@thunk.org>
+ <20110108074524.GA13024@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp103.sbc.mail.mud.yahoo.com ([68.142.198.202]:33938 "HELO
-	smtp103.sbc.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750934Ab1AHMQn convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Jan 2011 07:16:43 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, "Darrick J. Wong" <djwong@us.ibm.com>,
+	Jens Axboe <axboe@kernel.dk>, Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alasdair G Kergon <agk@redhat.com>, Jan Kara <jack@suse.cz>,
+	Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-raid@vger.kernel.org, Keith Mannthey <kmannth@us.ibm.com>,
+	dm-devel@redhat.com, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org, Ric Wheeler <rwheeler@redhat.com>,
+	Josef Bacik <josef@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20110108074524.GA13024@lst.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Hello,
 
+On Sat, Jan 08, 2011 at 08:45:24AM +0100, Christoph Hellwig wrote:
+> On Fri, Jan 07, 2011 at 06:54:49PM -0500, Ted Ts'o wrote:
+> > This patch seemed like a good idea to me; I just checked linux-next,
+> > and looks like nothing like this is planned to be merged.  Just
+> > thought I would send a prod-o-gram to see what the current thinking
+> > was around adding something like this.
+> 
+> I haven't really gotten any feedback on the patch, so it fell on the
+> floor for a while.  I've managed to get some big system resources to
+> test the impact of it, and once I've got numbers I'll resend it as
+> separate patches for scsi and the block layer.
 
-Dear Sir/Madam,
+But would it actually make any difference?  It's not like the usual
+completion path in the optimized case is much longer.  It will set all
+the skip bits, try to determine the next step which is completion and
+then complete the flush request.  It'll sure occupy the CPU for a
+little bit longer but I don't think it will be anything measureable.
+Is there a workload that this can actually help?
 
- 
+Thanks.
 
-I am James Newell  From MD United State, Finance  Director of J B Trucks Company , My company had business with Bp in 2009  where i made $4.8usd out of my company knowlage which i legally place this fund in Escrow Account in Asia,  because US financail  position and security  i cant direct  this fund to  US rather i want you to assist me to receive this fund commission will be discuss in your next mail. Please if you interested include your direct phone and name in your reply.
-
- 
-
-Regards
-
-James Newell
-
-J B Trucks LLC
-
-41010 LITTLE ROAD,
-
-WHITEFORD, MD 21160
-
-TEL: +1888-522-4448
-
-FAX: +1888-769-5640
-
-Email: jbtrucks@engineer.com
-
+-- 
+tejun
