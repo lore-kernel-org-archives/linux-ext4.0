@@ -1,32 +1,31 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: Re: Patch to issue pure flushes directly (Was: Re: [PATCH v6 0/4] ext4: Coordinate data-only flush requests sent) by fsync
-Date: Sat, 8 Jan 2011 08:45:24 +0100
-Message-ID: <20110108074524.GA13024__15145.2412050732$1294472761$gmane$org@lst.de>
-References: <20101129220536.12401.16581.stgit@elm3b57.beaverton.ibm.com> <20101130164124.GA30858@lst.de> <20110107235449.GT21922@thunk.org>
+Subject: Re: [PATCH] quota: Fix deadlock during path resolution
+Date: Sat, 8 Jan 2011 08:47:11 +0100
+Message-ID: <20110108074711.GB13024@lst.de>
+References: <1284586791-8245-1-git-send-email-jack@suse.cz> <20100915225208.GA1490@lst.de> <20100916095553.GA3359@quack.suse.cz> <20110107215904.GQ21922@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: "Ted Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Jens Axboe <axboe@kernel.dk>, Neil Brown <neilb@suse.de>,
-	Andreas Dilger <adilger.ke
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.210]:49163 "EHLO verein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750858Ab1AHHpw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Jan 2011 02:45:52 -0500
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Joel Becker <joel.becker@oracle.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20110107235449.GT21922@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110107215904.GQ21922@thunk.org>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 07, 2011 at 06:54:49PM -0500, Ted Ts'o wrote:
-> This patch seemed like a good idea to me; I just checked linux-next,
-> and looks like nothing like this is planned to be merged.  Just
-> thought I would send a prod-o-gram to see what the current thinking
-> was around adding something like this.
+On Fri, Jan 07, 2011 at 04:59:04PM -0500, Ted Ts'o wrote:
+> 
+> 	http://patchwork.ozlabs.org/patch/64910/
+> 
+> Did anything ever happen with Christoph's ocfs2 quota patch, which he
+> was going to rebase?  I took a quick gander in git and I didn't see
+> anything, but maybe I was looking in the wrong place.
 
-I haven't really gotten any feedback on the patch, so it fell on the
-floor for a while.  I've managed to get some big system resources to
-test the impact of it, and once I've got numbers I'll resend it as
-separate patches for scsi and the block layer.
+The last plan was to push Jan's patch in and I'll rebase the unification
+on top of that.  That's been a while ago and I really should have been
+updating my patch, but things kept me quite busy unfortunately.
 
