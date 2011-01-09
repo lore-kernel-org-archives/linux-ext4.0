@@ -1,76 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: remove ext4_mb_return_to_preallocation()
-Date: Sat,  8 Jan 2011 22:43:29 -0500
-Message-ID: <1294544609-14225-1-git-send-email-tytso@mit.edu>
-References: <20110109030447.GX21922@thunk.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jiaying Zhang <jiayingz@google.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
+Subject: Re: Regular ext4 error warning with HD in USB dock
+Date: Sun, 9 Jan 2011 09:12:49 +0100
+Message-ID: <20110109081249.GA32496@bitwizard.nl>
+References: <20101228025343.GD10149@thunk.org> <20101228081917.GA1351@bitwizard.nl> <AANLkTim_5Yx1RQFHYbmh40xx7c5sU9XsXZEzegC4G=1x@mail.gmail.com> <4D1F6244.7050203@redhat.com> <AANLkTimAe-p1-ApmnueybQY474J3_G9JL+8WJ2WTn+04@mail.gmail.com> <20110107052613.GE2857@thunk.org> <AANLkTinyc+H7t5yF8w81XXts0jfbdt4ROWM8MHEUjNeD@mail.gmail.com> <AANLkTimFA9Can0Oe39Jkw+1X6uxwsgNVW2aKPoV_VLoq@mail.gmail.com> <20110108080520.GE12433@bitwizard.nl> <20110108220059.GV21922@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Rogier Wolff <R.E.Wolff@BitWizard.nl>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Con Kolivas <kernel@kolivas.org>, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43998 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752226Ab1AIDnf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Jan 2011 22:43:35 -0500
-In-Reply-To: <20110109030447.GX21922@thunk.org>
+Received: from dtp.xs4all.nl ([80.101.171.8]:10472 "HELO abra2.bitwizard.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1750835Ab1AIIMv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 9 Jan 2011 03:12:51 -0500
+Content-Disposition: inline
+In-Reply-To: <20110108220059.GV21922@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This function was never implemented, except for a BUG_ON which was
-tripping when ext4 is run without a journal.  The problem is that
-although the comment asserts that "truncate (which is the only way to
-free block) discards all preallocations", ext4_free_blocks() is also
-called in various error recovery paths when blocks have been
-allocated, but for various reasons, we were not able to use those data
-blocks (for example, because we ran out of memory while trying to
-manipulate the extent tree, or some other similar situation).
+On Sat, Jan 08, 2011 at 05:00:59PM -0500, Ted Ts'o wrote:
+> On Sat, Jan 08, 2011 at 09:05:20AM +0100, Rogier Wolff wrote:
+> > Although those two numbers are equal right now, there is no reason to
+> > assume that they will remain so in the future. So if the superblock
+> > size (or the offset) changes in the future, it's much better to have
+> > programmed this so that it will keep on working as opposed to getting
+> > to deal with ugly bugs in code that hasn't changed in years...
+> 
+> No.  The superblock nor its offset will never change.  It's like the
+> syscall ABI, only worse.  If we changed it would break *everybody*.
+> Fortunately there is a huge amount of space left over in the 1024 byte
+> superblock.
 
-In addition to the fact that this function isn't implemented except
-for the incorrect BUG_ON, the single caller of this function,
-ext4_free_blocks(), doesn't use it all if the journal is enabled.
+It's called defensive programming. It prevents bugs before they
+happen. By your reasoning you could've written 2048 or 0x800 there.
 
-So remove the (stub) function entirely for now.  If we decide it's
-better to add it back, it's only going to be useful with a relatively
-large number of code changes anyway.
+My version:
 
-Google-Bug-Id: 3236408
+  - documents why something is subtracted from the blockszize and how
+    much.
+  - keeps on working even if the superblock would oddly change size
+    in the future. Even if now you don't expect that to happen ever.
 
-Cc: Jiaying Zhang <jiayingz@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/mballoc.c |   14 --------------
- 1 files changed, 0 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5bbf6e3..85b6d44 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3881,19 +3881,6 @@ repeat:
- 	}
- }
- 
--/*
-- * finds all preallocated spaces and return blocks being freed to them
-- * if preallocated space becomes full (no block is used from the space)
-- * then the function frees space in buddy
-- * XXX: at the moment, truncate (which is the only way to free blocks)
-- * discards all preallocations
-- */
--static void ext4_mb_return_to_preallocation(struct inode *inode,
--					struct ext4_buddy *e4b,
--					sector_t block, int count)
--{
--	BUG_ON(!list_empty(&EXT4_I(inode)->i_prealloc_list));
--}
- #ifdef CONFIG_EXT4_DEBUG
- static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- {
-@@ -4648,7 +4635,6 @@ do_more:
- 		ext4_lock_group(sb, block_group);
- 		mb_clear_bits(bitmap_bh->b_data, bit, count);
- 		mb_free_blocks(inode, &e4b, bit, count);
--		ext4_mb_return_to_preallocation(inode, &e4b, block, count);
- 	}
- 
- 	ret = ext4_free_blks_count(sb, gdp) + count;
+	Roger. 
+
+
 -- 
-1.7.3.1
-
+** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
+**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
+*-- BitWizard writes Linux device drivers for any device you may have! --*
+Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
+Does it sit on the couch all day? Is it unemployed? Please be specific! 
+Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
