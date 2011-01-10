@@ -1,159 +1,709 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [RFC PATCH 0/2] Add rbtree backend for storing bitmaps
-Date: Mon, 10 Jan 2011 16:18:54 +0100
-Message-ID: <1294672737-10850-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/2] e2fsprogs: Add rbtree library
+Date: Mon, 10 Jan 2011 16:18:55 +0100
+Message-ID: <1294672737-10850-2-git-send-email-lczerner@redhat.com>
+References: <1294672737-10850-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, lczerner@redhat.com, sandeen@redhat.com,
 	adilger@dilger.ca, kalpak@clogeny.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3157 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51751 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753650Ab1AJPTP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jan 2011 10:19:15 -0500
+	id S1753650Ab1AJPTQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Jan 2011 10:19:16 -0500
+In-Reply-To: <1294672737-10850-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+This commit adds rbtree library into e2fsprogs so it can be used for
+various internal data structures. The rbtree implementation is ripped of
+kernel rbtree implementation with small changes needed for it to work
+outside kernel.
 
-as I mentioned a while ago I am working on reducing e2fsprogs memory
-utilization. The first thing which need to be addressed is mechanism of
-storing bitmaps. So far bitarrays was used for this purpose however today
-this approach might hit its limits with todays huge data storage devices,
-because of its memory utilization.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ lib/ext2fs/Makefile.in |   11 +-
+ lib/ext2fs/rbtree.c    |  451 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/rbtree.h    |  179 +++++++++++++++++++
+ 3 files changed, 639 insertions(+), 2 deletions(-)
+ create mode 100644 lib/ext2fs/rbtree.c
+ create mode 100644 lib/ext2fs/rbtree.h
 
-Bitarrays stores bitmaps as ..well, as bitmaps. But this is in most
-cases highly unefficient because we need to allocate memory even for the
-big parts of bitmaps we will never use, resulting in high memory
-utilization especially for huge filesystem, when bitmaps might occupy
-gigabytes of space.
-
-To address this I have created rbtree backend for storing bitmaps. It stores
-just used extents of bitmaps, it means, that it can be more memory efficient
-in most cases and also with careful use it might be much faster as well.
-
-Rbtree implementation itself is ripped of linux kernel with some minor changes
-to make it work outside kernel. So this should not cause any problems at all
-since it has been really extensively tested through out its life.
-
-I have done a lot of testing to validate my new backend and to find as many
-bugs as possible. Now it seems to be quite reliable, however since this is the
-most crucial part of the e2fsprogs it has to be tested most widely on various
-scenarios. So this is my appeal to you guys, please take it, make it and test
-it and test it some more, to really make sure this is doing what it is
-supposed to.
-
-The other side of the thing is, does it really help with memory utilization ?
-So my answer is YES, (...but). Of course there is a "but". That is because one
-rbtree node on 64-bit system takes 40B of data, which is 320 bits of
-information. So there might be a situation when one single rbtree node does
-not cover even 320 bits of bitmap it stores, it this case this node is not
-very efficient. In case we have a lot of unefficient nodes we might actually
-end up with bigger memory utilization than bitarrays itself and that's bad.
-
-Now, the answer for this problem is benchmarking, to figure out how probable
-this situation is and how (and when) bad it can get. We would probably need to
-create some fallback switch which will convert bitmaps from one backend
-(rbtree) to another (bitarray) depending on which appears more efficient for
-the situation, but let's keep it simple for now and lets figure out how bad
-the problem actually is.
-
-I have done some limited benchmarking. Limited, because it takes time (a lot
-of it) and also huge storages, because we do not really care about memory
-utilization differences in megabytes, but rather in hundreds and thousands of
-megabytes. So this is my second appeal to you guys, take it, make it, test it
-and benchmark it.
-
-For measuring memory utilization I have used valgrind (massif tool to be
-specific). All the numbers I will show you are peak memory utilization. So
-here is an example how to use massif.
-
-	valgrind --tool=massif ./e2fsck/e2fsck -fn /dev/loop0
-	ms_print massif.out.5467 | less
-
-Now, I can show you some (rather optimistic) graphs of e2fsck memory
-utilization I have done. Here is the link (description included):
-
-http://people.redhat.com/lczerner/e2fsprogs_memory/graphs.pdf
-
-Now the simple description of the graphs. The first one is showing the e2fsck
-memory utilization depending on filesystem size. The benchmark was performed
-right after the fs creation so it shows the best scenario for the rbtree
-backend. The amount of saved memory grows approx by 8.5MB per 100MB of
-filesystem size - this is the best what we can get.
-
-The second graph shows memory utilization per inode depending on inode count.
-We can see that with growing number of inodes the Bytes per inode ratio is
-dropping significantly, moreover it is dropping faster for bitarrays than for
-rbtrees, which tells us that inode count is in fact the main factor which
-impact the memory utilization difference between the rbtree and bitattay
-backend on the filesystem of constant size. However it strongly depends also
-on how are the files created on the filesystem - some loads might be more
-rbtree-friendly than others.
-
-The threshold is, when the Bytes per Inode is equal for both backends, this is
-the last point where we will need to convert rbtree backend to bitarrays,
-because above this threshold rbtree approach is no longer efficient. In my
-load (copying content of /usr/share several times) it means that rbtree memory
-utilization is growing by 20B per inode, however bitarray mem. util. is
-growing by 4B per inode (on 10TB filesystem). So the rbtree memory consumption
-is growing 5 times faster then bitarrays.
-
-Let's simplify situation and let's say that the Bytes per Inode growing ratio
-will not change with inode count (which is not true, but this is yet to be
-tested). In this case we hit the threshold when we fill 33% of inodes, which
-means 20% of filesystem size. Not very promising, however is this load the
-typical real-life load ? - this we need to find out.
-
-Next graph shows e2fsck memory utilization depending on inode count which is
-practically the same thing as in previous graph.
-
-The last two graphs were created on filesystem aged with Impression in default
-configuration, rather than copying /usr/share. It should provide more
-real-live filesystem images. The filesystem is rather small now, only 312GB.
-So the fourth graph shows running times of e2fsck for both backends, rbtree
-and bitarrays. We can see that rbtree backend performs quite bad, however I
-believe that I know the source of the slowdown. It is the rb_test_bit()
-function which need to walk the tree every time e2fsck needs to test the bit
-and since this usually happen in sequential order (bit-by-bit), we can easily
-improve performance by adding simple cache (similar to write cache in
-rb_set_bit()). Also with the little improvement of e2fsck bitmap handling (use
-the advantage of extents) we can improve performance even more. But I leave
-those optimization to after we are done with memory utilization optimization.
-
-Finally, the last graph shows Memory utilization per inode depending on inode
-count. This is the similar graph as the second one, however this one is a bit
-more optimistic. The rbtree memory utilization grows by avg. 8B per Inode, and
-bitarray grows by avg. 7B per inode, which is quite good and in this scenario
-with stable Bytes per inode grow the rbtree backend will be always better than
-bitarray. This show us, that it really depends on the type of load as well as
-on the size of the filesystem. So we need to test more and more real life
-filesystems to see the if the rbtree is really a win for most of the users, or
-just some small groupr group, who does not even care about memory utilization
-at all (it is clearly numbers from huge filesystems we care about!).
-
-
-There were some people having OOM problems with e2fsck, It would be great if
-those people can try this patches to see if it helps and get back to us to
-share the experience. Although I feel that I need to warn you guys, this is
-not yet stable, and even though I have not seen any problems, it does not mean
-that it is bug free, so at least try it with '-n' option which should be
-quite safe.
-
-Please, comments are highly appreciated!
-
-Thanks!
--Lukas
-
-
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 9c1c273..b24a53a 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -80,7 +80,8 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	unix_io.o \
+ 	unlink.o \
+ 	valid_blk.o \
+-	version.o
++	version.o \
++	rbtree.o
+ 
+ SRCS= ext2_err.c \
+ 	$(srcdir)/alloc.c \
+@@ -155,7 +156,8 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/unlink.c \
+ 	$(srcdir)/valid_blk.c \
+ 	$(srcdir)/version.c \
+-	$(srcdir)/write_bb_file.c
++	$(srcdir)/write_bb_file.c \
++	$(srcdir)/rbtree.c \
+ 
+ HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
+ 	tdb.h
+@@ -762,3 +764,8 @@ write_bb_file.o: $(srcdir)/write_bb_file.c $(srcdir)/ext2_fs.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
+  $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
++rbtree.o: $(srcdir)/rbtree.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
++ $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
++ $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
++ $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
+diff --git a/lib/ext2fs/rbtree.c b/lib/ext2fs/rbtree.c
+new file mode 100644
+index 0000000..0b638cf
+--- /dev/null
++++ b/lib/ext2fs/rbtree.c
+@@ -0,0 +1,451 @@
++/*
++  Red Black Trees
++  (C) 1999  Andrea Arcangeli <andrea@suse.de>
++  (C) 2002  David Woodhouse <dwmw2@infradead.org>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program; if not, write to the Free Software
++  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++  linux/lib/rbtree.c
++*/
++
++#include "rbtree.h"
++
++static void __rb_rotate_left(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *right = node->rb_right;
++	struct rb_node *parent = rb_parent(node);
++
++	if ((node->rb_right = right->rb_left))
++		rb_set_parent(right->rb_left, node);
++	right->rb_left = node;
++
++	rb_set_parent(right, parent);
++
++	if (parent)
++	{
++		if (node == parent->rb_left)
++			parent->rb_left = right;
++		else
++			parent->rb_right = right;
++	}
++	else
++		root->rb_node = right;
++	rb_set_parent(node, right);
++}
++
++static void __rb_rotate_right(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *left = node->rb_left;
++	struct rb_node *parent = rb_parent(node);
++
++	if ((node->rb_left = left->rb_right))
++		rb_set_parent(left->rb_right, node);
++	left->rb_right = node;
++
++	rb_set_parent(left, parent);
++
++	if (parent)
++	{
++		if (node == parent->rb_right)
++			parent->rb_right = left;
++		else
++			parent->rb_left = left;
++	}
++	else
++		root->rb_node = left;
++	rb_set_parent(node, left);
++}
++
++void rb_insert_color(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *parent, *gparent;
++
++	while ((parent = rb_parent(node)) && rb_is_red(parent))
++	{
++		gparent = rb_parent(parent);
++
++		if (parent == gparent->rb_left)
++		{
++			{
++				register struct rb_node *uncle = gparent->rb_right;
++				if (uncle && rb_is_red(uncle))
++				{
++					rb_set_black(uncle);
++					rb_set_black(parent);
++					rb_set_red(gparent);
++					node = gparent;
++					continue;
++				}
++			}
++
++			if (parent->rb_right == node)
++			{
++				register struct rb_node *tmp;
++				__rb_rotate_left(parent, root);
++				tmp = parent;
++				parent = node;
++				node = tmp;
++			}
++
++			rb_set_black(parent);
++			rb_set_red(gparent);
++			__rb_rotate_right(gparent, root);
++		} else {
++			{
++				register struct rb_node *uncle = gparent->rb_left;
++				if (uncle && rb_is_red(uncle))
++				{
++					rb_set_black(uncle);
++					rb_set_black(parent);
++					rb_set_red(gparent);
++					node = gparent;
++					continue;
++				}
++			}
++
++			if (parent->rb_left == node)
++			{
++				register struct rb_node *tmp;
++				__rb_rotate_right(parent, root);
++				tmp = parent;
++				parent = node;
++				node = tmp;
++			}
++
++			rb_set_black(parent);
++			rb_set_red(gparent);
++			__rb_rotate_left(gparent, root);
++		}
++	}
++
++	rb_set_black(root->rb_node);
++}
++
++static void __rb_erase_color(struct rb_node *node, struct rb_node *parent,
++			     struct rb_root *root)
++{
++	struct rb_node *other;
++
++	while ((!node || rb_is_black(node)) && node != root->rb_node)
++	{
++		if (parent->rb_left == node)
++		{
++			other = parent->rb_right;
++			if (rb_is_red(other))
++			{
++				rb_set_black(other);
++				rb_set_red(parent);
++				__rb_rotate_left(parent, root);
++				other = parent->rb_right;
++			}
++			if ((!other->rb_left || rb_is_black(other->rb_left)) &&
++			    (!other->rb_right || rb_is_black(other->rb_right)))
++			{
++				rb_set_red(other);
++				node = parent;
++				parent = rb_parent(node);
++			}
++			else
++			{
++				if (!other->rb_right || rb_is_black(other->rb_right))
++				{
++					rb_set_black(other->rb_left);
++					rb_set_red(other);
++					__rb_rotate_right(other, root);
++					other = parent->rb_right;
++				}
++				rb_set_color(other, rb_color(parent));
++				rb_set_black(parent);
++				rb_set_black(other->rb_right);
++				__rb_rotate_left(parent, root);
++				node = root->rb_node;
++				break;
++			}
++		}
++		else
++		{
++			other = parent->rb_left;
++			if (rb_is_red(other))
++			{
++				rb_set_black(other);
++				rb_set_red(parent);
++				__rb_rotate_right(parent, root);
++				other = parent->rb_left;
++			}
++			if ((!other->rb_left || rb_is_black(other->rb_left)) &&
++			    (!other->rb_right || rb_is_black(other->rb_right)))
++			{
++				rb_set_red(other);
++				node = parent;
++				parent = rb_parent(node);
++			}
++			else
++			{
++				if (!other->rb_left || rb_is_black(other->rb_left))
++				{
++					rb_set_black(other->rb_right);
++					rb_set_red(other);
++					__rb_rotate_left(other, root);
++					other = parent->rb_left;
++				}
++				rb_set_color(other, rb_color(parent));
++				rb_set_black(parent);
++				rb_set_black(other->rb_left);
++				__rb_rotate_right(parent, root);
++				node = root->rb_node;
++				break;
++			}
++		}
++	}
++	if (node)
++		rb_set_black(node);
++}
++
++void rb_erase(struct rb_node *node, struct rb_root *root)
++{
++	struct rb_node *child, *parent;
++	int color;
++
++	if (!node->rb_left)
++		child = node->rb_right;
++	else if (!node->rb_right)
++		child = node->rb_left;
++	else
++	{
++		struct rb_node *old = node, *left;
++
++		node = node->rb_right;
++		while ((left = node->rb_left) != NULL)
++			node = left;
++
++		if (rb_parent(old)) {
++			if (rb_parent(old)->rb_left == old)
++				rb_parent(old)->rb_left = node;
++			else
++				rb_parent(old)->rb_right = node;
++		} else
++			root->rb_node = node;
++
++		child = node->rb_right;
++		parent = rb_parent(node);
++		color = rb_color(node);
++
++		if (parent == old) {
++			parent = node;
++		} else {
++			if (child)
++				rb_set_parent(child, parent);
++			parent->rb_left = child;
++
++			node->rb_right = old->rb_right;
++			rb_set_parent(old->rb_right, node);
++		}
++
++		node->rb_parent_color = old->rb_parent_color;
++		node->rb_left = old->rb_left;
++		rb_set_parent(old->rb_left, node);
++
++		goto color;
++	}
++
++	parent = rb_parent(node);
++	color = rb_color(node);
++
++	if (child)
++		rb_set_parent(child, parent);
++	if (parent)
++	{
++		if (parent->rb_left == node)
++			parent->rb_left = child;
++		else
++			parent->rb_right = child;
++	}
++	else
++		root->rb_node = child;
++
++ color:
++	if (color == RB_BLACK)
++		__rb_erase_color(child, parent, root);
++}
++
++static void rb_augment_path(struct rb_node *node, rb_augment_f func, void *data)
++{
++	struct rb_node *parent;
++
++up:
++	func(node, data);
++	parent = rb_parent(node);
++	if (!parent)
++		return;
++
++	if (node == parent->rb_left && parent->rb_right)
++		func(parent->rb_right, data);
++	else if (parent->rb_left)
++		func(parent->rb_left, data);
++
++	node = parent;
++	goto up;
++}
++
++/*
++ * after inserting @node into the tree, update the tree to account for
++ * both the new entry and any damage done by rebalance
++ */
++void rb_augment_insert(struct rb_node *node, rb_augment_f func, void *data)
++{
++	if (node->rb_left)
++		node = node->rb_left;
++	else if (node->rb_right)
++		node = node->rb_right;
++
++	rb_augment_path(node, func, data);
++}
++
++/*
++ * before removing the node, find the deepest node on the rebalance path
++ * that will still be there after @node gets removed
++ */
++struct rb_node *rb_augment_erase_begin(struct rb_node *node)
++{
++	struct rb_node *deepest;
++
++	if (!node->rb_right && !node->rb_left)
++		deepest = rb_parent(node);
++	else if (!node->rb_right)
++		deepest = node->rb_left;
++	else if (!node->rb_left)
++		deepest = node->rb_right;
++	else {
++		deepest = rb_next(node);
++		if (deepest->rb_right)
++			deepest = deepest->rb_right;
++		else if (rb_parent(deepest) != node)
++			deepest = rb_parent(deepest);
++	}
++
++	return deepest;
++}
++
++/*
++ * after removal, update the tree to account for the removed entry
++ * and any rebalance damage.
++ */
++void rb_augment_erase_end(struct rb_node *node, rb_augment_f func, void *data)
++{
++	if (node)
++		rb_augment_path(node, func, data);
++}
++
++/*
++ * This function returns the first node (in sort order) of the tree.
++ */
++struct rb_node *rb_first(const struct rb_root *root)
++{
++	struct rb_node	*n;
++
++	n = root->rb_node;
++	if (!n)
++		return NULL;
++	while (n->rb_left)
++		n = n->rb_left;
++	return n;
++}
++
++struct rb_node *rb_last(const struct rb_root *root)
++{
++	struct rb_node	*n;
++
++	n = root->rb_node;
++	if (!n)
++		return NULL;
++	while (n->rb_right)
++		n = n->rb_right;
++	return n;
++}
++
++struct rb_node *rb_next(const struct rb_node *node)
++{
++	struct rb_node *parent;
++
++	if (rb_parent(node) == node)
++		return NULL;
++
++	/* If we have a right-hand child, go down and then left as far
++	   as we can. */
++	if (node->rb_right) {
++		node = node->rb_right;
++		while (node->rb_left)
++			node=node->rb_left;
++		return (struct rb_node *)node;
++	}
++
++	/* No right-hand children.  Everything down and left is
++	   smaller than us, so any 'next' node must be in the general
++	   direction of our parent. Go up the tree; any time the
++	   ancestor is a right-hand child of its parent, keep going
++	   up. First time it's a left-hand child of its parent, said
++	   parent is our 'next' node. */
++	while ((parent = rb_parent(node)) && node == parent->rb_right)
++		node = parent;
++
++	return parent;
++}
++
++struct rb_node *rb_prev(const struct rb_node *node)
++{
++	struct rb_node *parent;
++
++	if (rb_parent(node) == node)
++		return NULL;
++
++	/* If we have a left-hand child, go down and then right as far
++	   as we can. */
++	if (node->rb_left) {
++		node = node->rb_left;
++		while (node->rb_right)
++			node=node->rb_right;
++		return (struct rb_node *)node;
++	}
++
++	/* No left-hand children. Go up till we find an ancestor which
++	   is a right-hand child of its parent */
++	while ((parent = rb_parent(node)) && node == parent->rb_left)
++		node = parent;
++
++	return parent;
++}
++
++void rb_replace_node(struct rb_node *victim, struct rb_node *new,
++		     struct rb_root *root)
++{
++	struct rb_node *parent = rb_parent(victim);
++
++	/* Set the surrounding nodes to point to the replacement */
++	if (parent) {
++		if (victim == parent->rb_left)
++			parent->rb_left = new;
++		else
++			parent->rb_right = new;
++	} else {
++		root->rb_node = new;
++	}
++	if (victim->rb_left)
++		rb_set_parent(victim->rb_left, new);
++	if (victim->rb_right)
++		rb_set_parent(victim->rb_right, new);
++
++	/* Copy the pointers/colour from the victim to the replacement */
++	*new = *victim;
++}
+diff --git a/lib/ext2fs/rbtree.h b/lib/ext2fs/rbtree.h
+new file mode 100644
+index 0000000..8820e28
+--- /dev/null
++++ b/lib/ext2fs/rbtree.h
+@@ -0,0 +1,179 @@
++/*
++  Red Black Trees
++  (C) 1999  Andrea Arcangeli <andrea@suse.de>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program; if not, write to the Free Software
++  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++  linux/include/linux/rbtree.h
++
++  To use rbtrees you'll have to implement your own insert and search cores.
++  This will avoid us to use callbacks and to drop drammatically performances.
++  I know it's not the cleaner way,  but in C (not in C++) to get
++  performances and genericity...
++
++  Some example of insert and search follows here. The search is a plain
++  normal search over an ordered tree. The insert instead must be implemented
++  in two steps: First, the code must insert the element in order as a red leaf
++  in the tree, and then the support library function rb_insert_color() must
++  be called. Such function will do the not trivial work to rebalance the
++  rbtree, if necessary.
++
++-----------------------------------------------------------------------
++static inline struct page * rb_search_page_cache(struct inode * inode,
++						 unsigned long offset)
++{
++	struct rb_node * n = inode->i_rb_page_cache.rb_node;
++	struct page * page;
++
++	while (n)
++	{
++		page = rb_entry(n, struct page, rb_page_cache);
++
++		if (offset < page->offset)
++			n = n->rb_left;
++		else if (offset > page->offset)
++			n = n->rb_right;
++		else
++			return page;
++	}
++	return NULL;
++}
++
++static inline struct page * __rb_insert_page_cache(struct inode * inode,
++						   unsigned long offset,
++						   struct rb_node * node)
++{
++	struct rb_node ** p = &inode->i_rb_page_cache.rb_node;
++	struct rb_node * parent = NULL;
++	struct page * page;
++
++	while (*p)
++	{
++		parent = *p;
++		page = rb_entry(parent, struct page, rb_page_cache);
++
++		if (offset < page->offset)
++			p = &(*p)->rb_left;
++		else if (offset > page->offset)
++			p = &(*p)->rb_right;
++		else
++			return page;
++	}
++
++	rb_link_node(node, parent, p);
++
++	return NULL;
++}
++
++static inline struct page * rb_insert_page_cache(struct inode * inode,
++						 unsigned long offset,
++						 struct rb_node * node)
++{
++	struct page * ret;
++	if ((ret = __rb_insert_page_cache(inode, offset, node)))
++		goto out;
++	rb_insert_color(node, &inode->i_rb_page_cache);
++ out:
++	return ret;
++}
++-----------------------------------------------------------------------
++*/
++
++#ifndef	_LINUX_RBTREE_H
++#define	_LINUX_RBTREE_H
++
++#include <stdlib.h>
++
++#undef offsetof
++#ifdef __compiler_offsetof
++#define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)
++#else
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
++#define container_of(ptr, type, member) ({			\
++	const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
++	(type *)( (char *)__mptr - offsetof(type,member) );})
++
++struct rb_node
++{
++	unsigned long  rb_parent_color;
++#define	RB_RED		0
++#define	RB_BLACK	1
++	struct rb_node *rb_right;
++	struct rb_node *rb_left;
++} __attribute__((aligned(sizeof(long))));
++    /* The alignment might seem pointless, but allegedly CRIS needs it */
++
++struct rb_root
++{
++	struct rb_node *rb_node;
++};
++
++
++#define rb_parent(r)   ((struct rb_node *)((r)->rb_parent_color & ~3))
++#define rb_color(r)   ((r)->rb_parent_color & 1)
++#define rb_is_red(r)   (!rb_color(r))
++#define rb_is_black(r) rb_color(r)
++#define rb_set_red(r)  do { (r)->rb_parent_color &= ~1; } while (0)
++#define rb_set_black(r)  do { (r)->rb_parent_color |= 1; } while (0)
++
++static inline void rb_set_parent(struct rb_node *rb, struct rb_node *p)
++{
++	rb->rb_parent_color = (rb->rb_parent_color & 3) | (unsigned long)p;
++}
++static inline void rb_set_color(struct rb_node *rb, int color)
++{
++	rb->rb_parent_color = (rb->rb_parent_color & ~1) | color;
++}
++
++#define RB_ROOT	(struct rb_root) { NULL, }
++#define	rb_entry(ptr, type, member) container_of(ptr, type, member)
++
++#define RB_EMPTY_ROOT(root)	((root)->rb_node == NULL)
++#define RB_EMPTY_NODE(node)	(rb_parent(node) == node)
++#define RB_CLEAR_NODE(node)	(rb_set_parent(node, node))
++
++extern void rb_insert_color(struct rb_node *, struct rb_root *);
++extern void rb_erase(struct rb_node *, struct rb_root *);
++
++typedef void (*rb_augment_f)(struct rb_node *node, void *data);
++
++extern void rb_augment_insert(struct rb_node *node,
++			      rb_augment_f func, void *data);
++extern struct rb_node *rb_augment_erase_begin(struct rb_node *node);
++extern void rb_augment_erase_end(struct rb_node *node,
++				 rb_augment_f func, void *data);
++
++/* Find logical next and previous nodes in a tree */
++extern struct rb_node *rb_next(const struct rb_node *);
++extern struct rb_node *rb_prev(const struct rb_node *);
++extern struct rb_node *rb_first(const struct rb_root *);
++extern struct rb_node *rb_last(const struct rb_root *);
++
++/* Fast replacement of a single node without remove/rebalance/add/rebalance */
++extern void rb_replace_node(struct rb_node *victim, struct rb_node *new,
++			    struct rb_root *root);
++
++static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
++				struct rb_node ** rb_link)
++{
++	node->rb_parent_color = (unsigned long )parent;
++	node->rb_left = node->rb_right = NULL;
++
++	*rb_link = node;
++}
++
++#endif	/* _LINUX_RBTREE_H */
 -- 
-[PATCH 1/2] e2fsprogs: Add rbtree library
-[PATCH 2/2] e2fsprogs: Add rbtree backend for bitmaps, use it instead of bitarrays
+1.7.2.3
 
- lib/ext2fs/Makefile.in    |   13 +-
- lib/ext2fs/blkmap64_rb.c  |  815 +++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/bmap64.h       |    1 +
- lib/ext2fs/ext2fsP.h      |    1 +
- lib/ext2fs/gen_bitmap64.c |    3 +
- lib/ext2fs/rbtree.c       |  451 +++++++++++++++++++++++++
- lib/ext2fs/rbtree.h       |  179 ++++++++++
- 7 files changed, 1461 insertions(+), 2 deletions(-)
