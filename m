@@ -1,96 +1,134 @@
-From: Rogier Wolff <R.E.Wolff@BitWizard.nl>
-Subject: Re: Regular ext4 error warning with HD in USB dock
-Date: Mon, 10 Jan 2011 09:49:12 +0100
-Message-ID: <20110110084912.GE21505@bitwizard.nl>
-References: <AANLkTim_5Yx1RQFHYbmh40xx7c5sU9XsXZEzegC4G=1x@mail.gmail.com> <4D1F6244.7050203@redhat.com> <AANLkTimAe-p1-ApmnueybQY474J3_G9JL+8WJ2WTn+04@mail.gmail.com> <20110107052613.GE2857@thunk.org> <AANLkTinyc+H7t5yF8w81XXts0jfbdt4ROWM8MHEUjNeD@mail.gmail.com> <AANLkTimFA9Can0Oe39Jkw+1X6uxwsgNVW2aKPoV_VLoq@mail.gmail.com> <20110108080520.GE12433@bitwizard.nl> <20110108220059.GV21922@thunk.org> <20110109081249.GA32496@bitwizard.nl> <20110109145838.GA3346@thunk.org>
+From: Hugh Dickins <hughd@google.com>
+Subject: ext4: ext23 support leaks buffer pages
+Date: Mon, 10 Jan 2011 02:54:26 -0800 (PST)
+Message-ID: <alpine.LSU.2.00.1101100242530.2000@sister.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Rogier Wolff <R.E.Wolff@bitwizard.nl>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Con Kolivas <kernel@kolivas.org>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Amir Goldstein <amir73il@users.sf.net>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dtp.xs4all.nl ([80.101.171.8]:45379 "HELO abra2.bitwizard.nl"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751393Ab1AJItO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jan 2011 03:49:14 -0500
-Content-Disposition: inline
-In-Reply-To: <20110109145838.GA3346@thunk.org>
+Received: from smtp-out.google.com ([74.125.121.67]:46104 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753413Ab1AJKym (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jan 2011 05:54:42 -0500
+Received: from kpbe12.cbf.corp.google.com (kpbe12.cbf.corp.google.com [172.25.105.76])
+	by smtp-out.google.com with ESMTP id p0AAsdYP018938
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Jan 2011 02:54:40 -0800
+Received: from iwn6 (iwn6.prod.google.com [10.241.68.70])
+	by kpbe12.cbf.corp.google.com with ESMTP id p0AAscRl024572
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Jan 2011 02:54:38 -0800
+Received: by iwn6 with SMTP id 6so25811608iwn.15
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Jan 2011 02:54:38 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 09, 2011 at 09:58:38AM -0500, Ted Ts'o wrote:
-> On Sun, Jan 09, 2011 at 09:12:49AM +0100, Rogier Wolff wrote:
-> > > No.  The superblock nor its offset will never change.  It's like the
-> > > syscall ABI, only worse.  If we changed it would break *everybody*.
-> > > Fortunately there is a huge amount of space left over in the 1024 byte
-> > > superblock.
-> > 
-> > It's called defensive programming. It prevents bugs before they
-> > happen. By your reasoning you could've written 2048 or 0x800 there.
-> 
-> Defensive programming would be something like
-> 
-> 	  BUG_ON(sizeof(struct ext4_super_block) != 1024);
+I switched to CONFIG_EXT4_USE_FOR_EXT23=y with 2.6.37, but was
+then surprised by OOM kills: 2.6.36 and current are also bad.
 
-It is one form of "defense", but not what I call defensive
-programming. Defensive programming, is that you make things robust in
-the the face of unexpected changes. 
+Try something like this:
 
-If you do the BUG_ON and do this throughout the code, one day your
-grandson will be increasing the superblock size. He'll fix all the
-BUG_ON and your other "defensive" measures. But lo and behold. He's
-human, and forgot one or two. Especially the run-time detections that
-only get called occasionally (like in this case on an error
-sitatuation) might take a while before they are noticed.
+mkfs -t ext2 /dev/sda10
+while :
+do	mount /dev/sda10 /mnt
+	rm -rf /mnt/linux-2.6.37
+	( cd /mnt; tar xf ~hughd/linux-2.6.37.tar.bz2 )
+	umount /mnt
+	grep "Active(file)" /proc/meminfo
+	grep buffer_head /proc/slabinfo
+done
 
-What use is it to turn a "we've found a serious error in your
-filesystem, we strongly recommend you no longer write to it and run
-fsck first" into a "system halted"?
+and watch Active and buffer_head grow.  Buffers remains stable,
+but that's because each unmount truncates those pages from the
+blockdev, yet try_to_free_buffers() cannot detach their buffer
+heads because one is still "busy" (raised b_count).  Such pages
+are put back on the Active(file) list, but in practice they're
+unevictable by now.
 
-What is wrong with just putting the right formula where it belongs?
+ext3 behaves in the same way.  And it's no better if you don't
+keep on unmounting - then you can just watch the Buffers grow,
+until they cover almost the whole device (if you've enough memory).
 
-We need to set the variable "len" to the amount of free space beyond
-the superblock in the first block of the filesystem.  So we take the
-size of the first block, subtract the size of the superblock and we
-subtract the start of the superblock. It's as simple as that.
+Bisection arrives at the commit below; and reverting it
+(obviously not the right solution) fixes the problem.
 
+Hugh
 
-> We could add that, if people like.  I do have regression tests (i.e.,
-> boot a system with ext4) which would die if anything like that
-> changed, though.
+commit 40389687382bf0ae71458e7c0f828137a438a956
+Author: Amir G <amir73il@users.sourceforge.net>
+Date:   Tue Jul 27 11:56:05 2010 -0400
 
-How about
+    ext4: Fix block bitmap inconsistencies after a crash when deleting files
+    
+    We have experienced bitmap inconsistencies after crash during file
+    delete under heavy load.  The crash is not file system related and I
+    the following patch in ext4_free_branches() fixes the recovery
+    problem.
+    
+    If the transaction is restarted and there is a crash before the new
+    transaction is committed, then after recovery, the blocks that this
+    indirect block points to have been freed, but the indirect block
+    itself has not been freed and may still point to some of the free
+    blocks (because of the ext4_forget()).
+    
+    So ext4_forget() should be called inside ext4_free_blocks() to avoid
+    this problem.
+    
+    Signed-off-by: Amir Goldstein <amir73il@users.sf.net>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-
-Makefile: 
-	ext4.o: ...the objects.... testsbsize.out
-
-	testsbsize.out:	testsbsize
-		./testsbsize
-
-(oh and something about useing "hostcc" for testsbsize). 
-
-with testsbsize.c:
-	#include <stdio.h>
-	#include <...ext4....> 
-	int main (int argc, char **argv)
-	{
-		if (sizeof (struct ext4_super_block) != 1024) {
-			fprintf (stderr, "Superblock size is %d, should be 1024.\n", sizeof (struct ext4_super_block));
-			exit (1);
-		}
-		exit (0);
-	}
-
-Roger. 
-
--- 
-** R.E.Wolff@BitWizard.nl ** http://www.BitWizard.nl/ ** +31-15-2600998 **
-**    Delftechpark 26 2628 XH  Delft, The Netherlands. KVK: 27239233    **
-*-- BitWizard writes Linux device drivers for any device you may have! --*
-Q: It doesn't work. A: Look buddy, doesn't work is an ambiguous statement. 
-Does it sit on the couch all day? Is it unemployed? Please be specific! 
-Define 'it' and what it isn't doing. --------- Adapted from lxrbot FAQ
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 755ba86..699d1d0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4490,27 +4490,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 					depth);
+ 
+ 			/*
+-			 * We've probably journalled the indirect block several
+-			 * times during the truncate.  But it's no longer
+-			 * needed and we now drop it from the transaction via
+-			 * jbd2_journal_revoke().
+-			 *
+-			 * That's easy if it's exclusively part of this
+-			 * transaction.  But if it's part of the committing
+-			 * transaction then jbd2_journal_forget() will simply
+-			 * brelse() it.  That means that if the underlying
+-			 * block is reallocated in ext4_get_block(),
+-			 * unmap_underlying_metadata() will find this block
+-			 * and will try to get rid of it.  damn, damn.
+-			 *
+-			 * If this block has already been committed to the
+-			 * journal, a revoke record will be written.  And
+-			 * revoke records must be emitted *before* clearing
+-			 * this block's bit in the bitmaps.
+-			 */
+-			ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
+-
+-			/*
+ 			 * Everything below this this pointer has been
+ 			 * released.  Now let this top-of-subtree go.
+ 			 *
+@@ -4534,8 +4513,20 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 					    blocks_for_truncate(inode));
+ 			}
+ 
++			/*
++			 * The forget flag here is critical because if
++			 * we are journaling (and not doing data
++			 * journaling), we have to make sure a revoke
++			 * record is written to prevent the journal
++			 * replay from overwriting the (former)
++			 * indirect block if it gets reallocated as a
++			 * data block.  This must happen in the same
++			 * transaction where the data blocks are
++			 * actually freed.
++			 */
+ 			ext4_free_blocks(handle, inode, 0, nr, 1,
+-					 EXT4_FREE_BLOCKS_METADATA);
++					 EXT4_FREE_BLOCKS_METADATA|
++					 EXT4_FREE_BLOCKS_FORGET);
+ 
+ 			if (parent_bh) {
+ 				/*
