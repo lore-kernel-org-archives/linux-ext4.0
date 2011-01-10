@@ -1,45 +1,59 @@
-From: "Daniel K." <dk@uw.no>
-Subject: Re: ext3: deleting files doesn't free up space
-Date: Mon, 10 Jan 2011 06:10:49 +0000
-Message-ID: <4D2AA2E9.9030209@uw.no>
-References: <AANLkTimwDpUz9GUmx3UutYir0UuoTSAXNzphWeEX9sKh@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: Regular ext4 error warning with HD in USB dock
+Date: Mon, 10 Jan 2011 00:45:17 -0700
+Message-ID: <41DF7E1A-4CF0-44CF-AD8F-29176397B7EF@dilger.ca>
+References: <20101228081917.GA1351@bitwizard.nl> <AANLkTim_5Yx1RQFHYbmh40xx7c5sU9XsXZEzegC4G=1x@mail.gmail.com> <4D1F6244.7050203@redhat.com> <AANLkTimAe-p1-ApmnueybQY474J3_G9JL+8WJ2WTn+04@mail.gmail.com> <20110107052613.GE2857@thunk.org> <AANLkTinyc+H7t5yF8w81XXts0jfbdt4ROWM8MHEUjNeD@mail.gmail.com> <AANLkTimFA9Can0Oe39Jkw+1X6uxwsgNVW2aKPoV_VLoq@mail.gmail.com> <20110108080520.GE12433@bitwizard.nl> <20110108220059.GV21922@thunk.org> <20110109081249.GA32496@bitwizard.nl> <20110109145838.GA3346@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Dan Carpenter <error27@gmail.com>
+Cc: Rogier Wolff <R.E.Wolff@bitwizard.nl>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Con Kolivas <kernel@kolivas.org>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from in.cluded.net ([195.159.98.120]:38915 "EHLO in.cluded.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751468Ab1AJGP4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jan 2011 01:15:56 -0500
-In-Reply-To: <AANLkTimwDpUz9GUmx3UutYir0UuoTSAXNzphWeEX9sKh@mail.gmail.com>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:43340 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750852Ab1AJHpT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jan 2011 02:45:19 -0500
+In-Reply-To: <20110109145838.GA3346@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dan Carpenter wrote:
-> I filled up my partition last night.
-> I deleted 5 gigs of movies.
-> The "Used" number went down to 125G.
-> The "Free" number stayed at 0.
-> I rebooted the system but it's still the same.
+On 2011-01-09, at 07:58, Ted Ts'o wrote:
+> Defensive programming would be something like
 > 
-> $ echo foo > foo
-> bash: echo: write error: No space left on device
+> 	  BUG_ON(sizeof(struct ext4_super_block) != 1024);
 > 
-> $ df .
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> /dev/sda1            136236548 130363620         0 100% /media/old_sys
+> (unfortunately #error sizeof(struct ext4_super_block) != 1024 won't
+> work since #error is handled by the preprocessor, and I don't think we
+> can trigger a compile-time warning for a structure size issue).
 
-Check out the -m option to tune2fs, which sets the reserved-blocks-percentage for the FS - the percentage of blocks reserved to the super user, which is 5% by default.
+We actually use a compile-time assertion in the Lustre code:
 
-Presumably, root has filled the partition completely, and 5G worth of deleted user data is not enough to get under the 5% limit to allow for new data to be written by users.
+/*
+* compile-time assertions. @cond has to be constant expression.
+* ISO C Standard:
+*
+*        6.8.4.2  The switch statement
+*
+*       ....
+*
+*       [#3] The expression of each case label shall be an integer
+*       constant expression and no two of the case constant expressions
+*       in the same switch statement shall have the same value after
+*       after conversion...
+*/
+#define CLASSERT(cond) ({ switch(42) { case (cond): case 0: break; } })
 
-As this partition is used for /home you might as well turn the feature off, as root should not need to have space reserved in that area of the filesystem.
 
-	tune2fs -m 0 /dev/sda1
+Of course, the "cond" expression must be resolvable at compile time, or
+it will turn into a compile error because it is not legal to have a
+variable "case".
 
-should give regular users access to the reserved blocks.
+Cheers, Andreas
 
 
-Daniel K.
+
+
+
