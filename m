@@ -1,46 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix memory leak in ext4_free_branches
-Date: Mon, 10 Jan 2011 12:56:47 -0500
-Message-ID: <1294682207-10494-1-git-send-email-tytso@mit.edu>
-References: <20110110175234.GD3128@thunk.org>
-Cc: hughd@google.com, Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix trimming starting with block 0 with small blocksize
+Date: Mon, 10 Jan 2011 19:00:33 +0100
+Message-ID: <1294682433-6775-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Lukas Czerner <lczerner@redhat.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43353 "EHLO thunker.thunk.org"
+Received: from cantor.suse.de ([195.135.220.2]:37305 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752667Ab1AJR4u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jan 2011 12:56:50 -0500
-In-Reply-To: <20110110175234.GD3128@thunk.org>
+	id S1754300Ab1AJSA4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Jan 2011 13:00:56 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 40389687 moved a call to ext4_forget() out of
-ext4_free_branches and let ext4_free_blocks() handle calling
-bforget().  But that change unfortunately did not replace the call to
-ext4_forget() with brelse(), which was needed to drop the in-use count
-of the indirect block's buffer head, which lead to a memory leak when
-deleting files that used indirect blocks.  Fix this.
+When s_first_data_block is not zero (which happens e.g. when block size is 1KB)
+and trim ioctl is called to start trimming from block 0, the math in
+ext4_get_group_no_and_offset() overflows. The overall result is that ioctl
+returns EINVAL which is kind of unexpected and we probably don't want
+userspace tools to bother with internal details of filesystem structure.
+So just silently increase starting offset (and shorten length) when starting
+block is below s_first_data_block.
 
-Thanks to Hugh Dickins for pointing this out.
-
-Cc: stable@kernel.org
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+CC: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/ext4/mballoc.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 84b6162..e80fc51 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4378,6 +4378,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 					(__le32 *) bh->b_data,
- 					(__le32 *) bh->b_data + addr_per_block,
- 					depth);
-+			brelse(bh);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4c4766c..b9c2aad 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4819,6 +4819,8 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
+ 	ext4_grpblk_t cnt = 0, first_block, last_block;
+ 	uint64_t start, len, minlen, trimmed;
++	ext4_fsblk_t first_data_blk =
++			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+ 	int ret = 0;
  
- 			/*
- 			 * Everything below this this pointer has been
+ 	start = range->start >> sb->s_blocksize_bits;
+@@ -4828,6 +4830,10 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 
+ 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+ 		return -EINVAL;
++	if (start < first_data_blk) {
++		len -= first_data_blk - start;
++		start = first_data_blk;
++	}
+ 
+ 	/* Determine first and last group to examine based on start and len */
+ 	ext4_get_group_no_and_offset(sb, (ext4_fsblk_t) start,
 -- 
-1.7.3.1
+1.7.1
 
