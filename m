@@ -1,55 +1,83 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/2] e2fsprogs: Add rbtree backend for bitmaps, use it instead of bitarrays
-Date: Mon, 10 Jan 2011 09:43:10 -0700
-Message-ID: <40C8AC78-8196-41BE-B1BB-B1FB96D209C7@dilger.ca>
-References: <1294672737-10850-1-git-send-email-lczerner@redhat.com> <1294672737-10850-3-git-send-email-lczerner@redhat.com> <9268E343-A1FD-410D-8C4F-40976B233634@dilger.ca>
-Mime-Version: 1.0 (iPhone Mail 8C148a)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"sandeen@redhat.com" <sandeen@redhat.com>,
-	"kalpak@clogeny.com" <kalpak@clogeny.com>
-To: Lukas Czerner <lczerner@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: remove ext4_mb_return_to_preallocation()
+Date: Mon, 10 Jan 2011 10:45:31 -0600
+Message-ID: <4D2B37AB.5010003@redhat.com>
+References: <20110109030447.GX21922@thunk.org> <1294544609-14225-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jiaying Zhang <jiayingz@google.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:63980 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752096Ab1AJQmk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jan 2011 11:42:40 -0500
-In-Reply-To: <9268E343-A1FD-410D-8C4F-40976B233634@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:41644 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753751Ab1AJQpf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Jan 2011 11:45:35 -0500
+In-Reply-To: <1294544609-14225-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Oops, hit send by accident. 
-
-On 2011-01-10, at 8:18, Lukas Czerner <lczerner@redhat.com> wrote:
->> This commit adds another backend to store bitmaps. It is based on
->> rbtrees and it stores just used extents of bitmaps. It means that it can
->> be more memory efficient in most cases and also with a careful use it
->> might be much faster than simple bitarrays.
->> 
->> 
->> @@ -66,7 +66,7 @@ errcode_t ext2fs_allocate_inode_bitmap(ext2_filsys fs,
->>   if (fs->flags & EXT2_FLAG_64BITS)
->>       return (ext2fs_alloc_generic_bmap(fs,
->>                 EXT2_ET_MAGIC_INODE_BITMAP64,
->> -                  EXT2FS_BMAP64_BITARRAY,
->> +                  EXT2FS_BMAP64_RBTREE,
->>                 start, end, real_end, descr, ret));
+On 01/08/2011 09:43 PM, Theodore Ts'o wrote:
+> This function was never implemented, except for a BUG_ON which was
+> tripping when ext4 is run without a journal.  The problem is that
+> although the comment asserts that "truncate (which is the only way to
+> free block) discards all preallocations", ext4_free_blocks() is also
+> called in various error recovery paths when blocks have been
+> allocated, but for various reasons, we were not able to use those data
+> blocks (for example, because we ran out of memory while trying to
+> manipulate the extent tree, or some other similar situation).
 > 
+> In addition to the fact that this function isn't implemented except
+> for the incorrect BUG_ON, the single caller of this function,
+> ext4_free_blocks(), doesn't use it all if the journal is enabled.
+> 
+> So remove the (stub) function entirely for now.  If we decide it's
+> better to add it back, it's only going to be useful with a relatively
+> large number of code changes anyway.
 
-It would be really useful to allow runtime selection of bitmap type, ideally separately for block and inode bitmaps. This will allow easier testing of this patch on different filesystems, as well as allow users to select the bitmap the type for performance over space, if they have plenty of memory. 
+Acked-by: Eric Sandeen <sandeen@redhat.com>
 
-Perhaps in the future by default e2fsck can select one type based on system memory vs. filesystem size?  That will be important if there continues to be a performance gap between the two types. 
+This always bugged me.  :)
 
->> +/*
->> 
->> +/*#define DEBUG*/
->> +
->> +#ifdef DEBUG
->> +static void print_tree(struct rb_root *root)
+> Google-Bug-Id: 3236408
+> 
+> Cc: Jiaying Zhang <jiayingz@google.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/mballoc.c |   14 --------------
+>  1 files changed, 0 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 5bbf6e3..85b6d44 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -3881,19 +3881,6 @@ repeat:
+>  	}
+>  }
+>  
+> -/*
+> - * finds all preallocated spaces and return blocks being freed to them
+> - * if preallocated space becomes full (no block is used from the space)
+> - * then the function frees space in buddy
+> - * XXX: at the moment, truncate (which is the only way to free blocks)
+> - * discards all preallocations
+> - */
+> -static void ext4_mb_return_to_preallocation(struct inode *inode,
+> -					struct ext4_buddy *e4b,
+> -					sector_t block, int count)
+> -{
+> -	BUG_ON(!list_empty(&EXT4_I(inode)->i_prealloc_list));
+> -}
+>  #ifdef CONFIG_EXT4_DEBUG
+>  static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+>  {
+> @@ -4648,7 +4635,6 @@ do_more:
+>  		ext4_lock_group(sb, block_group);
+>  		mb_clear_bits(bitmap_bh->b_data, bit, count);
+>  		mb_free_blocks(inode, &e4b, bit, count);
+> -		ext4_mb_return_to_preallocation(inode, &e4b, block, count);
+>  	}
+>  
+>  	ret = ext4_free_blks_count(sb, gdp) + count;
 
-Probably should be DEBUG_RB or similar to allow separate enabling from other debug. 
-
-Cheers, Andreas
