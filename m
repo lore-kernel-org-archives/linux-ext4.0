@@ -1,124 +1,166 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: About to push ext4 changes to Linus
-Date: Mon, 10 Jan 2011 13:17:25 -0500
-Message-ID: <E1PcMJ3-0004nE-7c@tytso-glaptop>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 6/6] Add interface to advertise ext4 features in sysfs
+Date: Mon, 10 Jan 2011 17:08:01 -0600
+Message-ID: <4D2B9151.7060007@redhat.com>
+References: <1284568568-13637-1-git-send-email-lczerner@redhat.com> <1284568568-13637-7-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, rwheeler@redhat.com,
+	adilger@dilger.ca
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44584 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:63872 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753919Ab1AJSR1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jan 2011 13:17:27 -0500
+	id S1754978Ab1AJXIF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Jan 2011 18:08:05 -0500
+In-Reply-To: <1284568568-13637-7-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On 09/15/2010 11:36 AM, Lukas Czerner wrote:
+> User-space should have the opportunity to check what features doest ext4
+> support in each particular copy. This adds easy interface by creating new
+> "features" directory in sys/fs/ext4/. In that directory files
+> advertising feature names can be created.
+> 
+> Add lazy_itable_init to the feature list.
 
-The for_linus branch on the ext4 tree[1] contains what I plan to push to
-Linus for the merge window, probably tonight or tomorrow.
+This seems to break unloading/reloading in .37; near as I can
+tell /sys/fs/ext4 never gets unregistered on module unload.
 
-Things like recording the ext4 errors in the journal superblock were
-just a bit too late for 2.6.38.  Sorry, I just didn't have enough time
-to review them for this merge window, and it's really a new feature.
+-Eric
 
-Please take a look; I'm currently running this through some additional
-testing just to be sure, but if you see anything particularly
-bone-headed, please let me know!
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/ext4.h  |    5 +++++
+>  fs/ext4/super.c |   50 +++++++++++++++++++++++++++++++++++++++++++++++++-
+>  2 files changed, 54 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 0df3977..9ecac2e 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1502,6 +1502,11 @@ struct ext4_li_request {
+>  	unsigned long		lr_next_sched;
+>  };
+>  
+> +struct ext4_features {
+> +	struct kobject f_kobj;
+> +	struct completion f_kobj_unregister;
+> +};
+> +
+>  /*
+>   * Function prototypes
+>   */
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3e285eb..b817eba 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -57,6 +57,7 @@ struct proc_dir_entry *ext4_proc_root;
+>  static struct kset *ext4_kset;
+>  struct ext4_lazy_init *ext4_li_info;
+>  struct mutex ext4_li_mtx;
+> +struct ext4_features *ext4_feat;
+>  
+>  static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+>  			     unsigned long journal_devnum);
+> @@ -2349,6 +2350,7 @@ static struct ext4_attr ext4_attr_##_name = {			\
+>  #define EXT4_ATTR(name, mode, show, store) \
+>  static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+>  
+> +#define EXT4_INFO_ATTR(name) EXT4_ATTR(name, 0444, NULL, NULL)
+>  #define EXT4_RO_ATTR(name) EXT4_ATTR(name, 0444, name##_show, NULL)
+>  #define EXT4_RW_ATTR(name) EXT4_ATTR(name, 0644, name##_show, name##_store)
+>  #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
+> @@ -2385,6 +2387,14 @@ static struct attribute *ext4_attrs[] = {
+>  	NULL,
+>  };
+>  
+> +/* Features this copy of ext4 supports */
+> +EXT4_INFO_ATTR(lazy_itable_init);
+> +
+> +static struct attribute *ext4_feat_attrs[] = {
+> +	ATTR_LIST(lazy_itable_init),
+> +	NULL,
+> +};
+> +
+>  static ssize_t ext4_attr_show(struct kobject *kobj,
+>  			      struct attribute *attr, char *buf)
+>  {
+> @@ -2413,7 +2423,6 @@ static void ext4_sb_release(struct kobject *kobj)
+>  	complete(&sbi->s_kobj_unregister);
+>  }
+>  
+> -
+>  static const struct sysfs_ops ext4_attr_ops = {
+>  	.show	= ext4_attr_show,
+>  	.store	= ext4_attr_store,
+> @@ -2425,6 +2434,17 @@ static struct kobj_type ext4_ktype = {
+>  	.release	= ext4_sb_release,
+>  };
+>  
+> +static void ext4_feat_release(struct kobject *kobj)
+> +{
+> +	complete(&ext4_feat->f_kobj_unregister);
+> +}
+> +
+> +static struct kobj_type ext4_feat_ktype = {
+> +	.default_attrs	= ext4_feat_attrs,
+> +	.sysfs_ops	= &ext4_attr_ops,
+> +	.release	= ext4_feat_release,
+> +};
+> +
+>  /*
+>   * Check whether this filesystem can be mounted based on
+>   * the features present and the RDONLY/RDWR mount requested.
+> @@ -4581,6 +4601,30 @@ static struct file_system_type ext4_fs_type = {
+>  	.fs_flags	= FS_REQUIRES_DEV,
+>  };
+>  
+> +int __init ext4_init_feat_adverts(void)
+> +{
+> +	struct ext4_features *ef;
+> +	int ret = -ENOMEM;
+> +
+> +	ef = kzalloc(sizeof(struct ext4_features), GFP_KERNEL);
+> +	if (!ef)
+> +		goto out;
+> +
+> +	ef->f_kobj.kset = ext4_kset;
+> +	init_completion(&ef->f_kobj_unregister);
+> +	ret = kobject_init_and_add(&ef->f_kobj, &ext4_feat_ktype, NULL,
+> +				   "features");
+> +	if (ret) {
+> +		kfree(ef);
+> +		goto out;
+> +	}
+> +
+> +	ext4_feat = ef;
+> +	ret = 0;
+> +out:
+> +	return ret;
+> +}
+> +
+>  static int __init init_ext4_fs(void)
+>  {
+>  	int err;
+> @@ -4593,6 +4637,9 @@ static int __init init_ext4_fs(void)
+>  	if (!ext4_kset)
+>  		goto out4;
+>  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+> +
+> +	err = ext4_init_feat_adverts();
+> +
+>  	err = init_ext4_mballoc();
+>  	if (err)
+>  		goto out3;
+> @@ -4621,6 +4668,7 @@ out1:
+>  out2:
+>  	exit_ext4_mballoc();
+>  out3:
+> +	kfree(ext4_feat);
+>  	remove_proc_entry("fs/ext4", NULL);
+>  	kset_unregister(ext4_kset);
+>  out4:
 
-							- Ted
-
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
-
-
-Andrew Morton (1):
-      ext4: fix uninitialized variable in ext4_register_li_request
-
-Dan Carpenter (2):
-      ext4: test the correct variable in ext4_init_pageio()
-      ext4: use IS_ERR() to check for errors in ext4_error_file
-
-Eric Paris (1):
-      ext4: ext4_ext_migrate should use NULL not 0
-
-Eric Sandeen (2):
-      ext4: zero out nanosecond timestamps for small inodes
-      ext4: don't pass entire map to check_eofblocks_fl
-
-Jan Kara (1):
-      ext4: fix trimming of a single group
-
-Jesper Juhl (1):
-      ext4: use kmem_cache_zalloc() in ext4_init_io_end()
-
-Jiaying Zhang (1):
-      ext4: flush the i_completed_io_list during ext4_truncate
-
-Joe Perches (2):
-      ext4: Use vzalloc in ext4_fill_flex_info()
-      ext4: Use printf extension %pV
-
-Kazuya Mio (1):
-      ext4: fix 32bit overflow in ext4_ext_find_goal()
-
-Lukas Czerner (2):
-      ext4: fix possible overflow in ext4_trim_fs()
-      ext4: remove warning message from ext4_issue_discard helper
-
-Namhyung Kim (1):
-      ext4: add more error checks to ext4_mkdir()
-
-Theodore Ts'o (24):
-      ext4: Simplify the usage of clear_opt() and set_opt() macros
-      ext4: Move struct ext4_mount_options from ext4.h to super.c
-      ext4: Add second mount options field since the s_mount_opt is full up
-      ext4: Fix up comments in inode.c
-      ext4: Use pr_warning_ratelimited() instead of printk_ratelimit()
-      jbd2: Use pr_notice_ratelimited() in journal_alloc_journal_head()
-      jbd2: Fix a debug message in do_get_write_access()
-      jbd2: use offset_in_page() instead of manual calculation
-      jbd2: remove unnecessary goto statement
-      jbd2: move debug message into debug #ifdef
-      jbd2: simplify return path of journal_init_common
-      ext4: optimize ext4_check_dir_entry() with unlikely() annotations
-      ext4: Add error checking to kmem_cache_alloc() call in ext4_free_blocks()
-      ext4: clean up ext4_xattr_list()'s error code checking and return strategy
-      ext4: Use ext4_error_file() to print the pathname to the corrupted inode
-      ext4: replace i_delalloc_reserved_flag with EXT4_STATE_DELALLOC_RESERVED
-      ext4: use ext4_lblk_t instead of sector_t for logical blocks
-      ext4: drop ec_type from the ext4_ext_cache structure
-      ext4: reorder ext4_inode_info structure elements to remove unneeded padding
-      ext4: drop i_state_flags on architectures with 64-bit longs
-      ext4: dynamically allocate the jbd2_inode in ext4_inode_info as necessary
-      ext4: add error checking to calls to ext4_handle_dirty_metadata()
-      ext4: remove ext4_mb_return_to_preallocation()
-      ext4: fix memory leak in ext4_free_branches
-
-Tobias Klauser (1):
-      ext4: Remove redundant unlikely()
-
-Wang Sheng-Hui (2):
-      ext2,ext3,ext4: clarify comment for extN_xattr_set_handle
-      ext2: remove dead code in ext2_xattr_get
-
- fs/ext2/xattr.c        |   10 +--
- fs/ext3/xattr.c        |    2 +-
- fs/ext4/balloc.c       |    3 +-
- fs/ext4/dir.c          |   58 ++++++----
- fs/ext4/ext4.h         |   93 ++++++++++------
- fs/ext4/ext4_extents.h |    8 +-
- fs/ext4/ext4_jbd2.h    |    2 +-
- fs/ext4/extents.c      |   88 +++++++++------
- fs/ext4/file.c         |   22 ++++
- fs/ext4/fsync.c        |    4 +-
- fs/ext4/ialloc.c       |    2 +-
- fs/ext4/inode.c        |   74 +++++++++----
- fs/ext4/mballoc.c      |   55 ++++-----
- fs/ext4/migrate.c      |    2 +-
- fs/ext4/namei.c        |   69 ++++++++----
- fs/ext4/page-io.c      |    7 +-
- fs/ext4/resize.c       |   64 ++++++++---
- fs/ext4/super.c        |  288 ++++++++++++++++++++++++++----------------------
- fs/ext4/xattr.c        |   28 +++---
- fs/jbd2/journal.c      |   34 +++---
- fs/jbd2/recovery.c     |    2 +-
- fs/jbd2/transaction.c  |    6 +-
- include/linux/jbd2.h   |   20 +++-
- 23 files changed, 562 insertions(+), 379 deletions(-)
