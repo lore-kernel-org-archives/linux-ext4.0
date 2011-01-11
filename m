@@ -1,166 +1,68 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 6/6] Add interface to advertise ext4 features in sysfs
-Date: Mon, 10 Jan 2011 17:08:01 -0600
-Message-ID: <4D2B9151.7060007@redhat.com>
-References: <1284568568-13637-1-git-send-email-lczerner@redhat.com> <1284568568-13637-7-git-send-email-lczerner@redhat.com>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH] ext4: fix memory leak in ext4_free_branches
+Date: Mon, 10 Jan 2011 16:02:11 -0800 (PST)
+Message-ID: <alpine.LSU.2.00.1101101557400.21100@tigran.mtv.corp.google.com>
+References: <20110110175234.GD3128@thunk.org> <1294682207-10494-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, rwheeler@redhat.com,
-	adilger@dilger.ca
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63872 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754978Ab1AJXIF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jan 2011 18:08:05 -0500
-In-Reply-To: <1284568568-13637-7-git-send-email-lczerner@redhat.com>
+Received: from smtp-out.google.com ([74.125.121.67]:48722 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752749Ab1AKACR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jan 2011 19:02:17 -0500
+Received: from hpaq7.eem.corp.google.com (hpaq7.eem.corp.google.com [172.25.149.7])
+	by smtp-out.google.com with ESMTP id p0B02GP3012877
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Jan 2011 16:02:16 -0800
+Received: from iwn40 (iwn40.prod.google.com [10.241.68.104])
+	by hpaq7.eem.corp.google.com with ESMTP id p0B02EAV001441
+	(version=TLSv1/SSLv3 cipher=RC4-MD5 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Jan 2011 16:02:15 -0800
+Received: by iwn40 with SMTP id 40so19860757iwn.28
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Jan 2011 16:02:14 -0800 (PST)
+In-Reply-To: <1294682207-10494-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/15/2010 11:36 AM, Lukas Czerner wrote:
-> User-space should have the opportunity to check what features doest ext4
-> support in each particular copy. This adds easy interface by creating new
-> "features" directory in sys/fs/ext4/. In that directory files
-> advertising feature names can be created.
+On Mon, 10 Jan 2011, Theodore Ts'o wrote:
+
+> Commit 40389687 moved a call to ext4_forget() out of
+> ext4_free_branches and let ext4_free_blocks() handle calling
+> bforget().  But that change unfortunately did not replace the call to
+> ext4_forget() with brelse(), which was needed to drop the in-use count
+> of the indirect block's buffer head, which lead to a memory leak when
+> deleting files that used indirect blocks.  Fix this.
 > 
-> Add lazy_itable_init to the feature list.
+> Thanks to Hugh Dickins for pointing this out.
+> 
+> Cc: stable@kernel.org
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-This seems to break unloading/reloading in .37; near as I can
-tell /sys/fs/ext4 never gets unregistered on module unload.
+Many thanks: I've given that a run with the added debug I'd put in,
+and it fixes the problems nicely.  I thought it would be a brelse(bh)
+somewhere, but wouldn't dare trust my data to my own guesses of where!
 
--Eric
+Hugh
 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 > ---
->  fs/ext4/ext4.h  |    5 +++++
->  fs/ext4/super.c |   50 +++++++++++++++++++++++++++++++++++++++++++++++++-
->  2 files changed, 54 insertions(+), 1 deletions(-)
+>  fs/ext4/inode.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 0df3977..9ecac2e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1502,6 +1502,11 @@ struct ext4_li_request {
->  	unsigned long		lr_next_sched;
->  };
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 84b6162..e80fc51 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4378,6 +4378,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+>  					(__le32 *) bh->b_data,
+>  					(__le32 *) bh->b_data + addr_per_block,
+>  					depth);
+> +			brelse(bh);
 >  
-> +struct ext4_features {
-> +	struct kobject f_kobj;
-> +	struct completion f_kobj_unregister;
-> +};
-> +
->  /*
->   * Function prototypes
->   */
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3e285eb..b817eba 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -57,6 +57,7 @@ struct proc_dir_entry *ext4_proc_root;
->  static struct kset *ext4_kset;
->  struct ext4_lazy_init *ext4_li_info;
->  struct mutex ext4_li_mtx;
-> +struct ext4_features *ext4_feat;
->  
->  static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
->  			     unsigned long journal_devnum);
-> @@ -2349,6 +2350,7 @@ static struct ext4_attr ext4_attr_##_name = {			\
->  #define EXT4_ATTR(name, mode, show, store) \
->  static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
->  
-> +#define EXT4_INFO_ATTR(name) EXT4_ATTR(name, 0444, NULL, NULL)
->  #define EXT4_RO_ATTR(name) EXT4_ATTR(name, 0444, name##_show, NULL)
->  #define EXT4_RW_ATTR(name) EXT4_ATTR(name, 0644, name##_show, name##_store)
->  #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
-> @@ -2385,6 +2387,14 @@ static struct attribute *ext4_attrs[] = {
->  	NULL,
->  };
->  
-> +/* Features this copy of ext4 supports */
-> +EXT4_INFO_ATTR(lazy_itable_init);
-> +
-> +static struct attribute *ext4_feat_attrs[] = {
-> +	ATTR_LIST(lazy_itable_init),
-> +	NULL,
-> +};
-> +
->  static ssize_t ext4_attr_show(struct kobject *kobj,
->  			      struct attribute *attr, char *buf)
->  {
-> @@ -2413,7 +2423,6 @@ static void ext4_sb_release(struct kobject *kobj)
->  	complete(&sbi->s_kobj_unregister);
->  }
->  
-> -
->  static const struct sysfs_ops ext4_attr_ops = {
->  	.show	= ext4_attr_show,
->  	.store	= ext4_attr_store,
-> @@ -2425,6 +2434,17 @@ static struct kobj_type ext4_ktype = {
->  	.release	= ext4_sb_release,
->  };
->  
-> +static void ext4_feat_release(struct kobject *kobj)
-> +{
-> +	complete(&ext4_feat->f_kobj_unregister);
-> +}
-> +
-> +static struct kobj_type ext4_feat_ktype = {
-> +	.default_attrs	= ext4_feat_attrs,
-> +	.sysfs_ops	= &ext4_attr_ops,
-> +	.release	= ext4_feat_release,
-> +};
-> +
->  /*
->   * Check whether this filesystem can be mounted based on
->   * the features present and the RDONLY/RDWR mount requested.
-> @@ -4581,6 +4601,30 @@ static struct file_system_type ext4_fs_type = {
->  	.fs_flags	= FS_REQUIRES_DEV,
->  };
->  
-> +int __init ext4_init_feat_adverts(void)
-> +{
-> +	struct ext4_features *ef;
-> +	int ret = -ENOMEM;
-> +
-> +	ef = kzalloc(sizeof(struct ext4_features), GFP_KERNEL);
-> +	if (!ef)
-> +		goto out;
-> +
-> +	ef->f_kobj.kset = ext4_kset;
-> +	init_completion(&ef->f_kobj_unregister);
-> +	ret = kobject_init_and_add(&ef->f_kobj, &ext4_feat_ktype, NULL,
-> +				   "features");
-> +	if (ret) {
-> +		kfree(ef);
-> +		goto out;
-> +	}
-> +
-> +	ext4_feat = ef;
-> +	ret = 0;
-> +out:
-> +	return ret;
-> +}
-> +
->  static int __init init_ext4_fs(void)
->  {
->  	int err;
-> @@ -4593,6 +4637,9 @@ static int __init init_ext4_fs(void)
->  	if (!ext4_kset)
->  		goto out4;
->  	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
-> +
-> +	err = ext4_init_feat_adverts();
-> +
->  	err = init_ext4_mballoc();
->  	if (err)
->  		goto out3;
-> @@ -4621,6 +4668,7 @@ out1:
->  out2:
->  	exit_ext4_mballoc();
->  out3:
-> +	kfree(ext4_feat);
->  	remove_proc_entry("fs/ext4", NULL);
->  	kset_unregister(ext4_kset);
->  out4:
-
+>  			/*
+>  			 * Everything below this this pointer has been
+> -- 
+> 1.7.3.1
+> 
+> 
