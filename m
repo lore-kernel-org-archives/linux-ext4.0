@@ -1,123 +1,61 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 update for 2.6.38
-Date: Tue, 11 Jan 2011 16:36:15 -0500
-Message-ID: <E1Pclt1-000320-HF@tytso-glaptop>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 6/6] ext4: Dynamically allocate the jbd2_inode in
+ ext4_inode_info as necessary
+Date: Tue, 11 Jan 2011 16:50:43 -0500
+Message-ID: <20110111215043.GG2917@thunk.org>
+References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
+ <1294189270-16733-7-git-send-email-tytso@mit.edu>
+ <A562E0CA-9CA6-4654-8FCB-9849F6EB09E7@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:55001 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:45538 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753902Ab1AKVgV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Jan 2011 16:36:21 -0500
+	id S1753960Ab1AKVur (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Jan 2011 16:50:47 -0500
+Content-Disposition: inline
+In-Reply-To: <A562E0CA-9CA6-4654-8FCB-9849F6EB09E7@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+On Wed, Jan 05, 2011 at 12:26:33PM -0700, Andreas Dilger wrote:
+> 
+> How does this change impact the majority of users that are running
+> with a journal?  It is clearly a win for a small percentage of users
+> with no-journal mode, but it may be a net increase in memory usage
+> for the majority of the users (with journal)....
+> 
+> The main question is how many files are ever opened for write?  It
+> isn't just the number of currently-open files for write, because the
+> jinfo isn't released until the inode is cleared from memory.  While
+> I suspect that most inodes in cache are never opened for write, it
+> would be worthwhile to compare the ext4_inode_cache object count
+> against the jbd2_inode object count, and see how the total memory
+> compares to a before-patch system running different workloads (with
+> journal).
 
-Please pull from:
+So here's one unscientific data point, based on your humble kernel
+developer who happens to read e-mail using mutt and a Maildir
+directory (which has lots of read-only files, one per e-mail) and does
+primarily source code editing, kernel builds, web browsing, e-mail,
+and irc/IM:
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+Slabcache: ext4_inode_cache      Aliases:  0 Order :  3 Objects: 70820
+Slabcache: jbd2_inode            Aliases:  5 Order :  0 Objects: 22126
 
-It's a somewhat larger number of changes this time but it's all
-primarily cleanup and minor bug fixes.
+Note that jbd2_inode is aliased, so not all 22,126 objects are
+necessarily jbd2_inodes.  Some of them might also be ip_fib_alias,
+ksm_mm_slot, anon_vma_chain, Acpi-Parse, and nsproxy objects.  But
+still, the ratio of inodes that I've ever written to inodes that have
+only been accessed read-only is over 3:1.
+
+So for at least my laptop/desktop workload, using a separate
+jbd2_inode structure is clearly a win, and in fact separating out more
+of the ext4_inode_cache structure to create a separate data structure
+for fieldsonly needed when the file is opened for writing would likely
+be a win.  I can probably peel off another 100 bytes or so from the
+ext4_inode_info data structure.
 
 						- Ted
-
-
- fs/ext2/xattr.c        |   10 +--
- fs/ext3/xattr.c        |    2 +-
- fs/ext4/balloc.c       |    3 +-
- fs/ext4/dir.c          |   58 ++++++----
- fs/ext4/ext4.h         |   93 ++++++++++------
- fs/ext4/ext4_extents.h |    8 +-
- fs/ext4/ext4_jbd2.h    |    2 +-
- fs/ext4/extents.c      |   88 +++++++++------
- fs/ext4/file.c         |   22 ++++
- fs/ext4/fsync.c        |    4 +-
- fs/ext4/ialloc.c       |    2 +-
- fs/ext4/inode.c        |   74 +++++++++----
- fs/ext4/mballoc.c      |   55 ++++-----
- fs/ext4/migrate.c      |    2 +-
- fs/ext4/namei.c        |   69 ++++++++----
- fs/ext4/page-io.c      |    7 +-
- fs/ext4/resize.c       |   64 ++++++++---
- fs/ext4/super.c        |  288 ++++++++++++++++++++++++++----------------------
- fs/ext4/xattr.c        |   28 +++---
- fs/jbd2/journal.c      |   34 +++---
- fs/jbd2/recovery.c     |    2 +-
- fs/jbd2/transaction.c  |    6 +-
- include/linux/jbd2.h   |   20 +++-
- 23 files changed, 562 insertions(+), 379 deletions(-)
-
-Andrew Morton (1):
-      ext4: fix uninitialized variable in ext4_register_li_request
-
-Dan Carpenter (2):
-      ext4: test the correct variable in ext4_init_pageio()
-      ext4: use IS_ERR() to check for errors in ext4_error_file
-
-Eric Paris (1):
-      ext4: ext4_ext_migrate should use NULL not 0
-
-Eric Sandeen (2):
-      ext4: zero out nanosecond timestamps for small inodes
-      ext4: don't pass entire map to check_eofblocks_fl
-
-Jan Kara (2):
-      ext4: fix trimming of a single group
-      ext4: fix trimming starting with block 0 with small blocksize
-
-Jesper Juhl (1):
-      ext4: use kmem_cache_zalloc() in ext4_init_io_end()
-
-Jiaying Zhang (1):
-      ext4: flush the i_completed_io_list during ext4_truncate
-
-Joe Perches (2):
-      ext4: Use vzalloc in ext4_fill_flex_info()
-      ext4: Use printf extension %pV
-
-Kazuya Mio (1):
-      ext4: fix 32bit overflow in ext4_ext_find_goal()
-
-Lukas Czerner (2):
-      ext4: fix possible overflow in ext4_trim_fs()
-      ext4: remove warning message from ext4_issue_discard helper
-
-Namhyung Kim (1):
-      ext4: add more error checks to ext4_mkdir()
-
-Theodore Ts'o (25):
-      ext4: Simplify the usage of clear_opt() and set_opt() macros
-      ext4: Move struct ext4_mount_options from ext4.h to super.c
-      ext4: Add second mount options field since the s_mount_opt is full up
-      ext4: Fix up comments in inode.c
-      ext4: Use pr_warning_ratelimited() instead of printk_ratelimit()
-      jbd2: Use pr_notice_ratelimited() in journal_alloc_journal_head()
-      jbd2: Fix a debug message in do_get_write_access()
-      jbd2: use offset_in_page() instead of manual calculation
-      jbd2: remove unnecessary goto statement
-      jbd2: move debug message into debug #ifdef
-      jbd2: simplify return path of journal_init_common
-      ext4: optimize ext4_check_dir_entry() with unlikely() annotations
-      ext4: Add error checking to kmem_cache_alloc() call in ext4_free_blocks()
-      ext4: clean up ext4_xattr_list()'s error code checking and return strategy
-      ext4: Use ext4_error_file() to print the pathname to the corrupted inode
-      ext4: replace i_delalloc_reserved_flag with EXT4_STATE_DELALLOC_RESERVED
-      ext4: use ext4_lblk_t instead of sector_t for logical blocks
-      ext4: drop ec_type from the ext4_ext_cache structure
-      ext4: reorder ext4_inode_info structure elements to remove unneeded padding
-      ext4: drop i_state_flags on architectures with 64-bit longs
-      ext4: dynamically allocate the jbd2_inode in ext4_inode_info as necessary
-      ext4: add error checking to calls to ext4_handle_dirty_metadata()
-      ext4: remove ext4_mb_return_to_preallocation()
-      ext4: fix memory leak in ext4_free_branches
-      ext4: revert buggy trim overflow patch
-
-Tobias Klauser (1):
-      ext4: Remove redundant unlikely()
-
-Wang Sheng-Hui (2):
-      ext2,ext3,ext4: clarify comment for extN_xattr_set_handle
-      ext2: remove dead code in ext2_xattr_get
-
