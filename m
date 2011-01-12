@@ -1,61 +1,90 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 6/6] ext4: Dynamically allocate the jbd2_inode in
- ext4_inode_info as necessary
-Date: Tue, 11 Jan 2011 16:50:43 -0500
-Message-ID: <20110111215043.GG2917@thunk.org>
-References: <1294189270-16733-1-git-send-email-tytso@mit.edu>
- <1294189270-16733-7-git-send-email-tytso@mit.edu>
- <A562E0CA-9CA6-4654-8FCB-9849F6EB09E7@dilger.ca>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
+Date: Wed, 12 Jan 2011 22:48:23 +1100
+Message-ID: <20110112114823.GO28803@dastard>
+References: <1289248327-16308-1-git-send-email-josef@redhat.com>
+ <20101109011222.GD2715@dastard>
+ <20101109033038.GF3099@thunk.org>
+ <20101109044242.GH2715@dastard>
+ <20101109214147.GK3099@thunk.org>
+ <20101109234049.GQ2715@dastard>
+ <AANLkTimwmJ_ZoE9oAuA1WGhCgK585jDznqnc6k0=9Ntb@mail.gmail.com>
+ <20110111213007.GF2917@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:45538 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753960Ab1AKVur (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Jan 2011 16:50:47 -0500
+To: Ted Ts'o <tytso@mit.edu>, Lawrence Greenfield <leg@google.com>,
+	Josef Bacik <josef@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <A562E0CA-9CA6-4654-8FCB-9849F6EB09E7@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20110111213007.GF2917@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 05, 2011 at 12:26:33PM -0700, Andreas Dilger wrote:
+On Tue, Jan 11, 2011 at 04:30:07PM -0500, Ted Ts'o wrote:
+> On Tue, Jan 11, 2011 at 04:13:42PM -0500, Lawrence Greenfield wrote:
+> > > IOWs, all they want to do is avoid the unwritten extent conversion
+> > > overhead. Time has shown that a bad security/performance tradeoff
+> > > decision was made 13 years ago in XFS, so I see little reason to
+> > > repeat it for ext4 today....
 > 
-> How does this change impact the majority of users that are running
-> with a journal?  It is clearly a win for a small percentage of users
-> with no-journal mode, but it may be a net increase in memory usage
-> for the majority of the users (with journal)....
+> I suspect things may have changed somewhat; both in terms of
+> requirements and nature of cluter file systems, and the performance of
+> various storage systems (including PCIe-attached flash devices).  
+
+We can throw 1000x more CPU power and memory at the problem than
+we could 13 years ago. IOW the system balance hasn't changed (even
+considering pci-e SSDs) compared to 13 years. Hence if it was a bad
+tradeoff 13 years ago, it's still a bad tradeoff today.
+
+> > I'd make use of FALLOC_FL_EXPOSE_OLD_DATA. It's not the CPU overhead
+> > of extent conversion. It's that extent conversion causes more metadata
+> > operations than what you'd have otherwise, which means systems that
+> > want to use O_DIRECT and make sure the data doesn't go away either
+> > have to write O_DIRECT|O_DSYNC or need to call fdatasync().
+> > cluster file system implementor,
 > 
-> The main question is how many files are ever opened for write?  It
-> isn't just the number of currently-open files for write, because the
-> jinfo isn't released until the inode is cleared from memory.  While
-> I suspect that most inodes in cache are never opened for write, it
-> would be worthwhile to compare the ext4_inode_cache object count
-> against the jbd2_inode object count, and see how the total memory
-> compares to a before-patch system running different workloads (with
-> journal).
+> One possibility might be to make it an optional feature which is only
+> enabled via a mount option.  That way someone would have to explicit
+> ask for this feature two ways (via a new flag to fallocate) and a
+> mount option.
 
-So here's one unscientific data point, based on your humble kernel
-developer who happens to read e-mail using mutt and a Maildir
-directory (which has lots of read-only files, one per e-mail) and does
-primarily source code editing, kernel builds, web browsing, e-mail,
-and irc/IM:
+Proliferation of mount options just to enable feature X of API Y for
+filesystem Z is not a good idea. Either you enable it via the
+fallocate API or you don't allow it at all.
 
-Slabcache: ext4_inode_cache      Aliases:  0 Order :  3 Objects: 70820
-Slabcache: jbd2_inode            Aliases:  5 Order :  0 Objects: 22126
+> It might not make sense for XFS, but for people who are using ext4
+> as the local storage file system back-end,
 
-Note that jbd2_inode is aliased, so not all 22,126 objects are
-necessarily jbd2_inodes.  Some of them might also be ip_fib_alias,
-ksm_mm_slot, anon_vma_chain, Acpi-Parse, and nsproxy objects.  But
-still, the ratio of inodes that I've ever written to inodes that have
-only been accessed read-only is over 3:1.
+How does this differ from a local filesystem? Are you talking about
+storage nodes for clustered/cloudy storage?
 
-So for at least my laptop/desktop workload, using a separate
-jbd2_inode structure is clearly a win, and in fact separating out more
-of the ext4_inode_cache structure to create a separate data structure
-for fieldsonly needed when the file is opened for writing would likely
-be a win.  I can probably peel off another 100 bytes or so from the
-ext4_inode_info data structure.
+If so, I know of quite a few places that use XFS for this purpose
+and they all seem to measure storage in petabytes made up of small
+boxes containing anywhere between 30-100TB each. The only request
+for additional preallocation functionality I've got from people
+running such applications recently is for XFS_IOC_ZERO_RANGE. This
+is quite relevant, because that specifically converts allocated
+extents to unwritten extents. i.e. they like to be able to
+efficiently re-initialise allocated space to zeros rather than
+have it contain stale data.
 
-						- Ted
+> and are doing all sorts of things to get the best performance,
+> including disabling the journal, I suspect it really would make
+> sense.
+
+That's not really a convincing argument for a new interface that
+needs to be maintained forever.
+
+> So it could always be an
+> optional-to-implement flag, that not all file systems should feel
+> obliged to implement.
+
+It could, but it still needs better justification.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
