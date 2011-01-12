@@ -1,39 +1,108 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 12624] umount hangs after fsstress with data=journal
-Date: Wed, 12 Jan 2011 19:07:13 GMT
-Message-ID: <201101121907.p0CJ7D9U008060@demeter2.kernel.org>
-References: <bug-12624-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: Re: [RFC PATCH 0/2] Add rbtree backend for storing bitmaps
+Date: Wed, 12 Jan 2011 12:41:28 -0700
+Message-ID: <1AE6E78F-F1D0-4C71-BE97-E3E18D1116B5@dilger.ca>
+References: <1294672737-10850-1-git-send-email-lczerner@redhat.com> <AANLkTinh6u9LN3U8EHGbt1U0MRNqZ3zLuaxDxn2=GxaJ@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, sandeen@redhat.com, kalpak@clogeny.com
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:39753 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750722Ab1ALTHO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jan 2011 14:07:14 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p0CJ7DQQ008061
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Jan 2011 19:07:14 GMT
-In-Reply-To: <bug-12624-13602@https.bugzilla.kernel.org/>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:21575 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755350Ab1ALTla convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jan 2011 14:41:30 -0500
+In-Reply-To: <AANLkTinh6u9LN3U8EHGbt1U0MRNqZ3zLuaxDxn2=GxaJ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=12624
+On 2011-01-12, at 05:44, Amir Goldstein wrote:
+> On Mon, Jan 10, 2011 at 5:18 PM, Lukas Czerner <lczerner@redhat.com> wrote:
+>> To address this I have created rbtree backend for storing bitmaps. It stores
+>> just used extents of bitmaps, it means, that it can be more memory efficient
+>> in most cases and also with careful use it might be much faster as well.
+> 
+> 2. Yet another bitmap backend.
+> 
+> It seems to me, that if half of the block groups are not in use and
+> the other half is dense and fragmented, then neither rb_trees, nor
+> arrays are the optimal backend.  A data structure similar to the page
+> table, could be quite efficient in this use case, both from the memory
+> usage aspect and the test/set_bit speed aspect.
+> 
+> While it is rare to see a block group occupied with few used block, it
+> could certainly happen for inodes, so I would choose a "page" size equal
+> to block size for "in-use block bitmap" and a much smaller "page" size
+> for "in-use inode" bitmap.
+
+This is essentially the "ebitmap" proposal that I had made some years ago.
+It is a simple tree of data structures, and the leaf nodes are either
+bitmaps (if a lot of bits are set) or a simple list (if very few bits are
+set).  We might consider a third type of leaf with extents/RLE for when
+there are a lot of bits set but mostly in contiguous ranges.
+
+Initial selection of the leaf type for a given bitmap could be hinted by
+the caller based on expected usage, but conversion between leaf types is
+done transparently based on usage (e.g. list->bitmap when the list memory
+usage exceeds a bitmap block).
+
+> 3. More ways to reduce memory usage of e2fsck.
+> 
+> The most recent case of e2fsck OOM I remember showing on this list
+> was cause by a file system with many hard links that were created by
+> rsnapshot (http://rsnapshot.org/)
+> 
+> If I recall correctly, the overblown memory usage was caused by the
+> icount cache, which creates an entry for every inode with nlink > 1.
+
+I posted a patch to at least partly avoid this problem, by allowing
+the icount cache to be allocated in chunks, instead of a single huge
+allocation.  That allows e2fsck/kernel to swap out parts of the icount
+array, and avoids the need to use 2x the memory when it is doing the
+realloc() of the array to increase its size.
+
+> If the hard linked inodes are in fact sparsely distributed
+> and if the larger the refcounts, the fewer the inodes
+> (let's neglect directory hard links, because we've given up on them
+> for #subdirs > 32000 anyway),
+
+Actually, for directories I think we could optimize the icount usage
+somewhat as well.  We could use the inode_dir_map/S_ISDIR as a +1 link
+count for the directory "." reference, so that the icount can only
+count other links.  That means that directories will not need any entries
+in the icount array, and I think this would reduce memory usage for
+icount considerably in normal usage.
+
+> then it is possible to replace the icount cache with 16 inode
+> bitmaps, each one representing a single bit in the u16 i_links_count.
+> 
+> Assuming that in a normal file system the maximum links count is bounded,
+> then most of these bitmaps will be empty and the rest very sparse.
+
+I had thought of something similar, with a limited number of bitmaps
+(say 2 or 3) to handle the common hard-link cases, and then fall back
+to the old icount list for inodes with more links than that.
+
+With rbtree the cost of a very sparse bitmap for the high bits would be
+fairly low, so the memory usage of having 16 bitmaps is not so bad, but
+there would be 16x bitmap lookups for each inode.  That might still be a
+good trade-off (if memory is tight) because CPU speed is improving relative
+to memory size over time.
+
+> Even in a highly linked file system generated by 256 rsnapshots,
+> the memory usage is still only about 8bits per inode, while icount
+> cache stores 64bit per inode.
+
+That isn't quite correct.  With rbtree the memory usage is in the order
+of several bytes per bit in the worst case, IIRC from Lukas' email.  I
+think this idea would need a lot of benchmarking before it is accepted.
 
 
-Jan Kara <jack@suse.cz> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |jack@suse.cz
-                   |g                           |
+Cheers, Andreas
 
 
 
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+
