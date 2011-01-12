@@ -1,52 +1,80 @@
-From: Fengguang Wu <fengguang.wu@intel.com>
-Subject: Re: [PATCH V2] vfs: re-implement writeback_inodes_sb(_nr)_if_idle()
- and rename them
-Date: Sat, 12 Jan 2013 10:54:01 +0800
-Message-ID: <20130112025401.GA8948@localhost>
-References: <50D2E3DF.4010105@cn.fujitsu.com>
- <20121228143338.GW14116@twin.jikos.cz>
- <50EE560D.6040604@cn.fujitsu.com>
- <20130111201211.GA20981@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Miao Xie <miaox@cn.fujitsu.com>,
-	Linux Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>, dsterba@suse.cz,
-	Christoph Hellwig <hch@infradead.org>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130111201211.GA20981@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Wang shilong <wangshilong1991@gmail.com>
+Subject: [PATCH] Ext4: use 'unlikely' to improve the efficiency of the kernel
+Date: Wed, 12 Jan 2011 18:39:50 +0800
+Message-ID: <1294828790-3455-1-git-send-email-wangshilong1991@gmail.com>
+Cc: linux-ext4@vger.kernel.org,
+	Wang shilong <wangshilong1991@gmail.com>,
+	Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yh0-f49.google.com ([209.85.213.49]:64412 "EHLO
+	mail-yh0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753847Ab3ALD3z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jan 2013 22:29:55 -0500
+Received: by mail-yh0-f49.google.com with SMTP id f43so452514yha.8
+        for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2013 19:29:55 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 11, 2013 at 09:12:11PM +0100, Jan Kara wrote:
-> On Thu 10-01-13 13:47:57, Miao Xie wrote:
-> > writeback_inodes_sb(_nr)_if_idle() is re-implemented by replacing down_read()
-> > with down_read_trylock() because
-> > - If ->s_umount is write locked, then the sb is not idle. That is
-> >   writeback_inodes_sb(_nr)_if_idle() needn't wait for the lock.
-> > - writeback_inodes_sb(_nr)_if_idle() grabs s_umount lock when it want to start
-> >   writeback, it may bring us deadlock problem when doing umount. In order to
-> >   fix the problem, ext4 and btrfs implemented their own writeback functions
-> >   instead of writeback_inodes_sb(_nr)_if_idle(), but it introduced the redundant
-> >   code, it is better to implement a new writeback_inodes_sb(_nr)_if_idle().
-> > 
-> > The name of these two functions is cumbersome, so rename them to
-> > try_to_writeback_inodes_sb(_nr).
-> > 
-> > This idea came from Christoph Hellwig.
-> > Some code is from the patch of Kamal Mostafa.
->   The patch looks good. Thanks! You can add:
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
->   BTW, since changes to filesystems are minimal, maybe Fengguang can take
-> the patch through his writeback tree? Fengguang?
+From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 
-OK, done. The patch looks good, thanks!
+Since 'sb_getblk' seldomly return NULL,it will be better
+to use 'unlikely' to check it.
 
-Fengguang
+Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+---
+ fs/ext4/resize.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 7ea6cbb..2ef10e1 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -309,7 +309,7 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+ 	int err;
+ 
+ 	bh = sb_getblk(sb, blk);
+-	if (!bh)
++	if (unlikely(!bh))
+ 		return ERR_PTR(-EIO);
+ 	if ((err = ext4_journal_get_write_access(handle, bh))) {
+ 		brelse(bh);
+@@ -386,7 +386,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
+ 			return err;
+ 
+ 		bh = sb_getblk(sb, flex_gd->groups[group].block_bitmap);
+-		if (!bh)
++		if (unlikely(!bh))
+ 			return -EIO;
+ 
+ 		err = ext4_journal_get_write_access(handle, bh);
+@@ -461,7 +461,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
+ 				goto out;
+ 
+ 			gdb = sb_getblk(sb, block);
+-			if (!gdb) {
++			if (unlikely(!gdb)) {
+ 				err = -EIO;
+ 				goto out;
+ 			}
+@@ -983,7 +983,7 @@ static void update_backups(struct super_block *sb,
+ 			break;
+ 
+ 		bh = sb_getblk(sb, group * bpg + blk_off);
+-		if (!bh) {
++		if (unlikely(!bh)) {
+ 			err = -EIO;
+ 			break;
+ 		}
+@@ -1074,7 +1074,7 @@ static int ext4_add_new_descs(handle_t *handle, struct super_block *sb,
+ static struct buffer_head *ext4_get_bitmap(struct super_block *sb, __u64 block)
+ {
+ 	struct buffer_head *bh = sb_getblk(sb, block);
+-	if (!bh)
++	if (unlikely(!bh))
+ 		return NULL;
+ 
+ 	if (bitmap_uptodate(bh))
+-- 
+1.7.11.7
+
