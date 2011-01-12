@@ -1,108 +1,154 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [RFC PATCH 0/2] Add rbtree backend for storing bitmaps
-Date: Wed, 12 Jan 2011 12:41:28 -0700
-Message-ID: <1AE6E78F-F1D0-4C71-BE97-E3E18D1116B5@dilger.ca>
-References: <1294672737-10850-1-git-send-email-lczerner@redhat.com> <AANLkTinh6u9LN3U8EHGbt1U0MRNqZ3zLuaxDxn2=GxaJ@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH] mm: migration: Use rcu_dereference_protected when
+ dereferencing the radix tree slot during file page migration
+Date: Wed, 12 Jan 2011 15:21:13 -0800
+Message-ID: <20110112232113.GI17328@linux.vnet.ibm.com>
+References: <20101220152335.GR13914@csn.ul.ie>
+ <20101220170146.GS13914@csn.ul.ie>
+Reply-To: paulmck@linux.vnet.ibm.com
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, sandeen@redhat.com, kalpak@clogeny.com
-To: Amir Goldstein <amir73il@gmail.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Minchan Kim <minchan.kim@gmail.com>,
+	gerald.schaefer@de.ibm.com,
+	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
+	Milton Miller <miltonm@bga.com>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+	"Ted Ts'o" <tytso@mit.edu>, Arun Bhanu <ab@arunbhanu.com>,
+	Heiko Carstens <heiko.carstens@de.ibm.com>,
+	Martin Schwidefsky <schwidefsky@de.ibm.com>
+To: Mel Gorman <mel@csn.ul.ie>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:21575 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755350Ab1ALTla convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jan 2011 14:41:30 -0500
-In-Reply-To: <AANLkTinh6u9LN3U8EHGbt1U0MRNqZ3zLuaxDxn2=GxaJ@mail.gmail.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:58867 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753821Ab1ALXVS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Jan 2011 18:21:18 -0500
+Content-Disposition: inline
+In-Reply-To: <20101220170146.GS13914@csn.ul.ie>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-01-12, at 05:44, Amir Goldstein wrote:
-> On Mon, Jan 10, 2011 at 5:18 PM, Lukas Czerner <lczerner@redhat.com> wrote:
->> To address this I have created rbtree backend for storing bitmaps. It stores
->> just used extents of bitmaps, it means, that it can be more memory efficient
->> in most cases and also with careful use it might be much faster as well.
+On Mon, Dec 20, 2010 at 05:01:46PM +0000, Mel Gorman wrote:
+> On Mon, Dec 20, 2010 at 03:23:36PM +0000, Mel Gorman wrote:
+> > migrate_pages() -> unmap_and_move() only calls rcu_read_lock() for anonymous
+> > pages, as introduced by git commit 989f89c57e6361e7d16fbd9572b5da7d313b073d.
+> > The point of the RCU protection there is part of getting a stable reference
+> > to anon_vma and is only held for anon pages as file pages are locked
+> > which is sufficient protection against freeing.
+> > 
+> > However, while a file page's mapping is being migrated, the radix
+> > tree is double checked to ensure it is the expected page. This uses
+> > radix_tree_deref_slot() -> rcu_dereference() without the RCU lock held
+> > triggering the following warning under CONFIG_PROVE_RCU.
+> > 
+> > [  173.674290] ===================================================
+> > [  173.676016] [ INFO: suspicious rcu_dereference_check() usage. ]
+> > [  173.676016] ---------------------------------------------------
+> > [  173.676016] include/linux/radix-tree.h:145 invoked rcu_dereference_check() without protection!
+> > [  173.676016]
+> > [  173.676016] other info that might help us debug this:
+> > [  173.676016]
+> > [  173.676016]
+> > [  173.676016] rcu_scheduler_active = 1, debug_locks = 0
+> > [  173.676016] 1 lock held by hugeadm/2899:
+> > [  173.676016]  #0:  (&(&inode->i_data.tree_lock)->rlock){..-.-.}, at: [<c10e3d2b>] migrate_page_move_mapping+0x40/0x1ab
+> > [  173.676016]
+> > [  173.676016] stack backtrace:
+> > [  173.676016] Pid: 2899, comm: hugeadm Not tainted 2.6.37-rc5-autobuild
+> > [  173.676016] Call Trace:
+> > [  173.676016]  [<c128cc01>] ? printk+0x14/0x1b
+> > [  173.676016]  [<c1063502>] lockdep_rcu_dereference+0x7d/0x86
+> > [  173.676016]  [<c10e3db5>] migrate_page_move_mapping+0xca/0x1ab
+> > [  173.676016]  [<c10e41ad>] migrate_page+0x23/0x39
+> > [  173.676016]  [<c10e491b>] buffer_migrate_page+0x22/0x107
+> > [  173.676016]  [<c10e48f9>] ? buffer_migrate_page+0x0/0x107
+> > [  173.676016]  [<c10e425d>] move_to_new_page+0x9a/0x1ae
+> > [  173.676016]  [<c10e47e6>] migrate_pages+0x1e7/0x2fa
+> > 
+> > This patch introduces radix_tree_deref_slot_protected() which calls
+> > rcu_dereference_protected(). Users of it must pass in the mapping->tree_lock
+> > that is protecting this dereference. Holding the tree lock protects against
+> > parallel updaters of the radix tree meaning that rcu_dereference_protected
+> > is allowable.
+> > 
+> > Signed-off-by: Mel Gorman <mel@csn.ul.ie>
+> > ---
+> >  include/linux/radix-tree.h |   17 +++++++++++++++++
+> >  mm/migrate.c               |    4 ++--
+> >  2 files changed, 19 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
+> > index ab2baa5..a1f1672 100644
+> > --- a/include/linux/radix-tree.h
+> > +++ b/include/linux/radix-tree.h
+> > @@ -146,6 +146,23 @@ static inline void *radix_tree_deref_slot(void **pslot)
+> >  }
+> >  
+> >  /**
+> > + * radix_tree_deref_slot_protected	- dereference a slot without RCU lock but with tree lock held
+> > + * @pslot:	pointer to slot, returned by radix_tree_lookup_slot
+> > + * Returns:	item that was stored in that slot with any direct pointer flag
+> > + *		removed.
+> > + *
+> > + * Similar to radix_tree_deref_slot but only used during migration when a pages
+> > + * mapping is being moved. The caller does not hold the RCU read lock but it
+> > + * must hold the tree lock to prevent parallel updates.
+> > + */
+> > +static inline void *radix_tree_deref_slot_protected(void **pslot,
+> > +							spinlock_t *treelock)
+> > +{
+> > +	BUG_ON(rcu_read_lock_held());
 > 
-> 2. Yet another bitmap backend.
+> This was a bad idea. After some extended testing, it was obvious that
+> this function can be called for swapcache pages with the RCU lock held.
+> Paul, is it still permissible to use rcu_dereference_protected() or must
+> the RCU read lock not be held?
+
+Apologies for the late reply!
+
+It is OK to call rcu_dereference_protected() with rcu_read_lock() held,
+but -only- if updates are somehow blocked -- for example, the treelock
+being held as below.
+
+It is OK to have extra protection, at least in this case.  ;-)
+
+> > +	return rcu_dereference_protected(*pslot, lockdep_is_held(treelock));
+> > +}
+> > +
+> > +/**
+> >   * radix_tree_deref_retry	- check radix_tree_deref_slot
+> >   * @arg:	pointer returned by radix_tree_deref_slot
+> >   * Returns:	0 if retry is not required, otherwise retry is required
+> > diff --git a/mm/migrate.c b/mm/migrate.c
+> > index fe5a3c6..7d4686a 100644
+> > --- a/mm/migrate.c
+> > +++ b/mm/migrate.c
+> > @@ -244,7 +244,7 @@ static int migrate_page_move_mapping(struct address_space *mapping,
+> >  
+> >  	expected_count = 2 + page_has_private(page);
+> >  	if (page_count(page) != expected_count ||
+> > -			(struct page *)radix_tree_deref_slot(pslot) != page) {
+> > +			(struct page *)radix_tree_deref_slot_protected(pslot, &mapping->tree_lock) != page) {
+> >  		spin_unlock_irq(&mapping->tree_lock);
+> >  		return -EAGAIN;
+> >  	}
+> > @@ -316,7 +316,7 @@ int migrate_huge_page_move_mapping(struct address_space *mapping,
+> >  
+> >  	expected_count = 2 + page_has_private(page);
+> >  	if (page_count(page) != expected_count ||
+> > -	    (struct page *)radix_tree_deref_slot(pslot) != page) {
+> > +	    (struct page *)radix_tree_deref_slot_protected(pslot, &mapping->tree_lock) != page) {
+> >  		spin_unlock_irq(&mapping->tree_lock);
+> >  		return -EAGAIN;
+> >  	}
+> > 
 > 
-> It seems to me, that if half of the block groups are not in use and
-> the other half is dense and fragmented, then neither rb_trees, nor
-> arrays are the optimal backend.  A data structure similar to the page
-> table, could be quite efficient in this use case, both from the memory
-> usage aspect and the test/set_bit speed aspect.
-> 
-> While it is rare to see a block group occupied with few used block, it
-> could certainly happen for inodes, so I would choose a "page" size equal
-> to block size for "in-use block bitmap" and a much smaller "page" size
-> for "in-use inode" bitmap.
-
-This is essentially the "ebitmap" proposal that I had made some years ago.
-It is a simple tree of data structures, and the leaf nodes are either
-bitmaps (if a lot of bits are set) or a simple list (if very few bits are
-set).  We might consider a third type of leaf with extents/RLE for when
-there are a lot of bits set but mostly in contiguous ranges.
-
-Initial selection of the leaf type for a given bitmap could be hinted by
-the caller based on expected usage, but conversion between leaf types is
-done transparently based on usage (e.g. list->bitmap when the list memory
-usage exceeds a bitmap block).
-
-> 3. More ways to reduce memory usage of e2fsck.
-> 
-> The most recent case of e2fsck OOM I remember showing on this list
-> was cause by a file system with many hard links that were created by
-> rsnapshot (http://rsnapshot.org/)
-> 
-> If I recall correctly, the overblown memory usage was caused by the
-> icount cache, which creates an entry for every inode with nlink > 1.
-
-I posted a patch to at least partly avoid this problem, by allowing
-the icount cache to be allocated in chunks, instead of a single huge
-allocation.  That allows e2fsck/kernel to swap out parts of the icount
-array, and avoids the need to use 2x the memory when it is doing the
-realloc() of the array to increase its size.
-
-> If the hard linked inodes are in fact sparsely distributed
-> and if the larger the refcounts, the fewer the inodes
-> (let's neglect directory hard links, because we've given up on them
-> for #subdirs > 32000 anyway),
-
-Actually, for directories I think we could optimize the icount usage
-somewhat as well.  We could use the inode_dir_map/S_ISDIR as a +1 link
-count for the directory "." reference, so that the icount can only
-count other links.  That means that directories will not need any entries
-in the icount array, and I think this would reduce memory usage for
-icount considerably in normal usage.
-
-> then it is possible to replace the icount cache with 16 inode
-> bitmaps, each one representing a single bit in the u16 i_links_count.
-> 
-> Assuming that in a normal file system the maximum links count is bounded,
-> then most of these bitmaps will be empty and the rest very sparse.
-
-I had thought of something similar, with a limited number of bitmaps
-(say 2 or 3) to handle the common hard-link cases, and then fall back
-to the old icount list for inodes with more links than that.
-
-With rbtree the cost of a very sparse bitmap for the high bits would be
-fairly low, so the memory usage of having 16 bitmaps is not so bad, but
-there would be 16x bitmap lookups for each inode.  That might still be a
-good trade-off (if memory is tight) because CPU speed is improving relative
-to memory size over time.
-
-> Even in a highly linked file system generated by 256 rsnapshots,
-> the memory usage is still only about 8bits per inode, while icount
-> cache stores 64bit per inode.
-
-That isn't quite correct.  With rbtree the memory usage is in the order
-of several bytes per bit in the worst case, IIRC from Lukas' email.  I
-think this idea would need a lot of benchmarking before it is accepted.
-
-
-Cheers, Andreas
-
-
-
-
-
+> -- 
+> Mel Gorman
+> Part-time Phd Student                          Linux Technology Center
+> University of Limerick                         IBM Dublin Software Lab
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
