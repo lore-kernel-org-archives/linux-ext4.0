@@ -1,46 +1,335 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Oops while going into hibernate
-Date: Wed, 12 Jan 2011 19:44:17 -0500
-Message-ID: <A01161D0-D08F-4522-A546-90057B2E1F2A@mit.edu>
-References: <alpine.LFD.2.02.1101121443230.1900@localhost6.localdomain6> <20110112162655.GA13496@thunk.org> <alpine.LFD.2.02.1101121755400.2011@localhost6.localdomain6> <20110112172646.GB13496@thunk.org> <alpine.LFD.2.02.1101121934060.2011@localhost6.localdomain6>
-Mime-Version: 1.0 (Apple Message framework v1082)
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCH v7.1] block: Coordinate flush requests
+Date: Wed, 12 Jan 2011 18:56:46 -0800
+Message-ID: <20110113025646.GB27381@tux1.beaverton.ibm.com>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org development" <linux-ext4@vger.kernel.org>,
-	LKML Kernel <linux-kernel@vger.kernel.org>,
-	pm list <linux-pm@lists.linux-foundation.org>
-To: Sebastian Ott <sebott@linux.vnet.ibm.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, Tejun Heo <tj@kernel.org>,
+	linux-ext4@vger.kernel.org, Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DMZ-MAILSEC-SCANNER-3.MIT.EDU ([18.9.25.14]:65493 "EHLO
-	dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756506Ab1AMAot convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Jan 2011 19:44:49 -0500
-In-Reply-To: <alpine.LFD.2.02.1101121934060.2011@localhost6.localdomain6>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:57776 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932750Ab1AMC4w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Jan 2011 21:56:52 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On certain types of storage hardware, flushing the write cache takes a
+considerable amount of time.  Typically, these are simple storage systems with
+write cache enabled and no battery to save that cache during a power failure.
+When we encounter a system with many I/O threads that try to flush the cache,
+performance is suboptimal because each of those threads issues its own flush
+command to the drive instead of trying to coordinate the flushes, thereby
+wasting execution time.
 
-On Jan 12, 2011, at 1:49 PM, Sebastian Ott wrote:
+Instead of each thread initiating its own flush, we now try to detect the
+situation where multiple threads are issuing flush requests.  The first thread
+to enter blkdev_issue_flush becomes the owner of the flush, and all threads
+that enter blkdev_issue_flush before the flush finishes are queued up to wait
+for the next flush.  When that first flush finishes, one of those sleeping
+threads is woken up to perform the next flush and then wake up the other
+threads which are asleep waiting for the second flush to finish.
 
-> 
-> I did about 5 re-tests with different loads, the result was always:
-> 
-> [  249.238697] EXT4-fs (dasda1): inode #1106 has NULL jinode
-> 
-> # debugfs /dev/dasda1
-> debugfs 1.41.10 (10-Feb-2009)
-> debugfs:  ncheck 1106
-> Inode   Pathname
-> 1106    /usr/bin/killall
-> debugfs:  q
-> 
+In the single-threaded case, the thread will simply issue the flush and exit.
 
-That looks really bogus.  /usr/bin/killall is a system binary, and there's no good reason that hibernation should be trying to write pages to that binary.
+To test the performance of this latest patch, I created a spreadsheet
+reflecting the performance numbers I obtained with the same ffsb fsync-happy
+workload that I've been running all along:  http://tinyurl.com/6xqk5bs
 
-You said originally that the oops was happening "while going into hibernation right after resuming with...".   So that means you did a successful suspend/resume, and then the second suspend caused the oops?   It looks like somehow the pages were left marked as dirty, so the writeback daemons attempted writing back a page to an inode which was never opened read/write (and in fact as a text page for /usr/bin/killall, was mapped read/only).   Given that ext4 initializes jinode only when the file is opened read/write, the fact that it is null, and the fact that it makes no sense that a program would be modifying /usr/bin/killall as part of a suspend/resume, it looks very much like we just unmasked a software suspend bug....
+The second tab of the workbook provides easy comparisons of the performance
+before and after adding flush coordination to the block layer.  Variations in
+the runs were never more than about 5%, so the slight performance increases and
+decreases are negligible.  It is expected that devices with low flush times
+should not show much change, whether the low flush times are due to the lack of
+write cache or the controller having a battery and thereby ignoring the flush
+command.
 
--- Ted
+Notice that the elm3b231_ipr, elm3b231_bigfc, elm3b57, elm3c44_ssd,
+elm3c44_sata_wc, and elm3c71_scsi profiles showed large performance increases
+from flush coordination.  These 6 configurations all feature large write caches
+without battery backups, and fairly high (or at least non-zero) average flush
+times, as was discovered when I studied the v6 patch.
 
+Unfortunately, there is one very odd regression: elm3c44_sas.  This profile is
+a couple of battery-backed RAID cabinets striped together with raid0 on md.  I
+suspect that there is some sort of problematic interaction with md, because
+running ffsb on the individual hardware arrays produces numbers similar to
+elm3c71_extsas.  elm3c71_extsas uses the same type of hardware array as does
+elm3c44_sas, in fact.
 
+FYI, the flush coordination patch shows performance improvements both with and
+without Christoph's patch that issues pure flushes directly.  The spreadsheet
+only captures the performance numbers collected without Christoph's patch.
 
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+
+ block/blk-flush.c     |  137 +++++++++++++++++++++++++++++++++++++++++--------
+ block/genhd.c         |   12 ++++
+ include/linux/genhd.h |   15 +++++
+ 3 files changed, 143 insertions(+), 21 deletions(-)
+
+diff --git a/block/blk-flush.c b/block/blk-flush.c
+index 2402a34..d6c9931 100644
+--- a/block/blk-flush.c
++++ b/block/blk-flush.c
+@@ -201,6 +201,60 @@ static void bio_end_flush(struct bio *bio, int err)
+ 	bio_put(bio);
+ }
+ 
++static int blkdev_issue_flush_now(struct block_device *bdev,
++		gfp_t gfp_mask, sector_t *error_sector)
++{
++	DECLARE_COMPLETION_ONSTACK(wait);
++	struct bio *bio;
++	int ret = 0;
++
++	bio = bio_alloc(gfp_mask, 0);
++	bio->bi_end_io = bio_end_flush;
++	bio->bi_bdev = bdev;
++	bio->bi_private = &wait;
++
++	bio_get(bio);
++	submit_bio(WRITE_FLUSH, bio);
++	wait_for_completion(&wait);
++
++	/*
++	 * The driver must store the error location in ->bi_sector, if
++	 * it supports it. For non-stacked drivers, this should be
++	 * copied from blk_rq_pos(rq).
++	 */
++	if (error_sector)
++		*error_sector = bio->bi_sector;
++
++	if (!bio_flagged(bio, BIO_UPTODATE))
++		ret = -EIO;
++
++	bio_put(bio);
++	return ret;
++}
++
++struct flush_completion_t *alloc_flush_completion(gfp_t gfp_mask)
++{
++	struct flush_completion_t *t;
++
++	t = kzalloc(sizeof(*t), gfp_mask);
++	if (!t)
++		return t;
++
++	init_completion(&t->ready);
++	init_completion(&t->finish);
++	kref_init(&t->ref);
++
++	return t;
++}
++
++void free_flush_completion(struct kref *ref)
++{
++	struct flush_completion_t *f;
++
++	f = container_of(ref, struct flush_completion_t, ref);
++	kfree(f);
++}
++
+ /**
+  * blkdev_issue_flush - queue a flush
+  * @bdev:	blockdev to issue flush for
+@@ -216,18 +270,22 @@ static void bio_end_flush(struct bio *bio, int err)
+ int blkdev_issue_flush(struct block_device *bdev, gfp_t gfp_mask,
+ 		sector_t *error_sector)
+ {
+-	DECLARE_COMPLETION_ONSTACK(wait);
++	struct flush_completion_t *flush, *new_flush;
+ 	struct request_queue *q;
+-	struct bio *bio;
++	struct gendisk *disk;
+ 	int ret = 0;
+ 
+-	if (bdev->bd_disk == NULL)
++	disk = bdev->bd_disk;
++	if (disk == NULL)
+ 		return -ENXIO;
+ 
+ 	q = bdev_get_queue(bdev);
+ 	if (!q)
+ 		return -ENXIO;
+ 
++	if (!(q->flush_flags & REQ_FLUSH))
++		return -ENXIO;
++
+ 	/*
+ 	 * some block devices may not have their queue correctly set up here
+ 	 * (e.g. loop device without a backing file) and so issuing a flush
+@@ -237,27 +295,64 @@ int blkdev_issue_flush(struct block_device *bdev, gfp_t gfp_mask,
+ 	if (!q->make_request_fn)
+ 		return -ENXIO;
+ 
+-	bio = bio_alloc(gfp_mask, 0);
+-	bio->bi_end_io = bio_end_flush;
+-	bio->bi_bdev = bdev;
+-	bio->bi_private = &wait;
+-
+-	bio_get(bio);
+-	submit_bio(WRITE_FLUSH, bio);
+-	wait_for_completion(&wait);
++	/* coordinate flushes */
++	new_flush = alloc_flush_completion(gfp_mask);
++	if (!new_flush)
++		return -ENOMEM;
++
++again:
++	spin_lock(&disk->flush_flag_lock);
++	if (disk->in_flush) {
++		/* Flush in progress */
++		kref_get(&disk->next_flush->ref);
++		flush = disk->next_flush;
++		ret = atomic_read(&flush->waiters);
++		atomic_inc(&flush->waiters);
++		spin_unlock(&disk->flush_flag_lock);
+ 
+-	/*
+-	 * The driver must store the error location in ->bi_sector, if
+-	 * it supports it. For non-stacked drivers, this should be
+-	 * copied from blk_rq_pos(rq).
+-	 */
+-	if (error_sector)
+-               *error_sector = bio->bi_sector;
++		/*
++		 * If there aren't any waiters, this thread will be woken
++		 * up to start the next flush.
++		 */
++		if (!ret) {
++			wait_for_completion(&flush->ready);
++			kref_put(&flush->ref, free_flush_completion);
++			goto again;
++		}
+ 
+-	if (!bio_flagged(bio, BIO_UPTODATE))
+-		ret = -EIO;
++		/* Otherwise, just wait for this flush to end. */
++		ret = wait_for_completion_killable(&flush->finish);
++		if (!ret)
++			ret = flush->ret;
++		kref_put(&flush->ref, free_flush_completion);
++		kref_put(&new_flush->ref, free_flush_completion);
++	} else {
++		/* no flush in progress */
++		flush = disk->next_flush;
++		disk->next_flush = new_flush;
++		disk->in_flush = 1;
++		spin_unlock(&disk->flush_flag_lock);
++
++		ret = blkdev_issue_flush_now(bdev, gfp_mask, error_sector);
++		flush->ret = ret;
++
++		/* Wake up the thread that starts the next flush. */
++		spin_lock(&disk->flush_flag_lock);
++		disk->in_flush = 0;
++		/*
++		 * This line must be between the zeroing of in_flush and the
++		 * spin_unlock because we don't want the next-flush thread to
++		 * start messing with pointers until we're safely out of this
++		 * section.  It must be the first complete_all, because on some
++		 * fast devices, the next flush finishes (and frees
++		 * next_flush!) before the second complete_all finishes!
++		 */
++		complete_all(&new_flush->ready);
++		spin_unlock(&disk->flush_flag_lock);
+ 
+-	bio_put(bio);
++		complete_all(&flush->finish);
++		kref_put(&flush->ref, free_flush_completion);
++	}
+ 	return ret;
+ }
+ EXPORT_SYMBOL(blkdev_issue_flush);
+diff --git a/block/genhd.c b/block/genhd.c
+index 5fa2b44..d239eda 100644
+--- a/block/genhd.c
++++ b/block/genhd.c
+@@ -1009,6 +1009,7 @@ static void disk_release(struct device *dev)
+ 	disk_replace_part_tbl(disk, NULL);
+ 	free_part_stats(&disk->part0);
+ 	free_part_info(&disk->part0);
++	kref_put(&disk->next_flush->ref, free_flush_completion);
+ 	kfree(disk);
+ }
+ struct class block_class = {
+@@ -1177,17 +1178,24 @@ EXPORT_SYMBOL(alloc_disk);
+ struct gendisk *alloc_disk_node(int minors, int node_id)
+ {
+ 	struct gendisk *disk;
++	struct flush_completion_t *t;
++
++	t = alloc_flush_completion(GFP_KERNEL);
++	if (!t)
++		return NULL;
+ 
+ 	disk = kmalloc_node(sizeof(struct gendisk),
+ 				GFP_KERNEL | __GFP_ZERO, node_id);
+ 	if (disk) {
+ 		if (!init_part_stats(&disk->part0)) {
++			kfree(t);
+ 			kfree(disk);
+ 			return NULL;
+ 		}
+ 		disk->node_id = node_id;
+ 		if (disk_expand_part_tbl(disk, 0)) {
+ 			free_part_stats(&disk->part0);
++			kfree(t);
+ 			kfree(disk);
+ 			return NULL;
+ 		}
+@@ -1200,6 +1208,10 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
+ 		device_initialize(disk_to_dev(disk));
+ 		INIT_WORK(&disk->async_notify,
+ 			media_change_notify_thread);
++
++		disk->in_flush = 0;
++		spin_lock_init(&disk->flush_flag_lock);
++		disk->next_flush = t;
+ 	}
+ 	return disk;
+ }
+diff --git a/include/linux/genhd.h b/include/linux/genhd.h
+index 7a7b9c1..564a1d1 100644
+--- a/include/linux/genhd.h
++++ b/include/linux/genhd.h
+@@ -16,6 +16,16 @@
+ 
+ #ifdef CONFIG_BLOCK
+ 
++struct flush_completion_t {
++	struct completion ready;
++	struct completion finish;
++	int ret;
++	atomic_t waiters;
++	struct kref ref;
++};
++extern struct flush_completion_t *alloc_flush_completion(gfp_t gfp_mask);
++extern void free_flush_completion(struct kref *ref);
++
+ #define kobj_to_dev(k)		container_of((k), struct device, kobj)
+ #define dev_to_disk(device)	container_of((device), struct gendisk, part0.__dev)
+ #define dev_to_part(device)	container_of((device), struct hd_struct, __dev)
+@@ -178,6 +188,11 @@ struct gendisk {
+ 	struct blk_integrity *integrity;
+ #endif
+ 	int node_id;
++
++	/* flush coordination */
++	spinlock_t flush_flag_lock;
++	int in_flush;
++	struct flush_completion_t *next_flush;
+ };
+ 
+ static inline struct gendisk *part_to_disk(struct hd_struct *part)
