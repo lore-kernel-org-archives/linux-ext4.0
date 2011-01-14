@@ -1,44 +1,52 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 26642] Automatically clean dirty bit on
- ext2/ext4-without-journal file systems
-Date: Fri, 14 Jan 2011 03:23:58 GMT
-Message-ID: <201101140323.p0E3Nw83025882@demeter1.kernel.org>
-References: <bug-26642-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: serialize unaligned asynchronous DIO
+Date: Thu, 13 Jan 2011 23:15:14 -0500
+Message-ID: <20110114041514.GI31800@thunk.org>
+References: <4D2F7B52.1040209@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:49454 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757115Ab1ANDX7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jan 2011 22:23:59 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p0E3NwDt025883
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Jan 2011 03:23:58 GMT
-In-Reply-To: <bug-26642-13602@https.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:56864 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751959Ab1ANEPS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Jan 2011 23:15:18 -0500
+Content-Disposition: inline
+In-Reply-To: <4D2F7B52.1040209@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=26642
+On Thu, Jan 13, 2011 at 04:23:14PM -0600, Eric Sandeen wrote:
+> Mingming suggested that perhaps we can track outstanding
+> conversions, and wait on that instead so that non-sparse
+> files won't be affected, but I've had trouble making that
+> work so far, and would like to get the corruption hole
+> plugged ASAP.  Perhaps adding a prink_once() warning of
+> the perf degradation on this path would be useful?
 
+Yeah, I think a printk_once(), or maybe better yet, a warning
+ext4_msg() ratelimited to once a day, is the way to go.  I'd print the
+inode number and process name that did the offending async DIO, so it
+can help out the system administrator.
 
+I've looked over the rest of the patch, and it seems good.  Just one
+question:
 
+> +static int
+> +ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
+> +		unsigned long nr_segs, loff_t pos)
+> +{
+> +	struct super_block *sb = inode->i_sb;
+> +	int blockmask = sb->s_blocksize - 1;
+> +	size_t count = iov_length(iov, nr_segs);
+> +	loff_t final_size = pos + count;
+> +
+> +	if (pos >= inode->i_size)
+> +		return 0;
 
+Why is it ok if the write is extended the file?  Are you depending on
+some other lock (i_data_sem, perhaps?) to serialize the write in that
+case?  If so, could you please add a comment to that effect?
 
---- Comment #3 from Theodore Tso <tytso@mit.edu>  2011-01-14 03:23:55 ---
-I didn't think Val had any code that was anywhere near working.
-
-As far as I know she never got around the design problem of what to do when you
-have a big file where the inode is in group #1, but it needs blocks in block
-groups #1, #2, #3, #4.... and what to do when you have a directory which has
-directory blocks that spans multiple block groups.
-
-She was going to design something complete new and incompatible from a format
-perspective, that had bidirection pointers, but I don't think this ever got to
-a working prototype stage as far as I know.  Feel free to ask her, though....
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+       	      	    	       	     	     - Ted
