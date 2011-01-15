@@ -1,146 +1,110 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 26752] New: NPD when using sb->s_fs_info during clean-up after
- a failed mount
-Date: Fri, 14 Jan 2011 22:31:59 GMT
-Message-ID: <bug-26752-13602@https.bugzilla.kernel.org/>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: ext4 crashes in case of failed mounts
+Date: Fri, 14 Jan 2011 19:34:56 -0800
+Message-ID: <AANLkTik9FAqwXj2EOJfjR1bZ16-imT0rKS30zCrhDsZy@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter1.kernel.org ([140.211.167.39]:55219 "EHLO
-	demeter1.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752838Ab1ANWcA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Jan 2011 17:32:00 -0500
-Received: from demeter1.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter1.kernel.org (8.14.4/8.14.3) with ESMTP id p0EMVx6C027546
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Jan 2011 22:31:59 GMT
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:59524 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752404Ab1AODfR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Jan 2011 22:35:17 -0500
+Received: by qyk12 with SMTP id 12so4048604qyk.19
+        for <linux-ext4@vger.kernel.org>; Fri, 14 Jan 2011 19:35:16 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=26752
+Hi,
 
-           Summary: NPD when using sb->s_fs_info during clean-up after a
-                    failed mount
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.37
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: dame_eugene@mail.ru
-        Regression: No
+I was trying to simulate some failed mount cases so changed
+ext4_mb_init() to return -ENOMEM. The next mount crashes with
+following backtrace. Shouldn't it be handled gracefully ?
+
+[  746.680089] EXT4-fs (loop0): failed to initialize mballoc (-12)
+[  746.680127] EXT4-fs (loop0): mount failed
+[  746.694981] BUG: unable to handle kernel NULL pointer dereference at 000001c4
+[  746.694981] IP: [<e08bdf5c>] ext4_clear_inode+0x2c/0x50 [ext4]
+[  746.694981] *pde = 00000000
+[  746.694981] Oops: 0000 [#1] SMP
+[  746.694981] last sysfs file: /sys/devices/virtual/block/loop0/range
+[  746.694981] Modules linked in: ext4 jbd2 binfmt_misc bridge stp
+bnep video output lp ppdev snd_intel8x0 snd_ac97_codec ac97_bus
+snd_pcm_oss snd_mixer_oss snd_pcm snd_seq_dummy snd_seq_oss
+snd_seq_midi snd_rawmidi snd_seq_midi_event snd_seq snd_timer
+snd_seq_device psmouse snd serio_raw pcspkr soundcore i2c_piix4
+snd_page_alloc parport_pc parport pcnet32 mii floppy
+[  746.694981]
+[  746.694981] Pid: 3395, comm: mount Tainted: G        W
+2.6.36.2myversion #1 /VirtualBox
+[  746.694981] EIP: 0060:[<e08bdf5c>] EFLAGS: 00010286 CPU: 0
+[  746.694981] EIP is at ext4_clear_inode+0x2c/0x50 [ext4]
+[  746.694981] EAX: 00000000 EBX: d82fd824 ECX: 00000000 EDX: d6685c00
+[  746.694981] ESI: d6685c00 EDI: d82fd824 EBP: d871ddc4 ESP: d871ddc0
+[  746.694981]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+[  746.694981] Process mount (pid: 3395, ti=d871c000 task=d9486220
+task.ti=d871c000)
+[  746.694981] Stack:
+[  746.694981]  d82fd824 d871ddec e08afefe 00000246 00000246 c0217863
+00000001 00000246
+[  746.694981] <0> d82fd824 d6685c00 d82fd824 d871ddf8 c021703a
+d82fd824 d871de08 c021786a
+[  746.694981] <0> 00000000 d82f911c d871de40 c02155a2 d8726000
+c058d728 00000020 d871de9c
+[  746.694981] Call Trace:
+[  746.694981]  [<e08afefe>] ? ext4_evict_inode+0x2e/0x330 [ext4]
+[  746.694981]  [<c0217863>] ? iput+0x143/0x260
+[  746.694981]  [<c021703a>] ? evict+0x1a/0xb0
+[  746.694981]  [<c021786a>] ? iput+0x14a/0x260
+[  746.694981]  [<c02155a2>] ? shrink_dcache_for_umount_subtree+0x192/0x220
+[  746.694981]  [<c058d728>] ? mutex_unlock+0x8/0x10
+[  746.694981]  [<c0205a49>] ? sget+0x1f9/0x410
+[  746.694981]  [<c0215658>] ? shrink_dcache_for_umount+0x28/0x50
+[  746.694981]  [<c0204c0b>] ? generic_shutdown_super+0x1b/0xd0
+[  746.694981]  [<c0253dcf>] ? disk_name+0xaf/0xc0
+[  746.694981]  [<c0204ce5>] ? kill_block_super+0x25/0x40
+[  746.694981]  [<c020536d>] ? deactivate_locked_super+0x3d/0x60
+[  746.694981]  [<c0205f0f>] ? get_sb_bdev+0x16f/0x180
+[  746.694981]  [<e08bc9e1>] ? ext4_get_sb+0x21/0x30 [ext4]
+[  746.694981]  [<e08c0b00>] ? ext4_fill_super+0x0/0x32d0 [ext4]
+[  746.694981]  [<c020559a>] ? vfs_kern_mount+0x6a/0x1b0
+[  746.694981]  [<c0219b2d>] ? get_fs_type+0x9d/0xc0
+[  746.694981]  [<c0205739>] ? do_kern_mount+0x39/0xe0
+[  746.694981]  [<c021c950>] ? do_mount+0x340/0x7b0
+[  746.694981]  [<c01dba73>] ? memdup_user+0x33/0x70
+[  746.694981]  [<c01dbaf9>] ? strndup_user+0x49/0x60
+[  746.694981]  [<c021ce44>] ? sys_mount+0x84/0xb0
+[  746.694981]  [<c058f9d5>] ? syscall_call+0x7/0xb
+[  746.694981] Code: 89 e5 53 89 c3 e8 05 99 96 df 89 d8 e8 4e 90 95
+df 89 d8 e8 a7 62 98 df 89 d8 e8 c0 5f 01 00 8b 83 0c 01 00 00 8b 80
+60 02 00 00 <8b> 80 c4 01 00 00 85 c0 74 0b 8d 93 f4 01 00 00 e8 4f 71
+f6 ff
+[  746.694981] EIP: [<e08bdf5c>] ext4_clear_inode+0x2c/0x50 [ext4]
+SS:ESP 0068:d871ddc0
+[  746.694981] CR2: 00000000000001c4
+[  746.699688] ---[ end trace 4eaa2a86a8e2da24 ]---
+[ 1338.678856] kmemleak: 31 new suspected memory leaks (see
+/sys/kernel/debug/kmemleak)
 
 
-When ext4_mb_init() fails during mount operation (for example, if one of the
-calls to kmalloc returns NULL), s_fs_info field of the superblock structure is
-set to NULL. However, this field is dereferenced later when cleaning up, which
-results in an oops in ext4_sync_fs().
+=======================================================================
 
-I have tested this for mainline kernel from git (commit e9688f6 of January 11,
-2011, i.e. post-2.6.37). When attempting to mount a loop device attached to a
-file with ext4 filesystem in it, the following call to kmalloc() returned NULL
-(fs/ext4/mballoc.c:2437):
+(gdb) l *(ext4_clear_inode+0x2c)
+0x19f8c is in ext4_clear_inode (fs/ext4/super.c:878).
+873	{
+874		invalidate_inode_buffers(inode);
+875		end_writeback(inode);
+876		dquot_drop(inode);
+877		ext4_discard_preallocations(inode);
+878		if (EXT4_JOURNAL(inode))
+879			jbd2_journal_release_jbd_inode(EXT4_SB(inode->i_sb)->s_journal,
+880					       &EXT4_I(inode)->jinode);
+881	}
 
-    i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_maxs);
-    sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
-
-ext4_mb_init() returns -ENOMEM as it should, and at the end of
-ext4_fill_super() s_fs_info field of the corresponding struct super_block
-instance is set to NULL (fs/ext4/super.c:3686):
-
-out_fail:
-    sb->s_fs_info = NULL;
-
-But after that, there is an attempt to dereference sb->s_fs_info in
-ext4_sync_fs(), for example (fs/ext4/super.c:4123):
-
-    struct ext4_sb_info *sbi = EXT4_SB(sb);
-    ...
-    flush_workqueue(sbi->dio_unwritten_wq);
-
-'sbi' is NULL in the last statement in this case.
-
-This is how the result looks in the system log:
----------------------
-[  817.573625] EXT4-fs (loop0): failed to initialize mballoc (-12)
-[  817.573627] EXT4-fs (loop0): mount failed
-[  817.573985] BUG: unable to handle kernel NULL pointer dereference at
-0000021c
-[  817.573988] IP: [<f8a25db3>] ext4_sync_fs+0x23/0xb0 [ext4]
-[  817.574006] *pde = 00000000 
-[  817.574007] Oops: 0000 [#1] SMP 
-[  817.574009] last sysfs file:
-/sys/devices/virtual/block/loop0/queue/hw_sector_size
-[  817.574012] Modules linked in: fuse ext4 jbd2 crc16 kedr_controller
-kedr_indicator_caller kedr_fsim_capable kedr_fsim_user_space_access
-kedr_fsim_custom kedr_fault_simulation kedr_base snd_pcm_oss snd_mixer_oss
-snd_seq snd_seq_device edd af_packet mperf loop dm_mod ppdev snd_intel8x0
-snd_ac97_codec ac97_bus snd_pcm parport_pc parport snd_timer e1000 snd ac
-sr_mod sg cdrom soundcore i2c_piix4 button snd_page_alloc pcspkr ohci_hcd
-ehci_hcd rtc_cmos rtc_core rtc_lib sd_mod usbcore fan processor ata_generic
-ata_piix thermal thermal_sys hwmon ahci libahci libata scsi_mod [last unloaded:
-speedstep_lib]
-[  817.574043] 
-[  817.574049] Pid: 6093, comm: mount Not tainted 2.6.37-testbox+ #1
-/VirtualBox
-[  817.574051] EIP: 0060:[<f8a25db3>] EFLAGS: 00010246 CPU: 1
-[  817.574057] EIP is at ext4_sync_fs+0x23/0xb0 [ext4]
-[  817.574059] EAX: f64f9600 EBX: 00000000 ECX: f8a25d90 EDX: 00000000
-[  817.574060] ESI: f64f9600 EDI: 00000000 EBP: e5fbde3c ESP: e5fbde24
-[  817.574062]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-[  817.574064] Process mount (pid: 6093, ti=e5fbc000 task=f64364f0
-task.ti=e5fbc000)
-[  817.574065] Stack:
-[  817.574066]  f64f9600 00000000 c033a2e0 f64f9600 00000000 c033a2e0 e5fbde50
-c031daad
-[  817.574070]  f64f9600 00000003 f8a47460 e5fbde5c c031db21 f64f9600 e5fbde78
-c02fc169
-[  817.574074]  e5fbde90 c03490c7 f413d680 00000003 ffffffea e5fbde88 c02fc235
-f64f9600
-[  817.574078] Call Trace:
-[  817.574083]  [<c033a2e0>] ? dquot_quota_sync+0x0/0x2c0
-[  817.574086]  [<c033a2e0>] ? dquot_quota_sync+0x0/0x2c0
-[  817.574088]  [<c031daad>] __sync_filesystem+0x5d/0x90
-[  817.574090]  [<c031db21>] sync_filesystem+0x21/0x50
-[  817.574093]  [<c02fc169>] generic_shutdown_super+0x29/0xd0
-[  817.574096]  [<c03490c7>] ? disk_name+0xb7/0xd0
-[  817.574098]  [<c02fc235>] kill_block_super+0x25/0x40
-[  817.574101]  [<c02fc4a5>] deactivate_locked_super+0x35/0x50
-[  817.574103]  [<c02fcf10>] mount_bdev+0x190/0x1b0
-[  817.574109]  [<f8a24e9a>] ext4_mount+0x1a/0x20 [ext4]
-[  817.574116]  [<f8a2d390>] ? ext4_fill_super+0x0/0x2af0 [ext4]
-[  817.574118]  [<c02fc6c0>] vfs_kern_mount+0x70/0x230
-[  817.574121]  [<c031160e>] ? get_fs_type+0x2e/0xb0
-[  817.574127]  [<f8a24e80>] ? ext4_mount+0x0/0x20 [ext4]
-[  817.574129]  [<c02fc8d9>] do_kern_mount+0x39/0xd0
-[  817.574132]  [<c031410a>] do_mount+0x35a/0x6b0
-[  817.574135]  [<c02d34a9>] ? strndup_user+0x49/0x70
-[  817.574137]  [<c03146e6>] sys_mount+0x66/0xa0
-[  817.574140]  [<c0202e5c>] sysenter_do_call+0x12/0x28
-[  817.574141] Code: ff e9 ce fe ff ff 66 90 55 89 e5 83 ec 18 89 7d fc 89 d7
-8b 15 84 14 a5 f8 89 75 f8 89 c6 89 5d f4 8b 98 7c 01 00 00 85 d2 75 52 <8b> 83
-1c 02 00 00 e8 02 4f 83 c7 8b 83 34 01 00 00 8d 55 f0 e8 
-[  817.574165] EIP: [<f8a25db3>] ext4_sync_fs+0x23/0xb0 [ext4] SS:ESP
-0068:e5fbde24
-[  817.574173] CR2: 000000000000021c
-[  817.574175] ---[ end trace 026cbf7663053768 ]---
----------------------
-
-The problem also shows up in 2.6.34.7. NPD is in a different place
-(fs/ext4/super.c:828, invocation of EXT4_JOURNAL(inode) in ext4_clear_inode())
-but it occurs for the same reason as described above.
-
-The failures of that call to kmalloc() can be rare in practice, but still. For
-testing purposes, the failure was "injected" into ext4 module by the dynamic
-analysis system, KEDR (http://kedr.berlios.de/), we have developed at ISPRAS.
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks -
+Manish
+==================================
+[$\*.^ -- I miss being one of them
+==================================
