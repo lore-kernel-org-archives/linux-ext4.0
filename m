@@ -1,45 +1,44 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/2 v2] libext2fs: introduce lseek SEEK_DATA/HOLE
-Date: Tue, 15 Jan 2013 21:02:11 +0800
-Message-ID: <20130115130211.GA13492@gmail.com>
-References: <1358173111-10511-1-git-send-email-wenqing.lz@taobao.com>
- <20130115032329.GC31857@thunk.org>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH V2 1/2] Ext2: return ENOMEM rather than EIO if sb_getblk fails
+Date: Sat, 15 Jan 2011 21:10:49 -0800
+Message-ID: <4D327DD9.6050003@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:52084 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750777Ab3AOMsY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 07:48:24 -0500
-Received: by mail-pb0-f53.google.com with SMTP id jt11so24583pbb.12
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 04:48:24 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20130115032329.GC31857@thunk.org>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:65311 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751206Ab3AONI3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 08:08:29 -0500
+Received: by mail-pa0-f50.google.com with SMTP id hz10so95497pad.23
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 05:08:29 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 14, 2013 at 10:23:29PM -0500, Theodore Ts'o wrote:
-> On Mon, Jan 14, 2013 at 10:18:30PM +0800, Zheng Liu wrote:
-> > 
-> > ext2fs_file_llseek_data/hole() seem to be weird because ext2_file_t
-> > structure is hidden by a typedef.  The caller can not dereference
-> > it.  So I define a marco called EXT2_SEEK_OFFSET_INVALID to let the
-> > caller indicate that it find the data/hole from ext2_file_t->pos or
-> > from offset.  What do you think?
-> 
-> Is the problem you're worried about is that the user can't get current
-> location?
-> 
-> That's pretty easy to solve.  You can get it the same way it works
-> with the lseek(2) system call.
-> 
->      retval = ext2fs_file_llseek(file, 0, SEEK_CUR, &pos);
-> 
-> Upon the return, pos will be contain the current file offset.
+From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 
-Ah, I see.  I will remove EXT2_SEEK_OFFSET_INVALID flag in next version.
+As the only reason that sb_getblks fails is that allocation fails.
+It will be better to use ENOMEM rather than EIO.
 
-Thanks,
-                                                - Zheng
+Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+---
+ fs/ext2/xattr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 06209ec..2d7557d 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -665,7 +665,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 			if (unlikely(!new_bh)) {
+ 				ext2_free_blocks(inode, block, 1);
+ 				mark_inode_dirty(inode);
+-				error = -EIO;
++				error = -ENOMEM;
+ 				goto cleanup;
+ 			}
+ 			lock_buffer(new_bh);
+-- 1.7.7.6
+
