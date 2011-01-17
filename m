@@ -1,72 +1,71 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Unregister features interface on module unload
-Date: Mon, 17 Jan 2011 16:00:37 +0100
-Message-ID: <1295276437-27966-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, lczerner@redhat.com, sandeen@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: reduce redundant check of '*options'
+Date: Mon, 17 Jan 2011 18:02:03 +0100
+Message-ID: <20110117170203.GF5294@quack.suse.cz>
+References: <1294922362-2237-1-git-send-email-xu.simon@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Simon Xu <xu.simon@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37107 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:50780 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752525Ab1AQPAo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Jan 2011 10:00:44 -0500
+	id S1751955Ab1AQRCH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Jan 2011 12:02:07 -0500
+Content-Disposition: inline
+In-Reply-To: <1294922362-2237-1-git-send-email-xu.simon@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext4 features interface was not properly unregistered which led to
-problems while unloading/reloading ext4 module. This commit fixes that by
-adding proper kobject unregistration code into ext4_exit_fs() as well as
-fail-path of ext4_init_fs()
+On Thu 13-01-11 20:39:22, Simon Xu wrote:
+> We don't need to check whether '*options' equals to ',' twice.
+Well, but the code is so rarely executed that even if the compiler would
+not be able to optimize out the second test, it would not matter. And the
+code is not better readable afterwards either. So I find this more or less
+unnecessary code churn...
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reported-by: Eric Sandeen <sandeen@redhat.com>
----
- fs/ext4/super.c |   12 ++++++++++--
- 1 files changed, 10 insertions(+), 2 deletions(-)
+Seriously, if you want to do some useful fixing then have a look for
+example at making ext3/4 (in fact JBD/JBD2) handle transaction allocation
+failures gratefully.  Currently we just loop in start_this_handle()
+infinitely until we can make the allocation which is a bit dumb. So it
+would be good, to make as many places as possible able to handle ENOMEM
+from start_this_handle() and propagate the error to user space. In some
+cases, it might not be easily possible (e.g. during writeout of dirty
+memory, where proper handling needs more thought) but lots of cases
+should be rather simple and need just auditing the code paths. Thanks.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cb10a06..124d304 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4779,7 +4779,7 @@ static struct file_system_type ext4_fs_type = {
- 	.fs_flags	= FS_REQUIRES_DEV,
- };
- 
--int __init ext4_init_feat_adverts(void)
-+static int __init ext4_init_feat_adverts(void)
- {
- 	struct ext4_features *ef;
- 	int ret = -ENOMEM;
-@@ -4803,6 +4803,13 @@ out:
- 	return ret;
- }
- 
-+static void ext4_exit_feat_adverts(void)
-+{
-+	kobject_put(&ext4_feat->f_kobj);
-+	wait_for_completion(&ext4_feat->f_kobj_unregister);
-+	kfree(ext4_feat);
-+}
-+
- static int __init ext4_init_fs(void)
- {
- 	int err;
-@@ -4849,7 +4856,7 @@ out1:
- out2:
- 	ext4_exit_mballoc();
- out3:
--	kfree(ext4_feat);
-+	ext4_exit_feat_adverts();
- 	remove_proc_entry("fs/ext4", NULL);
- 	kset_unregister(ext4_kset);
- out4:
-@@ -4868,6 +4875,7 @@ static void __exit ext4_exit_fs(void)
- 	destroy_inodecache();
- 	ext4_exit_xattr();
- 	ext4_exit_mballoc();
-+	ext4_exit_feat_adverts();
- 	remove_proc_entry("fs/ext4", NULL);
- 	kset_unregister(ext4_kset);
- 	ext4_exit_system_zone();
+								Honza
+> 
+> Signed-off-by: Simon Xu <xu.simon@oracle.com>
+> ---
+>  fs/ext2/super.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 7731695..bd5b66b 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -377,13 +377,13 @@ static unsigned long get_sb_block(void **data)
+>  		return 1;	/* Default location */
+>  	options += 3;
+>  	sb_block = simple_strtoul(options, &options, 0);
+> -	if (*options && *options != ',') {
+> +	if (*options == ',') {
+> +		options++;
+> +	} else if (*options) {
+>  		printk("EXT2-fs: Invalid sb specification: %s\n",
+>  		       (char *) *data);
+>  		return 1;
+>  	}
+> -	if (*options == ',')
+> -		options++;
+>  	*data = (void *) options;
+>  	return sb_block;
+>  }
+> -- 
+> 1.7.3.5
+> 
 -- 
-1.7.2.3
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
