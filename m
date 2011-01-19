@@ -1,73 +1,91 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: Problems with e4defrag -c
-Date: Wed, 19 Jan 2011 17:17:39 +0900
-Message-ID: <4D369E23.3010703@sx.jp.nec.com>
-References: <E1PWFc1-0002cm-QV@tytso-glaptop> <4D256E18.3010708@sx.jp.nec.com> <20110107193810.GP21922@thunk.org>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v7.1] block: Coordinate flush requests
+Date: Wed, 19 Jan 2011 00:58:25 -0800
+Message-ID: <20110119085825.GG27381@tux1.beaverton.ibm.com>
+References: <20110113025646.GB27381@tux1.beaverton.ibm.com> <20110113104240.GA30719@htj.dyndns.org> <20110113185946.GD27381@tux1.beaverton.ibm.com> <20110115133344.GB27123@htj.dyndns.org>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:33007 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753742Ab1ASITn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jan 2011 03:19:43 -0500
-In-Reply-To: <20110107193810.GP21922@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
+	Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
+To: Tejun Heo <tj@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20110115133344.GB27123@htj.dyndns.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-2011/01/08 4:38, Ted Ts'o wrote:
-> If we do it that way, I'm not sure we really need to have access to
-> the superblock to get various file system values. I can imagine requesting
-> certain parameters --- if you have root access, you can grab the superblock
-> and adjust the "threshold of perfection" down from 256MB to 32MB
-> if flex_bg is not enabled, or based on the size of the flex_bg groups. But if
-> you don't have access, it might be smarter just to use some default
-> "threshold of perfection", as opposed to having lots of "do we have root"
-> checks sprinkled all over the program.
+On Sat, Jan 15, 2011 at 02:33:44PM +0100, Tejun Heo wrote:
+> Hello,
+> 
+> On Thu, Jan 13, 2011 at 10:59:46AM -0800, Darrick J. Wong wrote:
+> > > But wouldn't it be better to implement this directly in the flush
+> > > machinary instead of as blkdev_issue_flush() wrapper?  We have all the
+> > > information at the request queue level so we can easily detect whether
+> > > flushes can be merged or not and whether something is issued by
+> > > blkdev_issue_flush() or by directly submitting bio wouldn't matter at
+> > > all.  Am I missing something?
+> > 
+> > Could you clarify where exactly you meant by "in the flush
+> > machinery"?  I think what you're suggesting is that
+> > blk_flush_complete_seq could scan the pending flush list to find a
+> > run of consecutive pure flush requests, submit the last one, and set
+> > things up so that during the completion of the flush, all the
+> > requests in that run are returned with the real flush's return code.
+> 
+> Yeah, something along that line.
+> 
+> > If that's what you meant, then yes, it could be done that way.
+> > However, I have a few reasons for choosing the blkdev_issue_flush
+> > approach.  First, as far as I could tell in the kernel, all the code
+> > paths that involve upper layers issuing pure flushes go through
+> > blkdev_issue_flush, so it seems like a convenient place to capture
+> > all the incoming pure flushes.
+> 
+> That means it _can_ be done there but doesn't mean it's the best spot.
+> 
+> > Other parts of the kernel issue writes with the flush flag set, but
+> > we want those to go through the regular queuing mechanisms anyway.
+> > Second, with the proposed patch, any upper-layer code that has a
+> > requirement for a pure flush to be issued without coordination can
+> > do so by submitting the bio directly (or blkdev_issue_flush_now can
+> > be exported).
+> 
+> I don't think anyone would need such capability but even if someone
+> does that should be implemented as a separate explicit
+> DONT_MERGE_THIS_FLUSH flag, not by exploting subtle inconsistencies on
+> the wrapper interface.
+> 
+> > Third, baking the coordination into the flush machinery makes that
+> > machinery more complicated to understand and maintain.
+> 
+> And the third point is completely nuts.  That's like saying putting
+> things related together makes the concentrated code more complex, so
+> let's scatter things all over the place.  No, it's not making the code
+> more complex.  It's putting the complexity where it belongs.  It
+> decreases maintenance overhead by increasing consistency.  Not only
+> that it even results in visibly more consistent and sane _behavior_
+> and the said complex machinary is less than 300 lines long.
+> 
+> > So in short, I went with the blkdev_issue_flush approach because the
+> > code is easier to understand, and it's not losing any pure flushes
+> > despite casting a narrower net.
+> 
+> No, not at all.  You're adding an unobvious logic into a wrapper
+> interface creating incosistent behavior and creating artificial
+> distinctions between pure and non-pure flushes and flushes issued by
+> bio and the wrapper interface.  Come on.  Think about it again.  You
+> can't be seriously standing by the above rationales.
 
-I agree to use some default "threshold of perfection". In this case, 256MB is
-too big because all files will get the worst score if flex_bg is disabled.
-So I think "blocks_per_group - 2048" seems to be good threshold. 2048 means
-the maximum block region of mballoc with the exception of more than
-8KB blocksize. If we try to allocate the contiguous blocks including some
-metadata blocks (backup of the superblock, blockgroup descriptor, etc.),
-this threshold will judge that there is no fragmentation in the file.
+Since you're the primary author of that file anyway, I'll defer to your
+experience.  I can squeeze in a few test runs of whatever patches you propose
+to the mailing list.
 
-e.g. Allocate 512MB contiguous blocks including some metadata blocks
-
-# dd if=/dev/zero of=/mnt/mp1/file bs=1M count=512 oflag=sync
-# filefrag -v /mnt/mp1/file
-Filesystem type is: ef53
-File size of /mnt/mp1/file is 536870912 (131072 blocks, blocksize 4096)
-  ext logical physical expected length flags
-    0       0    33280           30720
-    1   30720    65536    63999  32768
-    2   63488   100352    98303  32768
-    3   96256   133120           30720
-    4  126976   165888   163839   4096 eof
-
-> Hmm, maybe the right answer is that we have a single function, located
-> in libe2p, that calculates the "fragmentation score". We can separate that
-> out from the e4defrag code, and make it be a library function. The programs
-> that want to use it can call that library function. (Parameters to the
-> fragmentation score, such as the "threshold of perfection", would be passed
-> into the library function, along with a file descriptor to the file so that
-> FIEMAP could be called on that file.)
-
-OK. I'll create the new file "fragment_score.c" into lib/e2p and add
-a function to this file. We can get the percent of the small extents in the
-target file by calling this function.
-
-> I'm not sure how useful it is to do a recursive tree walk just to display
-> the information for all the files in the directory. Filefrag will already
-> take a list of files on the command-line, and if you want to do a recursive
-> tree walk, you can do a "find /path/to/dir -type f | xargs filefrag".
-
-It's true that we should use find command if we really want to know
-the fragmentation scores of all of the files in the directory.
-I won't add a recursive tree walk to filefrag.
-
-Regards,
-Kazuya Mio
+--D
