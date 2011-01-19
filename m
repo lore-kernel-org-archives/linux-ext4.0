@@ -1,76 +1,56 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix trim length underflow with small trim
- length.
-Date: Wed, 19 Jan 2011 12:05:44 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1101191204300.2686@dhcp-lab-213.englab.brq.redhat.com>
-References: <1295430358-8912-1-git-send-email-tm@tao.ma>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: fix trim length underflow with small trim length.
+Date: Wed, 19 Jan 2011 12:39:21 +0100
+Message-ID: <20110119113921.GA4246@quack.suse.cz>
+References: <1295430550-8978-1-git-send-email-tm@tao.ma>
+ <alpine.LFD.2.00.1101191125120.2686@dhcp-lab-213.englab.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=us-ascii
+Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:59963 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752171Ab1ASLFw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Jan 2011 06:05:52 -0500
-In-Reply-To: <1295430358-8912-1-git-send-email-tm@tao.ma>
+	id S1753636Ab1ASLjY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Jan 2011 06:39:24 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1101191125120.2686@dhcp-lab-213.englab.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 19 Jan 2011, Tao Ma wrote:
-
-> From: Tao Ma <boyu.mt@taobao.com>
+On Wed 19-01-11 11:42:50, Lukas Czerner wrote:
+> On Wed, 19 Jan 2011, Tao Ma wrote:
 > 
-> In 0f0a25b, we adjust 'len' with s_first_data_block - start, but it could
-> underflow in case blocksize=1K, while fstrim_range.len=512 and
-> fstrim_range.start = 0. In this case len happens to be underflow and in
-> the end, although we are safe that last_group check will limit the trim
-> to the whole volume, I am afraid that isn't what the user really want.
+> > From: Tao Ma <boyu.mt@taobao.com>
+> > 
+> > We adjust 'len' with s_first_data_block - start in case of start is less
+> > than s_first_data_block, but it could underflow in case blocksize=1K, while
+> > fstrim_range.len=512 and fstrim_range.start = 0. In this case len happens
+> > to be underflow and in the end, although we are safe that last_group check
+> > will limit the trim to the whole volume, I am afraid that isn't what the user
+> > really want.
+> > 
+> > So this patch fix it. It also adds a new variable s_first_data_block so that
+> > the 4 le32_to_cpu can be replaced with 1.
 > 
-> So this patch fix it. It also adds the check for 'start' like ext3 so that
-> we can break immediately if the start is invalid.
-
-I have the same objection as in case of ext3. Here is a copy-paste:
-
-Well, I just realized that what are we doing is not exactly what will
-user expect. User does not really care where the first data block is.
-What the user will expect is, to trim let's say first one gigabyte
-of his filesystem, not gigabyte - first data block.
-
-So what I suggest is to always add first_data_block to
-fstrim_range.start and do all the necessary checks for overflow. If no
-one has any objections I'll put it to the patch.
-
-Thanks!
--Lukas
-
-
+> Well, I just realized that what are we doing is not exactly what will
+> user expect. User does not really care where the first data block is.
+> What the user will expect is, to trim let's say first one gigabyte
+> of his filesystem, not gigabyte - first data block.
 > 
-> Cc: Jan Kara <jack@suse.cz>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->  fs/ext4/mballoc.c |    4 ++++
->  1 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 851f49b..397db8d 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4819,6 +4819,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
->  
->  	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
->  		return -EINVAL;
-> +	if (start >= ext4_blocks_count(EXT4_SB(sb)->s_es) ||
-> +	    start + len <= first_data_blk)
-> +		goto out;
->  	if (start < first_data_blk) {
->  		len -= first_data_blk - start;
->  		start = first_data_blk;
-> @@ -4863,5 +4866,6 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
->  	}
->  	range->len = trimmed * sb->s_blocksize;
->  
-> +out:
->  	return ret;
->  }
-> 
+> So what I suggest is to always add first_data_block to
+> fstrim_range.start and do all the necessary checks for overflow. If no
+> one has any objections I'll put it to the patch.
+  Well, since we speak about at most 1KB (s_first_data_block is non-zero
+only when blocksize == 1024 and in that case it is 1), I don't think it
+really matters and I don't mind whatever solution. What user expects is
+a bit hard to guess (whether he views 'start' as a start of the filesystem
+or a start of the device). Maybe the former makes a tad bit more sense
+but as I said I don't really care so since you're the author of the code I
+leave it up to you.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
