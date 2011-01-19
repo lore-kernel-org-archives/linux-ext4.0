@@ -1,60 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: reduce redundant check of '*options'
-Date: Tue, 18 Jan 2011 23:24:19 +0100
-Message-ID: <20110118222419.GC5070@quack.suse.cz>
-References: <1294922362-2237-1-git-send-email-xu.simon@oracle.com>
- <20110117170203.GF5294@quack.suse.cz>
- <20110118134345.GC3138@thunk.org>
+From: Tao Ma <tm@tao.ma>
+Subject: 38-rc1: umount+rmmod cause ext4 error.
+Date: Wed, 19 Jan 2011 14:53:36 +0800
+Message-ID: <4D368A70.5030103@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Simon Xu <xu.simon@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: npiggin@gmail.com, Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:56438 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751733Ab1ARWYV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Jan 2011 17:24:21 -0500
-Content-Disposition: inline
-In-Reply-To: <20110118134345.GC3138@thunk.org>
+Received: from cpoproxy1-pub.bluehost.com ([69.89.21.11]:35649 "HELO
+	cpoproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751980Ab1ASGxK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Jan 2011 01:53:10 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 18-01-11 08:43:45, Ted Ts'o wrote:
-> On Mon, Jan 17, 2011 at 06:02:03PM +0100, Jan Kara wrote:
-> > Seriously, if you want to do some useful fixing then have a look for
-> > example at making ext3/4 (in fact JBD/JBD2) handle transaction allocation
-> > failures gratefully.  Currently we just loop in start_this_handle()
-> > infinitely until we can make the allocation which is a bit dumb. So it
-> > would be good, to make as many places as possible able to handle ENOMEM
-> > from start_this_handle() and propagate the error to user space. In some
-> > cases, it might not be easily possible (e.g. during writeout of dirty
-> > memory, where proper handling needs more thought) but lots of cases
-> > should be rather simple and need just auditing the code paths. Thanks.
-> 
-> Uh, this is actually a rather subtle set of fixes that you are
-> proposing, because it won't be obvious to someone who hasn't paid very
-> careful attention to who calls certain functions (i.e., such as the
-> writepages function), which get propagated to user space, and which
-> will just cause mysterious data corruption of files --- especially
-> since the writeback daemon doesn't check error returns (!!!).  So if
-> someone changed writepages to return ENOMEM, and then said, "How
-> delightful!  My work is done...", it would result in nothing getting
-> back to userspace in most cases, and the writeback code would mark the
-> pages as clean, and on the next reboot, the data would be lost.
-  I agree that the patches will need a careful review because of catches
-like you mention.
+Hi Nick and Ted,
+	I ran some very basic test with 38-rc1 and my box run into error with 
+the message like:
 
-> So this is *not* a change that I would recommend to people who are
-> just beginning to learn how to program the kernel, and have been
-> taught by some kernel programmers that the best thing to do is to take
-> trivial-style changes and submit them upstream.
- I agree, maybe I've shooted too high (feel free to suggest better topic),
-but we'll see what the guy comes up with. Personally, I find it more useful
-to correct bad patches trying to achieve good things than spending time
-shooting down trivial code rearrangements...
+slab error in kmem_cache_destroy(): cache `ext4_inode_cache': Can't free 
+all objects
+Pid: 4395, comm: rmmod Not tainted 2.6.38-rc1 #1
+Call Trace:
+  [<ffffffff820d61dc>] ? kmem_cache_destroy+0x83/0xc7
+  [<ffffffffa0574025>] ? destroy_inodecache+0x15/0x17 [ext4]
+  [<ffffffffa05923d1>] ? ext4_exit_fs+0x109/0x143 [ext4]
+  [<ffffffff8203d194>] ? put_online_cpus+0x56/0x58
+  [<ffffffff8206735a>] ? module_refcount+0x85/0x9d
+  [<ffffffff82067b22>] ? sys_delete_module+0x1b5/0x218
+  [<ffffffff82074fc3>] ? audit_syscall_entry+0x187/0x1ba
+  [<ffffffff82002a6b>] ? system_call_fastpath+0x16/0x1b
+SLAB: cache with size 888 has lost its name
+SLAB: cache with size 888 has lost its name
+SLAB: cache with size 888 has lost its name
+SLAB: cache with size 888 has lost its name
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The reproduce process is simple:just rmmod ext4 immediately after umount 
+an ext4 volume.
+
+I have done some very simple investigation and it seems that with Nick's 
+new ext4_i_callback, even after we do ext4_destroy_inode, it isn't 
+freed. So after we destroy the ext_inode_cache, and when freeing the 
+inode, it errors. Hope it helps. If you have any fixes, I can test it.
+
+Regards,
+Tao
