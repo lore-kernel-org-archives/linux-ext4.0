@@ -1,190 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: make grpinfo slab cache names static
-Date: Wed, 19 Jan 2011 14:42:33 -0600
-Message-ID: <4D374CB9.6050508@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] Ext4: Update ext4 documentation
+Date: Wed, 19 Jan 2011 15:27:57 -0700
+Message-ID: <C9957B84-6B84-435F-83FF-8932ED36678A@dilger.ca>
+References: <1295365843-29414-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14247 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750844Ab1ASUme (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Jan 2011 15:42:34 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0JKgXkm023647
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Jan 2011 15:42:34 -0500
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p0JKgX99030034
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Jan 2011 15:42:33 -0500
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:64380 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752529Ab1ASW17 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jan 2011 17:27:59 -0500
+In-Reply-To: <1295365843-29414-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In 2.6.37 I was running into oopses with repeated module
-loads & unloads.  I tracked this down to:
+On 2011-01-18, at 08:50, Lukas Czerner wrote:
+> +Table of Ext4 specific ioctls
+> +..............................................................................
+> + Ioctl			      Description
+> + EXT4_IOC_GETFLAGS	      Get additional attributes associated with files
+> +			      in Ext4. The argument point to the integer.
+> +			      Meaning of the particular bits are defined in
+> +			      fs/ext4/ext4.
 
-fb1813f4 ext4: use dedicated slab caches for group_info structures
+This is actually the same value as the FS_IOC_GETFLAGS ioctl.
 
-(this was in addition to the features advert unload problem)
+> + EXT4_IOC_SETFLAGS	      Set additional attributes associated with files
+> +			      in Ext4. The argument point to the integer.
+> +			      Meaning of the particular bits are defined in
+> +			      fs/ext4/ext4. If the file is a subject to quota,
+> +			      setting inode flags is prohibited.
 
-The kstrdup & subsequent kfree of the cache name was causing
-a double free.  In slub, at least, if I read it right it allocates
-& frees the name itself, slab seems to do something different...
-so in slub I think we were leaking -our- cachep->name, and double
-freeing the one allocated by slub.
+Likewise, this is the same value as FS_IOC_SETFLAGS.
 
-After getting lost in slab/slub/slob a bit, I just looked at other
-sized-caches that get allocated.  jbd2, biovec, sgpool all do it
-more or less the way jbd2 does.  Below patch follows the jbd2
-method of dynamically allocating a cache at mount time from
-a list of static names.
+> + EXT4_IOC_GETVERSION
+> + EXT4_IOC_GETVERSION_OLD
+> +			      Get the inode i_generation number stored for
+> +			      each inode. This is particularly useful for
+> +			      NFS in cases when one inode is unlinked and
+> +			      then a new inode is created with the same inode
+> +			      number. NFS daemon should know that it is not
+> +			      the same inode, thus i_generation is needed.
+> +			      All that said, it is normally changed only when
+> +			      new inode is created.
 
-(This might also possibly fix a race creating the caches with
-parallel mounts running).
+Similarly, the FS_IOC_GETVERSION matches EXT4_IOC_GETVERSION_OLD.  Sadly, the move of this ioctl number to FS_IOC_GETVERSION used the old 'v' ioctl number that conflicts with a number of ioctls instead of the new 'f' ioctl number...
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Cheers, Andreas
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 851f49b..02cff4a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -342,10 +342,15 @@ static struct kmem_cache *ext4_free_ext_cachep;
- /* We create slab caches for groupinfo data structures based on the
-  * superblock block size.  There will be one per mounted filesystem for
-  * each unique s_blocksize_bits */
--#define NR_GRPINFO_CACHES	\
--	(EXT4_MAX_BLOCK_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE + 1)
-+#define NR_GRPINFO_CACHES 8
- static struct kmem_cache *ext4_groupinfo_caches[NR_GRPINFO_CACHES];
- 
-+static const char *ext4_groupinfo_slab_names[NR_GRPINFO_CACHES] = {
-+	"ext4_groupinfo_1k", "ext4_groupinfo_2k", "ext4_groupinfo_4k",
-+	"ext4_groupinfo_8k", "ext4_groupinfo_16k", "ext4_groupinfo_32k",
-+	"ext4_groupinfo_64k", "ext4_groupinfo_128k"
-+};
-+
- static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- 					ext4_group_t group);
- static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
-@@ -2414,6 +2419,55 @@ err_freesgi:
- 	return -ENOMEM;
- }
- 
-+static void ext4_groupinfo_destroy_slabs(void)
-+{
-+	int i;
-+
-+	for (i = 0; i < NR_GRPINFO_CACHES; i++) {
-+		if (ext4_groupinfo_caches[i])
-+			kmem_cache_destroy(ext4_groupinfo_caches[i]);
-+		ext4_groupinfo_caches[i] = NULL;
-+	}
-+}
-+
-+static int ext4_groupinfo_create_slab(size_t size)
-+{
-+	static DEFINE_MUTEX(ext4_grpinfo_slab_create_mutex);
-+	int slab_size;
-+	int blocksize_bits = order_base_2(size);
-+	int cache_index = blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
-+	struct kmem_cache *cachep;
-+
-+	if (cache_index > NR_GRPINFO_CACHES)
-+		return -EINVAL;
-+
-+	if (unlikely(cache_index < 0))
-+		cache_index = 0;
-+
-+	mutex_lock(&ext4_grpinfo_slab_create_mutex);
-+	if (ext4_groupinfo_caches[cache_index]) {
-+		mutex_unlock(&ext4_grpinfo_slab_create_mutex);
-+		return 0;	/* Already created */
-+	}
-+
-+	slab_size = offsetof(struct ext4_group_info,
-+				bb_counters[blocksize_bits + 2]);
-+
-+	cachep = kmem_cache_create(ext4_groupinfo_slab_names[cache_index],
-+					slab_size, 0, SLAB_RECLAIM_ACCOUNT,
-+					NULL);
-+
-+	mutex_unlock(&ext4_grpinfo_slab_create_mutex);
-+	if (!cachep) {
-+		printk(KERN_EMERG "EXT4: no memory for groupinfo slab cache\n");
-+		return -ENOMEM;
-+	}
-+
-+	ext4_groupinfo_caches[cache_index] = cachep;
-+
-+	return 0;
-+}
-+
- int ext4_mb_init(struct super_block *sb, int needs_recovery)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -2421,9 +2475,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	unsigned offset;
- 	unsigned max;
- 	int ret;
--	int cache_index;
--	struct kmem_cache *cachep;
--	char *namep = NULL;
- 
- 	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_offsets);
- 
-@@ -2440,30 +2491,9 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 		goto out;
- 	}
- 
--	cache_index = sb->s_blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
--	cachep = ext4_groupinfo_caches[cache_index];
--	if (!cachep) {
--		char name[32];
--		int len = offsetof(struct ext4_group_info,
--					bb_counters[sb->s_blocksize_bits + 2]);
--
--		sprintf(name, "ext4_groupinfo_%d", sb->s_blocksize_bits);
--		namep = kstrdup(name, GFP_KERNEL);
--		if (!namep) {
--			ret = -ENOMEM;
--			goto out;
--		}
--
--		/* Need to free the kmem_cache_name() when we
--		 * destroy the slab */
--		cachep = kmem_cache_create(namep, len, 0,
--					     SLAB_RECLAIM_ACCOUNT, NULL);
--		if (!cachep) {
--			ret = -ENOMEM;
--			goto out;
--		}
--		ext4_groupinfo_caches[cache_index] = cachep;
--	}
-+	ret = ext4_groupinfo_create_slab(sb->s_blocksize);
-+	if (ret < 0)
-+		goto out;
- 
- 	/* order 0 is regular bitmap */
- 	sbi->s_mb_maxs[0] = sb->s_blocksize << 3;
-@@ -2520,7 +2550,6 @@ out:
- 	if (ret) {
- 		kfree(sbi->s_mb_offsets);
- 		kfree(sbi->s_mb_maxs);
--		kfree(namep);
- 	}
- 	return ret;
- }
-@@ -2734,7 +2763,6 @@ int __init ext4_init_mballoc(void)
- 
- void ext4_exit_mballoc(void)
- {
--	int i;
- 	/*
- 	 * Wait for completion of call_rcu()'s on ext4_pspace_cachep
- 	 * before destroying the slab cache.
-@@ -2743,15 +2771,7 @@ void ext4_exit_mballoc(void)
- 	kmem_cache_destroy(ext4_pspace_cachep);
- 	kmem_cache_destroy(ext4_ac_cachep);
- 	kmem_cache_destroy(ext4_free_ext_cachep);
+
+
+
+
