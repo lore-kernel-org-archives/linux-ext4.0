@@ -1,91 +1,56 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH v7.1] block: Coordinate flush requests
-Date: Wed, 19 Jan 2011 00:58:25 -0800
-Message-ID: <20110119085825.GG27381@tux1.beaverton.ibm.com>
-References: <20110113025646.GB27381@tux1.beaverton.ibm.com> <20110113104240.GA30719@htj.dyndns.org> <20110113185946.GD27381@tux1.beaverton.ibm.com> <20110115133344.GB27123@htj.dyndns.org>
-Reply-To: djwong@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
-	Neil Brown <neilb@suse.de>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, Mike Snitzer <snitzer@redhat.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Keith Mannthey <kmannth@us.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	Ric Wheeler <rwheeler@redhat.com>,
-	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
-To: Tejun Heo <tj@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110115133344.GB27123@htj.dyndns.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: fix trim length underflow with small trim length.
+Date: Wed, 19 Jan 2011 17:45:58 +0800
+Message-ID: <1295430358-8912-1-git-send-email-tm@tao.ma>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cpoproxy3-pub.bluehost.com ([67.222.54.6]:50600 "HELO
+	cpoproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753519Ab1ASJpp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Jan 2011 04:45:45 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 15, 2011 at 02:33:44PM +0100, Tejun Heo wrote:
-> Hello,
-> 
-> On Thu, Jan 13, 2011 at 10:59:46AM -0800, Darrick J. Wong wrote:
-> > > But wouldn't it be better to implement this directly in the flush
-> > > machinary instead of as blkdev_issue_flush() wrapper?  We have all the
-> > > information at the request queue level so we can easily detect whether
-> > > flushes can be merged or not and whether something is issued by
-> > > blkdev_issue_flush() or by directly submitting bio wouldn't matter at
-> > > all.  Am I missing something?
-> > 
-> > Could you clarify where exactly you meant by "in the flush
-> > machinery"?  I think what you're suggesting is that
-> > blk_flush_complete_seq could scan the pending flush list to find a
-> > run of consecutive pure flush requests, submit the last one, and set
-> > things up so that during the completion of the flush, all the
-> > requests in that run are returned with the real flush's return code.
-> 
-> Yeah, something along that line.
-> 
-> > If that's what you meant, then yes, it could be done that way.
-> > However, I have a few reasons for choosing the blkdev_issue_flush
-> > approach.  First, as far as I could tell in the kernel, all the code
-> > paths that involve upper layers issuing pure flushes go through
-> > blkdev_issue_flush, so it seems like a convenient place to capture
-> > all the incoming pure flushes.
-> 
-> That means it _can_ be done there but doesn't mean it's the best spot.
-> 
-> > Other parts of the kernel issue writes with the flush flag set, but
-> > we want those to go through the regular queuing mechanisms anyway.
-> > Second, with the proposed patch, any upper-layer code that has a
-> > requirement for a pure flush to be issued without coordination can
-> > do so by submitting the bio directly (or blkdev_issue_flush_now can
-> > be exported).
-> 
-> I don't think anyone would need such capability but even if someone
-> does that should be implemented as a separate explicit
-> DONT_MERGE_THIS_FLUSH flag, not by exploting subtle inconsistencies on
-> the wrapper interface.
-> 
-> > Third, baking the coordination into the flush machinery makes that
-> > machinery more complicated to understand and maintain.
-> 
-> And the third point is completely nuts.  That's like saying putting
-> things related together makes the concentrated code more complex, so
-> let's scatter things all over the place.  No, it's not making the code
-> more complex.  It's putting the complexity where it belongs.  It
-> decreases maintenance overhead by increasing consistency.  Not only
-> that it even results in visibly more consistent and sane _behavior_
-> and the said complex machinary is less than 300 lines long.
-> 
-> > So in short, I went with the blkdev_issue_flush approach because the
-> > code is easier to understand, and it's not losing any pure flushes
-> > despite casting a narrower net.
-> 
-> No, not at all.  You're adding an unobvious logic into a wrapper
-> interface creating incosistent behavior and creating artificial
-> distinctions between pure and non-pure flushes and flushes issued by
-> bio and the wrapper interface.  Come on.  Think about it again.  You
-> can't be seriously standing by the above rationales.
+From: Tao Ma <boyu.mt@taobao.com>
 
-Since you're the primary author of that file anyway, I'll defer to your
-experience.  I can squeeze in a few test runs of whatever patches you propose
-to the mailing list.
+In 0f0a25b, we adjust 'len' with s_first_data_block - start, but it could
+underflow in case blocksize=1K, while fstrim_range.len=512 and
+fstrim_range.start = 0. In this case len happens to be underflow and in
+the end, although we are safe that last_group check will limit the trim
+to the whole volume, I am afraid that isn't what the user really want.
 
---D
+So this patch fix it. It also adds the check for 'start' like ext3 so that
+we can break immediately if the start is invalid.
+
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/mballoc.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 851f49b..397db8d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4819,6 +4819,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 
+ 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
+ 		return -EINVAL;
++	if (start >= ext4_blocks_count(EXT4_SB(sb)->s_es) ||
++	    start + len <= first_data_blk)
++		goto out;
+ 	if (start < first_data_blk) {
+ 		len -= first_data_blk - start;
+ 		start = first_data_blk;
+@@ -4863,5 +4866,6 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	}
+ 	range->len = trimmed * sb->s_blocksize;
+ 
++out:
+ 	return ret;
+ }
+-- 
+1.6.3.GIT
+
