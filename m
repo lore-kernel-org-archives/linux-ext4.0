@@ -1,59 +1,50 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH v2] ext3: Adjust trim start with first_data_block.
-Date: Fri, 21 Jan 2011 10:52:56 +0800
-Message-ID: <1295578376-3914-1-git-send-email-tm@tao.ma>
-References: <20110119113921.GA4246@quack.suse.cz>
-Cc: Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH v7.1] block: Coordinate flush requests
+Date: Thu, 20 Jan 2011 22:41:49 -0800
+Message-ID: <20110121064149.GH27381@tux1.beaverton.ibm.com>
+References: <20110113025646.GB27381@tux1.beaverton.ibm.com> <AANLkTi=hF8hwgtx+N-dBNRjoffX7nQmaehkE3PsFpSDq@mail.gmail.com> <20110113074603.GC27381@tux1.beaverton.ibm.com> <AANLkTi=pkM1-91cKULt=5L=cPpTUcR5qqFrbj7Bjtk36@mail.gmail.com> <20110115173211.GC27123@htj.dyndns.org> <AANLkTi=MiY+GMXRwfOMhEzGQC3=F89FOKAJ4y1hvyDG0@mail.gmail.com> <20110120185057.GA4701@htj.dyndns.org> <20110120191341.GB4701@htj.dyndns.org>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Shaohua Li <shli@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+	"Theodore Ts'o" <tytso@mit.edu>, Neil Brown <neilb@suse.de>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, Mike Snitzer <snitzer@redhat.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Keith Mannthey <kmannth@us.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Christoph Hellwig <hch@lst.de>, Josef Bacik <josef@redhat.com>
+To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy3-pub.bluehost.com ([69.89.21.8]:51678 "HELO
-	oproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752057Ab1AUCxY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Jan 2011 21:53:24 -0500
-In-Reply-To: <20110119113921.GA4246@quack.suse.cz>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:37162 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750844Ab1AUGlx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jan 2011 01:41:53 -0500
+Content-Disposition: inline
+In-Reply-To: <20110120191341.GB4701@htj.dyndns.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Thu, Jan 20, 2011 at 08:13:41PM +0100, Tejun Heo wrote:
+> On Thu, Jan 20, 2011 at 07:50:57PM +0100, Tejun Heo wrote:
+> > Hello,
+> > 
+> > On Tue, Jan 18, 2011 at 09:12:55AM +0800, Shaohua Li wrote:
+> > > This makes sense. would it possible N flush data payloads delay the
+> > > first request?
+> > 
+> > I ended up with a different design.  Still buggy.  It triggers a weird
+> > oops under stress test but other than that things generally seem to
+> > work as expected.  Please read the comment at the top of blk-flush.c
+> > for more info.  I'll post properly after more testing and debugging.
+> 
+> The oops was caused by debugging code I put in (not posted together).
+> It runs fine without it, so if you have some time, please give it a
+> spin.
 
-As we have make the consense in the e-mail[1], the trim start should
-be added with first_data_block. So this patch fulfill it and remove
-the check for start < first_data_block.
+Seems to run without incident on my storage test arrays.  The fsync-happy
+performance numbers are comparable to previous iterations of flush patches.
+Looks good, thank you!
 
-[1] http://www.spinics.net/lists/linux-ext4/msg22737.html
-
-Cc: Jan Kara <jack@suse.cz>
-Cc: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext3/balloc.c |    7 ++-----
- 1 files changed, 2 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index 971e1bd..13bfebe 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -2091,7 +2091,8 @@ int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	ext3_fsblk_t max_blks = le32_to_cpu(es->s_blocks_count);
- 	int ret = 0;
- 
--	start = range->start >> sb->s_blocksize_bits;
-+	start = (range->start >> sb->s_blocksize_bits) +
-+		le32_to_cpu(es->s_first_data_block);
- 	len = range->len >> sb->s_blocksize_bits;
- 	minlen = range->minlen >> sb->s_blocksize_bits;
- 	trimmed = 0;
-@@ -2100,10 +2101,6 @@ int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 		return -EINVAL;
- 	if (start >= max_blks)
- 		goto out;
--	if (start < le32_to_cpu(es->s_first_data_block)) {
--		len -= le32_to_cpu(es->s_first_data_block) - start;
--		start = le32_to_cpu(es->s_first_data_block);
--	}
- 	if (start + len > max_blks)
- 		len = max_blks - start;
- 
--- 
-1.6.3.GIT
-
+--D
