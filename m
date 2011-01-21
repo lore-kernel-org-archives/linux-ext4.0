@@ -1,76 +1,71 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: Severe slowdown caused by jbd2 process
-Date: Thu, 20 Jan 2011 20:31:40 -0500
-Message-ID: <20110121013140.GA8949@dhcp231-156.rdu.redhat.com>
-References: <1295568782.2459.29.camel@tybalt>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jon Leighton <j@jonathanleighton.com>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext3: speed up group trim with the right free block count.
+Date: Fri, 21 Jan 2011 09:59:26 +0800
+Message-ID: <1295575166-3674-1-git-send-email-tm@tao.ma>
+Cc: Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17618 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752263Ab1AUBf0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Jan 2011 20:35:26 -0500
-Content-Disposition: inline
-In-Reply-To: <1295568782.2459.29.camel@tybalt>
+Received: from cpoproxy2-pub.bluehost.com ([67.222.39.38]:51754 "HELO
+	cpoproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751816Ab1AUB7w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Jan 2011 20:59:52 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 21, 2011 at 12:13:02AM +0000, Jon Leighton wrote:
-> Hi there,
-> 
-> I have been experiencing some slowness with an ext4 filesystem. I will
-> try to explain and hopefully somebody can identify whether this is
-> "normal" or not. Sorry if I am in any sense unscientific - filesystems
-> are somewhere near the edge of my computer science knowledge :)
-> 
-> Basically I am involved with doing some development on the Ruby on Rails
-> web app framework, and the automated tests for one component (Active
-> Record) does a lot of reading/writing from a database.
-> 
-> I realised that the test suite was running significantly slower for me
-> than for another developer, so I started to investigate. First I created
-> an unencrypted partition and put my databases on it, as I had previously
-> had everything encrypted.
-> 
-> This made it somewhat faster, but not massively.
-> 
-> I then used iotop to see what was going on when I ran the tests. I
-> discovered that the process jbd2/sda3-8 was doing *lots* of IO when I
-> run these tests.
-> 
-> I did some googling and tried a few things. Removing the journal solved
-> the problem (as would be expected, I guess), but also recreating the
-> partition as ext3 rather than ext4 solved it too (which perhaps
-> indicates a regression?) When I say 'solved', I mean it took a single
-> run of this particular test suite from say 4.5 minutes to more like
-> 60-80 seconds.
-> 
-> I found some other people reporting a similar problem:
-> https://bugs.launchpad.net/ubuntu/+source/linux/+bug/607560
-> 
-> They complain of the jbd2 process running every few seconds. This is
-> something I had not noticed before, but I can observe this on my system
-> too. It runs and uses a lot of IO for a short period of time maybe every
-> 2 seconds. So I think I am experiencing the same problem.
-> 
-> FWIW, using the noatime option does not help at all. Also, I have tried
-> using a very recent kernel build with no success. And I have run iotop
-> on another laptop (which also has an ext4 partition) and I cannot
-> observe this frequent running of jbd2.
-> 
-> So: does this sound like a bug, and if so, what can be done? I'm very
-> happy to provide any additional information as needed.
-> 
+From: Tao Ma <boyu.mt@taobao.com>
 
-What kind of database is this?  Does it use lots of files?  When it's being
-particularly slow could you run
+When we trim some free blocks in a group of ext3, we should
+calculate the free blocks properly and check whether there are
+enough freed blocks left for us to trim. Current solution will
+only calculate free spaces if they are large for a trim which
+is wrong.
 
-echo w > /proc/sysrq-trigger
+Let us see a small example:
+a group has 1.5M free which are 300k, 300k, 300k, 300k, 300k.
+And minblocks is 1M. With current solution, we have to iterate
+the whole group since these 300k will never be subtracted from
+1.5M. But actually we should exit after we find the first 2
+free spaces since the left 3 chunks only sum up to 900K if we
+subtract the first 600K although they can't be trimed.
 
-a couple of times, spread out.  This will give us an idea of what everybody is
-doing when things are going slow.  Thanks,
+Cc: Jan Kara <jack@suse.cz>
+Cc: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext3/balloc.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-Josef
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 045995c..971e1bd 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -1922,7 +1922,7 @@ ext3_grpblk_t ext3_trim_all_free(struct super_block *sb, unsigned int group,
+ 				ext3_grpblk_t minblocks)
+ {
+ 	handle_t *handle;
+-	ext3_grpblk_t next, free_blocks, bit, freed, count = 0;
++	ext3_grpblk_t next, free_blocks, bit, freed, count = 0, free_count = 0;
+ 	ext3_fsblk_t discard_block;
+ 	struct ext3_sb_info *sbi;
+ 	struct buffer_head *gdp_bh, *bitmap_bh = NULL;
+@@ -1991,6 +1991,7 @@ ext3_grpblk_t ext3_trim_all_free(struct super_block *sb, unsigned int group,
+ 		spin_unlock(sb_bgl_lock(sbi, group));
+ 		percpu_counter_sub(&sbi->s_freeblocks_counter, next - start);
+ 
++		free_count += next - start;
+ 		/* Do not issue a TRIM on extents smaller than minblocks */
+ 		if ((next - start) < minblocks)
+ 			goto free_extent;
+@@ -2040,7 +2041,7 @@ free_extent:
+ 		cond_resched();
+ 
+ 		/* No more suitable extents */
+-		if ((free_blocks - count) < minblocks)
++		if ((free_blocks - free_count) < minblocks)
+ 			break;
+ 	}
+ 
+-- 
+1.7.1
 
