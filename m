@@ -1,93 +1,63 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext3: speed up group trim with the right free block
- count.
-Date: Fri, 21 Jan 2011 16:02:06 +0100
-Message-ID: <20110121150206.GE5302@quack.suse.cz>
-References: <alpine.LFD.2.00.1101211136410.3275@dhcp-lab-213.englab.brq.redhat.com>
- <1295619576-5662-1-git-send-email-tm@tao.ma>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH V2] ext4: serialize unaligned asynchronous DIO
+Date: Fri, 21 Jan 2011 10:00:01 -0600
+Message-ID: <4D39AD81.4010407@redhat.com>
+References: <4D2F7B52.1040209@redhat.com> <20110114041514.GI31800@thunk.org> <4D3087CE.2060200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Lukas Czerner <lczerner@redhat.com>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57981 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:20757 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753220Ab1AUPCI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Jan 2011 10:02:08 -0500
-Content-Disposition: inline
-In-Reply-To: <1295619576-5662-1-git-send-email-tm@tao.ma>
+	id S1752369Ab1AUQAE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jan 2011 11:00:04 -0500
+In-Reply-To: <4D3087CE.2060200@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 21-01-11 22:19:36, Tao Ma wrote:
-> On 01/21/2011 06:44 PM, Lukas Czerner wrote:
-> > Nice catch, do you plan to do the same for ext4 ? Btw, I do not think
-> > there is a need for new variable (free_count), you can as well do :
-> >
-> > free_blocks -= next - start;
-> > ...
-> > if (free_blocks < minblocks)
-> > 	break;
-> yeah, the extra varaible isn't needed. Here is the updated patch.
+On 1/14/11 11:28 AM, Eric Sandeen wrote:
 > 
-> Regards,
-> Tao
 > 
-> Subject: [PATCH v2] ext3: speed up group trim with the right free block count.
-> From 48ab7651409df9b21dfaa9cec6a8db62467b8ca7 Mon Sep 17 00:00:00 2001
-> From: Tao Ma <boyu.mt@taobao.com>
-> Date: Fri, 21 Jan 2011 22:09:20 +0800
-> Subject: [PATCH v2] ext3: speed up group trim with the right free block count.
+> ext4 has a data corruption case when doing non-block-aligned
+> asynchronous direct IO into a sparse file, as demonstrated
+> by xfstest 240.
 > 
-> When we trim some free blocks in a group of ext3, we should
-> calculate the free blocks properly and check whether there are
-> enough freed blocks left for us to trim. Current solution will
-> only calculate free spaces if they are large for a trim which
-> is wrong.
+> The root cause is that while ext4 preallocates space in the
+> hole, mappings of that space still look "new" and 
+> dio_zero_block() will zero out the unwritten portions.  When
+> more than one AIO thread is going, they both find this "new"
+> block and race to zero out their portion; this is uncoordinated
+> and causes data corruption.
 > 
-> Let us see a small example:
-> a group has 1.5M free which are 300k, 300k, 300k, 300k, 300k.
-> And minblocks is 1M. With current solution, we have to iterate
-> the whole group since these 300k will never be subtracted from
-> 1.5M. But actually we should exit after we find the first 2
-> free spaces since the left 3 chunks only sum up to 900K if we
-> subtract the first 600K although they can't be trimed.
-  Thanks. Merged.
+> Dave Chinner fixed this for xfs by simply serializing all
+> unaligned asynchronous direct IO.  I've done the same here.
+> This is a very big hammer, and I'm not very pleased with
+> stuffing this into ext4_file_write().  But since ext4 is
+> DIO_LOCKING, we need to serialize it at this high level.
+> 
+> I tried to move this into ext4_ext_direct_IO, but by then
+> we have the i_mutex already, and we will wait on the
+> work queue to do conversions - which must also take the
+> i_mutex.  So that won't work.
+> 
+> This was originally exposed by qemu-kvm installing to
+> a raw disk image with a normal sector-63 alignment.  I've
+> tested a backport of this patch with qemu, and it does
+> avoid the corruption.  It is also quite a lot slower
+> (14 min for package installs, vs. 8 min for well-aligned)
+> but I'll take slow correctness over fast corruption any day.
+> 
+> Mingming suggested that perhaps we can track outstanding
+> conversions, and wait on that instead so that non-sparse
+> files won't be affected, but I've had trouble making that
+> work so far, and would like to get the corruption hole
+> plugged ASAP.  Perhaps adding a prink_once() warning of
+> the perf degradation on this path would be useful?
+> 
 
-							Honza
-> 
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->  fs/ext3/balloc.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> index 045995c..b9697f7 100644
-> --- a/fs/ext3/balloc.c
-> +++ b/fs/ext3/balloc.c
-> @@ -1991,6 +1991,7 @@ ext3_grpblk_t ext3_trim_all_free(struct super_block *sb, unsigned int group,
->  		spin_unlock(sb_bgl_lock(sbi, group));
->  		percpu_counter_sub(&sbi->s_freeblocks_counter, next - start);
->  
-> +		free_blocks -= next - start;
->  		/* Do not issue a TRIM on extents smaller than minblocks */
->  		if ((next - start) < minblocks)
->  			goto free_extent;
-> @@ -2040,7 +2041,7 @@ free_extent:
->  		cond_resched();
->  
->  		/* No more suitable extents */
-> -		if ((free_blocks - count) < minblocks)
-> +		if (free_blocks < minblocks)
->  			break;
->  	}
->  
-> -- 
-> 1.7.1
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I've sent a patch to do the above, as V3, twice now, but the list
+is eating it.  Ted, you were cc'd so hopefully you got it?
+
+-Eric
