@@ -1,62 +1,62 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Adjust trim start with first_data_block.
-Date: Fri, 21 Jan 2011 22:05:07 +0800
-Message-ID: <1295618707-3677-1-git-send-email-tm@tao.ma>
-Cc: "Cc: \"Theodore Ts'o\"" <tytso@mit.edu>,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: Severe slowdown caused by jbd2 process
+Date: Fri, 21 Jan 2011 09:03:06 -0500
+Message-ID: <20110121140306.GA11313@dhcp231-156.rdu.redhat.com>
+References: <1295568782.2459.29.camel@tybalt> <20110121013140.GA8949@dhcp231-156.rdu.redhat.com> <1295601083.5799.3.camel@tybalt> <20110121125922.GB8949@dhcp231-156.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jon Leighton <j@jonathanleighton.com>, linux-ext4@vger.kernel.org
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cpoproxy1-pub.bluehost.com ([69.89.21.11]:45129 "HELO
-	cpoproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752040Ab1AUOFY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Jan 2011 09:05:24 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:25447 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751332Ab1AUOGw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jan 2011 09:06:52 -0500
+Content-Disposition: inline
+In-Reply-To: <20110121125922.GB8949@dhcp231-156.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Fri, Jan 21, 2011 at 07:59:22AM -0500, Josef Bacik wrote:
+> On Fri, Jan 21, 2011 at 09:11:23AM +0000, Jon Leighton wrote:
+> > Hi Josef,
+> > 
+> > Thanks for the reply.
+> > 
+> > On Thu, 2011-01-20 at 20:31 -0500, Josef Bacik wrote:
+> > > What kind of database is this?  Does it use lots of files?
+> > 
+> > This happens with all databases that I test with: sqlite3, mysql and
+> > postgresql. Which would seem to indicate that the issue is not actually
+> > related to the databases, but is being made evident by them when they do
+> > lots of reads/writes. (The jbd2 every 2 seconds thing happens even when
+> > all database are completely shut down.)
+> >
+> 
+> Right I'm not trying to blame the database, more trying to get an idea the kind
+> of IO that they are generating so we can figure out what is being slow.
+>  
+> > > When it's being
+> > > particularly slow could you run
+> > > 
+> > > echo w > /proc/sysrq-trigger
+> > > 
+> > > a couple of times, spread out.  This will give us an idea of what everybody is
+> > > doing when things are going slow.  Thanks,
+> > 
+> > Cool, I have done that and attached the results. The partition in
+> > question (the one with the databases on) is /dev/sda4.
+> >
+> 
+> Hrm so an fsync heavy workload it looks like.  I'll run some fsync tests locally
+> and see if I can see the kind of slowdowns you are experiencing.  Thanks,
+>
 
-As we have make the consense in the e-mail[1], the trim start should
-be added with first_data_block. So this patch fulfill it and remove
-the check for start < first_data_block.
+Heh so now that I've had a moment to wake up, how about running your test on
+ext3, but mount the partition with
 
-[1] http://www.spinics.net/lists/linux-ext4/msg22737.html
+mount -o barrier
 
-Cc: Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/mballoc.c |    9 ++-------
- 1 files changed, 2 insertions(+), 7 deletions(-)
+and see if it's still faster than ext4.  Thanks,
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 851f49b..71dd7bd 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4808,21 +4808,16 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	ext4_group_t group, ngroups = ext4_get_groups_count(sb);
- 	ext4_grpblk_t cnt = 0, first_block, last_block;
- 	uint64_t start, len, minlen, trimmed;
--	ext4_fsblk_t first_data_blk =
--			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 	int ret = 0;
- 
--	start = range->start >> sb->s_blocksize_bits;
-+	start = (range->start >> sb->s_blocksize_bits) +
-+		le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 	len = range->len >> sb->s_blocksize_bits;
- 	minlen = range->minlen >> sb->s_blocksize_bits;
- 	trimmed = 0;
- 
- 	if (unlikely(minlen > EXT4_BLOCKS_PER_GROUP(sb)))
- 		return -EINVAL;
--	if (start < first_data_blk) {
--		len -= first_data_blk - start;
--		start = first_data_blk;
--	}
- 
- 	/* Determine first and last group to examine based on start and len */
- 	ext4_get_group_no_and_offset(sb, (ext4_fsblk_t) start,
--- 
-1.7.1
-
+Josef 
