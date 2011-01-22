@@ -1,54 +1,74 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Severe slowdown caused by jbd2 process
-Date: Fri, 21 Jan 2011 18:56:41 -0500
-Message-ID: <20110121235641.GM3043@thunk.org>
-References: <1295568782.2459.29.camel@tybalt>
- <20110121013140.GA8949@dhcp231-156.rdu.redhat.com>
- <1295601083.5799.3.camel@tybalt>
- <20110121125922.GB8949@dhcp231-156.rdu.redhat.com>
- <20110121140306.GA11313@dhcp231-156.rdu.redhat.com>
- <1295620109.22802.1.camel@tybalt>
- <20110121143145.GB11313@dhcp231-156.rdu.redhat.com>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: Re: [PATCH 3/3] block: reimplement FLUSH/FUA to support merge
+Date: Fri, 21 Jan 2011 19:49:55 -0500
+Message-ID: <20110122004955.GA17792@redhat.com>
+References: <1295625598-15203-1-git-send-email-tj@kernel.org>
+ <1295625598-15203-4-git-send-email-tj@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jon Leighton <j@jonathanleighton.com>, linux-ext4@vger.kernel.org
-To: Josef Bacik <josef@redhat.com>
+Cc: axboe@kernel.dk, tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org,
+	neilb@suse.de, adilger.kernel@dilger.ca, jack@suse.cz,
+	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
+	josef@redhat.com
+To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56564 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:33021 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754816Ab1AUX4o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Jan 2011 18:56:44 -0500
+	id S1750766Ab1AVAuy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jan 2011 19:50:54 -0500
 Content-Disposition: inline
-In-Reply-To: <20110121143145.GB11313@dhcp231-156.rdu.redhat.com>
+In-Reply-To: <1295625598-15203-4-git-send-email-tj@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 21, 2011 at 09:31:45AM -0500, Josef Bacik wrote:
-> 
-> Yup, whatever you are doing in your webapp is making your database do lots of
-> fsyncs, which is going to suck.  If you are on a battery backed system or just
-> don't care if you lose your database and rather it be faster you can mount your
-> ext4 fs with -o nobarrier.  Thanks,
+On Fri, Jan 21 2011 at 10:59am -0500,
+Tejun Heo <tj@kernel.org> wrote:
 
-Note that if you don't use -o barrier on ext3, or use -o nobarrier on
-ext4, the chance of significant file system damage if you have a power
-failure, since without the barrier, the file system doesn't wait for
-disk to acknowledge that the data has hit the barrier.  The problem is
-that if you are using a barrier operation, you're not going to be able
-to get more than about 30-50 non-trivial[1] fsync's per second on a
-standard HDD; barriers are inherently slow.
+> diff --git a/block/blk-flush.c b/block/blk-flush.c
+> index 8592869..cd73e93 100644
+> --- a/block/blk-flush.c
+> +++ b/block/blk-flush.c
+> @@ -1,6 +1,69 @@
+>  /*
+>   * Functions to sequence FLUSH and FUA writes.
+> + *
+> + * Copyright (C) 2011		Max Planck Institute for Gravitational Physics
+> + * Copyright (C) 2011		Tejun Heo <tj@kernel.org>
+> + *
+> + * This file is released under the GPLv2.
+> + *
+> + * REQ_{FLUSH|FUA} requests are decomposed to sequences consisted of three
+> + * optional steps - PREFLUSH, DATA and POSTFLUSH - according to the request
+> + * properties and hardware capability.
+> + *
+> + * If a request doesn't have data, only REQ_FLUSH makes sense, which
+> + * indicates a simple flush request.  If there is data, REQ_FLUSH indicates
+> + * that the device cache should be flushed before the data is executed, and
+> + * REQ_FUA means that the data must be on non-volatile media on request
+> + * completion.
+> + *
+> + * If the device doesn't have writeback cache, FLUSH and FUA don't make any
+> + * difference.  The requests are either completed immediately if there's no
+> + * data or executed as normal requests otherwise.
 
-[1] Where there was some kind of data write between the two fsync's.
-You may be able to get faster back-to-back fsync() with no intervening
-data writes, but that's not terribly interesting.  :-)
-
-A UPS should protect you against most of the dangers of not using
-barriers.  The other choice is to be more intelligent with your coding
-(and/or with your database choice) to avoid needing a huge number of
-fsync's, as they are going to be costly.  If you can batch multiple
-database operations under a single commit, for example, you should be
-able to eliminate the need for so many fsync's.
-
-		        	       	       - Ted
+For devices without a writeback cache, I'm not seeing where pure flushes
+are completed immediately.  But I do see where data is processed
+directly in blk_insert_flush().
 
 
+> -struct request *blk_do_flush(struct request_queue *q, struct request *rq)
+> +/**
+> + * blk_abort_flush - @q is being aborted, abort flush requests
+      ^^^^^^^^^^^^^^^ 
+Small comment nit, s/blk_abort_flush/blk_abort_flushes/
+
+> + * @q: request_queue being aborted
+> + *
+> + * To be called from elv_abort_queue().  @q is being aborted.  Prepare all
+> + * FLUSH/FUA requests for abortion.
+> + *
+> + * CONTEXT:
+> + * spin_lock_irq(q->queue_lock)
+> + */
+> +void blk_abort_flushes(struct request_queue *q)
