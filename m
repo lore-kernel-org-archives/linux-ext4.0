@@ -1,81 +1,155 @@
-From: torn5 <torn5@shiftmail.org>
-Subject: Re: Severe slowdown caused by jbd2 process
-Date: Sun, 23 Jan 2011 00:22:19 +0100
-Message-ID: <4D3B66AB.6030102@shiftmail.org>
-References: <1295568782.2459.29.camel@tybalt>
- <20110121013140.GA8949@dhcp231-156.rdu.redhat.com>
- <1295601083.5799.3.camel@tybalt>
- <20110121125922.GB8949@dhcp231-156.rdu.redhat.com>
- <20110121140306.GA11313@dhcp231-156.rdu.redhat.com>
- <1295620109.22802.1.camel@tybalt>
- <20110121143145.GB11313@dhcp231-156.rdu.redhat.com>
- <20110121235641.GM3043@thunk.org> <4D3A2EC6.3020700@shiftmail.org>
- <20110122013415.GN3043@thunk.org> <4D3B03FA.4040604@shiftmail.org>
- <EF21BE9C-2457-4C17-A667-9839E23C58B8@mit.edu>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to return
+ errors and handle them gracefully.
+Date: Sat, 22 Jan 2011 19:32:44 -0800
+Message-ID: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: torn5 <torn5@shiftmail.org>, Josef Bacik <josef@redhat.com>,
-	Jon Leighton <j@jonathanleighton.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: mkatiyar@gmail.com
+To: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from blade3.isti.cnr.it ([194.119.192.19]:50577 "EHLO
-	BLADE3.ISTI.CNR.IT" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752260Ab1AVXWk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Jan 2011 18:22:40 -0500
-Received: from SCRIPT-SPFWL-DAEMON.mx.isti.cnr.it by mx.isti.cnr.it
- (PMDF V6.5-x5 #31825) id <01NWXZ05478WOMKFEU@mx.isti.cnr.it> for
- linux-ext4@vger.kernel.org; Sun, 23 Jan 2011 00:22:25 +0100 (MET)
-Received: from conversionlocal.isti.cnr.it by mx.isti.cnr.it
- (PMDF V6.5-x5 #31825) id <01NWXZ044FA8ONS9EA@mx.isti.cnr.it> for
- linux-ext4@vger.kernel.org; Sun, 23 Jan 2011 00:22:23 +0100 (MET)
-In-reply-to: <EF21BE9C-2457-4C17-A667-9839E23C58B8@mit.edu>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:37535 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752458Ab1AWDdH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Jan 2011 22:33:07 -0500
+Received: by qwa26 with SMTP id 26so2977285qwa.19
+        for <linux-ext4@vger.kernel.org>; Sat, 22 Jan 2011 19:33:06 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/22/2011 08:37 PM, Theodore Tso wrote:
-> On Jan 22, 2011, at 11:21 AM, torn5 wrote:
->> Is the fsync in a nobarrier mount totally swallowed?
->>      
-> No.   It will still cause a journal commit, and send disk writes down to the HDD.   How those disk writes will be interpreted by the HDD is completely up to the HDD's firmware.
-...
->> If not:
->> a) what guarantees does it provide in a nobarrier situation and
->>      
-> As long as there is not a power failure (or disk failure, of couse), those disk writes will eventually hit the platter. ....
+ Hi Jan,
 
-VERY interesting
-thanks for the explanation
+This is the follow up from https://lkml.org/lkml/2011/1/17/154
+Following patches make jbd2 to use GFP_KERNEL for transaction
+allocation if the caller can handle the errors. Following is the list
+of functions that I updated to pass the new flag. Also below is the
+list of functions which still have the old behavior and pass the old
+flags (either because they can't deal with errors, or I wasn't too
+sure so I did conservatively). Appreciate your feedback. The other
+callers of jbd2_journal_start() are from ocfs2, they still pass the
+old flag.
 
->> b) is there a "fakefsync" mount option or some other way to make it a no-op? (I understand the risk, and the fact that this is actually a change in the application's logic)
->>      
-> No, sorry.   Usually the fsync is there for a good reason, and if fsync's are completely eliminated, you have absolutely no guarantees at all.   (Kernel panics, reset buttons, etc., all will cause the database to be totally scrambled.)   Providing such a knob to system administrators who might use it to "speed up" their application, is considered a bit of an attractive nuisance
->    
+OK to handle errors.
+-------------------------
+ext4_init_inode_table
+ext4_group_add
+setup_new_group_blocks
+update_backups
+ext4_group_extend
+ext4_release_dquot
+ext4_acquire_dquot
+ext4_acl_chmod
+ext4_xattr_set_acl
+ext4_xattr_set
+et4_ioctl - For setting EXT4_IOC_SETVERSION_OLD
+ext4_ext_migrate
+ext4_ext_migrate
+ext4_rmdir
+ext4_unlink
+ext4_symlink
+ext4_link
+ext4_rename
+ext4_mkdir
+ext4_mknod
+ext4_fallocate
+ext4_create
+move_extent_per_page
+ext4_change_inode_journal_flag
+ext4_setattr
+ext4_setattr
 
-Sometimes it's useful, and that's the reason why Postgresql and Mysql 
-both have a no-fsync mode.
-Sometimes you have to do something for which intermediate state doesn't 
-matter. Think at it as a computation: if it fails, you restart it from 
-the beginning. In scientific research this is often the case. Often to 
-save time you use software already written, which might have an 
-excessively conservative behaviour for a "computation" , and this slows 
-down your computation. But rewriting such application is simply too 
-much, so you end up waiting patiently... that's why a fakefsync mount 
-option would be nice to have.
+NOT ok
+-------------------
+ext4_write_dquot
+ext4_ioctl - Not ok for EXT4_EOFBLOCKS_FL
+ext4_ext_remove_space
+ext4_ext_truncate
+ext4_write_info
+ext4_convert_unwritten_extents
+ext4_ind_direct_IO
+ext4_ind_direct_IO
+ext4_dirty_inode
+ext4_setattr
+ext4_evict_inode
+_ext4_get_block
+ext4_write_begin
+__ext4_journalled_writepage
+ext4_da_writepages
+ext4_da_write_begin
+start_transaction
 
-Anyway, you said fsyncs in nobarriers mode (only?) generate a journal 
-commit and push writes to the HDD.
-Then if I also disable the journal the only thing that remains is the 
-push of data to the HDD, right?
-This is near to a no-op I would say because data should have gone to the 
-disks earlier or later... Ow... oh no, it's not, because you wait for 
-the disk to return a completion and in the meanwhile you cannot use the 
-CPU. Right? Ok so for a single threaded app there is indeed difference.
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+---
+ fs/jbd2/transaction.c |   12 +++++++-----
+ include/linux/jbd2.h  |    4 ++--
+ 2 files changed, 9 insertions(+), 7 deletions(-)
 
-May I ask how is this "push of data to the disk" implemented: does it 
-skip the request queue for the disk (i.e. jumps ahead of the queue), or 
-has other kinds of special priority, or it is submitted to the tail like 
-normal and the fysnc waits patiently for it to reach the disk?
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index faad2bd..0fa4c86 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -346,9 +346,10 @@ handle_t *jbd2__journal_start(journal_t *journal,
+int nblocks, int gfp_mask)
+ EXPORT_SYMBOL(jbd2__journal_start);
 
-Thank you for all these explanations
+
+-handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
++handle_t *jbd2_journal_start(journal_t *journal, int nblocks, bool errok)
+ {
+-	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
++	return jbd2__journal_start(journal, nblocks,
++				   errok ? GFP_KERNEL : GFP_NOFS);
+ }
+ EXPORT_SYMBOL(jbd2_journal_start);
+
+@@ -476,9 +477,10 @@ int jbd2__journal_restart(handle_t *handle, int
+nblocks, int gfp_mask)
+ EXPORT_SYMBOL(jbd2__journal_restart);
+
+
+-int jbd2_journal_restart(handle_t *handle, int nblocks)
++int jbd2_journal_restart(handle_t *handle, int nblocks, bool errok)
+ {
+-	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
++	return jbd2__journal_restart(handle, nblocks,
++				     errok ? GFP_KERNEL : GFP_NOFS);
+ }
+ EXPORT_SYMBOL(jbd2_journal_restart);
+
+@@ -1429,7 +1431,7 @@ int jbd2_journal_force_commit(journal_t *journal)
+ 	handle_t *handle;
+ 	int ret;
+
+-	handle = jbd2_journal_start(journal, 1);
++	handle = jbd2_journal_start(journal, 1, false);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 	} else {
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 27e79c2..b24342f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1081,9 +1081,9 @@ static inline handle_t *journal_current_handle(void)
+  * Register buffer modifications against the current transaction.
+  */
+
+-extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
++extern handle_t *jbd2_journal_start(journal_t *, int nblocks, bool errok);
+ extern handle_t *jbd2__journal_start(journal_t *, int nblocks, int gfp_mask);
+-extern int	 jbd2_journal_restart(handle_t *, int nblocks);
++extern int	 jbd2_journal_restart(handle_t *, int nblocks, bool errok);
+ extern int	 jbd2__journal_restart(handle_t *, int nblocks, int gfp_mask);
+ extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+ extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+-- 
+1.6.0.4
+
+
+
+
+-- 
+Thanks -
+Manish
+==================================
+[$\*.^ -- I miss being one of them
+==================================
