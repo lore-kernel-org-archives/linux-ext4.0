@@ -1,136 +1,62 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: speed up group trim
-Date: Mon, 24 Jan 2011 14:39:05 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1101241417560.3090@dhcp-lab-213.englab.brq.redhat.com>
-References: <1295577131-3778-1-git-send-email-tm@tao.ma> <alpine.LFD.2.00.1101211148180.3275@dhcp-lab-213.englab.brq.redhat.com> <CD6D9488-48B7-4964-97DF-76B985FC8FAF@dilger.ca> <4D3A9604.1040001@tao.ma> <B0539BCD-0D34-4463-8B4B-94910B6E3833@dilger.ca>
- <4D3CDEFB.4010102@tao.ma>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54332 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752022Ab1AXNjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jan 2011 08:39:11 -0500
-In-Reply-To: <4D3CDEFB.4010102@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Subject: [PATCH] ext4: Fix invalid free of cache->name after ext4_mb_init() error
+Date: Mon, 24 Jan 2011 13:42:27 +0000
+Message-ID: <1295876547-6338-1-git-send-email-chris@chris-wilson.co.uk>
+Cc: linux-kernel@vger.kernel.org,
+	Chris Wilson <chris@chris-wilson.co.uk>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 24 Jan 2011, Tao Ma wrote:
+The name allocated for the kmem_cache was being freed in the error path even
+if that name was still assigned to the newly created cache.
 
-> On 01/24/2011 09:33 AM, Andreas Dilger wrote:
-> > On 2011-01-22, at 01:32, Tao Ma wrote:
-> > > On 01/22/2011 01:53 AM, Andreas Dilger wrote:
-> > > > Actually, I had another idea which might speed up trim operations
-> > > > significantly.  If the kernel keeps a bit in ext4_group_info->bb_state
-> > > > that indicates whether this group has any freed blocks since it last had
-> > > > a trim operation sent to it, then the kernel can completely avoid doing
-> > > > anything for that group.  This isn't just avoiding the need to scan the
-> > > > bitmap for free ranges, but more importantly it avoids sending the
-> > > > TRIM/UNMAP operation to the disk for free ranges that were previously
-> > > > trimmed in the backing storage.
-> > > 
-> > > It looks good.
-> > > Just an extra point. we have to store 'minlen' passed in by fstrim_range.
-> > > So if the user first try minlen=1mb, and then we give them the number we
-> > > have trimmed. If he isn't satisfied, he can try minlen=512kb again. In
-> > > this case we have to check with the old 'minlen' and retry again if
-> > > minlen<  old_minlen.
-> > 
-> > Maybe I missed something, but why would one run with minlen=1MB and then run
-> > again with minlen=512kB?  I can't see why running this command twice would
-> > be better than running it a single time with minlen=512kB, if the hardware
-> > actually supports that.
-> > 
-> I don't know either. But that is the user's choice of 'minlen' and we can't
-> provent them from doing like that.
-> 
-> Here is a scenario:
-> 1. run with minlen=1mb, he got that only 1G get trimmed. but the free space is
-> more than 3gb actually because of the fragmentation.
-> 2. So he decide to run with minlen=512kb or even smaller len to see whether
-> more space can be trimmed.
-> 
-> Is it possible? I guess the answer is yes.
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+---
+ fs/ext4/mballoc.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-Hi,
-
-I think that this is actually quite useful *feature*. I can imagine that
-people might want to run FITRIM with bigger minlen (megabytes or tens of
-megabytes) weekly, as it is much faster, especially on fragmented
-filesystem. Then, they might want to run FITRIM with smaller minlen (4kB)
-monthly to reclaim even the smaller (or all of them) extents.
-
-But I like Andreas' idea, it should improve FITRIM performance
-significantly (since we are doing mkfs trim). Minlen can be stored in
-high bits of bb_state as number of blocks.
-
-
-Thanks!
--Lukas
-
-
-> 
-> Regards,
-> Tao
-> > > > Something like:
-> > > > 
-> > > > #define EXT4_GROUP_INFO_NEED_TRIM_BIT	1
-> > > > 
-> > > > /* Note that bit clear means a trim is needed, so that a newly mounted
-> > > > * filesystem assumes that holes the group need to be trimmed. */
-> > > > #define EXT4_MB_GRP_NEED_TRIM(grp)	\
-> > > > 	(!test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,&((grp)->bb_state)))
-> > > > 
-> > > > 
-> > > > When calling the TRIM ioctl it can check EXT4_MB_GRP_NEED_TRIM(grp) and
-> > > > skip that group if it hasn't changed since last time.  Otherwise, it
-> > > > should call EXT4_MB_GRP_DONE_TRIM(grp) before doing the actual trim, so
-> > > > it is not racy with another process freeing blocks in that group.
-> > > > 
-> > > > In release_blocks_on_commit() it should call EXT4_MB_GRP_MUST_TRIM() to
-> > > > mark that the group needs to be trimmed again, since blocks were freed
-> > > > in the group.
-> > > > 
-> > > > This can potentially avoid a huge number of TRIMs to the disk, if this
-> > > > is run periodically (e.g. every day) and the filesystem is not remounted
-> > > > all the time, and does not undergo huge allocate/free/allocate cycles
-> > > > during daily use.
-> > > > 
-> > > > It would even be possible to store this bit on-disk
-> > > > ext4_group_desc->bg_flags to avoid the initial "assume every group needs
-> > > > to be trimmed" operation, if that ends up to be a significant factor.
-> > > > However, that can be done later once some numbers are measured on how
-> > > > significant the initial-mount overhead is.  It is also not free, since
-> > > > it will cause disk IO to set/clear this bit.
-> > > > 
-> > > > Cheers, Andreas
-> > > > 
-> > > > 
-> > > > 
-> > > > 
-> > > > 
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > > the body of a message to majordomo@vger.kernel.org
-> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > 
-> > 
-> > 
-> > Cheers, Andreas
-> > 
-> > 
-> > 
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 851f49b..69b90fe 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2423,7 +2423,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	int ret;
+ 	int cache_index;
+ 	struct kmem_cache *cachep;
+-	char *namep = NULL;
+ 
+ 	i = (sb->s_blocksize_bits + 2) * sizeof(*sbi->s_mb_offsets);
+ 
+@@ -2443,7 +2442,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	cache_index = sb->s_blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
+ 	cachep = ext4_groupinfo_caches[cache_index];
+ 	if (!cachep) {
+-		char name[32];
++		char name[32], *namep;
+ 		int len = offsetof(struct ext4_group_info,
+ 					bb_counters[sb->s_blocksize_bits + 2]);
+ 
+@@ -2459,6 +2458,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 		cachep = kmem_cache_create(namep, len, 0,
+ 					     SLAB_RECLAIM_ACCOUNT, NULL);
+ 		if (!cachep) {
++			kfree(namep);
+ 			ret = -ENOMEM;
+ 			goto out;
+ 		}
+@@ -2520,7 +2520,6 @@ out:
+ 	if (ret) {
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
+-		kfree(namep);
+ 	}
+ 	return ret;
+ }
 -- 
+1.7.2.3
