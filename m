@@ -1,42 +1,71 @@
-From: hao dong <hao.bigrat@gmail.com>
-Subject: Re: [Patch] e2fsprogs: add e2view tool to display file system blocks usage
-Date: Mon, 24 Jan 2011 17:12:29 +0800
-Message-ID: <AANLkTimS8CUGO8S=_b9YOFB-7a=-7poz3NiNf8CeYm97@mail.gmail.com>
-References: <1295840763-17123-1-git-send-email-sanbai@taobao.com>
-	<6871A0E1-954C-48C2-A432-A1F831DCD92F@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to
+ return errors and handle them gracefully.
+Date: Mon, 24 Jan 2011 14:31:43 +0100
+Message-ID: <20110124133143.GA5058@quack.suse.cz>
+References: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com>
+ <20110123054049.GC3237@thunk.org>
+ <20110123062900.GA7436@noexit>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Manish Katiyar <mkatiyar@gmail.com>,
+	Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
+To: Joel Becker <jlbec@evilplan.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:54584 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751302Ab1AXJM3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jan 2011 04:12:29 -0500
-Received: by iwn9 with SMTP id 9so3763522iwn.19
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 01:12:29 -0800 (PST)
-In-Reply-To: <6871A0E1-954C-48C2-A432-A1F831DCD92F@dilger.ca>
+Received: from cantor2.suse.de ([195.135.220.15]:39706 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752022Ab1AXNbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Jan 2011 08:31:45 -0500
+Content-Disposition: inline
+In-Reply-To: <20110123062900.GA7436@noexit>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2011/1/24 Andreas Dilger <adilger@dilger.ca>
->
-> On 2011-01-23, at 20:46, Robin Dong wrote:
-> > Having a view of blocks usage of block group descriptors, block/inode bitmaps, inode table, block pointer blocks, extents .etc, can help users in many cases,
-> > 1) Make estimation on how many memory might be occupied as buffer cache or page cache.
-> > 2) For some specific workload, is a file system is well formatted for block usage, e.g. whether there are never-be-used blocks allocated for inode table.
-> > 3) If there is a chance to allocated meta data from non-seek-cost device like SSD as a meta-data device, first of all user should know how many meta data blocks are allocated/used on the file system.
-> >
-> > Therefore a tool to collect block usage information and display in a clear view is necessary. This patch is a first effort to provide such a tool which is called e2view so far.
->
-> Much of this information is available via "dumpe2fs -h" already, though perhaps a more clear summary of the total block usage could be added to dumpe2fs.
->
-> Instead, perhaps a better summary for the e2freefrag tool would be good, which also prints out a histogram of free blocks in the filesystem.
->
-> I'd personally rather avoid adding another tool to print information like this, and just make one of the existing tools print it.
+On Sat 22-01-11 22:29:01, Joel Becker wrote:
+> On Sun, Jan 23, 2011 at 12:40:49AM -0500, Ted Ts'o wrote:
+> > On Sat, Jan 22, 2011 at 07:32:44PM -0800, Manish Katiyar wrote:
+> > >  Hi Jan,
+> > > 
+> > > This is the follow up from https://lkml.org/lkml/2011/1/17/154
+> > > Following patches make jbd2 to use GFP_KERNEL for transaction
+> > > allocation if the caller can handle the errors. Following is the list
+> > > of functions that I updated to pass the new flag. Also below is the
+> > > list of functions which still have the old behavior and pass the old
+> > > flags (either because they can't deal with errors, or I wasn't too
+> > > sure so I did conservatively). Appreciate your feedback. The other
+> > > callers of jbd2_journal_start() are from ocfs2, they still pass the
+> > > old flag.
+> > 
+> > Hmm, I wonder if it would be better to use
+> > 
+> > jbd2_journal_start(...)
+> > 
+> > and
+> > 
+> > jbd2_journal_start_nofail(...)
+> 
+> 	This API is markedly better to read.  Btw, does _nofail() mean no
+> possible failures, or just no memory errors?  If it is no failures, I'd
+> love to see the function become void.
+  jbd2_journal_start can always fail e.g. because the journal is aborted.
+So it really just means no memory failures...
 
-Thank you for your suggestions.
-In my opinion, the main purpose of e2freefrag tool is to print FREE
-blocks information, not used block.
-Is it a better choice that I add a flag "-m" for dumpe2fs to display
-the usage of meta data ?
+> > The tradeoff is that long-term, the code is more readable (as opposed
+> > to having people look up what a random "true" or "false" value means).
+> > But short-term, while it will make the patch smaller, it also makes
+> > the patch harder audit, since we need to look at all of the places
+> > where we _haven't_ made a change to make sure those call sites can
+> > tolerate an error return.
+> 
+> 	I think we should start with jbd2_journal_start_can_fail() or
+> something like it, and change it back to jbd2_journal_start() in the
+> next window.  It's a silly name, but it catches exactly what you are
+> worried about.
+  Yes, I think this would be nice for auditting (but for that matter
+current interface with additional argument isn't bad either and we can
+just do the rename to _nofail in the final patch...).
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
