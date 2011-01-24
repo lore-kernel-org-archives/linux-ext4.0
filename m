@@ -1,51 +1,45 @@
-From: Coly Li <i@coly.li>
-Subject: [PATCH] mballoc: don't change cpa if cur_distance is equal to new_distance
-Date: Tue, 25 Jan 2011 01:09:12 +0800
-Message-ID: <4D3DB238.80804@coly.li>
-Reply-To: i@coly.li
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to
+ return errors and handle them gracefully.
+Date: Mon, 24 Jan 2011 09:20:23 -0800
+Message-ID: <20110124172020.GB22970@noexit>
+References: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com>
+ <20110123054049.GC3237@thunk.org>
+ <20110123062900.GA7436@noexit>
+ <20110124133143.GA5058@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Manish Katiyar <mkatiyar@gmail.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cpoproxy1-pub.bluehost.com ([69.89.21.11]:43054 "HELO
-	cpoproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753397Ab1AXQnW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jan 2011 11:43:22 -0500
-Received: from [123.122.97.153] (helo=[192.168.1.6])
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.69)
-	(envelope-from <i@coly.li>)
-	id 1PhPVg-00058K-6s
-	for linux-ext4@vger.kernel.org; Mon, 24 Jan 2011 09:43:20 -0700
+Received: from zeniv.linux.org.uk ([195.92.253.2]:37779 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752867Ab1AXRUm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jan 2011 12:20:42 -0500
+Content-Disposition: inline
+In-Reply-To: <20110124133143.GA5058@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_mb_check_group_pa(), cur_distance is selected to return only when it's smaller than new_distance, this is 
-unreasonable. If cur_distance is equal to new_distance, current code will return new_distance to update cpa from 
-ext4_mb_use_preallocated(), which is unnecessary and a wast of CPU cycles.
+On Mon, Jan 24, 2011 at 02:31:43PM +0100, Jan Kara wrote:
+> On Sat 22-01-11 22:29:01, Joel Becker wrote:
+> > 	This API is markedly better to read.  Btw, does _nofail() mean no
+> > possible failures, or just no memory errors?  If it is no failures, I'd
+> > love to see the function become void.
+>   jbd2_journal_start can always fail e.g. because the journal is aborted.
+> So it really just means no memory failures...
 
-This patch makes new_distance to return only when it's smaller then cur_distance, which avoids unnecessary cpa update in 
-ext4_mb_use_preallocated().
+	Then _nofail() is a terrible name, because it can still fail.
+Let's call it jbd2_journal_start_nofs(); that's what it is.
 
-Signed-off-by: Coly Li <bosong.ly@taobao.com>
----
-  fs/ext4/mballoc.c |    2 +-
-  1 files changed, 1 insertions(+), 1 deletions(-)
+Joel
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 851f49b..5f564d7 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3188,7 +3188,7 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
-  	cur_distance = abs(goal_block - cpa->pa_pstart);
-  	new_distance = abs(goal_block - pa->pa_pstart);
-
--	if (cur_distance < new_distance)
-+	if (cur_distance <= new_distance)
-  		return cpa;
-
-  	/* drop the previous reference */
 -- 
-Coly Li
+
+"Under capitalism, man exploits man.  Under Communism, it's just 
+   the opposite."
+				 - John Kenneth Galbraith
+
+			http://www.jlbec.org/
+			jlbec@evilplan.org
