@@ -1,71 +1,136 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to
- return errors and handle them gracefully.
-Date: Mon, 24 Jan 2011 14:31:43 +0100
-Message-ID: <20110124133143.GA5058@quack.suse.cz>
-References: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com>
- <20110123054049.GC3237@thunk.org>
- <20110123062900.GA7436@noexit>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: speed up group trim
+Date: Mon, 24 Jan 2011 14:39:05 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1101241417560.3090@dhcp-lab-213.englab.brq.redhat.com>
+References: <1295577131-3778-1-git-send-email-tm@tao.ma> <alpine.LFD.2.00.1101211148180.3275@dhcp-lab-213.englab.brq.redhat.com> <CD6D9488-48B7-4964-97DF-76B985FC8FAF@dilger.ca> <4D3A9604.1040001@tao.ma> <B0539BCD-0D34-4463-8B4B-94910B6E3833@dilger.ca>
+ <4D3CDEFB.4010102@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Manish Katiyar <mkatiyar@gmail.com>,
-	Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
-To: Joel Becker <jlbec@evilplan.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Lukas Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39706 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:54332 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752022Ab1AXNbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jan 2011 08:31:45 -0500
-Content-Disposition: inline
-In-Reply-To: <20110123062900.GA7436@noexit>
+	id S1752022Ab1AXNjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Jan 2011 08:39:11 -0500
+In-Reply-To: <4D3CDEFB.4010102@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 22-01-11 22:29:01, Joel Becker wrote:
-> On Sun, Jan 23, 2011 at 12:40:49AM -0500, Ted Ts'o wrote:
-> > On Sat, Jan 22, 2011 at 07:32:44PM -0800, Manish Katiyar wrote:
-> > >  Hi Jan,
+On Mon, 24 Jan 2011, Tao Ma wrote:
+
+> On 01/24/2011 09:33 AM, Andreas Dilger wrote:
+> > On 2011-01-22, at 01:32, Tao Ma wrote:
+> > > On 01/22/2011 01:53 AM, Andreas Dilger wrote:
+> > > > Actually, I had another idea which might speed up trim operations
+> > > > significantly.  If the kernel keeps a bit in ext4_group_info->bb_state
+> > > > that indicates whether this group has any freed blocks since it last had
+> > > > a trim operation sent to it, then the kernel can completely avoid doing
+> > > > anything for that group.  This isn't just avoiding the need to scan the
+> > > > bitmap for free ranges, but more importantly it avoids sending the
+> > > > TRIM/UNMAP operation to the disk for free ranges that were previously
+> > > > trimmed in the backing storage.
 > > > 
-> > > This is the follow up from https://lkml.org/lkml/2011/1/17/154
-> > > Following patches make jbd2 to use GFP_KERNEL for transaction
-> > > allocation if the caller can handle the errors. Following is the list
-> > > of functions that I updated to pass the new flag. Also below is the
-> > > list of functions which still have the old behavior and pass the old
-> > > flags (either because they can't deal with errors, or I wasn't too
-> > > sure so I did conservatively). Appreciate your feedback. The other
-> > > callers of jbd2_journal_start() are from ocfs2, they still pass the
-> > > old flag.
+> > > It looks good.
+> > > Just an extra point. we have to store 'minlen' passed in by fstrim_range.
+> > > So if the user first try minlen=1mb, and then we give them the number we
+> > > have trimmed. If he isn't satisfied, he can try minlen=512kb again. In
+> > > this case we have to check with the old 'minlen' and retry again if
+> > > minlen<  old_minlen.
 > > 
-> > Hmm, I wonder if it would be better to use
+> > Maybe I missed something, but why would one run with minlen=1MB and then run
+> > again with minlen=512kB?  I can't see why running this command twice would
+> > be better than running it a single time with minlen=512kB, if the hardware
+> > actually supports that.
 > > 
-> > jbd2_journal_start(...)
-> > 
-> > and
-> > 
-> > jbd2_journal_start_nofail(...)
+> I don't know either. But that is the user's choice of 'minlen' and we can't
+> provent them from doing like that.
 > 
-> 	This API is markedly better to read.  Btw, does _nofail() mean no
-> possible failures, or just no memory errors?  If it is no failures, I'd
-> love to see the function become void.
-  jbd2_journal_start can always fail e.g. because the journal is aborted.
-So it really just means no memory failures...
-
-> > The tradeoff is that long-term, the code is more readable (as opposed
-> > to having people look up what a random "true" or "false" value means).
-> > But short-term, while it will make the patch smaller, it also makes
-> > the patch harder audit, since we need to look at all of the places
-> > where we _haven't_ made a change to make sure those call sites can
-> > tolerate an error return.
+> Here is a scenario:
+> 1. run with minlen=1mb, he got that only 1G get trimmed. but the free space is
+> more than 3gb actually because of the fragmentation.
+> 2. So he decide to run with minlen=512kb or even smaller len to see whether
+> more space can be trimmed.
 > 
-> 	I think we should start with jbd2_journal_start_can_fail() or
-> something like it, and change it back to jbd2_journal_start() in the
-> next window.  It's a silly name, but it catches exactly what you are
-> worried about.
-  Yes, I think this would be nice for auditting (but for that matter
-current interface with additional argument isn't bad either and we can
-just do the rename to _nofail in the final patch...).
+> Is it possible? I guess the answer is yes.
 
-								Honza
+Hi,
+
+I think that this is actually quite useful *feature*. I can imagine that
+people might want to run FITRIM with bigger minlen (megabytes or tens of
+megabytes) weekly, as it is much faster, especially on fragmented
+filesystem. Then, they might want to run FITRIM with smaller minlen (4kB)
+monthly to reclaim even the smaller (or all of them) extents.
+
+But I like Andreas' idea, it should improve FITRIM performance
+significantly (since we are doing mkfs trim). Minlen can be stored in
+high bits of bb_state as number of blocks.
+
+
+Thanks!
+-Lukas
+
+
+> 
+> Regards,
+> Tao
+> > > > Something like:
+> > > > 
+> > > > #define EXT4_GROUP_INFO_NEED_TRIM_BIT	1
+> > > > 
+> > > > /* Note that bit clear means a trim is needed, so that a newly mounted
+> > > > * filesystem assumes that holes the group need to be trimmed. */
+> > > > #define EXT4_MB_GRP_NEED_TRIM(grp)	\
+> > > > 	(!test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,&((grp)->bb_state)))
+> > > > 
+> > > > 
+> > > > When calling the TRIM ioctl it can check EXT4_MB_GRP_NEED_TRIM(grp) and
+> > > > skip that group if it hasn't changed since last time.  Otherwise, it
+> > > > should call EXT4_MB_GRP_DONE_TRIM(grp) before doing the actual trim, so
+> > > > it is not racy with another process freeing blocks in that group.
+> > > > 
+> > > > In release_blocks_on_commit() it should call EXT4_MB_GRP_MUST_TRIM() to
+> > > > mark that the group needs to be trimmed again, since blocks were freed
+> > > > in the group.
+> > > > 
+> > > > This can potentially avoid a huge number of TRIMs to the disk, if this
+> > > > is run periodically (e.g. every day) and the filesystem is not remounted
+> > > > all the time, and does not undergo huge allocate/free/allocate cycles
+> > > > during daily use.
+> > > > 
+> > > > It would even be possible to store this bit on-disk
+> > > > ext4_group_desc->bg_flags to avoid the initial "assume every group needs
+> > > > to be trimmed" operation, if that ends up to be a significant factor.
+> > > > However, that can be done later once some numbers are measured on how
+> > > > significant the initial-mount overhead is.  It is also not free, since
+> > > > it will cause disk IO to set/clear this bit.
+> > > > 
+> > > > Cheers, Andreas
+> > > > 
+> > > > 
+> > > > 
+> > > > 
+> > > > 
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> > 
+> > 
+> > Cheers, Andreas
+> > 
+> > 
+> > 
+> > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
