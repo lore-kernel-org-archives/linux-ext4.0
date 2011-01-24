@@ -1,83 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Unregister features interface on module unload
-Date: Mon, 24 Jan 2011 18:49:41 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1101241848430.3090@dhcp-lab-213.englab.brq.redhat.com>
-References: <1295276437-27966-1-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com
-To: Lukas Czerner <lczerner@redhat.com>
+From: Coly Li <colyli@gmail.com>
+Subject: [PATCH] mballoc: don't change cpa if cur_distance is equal to new_distance, v2
+Date: Tue, 25 Jan 2011 02:44:42 +0800
+Message-ID: <1295894682-6745-1-git-send-email-bosong.ly@taobao.com>
+Cc: Coly Li <bosong.ly@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751813Ab1AXRts (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jan 2011 12:49:48 -0500
-In-Reply-To: <1295276437-27966-1-git-send-email-lczerner@redhat.com>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:54002 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754038Ab1AXSUr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jan 2011 13:20:47 -0500
+Received: by pva4 with SMTP id 4so722680pva.19
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 10:20:47 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 17 Jan 2011, Lukas Czerner wrote:
+From: Coly Li <bosong.ly@taobao.com>
 
-> Ext4 features interface was not properly unregistered which led to
-> problems while unloading/reloading ext4 module. This commit fixes that by
-> adding proper kobject unregistration code into ext4_exit_fs() as well as
-> fail-path of ext4_init_fs()
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Reported-by: Eric Sandeen <sandeen@redhat.com>
-> ---
->  fs/ext4/super.c |   12 ++++++++++--
->  1 files changed, 10 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index cb10a06..124d304 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4779,7 +4779,7 @@ static struct file_system_type ext4_fs_type = {
->  	.fs_flags	= FS_REQUIRES_DEV,
->  };
->  
-> -int __init ext4_init_feat_adverts(void)
-> +static int __init ext4_init_feat_adverts(void)
->  {
->  	struct ext4_features *ef;
->  	int ret = -ENOMEM;
-> @@ -4803,6 +4803,13 @@ out:
->  	return ret;
->  }
->  
-> +static void ext4_exit_feat_adverts(void)
-> +{
-> +	kobject_put(&ext4_feat->f_kobj);
-> +	wait_for_completion(&ext4_feat->f_kobj_unregister);
-> +	kfree(ext4_feat);
-> +}
-> +
->  static int __init ext4_init_fs(void)
->  {
->  	int err;
-> @@ -4849,7 +4856,7 @@ out1:
->  out2:
->  	ext4_exit_mballoc();
->  out3:
-> -	kfree(ext4_feat);
-> +	ext4_exit_feat_adverts();
->  	remove_proc_entry("fs/ext4", NULL);
->  	kset_unregister(ext4_kset);
->  out4:
-> @@ -4868,6 +4875,7 @@ static void __exit ext4_exit_fs(void)
->  	destroy_inodecache();
->  	ext4_exit_xattr();
->  	ext4_exit_mballoc();
-> +	ext4_exit_feat_adverts();
->  	remove_proc_entry("fs/ext4", NULL);
->  	kset_unregister(ext4_kset);
->  	ext4_exit_system_zone();
-> 
+(resend for proper patch indent)
 
-Hi Ted,
+In ext4_mb_check_group_pa(), cur_distance is selected to return only
+when it's smaller than new_distance, this is unreasonable. If
+cur_distance is equal to new_distance, current code will return
+new_distance to update cpa from ext4_mb_use_preallocated(), which is
+unnecessary and a wast of CPU cycles.
 
-this should probably get in ASAP, so I can send it to the stable.
+This patch makes new_distance to return only when it's smaller then
+cur_distance, which avoids unnecessary cpa update in
+ext4_mb_use_preallocated().
 
-Thanks!
--Lukas
+Signed-off-by: Coly Li <bosong.ly@taobao.com>
+---
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 851f49b..5f564d7 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3188,7 +3188,7 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
+ 	cur_distance = abs(goal_block - cpa->pa_pstart);
+ 	new_distance = abs(goal_block - pa->pa_pstart);
+ 
+-	if (cur_distance < new_distance)
++	if (cur_distance <= new_distance)
+ 		return cpa;
+ 
+ 	/* drop the previous reference */
+-- 
+1.7.3.2
+
