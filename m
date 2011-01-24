@@ -1,113 +1,46 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH V2] mke2fs: Inform user of ongoing discard
-Date: Mon, 24 Jan 2011 20:52:00 +0100
-Message-ID: <1295898720-2221-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, lczerner@redhat.com
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Severe slowdown caused by jbd2 process
+Date: Mon, 24 Jan 2011 15:16:03 -0500
+Message-ID: <20110124201603.GA5131@thunk.org>
+References: <1295620109.22802.1.camel@tybalt>
+ <20110121143145.GB11313@dhcp231-156.rdu.redhat.com>
+ <20110121235641.GM3043@thunk.org>
+ <4D3A2EC6.3020700@shiftmail.org>
+ <20110122013415.GN3043@thunk.org>
+ <4D3B03FA.4040604@shiftmail.org>
+ <EF21BE9C-2457-4C17-A667-9839E23C58B8@mit.edu>
+ <4D3B66AB.6030102@shiftmail.org>
+ <20110123051718.GA3237@thunk.org>
+ <4D3C76BE.3090908@shiftmail.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Josef Bacik <josef@redhat.com>,
+	Jon Leighton <j@jonathanleighton.com>,
+	linux-ext4@vger.kernel.org
+To: torn5 <torn5@shiftmail.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61638 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:47198 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750735Ab1AXTwH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jan 2011 14:52:07 -0500
+	id S1751342Ab1AXUQM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Jan 2011 15:16:12 -0500
+Content-Disposition: inline
+In-Reply-To: <4D3C76BE.3090908@shiftmail.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(V2: remove MB macro)
+On Sun, Jan 23, 2011 at 07:43:10PM +0100, torn5 wrote:
+> I thought it was possible via the completion notifications from the disk.
+> AFAIK if a disk is in NCQ mode it will return completion for a
+> command only when the write was really delivered to the platters.
+> While in non-NCQ mode the disk immediately returns completion and
+> caches the write. Is this correct?
 
-For some time now we are doing initial discard of the device prior to
-filesystem creation. However, there is no feedback for the user and
-hence on some devices with slow TRIM implementation it may appear that
-mke2fs is stuck.
+No, that's not correct.  The completion notification from the disk is
+merely that the DMA has completed.  It does not mean that the data has
+hit the platters.  This is true in both NCQ and non-NCQ mode.
 
-This commit introduce new function mke2fs_discard_device(), which is a
-wrapper for io_channel_discard(). The discard is done per-partes and
-discard progress is being reported back to the user. The discard step
-has been set to 2GB size, which works reasonably well on both slow and
-fast devices.
+You can disable the write cache (which is what I think you're thinking
+about), but the performance hit is pretty significant on standard
+HDD's.
 
-I gave up on doing fancy things like align discard according to
-discard_alignment, checking for discard granularity and computing
-estimate time. First of all, because it would require either new ioctl
-to retrieve those information or use of libudev library, none of it
-seems to be worth it. Regarding discard_granularity, I doubt there is
-any sane device with discard granularity that big it would affect this.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- misc/mke2fs.c |   54 +++++++++++++++++++++++++++++++++++++++++-------------
- 1 files changed, 41 insertions(+), 13 deletions(-)
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index bc1211d..8f358c6 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -72,6 +72,8 @@ extern int optind;
- #define ZAP_BOOTBLOCK
- #endif
- 
-+#define DISCARD_STEP_MB		(2048)
-+
- extern int isatty(int);
- extern FILE *fpopen(const char *cmd, const char *mode);
- 
-@@ -1922,6 +1924,44 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
- 	return retval;
- }
- 
-+static int mke2fs_discard_device(ext2_filsys fs)
-+{
-+	struct ext2fs_numeric_progress_struct progress;
-+	blk64_t blocks = ext2fs_blocks_count(fs->super);
-+	blk64_t count = DISCARD_STEP_MB;
-+	blk64_t cur = 0;
-+	int retval = 0;
-+
-+	count *= (1024 * 1024);
-+	count /= fs->blocksize;
-+
-+	ext2fs_numeric_progress_init(fs, &progress,
-+				     _("Discarding device blocks: "),
-+				     blocks);
-+	while (cur < blocks) {
-+		ext2fs_numeric_progress_update(fs, &progress, cur);
-+
-+		if (cur + count > blocks)
-+			count = blocks - cur;
-+
-+		retval = io_channel_discard(fs->io, cur, count, fs->blocksize);
-+		if (retval)
-+			break;
-+		cur += count;
-+	}
-+
-+	if (retval) {
-+		ext2fs_numeric_progress_close(fs, &progress,
-+				      _("failed - "));
-+		if (!quiet)
-+			printf("%s\n",error_message(retval));
-+	} else
-+		ext2fs_numeric_progress_close(fs, &progress,
-+				      _("done                            \n"));
-+
-+	return retval;
-+}
-+
- int main (int argc, char *argv[])
- {
- 	errcode_t	retval = 0;
-@@ -1982,19 +2022,7 @@ int main (int argc, char *argv[])
- 
- 	/* Can't undo discard ... */
- 	if (discard && (io_ptr != undo_io_manager)) {
--		blk64_t blocks = ext2fs_blocks_count(fs->super);
--		if (verbose)
--			printf(_("Calling BLKDISCARD from 0 to %llu... "),
--			       (unsigned long long) blocks);
--		retval = io_channel_discard(fs->io, 0, blocks, fs->blocksize);
--		if (verbose) {
--			if (retval)
--				printf(_("failed (%s)\n"),
--				       error_message(retval));
--			else
--				printf(_("succeeded\n"));
--		}
+						- Ted
