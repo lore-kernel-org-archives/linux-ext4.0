@@ -1,68 +1,178 @@
-From: tm@tao.ma
-Subject: Re: speed up group trim
-Date: Mon, 24 Jan 2011 18:53:21 -0700
-Message-ID: <feb4ec15d3913393777662cebb65986b.squirrel@mail.tao.ma>
-References: <1295577131-3778-1-git-send-email-tm@tao.ma>
-    <alpine.LFD.2.00.1101211148180.3275@dhcp-lab-213.englab.brq.redhat.com>
-    <CD6D9488-48B7-4964-97DF-76B985FC8FAF@dilger.ca>
-    <4D3A9604.1040001@tao.ma>
-    <B0539BCD-0D34-4463-8B4B-94910B6E3833@dilger.ca>
-    <4D3CDEFB.4010102@tao.ma>
-    <alpine.LFD.2.00.1101241417560.3090@dhcp-lab-213.englab.brq.redhat.com>
-    <C2FEF4DB-531E-4541-8332-A8845396EAC7@dilger.ca>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [RFC][PATCH] radix_tree: radix_tree_gang_lookup_tag_slot may
+ not return forever.
+Date: Tue, 25 Jan 2011 13:53:45 +0900
+Message-ID: <20110125135345.ca4bfd79.toshi.okajima@jp.fujitsu.com>
+References: <20110121153431.acd113d8.toshi.okajima@jp.fujitsu.com>
+	<20110121153154.1ca74dd2.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: "Lukas Czerner" <lczerner@redhat.com>, "Tao Ma" <tm@tao.ma>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: "Andreas Dilger" <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cpoproxy2-pub.bluehost.com ([67.222.39.38]:46923 "HELO
-	cpoproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751680Ab1AYBxW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jan 2011 20:53:22 -0500
-In-Reply-To: <C2FEF4DB-531E-4541-8332-A8845396EAC7@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/mixed;
+ boundary="Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN"
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20110121153154.1ca74dd2.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-> On 2011-01-24, at 06:39, Lukas Czerner wrote:
->>> I don't know either. But that is the user's choice of 'minlen' and we
->>> can't
->>> provent them from doing like that.
->>>
->>> Here is a scenario:
->>> 1. run with minlen=1mb, he got that only 1G get trimmed. but the free
->>> space is
->>> more than 3gb actually because of the fragmentation.
->>> 2. So he decide to run with minlen=512kb or even smaller len to see
->>> whether
->>> more space can be trimmed.
->>>
->>> Is it possible? I guess the answer is yes.
->>
->> Hi,
->>
->> I think that this is actually quite useful *feature*. I can imagine that
->> people might want to run FITRIM with bigger minlen (megabytes or tens of
->> megabytes) weekly, as it is much faster, especially on fragmented
->> filesystem. Then, they might want to run FITRIM with smaller minlen
->> (4kB)
->> monthly to reclaim even the smaller (or all of them) extents.
->>
->> But I like Andreas' idea, it should improve FITRIM performance
->> significantly (since we are doing mkfs trim). Minlen can be stored in
->> high bits of bb_state as number of blocks.
->
-> I'd rather just add a proper field in ext4_group_info to store the length.
->  I don't think this will change the actual memory usage, since this is
-> already a fairly large and odd-sized structure.
-yeah, a proper field should be fine.
-First, we don't store it in the disk, so we don't care for the layout
-compatibility problem.
-Second, we don't have much group in the volume. So a new field wouldn't
-cost much for us like inodes.
+This is a multi-part message in MIME format.
+
+--Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+
+Hi Andrew,
+
+On Fri, 21 Jan 2011 15:31:54 -0800
+Andrew Morton <akpm@linux-foundation.org> wrote:
+
+> On Fri, 21 Jan 2011 15:34:31 +0900
+> Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
+> 
+> > Hi.
+> > 
+> > I executed fsstress and then found that the system hung up.
+> > At that time, I took the crash dump. Here is the backtrace of the process
+> > which causes this hangup.
+> > 
+> > [long description]
+> >
+> > --- a/lib/radix-tree.c
+> > +++ b/lib/radix-tree.c
+> > @@ -736,10 +736,11 @@ next:
+> >  		}
+> >  	}
+> >  	/*
+> > -	 * The iftag must have been set somewhere because otherwise
+> > -	 * we would return immediated at the beginning of the function
+> > +	 * We need not to tag the root tag if there is no tag which is set with
+> > +	 * settag within the range from *first_indexp to last_index.
+> >  	 */
+> > -	root_tag_set(root, settag);
+> > +	if (tagged > 0)
+> > +		root_tag_set(root, settag);
+> >  	*first_indexp = index;
+> >  
+> >  	return tagged;
+> 
+> Thanks.
+> 
+
+> It should be fairly simple to reproduce this hang with the userspace
+> test harness (http://userweb.kernel.org/~akpm/stuff/rtth.tar.gz) and to
+> then demonstrate that the fix fixes it.
+> 
+> If you have time, could you please do that and then send the rtth
+> updates to me?
+> 
+I add regression2_test for this bug into your testset (rtth.tar.gz).
+This is originated from regression1_test.
 
 Regards,
-Tao
+Toshiyuki Okajima
 
+--Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN
+Content-Type: application/octet-stream;
+ name="rtth.patch"
+Content-Disposition: attachment;
+ filename="rtth.patch"
+Content-Transfer-Encoding: base64
+
+ZGlmZiAtTnVycCBydHRoLm9yZy9NYWtlZmlsZSBydHRoL01ha2VmaWxlCi0tLSBydHRoLm9yZy9N
+YWtlZmlsZQkyMDEwLTExLTExIDA5OjAyOjQ5LjAwMDAwMDAwMCArMDkwMAorKysgcnR0aC9NYWtl
+ZmlsZQkyMDExLTAxLTI0IDE3OjM4OjA4LjAwMDAwMDAwMCArMDkwMApAQCAtMiw3ICsyLDcgQEAK
+IENGTEFHUyArPSAtSS4gLWcgLVdhbGwgLURfTEdQTF9TT1VSQ0UKIExERkxBR1MgKz0gLWxwdGhy
+ZWFkIC1sdXJjdQogVEFSR0VUUyA9IG1haW4KLU9GSUxFUyA9IG1haW4ubyByY3VwZGF0ZS5vIHJh
+ZGl4LXRyZWUubyBsaW51eC5vIHRlc3QubyB0YWdfY2hlY2subyByZWdyZXNzaW9uMS5vCitPRklM
+RVMgPSBtYWluLm8gcmN1cGRhdGUubyByYWRpeC10cmVlLm8gbGludXgubyB0ZXN0Lm8gdGFnX2No
+ZWNrLm8gcmVncmVzc2lvbjEubyByZWdyZXNzaW9uMi5vCiAKIHRhcmdldHM6ICQoVEFSR0VUUykK
+IApkaWZmIC1OdXJwIHJ0dGgub3JnL21haW4uYyBydHRoL21haW4uYwotLS0gcnR0aC5vcmcvbWFp
+bi5jCTIwMTAtMTEtMTEgMDk6MDI6NDkuMDAwMDAwMDAwICswOTAwCisrKyBydHRoL21haW4uYwky
+MDExLTAxLTI1IDEzOjQ4OjU1LjAwMDAwMDAwMCArMDkwMApAQCAtMjYwLDYgKzI2MCw3IEBAIGlu
+dCBtYWluKCkKIAlyYWRpeF90cmVlX2luaXQoKTsKIAogCXJlZ3Jlc3Npb24xX3Rlc3QoKTsKKwly
+ZWdyZXNzaW9uMl90ZXN0KCk7CiAKIAlzaW5nbGVfdGhyZWFkX3Rlc3RzKCk7CiAKZGlmZiAtTnVy
+cCBydHRoLm9yZy9yZWdyZXNzaW9uLmggcnR0aC9yZWdyZXNzaW9uLmgKLS0tIHJ0dGgub3JnL3Jl
+Z3Jlc3Npb24uaAkyMDEwLTExLTExIDA5OjAyOjQ5LjAwMDAwMDAwMCArMDkwMAorKysgcnR0aC9y
+ZWdyZXNzaW9uLmgJMjAxMS0wMS0yNCAxNzoxOTo0OS4wMDAwMDAwMDAgKzA5MDAKQEAgLTIsNSAr
+Miw2IEBACiAjZGVmaW5lIF9fUkVHUkVTU0lPTl9IX18KIAogdm9pZCByZWdyZXNzaW9uMV90ZXN0
+KHZvaWQpOwordm9pZCByZWdyZXNzaW9uMl90ZXN0KHZvaWQpOwogCiAjZW5kaWYKZGlmZiAtTnVy
+cCBydHRoLm9yZy9yZWdyZXNzaW9uMi5jIHJ0dGgvcmVncmVzc2lvbjIuYwotLS0gcnR0aC5vcmcv
+cmVncmVzc2lvbjIuYwkxOTcwLTAxLTAxIDA5OjAwOjAwLjAwMDAwMDAwMCArMDkwMAorKysgcnR0
+aC9yZWdyZXNzaW9uMi5jCTIwMTEtMDEtMjUgMTQ6MjY6MzMuMDAwMDAwMDAwICswOTAwCkBAIC0w
+LDAgKzEsMTI1IEBACisvKgorICogUmVncmVzc2lvbjIKKyAqIERlc2NyaXB0aW9uOgorICogVG9z
+aGl5dWtpIE9rYWppbWEgZGVzY3JpYmVzIHRoZSBmb2xsb3dpbmcgcmFkaXgtdHJlZSBidWc6Cisg
+KgorICogSW4gdGhlIGZvbGxvd2luZyBjYXNlLCB3ZSBjYW4gZ2V0IGEgaGFuZ3VwIG9uIAorICog
+ICByYWRpeF9yYWRpeF90cmVlX2dhbmdfbG9va3VwX3RhZ19zbG90LgorICoKKyAqIDAuICBUaGUg
+cmFkaXggdHJlZSBjb250YWlucyBSQURJWF9UUkVFX01BUF9TSVpFIGl0ZW1zLiBBbmQgdGhlIHRh
+ZyBvZgorICogICAgIGEgY2VydGFpbiBpdGVtIGhhcyBQQUdFQ0FDSEVfVEFHX0RJUlRZLgorICog
+MS4gIHJhZGl4X3RyZWVfcmFuZ2VfdGFnX2lmX3RhZ2dlZCgsIHN0YXJ0LCBlbmQsICwgUEFHRUNB
+Q0hFX1RBR19ESVJUWSwKKyAqICAgICBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUpIGlzIGNhbGxlZCB0
+byBhZGQgUEFHRUNBQ0hFX1RBR19UT1dSSVRFIHRhZworICogICAgIGZvciB0aGUgdGFnIHdoaWNo
+IGhhcyBQQUdFQ0FDSEVfVEFHX0RJUlRZLiBIb3dldmVyLCB0aGVyZSBpcyBubyB0YWcgd2l0aAor
+ICogICAgIFBBR0VDQUNIRV9UQUdfRElSVFkgd2l0aGluIHRoZSByYW5nZSBmcm9tIHN0YXJ0IHRv
+IGVuZC4gQXMgdGhlIHJlc3VsdCwKKyAqICAgICBUaGVyZSBpcyBubyB0YWcgd2l0aCBQQUdFQ0FD
+SEVfVEFHX1RPV1JJVEUgYnV0IHRoZSByb290IHRhZyBoYXMKKyAqICAgICBQQUdFQ0FDSEVfVEFH
+X1RPV1JJVEUuCisgKiAyLiAgQW4gaXRlbSBpcyBhZGRlZCBpbnRvIHRoZSByYWRpeCB0cmVlIGFu
+ZCB0aGVuIHRoZSBsZXZlbCBvZiBpdCBpcyAKKyAqICAgICBleHRlbmRlZCBpbnRvIDIgZnJvbSAx
+LiBBdCB0aGF0IHRpbWUsIHRoZSBuZXcgcmFkaXggdHJlZSBub2RlIHN1Y2NlZWRzIAorICogICAg
+IHRoZSB0YWcgc3RhdHVzIG9mIHRoZSByb290IHRhZy4gVGhlcmVmb3JlIHRoZSB0YWcgb2YgdGhl
+IG5ldyByYWRpeCB0cmVlCisgKiAgICAgbm9kZSBoYXMgUEFHRUNBQ0hFX1RBR19UT1dSSVRFIGJ1
+dCB0aGVyZSBpcyBub3Qgc2xvdCB3aXRoIAorICogICAgIFBBR0VDQUNIRV9UQUdfVE9XUklURSB0
+YWcgaW4gdGhlIGNoaWxkIG5vZGUgb2YgdGhlIG5ldyByYWRpeCB0cmVlIG5vZGUuCisgKiAzLiAg
+VGhlIHRhZyBvZiBhIGNlcnRhaW4gaXRlbSBpcyBjbGVhcmVkIHdpdGggUEFHRUNBQ0hFX1RBR19E
+SVJUWS4KKyAqIDQuICBBbGwgaXRlbXMgd2l0aGluIHRoZSBpbmRleCByYW5nZSBmcm9tIDAgdG8g
+UkFESVhfVFJFRV9NQVBfU0laRSAtIDEgYXJlCisgKiAgICAgcmVsZWFzZWQuIChPbmx5IHRoZSBp
+dGVtIHdoaWNoIGluZGV4IGlzIFJBRElYX1RSRUVfTUFQX1NJWkUgZXhpc3QgaW4gdGhlCisgKiAg
+ICAgcmFkaXggdHJlZS4pIEFzIHRoZSByZXN1bHQsIHRoZSBzbG90IG9mIHRoZSByYWRpeCB0cmVl
+IG5vZGUgaXMgTlVMTCBidXQKKyAqICAgICB0aGUgdGFnIHdoaWNoIGNvcnJlc3BvbmRzIHRvIHRo
+ZSBzbG90IGhhcyBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUuCisgKiA1LiAgcmFkaXhfdHJlZV9nYW5n
+X2xvb2t1cF90YWdfc2xvdChQQUdFQ0FDSEVfVEFHX1RPV1JJVEUpIGNhbGxzCisgKiAgICAgX19s
+b29rdXBfdGFnLiBfX2xvb2t1cF90YWcgcmV0dXJucyB3aXRoIDAuIEFuZCBfX2xvb2t1cF90YWcg
+ZG9lc24ndAorICogICAgIGNoYW5nZSB0aGUgaW5kZXggdGhhdCBpcyB0aGUgaW5wdXQgYW5kIG91
+dHB1dCBwYXJhbWV0ZXIuIEJlY2F1c2UgdGhlIDFzdAorICogICAgIHNsb3Qgb2YgdGhlIHJhZGl4
+IHRyZWUgbm9kZSBpcyBOVUxMLCBidXQgdGhlIHRhZyB3aGljaCBjb3JyZXNwb25kcyB0bworICog
+ICAgIHRoZSBzbG90IGhhcyBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUuCisgKiAgICAgVGhlcmVmb3Jl
+IHJhZGl4X3RyZWVfZ2FuZ19sb29rdXBfdGFnX3Nsb3QgdHJpZXMgdG8gZ2V0IHNvbWUgaXRlbXMg
+YnkKKyAqICAgICBjYWxsaW5nIF9fbG9va3VwX3RhZywgYnV0IGl0IGNhbm5vdCBnZXQgYW55IGl0
+ZW1zIGZvcmV2ZXIuCisgKgorICogVGhlIGZpeCBpcyB0byBjaGFuZ2UgdGhhdCByYWRpeF90cmVl
+X3RhZ19pZl90YWdnZWQgZG9lc24ndCB0YWcgdGhlIHJvb3QgdGFnCisgKiBpZiBpdCBkb2Vzbid0
+IHNldCBhbnkgdGFncyB3aXRoaW4gdGhlIHNwZWNpZmllZCByYW5nZS4KKyAqCisgKiBSdW5uaW5n
+OgorICogVGhpcyB0ZXN0IHNob3VsZCBydW4gdG8gY29tcGxldGlvbiBpbW1lZGlhdGVseS4gVGhl
+IGFib3ZlIGJ1ZyB3b3VsZCBjYXVzZSBpdAorICogdG8gaGFuZyBpbmRlZmluaXRlbHkuCisgKgor
+ICogVXBzdHJlYW0gY29tbWl0OgorICogTm90IHlldAorICovCisjaW5jbHVkZSA8bGludXgva2Vy
+bmVsLmg+CisjaW5jbHVkZSA8bGludXgvZ2ZwLmg+CisjaW5jbHVkZSA8bGludXgvc2xhYi5oPgor
+I2luY2x1ZGUgPGxpbnV4L3JhZGl4LXRyZWUuaD4KKyNpbmNsdWRlIDxzdGRsaWIuaD4KKyNpbmNs
+dWRlIDxzdGRpby5oPgorCisjaW5jbHVkZSAicmVncmVzc2lvbi5oIgorCisjaWZkZWYgX19LRVJO
+RUxfXworI2RlZmluZSBSQURJWF9UUkVFX01BUF9TSElGVCAgICAoQ09ORklHX0JBU0VfU01BTEwg
+PyA0IDogNikKKyNlbHNlCisjZGVmaW5lIFJBRElYX1RSRUVfTUFQX1NISUZUICAgIDMgICAgICAg
+LyogRm9yIG1vcmUgc3RyZXNzZnVsIHRlc3RpbmcgKi8KKyNlbmRpZgorCisjZGVmaW5lIFJBRElY
+X1RSRUVfTUFQX1NJWkUgICAgICgxVUwgPDwgUkFESVhfVFJFRV9NQVBfU0hJRlQpCisjZGVmaW5l
+IFBBR0VDQUNIRV9UQUdfRElSVFkgICAgIDAKKyNkZWZpbmUgUEFHRUNBQ0hFX1RBR19XUklURUJB
+Q0sgMQorI2RlZmluZSBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUgICAyCisKK3N0YXRpYyBSQURJWF9U
+UkVFKG10X3RyZWUsIEdGUF9LRVJORUwpOwordW5zaWduZWQgbG9uZyBwYWdlX2NvdW50ID0gMDsK
+Kworc3RydWN0IHBhZ2UgeworCXVuc2lnbmVkIGxvbmcgaW5kZXg7Cit9OworCitzdGF0aWMgc3Ry
+dWN0IHBhZ2UgKnBhZ2VfYWxsb2Modm9pZCkKK3sKKwlzdHJ1Y3QgcGFnZSAqcDsKKwlwID0gbWFs
+bG9jKHNpemVvZihzdHJ1Y3QgcGFnZSkpOworCXAtPmluZGV4ID0gcGFnZV9jb3VudCsrOworCisJ
+cmV0dXJuIHA7Cit9CisKK3ZvaWQgcmVncmVzc2lvbjJfdGVzdCh2b2lkKQoreworCWludCBpOwor
+CXN0cnVjdCBwYWdlICpwOworCWludCBtYXhfc2xvdHMgPSBSQURJWF9UUkVFX01BUF9TSVpFOwor
+CXVuc2lnbmVkIGxvbmcgaW50IHN0YXJ0LCBlbmQ7CisJc3RydWN0IHBhZ2UgKnBhZ2VzWzFdOwor
+CisJLyogMC4gKi8KKwlmb3IgKGkgPSAwOyBpIDw9IG1heF9zbG90cyAtIDE7IGkrKykgeworCQlw
+ID0gcGFnZV9hbGxvYygpOworCQlyYWRpeF90cmVlX2luc2VydCgmbXRfdHJlZSwgaSwgcCk7CisJ
+fQorCXJhZGl4X3RyZWVfdGFnX3NldCgmbXRfdHJlZSwgbWF4X3Nsb3RzIC0gMSwgUEFHRUNBQ0hF
+X1RBR19ESVJUWSk7CisKKwkvKiAxLiAqLworCXN0YXJ0ID0gMDsKKwllbmQgPSBtYXhfc2xvdHMg
+LSAyOworCXJhZGl4X3RyZWVfcmFuZ2VfdGFnX2lmX3RhZ2dlZCgmbXRfdHJlZSwgJnN0YXJ0LCBl
+bmQsIDEsIAorCQkJCVBBR0VDQUNIRV9UQUdfRElSVFksIFBBR0VDQUNIRV9UQUdfVE9XUklURSk7
+CisKKwkvKiAyLiAqLworCXAgPSBwYWdlX2FsbG9jKCk7CisJcmFkaXhfdHJlZV9pbnNlcnQoJm10
+X3RyZWUsIG1heF9zbG90cywgcCk7CisKKwkvKiAzLiAqLworCXJhZGl4X3RyZWVfdGFnX2NsZWFy
+KCZtdF90cmVlLCBtYXhfc2xvdHMgLSAxLCBQQUdFQ0FDSEVfVEFHX0RJUlRZKTsKKworCS8qIDQu
+ICovCisJZm9yIChpID0gbWF4X3Nsb3RzIC0gMTsgaSA+PSAwOyBpLS0pCisJCXJhZGl4X3RyZWVf
+ZGVsZXRlKCZtdF90cmVlLCBpKTsKKworCS8qIDUuICovCisJLy8gTk9URTogc3RhcnQgc2hvdWxk
+IG5vdCBiZSAwIGJlY2F1c2UgcmFkaXhfdHJlZV9nYW5nX2xvb2t1cF90YWdfc2xvdCAKKwkvLyAg
+ICAgICBjYW4gcmV0dXJuLgorCXN0YXJ0ID0gMTsKKwllbmQgPSBtYXhfc2xvdHMgLSAyOworCXJh
+ZGl4X3RyZWVfZ2FuZ19sb29rdXBfdGFnX3Nsb3QoJm10X3RyZWUsICh2b2lkICoqKilwYWdlcywg
+c3RhcnQsIGVuZCwgCisJCVBBR0VDQUNIRV9UQUdfVE9XUklURSk7CisKKwkvKiBXZSByZW1vdmUg
+YWxsIHRoZSByZW1haW5lZCBub2RlcyAqLworCXJhZGl4X3RyZWVfZGVsZXRlKCZtdF90cmVlLCBt
+YXhfc2xvdHMpOworCisJcHJpbnRmKCJyZWdyZXNzaW9uIHRlc3QgMiwgZG9uZVxuIik7Cit9Cg==
+
+--Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN--
