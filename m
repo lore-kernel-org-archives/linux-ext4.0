@@ -1,40 +1,40 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH 2/2] add '-s' flags for dumpe2fs manual
-Date: Tue, 25 Jan 2011 14:02:48 +0800
-Message-ID: <1295935368-2516-1-git-send-email-hao.bigrat@gmail.com>
-Cc: Robin Dong <sanbai@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [RFC][PATCH] radix_tree: radix_tree_gang_lookup_tag_slot may
+ not return forever.
+Date: Mon, 24 Jan 2011 22:19:16 -0800
+Message-ID: <20110124221916.041ea5d7.akpm@linux-foundation.org>
+References: <20110121153431.acd113d8.toshi.okajima@jp.fujitsu.com>
+	<20110121153154.1ca74dd2.akpm@linux-foundation.org>
+	<20110125135345.ca4bfd79.toshi.okajima@jp.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44734 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751354Ab1AYGC4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jan 2011 01:02:56 -0500
-Received: by mail-iy0-f174.google.com with SMTP id 18so4744320iyj.19
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 22:02:56 -0800 (PST)
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48181 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750831Ab1AYGTx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Jan 2011 01:19:53 -0500
+In-Reply-To: <20110125135345.ca4bfd79.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Robin Dong <sanbai@taobao.com>
+On Tue, 25 Jan 2011 13:53:45 +0900 Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
 
-Singed-off-by: Robin Dong <sanbai@taobao.com>
----
- misc/dumpe2fs.8.in |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+> > It should be fairly simple to reproduce this hang with the userspace
+> > test harness (http://userweb.kernel.org/~akpm/stuff/rtth.tar.gz) and to
+> > then demonstrate that the fix fixes it.
+> > 
+> > If you have time, could you please do that and then send the rtth
+> > updates to me?
+> > 
+> I add regression2_test for this bug into your testset (rtth.tar.gz).
+> This is originated from regression1_test.
 
-diff --git a/misc/dumpe2fs.8.in b/misc/dumpe2fs.8.in
-index c1dfcbd..c48acc0 100644
---- a/misc/dumpe2fs.8.in
-+++ b/misc/dumpe2fs.8.in
-@@ -55,6 +55,9 @@ can cause some of dumpe2fs's display to be suspect).
- only display the superblock information and not any of the block
- group descriptor detail information.
- .TP
-+.B \-s
-+display the block usage information.
-+.TP
- .B \-i
- display the filesystem data from an image file created by 
- .BR e2image ,
--- 
-1.7.3.5
-
+Thanks.  I applied your
+radix_tree-radix_tree_gang_lookup_tag_slot-may-not-return-forever.patch
+to rtth's radix-tree.c (it was needed!) and refreshed
+http://userweb.kernel.org/~akpm/stuff/rtth.tar.gz
