@@ -1,70 +1,53 @@
-From: Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: [PATCH 1/3] jbd2 : Make jbd2 transaction handle allocation to return errors and handle them gracefully.
-Date: Tue, 25 Jan 2011 00:47:47 -0600
-Message-ID: <B1B83D6F-7B9D-4B2F-899C-EB0A65F93D54@dilger.ca>
-References: <AANLkTi=o-rcsbY1gOExGyWdQ41m7KWpJ7=UzX4306m=t@mail.gmail.com> <20110123054049.GC3237@thunk.org> <20110123062900.GA7436@noexit> <20110124133143.GA5058@quack.suse.cz>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Joel Becker <jlbec@evilplan.org>, Ted Ts'o <tytso@mit.edu>,
-	Manish Katiyar <mkatiyar@gmail.com>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+From: Coly Li <i@coly.li>
+Subject: Re: [PATCH 2/2] add '-s' flags for dumpe2fs manual
+Date: Tue, 25 Jan 2011 17:07:02 +0800
+Message-ID: <4D3E92B6.5050406@coly.li>
+References: <1295935368-2516-1-git-send-email-hao.bigrat@gmail.com>
+Reply-To: i@coly.li
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:50361 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751492Ab1AYGru convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jan 2011 01:47:50 -0500
-In-Reply-To: <20110124133143.GA5058@quack.suse.cz>
+Received: from cpoproxy1-pub.bluehost.com ([69.89.21.11]:45035 "HELO
+	cpoproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752841Ab1AYIlF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Jan 2011 03:41:05 -0500
+In-Reply-To: <1295935368-2516-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011-01-24, at 06:31, Jan Kara wrote:
-> On Sat 22-01-11 22:29:01, Joel Becker wrote:
->> On Sun, Jan 23, 2011 at 12:40:49AM -0500, Ted Ts'o wrote:
->>> Hmm, I wonder if it would be better to use
->>> 
->>> jbd2_journal_start(...)
->>> 
->>> and
->>> 
->>> jbd2_journal_start_nofail(...)
->> 
->> 	This API is markedly better to read.  Btw, does _nofail() mean no
->> possible failures, or just no memory errors?  If it is no failures, I'd
->> love to see the function become void.
+On 2011=E5=B9=B401=E6=9C=8825=E6=97=A5 14:02, Robin Dong Wrote:
+> From: Robin Dong<sanbai@taobao.com>
+>
+> Singed-off-by: Robin Dong<sanbai@taobao.com>
+> ---
+>   misc/dumpe2fs.8.in |    3 +++
+>   1 files changed, 3 insertions(+), 0 deletions(-)
+>
+> diff --git a/misc/dumpe2fs.8.in b/misc/dumpe2fs.8.in
+> index c1dfcbd..c48acc0 100644
+> --- a/misc/dumpe2fs.8.in
+> +++ b/misc/dumpe2fs.8.in
+> @@ -55,6 +55,9 @@ can cause some of dumpe2fs's display to be suspect)=
+=2E
+>   only display the superblock information and not any of the block
+>   group descriptor detail information.
+>   .TP
+> +.B \-s
+> +display the block usage information.
 
-I also prefer changing the function name instead of adding an argument.
+How about modifying the above line like,
 
-> jbd2_journal_start can always fail e.g. because the journal is aborted.
-> So it really just means no memory failures...
-> 
->>> The tradeoff is that long-term, the code is more readable (as opposed
->>> to having people look up what a random "true" or "false" value means).
->>> But short-term, while it will make the patch smaller, it also makes
->>> the patch harder audit, since we need to look at all of the places
->>> where we _haven't_ made a change to make sure those call sites can
->>> tolerate an error return.
->> 
->> 	I think we should start with jbd2_journal_start_can_fail() or
->> something like it, and change it back to jbd2_journal_start() in the
->> next window.  It's a silly name, but it catches exactly what you are
->> worried about.
-> 
-> Yes, I think this would be nice for auditting (but for that matter
-> current interface with additional argument isn't bad either and we can
-> just do the rename to _nofail in the final patch...).
+display the statistical information of file system blocks usage.
 
-The reason I don't like the "true" and "false" arguments is that it isn't at all clear which functions have "false" because they cannot fail, and which ones just haven't been updated yet.
-
-In that light, I'd prefer to add _two_ new functions, one that indicates the function needs to retry (as it does now), and one that indicates that the caller will handle the error.  That way it is clear which functions have been investigated, and which ones haven't been looked at yet.  Once all of the functions have been changed, we can remove the old jbd2_journal_start() function to catch any patches that have not been updated to the new functions.
-
-Maybe jbd2_journal_start_canfail() and jbd2_journal_start_retry()?
-
-
-Cheers, Andreas
-
-
-
-
-
+--=20
+Coly Li
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
