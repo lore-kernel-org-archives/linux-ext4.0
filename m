@@ -1,60 +1,68 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: Severe slowdown caused by jbd2 process
-Date: Mon, 24 Jan 2011 12:41:28 -0800
-Message-ID: <20110124204128.GB32261@tux1.beaverton.ibm.com>
-References: <1295568782.2459.29.camel@tybalt> <20110121013140.GA8949@dhcp231-156.rdu.redhat.com> <1295601083.5799.3.camel@tybalt> <20110121125922.GB8949@dhcp231-156.rdu.redhat.com> <20110121140306.GA11313@dhcp231-156.rdu.redhat.com> <1295620109.22802.1.camel@tybalt> <20110121143145.GB11313@dhcp231-156.rdu.redhat.com>
-Reply-To: djwong@us.ibm.com
+From: tm@tao.ma
+Subject: Re: speed up group trim
+Date: Mon, 24 Jan 2011 18:53:21 -0700
+Message-ID: <feb4ec15d3913393777662cebb65986b.squirrel@mail.tao.ma>
+References: <1295577131-3778-1-git-send-email-tm@tao.ma>
+    <alpine.LFD.2.00.1101211148180.3275@dhcp-lab-213.englab.brq.redhat.com>
+    <CD6D9488-48B7-4964-97DF-76B985FC8FAF@dilger.ca>
+    <4D3A9604.1040001@tao.ma>
+    <B0539BCD-0D34-4463-8B4B-94910B6E3833@dilger.ca>
+    <4D3CDEFB.4010102@tao.ma>
+    <alpine.LFD.2.00.1101241417560.3090@dhcp-lab-213.englab.brq.redhat.com>
+    <C2FEF4DB-531E-4541-8332-A8845396EAC7@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jon Leighton <j@jonathanleighton.com>, linux-ext4@vger.kernel.org
-To: Josef Bacik <josef@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "Lukas Czerner" <lczerner@redhat.com>, "Tao Ma" <tm@tao.ma>,
+	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: "Andreas Dilger" <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:58801 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751344Ab1AXUle (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jan 2011 15:41:34 -0500
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by e31.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id p0OKR8br021851
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 13:27:08 -0700
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p0OKfUti070094
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 13:41:30 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p0OKfTJ9013330
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 13:41:29 -0700
-Content-Disposition: inline
-In-Reply-To: <20110121143145.GB11313@dhcp231-156.rdu.redhat.com>
+Received: from cpoproxy2-pub.bluehost.com ([67.222.39.38]:46923 "HELO
+	cpoproxy2-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751680Ab1AYBxW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Jan 2011 20:53:22 -0500
+In-Reply-To: <C2FEF4DB-531E-4541-8332-A8845396EAC7@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 21, 2011 at 09:31:45AM -0500, Josef Bacik wrote:
-> On Fri, Jan 21, 2011 at 02:28:29PM +0000, Jon Leighton wrote:
-> > Hi there,
-> > 
-> > On Fri, 2011-01-21 at 09:03 -0500, Josef Bacik wrote:
-> > > Heh so now that I've had a moment to wake up, how about running your test on
-> > > ext3, but mount the partition with
-> > > 
-> > > mount -o barrier
-> > > 
-> > > and see if it's still faster than ext4.  Thanks,
-> > 
-> > You're right, that slows it down significantly on the ext3 partition. Is
-> > this expected behaviour with ext4 then?
-> >
-> 
-> Yup, whatever you are doing in your webapp is making your database do lots of
-> fsyncs, which is going to suck.  If you are on a battery backed system or just
-> don't care if you lose your database and rather it be faster you can mount your
-> ext4 fs with -o nobarrier.  Thanks,
+> On 2011-01-24, at 06:39, Lukas Czerner wrote:
+>>> I don't know either. But that is the user's choice of 'minlen' and we
+>>> can't
+>>> provent them from doing like that.
+>>>
+>>> Here is a scenario:
+>>> 1. run with minlen=1mb, he got that only 1G get trimmed. but the free
+>>> space is
+>>> more than 3gb actually because of the fragmentation.
+>>> 2. So he decide to run with minlen=512kb or even smaller len to see
+>>> whether
+>>> more space can be trimmed.
+>>>
+>>> Is it possible? I guess the answer is yes.
+>>
+>> Hi,
+>>
+>> I think that this is actually quite useful *feature*. I can imagine that
+>> people might want to run FITRIM with bigger minlen (megabytes or tens of
+>> megabytes) weekly, as it is much faster, especially on fragmented
+>> filesystem. Then, they might want to run FITRIM with smaller minlen
+>> (4kB)
+>> monthly to reclaim even the smaller (or all of them) extents.
+>>
+>> But I like Andreas' idea, it should improve FITRIM performance
+>> significantly (since we are doing mkfs trim). Minlen can be stored in
+>> high bits of bb_state as number of blocks.
+>
+> I'd rather just add a proper field in ext4_group_info to store the length.
+>  I don't think this will change the actual memory usage, since this is
+> already a fairly large and odd-sized structure.
+yeah, a proper field should be fine.
+First, we don't store it in the disk, so we don't care for the layout
+compatibility problem.
+Second, we don't have much group in the volume. So a new field wouldn't
+cost much for us like inodes.
 
-If for some reason you can't change the database to be less fsync-happy and
-there are a lot of threads issuing fsync in parallel, you might try building a
-kernel with the patch set that Tejun Heo has put together
-(https://lkml.org/lkml/2011/1/21/251) to merge flush requests coming from
-multiple threads.  It might speed things up for you.
+Regards,
+Tao
 
-(I don't know how much that patch set will change between now and the time it
-goes upstream...)
-
---D
