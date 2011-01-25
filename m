@@ -1,53 +1,67 @@
-From: Coly Li <i@coly.li>
-Subject: Re: [PATCH 2/2] add '-s' flags for dumpe2fs manual
-Date: Tue, 25 Jan 2011 17:07:02 +0800
-Message-ID: <4D3E92B6.5050406@coly.li>
-References: <1295935368-2516-1-git-send-email-hao.bigrat@gmail.com>
-Reply-To: i@coly.li
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH 3/3] block: reimplement FLUSH/FUA to support merge
+Date: Tue, 25 Jan 2011 11:21:28 +0100
+Message-ID: <20110125102128.GO27510@htj.dyndns.org>
+References: <1295625598-15203-1-git-send-email-tj@kernel.org>
+ <1295625598-15203-4-git-send-email-tj@kernel.org>
+ <20110121185617.GI12072@redhat.com>
+ <20110123102526.GA23121@htj.dyndns.org>
+ <20110124203155.GA32261@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Robin Dong <hao.bigrat@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk, tytso@mit.edu,
+	shli@kernel.org, neilb@suse.de, adilger.kernel@dilger.ca,
+	jack@suse.cz, snitzer@redhat.com, linux-kernel@vger.kernel.org,
+	kmannth@us.ibm.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
+	rwheeler@redhat.com, hch@lst.de, josef@redhat.com
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cpoproxy1-pub.bluehost.com ([69.89.21.11]:45035 "HELO
-	cpoproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752841Ab1AYIlF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Jan 2011 03:41:05 -0500
-In-Reply-To: <1295935368-2516-1-git-send-email-hao.bigrat@gmail.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:36596 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753450Ab1AYKVg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jan 2011 05:21:36 -0500
+Content-Disposition: inline
+In-Reply-To: <20110124203155.GA32261@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2011=E5=B9=B401=E6=9C=8825=E6=97=A5 14:02, Robin Dong Wrote:
-> From: Robin Dong<sanbai@taobao.com>
->
-> Singed-off-by: Robin Dong<sanbai@taobao.com>
-> ---
->   misc/dumpe2fs.8.in |    3 +++
->   1 files changed, 3 insertions(+), 0 deletions(-)
->
-> diff --git a/misc/dumpe2fs.8.in b/misc/dumpe2fs.8.in
-> index c1dfcbd..c48acc0 100644
-> --- a/misc/dumpe2fs.8.in
-> +++ b/misc/dumpe2fs.8.in
-> @@ -55,6 +55,9 @@ can cause some of dumpe2fs's display to be suspect)=
-=2E
->   only display the superblock information and not any of the block
->   group descriptor detail information.
->   .TP
-> +.B \-s
-> +display the block usage information.
+Hello, Darrick.
 
-How about modifying the above line like,
+On Mon, Jan 24, 2011 at 12:31:55PM -0800, Darrick J. Wong wrote:
+> > So, I think it's better to start with something simple and improve it
+> > with actual testing.  If the current simple implementation can match
+> > Darrick's previous numbers, let's first settle the mechanisms.  We can
+> 
+> Yep, the fsync-happy numbers more or less match... at least for 2.6.37:
+> http://tinyurl.com/4q2xeao
 
-display the statistical information of file system blocks usage.
+Good to hear.  Thanks for the detailed testing.
 
---=20
-Coly Li
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I'll give 2.6.38-rc2 a try later, though -rc1 didn't boot for me, so these
+> numbers are based on a backport to .37. :(
+
+Well, there hasn' been any change in the area during the merge window
+anyway, so I think testing on 2.6.37 should be fine.
+
+> > I don't really think we should design the whole thing around broken
+> > devices which incorrectly report writeback cache when it need not.
+> > The correct place to work around that is during device identification
+> > not in the flush logic.
+> 
+> elm3a4_sas and elm3c71_extsas advertise writeback cache yet the
+> flush completion times are suspiciously low.  I suppose it could be
+> useful to disable flushes to squeeze out that last bit of
+> performance, though I don't know how one goes about querying the
+> disk array to learn if there's a battery behind the cache.  I guess
+> the current mechanism (admin knob that picks a safe default) is good
+> enough.
+
+Yeap, that or a blacklist of devices which lie.
+
+Jens, what do you think?  If you don't object, let's put this through
+linux-next.
+
+Thank you.
+
+-- 
+tejun
