@@ -1,178 +1,412 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [RFC][PATCH] radix_tree: radix_tree_gang_lookup_tag_slot may
- not return forever.
-Date: Tue, 25 Jan 2011 13:53:45 +0900
-Message-ID: <20110125135345.ca4bfd79.toshi.okajima@jp.fujitsu.com>
-References: <20110121153431.acd113d8.toshi.okajima@jp.fujitsu.com>
-	<20110121153154.1ca74dd2.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN"
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20110121153154.1ca74dd2.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Robin Dong <hao.bigrat@gmail.com>
+Subject: [PATCH 1/2] dumpe2fs: add displaying file system block usage feature
+Date: Tue, 25 Jan 2011 14:02:26 +0800
+Message-ID: <1295935346-2480-1-git-send-email-hao.bigrat@gmail.com>
+Cc: Robin Dong <sanbai@taobao.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:44734 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751354Ab1AYGCh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jan 2011 01:02:37 -0500
+Received: by iyj18 with SMTP id 18so4744320iyj.19
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jan 2011 22:02:36 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
+From: Robin Dong <sanbai@taobao.com>
 
---Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+[Purpose]
+Having a view of blocks usage of block group descriptors, block/inode bitmaps, inode table, block pointer blocks, extents .etc, can help users in many cases,
+1) Make estimation on how many memory might be occupied as buffer cache or page cache.
+2) For some specific workload, is a file system is well formatted for block usage, e.g. whether there are never-be-used blocks allocated for inode table.
+3) If there is a chance to allocated meta data from non-seek-cost device like SSD as a meta-data device, first of all user should know how many meta data blocks are allocated/used on the file system.
 
-Hi Andrew,
+Therefore a tool to collect block usage information and display in a clear view is necessary. 
+This patch is a first effort to add such a feature to dumpe2fs tool.
 
-On Fri, 21 Jan 2011 15:31:54 -0800
-Andrew Morton <akpm@linux-foundation.org> wrote:
+[Example]
+An example of dumpe2fs execution looks like this:
 
-> On Fri, 21 Jan 2011 15:34:31 +0900
-> Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
-> 
-> > Hi.
-> > 
-> > I executed fsstress and then found that the system hung up.
-> > At that time, I took the crash dump. Here is the backtrace of the process
-> > which causes this hangup.
-> > 
-> > [long description]
-> >
-> > --- a/lib/radix-tree.c
-> > +++ b/lib/radix-tree.c
-> > @@ -736,10 +736,11 @@ next:
-> >  		}
-> >  	}
-> >  	/*
-> > -	 * The iftag must have been set somewhere because otherwise
-> > -	 * we would return immediated at the beginning of the function
-> > +	 * We need not to tag the root tag if there is no tag which is set with
-> > +	 * settag within the range from *first_indexp to last_index.
-> >  	 */
-> > -	root_tag_set(root, settag);
-> > +	if (tagged > 0)
-> > +		root_tag_set(root, settag);
-> >  	*first_indexp = index;
-> >  
-> >  	return tagged;
-> 
-> Thanks.
-> 
+#dumpe2fs -s /dev/mapper/sys-var
 
-> It should be fairly simple to reproduce this hang with the userspace
-> test harness (http://userweb.kernel.org/~akpm/stuff/rtth.tar.gz) and to
-> then demonstrate that the fix fixes it.
-> 
-> If you have time, could you please do that and then send the rtth
-> updates to me?
-> 
-I add regression2_test for this bug into your testset (rtth.tar.gz).
-This is originated from regression1_test.
+result:
+[Blocks Usage (Unit: blocks)]
+Super block:              9
+Group descriptor:         9
+Reserved GDT:             4600
+Inode table:              65536
+Inode bitmap:             64
+Block bitmap:             64
+Link block:               0
+Journal:                  32802
+Directory:                766
+Extent(ext4):             0
+Ind-Block:                583
+Dind-Block:               177
+Tind-Block:               0
+File Data:                315653
+ACL block:                194
 
-Regards,
-Toshiyuki Okajima
+Signed-off-by: Robin Dong <sanbai@taobao.com>
+---
+ misc/dumpe2fs.c |  302 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 300 insertions(+), 2 deletions(-)
 
---Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN
-Content-Type: application/octet-stream;
- name="rtth.patch"
-Content-Disposition: attachment;
- filename="rtth.patch"
-Content-Transfer-Encoding: base64
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index c01ffe5..f3bdeb1 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -44,13 +44,51 @@ extern int optind;
+ 
+ #define in_use(m, x)	(ext2fs_test_bit ((x), (m)))
+ 
++#define SECTOR_SIZE 512
++
+ const char * program_name = "dumpe2fs";
+ char * device_name = NULL;
+ int hex_format = 0;
+ 
++struct fs_usage_count {
++	__u32 super_block;
++	__u32 group_desc_block;
++	__u32 reserved_gdt_block;
++	__u32 inode_table_block;
++	__u32 inode_bitmap_block;
++	__u32 block_bitmap_block;
++	__u32 dir_block;
++	__u32 acl_block;
++	__u32 file_data_block;
++	__u32 file_data_extent_block;
++	__u32 file_data_ind_block;
++	__u32 file_data_dind_block;
++	__u32 file_data_tind_block;
++	__u32 link_block;
++	__u32 journal_block;
++};
++
++struct fs_usage_count usage_counter;
++
++struct process_block_struct {
++	ext2_ino_t	ino;
++	int	is_dir;
++	__u32 i_flags;
++	struct fs_usage_count *counter;
++};
++
++/*
++ * These subroutines short circuits ext2fs_get_blocks and
++ * ext2fs_check_directory; we use them since we already have the inode
++ * structure, so there's no point in letting the ext2fs library read
++ * the inode again.
++ */
++static ino_t stashed_ino = 0;
++static struct ext2_inode *stashed_inode;
++
+ static void usage(void)
+ {
+-	fprintf (stderr, _("Usage: %s [-bfhixV] [-o superblock=<num>] "
++	fprintf (stderr, _("Usage: %s [-bfhsixV] [-o superblock=<num>] "
+ 		 "[-o blocksize=<num>] device\n"), program_name);
+ 	exit (1);
+ }
+@@ -404,6 +442,257 @@ static void print_journal_information(ext2_filsys fs)
+ 	}
+ }
+ 
++static errcode_t meta_get_blocks(ext2_filsys fs EXT2FS_ATTR((unused)),
++				 ext2_ino_t ino,
++				 blk_t *blocks)
++{
++	int	i;
++
++	if ((ino != stashed_ino) || !stashed_inode)
++		return EXT2_ET_CALLBACK_NOTHANDLED;
++
++	for (i=0; i < EXT2_N_BLOCKS; i++)
++		blocks[i] = stashed_inode->i_block[i];
++	return 0;
++}
++
++static errcode_t meta_check_directory(ext2_filsys fs EXT2FS_ATTR((unused)),
++				      ext2_ino_t ino)
++{
++	if ((ino != stashed_ino) || !stashed_inode)
++		return EXT2_ET_CALLBACK_NOTHANDLED;
++
++	if (!LINUX_S_ISDIR(stashed_inode->i_mode))
++		return EXT2_ET_NO_DIRECTORY;
++	return 0;
++}
++
++static errcode_t meta_read_inode(ext2_filsys fs EXT2FS_ATTR((unused)),
++				 ext2_ino_t ino,
++				 struct ext2_inode *inode)
++{
++	if ((ino != stashed_ino) || !stashed_inode)
++		return EXT2_ET_CALLBACK_NOTHANDLED;
++	*inode = *stashed_inode;
++	return 0;
++}
++
++static void use_inode_shortcuts(ext2_filsys fs, int bool)
++{
++	if (bool) {
++		fs->get_blocks = meta_get_blocks;
++		fs->check_directory = meta_check_directory;
++		fs->read_inode = meta_read_inode;
++		stashed_ino = 0;
++	} else {
++		fs->get_blocks = 0;
++		fs->check_directory = 0;
++		fs->read_inode = 0;
++	}
++}
++
++static int process_file_block(ext2_filsys fs EXT2FS_ATTR((unused)),
++			      blk64_t *block_nr,
++			      e2_blkcnt_t blockcnt,
++			      blk64_t ref_block EXT2FS_ATTR((unused)),
++			      int ref_offset EXT2FS_ATTR((unused)),
++			      void *priv_data EXT2FS_ATTR((unused)))
++{
++	struct process_block_struct *p;
++
++	p = (struct process_block_struct *) priv_data;
++
++	if (p->i_flags & EXT4_EXTENTS_FL) {
++		/*
++		 * leaf node block
++		 */
++		if (blockcnt == -1) {
++			p->counter->file_data_extent_block ++;
++		}
++	} else {
++		if (blockcnt == BLOCK_COUNT_IND) {
++			p->counter->file_data_ind_block ++;
++		} else if (blockcnt == BLOCK_COUNT_DIND) {
++			p->counter->file_data_dind_block ++;
++		} else if (blockcnt == BLOCK_COUNT_TIND) {
++			p->counter->file_data_tind_block ++;
++		}
++	}
++
++	p->counter->file_data_block ++;
++
++	return 0;
++}
++
++static void calculate_table_blocks(ext2_filsys fs,
++				struct fs_usage_count *counter)
++{
++	blk64_t	first_block, b;
++	unsigned int	i,j;
++
++	first_block = fs->super->s_first_data_block;
++
++	/*
++	 * calculate the block_bitmap/inode_bitmap/inode_table
++	 */
++	counter->block_bitmap_block = fs->group_desc_count;
++	counter->inode_bitmap_block = fs->group_desc_count;
++	counter->inode_table_block =
++		fs->inode_blocks_per_group * fs->group_desc_count;
++
++	for (i = 0; i < fs->group_desc_count; i++) {
++		if (i == 0) {
++			counter->reserved_gdt_block += 1;
++		}
++
++		if (ext2fs_bg_has_super(fs, i)) {
++			counter->super_block += 1;
++			counter->group_desc_block += fs->desc_blocks;
++			counter->reserved_gdt_block +=
++				fs->super->s_reserved_gdt_blocks;
++		}
++	}
++}
++
++static void calculate_blocks_usage(ext2_filsys fs,
++				struct fs_usage_count *counter)
++{
++	struct process_block_struct	pb;
++	struct ext2_inode		inode;
++	ext2_inode_scan			scan;
++	ext2_ino_t			ino;
++	errcode_t			retval;
++	char *				block_buf;
++
++	calculate_table_blocks(fs, counter);
++
++	retval = ext2fs_open_inode_scan(fs, 0, &scan);
++	if (retval) {
++		com_err(program_name, retval, _("while opening inode scan"));
++		exit(1);
++	}
++
++	block_buf = malloc(fs->blocksize * 3);
++	if (!block_buf) {
++		com_err(program_name, 0, "Can't allocate block buffer");
++		exit(1);
++	}
++
++	use_inode_shortcuts(fs, 1);
++	stashed_inode = &inode;
++	while (1) {
++		retval = ext2fs_get_next_inode(scan, &ino, &inode);
++		if (retval == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE)
++			continue;
++		if (retval) {
++			com_err(program_name, retval,
++				_("while getting next inode"));
++			exit(1);
++		}
++		if (ino == 0)
++			break;
++		if (!inode.i_links_count)
++			continue;
++		if (ext2fs_file_acl_block(&inode)) {
++			counter->acl_block++;
++		}
++		if (!ext2fs_inode_has_valid_blocks(&inode))
++			continue;
++
++		stashed_ino = ino;
++		pb.ino = ino;
++		pb.is_dir = LINUX_S_ISDIR(inode.i_mode);
++		pb.i_flags = inode.i_flags;
++		/* calc journal block */
++		if (ino == fs->super->s_journal_inum) {
++			counter->journal_block += inode.i_blocks * 
++					SECTOR_SIZE / fs->blocksize;
++		} else if (LINUX_S_ISDIR(inode.i_mode)) {
++			counter->dir_block += inode.i_blocks * 
++					SECTOR_SIZE / fs->blocksize;
++		} else if (LINUX_S_ISLNK(inode.i_mode) &&
++		     ext2fs_inode_has_valid_blocks(&inode)) {
++			counter->link_block += inode.i_blocks * 
++				SECTOR_SIZE / fs->blocksize;
++		} else {
++			pb.counter = counter;
++			if ((inode.i_flags & EXT4_EXTENTS_FL) ||
++			    inode.i_block[EXT2_IND_BLOCK] ||
++			    inode.i_block[EXT2_DIND_BLOCK] ||
++			    inode.i_block[EXT2_TIND_BLOCK]) 
++			{
++				retval = ext2fs_block_iterate3(fs,
++				       ino, BLOCK_FLAG_READ_ONLY, block_buf,
++				       process_file_block, &pb);
++				if (retval) {
++					com_err(program_name, retval,
++					"while iterating over inode %u", ino);
++					exit(1);
++				}
++			} else {
++				counter->file_data_block += inode.i_blocks * 
++					SECTOR_SIZE / fs->blocksize;
++			}
++		}
++	}
++	use_inode_shortcuts(fs, 0);
++	free(block_buf);
++}
++
++static void print_blocks_usage_information(ext2_filsys fs)
++{
++	struct fs_usage_count usage_counter;
++
++	memset(&usage_counter, 0, sizeof(struct fs_usage_count));
++
++	calculate_blocks_usage(fs, &usage_counter);
++
++	/*
++	 * take off the blocks of  Reserved_GDT
++	 */
++	usage_counter.file_data_ind_block -=
++			fs->super->s_reserved_gdt_blocks;
++	usage_counter.file_data_dind_block -= 1;
++	usage_counter.file_data_block -= usage_counter.reserved_gdt_block;
++
++	/*
++	 * take off the xattr block (ACL block)
++	 */
++	usage_counter.file_data_block -= usage_counter.acl_block;
++
++	printf("[Blocks Usage (Unit: blocks)]\n");
++	printf("Super block:              %lu\n",
++			usage_counter.super_block);
++	printf("Group descriptor:         %lu\n",
++			usage_counter.group_desc_block);
++	printf("Reserved GDT:             %lu\n",
++			usage_counter.reserved_gdt_block);
++	printf("Inode table:              %lu\n",
++			usage_counter.inode_table_block);
++	printf("Inode bitmap:             %lu\n",
++			usage_counter.inode_bitmap_block);
++	printf("Block bitmap:             %lu\n",
++			usage_counter.block_bitmap_block);
++	printf("Link block:               %lu\n",
++			usage_counter.link_block);
++	printf("Journal:                  %lu\n",
++			usage_counter.journal_block);
++	printf("Directory:                %lu\n",
++			usage_counter.dir_block);
++	printf("Extent(ext4):             %lu\n",
++			usage_counter.file_data_extent_block);
++	printf("Ind-Block:                %lu\n",
++			usage_counter.file_data_ind_block);
++	printf("Dind-Block:               %lu\n",
++			usage_counter.file_data_dind_block);
++	printf("Tind-Block:               %lu\n",
++			usage_counter.file_data_tind_block);
++	printf("File Data:                %lu\n",
++			usage_counter.file_data_block);
++	printf("ACL block:                %lu\n",
++			usage_counter.acl_block);
++}
++
+ static void parse_extended_opts(const char *opts, blk64_t *superblock,
+ 				int *blocksize)
+ {
+@@ -492,6 +781,7 @@ int main (int argc, char ** argv)
+ 	int		force = 0;
+ 	int		flags;
+ 	int		header_only = 0;
++	int		usage_info = 0;
+ 	int		c;
+ 
+ #ifdef ENABLE_NLS
+@@ -506,7 +796,7 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
+ 
+-	while ((c = getopt (argc, argv, "bfhixVo:")) != EOF) {
++	while ((c = getopt (argc, argv, "bfhsixVo:")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			print_badblocks++;
+@@ -517,6 +807,9 @@ int main (int argc, char ** argv)
+ 		case 'h':
+ 			header_only++;
+ 			break;
++		case 's':
++			usage_info++;
++			break;
+ 		case 'i':
+ 			image_dump++;
+ 			break;
+@@ -568,6 +861,11 @@ int main (int argc, char ** argv)
+ 	if (print_badblocks) {
+ 		list_bad_blocks(fs, 1);
+ 	} else {
++		if (usage_info) {
++			print_blocks_usage_information(fs);
++			ext2fs_close (fs);
++			exit (0);
++		}
+ 		list_super (fs->super);
+ 		if (fs->super->s_feature_incompat &
+ 		      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
+-- 
+1.7.3.5
 
-ZGlmZiAtTnVycCBydHRoLm9yZy9NYWtlZmlsZSBydHRoL01ha2VmaWxlCi0tLSBydHRoLm9yZy9N
-YWtlZmlsZQkyMDEwLTExLTExIDA5OjAyOjQ5LjAwMDAwMDAwMCArMDkwMAorKysgcnR0aC9NYWtl
-ZmlsZQkyMDExLTAxLTI0IDE3OjM4OjA4LjAwMDAwMDAwMCArMDkwMApAQCAtMiw3ICsyLDcgQEAK
-IENGTEFHUyArPSAtSS4gLWcgLVdhbGwgLURfTEdQTF9TT1VSQ0UKIExERkxBR1MgKz0gLWxwdGhy
-ZWFkIC1sdXJjdQogVEFSR0VUUyA9IG1haW4KLU9GSUxFUyA9IG1haW4ubyByY3VwZGF0ZS5vIHJh
-ZGl4LXRyZWUubyBsaW51eC5vIHRlc3QubyB0YWdfY2hlY2subyByZWdyZXNzaW9uMS5vCitPRklM
-RVMgPSBtYWluLm8gcmN1cGRhdGUubyByYWRpeC10cmVlLm8gbGludXgubyB0ZXN0Lm8gdGFnX2No
-ZWNrLm8gcmVncmVzc2lvbjEubyByZWdyZXNzaW9uMi5vCiAKIHRhcmdldHM6ICQoVEFSR0VUUykK
-IApkaWZmIC1OdXJwIHJ0dGgub3JnL21haW4uYyBydHRoL21haW4uYwotLS0gcnR0aC5vcmcvbWFp
-bi5jCTIwMTAtMTEtMTEgMDk6MDI6NDkuMDAwMDAwMDAwICswOTAwCisrKyBydHRoL21haW4uYwky
-MDExLTAxLTI1IDEzOjQ4OjU1LjAwMDAwMDAwMCArMDkwMApAQCAtMjYwLDYgKzI2MCw3IEBAIGlu
-dCBtYWluKCkKIAlyYWRpeF90cmVlX2luaXQoKTsKIAogCXJlZ3Jlc3Npb24xX3Rlc3QoKTsKKwly
-ZWdyZXNzaW9uMl90ZXN0KCk7CiAKIAlzaW5nbGVfdGhyZWFkX3Rlc3RzKCk7CiAKZGlmZiAtTnVy
-cCBydHRoLm9yZy9yZWdyZXNzaW9uLmggcnR0aC9yZWdyZXNzaW9uLmgKLS0tIHJ0dGgub3JnL3Jl
-Z3Jlc3Npb24uaAkyMDEwLTExLTExIDA5OjAyOjQ5LjAwMDAwMDAwMCArMDkwMAorKysgcnR0aC9y
-ZWdyZXNzaW9uLmgJMjAxMS0wMS0yNCAxNzoxOTo0OS4wMDAwMDAwMDAgKzA5MDAKQEAgLTIsNSAr
-Miw2IEBACiAjZGVmaW5lIF9fUkVHUkVTU0lPTl9IX18KIAogdm9pZCByZWdyZXNzaW9uMV90ZXN0
-KHZvaWQpOwordm9pZCByZWdyZXNzaW9uMl90ZXN0KHZvaWQpOwogCiAjZW5kaWYKZGlmZiAtTnVy
-cCBydHRoLm9yZy9yZWdyZXNzaW9uMi5jIHJ0dGgvcmVncmVzc2lvbjIuYwotLS0gcnR0aC5vcmcv
-cmVncmVzc2lvbjIuYwkxOTcwLTAxLTAxIDA5OjAwOjAwLjAwMDAwMDAwMCArMDkwMAorKysgcnR0
-aC9yZWdyZXNzaW9uMi5jCTIwMTEtMDEtMjUgMTQ6MjY6MzMuMDAwMDAwMDAwICswOTAwCkBAIC0w
-LDAgKzEsMTI1IEBACisvKgorICogUmVncmVzc2lvbjIKKyAqIERlc2NyaXB0aW9uOgorICogVG9z
-aGl5dWtpIE9rYWppbWEgZGVzY3JpYmVzIHRoZSBmb2xsb3dpbmcgcmFkaXgtdHJlZSBidWc6Cisg
-KgorICogSW4gdGhlIGZvbGxvd2luZyBjYXNlLCB3ZSBjYW4gZ2V0IGEgaGFuZ3VwIG9uIAorICog
-ICByYWRpeF9yYWRpeF90cmVlX2dhbmdfbG9va3VwX3RhZ19zbG90LgorICoKKyAqIDAuICBUaGUg
-cmFkaXggdHJlZSBjb250YWlucyBSQURJWF9UUkVFX01BUF9TSVpFIGl0ZW1zLiBBbmQgdGhlIHRh
-ZyBvZgorICogICAgIGEgY2VydGFpbiBpdGVtIGhhcyBQQUdFQ0FDSEVfVEFHX0RJUlRZLgorICog
-MS4gIHJhZGl4X3RyZWVfcmFuZ2VfdGFnX2lmX3RhZ2dlZCgsIHN0YXJ0LCBlbmQsICwgUEFHRUNB
-Q0hFX1RBR19ESVJUWSwKKyAqICAgICBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUpIGlzIGNhbGxlZCB0
-byBhZGQgUEFHRUNBQ0hFX1RBR19UT1dSSVRFIHRhZworICogICAgIGZvciB0aGUgdGFnIHdoaWNo
-IGhhcyBQQUdFQ0FDSEVfVEFHX0RJUlRZLiBIb3dldmVyLCB0aGVyZSBpcyBubyB0YWcgd2l0aAor
-ICogICAgIFBBR0VDQUNIRV9UQUdfRElSVFkgd2l0aGluIHRoZSByYW5nZSBmcm9tIHN0YXJ0IHRv
-IGVuZC4gQXMgdGhlIHJlc3VsdCwKKyAqICAgICBUaGVyZSBpcyBubyB0YWcgd2l0aCBQQUdFQ0FD
-SEVfVEFHX1RPV1JJVEUgYnV0IHRoZSByb290IHRhZyBoYXMKKyAqICAgICBQQUdFQ0FDSEVfVEFH
-X1RPV1JJVEUuCisgKiAyLiAgQW4gaXRlbSBpcyBhZGRlZCBpbnRvIHRoZSByYWRpeCB0cmVlIGFu
-ZCB0aGVuIHRoZSBsZXZlbCBvZiBpdCBpcyAKKyAqICAgICBleHRlbmRlZCBpbnRvIDIgZnJvbSAx
-LiBBdCB0aGF0IHRpbWUsIHRoZSBuZXcgcmFkaXggdHJlZSBub2RlIHN1Y2NlZWRzIAorICogICAg
-IHRoZSB0YWcgc3RhdHVzIG9mIHRoZSByb290IHRhZy4gVGhlcmVmb3JlIHRoZSB0YWcgb2YgdGhl
-IG5ldyByYWRpeCB0cmVlCisgKiAgICAgbm9kZSBoYXMgUEFHRUNBQ0hFX1RBR19UT1dSSVRFIGJ1
-dCB0aGVyZSBpcyBub3Qgc2xvdCB3aXRoIAorICogICAgIFBBR0VDQUNIRV9UQUdfVE9XUklURSB0
-YWcgaW4gdGhlIGNoaWxkIG5vZGUgb2YgdGhlIG5ldyByYWRpeCB0cmVlIG5vZGUuCisgKiAzLiAg
-VGhlIHRhZyBvZiBhIGNlcnRhaW4gaXRlbSBpcyBjbGVhcmVkIHdpdGggUEFHRUNBQ0hFX1RBR19E
-SVJUWS4KKyAqIDQuICBBbGwgaXRlbXMgd2l0aGluIHRoZSBpbmRleCByYW5nZSBmcm9tIDAgdG8g
-UkFESVhfVFJFRV9NQVBfU0laRSAtIDEgYXJlCisgKiAgICAgcmVsZWFzZWQuIChPbmx5IHRoZSBp
-dGVtIHdoaWNoIGluZGV4IGlzIFJBRElYX1RSRUVfTUFQX1NJWkUgZXhpc3QgaW4gdGhlCisgKiAg
-ICAgcmFkaXggdHJlZS4pIEFzIHRoZSByZXN1bHQsIHRoZSBzbG90IG9mIHRoZSByYWRpeCB0cmVl
-IG5vZGUgaXMgTlVMTCBidXQKKyAqICAgICB0aGUgdGFnIHdoaWNoIGNvcnJlc3BvbmRzIHRvIHRo
-ZSBzbG90IGhhcyBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUuCisgKiA1LiAgcmFkaXhfdHJlZV9nYW5n
-X2xvb2t1cF90YWdfc2xvdChQQUdFQ0FDSEVfVEFHX1RPV1JJVEUpIGNhbGxzCisgKiAgICAgX19s
-b29rdXBfdGFnLiBfX2xvb2t1cF90YWcgcmV0dXJucyB3aXRoIDAuIEFuZCBfX2xvb2t1cF90YWcg
-ZG9lc24ndAorICogICAgIGNoYW5nZSB0aGUgaW5kZXggdGhhdCBpcyB0aGUgaW5wdXQgYW5kIG91
-dHB1dCBwYXJhbWV0ZXIuIEJlY2F1c2UgdGhlIDFzdAorICogICAgIHNsb3Qgb2YgdGhlIHJhZGl4
-IHRyZWUgbm9kZSBpcyBOVUxMLCBidXQgdGhlIHRhZyB3aGljaCBjb3JyZXNwb25kcyB0bworICog
-ICAgIHRoZSBzbG90IGhhcyBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUuCisgKiAgICAgVGhlcmVmb3Jl
-IHJhZGl4X3RyZWVfZ2FuZ19sb29rdXBfdGFnX3Nsb3QgdHJpZXMgdG8gZ2V0IHNvbWUgaXRlbXMg
-YnkKKyAqICAgICBjYWxsaW5nIF9fbG9va3VwX3RhZywgYnV0IGl0IGNhbm5vdCBnZXQgYW55IGl0
-ZW1zIGZvcmV2ZXIuCisgKgorICogVGhlIGZpeCBpcyB0byBjaGFuZ2UgdGhhdCByYWRpeF90cmVl
-X3RhZ19pZl90YWdnZWQgZG9lc24ndCB0YWcgdGhlIHJvb3QgdGFnCisgKiBpZiBpdCBkb2Vzbid0
-IHNldCBhbnkgdGFncyB3aXRoaW4gdGhlIHNwZWNpZmllZCByYW5nZS4KKyAqCisgKiBSdW5uaW5n
-OgorICogVGhpcyB0ZXN0IHNob3VsZCBydW4gdG8gY29tcGxldGlvbiBpbW1lZGlhdGVseS4gVGhl
-IGFib3ZlIGJ1ZyB3b3VsZCBjYXVzZSBpdAorICogdG8gaGFuZyBpbmRlZmluaXRlbHkuCisgKgor
-ICogVXBzdHJlYW0gY29tbWl0OgorICogTm90IHlldAorICovCisjaW5jbHVkZSA8bGludXgva2Vy
-bmVsLmg+CisjaW5jbHVkZSA8bGludXgvZ2ZwLmg+CisjaW5jbHVkZSA8bGludXgvc2xhYi5oPgor
-I2luY2x1ZGUgPGxpbnV4L3JhZGl4LXRyZWUuaD4KKyNpbmNsdWRlIDxzdGRsaWIuaD4KKyNpbmNs
-dWRlIDxzdGRpby5oPgorCisjaW5jbHVkZSAicmVncmVzc2lvbi5oIgorCisjaWZkZWYgX19LRVJO
-RUxfXworI2RlZmluZSBSQURJWF9UUkVFX01BUF9TSElGVCAgICAoQ09ORklHX0JBU0VfU01BTEwg
-PyA0IDogNikKKyNlbHNlCisjZGVmaW5lIFJBRElYX1RSRUVfTUFQX1NISUZUICAgIDMgICAgICAg
-LyogRm9yIG1vcmUgc3RyZXNzZnVsIHRlc3RpbmcgKi8KKyNlbmRpZgorCisjZGVmaW5lIFJBRElY
-X1RSRUVfTUFQX1NJWkUgICAgICgxVUwgPDwgUkFESVhfVFJFRV9NQVBfU0hJRlQpCisjZGVmaW5l
-IFBBR0VDQUNIRV9UQUdfRElSVFkgICAgIDAKKyNkZWZpbmUgUEFHRUNBQ0hFX1RBR19XUklURUJB
-Q0sgMQorI2RlZmluZSBQQUdFQ0FDSEVfVEFHX1RPV1JJVEUgICAyCisKK3N0YXRpYyBSQURJWF9U
-UkVFKG10X3RyZWUsIEdGUF9LRVJORUwpOwordW5zaWduZWQgbG9uZyBwYWdlX2NvdW50ID0gMDsK
-Kworc3RydWN0IHBhZ2UgeworCXVuc2lnbmVkIGxvbmcgaW5kZXg7Cit9OworCitzdGF0aWMgc3Ry
-dWN0IHBhZ2UgKnBhZ2VfYWxsb2Modm9pZCkKK3sKKwlzdHJ1Y3QgcGFnZSAqcDsKKwlwID0gbWFs
-bG9jKHNpemVvZihzdHJ1Y3QgcGFnZSkpOworCXAtPmluZGV4ID0gcGFnZV9jb3VudCsrOworCisJ
-cmV0dXJuIHA7Cit9CisKK3ZvaWQgcmVncmVzc2lvbjJfdGVzdCh2b2lkKQoreworCWludCBpOwor
-CXN0cnVjdCBwYWdlICpwOworCWludCBtYXhfc2xvdHMgPSBSQURJWF9UUkVFX01BUF9TSVpFOwor
-CXVuc2lnbmVkIGxvbmcgaW50IHN0YXJ0LCBlbmQ7CisJc3RydWN0IHBhZ2UgKnBhZ2VzWzFdOwor
-CisJLyogMC4gKi8KKwlmb3IgKGkgPSAwOyBpIDw9IG1heF9zbG90cyAtIDE7IGkrKykgeworCQlw
-ID0gcGFnZV9hbGxvYygpOworCQlyYWRpeF90cmVlX2luc2VydCgmbXRfdHJlZSwgaSwgcCk7CisJ
-fQorCXJhZGl4X3RyZWVfdGFnX3NldCgmbXRfdHJlZSwgbWF4X3Nsb3RzIC0gMSwgUEFHRUNBQ0hF
-X1RBR19ESVJUWSk7CisKKwkvKiAxLiAqLworCXN0YXJ0ID0gMDsKKwllbmQgPSBtYXhfc2xvdHMg
-LSAyOworCXJhZGl4X3RyZWVfcmFuZ2VfdGFnX2lmX3RhZ2dlZCgmbXRfdHJlZSwgJnN0YXJ0LCBl
-bmQsIDEsIAorCQkJCVBBR0VDQUNIRV9UQUdfRElSVFksIFBBR0VDQUNIRV9UQUdfVE9XUklURSk7
-CisKKwkvKiAyLiAqLworCXAgPSBwYWdlX2FsbG9jKCk7CisJcmFkaXhfdHJlZV9pbnNlcnQoJm10
-X3RyZWUsIG1heF9zbG90cywgcCk7CisKKwkvKiAzLiAqLworCXJhZGl4X3RyZWVfdGFnX2NsZWFy
-KCZtdF90cmVlLCBtYXhfc2xvdHMgLSAxLCBQQUdFQ0FDSEVfVEFHX0RJUlRZKTsKKworCS8qIDQu
-ICovCisJZm9yIChpID0gbWF4X3Nsb3RzIC0gMTsgaSA+PSAwOyBpLS0pCisJCXJhZGl4X3RyZWVf
-ZGVsZXRlKCZtdF90cmVlLCBpKTsKKworCS8qIDUuICovCisJLy8gTk9URTogc3RhcnQgc2hvdWxk
-IG5vdCBiZSAwIGJlY2F1c2UgcmFkaXhfdHJlZV9nYW5nX2xvb2t1cF90YWdfc2xvdCAKKwkvLyAg
-ICAgICBjYW4gcmV0dXJuLgorCXN0YXJ0ID0gMTsKKwllbmQgPSBtYXhfc2xvdHMgLSAyOworCXJh
-ZGl4X3RyZWVfZ2FuZ19sb29rdXBfdGFnX3Nsb3QoJm10X3RyZWUsICh2b2lkICoqKilwYWdlcywg
-c3RhcnQsIGVuZCwgCisJCVBBR0VDQUNIRV9UQUdfVE9XUklURSk7CisKKwkvKiBXZSByZW1vdmUg
-YWxsIHRoZSByZW1haW5lZCBub2RlcyAqLworCXJhZGl4X3RyZWVfZGVsZXRlKCZtdF90cmVlLCBt
-YXhfc2xvdHMpOworCisJcHJpbnRmKCJyZWdyZXNzaW9uIHRlc3QgMiwgZG9uZVxuIik7Cit9Cg==
-
---Multipart=_Tue__25_Jan_2011_13_53_45_+0900_hdvDNBiX8uT2kqgN--
