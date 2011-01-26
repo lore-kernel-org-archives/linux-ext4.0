@@ -1,81 +1,265 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: [RFC PATCH 4/3] block: skip elevator initialization for flush
- requests -- was never BUGGY relative to upstream
-Date: Wed, 26 Jan 2011 00:27:19 -0500
-Message-ID: <20110126052719.GA31818@redhat.com>
-References: <1295625598-15203-1-git-send-email-tj@kernel.org>
- <1295625598-15203-4-git-send-email-tj@kernel.org>
- <20110125204158.GA3013@redhat.com>
- <20110125215500.GA6836@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/3] ext4 : Pass GFP_KERNEL for transaction allocation
+ if caller can handler failures
+Date: Wed, 26 Jan 2011 08:55:38 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1101260848050.2728@dhcp-lab-213.englab.brq.redhat.com>
+References: <AANLkTinVBicZyTthnp5SjOoHUWHcKc1Css46RjpfEEnh@mail.gmail.com> <20110125161745.GC4088@quack.suse.cz> <AANLkTiniUaD8SN53BKFC2ayku-4m=4EATKxBc148d51G@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org,
-	neilb@suse.de, adilger.kernel@dilger.ca, jack@suse.cz,
-	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
-	josef@redhat.com, jmoyer@redhat.com
-To: Tejun Heo <tj@kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="571140353-262626377-1296028541=:2728"
+Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58753 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17649 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750742Ab1AZF1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jan 2011 00:27:39 -0500
-Content-Disposition: inline
-In-Reply-To: <20110125215500.GA6836@redhat.com>
+	id S1751525Ab1AZHzs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jan 2011 02:55:48 -0500
+In-Reply-To: <AANLkTiniUaD8SN53BKFC2ayku-4m=4EATKxBc148d51G@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 25 2011 at  4:55pm -0500,
-Mike Snitzer <snitzer@redhat.com> wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> On Tue, Jan 25 2011 at  3:41pm -0500,
-> Mike Snitzer <snitzer@redhat.com> wrote:
+--571140353-262626377-1296028541=:2728
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
+
+Hi Manish,
+
+I might be very helpful to also improve commit description, because as
+it is it's very confusing and shallow, at least for me.
+
+Thanks!
+-Lukas
+
+On Tue, 25 Jan 2011, Manish Katiyar wrote:
+
+> Thanks a lot Jan, I will have a look at the functions you mentioned
+> and send an updated version.
 > 
-> > Hi Tejun,
-> > 
-> > On Fri, Jan 21 2011 at 10:59am -0500,
-> > Tejun Heo <tj@kernel.org> wrote:
-> > > 
-> > > * As flush requests are never put on the IO scheduler, request fields
-> > >   used for flush share space with rq->rb_node.  rq->completion_data is
-> > >   moved out of the union.  This increases the request size by one
-> > >   pointer.
-> > > 
-> > >   As rq->elevator_private* are used only by the iosched too, it is
-> > >   possible to reduce the request size further.  However, to do that,
-> > >   we need to modify request allocation path such that iosched data is
-> > >   not allocated for flush requests.
-> > 
-> > I decided to take a crack at using rq->elevator_private* and came up
-> > with the following patch.
-
-...
-
-> It is an interesting duality that:
-> 1) REQ_ELVPRIV is never set because priv=0 is passed to blk_alloc_request
-> 2) yet when blk_free_request() checks rq->cmd_flags REQ_ELVPRIV is set;
->    resulting in the call to elv_put_request()
-
-Turns out priv=0 was never actually being established in get_request()
-on the kernel I was testing (see below).
-
-> > I know this because in my following get_request() change to _not_ call
-> > elv_set_request() for flush requests hit cfq_put_request()'s
-> > BUG_ON(!cfqq->allocated[rw]).
+> On Tue, Jan 25, 2011 at 8:17 AM, Jan Kara <jack@suse.cz> wrote:
+> >  Hi,
+> >
+> > On Sat 22-01-11 19:34:55, Manish Katiyar wrote:
+> >> Pass GFP_KERNEL for transaction allocation for ext4 routines if caller
+> >> can handler failures
+> >  Some error recovery paths will need cleaning up before you actually start
+> > using them - see below:
+> >
+> >> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> >> index e0270d1..1a4a944 100644
+> >> --- a/fs/ext4/acl.c
+> >> +++ b/fs/ext4/acl.c
+> >> @@ -351,7 +351,7 @@ ext4_acl_chmod(struct inode *inode)
+> >>
+> >>       retry:
+> >>               handle = ext4_journal_start(inode,
+> >> -                             EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+> >> +                             EXT4_DATA_TRANS_BLOCKS(inode->i_sb), true);
+> >>               if (IS_ERR(handle)) {
+> >>                       error = PTR_ERR(handle);
+> >>                       ext4_std_error(inode->i_sb, error);
+> >  We shouldn't call ext4_std_error() (that possibly logs the message in
+> > the kernel log and remounts the fs read-only, panics the kernel or so) in
+> > case of ENOMEM...
+> >
+> >> @@ -449,7 +449,8 @@ ext4_xattr_set_acl(struct dentry *dentry, const
+> >> char *name, const void *value,
+> >>               acl = NULL;
+> >>
+> >>  retry:
+> >> -     handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+> >> +     handle = ext4_journal_start(inode,
+> >> +                                 EXT4_DATA_TRANS_BLOCKS(inode->i_sb), true);
+> >>       if (IS_ERR(handle))
+> >>               return PTR_ERR(handle);
+> >  It's actually not your bug, but the above should be:
+> >  error = PTR_ERR(handle);
+> >  goto release_and_out;
+> >
+> >>       error = ext4_set_acl(handle, inode, type, acl);
+> >> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> >> index eb9097a..e0e27a3 100644
+> >> --- a/fs/ext4/ialloc.c
+> >> +++ b/fs/ext4/ialloc.c
+> >> @@ -1257,7 +1257,7 @@ extern int ext4_init_inode_table(struct
+> >> super_block *sb, ext4_group_t group,
+> >>       if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED))
+> >>               goto out;
+> >>
+> >> -     handle = ext4_journal_start_sb(sb, 1);
+> >> +     handle = ext4_journal_start_sb(sb, 1, true);
+> >>       if (IS_ERR(handle)) {
+> >>               ret = PTR_ERR(handle);
+> >>               goto out;
+> >  Well, this might be disputable. This function is used to lazily
+> > initialize inode table.  If the initialization fails, thread removes the
+> > request for initialization from the queue. But in case of ENOMEM, it might
+> > be more suitable to just postpone the initialization work to a more
+> > suitable time...
+> >
+> >> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> >> index 9f7f9e4..76c20b8 100644
+> >> --- a/fs/ext4/inode.c
+> >> +++ b/fs/ext4/inode.c
+> > ...
+> >> @@ -1398,7 +1398,7 @@ static int _ext4_get_block(struct inode *inode,
+> >> sector_t iblock,
+> >>               if (map.m_len > DIO_MAX_BLOCKS)
+> >>                       map.m_len = DIO_MAX_BLOCKS;
+> >>               dio_credits = ext4_chunk_trans_blocks(inode, map.m_len);
+> >> -             handle = ext4_journal_start(inode, dio_credits);
+> >> +             handle = ext4_journal_start(inode, dio_credits, false);
+> >>               if (IS_ERR(handle)) {
+> >>                       ret = PTR_ERR(handle);
+> >>                       return ret;
+> >  Hmm, this would be actually another useful prerequisite cleanup of this
+> > series. _ext4_get_block() should need to start a transaction only when
+> > called from direct IO path (otherwise transaction should be already started
+> > when creating blocks). But this is only implicit so it would be good to
+> > create ext4_get_block_directIO() which would start a transaction, use it
+> > as a callback of __blockdev_direct_IO(), and remove the code from standard
+> > _ext4_get_block() function. Then you can also make ext4_journal_start()
+> > possibly fail and still it will be clear you do not introduce any potential
+> > problems.
+> >
+> >> @@ -1621,7 +1621,7 @@ static int ext4_write_begin(struct file *file,
+> >> struct address_space *mapping,
+> >>       to = from + len;
+> >>
+> >>  retry:
+> >> -     handle = ext4_journal_start(inode, needed_blocks);
+> >> +     handle = ext4_journal_start(inode, needed_blocks, false);
+> >>       if (IS_ERR(handle)) {
+> >>               ret = PTR_ERR(handle);
+> >>               goto out;
+> >  Failing this with ENOMEM is OK. Note that grab_cache_page_write_begin()
+> > called just below can fail with ENOMEM as well.
+> >
+> >> @@ -3553,7 +3554,7 @@ static ssize_t ext4_ind_direct_IO(int rw, struct
+> >> kiocb *iocb,
+> >>
+> >>               if (final_size > inode->i_size) {
+> >>                       /* Credits for sb + inode write */
+> >> -                     handle = ext4_journal_start(inode, 2);
+> >> +                     handle = ext4_journal_start(inode, 2, false);
+> >>                       if (IS_ERR(handle)) {
+> >>                               ret = PTR_ERR(handle);
+> >>                               goto out;
+> >  This can fail without introducing problems. It's standard directIO write
+> > path.
+> >
+> >> @@ -3596,7 +3597,7 @@ retry:
+> >>               int err;
+> >>
+> >>               /* Credits for sb + inode write */
+> >> -             handle = ext4_journal_start(inode, 2);
+> >> +             handle = ext4_journal_start(inode, 2, false);
+> >>               if (IS_ERR(handle)) {
+> >>                       /* This is really bad luck. We've written the data
+> >>                        * but cannot extend i_size. Bail out and pretend
+> >  This one can fail just fine as well.
+> >
+> >> @@ -5329,8 +5330,10 @@ int ext4_setattr(struct dentry *dentry, struct
+> >> iattr *attr)
+> >>
+> >>               /* (user+group)*(old+new) structure, inode write (sb,
+> >>                * inode block, ? - but truncate inode update has it) */
+> >> -             handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
+> >> -                                     EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb))+3);
+> >> +             handle = ext4_journal_start(inode,
+> >> +                                         (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
+> >> +                                         EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb))+3,
+> >> +                                         true);
+> >>               if (IS_ERR(handle)) {
+> >>                       error = PTR_ERR(handle);
+> >>                       goto err_out;
+> >> @@ -5365,7 +5368,7 @@ int ext4_setattr(struct dentry *dentry, struct
+> >> iattr *attr)
+> >>            (ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)))) {
+> >>               handle_t *handle;
+> >>
+> >> -             handle = ext4_journal_start(inode, 3);
+> >> +             handle = ext4_journal_start(inode, 3, true);
+> >>               if (IS_ERR(handle)) {
+> >>                       error = PTR_ERR(handle);
+> >>                       goto err_out;
+> >  The above two sites are fine but note that err_out calls ext4_std_error()
+> > which we don't want to happen in case of ENOMEM.
+> >
+> >> @@ -5822,7 +5825,7 @@ int ext4_change_inode_journal_flag(struct inode
+> >> *inode, int val)
+> >>
+> >>       /* Finally we can mark the inode as dirty. */
+> >>
+> >> -     handle = ext4_journal_start(inode, 1);
+> >> +     handle = ext4_journal_start(inode, 1, true);
+> >>       if (IS_ERR(handle))
+> >>               return PTR_ERR(handle);
+> >  This can fail OK, but you should undo inode flag and aops change before
+> > returning error (that would be probably better as a separate preparatory
+> > patch because it won't be completely trivial - you need to lock the updates
+> > again etc. possibly create a helper function for that so that you don't
+> > duplicate the code).
+> >
+> >> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> >> index eb3bc2f..3e7977b 100644
+> >> --- a/fs/ext4/ioctl.c
+> >> +++ b/fs/ext4/ioctl.c
+> >> @@ -101,7 +101,7 @@ long ext4_ioctl(struct file *filp, unsigned int
+> >> cmd, unsigned long arg)
+> >>               } else if (oldflags & EXT4_EOFBLOCKS_FL)
+> >>                       ext4_truncate(inode);
+> >>
+> >> -             handle = ext4_journal_start(inode, 1);
+> >> +             handle = ext4_journal_start(inode, 1, false);
+> >>               if (IS_ERR(handle)) {
+> >>                       err = PTR_ERR(handle);
+> >>                       goto flags_out;
+> >  This can handle failure just fine...
 > 
-> FYI, here is the backtrace:
+> I wasn't sure about this since this was calling ext4_truncate if the
+> old_flags had EXT4_EOFBLOCKS_FL. And then in ext4_truncate() had
+> start_transaction which was passing false.
+> 
+> 
+> >
+> >> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> >> index cb10a06..7714a15 100644
+> >> --- a/fs/ext4/super.c
+> >> +++ b/fs/ext4/super.c
+> >> @@ -4487,7 +4488,7 @@ static int ext4_acquire_dquot(struct dquot *dquot)
+> >>       handle_t *handle;
+> >>
+> >>       handle = ext4_journal_start(dquot_to_inode(dquot),
+> >> -                                 EXT4_QUOTA_INIT_BLOCKS(dquot->dq_sb));
+> >> +                                 EXT4_QUOTA_INIT_BLOCKS(dquot->dq_sb), true);
+> >>       if (IS_ERR(handle))
+> >>               return PTR_ERR(handle);
+> >>       ret = dquot_acquire(dquot);
+> >> @@ -4503,7 +4504,7 @@ static int ext4_release_dquot(struct dquot *dquot)
+> >>       handle_t *handle;
+> >>
+> >>       handle = ext4_journal_start(dquot_to_inode(dquot),
+> >> -                                 EXT4_QUOTA_DEL_BLOCKS(dquot->dq_sb));
+> >> +                                 EXT4_QUOTA_DEL_BLOCKS(dquot->dq_sb), true);
+> >>       if (IS_ERR(handle)) {
+> >>               /* Release dquot anyway to avoid endless cycle in dqput() */
+> >>               dquot_release(dquot);
+> >  For now put 'false' in these quota functions. Because failure here
+> > results in a failure of dquot_initialize() which is not tested in most
+> > places and thus results in quota miscomputations... Properly handling this
+> > would require another set of cleanups.
+> >
+> >                                                                Honza
+> > --
+> > Jan Kara <jack@suse.cz>
+> > SUSE Labs, CR
+> >
+> 
+> 
+> 
+> 
 
-That backtrace was from a RHEL6 port of your recent flush merge work.
-One RHELism associated with the RHEL6 flush+fua port in general (and now
-this flush merge port) is that bio and request flags are _not_ shared.
-
-As such I introduced BIO_FLUSH and BIO_FUA flags in RHEL6.  Long story
-short, my 4/3 patch works just fine ontop of your 3 patches that Jens
-just staged for 2.6.39.
-
-So sorry for the noise!  I'm kicking myself for having tainted my patch
-(and your work indirectly) by making an issue out of nothing.
-
-Taking a step back, what do you think of my proposed patch?
-
-Mike
+-- 
+--571140353-262626377-1296028541=:2728--
