@@ -1,70 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCHSET] Refactor barrier=/nobarrier flags from fs to block
- layer
-Date: Wed, 26 Jan 2011 10:41:35 -0600
-Message-ID: <4D404EBF.8020508@redhat.com>
-References: <20110126071200.GE32261@tux1.beaverton.ibm.com> <4D400A44.6030502@redhat.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 1/3] block: Create sysfs knobs to override FLUSH/FUA
+	support flags
+Date: Wed, 26 Jan 2011 09:00:04 -0800
+Message-ID: <20110126170004.GF32261@tux1.beaverton.ibm.com>
+References: <20110126071200.GE32261@tux1.beaverton.ibm.com> <20110126071626.GI27190@tux1.beaverton.ibm.com> <20110126093051.GA12520@htj.dyndns.org>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: djwong@us.ibm.com, Tejun Heo <tj@kernel.org>,
-	Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk,
-	tytso@mit.edu, shli@kernel.org, neilb@suse.de,
-	adilger.kernel@dilger.ca, jack@suse.cz, snitzer@redhat.com,
-	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, hch@lst.de, josef@redhat.com
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk, tytso@mit.edu,
+	shli@kernel.org, neilb@suse.de, adilger.kernel@dilger.ca,
+	jack@suse.cz, snitzer@redhat.com, linux-kernel@vger.kernel.org,
+	kmannth@us.ibm.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
+	rwheeler@redhat.com, hch@lst.de, josef@redhat.com
+To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53074 "EHLO mx1.redhat.com"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:37101 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752778Ab1AZQmU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jan 2011 11:42:20 -0500
-In-Reply-To: <4D400A44.6030502@redhat.com>
+	id S1753685Ab1AZRBl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jan 2011 12:01:41 -0500
+Content-Disposition: inline
+In-Reply-To: <20110126093051.GA12520@htj.dyndns.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/26/11 5:49 AM, Ric Wheeler wrote:
-> On 01/26/2011 02:12 AM, Darrick J. Wong wrote:
->> Hello,
->>
->>  From what I can tell, most of the filesystems that know how to issue commands
->> to flush the write cache also have some mechanism for the user to override
->> whether or not the filesystem actually issues those flushes.  Unfortunately,
->> the term "barrier" is obsolete having been changed into flushes in 2.6.36, and
->> many of the filesystems implement the mount options with slightly different
->> syntaxes (barrier=[0|1|none|flush], nobarrier, etc).
->>
->> This patchset adds to the block layer a sysfs knob that an administrator can
->> use to disable flushes, and removes the mount options from the filesystem code.
->> As a starting point, I'm removing the mount options and flush toggle from
->> jbd2/ext4.
->>
->> Anyway, I'm looking for some feedback about refactoring the barrier/flush
->> control knob into the block layer.  It sounds like we want a knob that picks
->> the safest option (issue flushes when supported) unless the administrator
->> decides that it is appropriate to do otherwise.  I suspect that there are good
->> arguments for not having a knob at all, and good arguments for a safe knob.
->> However, since I don't see the barrier options being removed en masse, I'm
->> assuming that we still want a knob somewhere.  Do we need the ignore_fua knob
->> too?  Is this the proper way to deprecate mount options out of filesystems?
->>
->> --D
+On Wed, Jan 26, 2011 at 10:30:51AM +0100, Tejun Heo wrote:
+> On Tue, Jan 25, 2011 at 11:16:26PM -0800, Darrick J. Wong wrote:
+> > This patch is the first in a series to refactor the barrier= mount options out
+> > of the filesystem code.  This patch adds sysfs knobs to disable flush and FUA;
+> > of course, the automatic default is the safe choice, i.e. to leave them
+> > enabled.  Obviously, only a seasoned administrator should ever be overriding
+> > the defaults.
 > 
-> Just to be clear, I strongly object to remove the mount options.
+> Hmmm... wouldn't it be better to just export flush and fua instead of
+> ignore_*?  So that the admin can turn things on and off as [s]he seems
 
-Agreed, we are just finally, barely starting to win the education battle here.
-Removing or changing the option now will just set us back.  It should at
-LEAST remain as a deprecated option, with the deprecation message pointing
-to crystal-clear documentation.
+I considered having a general knob to override the automatic FLUSH/FUA
+detection, but I thought that it wasn't a good idea to provide a mechanism to
+enable features that devices don't advertise.  Mostly I was imagining horror
+scenarios like USB storage devices that claim no write cache and but then catch
+on fire if someone sends flush anyway.  Not using advertised features seemed
+less risky.
 
--Eric
+> fit?  Also, it might be better to export them in a single attribute,
+> say cache_control or something.  Only subset of the combinations make
+> sense anyway - none, flush, flush_fua.
 
-> "Barrier" and "poke a control knob in the block" layer are both equally mysterious and meaningless to real users, so I do not see this as a gain,
-> 
-> Ric
-> 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I agree.  It could be simplified even further to a simple boolean that means
+"use neither" or "use whatever's supported".
 
+--D
