@@ -1,45 +1,52 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 3/3] ext4: Deprecate barrier= and nobarrier mount
- options
-Date: Wed, 26 Jan 2011 11:51:39 +0100
-Message-ID: <20110126105139.GJ12520@htj.dyndns.org>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCHSET] Refactor barrier=/nobarrier flags from fs to block
+ layer
+Date: Wed, 26 Jan 2011 06:47:16 -0500
+Message-ID: <4D4009C4.3080007@redhat.com>
 References: <20110126071200.GE32261@tux1.beaverton.ibm.com>
- <20110126072329.GK27190@tux1.beaverton.ibm.com>
- <20110126093632.GB12520@htj.dyndns.org>
- <20110126104734.GA23245@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk,
-	tytso@mit.edu, shli@kernel.org, neilb@suse.de,
-	adilger.kernel@dilger.ca, snitzer@redhat.com,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Tejun Heo <tj@kernel.org>, Vivek Goyal <vgoyal@redhat.com>,
+	axboe@kernel.dk, tytso@mit.edu, shli@kernel.org, neilb@suse.de,
+	adilger.kernel@dilger.ca, jack@suse.cz, snitzer@redhat.com,
 	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
-	josef@redhat.com
-To: Jan Kara <jack@suse.cz>
+	linux-ext4@vger.kernel.org, hch@lst.de, josef@redhat.com
+To: djwong@us.ibm.com
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110126104734.GA23245@quack.suse.cz>
+In-Reply-To: <20110126071200.GE32261@tux1.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On 01/26/2011 02:12 AM, Darrick J. Wong wrote:
+> Hello,
+>
+>  From what I can tell, most of the filesystems that know how to issue commands
+> to flush the write cache also have some mechanism for the user to override
+> whether or not the filesystem actually issues those flushes.  Unfortunately,
+> the term "barrier" is obsolete having been changed into flushes in 2.6.36, and
+> many of the filesystems implement the mount options with slightly different
+> syntaxes (barrier=[0|1|none|flush], nobarrier, etc).
 
-On Wed, Jan 26, 2011 at 11:47:34AM +0100, Jan Kara wrote:
->   Ted should have a final word about this but I believe it's possible to
-> deprecate the mount options. Maybe with some transition period where
-> deprecation message is shown but the option actually still works. That
-> being said I'm not sure what we should do when someone has a disk with two
-> partitions and one partition is mounted with barriers and another one
-> without them - sure, one has to think hard to find a sane use case for this
-> (possibly if user does not care about data after a crash on one of the
-> partitions, in which case he should probably use nojournal mode) but it
-> should probably work.
+Why remove the mount option? We have been using that term and educating users 
+about how to use it for many, many years.
 
-The policy can be made per-bdev (which maps to per-partition), so I
-don't think that's a big problem.
+I see no reason to remove mount options at all.
 
-Thanks.
+Ric
 
--- 
-tejun
+> This patchset adds to the block layer a sysfs knob that an administrator can
+> use to disable flushes, and removes the mount options from the filesystem code.
+> As a starting point, I'm removing the mount options and flush toggle from
+> jbd2/ext4.
+>
+> Anyway, I'm looking for some feedback about refactoring the barrier/flush
+> control knob into the block layer.  It sounds like we want a knob that picks
+> the safest option (issue flushes when supported) unless the administrator
+> decides that it is appropriate to do otherwise.  I suspect that there are good
+> arguments for not having a knob at all, and good arguments for a safe knob.
+> However, since I don't see the barrier options being removed en masse, I'm
+> assuming that we still want a knob somewhere.  Do we need the ignore_fua knob
+> too?  Is this the proper way to deprecate mount options out of filesystems?
+>
+> --D
