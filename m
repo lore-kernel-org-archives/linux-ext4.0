@@ -1,34 +1,42 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH 2/3] ext4 : Pass GFP_KERNEL for transaction allocation if
- caller can handler failures
-Date: Tue, 25 Jan 2011 23:58:34 -0800
-Message-ID: <AANLkTinHWuHo=vtT_r5gv8Ux08zaKmcudJfvKsiSQ-uR@mail.gmail.com>
-References: <AANLkTinVBicZyTthnp5SjOoHUWHcKc1Css46RjpfEEnh@mail.gmail.com>
- <20110125161745.GC4088@quack.suse.cz> <AANLkTiniUaD8SN53BKFC2ayku-4m=4EATKxBc148d51G@mail.gmail.com>
- <alpine.LFD.2.00.1101260848050.2728@dhcp-lab-213.englab.brq.redhat.com>
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH 1/3] block: Create sysfs knobs to override FLUSH/FUA
+ support flags
+Date: Wed, 26 Jan 2011 10:30:51 +0100
+Message-ID: <20110126093051.GA12520@htj.dyndns.org>
+References: <20110126071200.GE32261@tux1.beaverton.ibm.com>
+ <20110126071626.GI27190@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk, tytso@mit.edu,
+	shli@kernel.org, neilb@suse.de, adilger.kernel@dilger.ca,
+	jack@suse.cz, snitzer@redhat.com, linux-kernel@vger.kernel.org,
+	kmannth@us.ibm.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
+	rwheeler@redhat.com, hch@lst.de, josef@redhat.com
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:49465 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751223Ab1AZH6y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jan 2011 02:58:54 -0500
-Received: by qyj19 with SMTP id 19so5430122qyj.19
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jan 2011 23:58:54 -0800 (PST)
-In-Reply-To: <alpine.LFD.2.00.1101260848050.2728@dhcp-lab-213.englab.brq.redhat.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:50759 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751039Ab1AZJa5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jan 2011 04:30:57 -0500
+Content-Disposition: inline
+In-Reply-To: <20110126071626.GI27190@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 25, 2011 at 11:55 PM, Lukas Czerner <lczerner@redhat.com> wrote:
-> Hi Manish,
->
-> I might be very helpful to also improve commit description, because as
-> it is it's very confusing and shallow, at least for me.
+On Tue, Jan 25, 2011 at 11:16:26PM -0800, Darrick J. Wong wrote:
+> This patch is the first in a series to refactor the barrier= mount options out
+> of the filesystem code.  This patch adds sysfs knobs to disable flush and FUA;
+> of course, the automatic default is the safe choice, i.e. to leave them
+> enabled.  Obviously, only a seasoned administrator should ever be overriding
+> the defaults.
 
-Sure, will update that too when I send the updated version.
+Hmmm... wouldn't it be better to just export flush and fua instead of
+ignore_*?  So that the admin can turn things on and off as [s]he seems
+fit?  Also, it might be better to export them in a single attribute,
+say cache_control or something.  Only subset of the combinations make
+sense anyway - none, flush, flush_fua.
+
+Thanks.
 
 -- 
-Thanks -
-Manish
+tejun
