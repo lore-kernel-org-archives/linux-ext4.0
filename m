@@ -1,72 +1,81 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 3/3] block: reimplement FLUSH/FUA to support merge
-Date: Tue, 25 Jan 2011 14:56:26 -0800
-Message-ID: <20110125225626.GD32261@tux1.beaverton.ibm.com>
-References: <1295625598-15203-1-git-send-email-tj@kernel.org> <1295625598-15203-4-git-send-email-tj@kernel.org> <20110121185617.GI12072@redhat.com> <20110123102526.GA23121@htj.dyndns.org> <20110124203155.GA32261@tux1.beaverton.ibm.com> <20110125102128.GO27510@htj.dyndns.org>
-Reply-To: djwong@us.ibm.com
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: Re: [RFC PATCH 4/3] block: skip elevator initialization for flush
+ requests -- was never BUGGY relative to upstream
+Date: Wed, 26 Jan 2011 00:27:19 -0500
+Message-ID: <20110126052719.GA31818@redhat.com>
+References: <1295625598-15203-1-git-send-email-tj@kernel.org>
+ <1295625598-15203-4-git-send-email-tj@kernel.org>
+ <20110125204158.GA3013@redhat.com>
+ <20110125215500.GA6836@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk, tytso@mit.edu,
-	shli@kernel.org, neilb@suse.de, adilger.kernel@dilger.ca,
-	jack@suse.cz, snitzer@redhat.com, linux-kernel@vger.kernel.org,
-	kmannth@us.ibm.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	rwheeler@redhat.com, hch@lst.de, josef@redhat.com
+Cc: axboe@kernel.dk, tytso@mit.edu, djwong@us.ibm.com, shli@kernel.org,
+	neilb@suse.de, adilger.kernel@dilger.ca, jack@suse.cz,
+	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
+	josef@redhat.com, jmoyer@redhat.com
 To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:55918 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751827Ab1AYW4a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jan 2011 17:56:30 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:58753 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750742Ab1AZF1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jan 2011 00:27:39 -0500
 Content-Disposition: inline
-In-Reply-To: <20110125102128.GO27510@htj.dyndns.org>
+In-Reply-To: <20110125215500.GA6836@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 25, 2011 at 11:21:28AM +0100, Tejun Heo wrote:
-> Hello, Darrick.
+On Tue, Jan 25 2011 at  4:55pm -0500,
+Mike Snitzer <snitzer@redhat.com> wrote:
+
+> On Tue, Jan 25 2011 at  3:41pm -0500,
+> Mike Snitzer <snitzer@redhat.com> wrote:
 > 
-> On Mon, Jan 24, 2011 at 12:31:55PM -0800, Darrick J. Wong wrote:
-> > > So, I think it's better to start with something simple and improve it
-> > > with actual testing.  If the current simple implementation can match
-> > > Darrick's previous numbers, let's first settle the mechanisms.  We can
+> > Hi Tejun,
 > > 
-> > Yep, the fsync-happy numbers more or less match... at least for 2.6.37:
-> > http://tinyurl.com/4q2xeao
-> 
-> Good to hear.  Thanks for the detailed testing.
-> 
-> > I'll give 2.6.38-rc2 a try later, though -rc1 didn't boot for me, so these
-> > numbers are based on a backport to .37. :(
-> 
-> Well, there hasn' been any change in the area during the merge window
-> anyway, so I think testing on 2.6.37 should be fine.
-
-Well, I gave it a spin on -rc2 with no problems and no significant change in
-performance, so:
-
-Acked-by: Darrick J. Wong <djwong@us.ibm.com>
-
-> > > I don't really think we should design the whole thing around broken
-> > > devices which incorrectly report writeback cache when it need not.
-> > > The correct place to work around that is during device identification
-> > > not in the flush logic.
+> > On Fri, Jan 21 2011 at 10:59am -0500,
+> > Tejun Heo <tj@kernel.org> wrote:
+> > > 
+> > > * As flush requests are never put on the IO scheduler, request fields
+> > >   used for flush share space with rq->rb_node.  rq->completion_data is
+> > >   moved out of the union.  This increases the request size by one
+> > >   pointer.
+> > > 
+> > >   As rq->elevator_private* are used only by the iosched too, it is
+> > >   possible to reduce the request size further.  However, to do that,
+> > >   we need to modify request allocation path such that iosched data is
+> > >   not allocated for flush requests.
 > > 
-> > elm3a4_sas and elm3c71_extsas advertise writeback cache yet the
-> > flush completion times are suspiciously low.  I suppose it could be
-> > useful to disable flushes to squeeze out that last bit of
-> > performance, though I don't know how one goes about querying the
-> > disk array to learn if there's a battery behind the cache.  I guess
-> > the current mechanism (admin knob that picks a safe default) is good
-> > enough.
+> > I decided to take a crack at using rq->elevator_private* and came up
+> > with the following patch.
+
+...
+
+> It is an interesting duality that:
+> 1) REQ_ELVPRIV is never set because priv=0 is passed to blk_alloc_request
+> 2) yet when blk_free_request() checks rq->cmd_flags REQ_ELVPRIV is set;
+>    resulting in the call to elv_put_request()
+
+Turns out priv=0 was never actually being established in get_request()
+on the kernel I was testing (see below).
+
+> > I know this because in my following get_request() change to _not_ call
+> > elv_set_request() for flush requests hit cfq_put_request()'s
+> > BUG_ON(!cfqq->allocated[rw]).
 > 
-> Yeap, that or a blacklist of devices which lie.
+> FYI, here is the backtrace:
 
-Hmm... I don't think a blacklist would work for our arrays, since one can force
-them to run with write cache and no battery.  I _do_ have a patch that adds a
-sysfs knob to the block layer to drop flush/fua if the admin really really
-really wants it, so I'll send that out shortly along with another one to remove
-the barrier= mount option from ext4.
+That backtrace was from a RHEL6 port of your recent flush merge work.
+One RHELism associated with the RHEL6 flush+fua port in general (and now
+this flush merge port) is that bio and request flags are _not_ shared.
 
-(Unless the screams of objection rain from the skies. :))
+As such I introduced BIO_FLUSH and BIO_FUA flags in RHEL6.  Long story
+short, my 4/3 patch works just fine ontop of your 3 patches that Jens
+just staged for 2.6.39.
 
---D
+So sorry for the noise!  I'm kicking myself for having tainted my patch
+(and your work indirectly) by making an issue out of nothing.
+
+Taking a step back, what do you think of my proposed patch?
+
+Mike
