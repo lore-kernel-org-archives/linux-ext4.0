@@ -1,56 +1,43 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 3/3] ext4: Deprecate barrier= and nobarrier mount
- options
-Date: Wed, 26 Jan 2011 13:21:51 +0100
-Message-ID: <20110126122151.GN12520@htj.dyndns.org>
+From: torn5 <torn5@shiftmail.org>
+Subject: Re: [PATCH 3/3] ext4: Deprecate barrier= and nobarrier mount options
+Date: Wed, 26 Jan 2011 14:29:54 +0100
+Message-ID: <4D4021D2.2000407@shiftmail.org>
 References: <20110126071200.GE32261@tux1.beaverton.ibm.com>
  <20110126072329.GK27190@tux1.beaverton.ibm.com>
- <20110126093632.GB12520@htj.dyndns.org>
- <20110126104734.GA23245@quack.suse.cz>
- <4D401092.9060009@redhat.com>
+ <20110126093632.GB12520@htj.dyndns.org> <20110126104734.GA23245@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Darrick J. Wong" <djwong@us.ibm.com>,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Tejun Heo <tj@kernel.org>, "Darrick J. Wong" <djwong@us.ibm.com>,
 	Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk,
 	tytso@mit.edu, shli@kernel.org, neilb@suse.de,
 	adilger.kernel@dilger.ca, snitzer@redhat.com,
 	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, hch@lst.de, josef@redhat.com
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:58092 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751239Ab1AZMV7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jan 2011 07:21:59 -0500
-Content-Disposition: inline
-In-Reply-To: <4D401092.9060009@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com, hch@lst.de,
+	josef@redhat.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-reply-to: <20110126104734.GA23245@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On 01/26/2011 11:47 AM, Jan Kara wrote:
+>   Hello,
+>
+> On Wed 26-01-11 10:36:32, Tejun Heo wrote:
+>   Ted should have a final word about this but I believe it's possible to
+> deprecate the mount options. Maybe with some transition period where
+> deprecation message is shown but the option actually still works.
 
-On Wed, Jan 26, 2011 at 07:16:18AM -0500, Ric Wheeler wrote:
-> I would also like to suggest that mount is the right time to change
-> a per file system behaviour. We have well known paths (add the mount
-> options to /etc/fstab) and sys admins understand it.
-> 
-> If we have to poke a file, what is the suggested mechanism for doing
-> this? Another, new script or user space utility that needs to be run
-> at mount time for each file system?
-> 
-> If we did want to deprecate the "barrier" name, I would leave it in
-> place and replace it with something meaningful (at mount time!) to
-> users like "data_safety" and "no_data_safety" modes :)
++1 for this from a user.
 
-With barrier on by default these days, I don't think it's necessary to
-fiddle with it too much.  It's not as important as before.  Let's
-leave it as it is.  Barrier, flush, it doesn't really matter how it's
-called.
+I'd like to see this moved to blockdev sysfs in the long term.
 
-In the long run tho, I think filesystems should just always enable
-flush/barrier and the fiddling belongs to the block layer.
+During the transition period there could be both the old barrier mount
+option (with a deprecated warning upon use) and the sysfs knobs.
 
-Thanks.
-
--- 
-tejun
+Flush and FUA would be delivered to disk only if both the barriers are
+enabled in the mount options (which is also the default) and the sysfs
+are at "noignore" value. Alternatively, the barrier mount option could
+affect the sysfs knobs values upon mount. Eventually the barrier mount
+option would be removed becoming always-on, leaving only the sysfs knobs.
