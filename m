@@ -1,52 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 27652] 38-rc1: umount+rmmod cause ext4 error.
-Date: Wed, 26 Jan 2011 20:41:07 GMT
-Message-ID: <201101262041.p0QKf79G030815@demeter2.kernel.org>
-References: <bug-27652-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Coly Li <bosong.ly@taobao.com>
+Subject: [PATCH] __ext4_get_inode_loc: use s_inodes_per_block directly
+Date: Fri, 28 Jan 2011 00:33:06 +0800
+Message-ID: <1296145986-4985-1-git-send-email-bosong.ly@taobao.com>
+Cc: Coly Li <bosong.ly@taobao.com>, Theodore Tso <tytso@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:59366 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754090Ab1AZUlJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jan 2011 15:41:09 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p0QKf7X2030816
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Jan 2011 20:41:07 GMT
-In-Reply-To: <bug-27652-13602@https.bugzilla.kernel.org/>
+Received: from [114.243.227.164] ([114.243.227.164]:50901 "EHLO enigma.site"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751216Ab1A0QOo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Jan 2011 11:14:44 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=27652
+In __ext4_get_inode_loc(), inodes_per_block is calculated by
+(EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb)). This is unncessary, the
+value can be found directly from s_inodes_per_block.
 
+Signed-off-by: Coly Li <bosong.ly@taobao.com>
+Cc: Theodore Tso <tytso@google.com>
+---
+ fs/ext4/inode.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Eric Sandeen <sandeen@redhat.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sandeen@redhat.com
-
-
-
-
---- Comment #1 from Eric Sandeen <sandeen@redhat.com>  2011-01-26 20:41:05 ---
-I believe patches have been sent that should fix this; there were
-2 module unloading regressions in .37, both fixed.
-
-If you can test with:
-
-http://marc.info/?l=linux-ext4&m=129546975702198&w=2
-and
-http://marc.info/?l=linux-ext4&m=129527644524410&w=2
-
-that'd be great.
-
-Thanks,
--Eric
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9f7f9e4..837c5a6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4668,7 +4668,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	/*
+ 	 * Figure out the offset within the block group inode table
+ 	 */
+-	inodes_per_block = (EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb));
++	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
+ 	inode_offset = ((inode->i_ino - 1) %
+ 			EXT4_INODES_PER_GROUP(sb));
+ 	block = ext4_inode_table(sb, gdp) + (inode_offset / inodes_per_block);
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.3.4
+
