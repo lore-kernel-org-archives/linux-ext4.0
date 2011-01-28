@@ -1,94 +1,132 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 27652] 38-rc1: umount+rmmod cause ext4 error.
-Date: Fri, 28 Jan 2011 06:01:11 GMT
-Message-ID: <201101280601.p0S61Ben007804@demeter2.kernel.org>
-References: <bug-27652-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCHSET] Refactor barrier=/nobarrier flags from fs to block
+ layer
+Date: Fri, 28 Jan 2011 22:16:29 +1100
+Message-ID: <20110128111629.GW21311@dastard>
+References: <20110126071200.GE32261@tux1.beaverton.ibm.com>
+ <4D400A44.6030502@redhat.com>
+ <4D404EBF.8020508@redhat.com>
+ <20110126172413.GG32261@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ric Wheeler <rwheeler@redhat.com>, Tejun Heo <tj@kernel.org>,
+	Vivek Goyal <vgoyal@redhat.com>, axboe@kernel.dk,
+	tytso@mit.edu, shli@kernel.org, neilb@suse.de,
+	adilger.kernel@dilger.ca, jack@suse.cz, snitzer@redhat.com,
+	linux-kernel@vger.kernel.org, kmannth@us.ibm.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org, hch@lst.de, josef@redhat.com
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:36597 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752874Ab1A1GBM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jan 2011 01:01:12 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p0S61Bl6007819
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Jan 2011 06:01:11 GMT
-In-Reply-To: <bug-27652-13602@https.bugzilla.kernel.org/>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:47846 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753522Ab1A1LQu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Jan 2011 06:16:50 -0500
+Content-Disposition: inline
+In-Reply-To: <20110126172413.GG32261@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=27652
+On Wed, Jan 26, 2011 at 09:24:13AM -0800, Darrick J. Wong wrote:
+> On Wed, Jan 26, 2011 at 10:41:35AM -0600, Eric Sandeen wrote:
+> > On 1/26/11 5:49 AM, Ric Wheeler wrote:
+> > > On 01/26/2011 02:12 AM, Darrick J. Wong wrote:
+> > >> Hello,
+> > >>
+> > >>  From what I can tell, most of the filesystems that know how to issue commands
+> > >> to flush the write cache also have some mechanism for the user to override
+> > >> whether or not the filesystem actually issues those flushes.  Unfortunately,
+> > >> the term "barrier" is obsolete having been changed into flushes in 2.6.36, and
+> > >> many of the filesystems implement the mount options with slightly different
+> > >> syntaxes (barrier=[0|1|none|flush], nobarrier, etc).
+> > >>
+> > >> This patchset adds to the block layer a sysfs knob that an administrator can
+> > >> use to disable flushes, and removes the mount options from the filesystem code.
+> > >> As a starting point, I'm removing the mount options and flush toggle from
+> > >> jbd2/ext4.
+> > >>
+> > >> Anyway, I'm looking for some feedback about refactoring the barrier/flush
+> > >> control knob into the block layer.  It sounds like we want a knob that picks
+> > >> the safest option (issue flushes when supported) unless the administrator
+> > >> decides that it is appropriate to do otherwise.  I suspect that there are good
+> > >> arguments for not having a knob at all, and good arguments for a safe knob.
+> > >> However, since I don't see the barrier options being removed en masse, I'm
+> > >> assuming that we still want a knob somewhere.  Do we need the ignore_fua knob
+> > >> too?  Is this the proper way to deprecate mount options out of filesystems?
+> > >>
+> > >> --D
+> > > 
+> > > Just to be clear, I strongly object to remove the mount options.
+> > 
+> > Agreed, we are just finally, barely starting to win the education battle here.
+> > Removing or changing the option now will just set us back.  It should at
+> > LEAST remain as a deprecated option, with the deprecation message pointing
+> > to crystal-clear documentation.
+> 
+> Ok, how about a second proposal:
+> 
+> 1. Put the sysfs knob and the toggle code in the block layer, similar to patch
+> #1, only make it a per-bdev toggle so each mount can have its own override
+> parameters.
 
+A sysfs knob just seems wrong for this. What do you do with
+filesystems or block devices that span multiple block devices,
+either via md, dm, mount options (XFS - separate data, log and
+realtime devices) or other means (btrfs w/ multiple devices)? 
 
-Tao Ma <tm@tao.ma> changed:
+IMO, the only sane way to control this sort of behaviour is from the
+top down (i.e. from the filesystem) and not from the bottom up (i.e.
+from the lowest level of block devices) because the cache flushes
+are only useful to the filesystem if they are consistently
+implemented from the top of the storage stack to the bottom...
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tm@tao.ma
+Also, if you allow block devices at the bottom of the stack to be
+configured to ignore flushes dynamically, we need some method to
+inform the upper layers that this has happened. At minimum the
+filesystem needs to log the fact that their crash/power fail
+consistency guarantees have changed - there's no way I'm going to
+assume that users won't do something stupid if there's a knob to
+tweak....
 
+> 2. Add some sort of "nocacheflush" option to the VFS layer to adjust the knob.
+> With this we gain a consistent mount option syntax across all the filesystems,
+> though what it means for a networked fs is questionable.  I guess you could
+> reject the mount option if there's no block device under the fs.  Also, any fs
+> that someday grows an issue-flush feature won't have to add its own option
+> parsing code.
 
+We already have a relatively widely implemented mount option pair -
+barrier/nobarrier is supported by ext3, ext4, btrfs, gfs2, xfs,
+hfsplus and nilfs2 - so I'd suggest that this is the best paaaaaaah
+to take for implementing a generic mount option...
 
+> At umount time, do we undo whatever overrides we set up at mount time?  Seems
+> sane to me, just wanted to run it by everyone.
 
---- Comment #2 from Tao Ma <tm@tao.ma>  2011-01-28 06:01:10 ---
-ok, so I have applied the 2 patches. And now I did hit another bug every time,
-I have tried to revert these 2 patches. And it still show up every time. I use
-38-rc2 now. So Maciej, is it necessary to open another bug for it?
+Does it really matter? The next mount will set it to whatever is
+necessary...
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
-IP: [<ffffffff8233d343>] _raw_spin_lock_irqsave+0x11/0x22
-PGD 12292c067 PUD 10fdb6067 PMD 0 
-Oops: 0002 [#1] SMP 
-last sysfs file: /sys/devices/pci0000:00/0000:00:19.0/irq
-CPU 1 
-Modules linked in: ext4(-) jbd2 ipv6 autofs4 hidp rfcomm l2cap crc16 bluetooth
-rfkill ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm ocfs2_nodemanager ocfs2_stackglue
-configfs lockd sunrpc cpufreq_ondemand acpi_cpufreq dm_mirror video sbs sbshc
-battery acpi_memhotplug ac lp sg snd_hda_codec_analog snd_hda_intel
-snd_hda_codec snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq
-snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm option usb_wwan usbserial
-rtc_cmos tpm_tis snd_timer snd soundcore tpm pcspkr i2c_i801 parport_pc e1000e
-serio_raw dcdbas shpchp rtc_core rtc_lib i2c_core parport snd_page_alloc button
-tpm_bios dm_region_hash dm_log dm_mod usb_storage ahci libahci libata sd_mod
-scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd [last unloaded: microcode]
+> 3. Change the per-fs option handling code to call the same code as the VFS'
+> nocacheflush option.  Any fs that wants to deprecate its per-fs option handler
+> can do so.  Or they can stay forever.
+> 
+> 4. Remove all the flush conditionals from the fs code in favor of letting the
+> block layer handle it.
+>
+> Hopefully "nocacheflush" is a little more obvious.
 
-Pid: 4015, comm: rmmod Not tainted 2.6.38-rc2+ #30 0V4W66/OptiPlex 780          
-RIP: 0010:[<ffffffff8233d343>]  [<ffffffff8233d343>]
-_raw_spin_lock_irqsave+0x11/0x22
-RSP: 0018:ffff88010fdbbe48  EFLAGS: 00010046
-RAX: 0000000000000246 RBX: ffff88010fdbbe98 RCX: 00000000c0000100
-RDX: 0000000000000100 RSI: ffff88010fdbbe98 RDI: 0000000000000020
-RBP: ffff88010fdbbe48 R08: ffff88010fdba000 R09: ffff8800cfa0da70
-R10: ffffffff82069498 R11: 0000000000000000 R12: 0000000000000020
-R13: 0000000000000002 R14: 00007fffa52c5c60 R15: 0000000000000880
-FS:  00007f7dd0d016e0(0000) GS:ffff8800cfa40000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000020 CR3: 000000011dc48000 CR4: 00000000000406e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process rmmod (pid: 4015, threadinfo ffff88010fdba000, task ffff88012271e180)
-Stack:
- ffff88010fdbbe88 ffffffff82055ee2 ffffffff82069498 ffff88010fdbbe98
- ffff88010fdbbe98 ffffffffa04d8440 0000000000000880 00007fffa52c5c60
- ffff88010fdbbed8 ffffffffa04ca2cc 0000000000000000 ffff88012271e180
-Call Trace:
- [<ffffffff82055ee2>] prepare_to_wait+0x25/0x7b
- [<ffffffff82069498>] ? __try_stop_module+0x0/0x3d
- [<ffffffffa04ca2cc>] ext4_exit_fs+0x94/0x112 [ext4]
- [<ffffffff82055cdf>] ? autoremove_wake_function+0x0/0x3d
- [<ffffffff82067bce>] sys_delete_module+0x1b5/0x218
- [<ffffffff8207506f>] ? audit_syscall_entry+0x187/0x1ba
- [<ffffffff82002a6b>] system_call_fastpath+0x16/0x1b
-Code: 1f 44 00 00 b8 00 01 00 00 f0 66 0f c1 07 38 e0 74 06 f3 90 8a 07 eb f6
-c9 c3 55 48 89 e5 0f 1f 44 00 00 9c 58 fa ba 00 01 00 00 <f0> 66 0f c1 17 38 f2
-74 06 f3 90 8a 17 eb f6 c9 c3 55 48 89 e5 
-RIP  [<ffffffff8233d343>] _raw_spin_lock_irqsave+0x11/0x22
- RSP <ffff88010fdbbe48>
-CR2: 0000000000000020
----[ end trace ec9d834b678544aa ]---
+What cache does "nocacheflush" refer to? The page, inode, dentry, or
+buffer caches? Or some other per filesystem cache? Perhaps the MD
+stripe cache? Maybe something else? There are many different caches
+in a storage system even before we consider hardware, so I think
+"nocacheflush" is much more ambiguous than barrier/nobarrier...
 
+Just my 2c worth....
+
+Cheers,
+
+Dave.
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
