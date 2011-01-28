@@ -1,35 +1,68 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 27652] 38-rc1: umount+rmmod cause ext4 error.
-Date: Fri, 28 Jan 2011 17:32:15 GMT
-Message-ID: <201101281732.p0SHWF9o015985@demeter2.kernel.org>
-References: <bug-27652-13602@https.bugzilla.kernel.org/>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH 1/6] fs: add hole punching to fallocate
+Date: Fri, 28 Jan 2011 13:13:16 -0500
+Message-ID: <4D43073C.1040100@redhat.com>
+References: <1289248327-16308-1-git-send-email-josef@redhat.com> <20101109011222.GD2715@dastard> <20101109033038.GF3099@thunk.org> <20101109044242.GH2715@dastard> <20101109214147.GK3099@thunk.org> <20101109234049.GQ2715@dastard> <AANLkTimwmJ_ZoE9oAuA1WGhCgK585jDznqnc6k0=9Ntb@mail.gmail.com> <20110112124431.GP28803@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter2.kernel.org ([140.211.167.42]:35982 "EHLO
-	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755265Ab1A1RcQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jan 2011 12:32:16 -0500
-Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p0SHWFRt015986
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Jan 2011 17:32:15 GMT
-In-Reply-To: <bug-27652-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Lawrence Greenfield <leg@google.com>, "Ted Ts'o" <tytso@mit.edu>,
+	Josef Bacik <josef@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	joel.becker@oracle.com, cmm@us.ibm.com, cluster-devel@redhat.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20110112124431.GP28803@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=27652
+On 01/12/2011 07:44 AM, Dave Chinner wrote:
+> On Tue, Jan 11, 2011 at 04:13:42PM -0500, Lawrence Greenfield wrote:
+>> On Tue, Nov 9, 2010 at 6:40 PM, Dave Chinner<david@fromorbit.com>  wrote:
+>>> The historical reason for such behaviour existing in XFS was that in
+>>> 1997 the CPU and IO latency cost of unwritten extent conversion was
+>>> significant,
+> .....
+>
+>>>> (Take for example a trusted cluster filesystem backend that checks the
+>>>> object checksum before returning any data to the user; and if the
+>>>> check fails the cluster file system will try to use some other replica
+>>>> stored on some other server.)
+>>> IOWs, all they want to do is avoid the unwritten extent conversion
+>>> overhead. Time has shown that a bad security/performance tradeoff
+>>> decision was made 13 years ago in XFS, so I see little reason to
+>>> repeat it for ext4 today....
+>> I'd make use of FALLOC_FL_EXPOSE_OLD_DATA. It's not the CPU overhead
+>> of extent conversion. It's that extent conversion causes more metadata
+>> operations than what you'd have otherwise,
+> Yes, that's the "IO latency" part of the cost I mentioned above.
+>
+>> which means systems that
+>> want to use O_DIRECT and make sure the data doesn't go away either
+>> have to write O_DIRECT|O_DSYNC or need to call fdatasync().
+> Seriously, we tell application writers _all the time_ that they
+> *must* use fsync/fdatasync to guarantee their data is on stable
+> storage and that they cannot rely on side-effects of filesystem or
+> storage specific behaviours (like ext3 ordered mode) to do that job
+> for them.
+>
+> You're suggesting that by introducing FALLOC_FL_EXPOSE_OLD_DATA,
+> applications can rely on filesystem/storage specific behaviour to
+> guarantee data is on stable storage without the use of
+> fdatasync/fsync. Wht you describe is definitely storage specific,
+> because volatile write caches still needs the fdatasync to issue a
+> cache flush.
+>
+> Do you see the same conflict here that I do?
+>
 
+The very concept seems quite "non-enterprise".  I also agree that the cost of 
+maintaining extra mount options (and code) for something that no sane end user 
+would ever do seems to be a loss.
 
+Why wouldn't you want to convert the punched hole to an unwritten extent?
 
+Thanks!
 
-
---- Comment #5 from Eric Sandeen <sandeen@redhat.com>  2011-01-28 17:32:13 ---
-I could also be off base ;)  Is the filesystem under test created with the
-lazy_itable_init feature?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Ric
