@@ -1,58 +1,133 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: error ext4_mb_generate_buddy:726 & add_dirent_to_buf:1272
- after online resize
-Date: Sat, 29 Jan 2011 17:33:10 -0500
-Message-ID: <20110129223310.GD19287@thunk.org>
-References: <S1752440Ab1APNtL/20110116134911Z+826@vger.kernel.org>
- <4D32FACD.7020907@pook.it>
- <4D3300A5.1090300@pook.it>
- <4D44919C.6010404@pook.it>
+From: tm@tao.ma
+Subject: Re: [PATCH] ext4: fix panic on module unload when stopping lazyinit
+ thread
+Date: Sat, 29 Jan 2011 19:32:34 -0700
+Message-ID: <a8910fcd961d27c68186681aa37bb22b.squirrel@mail.tao.ma>
+References: <4D43402D.2000004@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Stuart Pook <slp4725@pook.it>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "ext4 development" <linux-ext4@vger.kernel.org>,
+	=?iso-8859-1?Q?=22Luk=E1=9A_Czerner=22?= <lczerner@redhat.com>
+To: "Eric Sandeen" <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:53946 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751513Ab1A2WdX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 29 Jan 2011 17:33:23 -0500
-Content-Disposition: inline
-In-Reply-To: <4D44919C.6010404@pook.it>
+Received: from cpoproxy3-pub.bluehost.com ([67.222.54.6]:56070 "HELO
+	cpoproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751772Ab1A3Ccf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Jan 2011 21:32:35 -0500
+In-Reply-To: <4D43402D.2000004@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 29, 2011 at 11:15:56PM +0100, Stuart Pook wrote:
-> I am getting these message about once a day. Each message arrives 24 hours amd a few minuted after the last message, wierd.  Inode 262145 is a directory that I created just after the online resize of the filesystem.
+> This is for the latest reported module unload oops in
+> kernel.org bugzilla #27652
+>
+> If the lazyinit thread is running, the teardown
+> function ext4_destroy_lazyinit_thread() has problems:
+>
+>         ext4_clear_request_list();
+>         while (ext4_li_info->li_task) {
+>                 wake_up(&ext4_li_info->li_wait_daemon);
+>                 wait_event(ext4_li_info->li_wait_task,
+>                            ext4_li_info->li_task == NULL);
+>         }
+>
+> clearing the request list will cause the thread to exit
+> and free ext4_li_info, so then we're waiting on something
+> which is getting freed.
+>
+> Fix this up by making the thread respond to kthread_stop,
+> and exit, without the need to wait for that exit in some
+> other homegrown way.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+It works now. Thanks.
+Reported-and-Tested-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>
+> Index: linux-2.6/fs/ext4/super.c
+> ===================================================================
+> --- linux-2.6.orig/fs/ext4/super.c
+> +++ linux-2.6/fs/ext4/super.c
+> @@ -77,6 +77,7 @@ static struct dentry *ext4_mount(struct
+>  		       const char *dev_name, void *data);
+>  static void ext4_destroy_lazyinit_thread(void);
+>  static void ext4_unregister_li_request(struct super_block *sb);
+> +static void ext4_clear_request_list(void);
+>
+>  #if !defined(CONFIG_EXT3_FS) && !defined(CONFIG_EXT3_FS_MODULE) &&
+> defined(CONFIG_EXT4_USE_FOR_EXT23)
+>  static struct file_system_type ext3_fs_type = {
+> @@ -2704,6 +2705,8 @@ static void ext4_unregister_li_request(s
+>  	mutex_unlock(&ext4_li_info->li_list_mtx);
+>  }
+>
+> +static struct task_struct *ext4_lazyinit_task;
+> +
+>  /*
+>   * This is the function where ext4lazyinit thread lives. It walks
+>   * through the request list searching for next scheduled filesystem.
+> @@ -2772,6 +2775,10 @@ cont_thread:
+>  		if (time_before(jiffies, next_wakeup))
+>  			schedule();
+>  		finish_wait(&eli->li_wait_daemon, &wait);
+> +		if (kthread_should_stop()) {
+> +			ext4_clear_request_list();
+> +			goto exit_thread;
+> +		}
+>  	}
+>
+>  exit_thread:
+> @@ -2796,6 +2803,7 @@ exit_thread:
+>  	wake_up(&eli->li_wait_task);
+>
+>  	kfree(ext4_li_info);
+> +	ext4_lazyinit_task = NULL;
+>  	ext4_li_info = NULL;
+>  	mutex_unlock(&ext4_li_mtx);
+>
+> @@ -2818,11 +2826,10 @@ static void ext4_clear_request_list(void
+>
+>  static int ext4_run_lazyinit_thread(void)
+>  {
+> -	struct task_struct *t;
+> -
+> -	t = kthread_run(ext4_lazyinit_thread, ext4_li_info, "ext4lazyinit");
+> -	if (IS_ERR(t)) {
+> -		int err = PTR_ERR(t);
+> +	ext4_lazyinit_task = kthread_run(ext4_lazyinit_thread,
+> +					 ext4_li_info, "ext4lazyinit");
+> +	if (IS_ERR(ext4_lazyinit_task)) {
+> +		int err = PTR_ERR(ext4_lazyinit_task);
+>  		ext4_clear_request_list();
+>  		del_timer_sync(&ext4_li_info->li_timer);
+>  		kfree(ext4_li_info);
+> @@ -2973,16 +2980,10 @@ static void ext4_destroy_lazyinit_thread
+>  	 * If thread exited earlier
+>  	 * there's nothing to be done.
+>  	 */
+> -	if (!ext4_li_info)
+> +	if (!ext4_li_info || !ext4_lazyinit_task)
+>  		return;
+>
+> -	ext4_clear_request_list();
+> -
+> -	while (ext4_li_info->li_task) {
+> -		wake_up(&ext4_li_info->li_wait_daemon);
+> -		wait_event(ext4_li_info->li_wait_task,
+> -			   ext4_li_info->li_task == NULL);
+> -	}
+> +	kthread_stop(ext4_lazyinit_task);
+>  }
+>
+>  static int ext4_fill_super(struct super_block *sb, void *data, int
+> silent)
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-Sorry for my lack of response.  I've been in Brisbane for the past
-week attending linux.conf.au.  This message which you are seeing:
 
-> /var/log/syslog:Jan 29 17:57:21 kooka kernel: : [1125159.904008] EXT4-fs (dm-28): error count: 11
-> /var/log/syslog:Jan 29 17:57:21 kooka kernel: : [1125159.904014] EXT4-fs (dm-28): initial error at 1295177566: ext4_mb_generate_buddy:726
-> /var/log/syslog:Jan 29 17:57:21 kooka kernel: : [1125159.904017] EXT4-fs (dm-28): last error at 1295177566: add_dirent_to_buf:1272: inode 262145: block 1048578
-
-... is strictly speaking not an error.  It is a status report
-indicating that in the past your file system had suffered an error.
-The first error was at 1295177566 seconds past the epoch, or at:
-
-% date -d @1295177566
-Sun Jan 16 06:32:46 EST 2011
-
-...and the most recent error was at:
-
-% date -d @1295177566
-Sun Jan 16 06:32:46 EST 2011
-
-If you upgrade to e2fsck 1.41.14, it will reset the error counter and
-the first/last most recent errors.  The idea behind this is that
-sometimes people aren't paying close attention to their
-/var/log/messages file, so this is a periodic informational reminder,
-printed once a day.  If you are creating shell scripts to find errors,
-match on "EXT4-fs Error", for example "EXT4-fs error (dm-28): disk on
-fire".  Warnings will be denoted with "EXT4-fs warning", and and
-information messages, such as this one just start with "EXT4-fs", as
-in "EXT4-fs (dm-28): ..."
-
-Hope this helps,
-
-						- Ted
