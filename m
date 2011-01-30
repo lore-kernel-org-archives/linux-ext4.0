@@ -1,133 +1,58 @@
-From: tm@tao.ma
-Subject: Re: [PATCH] ext4: fix panic on module unload when stopping lazyinit
- thread
-Date: Sat, 29 Jan 2011 19:32:34 -0700
-Message-ID: <a8910fcd961d27c68186681aa37bb22b.squirrel@mail.tao.ma>
-References: <4D43402D.2000004@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 27652] 38-rc1: umount+rmmod cause ext4 error.
+Date: Sun, 30 Jan 2011 02:36:59 GMT
+Message-ID: <201101300236.p0U2axF2024055@demeter2.kernel.org>
+References: <bug-27652-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: "ext4 development" <linux-ext4@vger.kernel.org>,
-	=?iso-8859-1?Q?=22Luk=E1=9A_Czerner=22?= <lczerner@redhat.com>
-To: "Eric Sandeen" <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cpoproxy3-pub.bluehost.com ([67.222.54.6]:56070 "HELO
-	cpoproxy3-pub.bluehost.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751772Ab1A3Ccf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 29 Jan 2011 21:32:35 -0500
-In-Reply-To: <4D43402D.2000004@redhat.com>
+Received: from demeter2.kernel.org ([140.211.167.42]:43320 "EHLO
+	demeter2.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751772Ab1A3ChA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Jan 2011 21:37:00 -0500
+Received: from demeter2.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter2.kernel.org (8.14.4/8.14.3) with ESMTP id p0U2axXJ024056
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 30 Jan 2011 02:37:00 GMT
+In-Reply-To: <bug-27652-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> This is for the latest reported module unload oops in
-> kernel.org bugzilla #27652
->
-> If the lazyinit thread is running, the teardown
-> function ext4_destroy_lazyinit_thread() has problems:
->
->         ext4_clear_request_list();
->         while (ext4_li_info->li_task) {
->                 wake_up(&ext4_li_info->li_wait_daemon);
->                 wait_event(ext4_li_info->li_wait_task,
->                            ext4_li_info->li_task == NULL);
->         }
->
-> clearing the request list will cause the thread to exit
-> and free ext4_li_info, so then we're waiting on something
-> which is getting freed.
->
-> Fix this up by making the thread respond to kthread_stop,
-> and exit, without the need to wait for that exit in some
-> other homegrown way.
->
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-It works now. Thanks.
+https://bugzilla.kernel.org/show_bug.cgi?id=27652
+
+
+
+
+
+--- Comment #8 from Tao Ma <tm@tao.ma>  2011-01-30 02:36:58 ---
+(In reply to comment #7)
+> Patch: https://bugzilla.kernel.org/show_bug.cgi?id=27652#c6 
+> 
+> Tao Ma, does this work for you too?
+
+Hi sorry for the delay.
+So the patch works for the kernel panic.
 Reported-and-Tested-by: Tao Ma <boyu.mt@taobao.com>
-> ---
->
-> Index: linux-2.6/fs/ext4/super.c
-> ===================================================================
-> --- linux-2.6.orig/fs/ext4/super.c
-> +++ linux-2.6/fs/ext4/super.c
-> @@ -77,6 +77,7 @@ static struct dentry *ext4_mount(struct
->  		       const char *dev_name, void *data);
->  static void ext4_destroy_lazyinit_thread(void);
->  static void ext4_unregister_li_request(struct super_block *sb);
-> +static void ext4_clear_request_list(void);
->
->  #if !defined(CONFIG_EXT3_FS) && !defined(CONFIG_EXT3_FS_MODULE) &&
-> defined(CONFIG_EXT4_USE_FOR_EXT23)
->  static struct file_system_type ext3_fs_type = {
-> @@ -2704,6 +2705,8 @@ static void ext4_unregister_li_request(s
->  	mutex_unlock(&ext4_li_info->li_list_mtx);
->  }
->
-> +static struct task_struct *ext4_lazyinit_task;
-> +
->  /*
->   * This is the function where ext4lazyinit thread lives. It walks
->   * through the request list searching for next scheduled filesystem.
-> @@ -2772,6 +2775,10 @@ cont_thread:
->  		if (time_before(jiffies, next_wakeup))
->  			schedule();
->  		finish_wait(&eli->li_wait_daemon, &wait);
-> +		if (kthread_should_stop()) {
-> +			ext4_clear_request_list();
-> +			goto exit_thread;
-> +		}
->  	}
->
->  exit_thread:
-> @@ -2796,6 +2803,7 @@ exit_thread:
->  	wake_up(&eli->li_wait_task);
->
->  	kfree(ext4_li_info);
-> +	ext4_lazyinit_task = NULL;
->  	ext4_li_info = NULL;
->  	mutex_unlock(&ext4_li_mtx);
->
-> @@ -2818,11 +2826,10 @@ static void ext4_clear_request_list(void
->
->  static int ext4_run_lazyinit_thread(void)
->  {
-> -	struct task_struct *t;
-> -
-> -	t = kthread_run(ext4_lazyinit_thread, ext4_li_info, "ext4lazyinit");
-> -	if (IS_ERR(t)) {
-> -		int err = PTR_ERR(t);
-> +	ext4_lazyinit_task = kthread_run(ext4_lazyinit_thread,
-> +					 ext4_li_info, "ext4lazyinit");
-> +	if (IS_ERR(ext4_lazyinit_task)) {
-> +		int err = PTR_ERR(ext4_lazyinit_task);
->  		ext4_clear_request_list();
->  		del_timer_sync(&ext4_li_info->li_timer);
->  		kfree(ext4_li_info);
-> @@ -2973,16 +2980,10 @@ static void ext4_destroy_lazyinit_thread
->  	 * If thread exited earlier
->  	 * there's nothing to be done.
->  	 */
-> -	if (!ext4_li_info)
-> +	if (!ext4_li_info || !ext4_lazyinit_task)
->  		return;
->
-> -	ext4_clear_request_list();
-> -
-> -	while (ext4_li_info->li_task) {
-> -		wake_up(&ext4_li_info->li_wait_daemon);
-> -		wait_event(ext4_li_info->li_wait_task,
-> -			   ext4_li_info->li_task == NULL);
-> -	}
-> +	kthread_stop(ext4_lazyinit_task);
->  }
->
->  static int ext4_fill_super(struct super_block *sb, void *data, int
-> silent)
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
 
+As for the original bug, it doesn't help. I can still get the error message.
 
+slab error in kmem_cache_destroy(): cache `ext4_inode_cache': Can't free all
+objects
+Pid: 4674, comm: rmmod Not tainted 2.6.38-rc2+ #1
+Call Trace:
+ [<ffffffff820d61ac>] ? kmem_cache_destroy+0x83/0xc7
+ [<ffffffffa03a9000>] ? destroy_inodecache+0x15/0x17 [ext4]
+ [<ffffffffa03c7264>] ? ext4_exit_fs+0x30/0x60 [ext4]
+ [<ffffffff82067bce>] ? sys_delete_module+0x1b5/0x218
+ [<ffffffff8207506f>] ? audit_syscall_entry+0x187/0x1ba
+ [<ffffffff82002a6b>] ? system_call_fastpath+0x16/0x1b
+SLAB: cache with size 888 has lost its name
+
+And as I pointed in the original mail, I have done some basic investigation and
+it looks as if it is introduced by Nick's new ext4_i_callback.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
